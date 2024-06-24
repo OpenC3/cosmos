@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -38,8 +38,8 @@ module OpenC3
             return JSON.parse(response.body, allow_nan: true, create_additions: true)
           end
         end
-      rescue => error
-        raise "get_plugin_list failed due to #{error.formatted}\nResponse:\n#{response_body}"
+      rescue => e
+        raise "get_plugin_list failed due to #{e.formatted}\nURI:#{uri}\nResponse:\n#{response_body}"
       end
     end
 
@@ -61,8 +61,8 @@ module OpenC3
             return JSON.parse(response.body, allow_nan: true, create_additions: true)
           end
         end
-      rescue => error
-        raise "get_plugin failed due to #{error.formatted}\nResponse:\n#{response_body}"
+      rescue => e
+        raise "get_plugin failed due to #{e.formatted}\nURI:#{uri}\nResponse:\n#{response_body}"
       end
     end
 
@@ -95,8 +95,8 @@ module OpenC3
             end
           end
         end
-      rescue => error
-        raise "plugin_install_phase1 failed due to #{error.formatted}\nResponse:\n#{response_body}"
+      rescue => e
+        raise "plugin_install_phase1 failed due to #{e.formatted}\nURI:#{uri}\nResponse:\n#{response_body}"
       end
     end
 
@@ -129,8 +129,8 @@ module OpenC3
             return response_body.remove_quotes
           end
         end
-      rescue => error
-        raise "plugin_install_phase2 failed due to #{error.formatted}\nResponse:\n#{response_body}"
+      rescue => e
+        raise "plugin_install_phase2 failed due to #{e.formatted}\nURI:#{uri}\nResponse:\n#{response_body}"
       end
     end
 
@@ -154,8 +154,8 @@ module OpenC3
             return response_body.remove_quotes
           end
         end
-      rescue => error
-        raise "plugin_uninstall failed due to #{error.formatted}\nResponse:\n#{response_body}"
+      rescue => e
+        raise "plugin_uninstall failed due to #{e.formatted}\nURI:#{uri}\nResponse:\n#{response_body}"
       end
     end
 
@@ -177,8 +177,8 @@ module OpenC3
             return JSON.parse(response.body, allow_nan: true, create_additions: true)
           end
         end
-      rescue => error
-        raise "plugin_status failed due to #{error.formatted}\nResponse:\n#{response_body}"
+      rescue => e
+        raise "plugin_status failed due to #{e.formatted}\nURI:#{uri}\nResponse:\n#{response_body}"
       end
     end
 

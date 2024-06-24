@@ -4,8 +4,9 @@ ARG OPENC3_NAMESPACE=openc3inc
 ARG OPENC3_TAG=latest
 ARG OPENC3_NODE_IMAGE=openc3-node
 ARG OPENC3_BASE_IMAGE=openc3-base
+ARG OPENC3_MC_RELEASE=RELEASE.2024-04-29T09-56-05Z
 
-FROM ${OPENC3_DEPENDENCY_REGISTRY}/minio/mc:RELEASE.2023-10-04T06-52-56Z AS minio-mc
+FROM ${OPENC3_DEPENDENCY_REGISTRY}/minio/mc:${OPENC3_MC_RELEASE} AS minio-mc
 FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_NODE_IMAGE}:${OPENC3_TAG} AS openc3-frontend-tmp
 
 WORKDIR /openc3/plugins/
@@ -15,9 +16,7 @@ USER root
 COPY ./plugins/*.json ./
 COPY ./plugins/openc3-tool-base/*.json openc3-tool-base/
 COPY ./plugins/packages/openc3-cosmos-tool-admin/*.json packages/openc3-cosmos-tool-admin/
-COPY ./plugins/packages/openc3-cosmos-tool-autonomic/*.json packages/openc3-cosmos-tool-autonomic/
 COPY ./plugins/packages/openc3-cosmos-tool-bucketexplorer/*.json packages/openc3-cosmos-tool-bucketexplorer/
-COPY ./plugins/packages/openc3-cosmos-tool-calendar/*.json packages/openc3-cosmos-tool-calendar/
 COPY ./plugins/packages/openc3-cosmos-tool-cmdsender/*.json packages/openc3-cosmos-tool-cmdsender/
 COPY ./plugins/packages/openc3-cosmos-tool-cmdtlmserver/*.json packages/openc3-cosmos-tool-cmdtlmserver/
 COPY ./plugins/packages/openc3-cosmos-tool-dataextractor/*.json packages/openc3-cosmos-tool-dataextractor/
@@ -34,7 +33,7 @@ COPY ./plugins/packages/openc3-tool-common/ packages/openc3-tool-common/
 COPY ./plugins/packages/openc3-cosmos-ace-diff/ packages/openc3-cosmos-ace-diff/
 COPY ./plugins/packages/openc3-cosmos-demo/*.json packages/openc3-cosmos-demo/
 
-ARG NPM_URL
+ARG NPM_URL=https://registry.npmjs.org
 RUN yarn config set registry $NPM_URL && yarn --network-timeout 600000
 
 COPY ./plugins/docker-package-build.sh ./plugins/docker-package-install.sh ./plugins/babel.config.js ./plugins/.eslintrc.js ./plugins/.nycrc ./
@@ -85,23 +84,10 @@ RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-handbooks"]
 COPY ./plugins/packages/openc3-cosmos-tool-limitsmonitor/ packages/openc3-cosmos-tool-limitsmonitor/
 RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-limitsmonitor"]
 
-# Build calendar tool
-COPY ./plugins/packages/openc3-cosmos-tool-calendar/ packages/openc3-cosmos-tool-calendar/
-RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-calendar"]
-
 # Build packetviewer tool
 FROM openc3-frontend-tmp AS openc3-tmp3
 COPY ./plugins/packages/openc3-cosmos-tool-packetviewer/ packages/openc3-cosmos-tool-packetviewer/
 RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-packetviewer"]
-
-# Build scriptrunner tool
-COPY ./plugins/packages/openc3-cosmos-tool-scriptrunner/ packages/openc3-cosmos-tool-scriptrunner/
-RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-scriptrunner"]
-
-# Build docs tool
-COPY --from=docs . packages/openc3-cosmos-tool-docs/
-RUN cd packages/openc3-cosmos-tool-docs/scripts && ruby generate_docs_from_yaml.rb PLUGIN && yarn
-RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-docs"]
 
 # Build tlmgrapher tool
 FROM openc3-frontend-tmp AS openc3-tmp4
@@ -112,13 +98,22 @@ RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-tlmgrapher"]
 COPY ./plugins/packages/openc3-cosmos-tool-tlmviewer/ packages/openc3-cosmos-tool-tlmviewer
 RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-tlmviewer"]
 
-# Build autonomic tool
-COPY ./plugins/packages/openc3-cosmos-tool-autonomic/ packages/openc3-cosmos-tool-autonomic/
-RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-autonomic"]
+# Build scriptrunner tool
+COPY ./plugins/packages/openc3-cosmos-tool-scriptrunner/ packages/openc3-cosmos-tool-scriptrunner/
+RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-scriptrunner"]
 
 # Build demo config
 COPY ./plugins/packages/openc3-cosmos-demo/ packages/openc3-cosmos-demo/
 RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-demo"]
+
+FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_BASE_IMAGE}:${OPENC3_TAG} as base
+FROM openc3-frontend-tmp AS openc3-tmp5
+
+# Build docs tool
+COPY --from=base /openc3 /openc3/
+COPY --from=docs . packages/openc3-cosmos-tool-docs/
+RUN cd packages/openc3-cosmos-tool-docs/scripts && ruby generate_docs_from_yaml.rb PLUGIN && yarn
+RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-docs"]
 
 FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_BASE_IMAGE}:${OPENC3_TAG}
 
@@ -127,6 +122,7 @@ COPY --from=openc3-tmp1 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gem
 COPY --from=openc3-tmp2 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gems/* /openc3/plugins/gems/
 COPY --from=openc3-tmp3 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gems/* /openc3/plugins/gems/
 COPY --from=openc3-tmp4 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gems/* /openc3/plugins/gems/
+COPY --from=openc3-tmp5 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gems/* /openc3/plugins/gems/
 COPY --from=openc3-frontend-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/packages/openc3-tool-common/ /openc3/plugins/packages/openc3-tool-common/
 COPY --from=openc3-frontend-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/yarn.lock /openc3/plugins/yarn.lock
 COPY --from=openc3-frontend-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/openc3-tool-base/yarn.lock /openc3/plugins/yarn-tool-base.lock

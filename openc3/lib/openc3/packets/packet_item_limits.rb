@@ -21,6 +21,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/packets/limits_response'
+require 'openc3/utilities/python_proxy'
 
 module OpenC3
   # Maintains knowledge of limits for a PacketItem
@@ -96,7 +97,7 @@ module OpenC3
 
     def response=(response)
       if response
-        raise ArgumentError, "response must be a OpenC3::LimitsResponse but is a #{response.class}" unless OpenC3::LimitsResponse === response
+        raise ArgumentError, "response must be a OpenC3::LimitsResponse but is a #{response.class}" unless OpenC3::LimitsResponse === response or OpenC3::PythonProxy === response
 
         @response = response.clone
       else

@@ -22,7 +22,7 @@
 
 <template>
   <div>
-    <v-row no-gutters>
+    <v-row no-gutters align="center" class="px-2">
       <v-col>
         <v-file-input
           v-model="files"
@@ -34,18 +34,9 @@
           ref="fileInput"
         />
       </v-col>
-    </v-row>
-    <v-row no-gutters class="px-2 pb-2">
-      <!-- <v-btn
-        @click="showDownloadDialog = true"
-        class="mx-2"
-        data-test="packageDownload"
-        :disabled="files.length > 0"
-      >
-        <v-icon left dark>mdi-cloud-download</v-icon>
-        <span> Download </span>
-      </v-btn> -->
-      <v-spacer />
+      <v-col class="ml-4 mr-2" cols="4">
+        <rux-progress :value="progress"></rux-progress>
+      </v-col>
       <v-btn
         @click="upload()"
         class="mx-2"
@@ -71,8 +62,15 @@
     <v-list
       v-if="Object.keys(processes).length > 0"
       class="list"
-      data-test="processList"
+      data-test="process-list"
     >
+      <v-row no-gutters class="px-4"
+        ><v-col class="text-h6">Process List</v-col>
+        <v-col align="right">
+          <!-- See openc3/lib/openc3/utilities/process_manager.rb CLEANUP_CYCLE_SECONDS -->
+          <div>Showing last 10 min of activity</div>
+        </v-col>
+      </v-row>
       <div v-for="process in processes" :key="process.name">
         <v-list-item>
           <v-list-item-content>
@@ -103,7 +101,7 @@
       </div>
     </v-list>
     <v-list class="list" data-test="packageList">
-      <v-subheader>Ruby Gems</v-subheader>
+      <v-row class="px-4"><v-col class="text-h6">Ruby Gems</v-col></v-row>
       <div v-for="(gem, index) in gems" :key="index">
         <v-list-item>
           <v-list-item-content>
@@ -120,9 +118,9 @@
             </v-tooltip>
           </v-list-item-icon>
         </v-list-item>
-        <v-divider v-if="index < gems.length - 1" :key="index" />
+        <v-divider />
       </div>
-      <v-subheader>Python Packages</v-subheader>
+      <v-row class="px-4"><v-col class="text-h6">Python Packages</v-col></v-row>
       <div v-for="(pkg, index) in python" :key="index">
         <v-list-item>
           <v-list-item-content>
@@ -139,7 +137,7 @@
             </v-tooltip>
           </v-list-item-icon>
         </v-list-item>
-        <v-divider v-if="index < python.length - 1" :key="index" />
+        <v-divider />
       </div>
     </v-list>
     <download-dialog v-model="showDownloadDialog" />
@@ -169,6 +167,7 @@ export default {
       processOutput: '',
       files: [],
       loadingPackage: false,
+      progress: 0,
       gems: [],
       python: [],
       processes: {},
@@ -202,23 +201,31 @@ export default {
               this.update()
             }, 10000)
           }
-        },
+        }
       )
     },
     formatDate(nanoSecs) {
       return format(
         toDate(parseInt(nanoSecs) / 1_000_000),
-        'yyyy-MM-dd HH:mm:ss.SSS',
+        'yyyy-MM-dd HH:mm:ss.SSS'
       )
     },
     upload: function () {
       this.loadingPackage = true
+      this.progress = 0
+      let self = this
       const promises = this.files.map((file) => {
         const formData = new FormData()
         formData.append('package', file, file.name)
         return Api.post('/openc3-api/packages', {
           data: formData,
           headers: { 'Content-Type': 'multipart/form-data' },
+          onUploadProgress: function (progressEvent) {
+            var percentCompleted = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total
+            )
+            self.progress = percentCompleted
+          },
         })
       })
       Promise.all(promises)

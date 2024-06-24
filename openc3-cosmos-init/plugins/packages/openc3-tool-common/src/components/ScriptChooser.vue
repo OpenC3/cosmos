@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -22,19 +22,16 @@
 
 <template>
   <div>
-    <v-row no-gutters>
-      <span> Select OpenC3 script </span>
-    </v-row>
-    <v-row class="my-2">
+    <v-row>
       <v-autocomplete
         v-model="selected"
         cache-items
-        flat
+        dense
+        outlined
         hide-no-data
         hide-details
-        solo-inverted
-        class="mx-4"
-        label="Select a script"
+        class="mb-5"
+        label="Select script"
         :loading="loading"
         :items="items"
         :search-input.sync="search"

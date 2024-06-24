@@ -39,8 +39,8 @@ NOTE: All commands are assumed to be executed from this (openc3-cosmos-init) dir
         traefik> docker ps
         # Look for the container with name including traefik
         traefik> docker stop cosmos-openc3-traefik-1
-        traefik> docker build -f Dockerfile-dev-base -t openc3-traefik-dev-base .
-        traefik> docker run --network=openc3-cosmos-network -p 2900:80 -it --rm openc3-traefik-dev-base
+        traefik> docker build --build-arg TRAEFIK_CONFIG=traefik-dev-base.yaml -t openc3-traefik-dev-base .
+        traefik> docker run --network=openc3-cosmos-network -p 2900:2900 -it --rm openc3-traefik-dev-base
 
 1.  Serve a local base application (App, Auth, AppBar, AppFooter, etc)
 
@@ -55,8 +55,8 @@ NOTE: All commands are assumed to be executed from this (openc3-cosmos-init) dir
         traefik> docker ps
         # Look for the container with name including traefik
         traefik> docker stop cosmos-openc3-traefik-1
-        traefik> docker build -f Dockerfile-dev -t openc3-traefik-dev .
-        traefik> docker run --network=openc3-cosmos-network -p 2900:80 -it --rm openc3-traefik-dev
+        traefik> docker build --build-arg TRAEFIK_CONFIG=traefik-dev.yaml -t openc3-traefik-dev .
+        traefik> docker run --network=openc3-cosmos-network -p 2900:2900 -it --rm openc3-traefik-dev
 
 1.  Run a local copy of the CmdTlm API or Script API
 
@@ -64,7 +64,14 @@ NOTE: All commands are assumed to be executed from this (openc3-cosmos-init) dir
         openc3-cosmos-cmd-tlm-api> docker ps
         # Look for the container with name including cmd-tlm-api
         openc3-cosmos-cmd-tlm-api> docker stop cosmos-openc3-cosmos-cmd-tlm-api-1
+        # Run the following on Windows:
         openc3-cosmos-cmd-tlm-api> dev_server.bat
+        # On Linux execute the equivalent commands:
+        openc3-cosmos-cmd-tlm-api> set -a; source ../.env; set +a
+        openc3-cosmos-cmd-tlm-api> export OPENC3_REDIS_HOSTNAME=127.0.0.1
+        openc3-cosmos-cmd-tlm-api> export OPENC3_REDIS_EPHEMERAL_HOSTNAME=127.0.0.1
+        openc3-cosmos-cmd-tlm-api> bundle install
+        openc3-cosmos-cmd-tlm-api> bundle exec rails s
 
 # MINIO development
 
@@ -75,4 +82,4 @@ Note running OpenC3 COSMOS in development mode (openc3.bat dev) already does thi
         > docker ps
         # Look for the container with name including minio
         > docker stop cosmos-openc3-minio-1
-        > docker run --name cosmos-openc3-minio-1 --network=openc3-cosmos-network -v cosmos-openc3-minio-v:/data -p 9000:9000 -e "MINIO_ROOT_USER=openc3minio" -e "MINIO_ROOT_PASSWORD=openc3miniopassword" minio/minio:RELEASE.2022-10-29T06-21-33Z server --console-address ":9001" /data
+        > docker run --name cosmos-openc3-minio-1 --network=openc3-cosmos-network -v cosmos-openc3-minio-v:/data -p 9000:9000 -e "MINIO_ROOT_USER=openc3minio" -e "MINIO_ROOT_PASSWORD=openc3miniopassword" minio/minio:RELEASE.2024-05-01T01-11-10Z server --console-address ":9001" /data

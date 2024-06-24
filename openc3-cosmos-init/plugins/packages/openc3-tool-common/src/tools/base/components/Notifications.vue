@@ -38,6 +38,7 @@
           class="rux-icon"
           :icon="notificationVsAlert"
           label="Notifications"
+          :sublabel="activeScripts"
           :status="iconStatus"
           :notifications="unreadNotifications.length"
         ></rux-monitoring-icon>
@@ -58,7 +59,7 @@
                 @click="clearNotifications"
                 data-test="clear-notifications"
               >
-                <v-icon> mdi-notification-clear-all </v-icon>
+                <v-icon> mdi-close-box-multiple </v-icon>
               </v-btn>
             </template>
             <span>Clear all</span>
@@ -140,6 +141,7 @@
         <v-divider />
         <v-card-actions>
           <v-btn
+            v-if="selectedNotification.url"
             color="primary"
             text
             @click="navigate(selectedNotification.url)"
@@ -148,7 +150,7 @@
             <v-icon right> mdi-open-in-new </v-icon>
           </v-btn>
           <v-btn color="primary" text @click="notificationDialog = false">
-            Dismiss
+            Close
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -180,6 +182,7 @@ import {
 } from '../../../components/icons'
 import { highestLevel, orderByLevel, groupByLevel } from '../util/AstroStatus'
 import Cable from '../../../services/cable.js'
+import Api from '../../../services/api'
 
 const NOTIFICATION_HISTORY_MAX_LENGTH = 1000
 
@@ -195,7 +198,10 @@ export default {
       AstroStatusColors,
       alerts: [],
       cable: new Cable(),
+      scriptCable: new Cable('/script-api/cable'),
       subscription: null,
+      scriptSubscription: null,
+      numScripts: 0,
       notifications: [],
       showNotificationPane: false,
       toastNotification: {},
@@ -206,6 +212,9 @@ export default {
     }
   },
   computed: {
+    activeScripts: function () {
+      return `Scripts: ${this.numScripts}`
+    },
     notificationVsAlert: function () {
       // TODO: Determine if this is a notification or alert
       return 'notifications'
@@ -243,7 +252,7 @@ export default {
             header: level.charAt(0).toUpperCase() + level.slice(1),
           }
           return [header, ...groups[level]]
-        },
+        }
       )
       if (this.readNotifications.length) {
         result = result.concat([{ header: 'Read' }, ...this.readNotifications])
@@ -271,12 +280,20 @@ export default {
     this.subscribe()
     // TODO How does this get updated after initialization
     this.alerts = this.$store.state.notifyHistory
+    // Get the initial number of running scripts
+    Api.get('/script-api/running-script').then((response) => {
+      this.numScripts = response.data.length
+    })
   },
   destroyed: function () {
     if (this.subscription) {
       this.subscription.unsubscribe()
     }
+    if (this.scriptSubscription) {
+      this.scriptSubscription.unsubscribe()
+    }
     this.cable.disconnect()
+    this.scriptCable.disconnect()
   },
   methods: {
     getStatus: function (level) {
@@ -325,20 +342,27 @@ export default {
           'MessagesChannel',
           window.openc3Scope,
           {
-            received: (data) => this.received(data),
+            received: (data) => this.receiveMessage(data),
           },
           {
             start_offset:
               localStorage.notificationStreamOffset ||
               localStorage.lastReadNotification,
             types: ['notification', 'alert'],
-          },
+          }
         )
         .then((subscription) => {
           this.subscription = subscription
         })
+      this.scriptCable
+        .createSubscription('AllScriptsChannel', window.openc3Scope, {
+          received: (data) => this.receiveScript(data),
+        })
+        .then((subscription) => {
+          this.scriptSubscription = subscription
+        })
     },
-    received: function (parsed) {
+    receiveMessage: function (parsed) {
       this.cable.recordPing()
       if (parsed.length > NOTIFICATION_HISTORY_MAX_LENGTH) {
         parsed.splice(0, parsed.length - NOTIFICATION_HISTORY_MAX_LENGTH)
@@ -382,10 +406,14 @@ export default {
           0,
           this.notifications.length +
             parsed.length -
-            NOTIFICATION_HISTORY_MAX_LENGTH,
+            NOTIFICATION_HISTORY_MAX_LENGTH
         )
       }
       this.notifications = this.notifications.concat(parsed)
+    },
+    receiveScript: function (data) {
+      this.cable.recordPing()
+      this.numScripts = data['active_scripts']
     },
   },
   filters: {

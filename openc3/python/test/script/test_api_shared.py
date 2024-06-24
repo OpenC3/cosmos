@@ -343,14 +343,16 @@ class TestApiShared(unittest.TestCase):
 
     def test_waits_for_an_indefinite_time(self):
         for stdout in capture_io():
-            wait()
+            result = wait()
+            self.assertTrue(isinstance(result, float))
             self.assertIn(
                 "WAIT: Indefinite for actual time of 0.000 seconds", stdout.getvalue()
             )
 
     def test_waits_for_a_relative_time(self):
         for stdout in capture_io():
-            wait(0.2)
+            result = wait(0.2)
+            self.assertTrue(isinstance(result, float))
             self.assertIn(
                 "WAIT: 0.2 seconds with actual time of 0.000", stdout.getvalue()
             )
@@ -361,27 +363,33 @@ class TestApiShared(unittest.TestCase):
 
     def test_waits_for_a_tgt_pkt_item(self):
         for stdout in capture_io():
-            wait("INST HEALTH_STATUS TEMP1 > 0", 5)
+            result = wait("INST HEALTH_STATUS TEMP1 > 0", 5)
+            self.assertTrue(result)
             self.assertIn(
                 "WAIT: INST HEALTH_STATUS TEMP1 > 0 success with value == 10 after waiting 0.0",
                 stdout.getvalue(),
             )
 
-            wait("INST HEALTH_STATUS TEMP1 < 0", 0.1, 0.1)  # Last param is polling rate
+            result = wait(
+                "INST HEALTH_STATUS TEMP1 < 0", 0.1, 0.1
+            )  # Last param is polling rate
+            self.assertFalse(result)
             self.assertIn(
                 "WAIT: INST HEALTH_STATUS TEMP1 < 0 failed with value == 10 after waiting 0.1",
                 stdout.getvalue(),
             )
 
-            wait("INST", "HEALTH_STATUS", "TEMP1", "> 0", 5)
+            result = wait("INST", "HEALTH_STATUS", "TEMP1", "> 0", 5)
+            self.assertTrue(result)
             self.assertIn(
                 "WAIT: INST HEALTH_STATUS TEMP1 > 0 success with value == 10 after waiting 0.0",
                 stdout.getvalue(),
             )
 
-            wait(
+            result = wait(
                 "INST", "HEALTH_STATUS", "TEMP1", "== 0", 0.1, 0.1
             )  # Last param is polling rate
+            self.assertFalse(result)
             self.assertIn(
                 "WAIT: INST HEALTH_STATUS TEMP1 == 0 failed with value == 10 after waiting 0.1",
                 stdout.getvalue(),
@@ -413,17 +421,22 @@ class TestApiShared(unittest.TestCase):
 
     def test_waits_for_a_value_to_be_within_a_tolerance(self):
         for stdout in capture_io():
-            wait_tolerance("INST", "HEALTH_STATUS", "TEMP2", 1.55, 0.1, 5, type="RAW")
+            result = wait_tolerance(
+                "INST", "HEALTH_STATUS", "TEMP2", 1.55, 0.1, 5, type="RAW"
+            )
+            self.assertTrue(result)
             self.assertIn(
                 "WAIT: INST HEALTH_STATUS TEMP2 was within range 1.45 to 1.65 with value == 1.5 after waiting 0.0",
                 stdout.getvalue(),
             )
-            wait_tolerance("INST HEALTH_STATUS TEMP2", 10.5, 0.01, 5)
+            result = wait_tolerance("INST HEALTH_STATUS TEMP2", 10.5, 0.01, 5)
+            self.assertTrue(result)
             self.assertIn(
                 "WAIT: INST HEALTH_STATUS TEMP2 was within range 10.49 to 10.51 with value == 10.5 after waiting 0.0",
                 stdout.getvalue(),
             )
-            wait_tolerance("INST HEALTH_STATUS TEMP2", 11, 0.1, 0.1)
+            result = wait_tolerance("INST HEALTH_STATUS TEMP2", 11, 0.1, 0.1)
+            self.assertFalse(result)
             self.assertIn(
                 "WAIT: INST HEALTH_STATUS TEMP2 failed to be within range 10.9 to 11.1 with value == 10.5 after waiting 0.1",
                 stdout.getvalue(),
@@ -431,7 +444,8 @@ class TestApiShared(unittest.TestCase):
 
     def test_waits_that_an_array_value_is_within_a_single_tolerance(self):
         for stdout in capture_io():
-            wait_tolerance("INST", "HEALTH_STATUS", "ARY", 3, 1, 5)
+            result = wait_tolerance("INST", "HEALTH_STATUS", "ARY", 3, 1, 5)
+            self.assertTrue(result)
             self.assertIn(
                 "WAIT: INST HEALTH_STATUS ARY[0] was within range 2 to 4 with value == 2",
                 stdout.getvalue(),
@@ -444,7 +458,8 @@ class TestApiShared(unittest.TestCase):
                 "WAIT: INST HEALTH_STATUS ARY[2] was within range 2 to 4 with value == 4",
                 stdout.getvalue(),
             )
-            wait_tolerance("INST HEALTH_STATUS ARY", 3, 0.1, 0.1)
+            result = wait_tolerance("INST HEALTH_STATUS ARY", 3, 0.1, 0.1)
+            self.assertFalse(result)
             self.assertIn(
                 "INST HEALTH_STATUS ARY[0] failed to be within range 2.9 to 3.1 with value == 2",
                 stdout.getvalue(),
@@ -460,7 +475,8 @@ class TestApiShared(unittest.TestCase):
 
     def test_waits_that_multiple_array_values_are_within_tolerance(self):
         for stdout in capture_io():
-            wait_tolerance("INST", "HEALTH_STATUS", "ARY", [2, 3, 4], 0.1, 5)
+            result = wait_tolerance("INST", "HEALTH_STATUS", "ARY", [2, 3, 4], 0.1, 5)
+            self.assertTrue(result)
             self.assertIn(
                 "WAIT: INST HEALTH_STATUS ARY[0] was within range 1.9 to 2.1 with value == 2",
                 stdout.getvalue(),
@@ -474,7 +490,8 @@ class TestApiShared(unittest.TestCase):
                 stdout.getvalue(),
             )
 
-            wait_tolerance("INST HEALTH_STATUS ARY", [2, 3, 4], 0.1, 5)
+            result = wait_tolerance("INST HEALTH_STATUS ARY", [2, 3, 4], 0.1, 5)
+            self.assertTrue(result)
             self.assertIn(
                 "WAIT: INST HEALTH_STATUS ARY[0] was within range 1.9 to 2.1 with value == 2",
                 stdout.getvalue(),
@@ -490,7 +507,8 @@ class TestApiShared(unittest.TestCase):
 
     def test_waits_that_an_array_value_is_within_multiple_tolerances(self):
         for stdout in capture_io():
-            wait_tolerance("INST", "HEALTH_STATUS", "ARY", 3, [1, 0.1, 2], 5)
+            result = wait_tolerance("INST", "HEALTH_STATUS", "ARY", 3, [1, 0.1, 2], 5)
+            self.assertTrue(result)
             self.assertIn(
                 "WAIT: INST HEALTH_STATUS ARY[0] was within range 2 to 4 with value == 2",
                 stdout.getvalue(),
@@ -504,7 +522,8 @@ class TestApiShared(unittest.TestCase):
                 stdout.getvalue(),
             )
 
-            wait_tolerance("INST HEALTH_STATUS ARY", 3, [1, 0.1, 2], 5)
+            result = wait_tolerance("INST HEALTH_STATUS ARY", 3, [1, 0.1, 2], 5)
+            self.assertTrue(result)
             self.assertIn(
                 "WAIT: INST HEALTH_STATUS ARY[0] was within range 2 to 4 with value == 2",
                 stdout.getvalue(),
@@ -520,24 +539,28 @@ class TestApiShared(unittest.TestCase):
 
     def test_waits_for_an_expression(self):
         for stdout in capture_io():
-            wait_expression("True == True", 5)
+            result = wait_expression("True == True", 5)
+            self.assertTrue(result)
             self.assertIn(
                 "WAIT: True == True is TRUE after waiting 0.0",
                 stdout.getvalue(),
             )
-            wait_expression("True == False", 0.1)
+            result = wait_expression("True == False", 0.1)
+            self.assertFalse(result)
             self.assertIn(
                 "WAIT: True == False is FALSE after waiting 0.1", stdout.getvalue()
             )
 
     def test_waits_for_a_logical_expression(self):
         for stdout in capture_io():
-            wait_expression("'STRING' == 'STRING'", 5)
+            result = wait_expression("'STRING' == 'STRING'", 5)
+            self.assertTrue(result)
             self.assertIn(
                 "WAIT: 'STRING' == 'STRING' is TRUE after waiting 0.0",
                 stdout.getvalue(),
             )
-            wait_expression("1 == 2", 0.1)
+            result = wait_expression("1 == 2", 0.1)
+            self.assertFalse(result)
             self.assertIn("WAIT: 1 == 2 is FALSE after waiting", stdout.getvalue())
         with self.assertRaisesRegex(
             NameError,
@@ -554,14 +577,16 @@ class TestApiShared(unittest.TestCase):
 
     def test_checks_a_telemetry_item_against_a_value(self):
         for stdout in capture_io():
-            wait_check(
+            result = wait_check(
                 "INST", "HEALTH_STATUS", "TEMP1", "> 1", 0.01, 0.1
             )  # Last param is polling rate
+            self.assertTrue(isinstance(result, float))
             self.assertIn(
                 "CHECK: INST HEALTH_STATUS TEMP1 > 1 success with value == 10",
                 stdout.getvalue(),
             )
-            wait_check("INST HEALTH_STATUS TEMP1 == 1", 0.01, 0.1, type="RAW")
+            result = wait_check("INST HEALTH_STATUS TEMP1 == 1", 0.01, 0.1, type="RAW")
+            self.assertTrue(isinstance(result, float))
             self.assertIn(
                 "CHECK: INST HEALTH_STATUS TEMP1 == 1 success with value == 1",
                 stdout.getvalue(),
@@ -575,7 +600,8 @@ class TestApiShared(unittest.TestCase):
     def test_wait_check_logs_instead_of_raises_when_disconnected(self):
         openc3.script.DISCONNECT = True
         for stdout in capture_io():
-            wait_check("INST HEALTH_STATUS TEMP1 > 100", 0.01)
+            result = wait_check("INST HEALTH_STATUS TEMP1 > 100", 0.01)
+            self.assertTrue(isinstance(result, float))
             self.assertIn(
                 "CHECK: INST HEALTH_STATUS TEMP1 > 100 failed with value == 10",
                 stdout.getvalue(),
@@ -589,7 +615,8 @@ class TestApiShared(unittest.TestCase):
         ):
             wait_check(f"INST HEALTH_STATUS BLOCKTEST == {data}", 0.01)
         data = b"\xFF" * 10
-        wait_check(f"INST HEALTH_STATUS BLOCKTEST == {data}", 0.01)
+        result = wait_check(f"INST HEALTH_STATUS BLOCKTEST == {data}", 0.01)
+        self.assertTrue(isinstance(result, float))
         data = "\xFF" * 10
         with self.assertRaisesRegex(
             RuntimeError, "ERROR: Invalid comparison to non-ascii value"
@@ -601,7 +628,8 @@ class TestApiShared(unittest.TestCase):
 
     def test_warns_when_checking_a_state_against_a_constant(self):
         for stdout in capture_io():
-            wait_check("INST HEALTH_STATUS CCSDSSHF == 'FALSE'", 0.01)
+            result = wait_check("INST HEALTH_STATUS CCSDSSHF == 'FALSE'", 0.01)
+            self.assertTrue(isinstance(result, float))
             self.assertIn(
                 "CHECK: INST HEALTH_STATUS CCSDSSHF == 'FALSE' success with value == 'FALSE'",
                 stdout.getvalue(),
@@ -628,14 +656,16 @@ class TestApiShared(unittest.TestCase):
 
     def test_wait_checks_that_a_value_is_within_a_tolerance(self):
         for stdout in capture_io():
-            wait_check_tolerance(
+            result = wait_check_tolerance(
                 "INST", "HEALTH_STATUS", "TEMP2", 1.55, 0.1, 5, type="RAW"
             )
+            self.assertTrue(isinstance(result, float))
             self.assertIn(
                 "CHECK: INST HEALTH_STATUS TEMP2 was within range 1.45 to 1.65 with value == 1.5",
                 stdout.getvalue(),
             )
-            wait_check_tolerance("INST HEALTH_STATUS TEMP2", 10.5, 0.01, 5)
+            result = wait_check_tolerance("INST HEALTH_STATUS TEMP2", 10.5, 0.01, 5)
+            self.assertTrue(isinstance(result, float))
             self.assertIn(
                 "CHECK: INST HEALTH_STATUS TEMP2 was within range 10.49 to 10.51 with value == 10.5",
                 stdout.getvalue(),
@@ -648,7 +678,8 @@ class TestApiShared(unittest.TestCase):
 
     def test_wait_checks_that_an_array_value_is_within_a_single_tolerance(self):
         for stdout in capture_io():
-            wait_check_tolerance("INST", "HEALTH_STATUS", "ARY", 3, 1, 5)
+            result = wait_check_tolerance("INST", "HEALTH_STATUS", "ARY", 3, 1, 5)
+            self.assertTrue(isinstance(result, float))
             self.assertIn(
                 "CHECK: INST HEALTH_STATUS ARY[0] was within range 2 to 4 with value == 2",
                 stdout.getvalue(),
@@ -680,13 +711,15 @@ class TestApiShared(unittest.TestCase):
     def test_wait_check_tolerance_logs_instead_of_raises_when_disconnected(self):
         openc3.script.DISCONNECT = True
         for stdout in capture_io():
-            wait_check_tolerance("INST HEALTH_STATUS TEMP2", 11, 0.1, 0.1)
+            result = wait_check_tolerance("INST HEALTH_STATUS TEMP2", 11, 0.1, 0.1)
+            self.assertTrue(isinstance(result, float))
             self.assertIn(
                 "CHECK: INST HEALTH_STATUS TEMP2 failed to be within range 10.9 to 11.1 with value == 10.5",
                 stdout.getvalue(),
             )
         for stdout in capture_io():
-            wait_check_tolerance("INST HEALTH_STATUS ARY", 3, 0.1, 0.1)
+            result = wait_check_tolerance("INST HEALTH_STATUS ARY", 3, 0.1, 0.1)
+            self.assertTrue(isinstance(result, float))
             self.assertIn(
                 "CHECK: INST HEALTH_STATUS ARY[0] failed to be within range 2.9 to 3.1 with value == 2",
                 stdout.getvalue(),
@@ -695,7 +728,10 @@ class TestApiShared(unittest.TestCase):
 
     def test_wait_checks_that_multiple_array_values_are_within_tolerance(self):
         for stdout in capture_io():
-            wait_check_tolerance("INST", "HEALTH_STATUS", "ARY", [2, 3, 4], 0.1, 5)
+            result = wait_check_tolerance(
+                "INST", "HEALTH_STATUS", "ARY", [2, 3, 4], 0.1, 5
+            )
+            self.assertTrue(isinstance(result, float))
             self.assertIn(
                 "CHECK: INST HEALTH_STATUS ARY[0] was within range 1.9 to 2.1 with value == 2",
                 stdout.getvalue(),
@@ -711,7 +747,10 @@ class TestApiShared(unittest.TestCase):
 
     def test_wait_checks_that_an_array_value_is_within_multiple_tolerances(self):
         for stdout in capture_io():
-            wait_check_tolerance("INST", "HEALTH_STATUS", "ARY", 3, [1, 0.1, 2], 5)
+            result = wait_check_tolerance(
+                "INST", "HEALTH_STATUS", "ARY", 3, [1, 0.1, 2], 5
+            )
+            self.assertTrue(isinstance(result, float))
             self.assertIn(
                 "CHECK: INST HEALTH_STATUS ARY[0] was within range 2 to 4 with value == 2",
                 stdout.getvalue(),
@@ -727,7 +766,8 @@ class TestApiShared(unittest.TestCase):
 
     def test_waits_and_checks_that_an_expression_is_true(self):
         for stdout in capture_io():
-            wait_check_expression("True == True", 5)
+            result = wait_check_expression("True == True", 5)
+            self.assertTrue(isinstance(result, float))
             self.assertIn("CHECK: True == True is TRUE", stdout.getvalue())
         with self.assertRaisesRegex(CheckError, "CHECK: True == False is FALSE"):
             wait_check_expression("True == False", 0.1)
@@ -735,13 +775,15 @@ class TestApiShared(unittest.TestCase):
     def test_wait_check_expression_logs_instead_of_raises_when_disconnected(self):
         openc3.script.DISCONNECT = True
         for stdout in capture_io():
-            wait_check_expression("True == False", 5)
+            result = wait_check_expression("True == False", 5)
+            self.assertTrue(isinstance(result, float))
             self.assertIn("CHECK: True == False is FALSE", stdout.getvalue())
         openc3.script.DISCONNECT = False
 
     def test_waits_and_checks_a_logical_expression(self):
         for stdout in capture_io():
-            wait_check_expression("'STRING' == 'STRING'", 5)
+            result = wait_check_expression("'STRING' == 'STRING'", 5)
+            self.assertTrue(isinstance(result, float))
             self.assertIn("CHECK: 'STRING' == 'STRING' is TRUE", stdout.getvalue())
         with self.assertRaisesRegex(CheckError, "CHECK: 1 == 2 is FALSE"):
             wait_check_expression("1 == 2", 0.1)
@@ -755,7 +797,8 @@ class TestApiShared(unittest.TestCase):
         global count
         count = False
         for stdout in capture_io():
-            wait_packet("INST", "HEALTH_STATUS", 1, 0.5)
+            result = wait_packet("INST", "HEALTH_STATUS", 1, 0.5)
+            self.assertFalse(result)
             self.assertIn(
                 "WAIT: INST HEALTH_STATUS expected to be received 1 times but only received 0 times",
                 stdout.getvalue(),
@@ -767,13 +810,15 @@ class TestApiShared(unittest.TestCase):
         count = True
         for stdout in capture_io():
             cancel = True
-            wait_packet("INST", "HEALTH_STATUS", 5, 0.5)
+            result = wait_packet("INST", "HEALTH_STATUS", 5, 0.5)
+            self.assertFalse(result)
             self.assertIn(
                 "WAIT: INST HEALTH_STATUS expected to be received 5 times",
                 stdout.getvalue(),
             )
             cancel = False
-            wait_packet("INST", "HEALTH_STATUS", 5, 0.5)
+            result = wait_packet("INST", "HEALTH_STATUS", 5, 0.5)
+            self.assertTrue(result)
             self.assertIn(
                 "WAIT: INST HEALTH_STATUS received 5 times after waiting",
                 stdout.getvalue(),
@@ -793,7 +838,8 @@ class TestApiShared(unittest.TestCase):
         global count
         count = False
         for stdout in capture_io():
-            wait_check_packet("INST", "HEALTH_STATUS", 1, 0.5)
+            result = wait_check_packet("INST", "HEALTH_STATUS", 1, 0.5)
+            self.assertTrue(isinstance(result, float))
             self.assertIn(
                 "CHECK: INST HEALTH_STATUS expected to be received 1 times but only received 0 times",
                 stdout.getvalue(),
@@ -812,7 +858,8 @@ class TestApiShared(unittest.TestCase):
             ):
                 wait_check_packet("INST", "HEALTH_STATUS", 5, 0.0)
             cancel = False
-            wait_check_packet("INST", "HEALTH_STATUS", 5, 0.5)
+            result = wait_check_packet("INST", "HEALTH_STATUS", 5, 0.5)
+            self.assertTrue(isinstance(result, float))
             self.assertIn(
                 "CHECK: INST HEALTH_STATUS received 5 times after waiting",
                 stdout.getvalue(),
@@ -848,22 +895,17 @@ class TestApiShared(unittest.TestCase):
         self.assertEqual(openc3.script.RUNNING_SCRIPT.max_output_characters, 100)
         self.assertEqual(get_max_output(), 100)
 
+    def test_starts_a_script(self):
+        with open("tester.py", "w") as f:
+            f.write("print('Hello World')")
 
-# class Start, loadUtility, requireUtility(unittest.TestCase):
-#     def test_loads_a_script(self):
-#         File.open("tester.rb", 'w') do |file|
-#           file.puts "# Nothing"
+        for stdout in capture_io():
+            start("tester.py")
+            self.assertIn("Hello World", stdout.getvalue())
 
-#         start("tester.rb")
-#         load_utility("tester.rb")
-#         result = require_utility("tester")
-#         self.assertTrue(result)()
-#         result = require_utility("tester")
-#         self.assertFalse(result)
-
-#         File.delete('tester.rb')
-
-#         { load_utility('tester.rb') }.to raise_error(LoadError)
-#         { start('tester.rb') }.to raise_error(LoadError)
-#         # Can't try tester.rb because it's already been loaded and cached
-#         { require_utility('does_not_exist.rb') }.to raise_error(LoadError)
+    def test_load_utility_raises(self):
+        with self.assertRaisesRegex(
+            RuntimeError,
+            "load_utility not supported outside of Script Runner",
+        ):
+            load_utility("tester.py")

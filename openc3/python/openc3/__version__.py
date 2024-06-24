@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -10,6 +10,6 @@
 # if purchased from OpenC3, Inc.
 
 __title__ = "openc3"
-__description__ = "Python Support for OpenC3 COSMOS v5"
+__description__ = "Python Support for OpenC3 COSMOS"
 __url__ = "https://github.com/OpenC3/cosmos"
-__version__ = "5.12.1-beta0"
+__version__ = "5.16.3-beta0"

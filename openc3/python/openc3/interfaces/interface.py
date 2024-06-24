@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -93,6 +93,11 @@ class Interface:
     def write_queue_size(self):
         return self._write_queue_size
 
+    # Should be implemented by subclass to return human readable connection string
+    # which will be placed in log messages when connecting and during connection failures
+    def connection_string(self):
+        return self.name
+
     # Connects the interface to its target(s). Must be implemented by a
     # subclass.
     def connect(self):
@@ -113,7 +118,7 @@ class Interface:
                 )
 
             self.cancel_scheduler_thread = False
-            self.scheduler_thread = threading.Thread(target=self.scheduler_thread_body)
+            self.scheduler_thread = threading.Thread(target=self.scheduler_thread_body, daemon=True)
             self.scheduler_thread.start()
 
     # Indicates if the interface is connected to its target(s) or not. Must be:
@@ -193,9 +198,7 @@ class Interface:
                 # Return packet
                 self.read_count += 1
                 if not packet:
-                    Logger.warn(
-                        f"{self.name}: Interface unexpectedly requested disconnect"
-                    )
+                    Logger.warn(f"{self.name}: Interface unexpectedly requested disconnect")
                 return packet
         except RuntimeError as error:
             Logger.error(f"{self.name}: Error reading from interface")
@@ -231,9 +234,7 @@ class Interface:
             for protocol in self.write_protocols:
                 data, extra = protocol.write_data(data, extra)
                 if data == "DISCONNECT":
-                    Logger.info(
-                        f"{self.name}: Protocol {protocol.__class__.__name__} write_data requested disconnect"
-                    )
+                    Logger.info(f"{self.name}: Protocol {protocol.__class__.__name__} write_data requested disconnect")
                     self.disconnect()
                     return
                 if data == "STOP":
@@ -431,15 +432,19 @@ class Interface:
         return protocol
 
     def interface_cmd(self, cmd_name, *cmd_args):
-        # Default do nothing - Implemented by subclasses
-        return False
+        match cmd_name:
+            case "clear_counters":
+                self._write_queue_size = 0
+                self._read_queue_size = 0
+                self.bytes_written = 0
+                self.bytes_read = 0
+                self.write_count = 0
+                self.read_count = 0
 
     def protocol_cmd(self, cmd_name, *cmd_args, read_write="READ_WRITE", index=-1):
         read_write = str(read_write).upper()
         if read_write not in ["READ", "WRITE", "READ_WRITE"]:
-            raise RuntimeError(
-                f"Unknown protocol descriptor {read_write}. Must be 'READ', 'WRITE', or 'READ_WRITE'."
-            )
+            raise RuntimeError(f"Unknown protocol descriptor {read_write}. Must be 'READ', 'WRITE', or 'READ_WRITE'.")
         handled = False
 
         if index >= 0 or read_write == "READ_WRITE":
@@ -487,15 +492,14 @@ class Interface:
         return handled
 
     def run_periodic_cmd(self, log_dont_log, cmd_string):
-        try:
-            if log_dont_log == "DONT_LOG":
-                cmd(cmd_string, log_message=False)
-            else:
-                cmd(cmd_string)
-        except Exception as error:
-            Logger.error(
-                f"Error sending periodic cmd({cmd_string}):\n{traceback.format_exception(error)}"
-            )
+        if self.connected():
+            try:
+                if log_dont_log == "DONT_LOG":
+                    cmd(cmd_string, log_message=False)
+                else:
+                    cmd(cmd_string)
+            except Exception as error:
+                Logger.error(f"Error sending periodic cmd({cmd_string}):\n{traceback.format_exception(error)}")
 
     def scheduler_thread_body(self):
         next_time = time.time()

@@ -190,10 +190,10 @@ module OpenC3
     #               'TVAC' => [-25, -10, 50, 55] }
     #
     # @return [Hash{String => Array<Number, Number, Number, Number, Number, Number>}]
-    def get_limits(target_name, packet_name, item_name, scope: $openc3_scope, token: $openc3_token)
+    def get_limits(target_name, packet_name, item_name, cache_timeout: nil, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
       limits = {}
-      item = _get_item(target_name, packet_name, item_name, scope: scope)
+      item = _get_item(target_name, packet_name, item_name, cache_timeout: cache_timeout, scope: scope)
       item['limits'].each do |key, vals|
         next unless vals.is_a?(Hash)
 
@@ -374,7 +374,7 @@ module OpenC3
     # @param item_name [String] item name
     # @param scope [String] scope
     # @return Hash The requested item based on the packet name
-    def _get_item(target_name, packet_name, item_name, cache_timeout: 0.1, scope:)
+    def _get_item(target_name, packet_name, item_name, cache_timeout: nil, scope:)
       # Determine if this item exists, it will raise appropriate errors if not
       packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout: cache_timeout, scope: $openc3_scope) if packet_name == 'LATEST'
       return TargetModel.packet_item(target_name, packet_name, item_name, scope: scope)

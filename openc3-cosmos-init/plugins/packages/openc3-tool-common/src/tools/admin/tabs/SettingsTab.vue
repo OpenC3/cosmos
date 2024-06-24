@@ -344,7 +344,7 @@ export default {
           this.sourceUrl = response
         })
         .catch(() => {
-          this.sourceUrl = 'https://github.com/OpenC3/openc3'
+          this.sourceUrl = 'https://github.com/OpenC3/cosmos'
         })
     },
     saveSourceUrl: function () {
@@ -386,7 +386,7 @@ export default {
           this.pypiUrl = response
         })
         .catch(() => {
-          this.pypiUrl = 'https://pypi.org/simple'
+          this.pypiUrl = 'https://pypi.org'
         })
     },
     savePypiUrl: function () {

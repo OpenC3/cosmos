@@ -37,7 +37,7 @@ jobs:
           working-directory: openc3
       - uses: actions/setup-node@v4
         with:
-          node-version: "16.x"
+          node-version: 18
           registry-url: "https://registry.npmjs.org"
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -107,7 +107,7 @@ jobs:
         env:
           GEM_HOST_API_KEY: ${{ secrets.GEM_HOST_API_KEY }}
       - name: Publish python package
-        uses: pypa/gh-action-pypi-publish@2f6f737ca5f74c637829c0f5c3acd0e29ea5e8bf
+        uses: pypa/gh-action-pypi-publish@ec4db0b4ddc65acdf4bff5fa45ac92d78b56bdf0
         with:
           user: __token__
           password: ${{ secrets.PYPI_API_TOKEN }}

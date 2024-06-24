@@ -23,7 +23,7 @@
 <template>
   <div>
     <v-list class="list" data-test="targetList">
-      <div v-for="(target, index) in targets" :key="target">
+      <div v-for="target in targets" :key="target">
         <v-list-item>
           <v-list-item-content>
             <v-list-item-title>{{ target.name }}</v-list-item-title>
@@ -60,7 +60,7 @@
             </v-tooltip>
           </v-list-item-icon>
         </v-list-item>
-        <v-divider v-if="index < targets.length - 1" :key="index" />
+        <v-divider />
       </div>
     </v-list>
     <edit-dialog

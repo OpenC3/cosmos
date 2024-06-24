@@ -20,6 +20,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+require 'ostruct'
 require 'openc3/script/suite'
 require 'openc3/script/suite_results'
 require 'openc3/tools/test_runner/test'

@@ -86,6 +86,12 @@ async function runAndCheckResults(
     )
   }
   await page.locator('button:has-text("Ok")').click()
+  await expect(page.locator('.v-dialog')).not.toBeVisible()
+
+  // Verify we're ready to run again
+  await expect(page.locator('[data-test=start-suite]')).toBeEnabled()
+  await expect(page.locator('[data-test=start-group]')).toBeEnabled()
+  await expect(page.locator('[data-test=start-script]')).toBeEnabled()
 }
 
 async function suiteTemplate(page, utils, type) {
@@ -101,7 +107,7 @@ async function suiteTemplate(page, utils, type) {
   await expect(
     page.locator('role=button[name="Script: script_power_on"]'),
   ).toBeEnabled()
-  // // Verify Suite Start buttons are enabled
+  // Verify Suite Start buttons are enabled
   await expect(page.locator('[data-test=start-suite]')).toBeEnabled()
   await expect(page.locator('[data-test=start-group]')).toBeEnabled()
   await expect(page.locator('[data-test=start-script]')).toBeEnabled()
@@ -276,7 +282,9 @@ test('starts a suite', async ({ page, utils }) => {
   } else {
     await page.keyboard.press('Control+A')
   }
+  await utils.sleep(1000)
   await page.keyboard.press('Backspace')
+  await utils.sleep(1000)
   await page.locator('textarea').fill(`
   require "openc3/script/suite.rb"
   class TestGroup < OpenC3::Group
@@ -289,14 +297,16 @@ test('starts a suite', async ({ page, utils }) => {
     end
   end
   `)
+  await utils.sleep(1000)
   // Verify filename is marked as edited
-  // TODO: Not implemented currently
-  // expect(await page.locator('[data-test=filename]')).toContainText('*')
+  expect(await page.locator('#sr-controls')).toContainText('*')
+  // Save the new values which should refresh the controls
   if (process.platform === 'darwin') {
     await page.keyboard.press('Meta+S')
   } else {
     await page.keyboard.press('Control+S')
   }
+  await utils.sleep(1000)
 
   // Verify the suite startup, teardown buttons are disabled
   await expect(page.locator('[data-test=setup-suite]')).toBeDisabled()
@@ -372,7 +382,9 @@ test('starts a group', async ({ page, utils }) => {
   } else {
     await page.keyboard.press('Control+A')
   }
+  await utils.sleep(1000)
   await page.keyboard.press('Backspace')
+  await utils.sleep(1000)
   await page.locator('textarea').fill(`
   require "openc3/script/suite.rb"
   class TestGroup1 < OpenC3::Group
@@ -389,14 +401,16 @@ test('starts a group', async ({ page, utils }) => {
     end
   end
   `)
+  await utils.sleep(1000)
   // Verify filename is marked as edited
-  // TODO: Not implemented currently
-  // expect(await page.locator('[data-test=filename]')).toContainText('*')
+  expect(await page.locator('#sr-controls')).toContainText('*')
+  // Save the new values which should refresh the controls
   if (process.platform === 'darwin') {
     await page.keyboard.press('Meta+S')
   } else {
     await page.keyboard.press('Control+S')
   }
+  await utils.sleep(1000)
 
   // Verify the group startup, teardown buttons are disabled
   await expect(page.locator('[data-test=setup-group]')).toBeDisabled()

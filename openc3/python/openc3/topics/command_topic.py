@@ -17,6 +17,7 @@
 import time
 import json
 from openc3.topics.topic import Topic
+from openc3.utilities.store_queued import EphemeralStoreQueued
 from openc3.top_level import HazardousError
 from openc3.utilities.time import to_nsec_from_epoch
 from openc3.utilities.json import JsonEncoder
@@ -37,7 +38,7 @@ class CommandTopic(Topic):
             "stored": str(packet.stored),
             "buffer": bytes(packet.buffer_no_copy()),
         }
-        Topic.write_topic(topic, msg_hash)
+        EphemeralStoreQueued.write_topic(topic, msg_hash)
 
     @classmethod
     def send_command(cls, command, timeout, scope):

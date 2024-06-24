@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -132,6 +132,12 @@ class ReadInterface(unittest.TestCase):
         # patcher = patch("openc3.utilities.bucket_utilities", return_value=mock)
         # patcher.start()
         # self.addCleanup(patcher.stop)
+
+    def test_connection_string(self):
+        class MyInterface(Interface):
+            pass
+
+        self.assertEqual(MyInterface().connection_string(), "MyInterface")
 
     def test_raises_if_not_connected(self):
         class MyInterface(Interface):
@@ -638,9 +644,22 @@ class CopyTo(unittest.TestCase):
 
 
 class InterfaceCmd(unittest.TestCase):
-    def test_just_returns_False_by_default(self):
+    def test_clear_counters(self):
         i = Interface()
-        self.assertEqual(i.interface_cmd("SOMETHING", "WITH", "ARGS"), False)
+        i._write_queue_size = 5
+        i._read_queue_size = 5
+        i.bytes_written = 5
+        i.bytes_read = 5
+        i.write_count = 5
+        i.read_count = 5
+
+        i.interface_cmd("clear_counters")
+        self.assertEqual(i._write_queue_size, 0)
+        self.assertEqual(i._read_queue_size, 0)
+        self.assertEqual(i.bytes_written, 0)
+        self.assertEqual(i.bytes_read, 0)
+        self.assertEqual(i.write_count, 0)
+        self.assertEqual(i.read_count, 0)
 
 
 class ProtocolCmd(unittest.TestCase):

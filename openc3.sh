@@ -38,12 +38,12 @@ usage() {
   echo "Usage: $1 [cli, cliroot, start, stop, cleanup, build, run, dev, test, util]" >&2
   echo "*  cli: run a cli command as the default user ('cli help' for more info)" 1>&2
   echo "*  cliroot: run a cli command as the root user ('cli help' for more info)" 1>&2
-  echo "*  start: start the docker compose openc3" >&2
-  echo "*  stop: stop the running dockers for openc3" >&2
-  echo "*  cleanup: cleanup network and volumes for openc3" >&2
-  echo "*  build: build the containers for openc3" >&2
-  echo "*  run: run the prebuilt containers for openc3" >&2
-  echo "*  dev: run openc3 in a dev mode" >&2
+  echo "*  start: build and run" >&2
+  echo "*  stop: stop the containers (compose stop)" >&2
+  echo "*  cleanup [local] [force]: REMOVE volumes / data (compose down -v)" >&2
+  echo "*  build: build the containers (compose build)" >&2
+  echo "*  run: run the containers (compose up)" >&2
+  echo "*  dev: run using compose-dev" >&2
   echo "*  test: test openc3" >&2
   echo "*  util: various helper commands" >&2
   exit 1
@@ -92,7 +92,8 @@ case $1 in
     ${DOCKER_COMPOSE_COMMAND} -f compose.yaml down -t 30
     ;;
   cleanup )
-    if [ "$2" == "force" ]
+    # They can specify 'cleanup force' or 'cleanup local force'
+    if [ "$2" == "force" ] || [ "$3" == "force" ]
     then
       ${DOCKER_COMPOSE_COMMAND} -f compose.yaml down -t 30 -v
     else
@@ -103,6 +104,12 @@ case $1 in
           No ) exit;;
         esac
       done
+    fi
+    if [ "$2" == "local" ]
+    then
+      cd plugins/DEFAULT
+      ls | grep -xv "README.md" | xargs rm -r
+      cd ../..
     fi
     ;;
   build )
@@ -127,16 +134,10 @@ case $1 in
     set +a
     ;;
   run )
-    # Redis config must be world readable - Remove this after fixing Redis process user-id
-    umask 0022
-    chmod +r openc3-redis/*
     ${DOCKER_COMPOSE_COMMAND} -f compose.yaml up -d
     ;;
   run-ubi )
-    # Redis config must be world readable - Remove this after fixing Redis process user-id
-    umask 0022
-    chmod +r openc3-redis/*
-    OPENC3_IMAGE_SUFFIX=-ubi ${DOCKER_COMPOSE_COMMAND} -f compose.yaml up -d
+    OPENC3_IMAGE_SUFFIX=-ubi OPENC3_REDIS_VOLUME=/home/data ${DOCKER_COMPOSE_COMMAND} -f compose.yaml up -d
     ;;
   dev )
     ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-dev.yaml up -d

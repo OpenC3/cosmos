@@ -14,6 +14,8 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+from ast import literal_eval
+
 
 class Accessor:
     def __init__(self, packet=None):
@@ -72,30 +74,34 @@ class Accessor:
 
     @classmethod
     def convert_to_type(cls, value, item):
-        data_type = item.data_type
-        if (data_type == "STRING") or (data_type == "BLOCK"):
-            #######################################
-            # Handle :STRING and :BLOCK data types
-            #######################################
-            value = str(value)
-
-        elif (data_type == "INT") or (data_type == "UINT"):
-            ###################################
-            # Handle :INT data type
-            ###################################
-            value = int(value)
-
-        elif data_type == "FLOAT":
-            ##########################
-            # Handle :FLOAT data type
-            ##########################
-            value = float(value)
-
-        else:
-            ############################
-            # Handle Unknown data types
-            ############################
-
-            raise AttributeError(f"data_type {data_type} is not recognized")
+        match item.data_type:
+            case "OBJECT" | "ARRAY":
+                pass  # No conversion on complex OBJECT types
+            case "STRING" | "BLOCK":
+                if item.array_size:
+                    if isinstance(value, str):
+                        # Thought about using json.loads here but it doesn't
+                        # support basic examples like "[2.2, '3', 4]"
+                        # Seems it's pretty strict about quotes and escaping
+                        value = literal_eval(value)
+                    value = [str(x) for x in value]
+                else:
+                    value = str(value)
+            case "INT" | "UINT":
+                if item.array_size:
+                    if isinstance(value, str):
+                        value = literal_eval(value)
+                    value = [int(float(x)) for x in value]
+                else:
+                    value = int(float(value))
+            case "FLOAT":
+                if item.array_size:
+                    if isinstance(value, str):
+                        value = literal_eval(value)
+                    value = [float(x) for x in value]
+                else:
+                    value = float(value)
+            case _:
+                raise AttributeError(f"data_type {item.data_type} is not recognized")
 
         return value

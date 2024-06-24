@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -143,17 +143,21 @@ Rails.application.routes.draw do
     match '/notes/:id', to: 'notes#update', id: /[^\/]+/, via: [:patch, :put]
     delete '/notes/:id', to: 'notes#destroy', id: /[^\/]+/
 
-    get '/autocomplete/reserved-item-names', to: 'script_autocomplete#get_reserved_item_names'
-    get '/autocomplete/keywords/:type', to: 'script_autocomplete#get_keywords', type: /[^\/]+/
-    get '/autocomplete/data/:type', to: 'script_autocomplete#get_ace_autocomplete_data', type: /[^\/]+/
+    get '/autocomplete/reserved-item-names', to: 'script_autocomplete#reserved_item_names'
+    get '/autocomplete/keywords/:type', to: 'script_autocomplete#keywords', type: /[^\/]+/
+    get '/autocomplete/data/:type', to: 'script_autocomplete#ace_autocomplete_data', type: /[^\/]+/
 
-    get '/storage/buckets', to: 'storage#buckets'
-    get '/storage/volumes', to: 'storage#volumes'
-    get '/storage/files/:root/(*path)', to: 'storage#files'
-    get '/storage/download_file/:object_id', to: 'storage#download_file', object_id: /.*/
-    get '/storage/download/:object_id', to: 'storage#get_download_presigned_request', object_id: /.*/
-    get '/storage/upload/:object_id', to: 'storage#get_upload_presigned_request', object_id: /.*/
-    delete '/storage/delete/:object_id', to: 'storage#delete', object_id: /.*/
+    # format: false to ensure the full path is used and not interpreted as a format (.xxx)
+    scope format: false do
+      get '/storage/buckets', to: 'storage#buckets'
+      get '/storage/volumes', to: 'storage#volumes'
+      get '/storage/files/:root/(*path)', to: 'storage#files'
+      get '/storage/exists/:object_id', to: 'storage#exists', object_id: /.*/
+      get '/storage/download_file/:object_id', to: 'storage#download_file', object_id: /.*/
+      get '/storage/download/:object_id', to: 'storage#get_download_presigned_request', object_id: /.*/
+      get '/storage/upload/:object_id', to: 'storage#get_upload_presigned_request', object_id: /.*/
+      delete '/storage/delete/:object_id', to: 'storage#delete', object_id: /.*/
+    end
 
     get  '/tables', to: 'tables#index'
     # format: false to ensure the file extension (.bin, .txt) remains and is passed to 'name'
@@ -181,10 +185,14 @@ Rails.application.routes.draw do
     delete '/secrets/:key', to: 'secrets#destroy', key: /[^\/]+/
 
     post "/api" => "api#api"
+    get "/ping" => "api#ping"
 
     get "/auth/token-exists" => "auth#token_exists"
     post "/auth/verify" => "auth#verify"
     post "/auth/set" => "auth#set"
+
+    get "/users/active" => "users#active"
+    match "/users/logout/:user", to: "users#logout", id: /[^\/]+/, via: [:patch, :put]
 
     get "/info" => "info#info"
 

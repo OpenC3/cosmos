@@ -6,43 +6,46 @@ title: Packet Viewer
 
 Packet Viewer is a live telemetry viewer which requires no configuration to display the current values for all defined target, packet, items. Items with limits are displayed colored (blue, green, yellow, or red) according to their current state. Items can be right clicked to get detailed information.
 
-![Packet Viewer](/img/v5/packet_viewer/packet_viewer.png)
+![Packet Viewer](/img/packet_viewer/packet_viewer.png)
 
 ## Packet Viewer Menus
 
 ### File Menu Items
 
-Packet Viewer has one menu under File -> Options:
+<!-- Image sized to match up with bullets -->
 
-![File Menu](/img/v5/packet_viewer/file_menu.png)
+<img src={require('@site/static/img/packet_viewer/file_menu.png').default}
+alt="File Menu"
+style={{"float": 'left', "margin-right": 50 + 'px', "height": 120 + 'px'}} />
 
-This dialog changes the refresh rate of Packet Viewer to reduce load on both your browser window and the backend server.
+- Change the refresh and stale interval
+- Opens a saved configuration
+- Save the current configuration (view settings)
+- Reset the configuration (default settings)
 
 ### View Menu Items
 
 <!-- Image sized to match up with bullets -->
 
-<img src="/img/v5/packet_viewer/view_menu.png"
-alt="File Menu"
-style={{"float": 'left', "margin-right": 50 + 'px', "height": 240 + 'px'}} />
+<img src={require('@site/static/img/packet_viewer/view_menu.png').default}
+alt="View Menu"
+style={{"float": 'left', "margin-right": 50 + 'px', "height": 180 + 'px'}} />
 
 - Shows [ignored items](../configuration/target.md#ignore_item)
 - Display [derived](../configuration/telemetry.md#derived-items) items last
-- Display formatted items with units
-- Display formatted items
-- Display converted items
+- Display formatted items with [units](../configuration/telemetry#units)
+- Display [formatted](../configuration/telemetry#format_string) items
+- Display [converted](../configuration/telemetry#read_conversion) items
 - Display raw items
 
 ## Selecting Packets
 
 Initially opening Packet Viewer will open the first alphabetical Target and Packet. Click the drop down menus to update the Items table to a new packet. To filter the list of items you can type in the search box.
 
-![Items Table TEMP](/img/v5/packet_viewer/select_packet.png)
-
 ### Details
 
 Right-clicking an item and selecting Details will open the details dialog.
 
-![Details](/img/v5/packet_viewer/temp1_details.png)
+![Details](/img/packet_viewer/temp1_details.png)
 
 This dialog lists everything defined on the telemetry item.

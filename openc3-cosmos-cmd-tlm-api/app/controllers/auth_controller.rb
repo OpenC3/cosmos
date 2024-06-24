@@ -25,7 +25,7 @@ require 'openc3/models/auth_model'
 
 class AuthController < ApplicationController
   def token_exists
-    result = OpenC3::AuthModel.is_set?
+    result = OpenC3::AuthModel.set?
     render :json => {
       result: result
     }

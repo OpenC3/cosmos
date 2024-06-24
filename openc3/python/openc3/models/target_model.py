@@ -16,10 +16,12 @@
 
 import json
 import time
+from typing import Any, Optional
+
+from openc3.environment import OPENC3_SCOPE
 from openc3.models.model import Model
 from openc3.utilities.store import Store
 from openc3.utilities.logger import Logger
-from openc3.environment import OPENC3_SCOPE
 
 
 # Manages the target in Redis. It stores the target itself under the
@@ -31,51 +33,44 @@ from openc3.environment import OPENC3_SCOPE
 # all removed when the undeploy method is called.
 class TargetModel(Model):
     PRIMARY_KEY = "openc3_targets"
-    VALID_TYPES = ["CMD", "TLM"]
+    VALID_TYPES = {"CMD", "TLM"}
     ITEM_MAP_CACHE_TIMEOUT = 10.0
     item_map_cache = {}
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
     @classmethod
-    def get(cls, name, scope):
+    def get(cls, name: str, scope: str):
         return super().get(f"{scope}__{TargetModel.PRIMARY_KEY}", name)
 
     @classmethod
-    def names(cls, scope):
+    def names(cls, scope: str):
         return super().names(f"{scope}__{TargetModel.PRIMARY_KEY}")
 
     @classmethod
-    def all(cls, scope):
+    def all(cls, scope: str):
         return super().all(f"{scope}__{TargetModel.PRIMARY_KEY}")
 
     @classmethod
-    def packet_names(cls, target_name, type="TLM", scope=OPENC3_SCOPE):
-        """@return [Array] Array of all the packet names"""
-        if type not in cls.VALID_TYPES:
-            raise RuntimeError(f"Unknown type {type} for {target_name}")
-        # If the key doesn't exist or if there are no packets we return empty array
-        names = Store.hkeys(f"{scope}__openc3{type.lower()}__{target_name}")
-        names = [name.decode() for name in names]
-        names.sort()
-        return names
-
-    @classmethod
-    def packet(cls, target_name, packet_name, type="TLM", scope=OPENC3_SCOPE):
+    def packet(
+        cls,
+        target_name: str,
+        packet_name: str,
+        type: str = "TLM",
+        scope: str = OPENC3_SCOPE,
+    ):
         """@return [Hash] Packet hash or raises an exception"""
         if type not in cls.VALID_TYPES:
             raise RuntimeError(f"Unknown type {type} for {target_name} {packet_name}")
 
         # Assume it exists and just try to get it to avoid an extra call to Store.exist?
-        json_data = Store.hget(
-            f"{scope}__openc3{type.lower()}__{target_name}", packet_name
-        )
+        json_data = Store.hget(f"{scope}__openc3{type.lower()}__{target_name}", packet_name)
         if not json_data:
             raise RuntimeError(f"Packet '{target_name} {packet_name}' does not exist")
         return json.loads(json_data)
 
     @classmethod
-    def packets(cls, target_name, type="TLM", scope=OPENC3_SCOPE):
+    def packets(cls, target_name: str, type: str = "TLM", scope: str = OPENC3_SCOPE):
         """@return [Array>Hash>] All packet hashes under the target_name"""
         if type not in cls.VALID_TYPES:
             raise RuntimeError(f"Unknown type {type} for {target_name}")
@@ -90,7 +85,12 @@ class TargetModel(Model):
 
     @classmethod
     def set_packet(
-        cls, target_name, packet_name, packet, type="TLM", scope=OPENC3_SCOPE
+        cls,
+        target_name: str,
+        packet_name: str,
+        packet: Any,
+        type: str = "TLM",
+        scope: str = OPENC3_SCOPE,
     ):
         if type not in cls.VALID_TYPES:
             raise RuntimeError(f"Unknown type {type} for {target_name} {packet_name}")
@@ -102,14 +102,17 @@ class TargetModel(Model):
                 json.dumps(packet),
             )
         except RuntimeError as error:
-            Logger.error(
-                f"Invalid text present in {target_name} {packet_name} {type.lower()} packet"
-            )
+            Logger.error(f"Invalid text present in {target_name} {packet_name} {type.lower()} packet")
             raise error
 
     @classmethod
     def packet_item(
-        cls, target_name, packet_name, item_name, type="TLM", scope=OPENC3_SCOPE
+        cls,
+        target_name: str,
+        packet_name: str,
+        item_name,
+        type: str = "TLM",
+        scope: str = OPENC3_SCOPE,
     ):
         """@return [Hash] Item hash or raises an exception"""
         packet = cls.packet(target_name, packet_name, type=type, scope=scope)
@@ -119,15 +122,18 @@ class TargetModel(Model):
                 found = item
                 break
         if not found:
-            raise RuntimeError(
-                f"Item '{packet['target_name']} {packet['packet_name']} {item_name}' does not exist"
-            )
+            raise RuntimeError(f"Item '{packet['target_name']} {packet['packet_name']} {item_name}' does not exist")
         return found
 
     # @return [Array<Hash>] Item hash array or raises an exception
     @classmethod
     def packet_items(
-        cls, target_name, packet_name, items, type="TLM", scope=OPENC3_SCOPE
+        cls,
+        target_name: str,
+        packet_name: str,
+        items: Any,
+        type: str = "TLM",
+        scope: str = OPENC3_SCOPE,
     ):
         packet = cls.packet(target_name, packet_name, type=type, scope=scope)
         found = []
@@ -146,7 +152,7 @@ class TargetModel(Model):
 
     # @return [Hash{String => Array<Array<String, String, String>>}]
     @classmethod
-    def limits_groups(cls, scope=OPENC3_SCOPE):
+    def limits_groups(cls, scope: str = OPENC3_SCOPE):
         groups = Store.hgetall(f"{scope}__limits_groups")
         print(f"groups:{groups} type:{type(groups)}")
         if groups:
@@ -155,7 +161,7 @@ class TargetModel(Model):
             return {}
 
     @classmethod
-    def get_item_to_packet_map(cls, target_name, scope=OPENC3_SCOPE):
+    def get_item_to_packet_map(cls, target_name: str, scope: str = OPENC3_SCOPE):
         if target_name in TargetModel.item_map_cache:
             cache_time, item_map = TargetModel.item_map_cache[target_name]
             if (time.time() - cache_time) < TargetModel.ITEM_MAP_CACHE_TIMEOUT:
@@ -172,7 +178,7 @@ class TargetModel(Model):
         return item_map
 
     @classmethod
-    def build_item_to_packet_map(cls, target_name, scope=OPENC3_SCOPE):
+    def build_item_to_packet_map(cls, target_name: str, scope: str = OPENC3_SCOPE):
         item_map = {}
         for packet in cls.packets(target_name, scope=scope):
             items = packet["items"]
@@ -185,7 +191,12 @@ class TargetModel(Model):
 
     # TODO: Not nearly complete ... see target_model.rb
     def __init__(
-        self, name, folder_name=None, updated_at=None, plugin=None, scope=OPENC3_SCOPE
+        self,
+        name: str,
+        folder_name: Optional[str] = None,
+        updated_at: Optional[int] = None,
+        plugin: Optional[str] = None,
+        scope: str = OPENC3_SCOPE,
     ):
         super().__init__(
             f"{scope}__{self.PRIMARY_KEY}",

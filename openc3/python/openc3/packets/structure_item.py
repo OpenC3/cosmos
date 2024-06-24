@@ -71,9 +71,7 @@ class StructureItem:
     @name.setter
     def name(self, name):
         if type(name) != str:
-            raise AttributeError(
-                f"name must be a String but is a {name.__class__.__name__}"
-            )
+            raise AttributeError(f"name must be a String but is a {name.__class__.__name__}")
         if len(name) == 0:
             raise AttributeError("name must contain at least one character")
 
@@ -88,9 +86,7 @@ class StructureItem:
     @key.setter
     def key(self, key):
         if type(key) != str:
-            raise AttributeError(
-                f"key must be a String but is a {key.__class__.__name__}"
-            )
+            raise AttributeError(f"key must be a String but is a {key.__class__.__name__}")
         if len(key) == 0:
             raise AttributeError("key must contain at least one character")
         self.__key = key
@@ -102,9 +98,7 @@ class StructureItem:
     @endianness.setter
     def endianness(self, endianness):
         if type(endianness) != str:
-            raise AttributeError(
-                f"{self.name}: endianness must be a String but is a {endianness.__class__.__name__}"
-            )
+            raise AttributeError(f"{self.name}: endianness must be a String but is a {endianness.__class__.__name__}")
         if endianness not in BinaryAccessor.ENDIANNESS:
             raise AttributeError(
                 f"{self.name}: unknown endianness: {endianness} - Must be 'BIG_ENDIAN' or 'LITTLE_ENDIAN'"
@@ -123,19 +117,13 @@ class StructureItem:
             raise AttributeError(f"{self.name}: bit_offset must be an Integer")
 
         byte_aligned = (bit_offset % 8) == 0
-        if (
-            self.data_type == "FLOAT"
-            or self.data_type == "STRING"
-            or self.data_type == "BLOCK"
-        ) and not byte_aligned:
+        if (self.data_type == "FLOAT" or self.data_type == "STRING" or self.data_type == "BLOCK") and not byte_aligned:
             raise AttributeError(
                 f"{self.name}: bit_offset for 'FLOAT', 'STRING', and 'BLOCK' items must be byte aligned"
             )
 
         if self.data_type == "DERIVED" and bit_offset != 0:
-            raise AttributeError(
-                f"{self.name}: DERIVED items must have bit_offset of zero"
-            )
+            raise AttributeError(f"{self.name}: DERIVED items must have bit_offset of zero")
 
         self.__bit_offset = bit_offset
         if self.structure_item_constructed:
@@ -151,28 +139,16 @@ class StructureItem:
             raise AttributeError(f"{self.name}: bit_size must be an Integer")
 
         byte_multiple = (bit_size % 8) == 0
-        if bit_size <= 0 and (
-            self.data_type == "INT"
-            or self.data_type == "UINT"
-            or self.data_type == "FLOAT"
-        ):
+        if bit_size <= 0 and (self.data_type == "INT" or self.data_type == "UINT" or self.data_type == "FLOAT"):
             raise AttributeError(
                 f"{self.name}: bit_size cannot be negative or zero for 'INT', 'UINT', and 'FLOAT' items: {bit_size}"
             )
-        if (
-            self.data_type == "STRING" or self.data_type == "BLOCK"
-        ) and not byte_multiple:
-            raise AttributeError(
-                f"{self.name}: bit_size for STRING and BLOCK items must be byte multiples"
-            )
+        if (self.data_type == "STRING" or self.data_type == "BLOCK") and not byte_multiple:
+            raise AttributeError(f"{self.name}: bit_size for STRING and BLOCK items must be byte multiples")
         if self.data_type == "FLOAT" and bit_size != 32 and bit_size != 64:
-            raise AttributeError(
-                f"{self.name}: bit_size for FLOAT items must be 32 or 64. Given: {bit_size}"
-            )
+            raise AttributeError(f"{self.name}: bit_size for FLOAT items must be 32 or 64. Given: {bit_size}")
         if self.data_type == "DERIVED" and bit_size != 0:
-            raise AttributeError(
-                f"{self.name}: DERIVED items must have bit_size of zero"
-            )
+            raise AttributeError(f"{self.name}: DERIVED items must have bit_size of zero")
 
         self.__bit_size = bit_size
         if self.structure_item_constructed:
@@ -206,18 +182,10 @@ class StructureItem:
         if array_size is not None:
             if type(array_size) != int:
                 raise AttributeError(f"{self.name}: array_size must be an Integer")
-            if not (
-                self.bit_size == 0
-                or (array_size % self.bit_size == 0)
-                or array_size < 0
-            ):
-                raise AttributeError(
-                    f"{self.name}: array_size must be a multiple of bit_size"
-                )
+            if not (self.bit_size == 0 or (array_size % self.bit_size == 0) or array_size < 0):
+                raise AttributeError(f"{self.name}: array_size must be a multiple of bit_size")
             if self.bit_size <= 0:
-                raise AttributeError(
-                    f"{self.name}: bit_size cannot be negative or zero for array items"
-                )
+                raise AttributeError(f"{self.name}: bit_size cannot be negative or zero for array items")
 
         self.__array_size = array_size
         if self.structure_item_constructed:

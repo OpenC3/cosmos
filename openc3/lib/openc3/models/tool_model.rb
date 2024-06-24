@@ -157,7 +157,7 @@ module OpenC3
       @disable_erb = disable_erb
     end
 
-    def create(update: false, force: false)
+    def create(update: false, force: false, queued: false)
       tools = self.class.all(scope: @scope)
 
       # Make sure a tool with this folder_name doesn't already exist
@@ -181,7 +181,7 @@ module OpenC3
         end
       end
 
-      super(update: update, force: force)
+      super(update: update, force: force, queued: queued)
     end
 
     def as_json(*a)

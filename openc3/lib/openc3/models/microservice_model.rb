@@ -43,6 +43,7 @@ module OpenC3
     attr_accessor :secrets
     attr_accessor :prefix
     attr_accessor :disable_erb
+    attr_accessor :ignore_changes
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -103,6 +104,7 @@ module OpenC3
       secrets: [],
       prefix: nil,
       disable_erb: nil,
+      ignore_changes: nil,
       scope:
     )
       parts = name.split("__")
@@ -128,6 +130,7 @@ module OpenC3
       @secrets = secrets
       @prefix = prefix
       @disable_erb = disable_erb
+      @ignore_changes = ignore_changes
       @bucket = Bucket.getClient()
     end
 
@@ -149,7 +152,8 @@ module OpenC3
         'needs_dependencies' => @needs_dependencies,
         'secrets' => @secrets.as_json(*a),
         'prefix' => @prefix,
-        'disable_erb' => @disable_erb
+        'disable_erb' => @disable_erb,
+        'ignore_changes' => @ignore_changes
       }
     end
 
@@ -185,7 +189,7 @@ module OpenC3
         @topics << parameters[0]
       when 'TARGET_NAME'
         parser.verify_num_parameters(1, 1, "#{keyword} <Target Name>")
-        @target_names << parameters[0]
+        @target_names << parameters[0].upcase
       when 'CMD'
         parser.verify_num_parameters(1, nil, "#{keyword} <Args>")
         @cmd = parameters.dup

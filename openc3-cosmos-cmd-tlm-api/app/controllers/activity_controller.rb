@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -25,6 +25,7 @@ require 'openc3/topics/timeline_topic'
 
 class ActivityController < ApplicationController
   def initialize
+    super()
     @model_class = OpenC3::ActivityModel
   end
 
@@ -84,15 +85,17 @@ class ActivityController < ApplicationController
   def create
     return unless authorization('script_run')
     begin
-      hash = params.to_unsafe_h.slice(:start, :stop, :kind, :data).to_h
+      hash = params.to_unsafe_h.slice(:start, :stop, :kind, :data, :recurring).to_h
       hash['data'] ||= {}
       hash['data']['username'] = username()
       if hash['start'].nil? || hash['stop'].nil?
         raise ArgumentError.new 'post body must contain start and stop'
       end
-
       hash['start'] = DateTime.parse(hash['start']).strftime('%s').to_i
       hash['stop'] = DateTime.parse(hash['stop']).strftime('%s').to_i
+      if hash['recurring'] and hash['recurring']['end']
+        hash['recurring']['end'] = DateTime.parse(hash['recurring']['end']).strftime('%s').to_i
+      end
       model = @model_class.from_json(hash.symbolize_keys, name: params[:name], scope: params[:scope])
       model.create()
       OpenC3::Logger.info(
@@ -288,9 +291,9 @@ class ActivityController < ApplicationController
         render :json => { :status => 'error', :message => 'not found' }, :status => 404
         return
       end
-      ret = model.destroy()
+      ret = model.destroy(recurring: params[:recurring])
       OpenC3::Logger.info(
-        "Activity destroyed: #{params[:name]}",
+        "Activity destroyed name: #{params[:name]} id:#{params[:id]} recurring:#{params[:recurring]}",
         scope: params[:scope],
         user: username()
       )

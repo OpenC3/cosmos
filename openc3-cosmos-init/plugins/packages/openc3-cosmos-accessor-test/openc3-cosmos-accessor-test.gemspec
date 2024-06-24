@@ -13,7 +13,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 spec = Gem::Specification.new do |s|
@@ -24,7 +24,7 @@ spec = Gem::Specification.new do |s|
   EOF
   s.authors = ['Ryan Melton', 'Jason Thomas']
   s.email = ['ryan@openc3.com', 'jason@openc3.com']
-  s.homepage = 'https://github.com/OpenC3/openc3'
+  s.homepage = 'https://github.com/OpenC3/cosmos'
 
   s.platform = Gem::Platform::RUBY
 

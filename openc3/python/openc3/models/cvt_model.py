@@ -14,9 +14,12 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import time
 import json
+import time
+from typing import Any
+
 from openc3.utilities.store import Store
+from openc3.utilities.store_queued import StoreQueued
 from openc3.models.model import Model
 from openc3.models.target_model import TargetModel
 from openc3.environment import OPENC3_SCOPE
@@ -27,33 +30,36 @@ class CvtModel(Model):
     packet_cache = {}
     override_cache = {}
 
-    VALUE_TYPES = ["RAW", "CONVERTED", "FORMATTED", "WITH_UNITS"]
+    VALUE_TYPES = {"RAW", "CONVERTED", "FORMATTED", "WITH_UNITS"}
 
     @classmethod
     def build_json_from_packet(cls, packet):
         return packet.decom()
 
-    # Delete the current value table for a target
     @classmethod
-    def delete(cls, target_name, packet_name, scope=OPENC3_SCOPE):
+    def delete(cls, target_name: str, packet_name: str, scope: str = OPENC3_SCOPE):
+        """Delete the current value table for a target"""
         key = f"{scope}__tlm__{target_name}"
         tgt_pkt_key = key + f"__{packet_name}"
         CvtModel.packet_cache[tgt_pkt_key] = None
         Store.hdel(key, packet_name)
 
-    # Set the current value table for a target, packet
     @classmethod
-    def set(cls, hash, target_name, packet_name, scope=OPENC3_SCOPE):
+    def set(cls, hash: dict, target_name: str, packet_name: str, queued: bool = False, scope: str = OPENC3_SCOPE):
+        """Set the current value table for a target, packet"""
         packet_json = json.dumps(hash, cls=JsonEncoder)
         key = f"{scope}__tlm__{target_name}"
         tgt_pkt_key = key + f"__{packet_name}"
         CvtModel.packet_cache[tgt_pkt_key] = [time.time(), hash]
-        Store.hset(key, packet_name, packet_json)
+        if queued:
+            StoreQueued.hset(key, packet_name, packet_json)
+        else:
+            Store.hset(key, packet_name, packet_json)
 
     # Get the hash for packet in the CVT
     # Note: Does not apply overrides
     @classmethod
-    def get(cls, target_name, packet_name, cache_timeout=0.1, scope=OPENC3_SCOPE):
+    def get(cls, target_name: str, packet_name: str, cache_timeout: float = 0.1, scope: str = OPENC3_SCOPE):
         key = f"{scope}__tlm__{target_name}"
         tgt_pkt_key = key + f"__{packet_name}"
         now = time.time()
@@ -71,41 +77,33 @@ class CvtModel(Model):
     # Set an item in the current value table
     @classmethod
     def set_item(
-        cls, target_name, packet_name, item_name, value, type, scope=OPENC3_SCOPE
+        cls,
+        target_name: str,
+        packet_name: str,
+        item_name: str,
+        value: Any,
+        type: str,
+        queued: bool = False,
+        scope: str = OPENC3_SCOPE,
     ):
-        hash = cls.get(
-            target_name,
-            packet_name,
-            cache_timeout=0.0,
-            scope=scope,
-        )
+        hash = cls.get(target_name, packet_name, cache_timeout=0.0, scope=scope)
         match type:
             case "WITH_UNITS":
-                hash[f"{item_name}__U"] = str(
-                    value
-                )  # WITH_UNITS should always be a string
+                hash[f"{item_name}__U"] = str(value)  # WITH_UNITS should always be a string
             case "FORMATTED":
-                hash[f"{item_name}__F"] = str(
-                    value
-                )  # FORMATTED should always be a string
+                hash[f"{item_name}__F"] = str(value)  # FORMATTED should always be a string
             case "CONVERTED":
                 hash[f"{item_name}__C"] = value
             case "RAW":
                 hash[item_name] = value
             case "ALL":
-                hash[f"{item_name}__U"] = str(
-                    value
-                )  # WITH_UNITS should always be a string
-                hash[f"{item_name}__F"] = str(
-                    value
-                )  # FORMATTED should always be a string
+                hash[f"{item_name}__U"] = str(value)  # WITH_UNITS should always be a string
+                hash[f"{item_name}__F"] = str(value)  # FORMATTED should always be a string
                 hash[f"{item_name}__C"] = value
                 hash[item_name] = value
             case _:
-                raise RuntimeError(
-                    f"Unknown type '{type}' for {target_name} {packet_name} {item_name}"
-                )
-        cls.set(hash, target_name=target_name, packet_name=packet_name, scope=scope)
+                raise RuntimeError(f"Unknown type '{type}' for {target_name} {packet_name} {item_name}")
+        cls.set(hash, target_name=target_name, packet_name=packet_name, queued=queued, scope=scope)
 
     # Get an item from the current value table
     @classmethod
@@ -142,9 +140,7 @@ class CvtModel(Model):
     # @param stale_time [Integer] Time in seconds from Time.now that value will be marked stale
     # @return [Array] Array of values
     @classmethod
-    def get_tlm_values(
-        cls, items, stale_time=30, cache_timeout=0.1, scope=OPENC3_SCOPE
-    ):
+    def get_tlm_values(cls, items: list, stale_time: int = 30, cache_timeout: float = 0.1, scope: str = OPENC3_SCOPE):
         now = time.time()
         results = []
         lookups = []
@@ -152,9 +148,7 @@ class CvtModel(Model):
         overrides = {}
         # First generate a lookup hash of all the items represented so we can query the CVT
         for item in items:
-            cls._parse_item(
-                now, lookups, overrides, item, cache_timeout=cache_timeout, scope=scope
-            )
+            cls._parse_item(now, lookups, overrides, item, cache_timeout=cache_timeout, scope=scope)
 
         for target_packet_key, target_name, packet_name, value_keys in lookups:
             if target_packet_key not in packet_lookup:
@@ -183,9 +177,7 @@ class CvtModel(Model):
                         item_result.insert(1, hash.get(f"{value_keys[-1]}__L"))
                 else:
                     if value_keys[-1] not in hash:
-                        raise RuntimeError(
-                            f"Item '{target_name} {packet_name} {value_keys[-1]}' does not exist"
-                        )
+                        raise RuntimeError(f"Item '{target_name} {packet_name} {value_keys[-1]}' does not exist")
                     else:
                         item_result.insert(1, None)
             results.append(item_result)
@@ -227,9 +219,7 @@ class CvtModel(Model):
         return overrides
 
     @classmethod
-    def override(
-        cls, target_name, packet_name, item_name, value, type="ALL", scope=OPENC3_SCOPE
-    ):
+    def override(cls, target_name, packet_name, item_name, value, type="ALL", scope=OPENC3_SCOPE):
         """Override a current value table item such that it always returns the same value for the given type"""
         hash = Store.hget(f"{scope}__override__{target_name}", packet_name)
         if hash is not None:
@@ -251,18 +241,14 @@ class CvtModel(Model):
             case "WITH_UNITS":
                 hash[f"{item_name}__U"] = str(value)  # Always a String
             case _:
-                raise RuntimeError(
-                    f"Unknown type '{type}' for {target_name} {packet_name} {item_name}"
-                )
+                raise RuntimeError(f"Unknown type '{type}' for {target_name} {packet_name} {item_name}")
         tgt_pkt_key = f"{scope}__tlm__{target_name}__{packet_name}"
         CvtModel.override_cache[tgt_pkt_key] = [time.time(), hash]
         Store.hset(f"{scope}__override__{target_name}", packet_name, json.dumps(hash))
 
     # Normalize a current value table item such that it returns the actual value
     @classmethod
-    def normalize(
-        cls, target_name, packet_name, item_name, type="ALL", scope=OPENC3_SCOPE
-    ):
+    def normalize(cls, target_name, packet_name, item_name, type="ALL", scope=OPENC3_SCOPE):
         hash = Store.hget(f"{scope}__override__{target_name}", packet_name)
         if hash is not None:
             hash = json.loads(hash)
@@ -287,9 +273,7 @@ class CvtModel(Model):
                 if f"{item_name}__U" in hash:
                     hash.pop(f"{item_name}__U")
             case _:
-                raise RuntimeError(
-                    f"Unknown type '{type}' for {target_name} {packet_name} {item_name}"
-                )
+                raise RuntimeError(f"Unknown type '{type}' for {target_name} {packet_name} {item_name}")
         tgt_pkt_key = f"{scope}__tlm__{target_name}__{packet_name}"
         if len(hash) == 0:
             if tgt_pkt_key in CvtModel.override_cache:
@@ -297,20 +281,14 @@ class CvtModel(Model):
             Store.hdel(f"{scope}__override__{target_name}", packet_name)
         else:
             CvtModel.override_cache[tgt_pkt_key] = [time.time(), hash]
-            Store.hset(
-                f"{scope}__override__{target_name}", packet_name, json.dumps(hash)
-            )
+            Store.hset(f"{scope}__override__{target_name}", packet_name, json.dumps(hash))
 
     @classmethod
-    def determine_latest_packet_for_item(
-        cls, target_name, item_name, cache_timeout=0.1, scope=OPENC3_SCOPE
-    ):
+    def determine_latest_packet_for_item(cls, target_name, item_name, cache_timeout=0.1, scope=OPENC3_SCOPE):
         item_map = TargetModel.get_item_to_packet_map(target_name, scope=scope)
         packet_names = item_map.get(item_name)
         if packet_names is None:
-            raise RuntimeError(
-                f"Item '{target_name} LATEST {item_name}' does not exist for scope: {scope}"
-            )
+            raise RuntimeError(f"Item '{target_name} LATEST {item_name}' does not exist for scope: {scope}")
 
         latest = -1
         latest_packet_name = None
@@ -325,9 +303,7 @@ class CvtModel(Model):
                 latest = hash["PACKET_TIMESECONDS"]
                 latest_packet_name = packet_name
         if latest == -1:
-            raise RuntimeError(
-                f"Item '{target_name} LATEST {item_name}' does not exist for scope: {scope}"
-            )
+            raise RuntimeError(f"Item '{target_name} LATEST {item_name}' does not exist for scope: {scope}")
         return latest_packet_name
 
     @classmethod
@@ -360,9 +336,7 @@ class CvtModel(Model):
             case "RAW":
                 types = [item_name]
             case _:
-                raise RuntimeError(
-                    f"Unknown type '{type}' for {target_name} {packet_name} {item_name}"
-                )
+                raise RuntimeError(f"Unknown type '{type}' for {target_name} {packet_name} {item_name}")
 
         tgt_pkt_key = f"{scope}__tlm__{target_name}__{packet_name}"
         overrides = cls._get_overrides(
@@ -380,9 +354,7 @@ class CvtModel(Model):
         return None, types
 
     @classmethod
-    def _get_overrides(
-        cls, now, tgt_pkt_key, overrides, target_name, packet_name, cache_timeout, scope
-    ):
+    def _get_overrides(cls, now, tgt_pkt_key, overrides, target_name, packet_name, cache_timeout, scope):
         if tgt_pkt_key in CvtModel.override_cache:
             cache_time, hash = CvtModel.override_cache[tgt_pkt_key]
             if (now - cache_time) < cache_timeout:

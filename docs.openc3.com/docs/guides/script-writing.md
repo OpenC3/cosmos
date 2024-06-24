@@ -271,8 +271,9 @@ All scripts must be part of a [Plugin](../configuration/plugins.md). You can cre
 
 As your scripts become large with many methods, it makes sense to break them up into multiple files within a plugin. Here is a recommended organization for your plugin's scripts/procedures.
 
-| Folder | Description |
-| targets/TARGET_NAME/lib | Place script files containing reusable target specific methods here |
+| Folder                         | Description                                                               |
+| ------------------------------ | ------------------------------------------------------------------------- |
+| targets/TARGET_NAME/lib        | Place script files containing reusable target specific methods here       |
 | targets/TARGET_NAME/procedures | Place simple procedures that are centered around one specific target here |
 
 In your main procedure you will usually bring in the other files with instrumentation using load_utility.
@@ -500,18 +501,11 @@ Note that all these user input methods provide the user the option to “Cancel�
 
 ### Conditionally Require Manual User Input Steps
 
-When possible, a useful design pattern is to write your scripts such that they can run without prompting for any user input. This allows the scripts to be more easily tested and provides a documented default value for any user input choices or values. To implement this pattern, all manual steps such as ask(), prompt(), and infinite wait() statements need to be wrapped with an if statement that checks the value of the $manual variable. If $manual is set, then the manual steps should be executed. If not, then a default value should be used.
+When possible, a useful design pattern is to write your scripts such that they can run without prompting for any user input. This allows the scripts to be more easily tested and provides a documented default value for any user input choices or values. To implement this pattern, all manual steps such as ask(), prompt(), and infinite wait() statements need to be wrapped with an if statement that checks the value of $manual in Ruby or RunningScript.manual in Python. If the variable is set, then the manual steps should be executed. If not, then a default value should be used.
 
-Ruby Only:
+Ruby Example:
 
 ```ruby
-# Set the $manual variable – Only needed outside of suites
-answer = ask("Prompt for manual entry (Y/n)?")
-if answer == 'n' or answer == 'N'
-  $manual = false
-else
-  $manual = true
-end
 if $manual
   temp = ask("Please enter the temperature")
 else
@@ -522,6 +516,19 @@ if !$manual
 else
   wait
 end
+```
+
+Python Example:
+
+```python
+if RunningScript.manual:
+    temp = ask("Please enter the temperature")
+else:
+    temp = 20.0
+if not RunningScript.manual:
+    print("Skipping infinite wait in auto mode")
+else:
+    wait()
 ```
 
 When running suites, there is a checkbox at the top of the tool called “Manual” that affects this $manual variable directly.
@@ -577,12 +584,12 @@ Ruby:
 ```ruby
 id = subscribe_packets([['INST', 'HEALTH_STATUS'], ['INST', 'ADCS']])
 wait 1.5
-id, packets = get_packet(id)
+id, packets = get_packets(id)
 packets.each do |packet|
   puts "#{packet['PACKET_TIMESECONDS']}: #{packet['target_name']} #{packet['packet_name']}"
 end
 # Wait for some time later and re-use the last returned ID
-id, packets = get_packet(id)
+id, packets = get_packets(id)
 ```
 
 Python:
@@ -590,11 +597,11 @@ Python:
 ```python
 id = subscribe_packets([['INST', 'HEALTH_STATUS'], ['INST', 'ADCS']])
 wait(1.5)
-id, packets = get_packet(id)
+id, packets = get_packets(id)
 for packet in packets:
     print(f"{packet['PACKET_TIMESECONDS']}: {packet['target_name']} {packet['packet_name']}")
 # Wait for some time later and re-use the last returned ID
-id, packets = get_packet(id)
+id, packets = get_packets(id)
 ```
 
 ### Using Variables in Mnemonics

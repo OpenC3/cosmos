@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -184,6 +184,12 @@ module OpenC3
       @scheduler = nil
     end
 
+    # Should be implemented by subclass to return human readable connection string
+    # which will be placed in log messages when connecting and during connection failures
+    def connection_string
+      return @name
+    end
+
     # Connects the interface to its target(s). Must be implemented by a
     # subclass.
     def connect
@@ -198,14 +204,16 @@ module OpenC3
             log_dont_log.upcase!
             period = "#{period.to_f}s"
             @scheduler.every period do
-              begin
-                if log_dont_log == 'DONT_LOG'
-                  cmd(cmd_string, log_message: false)
-                else
-                  cmd(cmd_string)
+              if connected?()
+                begin
+                  if log_dont_log == 'DONT_LOG'
+                    cmd(cmd_string, log_message: false)
+                  else
+                    cmd(cmd_string)
+                  end
+                rescue Exception => e
+                  Logger.error("Error sending periodic cmd(#{cmd_string}):\n#{e.formatted}")
                 end
-              rescue Exception => err
-                Logger.error("Error sending periodic cmd(#{cmd_string}):\n#{err.formatted}")
               end
             end
           end
@@ -236,7 +244,7 @@ module OpenC3
       raise "read_interface not defined by Interface"
     end
 
-    def write_interface(data, extra = nil)
+    def write_interface(_data, _extra = nil)
       raise "write_interface not defined by Interface"
     end
 
@@ -303,10 +311,10 @@ module OpenC3
         Logger.warn("#{@name}: Interface unexpectedly requested disconnect") unless packet
         return packet
       end
-    rescue Exception => err
+    rescue Exception => e
       Logger.error("#{@name}: Error reading from interface")
       disconnect()
-      raise err
+      raise e
     end
 
     # Method to send a packet on the interface.
@@ -393,16 +401,16 @@ module OpenC3
       else
         @write_mutex.synchronize { yield }
       end
-    rescue WriteRejectError => err
-      Logger.error("#{@name}: Write rejected by interface: #{err.message}")
-      raise err
-    rescue Exception => err
+    rescue WriteRejectError => e
+      Logger.error("#{@name}: Write rejected by interface: #{e.message}")
+      raise e
+    rescue Exception => e
       Logger.error("#{@name}: Error writing to interface")
       disconnect()
-      raise err
+      raise e
     end
 
-    def as_json(*a)
+    def as_json(*_a)
       config = {}
       config['name'] = @name
       config['state'] = @state
@@ -526,7 +534,7 @@ module OpenC3
     # method is called. Subclasses must implement this method.
     #
     # @return [String] Raw packet data
-    def read_interface_base(data, extra = nil)
+    def read_interface_base(data, _extra = nil)
       @read_raw_data_time = Time.now
       @read_raw_data = data.clone
       @bytes_read += data.length
@@ -539,7 +547,7 @@ module OpenC3
     #
     # @param data [String] Raw packet data
     # @return [String] The exact data written
-    def write_interface_base(data, extra = nil)
+    def write_interface_base(data, _extra = nil)
       @written_raw_data_time = Time.now
       @written_raw_data = data.clone
       @bytes_written += data.length
@@ -565,9 +573,16 @@ module OpenC3
       return protocol
     end
 
-    def interface_cmd(cmd_name, *cmd_args)
-      # Default do nothing - Implemented by subclasses
-      return false
+    def interface_cmd(cmd_name, *_cmd_args)
+      case cmd_name
+      when 'clear_counters'
+        @write_queue_size = 0
+        @read_queue_size = 0
+        @bytes_written = 0
+        @bytes_read = 0
+        @write_count = 0
+        @read_count = 0
+      end
     end
 
     def protocol_cmd(cmd_name, *cmd_args, read_write: :READ_WRITE, index: -1)
@@ -582,7 +597,7 @@ module OpenC3
         write_protocols = @write_protocols.reverse
         read_index = 0
         write_index = 0
-        @protocol_info.each do |protocol_class, protocol_args, protocol_read_write|
+        @protocol_info.each do |_protocol_class, _protocol_args, protocol_read_write|
           case protocol_read_write
           when :READ
             protocols << read_protocols[read_index]

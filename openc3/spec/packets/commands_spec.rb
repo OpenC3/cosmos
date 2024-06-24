@@ -65,6 +65,10 @@ module OpenC3
       tf.puts '  APPEND_ID_PARAMETER item1 8 UINT 5 5 5 "Item1"'
       tf.puts '  APPEND_PARAMETER item2 8 UINT 0 100 0 "Item2"'
       tf.puts '    POLY_WRITE_CONVERSION 0 2'
+      tf.puts 'COMMAND tgt2 pkt6 BIG_ENDIAN "TGT2 PKT5 Description"'
+      tf.puts '  APPEND_ID_PARAMETER item1 16 UINT 6 6 6 "Item1"'
+      tf.puts '  APPEND_PARAMETER item2 16 UINT MIN MAX 0 "Item2" LITTLE_ENDIAN'
+      tf.puts '  APPEND_PARAMETER item3 16 UINT MIN MAX 0 "Item2"'
       tf.close
 
       pc = PacketConfig.new
@@ -97,10 +101,11 @@ module OpenC3
 
       it "returns all packets target TGT2" do
         pkts = @cmd.packets("TGT2")
-        expect(pkts.length).to eql 3
+        expect(pkts.length).to eql 4
         expect(pkts.keys).to include("PKT3")
         expect(pkts.keys).to include("PKT4")
         expect(pkts.keys).to include("PKT5")
+        expect(pkts.keys).to include("PKT6")
       end
     end
 
@@ -301,6 +306,16 @@ module OpenC3
         expect(cmd.read("ITEM2", :RAW)).to eql 2
       end
 
+      it "creates a command packet with mixed endianness" do
+        items = { "ITEM2" => 0xABCD, "ITEM3" => 0x6789 }
+        cmd = @cmd.build_cmd("TGT2", "PKT6", items)
+        cmd.enable_method_missing
+        expect(cmd.item1).to eql 6
+        expect(cmd.item2).to eql 0xABCD
+        expect(cmd.item3).to eql 0x6789
+        expect(cmd.buffer).to eql "\x00\x06\xCD\xAB\x67\x89"
+      end
+
       it "complains about missing required parameters" do
         expect { @cmd.build_cmd("tgt2", "pkt3") }.to raise_error(RuntimeError, "Required command parameter 'TGT2 PKT3 ITEM2' not given")
       end
@@ -344,7 +359,7 @@ module OpenC3
         expect(@cmd.format(pkt)).to eql "cmd_raw(\"TGT2 PKT4 with ITEM1 0, ITEM2 'HELLO WORLD'\")"
 
         # If the string is too big it should truncate it
-        (1..2028).each { |i| string << 'A' }
+        (1..2028).each { |_i| string << 'A' }
         pkt.write("ITEM2", string)
         pkt.raw = false
         result = @cmd.format(pkt)

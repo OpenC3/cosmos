@@ -46,6 +46,8 @@ The following keywords must follow a COMMAND keyword.
 
 When Data Type is INT, UINT, FLOAT, DERIVED the remaining parameters are:
 
+| Parameter | Description | Required |
+|-----------|-------------|----------|
 | Minimum Value | Minimum allowed value for this parameter | True |
 | Maximum Value | Maximum allowed value for this parameter | True |
 | Default Value | Default value for this parameter. You must provide a default but if you mark the parameter REQUIRED then scripts will be forced to specify a value. | True |
@@ -54,6 +56,8 @@ When Data Type is INT, UINT, FLOAT, DERIVED the remaining parameters are:
 
 When Data Type is STRING, BLOCK the remaining parameters are:
 
+| Parameter | Description | Required |
+|-----------|-------------|----------|
 | Default Value | Default value for this parameter. You must provide a default but if you mark the parameter REQUIRED then scripts will be forced to specify a value. | True |
 | Description | Description for this parameter which must be enclosed with quotes | False |
 | Endianness | Indicates if the data in this command is to be sent in Big Endian or Little Endian format<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
@@ -192,8 +196,7 @@ APPEND_PARAMETER STRING 1024 STRING "NOOP" "String parameter"
 **Applies a conversion when writing the current command parameter**
 
 Conversions are implemented in a custom Ruby file which should be
-located in the target's lib folder and required by the target's target.txt
-file (see REQUIRE). The class must require 'openc3/conversions/conversion'
+located in the target's lib folder. The class must require 'openc3/conversions/conversion'
 and inherit from Conversion. It must implement the initialize method if it
 takes extra parameters and must always implement the call method. The conversion
 factor is applied to the value entered by the user before it is written into
@@ -332,6 +335,8 @@ OVERFLOW TRUNCATE
 
 When Data Type is INT, UINT, FLOAT, DERIVED the remaining parameters are:
 
+| Parameter | Description | Required |
+|-----------|-------------|----------|
 | Minimum Value | Minimum allowed value for this parameter | True |
 | Maximum Value | Maximum allowed value for this parameter | True |
 | Default Value | Default value for this parameter. You must provide a default but if you mark the parameter REQUIRED then scripts will be forced to specify a value. | True |
@@ -340,6 +345,8 @@ When Data Type is INT, UINT, FLOAT, DERIVED the remaining parameters are:
 
 When Data Type is STRING, BLOCK the remaining parameters are:
 
+| Parameter | Description | Required |
+|-----------|-------------|----------|
 | Default Value | Default value for this parameter. You must provide a default but if you mark the parameter REQUIRED then scripts will be forced to specify a value. | True |
 | Description | Description for this parameter which must be enclosed with quotes | False |
 | Endianness | Indicates if the data in this command is to be sent in Big Endian or Little Endian format<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
@@ -365,6 +372,8 @@ ID parameters are used to identify the binary block of data as a particular comm
 
 When Data Type is INT, UINT, FLOAT, DERIVED the remaining parameters are:
 
+| Parameter | Description | Required |
+|-----------|-------------|----------|
 | Minimum Value | Minimum allowed value for this parameter | True |
 | Maximum Value | Maximum allowed value for this parameter | True |
 | ID Value | Identification value for this parameter. The binary data must match this value for the buffer to be identified as this packet. | True |
@@ -373,6 +382,8 @@ When Data Type is INT, UINT, FLOAT, DERIVED the remaining parameters are:
 
 When Data Type is STRING, BLOCK the remaining parameters are:
 
+| Parameter | Description | Required |
+|-----------|-------------|----------|
 | Default Value | Default value for this parameter. You must provide a default but if you mark the parameter REQUIRED then scripts will be forced to specify a value. | True |
 | Description | Description for this parameter which must be enclosed with quotes | False |
 | Endianness | Indicates if the data in this command is to be sent in Big Endian or Little Endian format<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
@@ -395,6 +406,8 @@ ID parameters are used to identify the binary block of data as a particular comm
 
 When Data Type is INT, UINT, FLOAT, DERIVED the remaining parameters are:
 
+| Parameter | Description | Required |
+|-----------|-------------|----------|
 | Minimum Value | Minimum allowed value for this parameter | True |
 | Maximum Value | Maximum allowed value for this parameter | True |
 | ID Value | Identification value for this parameter. The binary data must match this value for the buffer to be identified as this packet. | True |
@@ -403,6 +416,8 @@ When Data Type is INT, UINT, FLOAT, DERIVED the remaining parameters are:
 
 When Data Type is STRING, BLOCK the remaining parameters are:
 
+| Parameter | Description | Required |
+|-----------|-------------|----------|
 | Default Value | Default value for this parameter. You must provide a default but if you mark the parameter REQUIRED then scripts will be forced to specify a value. | True |
 | Description | Description for this parameter which must be enclosed with quotes | False |
 | Endianness | Indicates if the data in this command is to be sent in Big Endian or Little Endian format<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
@@ -545,6 +560,39 @@ Generally the template file is formatted in JSON or HTML and then values are fil
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Template File Path | The relative path to the template file. Filename should generally start with an underscore. | True |
+
+### RESPONSE
+<div class="right">(Since 5.14.0)</div>**Indicates the expected telemetry packet response to this command**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Target Name | Target Name of telemetry response packet | True |
+| Packet Name | Packet Name of telemetry response packet | True |
+
+### ERROR_RESPONSE
+<div class="right">(Since 5.14.0)</div>**Indicates the expected telemetry packet error response to this command**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Target Name | Target Name of telemetry error response packet | True |
+| Packet Name | Packet Name of telemetry error response packet | True |
+
+### RELATED_ITEM
+<div class="right">(Since 5.14.0)</div>**Defines a related telemetry item to this command**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Target Name | Target Name of related telemetry item | True |
+| Packet Name | Packet Name of related telemetry item | True |
+| Item Name | Item Name of related telemetry item | True |
+
+### SCREEN
+<div class="right">(Since 5.14.0)</div>**Defines a related telemetry screen to this command**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Target Name | Target Name of related telemetry screen | True |
+| Screen Name | Screen Name of related telemetry screen | True |
 
 ## SELECT_COMMAND
 **Selects an existing command packet for editing**

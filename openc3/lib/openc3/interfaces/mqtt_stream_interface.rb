@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -36,6 +36,13 @@ module OpenC3
       @cert = nil
       @key = nil
       @ca_file = nil
+    end
+
+    def connection_string
+      result = "#{@hostname}:#{@port} (ssl: #{@ssl})"
+      result += " write topic: #{@write_topic}" if @write_topic
+      result += " read topic: #{@read_topic}" if @read_topic
+      return result
     end
 
     # Creates a new {SerialStream} using the parameters passed in the constructor

@@ -44,19 +44,19 @@ export default class Cable {
           let final_url =
             this._url +
             '?scope=' +
-            window.openc3Scope +
+            encodeURIComponent(window.openc3Scope) +
             '&authorization=' +
-            localStorage.openc3Token
-          this._cable = ActionCable.createConsumer(encodeURI(final_url))
+            encodeURIComponent(localStorage.openc3Token)
+          this._cable = ActionCable.createConsumer(final_url)
         }
         return this._cable.subscriptions.create(
           {
             channel,
             ...additionalOptions,
           },
-          callbacks
+          callbacks,
         )
-      }
+      },
     )
   }
   recordPing() {

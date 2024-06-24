@@ -33,6 +33,10 @@ class ScriptsController < ApplicationController
   SUITE_REGEX = /^\s*class\s+\w+\s+<\s+(Cosmos::|OpenC3::)?(Suite|TestSuite)/
   PYTHON_SUITE_REGEX = /^\s*class\s+\w+\s*\(\s*(Suite|TestSuite)\s*\)/
 
+  def ping
+    render plain: 'OK'
+  end
+
   def index
     return unless authorization('script_view')
     render :json => Script.all(params[:scope])
@@ -48,7 +52,6 @@ class ScriptsController < ApplicationController
 
     file = Script.body(params[:scope], params[:name])
     if file
-      success = true
       locked = Script.locked?(params[:scope], params[:name])
       unless locked
         Script.lock(params[:scope], params[:name], username())
@@ -94,7 +97,7 @@ class ScriptsController < ApplicationController
     suite_runner = params[:suiteRunner] ? params[:suiteRunner].as_json(:allow_nan => true) : nil
     disconnect = params[:disconnect] == 'disconnect'
     environment = params[:environment]
-    running_script_id = Script.run(params[:scope], params[:name], suite_runner, disconnect, environment, username: username())
+    running_script_id = Script.run(params[:scope], params[:name], suite_runner, disconnect, environment, user_full_name(), username())
     if running_script_id
       OpenC3::Logger.info("Script started: #{params[:name]}", scope: params[:scope], user: username())
       render :plain => running_script_id.to_s

@@ -146,9 +146,7 @@ def map_target_to_interface(
     else:
         target_names = [target_name]
     for name in target_names:
-        new_interface.map_target(
-            name, cmd_only=cmd_only, tlm_only=tlm_only, unmap_old=unmap_old
-        )
+        new_interface.map_target(name, cmd_only=cmd_only, tlm_only=tlm_only, unmap_old=unmap_old)
         Logger.info(f"Target {name} mapped to Interface {interface_name}", scope=scope)
 
 

@@ -1,7 +1,7 @@
-TOOL docs "Documentation"
-  URL /tools/docs/index.html
+TOOL staticdocs "Documentation"
+  URL /tools/staticdocs/
   INLINE_URL nil
   ICON mdi-bookshelf
   DISABLE_ERB
   WINDOW IFRAME
-  POSITION 15
+  POSITION 16

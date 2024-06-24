@@ -32,7 +32,7 @@ group :development, :test do
 end
 
 group :test do
-  gem 'mock_redis', '0.40'
+  gem 'mock_redis', '0.44'
 end
 
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
@@ -43,5 +43,5 @@ if ENV['OPENC3_DEVEL']
 elsif ENV['OPENC3_PATH']
   gem 'openc3', :path => ENV['OPENC3_PATH']
 else
-  gem 'openc3', '5.12.1.pre.beta0'
+  gem 'openc3', '5.16.3.pre.beta0'
 end

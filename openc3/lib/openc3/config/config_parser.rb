@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -125,10 +125,10 @@ module OpenC3
       #   default this gets constructed to point to the generic configuration
       #   Guide on the OpenC3 Wiki.
       def initialize(config_parser, message = "Configuration Error", usage = "", url = "")
-        if Error == message
+        if Error === message
           super(message.message)
-        elsif Exception == message
-          super("#{message.class}:#{message.message}")
+        elsif Exception === message
+          super("#{message.class}: #{message.message}")
         else
           super(message)
         end
@@ -143,7 +143,7 @@ module OpenC3
     end
 
     # @param url [String] The url to link to in error messages
-    def initialize(url = "https:/openc3.com/docs/v5")
+    def initialize(url = "https://docs.openc3.com/docs")
       @url = url
     end
 
@@ -199,7 +199,7 @@ module OpenC3
                    remove_quotes = true,
                    run_erb = true,
                    variables = {},
-                   &block)
+                   &)
       raise Error.new(self, "Configuration file #{filename} does not exist.") unless filename && File.exist?(filename)
 
       @filename = filename
@@ -219,7 +219,7 @@ module OpenC3
                    remove_quotes,
                    size,
                    PARSING_REGEX,
-                   &block)
+                   &)
       ensure
         file.close unless file.closed?
       end
@@ -247,8 +247,8 @@ module OpenC3
     end
 
     # Verifies the indicated parameter in the config doesn't start or end
-    # with an underscore, doesn't contain a double underscore, doesn't contain
-    # spaces and doesn't start with a close bracket.
+    # with an underscore, doesn't contain a double underscore or double bracket,
+    # doesn't contain spaces and doesn't start with a close bracket.
     #
     # @param [Integer] index The index of the parameter to check
     def verify_parameter_naming(index, usage = "")
@@ -259,6 +259,9 @@ module OpenC3
       if param.include? '__'
         raise Error.new(self, "Parameter #{index} (#{param}) for #{@keyword} cannot contain a double underscore ('__').", usage, @url)
       end
+      if param.include? '[[' or param.include? ']]'
+        raise Error.new(self, "Parameter #{index} (#{param}) for #{@keyword} cannot contain double brackets ('[[' or ']]').", usage, @url)
+      end
       if param.include? ' '
         raise Error.new(self, "Parameter #{index} (#{param}) for #{@keyword} cannot contain a space (' ').", usage, @url)
       end
@@ -267,7 +270,7 @@ module OpenC3
       end
     end
 
-    # Converts a String containing '', 'NIL' or 'NULL' to nil Ruby primitive.
+    # Converts a String containing '', 'NIL', 'NULL', or 'NONE' to nil Ruby primitive.
     # All other arguments are simply returned.
     #
     # @param value [Object]
@@ -275,7 +278,7 @@ module OpenC3
     def self.handle_nil(value)
       if String === value
         case value.upcase
-        when '', 'NIL', 'NULL'
+        when '', 'NIL', 'NULL', 'NONE'
           return nil
         end
       end
@@ -421,12 +424,12 @@ module OpenC3
         if type == 'MIN'
           value = -2**(bit_size - 1)
         else # 'MAX'
-          value = 2**(bit_size - 1) - 1
+          value = (2**(bit_size - 1)) - 1
         end
       when :UINT
         # Default is 0 for 'MIN'
         if type == 'MAX'
-          value = 2**bit_size - 1
+          value = (2**bit_size) - 1
         end
       when :FLOAT
         case bit_size
@@ -449,18 +452,24 @@ module OpenC3
       return if errors.empty?
       message = ''
       errors.each do |error|
+        # Once we have a message we want to ignore errors about bad items, packets, and targets
+        # because the real error is probably in a previous definition
+        next if message != '' && error.message.include?('No current item')
+        next if message != '' && error.message.include?('No current packet')
+        next if message != '' && error.message.include?('Unknown keyword and parameters for Target')
+
         if error.is_a? OpenC3::ConfigParser::Error
-          message += "\n#{File.basename(error.filename)}:#{error.line_number}: #{error.line}"
+          message += "\n#{File.basename(error.filename)}:#{error.line_number}: #{error.line}" if error.filename
           message += "\nError: #{error.message}"
           message += "\nUsage: #{error.usage}" unless error.usage.empty?
-          message += "\nBacktrace:"
-          message += "\n#{error.backtrace.join("\n")}"
-        else
-          message += "\n#{error.formatted}"
+          message += "\n"
+        # Only capture the first non-ConfigParser::Error which is typically
+        # a RuntimeError generated from a raise during parsing
+        elsif message == ''
+          message += "\n#{error.formatted}\n"
         end
-        message += "\n"
       end
-      raise message
+      raise Error.new(self, message)
     end
 
     if RUBY_ENGINE != 'ruby' or ENV['OPENC3_NO_EXT']
@@ -536,8 +545,8 @@ module OpenC3
             if yield_non_keyword_lines
               begin
                 yield(@keyword, @parameters)
-              rescue => error
-                errors << error
+              rescue => e
+                errors << e
               end
             end
             @line = ''
@@ -569,8 +578,8 @@ module OpenC3
 
           begin
             yield(@keyword, @parameters)
-          rescue => error
-            errors << error
+          rescue => e
+            errors << e
           end
           @line = ''
         end

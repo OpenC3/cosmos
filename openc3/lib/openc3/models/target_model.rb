@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -31,6 +31,7 @@ require 'openc3/utilities/local_mode'
 require 'openc3/utilities/bucket'
 require 'openc3/utilities/zip'
 require 'fileutils'
+require 'ostruct'
 require 'tmpdir'
 
 module OpenC3
@@ -97,7 +98,7 @@ module OpenC3
     # All targets with indication of modified targets
     def self.all_modified(scope:)
       targets = self.all(scope: scope)
-      targets.each { |target_name, target| target['modified'] = false }
+      targets.each { |_target_name, target| target['modified'] = false }
 
       if ENV['OPENC3_LOCAL_MODE']
         modified_targets = OpenC3::LocalMode.modified_targets(scope: scope)
@@ -191,13 +192,6 @@ module OpenC3
       return result
     end
 
-    # @return [Array] Array of all the packet names
-    def self.packet_names(target_name, type: :TLM, scope:)
-      raise "Unknown type #{type} for #{target_name}" unless VALID_TYPES.include?(type)
-      # If the key doesn't exist or if there are no packets we return empty array
-      Store.hkeys("#{scope}__openc3#{type.to_s.downcase}__#{target_name}").sort
-    end
-
     # @return [Hash] Packet hash or raises an exception
     def self.packet(target_name, packet_name, type: :TLM, scope:)
       raise "Unknown type #{type} for #{target_name} #{packet_name}" unless VALID_TYPES.include?(type)
@@ -216,7 +210,7 @@ module OpenC3
 
       result = []
       packets = Store.hgetall("#{scope}__openc3#{type.to_s.downcase}__#{target_name}")
-      packets.sort.each do |packet_name, packet_json|
+      packets.sort.each do |_packet_name, packet_json|
         result << JSON.parse(packet_json, :allow_nan => true, :create_additions => true)
       end
       result
@@ -232,9 +226,9 @@ module OpenC3
 
       begin
         Store.hset("#{scope}__openc3#{type.to_s.downcase}__#{target_name}", packet_name, JSON.generate(packet.as_json(:allow_nan => true)))
-      rescue JSON::GeneratorError => err
+      rescue JSON::GeneratorError => e
         Logger.error("Invalid text present in #{target_name} #{packet_name} #{type.to_s.downcase} packet")
-        raise err
+        raise e
       end
     end
 
@@ -403,7 +397,7 @@ module OpenC3
       @children = []
     end
 
-    def as_json(*a)
+    def as_json(*_a)
       {
         'name' => @name,
         'folder_name' => @folder_name,
@@ -412,7 +406,7 @@ module OpenC3
         'ignored_items' => @ignored_items,
         'limits_groups' => @limits_groups,
         'cmd_tlm_files' => @cmd_tlm_files,
-        'cmd_unique_id_mode' => cmd_unique_id_mode,
+        'cmd_unique_id_mode' => @cmd_unique_id_mode,
         'tlm_unique_id_mode' => @tlm_unique_id_mode,
         'id' => @id,
         'updated_at' => @updated_at,
@@ -586,13 +580,13 @@ module OpenC3
                 end
               end
             end
-          rescue => error
+          rescue => e
             # ERB error parsing a screen is just a logger error because life can go on
             # With cmd/tlm or scripts this is a serious error and we raise
             if (filename.include?('/screens/'))
-              Logger.error("ERB error parsing #{key} due to #{error.message}")
+              Logger.error("ERB error parsing #{key} due to #{e.message}")
             else
-              raise "ERB error parsing #{key} due to #{error.message}"
+              raise "ERB error parsing #{key} due to #{e.message}"
             end
           end
           local_path = File.join(temp_dir, @name, target_folder_path)
@@ -667,8 +661,8 @@ module OpenC3
       @@item_map_cache[@name] = nil
 
       ConfigTopic.write({ kind: 'deleted', type: 'target', name: @name, plugin: @plugin }, scope: @scope)
-    rescue Exception => error
-      Logger.error("Error undeploying target model #{@name} in scope #{@scope} due to #{error}")
+    rescue Exception => e
+      Logger.error("Error undeploying target model #{@name} in scope #{@scope} due to #{e}")
     end
 
     ##################################################
@@ -702,8 +696,8 @@ module OpenC3
             return ERB.new(data.force_encoding("UTF-8").comment_erb(), trim_mode: "-").result(b)
           end
         end
-      rescue => error
-        raise "ERB error parsing: #{path}: #{error.formatted}"
+      rescue => e
+        raise "ERB error parsing: #{path}: #{e.formatted}"
       end
     end
 
@@ -742,7 +736,7 @@ module OpenC3
       end
     end
 
-    def update_store(system)
+    def update_target_model(system)
       target = system.targets[@name]
 
       # Add in the information from the target and update
@@ -754,17 +748,18 @@ module OpenC3
       @tlm_unique_id_mode = target.tlm_unique_id_mode
       @limits_groups = system.limits.groups.keys
       update()
+    end
 
-      # Store Packet Definitions
-      system.telemetry.all.each do |target_name, packets|
-        Store.del("#{@scope}__openc3tlm__#{target_name}")
+    def update_store_telemetry(packet_hash, clear_old: true)
+      packet_hash.each do |target_name, packets|
+        Store.del("#{@scope}__openc3tlm__#{target_name}") if clear_old
         packets.each do |packet_name, packet|
-          Logger.info "Configuring tlm packet: #{target_name} #{packet_name}"
+          Logger.debug "Configuring tlm packet: #{target_name} #{packet_name}"
           begin
             Store.hset("#{@scope}__openc3tlm__#{target_name}", packet_name, JSON.generate(packet.as_json(:allow_nan => true)))
-          rescue JSON::GeneratorError => err
+          rescue JSON::GeneratorError => e
             Logger.error("Invalid text present in #{target_name} #{packet_name} tlm packet")
-            raise err
+            raise e
           end
           json_hash = Hash.new
           packet.sorted_items.each do |item|
@@ -773,42 +768,137 @@ module OpenC3
           CvtModel.set(json_hash, target_name: packet.target_name, packet_name: packet.packet_name, scope: @scope)
         end
       end
-      system.commands.all.each do |target_name, packets|
-        Store.del("#{@scope}__openc3cmd__#{target_name}")
+    end
+
+    def update_store_commands(packet_hash, clear_old: true)
+      packet_hash.each do |target_name, packets|
+        Store.del("#{@scope}__openc3cmd__#{target_name}") if clear_old
         packets.each do |packet_name, packet|
-          Logger.info "Configuring cmd packet: #{target_name} #{packet_name}"
+          Logger.debug "Configuring cmd packet: #{target_name} #{packet_name}"
           begin
             Store.hset("#{@scope}__openc3cmd__#{target_name}", packet_name, JSON.generate(packet.as_json(:allow_nan => true)))
-          rescue JSON::GeneratorError => err
+          rescue JSON::GeneratorError => e
             Logger.error("Invalid text present in #{target_name} #{packet_name} cmd packet")
-            raise err
+            raise e
           end
         end
       end
-      # Store Limits Groups
+    end
+
+    def update_store_limits_groups(system)
       system.limits.groups.each do |group, items|
         begin
           Store.hset("#{@scope}__limits_groups", group, JSON.generate(items))
-        rescue JSON::GeneratorError => err
+        rescue JSON::GeneratorError => e
           Logger.error("Invalid text present in #{group} limits group")
-          raise err
+          raise e
         end
       end
-      # Merge in Limits Sets
+    end
+
+    def update_store_limits_sets(system)
       sets = Store.hgetall("#{@scope}__limits_sets")
       sets ||= {}
       system.limits.sets.each do |set|
         sets[set.to_s] = "false" unless sets.key?(set.to_s)
       end
       Store.hmset("#{@scope}__limits_sets", *sets)
+    end
 
+    def update_store_item_map
       # Create item_map
       item_map_key = "#{@scope}__#{@name}__item_to_packet_map"
       item_map = self.class.build_item_to_packet_map(@name, scope: @scope)
       Store.set(item_map_key, JSON.generate(item_map, :allow_nan => true))
       @@item_map_cache[@name] = [Time.now, item_map]
+    end
 
+    def update_store(system, clear_old: true)
+      update_target_model(system)
+      update_store_telemetry(system.telemetry.all, clear_old: clear_old)
+      update_store_commands(system.commands.all, clear_old: clear_old)
+      update_store_limits_groups(system)
+      update_store_limits_sets(system)
+      update_store_item_map()
       return system
+    end
+
+    def dynamic_update(packets, cmd_or_tlm = :TELEMETRY, filename = "dynamic_tlm.txt")
+      # Build hash of targets/packets
+      packet_hash = {}
+      packets.each do |packet|
+        target_name = packet.target_name.upcase
+        packet_hash[target_name] ||= {}
+        packet_name = packet.packet_name.upcase
+        packet_hash[target_name][packet_name] = packet
+      end
+
+      # Update Redis
+      if cmd_or_tlm == :TELEMETRY
+        update_store_telemetry(packet_hash, clear_old: false)
+        update_store_item_map()
+      else
+        update_store_commands(packet_hash, clear_old: false)
+      end
+
+      # Build dynamic file for cmd_tlm
+      configs = {}
+      packets.each do |packet|
+        target_name = packet.target_name.upcase
+        configs[target_name] ||= ""
+        config = configs[target_name]
+        config << packet.to_config(cmd_or_tlm)
+        config << "\n"
+      end
+      configs.each do |target_name, config|
+        begin
+          bucket_key = "#{@scope}/targets_modified/#{target_name}/cmd_tlm/#{filename}"
+          client = Bucket.getClient()
+          client.put_object(
+            # Use targets_modified to save modifications
+            # This keeps the original target clean (read-only)
+            bucket: ENV['OPENC3_CONFIG_BUCKET'],
+            key: bucket_key,
+            body: config
+          )
+        end
+      end
+
+      # Inform microservices of new topics
+      # Need to tell loggers to log, and decom to decom
+      # We do this for no downtime
+      raw_topics = []
+      decom_topics = []
+      packets.each do |packet|
+        if cmd_or_tlm == :TELEMETRY
+          raw_topics << "#{@scope}__TELEMETRY__{#{@name}}__#{packet.packet_name.upcase}"
+          decom_topics << "#{@scope}__DECOM__{#{@name}}__#{packet.packet_name.upcase}"
+        else
+          raw_topics << "#{@scope}__COMMAND__{#{@name}}__#{packet.packet_name.upcase}"
+          decom_topics << "#{@scope}__DECOMCMD__{#{@name}}__#{packet.packet_name.upcase}"
+        end
+      end
+      if cmd_or_tlm == :TELEMETRY
+        Topic.write_topic("MICROSERVICE__#{@scope}__PACKETLOG__#{@name}", {'command' => 'ADD_TOPICS', 'topics' => raw_topics.as_json.to_json})
+        add_topics_to_microservice("#{@scope}__PACKETLOG__#{@name}", raw_topics)
+        Topic.write_topic("MICROSERVICE__#{@scope}__DECOMLOG__#{@name}", {'command' => 'ADD_TOPICS', 'topics' => decom_topics.as_json.to_json})
+        add_topics_to_microservice("#{@scope}__DECOMLOG__#{@name}", decom_topics)
+        Topic.write_topic("MICROSERVICE__#{@scope}__DECOM__#{@name}", {'command' => 'ADD_TOPICS', 'topics' => raw_topics.as_json.to_json})
+        add_topics_to_microservice("#{@scope}__DECOM__#{@name}", raw_topics)
+      else
+        Topic.write_topic("MICROSERVICE__#{@scope}__COMMANDLOG__#{@name}", {'command' => 'ADD_TOPICS', 'topics' => raw_topics.as_json.to_json})
+        add_topics_to_microservice("#{@scope}__COMMANDLOG__#{@name}", raw_topics)
+        Topic.write_topic("MICROSERVICE__#{@scope}__DECOMCMDLOG__#{@name}", {'command' => 'ADD_TOPICS', 'topics' => decom_topics.as_json.to_json})
+        add_topics_to_microservice("#{@scope}__DECOMCMDLOG__#{@name}", decom_topics)
+      end
+    end
+
+    def add_topics_to_microservice(microservice_name, topics)
+      model = MicroserviceModel.get_model(name: microservice_name, scope: @scope)
+      model.topics.concat(topics)
+      model.topics.uniq!
+      model.ignore_changes = true # Don't restart the microservice right now
+      model.update
     end
 
     def deploy_commmandlog_microservice(gem_path, variables, topics, instance = nil, parent = nil)
@@ -990,6 +1080,7 @@ module OpenC3
           cmd: ["ruby", "multi_microservice.rb", *@children],
           work_dir: '/openc3/lib/openc3/microservices',
           plugin: @plugin,
+          needs_dependencies: @needs_dependencies,
           scope: @scope
         )
         microservice.create
@@ -1010,7 +1101,7 @@ module OpenC3
 
           # Figure out if there are individual packets assigned to this microservice
           target_microservices.sort! {|a, b| a.length <=> b.length}
-          target_microservices.each_with_index do |packet_names, index|
+          target_microservices.each_with_index do |packet_names, _index|
             topics = []
             packet_names.each do |packet_name|
               topics << "#{topic_prefix}__#{packet_name}"
@@ -1048,9 +1139,8 @@ module OpenC3
       decom_command_topic_list = []
       packet_topic_list = []
       decom_topic_list = []
-      reduced_topic_list = []
       begin
-        system.commands.packets(@name).each do |packet_name, packet|
+        system.commands.packets(@name).each do |packet_name, _packet|
           command_topic_list << "#{@scope}__COMMAND__{#{@name}}__#{packet_name}"
           decom_command_topic_list << "#{@scope}__DECOMCMD__{#{@name}}__#{packet_name}"
         end
@@ -1058,12 +1148,9 @@ module OpenC3
         # No command packets for this target
       end
       begin
-        system.telemetry.packets(@name).each do |packet_name, packet|
+        system.telemetry.packets(@name).each do |packet_name, _packet|
           packet_topic_list << "#{@scope}__TELEMETRY__{#{@name}}__#{packet_name}"
           decom_topic_list  << "#{@scope}__DECOM__{#{@name}}__#{packet_name}"
-          reduced_topic_list << "#{@scope}__REDUCED_MINUTE__{#{@name}}__#{packet_name}"
-          reduced_topic_list << "#{@scope}__REDUCED_HOUR__{#{@name}}__#{packet_name}"
-          reduced_topic_list << "#{@scope}__REDUCED_DAY__{#{@name}}__#{packet_name}"
         end
       rescue
         # No telemetry packets for this target

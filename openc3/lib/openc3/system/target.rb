@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -114,8 +114,8 @@ module OpenC3
     #
     # @param filename [String] The target configuration file to parse
     def process_file(filename)
-      Logger.instance.info "Processing ruby target definition in file '#{filename}'"
-      parser = ConfigParser.new("https://openc3.com/docs/v5/target")
+      Logger.instance.info "Processing target definition in file '#{filename}'"
+      parser = ConfigParser.new("https://docs.openc3.com/docs/configuration/target")
       parser.parse_file(filename) do |keyword, parameters|
         case keyword
         when 'LANGUAGE'
@@ -140,11 +140,11 @@ module OpenC3
                 filename = parameters[0]
                 OpenC3.require_file(parameters[0])
               end
-            rescue Exception => err
-              raise parser.error(err.message)
+            rescue Exception => e
+              raise parser.error(e.formatted)
             end
-          rescue Exception => err
-            raise parser.error(err.message)
+          rescue Exception => e
+            raise parser.error(e.formatted)
           end
 
           # This code resolves any relative paths to absolute before putting into the @requires array
@@ -196,7 +196,7 @@ module OpenC3
       end
     end
 
-    def as_json(*a)
+    def as_json(*_a)
       config = {}
       config['name'] = @name
       config['requires'] = @requires

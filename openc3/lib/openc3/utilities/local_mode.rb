@@ -29,9 +29,7 @@ module OpenC3
     # When updating update local_mode.py, PluginsTab.vue, plugins.spec.ts
     DEFAULT_PLUGINS = [
       'openc3-cosmos-tool-admin',
-      'openc3-cosmos-tool-autonomic',
       'openc3-cosmos-tool-bucketexplorer',
-      'openc3-cosmos-tool-calendar',
       'openc3-cosmos-tool-cmdsender',
       'openc3-cosmos-tool-cmdtlmserver',
       'openc3-cosmos-tool-dataextractor',
@@ -47,6 +45,9 @@ module OpenC3
       'openc3-cosmos-tool-tlmviewer',
       'openc3-cosmos-enterprise-tool-admin',
       'openc3-enterprise-tool-base',
+      'openc3-cosmos-tool-autonomic',
+      'openc3-cosmos-tool-calendar',
+      'openc3-cosmos-tool-grafana',
       'openc3-tool-base',
     ]
 
@@ -168,7 +169,7 @@ module OpenC3
               json = JSON.parse(data, :allow_nan => true, :create_additions => true)
 
               found = false
-              found_models.each do |name, model_details|
+              found_models.each do |name, _model_details|
                 if json["name"] == name
                   # Matched pair
                   found = true
@@ -252,7 +253,7 @@ module OpenC3
                     # New install of same plugin - Leave it alone
                   end
                 else
-                  # No exiting instance.json, but we found the same gem
+                  # No existing instance.json, but we found the same gem
                   # This shouldn't happen without users using this wrong
                   # We will update
                   found = true
@@ -339,7 +340,7 @@ module OpenC3
     def self.modified_targets(scope:)
       targets = {}
       local_catalog = build_local_catalog(scope: scope)
-      local_catalog.each do |key, size|
+      local_catalog.each do |key, _size|
         split_key = key.split('/') # scope/targets_modified/target_name/*
         target_name = split_key[2]
         if target_name
@@ -352,7 +353,7 @@ module OpenC3
     def self.modified_files(target_name, scope:)
       modified = []
       local_catalog = build_local_catalog(scope: scope)
-      local_catalog.each do |key, size|
+      local_catalog.each do |key, _size|
         split_key = key.split('/') # scope/targets_modified/target_name/*
         local_target_name = split_key[2]
         if target_name == local_target_name
@@ -399,7 +400,7 @@ module OpenC3
     def self.local_target_files(scope:, path_matchers:, include_temp: false)
       files = []
       local_catalog = build_local_catalog(scope: scope)
-      local_catalog.each do |key, size|
+      local_catalog.each do |key, _size|
         split_key = key.split('/')
         # DEFAULT/targets_modified/__TEMP__/YYYY_MM_DD_HH_MM_SS_mmm_temp.rb
         # See target_file.rb TEMP_FOLDER
@@ -434,8 +435,8 @@ module OpenC3
             JSON.parse(data, :allow_nan => true, :create_additions => true)
             # Only save if the parse was successful
             ToolConfigModel.save_config(parts[-2], File.basename(config, '.json'), data, scope: scope, local_mode: false)
-          rescue JSON::ParserError => error
-            puts "Unable to initialize tool config due to #{error.message}"
+          rescue JSON::ParserError => e
+            puts "Unable to initialize tool config due to #{e.message}"
           end
         end
       end
@@ -555,7 +556,7 @@ module OpenC3
         end
       end
 
-      remote_catalog.each do |key, size|
+      remote_catalog.each do |key, _size|
         local_size = local_catalog[key]
         if local_size
           # Both files exist - Handled earlier

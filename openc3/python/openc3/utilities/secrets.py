@@ -18,7 +18,7 @@ import os
 from openc3.top_level import get_class_from_module
 from openc3.utilities.string import filename_to_class_name
 
-if os.environ.get("OPENC3_SECRET_BACKEND") is None:
+if os.getenv("OPENC3_SECRET_BACKEND") is None:
     os.environ["OPENC3_SECRET_BACKEND"] = "redis"
 
 
@@ -28,9 +28,9 @@ class Secrets:
 
     @classmethod
     def getClient(cls):
-        if not os.environ["OPENC3_SECRET_BACKEND"]:
+        if os.getenv("OPENC3_SECRET_BACKEND") is None:
             raise RuntimeError("OPENC3_SECRET_BACKEND environment variable is required")
-        secrets_file = os.environ["OPENC3_SECRET_BACKEND"].lower() + "_secrets"
+        secrets_file = os.getenv("OPENC3_SECRET_BACKEND").lower() + "_secrets"
         klass = get_class_from_module(
             f"openc3.utilities.{secrets_file}",
             filename_to_class_name(secrets_file),
@@ -38,22 +38,16 @@ class Secrets:
         return klass()
 
     def keys(self, secret_store=None, scope=None):
-        raise RuntimeError(
-            f"{self.__class__.__name__} has not implemented method 'keys'"
-        )
+        raise RuntimeError(f"{self.__class__.__name__} has not implemented method 'keys'")
 
     def get(self, key, secret_store=None, scope=None):
         return self.local_secrets[key]
 
     def set(self, key, value, secret_store=None, scope=None):
-        raise RuntimeError(
-            f"{self.__class__.__name__} has not implemented method 'set'"
-        )
+        raise RuntimeError(f"{self.__class__.__name__} has not implemented method 'set'")
 
     def delete(self, key, secret_store=None, scope=None):
-        raise RuntimeError(
-            f"{self.__class__.__name__} has not implemented method 'delete'"
-        )
+        raise RuntimeError(f"{self.__class__.__name__} has not implemented method 'delete'")
 
     def setup(self, secrets):
         for type, key, data, secret_store in secrets:

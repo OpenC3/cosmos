@@ -2,7 +2,7 @@
 appdirs==1.4.4
 atomicwrites==1.4.1
 attrs==23.1.0
-black==23.3.0
+black==24.3.0
 boto3==1.28.34
 certifi==2023.7.22
 chardet==5.1.0
@@ -11,7 +11,7 @@ colorama==0.4.6
 coverage==7.2.7
 fakeredis==2.19.0
 flake8==6.0.0
-idna==3.4
+idna==3.7
 iniconfig==2.0.0
 mccabe==0.7.0
 moto==4.2.0
@@ -25,7 +25,7 @@ pyflakes==3.0.1
 pyparsing==3.0.9
 pytest==7.3.1
 regex==2023.6.3
-requests==2.31.0
+requests==2.32.0
 toml==0.10.2
 websockets==11.0.3
 Sphinx==7.0.1

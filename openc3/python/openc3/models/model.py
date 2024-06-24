@@ -16,66 +16,85 @@
 
 import json
 import time
-from openc3.utilities.store import Store
+from typing import Optional
+
+from openc3.utilities.store import Store, EphemeralStore
+from openc3.utilities.store_queued import StoreQueued, EphemeralStoreQueued
 
 
 class Model:
+    @classmethod
+    def store(cls):
+        return Store
+
+    @classmethod
+    def store_queued(cls):
+        return StoreQueued
+
     # NOTE: The following three methods must be reimplemented by Model subclasses
     # without primary_key to support other class methods.
 
     @classmethod
-    def get(cls, primary_key, name):
-        """@return [Hash|nil] Hash of this model or nil if name not found under primary_key"""
-        json_data = Store.hget(primary_key, name)
-        if json_data:
-            return json.loads(json_data)
-        else:
-            return None
+    def get(cls, primary_key: str, name: str):
+        """
+        Return:
+            (Dict[] | None) Hash of this model or nil if name not found under primary_key
+        """
+        json_data = cls.store().hget(primary_key, name)
+        return json.loads(json_data) if json_data else None
 
     @classmethod
-    def names(cls, primary_key):
-        """@return [Array<String>] All the names stored under the primary key"""
-        keys = Store.hkeys(primary_key)
+    def names(cls, primary_key: str):
+        """
+        Return:
+            (List[str]) All the names stored under the primary key
+        """
+        keys = cls.store().hkeys(primary_key)
         keys.sort()
         return [key.decode() for key in keys]
 
     @classmethod
-    def all(cls, primary_key):
-        """@return [Array<Hash>] All the models (as Hash objects) stored under the primary key"""
-        base = Store.hgetall(primary_key)
+    def all(cls, primary_key: str):
+        """
+        Return:
+             (List[Dict]) All the models (as Hash objects) stored under the primary key
+        """
+        base = cls.store().hgetall(primary_key)
         # decode the binary string keys to strings
-        hash = {k.decode(): v for (k, v) in base.items()}
-        for key, value in hash.items():
-            hash[key] = json.loads(value)
-        return hash
+        hash_ = {k.decode(): v for (k, v) in base.items()}
+        for key, value in hash_.items():
+            hash_[key] = json.loads(value)
+        return hash_
 
     # END NOTE
 
-    # Sets (updates) the redis hash of this model
     @classmethod
-    def set(cls, json, scope):
-        json["scope"] = scope
-        cls(**json).create(force=True)
+    def set(cls, json_data: dict, scope: str, queued: bool = False):
+        """Sets (updates) the redis hash of this model"""
+        json_data["scope"] = scope
+        cls(**json_data).create(force=True, queued=queued)
 
-    # @return [Model] Model generated from the passed JSON
     @classmethod
-    def from_json(cls, json_data, scope):
-        if type(json_data) == str:
+    def from_json(cls, json_data: str | dict, scope: str):
+        """
+        Return:
+            [Model] Model generated from the passed JSON
+        """
+        if type(json_data) is str:
             json_data = json.loads(json_data)
         if json_data is None:
             raise RuntimeError("json data is nil")
         json_data["scope"] = scope
         return cls(**json_data)
 
-    # Calls self.get and then from_json to turn the Hash configuration into a Ruby Model object.
-    # @return [Object|nil] Model object or nil if name not found under primary_key
     @classmethod
-    def get_model(cls, name, scope):
-        json = cls.get(name, scope)
-        if json:
-            return cls.from_json(json, scope)
-        else:
-            return None
+    def get_model(cls, name: str, scope: str):
+        """Calls self.get_model and then from_json to turn the Hash configuration into a Ruby Model object.
+        Return:
+            [Object|nil] Model object or nil if name not found under primary_key
+        """
+        json_data = cls.get(name, scope)
+        return cls.from_json(json_data, scope) if json_data else None
 
     # NOTE: get_all_models not implemented as it is currently
     # unused by any python models
@@ -83,56 +102,70 @@ class Model:
     # NOTE: find_all_by_plugin, handle_config not implemented as it is
     # only needed by plugin_model which is Ruby only
 
-    # Store the primary key and keyword arguments
-    def __init__(self, primary_key, **kw_args):
-        self.primary_key = primary_key
-        self.name = kw_args.get("name")
-        self.updated_at = kw_args.get("updated_at")
-        self.plugin = kw_args.get("plugin")
-        self.scope = kw_args.get("scope")
-        self.destroyed = False
+    def __init__(self, primary_key: str, **kw_args):
+        """Store the primary key and keyword arguments"""
+        self.primary_key: str = primary_key
+        self.name: Optional[str] = kw_args.get("name")
+        self.updated_at: Optional[float] = kw_args.get("updated_at")
+        self.plugin: Optional[str] = kw_args.get("plugin")
+        self.scope: Optional[str] = kw_args.get("scope")
+        self.destroyed: bool = False
 
-    # Update the Redis hash at primary_key and set the field "name"
-    # to the JSON generated via calling as_json
-    def create(self, update=False, force=False):
+    def create(self, update=False, force=False, queued=False):
+        """Update the Redis hash at primary_key and set the field "name"
+        to the JSON generated via calling as_json
+        """
         if not force:
-            existing = Store.hget(self.primary_key, self.name)
+            existing = self.store().hget(self.primary_key, self.name)
             if existing and not update:
-                raise RuntimeError(
-                    f"{self.primary_key}:{self.name} already exists at create"
-                )
+                raise RuntimeError(f"{self.primary_key}:{self.name} already exists at create")
             if not existing and update:
-                raise RuntimeError(
-                    f"{self.primary_key}:{self.name} doesn't exist at update"
-                )
+                raise RuntimeError(f"{self.primary_key}:{self.name} doesn't exist at update")
         self.updated_at = time.time() * 1_000_000_000
-        Store.hset(self.primary_key, self.name, json.dumps(self.as_json()))
 
-    # Alias for create(update: true)
-    def update(self):
-        self.create(update=True)
+        write_store = self.store_queued() if queued else self.store()
+        write_store.hset(self.primary_key, self.name, json.dumps(self.as_json()))
 
-    # Deploy the model into the OpenC3 system. Subclasses must implement this
-    # and typically create MicroserviceModels to implement.
-    def deploy(self, gem_path, variables):
-        raise RuntimeError("must be implemented by subclass")
+    def update(self, force=False, queued=True):
+        """Alias for create(update: true)"""
+        self.create(update=True, force=force, queued=queued)
 
-    # Undo the actions of deploy and remove the model from OpenC3.
-    # Subclasses must implement this as by default it is a noop.
+    def deploy(self, gem_path: str, variables: str):
+        """Deploy the model into the OpenC3 system. Subclasses must implement this
+        and typically create MicroserviceModels to implement.
+        """
+        raise NotImplementedError("must be implemented by subclass")
+
     def undeploy(self):
+        """Undo the actions of deploy and remove the model from OpenC3.
+        Subclasses must implement this as by default it is a noop.
+        """
         pass
 
-    # Delete the model from the Store
     def destroy(self):
+        """Delete the model from the Store"""
         self.destroyed = True
         self.undeploy()
-        Store.hdel(self.primary_key, self.name)
+        self.store().hdel(self.primary_key, self.name)
 
-    # @return [Hash] JSON encoding of this model
     def as_json(self):
+        """
+        Return:
+            (dict) JSON encoding of this model
+        """
         return {
             "name": self.name,
             "updated_at": self.updated_at,
             "plugin": self.plugin,
             "scope": self.scope,
         }
+
+
+class EphemeralModel(Model):
+    @classmethod
+    def store(cls):
+        return EphemeralStore
+
+    @classmethod
+    def store_queued(cls):
+        return EphemeralStoreQueued

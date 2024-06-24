@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -21,13 +21,13 @@
 -->
 
 <template>
-  <v-container class="pt-0">
-    <v-row dense>
-      <v-col>
+  <div class="pa-2">
+    <v-row dense class="mb-2">
+      <v-col cols="4">
         <v-text-field
           v-model="filterText"
-          class="pt-0 mt-0"
           label="Search"
+          class="search"
           prepend-inner-icon="mdi-magnify"
           clearable
           outlined
@@ -37,9 +37,7 @@
           data-test="history-component-search"
         />
       </v-col>
-    </v-row>
-    <v-row>
-      <v-col>
+      <v-col cols="8" class="mt-1">
         <v-slider
           v-model="pauseOffset"
           v-on:mousedown="pause"
@@ -62,7 +60,7 @@
           <v-textarea
             ref="textarea"
             :value="displayText"
-            rows="1"
+            :rows="rows"
             no-resize
             readonly
             solo
@@ -197,7 +195,7 @@
         </div>
       </v-col>
     </v-row>
-  </v-container>
+  </div>
 </template>
 
 <script>
@@ -217,6 +215,7 @@ export default {
       pausedAt: 0,
       pauseOffset: 0,
       pausedHistory: [],
+      rows: 1,
       textarea: null,
       displayText: '',
       rules: {
@@ -315,6 +314,7 @@ export default {
         join += '\n'
       }
       this.displayText = packets.join(join)
+      this.rows = this.displayText.split('\n').length
     },
     matchesSearch: function (text) {
       if (this.filterText === null) {
@@ -323,7 +323,7 @@ export default {
       return text
         .split('\n')
         .filter((line) =>
-          line.toLowerCase().includes(this.filterText.toLowerCase()),
+          line.toLowerCase().includes(this.filterText.toLowerCase())
         )
         .join('\n')
     },
@@ -337,7 +337,7 @@ export default {
       link.href = url
       link.setAttribute(
         'download',
-        `${format(new Date(), 'yyyy_MM_dd_HH_mm_ss')}.txt`,
+        `${format(new Date(), 'yyyy_MM_dd_HH_mm_ss')}.txt`
       )
       link.click()
       window.URL.revokeObjectURL(url)
@@ -360,10 +360,26 @@ export default {
 }
 </script>
 
+<style>
+/* Flash the chevron icon 3 times to let the user know they can minimize the controls */
+i.v-icon.mdi-chevron-down {
+  animation: pulse 2s 3;
+}
+@keyframes pulse {
+  0% {
+    -webkit-box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
+  }
+  70% {
+    -webkit-box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
+  }
+  100% {
+    -webkit-box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
+}
+</style>
 <style lang="scss" scoped>
 .text-area-container {
   position: relative;
-  height: 60vh;
   .v-textarea {
     font-family: 'Courier New', Courier, monospace;
   }
@@ -374,10 +390,6 @@ export default {
     right: 24px;
   }
 }
-.text-area-container :deep(textarea) {
-  height: 60vh;
-}
-
 .pulse {
   animation: pulse 2s infinite;
 }

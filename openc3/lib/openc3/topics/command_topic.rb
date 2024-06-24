@@ -21,6 +21,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/topics/topic'
+require 'openc3/utilities/store_queued'
 require 'openc3/utilities/open_telemetry'
 
 module OpenC3
@@ -36,7 +37,7 @@ module OpenC3
                    received_count: packet.received_count,
                    stored: packet.stored.to_s,
                    buffer: packet.buffer(false) }
-      Topic.write_topic(topic, msg_hash)
+      EphemeralStoreQueued.write_topic(topic, msg_hash)
     end
 
     # @param command [Hash] Command hash structure read to be written to a topic

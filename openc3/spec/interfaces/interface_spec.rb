@@ -69,7 +69,7 @@ module OpenC3
     end
     alias write_packet read_packet
 
-    def post_write_interface(packet, data, extra = nil)
+    def post_write_interface(packet, data, _extra = nil)
       $packet = packet
       $data = data
     end
@@ -289,7 +289,7 @@ module OpenC3
 
           def read_interface; data = "\x01\x02\x03\x04"; read_interface_base(data); data; end
 
-          def post_read_packet(packet); nil; end
+          def post_read_packet(_packet); nil; end
         end
         interface.add_protocol(InterfaceTestProtocol, [nil, 0, :DISCONNECT], :READ)
         packet = interface.read
@@ -369,7 +369,7 @@ module OpenC3
 
           def connected?; true; end
 
-          def write_interface(data, extra = nil); raise "Doom"; end
+          def write_interface(_data, _extra = nil); raise "Doom"; end
         end
         expect { interface.write(packet) }.to raise_error(/Doom/)
         expect(interface.disconnect_called).to be true
@@ -561,9 +561,22 @@ module OpenC3
     end
 
     describe "interface_cmd" do
-      it "just returns false by default" do
+      it "clears counters" do
         i = Interface.new
-        expect(i.interface_cmd("SOMETHING", "WITH", "ARGS")).to eql false
+        i.write_queue_size = 7
+        i.read_queue_size = 7
+        i.bytes_written = 7
+        i.bytes_read = 7
+        i.write_count = 7
+        i.read_count = 7
+
+        i.interface_cmd("clear_counters")
+        expect(i.write_queue_size).to eql 0
+        expect(i.read_queue_size).to eql 0
+        expect(i.bytes_written).to eql 0
+        expect(i.bytes_read).to eql 0
+        expect(i.write_count).to eql 0
+        expect(i.read_count).to eql 0
       end
     end
 

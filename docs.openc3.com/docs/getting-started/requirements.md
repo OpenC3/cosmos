@@ -1,5 +1,5 @@
 ---
-sidebar_position: 5
+sidebar_position: 6
 title: Requirements and Design
 ---
 
@@ -44,7 +44,7 @@ The COSMOS system uses several terms that are important to understand. The follo
 
 The following diagram shows the COSMOS 5 architecture.
 
-COSMOS Architecture /img/v5/architecture.png
+![COSMOS Architecture](/img/architecture.png)
 
 Key aspects of this architecture:
 
@@ -251,8 +251,6 @@ Data Viewer provides for textual display of telemetry packets where other displa
 
 ## Calendar
 
-Calendar
-
 The Calendar tool provides a user interface and API for initiating scheduled actions in COSMOS
 
 | Reqt. ID | Description                                                    | Test Description                           |
@@ -267,8 +265,6 @@ The Calendar tool provides a user interface and API for initiating scheduled act
 | TL-8     | Calendar shall allow deleting timelines                        | Delete a timeline                          |
 
 ## Admin
-
-Admin
 
 The Admin tool provides administrative functionality including managing plugins for the COSMOS system
 

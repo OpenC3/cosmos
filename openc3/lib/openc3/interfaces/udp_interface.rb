@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -88,6 +88,16 @@ module OpenC3
       @read_allowed = false unless @read_port
       @write_allowed = false unless @write_dest_port
       @write_raw_allowed = false unless @write_dest_port
+    end
+
+    def connection_string
+      result = ''
+      result += " #{@hostname}:#{@write_dest_port} (write dest port)" if @write_dest_port
+      result += " #{@write_src_port} (write src port)" if @write_src_port
+      result += " #{@hostname}:#{@read_port} (read)" if @read_port
+      result += " #{@interface_address} (interface addr)" if @interface_address
+      result += " #{@bind_address} (bind addr)" if @bind_address != '0.0.0.0'
+      return result.strip
     end
 
     # Creates a new {UdpWriteSocket} if the the write_dest_port was given in

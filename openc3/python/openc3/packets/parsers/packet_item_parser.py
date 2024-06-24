@@ -49,16 +49,9 @@ class PacketItemParser:
 
     def verify_parameters(self, cmd_or_tlm):
         if "ITEM" in self.parser.keyword and cmd_or_tlm == PacketItemParser.COMMAND:
-            raise self.parser.error(
-                "ITEM types are only valid with TELEMETRY", self.usage
-            )
-        elif (
-            "PARAMETER" in self.parser.keyword
-            and cmd_or_tlm == PacketItemParser.TELEMETRY
-        ):
-            raise self.parser.error(
-                "PARAMETER types are only valid with COMMAND", self.usage
-            )
+            raise self.parser.error("ITEM types are only valid with TELEMETRY", self.usage)
+        elif "PARAMETER" in self.parser.keyword and cmd_or_tlm == PacketItemParser.TELEMETRY:
+            raise self.parser.error("PARAMETER types are only valid with COMMAND", self.usage)
 
         # The usage is formatted with brackets <XXX> around each option so
         # count the number of open brackets to determine the number of options
@@ -71,9 +64,7 @@ class PacketItemParser:
         try:
             item_name = self.parser.parameters[0].upper()
             if packet.items.get(item_name):
-                msg = (
-                    f"{packet.target_name} {packet.packet_name} {item_name} redefined."
-                )
+                msg = f"{packet.target_name} {packet.packet_name} {item_name} redefined."
                 Logger.warn(msg)
                 self.warnings.append(msg)
             item = PacketItem(

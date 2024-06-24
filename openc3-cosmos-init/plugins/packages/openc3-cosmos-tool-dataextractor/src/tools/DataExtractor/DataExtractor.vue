@@ -152,7 +152,7 @@
             dense
             single-line
             hide-details
-            style="max-width: 350px"
+            class="search"
           />
         </v-card-title>
         <v-data-table
@@ -193,35 +193,48 @@
                   <span> DataExtractor: Edit Item Mode </span>
                   <v-spacer />
                 </v-system-bar>
-                <v-card-title>{{ getItemLabel(item) }}</v-card-title>
                 <v-card-text>
-                  <v-col>
-                    <v-select
-                      hide-details
-                      :items="modes"
-                      label="Mode"
-                      outlined
-                      v-model="item.mode"
-                    />
-                    <v-select
-                      hide-details
-                      :items="valueTypes"
-                      label="Value Type"
-                      outlined
-                      v-model="item.valueType"
-                    />
-                    <v-select
-                      hide-details
-                      :items="reducedTypes"
-                      label="Reduced Type"
-                      outlined
-                      v-model="item.reducedType"
-                    />
-                  </v-col>
+                  <v-row class="mt-3 title-font">
+                    <v-col>
+                      {{ getItemLabel(item) }}
+                    </v-col></v-row
+                  >
+                  <v-row>
+                    <v-col>
+                      <v-select
+                        hide-details
+                        :items="modes"
+                        label="Mode"
+                        outlined
+                        v-model="item.mode" /></v-col
+                  ></v-row>
+                  <v-row
+                    ><v-col>
+                      <v-select
+                        hide-details
+                        :items="valueTypes"
+                        label="Value Type"
+                        outlined
+                        v-model="item.valueType" /></v-col
+                  ></v-row>
+                  <v-row
+                    ><v-col>
+                      <v-select
+                        hide-details
+                        :items="reducedTypes"
+                        label="Reduced Type"
+                        outlined
+                        v-model="item.reducedType"
+                      /> </v-col
+                  ></v-row>
                 </v-card-text>
                 <v-card-actions>
                   <v-spacer />
-                  <v-btn color="primary" @click="item.edit = false">
+                  <v-btn
+                    color="primary"
+                    class="mx-2"
+                    @click="item.edit = false"
+                  >
                     Close
                   </v-btn>
                 </v-card-actions>
@@ -248,31 +261,40 @@
           <span> DataExtractor: Edit All Items</span>
           <v-spacer />
         </v-system-bar>
-        <v-card-text class="mt-2">
-          This will change all items to the following data type!
-          <v-col>
-            <v-select
-              hide-details
-              :items="modes"
-              label="Mode"
-              outlined
-              v-model="allItemMode"
-            />
-            <v-select
-              hide-details
-              :items="valueTypes"
-              label="Value Type"
-              outlined
-              v-model="allItemValueType"
-            />
-            <v-select
-              hide-details
-              :items="reducedTypes"
-              label="Reduced Type"
-              outlined
-              v-model="allItemReducedType"
-            />
-          </v-col>
+        <v-card-text>
+          <v-row class="mt-3">
+            <v-col>
+              This will change all items to the following data type!
+            </v-col></v-row
+          >
+          <v-row
+            ><v-col>
+              <v-select
+                hide-details
+                :items="modes"
+                label="Mode"
+                outlined
+                v-model="allItemMode" /></v-col
+          ></v-row>
+          <v-row
+            ><v-col>
+              <v-select
+                hide-details
+                :items="valueTypes"
+                label="Value Type"
+                outlined
+                v-model="allItemValueType" /></v-col
+          ></v-row>
+          <v-row
+            ><v-col>
+              <v-select
+                hide-details
+                :items="reducedTypes"
+                label="Reduced Type"
+                outlined
+                v-model="allItemReducedType"
+              /> </v-col
+          ></v-row>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
@@ -910,7 +932,9 @@ export default {
           let columnIndex = columnMap[key]
           // Get the value and put it into the correct column
           if (typeof packet[key] === 'object') {
-            if (Array.isArray(packet[key])) {
+            if (packet[key] === null) {
+              row[columnIndex] = ''
+            } else if (Array.isArray(packet[key])) {
               row[columnIndex] = '"[' + packet[key] + ']"'
             } else {
               let rawVal = packet[key]['raw']
@@ -1014,6 +1038,9 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+.title-font {
+  font-size: 1.125rem;
+}
 // Disable transition animations to allow bar to grow faster
 .v-progress-linear__determinate {
   transition: none !important;

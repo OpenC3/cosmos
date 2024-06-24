@@ -28,7 +28,7 @@ test.use({
 // Helper function to select a parameter dropdown
 async function selectValue(page, param, value) {
   let row = page.locator(`tr:has-text("${param}")`)
-  await row.getByRole('combobox').click()
+  await row.getByRole('button').click()
   await page.getByRole('option', { name: value }).click()
 }
 
@@ -77,6 +77,7 @@ test('selects a target and packet', async ({ page, utils }) => {
 
 test('displays INST COLLECT using the route', async ({ page, utils }) => {
   await page.goto('/tools/cmdsender/INST/COLLECT')
+  await expect(page.locator('.v-app-bar')).toContainText('Command Sender')
   await utils.inputValue(page, '[data-test=select-target] input', 'INST')
   await utils.inputValue(page, '[data-test=select-packet] input', 'COLLECT')
   await expect(page.locator('main')).toContainText('Starts a collect')
@@ -104,6 +105,7 @@ test('displays parameter units, ranges and description', async ({
 })
 
 test('supports manually entered state values', async ({ page, utils }) => {
+  await page.locator('[data-test="clear-history"]').click()
   await utils.selectTargetPacketItem('INST', 'COLLECT')
   await setValue(page, 'TYPE', '3')
   // Typing in the state value should automatically switch the state
@@ -130,6 +132,7 @@ test('supports manually entered state values', async ({ page, utils }) => {
 })
 
 test('warns for hazardous commands', async ({ page, utils }) => {
+  await page.locator('[data-test="clear-history"]').click()
   await utils.selectTargetPacketItem('INST', 'CLEAR')
   await expect(page.locator('main')).toContainText('Clears counters')
   await page.locator('[data-test="select-send"]').click()
@@ -183,6 +186,7 @@ test('warns for required parameters', async ({ page, utils }) => {
 })
 
 test('warns for hazardous parameters', async ({ page, utils }) => {
+  await page.locator('[data-test="clear-history"]').click()
   await utils.selectTargetPacketItem('INST', 'COLLECT')
   await selectValue(page, 'TYPE', 'SPECIAL')
   await page.locator('[data-test="select-send"]').click()
@@ -204,6 +208,7 @@ test('handles float values and scientific notation', async ({
   page,
   utils,
 }) => {
+  await page.locator('[data-test="clear-history"]').click()
   await utils.selectTargetPacketItem('INST', 'FLTCMD')
   await setValue(page, 'FLOAT32', '123.456')
   await setValue(page, 'FLOAT64', '12e3')
@@ -218,6 +223,7 @@ test('handles float values and scientific notation', async ({
 })
 
 test('handles NaN and Infinite values', async ({ page, utils }) => {
+  await page.locator('[data-test="clear-history"]').click()
   await utils.selectTargetPacketItem('INST', 'FLTCMD')
   await setValue(page, 'FLOAT32', 'NAN')
   await setValue(page, 'FLOAT64', 'nan')
@@ -251,6 +257,7 @@ test('handles NaN and Infinite values', async ({ page, utils }) => {
 })
 
 test('handles array values', async ({ page, utils }) => {
+  await page.locator('[data-test="clear-history"]').click()
   await utils.selectTargetPacketItem('INST', 'ARYCMD')
   await setValue(page, 'ARRAY', '10')
   await page.locator('[data-test="select-send"]').click()
@@ -272,7 +279,7 @@ test('handles string values', async ({ page, utils }) => {
   await expect(page.locator('main')).toContainText('ASCII command')
   // The default text 'NOOP' should be selected
   let row = page.locator(`tr:has-text("STRING")`)
-  await expect(row.getByRole('combobox')).toContainText('NOOP')
+  await expect(row.getByRole('button')).toContainText('NOOP')
   await checkValue(page, 'STRING', 'NOOP')
   await page.locator('[data-test="select-send"]').click()
   await expect(page.locator('main')).toContainText(
@@ -301,7 +308,7 @@ test('handles string values', async ({ page, utils }) => {
   // Manually typing in an existing state value should change the state drop down
   await setValue(page, 'STRING', 'FIRE LASER')
   await expect(
-    page.locator('div[role=combobox]:has-text("FIRE LASER")'),
+    page.locator('div[role=button]:has-text("FIRE LASER")'),
   ).toBeVisible()
 })
 
@@ -315,6 +322,7 @@ test('gets details with right click', async ({ page, utils }) => {
 })
 
 test('executes commands from history', async ({ page, utils }) => {
+  await page.locator('[data-test="clear-history"]').click()
   await utils.selectTargetPacketItem('INST', 'CLEAR')
   await page.locator('[data-test="select-send"]').click()
   await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click()
@@ -380,9 +388,30 @@ test('executes commands from history', async ({ page, utils }) => {
     page,
     'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 5")',
   )
+
+  // Reload page and verify history still exists
+  await page.reload()
+  await checkHistory(page, 'cmd("INST CLEAR")')
+  await checkHistory(
+    page,
+    'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1")',
+  )
+  await checkHistory(
+    page,
+    'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 5")',
+  )
+  // Clear history and verify cleared
+  let text = await page.locator('[data-test=sender-history]').innerText()
+  expect(text).toContain('INST CLEAR')
+  expect(text).toContain('INST SETPARAMS')
+  await page.locator('[data-test="clear-history"]').click()
+  await expect
+    .poll(() => page.locator('[data-test=sender-history]').innerText())
+    .not.toContain('INST CLEAR')
 })
 
 test('send vs history', async ({ page, utils }) => {
+  await page.locator('[data-test="clear-history"]').click()
   await utils.selectTargetPacketItem('INST', 'ABORT')
   await page.locator('[data-test="select-send"]').click()
   await expect(page.locator('main')).toContainText('cmd("INST ABORT") sent')
@@ -406,6 +435,7 @@ test('send vs history', async ({ page, utils }) => {
 })
 
 test('hazardous commands from history', async ({ page, utils }) => {
+  await page.locator('[data-test="clear-history"]').click()
   await utils.selectTargetPacketItem('INST', 'CLEAR')
   await page.locator('[data-test="select-send"]').click()
   await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click()
@@ -438,6 +468,7 @@ test('hazardous commands from history', async ({ page, utils }) => {
 // Test the Mode menu
 //
 test('ignores normal range checks', async ({ page, utils }) => {
+  await page.locator('[data-test="clear-history"]').click()
   await utils.selectTargetPacketItem('INST', 'COLLECT')
   await selectValue(page, 'TYPE', 'NORMAL') // Ensure TYPE is set since its required
   await setValue(page, 'TEMP', '100')
@@ -459,6 +490,7 @@ test('ignores normal range checks', async ({ page, utils }) => {
 })
 
 test('ignores hazardous range checks', async ({ page, utils }) => {
+  await page.locator('[data-test="clear-history"]').click()
   await utils.selectTargetPacketItem('INST', 'COLLECT')
   await selectValue(page, 'TYPE', 'SPECIAL') // Special is hazardous
   await setValue(page, 'TEMP', '100')
@@ -507,6 +539,7 @@ test('shows ignored parameters', async ({ page, utils }) => {
 // check the raw buffer, then send it with parameter conversions disabled,
 // and re-check the raw buffer for a change.
 test('disable parameter conversions', async ({ page, utils }) => {
+  await page.locator('[data-test="clear-history"]').click()
   await utils.selectTargetPacketItem('INST', 'SETPARAMS')
   await page.locator('[data-test="select-send"]').click()
   await page.locator('rux-icon-apps path').click()
@@ -524,7 +557,7 @@ test('disable parameter conversions', async ({ page, utils }) => {
     timeout: 20000,
   })
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    '00000010: 00 02',
+    '00000010: 02 00',
   )
 
   await page.locator('text=Command Sender').click()
@@ -564,6 +597,6 @@ test('disable parameter conversions', async ({ page, utils }) => {
     timeout: 20000,
   })
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    '00000010: 00 01',
+    '00000010: 01 00',
   )
 })

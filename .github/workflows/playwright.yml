@@ -61,18 +61,19 @@ jobs:
         working-directory: playwright
       - name: Run Playwright tests
         # Run separately to allow for parallelism
-        run: ./playwright.sh run-chromium
+        run: ./playwright.sh run-chromium --grep-invert enterprise
         working-directory: playwright
       - name: Generate coverage
         run: yarn fixlinux; yarn cobertura
         working-directory: playwright
-      - uses: codecov/codecov-action@v3
+      - uses: codecov/codecov-action@v4
         with:
           directory: playwright/coverage
           flags: frontend # See codecov.yml
+          token: ${{ secrets.CODECOV_TOKEN }}
       - name: Upload test artifacts
         if: always() # Upload on pass or fail
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: playwright
           path: playwright/test-results

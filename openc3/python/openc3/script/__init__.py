@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -15,9 +15,11 @@
 # if purchased from OpenC3, Inc.
 
 from openc3.api import WHITELIST
-from openc3.script.server_proxy import ServerProxy
+from openc3.script.server_proxy import ApiServerProxy, ScriptServerProxy
+from openc3.utilities.extract import convert_to_value
 
-API_SERVER = ServerProxy()
+API_SERVER = ApiServerProxy()
+SCRIPT_RUNNER_API_SERVER = ScriptServerProxy()
 RUNNING_SCRIPT = None
 DISCONNECT = False
 OPENC3_IN_CLUSTER = False
@@ -28,6 +30,29 @@ if "openc3-cosmos-cmd-tlm-api" in API_SERVER.generate_url():
 def shutdown_script():
     global API_SERVER
     API_SERVER.shutdown()
+    global SCRIPT_RUNNER_API_SERVER
+    SCRIPT_RUNNER_API_SERVER.shutdown()
+
+
+def prompt_for_hazardous(target_name, cmd_name, hazardous_description):
+    """ """
+    message_list = [f"Warning: Command {target_name} {cmd_name} is Hazardous. "]
+    if hazardous_description:
+        message_list.append(hazardous_description)
+    message_list.append("Send? (y/N): ")
+    answer = input("\n".join(message_list))
+    try:
+        return answer.lower()[0] == "y"
+    except IndexError:
+        return False
+
+
+def _file_dialog(title, message, filter=None):
+    answer = ""
+    while len(answer) == 0:
+        print(f"{title}\n{message}\n<Type file name>:")
+        answer = input()
+    return answer
 
 
 ###########################################################################
@@ -40,7 +65,72 @@ def disconnect_script():
     DISCONNECT = True
 
 
-# TODO: Add public apis equivalent from ruby script.rb
+def ask_string(question, blank_or_default=False, password=False):
+    answer = ""
+    default = None
+    if blank_or_default is not True and blank_or_default is not False:
+        question += f" (default = {blank_or_default})"
+        default = str(blank_or_default)
+        allow_blank = True
+    else:
+        allow_blank = blank_or_default
+    while len(answer) == 0:
+        print(question + " ")
+        answer = input()
+        if allow_blank:
+            break
+    if len(answer) == 0 and default:
+        answer = default
+    return answer
+
+
+def ask(question, blank_or_default=False, password=False):
+    string = ask_string(question, blank_or_default, password)
+    value = convert_to_value(string)
+    return value
+
+
+def message_box(string, *buttons, **options):
+    print(f"{string} ({', '.join(buttons)}): ")
+    if "details" in options:
+        print(f"Details: {options['details']}\n")
+    return input()
+
+
+def vertical_message_box(string, *buttons, **options):
+    return message_box(string, *buttons, **options)
+
+
+def combo_box(string, *buttons, **options):
+    return message_box(string, *buttons, **options)
+
+
+def metadata_input():
+    # TODO: Not currently implemented
+    pass
+
+
+def open_file_dialog(title, message="Open File", filter=None):
+    _file_dialog(title, message, filter)
+
+
+def open_files_dialog(title, message="Open File", filter=None):
+    _file_dialog(title, message, filter)
+
+
+def prompt(
+    string,
+    text_color=None,
+    background_color=None,
+    font_size=None,
+    font_family=None,
+    details=None,
+):
+    print(f"{string}: ")
+    if details:
+        print(f"Details: {details}\n")
+    return input()
+
 
 ###########################################################################
 # END PUBLIC API
@@ -54,6 +144,7 @@ from .limits import *
 from .telemetry import *
 from .metadata import *
 from .screen import *
+from .script_runner import *
 from .storage import *
 
 # Define all the WHITELIST methods

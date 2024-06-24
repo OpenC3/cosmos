@@ -21,12 +21,6 @@ chmod -R +r .
 
 # openc3-ruby
 cd openc3-ruby
-curl -G https://cache.ruby-lang.org/pub/ruby/3.2/ruby-3.2.2.tar.gz > ruby-3.2.tar.gz
-if command -v shasum &> /dev/null
-then
-  echo '96c57558871a6748de5bc9f274e93f4b5aad06cd8f37befa0e8d94e7b8a423bc  ruby-3.2.tar.gz' | shasum -a 256 -c
-fi
-
 docker build \
   -f Dockerfile-ubi \
   --network host \
@@ -34,6 +28,7 @@ docker build \
   --build-arg OPENC3_UBI_IMAGE=$OPENC3_UBI_IMAGE \
   --build-arg OPENC3_UBI_TAG=$OPENC3_UBI_TAG \
   --build-arg RUBYGEMS_URL=$RUBYGEMS_URL \
+  --build-arg PYPI_URL=$PYPI_URL \
   --platform linux/amd64 \
   -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-ruby-ubi:${OPENC3_TAG}" \
   .
@@ -60,16 +55,19 @@ docker build \
   --build-arg OPENC3_REGISTRY=$OPENC3_REGISTRY \
   --build-arg OPENC3_NAMESPACE=$OPENC3_NAMESPACE \
   --build-arg OPENC3_TAG=$OPENC3_TAG \
+  --build-arg NPM_URL=$NPM_URL \
   --platform linux/amd64 \
   -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-node-ubi:${OPENC3_TAG}" \
   .
 cd ..
 
 # openc3-minio
+# NOTE: RELEASE.2023-10-16T04-13-43Z is the last MINIO release to support UBI8
 cd openc3-minio
 docker build \
   --network host \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource \
+  --build-arg OPENC3_MINIO_RELEASE=RELEASE.2023-10-16T04-13-43Z \
   --platform linux/amd64 \
   -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-minio-ubi:${OPENC3_TAG}" \
   .
@@ -127,22 +125,28 @@ docker build \
 cd ..
 
 # openc3-traefik
+if [[ -z $TRAEFIK_CONFIG ]]; then
+  export TRAEFIK_CONFIG=traefik.yaml
+fi
 cd openc3-traefik
 docker build \
   --network host \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource/traefik \
+  --build-arg TRAEFIK_CONFIG=$TRAEFIK_CONFIG \
   --platform linux/amd64 \
   -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-traefik-ubi:${OPENC3_TAG}" \
   .
 cd ..
 
 # openc3-cosmos-init
+# NOTE: RELEASE.2023-10-14T01-57-03Z is the last MINIO/MC release to support UBI8
 cd openc3-cosmos-init
 docker build \
   --network host \
   --build-context docs=../docs.openc3.com \
   --build-arg NPM_URL=$NPM_URL \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource \
+  --build-arg OPENC3_MC_RELEASE=RELEASE.2023-10-14T01-57-03Z \
   --build-arg OPENC3_BASE_IMAGE=openc3-base-ubi \
   --build-arg OPENC3_NODE_IMAGE=openc3-node-ubi \
   --build-arg OPENC3_REGISTRY=$OPENC3_REGISTRY \

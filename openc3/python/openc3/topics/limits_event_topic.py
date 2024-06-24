@@ -109,9 +109,7 @@ class LimitsEventTopic(Topic):
         final_result = []
         topic = f"{scope}__openc3_limits_events"
         if offset is not None:
-            for topic, msg_id, msg_hash, redis in Topic.read_topics(
-                [topic], [offset], None, count
-            ):
+            for topic, msg_id, msg_hash, redis in Topic.read_topics([topic], [offset], None, count):
                 # result = Topic.read_topics([topic], [offset], None, count)
                 # if len(result) != 0:
                 # result is a hash with the topic key followed by an array of results
@@ -142,9 +140,7 @@ class LimitsEventTopic(Topic):
                 "YELLOW_LOW",
             ]:
                 target_name, packet_name, item_name = item.split("__")
-                out_of_limits.append(
-                    [target_name, packet_name, item_name, limits_state]
-                )
+                out_of_limits.append([target_name, packet_name, item_name, limits_state])
         return out_of_limits
 
     # Returns all the limits sets as keys with the value 'true' or 'false'
@@ -247,9 +243,7 @@ class LimitsEventTopic(Topic):
                     if target:
                         packet = target[packet_name]
                         if packet:
-                            enabled = ConfigParser.handle_true_false_none(
-                                event["enabled"]
-                            )
+                            enabled = ConfigParser.handle_true_false_none(event["enabled"])
                             persistence = event["persistence"]
                             System.limits.set(
                                 target_name,
@@ -274,17 +268,11 @@ class LimitsEventTopic(Topic):
                     if target:
                         packet = target[packet_name]
                         if packet:
-                            enabled = ConfigParser.handle_true_false_none(
-                                event["enabled"]
-                            )
+                            enabled = ConfigParser.handle_true_false_none(event["enabled"])
                             if enabled:
-                                System.limits.enable(
-                                    target_name, packet_name, item_name
-                                )
+                                System.limits.enable(target_name, packet_name, item_name)
                             else:
-                                System.limits.disable(
-                                    target_name, packet_name, item_name
-                                )
+                                System.limits.disable(target_name, packet_name, item_name)
 
                 case "LIMITS_SET":
                     pass  # Ignore, System.limits_set() always queries Redis

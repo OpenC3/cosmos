@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -41,6 +41,8 @@ module OpenC3
                        'cmd_raw_no_checks',
                        'build_cmd',
                        'build_command', # DEPRECATED
+                       'enable_cmd',
+                       'disable_cmd',
                        'send_raw',
                        'get_all_cmds',
                        'get_all_commands', # DEPRECATED
@@ -131,6 +133,30 @@ module OpenC3
     # build_command is DEPRECATED
     alias build_command build_cmd
 
+    # Helper method for disable_cmd / enable_cmd
+    def _get_and_set_cmd(method, *args, scope: $openc3_scope, token: $openc3_token)
+      target_name, command_name = _extract_target_command_names(method, *args)
+      authorize(permission: 'admin', target_name: target_name, packet_name: command_name, scope: scope, token: token)
+      command = yield TargetModel.packet(target_name, command_name, type: :CMD, scope: scope)
+      TargetModel.set_packet(target_name, command_name, command, type: :CMD, scope: scope)
+    end
+
+    # @since 5.15.1
+    def enable_cmd(*args, scope: $openc3_scope, token: $openc3_token)
+      _get_and_set_cmd('enable_cmd', *args, scope: scope, token: token) do |command|
+        command['disabled'] = false
+        command
+      end
+    end
+
+    # @since 5.15.1
+    def disable_cmd(*args, scope: $openc3_scope, token: $openc3_token)
+      _get_and_set_cmd('disable_cmd', *args, scope: scope, token: token) do |command|
+        command['disabled'] = true
+        command
+      end
+    end
+
     # Send a raw binary string to the specified interface.
     #
     # @param interface_name [String] The interface to send the raw binary
@@ -178,10 +204,21 @@ module OpenC3
     # @since 5.0.6
     # @param target_name [String] Name of the target
     # @return [Array<String>] Array of all command packet names
-    def get_all_cmd_names(target_name, scope: $openc3_scope, token: $openc3_token)
-      target_name = target_name.upcase
-      authorize(permission: 'cmd_info', target_name: target_name, scope: scope, token: token)
-      TargetModel.packet_names(target_name, type: :CMD, scope: scope)
+    def get_all_cmd_names(target_name, hidden: false, scope: $openc3_scope, token: $openc3_token)
+      begin
+        packets = get_all_cmds(target_name, scope: scope, token: token)
+      rescue RuntimeError
+        packets = []
+      end
+      names = []
+      packets.each do |packet|
+        if hidden
+          names << packet['packet_name']
+        else
+          names << packet['packet_name'] unless packet['hidden']
+        end
+      end
+      return names
     end
     # get_all_command_names is DEPRECATED
     alias get_all_command_names get_all_cmd_names
@@ -445,6 +482,12 @@ module OpenC3
       cmd_params = cmd_params.transform_keys(&:upcase)
       authorize(permission: 'cmd', target_name: target_name, packet_name: cmd_name, scope: scope, token: token)
       packet = TargetModel.packet(target_name, cmd_name, type: :CMD, scope: scope)
+      if packet['disabled']
+        error = DisabledError.new
+        error.target_name = target_name
+        error.cmd_name = cmd_name
+        raise error
+      end
 
       command = {
         'target_name' => target_name,
@@ -474,7 +517,7 @@ module OpenC3
 
     def _build_cmd_output_string(method_name, target_name, cmd_name, cmd_params, packet)
       output_string = "#{method_name}(\""
-      output_string << target_name + ' ' + cmd_name
+      output_string << (target_name + ' ' + cmd_name)
       if cmd_params.nil? or cmd_params.empty?
         output_string << '")'
       else
@@ -511,7 +554,7 @@ module OpenC3
           params << "#{key} #{value}"
         end
         params = params.join(", ")
-        output_string << ' with ' + params + '")'
+        output_string << (' with ' + params + '")')
       end
       return output_string
     end

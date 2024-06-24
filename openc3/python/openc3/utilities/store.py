@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -17,6 +17,7 @@
 import redis
 from redis.exceptions import TimeoutError
 from openc3.utilities.connection_pool import ConnectionPool
+from contextlib import contextmanager
 import threading
 from openc3.environment import *
 
@@ -24,6 +25,46 @@ if OPENC3_REDIS_CLUSTER:
     openc3_redis_cluster = True
 else:
     openc3_redis_cluster = False
+
+
+class StoreConnectionPool(ConnectionPool):
+    @contextmanager
+    def pipelined(self):
+        if openc3_redis_cluster:
+            yield  # TODO: Update keys to support pipelining in cluster
+        else:
+            with self.get() as redis:
+                pipeline = redis.pipeline(transaction=False)
+                thread_id = threading.get_native_id()
+                self.pipelines[thread_id] = pipeline
+                try:
+                    yield
+                finally:
+                    pipeline.execute()
+                    self.pipelines[thread_id] = None
+
+    @contextmanager
+    def get(self):
+        thread_id = threading.get_native_id()
+        if thread_id not in self.pipelines:
+            self.pipelines[thread_id] = None
+        pipeline = self.pipelines[thread_id]
+        if pipeline:
+            yield pipeline
+        else:
+            item = None
+            with self.lock:
+                if not self.pool.empty():
+                    item = self.pool.get(False)
+                elif self.count < self.pool_size:
+                    item = self.ctor()
+                    self.count += 1
+                else:
+                    item = self.pool.get()
+            try:
+                yield item
+            finally:
+                self.pool.put(item)
 
 
 class StoreMeta(type):
@@ -66,8 +107,9 @@ class Store(metaclass=StoreMeta):
     def __init__(self, pool_size=10):
         self.redis_host = OPENC3_REDIS_HOSTNAME
         self.redis_port = OPENC3_REDIS_PORT
-        self.redis_pool = ConnectionPool(self.build_redis, pool_size)
+        self.redis_pool = StoreConnectionPool(self.build_redis, pool_size)
         self.topic_offsets = {}
+        self.pipelines = {}
 
     if not openc3_redis_cluster:
 
@@ -188,9 +230,7 @@ class Store(metaclass=StoreMeta):
         if not id:
             id = "*"
         with self.redis_pool.get() as redis:
-            return redis.xadd(
-                topic, msg_hash, id=id, maxlen=maxlen, approximate=approximate
-            )
+            return redis.xadd(topic, msg_hash, id=id, maxlen=maxlen, approximate=approximate)
 
     # Trims older entries of the redis stream if needed.
     # > https://www.rubydoc.info/github/redis/redis-rb/Redis:xtrim
@@ -208,9 +248,7 @@ class Store(metaclass=StoreMeta):
     # @return [Integer] the number of entries actually deleted
     def trim_topic(self, topic, minid, approximate=True, limit=0):
         with self.redis_pool.get() as redis:
-            return redis.xtrim(
-                name=topic, minid=minid, approximate=approximate, limit=limit
-            )
+            return redis.xtrim(name=topic, minid=minid, approximate=approximate, limit=limit)
 
 
 class EphemeralStore(Store):
@@ -221,3 +259,4 @@ class EphemeralStore(Store):
         super().__init__(pool_size)
         self.redis_host = OPENC3_REDIS_EPHEMERAL_HOSTNAME
         self.redis_port = OPENC3_REDIS_EPHEMERAL_PORT
+        self.redis_pool = StoreConnectionPool(self.build_redis, pool_size)

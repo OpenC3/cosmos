@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -44,9 +44,7 @@ class ConfigParser:
         # self.param url [String] URL which should point to usage information. By
         #   default this gets constructed to point to the generic configuration
         #   Guide on the OpenC3 Wiki.
-        def __init__(
-            self, config_parser, message="Configuration Error", usage="", url=""
-        ):
+        def __init__(self, config_parser, message="Configuration Error", usage="", url=""):
             super().__init__(message)
             self.keyword = config_parser.keyword
             self.parameters = config_parser.parameters
@@ -57,7 +55,7 @@ class ConfigParser:
             self.url = url
 
     # self.param url [String] The url to link to in error messages
-    def __init__(self, url="https:/openc3.com/docs/v5"):
+    def __init__(self, url="https://docs.openc3.com/docs"):
         self.url = url
 
     # self.param message [String] The string to set the Exception message to
@@ -90,9 +88,7 @@ class ConfigParser:
         variables={},
     ):
         if filename and not os.path.exists(filename):
-            raise ConfigParser.Error(
-                self, f"Configuration file {filename} does not exist."
-            )
+            raise ConfigParser.Error(self, f"Configuration file {filename} does not exist.")
 
         self.filename = filename
         with open(filename, "r") as file:
@@ -117,19 +113,15 @@ class ConfigParser:
         for index in range(1, min_num_params + 1):
             # If the parameter is None (0 based) then we have a problem
             if not self.parameters[index - 1 : index]:
-                raise ConfigParser.Error(
-                    self, f"Not enough parameters for {self.keyword}.", usage, self.url
-                )
+                raise ConfigParser.Error(self, f"Not enough parameters for {self.keyword}.", usage, self.url)
 
         # If they pass None for max_params we don't check for a maximum number
         if max_num_params and self.parameters[max_num_params : max_num_params + 1]:
-            raise ConfigParser.Error(
-                self, f"Too many parameters for {self.keyword}.", usage, self.url
-            )
+            raise ConfigParser.Error(self, f"Too many parameters for {self.keyword}.", usage, self.url)
 
-    # Verifies the indicated parameter in the config doesn't start or
-    # with an underscore, doesn't contain a double underscore, doesn't contain
-    # spaces and doesn't start with a close bracket.
+    # Verifies the indicated parameter in the config doesn't start or end
+    # with an underscore, doesn't contain a double underscore or double bracket,
+    # doesn't contain spaces and doesn't start with a close bracket.
     #
     # self.param [Integer] index The index of the parameter to check
     def verify_parameter_naming(self, index, usage=""):
@@ -146,6 +138,14 @@ class ConfigParser:
             raise ConfigParser.Error(
                 self,
                 f"Parameter {index} ({param}) for {self.keyword} cannot contain a double underscore ('__').",
+                usage,
+                self.url,
+            )
+
+        if "[[" in param or "]]" in param:
+            raise ConfigParser.Error(
+                self,
+                f"Parameter {index} ({param}) for {self.keyword} cannot contain double brackets ('[[' or ']]').",
                 usage,
                 self.url,
             )
@@ -195,7 +195,7 @@ class ConfigParser:
                     return False
         return value
 
-    # Converts a String containing '', 'NONE', 'NULL', 'TRUE' or 'FALSE' to None,
+    # Converts a String containing '', 'NONE', 'NULL', 'NIL', 'TRUE' or 'FALSE' to None,
     # True or False Python primitives. All other values are simply returned.
     #
     # self.param value [Object]
@@ -208,7 +208,8 @@ class ConfigParser:
                     return True
                 case "FALSE":
                     return False
-                case "" | "NONE" | "NULL":
+                # Convert nil for the Rubyists
+                case "" | "NONE" | "NULL" | "NIL":
                     return None
         return value
 
@@ -226,9 +227,7 @@ class ConfigParser:
         if type(value) == str:
             match value.upper():
                 case "MIN" | "MAX":
-                    return ConfigParser.calculate_range_value(
-                        value.upper(), data_type, bit_size
-                    )
+                    return ConfigParser.calculate_range_value(value.upper(), data_type, bit_size)
                 case "MIN_INT8":
                     return -128
                 case "MAX_INT8":
@@ -299,14 +298,10 @@ class ConfigParser:
                         if type == "MIN":
                             value *= -1
                     case _:
-                        raise AttributeError(
-                            f"Invalid bit size {bit_size} for FLOAT type."
-                        )
+                        raise AttributeError(f"Invalid bit size {bit_size} for FLOAT type.")
 
             case _:
-                raise AttributeError(
-                    f"Invalid data type {data_type} when calculating range."
-                )
+                raise AttributeError(f"Invalid data type {data_type} when calculating range.")
 
         return value
 

@@ -21,6 +21,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/topics/topic'
+require 'openc3/utilities/store_queued'
 
 module OpenC3
   class CommandDecomTopic < Topic
@@ -39,7 +40,7 @@ module OpenC3
         json_hash[item.name + "__U"] = packet.read_item(item, :WITH_UNITS) if item.units
       end
       msg_hash['json_data'] = JSON.generate(json_hash.as_json(:allow_nan => true))
-      Topic.write_topic(topic, msg_hash)
+      EphemeralStoreQueued.write_topic(topic, msg_hash)
     end
 
     def self.get_cmd_item(target_name, packet_name, param_name, type: :WITH_UNITS, scope: $openc3_scope)

@@ -64,9 +64,7 @@ class Suite:
     # Add a group setup to the suite
     def add_group_setup(self, group_class):
         if not group_class.__class__ == type:
-            raise RuntimeError(
-                "add_group_setup must be given Class not String in Python"
-            )
+            raise RuntimeError("add_group_setup must be given Class not String in Python")
         if not self.scripts().get(group_class, None):
             self.scripts()[group_class] = group_class()
         self.plans().append(["GROUP_SETUP", group_class, None])
@@ -74,9 +72,7 @@ class Suite:
     # Add a group teardown to the suite
     def add_group_teardown(self, group_class):
         if not group_class.__class__ == type:
-            raise RuntimeError(
-                "add_group_teardown must be given Class not String in Python"
-            )
+            raise RuntimeError("add_group_teardown must be given Class not String in Python")
         if not self.scripts().get(group_class, None):
             self.scripts()[group_class] = group_class()
         self.plans().append(["GROUP_TEARDOWN", group_class, None])
@@ -137,29 +133,23 @@ class Suite:
                     result = self.run_script(group_class, script, True)
                     results.append(result)
                     yield result
-                    if (
-                        result.exceptions and group_class.abort_on_exception
-                    ) or result.stopped:
+                    if (result.exceptions and group_class.abort_on_exception) or result.stopped:
                         raise StopScript
                 case "GROUP_SETUP":
                     result = self.run_group_setup(group_class, True)
                     if result:
                         results.append(result)
-                    yield result
-                    if (
-                        result.exceptions and group_class.abort_on_exception
-                    ) or result.stopped:
-                        raise StopScript
+                        yield result
+                        if (result.exceptions and group_class.abort_on_exception) or result.stopped:
+                            raise StopScript
 
                 case "GROUP_TEARDOWN":
                     result = self.run_group_teardown(group_class, True)
                     if result:
                         results.append(result)
-                    yield result
-                    if (
-                        result.exceptions and group_class.abort_on_exception
-                    ) or result.stopped:
-                        raise StopScript
+                        yield result
+                        if (result.exceptions and group_class.abort_on_exception) or result.stopped:
+                            raise StopScript
 
         # Teardown the suite
         result = self.run_teardown(True)
@@ -209,9 +199,7 @@ class Suite:
                 if plan_group_class == group_class:
                     match plan_type:
                         case "SCRIPT":
-                            result = self.run_script(
-                                plan_group_class, plan_script, True
-                            )
+                            result = self.run_script(plan_group_class, plan_script, True)
                             results.append(result)
                             yield result
                         case "GROUP_SETUP":
@@ -330,26 +318,24 @@ class Group:
         result = self.run_setup()
         if result:
             results.append(result)
-        yield result
-        if (results[-1].exceptions and Group.abort_on_exception) or results[-1].stopped:
-            raise StopScript
+            yield result
+            if (results[-1].exceptions and Group.abort_on_exception) or results[-1].stopped:
+                raise StopScript
 
         # Run all the scripts
         for method_name in self.__class__.scripts():
             results.append(self.run_script(method_name))
             yield results[-1]
-            if (results[-1].exceptions and Group.abort_on_exception) or results[
-                -1
-            ].stopped:
+            if (results[-1].exceptions and Group.abort_on_exception) or results[-1].stopped:
                 raise StopScript
 
         # Teardown the script group
         result = self.run_teardown()
         if result:
             results.append(result)
-        yield result
-        if (results[-1].exceptions and Group.abort_on_exception) or results[-1].stopped:
-            raise StopScript
+            yield result
+            if (results[-1].exceptions and Group.abort_on_exception) or results[-1].stopped:
+                raise StopScript
         return results
 
     # Run a specific script method
@@ -381,10 +367,7 @@ class Group:
                 method()
                 result.result = "PASS"
 
-                if (
-                    openc3.script.RUNNING_SCRIPT
-                    and openc3.script.RUNNING_SCRIPT.instance.exceptions
-                ):
+                if openc3.script.RUNNING_SCRIPT and openc3.script.RUNNING_SCRIPT.instance.exceptions:
                     result.exceptions = openc3.script.RUNNING_SCRIPT.instance.exceptions
                     result.result = "FAIL"
                     openc3.script.RUNNING_SCRIPT.instance.exceptions = None
@@ -415,9 +398,7 @@ class Group:
                         and openc3.script.RUNNING_SCRIPT.instance.exceptions
                     ):
                         result.exceptions = result.exceptions or []
-                        result.exceptions.extend(
-                            openc3.script.RUNNING_SCRIPT.instance.exceptions
-                        )
+                        result.exceptions.extend(openc3.script.RUNNING_SCRIPT.instance.exceptions)
                         openc3.script.RUNNING_SCRIPT.instance.exceptions = None
                 if result.exceptions:
                     result.result = "FAIL"
@@ -442,14 +423,18 @@ class Group:
         return result
 
     def run_setup(self):
+        result = None
         if "setup" in dir(self):
             ScriptStatus.instance().status = f"{self.__class__} : setup"
-        return self.run_script("setup")
+            result = self.run_script("setup")
+        return result
 
     def run_teardown(self):
+        result = None
         if "teardown" in dir(self):
             ScriptStatus.instance().status = f"{self.__class__} : teardown"
-        return self.run_script("teardown")
+            result = self.run_script("teardown")
+        return result
 
     @classmethod
     def get_num_scripts(cls):

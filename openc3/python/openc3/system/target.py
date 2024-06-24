@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -14,8 +14,11 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import os
 import glob
+import pathlib
+import os
+from typing import Optional
+
 from openc3.top_level import add_to_search_path
 from openc3.utilities.logger import Logger
 from openc3.config.config_parser import ConfigParser
@@ -26,7 +29,7 @@ class Target:
     accessed through interfaces and have command and telemetry definition files
     which define their access."""
 
-    def __init__(self, target_name, path, gem_path=None):
+    def __init__(self, target_name: str, path: os.PathLike[str], gem_path: Optional[str] = None):
         """Creates a new target by processing the target.txt file in the directory
         given by the path joined with the target_name. Records all the command
         and telemetry definition files found in the targets cmd_tlm directory.
@@ -42,7 +45,11 @@ class Target:
         self.tlm_cnt = 0
         self.cmd_unique_id_mode = False
         self.tlm_unique_id_mode = False
+        self.dir: Optional[str] = None
+        self.id: Optional[str] = None
+        self.filename: Optional[str] = None
         self.name = target_name.upper()
+
         self.get_target_dir(path, gem_path)
         self.process_target_config_file()
 
@@ -52,12 +59,13 @@ class Target:
         else:
             self.add_cmd_tlm_partials()
 
-    # Parses the target configuration file
-    #
-    # self.param filename [String] The target configuration file to parse
-    def process_file(self, filename):
+    def process_file(self, filename: str):
+        """Parses the target configuration file
+        Args:
+            filename (str) The target configuration file to parse
+        """
         Logger.info(f"Processing python target definition in file '{filename}'")
-        parser = ConfigParser("https://openc3.com/docs/v5/target")
+        parser = ConfigParser("https://docs.openc3.com/docs/configuration/target")
         for keyword, parameters in parser.parse_file(filename):
             match keyword:
                 case "LANGUAGE":
@@ -67,8 +75,8 @@ class Target:
                 case "REQUIRE":
                     usage = f"{keyword} <FILENAME>"
                     parser.verify_num_parameters(1, 1, usage)
-                    filename = f"{self.dir}/lib/{parameters[0]}"
                     # TODO:
+                    # filename = f"{self.dir}/lib/{parameters[0]}"
                     # try:
                     #     # Require absolute path to file in target lib folder. Prevents name
                     #     # conflicts at the require step
@@ -107,8 +115,8 @@ class Target:
                 case "COMMANDS" | "TELEMETRY":
                     usage = f"{keyword} <FILENAME>"
                     parser.verify_num_parameters(1, 1, usage)
-                    filename = f"{self.dir}/cmd_tlm/{parameters[0]}"
-                    if not os.path.exists(filename):
+                    filename = pathlib.Path(self.dir, "cmd_tlm", parameters[0])
+                    if not filename.exists():
                         raise parser.error(f"{filename} not found")
                     self.cmd_tlm_files.append(filename)
 
@@ -128,26 +136,28 @@ class Target:
                         raise Exception(parser.error(f"Unknown keyword '{keyword}'"))
 
     def as_json(self):
-        config = {}
-        config["name"] = self.name
-        config["requires"] = self.requires
-        config["ignored_parameters"] = self.ignored_parameters
-        config["ignored_items"] = self.ignored_items
-        config["cmd_tlm_files"] = self.cmd_tlm_files
+        config = {
+            "name": self.name,
+            "requires": self.requires,
+            "ignored_parameters": self.ignored_parameters,
+            "ignored_items": self.ignored_items,
+            "cmd_tlm_files": self.cmd_tlm_files,
+            "id": self.id,
+        }
         if self.cmd_unique_id_mode:
             config["cmd_unique_id_mode"] = True
         if self.tlm_unique_id_mode:
             config["tlm_unique_id_mode"] = True
-        config["id"] = self.id
         return config
 
-    # Get the target directory and add the target's lib folder to the
-    # search path if it exists
-    def get_target_dir(self, path, gem_path):
-        if gem_path:
-            self.dir = gem_path
-        else:
-            self.dir = os.path.join(path, self.name)
+    def get_target_dir(self, path: os.PathLike[str], gem_path: Optional[str]):
+        """Get the target directory and add the target's lib folder to the
+        search path if it exists
+        Args:
+            path (os.PathLike[str]):
+            gem_path (os.)
+        """
+        self.dir = gem_path if gem_path else os.path.join(path, self.name)
 
         lib_dir = os.path.join(self.dir, "lib")
         if os.path.exists(lib_dir):
@@ -174,31 +184,26 @@ class Target:
     # Automatically add all command and telemetry definitions to the list
     def add_all_cmd_tlm(self):
         cmd_tlm_files = []
-        if os.path.exists(os.path.join(self.dir, "cmd_tlm")):
+        cmd_tlm_dir = os.path.join(self.dir, "cmd_tlm")
+        if os.path.isdir(cmd_tlm_dir):
             # Grab All *.txt files in the cmd_tlm folder and subfolders
-            for filename in glob.glob(
-                os.path.join(self.dir, "cmd_tlm", "**", "*.txt"), recursive=True
-            ):
+            for filename in glob.glob(os.path.join(cmd_tlm_dir, "**", "*.txt"), recursive=True):
                 if os.path.isfile(filename):
                     cmd_tlm_files.append(filename)
             # Grab All *.xtce files in the cmd_tlm folder and subfolders
-            for filename in glob.glob(
-                os.path.join(self.dir, "cmd_tlm", "**", "*.xtce"), recursive=True
-            ):
-                if os.isfile(filename):
+            for filename in glob.glob(os.path.join(cmd_tlm_dir, "**", "*.xtce"), recursive=True):
+                if os.path.isfile(filename):
                     cmd_tlm_files.append(filename)
         cmd_tlm_files.sort()
         self.cmd_tlm_files = cmd_tlm_files
 
-    # Make sure all partials are included in the cmd_tlm list for the hashing sum calculation
     def add_cmd_tlm_partials(self):
+        """Make sure all partials are included in the cmd_tlm list for the hashing sum calculation"""
         partial_files = []
-        if os.path.isfile(os.path.join(self.dir, "cmd_tlm")):
+        cmd_tlm_dir = os.path.join(self.dir, "cmd_tlm")
+        if os.path.isdir(cmd_tlm_dir):
             # Grab all _*.txt files in the cmd_tlm folder and subfolders
-            os.path.join(self.dir, "cmd_tlm", "**", "_*.txt")
-            for filename in glob.glob(
-                os.path.join(self.dir, "cmd_tlm", "**", "_*.txt"), recursive=True
-            ):
+            for filename in glob.glob(os.path.join(cmd_tlm_dir, "**", "_*.txt"), recursive=True):
                 partial_files.append(filename)
         partial_files.sort()
         self.cmd_tlm_files = list(dict.fromkeys(self.cmd_tlm_files + partial_files))

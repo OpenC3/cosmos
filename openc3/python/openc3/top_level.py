@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -36,14 +36,22 @@ class HazardousError(Exception):
         super().__init__()
 
     def __str__(self):
-        string = (
-            f"{self.target_name} {self.cmd_name} with {self.cmd_params} is Hazardous"
-        )
+        string = f"{self.target_name} {self.cmd_name} with {self.cmd_params} is Hazardous"
         if self.hazardous_description:
             string += f"due to '{self.hazardous_description}'"
         # Pass along the original formatted command so it can be resent
         string += f".\n{self.formatted}"
         return string
+
+
+class DisabledError(Exception):
+    def __init__(self):
+        self.target_name = ""
+        self.cmd_name = ""
+        super().__init__()
+
+    def __str__(self):
+        return f"{self.target_name} {self.cmd_name} is Disabled"
 
 
 # Adds a path to the global Python search path
@@ -77,9 +85,7 @@ def set_working_dir(working_dir):
 # @param graceful_timeout Timeout in seconds to wait for it to die gracefully
 # @param timeout_interval How often to poll for aliveness
 # @param hard_timeout Timeout in seconds to wait for it to die ungracefully
-def kill_thread(
-    owner, thread, graceful_timeout=1, timeout_interval=0.01, hard_timeout=1
-):
+def kill_thread(owner, thread, graceful_timeout=1, timeout_interval=0.01, hard_timeout=1):
     if thread:
         if owner and hasattr(owner, "graceful_kill"):
             if threading.current_thread() != thread:
@@ -90,15 +96,11 @@ def kill_thread(
             else:
                 Logger.warn("Threads cannot graceful_kill themselves")
         elif owner:
-            Logger.info(
-                f"Thread owner {owner.__class__.__name__} does not support graceful_kill"
-            )
+            Logger.info(f"Thread owner {owner.__class__.__name__} does not support graceful_kill")
         if thread.is_alive():
             # If the thread dies after alive? but before backtrace, bt will be nil.
             trace = []
-            for filename, lineno, name, line in traceback.extract_stack(
-                sys._current_frames()[thread.ident]
-            ):
+            for filename, lineno, name, line in traceback.extract_stack(sys._current_frames()[thread.ident]):
                 trace.append(f"{filename}:{lineno}:{name}:{line}")
             caller_trace = []
             for filename, lineno, name, line in traceback.extract_stack(
@@ -168,6 +170,6 @@ def get_class_from_module(module, class_name):
 #     importlib.import_module(class_filename)
 #     klass = to_class(class_name)
 #     if klass is None:
-#         raise RuntimeError(f"Python class #{class_name} not found")
+#         raise RuntimeError(f"Python class {class_name} not found")
 
 #     return klass

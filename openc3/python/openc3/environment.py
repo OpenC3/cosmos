@@ -39,6 +39,7 @@ _openc3_redis_ephemeral_hostname = "OPENC3_REDIS_EPHEMERAL_HOSTNAME"
 _openc3_redis_ephemeral_port = "OPENC3_REDIS_EPHEMERAL_PORT"
 _openc3_cloud = "OPENC3_CLOUD"
 _aws_region = "AWS_REGION"
+_openc3_aws_arn_prefix = "OPENC3_AWS_ARN_PREFIX"
 _openc3_bucket_url = "OPENC3_BUCKET_URL"
 _openc3_bucket_username = "OPENC3_BUCKET_USERNAME"
 _openc3_bucket_password = "OPENC3_BUCKET_PASSWORD"
@@ -72,9 +73,7 @@ except TypeError:
     OPENC3_API_TIMEOUT = 1.0
 
 OPENC3_SCRIPT_API_SCHEMA = os.environ.get(_openc3_script_api_schema, "http")
-OPENC3_SCRIPT_API_HOSTNAME = os.environ.get(
-    _openc3_script_api_hostname, "openc3-cosmos-script-runner-api"
-)
+OPENC3_SCRIPT_API_HOSTNAME = os.environ.get(_openc3_script_api_hostname, "openc3-cosmos-script-runner-api")
 try:
     OPENC3_SCRIPT_API_PORT = int(os.environ.get(_openc3_script_api_port))
 except TypeError:
@@ -91,15 +90,14 @@ except TypeError:
     OPENC3_REDIS_PORT = 6379
 OPENC3_REDIS_USERNAME = os.environ.get(_openc3_redis_username)
 OPENC3_REDIS_PASSWORD = os.environ.get(_openc3_redis_password)
-OPENC3_REDIS_EPHEMERAL_HOSTNAME = os.environ.get(
-    _openc3_redis_ephemeral_hostname, "openc3-redis-ephemeral"
-)
+OPENC3_REDIS_EPHEMERAL_HOSTNAME = os.environ.get(_openc3_redis_ephemeral_hostname, "openc3-redis-ephemeral")
 try:
     OPENC3_REDIS_EPHEMERAL_PORT = int(os.environ.get(_openc3_redis_ephemeral_port))
 except TypeError:
     OPENC3_REDIS_EPHEMERAL_PORT = 6380
 OPENC3_CLOUD = os.environ.get(_openc3_cloud, "local")
 AWS_REGION = os.environ.get(_aws_region)
+OPENC3_AWS_ARN_PREFIX = os.environ.get(_openc3_aws_arn_prefix, "arn:aws")
 OPENC3_BUCKET_URL = os.environ.get(_openc3_bucket_url)
 OPENC3_BUCKET_USERNAME = os.environ.get(_openc3_bucket_username)
 OPENC3_BUCKET_PASSWORD = os.environ.get(_openc3_bucket_password)
@@ -121,9 +119,7 @@ OPENC3_API_USER = os.environ.get(_openc3_api_user)
 OPENC3_API_CLIENT = os.environ.get(_openc3_api_client, "api")
 OPENC3_API_TOKEN = os.environ.get(_openc3_api_token)
 OPENC3_KEYCLOAK_REALM = os.environ.get(_openc3_keycloak_realm, "openc3")
-OPENC3_KEYCLOAK_URL = os.environ.get(
-    _openc3_keycloak_url, "http://openc3-keycloak/auth"
-)
+OPENC3_KEYCLOAK_URL = os.environ.get(_openc3_keycloak_url, "http://openc3-keycloak/auth")
 OPENC3_REDIS_CLUSTER = os.environ.get(_openc3_redis_cluster)
 
 # User agent used by all
@@ -135,14 +131,8 @@ if OPENC3_API_USER is not None:
     _openc3_default_user_agent[0] += f":({OPENC3_API_USER})"
 
 if os.name == "nt":
-    _openc3_default_user_agent.append(
-        f"{os.environ.get('COMPUTERNAME')}:{os.environ.get('USERNAME')}"
-    )
+    _openc3_default_user_agent.append(f"{os.environ.get('COMPUTERNAME')}:{os.environ.get('USERNAME')}")
 else:
-    _openc3_default_user_agent.append(
-        f"{os.environ.get('HOSTNAME')}:{os.environ.get('USER')}"
-    )
+    _openc3_default_user_agent.append(f"{os.environ.get('HOSTNAME')}:{os.environ.get('USER')}")
 
-OPENC3_USER_AGENT = os.environ.get(
-    _openc3_user_agent, " ".join(_openc3_default_user_agent)
-)
+OPENC3_USER_AGENT = os.environ.get(_openc3_user_agent, " ".join(_openc3_default_user_agent))

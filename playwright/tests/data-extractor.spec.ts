@@ -110,7 +110,11 @@ test('warns with no data', async ({ page, utils }) => {
   await page.locator('[data-test=start-time]').fill(format(start, 'HH:mm:ss'))
   await page.locator('label:has-text("Command")').click()
   await utils.sleep(500) // Allow the command to switch
-  await utils.addTargetPacketItem('EXAMPLE', 'START', 'RECEIVED_TIMEFORMATTED')
+  await utils.addTargetPacketItem(
+    'EXAMPLE',
+    'START',
+    'RECEIVED_TIMEFORMATTED *',
+  )
   await page.locator('text=Process').click()
   await expect(page.locator('text=No data found')).toBeVisible()
 })
@@ -135,12 +139,12 @@ test('cancels a process', async ({ page, utils }) => {
 
 test('adds an entire target', async ({ page, utils }) => {
   await utils.addTargetPacketItem('INST')
-  await expect(page.getByText('1-20 of 133')).toBeVisible()
+  await expect(page.getByText('1-20 of 135')).toBeVisible()
 })
 
 test('adds an entire packet', async ({ page, utils }) => {
   await utils.addTargetPacketItem('INST', 'HEALTH_STATUS')
-  await expect(page.getByText('1-20 of 35')).toBeVisible()
+  await expect(page.getByText('1-20 of 37')).toBeVisible()
 })
 
 test('add, edits, deletes items', async ({ page, utils }) => {
@@ -192,6 +196,7 @@ test('edit all items', async ({ page, utils }) => {
 test('processes commands', async ({ page, utils }) => {
   // Preload an ABORT command
   await page.goto('/tools/cmdsender/INST/ABORT')
+  await expect(page.locator('.v-app-bar')).toContainText('Command Sender')
   await page.locator('[data-test=select-send]').click()
   await page.locator('text=cmd("INST ABORT") sent')
   await utils.sleep(1000)
@@ -201,11 +206,12 @@ test('processes commands', async ({ page, utils }) => {
 
   const start = sub(new Date(), { minutes: 1 })
   await page.goto('/tools/dataextractor')
+  await expect(page.locator('.v-app-bar')).toContainText('Data Extractor')
   await page.locator('rux-icon-apps path').click()
   await page.locator('[data-test=start-time]').fill(format(start, 'HH:mm:ss'))
   await page.locator('label:has-text("Command")').click()
   await utils.sleep(500) // Allow the command to switch
-  await utils.addTargetPacketItem('INST', 'ABORT', 'RECEIVED_TIMEFORMATTED')
+  await utils.addTargetPacketItem('INST', 'ABORT', 'RECEIVED_TIMEFORMATTED *')
   await utils.download(page, 'text=Process', function (contents) {
     const lines = contents.split('\n')
     expect(lines[1]).toContain('INST')

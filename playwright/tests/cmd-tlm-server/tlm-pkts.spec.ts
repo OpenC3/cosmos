@@ -45,29 +45,41 @@ test('displays the packet count', async ({ page, utils }) => {
   ).toBeGreaterThan(500)
 })
 
-test('displays a raw packet', async ({ page, utils }) => {
+test('displays raw packets', async ({ page, utils }) => {
   await expect(page.locator('text=INSTHEALTH_STATUS')).toBeVisible()
   await page
-    .getByRole('row', { name: 'INST HEALTH_STATUS' })
+    .getByRole('row', { name: 'INST MECH' })
     .getByRole('button', { name: 'View Raw' })
     .click()
-  await expect(page.locator('.v-dialog')).toContainText(
-    'Raw Telemetry Packet: INST HEALTH_STATUS',
+  await expect(page.locator('.raw-dialog')).toContainText(
+    'Raw Telemetry Packet: INST MECH',
   )
-  await expect(page.locator('.v-dialog')).toContainText('Received Time:')
-  await expect(page.locator('.v-dialog')).toContainText('Count:')
-  expect(await page.inputValue('.v-dialog textarea')).toMatch('Address')
-  expect(await page.inputValue('.v-dialog textarea')).toMatch('00000000:')
+  await expect(page.locator('.raw-dialog')).toContainText('Received Time:')
+  await expect(page.locator('.raw-dialog')).toContainText('Count:')
+  expect(await page.inputValue('.raw-dialog textarea')).toMatch('Address')
+  expect(await page.inputValue('.raw-dialog textarea')).toMatch('00000000:')
 
   await utils.download(page, '[data-test=download]', function (contents) {
-    expect(contents).toMatch('Raw Telemetry Packet: INST HEALTH_STATUS')
+    expect(contents).toMatch('Raw Telemetry Packet: INST MECH')
     expect(contents).toMatch('Received Time:')
     expect(contents).toMatch('Count:')
     expect(contents).toMatch('Address')
     expect(contents).toMatch('00000000:')
   })
-  await page.locator('.v-dialog').press('Escape')
-  await expect(page.locator('.v-dialog')).not.toBeVisible()
+
+  // Open another raw packet to show we can display more than one
+  await page
+    .getByRole('row', { name: 'INST PARAMS' })
+    .getByRole('button', { name: 'View Raw' })
+    .click()
+  await expect(page.locator('.raw-dialog')).toHaveCount(2)
+  await expect(page.locator('.raw-dialog').nth(1)).toContainText(
+    'Raw Telemetry Packet: INST PARAMS',
+  )
+  await page.locator('[data-test=close]').nth(1).click()
+  await expect(page.locator('.raw-dialog')).toHaveCount(1)
+  await page.locator('[data-test=close]').click()
+  await expect(page.locator('.raw-dialog')).not.toBeVisible()
 })
 
 test('links to packet viewer', async ({ page, utils }) => {

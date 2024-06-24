@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -115,14 +115,18 @@ class Script < OpenC3::TargetFile
         if ENV['OPENC3_SERVICE_PASSWORD']
           process.environment['OPENC3_API_PASSWORD'] = ENV['OPENC3_SERVICE_PASSWORD']
         else
-          raise "No authentication available for script"
+          # The viewer user doesn't have an offline access token (because they can't run scripts)
+          # but they still want to be able to view suite files
+          # Since processing a suite file requires running it they won't get the Suite chrome
+          # so return nothing here and allow Script Runner to simply view the suite file
+          return '', '', false
         end
       end
       process.environment['GEM_HOME'] = ENV['GEM_HOME']
       process.environment['PYTHONUSERBASE'] = ENV['PYTHONUSERBASE']
 
       # Spawned process should not be controlled by same Bundler constraints as spawning process
-      ENV.each do |key, value|
+      ENV.each do |key, _value|
         if key =~ /^BUNDLE/
           process.environment[key] = nil
         end
@@ -196,9 +200,10 @@ class Script < OpenC3::TargetFile
     suite_runner = nil,
     disconnect = false,
     environment = nil,
-    username: ''
+    user_full_name = nil,
+    username = nil
   )
-    RunningScript.spawn(scope, name, suite_runner, disconnect, environment, username: username)
+    RunningScript.spawn(scope, name, suite_runner, disconnect, environment, user_full_name, username)
   end
 
   def self.instrumented(filename, text)
@@ -219,9 +224,6 @@ class Script < OpenC3::TargetFile
       temp.write(text)
       temp.close
 
-      # We open a new ruby process so as to not pollute the API with require
-      results = nil
-      success = true
       runner_path = File.join(RAILS_ROOT, 'scripts', 'run_instrument.py')
       process = ChildProcess.build('python', runner_path.to_s, temp.path)
       process.cwd = File.join(RAILS_ROOT, 'scripts')

@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -43,7 +43,7 @@
           dense
           single-line
           hide-details
-          style="max-width: 350px"
+          class="search"
         />
       </v-card-title>
       <v-data-table
@@ -78,7 +78,7 @@
         <template v-slot:footer.prepend
           >* indicates a&nbsp;
           <a
-            href="http://localhost:2900/tools/docs/docs/configuration/telemetry.html#derived-items"
+            href="http://localhost:2900/tools/staticdocs/docs/configuration/telemetry#derived-items"
             >DERIVED</a
           >&nbsp;item</template
         >
@@ -335,13 +335,25 @@ export default {
       // Merge default config into the currentConfig in case default isn't yet defined
       let config = { ...this.currentConfig, ...this.loadDefaultConfig() }
       this.applyConfig(config)
-
       // If we're passed in the route then manually call packetChanged to update
       if (this.$route.params.target && this.$route.params.packet) {
+        // Initial position of chooser should be correct so call packetChanged for it
         this.packetChanged({
           targetName: this.$route.params.target.toUpperCase(),
           packetName: this.$route.params.packet.toUpperCase(),
         })
+      } else {
+        if (config.target && config.packet) {
+          // Chooser probably won't be at the right packet so need to refresh
+          this.$router.push({
+            name: 'PackerViewer',
+            params: {
+              target: config.target,
+              packet: config.packet,
+            },
+          })
+          this.$router.go()
+        }
       }
       this.changeUpdater(true)
     }
@@ -354,12 +366,6 @@ export default {
   },
   methods: {
     packetChanged(event) {
-      if (
-        this.targetName === event.targetName &&
-        this.packetName === event.packetName
-      ) {
-        return
-      }
       this.api.get_target(event.targetName).then((target) => {
         this.ignoredItems = target.ignored_items
       })
@@ -375,6 +381,7 @@ export default {
         this.$route.params.target !== event.targetName ||
         this.$route.params.packet !== event.packetName
       ) {
+        this.saveDefaultConfig(this.currentConfig)
         this.$router.push({
           name: 'PackerViewer',
           params: {
@@ -382,7 +389,6 @@ export default {
             packet: this.packetName,
           },
         })
-        this.saveDefaultConfig(this.currentConfig)
       }
       this.changeUpdater(true)
     },
@@ -437,8 +443,12 @@ export default {
               }
             }
           })
+          // Catch errors but just log to the console
+          // We don't clear the updater because errors can happen on upgrade
+          // and we want to continue updating once the new plugin comes online
           .catch((error) => {
-            clearInterval(this.updater)
+            // eslint-disable-next-line
+            console.log(error)
           })
       }, this.refreshInterval)
     },
@@ -474,6 +484,7 @@ export default {
           this.$route.params.packet !== config.packet ||
           this.$route.query.config !== name
         ) {
+          // Need full refresh since chooser won't be on the right packet
           this.$router.push({
             name: 'PackerViewer',
             params: {

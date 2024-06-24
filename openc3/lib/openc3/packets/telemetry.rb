@@ -442,5 +442,9 @@ module OpenC3
     def all
       @config.telemetry
     end
+
+    def dynamic_add_packet(packet, affect_ids: false)
+      @config.dynamic_add_packet(packet, :TELEMETRY, affect_ids: affect_ids)
+    end
   end # class Telemetry
 end

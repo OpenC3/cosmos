@@ -121,24 +121,62 @@ module OpenC3
       return value
     end
 
+    def read_items(items, buffer)
+      result = {}
+      body_items = []
+      items.each do |item|
+        if item.name[0..4] == 'HTTP_'
+          result[item.name] = read_item(item, buffer)
+        else
+          body_items << item
+        end
+      end
+      body_result = @body_accessor.read_items(body_items, buffer)
+      result.merge!(body_result) # Merge Body accessor read items with HTTP_ items
+      return result
+    end
+
+    def write_items(items, values, buffer)
+      body_items = []
+      items.each_with_index do |item, index|
+        if item.name[0..4] == 'HTTP_'
+          write_item(item, values[index], buffer)
+        else
+          body_items << item
+        end
+      end
+      @body_accessor.write_items(body_items, values, buffer)
+      return values
+    end
+
+    # If this is set it will enforce that buffer data is encoded
+    # in a specific encoding
     def enforce_encoding
       return @body_accessor.enforce_encoding
     end
 
+    # This affects whether the Packet class enforces the buffer
+    # length at all.  Set to false to remove any correlation between
+    # buffer length and defined sizes of items in COSMOS
     def enforce_length
       return @body_accessor.enforce_length
     end
 
+    # This sets the short_buffer_allowed flag in the Packet class
+    # which allows packets that have a buffer shorter than the defined size.
+    # Note that the buffer is still resized to the defined length
     def enforce_short_buffer_allowed
       return @body_accessor.enforce_short_buffer_allowed
     end
 
+    # If this is true it will enfore that COSMOS DERIVED items must have a
+    # write_conversion to be written
     def enforce_derived_write_conversion(item)
       case item.name
       when 'HTTP_STATUS', 'HTTP_PATH', 'HTTP_METHOD', 'HTTP_PACKET', 'HTTP_ERROR_PACKET', /^HTTP_QUERY_/, /^HTTP_HEADER_/
         return false
       else
-        return @body_accessor.enforce_derived_write_conversion
+        return @body_accessor.enforce_derived_write_conversion(item)
       end
     end
   end

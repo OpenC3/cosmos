@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -23,6 +23,7 @@ import traceback
 
 class SuiteResults:
     metadata = None
+    context = None
 
     def __init__(self):
         self._report = None
@@ -47,15 +48,13 @@ class SuiteResults:
         self._report = []
 
         if test_case:
-            # Executing a single test case
+            # Executing a script
             self.context = f"{test_suite_class.__name__}:{test_class.__name__}:{test_case} {test_type}"
         elif test_class:
-            # Executing an entire test
-            self.context = (
-                f"{test_suite_class.__name__}:{test_class.__name__} {test_type}"
-            )
+            # Executing a group
+            self.context = f"{test_suite_class.__name__}:{test_class.__name__} {test_type}"
         else:
-            # Executing a test suite
+            # Executing a suite
             self.context = f"{test_suite_class.__name__} {test_type}"
         self.header()
 
@@ -150,9 +149,7 @@ class SuiteResults:
 
     def write(self, string):
         # Can't use isoformat because it appends "+00:00" instead of "Z"
-        self._report.append(
-            datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ") + ": " + string
-        )
+        self._report.append(datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ") + ": " + string)
 
     # Define a few aliases
     puts = write

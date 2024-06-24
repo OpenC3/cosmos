@@ -8,7 +8,7 @@
   <title>OpenC3</title>
 
   <link rel="stylesheet" href="/css/roboto.css" />
-  <link rel="stylesheet" href="/css/materialdesignicons-7.3.67.min.css" />
+  <link rel="stylesheet" href="/css/materialdesignicons-7.4.47.min.css" />
   <link rel="stylesheet" href="/css/vuetify-2.7.1.min.css" />
   <!-- https://realfavicongenerator.net/ generated favicons -->
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
@@ -21,7 +21,7 @@
     This is needed by babel to share largeish helper code for compiling async/await in older
     browsers. More information at https://github.com/single-spa/create-single-spa/issues/112
   -->
-  <script src="/js/regenerator-runtime-0.14.0.min.js"></script>
+  <script src="/js/regenerator-runtime-0.14.1.min.js"></script>
   <!--
     This CSP allows any SSL-enabled host and for arbitrary eval(), but you should limit these directives further to increase your app's security.
     Learn more about CSP policies at https://content-security-policy.com/#directive
@@ -49,7 +49,7 @@
     {
       "imports": {
         "single-spa": "/js/single-spa-5.9.5.min.js",
-        "vue": "/js/vue-2.7.15.min.js",
+        "vue": "/js/vue-2.7.16.min.js",
         "vuetify": "/js/vuetify-2.7.1.min.js",
         "vue-router": "/js/vue-router-3.5.4.min.js",
         "vuex": "/js/vuex-3.6.2.min.js",
@@ -59,7 +59,7 @@
   </script>
   <!-- See note above for how to update these -->
   <link rel="preload" href="/js/single-spa-5.9.5.min.js" as="script" />
-  <link rel="preload" href="/js/vue-2.7.15.min.js" as="script" />
+  <link rel="preload" href="/js/vue-2.7.16.min.js" as="script" />
   <link rel="preload" href="/js/vuetify-2.7.1.min.js" as="script" />
   <link rel="preload" href="/js/vue-router-3.5.4.min.js" as="script" />
   <link rel="preload" href="/js/vuex-3.6.2.min.js" as="script" />
@@ -71,7 +71,7 @@
     We also explictily use amd (asynchronous module definition) which uses named-register
     Note that named-exports, transform and use-default are deprecated.
   -->
-  <script src="/js/systemjs-6.14.2.min.js"></script>
+  <script src="/js/systemjs-6.15.1.min.js"></script>
   <!-- All the following belong to the system package -->
   <script src="/js/amd.min.js"></script>
   <script src="/js/named-register.min.js"></script>

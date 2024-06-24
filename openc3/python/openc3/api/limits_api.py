@@ -73,9 +73,7 @@ def get_overall_limits_state(ignored_items=None, scope=OPENC3_SCOPE):
         new_items = []
         for item in ignored_items:
             if len(item) != 3:
-                raise RuntimeError(
-                    f"Invalid ignored item: {item}. Must be [TGT, PKT, ITEM] where ITEM can be None."
-                )
+                raise RuntimeError(f"Invalid ignored item: {item}. Must be [TGT, PKT, ITEM] where ITEM can be None.")
             if item[2] is None:
                 item[2] = ""
             new_items.append("__".join(item))
@@ -89,11 +87,7 @@ def get_overall_limits_state(ignored_items=None, scope=OPENC3_SCOPE):
             if item in f"{target_name}__{packet_name}__{item_name}":
                 break
         else:  # Executed if 'for item in ignored_items:' did NOT break
-            if (
-                limits_state == "RED"
-                or limits_state == "RED_HIGH"
-                or limits_state == "RED_LOW"
-            ):
+            if limits_state == "RED" or limits_state == "RED_HIGH" or limits_state == "RED_LOW":
                 overall = limits_state
                 break  # Red is as high as we go so no need to look for more
 
@@ -122,12 +116,8 @@ def get_overall_limits_state(ignored_items=None, scope=OPENC3_SCOPE):
 # @param args [String|Array<String>] See the description for calling style
 # @return [Boolean] Whether limits are enable for the itme
 def limits_enabled(*args, scope=OPENC3_SCOPE):
-    target_name, packet_name, item_name = _tlm_process_args(
-        args, "limits_enabled", scope=scope
-    )
-    authorize(
-        permission="tlm", target_name=target_name, packet_name=packet_name, scope=scope
-    )
+    target_name, packet_name, item_name = _tlm_process_args(args, "limits_enabled", scope=scope)
+    authorize(permission="tlm", target_name=target_name, packet_name=packet_name, scope=scope)
     item = TargetModel.packet_item(target_name, packet_name, item_name, scope=scope)
     if item["limits"].get("enabled"):
         return True
@@ -145,9 +135,7 @@ def limits_enabled(*args, scope=OPENC3_SCOPE):
 #
 # @param args [String|Array<String>] See the description for calling style
 def enable_limits(*args, scope=OPENC3_SCOPE):
-    target_name, packet_name, item_name = _tlm_process_args(
-        args, "enable_limits", scope=scope
-    )
+    target_name, packet_name, item_name = _tlm_process_args(args, "enable_limits", scope=scope)
     authorize(
         permission="tlm_set",
         target_name=target_name,
@@ -162,9 +150,7 @@ def enable_limits(*args, scope=OPENC3_SCOPE):
             found_item = item
             break
     if found_item is None:
-        raise RuntimeError(
-            f"Item '{target_name} {packet_name} {item_name}' does not exist"
-        )
+        raise RuntimeError(f"Item '{target_name} {packet_name} {item_name}' does not exist")
 
     TargetModel.set_packet(target_name, packet_name, packet, scope=scope)
 
@@ -193,9 +179,7 @@ def enable_limits(*args, scope=OPENC3_SCOPE):
 #
 # @param args [String|Array<String>] See the description for calling style
 def disable_limits(*args, scope=OPENC3_SCOPE):
-    target_name, packet_name, item_name = _tlm_process_args(
-        args, "disable_limits", scope=scope
-    )
+    target_name, packet_name, item_name = _tlm_process_args(args, "disable_limits", scope=scope)
     authorize(
         permission="tlm_set",
         target_name=target_name,
@@ -210,9 +194,7 @@ def disable_limits(*args, scope=OPENC3_SCOPE):
             found_item = item
             break
     if found_item is None:
-        raise RuntimeError(
-            f"Item '{target_name} {packet_name} {item_name}' does not exist"
-        )
+        raise RuntimeError(f"Item '{target_name} {packet_name} {item_name}' does not exist")
 
     TargetModel.set_packet(target_name, packet_name, packet, scope=scope)
 
@@ -241,9 +223,7 @@ def disable_limits(*args, scope=OPENC3_SCOPE):
 #
 # @return [Hash{String => Array<Number, Number, Number, Number, Number, Number>}]
 def get_limits(target_name, packet_name, item_name, scope=OPENC3_SCOPE):
-    authorize(
-        permission="tlm", target_name=target_name, packet_name=packet_name, scope=scope
-    )
+    authorize(permission="tlm", target_name=target_name, packet_name=packet_name, scope=scope)
     limits = {}
     item = _get_item(target_name, packet_name, item_name, scope=scope)
     for key, vals in item["limits"].items():
@@ -284,22 +264,12 @@ def set_limits(
         packet_name=packet_name,
         scope=scope,
     )
-    if (
-        (red_low > yellow_low)
-        or (yellow_low >= yellow_high)
-        or (yellow_high > red_high)
-    ):
-        raise RuntimeError(
-            "Invalid limits specified. Ensure yellow limits are within red limits."
-        )
+    if (red_low > yellow_low) or (yellow_low >= yellow_high) or (yellow_high > red_high):
+        raise RuntimeError("Invalid limits specified. Ensure yellow limits are within red limits.")
     if (green_low and green_high) and (
-        (yellow_low > green_low)
-        or (green_low >= green_high)
-        or (green_high > yellow_high)
+        (yellow_low > green_low) or (green_low >= green_high) or (green_high > yellow_high)
     ):
-        raise RuntimeError(
-            "Invalid limits specified. Ensure green limits are within yellow limits."
-        )
+        raise RuntimeError("Invalid limits specified. Ensure green limits are within yellow limits.")
     packet = TargetModel.packet(target_name, packet_name, scope=scope)
     found_item = None
     for item in packet["items"]:
@@ -326,15 +296,13 @@ def set_limits(
             else:
                 raise RuntimeError("Cannot set_limits on item without any limits")
     if found_item is None:
-        raise RuntimeError(
-            f"Item '{target_name} {packet_name} {item_name}' does not exist"
-        )
-    message = f"Setting '{target_name} {packet_name} {item_name}' limits to {red_low} {yellow_low} {yellow_high} {red_high}"
+        raise RuntimeError(f"Item '{target_name} {packet_name} {item_name}' does not exist")
+    message = (
+        f"Setting '{target_name} {packet_name} {item_name}' limits to {red_low} {yellow_low} {yellow_high} {red_high}"
+    )
     if green_low and green_high:
         message += f" {green_low} {green_high}"
-    message += (
-        f" in set {limits_set} with persistence {persistence} as enabled {enabled}"
-    )
+    message += f" in set {limits_set} with persistence {persistence} as enabled {enabled}"
     Logger.info(message, scope=scope)
 
     TargetModel.set_packet(target_name, packet_name, packet, scope=scope)
@@ -447,18 +415,14 @@ def _limits_group(group_name, action, scope):
     for target_name, packet_name, item_name in group:
         if last_target_name != target_name or last_packet_name != packet_name:
             if last_target_name and last_packet_name:
-                TargetModel.set_packet(
-                    last_target_name, last_packet_name, packet, scope=scope
-                )
+                TargetModel.set_packet(last_target_name, last_packet_name, packet, scope=scope)
             packet = TargetModel.packet(target_name, packet_name, scope=scope)
         for item in packet["items"]:
             if item["name"] == item_name:
                 if action == "enable":
                     enabled = True
                     item["limits"]["enabled"] = True
-                    message = (
-                        f"Enabling Limits for '{target_name} {packet_name} {item_name}'"
-                    )
+                    message = f"Enabling Limits for '{target_name} {packet_name} {item_name}'"
                 elif action == "disable":
                     enabled = False
                     item["limits"].pop("enabled", None)
@@ -489,12 +453,8 @@ def _limits_group(group_name, action, scope):
 # @param item_name [String] item name
 # @param scope [String] scope
 # @return Hash The requested item based on the packet name
-def _get_item(
-    target_name, packet_name, item_name, cache_timeout=0.1, scope=OPENC3_SCOPE
-):
+def _get_item(target_name, packet_name, item_name, cache_timeout=0.1, scope=OPENC3_SCOPE):
     # Determine if this item exists, it will raise appropriate errors if not
     if packet_name == "LATEST":
-        packet_name = CvtModel.determine_latest_packet_for_item(
-            target_name, item_name, cache_timeout, scope
-        )
+        packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout, scope)
     return TargetModel.packet_item(target_name, packet_name, item_name, scope=scope)

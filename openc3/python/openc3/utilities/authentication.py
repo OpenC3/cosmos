@@ -35,9 +35,7 @@ class OpenC3Authentication:
     def __init__(self):
         self._token = OPENC3_API_PASSWORD
         if not self._token:
-            raise OpenC3AuthenticationError(
-                "Authentication requires environment variable OPENC3_API_PASSWORD"
-            )
+            raise OpenC3AuthenticationError("Authentication requires environment variable OPENC3_API_PASSWORD")
 
     def token(self):
         return self._token
@@ -105,12 +103,8 @@ class OpenC3KeycloakAuthentication(OpenC3Authentication):
             oath = self._make_request(headers, data)
             self._token = oath["access_token"]
             self.refresh_token = oath["refresh_token"]
-            self.expires_at = (
-                current_time + oath["expires_in"] - self.REFRESH_OFFSET_SECONDS
-            )
-            self.refresh_expires_at = (
-                current_time + oath["refresh_expires_in"] - self.REFRESH_OFFSET_SECONDS
-            )
+            self.expires_at = current_time + oath["expires_in"] - self.REFRESH_OFFSET_SECONDS
+            self.refresh_expires_at = current_time + oath["refresh_expires_in"] - self.REFRESH_OFFSET_SECONDS
         else:
             # Offline Access Token
             if self.refresh_token is None:
@@ -129,12 +123,8 @@ class OpenC3KeycloakAuthentication(OpenC3Authentication):
         oath = self._make_request(headers, data)
         self._token = oath["access_token"]
         self.refresh_token = oath["refresh_token"]
-        self.expires_at = (
-            current_time + oath["expires_in"] - self.REFRESH_OFFSET_SECONDS
-        )
-        self.refresh_expires_at = (
-            current_time + oath["refresh_expires_in"] - self.REFRESH_OFFSET_SECONDS
-        )
+        self.expires_at = current_time + oath["expires_in"] - self.REFRESH_OFFSET_SECONDS
+        self.refresh_expires_at = current_time + oath["refresh_expires_in"] - self.REFRESH_OFFSET_SECONDS
 
     # Make the post request to keycloak
     def _make_request(self, headers, data):
@@ -148,9 +138,7 @@ class OpenC3KeycloakAuthentication(OpenC3Authentication):
         self.log[0] = f"Request: {request_kwargs}"
         # print(self.log[0])
         resp = self.http.post(**request_kwargs)
-        self.log[
-            1
-        ] = f"response status: #{resp.status_code} header: #{resp.headers} body: #{resp.text}"
+        self.log[1] = f"response status: {resp.status_code} header: {resp.headers} body: {resp.text}"
         # print(self.log[1])
         if resp.status_code >= 200 and resp.status_code <= 299:
             return json.loads(resp.text)
@@ -159,6 +147,4 @@ class OpenC3KeycloakAuthentication(OpenC3Authentication):
                 f"authentication request retryable {self.log[0]} ::: {self.log[1]}"
             )
         else:
-            raise OpenC3AuthenticationError(
-                f"authentication request failed {self.log[0]} ::: {self.log[1]}"
-            )
+            raise OpenC3AuthenticationError(f"authentication request failed {self.log[0]} ::: {self.log[1]}")

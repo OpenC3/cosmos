@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -31,6 +31,7 @@ require 'openc3/packets/parsers/format_string_parser'
 require 'openc3/packets/parsers/processor_parser'
 require 'openc3/packets/parsers/xtce_parser'
 require 'openc3/packets/parsers/xtce_converter'
+require 'openc3/utilities/python_proxy'
 require 'openc3/conversions'
 require 'openc3/processors'
 require 'nokogiri'
@@ -82,6 +83,9 @@ module OpenC3
     # defined by that identification.  Telemetry version
     attr_reader :tlm_id_value_hash
 
+    # @return [String] Language of current target (ruby or python)
+    attr_reader :language
+
     COMMAND = "Command"
     TELEMETRY = "Telemetry"
 
@@ -117,7 +121,7 @@ module OpenC3
     # @param filename [String] The name of the configuration file
     # @param process_target_name [String] The target name. Pass nil when parsing
     #   an xtce file to automatically determine the target name.
-    def process_file(filename, process_target_name)
+    def process_file(filename, process_target_name, language = 'ruby')
       # Handle .xtce files
       extension = File.extname(filename).to_s.downcase
       if extension == ".xtce" or extension == ".xml"
@@ -128,13 +132,14 @@ module OpenC3
       # Partial files are included into another file and thus aren't directly processed
       return if File.basename(filename)[0] == '_' # Partials start with underscore
 
+      @language = language
       @converted_type = nil
       @converted_bit_size = nil
       @proc_text = ''
       @building_generic_conversion = false
 
       process_target_name = process_target_name.upcase
-      parser = ConfigParser.new("https://openc3.com/docs/v5")
+      parser = ConfigParser.new("https://docs.openc3.com/docs")
       parser.instance_variable_set(:@target_name, process_target_name)
       parser.parse_file(filename) do |keyword, params|
         if @building_generic_conversion
@@ -214,7 +219,8 @@ module OpenC3
               'PARAMETER', 'ID_ITEM', 'ID_PARAMETER', 'ARRAY_ITEM', 'ARRAY_PARAMETER', 'APPEND_ITEM',\
               'APPEND_PARAMETER', 'APPEND_ID_ITEM', 'APPEND_ID_PARAMETER', 'APPEND_ARRAY_ITEM',\
               'APPEND_ARRAY_PARAMETER', 'ALLOW_SHORT', 'HAZARDOUS', 'PROCESSOR', 'META',\
-              'DISABLE_MESSAGES', 'HIDDEN', 'DISABLED', 'ACCESSOR', 'TEMPLATE', 'TEMPLATE_FILE'
+              'DISABLE_MESSAGES', 'HIDDEN', 'DISABLED', 'ACCESSOR', 'TEMPLATE', 'TEMPLATE_FILE',\
+              'RESPONSE', 'ERROR_RESPONSE', 'SCREEN', 'RELATED_ITEM', 'IGNORE_OVERLAP'
             raise parser.error("No current packet for #{keyword}") unless @current_packet
 
             process_current_packet(parser, keyword, params)
@@ -257,7 +263,7 @@ module OpenC3
         rescue
           # Doesn't exist
         end
-        packets.each do |packet_name, packet|
+        packets.each do |_packet_name, packet|
           File.open(filename, 'a') do |file|
             file.puts packet.to_config(:TELEMETRY)
             file.puts ""
@@ -275,7 +281,7 @@ module OpenC3
         rescue
           # Doesn't exist
         end
-        packets.each do |packet_name, packet|
+        packets.each do |_packet_name, packet|
           File.open(filename, 'a') do |file|
             file.puts packet.to_config(:COMMAND)
             file.puts ""
@@ -314,30 +320,60 @@ module OpenC3
           hash = @cmd_id_value_hash[@current_packet.target_name]
           hash = {} unless hash
           @cmd_id_value_hash[@current_packet.target_name] = hash
-          update_id_value_hash(hash)
+          update_id_value_hash(@current_packet, hash)
         else
           @telemetry[@current_packet.target_name][@current_packet.packet_name] = @current_packet
           hash = @tlm_id_value_hash[@current_packet.target_name]
           hash = {} unless hash
           @tlm_id_value_hash[@current_packet.target_name] = hash
-          update_id_value_hash(hash)
+          update_id_value_hash(@current_packet, hash)
         end
         @current_packet = nil
         @current_item = nil
       end
     end
 
+    def dynamic_add_packet(packet, cmd_or_tlm = :TELEMETRY, affect_ids: false)
+      if cmd_or_tlm == :COMMAND
+        @commands[packet.target_name][packet.packet_name] = packet
+
+        if affect_ids
+          hash = @cmd_id_value_hash[packet.target_name]
+          hash = {} unless hash
+          @cmd_id_value_hash[packet.target_name] = hash
+          update_id_value_hash(packet, hash)
+        end
+      else
+        @telemetry[packet.target_name][packet.packet_name] = packet
+
+        # Update latest_data lookup for telemetry
+        packet.sorted_items.each do |item|
+          target_latest_data = @latest_data[packet.target_name]
+          target_latest_data[item.name] ||= []
+          latest_data_packets = target_latest_data[item.name]
+          latest_data_packets << packet unless latest_data_packets.include?(packet)
+        end
+
+        if affect_ids
+          hash = @tlm_id_value_hash[packet.target_name]
+          hash = {} unless hash
+          @tlm_id_value_hash[packet.target_name] = hash
+          update_id_value_hash(packet, hash)
+        end
+      end
+    end
+
     protected
 
-    def update_id_value_hash(hash)
-      if @current_packet.id_items.length > 0
+    def update_id_value_hash(packet, hash)
+      if packet.id_items.length > 0
         key = []
-        @current_packet.id_items.each do |item|
+        packet.id_items.each do |item|
           key << item.id_value
         end
-        hash[key] = @current_packet
+        hash[key] = packet
       else
-        hash['CATCHALL'.freeze] = @current_packet
+        hash['CATCHALL'.freeze] = packet
       end
     end
 
@@ -393,7 +429,7 @@ module OpenC3
 
       # Define a processor class that will be called once when a packet is received
       when 'PROCESSOR'
-        ProcessorParser.parse(parser, @current_packet, @current_cmd_or_tlm)
+        ProcessorParser.parse(parser, @current_packet, @current_cmd_or_tlm, @language)
 
       when 'DISABLE_MESSAGES'
         usage = "#{keyword}"
@@ -432,18 +468,27 @@ module OpenC3
         parser.verify_num_parameters(0, 0, usage)
         @current_packet.hidden = true
         @current_packet.disabled = true
+
       when 'ACCESSOR'
         usage = "#{keyword} <Accessor class name>"
         parser.verify_num_parameters(1, nil, usage)
         begin
-          klass = OpenC3.require_class(params[0])
-          if params.length > 1
-            @current_packet.accessor = klass.new(@current_packet, *params[1..-1])
+          if @language == 'ruby'
+            klass = OpenC3.require_class(params[0])
+            if params.length > 1
+              @current_packet.accessor = klass.new(@current_packet, *params[1..-1])
+            else
+              @current_packet.accessor = klass.new(@current_packet)
+            end
           else
-            @current_packet.accessor = klass.new(@current_packet)
+            if params.length > 1
+              @current_packet.accessor = PythonProxy.new('Accessor', params[0], @current_packet, *params[1..-1])
+            else
+              @current_packet.accessor = PythonProxy.new('Accessor', params[0], @current_packet)
+            end
           end
-        rescue Exception => err
-          raise parser.error(err)
+        rescue Exception => e
+          raise parser.error(e.formatted)
         end
 
       when 'TEMPLATE'
@@ -457,10 +502,50 @@ module OpenC3
 
         begin
           @current_packet.template = parser.read_file(params[0])
-        rescue Exception => err
-          raise parser.error(err)
+        rescue Exception => e
+          raise parser.error(e.formatted)
         end
+
+      when 'RESPONSE'
+        usage = "#{keyword} <Target Name> <Packet Name>"
+        parser.verify_num_parameters(2, 2, usage)
+        if @current_cmd_or_tlm == TELEMETRY
+          raise parser.error("#{keyword} only applies to command packets")
+        end
+        @current_packet.response = [params[0].upcase, params[1].upcase]
+
+      when 'ERROR_RESPONSE'
+        usage = "#{keyword} <Target Name> <Packet Name>"
+        parser.verify_num_parameters(2, 2, usage)
+        if @current_cmd_or_tlm == TELEMETRY
+          raise parser.error("#{keyword} only applies to command packets")
+        end
+        @current_packet.error_response = [params[0].upcase, params[1].upcase]
+
+      when 'SCREEN'
+        usage = "#{keyword} <Target Name> <Screen Name>"
+        parser.verify_num_parameters(2, 2, usage)
+        if @current_cmd_or_tlm == TELEMETRY
+          raise parser.error("#{keyword} only applies to command packets")
+        end
+        @current_packet.screen = [params[0].upcase, params[1].upcase]
+
+      when 'RELATED_ITEM'
+        usage = "#{keyword} <Target Name> <Packet Name> <Item Name>"
+        parser.verify_num_parameters(3, 3, usage)
+        if @current_cmd_or_tlm == TELEMETRY
+          raise parser.error("#{keyword} only applies to command packets")
+        end
+        @current_packet.related_items ||= []
+        @current_packet.related_items << [params[0].upcase, params[1].upcase, params[2].upcase]
+
+      when 'IGNORE_OVERLAP'
+        usage = "#{keyword}"
+        parser.verify_num_parameters(0, 0, usage)
+        @current_packet.ignore_overlap = true
+
       end
+
     end
 
     def process_current_item(parser, keyword, params)
@@ -476,16 +561,19 @@ module OpenC3
         usage = "#{keyword} <conversion class filename> <custom parameters> ..."
         parser.verify_num_parameters(1, nil, usage)
         begin
-          klass = OpenC3.require_class(params[0])
-          conversion = klass.new(*params[1..(params.length - 1)])
-          @current_item.public_send("#{keyword.downcase}=".to_sym, conversion)
-          if klass != ProcessorConversion and (conversion.converted_type.nil? or conversion.converted_bit_size.nil?)
-            msg = "Read Conversion #{params[0]} on item #{@current_item.name} does not specify converted type or bit size"
-            @warnings << msg
-            Logger.instance.warn @warnings[-1]
+          if @language == 'ruby'
+            klass = OpenC3.require_class(params[0])
+            conversion = klass.new(*params[1..(params.length - 1)])
+            @current_item.public_send("#{keyword.downcase}=".to_sym, conversion)
+            if klass != ProcessorConversion and (conversion.converted_type.nil? or conversion.converted_bit_size.nil?)
+              msg = "Read Conversion #{params[0]} on item #{@current_item.name} does not specify converted type or bit size"
+              @warnings << msg
+              Logger.instance.warn @warnings[-1]
+            end
+          else
+            conversion = PythonProxy.new('Conversion', params[0], *params[1..(params.length - 1)])
+            @current_item.public_send("#{keyword.downcase}=".to_sym, conversion)
           end
-        rescue Exception => err
-          raise parser.error(err)
         end
 
       # Apply a polynomial conversion to the current item
@@ -546,7 +634,7 @@ module OpenC3
       # Define a response class that will be called when the limits state of the
       # current item changes.
       when 'LIMITS_RESPONSE'
-        LimitsResponseParser.parse(parser, @current_item, @current_cmd_or_tlm)
+        LimitsResponseParser.parse(parser, @current_item, @current_cmd_or_tlm, @language)
 
       # Define a printf style formatting string for the current telemetry item
       when 'FORMAT_STRING'

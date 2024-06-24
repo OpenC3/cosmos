@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 OpenC3, Inc.
+# Copyright 2023 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -18,13 +18,22 @@
 
 require 'json'
 require 'jsonpath'
+require 'openc3/io/json_rpc'
 require 'openc3/accessors/accessor'
+
+# Monkey patch JsonPath to enable create_additions and allow_nan to support binary strings, and NaN, Infinity, -Infinity
+class JsonPath
+  def self.process_object(obj_or_str, opts = {})
+    obj_or_str.is_a?(String) ? MultiJson.decode(obj_or_str, max_nesting: opts[:max_nesting], create_additions: true, allow_nan: true) : obj_or_str
+  end
+end
 
 module OpenC3
   class JsonAccessor < Accessor
     def self.read_item(item, buffer)
       return nil if item.data_type == :DERIVED
-      return JsonPath.on(buffer, item.key).first
+      value = JsonPath.on(buffer, item.key).first
+      return convert_to_type(value, item)
     end
 
     def self.write_item(item, value, buffer)
@@ -32,7 +41,7 @@ module OpenC3
 
       # Convert to ruby objects
       if String === buffer
-        decoded = JSON.parse(buffer, :allow_nan => true)
+        decoded = JSON.parse(buffer, :allow_nan => true, :create_additions => true)
       else
         decoded = buffer
       end
@@ -42,7 +51,7 @@ module OpenC3
 
       # Update buffer
       if String === buffer
-        buffer.replace(JSON.generate(decoded, :allow_nan => true))
+        buffer.replace(JSON.generate(decoded.as_json, :allow_nan => true))
       end
 
       return value
@@ -51,7 +60,7 @@ module OpenC3
     def self.read_items(items, buffer)
       # Prevent JsonPath from decoding every call
       if String === buffer
-        decoded = JSON.parse(buffer, :allow_nan => true)
+        decoded = JSON.parse(buffer, :allow_nan => true, :create_additions => true)
       else
         decoded = buffer
       end
@@ -123,6 +132,7 @@ module OpenC3
           raise "Unsupported key/token: #{item.key} - #{token}"
         end
       end
+      value = convert_to_type(value, item)
       if parent_node
         parent_node[parent_key] = value
       else
@@ -131,19 +141,29 @@ module OpenC3
       return decoded
     end
 
+    # If this is set it will enforce that buffer data is encoded
+    # in a specific encoding
     def enforce_encoding
       return nil
     end
 
+    # This affects whether the Packet class enforces the buffer
+    # length at all.  Set to false to remove any correlation between
+    # buffer length and defined sizes of items in COSMOS
     def enforce_length
       return false
     end
 
+    # This sets the short_buffer_allowed flag in the Packet class
+    # which allows packets that have a buffer shorter than the defined size.
+    # Note that the buffer is still resized to the defined length
     def enforce_short_buffer_allowed
       return true
     end
 
-    def enforce_derived_write_conversion(item)
+    # If this is true it will enfore that COSMOS DERIVED items must have a
+    # write_conversion to be written
+    def enforce_derived_write_conversion(_item)
       return true
     end
   end

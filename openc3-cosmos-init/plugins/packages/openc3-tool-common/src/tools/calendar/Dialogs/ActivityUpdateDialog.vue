@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -23,7 +23,7 @@
 <template>
   <v-dialog v-model="show" width="600">
     <v-card>
-      <form v-on:submit.prevent="updateActivity">
+      <form @submit.prevent="updateActivity">
         <v-system-bar>
           <v-spacer />
           <span>
@@ -86,16 +86,77 @@
                     data-test="activity-stop-time"
                   />
                 </v-row>
-                <v-row class="mx-2 mb-2">
-                  <v-radio-group
-                    v-model="utcOrLocal"
-                    row
-                    hide-details
-                    class="mt-0"
-                  >
-                    <v-radio label="LST" value="loc" data-test="lst-radio" />
-                    <v-radio label="UTC" value="utc" data-test="utc-radio" />
-                  </v-radio-group>
+                <v-row style="margin-top: 0px">
+                  <v-col>
+                    <v-radio-group
+                      v-model="utcOrLocal"
+                      row
+                      hide-details
+                      class="mt-0"
+                    >
+                      <v-radio label="LST" value="loc" data-test="lst-radio" />
+                      <v-radio label="UTC" value="utc" data-test="utc-radio" />
+                    </v-radio-group>
+                  </v-col>
+                  <v-col>
+                    <v-checkbox
+                      style="padding-top: 0px; margin-top: 0px"
+                      v-model="recurring"
+                      label="Recurring"
+                      hide-details
+                      data-test="recurring"
+                      disabled
+                    >
+                    </v-checkbox>
+                  </v-col>
+                </v-row>
+                <v-row v-if="recurring">
+                  <v-col><div class="repeat">Repeat every</div></v-col>
+                  <v-col>
+                    <v-text-field
+                      v-model="frequency"
+                      dense
+                      outlined
+                      single-line
+                      hide-details
+                      disabled
+                  /></v-col>
+                  <v-col>
+                    <v-select
+                      :items="timeSpans"
+                      v-model="timeSpan"
+                      style="primary"
+                      hide-details
+                      dense
+                      outlined
+                      disabled
+                      data-test="cmd-param-select"
+                    />
+                  </v-col>
+                </v-row>
+                <v-row v-if="recurring" style="padding-bottom: 10px">
+                  <v-col><div class="repeat">Ending</div></v-col>
+                  <v-col>
+                    <v-text-field
+                      v-model="recurringEndDate"
+                      type="date"
+                      label="End Date"
+                      class="mx-1"
+                      disabled
+                      :rules="[rules.required]"
+                      data-test="recurring-end-date"
+                  /></v-col>
+                  <v-col>
+                    <v-text-field
+                      v-model="recurringEndTime"
+                      type="time"
+                      step="1"
+                      label="End Time"
+                      class="mx-1"
+                      disabled
+                      :rules="[rules.required]"
+                      data-test="recurrning-end-time"
+                  /></v-col>
                 </v-row>
                 <v-row>
                   <span
@@ -104,7 +165,7 @@
                     v-text="timeError"
                   />
                 </v-row>
-                <v-row>
+                <v-row class="mt-2">
                   <v-spacer />
                   <v-btn
                     @click="dialogStep = 2"
@@ -118,7 +179,6 @@
               </div>
             </v-card-text>
           </v-stepper-content>
-
           <v-stepper-step editable step="2">
             Activity type Input
           </v-stepper-step>
@@ -134,28 +194,21 @@
                     placeholder="INST COLLECT with TYPE 0, DURATION 1, OPCODE 171, TEMP 0"
                     prefix="cmd('"
                     suffix="')"
-                    hint="Timeline run commands with cmd_no_hazardous_check"
+                    hint="Timeline runs commands with cmd_no_hazardous_check"
                     data-test="activity-cmd"
                   />
                 </div>
                 <div v-else-if="kind === 'SCRIPT'">
-                  <script-chooser
-                    class="my-1"
-                    v-model="activityData"
-                    @file="fileHandler"
-                  />
-                  <environment-chooser
-                    class="my-2"
-                    v-model="activityEnvironment"
-                  />
+                  <script-chooser v-model="activityData" @file="fileHandler" />
+                  <environment-chooser v-model="activityEnvironment" />
                 </div>
                 <div v-else>
                   <span class="ma-2"> No required input </span>
                 </div>
-                <v-row v-show="typeError">
+                <v-row v-show="typeError" class="mt-2">
                   <span class="ma-2 red--text" v-text="typeError" />
                 </v-row>
-                <v-row>
+                <v-row class="mt-2">
                   <v-spacer />
                   <v-btn
                     @click="cancelActivity"
@@ -221,6 +274,12 @@ export default {
       rules: {
         required: (value) => !!value || 'Required',
       },
+      recurring: false,
+      recurringEndDate: null,
+      recurringEndTime: null,
+      frequency: 90,
+      timeSpan: 'minutes',
+      timeSpans: ['minutes', 'hours', 'days'],
     }
   },
   watch: {
@@ -267,6 +326,9 @@ export default {
       this.kind = inputKind
       this.activityData = ''
     },
+    fileHandler: function (event) {
+      this.activityData = event ? event : null
+    },
     updateValues: function () {
       const sDate = new Date(this.activity.start * 1000)
       const eDate = new Date(this.activity.stop * 1000)
@@ -277,9 +339,14 @@ export default {
       this.kind = this.activity.kind.toUpperCase()
       this.activityData = this.activity.data[this.activity.kind]
       this.activityEnvironment = this.activity.data.environment
-    },
-    fileHandler: function (event) {
-      this.activityData = event ? event : null
+      if (this.activity.recurring?.uuid) {
+        this.recurring = true
+        const rDate = new Date(this.activity.recurring.end * 1000)
+        this.recurringEndDate = format(rDate, 'yyyy-MM-dd')
+        this.recurringEndTime = format(rDate, 'HH:mm:ss')
+        this.frequency = this.activity.recurring.frequency
+        this.timeSpan = this.activity.recurring.span
+      }
     },
     cancelActivity: function () {
       this.show = !this.show
@@ -287,35 +354,53 @@ export default {
     updateActivity: function () {
       // Call the api to update the activity
       const start = this.toIsoString(
-        Date.parse(`${this.startDate}T${this.startTime}`),
+        Date.parse(`${this.startDate}T${this.startTime}`)
       )
       const stop = this.toIsoString(
-        Date.parse(`${this.stopDate}T${this.stopTime}`),
+        Date.parse(`${this.stopDate}T${this.stopTime}`)
       )
       const kind = this.kind.toLowerCase()
       let data = { environment: this.activityEnvironment }
       data[kind] = this.activityData
       const tName = this.activity.name
       const aStart = this.activity.start
+      var recurring = {}
+      if (this.recurring) {
+        recurring = {
+          frequency: this.frequency,
+          span: this.timeSpan,
+          end: this.toIsoString(
+            Date.parse(`${this.recurringEndDate}T${this.recurringEndTime}`)
+          ),
+        }
+      }
       Api.put(`/openc3-api/timeline/${tName}/activity/${aStart}`, {
-        data: { start, stop, kind, data },
-      }).then((response) => {
-        const activityTime = this.generateDateTime(
-          new Date(response.data.start * 1000),
-        )
-        this.$notify.normal({
-          title: 'Updated Activity',
-          body: `${activityTime} (${response.data.start}) on timeline: ${response.data.name}`,
-        })
+        data: { start, stop, kind, data, recurring },
       })
-      this.$emit('close')
-      this.show = !this.show
+        .then((response) => {
+          const activityTime = this.generateDateTime(
+            new Date(response.data.start * 1000)
+          )
+          this.$notify.normal({
+            title: 'Updated Activity',
+            body: `${activityTime} (${response.data.start}) on timeline: ${response.data.name}`,
+          })
+          this.$emit('update')
+          this.show = !this.show
+        })
+        .catch((error) => {
+          this.show = !this.show
+        })
     },
   },
 }
 </script>
 
 <style scoped>
+.repeat {
+  padding-top: 10px;
+  text-align: right;
+}
 .v-stepper--vertical .v-stepper__content {
   width: auto;
   margin: 0px 0px 0px 36px;

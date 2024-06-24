@@ -34,7 +34,7 @@
         dense
         single-line
         hide-details
-        style="max-width: 350px"
+        class="search"
       />
     </v-card-title>
     <v-data-table
@@ -76,11 +76,15 @@
       </template>
     </v-data-table>
     <raw-dialog
+      v-for="d in rawDialogs"
+      :key="d.target_name + '_' + d.packet_name"
       type="Command"
-      :target-name="target_name"
-      :packet-name="packet_name"
-      :visible="viewRaw"
-      @display="rawDisplayCallback"
+      :target-name="d.target_name"
+      :packet-name="d.packet_name"
+      :visible="true"
+      :z-index="d.zIndex"
+      @close="closeRawDialog(d)"
+      @focus="focus(d)"
     />
   </v-card>
 </template>
@@ -109,9 +113,7 @@ export default {
         { text: 'View Raw', value: 'view_raw' },
         { text: 'View In Command Sender', value: 'view_in_cmd_sender' },
       ],
-      viewRaw: false,
-      target_name: null,
-      packet_name: null,
+      rawDialogs: [],
       visible: null,
     }
   },
@@ -129,15 +131,26 @@ export default {
     })
   },
   methods: {
-    // This method is hooked to the RawDialog as a callback to
-    // keep track of whether the dialog is displayed
-    rawDisplayCallback(bool) {
-      this.viewRaw = bool
+    focus(dialog) {
+      this.rawDialogs.map((dialog) => {
+        dialog.zIndex = 1
+      })
+      let i = this.rawDialogs.indexOf(dialog)
+      this.rawDialogs[i].zIndex = 2
     },
     openViewRaw(target_name, packet_name) {
-      this.target_name = target_name
-      this.packet_name = packet_name
-      this.viewRaw = true
+      this.rawDialogs.map((dialog) => {
+        dialog.zIndex = 1
+      })
+      this.rawDialogs = this.rawDialogs.concat({
+        target_name: target_name,
+        packet_name: packet_name,
+        zIndex: 2,
+      })
+    },
+    closeRawDialog(dialog) {
+      let i = this.rawDialogs.indexOf(dialog)
+      this.rawDialogs.splice(i, 1)
     },
     openCmdSender(target_name, packet_name) {
       let routeData = this.$router.resolve({

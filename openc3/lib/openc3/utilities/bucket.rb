@@ -69,7 +69,7 @@ module OpenC3
       raise NotImplementedError, "#{self.class} has not implemented method '#{__method__}'"
     end
 
-    def check_object(bucket:, key:)
+    def check_object(bucket:, key:, retries: true)
       raise NotImplementedError, "#{self.class} has not implemented method '#{__method__}'"
     end
 

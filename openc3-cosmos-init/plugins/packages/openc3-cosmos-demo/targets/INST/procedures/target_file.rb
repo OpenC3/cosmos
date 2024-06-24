@@ -1,9 +1,7 @@
 put_target_file("INST/test.txt", "this is a string test")
-download_file("INST/test.txt") # download via path
+download_file("INST/test.txt")
 file = get_target_file("INST/test.txt")
 puts file.read
-file.rewind # rewind so download_file can read
-download_file(file) # download using file
 file.delete
 delete_target_file("INST/test.txt")
 
@@ -18,6 +16,7 @@ file.delete
 delete_target_file("INST/test.txt")
 
 put_target_file("INST/test.bin", "\x00\x01\x02\x03\xFF\xEE\xDD\xCC")
+download_file("INST/test.bin")
 file = get_target_file("INST/test.bin")
 puts file.read.formatted
 file.delete

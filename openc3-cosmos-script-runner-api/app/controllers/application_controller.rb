@@ -27,13 +27,23 @@ class ApplicationController < ActionController::API
 
   private
 
+  def user_full_name()
+    # For user_info see openc3/utilities/authorization and
+    # openc3_enterprise/utilities/authorization
+    user = user_info(request.headers['HTTP_AUTHORIZATION'])
+    name = user['name']
+    # Open Source name (EE has the actual name)
+    name ||= 'Anonymous'
+    return name
+  end
+
   def username()
     # For user_info see openc3/utilities/authorization and
     # openc3_enterprise/utilities/authorization
     user = user_info(request.headers['HTTP_AUTHORIZATION'])
     username = user['username']
     # Open Source username (EE has the actual username)
-    username ||= 'Anonymous'
+    username ||= 'anonymous'
     return username
   end
 

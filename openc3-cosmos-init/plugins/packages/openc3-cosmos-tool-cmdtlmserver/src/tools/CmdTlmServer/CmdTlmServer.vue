@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -70,6 +70,7 @@
 </template>
 
 <script>
+import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 import LogMessages from '@openc3/tool-common/src/components/LogMessages'
 import TopBar from '@openc3/tool-common/src/components/TopBar'
 export default {
@@ -79,6 +80,7 @@ export default {
   },
   data() {
     return {
+      api: null,
       title: 'CmdTlmServer',
       panel: 0,
       curTab: null,
@@ -117,14 +119,34 @@ export default {
           items: [
             {
               label: 'Options',
+              icon: 'mdi-cog',
               command: () => {
                 this.optionsDialog = true
+              },
+            },
+            {
+              label: 'Clear Counters',
+              icon: 'mdi-eraser',
+              command: () => {
+                this.clearCounters()
               },
             },
           ],
         },
       ],
     }
+  },
+  created() {
+    this.api = new OpenC3Api()
+  },
+  methods: {
+    clearCounters() {
+      this.api.get_interface_names().then((response) => {
+        for (var i = 0; i < response.length; i++) {
+          this.api.interface_cmd(response[i], 'clear_counters')
+        }
+      })
+    },
   },
 }
 </script>

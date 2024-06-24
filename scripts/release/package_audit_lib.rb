@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -30,15 +30,26 @@ $overall_gems = []
 $overall_yarn = []
 
 def get_docker_version(path)
+  args = {}
+  version = ''
   File.open(path) do |file|
     file.each do |line|
+      if line.include?("ARG")
+        parts = line.split("ARG")[1].strip.split('=')
+        args[parts[0]] = parts[1]
+      end
       if line.include?("FROM")
         # Remove "AS ..." qualifiers in the FROM line
         line.gsub!(/as\s+.*/i, '')
-        return line.split(':')[-1].strip
+        version = line.split(':')[-1].strip
+        # Check for an ARG variable
+        if version.include?("${")
+          version = args[version[2..-2]]
+        end
       end
     end
   end
+  return version
 end
 
 def make_sorted_hash(name_versions)
@@ -49,7 +60,7 @@ def make_sorted_hash(name_versions)
     result[name][0] << version
     result[name][1] << package
   end
-  result.each do |name, data|
+  result.each do |_name, data|
     data[0].uniq!
     data[1].uniq!
   end
@@ -189,7 +200,7 @@ end
 def build_summary_report(containers)
   report = ""
   report << "OpenC3 COSMOS Package Report Summary\n"
-  report << "-" * 80
+  report << ("-" * 80)
   report << "\n\nCreated: #{Time.now}\n\n"
   report << "Containers:\n"
   containers.each do |container|
@@ -239,7 +250,7 @@ end
 def build_report(containers)
   report = ""
   report << "Individual Container Reports\n"
-  report << "-" * 80
+  report << ("-" * 80)
   report << "\n\n"
   containers.each do |container|
     report << build_container_report(container)

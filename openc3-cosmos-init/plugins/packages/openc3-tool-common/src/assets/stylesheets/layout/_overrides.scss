@@ -119,6 +119,9 @@ body,
 .theme--dark.v-list {
   background-color: var(--color-background-base-default) !important;
 }
+.theme--dark.v-list div:nth-child(odd) .v-list-item {
+  background-color: var(--color-background-base-selected) !important;
+}
 
 .theme--dark.v-list-item:hover,
 .theme--dark.v-treeview--hoverable .v-treeview-node__root:hover,
@@ -132,6 +135,43 @@ body,
   ) {
   background-color: var(--color-background-surface-hover) !important;
 }
+
+// Most tables have a search box
+.search {
+  max-width: 350px;
+  border-color: var(--color-border-interactive-muted);
+  background-color: var(--color-background-base-default);
+}
+
+// The next several styles effectively styles like an Astro select
+.theme--dark.v-select fieldset {
+  border: 1px solid var(--color-border-interactive-muted);
+  background-color: var(--color-background-base-default);
+}
+.theme--dark.v-select input {
+  color: var(--color-background-interactive-default) !important;
+}
+.theme--dark.v-select input:disabled {
+  color: var(--color-background-interactive-muted) !important;
+}
+.theme--dark.v-select .v-select__selections {
+  color: var(--color-text-interactive-default) !important;
+}
+
+// This formats the icon with a box around it but I don't really like it
+// .v-select .v-input__slot {
+//   padding-right: 0px !important;
+// }
+// .v-select .v-input__icon {
+//   width: auto;
+// }
+// .v-select i {
+//   background-color: var(--color-background-surface-selected) !important;
+//   border: 1px solid var(--color-border-interactive-muted) !important;
+//   border-radius: 3px !important;
+//   height: 40px !important;
+//   width: 40px !important;
+// }
 
 // Astro has a much higher app-bar
 .v-main {

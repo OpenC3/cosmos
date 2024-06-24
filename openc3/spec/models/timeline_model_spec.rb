@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -36,7 +36,7 @@ module OpenC3
       end_time = t + ((start + 10) * 60)
       start = start_time.to_i
       stop = end_time.to_i
-      kind = "cmd"
+      kind = "COMMAND"
       data = { "test" => "test" }
       ActivityModel.new(
         name: name,
@@ -158,7 +158,7 @@ module OpenC3
         scope = "scope"
         model = TimelineModel.new(name: name, scope: scope)
         model.create()
-        model.notify(kind: "test")
+        model.notify(kind: "SCRIPT")
       end
     end
 

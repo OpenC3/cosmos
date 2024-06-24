@@ -30,7 +30,7 @@
         <v-btn text v-bind="attrs" @click="showAlert = false"> Close </v-btn>
       </template>
     </v-snackbar>
-    <v-snackbar v-model="showReadOnlyToast" top :timeout="-1" color="orange">
+    <v-snackbar v-model="showEditingToast" top :timeout="-1" color="orange">
       <v-icon> mdi-pencil-off </v-icon>
       {{ lockedBy }} is editing this script. Editor is in read-only mode
       <template v-slot:action="{ attrs }">
@@ -48,7 +48,7 @@
           v-bind="attrs"
           @click="
             () => {
-              showReadOnlyToast = false
+              showEditingToast = false
             }
           "
         >
@@ -86,9 +86,12 @@
     <v-card style="padding: 10px">
       <suite-runner
         v-if="suiteRunner"
+        class="suite-runner"
         :suite-map="suiteMap"
         :disable-buttons="disableSuiteButtons"
+        :filename="fullFilename"
         @button="suiteRunnerButton"
+        @loaded="doResize"
       />
       <div id="sr-controls">
         <v-row no-gutters justify="space-between">
@@ -161,7 +164,7 @@
               class="mx-1"
               color="primary"
               data-test="start-button"
-              :disabled="startOrGoDisabled"
+              :disabled="startOrGoDisabled || !executeUser"
             >
               <span> Start </span>
             </v-btn>
@@ -217,12 +220,8 @@
     <!-- Create Multipane container to support resizing.
          NOTE: We listen to paneResize event and call editor.resize() to prevent weird sizing issues,
          The event must be paneResize and not pane-resize -->
-    <multipane
-      class="horizontal-panes"
-      layout="horizontal"
-      @paneResize="editor.resize()"
-    >
-      <div class="editorbox pane">
+    <multipane layout="horizontal" @paneResize="doResize">
+      <div class="editorbox">
         <v-snackbar
           v-model="showSave"
           absolute
@@ -260,7 +259,7 @@
         </v-menu>
       </div>
       <multipane-resizer><hr /></multipane-resizer>
-      <div id="messages" class="mt-2 pane" ref="messagesDiv">
+      <div id="messages" class="mt-2" ref="messagesDiv">
         <div id="debug" class="pa-0" v-if="showDebug">
           <v-row no-gutters>
             <v-btn
@@ -286,7 +285,11 @@
             />
           </v-row>
         </div>
-        <script-log-messages v-model="messages" @sort="messageSortOrder" />
+        <script-log-messages
+          id="log-messages"
+          v-model="messages"
+          @sort="messageSortOrder"
+        />
       </div>
     </multipane>
     <!--- MENUS --->
@@ -297,6 +300,7 @@
       api-url="/script-api/scripts"
       @file="setFile($event)"
       @error="setError($event)"
+      @clear-temp="clearTemp($event)"
     />
     <file-open-save-dialog
       v-if="showSaveAs"
@@ -307,6 +311,7 @@
       :input-filename="filenameOrBlank"
       @filename="saveAsFilename($event)"
       @error="setError($event)"
+      @clear-temp="clearTemp($event)"
     />
     <environment-dialog v-if="showEnvironment" v-model="showEnvironment" />
     <ask-dialog
@@ -376,6 +381,7 @@
         <running-scripts
           v-if="showScripts"
           :connect-in-new-tab="!!fileModified"
+          @disconnect="scriptDisconnect"
           @close="
             () => {
               showScripts = false
@@ -475,7 +481,7 @@ export default {
         // },
       },
       filenameSelect: null,
-      currentFilename: null,
+      currentFilename: null, // This is the currently shown filename while running
       showSave: false,
       showAlert: false,
       alertType: null,
@@ -497,16 +503,21 @@ export default {
       files: {},
       breakpoints: {},
       filename: NEW_FILENAME,
+      readOnlyUser: false,
+      executeUser: true,
+      saveAllowed: true,
       tempFilename: null,
       fileModified: '',
       fileOpen: false,
       lockedBy: null,
-      showReadOnlyToast: false,
+      showEditingToast: false,
       showSaveAs: false,
       areYouSure: false,
       subscription: null,
       cable: null,
       fatal: false,
+      updateInterval: null,
+      receivedEvents: [],
       messages: [],
       messagesNewestOnTop: true,
       maxArrayLength: 200,
@@ -573,9 +584,11 @@ export default {
     }
   },
   computed: {
+    // This is the list of files shown in the select dropdown
     fileList: function () {
+      // this.files is the list of all files seen while running
       const filenames = Object.keys(this.files)
-      filenames.push(this.fullFilename)
+      filenames.push(this.fullFilename) // Make sure the currently shown filename is last
       return [...new Set(filenames)] // ensure unique
     },
     environmentIcon: function () {
@@ -586,9 +599,10 @@ export default {
     environmentIconColor: function () {
       return this.scriptEnvironment.env.length > 0 ? 'primary' : ''
     },
-    readOnly: function () {
+    isLocked: function () {
       return !!this.lockedBy
     },
+    // Returns the currently shown filename
     fullFilename: function () {
       if (this.currentFilename) return this.currentFilename
       // New filenames should not indicate modified
@@ -597,6 +611,7 @@ export default {
     },
     // It's annoying for people (and tests) to clear the <Untitled>
     // when saving a new file so replace with blank
+    // This makes sure that string doesn't show up in the dialog
     filenameOrBlank: function () {
       return this.filename === NEW_FILENAME ? '' : this.filename
     },
@@ -608,7 +623,7 @@ export default {
             {
               label: 'New File',
               icon: 'mdi-file-plus',
-              disabled: this.scriptId,
+              disabled: this.scriptId || this.readOnlyUser,
               command: () => {
                 this.newFile()
               },
@@ -616,7 +631,7 @@ export default {
             {
               label: 'New Test Suite',
               icon: 'mdi-file-plus',
-              disabled: this.scriptId,
+              disabled: this.scriptId || this.readOnlyUser,
               subMenu: [
                 {
                   label: 'Ruby',
@@ -654,7 +669,7 @@ export default {
             {
               label: 'Save File',
               icon: 'mdi-content-save',
-              disabled: this.scriptId,
+              disabled: this.scriptId || this.readOnlyUser,
               command: () => {
                 this.saveFile()
               },
@@ -662,7 +677,7 @@ export default {
             {
               label: 'Save As...',
               icon: 'mdi-content-save',
-              disabled: this.scriptId,
+              disabled: this.scriptId || this.readOnlyUser,
               command: () => {
                 this.saveAs()
               },
@@ -684,7 +699,7 @@ export default {
             {
               label: 'Delete File',
               icon: 'mdi-delete',
-              disabled: this.scriptId,
+              disabled: this.scriptId || this.readOnlyUser,
               command: () => {
                 this.delete()
               },
@@ -753,7 +768,7 @@ export default {
             },
             {
               label: 'Syntax Check',
-              icon: 'mdi-language-ruby',
+              icon: 'mdi-file-check',
               disabled: this.scriptId,
               command: () => {
                 this.syntaxCheck()
@@ -834,12 +849,16 @@ export default {
     },
   },
   watch: {
-    readOnly: function (val) {
-      this.showReadOnlyToast = val
+    isLocked: function (val) {
+      this.showEditingToast = val
       if (!this.suiteRunner) {
         this.startOrGoDisabled = val
       }
-      this.editor.setReadOnly(val)
+      if (this.readOnlyUser == false && val == false) {
+        this.editor.setReadOnly(val)
+      } else {
+        this.editor.setReadOnly(true)
+      }
     },
     fullFilename: function (filename) {
       this.filenameSelect = filename
@@ -850,7 +869,7 @@ export default {
       }
     },
   },
-  created: function () {
+  created: async function () {
     // Ensure Offline Access Is Setup For the Current User
     this.api = new OpenC3Api()
     this.api.ensure_offline_access()
@@ -858,6 +877,62 @@ export default {
     // Make NEW_FILENAME available to the template
     this.NEW_FILENAME = NEW_FILENAME
     window.onbeforeunload = this.unlockFile
+
+    let user = OpenC3Auth.user()
+    let roles = [
+      ...new Set( // Use Set to remove duplicates
+        OpenC3Auth.userroles()
+          // Roles are like ALLSCOPES__custom DEFAULT__viewer
+          // but it also includes default-roles-openc3
+          .map((element) => element.split('__')[1])
+          .filter(Boolean), // Get rid of non roles (default-roles-openc3)
+      ),
+    ]
+    this.readOnlyUser = true
+    this.executeUser = false
+    for (let role of roles) {
+      if (role == 'viewer') {
+        continue
+      }
+      if (role == 'admin' || role == 'operator') {
+        this.readOnlyUser = false
+        this.executeUser = true
+      } else {
+        await Api.get(`/openc3-api/roles/${role}`).then((response) => {
+          if (response.data.permissions !== undefined) {
+            if (
+              response.data.permissions.some(
+                (i) => i.permission == 'script_edit',
+              )
+            ) {
+              this.readOnlyUser = false
+            }
+            if (
+              response.data.permissions.some(
+                (i) => i.permission == 'script_run',
+              )
+            ) {
+              this.executeUser = true
+            }
+          }
+        })
+      }
+    }
+    // Output the userinfo for use in the SuiteRunner component
+    localStorage['script_runner__userinfo'] = JSON.stringify({
+      name: user['preferred_username'],
+      readOnly: this.readOnlyUser,
+      execute: this.executeUser,
+    })
+    if (this.readOnlyUser == true) {
+      this.alertType = 'info'
+      let text = `User ${user['preferred_username']} is read only`
+      if (this.executeUser) {
+        text += ' but can execute scripts'
+      }
+      this.alertText = text
+      this.showAlert = true
+    }
 
     Api.get('/openc3-api/autocomplete/keywords/screen').then((response) => {
       this.screenKeywords = response.data
@@ -907,6 +982,10 @@ export default {
     // is the background process that updates as changes are processed
     // while change fires immediately before the UndoManager is updated.
     this.editor.session.on('tokenizerUpdate', this.onChange)
+    if (this.readOnlyUser) {
+      this.editor.setReadOnly(true)
+      this.editor.renderer.$cursorLayer.element.style.display = 'none'
+    }
 
     const sleepAnnotator = new SleepAnnotator(this.editor)
     this.editor.session.on('change', ($event, session) => {
@@ -914,7 +993,9 @@ export default {
       this.updateBreakpoints($event, session)
     })
 
+    window.addEventListener('resize', this.doResize)
     window.addEventListener('keydown', this.keydown)
+    this.doResize()
     this.cable = new Cable('/script-api/cable')
 
     if (localStorage['script_runner__recent']) {
@@ -922,21 +1003,21 @@ export default {
       // Rebuild the command since that doesn't get stringified
       this.recent = this.recent.map((item) => ({
         ...item,
-        command: (event) => {
+        command: async (event) => {
           this.filename = event.label
-          this.reloadFile()
+          await this.reloadFile()
         },
       }))
     }
     if (this.$route.query?.file) {
       this.filename = this.$route.query.file
-      this.reloadFile()
+      await this.reloadFile()
     } else if (this.$route.params?.id) {
       await this.tryLoadRunningScript(this.$route.params.id)
     } else {
       if (localStorage['script_runner__filename']) {
         this.filename = localStorage['script_runner__filename']
-        this.reloadFile(false)
+        await this.reloadFile(false)
       }
     }
     // TODO: Potentially still bad interactions with autoSave
@@ -951,6 +1032,10 @@ export default {
     //     await this.saveFile('auto')
     //   }
     // }, 60000) // Save every minute
+
+    this.updateInterval = setInterval(async () => {
+      this.processReceived()
+    }, 100) // Every 100ms
   },
   beforeDestroy() {
     this.editor.destroy()
@@ -958,11 +1043,12 @@ export default {
   },
   destroyed() {
     this.unlockFile()
-    if (this.autoSaveInterval != null) {
-      clearInterval(this.autoSaveInterval)
+    if (this.updateInterval != null) {
+      clearInterval(this.updateInterval)
     }
     if (this.subscription) {
       this.subscription.unsubscribe()
+      this.subscription = null
     }
     this.cable.disconnect()
   },
@@ -974,6 +1060,42 @@ export default {
     }
   },
   methods: {
+    doResize() {
+      this.editor.resize()
+      // nextTick allows the resize to work correctly
+      // when we remove the SuiteRunner chrome
+      this.$nextTick(() => {
+        this.calcHeight()
+      })
+    },
+    calcHeight() {
+      var editor = document.getElementsByClassName('editorbox')[0]
+      var h = Math.max(
+        document.documentElement.offsetHeight,
+        window.innerHeight || 0,
+      )
+      var editorHeight = 0
+      if (editor) {
+        editorHeight = editor.offsetHeight
+      }
+      var suitesHeight = 0
+      var suites = document.getElementsByClassName('suite-runner')[0]
+      if (suites) {
+        suitesHeight = suites.offsetHeight
+      }
+      var logMessages = document.getElementById('script-log-messages')
+      if (logMessages) {
+        // 295 is magic and was determined by experimentation
+        logMessages.style.height = `${h - editorHeight - suitesHeight - 292}px`
+      }
+    },
+    scriptDisconnect() {
+      if (this.subscription) {
+        this.subscription.unsubscribe()
+        this.subscription = null
+      }
+      this.receivedEvents.length = 0 // Clear any unprocessed events
+    },
     showMetadata() {
       Api.get('/openc3-api/metadata').then((response) => {
         // TODO: This is how Calendar creates new metadata items via makeMetadataEvent
@@ -1093,6 +1215,7 @@ export default {
       }
     },
     // This only gets called when the user changes the filename dropdown
+    // Or when a user hits Go
     fileNameChanged(filename) {
       // Split off the '*' which indicates modified
       filename = filename.split('*')[0]
@@ -1144,6 +1267,7 @@ export default {
         }
         // Disable suite buttons if we didn't successfully parse the suite
         this.disableSuiteButtons = response.data.success == false
+        this.doResize()
       })
     },
     showExecuteSelectionMenu: function ($event) {
@@ -1169,14 +1293,15 @@ export default {
         .map((row) => row - range.start.row)
       this.executeText(text, breakpoints)
     },
-    executeText: function (text, breakpoints = []) {
+    async executeText(text, breakpoints = []) {
+      let extension = this.fullFilename.split('.').pop()
       // Create a new temp script and open in new tab
       const selectionTempFilename =
         TEMP_FOLDER +
         '/' +
         format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') +
-        '_temp.rb'
-      Api.post(`/script-api/scripts/${selectionTempFilename}`, {
+        `_temp.${extension}`
+      await Api.post(`/script-api/scripts/${selectionTempFilename}`, {
         data: {
           text,
           breakpoints,
@@ -1270,6 +1395,10 @@ export default {
       }
     },
     async keydown(event) {
+      // Don't ever save if running or readonly
+      if (this.scriptId || this.editor.getReadOnly() === true) {
+        return
+      }
       // NOTE: Chrome does not allow overriding Ctrl-N, Ctrl-Shift-N, Ctrl-T, Ctrl-Shift-T, Ctrl-W
       // NOTE: metaKey == Command on Mac
       if (
@@ -1344,7 +1473,29 @@ export default {
           this.subscription = subscription
         })
     },
-    scriptComplete() {
+    async scriptComplete() {
+      // Ensure stopped, if the script has an error we don't get the server stopped message
+      this.state = 'stopped'
+      this.fatal = false
+      this.scriptId = null // No current scriptId
+      this.currentFilename = null // No current file running
+      this.files = {} // Clear the file cache
+      // Make sure we process no more events
+      if (this.subscription) {
+        await this.subscription.unsubscribe()
+        this.subscription = null
+      }
+      this.receivedEvents.length = 0 // Clear any unprocessed events
+
+      await this.reloadFile() // Make sure the right file is shown
+      // We may have changed the contents (if there were sub-scripts)
+      // so don't let the undo manager think this is a change
+      this.editor.session.getUndoManager().reset()
+      if (this.readOnlyUser == false) {
+        this.editor.setReadOnly(false)
+      }
+
+      // Lastly enable the buttons so another script can start
       this.disableSuiteButtons = false
       this.startOrGoButton = START
       this.pauseOrRetryButton = PAUSE
@@ -1353,15 +1504,6 @@ export default {
       this.envDisabled = false
       this.pauseOrRetryDisabled = true
       this.stopDisabled = true
-      // Ensure stopped, if the script has an error we don't get the server stopped message
-      this.state = 'stopped'
-      this.fatal = false
-      this.scriptId = null
-      this.currentFilename = null
-      // We may have changed the contents (if there were sub-scripts)
-      // so don't let the undo manager think this is a chanage
-      this.editor.session.getUndoManager().reset()
-      this.editor.setReadOnly(false)
     },
     environmentHandler: function (event) {
       this.scriptEnvironment.env = event
@@ -1375,6 +1517,7 @@ export default {
       // like disabling start which could allow users to click start twice.
       this.initScriptStart()
       await this.saveFile('start')
+      this.saveAllowed = false
       let filename = this.filename
       if (this.filename === NEW_FILENAME) {
         // NEW_FILENAME so use tempFilename created by saveFile()
@@ -1427,205 +1570,220 @@ export default {
     step() {
       Api.post(`/script-api/running-script/${this.scriptId}/step`)
     },
-    received(data) {
-      this.cable.recordPing()
-      // eslint-disable-next-line
-      // console.log(data) // Uncomment for debugging
-      let index = 0
-      switch (data.type) {
-        case 'file':
-          this.files[data.filename] = { content: data.text, lineNo: 0 }
-          this.breakpoints[data.filename] = data.breakpoints
-          if (this.currentFilename === data.filename) {
-            this.restoreBreakpoints(data.filename)
-          }
-          break
-        case 'line':
-          if (data.filename && data.filename !== this.currentFilename) {
-            if (!this.files[data.filename]) {
-              // We don't have the contents of the running file (probably because connected to running script)
-              // Set the contents initially to an empty string so we don't start slamming the API
-              this.files[data.filename] = { content: '', lineNo: 0 }
+    processLine(data) {
+      if (data.filename && data.filename !== this.currentFilename) {
+        if (!this.files[data.filename]) {
+          // We don't have the contents of the running file (probably because connected to running script)
+          // Set the contents initially to an empty string so we don't start slamming the API
+          this.files[data.filename] = { content: '', lineNo: 0 }
 
-              // Request the script we need
-              Api.get(`/script-api/scripts/${data.filename}`)
-                .then((response) => {
-                  // Success - Save the script text and mark the currentFilename as null
-                  // so it will get loaded in on the next line executed
-                  this.files[data.filename] = {
-                    content: response.data.contents,
-                    lineNo: 0,
-                  }
-                  this.breakpoints[data.filename] = response.data.breakpoints
-                  this.restoreBreakpoints(data.filename)
-                  this.currentFilename = null
-                })
-                .catch((err) => {
-                  // Error - Restore the file contents to null so we'll try the API again on the next line
-                  this.files[data.filename] = null
-                })
-            } else {
-              this.editor.setValue(this.files[data.filename].content)
+          // Request the script we need
+          Api.get(`/script-api/scripts/${data.filename}`)
+            .then((response) => {
+              // Success - Save the script text and mark the currentFilename as null
+              // so it will get loaded in on the next line executed
+              this.files[data.filename] = {
+                content: response.data.contents,
+                lineNo: 0,
+              }
+              this.breakpoints[data.filename] = response.data.breakpoints
               this.restoreBreakpoints(data.filename)
-              this.editor.clearSelection()
-              this.currentFilename = data.filename
-            }
-          }
-          this.state = data.state
-          const markers = this.editor.session.getMarkers()
-          switch (this.state) {
-            case 'running':
-              this.startOrGoDisabled = false
-              this.pauseOrRetryDisabled = false
-              this.stopDisabled = false
-              this.pauseOrRetryButton = PAUSE
+              this.currentFilename = null
+            })
+            .catch((err) => {
+              // Error - Restore the file contents to null so we'll try the API again on the next line
+              this.files[data.filename] = null
+            })
+        } else {
+          this.currentFilename = data.filename
+          this.editor.setValue(this.files[data.filename].content)
+          this.restoreBreakpoints(data.filename)
+          this.editor.clearSelection()
+        }
+      }
+      this.state = data.state
+      const markers = this.editor.session.getMarkers()
+      switch (this.state) {
+        case 'running':
+          this.startOrGoDisabled = false
+          this.pauseOrRetryDisabled = false
+          this.stopDisabled = false
+          this.pauseOrRetryButton = PAUSE
 
-              this.removeAllMarkers()
-              this.editor.session.addMarker(
-                new this.Range(data.line_no - 1, 0, data.line_no - 1, 1),
-                'runningMarker',
-                'fullLine',
-              )
-              this.editor.gotoLine(data.line_no)
-              this.files[data.filename].lineNo = data.line_no
-              break
-            case 'fatal':
-              this.fatal = true
-            // Deliberate fall through (no break)
-            case 'error':
-              this.pauseOrRetryButton = RETRY
-            // Deliberate fall through (no break)
-            case 'breakpoint':
-            case 'waiting':
-            case 'paused':
-              if (this.state == 'fatal') {
-                this.startOrGoDisabled = true
-                this.pauseOrRetryDisabled = true
-              } else {
-                this.startOrGoDisabled = false
-                this.pauseOrRetryDisabled = false
-              }
-              this.stopDisabled = false
-              let existing = Object.keys(markers).filter(
-                (key) => markers[key].clazz === `${this.state}Marker`,
-              )
-              if (existing.length === 0) {
-                this.removeAllMarkers()
-                let line = data.line_no > 0 ? data.line_no : 1
-                this.editor.session.addMarker(
-                  new this.Range(line - 1, 0, line - 1, 1),
-                  `${this.state}Marker`,
-                  'fullLine',
-                )
-                this.editor.gotoLine(line)
-                // Fatal errors don't always have a filename set
-                if (data.filename) {
-                  this.files[data.filename].lineNo = line
-                }
-              }
-              break
-            default:
-              break
+          this.removeAllMarkers()
+          this.editor.session.addMarker(
+            new this.Range(data.line_no - 1, 0, data.line_no - 1, 1),
+            'runningMarker',
+            'fullLine',
+          )
+          this.editor.gotoLine(data.line_no)
+          this.files[data.filename].lineNo = data.line_no
+          break
+        case 'fatal':
+          this.fatal = true
+        // Deliberate fall through (no break)
+        case 'error':
+          this.pauseOrRetryButton = RETRY
+        // Deliberate fall through (no break)
+        case 'breakpoint':
+        case 'waiting':
+        case 'paused':
+          if (this.state == 'fatal') {
+            this.startOrGoDisabled = true
+            this.pauseOrRetryDisabled = true
+          } else {
+            this.startOrGoDisabled = false
+            this.pauseOrRetryDisabled = false
           }
-          break
-        case 'output':
-          // data.line can consist of multiple lines split by newlines
-          // thus we split and only output if the content is not empty
-          for (const line of data.line.split('\n')) {
-            if (line) {
-              if (this.messagesNewestOnTop) {
-                this.messages.unshift({ message: line })
-              } else {
-                this.messages.push({ message: line })
-              }
-            }
-          }
-          while (this.messages.length > this.maxArrayLength) {
-            this.messages.pop()
-          }
-          break
-        case 'script':
-          this.handleScript(data)
-          break
-        case 'report':
-          this.results.text = data.report
-          this.results.show = true
-          break
-        case 'complete':
-          // Don't complete on fatal because we just sit there on the fatal line
-          if (!this.fatal) {
+          this.stopDisabled = false
+          let existing = Object.keys(markers).filter(
+            (key) => markers[key].clazz === `${this.state}Marker`,
+          )
+          if (existing.length === 0) {
             this.removeAllMarkers()
-            this.scriptComplete()
-          }
-          break
-        case 'step':
-          this.showDebug = true
-          break
-        case 'screen':
-          let found = false
-          let definition = {}
-          for (screen of this.screens) {
-            if (
-              screen.target == data.target_name &&
-              screen.screen == data.screen_name
-            ) {
-              definition = screen
-              found = true
-              break
+            let line = data.line_no > 0 ? data.line_no : 1
+            this.editor.session.addMarker(
+              new this.Range(line - 1, 0, line - 1, 1),
+              `${this.state}Marker`,
+              'fullLine',
+            )
+            this.editor.gotoLine(line)
+            // Fatal errors don't always have a filename set
+            if (data.filename) {
+              this.files[data.filename].lineNo = line
             }
-            index += 1
           }
-          this.$set(definition, 'target', data.target_name)
-          this.$set(definition, 'screen', data.screen_name)
-          this.$set(definition, 'definition', data.definition)
-          if (data.x) {
-            this.$set(definition, 'left', data.x)
-          } else {
-            this.$set(definition, 'left', 0)
-          }
-          if (data.y) {
-            this.$set(definition, 'top', data.y)
-          } else {
-            this.$set(definition, 'top', 0)
-          }
-          this.$set(definition, 'count', this.updateCounter++)
-          if (!found) {
-            this.$set(definition, 'id', this.idCounter++)
-            this.$set(this.screens, this.screens.length, definition)
-          } else {
-            this.$set(this.screens, index, definition)
-          }
-          break
-        case 'clearscreen':
-          for (screen of this.screens) {
-            if (
-              screen.target == data.target_name &&
-              screen.screen == data.screen_name
-            ) {
-              this.screens.splice(index, 1)
-              break
-            }
-            index += 1
-          }
-          break
-        case 'clearallscreens':
-          this.screens = []
-          break
-        case 'downloadfile':
-          const blob = new Blob([data.text], {
-            type: 'text/plain',
-          })
-          // Make a link and then 'click' on it to start the download
-          const link = document.createElement('a')
-          link.href = URL.createObjectURL(blob)
-          link.setAttribute('download', data.filename)
-          link.click()
           break
         default:
-          // console.log('Unexpected ActionCable message')
-          // console.log(data)
           break
       }
+    },
+    processReceived() {
+      let count = 0
+      for (let data of this.receivedEvents) {
+        count += 1
+        // eslint-disable-next-line
+        // console.log(data) // Uncomment for debugging
+        let index = 0
+        switch (data.type) {
+          case 'file':
+            this.files[data.filename] = { content: data.text, lineNo: 0 }
+            this.breakpoints[data.filename] = data.breakpoints
+            if (this.currentFilename === data.filename) {
+              this.restoreBreakpoints(data.filename)
+            }
+            break
+          case 'line':
+            // A further optimization would be to only process the last line of a batch
+            // However with some testing this did not seem to make much difference
+            // and was preventing the highlighting of the final line of a script because
+            // the last line of the final batch was line_number 0 with state stopped
+            // and that would never highlight the actual final line
+            this.processLine(data)
+            break
+          case 'output':
+            // data.line can consist of multiple lines split by newlines
+            // thus we split and only output if the content is not empty
+            for (const line of data.line.split('\n')) {
+              if (line) {
+                if (this.messagesNewestOnTop) {
+                  this.messages.unshift({ message: line })
+                } else {
+                  this.messages.push({ message: line })
+                }
+              }
+            }
+            while (this.messages.length > this.maxArrayLength) {
+              this.messages.pop()
+            }
+            break
+          case 'script':
+            this.handleScript(data)
+            break
+          case 'report':
+            this.results.text = data.report
+            this.results.show = true
+            break
+          case 'complete':
+            // Don't complete on fatal because we just sit there on the fatal line
+            if (!this.fatal) {
+              this.removeAllMarkers()
+              this.scriptComplete()
+            }
+            break
+          case 'step':
+            this.showDebug = true
+            break
+          case 'screen':
+            let found = false
+            let definition = {}
+            for (screen of this.screens) {
+              if (
+                screen.target == data.target_name &&
+                screen.screen == data.screen_name
+              ) {
+                definition = screen
+                found = true
+                break
+              }
+              index += 1
+            }
+            this.$set(definition, 'target', data.target_name)
+            this.$set(definition, 'screen', data.screen_name)
+            this.$set(definition, 'definition', data.definition)
+            if (data.x) {
+              this.$set(definition, 'left', data.x)
+            } else {
+              this.$set(definition, 'left', 0)
+            }
+            if (data.y) {
+              this.$set(definition, 'top', data.y)
+            } else {
+              this.$set(definition, 'top', 0)
+            }
+            this.$set(definition, 'count', this.updateCounter++)
+            if (!found) {
+              this.$set(definition, 'id', this.idCounter++)
+              this.$set(this.screens, this.screens.length, definition)
+            } else {
+              this.$set(this.screens, index, definition)
+            }
+            break
+          case 'clearscreen':
+            for (screen of this.screens) {
+              if (
+                screen.target == data.target_name &&
+                screen.screen == data.screen_name
+              ) {
+                this.screens.splice(index, 1)
+                break
+              }
+              index += 1
+            }
+            break
+          case 'clearallscreens':
+            this.screens = []
+            break
+          case 'downloadfile':
+            // Make a link and then 'click' on it to start the download
+            const link = document.createElement('a')
+            link.href = window.location.origin + data.url
+            link.setAttribute('download', data.filename)
+            link.click()
+            break
+          default:
+            // console.log('Unexpected ActionCable message')
+            // console.log(data)
+            break
+        }
+      }
+
+      // Remove all the events we processed
+      this.receivedEvents.splice(0, count)
+    },
+    received(data) {
+      this.cable.recordPing()
+      this.receivedEvents.push(data)
     },
     promptDialogCallback(value) {
       this.prompt.show = false
@@ -1834,6 +1992,7 @@ export default {
       this.tempFilename = null
       this.files = {} // Clear the cached file list
       this.editor.session.setValue('')
+      this.saveAllowed = true
       this.fileModified = ''
       this.suiteRunner = false
       this.startOrGoDisabled = false
@@ -1845,6 +2004,7 @@ export default {
         // catch the error in case we route to where we already are
         .catch((err) => {})
       document.title = 'Script Runner'
+      this.doResize()
     },
     async newRubyTestSuite() {
       this.newFile()
@@ -1934,14 +2094,48 @@ class TestSuite(Suite):
 `)
       await this.saveFile('auto')
     },
+    addToRecent(filename) {
+      // See if this filename is already in the recent ... if so remove it
+      let index = this.recent.findIndex((i) => i.label === filename)
+      if (index !== -1) {
+        this.recent.splice(index, 1)
+      }
+      // Push this filename to the front of the recently used
+      this.recent.unshift({
+        label: filename,
+        icon: fileIcon(filename),
+        command: async (event) => {
+          this.filename = event.label
+          await this.reloadFile()
+        },
+      })
+      if (this.recent.length > 8) {
+        this.recent.pop()
+      }
+      // This only stringifies the label and icon ... not the command
+      localStorage['script_runner__recent'] = JSON.stringify(this.recent)
+    },
+    removeFromRecent(filename) {
+      this.recent = this.recent.filter((entry) => entry.label !== filename)
+      localStorage['script_runner__recent'] = JSON.stringify(this.recent)
+      if (localStorage['script_runner__filename'] === filename) {
+        localStorage.removeItem('script_runner__filename')
+      }
+    },
     openFile() {
       this.fileOpen = true
     },
     async reloadFile(showError = true) {
       // Disable start while we're loading the file so we don't hit Start
       // before it's fully loaded and then save over it with a blank file
+      this.saveAllowed = false
       this.startOrGoDisabled = true
-      Api.get(`/script-api/scripts/${this.filename}`)
+      await Api.get(`/script-api/scripts/${this.filename}`, {
+        headers: {
+          Accept: 'application/json',
+          'Ignore-Errors': '404',
+        },
+      })
         .then((response) => {
           const file = {
             name: this.filename,
@@ -1959,12 +2153,17 @@ class TestSuite(Suite):
           const locked = response.data.locked
           const breakpoints = response.data.breakpoints
           this.setFile({ file, locked, breakpoints }, true)
+          this.saveAllowed = true
         })
         .catch((error) => {
-          if (showError) {
-            this.$emit('error', `Failed to open ${this.selectedFile}. ${error}`)
+          if (showError === true) {
+            this.$notify.caution({
+              title: 'File Open Error',
+              body: `Failed to open ${this.filename} due to ${error}`,
+            })
           }
-          localStorage.removeItem('script_runner__filename')
+          this.removeFromRecent(this.filename)
+          this.newFile() // Reset the GUI
         })
     },
     // Called by the FileOpenDialog to set the file contents
@@ -2009,26 +2208,7 @@ class TestSuite(Suite):
       this.restoreBreakpoints(filename)
       this.fileModified = ''
       this.envDisabled = false
-
-      // See if this filename is already in the recent ... if so remove it
-      let index = this.recent.findIndex((i) => i.label === this.filename)
-      if (index !== -1) {
-        this.recent.splice(index, 1)
-      }
-      // Push this filename to the front of the recently used
-      this.recent.unshift({
-        label: this.filename,
-        icon: fileIcon(this.filename),
-        command: (event) => {
-          this.filename = event.label
-          this.reloadFile()
-        },
-      })
-      if (this.recent.length > 8) {
-        this.recent.pop()
-      }
-      // This only stringifies the label and icon ... not the command
-      localStorage['script_runner__recent'] = JSON.stringify(this.recent)
+      this.addToRecent(this.filename)
 
       if (file.suites) {
         this.suiteRunner = true
@@ -2044,6 +2224,13 @@ class TestSuite(Suite):
       }
       // Disable suite buttons if we didn't successfully parse the suite
       this.disableSuiteButtons = file.success == false
+      this.doResize()
+    },
+    clearTemp() {
+      this.recent = this.recent.filter(
+        (entry) => !entry.label.includes('__TEMP__'),
+      )
+      localStorage['script_runner__recent'] = JSON.stringify(this.recent)
     },
     detectLanguage() {
       let rubyRegex1 = new RegExp('^\\s*(require|load|puts) ')
@@ -2052,6 +2239,7 @@ class TestSuite(Suite):
       let pythonRegex2 = new RegExp(
         '^\\s*(if|def|while|else|elif|class).*:\\s*$',
       )
+      let pythonRegex3 = new RegExp('\\(f"') // f strings
       let text = this.editor.getValue()
       let lines = text.split('\n')
       for (let line of lines) {
@@ -2067,91 +2255,104 @@ class TestSuite(Suite):
         if (line.match(pythonRegex2)) {
           return 'python'
         }
+        if (line.match(pythonRegex3)) {
+          return 'python'
+        }
       }
       return 'unknown' // otherwise unknown
     },
     // saveFile takes a type to indicate if it was called by the Menu
     // or automatically by 'Start' (to ensure a consistent backend file) or autoSave
     async saveFile(type = 'menu') {
-      const breakpoints = this.getBreakpointRows()
-      if (this.filename === NEW_FILENAME) {
-        if (type === 'menu') {
-          // Menu driven saves on a new file should prompt SaveAs
-          this.saveAs()
-          return
-        } else {
-          if (this.tempFilename === null) {
-            let language = this.detectLanguage()
-            if (
-              language === 'ruby' ||
-              (type !== 'auto' && language == 'unknown')
-            ) {
-              this.tempFilename =
-                TEMP_FOLDER +
-                '/' +
-                format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') +
-                '_temp.rb'
-            } else if (language === 'python') {
-              this.tempFilename =
-                TEMP_FOLDER +
-                '/' +
-                format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') +
-                '_temp.py'
-            } else {
-              // No autosave for unknown language
-              return
+      if (this.readOnlyUser) {
+        return
+      }
+      if (this.saveAllowed) {
+        const breakpoints = this.getBreakpointRows()
+        if (this.filename === NEW_FILENAME) {
+          if (type === 'menu') {
+            // Menu driven saves on a new file should prompt SaveAs
+            this.saveAs()
+            return
+          } else {
+            // start or auto with NEW_FILENAME
+            if (this.tempFilename === null) {
+              let language = this.detectLanguage()
+              if (
+                language === 'ruby' ||
+                (type !== 'auto' && language == 'unknown')
+              ) {
+                this.tempFilename =
+                  TEMP_FOLDER +
+                  '/' +
+                  format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') +
+                  '_temp.rb'
+              } else if (language === 'python') {
+                this.tempFilename =
+                  TEMP_FOLDER +
+                  '/' +
+                  format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') +
+                  '_temp.py'
+              } else {
+                // No autosave for unknown language
+                return
+              }
+              this.filename = this.tempFilename
+              this.addToRecent(this.filename)
             }
-            this.filename = this.tempFilename
           }
         }
-      }
-      this.showSave = true
-      await Api.post(`/script-api/scripts/${this.filename}`, {
-        data: {
-          text: this.editor.getValue(), // Pass in the raw file text
-          breakpoints,
-        },
-      })
-        .then((response) => {
-          if (response.status == 200) {
-            if (response.data.suites) {
-              this.startOrGoDisabled = true
-              this.suiteRunner = true
-              this.suiteMap = JSON.parse(response.data.suites)
+        this.showSave = true
+        await Api.post(`/script-api/scripts/${this.filename}`, {
+          data: {
+            text: this.editor.getValue(), // Pass in the raw file text
+            breakpoints,
+          },
+        })
+          .then((response) => {
+            if (response.status == 200) {
+              if (response.data.suites) {
+                this.startOrGoDisabled = true
+                this.suiteRunner = true
+                this.suiteMap = JSON.parse(response.data.suites)
+              } else {
+                this.startOrGoDisabled = false
+                this.suiteRunner = false
+                this.suiteMap = {}
+              }
+              if (response.data.error) {
+                this.suiteError = response.data.error
+                this.showSuiteError = true
+              }
+              this.fileModified = ''
+              setTimeout(() => {
+                this.showSave = false
+              }, 2000)
             } else {
-              this.startOrGoDisabled = false
-              this.suiteRunner = false
-              this.suiteMap = {}
-            }
-            if (response.data.error) {
-              this.suiteError = response.data.error
-              this.showSuiteError = true
-            }
-            this.fileModified = ''
-            setTimeout(() => {
               this.showSave = false
-            }, 2000)
-          } else {
+              this.alertType = 'error'
+              this.alertText = `Error saving file. Code: ${response.status} Text: ${response.statusText}`
+              this.showAlert = true
+            }
+            this.lockFile() // Ensure this file is locked for editing
+            this.doResize()
+          })
+          .catch(({ response }) => {
             this.showSave = false
-            this.alertType = 'error'
-            this.alertText = `Error saving file. Code: ${response.status} Text: ${response.statusText}`
+            // 422 error means we couldn't parse the script file into Suites
+            // response.data.suites holds the parse result
+            if (response.status == 422) {
+              this.alertType = 'error'
+              this.alertText = response.data.suites
+            } else {
+              this.alertType = 'error'
+              this.alertText = `Error saving file. Code: ${response.status} Text: ${response.statusText}`
+            }
             this.showAlert = true
-          }
-          this.lockFile() // Ensure this file is locked for editing
-        })
-        .catch(({ response }) => {
-          this.showSave = false
-          // 422 error means we couldn't parse the script file into Suites
-          // response.data.suites holds the parse result
-          if (response.status == 422) {
-            this.alertType = 'error'
-            this.alertText = response.data.suites
-          } else {
-            this.alertType = 'error'
-            this.alertText = `Error saving file. Code: ${response.status} Text: ${response.statusText}`
-          }
-          this.showAlert = true
-        })
+          })
+      } else {
+        this.setError('Attempt to save file when not allowed')
+      }
     },
     saveAs() {
       this.showSaveAs = true
@@ -2181,6 +2382,7 @@ class TestSuite(Suite):
           })
         })
         .then((response) => {
+          this.removeFromRecent(filename)
           this.newFile()
         })
         .catch((error) => {
@@ -2290,10 +2492,16 @@ class TestSuite(Suite):
         })
     },
     lockFile: function () {
-      return Api.post(`/script-api/scripts/${this.filename}/lock`)
+      if (!this.readOnlyUser) {
+        return Api.post(`/script-api/scripts/${this.filename}/lock`)
+      }
     },
     unlockFile: function () {
-      if (this.filename !== NEW_FILENAME && !this.readOnly) {
+      if (
+        this.filename !== NEW_FILENAME &&
+        !this.readOnly &&
+        !this.readOnlyUser
+      ) {
         Api.post(`/script-api/scripts/${this.filename}/unlock`)
       }
     },
@@ -2319,7 +2527,7 @@ class TestSuite(Suite):
   padding: 0px;
 }
 .editorbox {
-  height: 50vh;
+  height: 40vh;
 }
 .editor {
   height: 100%;
@@ -2335,6 +2543,9 @@ hr {
   height: 3px;
   width: 5%;
   margin: auto;
+}
+.script-state {
+  background-color: var(--color-background-base-default);
 }
 .script-state :deep(input) {
   text-transform: capitalize;

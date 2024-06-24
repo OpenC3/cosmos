@@ -21,7 +21,15 @@ import openc3.script
 from openc3.environment import OPENC3_SCOPE
 
 
-def get_screen_list(scope=OPENC3_SCOPE):
+def get_screen_list(scope: str = OPENC3_SCOPE):
+    """Gets a list of screens
+
+    Args:
+        scope (str) Optional, defaults to env.OPENC3_SCOPE
+
+    Return:
+        The json result of the method call
+    """
     try:
         endpoint = "/openc3-api/screens"
         # Pass the name of the ENV variable name where we pull the actual bucket name
@@ -43,7 +51,17 @@ def get_screen_list(scope=OPENC3_SCOPE):
         raise RuntimeError(f"get_screen_list failed due to {repr(error)}") from error
 
 
-def get_screen_definition(target_name, screen_name, scope=OPENC3_SCOPE):
+def get_screen_definition(target_name: str, screen_name: str, scope: str = OPENC3_SCOPE):
+    """Gets a screen definition
+
+    Args:
+        target_name (str) the target name
+        screen_name (str) the screen name
+        scope (str) Optional, defaults to env.OPENC3_SCOPE
+
+    Return:
+        The json result of the method call
+    """
     try:
         endpoint = f"/openc3-api/screen/{target_name.upper()}/{screen_name.upper()}"
         response = openc3.script.API_SERVER.request(
@@ -55,24 +73,29 @@ def get_screen_definition(target_name, screen_name, scope=OPENC3_SCOPE):
             scope=scope,
         )
         if not response or response.status_code != 200:
-            raise RuntimeError(
-                f"Screen definition not found: {target_name} {screen_name}"
-            )
+            raise RuntimeError(f"Screen definition not found: {target_name} {screen_name}")
 
         return response.text
     except Exception as error:
-        raise RuntimeError(
-            f"get_screen_definition failed due to {repr(error)}"
-        ) from error
+        raise RuntimeError(f"get_screen_definition failed due to {repr(error)}") from error
 
 
-def create_screen(target_name, screen_name, definition, scope=OPENC3_SCOPE):
+def create_screen(target_name: str, screen_name: str, definition: str, scope: str = OPENC3_SCOPE):
+    """Create a screen definition
+
+    Args:
+        target_name (str) the target name
+        screen_name (str) the screen name
+        definition (str) the screen definition
+        scope (str) Optional, defaults to env.OPENC3_SCOPE
+
+    Return:
+        The json result of the method call
+    """
     try:
         endpoint = "/openc3-api/screen"
         data = {"target": target_name, "screen": screen_name, "text": definition}
-        response = openc3.script.API_SERVER.request(
-            "post", endpoint, data=data, json=True, scope=scope
-        )
+        response = openc3.script.API_SERVER.request("post", endpoint, data=data, json=True, scope=scope)
         if not response or response.status_code != 200:
             if response:
                 parsed = json.loads(response.text)
@@ -84,7 +107,17 @@ def create_screen(target_name, screen_name, definition, scope=OPENC3_SCOPE):
         raise RuntimeError(f"create_screen failed due to {repr(error)}") from error
 
 
-def delete_screen(target_name, screen_name, scope=OPENC3_SCOPE):
+def delete_screen(target_name: str, screen_name: str, scope: str = OPENC3_SCOPE):
+    """Create a screen definition
+
+    Args:
+        target_name (str) the target name
+        screen_name (str) the screen name
+        scope (str) Optional, defaults to env.OPENC3_SCOPE
+
+    Return:
+        The json result of the method call
+    """
     try:
         endpoint = f"/openc3-api/screen/{target_name.upper()}/{screen_name.upper()}"
         response = openc3.script.API_SERVER.request("delete", endpoint, scope=scope)

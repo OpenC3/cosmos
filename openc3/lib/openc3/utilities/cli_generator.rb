@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -40,20 +40,33 @@ module OpenC3
       if args[0] != 'plugin' and Dir.glob("*.gemspec").empty?
         abort("No gemspec file detected. #{args[0].to_s.downcase} generator should be run within an existing plugin.")
       end
+
+      if args[-1] == '--python'
+        @@language = 'py'
+      else
+        @@language = 'rb'
+      end
     end
 
     def self.process_template(template_dir, the_binding)
       Dir.glob("#{template_dir}/**/*", File::FNM_DOTMATCH).each do |file|
         next if File.basename(file) == '.'
+        if @@language == 'rb'
+          # Ignore python files if we're ruby
+          next if File.extname(file) == '.py'
+        elsif @@language == 'py'
+          # Ignore ruby files if we're python
+          next if File.extname(file) == '.rb'
+        end
         base_name = file.sub("#{template_dir}/", '')
         next if yield base_name
         if File.directory?(file)
-          FileUtils.mkdir(base_name) unless File.exist?(base_name)
+          FileUtils.mkdir_p(base_name)
           next
         end
-        output = ERB.new(File.read(file).comment_erb(), trim_mode: "-").result(the_binding)
-        File.open(base_name, 'w') do |file|
-          file.write output
+        output = ERB.new(File.read(file), trim_mode: "-").result(the_binding)
+        File.open(base_name, 'w') do |base_file|
+          base_file.write output
         end
       end
     end
@@ -82,8 +95,8 @@ module OpenC3
     end
 
     def self.generate_target(args)
-      if args.length != 2
-        abort("Usage: cli generate #{args[0]} <NAME>")
+      if args.length < 2 or args.length > 3
+        abort("Usage: cli generate #{args[0]} <NAME> (--ruby or --python)")
       end
 
       # Create the local variables
@@ -92,15 +105,39 @@ module OpenC3
       if File.exist?(target_path)
         abort("Target #{target_path} already exists!")
       end
-      target_lib_filename = "#{target_name.downcase}.rb"
+      target_lib_filename = "#{target_name.downcase}.#{@@language}"
       target_class = target_lib_filename.filename_to_class_name
       target_object = target_name.downcase
 
       process_template("#{TEMPLATES_DIR}/target", binding) do |filename|
         # Rename the template TARGET to our actual target named after the plugin
         filename.sub!("targets/TARGET", "targets/#{target_name}")
-        filename.sub!("target.rb", target_lib_filename)
+        filename.sub!("target.#{@@language}", target_lib_filename)
         false
+      end
+
+      if @@language == 'py'
+        # If we're using Python create a requirements.txt and list it in the gemspec
+        # However, don't write over an existing file they may have already created
+        unless File.exist?("requirements.txt")
+          File.open("requirements.txt", 'w') do |file|
+            file.puts "# Python dependencies"
+          end
+        end
+        gemspec_filename = Dir['*.gemspec'][0]
+        gemspec = File.read(gemspec_filename)
+        gemspec.gsub!('plugin.txt', 'plugin.txt requirements.txt')
+        File.write(gemspec_filename, gemspec)
+
+        target_txt_filename = "targets/#{target_name}/target.txt"
+        target_txt = File.read(target_txt_filename)
+        target_txt.gsub!('LANGUAGE ruby', 'LANGUAGE python')
+        File.write(target_txt_filename, target_txt)
+      end
+
+      interface_line = "INTERFACE <%= #{target_name.downcase}_target_name %>_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil BURST"
+      if @@language == 'py'
+        interface_line = "INTERFACE <%= #{target_name.downcase}_target_name %>_INT openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8081 10.0 None BURST"
       end
 
       # Add this target to plugin.txt
@@ -110,7 +147,7 @@ module OpenC3
           VARIABLE #{target_name.downcase}_target_name #{target_name}
 
           TARGET #{target_name} <%= #{target_name.downcase}_target_name %>
-          INTERFACE <%= #{target_name.downcase}_target_name %>_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil BURST
+          #{interface_line}
             MAP_TARGET <%= #{target_name.downcase}_target_name %>
         DOC
       end
@@ -120,8 +157,8 @@ module OpenC3
     end
 
     def self.generate_microservice(args)
-      if args.length != 2
-        abort("Usage: cli generate #{args[0]} <NAME>")
+      if args.length < 2 or args.length > 3
+        abort("Usage: cli generate #{args[0]} <NAME> (--ruby or --python)")
       end
 
       # Create the local variables
@@ -130,14 +167,19 @@ module OpenC3
       if File.exist?(microservice_path)
         abort("Microservice #{microservice_path} already exists!")
       end
-      microservice_filename = "#{microservice_name.downcase}.rb"
+      microservice_filename = "#{microservice_name.downcase}.#{@@language}"
       microservice_class = microservice_filename.filename_to_class_name
 
       process_template("#{TEMPLATES_DIR}/microservice", binding) do |filename|
         # Rename the template MICROSERVICE to our actual microservice name
         filename.sub!("microservices/TEMPLATE", "microservices/#{microservice_name}")
-        filename.sub!("microservice.rb", microservice_filename)
+        filename.sub!("microservice.#{@@language}", microservice_filename)
         false
+      end
+
+      cmd_line = "CMD ruby #{microservice_name.downcase}.rb"
+      if @@language == 'py'
+        cmd_line = "CMD python #{microservice_name.downcase}.py"
       end
 
       # Add this microservice to plugin.txt
@@ -145,7 +187,7 @@ module OpenC3
         file.puts <<~DOC
 
           MICROSERVICE #{microservice_name} #{microservice_name.downcase.gsub('_','-')}-microservice
-            CMD ruby #{microservice_name.downcase}.rb
+            #{cmd_line}
         DOC
       end
 
@@ -195,7 +237,7 @@ module OpenC3
       end
 
       puts "Widget #{widget_name} successfully generated!"
-      puts "Please be sure #{widget_name} does not overlap an existing widget: https://openc3.com/docs/v5/telemetry-screens"
+      puts "Please be sure #{widget_name} does not overlap an existing widget: https://docs.openc3.com/docs/configuration/telemetry-screens"
       return widget_name
     end
 
@@ -252,8 +294,8 @@ module OpenC3
     self.singleton_class.send(:alias_method, :generate_tool_svelte, :generate_tool)
 
     def self.generate_conversion(args)
-      if args.length != 3
-        abort("Usage: cli generate conversion <TARGET> <NAME>")
+      if args.length < 3 or args.length > 4
+        abort("Usage: cli generate conversion <TARGET> <NAME> (--ruby or --python)")
       end
 
       # Create the local variables
@@ -263,7 +305,7 @@ module OpenC3
       end
       conversion_name = "#{args[2].upcase.gsub(/_+|-+/, '_')}_CONVERSION"
       conversion_path = "targets/#{target_name}/lib/"
-      conversion_basename = "#{conversion_name.downcase}.rb"
+      conversion_basename = "#{conversion_name.downcase}.#{@@language}"
       conversion_class = conversion_basename.filename_to_class_name
       conversion_filename = "targets/#{target_name}/lib/#{conversion_basename}"
       if File.exist?(conversion_filename)
@@ -271,7 +313,7 @@ module OpenC3
       end
 
       process_template("#{TEMPLATES_DIR}/conversion", binding) do |filename|
-        filename.sub!("conversion.rb", conversion_filename)
+        filename.sub!("conversion.#{@@language}", conversion_filename)
         false
       end
 
@@ -282,8 +324,8 @@ module OpenC3
     end
 
     def self.generate_limits_response(args)
-      if args.length != 3
-        abort("Usage: cli generate limits_response <TARGET> <NAME>")
+      if args.length < 3 or args.length > 4
+        abort("Usage: cli generate limits_response <TARGET> <NAME> (--ruby or --python)")
       end
 
       # Create the local variables
@@ -293,7 +335,7 @@ module OpenC3
       end
       response_name = "#{args[2].upcase.gsub(/_+|-+/, '_')}_LIMITS_RESPONSE"
       response_path = "targets/#{target_name}/lib/"
-      response_basename = "#{response_name.downcase}.rb"
+      response_basename = "#{response_name.downcase}.#{@@language}"
       response_class = response_basename.filename_to_class_name
       response_filename = "targets/#{target_name}/lib/#{response_basename}"
       if File.exist?(response_filename)
@@ -301,7 +343,7 @@ module OpenC3
       end
 
       process_template("#{TEMPLATES_DIR}/limits_response", binding) do |filename|
-        filename.sub!("response.rb", response_filename)
+        filename.sub!("response.#{@@language}", response_filename)
         false
       end
 

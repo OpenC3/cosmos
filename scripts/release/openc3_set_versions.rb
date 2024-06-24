@@ -101,9 +101,7 @@ package_dot_json_files = [
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-ace-diff/package.json',
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/package.json',
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-admin/package.json',
-  'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-autonomic/package.json',
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-bucketexplorer/package.json',
-  'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-calendar/package.json',
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-cmdsender/package.json',
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-cmdtlmserver/package.json',
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-dataextractor/package.json',
@@ -202,6 +200,7 @@ end
 # Update python package version
 
 python_files = [
+  'openc3/python/pyproject.toml',
   'openc3/python/openc3/__version__.py'
 ]
 
@@ -215,6 +214,8 @@ python_files.each do |rel_path|
   data.each_line do |line|
     if line =~ /__version__/
       mod_data << "__version__ = \"#{version}\"\n"
+    elsif line =~ /^version =/
+      mod_data << "version = \"#{version}\"\n"
     else
       mod_data << line
     end

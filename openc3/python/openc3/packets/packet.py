@@ -91,6 +91,11 @@ class Packet(Structure):
         self.extra = None
         self.cmd_or_tlm = None
         self.template = None
+        self.response = None
+        self.error_response = None
+        self.screen = None
+        self.related_items = None
+        self.ignore_overlap = False
 
     @property
     def target_name(self):
@@ -269,7 +274,6 @@ class Packet(Structure):
                     f"{self.target_name} {self.packet_name} buffer ({type(buffer)}) received with actual packet length of {len(buffer)} but defined length of {self.defined_length}"
                 )
             self.read_conversion_cache = {}
-            self.process()
 
     # Sets the received time of the packet (without cloning)
     #
@@ -342,8 +346,14 @@ class Packet(Structure):
     # gaps in the packet, but not allow the same bits to be used for multiple
     # variables.
     #
-    # self.return [Array<String>] Warning messages for big definition overlaps
+    # self.return [Array<String>] Warning messages for bit definition overlaps
     def check_bit_offsets(self):
+        if self.ignore_overlap:
+            Logger.debug(
+                f"{self.target_name} {self.packet_name} has IGNORE_OVERLAP so bit overlaps ignored"
+            )
+            return []
+
         expected_next_offset = None
         previous_item = None
         warnings = []
@@ -1000,7 +1010,7 @@ class Packet(Structure):
         if self.short_buffer_allowed:
             config += "  ALLOW_SHORT\n"
         if self.hazardous:
-            config += f"  HAZARDOUS {self.hazardous_description.quote_if_necessary}\n"
+            config += f"  HAZARDOUS {quote_if_necessary(self.hazardous_description)}\n"
         if self.messages_disabled:
             config += "  DISABLE_MESSAGES\n"
         if self.disabled:
@@ -1025,6 +1035,23 @@ class Packet(Structure):
             if item.data_type == "DERIVED":
                 if item.name not in Packet.RESERVED_ITEM_NAMES:
                     config += item.to_config(cmd_or_tlm, self.default_endianness)
+
+        if self.response:
+            config += f"  RESPONSE {quote_if_necessary(self.response[0])} {quote_if_necessary(self.response[1])}\n"
+
+        if self.error_response:
+            config += f"  ERROR_RESPONSE {quote_if_necessary(self.error_response[0])} {quote_if_necessary(self.error_response[1])}\n"
+
+        if self.screen:
+            config += f"  SCREEN {quote_if_necessary(self.screen[0])} {quote_if_necessary(self.screen[1])}\n"
+
+        if self.related_items:
+            for related_item in self.related_items:
+                config += f"  RELATED_ITEM {quote_if_necessary(related_item[0])} {quote_if_necessary(related_item[1])} {quote_if_necessary(related_item[2])}\n"
+
+        if self.ignore_overlap:
+            config += "  IGNORE_OVERLAP"
+
         return config
 
     def as_json(self):
@@ -1070,6 +1097,17 @@ class Packet(Structure):
             if item.data_type == "DERIVED":
                 items.append(item.as_json())
 
+        if self.response:
+            config["response"] = self.response
+        if self.error_response:
+            config["error_response"] = self.error_response
+        if self.screen:
+            config["screen"] = self.screen
+        if self.related_items:
+            config["related_items"] = self.related_items
+        if self.ignore_overlap:
+            config["ignore_overlap"] = self.ignore_overlap
+
         return config
 
     @classmethod
@@ -1084,7 +1122,7 @@ class Packet(Structure):
         packet.messages_disabled = hash.get("messages_disabled")
         packet.disabled = hash.get("disabled")
         packet.hidden = hash.get("hidden")
-        if hash["accessor"]:
+        if "accessor" in hash:
             try:
                 filename = class_name_to_filename(hash["accessor"])
                 accessor = get_class_from_module(
@@ -1096,14 +1134,26 @@ class Packet(Structure):
                     packet.accessor = accessor()
             except RuntimeError as error:
                 Logger.error(
-                    f"#{packet.target_name} #{packet.packet_name} accessor of #{hash['accessor']} could not be found due to #{repr(error)}"
+                    f"{packet.target_name} {packet.packet_name} accessor of {hash['accessor']} could not be found due to {repr(error)}"
                 )
-        if hash["template"]:
+        if "template" in hash:
             packet.template = base64.b64decode(hash["template"])
         packet.meta = hash.get("meta")
         # Can't convert processors
         for item in hash["items"]:
             packet.define(PacketItem.from_json(item))
+
+        if "response" in hash:
+            packet.response = hash["response"]
+        if "error_response" in hash:
+            packet.error_response = hash["error_response"]
+        if "screen" in hash:
+            packet.screen = hash["screen"]
+        if "related_items" in hash:
+            packet.related_items = hash["related_items"]
+        if "ignore_overlap" in hash:
+            packet.ignore_overlap = hash["ignore_overlap"]
+
         return packet
 
     def decom(self):

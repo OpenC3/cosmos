@@ -193,7 +193,7 @@ APPEND_ITEM STRING 1024 STRING "String"
 #### READ_CONVERSION
 **Applies a conversion to the current telemetry item**
 
-Conversions are implemented in a custom Ruby file which should be located in the target's lib folder and required by the target's target.txt file (see REQUIRE). The class must require 'openc3/conversions/conversion' and inherit from Conversion. It must implement the initialize method if it takes extra parameters and must always implement the call method. The conversion factor is applied to the raw value in the telemetry packet before it is displayed to the user. The user still has the ability to see the raw unconverted value in a details dialog.
+Conversions are implemented in a custom Ruby file which should be located in the target's lib folder. The class must require 'openc3/conversions/conversion' and inherit from Conversion. It must implement the initialize method if it takes extra parameters and must always implement the call method. The conversion factor is applied to the raw value in the telemetry packet before it is displayed to the user. The user still has the ability to see the raw unconverted value in a details dialog.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -337,9 +337,9 @@ APPEND_ITEM PKTID 16 UINT "Packet ID"
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Name | Name of the telemety item. Must be unique within the packet. | True |
-| Bit Offset | Bit offset into the telemetry packet of the Most Significant Bit of this item. May be negative to indicate on offset from the end of the packet. Always use a bit offset of 0 for derived item. | True |
-| Bit Size | Bit size of this telemetry item. Zero or Negative values may be used to indicate that a string fills the packet up to the offset from the end of the packet specified by this value. If Bit Offset is 0 and Bit Size is 0 then this is a derived parameter and the Data Type must be set to 'DERIVED'. | True |
-| Data Type | Data Type of this telemetry item<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, STRING, BLOCK, DERIVED</span> | True |
+| Bit Offset | Bit offset into the telemetry packet of the Most Significant Bit of this item. May be negative to indicate on offset from the end of the packet. | True |
+| Bit Size | Bit size of this telemetry item. Zero or Negative values may be used to indicate that a string fills the packet up to the offset from the end of the packet specified by this value. | True |
+| Data Type | Data Type of this telemetry item<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, STRING, BLOCK</span> | True |
 | ID Value | The value of this telemetry item that uniquely identifies this telemetry packet | True |
 | Description | Description for this telemetry item which must be enclosed with quotes | False |
 | Endianness | Indicates if the item is to be interpreted in Big Endian or Little Endian format. See guide on [Little Endian Bitfields](../guides/little-endian-bitfields.md).<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
@@ -355,8 +355,8 @@ ID_ITEM PKTID 112 16 UINT 1 "Packet ID which must be 1"
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Name | Name of the telemety item. Must be unique within the packet. | True |
-| Bit Size | Bit size of this telemetry item. Zero or Negative values may be used to indicate that a string fills the packet up to the offset from the end of the packet specified by this value. If Bit Offset is 0 and Bit Size is 0 then this is a derived parameter and the Data Type must be set to 'DERIVED'. | True |
-| Data Type | Data Type of this telemetry item<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, STRING, BLOCK, DERIVED</span> | True |
+| Bit Size | Bit size of this telemetry item. Zero or Negative values may be used to indicate that a string fills the packet up to the offset from the end of the packet specified by this value. | True |
+| Data Type | Data Type of this telemetry item<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, STRING, BLOCK</span> | True |
 | ID Value | The value of this telemetry item that uniquely identifies this telemetry packet | True |
 | Description | Description for this telemetry item which must be enclosed with quotes | False |
 | Endianness | Indicates if the item is to be interpreted in Big Endian or Little Endian format. See guide on [Little Endian Bitfields](../guides/little-endian-bitfields.md).<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
@@ -482,6 +482,12 @@ Defines the class that is used too read raw values from the packet. Defaults to 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Accessor Class Name | The name of the accessor class | True |
+
+### IGNORE_OVERLAP
+<div class="right">(Since 5.16.0)</div>**Ignores any packet items which overlap**
+
+Packet items which overlap normally generate a warning unless each individual item has the OVERLAP keyword. This ignores overlaps across the entire packet.
+
 
 ## SELECT_TELEMETRY
 **Selects an existing telemetry packet for editing**

@@ -39,7 +39,7 @@ export class ConfigParserService {
   filename = ''
   line = ''
   lineNumber = 0
-  url = 'https://openc3.com/docs/v5'
+  url = 'https://docs.openc3.com/docs/configuration'
 
   constructor() {}
 

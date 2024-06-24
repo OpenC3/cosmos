@@ -21,21 +21,23 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/processors'
+require 'openc3/utilities/python_proxy'
 
 module OpenC3
   class ProcessorParser
     # @param parser [ConfigParser] Configuration parser
     # @param packet [Packet] The current packet
     # @param cmd_or_tlm [String] Whether this is a command or telemetry packet
-    def self.parse(parser, packet, cmd_or_tlm)
-      parser = ProcessorParser.new(parser)
+    def self.parse(parser, packet, cmd_or_tlm, language = 'ruby')
+      parser = ProcessorParser.new(parser, language)
       parser.verify_parameters(cmd_or_tlm)
       parser.create_processor(packet)
     end
 
     # @param parser [ConfigParser] Configuration parser
-    def initialize(parser)
+    def initialize(parser, language = 'ruby')
       @parser = parser
+      @language = language
     end
 
     # @param cmd_or_tlm [String] Whether this is a command or telemetry packet
@@ -50,20 +52,25 @@ module OpenC3
 
     # @param packet [Packet] The packet the processor should be added to
     def create_processor(packet)
-      # require should be performed in target.txt
-      klass = OpenC3.require_class(@parser.parameters[1])
+      if @language == 'ruby'
+        # require should be performed in target.txt
+        klass = OpenC3.require_class(@parser.parameters[1])
 
-      if @parser.parameters[2]
-        processor = klass.new(*@parser.parameters[2..(@parser.parameters.length - 1)])
+        if @parser.parameters[2]
+          processor = klass.new(*@parser.parameters[2..(@parser.parameters.length - 1)])
+        else
+          processor = klass.new
+        end
+        raise ArgumentError, "processor must be a OpenC3::Processor but is a #{processor.class}" unless OpenC3::Processor === processor
       else
-        processor = klass.new
+        if @parser.parameters[2]
+          processor = PythonProxy.new('Processor', @parser.parameters[1], *@parser.parameters[2..(@parser.parameters.length - 1)])
+        else
+          processor = PythonProxy.new('Processor', @parser.parameters[1], [])
+        end
       end
-      raise ArgumentError, "processor must be a OpenC3::Processor but is a #{processor.class}" unless OpenC3::Processor === processor
-
       processor.name = get_processor_name()
       packet.processors[processor.name] = processor
-    rescue Exception => err
-      raise @parser.error(err, @usage)
     end
 
     private

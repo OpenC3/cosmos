@@ -373,6 +373,7 @@ class SimInst(SimulatedTarget):
                     packet.write("slrpnl4", self.solar_panel_positions[3])
                     packet.write("slrpnl5", self.solar_panel_positions[4])
                     packet.write("current", 0.5)
+                    packet.write("string", f"Time is {time}")
 
         # Every 10s throw an unknown packet at the server just to demo that
         if count_100hz % 1000 == 900:

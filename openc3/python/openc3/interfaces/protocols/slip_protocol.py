@@ -58,27 +58,14 @@ class SlipProtocol(TerminatedProtocol):
         self.esc_end_char = int(esc_end_char, 0).to_bytes(1, byteorder="big")
         self.replace_end = self.esc_char + self.esc_end_char
         self.replace_esc = self.esc_char + self.esc_esc_char
-        self.read_strip_characters = ConfigParser.handle_true_false(
-            read_strip_characters
-        )
-        if (
-            self.read_strip_characters is not True
-            and self.read_strip_characters is not False
-        ):
+        self.read_strip_characters = ConfigParser.handle_true_false(read_strip_characters)
+        if self.read_strip_characters is not True and self.read_strip_characters is not False:
             raise RuntimeError("read_strip_characters must be True or False")
         self.read_enable_escaping = ConfigParser.handle_true_false(read_enable_escaping)
-        if (
-            self.read_enable_escaping is not True
-            and self.read_enable_escaping is not False
-        ):
+        if self.read_enable_escaping is not True and self.read_enable_escaping is not False:
             raise RuntimeError("read_enable_escaping must be True or False")
-        self.write_enable_escaping = ConfigParser.handle_true_false(
-            write_enable_escaping
-        )
-        if (
-            self.write_enable_escaping is not True
-            and self.write_enable_escaping is not False
-        ):
+        self.write_enable_escaping = ConfigParser.handle_true_false(write_enable_escaping)
+        if self.write_enable_escaping is not True and self.write_enable_escaping is not False:
             raise RuntimeError("write_enable_escaping must be True or False")
 
         strip_read_termination = False
@@ -109,9 +96,7 @@ class SlipProtocol(TerminatedProtocol):
             data = data[0:-1]
 
         if self.read_enable_escaping:
-            data = data.replace(self.replace_end, self.end_char).replace(
-                self.replace_esc, self.esc_char
-            )
+            data = data.replace(self.replace_end, self.end_char).replace(self.replace_esc, self.esc_char)
 
         return (data, extra)
 
@@ -119,9 +104,7 @@ class SlipProtocol(TerminatedProtocol):
         # Intentionally not calling super()
 
         if self.write_enable_escaping:
-            data = data.replace(self.esc_char, self.replace_esc).replace(
-                self.end_char, self.replace_end
-            )
+            data = data.replace(self.esc_char, self.replace_esc).replace(self.end_char, self.replace_end)
 
         if self.start_char:
             data = self.start_char + data
@@ -149,9 +132,7 @@ class SlipProtocol(TerminatedProtocol):
         # Reduce to packet data and setup current_data for next packet
         if index is not None:
             if index > 0:
-                packet_data = self.data[
-                    0 : (index + len(self.read_termination_characters))
-                ]
+                packet_data = self.data[0 : (index + len(self.read_termination_characters))]
             else:  # self.data begins with the termination characters
                 packet_data = self.data[0 : (len(self.read_termination_characters))]
             self.data = self.data[(index + len(self.read_termination_characters)) :]

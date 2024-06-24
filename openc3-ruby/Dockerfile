@@ -12,10 +12,12 @@ FROM ${OPENC3_DEPENDENCY_REGISTRY}/alpine:${ALPINE_VERSION}.${ALPINE_BUILD}
 ARG ALPINE_VERSION
 ARG APK_URL
 ARG RUBYGEMS_URL
+ARG PYPI_URL=https://pypi.org
 
 ENV ALPINE_VERSION=${ALPINE_VERSION}
 ENV APK_URL=${APK_URL}
 ENV RUBYGEMS_URL=${RUBYGEMS_URL}
+ENV PYPI_URL=${PYPI_URL}
 
 # NOTE: This must match the alpine image used above in FROM
 RUN echo "${APK_URL}/alpine/v${ALPINE_VERSION}/main" > /etc/apk/repositories \
@@ -36,7 +38,8 @@ ENV NOKOGIRI_USE_SYSTEM_LIBRARIES=1
 
 ADD .gemrc /root/.gemrc
 RUN sed -i "s|RUBYGEMS_URL|${RUBYGEMS_URL}|g" /root/.gemrc
-RUN cp /root/.gemrc /etc/.gemrc
+RUN cp /root/.gemrc /etc/gemrc
+ENV GEMRC=/etc/gemrc
 
 RUN apk update \
   && apk upgrade \
@@ -70,13 +73,15 @@ RUN apk update \
   && gem install rake \
   && gem cleanup \
   && bundle config build.nokogiri --use-system-libraries \
-  && bundle config git.allow_insecure true
+  && bundle config git.allow_insecure true \
+  && pip3 config --global set global.index $PYPI_URL/pypi \
+  && pip3 config --global set global.index-url $PYPI_URL/simple
 
 # Set user and group
 ENV IMAGE_USER=openc3
 ENV IMAGE_GROUP=openc3
-ENV USER_ID=1000
-ENV GROUP_ID=1000
+ENV USER_ID=1001
+ENV GROUP_ID=1001
 RUN addgroup -g ${GROUP_ID} -S ${IMAGE_GROUP}
 RUN adduser -u ${USER_ID} -G ${IMAGE_GROUP} -s /bin/ash -S ${IMAGE_USER}
 

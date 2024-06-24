@@ -13,7 +13,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -23,7 +23,7 @@ require 'openc3/accessors/xml_accessor'
 module OpenC3
   describe XmlAccessor do
     before(:each) do
-      @data1 = '<html><head><script src="test.js"></script><noscript>No Script Detected</noscript></head><body><img src="test.jpg"/><p><ul><li>1</li><li>3.14</li></ul></p></body></html>'
+      @data1 = '<html><head><script src="test.js"></script><noscript>No Script Detected</noscript></head><body><img src="test.jpg"/><p><ul><li>1</li><li>3.14</li><li>[1,2,3]</li></ul></p></body></html>'
     end
 
     describe "read_item" do
@@ -32,27 +32,38 @@ module OpenC3
         item = OpenStruct.new
         item.key = '/html/head/script/@src'
         item.data_type = :STRING
+        item.array_size = nil
         expect(XmlAccessor.read_item(item, @data1)).to eq "test.js"
 
         item = OpenStruct.new
         item.key = '/html/head/noscript/text()'
         item.data_type = :STRING
+        item.array_size = nil
         expect(XmlAccessor.read_item(item, @data1)).to eq "No Script Detected"
 
         item = OpenStruct.new
         item.key = '/html/body/img/@src'
         item.data_type = :STRING
+        item.array_size = nil
         expect(XmlAccessor.read_item(item, @data1)).to eq "test.jpg"
 
         item = OpenStruct.new
         item.key = '/html/body/p/ul/li[1]/text()'
         item.data_type = :UINT
+        item.array_size = nil
         expect(XmlAccessor.read_item(item, @data1)).to eq 1
 
         item = OpenStruct.new
         item.key = '/html/body/p/ul/li[2]/text()'
         item.data_type = :FLOAT
+        item.array_size = nil
         expect(XmlAccessor.read_item(item, @data1)).to eq 3.14
+
+        item = OpenStruct.new
+        item.key = '/html/body/p/ul/li[3]/text()'
+        item.data_type = :FLOAT
+        item.array_size = 23
+        expect(XmlAccessor.read_item(item, @data1)).to eq [1,2,3]
       end
     end
 
@@ -62,24 +73,34 @@ module OpenC3
         item1.name = 'ITEM1'
         item1.key = '/html/head/script/@src'
         item1.data_type = :STRING
+        item1.array_size = nil
         item2 = OpenStruct.new
         item2.name = 'ITEM2'
         item2.key = '/html/head/noscript/text()'
         item2.data_type = :STRING
+        item2.array_size = nil
         item3 = OpenStruct.new
         item3.name = 'ITEM3'
         item3.key = '/html/body/img/@src'
         item3.data_type = :STRING
+        item3.array_size = nil
         item4 = OpenStruct.new
         item4.name = 'ITEM4'
         item4.key = '/html/body/p/ul/li[1]/text()'
         item4.data_type = :UINT
+        item4.array_size = nil
         item5 = OpenStruct.new
         item5.name = 'ITEM5'
         item5.key = '/html/body/p/ul/li[2]/text()'
         item5.data_type = :FLOAT
+        item5.array_size = nil
+        item6 = OpenStruct.new
+        item6.name = 'ITEM6'
+        item6.key = '/html/body/p/ul/li[3]/text()'
+        item6.data_type = :INT
+        item6.array_size = 24
 
-        items = [item1, item2, item3, item4, item5]
+        items = [item1, item2, item3, item4, item5, item6]
 
         results = XmlAccessor.read_items(items, @data1)
         expect(results['ITEM1']).to eq "test.js"
@@ -87,6 +108,7 @@ module OpenC3
         expect(results['ITEM3']).to eq "test.jpg"
         expect(results['ITEM4']).to eq 1
         expect(results['ITEM5']).to eq 3.14
+        expect(results['ITEM6']).to eq [1,2,3]
       end
     end
 
@@ -95,32 +117,44 @@ module OpenC3
         item = OpenStruct.new
         item.key = '/html/head/script/@src'
         item.data_type = :STRING
+        item.array_size = nil
         XmlAccessor.write_item(item, "different.js", @data1)
         expect(XmlAccessor.read_item(item, @data1)).to eq "different.js"
 
         item = OpenStruct.new
         item.key = '/html/head/noscript/text()'
         item.data_type = :STRING
+        item.array_size = nil
         XmlAccessor.write_item(item, "Nothing Here", @data1)
         expect(XmlAccessor.read_item(item, @data1)).to eq "Nothing Here"
 
         item = OpenStruct.new
         item.key = '/html/body/img/@src'
         item.data_type = :STRING
+        item.array_size = nil
         XmlAccessor.write_item(item, "other.png", @data1)
         expect(XmlAccessor.read_item(item, @data1)).to eq "other.png"
 
         item = OpenStruct.new
         item.key = '/html/body/p/ul/li[1]/text()'
         item.data_type = :UINT
+        item.array_size = nil
         XmlAccessor.write_item(item, 15, @data1)
         expect(XmlAccessor.read_item(item, @data1)).to eq 15
 
         item = OpenStruct.new
         item.key = '/html/body/p/ul/li[2]/text()'
         item.data_type = :FLOAT
+        item.array_size = nil
         XmlAccessor.write_item(item, 1.234, @data1)
         expect(XmlAccessor.read_item(item, @data1)).to eq 1.234
+
+        item = OpenStruct.new
+        item.key = '/html/body/p/ul/li[3]/text()'
+        item.data_type = :INT
+        item.array_size = 24
+        XmlAccessor.write_item(item, ["2", 3.1, 4], @data1)
+        expect(XmlAccessor.read_item(item, @data1)).to eq [2, 3, 4]
       end
     end
 
@@ -129,21 +163,30 @@ module OpenC3
         item1 = OpenStruct.new
         item1.key = '/html/head/script/@src'
         item1.data_type = :STRING
+        item1.array_size = nil
         item2 = OpenStruct.new
         item2.key = '/html/head/noscript/text()'
         item2.data_type = :STRING
+        item2.array_size = nil
         item3 = OpenStruct.new
         item3.key = '/html/body/img/@src'
         item3.data_type = :STRING
+        item3.array_size = nil
         item4 = OpenStruct.new
         item4.key = '/html/body/p/ul/li[1]/text()'
         item4.data_type = :UINT
+        item4.array_size = nil
         item5 = OpenStruct.new
         item5.key = '/html/body/p/ul/li[2]/text()'
         item5.data_type = :FLOAT
+        item5.array_size = nil
+        item6 = OpenStruct.new
+        item6.key = '/html/body/p/ul/li[3]/text()'
+        item6.data_type = :INT
+        item6.array_size = 24
 
-        items = [item1, item2, item3, item4, item5]
-        values = ["different.js", "Nothing Here", "other.png", 15, 1.234]
+        items = [item1, item2, item3, item4, item5, item6]
+        values = ["different.js", "Nothing Here", "other.png", 15, 1.234, [2, 3, 4]]
         XmlAccessor.write_items(items, values, @data1)
 
         expect(XmlAccessor.read_item(item1, @data1)).to eq "different.js"
@@ -151,6 +194,7 @@ module OpenC3
         expect(XmlAccessor.read_item(item3, @data1)).to eq "other.png"
         expect(XmlAccessor.read_item(item4, @data1)).to eq 15
         expect(XmlAccessor.read_item(item5, @data1)).to eq 1.234
+        expect(XmlAccessor.read_item(item6, @data1)).to eq [2, 3, 4]
       end
     end
   end

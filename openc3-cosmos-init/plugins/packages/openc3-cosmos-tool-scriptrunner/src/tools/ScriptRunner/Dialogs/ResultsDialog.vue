@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -21,7 +21,7 @@
 -->
 
 <template>
-  <v-dialog v-model="show" scrollable width="600">
+  <v-dialog v-model="show" scrollable width="800">
     <v-card>
       <v-system-bar>
         <v-spacer />
@@ -36,7 +36,14 @@
       <v-card-actions>
         <v-spacer />
         <v-btn class="mx-2" outlined @click="downloadResults"> Download </v-btn>
-        <v-btn class="mx-2" color="primary" @click="show = !show"> Ok </v-btn>
+        <v-btn
+          class="mx-2"
+          color="primary"
+          @click="show = !show"
+          ref="okButton"
+        >
+          Ok
+        </v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -66,6 +73,12 @@ export default {
         this.$emit('input', value) // input is the default event when using v-model
       },
     },
+  },
+  mounted() {
+    // Focus the OK button so it's easy to hit Enter to close
+    setTimeout(() => {
+      this.$refs.okButton.$el.focus()
+    })
   },
   methods: {
     downloadResults() {

@@ -29,8 +29,8 @@ module OpenC3
     # the following to services: openc3-minio:
     #   ports:
     #     - "127.0.0.1:9000:9000"
-    rescue Seahorse::Client::NetworkingError, Aws::Errors::NoSuchEndpointError => err
-      example.skip err.message
+    rescue Seahorse::Client::NetworkingError, Aws::Errors::NoSuchEndpointError => e
+      example.skip e.message
     end
 
     after(:all) do
@@ -102,6 +102,18 @@ module OpenC3
 
       it "return false if check fails" do
         result = client.check_object(bucket: @bucket, key: 'nope')
+        expect(result).to be false
+      end
+
+      it "immediately checks for an object to exist" do
+        client.put_object(bucket: @bucket, key: 'test', body: 'contents')
+        result = client.check_object(bucket: @bucket, key: 'test', retries: false)
+        expect(result).to be true
+        client.delete_object(bucket: @bucket, key: 'test')
+      end
+
+      it "immediately returns false if check fails" do
+        result = client.check_object(bucket: @bucket, key: 'nope', retries: false)
         expect(result).to be false
       end
     end

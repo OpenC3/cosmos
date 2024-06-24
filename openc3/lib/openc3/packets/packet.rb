@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -89,6 +89,21 @@ module OpenC3
     # @return [String] Base data for building packet
     attr_reader :template
 
+    # @return [Array<Target Name, Packet Name>] Related response packet
+    attr_accessor :response
+
+    # @return [Array<Target Name, Packet Name>] Related error response packet
+    attr_accessor :error_response
+
+    # @return [Array<Target Name, Screen Name>] Related telemetry screen
+    attr_accessor :screen
+
+    # @return [Array<Array<Target Name, Packet Name, Item Name>>] Related items
+    attr_accessor :related_items
+
+    # @return [Boolean] Whether to ignore overlapping items
+    attr_accessor :ignore_overlap
+
     # Valid format types
     VALUE_TYPES = [:RAW, :CONVERTED, :FORMATTED, :WITH_UNITS]
 
@@ -128,6 +143,7 @@ module OpenC3
         @cmd_or_tlm = nil
         @template = nil
         @packet_time = nil
+        @ignore_overlap = false
       end
 
       # Sets the target name this packet is associated with. Unidentified packets
@@ -139,12 +155,10 @@ module OpenC3
           if !(String === target_name)
             raise(ArgumentError, "target_name must be a String but is a #{target_name.class}")
           end
-
           @target_name = target_name.upcase.freeze
         else
           @target_name = nil
         end
-        @target_name
       end
 
       # Sets the packet name. Unidentified packets will have packet name set to
@@ -156,12 +170,10 @@ module OpenC3
           if !(String === packet_name)
             raise(ArgumentError, "packet_name must be a String but is a #{packet_name.class}")
           end
-
           @packet_name = packet_name.upcase.freeze
         else
           @packet_name = nil
         end
-        @packet_name
       end
 
       # Sets the description of the packet
@@ -172,12 +184,10 @@ module OpenC3
           if !(String === description)
             raise(ArgumentError, "description must be a String but is a #{description.class}")
           end
-
           @description = description.to_utf8.freeze
         else
           @description = nil
         end
-        @description
       end
 
       # Sets the received time of the packet
@@ -188,13 +198,11 @@ module OpenC3
           if !(Time === received_time)
             raise(ArgumentError, "received_time must be a Time but is a #{received_time.class}")
           end
-
           @received_time = received_time.clone.freeze
         else
           @received_time = nil
         end
         @read_conversion_cache.clear if @read_conversion_cache
-        @received_time
       end
 
       # Sets the received count of the packet
@@ -205,10 +213,8 @@ module OpenC3
         if !(Integer === received_count)
           raise(ArgumentError, "received_count must be an Integer but is a #{received_count.class}")
         end
-
         @received_count = received_count
         @read_conversion_cache.clear if @read_conversion_cache
-        @received_count
       end
 
     end # if RUBY_ENGINE != 'ruby' or ENV['OPENC3_NO_EXT']
@@ -297,6 +303,10 @@ module OpenC3
       @config_name
     end
 
+    def clear_config_name
+      @config_name = nil
+    end
+
     # (see Structure#buffer=)
     def buffer=(buffer)
       synchronize() do
@@ -306,7 +316,6 @@ module OpenC3
           Logger.instance.error "#{@target_name} #{@packet_name} received with actual packet length of #{buffer.length} but defined length of #{@defined_length}"
         end
         @read_conversion_cache.clear if @read_conversion_cache
-        process()
       end
     end
 
@@ -386,6 +395,10 @@ module OpenC3
     #
     # @return [Array<String>] Warning messages for big definition overlaps
     def check_bit_offsets
+      if @ignore_overlap
+        Logger.instance.debug("#{@target_name} #{@packet_name} has IGNORE_OVERLAP so bit overlaps ignored")
+        return []
+      end
       expected_next_offset = nil
       previous_item = nil
       warnings = []
@@ -602,7 +615,7 @@ module OpenC3
 
           unless using_cached_value
             if item.array_size
-              value.map! do |val, index|
+              value.map! do |val, _index|
                 item.read_conversion.call(val, self, buffer)
               end
             else
@@ -631,7 +644,7 @@ module OpenC3
         # Convert from value to state if possible
         if item.states
           if Array === value
-            value = value.map do |val, index|
+            value = value.map do |val, _index|
               if item.states.key(val)
                 item.states.key(val)
               elsif item.states.values.include?(ANY_STATE)
@@ -652,7 +665,7 @@ module OpenC3
           end
         else
           if Array === value
-            value = value.map do |val, index|
+            value = value.map do |val, _index|
               apply_format_string_and_units(item, val, value_type)
             end
           else
@@ -678,7 +691,7 @@ module OpenC3
     # @param value_type [Symbol] Value type to read for every item
     # @param buffer [String] The binary buffer to read the items from
     # @return Hash of read names and values
-    def read_items(items, value_type = :RAW, buffer = @buffer, raw_value = nil)
+    def read_items(items, value_type = :RAW, buffer = @buffer, _raw_value = nil)
       buffer = allocate_buffer_if_needed() unless buffer
       if value_type == :RAW
         result = super(items, value_type, buffer)
@@ -720,11 +733,11 @@ module OpenC3
         end
         begin
           super(item, value, :RAW, buffer)
-        rescue ArgumentError => err
-          if item.states and String === value and err.message =~ /invalid value for/
+        rescue ArgumentError => e
+          if item.states and String === value and e.message =~ /invalid value for/
             raise "Unknown state #{value} for #{item.name}"
           else
-            raise err
+            raise e
           end
         end
       when :FORMATTED, :WITH_UNITS
@@ -861,6 +874,33 @@ module OpenC3
       item.description = 'OpenC3 packet received count'
     end
 
+    # Reset the packet to just derived items
+    def clear_all_non_derived_items
+      @defined_length = 0
+      @defined_length_bits = 0
+      @pos_bit_size = 0
+      @neg_bit_size = 0
+      @fixed_size = true
+      @short_buffer_allowed = false
+      @id_items = nil
+      @limits_items = nil
+      new_items = {}
+      new_sorted_items = []
+      @items.each do |name, item|
+        if item.data_type == :DERIVED
+          new_items[name] = item
+        end
+      end
+      @sorted_items.each do |item|
+        if item.data_type == :DERIVED
+          new_sorted_items << item
+        end
+      end
+      @items = new_items
+      @sorted_items = new_sorted_items
+      clear_config_name()
+    end
+
     # Enable limits on an item by name
     #
     # @param name [String] Name of the item to enable limits
@@ -956,7 +996,7 @@ module OpenC3
       end
       return unless @processors
 
-      @processors.each do |processor_name, processor|
+      @processors.each do |_processor_name, processor|
         processor.reset
       end
     end
@@ -1008,6 +1048,13 @@ module OpenC3
       else
         config << "COMMAND #{@target_name.to_s.quote_if_necessary} #{@packet_name.to_s.quote_if_necessary} #{@default_endianness} \"#{@description}\"\n"
       end
+      if @accessor.class.to_s != 'OpenC3::BinaryAccessor'
+        config << "  ACCESSOR #{@accessor.class} #{@accessor.args.map { |a| a.to_s.quote_if_necessary }.join(" ")}\n"
+      end
+      # TODO: Add TEMPLATE_ENCODED so this can always be done inline regardless of content
+      if @template
+        config << "  TEMPLATE '#{@template}'"
+      end
       config << "  ALLOW_SHORT\n" if @short_buffer_allowed
       config << "  HAZARDOUS #{@hazardous_description.to_s.quote_if_necessary}\n" if @hazardous
       config << "  DISABLE_MESSAGES\n" if @messages_disabled
@@ -1018,14 +1065,14 @@ module OpenC3
       end
 
       if @processors
-        @processors.each do |processor_name, processor|
+        @processors.each do |_processor_name, processor|
           config << processor.to_config
         end
       end
 
       if @meta
         @meta.each do |key, values|
-          config << "  META #{key.to_s.quote_if_necessary} #{values.map { |a| a..to_s.quote_if_necessary }.join(" ")}\n"
+          config << "  META #{key.to_s.quote_if_necessary} #{values.map { |a| a.to_s.quote_if_necessary }.join(" ")}\n"
         end
       end
 
@@ -1043,6 +1090,23 @@ module OpenC3
         end
       end
 
+      if @response
+        config << "  RESPONSE #{@response[0].to_s.quote_if_necessary} #{@response[1].to_s.quote_if_necessary}"
+      end
+      if @error_response
+        config << "  ERROR_RESPONSE #{@error_response[0].to_s.quote_if_necessary} #{@error_response[1].to_s.quote_if_necessary}"
+      end
+      if @screen
+        config << "  SCREEN #{@screen[0].to_s.quote_if_necessary} #{@screen[1].to_s.quote_if_necessary}"
+      end
+      if @related_items
+        @related_items.each do |target_name, packet_name, item_name|
+          config << "  RELATED_ITEM #{target_name.to_s.quote_if_necessary} #{packet_name.to_s.quote_if_necessary} #{item_name.to_s.quote_if_necessary}"
+        end
+      end
+      if @ignore_overlap
+        config << "  IGNORE_OVERLAP"
+      end
       config
     end
 
@@ -1065,7 +1129,7 @@ module OpenC3
 
       if @processors
         processors = []
-        @processors.each do |processor_name, processor|
+        @processors.each do |_processor_name, processor|
           processors << processor.as_json(*a)
         end
         config['processors'] = processors
@@ -1086,6 +1150,19 @@ module OpenC3
           items << item.as_json(*a)
         end
       end
+      if @response
+        config['response'] = @response
+      end
+      if @error_response
+        config['error_response'] = @error_response
+      end
+      if @screen
+        config['screen'] = @screen
+      end
+      if @related_items
+        config['related_items'] = @related_items
+      end
+      config['ignore_overlap'] = true if @ignore_overlap
 
       config
     end
@@ -1107,8 +1184,8 @@ module OpenC3
           else
             packet.accessor = accessor.new(packet)
           end
-        rescue => error
-          Logger.instance.error "#{packet.target_name} #{packet.packet_name} accessor of #{hash['accessor']} could not be found due to #{error}"
+        rescue => e
+          Logger.instance.error "#{packet.target_name} #{packet.packet_name} accessor of #{hash['accessor']} could not be found due to #{e}"
         end
       end
       packet.template = Base64.decode64(hash['template']) if hash['template']
@@ -1117,6 +1194,20 @@ module OpenC3
       hash['items'].each do |item|
         packet.define(PacketItem.from_json(item))
       end
+      if hash['response']
+        packet.response = hash['response']
+      end
+      if hash['error_response']
+        packet.error_response = hash['error_response']
+      end
+      if hash['screen']
+        packet.screen = hash['screen']
+      end
+      if hash['related_items']
+        packet.related_items = hash['related_items']
+      end
+      packet.ignore_overlap = hash['ignore_overlap']
+
       packet
     end
 
@@ -1144,17 +1235,17 @@ module OpenC3
       json_hash
     end
 
-    protected
-
     # Performs packet specific processing on the packet.
     # Intended to only be run once for each packet received
     def process(buffer = @buffer)
       return unless @processors
 
-      @processors.each do |processor_name, processor|
+      @processors.each do |_processor_name, processor|
         processor.call(self, buffer)
       end
     end
+
+    protected
 
     def handle_limits_states(item, value)
       # Retrieve limits state for the given value

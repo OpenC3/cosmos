@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -108,8 +108,8 @@ module OpenC3
 
       # Build list of packets by topic
       @read_packets_by_topic = {}
-      System.telemetry.all.each do |target_name, target_packets|
-        target_packets.each do |packet_name, packet|
+      System.telemetry.all.each do |_target_name, target_packets|
+        target_packets.each do |_packet_name, packet|
           topics = packet.meta['TOPIC']
           topics = packet.meta['TOPICS'] unless topics
           if topics
@@ -119,6 +119,10 @@ module OpenC3
           end
         end
       end
+    end
+
+    def connection_string
+      return "#{@hostname}:#{@port} (ssl: #{@ssl})"
     end
 
     # Connects the interface to its target(s)

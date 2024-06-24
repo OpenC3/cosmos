@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -22,7 +22,6 @@
 
 require 'json'
 require 'securerandom'
-require 'thread'
 require 'openc3'
 require 'openc3/utilities/bucket_utilities'
 require 'openc3/script'
@@ -110,7 +109,9 @@ module OpenC3
           RunningScript.instrumented_cache[path] = [instrumented_script, text]
           cached = false
         end
-
+        running = OpenC3::Store.smembers("running-scripts")
+        running ||= []
+        OpenC3::Store.publish(["script-api", "all-scripts-channel"].compact.join(":"), JSON.generate({ type: :start, filename: procedure_name, active_scripts: running.length }))
         Object.class_eval(instrumented_script, path, 1)
 
         # Return whether we had to load and instrument this file, i.e. it was not cached
@@ -167,7 +168,7 @@ module OpenC3
         return false
       end
 
-      def display_screen(target_name, screen_name, x = nil, y = nil, scope: $openc3_scope)
+      def display_screen(target_name, screen_name, x = nil, y = nil, scope: RunningScript.instance.scope)
         definition = get_screen_definition(target_name, screen_name, scope: scope)
         OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :screen, target_name: target_name, screen_name: screen_name, definition: definition, x: x, y: y }))
       end
@@ -184,15 +185,9 @@ module OpenC3
         OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :screen, target_name: "LOCAL", screen_name: screen_name, definition: definition, x: x, y: y }))
       end
 
-      def download_file(file_or_path)
-        if file_or_path.respond_to? :read
-          data = file_or_path.read
-          filename = File.basename(file_or_path.filename)
-        else # path
-          data = ::Script.body(RunningScript.instance.scope, file_or_path)
-          filename = File.basename(file_or_path)
-        end
-        OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :downloadfile, filename: filename, text: data.to_utf8 }))
+      def download_file(path, scope: RunningScript.instance.scope)
+        url = get_download_url(path, scope: scope)
+        OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :downloadfile, filename: File.basename(path), url: url }))
       end
     end
   end
@@ -241,7 +236,7 @@ class RunningScript
   @@output_sleeper = OpenC3::Sleeper.new
   @@cancel_output = false
 
-  def self.message_log(id = @@id)
+  def self.message_log(_id = @@id)
     return @@message_log if @@message_log
 
     if @@instance
@@ -288,7 +283,7 @@ class RunningScript
     end
   end
 
-  def self.spawn(scope, name, suite_runner = nil, disconnect = false, environment = nil, username: '')
+  def self.spawn(scope, name, suite_runner = nil, disconnect = false, environment = nil, user_full_name = nil, username = nil)
     if File.extname(name) == '.py'
       process_name = 'python'
       runner_path = File.join(RAILS_ROOT, 'scripts', 'run_script.py')
@@ -298,11 +293,14 @@ class RunningScript
     end
     running_script_id = OpenC3::Store.incr('running-script-id')
 
+    # Open Source full name (EE has the actual name)
+    user_full_name ||= 'Anonymous'
     start_time = Time.now
     details = {
       id: running_script_id,
       scope: scope,
       name: name,
+      user: user_full_name,
       start_time: start_time.to_s,
       disconnect: disconnect,
       environment: environment
@@ -370,7 +368,7 @@ class RunningScript
     process.environment['PYTHONUSERBASE'] = ENV['PYTHONUSERBASE']
 
     # Spawned process should not be controlled by same Bundler constraints as spawning process
-    ENV.each do |key, value|
+    ENV.each do |key, _value|
       if key =~ /^BUNDLE/
         process.environment[key] = nil
       end
@@ -539,7 +537,7 @@ class RunningScript
     @prompt_id = nil
   end
 
-  def as_json(*args)
+  def as_json(*_args)
     { id: @id, state: @state, filename: @current_filename, line_no: @current_line_no }
   end
 
@@ -579,12 +577,14 @@ class RunningScript
 
   def stop_message_log
     metadata = {
+      "user" => @details['user'],
       "scriptname" => unique_filename()
     }
     @@message_log.stop(true, metadata: metadata) if @@message_log
     @@message_log = nil
   end
 
+  # TODO: Is this ever called?
   def filename=(filename)
     # Stop the message log so a new one will be created with the new filename
     stop_message_log()
@@ -715,7 +715,7 @@ class RunningScript
 
   def self.instrument_script_implementation(ruby_lex_utils,
                                             comments_removed_text,
-                                            num_lines,
+                                            _num_lines,
                                             filename,
                                             mark_private = false)
     if mark_private
@@ -864,11 +864,11 @@ class RunningScript
       Object.class_eval(debug_text, 'debug', 1)
     end
     handle_output_io()
-  rescue Exception => error
-    if error.class == DRb::DRbConnError
+  rescue Exception => e
+    if e.class == DRb::DRbConnError
       OpenC3::Logger.error("Error Connecting to Command and Telemetry Server")
     else
-      OpenC3::Logger.error(error.class.to_s.split('::')[-1] + ' : ' + error.message)
+      OpenC3::Logger.error(e.class.to_s.split('::')[-1] + ' : ' + e.message)
     end
     handle_output_io()
   ensure
@@ -952,7 +952,7 @@ class RunningScript
             color = 'BLUE'
           end
         end
-        lines_to_write << line_to_write + "\n"
+        lines_to_write << (line_to_write + "\n")
         line_count += 1
       end # string.each_line
 
@@ -1039,18 +1039,39 @@ class RunningScript
     OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :line, filename: @current_filename, line_no: @current_line_number, state: @state }))
     if OpenC3::SuiteRunner.suite_results
       OpenC3::SuiteRunner.suite_results.complete
+      # context looks like the following:
+      # MySuite:ExampleGroup:script_2
+      # MySuite:ExampleGroup Manual Setup
+      # MySuite Manual Teardown
+      init_split = OpenC3::SuiteRunner.suite_results.context.split()
+      parts = init_split[0].split(':')
+      if parts[2]
+        # Remove test_ or script_ because it doesn't add any info
+        parts[2] = parts[2].sub(/^test_/, '').sub(/^script_/, '')
+      end
+      parts.map! { |part| part[0..9] } # Only take the first 10 characters to prevent huge filenames
+      # If the initial split on whitespace has more than 1 item it means
+      # a Manual Setup or Teardown was performed. Add this to the filename.
+      # NOTE: We're doing this here with a single underscore to preserve
+      # double underscores as Suite, Group, Script delimiters
+      if parts[1] and init_split.length > 1
+        parts[1] += "_#{init_split[-1]}"
+      elsif parts[0] and init_split.length > 1
+        parts[0] += "_#{init_split[-1]}"
+      end
       OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :report, report: OpenC3::SuiteRunner.suite_results.report }))
       # Write out the report to a local file
       log_dir = File.join(RAILS_ROOT, 'log')
-      filename = File.join(log_dir, File.build_timestamped_filename(['sr', 'report']))
+      filename = File.join(log_dir, File.build_timestamped_filename(['sr', parts.join('__')]))
       File.open(filename, 'wb') do |file|
         file.write(OpenC3::SuiteRunner.suite_results.report)
       end
       # Generate the bucket key by removing the date underscores in the filename to create the bucket file structure
       bucket_key = File.join("#{@scope}/tool_logs/sr/", File.basename(filename)[0..9].gsub("_", ""), File.basename(filename))
       metadata = {
-        # Note: The text 'Script Report' is used by RunningScripts.vue to differentiate between script logs
-        "scriptname" => "#{@current_filename} (Script Report)"
+        # Note: The chars '(' and ')' are used by RunningScripts.vue to differentiate between script logs
+        "user" => @details['user'],
+        "scriptname" => "#{@current_filename} (#{OpenC3::SuiteRunner.suite_results.context.strip})"
       }
       thread = OpenC3::BucketUtilities.move_log_file_to_bucket(filename, bucket_key, metadata: metadata)
       # Wait for the file to get moved to S3 because after this the process will likely die
@@ -1065,10 +1086,10 @@ class RunningScript
   end
 
   def run_text(text,
-                line_offset = 0,
-                text_binding = nil,
-                close_on_complete = false,
-                initial_filename: nil)
+               line_offset = 0,
+               text_binding = nil,
+               close_on_complete = false,
+               initial_filename: nil)
     initialize_variables()
     @line_offset = line_offset
     saved_instance = @@instance
@@ -1078,7 +1099,6 @@ class RunningScript
       OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :file, filename: initial_filename, text: text.to_utf8, breakpoints: [] }))
     end
     @@run_thread = Thread.new do
-      uncaught_exception = false
       begin
         # Capture STDOUT and STDERR
         $stdout.add_stream(@output_io)
@@ -1126,14 +1146,13 @@ class RunningScript
         handle_output_io()
         scriptrunner_puts "Script completed: #{File.basename(@filename)}" unless close_on_complete
 
-      rescue Exception => error
-        if error.class <= OpenC3::StopScript or error.class <= OpenC3::SkipScript
+      rescue Exception => e # rubocop:disable Lint/RescueException
+        if e.class <= OpenC3::StopScript or e.class <= OpenC3::SkipScript
           handle_output_io()
           scriptrunner_puts "Script stopped: #{File.basename(@filename)}"
         else
-          uncaught_exception = true
-          filename, line_number = error.source
-          handle_exception(error, true, filename, line_number)
+          filename, line_number = e.source
+          handle_exception(e, true, filename, line_number)
           handle_output_io()
           scriptrunner_puts "Exception in Control Statement - Script stopped: #{File.basename(@filename)}"
           mark_fatal()
@@ -1288,7 +1307,7 @@ class RunningScript
         break if @@cancel_output
         break if @@output_sleeper.sleep(1.0)
       end # loop
-    rescue => error
+    rescue => e
       # Qt.execute_in_main_thread(true) do
       #  ExceptionDialog.new(self, error, "Output Thread")
       # end

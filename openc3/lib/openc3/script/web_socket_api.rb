@@ -215,6 +215,16 @@ module OpenC3
     end
   end
 
+  # All Scripts WebSocket
+  class AllScriptsWebSocketApi < ScriptWebSocketApi
+    def initialize(url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
+      @identifier = {
+        channel: "AllScriptsChannel",
+      }
+      super(url: url, write_timeout: write_timeout, read_timeout: read_timeout, connect_timeout: connect_timeout, authentication: authentication, scope: scope)
+    end
+  end
+
   # Log Messages WebSocket
   class MessagesWebSocketApi < CmdTlmWebSocketApi
     def initialize(history_count: 0, start_time: nil, end_time: nil, level: nil, types: nil, url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)

@@ -34,7 +34,7 @@ RSpec.describe ActivityController, :type => :controller do
       return {
         'start' => start_time.to_s,
         'stop' => stop_time.to_s,
-        'kind' => 'cmd',
+        'kind' => 'COMMAND',
         'data' => {'cmd'=>'Test'}
       }
   end
@@ -80,7 +80,6 @@ RSpec.describe ActivityController, :type => :controller do
       post :create, params: hash.merge({ 'scope'=>'DEFAULT', 'name'=>'test' })
       ret = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
       expect(ret['updated_at']).not_to be_nil
-      expect(ret['duration']).to eql(3600)
       expect(ret['start']).not_to be_nil
       expect(ret['stop']).not_to be_nil
       expect(response).to have_http_status(:created)
@@ -110,7 +109,7 @@ RSpec.describe ActivityController, :type => :controller do
       hash = {
         "start" => dt_start.to_s,
         'stop' => dt_stop.to_s,
-        "kind" => "cmd",
+        "kind" => "COMMAND",
         "data" => {"test"=>"test"}
       }
       post :create, params: hash.merge({ 'scope'=>'DEFAULT', 'name'=>'test' })
@@ -160,7 +159,6 @@ RSpec.describe ActivityController, :type => :controller do
       expect(ret['start']).to eql(created['start'])
       expect(ret['stop']).to eql(created['stop'])
       expect(ret['updated_at']).not_to be_nil
-      expect(ret['duration']).to eql(3600)
       expect(response).to have_http_status(:ok)
     end
 
@@ -282,7 +280,7 @@ RSpec.describe ActivityController, :type => :controller do
           "name" => "test",
           "start" => start_time.to_s,
           'stop' => stop_time.to_s,
-          "kind" => "cmd",
+          "kind" => "COMMAND",
           "data" => {"test"=>"test #{i}"}
         }
       end
@@ -337,7 +335,7 @@ RSpec.describe ActivityController, :type => :controller do
           'name' => 'test',
           'start' => start_time.to_s,
           'stop' => stop_time.to_s,
-          'kind' => 'cmd',
+          'kind' => 'COMMAND',
           'data' => {'cmd'=>"test #{i}"}
         }
       end

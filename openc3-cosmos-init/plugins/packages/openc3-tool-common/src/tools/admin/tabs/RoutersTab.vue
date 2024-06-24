@@ -39,7 +39,7 @@
             </v-tooltip>
           </v-list-item-icon>
         </v-list-item>
-        <v-divider v-if="index < routers.length - 1" :key="index" />
+        <v-divider />
       </div>
     </v-list>
     <edit-dialog

@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -31,7 +31,6 @@ require 'openc3/system/target'
 require 'openc3/utilities/bucket'
 require 'openc3/utilities/zip'
 require 'openc3/topics/limits_event_topic'
-require 'thread'
 require 'fileutils'
 
 module OpenC3
@@ -60,6 +59,9 @@ module OpenC3
     # The current limits set
     @@limits_set = nil
 
+    # Callbacks to call once @@instance is created
+    @@post_instance_callbacks = []
+
     # @return [Symbol] The current limits_set of the system returned from Redis
     def self.limits_set
       unless @@limits_set
@@ -70,6 +72,14 @@ module OpenC3
 
     def self.limits_set=(value)
       @@limits_set = value.to_s.intern
+    end
+
+    def self.add_post_instance_callback(callback)
+      if @@instance
+        callback.call()
+      else
+        @@post_instance_callbacks << callback
+      end
     end
 
     def self.setup_targets(target_names, base_dir, scope:)
@@ -92,6 +102,18 @@ module OpenC3
               zip_file.extract(entry, path) unless File.exist?(path)
             end
           end
+
+          # Now add any modifications in targets_modified/TARGET/cmd_tlm
+          # This adds support for remembering dynamically created packets
+          # target.txt must be configured to either use all files in cmd_tlm folder (default)
+          # or have a predetermined empty file like dynamic_tlm.txt
+          bucket_path = "#{scope}/targets_modified/#{target_name}/cmd_tlm"
+          _, files = bucket.list_files(bucket: ENV['OPENC3_CONFIG_BUCKET'], path: bucket_path)
+          files.each do |file|
+            bucket_key = File.join(bucket_path, file['name'])
+            local_path = "#{base_dir}/targets/#{target_name}/cmd_tlm/#{file['name']}"
+            bucket.get_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: bucket_key, path: local_path)
+          end
         end
 
         # Build System from targets
@@ -109,8 +131,27 @@ module OpenC3
       raise "System.instance parameters are required on first call" unless target_names and target_config_dir
 
       @@instance_mutex.synchronize do
+        return @@instance if @@instance
         @@instance ||= self.new(target_names, target_config_dir)
+        @@post_instance_callbacks.each do |callback|
+          callback.call
+        end
         return @@instance
+      end
+    end
+
+    # Dynamically add packets to the system instance
+    #
+    # @param dynamic_packets [Array of packets]
+    # @param cmd_or_tlm [Symbol] :COMMAND or :TELEMETRY
+    # @param affect_ids [Boolean] Whether to affect packet id lookup or not
+    def self.dynamic_update(dynamic_packets, cmd_or_tlm = :TELEMETRY, affect_ids: false)
+      dynamic_packets.each do |packet|
+        if cmd_or_tlm == :TELEMETRY
+          @@instance.telemetry.dynamic_add_packet(packet, affect_ids: affect_ids)
+        else
+          @@instance.commands.dynamic_add_packet(packet, affect_ids: affect_ids)
+        end
       end
     end
 
@@ -119,7 +160,7 @@ module OpenC3
     # @param target_names [Array of target names]
     # @param target_config_dir Directory where target config folders are
     def initialize(target_names, target_config_dir)
-      OpenC3.add_to_search_path(target_config_dir, true)
+      OpenC3.add_to_search_path(target_config_dir, true) if target_config_dir
       @targets = {}
       @packet_config = PacketConfig.new
       @commands = Commands.new(@packet_config)
@@ -137,12 +178,12 @@ module OpenC3
       @targets[target.name] = target
       errors = [] # Store all errors processing the cmd_tlm files
       target.cmd_tlm_files.each do |cmd_tlm_file|
-        @packet_config.process_file(cmd_tlm_file, target.name)
-      rescue Exception => error
-        errors << "Error processing #{cmd_tlm_file}:\n#{error.message}"
+        @packet_config.process_file(cmd_tlm_file, target.name, target.language)
+      rescue Exception => e
+        errors << "Error processing #{cmd_tlm_file}:\n#{e.message}"
       end
       unless errors.empty?
-        raise errors.join("\n")
+        raise parser.error(errors.join("\n"))
       end
     end
   end

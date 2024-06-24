@@ -1,6 +1,0 @@
-run:
-  tags:
-    - k8s
-  image: docker/compose
-  script:
-    - ls; ./openc3-control.sh run

@@ -45,6 +45,7 @@ module OpenC3
     end
 
     def run
+      setup_microservice_topic()
       while true
         break if @cancel_thread
 
@@ -52,8 +53,9 @@ module OpenC3
           OpenC3.in_span("read_topics") do
             Topic.read_topics(@topics) do |topic, msg_id, msg_hash, redis|
               break if @cancel_thread
-
-              if topic =~ /__DECOMINTERFACE/
+              if topic == @microservice_topic
+                microservice_cmd(topic, msg_id, msg_hash, redis)
+              elsif topic =~ /__DECOMINTERFACE/
                 if msg_hash.key?('inject_tlm')
                   handle_inject_tlm(msg_hash['inject_tlm'])
                   next
@@ -79,7 +81,7 @@ module OpenC3
       end
     end
 
-    def decom_packet(topic, msg_id, msg_hash, _redis)
+    def decom_packet(_topic, msg_id, msg_hash, _redis)
       OpenC3.in_span("decom_packet") do
         msgid_seconds_from_epoch = msg_id.split('-')[0].to_i / 1000.0
         delta = Time.now.to_f - msgid_seconds_from_epoch
@@ -100,6 +102,7 @@ module OpenC3
           packet.extra = extra
         end
         packet.buffer = msg_hash["buffer"]
+        packet.process # Run processors
         packet.check_limits(System.limits_set) # Process all the limits and call the limits_change_callback (as necessary)
 
         TelemetryDecomTopic.write_packet(packet, scope: @scope)
@@ -130,7 +133,8 @@ module OpenC3
       if log_change
         case item.limits.state
         when :BLUE, :GREEN, :GREEN_LOW, :GREEN_HIGH
-          @logger.info message
+          # Only print INFO messages if we're changing ... not on initialization
+          @logger.info message if old_limits_state
         when :YELLOW, :YELLOW_LOW, :YELLOW_HIGH
           @logger.warn(message, type: Logger::NOTIFICATION)
         when :RED, :RED_LOW, :RED_HIGH

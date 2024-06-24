@@ -30,14 +30,10 @@ class TargetFile:
                 return local_file.read()
 
         bucket = Bucket.getClient()
-        resp = bucket.get_object(
-            bucket=OPENC3_CONFIG_BUCKET, key=f"{scope}/targets_modified/{name}"
-        )
+        resp = bucket.get_object(bucket=OPENC3_CONFIG_BUCKET, key=f"{scope}/targets_modified/{name}")
         if not resp:
             # Now try the original
-            resp = bucket.get_object(
-                bucket=OPENC3_CONFIG_BUCKET, key=f"{scope}/targets/{name}"
-            )
+            resp = bucket.get_object(bucket=OPENC3_CONFIG_BUCKET, key=f"{scope}/targets/{name}")
         if resp and resp["Body"]:
             return resp["Body"].read()
         else:

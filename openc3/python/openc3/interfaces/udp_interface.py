@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -75,9 +75,7 @@ class UdpInterface(Interface):
         if self.write_timeout is not None:
             self.write_timeout = float(write_timeout)
         else:
-            Logger.warn(
-                "Warning: To avoid interface lock, write_timeout can not be None. Setting to 10 seconds."
-            )
+            Logger.warn("Warning: To avoid interface lock, write_timeout can not be None. Setting to 10 seconds.")
             self.write_timeout = 10.0
         self.read_timeout = ConfigParser.handle_none(read_timeout)
         if self.read_timeout is not None:
@@ -94,16 +92,25 @@ class UdpInterface(Interface):
         if self.write_dest_port is None:
             self.write_raw_allowed = False
 
+    def connection_string(self):
+        result = ""
+        if self.write_dest_port:
+            result += f" {self.hostname}:{self.write_dest_port} (write dest port)"
+        if self.write_src_port:
+            result += f" {self.write_src_port} (write src port)"
+        if self.read_port:
+            result += f" {self.hostname}:{self.read_port} (read)"
+        if self.interface_address:
+            result += f" {self.interface_address} (interface addr)"
+        if self.bind_address != "0.0.0.0":
+            result += f" {self.bind_address} (bind addr)"
+        return result.strip()
+
     # Creates a new {UdpWriteSocket} if the the write_dest_port was given in
     # the constructor and a new {UdpReadSocket} if the read_port was given in
     # the constructor.
     def connect(self):
-        if (
-            self.read_port
-            and self.write_dest_port
-            and self.write_src_port
-            and (self.read_port == self.write_src_port)
-        ):
+        if self.read_port and self.write_dest_port and self.write_src_port and (self.read_port == self.write_src_port):
             self.read_socket = UdpReadWriteSocket(
                 self.read_port,
                 self.bind_address,

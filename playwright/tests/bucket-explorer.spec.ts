@@ -62,7 +62,7 @@ test('navigate config bucket', async ({ page, utils }) => {
     page,
     'tbody > tr:has-text("target.txt") [data-test="download-file"]',
     function (contents) {
-      expect(contents).toContain('REQUIRE')
+      expect(contents).toContain('LANGUAGE')
       expect(contents).toContain('IGNORE_PARAMETER')
       expect(contents).toContain('IGNORE_ITEM')
     },
@@ -92,9 +92,13 @@ test('navigate gems volume', async ({ page, utils }) => {
   await page.getByText('gems').click()
   // Note the URL is prefixed with %2F, i.e. '/'
   await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/%2Fgems%2F/)
-  await page.getByRole('cell', { name: 'cache' }).click()
-  await expect(page.locator('[data-test="file-path"]')).toHaveText('/cache/')
-  await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/%2Fgems%2Fcache%2F/)
+  await page.getByRole('cell', { name: 'cosmoscache' }).click()
+  await expect(page.locator('[data-test="file-path"]')).toHaveText(
+    '/cosmoscache/',
+  )
+  await expect(page).toHaveURL(
+    /.*\/tools\/bucketexplorer\/%2Fgems%2Fcosmoscache%2F/,
+  )
 
   await page.locator('internal:label=Search').fill('bucket')
   await expect(page.locator('tbody > tr')).toHaveCount(1)
@@ -103,8 +107,12 @@ test('navigate gems volume', async ({ page, utils }) => {
 
   // Reload and ensure we get to the same place
   await page.reload()
-  await expect(page.locator('[data-test="file-path"]')).toHaveText('/cache/')
-  await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/%2Fgems%2Fcache%2F/)
+  await expect(page.locator('[data-test="file-path"]')).toHaveText(
+    '/cosmoscache/',
+  )
+  await expect(page).toHaveURL(
+    /.*\/tools\/bucketexplorer\/%2Fgems%2Fcosmoscache%2F/,
+  )
   await page.locator('internal:label=Search').fill('bucket')
   await expect(page.locator('tbody > tr')).toHaveCount(1)
 })
@@ -112,17 +120,19 @@ test('navigate gems volume', async ({ page, utils }) => {
 test('direct URLs', async ({ page, utils }) => {
   // Verify using slashes rather than %2F works
   await page.goto('/tools/bucketexplorer/config/DEFAULT/targets/')
-  await utils.sleep(300) // Ensure the page is rendered before getting the count
+  await expect(page.locator('.v-app-bar')).toContainText('Bucket Explorer')
   // Can't match exact because Enterprise has the PW_TEST target
   await expect.poll(() => page.locator('tr').count()).toBeGreaterThan(4)
 
   // Basic makes it a bucket
   await page.goto('/tools/bucketexplorer/blah')
+  await expect(page.locator('.v-app-bar')).toContainText('Bucket Explorer')
   await expect(
     page.getByText('Unknown bucket / volume OPENC3_BLAH_BUCKET'),
   ).toBeVisible()
   // Prepending %2F makes it a volume
   await page.goto('/tools/bucketexplorer/%2FBAD')
+  await expect(page.locator('.v-app-bar')).toContainText('Bucket Explorer')
   await expect(
     page.getByText('Unknown bucket / volume OPENC3_BAD_VOLUME'),
   ).toBeVisible()
@@ -154,7 +164,10 @@ test('upload and delete', async ({ page, utils }) => {
   await expect(page.locator('[data-test="file-path"]')).toHaveText(
     '/DEFAULT/targets_modified/',
   )
-  await utils.sleep(300) // Ensure the table is rendered before getting the count
+  await expect(
+    page.getByRole('cell', { name: 'INST', exact: true }),
+  ).toBeVisible()
+  await utils.sleep(5000) // Ensure the table is rendered before getting the count
   let count = await page.locator('tbody > tr').count()
 
   // Note that Promise.all prevents a race condition
@@ -167,6 +180,8 @@ test('upload and delete', async ({ page, utils }) => {
     await page.getByLabel('prepended action').click(),
   ])
   await fileChooser.setFiles('package.json')
+  await page.locator('[data-test="upload-file-submit-btn"]').click()
+
   await expect(page.locator('tbody > tr')).toHaveCount(count + 1)
   await expect(page.getByRole('cell', { name: 'package.json' })).toBeVisible()
   await page
@@ -174,6 +189,28 @@ test('upload and delete', async ({ page, utils }) => {
     .click()
   await page.locator('[data-test="confirm-dialog-delete"]').click()
   await expect(page.locator('tbody > tr')).toHaveCount(count)
+
+  // Note that Promise.all prevents a race condition
+  // between clicking and waiting for the file chooser.
+  await expect(page.getByLabel('prepended action')).toBeVisible()
+  const [fileChooser2] = await Promise.all([
+    // It is important to call waitForEvent before click to set up waiting.
+    page.waitForEvent('filechooser'),
+    // Opens the file chooser.
+    await page.getByLabel('prepended action').click(),
+  ])
+  await fileChooser2.setFiles('package.json')
+  await page
+    .locator('[data-test="upload-file-path"]')
+    .fill('DEFAULT/targets_modified/TEST/tmp/myfile.json')
+  await page.locator('[data-test="upload-file-submit-btn"]').click()
+  await expect(page.locator('[data-test="file-path"]')).toHaveText(
+    '/DEFAULT/targets_modified/TEST/tmp/',
+  )
+  await page
+    .locator('tr:has-text("myfile.json") [data-test="delete-file"]')
+    .click()
+  await page.locator('[data-test="confirm-dialog-delete"]').click()
 })
 
 test('navigate logs and tools bucket', async ({ page, utils }) => {
@@ -198,5 +235,9 @@ test('navigate logs and tools bucket', async ({ page, utils }) => {
 
   await page.getByText('tools').click()
   await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/tools%2F/)
-  await expect(page.locator('tbody > tr')).toHaveCount(19)
+  if (process.env.ENTERPRISE === '1') {
+    await expect(page.locator('tbody > tr')).toHaveCount(19)
+  } else {
+    await expect(page.locator('tbody > tr')).toHaveCount(17)
+  }
 })

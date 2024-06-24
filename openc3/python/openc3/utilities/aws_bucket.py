@@ -21,6 +21,7 @@ from openc3.utilities.bucket import Bucket
 from openc3.environment import *
 import time
 
+aws_arn = OPENC3_AWS_ARN_PREFIX
 s3_config = Config(s3={"addressing_style": "path"})
 if OPENC3_BUCKET_URL:
     s3_endpoint_url = OPENC3_BUCKET_URL
@@ -46,9 +47,7 @@ class AwsBucket(Bucket):
     def __init__(self):
         # Check whether the session is a real Session or a MockS3
         # print(f"\nAwsBucket INIT session:{s3_session}\n")
-        self.client = s3_session.client(
-            "s3", endpoint_url=s3_endpoint_url, config=s3_config
-        )
+        self.client = s3_session.client("s3", endpoint_url=s3_endpoint_url, config=s3_config)
 
     def create(self, bucket):
         if not self.exist(bucket):
@@ -78,7 +77,7 @@ class AwsBucket(Bucket):
         ]
       },
       "Resource": ["""
-            policy = policy + f'\n        "arn:aws:s3:::{bucket}"'
+            policy = policy + f'\n        "{aws_arn}:s3:::{bucket}"'
             policy = (
                 policy
                 + """
@@ -97,7 +96,7 @@ class AwsBucket(Bucket):
       },
       "Resource": ["""
             )
-            policy = policy + f'\n        "arn:aws:s3:::{bucket}/*"'
+            policy = policy + f'\n        "{aws_arn}:s3:::{bucket}/*"'
             policy = (
                 policy
                 + """
@@ -107,9 +106,7 @@ class AwsBucket(Bucket):
   ]
 }"""
             )
-            self.client.put_bucket_policy(
-                Bucket=bucket, Policy=policy, ChecksumAlgorithm="SHA256"
-            )
+            self.client.put_bucket_policy(Bucket=bucket, Policy=policy, ChecksumAlgorithm="SHA256")
 
     def exist(self, bucket):
         try:
@@ -185,14 +182,13 @@ class AwsBucket(Bucket):
                 else:
                     if "Contents" in resp:
                         for aws_item in resp["Contents"]:
-                            item = {}
-                            item["name"] = aws_item["Key"].split("/")[-1]
-                            item["modified"] = aws_item["LastModified"]
-                            item["size"] = aws_item["Size"]
+                            item = {
+                                "name": aws_item["Key"].split("/")[-1],
+                                "modified": aws_item["LastModified"],
+                                "size": aws_item["Size"],
+                            }
                             if metadata:
-                                item["metadata"] = self.head_object(
-                                    bucket=bucket, key=aws_item["Key"]
-                                )
+                                item["metadata"] = self.head_object(bucket=bucket, key=aws_item["Key"])
                             files.append(item)
                     result = (dirs, files)
                 if not resp["IsTruncated"]:
@@ -210,9 +206,7 @@ class AwsBucket(Bucket):
             raise Bucket.NotFound(f"Object '{bucket}/{key}' does not exist.")
 
     # put_object fires off the request to store but does not confirm
-    def put_object(
-        self, bucket, key, body, content_type=None, cache_control=None, metadata=None
-    ):
+    def put_object(self, bucket, key, body, content_type=None, cache_control=None, metadata=None):
         kw_args = {
             "Bucket": bucket,
             "Key": key,
@@ -228,15 +222,24 @@ class AwsBucket(Bucket):
         return self.client.put_object(**kw_args)
 
     # @returns [Boolean] Whether the file exists
-    def check_object(self, bucket, key):
-        try:
-            s3_object_exists_waiter = self.client.get_waiter("object_exists")
-            s3_object_exists_waiter.wait(
-                Bucket=bucket, Key=key, WaiterConfig={"Delay": 0.1, "MaxAttempts": 30}
-            )
-            return True
-        except WaiterError:
-            return False
+    def check_object(self, bucket, key, retries=True):
+        if retries:
+            try:
+                s3_object_exists_waiter = self.client.get_waiter("object_exists")
+                s3_object_exists_waiter.wait(
+                    Bucket=bucket,
+                    Key=key,
+                    WaiterConfig={"Delay": 0.1, "MaxAttempts": 30},
+                )
+                return True
+            except WaiterError:
+                return False
+        else:
+            try:
+                self.head_object(bucket, key)
+                return True
+            except Bucket.NotFound:
+                return False
 
     def delete_object(self, bucket, key):
         self.client.delete_object(Bucket=bucket, Key=key)
@@ -249,17 +252,11 @@ class AwsBucket(Bucket):
         return self.client.delete_objects(Bucket=bucket, Delete={"Objects": key_list})
 
     def presigned_request(self, bucket, key, method, internal=True):
-        if internal:
-            prefix = "/"
-        else:
-            prefix = "/files/"
+        prefix = "/" if internal else "/files/"
 
-        url = None
         fields = None
         if method == "get_object":
-            url = self.client.generate_presigned_url(
-                "get_object", Params={"Bucket": bucket, "Key": key}
-            )
+            url = self.client.generate_presigned_url("get_object", Params={"Bucket": bucket, "Key": key})
         else:  # put_object
             response = self.client.generate_presigned_post(bucket, key)
             url = response["url"]

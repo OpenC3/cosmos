@@ -55,7 +55,6 @@ module OpenC3
         time2 = time1 += 1_000_000_000
         time3 = time2 += 1_000_000_000
         timestamp1 = Time.from_nsec_from_epoch(time1).to_timestamp
-        timestamp2 = Time.from_nsec_from_epoch(time2).to_timestamp
         timestamp3 = Time.from_nsec_from_epoch(time3).to_timestamp
         label = 'test'
         # Create buffer depth of three
@@ -63,13 +62,13 @@ module OpenC3
         expect(bplw.instance_variable_get(:@file_size)).to eq 0
         expect(bplw.buffered_first_time_nsec).to be_nil
         bplw.buffered_write(:RAW_PACKET, :TLM, 'TGT1', 'PKT1', time1, false, "\x01\x02", nil, '0-0')
-        expect(bplw.instance_variable_get(:@file_size)).to eq 0
+        expect(bplw.instance_variable_get(:@file_size)).to eq 8
         expect(bplw.buffered_first_time_nsec).to eq time1
         bplw.buffered_write(:RAW_PACKET, :TLM, 'TGT2', 'PKT2', time2, false, "\x03\x04", nil, '0-0')
-        expect(bplw.instance_variable_get(:@file_size)).to eq 0
+        expect(bplw.instance_variable_get(:@file_size)).to eq 8
         expect(bplw.buffered_first_time_nsec).to eq time1
         bplw.buffered_write(:RAW_PACKET, :TLM, 'TGT2', 'PKT2', time3, false, "\x05\x06", nil, '0-0')
-        expect(bplw.instance_variable_get(:@file_size)).to_not eq 0
+        expect(bplw.instance_variable_get(:@file_size)).to_not eq 8
         expect(bplw.buffered_first_time_nsec).to eq time1
         bplw.shutdown
         sleep 0.1 # Allow for shutdown thread "copy" to S3

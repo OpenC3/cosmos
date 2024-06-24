@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -33,7 +33,7 @@
           <v-spacer />
           <v-text-field
             v-model="runningSearch"
-            class="pt-0"
+            class="pt-0 search"
             label="Search"
             prepend-inner-icon="mdi-magnify"
             clearable
@@ -41,8 +41,7 @@
             dense
             single-line
             hide-details
-            data-test="running-search"
-            style="max-width: 350px" /></v-row
+            data-test="running-search" /></v-row
       ></v-card-title>
       <v-data-table
         :headers="runningHeaders"
@@ -89,7 +88,7 @@
           <v-spacer />
           <v-text-field
             v-model="completedSearch"
-            class="pt-0"
+            class="pt-0 search"
             label="Search"
             prepend-inner-icon="mdi-magnify"
             clearable
@@ -97,7 +96,6 @@
             dense
             single-line
             hide-details
-            style="max-width: 350px"
           />
         </v-row>
       </v-card-title>
@@ -124,7 +122,7 @@
             :loading="downloadScript && downloadScript.name === item.name"
             @click="downloadScriptLog(item)"
           >
-            <span v-if="item.name.includes('Script Report')"
+            <span v-if="item.name.includes('(') && item.name.includes(')')"
               >Script Report</span
             >
             <span v-else>Script Log</span>
@@ -161,6 +159,7 @@ export default {
           filterable: false,
         },
         { text: 'Id', value: 'id' },
+        { text: 'User', value: 'user' },
         { text: 'Name', value: 'name' },
         { text: 'Start Time', value: 'start_time' },
         {
@@ -179,6 +178,7 @@ export default {
       completedSearch: '',
       completedScripts: [],
       completedHeaders: [
+        { text: 'User', value: 'user' },
         { text: 'Name', value: 'name' },
         { text: 'Start Time', value: 'start' },
         {
@@ -207,6 +207,8 @@ export default {
       })
     },
     connectScript: function (script) {
+      // Must disconnect before connecting
+      this.$emit('disconnect')
       const destination = {
         name: 'ScriptRunner',
         params: { id: script.id },

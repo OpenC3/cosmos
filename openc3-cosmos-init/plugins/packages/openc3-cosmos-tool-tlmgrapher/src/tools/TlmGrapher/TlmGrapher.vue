@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -38,7 +38,11 @@
             </v-row>
           </div>
 
-          <v-row v-show="this.selectedGraphId !== null" class="ma-1">
+          <v-row
+            v-show="this.selectedGraphId !== null"
+            class="ma-1"
+            style="flex-wrap: nowrap"
+          >
             <target-packet-item-chooser
               :initial-target-name="this.$route.params.target"
               :initial-packet-name="this.$route.params.packet"
@@ -76,6 +80,9 @@
             >
               <v-icon large>mdi-pause</v-icon>
             </v-btn>
+            <div class="graph-info">
+              Click item name in Legend to toggle. Right click to edit.
+            </div>
           </v-row>
         </v-expansion-panel-content>
       </v-expansion-panel>
@@ -303,6 +310,7 @@ export default {
             graphMinX: vueGraph.graphMinX,
             graphMaxX: vueGraph.graphMaxX,
             legendPosition: vueGraph.legendPosition,
+            lines: vueGraph.lines,
           }
           // Only add the start and end time if we have both
           // This prevents adding just the start time and having the graph
@@ -383,12 +391,12 @@ export default {
       }
       this.saveDefaultConfig(this.currentConfig)
     },
-    addGraph: function () {
+    addGraph: function (checkExisting = true) {
       const id = this.counter
       let halfWidth = false
       let halfHeight = false
       // If there are existing graphs figure out how the first one looks
-      if (this.graphs.length != 0) {
+      if (checkExisting && this.graphs.length != 0) {
         if (this.$refs[`graph${this.graphs[0]}`][0].fullWidth === false) {
           halfWidth = true
         }
@@ -475,7 +483,7 @@ export default {
 
       let graphs = config.graphs
       for (let graph of graphs) {
-        this.addGraph()
+        this.addGraph(false) // Don't check existing graphs
       }
       await this.$nextTick()
       const that = this
@@ -490,6 +498,7 @@ export default {
         vueGraph.graphEndDateTime = graph.graphEndDateTime
         vueGraph.moveLegend(graph.legendPosition)
         vueGraph.addItems([...graph.items])
+        vueGraph.lines = graph.lines
       })
       this.state = 'start'
       this.dontSaveDefaultConfig = false
@@ -528,6 +537,11 @@ i.v-icon.mdi-chevron-down {
 <style lang="scss" scoped>
 .control {
   margin-top: 60px;
+}
+.graph-info {
+  width: 140px;
+  margin-left: 20px;
+  margin-top: 65px;
 }
 .v-expansion-panel-content {
   .container {

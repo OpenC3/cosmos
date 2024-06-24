@@ -93,7 +93,10 @@ test('open a file', async ({ page, utils }) => {
 })
 
 test('open a file using url param', async ({ page, utils }) => {
-  await page.goto('/tools/scriptrunner?file=INST2/procedures/collect.py')
+  await page.goto('/tools/scriptrunner?file=INST2/procedures/collect.py', {
+    waitUntil: 'domcontentloaded',
+  })
+  await expect(page.locator('.v-app-bar')).toContainText('Script Runner')
   expect(await page.locator('#sr-controls')).toContainText(
     `INST2/procedures/collect.py`,
   )
@@ -250,6 +253,7 @@ test('can delete all temp files', async ({ page, utils }) => {
   // Open file
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Open File').click()
+  await utils.sleep(1000)
   await expect(page.locator('.v-dialog--active')).toContainText('INST')
   await expect(page.locator('.v-dialog--active')).not.toContainText('__TEMP__')
   await page.locator('[data-test="file-open-save-cancel-btn"]').click()

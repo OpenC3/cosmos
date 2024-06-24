@@ -36,14 +36,20 @@ module OpenC3
   # and destroy to allow interaction with gem files from the PluginModel and
   # the GemsController.
   class GemModel
-    include Api
+    extend Api
 
     def self.names
-      result = Pathname.new("#{ENV['GEM_HOME']}/gems").children.select { |c| c.directory? }.collect { |p| File.basename(p) + '.gem' }
+      if Dir.exist?("#{ENV['GEM_HOME']}/gems")
+        result = Pathname.new("#{ENV['GEM_HOME']}/gems").children.select { |c| c.directory? }.collect { |p| File.basename(p) + '.gem' }
+      else
+        result = []
+      end
       return result.sort
     end
 
     def self.get(name)
+      path = "#{ENV['GEM_HOME']}/cosmoscache/#{name}"
+      return path if File.exist?(path)
       path = "#{ENV['GEM_HOME']}/cache/#{name}"
       return path if File.exist?(path)
       raise "Gem #{name} not found"
@@ -52,8 +58,9 @@ module OpenC3
     def self.put(gem_file_path, gem_install: true, scope:)
       if File.file?(gem_file_path)
         gem_filename = File.basename(gem_file_path)
-        FileUtils.mkdir_p("#{ENV['GEM_HOME']}/cache") unless Dir.exist?("#{ENV['GEM_HOME']}/cache")
-        FileUtils.cp(gem_file_path, "#{ENV['GEM_HOME']}/cache/#{File.basename(gem_file_path)}")
+        # Put into cosmoscache folder that we control
+        FileUtils.mkdir_p("#{ENV['GEM_HOME']}/cosmoscache") unless Dir.exist?("#{ENV['GEM_HOME']}/cosmoscache")
+        FileUtils.cp(gem_file_path, "#{ENV['GEM_HOME']}/cosmoscache/#{File.basename(gem_file_path)}")
         if gem_install
           Logger.info "Installing gem: #{gem_filename}"
           result = OpenC3::ProcessManager.instance.spawn(["ruby", "/openc3/bin/openc3cli", "geminstall", gem_filename, scope], "package_install", gem_filename, Time.now + 3600.0, scope: scope)
@@ -95,13 +102,15 @@ module OpenC3
       raise err
     end
 
-    def self.destroy(name)
+    def self.destroy(name, log_and_raise_needed_errors: true)
       gem_name, version = self.extract_name_and_version(name)
       plugin_gem_names = PluginModel.gem_names
       if plugin_gem_names.include?(name)
-        message = "Gem file #{name} can't be uninstalled because needed by installed plugin"
-        Logger.error message
-        raise message
+        if log_and_raise_needed_errors
+          message = "Gem file #{name} can't be uninstalled because needed by installed plugin"
+          Logger.error message
+          raise message
+        end
       else
         begin
           Gem::Uninstaller.new(gem_name, {:version => version, :force => true}).uninstall
@@ -117,6 +126,16 @@ module OpenC3
       gem_name = split_name[0..-2].join('-')
       version = File.basename(split_name[-1], '.gem')
       return gem_name, version
+    end
+
+    def self.destroy_all_other_versions(name)
+      keep_gem_name, keep_gem_version = GemModel.extract_name_and_version(name)
+      GemModel.names.each do |gem_full_name|
+        gem_name, gem_version = GemModel.extract_name_and_version(gem_full_name)
+        if gem_name == keep_gem_name and gem_version != keep_gem_version
+          GemModel.destroy(gem_full_name, log_and_raise_needed_errors: false)
+        end
+      end
     end
   end
 end

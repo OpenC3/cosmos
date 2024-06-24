@@ -45,7 +45,6 @@ ID_ITEM:
       required: true
       description: Bit offset into the telemetry packet of the Most Significant Bit of this item.
         May be negative to indicate on offset from the end of the packet.
-        Always use a bit offset of 0 for derived item.
       values: '[-]?\d+'
     <%= MetaConfigParser.load('_id_items.yaml').to_meta_config_yaml(4) %>
 APPEND_ID_ITEM:
@@ -172,3 +171,8 @@ ACCESSOR:
       description: The name of the accessor class
       values: .+
   since: 5.0.10
+IGNORE_OVERLAP:
+  summary: Ignores any packet items which overlap
+  description: Packet items which overlap normally generate a warning unless each individual item has the OVERLAP keyword.
+    This ignores overlaps across the entire packet.
+  since: 5.16.0

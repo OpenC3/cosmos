@@ -95,11 +95,11 @@ module OpenC3
       @children = []
     end
 
-    def create(update: false, force: false)
+    def create(update: false, force: false, queued: false)
       # Ensure there are no "." in the scope name - prevents gems accidently becoming scope names
       raise "Invalid scope name: #{@name}" if @name !~ /^[a-zA-Z0-9_-]+$/
       @name = @name.upcase
-      super(update: update, force: force)
+      super(update: update, force: force, queued: queued)
     end
 
     def destroy
@@ -306,7 +306,7 @@ module OpenC3
       setting = SettingModel.get(name: 'rubygems_url')
       SettingModel.set({ name: 'rubygems_url', data: 'https://rubygems.org' }, scope: @scope) unless setting
       setting = SettingModel.get(name: 'pypi_url')
-      SettingModel.set({ name: 'pypi_url', data: 'https://pypi.org/simple' }, scope: @scope) unless setting
+      SettingModel.set({ name: 'pypi_url', data: 'https://pypi.org' }, scope: @scope) unless setting
     end
   end
 end

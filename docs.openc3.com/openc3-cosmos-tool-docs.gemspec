@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -17,7 +17,7 @@
 # if purchased from OpenC3, Inc.
 
 # Create the overall gemspec
-spec = Gem::Specification.new do |s|
+Gem::Specification.new do |s|
   s.name = 'openc3-cosmos-tool-docs'
   s.summary = 'OpenC3 COSMOS Documentation'
   s.description = <<-EOF
@@ -25,7 +25,7 @@ spec = Gem::Specification.new do |s|
   EOF
   s.authors = ['Ryan Melton', 'Jason Thomas']
   s.email = ['ryan@openc3.com', 'jason@openc3.com']
-  s.homepage = 'https://github.com/OpenC3/openc3'
+  s.homepage = 'https://github.com/OpenC3/cosmos'
 
   s.platform = Gem::Platform::RUBY
 

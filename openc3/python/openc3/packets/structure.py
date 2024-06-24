@@ -36,16 +36,10 @@ class Structure:
         buffer=None,
         item_class=StructureItem,
     ):
-        if (default_endianness == "BIG_ENDIAN") or (
-            default_endianness == "LITTLE_ENDIAN"
-        ):
+        if (default_endianness == "BIG_ENDIAN") or (default_endianness == "LITTLE_ENDIAN"):
             self.default_endianness = default_endianness
-            if buffer is not None and not isinstance(
-                buffer, (bytes, bytearray)
-            ):  # type(buffer) != str:
-                raise TypeError(
-                    f"wrong argument type {buffer.__class__.__name__} (expected bytes)"
-                )
+            if buffer is not None and not isinstance(buffer, (bytes, bytearray)):  # type(buffer) != str:
+                raise TypeError(f"wrong argument type {buffer.__class__.__name__} (expected bytes)")
             if buffer is None:
                 self._buffer = None
             else:
@@ -62,9 +56,7 @@ class Structure:
             self.mutex = None
             self.accessor = BinaryAccessor()
         else:
-            raise AttributeError(
-                f"Unknown endianness '{default_endianness}', must be 'BIG_ENDIAN' or 'LITTLE_ENDIAN'"
-            )
+            raise AttributeError(f"Unknown endianness '{default_endianness}', must be 'BIG_ENDIAN' or 'LITTLE_ENDIAN'")
 
     # Read an item in the structure
     #
@@ -93,9 +85,7 @@ class Structure:
         if self._buffer:
             # Extend data size
             if len(self._buffer) < self.defined_length:
-                self._buffer += Structure.ZERO_STRING * (
-                    self.defined_length - len(self._buffer)
-                )
+                self._buffer += Structure.ZERO_STRING * (self.defined_length - len(self._buffer))
         else:
             self.allocate_buffer_if_needed()
 
@@ -182,9 +172,7 @@ class Structure:
         if not endianness:
             endianness = self.default_endianness
         # Create the item
-        item = self.item_class(
-            name, bit_offset, bit_size, data_type, endianness, array_size, overflow
-        )
+        item = self.item_class(name, bit_offset, bit_size, data_type, endianness, array_size, overflow)
         return self.define(item)
 
     # Adds the given item to the items hash. It also resizes the buffer to
@@ -210,11 +198,7 @@ class Structure:
             # If the current item or last item have a negative offset then we have
             # to re-sort. We also re-sort if the current item is less than the last
             # item because we are inserting.
-            if (
-                last_item.bit_offset <= 0
-                or item.bit_offset <= 0
-                or item.bit_offset < last_item.bit_offset
-            ):
+            if last_item.bit_offset <= 0 or item.bit_offset <= 0 or item.bit_offset < last_item.bit_offset:
                 self.sorted_items.sort()
         else:
             self.sorted_items.append(item)
@@ -222,9 +206,7 @@ class Structure:
         # Add to the overall hash of defined items
         self.items[item.name] = item
         # Update fixed size knowledge
-        if (item.data_type != "DERIVED" and item.bit_size <= 0) or (
-            item.array_size and item.array_size <= 0
-        ):
+        if (item.data_type != "DERIVED" and item.bit_size <= 0) or (item.array_size and item.array_size <= 0):
             self.fixed_size = False
 
         # Recalculate the overall defined length of the structure
@@ -288,9 +270,7 @@ class Structure:
         if not self.fixed_size:
             raise AttributeError("Can't append an item after a variably sized item")
         if data_type == "DERIVED":
-            return self.define_item(
-                name, 0, bit_size, data_type, array_size, endianness, overflow
-            )
+            return self.define_item(name, 0, bit_size, data_type, array_size, endianness, overflow)
         else:
             return self.define_item(
                 name,
@@ -332,9 +312,7 @@ class Structure:
         if self.items.get(item.name):
             self.items[item.name] = item
         else:
-            raise AttributeError(
-                f"Unknown item: {item.name} - Ensure item name is uppercase"
-            )
+            raise AttributeError(f"Unknown item: {item.name} - Ensure item name is uppercase")
 
     # self.param name [String] Name of the item to delete in the items Hash
     def delete_item(self, name):
@@ -444,9 +422,7 @@ class Structure:
                     continue
 
                 if (item.data_type != "BLOCK") or (
-                    item.data_type == "BLOCK"
-                    and value_type != "RAW"
-                    and hasattr(item, "read_conversion")
+                    item.data_type == "BLOCK" and value_type != "RAW" and hasattr(item, "read_conversion")
                 ):
                     string += f"{indent_string}{item.name}: {self.read_item(item, value_type, buffer)}\n"
                 else:
@@ -533,9 +509,7 @@ class Structure:
 
     def internal_buffer_equals(self, buffer):
         if not isinstance(buffer, (bytes, bytearray)):
-            raise AttributeError(
-                f"Buffer class is {buffer.__class__.__name__} but must be bytearray"
-            )
+            raise AttributeError(f"Buffer class is {buffer.__class__.__name__} but must be bytearray")
 
         self._buffer = bytearray(buffer[:])
         # self.buffer.force_encoding('ASCII-8BIT'.freeze)
