@@ -5,7 +5,6 @@ usage() {
   echo "*  install-playwright: installs playwright and its dependencies" >&2
   echo "*  build-plugin: builds the plugin to be used in the playwright tests" >&2
   echo "*  reset-storage-state: clear out cached data" >&2
-  echo "*  run-local: runs the playwright tests against a locally running version of Cosmos" >&2
   echo "*  run-chromium: runs the playwright tests against a locally running version of Cosmos using Chrome" >&2
   exit 1
 }
@@ -40,10 +39,6 @@ case $1 in
 
     reset-storage-state )
         ./reset_storage_state.sh
-        ;;
-
-    run-local )
-        yarn playwright test "${@:2}" --project=local
         ;;
 
     run-chromium )

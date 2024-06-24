@@ -40,11 +40,6 @@ case $1 in
         ./playwright.sh build-plugin
         ;;
 
-      run-local )
-        cd playwright
-        ./playwright.sh run-local "${@:3}"
-        ;;
-
       run-chromium )
         cd playwright
         ./playwright.sh run-chromium "${@:3}"
@@ -59,7 +54,6 @@ case $1 in
         echo "Usage:" >&2
         echo "*  install-playwright: installs playwright and its dependencies" >&2
         echo "*  build-plugin: builds the plugin to be used in the playwright tests" >&2
-        echo "*  run-local: runs the playwright tests against a locally running version of Cosmos" >&2
         echo "*  run-chromium: runs the playwright tests against a locally running version of Cosmos using Chrome" >&2
         echo "*  reset-storage-state: clear out cached data" >&2
         ;;

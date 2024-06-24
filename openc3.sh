@@ -145,7 +145,7 @@ case $1 in
   test )
     scripts/linux/openc3_setup.sh
     ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-build.yaml build
-    scripts/linux/openc3_test.sh $2
+    scripts/linux/openc3_test.sh "${@:2}"
     ;;
   util )
     set -a
