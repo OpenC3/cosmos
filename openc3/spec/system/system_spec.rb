@@ -58,6 +58,8 @@ module OpenC3
       it "can be set" do
         System.limits_set = 'TVAC'
         expect(System.limits_set).to eql :TVAC
+        System.limits_set = 'DEFAULT'
+        expect(System.limits_set).to eql :DEFAULT
       end
     end
 
