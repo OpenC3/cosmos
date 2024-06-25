@@ -37,7 +37,7 @@ module OpenC3
     MAX_DURATION = Time::SEC_PER_DAY
     PRIMARY_KEY = '__openc3_timelines'.freeze # MUST be equal to `TimelineModel::PRIMARY_KEY` minus the leading __
     # See run_activity(activity) in openc3/lib/openc3/microservices/timeline_microservice.rb
-    VALID_KINDS = %w(COMMAND SCRIPT EXPIRE)
+    VALID_KINDS = %w(COMMAND SCRIPT RESERVE EXPIRE)
 
     # Called via the microservice this gets the previous 00:00:15 to 01:01:00. This should allow
     # for a small buffer around the timeline to make sure the schedule doesn't get stale.
