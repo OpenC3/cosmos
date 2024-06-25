@@ -362,7 +362,7 @@ module OpenC3
             kind: nil,
             data: {}
           )
-        }.to raise_error(ActivityInputError, /unknown kind: , must be one of COMMAND, SCRIPT, EXPIRE/)
+        }.to raise_error(ActivityInputError, /unknown kind: , must be one of COMMAND, SCRIPT, RESERVE, EXPIRE/)
 
         expect {
           ActivityModel.new(
@@ -373,7 +373,7 @@ module OpenC3
             kind: 'OTHER',
             data: {}
           )
-        }.to raise_error(ActivityInputError, /unknown kind: OTHER, must be one of COMMAND, SCRIPT, EXPIRE/)
+        }.to raise_error(ActivityInputError, /unknown kind: OTHER, must be one of COMMAND, SCRIPT, RESERVE, EXPIRE/)
       end
 
       it "raises due to bad data" do
