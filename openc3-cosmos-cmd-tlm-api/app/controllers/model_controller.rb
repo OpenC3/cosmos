@@ -58,5 +58,6 @@ class ModelController < ApplicationController
     return unless authorization('admin')
     @model_class.new(name: params[:id], scope: params[:scope]).destroy
     OpenC3::Logger.info("#{@model_class.name} destroyed: #{params[:id]}", scope: params[:scope], user: username())
+    head :ok
   end
 end
