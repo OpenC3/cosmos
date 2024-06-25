@@ -192,6 +192,7 @@ openssl rsa -in [keyfile-encrypted.key] -outform PEM -out [keyfile-encrypted-pem
 
 - https://doc.traefik.io/traefik/https/tls/#cipher-suites
 - https://pkg.go.dev/crypto/tls#pkg-constants
+- https://stellastra.com/cipher-suite
 
 ```yaml
 tls:
