@@ -89,25 +89,16 @@ else:
             ast.copy_location(try_node, node)
             return try_node
 
-    visit_FunctionDef = track_enter_leave_lineno
-    visit_ClassDef = track_enter_leave_lineno
     visit_Assign = track_enter_leave_lineno
     visit_AugAssign = track_enter_leave_lineno
     visit_Delete = track_enter_leave_lineno
     visit_Print = track_enter_leave_lineno
-    visit_For = track_enter_leave_lineno
-    visit_While = track_enter_leave_lineno
-    visit_If = track_enter_leave_lineno
-    visit_With = track_enter_leave_lineno
-    visit_Try = track_enter_leave_lineno
-    visit_TryStar = track_enter_leave_lineno
     visit_Assert = track_enter_leave_lineno
     visit_Import = track_enter_leave_lineno
     visit_ImportFrom = track_enter_leave_lineno
     visit_Exec = track_enter_leave_lineno
     # Global
     visit_Expr = track_enter_leave_lineno
-    visit_Pass = track_enter_leave_lineno
 
     # These statements can be reached, but they change
     # control flow and are never exited.
@@ -124,6 +115,15 @@ else:
         ast.copy_location(if_node, node)
         return if_node
 
+    visit_With = track_reached_lineno
+    visit_FunctionDef = track_reached_lineno
+    visit_ClassDef = track_reached_lineno
+    visit_For = track_reached_lineno
+    visit_While = track_reached_lineno
+    visit_If = track_reached_lineno
+    visit_Try = track_reached_lineno
+    visit_TryStar = track_reached_lineno
+    visit_Pass = track_reached_lineno
     visit_Return = track_reached_lineno
     visit_Raise = track_enter_leave_lineno
     visit_Break = track_reached_lineno
