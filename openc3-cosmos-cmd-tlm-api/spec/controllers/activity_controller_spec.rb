@@ -34,7 +34,7 @@ RSpec.describe ActivityController, :type => :controller do
       return {
         'start' => start_time.to_s,
         'stop' => stop_time.to_s,
-        'kind' => 'cmd',
+        'kind' => 'COMMAND',
         'data' => {'cmd'=>'Test'}
       }
   end
@@ -109,7 +109,7 @@ RSpec.describe ActivityController, :type => :controller do
       hash = {
         "start" => dt_start.to_s,
         'stop' => dt_stop.to_s,
-        "kind" => "cmd",
+        "kind" => "COMMAND",
         "data" => {"test"=>"test"}
       }
       post :create, params: hash.merge({ 'scope'=>'DEFAULT', 'name'=>'test' })
@@ -280,7 +280,7 @@ RSpec.describe ActivityController, :type => :controller do
           "name" => "test",
           "start" => start_time.to_s,
           'stop' => stop_time.to_s,
-          "kind" => "cmd",
+          "kind" => "COMMAND",
           "data" => {"test"=>"test #{i}"}
         }
       end
@@ -335,7 +335,7 @@ RSpec.describe ActivityController, :type => :controller do
           'name' => 'test',
           'start' => start_time.to_s,
           'stop' => stop_time.to_s,
-          'kind' => 'cmd',
+          'kind' => 'COMMAND',
           'data' => {'cmd'=>"test #{i}"}
         }
       end

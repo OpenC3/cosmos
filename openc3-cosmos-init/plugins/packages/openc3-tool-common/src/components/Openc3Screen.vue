@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -728,8 +728,8 @@ export default {
       }
     },
     applyGlobalSettings: function (widgets) {
-      this.globalSettings.forEach((setting) => {
-        widgets.forEach((widget) => {
+      widgets.forEach((widget) => {
+        this.globalSettings.forEach((setting) => {
           // widget.type is already the full camelcase widget name like LabelWidget
           // so we have to lower case both and tack on 'widget' to compare
           if (
@@ -738,11 +738,11 @@ export default {
           ) {
             widget.settings.push(setting.slice(1))
           }
-          // Recursively apply to all widgets contained in layouts
-          if (widget.widgets) {
-            this.applyGlobalSettings(widget.widgets)
-          }
         })
+        // Recursively apply to all widgets contained in layouts
+        if (widget.widgets) {
+          this.applyGlobalSettings(widget.widgets)
+        }
       })
     },
     update: function () {

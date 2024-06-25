@@ -993,8 +993,9 @@ export default {
       this.updateBreakpoints($event, session)
     })
 
-    window.addEventListener('resize', this.doResize)
-    window.addEventListener('keydown', this.keydown)
+    this.editor.container.addEventListener('resize', this.doResize)
+    this.editor.container.addEventListener('keydown', this.keydown)
+
     this.doResize()
     this.cable = new Cable('/script-api/cable')
 

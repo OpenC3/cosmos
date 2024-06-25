@@ -68,8 +68,8 @@ def get_timeline_activities(name, start=None, stop=None, scope=OPENC3_SCOPE):
 
 
 def create_timeline_activity(name, kind, start, stop, data={}, scope=OPENC3_SCOPE):
-    kind = kind.lower()
-    kinds = ["command", "script", "reserve"]
+    kind = kind.upper()
+    kinds = ["COMMAND", "SCRIPT", "RESERVE"]
     if kind not in kinds:
         raise RuntimeError(f"Unknown kind: {kind}. Must be one of {', '.join(kinds)}.")
     post_data = {}
