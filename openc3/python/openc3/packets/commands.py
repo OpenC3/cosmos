@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -295,7 +295,7 @@ class Commands:
                 maximum = item.maximum
                 if minimum is not None and maximum is not None:
                     # Perform Range Check on command parameter
-                    if range_check_value < minimum or range_check_value > maximum:
+                    if type(range_check_value) is str or range_check_value < minimum or range_check_value > maximum:
                         if type(range_check_value) is str:
                             range_check_value = f"'{range_check_value}'"
                         raise RuntimeError(
