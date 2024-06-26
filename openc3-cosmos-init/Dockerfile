@@ -106,7 +106,7 @@ RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-scriptrunner
 COPY ./plugins/packages/openc3-cosmos-demo/ packages/openc3-cosmos-demo/
 RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-demo"]
 
-FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_BASE_IMAGE}:${OPENC3_TAG} as base
+FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_BASE_IMAGE}:${OPENC3_TAG} AS base
 FROM openc3-frontend-tmp AS openc3-tmp5
 
 # Build docs tool
