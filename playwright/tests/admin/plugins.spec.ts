@@ -206,7 +206,7 @@ test('installs a new plugin', async ({ page, utils }) => {
     // Opens the file chooser.
     await page.locator('text=Click to select').click({ force: true }),
   ])
-  await fileChooser.setFiles(`../${plugin}/${pluginGem}`)
+  await fileChooser.setFiles(`./${plugin}/${pluginGem}`)
   await expect(page.locator('.v-dialog:has-text("Variables")')).toBeVisible()
   await page.locator('data-test=edit-submit').click()
   await expect(page.locator('[data-test=plugin-alert]')).toContainText(
@@ -402,7 +402,7 @@ test('upgrades existing plugin', async ({ page, utils }) => {
       )
       .click(),
   ])
-  await fileChooser.setFiles(`../${plugin}/${pluginGem1}`)
+  await fileChooser.setFiles(`./${plugin}/${pluginGem1}`)
   await expect(page.locator('.v-dialog:has-text("Variables")')).toBeVisible()
   await page.locator('data-test=edit-submit').click()
   await expect(page.locator('.v-dialog:has-text("Modified")')).toBeVisible()
