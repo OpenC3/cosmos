@@ -14,7 +14,6 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from datetime import datetime, timezone
 import time
 import json
 import unittest
@@ -25,6 +24,9 @@ from openc3.utilities.logger import Logger
 
 
 class TestLogger(unittest.TestCase):
+    def setUp(self):
+        Logger.stdout = True
+
     def test_initializes_the_level_to_info(self):
         self.assertEqual(Logger().level, Logger.INFO)
 
@@ -52,8 +54,6 @@ class TestLogger(unittest.TestCase):
         getattr(Logger, method)("Message2")
         self.assertEqual(sys.stdout.getvalue(), "")
         sys.stdout = orig
-
-        now_time = datetime.now(timezone.utc)
 
     def test_debug_prints_if_level_is_debug_or_higher(self):
         self.verify_output(Logger.DEBUG, "debug")

@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -179,7 +179,7 @@ module OpenC3
             enabled = limits_settings['enabled']
             persistence = limits_settings['persistence_setting']
             limits_settings.each do |limits_set, settings|
-              next unless Hash === limits_set
+              next unless Hash === settings
               System.limits.set(target_name, packet_name, item_name, settings['red_low'], settings['yellow_low'], settings['yellow_high'], settings['red_high'], settings['green_low'], settings['green_high'], limits_set.to_s.intern, persistence, enabled)
             end
             if not enabled.nil?
@@ -198,7 +198,7 @@ module OpenC3
     def self.sync_system_thread_body(scope:, block_ms: nil)
       telemetry = System.telemetry.all
       topics = ["#{scope}__openc3_limits_events"]
-      Topic.read_topics(topics, nil, block_ms) do |topic, msg_id, event, redis|
+      Topic.read_topics(topics, nil, block_ms) do |_topic, _msg_id, event, _redis|
         event = JSON.parse(event['event'], :allow_nan => true, :create_additions => true)
         case event['type']
         when 'LIMITS_CHANGE'
@@ -213,7 +213,9 @@ module OpenC3
             if packet
               enabled = ConfigParser.handle_true_false_nil(event['enabled'])
               persistence = event['persistence']
-              System.limits.set(target_name, packet_name, item_name, event['red_low'], event['yellow_low'], event['yellow_high'], event['red_high'], event['green_low'], event['green_high'], event['limits_set'], persistence, enabled)
+              System.limits.set(target_name, packet_name, item_name,
+                  event['red_low'], event['yellow_low'], event['yellow_high'], event['red_high'],
+                  event['green_low'], event['green_high'], event['limits_set'], persistence, enabled)
             end
           end
 
