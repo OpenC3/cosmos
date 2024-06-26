@@ -2,9 +2,9 @@
   "name": "@openc3/tool-common",
   "version": "5.16.3-beta0",
   "dependencies": {
-    "@astrouxds/astro-web-components": "7.22.0",
-    "@rails/actioncable": "7.1.3-2",
-    "axios": "1.6.8",
+    "@astrouxds/astro-web-components": "7.22.1",
+    "@rails/actioncable": "7.1.3-4",
+    "axios": "1.7.2",
     "binary-search": "1.3.6",
     "date-fns": "3.6.0",
     "date-fns-tz": "3.1.3",
