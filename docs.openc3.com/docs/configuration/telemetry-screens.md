@@ -1138,6 +1138,29 @@ RANGEBAR INST HEALTH_STATUS TEMP1 0 100000 RAW 200 50
 RANGEBAR INST HEALTH_STATUS TEMP1 -100 100
 ```
 
+### ROLLUP
+**Displays a notification icon which changes color based on a rollup telemetry**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Icon name | The astro UX icon to display. Valid choices are 'astro' icons taken from
+https://github.com/RocketCommunicationsInc/astro-components/blob/master/static/json/rux-icons.json
+ | True |
+| Icon label | Text to apply to the icon label | False |
+| Icon sublabel | Text to apply to the icon sublabel | False |
+
+Example Usage:
+```ruby
+ROLLUP satellite-transmit "SAT 1" "Details"
+  SETTING SCREEN INST HS
+  SETTING TLM INST HEALTH_STATUS TEMP1
+  SETTING TLM INST HEALTH_STATUS TEMP2
+ROLLUP antenna "GND 2" "Location"
+  SETTING SCREEN INST HS
+  SETTING TLM INST HEALTH_STATUS TEMP3
+  SETTING TLM INST HEALTH_STATUS TEMP4
+```
+
 ### TEXTBOX
 **Provides a large box for multiline text**
 

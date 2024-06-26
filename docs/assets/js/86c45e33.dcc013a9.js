@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunkdocs_openc3_com=self.webpackChunkdocs_openc3_com||[]).push([[1304],{5567:o=>{o.exports=JSON.parse('{"title":"Configuration","slug":"/configuration","permalink":"/docs/configuration","navigation":{"previous":{"title":"Podman","permalink":"/docs/getting-started/podman"},"next":{"title":"File Format","permalink":"/docs/configuration/format"}}}')}}]);

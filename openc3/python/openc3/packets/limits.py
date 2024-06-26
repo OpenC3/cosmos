@@ -83,7 +83,7 @@ class Limits:
             if limits_set:
                 limits_set = str(limits_set).upper()
             else:
-                limits_set = self.system.limits_set
+                limits_set = self.system.limits_set()
             limits_for_set = limits.values.get(limits_set)
             if limits_for_set is not None:
                 return [
@@ -159,6 +159,9 @@ class Limits:
         if green_low and green_high:
             limits_for_set[4] = float(green_low)
             limits_for_set[5] = float(green_high)
+        else:
+            limits_for_set[4] = None
+            limits_for_set[5] = None
         if enabled is not None:
             limits.enabled = enabled
         if persistence is not None:
