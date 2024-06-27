@@ -31,6 +31,7 @@ require 'openc3/utilities/local_mode'
 require 'openc3/utilities/bucket'
 require 'openc3/utilities/zip'
 require 'fileutils'
+require 'ostruct'
 require 'tmpdir'
 
 module OpenC3

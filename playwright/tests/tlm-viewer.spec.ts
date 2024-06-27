@@ -115,12 +115,12 @@ test('displays INST HS', async ({ page, utils }) => {
   })
 })
 
-test('displays INST LATEST', async ({ page, utils }) => {
-  await showScreen(page, 'INST', 'LATEST')
+test('displays INST IMAGE', async ({ page, utils }) => {
+  await showScreen(page, 'INST', 'IMAGE')
 })
 
-test('displays INST LIMITS', async ({ page, utils }) => {
-  await showScreen(page, 'INST', 'LIMITS')
+test('displays INST LATEST', async ({ page, utils }) => {
+  await showScreen(page, 'INST', 'LATEST')
 })
 
 test('displays INST LAUNCHER', async ({ page, utils }) => {
@@ -160,12 +160,20 @@ test('displays INST LAUNCHER', async ({ page, utils }) => {
   ).not.toBeVisible()
 })
 
+test('displays INST LIMITS', async ({ page, utils }) => {
+  await showScreen(page, 'INST', 'LIMITS')
+})
+
 test('displays INST OTHER', async ({ page, utils }) => {
   await showScreen(page, 'INST', 'OTHER')
 })
 
 test('displays INST PARAMS', async ({ page, utils }) => {
   await showScreen(page, 'INST', 'PARAMS')
+})
+
+test('displays INST ROLLUP', async ({ page, utils }) => {
+  await showScreen(page, 'INST', 'ROLLUP')
 })
 
 test('displays INST SIMPLE', async ({ page, utils }) => {
@@ -201,6 +209,10 @@ test('displays INST SIMPLE', async ({ page, utils }) => {
 
 test('displays INST TABS', async ({ page, utils }) => {
   await showScreen(page, 'INST', 'TABS')
+})
+
+test('displays INST WEB', async ({ page, utils }) => {
+  await showScreen(page, 'INST', 'WEB')
 })
 
 // Create the screen name as upcase because OpenC3 upcases the name

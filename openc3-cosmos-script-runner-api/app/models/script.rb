@@ -115,7 +115,11 @@ class Script < OpenC3::TargetFile
         if ENV['OPENC3_SERVICE_PASSWORD']
           process.environment['OPENC3_API_PASSWORD'] = ENV['OPENC3_SERVICE_PASSWORD']
         else
-          raise "No authentication available for script"
+          # The viewer user doesn't have an offline access token (because they can't run scripts)
+          # but they still want to be able to view suite files
+          # Since processing a suite file requires running it they won't get the Suite chrome
+          # so return nothing here and allow Script Runner to simply view the suite file
+          return '', '', false
         end
       end
       process.environment['GEM_HOME'] = ENV['GEM_HOME']

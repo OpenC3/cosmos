@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -540,7 +540,8 @@ i.v-icon.mdi-chevron-down {
 }
 .graph-info {
   width: 140px;
-  margin-left: 70px;
+  margin-left: 20px;
+  margin-top: 65px;
 }
 .v-expansion-panel-content {
   .container {

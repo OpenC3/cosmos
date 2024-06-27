@@ -200,6 +200,7 @@ end
 # Update python package version
 
 python_files = [
+  'openc3/python/pyproject.toml',
   'openc3/python/openc3/__version__.py'
 ]
 
@@ -213,6 +214,8 @@ python_files.each do |rel_path|
   data.each_line do |line|
     if line =~ /__version__/
       mod_data << "__version__ = \"#{version}\"\n"
+    elsif line =~ /^version =/
+      mod_data << "version = \"#{version}\"\n"
     else
       mod_data << line
     end

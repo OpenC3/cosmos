@@ -584,6 +584,7 @@ class RunningScript
     @@message_log = nil
   end
 
+  # TODO: Is this ever called?
   def filename=(filename)
     # Stop the message log so a new one will be created with the new filename
     stop_message_log()

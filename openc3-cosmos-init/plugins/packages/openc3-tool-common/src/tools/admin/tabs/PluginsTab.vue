@@ -493,7 +493,7 @@ export default {
       })
     },
     downloadPlugin: function (plugin) {
-      Api.post(`/openc3-api/gems/${plugin}/download`).then((response) => {
+      Api.post(`/openc3-api/packages/${plugin}/download`).then((response) => {
         // Decode Base64 string
         const decodedData = window.atob(response.data.contents)
         // Create UNIT8ARRAY of size same as row data length

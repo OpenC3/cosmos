@@ -29,7 +29,7 @@ module OpenC3
       mock_redis()
     end
 
-    def generate_activity(name:, scope:, start:, kind: "cmd", stop: 1.0)
+    def generate_activity(name:, scope:, start:, kind: "COMMAND", stop: 1.0)
       dt = DateTime.now.new_offset(0)
       start_time = dt + (start / 24.0)
       end_time = dt + ((start + stop) / 24.0)
@@ -58,7 +58,7 @@ module OpenC3
             scope: 'DEFAULT',
             start: start.to_i,
             stop: stop.to_i,
-            kind: "cmd",
+            kind: "COMMAND",
             data: data,
             recurring: recurring
           )
@@ -85,7 +85,7 @@ module OpenC3
             scope: 'DEFAULT',
             start: start.to_i,
             stop: stop.to_i,
-            kind: "cmd",
+            kind: "COMMAND",
             data: data,
             recurring: recurring
           )
@@ -108,7 +108,7 @@ module OpenC3
             scope: 'DEFAULT',
             start: start.to_i,
             stop: stop.to_i,
-            kind: "cmd",
+            kind: "COMMAND",
             data: data,
             recurring: recurring
           )
@@ -129,7 +129,7 @@ module OpenC3
             scope: 'DEFAULT',
             start: start.to_i,
             stop: stop.to_i,
-            kind: "cmd",
+            kind: "COMMAND",
             data: data,
             recurring: recurring
           )
@@ -145,7 +145,7 @@ module OpenC3
             scope: 'DEFAULT',
             start: start.to_i,
             stop: stop.to_i,
-            kind: "cmd",
+            kind: "COMMAND",
             data: data,
             recurring: recurring
           )
@@ -163,7 +163,7 @@ module OpenC3
             scope: 'DEFAULT',
             start: start.to_i,
             stop: stop.to_i,
-            kind: "cmd",
+            kind: "COMMAND",
             data: data,
           )
           activity.create()
@@ -178,7 +178,7 @@ module OpenC3
             scope: 'DEFAULT',
             start: start.to_i,
             stop: stop.to_i,
-            kind: "cmd",
+            kind: "COMMAND",
             data: data,
             recurring: recurring
           )
@@ -201,7 +201,7 @@ module OpenC3
             scope: 'DEFAULT',
             start: start.to_i,
             stop: stop.to_i,
-            kind: "cmd",
+            kind: "COMMAND",
             data: data,
             recurring: recurring
           )
@@ -228,7 +228,7 @@ module OpenC3
         array = ActivityModel.activities(name: name, scope: scope)
         expect(array.empty?).to eql(false)
         expect(array.length).to eql(1)
-        expect(array[0].kind).to eql("cmd")
+        expect(array[0].kind).to eql("command")
         expect(array[0].start).not_to be_nil
         expect(array[0].stop).not_to be_nil
       end
@@ -238,9 +238,9 @@ module OpenC3
       it "returns all metrics between X and Y" do
         name = "foobar"
         scope = "scope"
-        activity = generate_activity(name: name, scope: scope, start: 1.5)
+        activity = generate_activity(name: name, scope: scope, start: 1.5, kind: 'SCRIPT')
         activity.create()
-        activity = generate_activity(name: name, scope: scope, start: 5.0)
+        activity = generate_activity(name: name, scope: scope, start: 5.0, kind: 'SCRIPT')
         activity.create()
         dt = DateTime.now.new_offset(0)
         start = (dt + (1 / 24.0)).strftime("%s").to_i
@@ -248,7 +248,7 @@ module OpenC3
         array = ActivityModel.get(name: name, scope: scope, start: start, stop: stop)
         expect(array.empty?).to eql(false)
         expect(array.length).to eql(1)
-        expect(array[0]["kind"]).to eql("cmd")
+        expect(array[0]["kind"]).to eql("script")
         expect(array[0]["start"]).not_to be_nil
         expect(array[0]["stop"]).not_to be_nil
       end
@@ -265,7 +265,7 @@ module OpenC3
         all = ActivityModel.all(name: name, scope: scope)
         expect(all.empty?).to eql(false)
         expect(all.length).to eql(2)
-        expect(all[0]["kind"]).not_to be_nil
+        expect(all[0]["kind"]).to eql("command")
         expect(all[0]["start"]).not_to be_nil
         expect(all[0]["stop"]).not_to be_nil
         expect(all[1]["kind"]).not_to be_nil
@@ -344,13 +344,13 @@ module OpenC3
             scope: scope,
             start: (Time.now + 10).iso8601(),
             stop: (Time.now + 11).iso8601(),
-            kind: "cmd",
+            kind: "COMMAND",
             data: {}
           )
         }.to raise_error(ActivityInputError, /start and stop must be seconds/)
       end
 
-      it "raises due to nil kind" do
+      it "raises due to bad kind" do
         name = "foobar"
         scope = "scope"
         expect {
@@ -362,7 +362,18 @@ module OpenC3
             kind: nil,
             data: {}
           )
-        }.to raise_error(ActivityInputError, /kind must not be nil/)
+        }.to raise_error(ActivityInputError, /unknown kind: , must be one of command, script, reserve, expire/)
+
+        expect {
+          ActivityModel.new(
+            name: name,
+            scope: scope,
+            start: (Time.now + 10).to_i,
+            stop: (Time.now + 11).to_i,
+            kind: 'OTHER',
+            data: {}
+          )
+        }.to raise_error(ActivityInputError, /unknown kind: other, must be one of command, script, reserve, expire/)
       end
 
       it "raises due to bad data" do
@@ -374,7 +385,7 @@ module OpenC3
             scope: scope,
             start: (Time.now + 10).to_i,
             stop: (Time.now + 11).to_i,
-            kind: 'cmd',
+            kind: 'COMMAND',
             data: nil
           )
         }.to raise_error(ActivityInputError, /data must not be nil/)
@@ -385,7 +396,7 @@ module OpenC3
             scope: scope,
             start: (Time.now + 10).to_i,
             stop: (Time.now + 11).to_i,
-            kind: 'cmd',
+            kind: 'COMMAND',
             data: 'test'
           )
         }.to raise_error(ActivityInputError, /data must be a json object\/hash/)
@@ -466,7 +477,7 @@ module OpenC3
         name = "foobar"
         scope = "scope"
         expect {
-          ActivityModel.new(name: name, scope: scope, start: "foo", stop: "bar", kind: "cmd", data: {})
+          ActivityModel.new(name: name, scope: scope, start: "foo", stop: "bar", kind: "COMMAND", data: {})
         }.to raise_error(ActivityInputError)
       end
     end
@@ -477,7 +488,7 @@ module OpenC3
         scope = "scope"
         start = Time.now.to_i
         expect {
-          ActivityModel.new(name: name, scope: scope, start: start, stop: start, kind: "cmd", data: {})
+          ActivityModel.new(name: name, scope: scope, start: start, stop: start, kind: "COMMAND", data: {})
         }.to raise_error(ActivityInputError)
       end
 
@@ -488,7 +499,7 @@ module OpenC3
         start = (dt_now + (1.0 / 24.0)).strftime("%s").to_i
         stop = (dt_now + (25.0 / 24.0)).strftime("%s").to_i
         expect {
-          ActivityModel.new(name: name, scope: scope, start: start, stop: stop, kind: "cmd", data: {})
+          ActivityModel.new(name: name, scope: scope, start: start, stop: stop, kind: "COMMAND", data: {})
         }.to raise_error(ActivityInputError)
       end
     end
@@ -501,8 +512,28 @@ module OpenC3
         start = (dt_now + (1.5 / 24.0)).strftime("%s").to_i
         stop = (dt_now + (1.0 / 24.0)).strftime("%s").to_i
         expect {
-          ActivityModel.new(name: name, scope: scope, start: start, stop: stop, kind: "cmd", data: {})
+          ActivityModel.new(name: name, scope: scope, start: start, stop: stop, kind: "COMMAND", data: {})
         }.to raise_error(ActivityInputError)
+      end
+
+      it "raises error due to start before now" do
+        name = "foobar"
+        scope = "scope"
+        dt_now = DateTime.now
+        start = (dt_now - (1.5 / 24.0)).strftime("%s").to_i
+        stop = (dt_now + (1.0 / 24.0)).strftime("%s").to_i
+        expect {
+          ActivityModel.new(name: name, scope: scope, start: start, stop: stop, kind: "COMMAND", data: {})
+        }.to raise_error(ActivityInputError, /activity must be in the future/)
+      end
+
+      it "allows EXPIRE activies with start before now" do
+        name = "foobar"
+        scope = "scope"
+        dt_now = DateTime.now
+        start = (dt_now - (1.5 / 24.0)).strftime("%s").to_i
+        stop = (dt_now + (1.0 / 24.0)).strftime("%s").to_i
+        ActivityModel.new(name: name, scope: scope, start: start, stop: stop, kind: "EXPIRE", data: {})
       end
     end
 
@@ -514,7 +545,7 @@ module OpenC3
         start = activity.start + 10
         stop = activity.stop + 10
         expect {
-          activity.update(start: start, stop: stop, kind: "error", data: {})
+          activity.update(start: start, stop: stop, kind: "COMMAND", data: {})
         }.to raise_error(ActivityError)
       end
 
@@ -528,7 +559,7 @@ module OpenC3
         new_start = activity.start + 3600
         new_stop = activity.stop + 3600
         expect {
-          activity.update(start: new_start, stop: new_stop, kind: "error", data: {})
+          activity.update(start: new_start, stop: new_stop, kind: "COMMAND", data: {})
         }.to raise_error(ActivityOverlapError)
       end
     end
@@ -540,10 +571,10 @@ module OpenC3
         activity = generate_activity(name: name, scope: scope, start: 1.0)
         activity.create()
         stop = activity.stop + 100
-        activity.update(start: activity.start, stop: stop, kind: "foo", data: {})
+        activity.update(start: activity.start, stop: stop, kind: "SCRIPT", data: {})
         expect(activity.start).to eql(activity.start)
         expect(activity.stop).to eql(stop)
-        expect(activity.kind).to eql("foo")
+        expect(activity.kind).to eql("script")
         expect(activity.data).not_to be_nil
         expect(activity.data).not_to include("test")
         expect(activity.events.empty?).to eql(false)
@@ -560,10 +591,10 @@ module OpenC3
         og_start = activity.start
         new_start = activity.start + 100
         new_stop = activity.stop + 100
-        activity.update(start: new_start, stop: new_stop, kind: "foo", data: {})
+        activity.update(start: new_start, stop: new_stop, kind: "COMMAND", data: {})
         expect(activity.start).to eql(new_start)
         expect(activity.stop).to eql(new_stop)
-        expect(activity.kind).to eql("foo")
+        expect(activity.kind).to eql("command")
         expect(activity.data).not_to include("test")
         ret = ActivityModel.score(name: name, scope: scope, score: og_start)
         expect(ret).to be_nil

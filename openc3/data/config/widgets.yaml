@@ -1154,6 +1154,32 @@ Telemetry Widgets:
     # example: |
     #   RANGECOLUMN INST HEALTH_STATUS TEMP1 0 100000 RAW 200 50
     #   RANGECOLUMN INST HEALTH_STATUS TEMP1 -100 100
+    ROLLUP:
+      summary: Displays a notification icon which changes color based on a rollup telemetry
+      parameters:
+        - name: Icon name
+          required: true
+          description: |
+            The astro UX icon to display. Valid choices are 'astro' icons taken from
+            https://github.com/RocketCommunicationsInc/astro-components/blob/master/static/json/rux-icons.json
+          values: .+
+        - name: Icon label
+          required: false
+          description: Text to apply to the icon label
+          values: .+
+        - name: Icon sublabel
+          required: false
+          description: Text to apply to the icon sublabel
+          values: .+
+      example: |
+        ROLLUP satellite-transmit "SAT 1" "Details"
+          SETTING SCREEN INST HS
+          SETTING TLM INST HEALTH_STATUS TEMP1
+          SETTING TLM INST HEALTH_STATUS TEMP2
+        ROLLUP antenna "GND 2" "Location"
+          SETTING SCREEN INST HS
+          SETTING TLM INST HEALTH_STATUS TEMP3
+          SETTING TLM INST HEALTH_STATUS TEMP4
     TEXTBOX:
       summary: Provides a large box for multiline text
       parameters:

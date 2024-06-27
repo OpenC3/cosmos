@@ -247,8 +247,8 @@ module OpenC3
     end
 
     # Verifies the indicated parameter in the config doesn't start or end
-    # with an underscore, doesn't contain a double underscore, doesn't contain
-    # spaces and doesn't start with a close bracket.
+    # with an underscore, doesn't contain a double underscore or double bracket,
+    # doesn't contain spaces and doesn't start with a close bracket.
     #
     # @param [Integer] index The index of the parameter to check
     def verify_parameter_naming(index, usage = "")
@@ -258,6 +258,9 @@ module OpenC3
       end
       if param.include? '__'
         raise Error.new(self, "Parameter #{index} (#{param}) for #{@keyword} cannot contain a double underscore ('__').", usage, @url)
+      end
+      if param.include? '[[' or param.include? ']]'
+        raise Error.new(self, "Parameter #{index} (#{param}) for #{@keyword} cannot contain double brackets ('[[' or ']]').", usage, @url)
       end
       if param.include? ' '
         raise Error.new(self, "Parameter #{index} (#{param}) for #{@keyword} cannot contain a space (' ').", usage, @url)

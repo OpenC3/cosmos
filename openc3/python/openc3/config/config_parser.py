@@ -119,9 +119,9 @@ class ConfigParser:
         if max_num_params and self.parameters[max_num_params : max_num_params + 1]:
             raise ConfigParser.Error(self, f"Too many parameters for {self.keyword}.", usage, self.url)
 
-    # Verifies the indicated parameter in the config doesn't start or
-    # with an underscore, doesn't contain a double underscore, doesn't contain
-    # spaces and doesn't start with a close bracket.
+    # Verifies the indicated parameter in the config doesn't start or end
+    # with an underscore, doesn't contain a double underscore or double bracket,
+    # doesn't contain spaces and doesn't start with a close bracket.
     #
     # self.param [Integer] index The index of the parameter to check
     def verify_parameter_naming(self, index, usage=""):
@@ -138,6 +138,14 @@ class ConfigParser:
             raise ConfigParser.Error(
                 self,
                 f"Parameter {index} ({param}) for {self.keyword} cannot contain a double underscore ('__').",
+                usage,
+                self.url,
+            )
+
+        if "[[" in param or "]]" in param:
+            raise ConfigParser.Error(
+                self,
+                f"Parameter {index} ({param}) for {self.keyword} cannot contain double brackets ('[[' or ']]').",
                 usage,
                 self.url,
             )
