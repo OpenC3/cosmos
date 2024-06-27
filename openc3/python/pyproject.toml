@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "openc3"
-version = "5.17.1"
+version = "5.17.2-beta0"
 description = "Python support for OpenC3 COSMOS"
 authors = ["Support <support@openc3.com>"]
 readme = "README.md"
