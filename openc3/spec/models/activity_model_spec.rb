@@ -228,7 +228,7 @@ module OpenC3
         array = ActivityModel.activities(name: name, scope: scope)
         expect(array.empty?).to eql(false)
         expect(array.length).to eql(1)
-        expect(array[0].kind).to eql("COMMAND")
+        expect(array[0].kind).to eql("command")
         expect(array[0].start).not_to be_nil
         expect(array[0].stop).not_to be_nil
       end
@@ -248,7 +248,7 @@ module OpenC3
         array = ActivityModel.get(name: name, scope: scope, start: start, stop: stop)
         expect(array.empty?).to eql(false)
         expect(array.length).to eql(1)
-        expect(array[0]["kind"]).to eql("SCRIPT")
+        expect(array[0]["kind"]).to eql("script")
         expect(array[0]["start"]).not_to be_nil
         expect(array[0]["stop"]).not_to be_nil
       end
@@ -265,7 +265,7 @@ module OpenC3
         all = ActivityModel.all(name: name, scope: scope)
         expect(all.empty?).to eql(false)
         expect(all.length).to eql(2)
-        expect(all[0]["kind"]).to eql("COMMAND")
+        expect(all[0]["kind"]).to eql("command")
         expect(all[0]["start"]).not_to be_nil
         expect(all[0]["stop"]).not_to be_nil
         expect(all[1]["kind"]).not_to be_nil
@@ -362,7 +362,7 @@ module OpenC3
             kind: nil,
             data: {}
           )
-        }.to raise_error(ActivityInputError, /unknown kind: , must be one of COMMAND, SCRIPT, RESERVE, EXPIRE/)
+        }.to raise_error(ActivityInputError, /unknown kind: , must be one of command, script, reserve, expire/)
 
         expect {
           ActivityModel.new(
@@ -373,7 +373,7 @@ module OpenC3
             kind: 'OTHER',
             data: {}
           )
-        }.to raise_error(ActivityInputError, /unknown kind: OTHER, must be one of COMMAND, SCRIPT, RESERVE, EXPIRE/)
+        }.to raise_error(ActivityInputError, /unknown kind: other, must be one of command, script, reserve, expire/)
       end
 
       it "raises due to bad data" do
@@ -574,7 +574,7 @@ module OpenC3
         activity.update(start: activity.start, stop: stop, kind: "SCRIPT", data: {})
         expect(activity.start).to eql(activity.start)
         expect(activity.stop).to eql(stop)
-        expect(activity.kind).to eql("SCRIPT")
+        expect(activity.kind).to eql("script")
         expect(activity.data).not_to be_nil
         expect(activity.data).not_to include("test")
         expect(activity.events.empty?).to eql(false)
@@ -594,7 +594,7 @@ module OpenC3
         activity.update(start: new_start, stop: new_stop, kind: "COMMAND", data: {})
         expect(activity.start).to eql(new_start)
         expect(activity.stop).to eql(new_stop)
-        expect(activity.kind).to eql("COMMAND")
+        expect(activity.kind).to eql("command")
         expect(activity.data).not_to include("test")
         ret = ActivityModel.score(name: name, scope: scope, score: og_start)
         expect(ret).to be_nil

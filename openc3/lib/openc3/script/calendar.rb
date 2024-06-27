@@ -67,8 +67,8 @@ module OpenC3
     end
 
     def create_timeline_activity(name, kind:, start:, stop:, data: {}, scope: $openc3_scope, token: $openc3_token)
-      kind = kind.to_s.upcase()
-      kinds = %w(COMMAND SCRIPT RESERVE)
+      kind = kind.to_s.downcase()
+      kinds = %w(command script reserve)
       unless kinds.include?(kind)
         raise "Unknown kind: #{kind}. Must be one of #{kinds.join(', ')}."
       end

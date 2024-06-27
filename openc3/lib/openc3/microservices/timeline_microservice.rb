@@ -66,16 +66,16 @@ module OpenC3
 
         run_activity(activity)
       end
-      @logger.info "#{@timeline_name} timeine worker exiting"
+      @logger.info "#{@timeline_name} timeline worker exiting"
     end
 
     def run_activity(activity)
-      case activity.kind.upcase
-      when 'COMMAND'
+      case activity.kind.downcase
+      when 'command'
         run_command(activity)
-      when 'SCRIPT'
+      when 'script'
         run_script(activity)
-      when 'EXPIRE'
+      when 'expire'
         clear_expired(activity)
       else
         @logger.error "Unknown kind passed to microservice #{@timeline_name}: #{activity.as_json(:allow_nan => true)}"
@@ -242,7 +242,7 @@ module OpenC3
         scope: @scope,
         start: 0,
         stop: (now - 86_400 * 7),
-        kind: 'EXPIRE',
+        kind: 'expire',
         data: {}
       )
       @queue << activity
