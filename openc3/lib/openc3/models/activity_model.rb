@@ -28,9 +28,7 @@ require 'securerandom'
 
 module OpenC3
   class ActivityError < StandardError; end
-
   class ActivityInputError < ActivityError; end
-
   class ActivityOverlapError < ActivityError; end
 
   class ActivityModel < Model
@@ -158,32 +156,6 @@ module OpenC3
       @updated_at = updated_at
     end
 
-    # validate_time searches from the current activity @stop - 1 (because we allow overlap of stop with start)
-    # back through @start - MAX_DURATION. The method is trying to validate that this new activity does not
-    # overlap with anything else. The reason we search back past @start through MAX_DURATION is because we
-    # need to return all the activities that may start before us and verify that we don't overlap them.
-    # Activities are only inserted by @start time so we need to go back to verify we don't overlap existing @stop.
-    # Note: Score is the Seconds since the Unix Epoch: (%s) Number of seconds since 1970-01-01 00:00:00 UTC.
-    # zrange rev byscore finds activites from in reverse order so the first task is the closest task to the current score.
-    # In this case a parameter ignore_score allows the request to ignore that time and skip to the next time
-    # but if nothing is found in the time range we can return nil.
-    #
-    # @param [Integer] ignore_score - should be nil unless you want to ignore a time when doing an update
-    def validate_time(ignore_score = nil)
-      array = Store.zrevrangebyscore(@primary_key, @stop - 1, @start - MAX_DURATION)
-      array.each do |value|
-        activity = JSON.parse(value, :allow_nan => true, :create_additions => true)
-        if ignore_score == activity['start']
-          next
-        elsif activity['stop'] > @start
-          return activity['start']
-        else
-          return nil
-        end
-      end
-      return nil
-    end
-
     # validate the input to the rules we have created for timelines.
     # - A task's start MUST NOT be in the past.
     # - A task's start MUST be before the stop.
@@ -285,11 +257,6 @@ module OpenC3
         notify(kind: 'created')
       else
         validate_input(start: @start, stop: @stop, kind: @kind, data: @data)
-        collision = validate_time()
-        unless collision.nil?
-          raise ActivityOverlapError.new "activity overlaps existing at #{collision}"
-        end
-
         @updated_at = Time.now.to_nsec_from_epoch
         add_event(status: 'created')
         Store.zadd(@primary_key, @start, JSON.generate(self.as_json(:allow_nan => true)))
@@ -309,12 +276,6 @@ module OpenC3
       old_start = @start
       set_input(start: start, stop: stop, kind: kind, data: data, events: @events)
       @updated_at = Time.now.to_nsec_from_epoch
-      # copy of create
-      collision = validate_time(old_start)
-      unless collision.nil?
-        raise ActivityOverlapError.new "failed to update #{old_start}, no activities can overlap, collision: #{collision}"
-      end
-
       add_event(status: 'updated')
       Store.multi do |multi|
         multi.zremrangebyscore(@primary_key, old_start, old_start)
