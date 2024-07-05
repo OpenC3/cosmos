@@ -33,6 +33,8 @@ class DecomInterfaceTopic(Topic):
         # DecomMicroservice is listening to the DECOMINTERFACE topic and is responsible
         # for actually building the command. This was deliberate to allow this to work
         # with or without an interface.
+        ack_topic = f"{{{scope}__ACKCMD}}TARGET__{target_name}"
+        Topic.update_topic_offsets([ack_topic])
         decom_id = Topic.write_topic(
             f"{scope}__DECOMINTERFACE__{{{target_name}}}",
             {"build_cmd": json.dumps(data, cls=JsonEncoder)},
@@ -40,7 +42,6 @@ class DecomInterfaceTopic(Topic):
             100,
         )
         timeout = 5  # Arbitrary 5s timeout
-        ack_topic = f"{{{scope}__ACKCMD}}TARGET__{target_name}"
         start_time = time.time()
         while (time.time() - start_time) < timeout:
             for topic, msg_id, msg_hash, redis in Topic.read_topics([ack_topic]):
