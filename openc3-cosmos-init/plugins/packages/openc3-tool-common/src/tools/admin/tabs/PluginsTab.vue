@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -29,7 +29,7 @@
           show-size
           accept=".gem"
           class="mx-2"
-          label="Click to install new plugin .gem (NOT upgrade)"
+          label="Click to select plugin .gem file to install"
           ref="fileInput"
           @change="fileChange()"
           @mousedown="fileMousedown()"
@@ -373,13 +373,13 @@ export default {
               this.update()
             }, 5000)
           }
-        },
+        }
       )
     },
     formatDate(nanoSecs) {
       return format(
         toDate(parseInt(nanoSecs) / 1_000_000),
-        'yyyy-MM-dd HH:mm:ss.SSS',
+        'yyyy-MM-dd HH:mm:ss.SSS'
       )
     },
     upload: function (existing = null) {
@@ -395,7 +395,7 @@ export default {
         headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: function (progressEvent) {
           var percentCompleted = Math.round(
-            (progressEvent.loaded * 100) / progressEvent.total,
+            (progressEvent.loaded * 100) / progressEvent.total
           )
           self.progress = percentCompleted
         },
@@ -574,7 +574,7 @@ export default {
                 {
                   okText: 'Ok',
                   cancelText: 'Cancel',
-                },
+                }
               )
               .then(() => {
                 this.upload(this.currentPlugin)
@@ -601,7 +601,7 @@ export default {
                   {
                     okText: 'Ok',
                     cancelText: 'Cancel',
-                  },
+                  }
                 )
                 .then(() => {
                   this.upload(this.currentPlugin)
