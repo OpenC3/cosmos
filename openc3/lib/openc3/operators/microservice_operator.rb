@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -127,7 +127,7 @@ module OpenC3
         else
           # NEW
           scope = microservice_name.split("__")[0]
-          Logger.info("New microservice detected: #{microservice_name}", scope: scope)
+          Logger.debug("New microservice detected: #{microservice_name}", scope: scope)
           if parent
             # Respawn parent
             @changed_microservices[parent] = @microservices[parent] if @microservices[parent] and @previous_microservices[parent]
@@ -144,7 +144,7 @@ module OpenC3
         unless @microservices[microservice_name]
           # REMOVED
           scope = microservice_name.split("__")[0]
-          Logger.info("Removed microservice detected: #{microservice_name}", scope: scope)
+          Logger.debug("Removed microservice detected: #{microservice_name}", scope: scope)
           if previous_parent
             # Respawn previous parent
             @changed_microservices[previous_parent] = @microservices[previous_parent] if @microservices[previous_parent] and @previous_microservices[previous_parent]
@@ -186,7 +186,7 @@ module OpenC3
           end
         end
 
-        @removed_microservices.each do |microservice_name, microservice_config|
+        @removed_microservices.each do |microservice_name, _microservice_config|
           process = @processes[microservice_name]
           @processes.delete(microservice_name)
           @removed_processes[microservice_name] = process
