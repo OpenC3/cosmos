@@ -78,6 +78,8 @@
           prevIcon: 'mdi-chevron-left',
           nextIcon: 'mdi-chevron-right',
         }"
+        sort-by="modified"
+        sort-desc="true"
         @click:row="fileClick"
         calculate-widths
         multi-sort
