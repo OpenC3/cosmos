@@ -402,6 +402,63 @@ module OpenC3
         }.to raise_error(ActivityInputError, /data must be a json object\/hash/)
       end
 
+      it "raises error due to overlap starts inside A and ends inside A" do
+        name = "foobar"
+        scope = "scope"
+        activity = generate_activity(name: name, scope: scope, start: 1.0, stop: 1.0)
+        activity.create()
+        model = generate_activity(name: name, scope: scope, start: 1.1, stop: 0.8)
+        expect {
+          model.create(overlap: false)
+        }.to raise_error(ActivityOverlapError)
+      end
+
+      it "raises error due to overlap starts before A and ends before A" do
+        name = "foobar"
+        scope = "scope"
+        activity = generate_activity(name: name, scope: scope, start: 1.0, stop: 1.0)
+        activity.create()
+        model = generate_activity(name: name, scope: scope, start: 0.5, stop: 1.0)
+        expect {
+          model.create(overlap: false)
+        }.to raise_error(ActivityOverlapError)
+      end
+
+      it "raises error due to overlap starts inside A and ends outside A" do
+        name = "foobar"
+        scope = "scope"
+        activity = generate_activity(name: name, scope: scope, start: 1.0, stop: 1.0)
+        activity.create()
+        model = generate_activity(name: name, scope: scope, start: 1.5, stop: 1.5)
+        expect {
+          model.create(overlap: false)
+        }.to raise_error(ActivityOverlapError)
+      end
+
+      it "raises error due to overlap starts before A and ends after A" do
+        name = "foobar"
+        scope = "scope"
+        activity = generate_activity(name: name, scope: scope, start: 1.0, stop: 1.0)
+        activity.create()
+        model = generate_activity(name: name, scope: scope, start: 0.5, stop: 1.5)
+        expect {
+          model.create(overlap: false)
+        }.to raise_error(ActivityOverlapError)
+      end
+
+      it "raises error due to overlap starts before A and ends outside A inside a second activity" do
+        name = "foobar"
+        scope = "scope"
+        foo = generate_activity(name: name, scope: scope, start: 1.0, stop: 0.5)
+        foo.create()
+        bar = generate_activity(name: name, scope: scope, start: 2.0, stop: 0.5)
+        bar.create()
+        activity = generate_activity(name: name, scope: scope, start: 0.5, stop: 1.7)
+        expect {
+          activity.create(overlap: false)
+        }.to raise_error(ActivityOverlapError)
+      end
+
       it "allows new activities with start == stop" do
         name = "foobar"
         scope = "scope"
@@ -490,6 +547,20 @@ module OpenC3
         expect {
           activity.update(start: start, stop: stop, kind: "COMMAND", data: {})
         }.to raise_error(ActivityError)
+      end
+
+      it "raises error due to update is overlapping time point" do
+        name = "foobar"
+        scope = "scope"
+        activity = generate_activity(name: name, scope: scope, start: 0.5, stop: 1.0)
+        activity.create()
+        model = generate_activity(name: name, scope: scope, start: 2.0)
+        model.create()
+        new_start = activity.start + 3600
+        new_stop = activity.stop + 3600
+        expect {
+          activity.update(start: new_start, stop: new_stop, kind: "COMMAND", data: {}, overlap: false)
+        }.to raise_error(ActivityOverlapError)
       end
     end
 

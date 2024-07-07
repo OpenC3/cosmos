@@ -85,7 +85,7 @@ RSpec.describe ActivityController, :type => :controller do
       expect(response).to have_http_status(:created)
     end
 
-    xit "returns a hash and status code 400 with missing values" do
+    it "returns a hash and status code 400 with missing values" do
       post :create, params: { 'scope'=>'DEFAULT', 'name'=>'test' }
       ret = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
       expect(ret['status']).to eql('error')
@@ -125,9 +125,8 @@ RSpec.describe ActivityController, :type => :controller do
       expect(response).to have_http_status(:created)
       post :create, params: hash.merge({ 'scope'=>'DEFAULT', 'name'=>'test' })
       ret = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
-      expect(ret['status']).to eql('error')
-      expect(ret['message']).not_to be_nil
-      expect(response).to have_http_status(409)
+      expect(ret['name']).to eql('test')
+      expect(response).to have_http_status(201)
     end
   end
 
@@ -196,9 +195,8 @@ RSpec.describe ActivityController, :type => :controller do
       hash = generate_activity_hash(2.0)
       put :update, params: hash.merge({ 'scope'=>'DEFAULT', 'name'=>'test', 'id'=>created['start'] })
       ret = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
-      expect(ret['status']).to eql('error')
-      expect(ret['message']).not_to be_nil
-      expect(response).to have_http_status(409)
+      expect(ret['name']).to eql 'test'
+      expect(response).to have_http_status(200)
     end
 
     it "returns a hash and status code 404 with invalid start" do
@@ -209,7 +207,7 @@ RSpec.describe ActivityController, :type => :controller do
       expect(response).to have_http_status(:not_found)
     end
 
-    xit "returns a hash and status code 400 with valid params" do
+    it "returns a hash and status code 400 with valid params" do
       hash = generate_activity_hash(1.0)
       post :create, params: hash.merge({'scope'=>'DEFAULT', 'name'=>'test' })
       created = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
@@ -221,7 +219,7 @@ RSpec.describe ActivityController, :type => :controller do
       expect(response).to have_http_status(400)
     end
 
-    xit "returns a hash and status code 400 with negative time" do
+    it "returns a hash and status code 400 with negative time" do
       hash = generate_activity_hash(1.0)
       post :create, params: hash.merge({ 'scope'=>'DEFAULT', 'name'=>'test' })
       expect(response).to have_http_status(:created)
@@ -235,7 +233,7 @@ RSpec.describe ActivityController, :type => :controller do
       expect(response).to have_http_status(400)
     end
 
-    xit "returns a hash and status code 400 with invalid json" do
+    it "returns a hash and status code 400 with invalid json" do
       hash = generate_activity_hash(1.0)
       post :create, params: hash.merge({ 'scope'=>'DEFAULT', 'name'=>'test' })
       expect(response).to have_http_status(:created)

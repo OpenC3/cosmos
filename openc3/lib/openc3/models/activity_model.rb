@@ -156,6 +156,32 @@ module OpenC3
       @updated_at = updated_at
     end
 
+    # validate_time searches from the current activity @stop - 1 (because we allow overlap of stop with start)
+    # back through @start - MAX_DURATION. The method is trying to validate that this new activity does not
+    # overlap with anything else. The reason we search back past @start through MAX_DURATION is because we
+    # need to return all the activities that may start before us and verify that we don't overlap them.
+    # Activities are only inserted by @start time so we need to go back to verify we don't overlap existing @stop.
+    # Note: Score is the Seconds since the Unix Epoch: (%s) Number of seconds since 1970-01-01 00:00:00 UTC.
+    # zrange rev byscore finds activites from in reverse order so the first task is the closest task to the current score.
+    # In this case a parameter ignore_score allows the request to ignore that time and skip to the next time
+    # but if nothing is found in the time range we can return nil.
+    #
+    # @param [Integer] ignore_score - should be nil unless you want to ignore a time when doing an update
+    def validate_time(ignore_score = nil)
+      array = Store.zrevrangebyscore(@primary_key, @stop - 1, @start - MAX_DURATION)
+      array.each do |value|
+        activity = JSON.parse(value, :allow_nan => true, :create_additions => true)
+        if ignore_score == activity['start']
+          next
+        elsif activity['stop'] > @start
+          return activity['start']
+        else
+          return nil
+        end
+      end
+      return nil
+    end
+
     # validate the input to the rules we have created for timelines.
     # - A task's start MUST NOT be in the past.
     # - A task's start MUST be before the stop.
@@ -205,7 +231,7 @@ module OpenC3
 
     # Update the Redis hash at primary_key and set the score equal to the start Epoch time
     # the member is set to the JSON generated via calling as_json
-    def create
+    def create(overlap: true)
       if @recurring['end'] and @recurring['frequency'] and @recurring['span']
         # First validate the initial recurring activity ... all others are just offsets
         validate_input(start: @start, stop: @stop, kind: @kind, data: @data)
@@ -257,6 +283,13 @@ module OpenC3
         notify(kind: 'created')
       else
         validate_input(start: @start, stop: @stop, kind: @kind, data: @data)
+        if !overlap
+          # If we don't allow overlap we need to validate the time
+          collision = validate_time()
+          unless collision.nil?
+            raise ActivityOverlapError.new "activity overlaps existing at #{collision}"
+          end
+        end
         @updated_at = Time.now.to_nsec_from_epoch
         add_event(status: 'created')
         Store.zadd(@primary_key, @start, JSON.generate(self.as_json(:allow_nan => true)))
@@ -267,7 +300,7 @@ module OpenC3
     # Update the Redis hash at primary_key and remove the current activity at the current score
     # and update the score to the new score equal to the start Epoch time this uses a multi
     # to execute both the remove and create.
-    def update(start:, stop:, kind:, data:)
+    def update(start:, stop:, kind:, data:, overlap: true)
       array = Store.zrangebyscore(@primary_key, @start, @start)
       if array.length == 0
         raise ActivityError.new "failed to find activity at: #{@start}"
@@ -276,6 +309,14 @@ module OpenC3
       old_start = @start
       set_input(start: start, stop: stop, kind: kind, data: data, events: @events)
       @updated_at = Time.now.to_nsec_from_epoch
+      if !overlap
+        # If we don't allow overlap we need to validate the time
+        collision = validate_time(old_start)
+        unless collision.nil?
+          raise ActivityOverlapError.new "failed to update #{old_start}, no activities can overlap, collision: #{collision}"
+        end
+      end
+
       add_event(status: 'updated')
       Store.multi do |multi|
         multi.zremrangebyscore(@primary_key, old_start, old_start)
