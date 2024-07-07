@@ -142,7 +142,7 @@ C:\cosmos-project\openc3-cosmos-bob&gt; ..\openc3.bat cli rake build VERSION=1.0
 </ul>
 </li>
 <li>
-<p>Once our plugin is built we need to upload it to COSMOS. Go back to the Admin page and click the Plugins Tab. Click on &quot;Click to Select Plugin&quot; and select the openc3-cosmos-bob-1.0.0.20210618174517.gem file. Then click Upload. Go back to the CmdTlmServer and you should see the plugin being deployed at which point the BOB_INT interface should appear and try to connect. Go ahead and click &#x27;Cancel&#x27; because unless you really have something listening on port 8080 this will never connect. At this point you can explore the other CmdTlmServer tabs and other tools to see your newly defined BOB target.</p>
+<p>Once our plugin is built we need to upload it to COSMOS. Go back to the Admin page and click the Plugins Tab. Click on &quot;Click to install plugin&quot; and select the openc3-cosmos-bob-1.0.0.20210618174517.gem file. Then click Upload. Go back to the CmdTlmServer and you should see the plugin being deployed at which point the BOB_INT interface should appear and try to connect. Go ahead and click &#x27;Cancel&#x27; because unless you really have something listening on port 8080 this will never connect. At this point you can explore the other CmdTlmServer tabs and other tools to see your newly defined BOB target.</p>
 </li>
 <li>
 <p>Let&#x27;s modify our BOB target and then update the copy in COSMOS. If you open Command Sender in COSMOS to BOB EXAMPLE you should see the VALUE parameter has value 2.5. Open the openc3-cosmos-bob/targets/BOB/cmd_tlm/cmd.txt and change the Default value for VALUE to 5 and the description to &quot;New Value&quot;.</p>

@@ -204,7 +204,7 @@ test('installs a new plugin', async ({ page, utils }) => {
     // It is important to call waitForEvent before click to set up waiting.
     page.waitForEvent('filechooser'),
     // Opens the file chooser.
-    await page.locator('text=Click to select').click({ force: true }),
+    await page.locator('text=Click to install').click({ force: true }),
   ])
   await fileChooser.setFiles(`../${plugin}/${pluginGem}`)
   await expect(page.locator('.v-dialog:has-text("Variables")')).toBeVisible()

@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -186,7 +186,7 @@ module OpenC3
           end
         end
 
-        @removed_microservices.each do |microservice_name, microservice_config|
+        @removed_microservices.each do |microservice_name, _microservice_config|
           process = @processes[microservice_name]
           @processes.delete(microservice_name)
           @removed_processes[microservice_name] = process

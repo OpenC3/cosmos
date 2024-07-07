@@ -194,7 +194,7 @@ class Microservice:
         if self.temp_dir is not None:
             self.temp_dir.cleanup()
         self.metric.shutdown()
-        self.logger.info(f"Shutting down microservice complete: {self.name}")
+        self.logger.debug(f"Shutting down microservice complete: {self.name}")
         self.shutdown_complete = True
 
     def setup_microservice_topic(self):
