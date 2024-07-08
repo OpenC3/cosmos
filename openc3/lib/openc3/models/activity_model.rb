@@ -43,7 +43,7 @@ module OpenC3
     # with 15 slots to make sure we don't miss a planned task.
     # @return [Array|nil] Array of the next hour in the sorted set
     def self.activities(name:, scope:)
-      now = Time.now.to_i
+      now = Time.now.to_f
       start_score = now - 15
       stop_score = (now + 3660)
       array = Store.zrangebyscore("#{scope}#{PRIMARY_KEY}__#{name}", start_score, stop_score)
@@ -156,7 +156,7 @@ module OpenC3
       @updated_at = updated_at
     end
 
-    # validate_time searches from the current activity @stop - 1 (because we allow overlap of stop with start)
+    # validate_time searches from the current activity @stop (exclusive because we allow overlap of stop with start)
     # back through @start - MAX_DURATION. The method is trying to validate that this new activity does not
     # overlap with anything else. The reason we search back past @start through MAX_DURATION is because we
     # need to return all the activities that may start before us and verify that we don't overlap them.
@@ -168,7 +168,8 @@ module OpenC3
     #
     # @param [Integer] ignore_score - should be nil unless you want to ignore a time when doing an update
     def validate_time(ignore_score = nil)
-      array = Store.zrevrangebyscore(@primary_key, @stop - 1, @start - MAX_DURATION)
+      # Adding a '(' makes the max value exclusive
+      array = Store.zrevrangebyscore(@primary_key, "(#{@stop}", @start - MAX_DURATION)
       array.each do |value|
         activity = JSON.parse(value, :allow_nan => true, :create_additions => true)
         if ignore_score == activity['start']
@@ -195,14 +196,14 @@ module OpenC3
       rescue Date::Error
         raise ActivityInputError.new "start and stop must be seconds: #{start}, #{stop}"
       end
-      now_i = Time.now.to_i
+      now_f = Time.now.to_f
       begin
         duration = stop - start
       rescue NoMethodError
         raise ActivityInputError.new "start and stop must be seconds: #{start}, #{stop}"
       end
-      if now_i >= start and kind != 'expire'
-        raise ActivityInputError.new "activity must be in the future, current_time: #{now_i} vs #{start}"
+      if now_f >= start and kind != 'expire'
+        raise ActivityInputError.new "activity must be in the future, current_time: #{now_f} vs #{start}"
       elsif duration >= MAX_DURATION and kind != 'expire'
         raise ActivityInputError.new "activity can not be longer than #{MAX_DURATION} seconds"
       elsif duration <= 0
