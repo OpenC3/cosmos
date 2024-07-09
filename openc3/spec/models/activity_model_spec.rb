@@ -238,10 +238,10 @@ module OpenC3
       it "returns all metrics between X and Y" do
         name = "foobar"
         scope = "scope"
-        activity = generate_activity(name: name, scope: scope, start: 1.5, kind: 'SCRIPT')
-        activity.create()
-        activity = generate_activity(name: name, scope: scope, start: 5.0, kind: 'SCRIPT')
-        activity.create()
+        activity1 = generate_activity(name: name, scope: scope, start: 1.5, kind: 'SCRIPT')
+        activity1.create()
+        activity2 = generate_activity(name: name, scope: scope, start: 5.0, kind: 'SCRIPT')
+        activity2.create()
         dt = DateTime.now.new_offset(0)
         start = (dt + (1 / 24.0)).strftime("%s").to_i
         stop = (dt + (3 / 24.0)).strftime("%s").to_i
@@ -249,8 +249,8 @@ module OpenC3
         expect(array.empty?).to eql(false)
         expect(array.length).to eql(1)
         expect(array[0]["kind"]).to eql("script")
-        expect(array[0]["start"]).not_to be_nil
-        expect(array[0]["stop"]).not_to be_nil
+        expect(array[0]["start"]).to eql(activity1.start)
+        expect(array[0]["stop"]).to eql(activity1.stop)
       end
     end
 
@@ -285,6 +285,26 @@ module OpenC3
         expect(model.start).to eql(activity.start)
         expect(model.stop).to eql(activity.stop)
         expect(model.data).to include("test")
+        expect(model.events.empty?).to eql(false)
+        expect(model.events.length).to eql(1)
+      end
+
+      it "supports floating point start and stop" do
+        name = "foobar"
+        scope = "scope"
+        activity = ActivityModel.new(
+          name: name,
+          scope: scope,
+          start: (Time.now + 1).to_f,
+          stop: (Time.now + 1.5).to_f,
+          kind: "COMMAND",
+          data: {}
+        )
+        activity.create()
+        model = ActivityModel.score(name: name, scope: scope, score: activity.start)
+        expect(model.fulfillment).to eql(false)
+        expect(model.start).to eql(activity.start)
+        expect(model.stop).to eql(activity.stop)
         expect(model.events.empty?).to eql(false)
         expect(model.events.length).to eql(1)
       end
@@ -409,7 +429,7 @@ module OpenC3
         activity.create()
         model = generate_activity(name: name, scope: scope, start: 1.1, stop: 0.8)
         expect {
-          model.create()
+          model.create(overlap: false)
         }.to raise_error(ActivityOverlapError)
       end
 
@@ -420,7 +440,7 @@ module OpenC3
         activity.create()
         model = generate_activity(name: name, scope: scope, start: 0.5, stop: 1.0)
         expect {
-          model.create()
+          model.create(overlap: false)
         }.to raise_error(ActivityOverlapError)
       end
 
@@ -431,7 +451,7 @@ module OpenC3
         activity.create()
         model = generate_activity(name: name, scope: scope, start: 1.5, stop: 1.5)
         expect {
-          model.create()
+          model.create(overlap: false)
         }.to raise_error(ActivityOverlapError)
       end
 
@@ -442,7 +462,7 @@ module OpenC3
         activity.create()
         model = generate_activity(name: name, scope: scope, start: 0.5, stop: 1.5)
         expect {
-          model.create()
+          model.create(overlap: false)
         }.to raise_error(ActivityOverlapError)
       end
 
@@ -455,7 +475,7 @@ module OpenC3
         bar.create()
         activity = generate_activity(name: name, scope: scope, start: 0.5, stop: 1.7)
         expect {
-          activity.create()
+          activity.create(overlap: false)
         }.to raise_error(ActivityOverlapError)
       end
 
@@ -559,7 +579,7 @@ module OpenC3
         new_start = activity.start + 3600
         new_stop = activity.stop + 3600
         expect {
-          activity.update(start: new_start, stop: new_stop, kind: "COMMAND", data: {})
+          activity.update(start: new_start, stop: new_stop, kind: "COMMAND", data: {}, overlap: false)
         }.to raise_error(ActivityOverlapError)
       end
     end

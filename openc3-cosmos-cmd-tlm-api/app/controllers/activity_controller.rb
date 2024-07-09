@@ -105,8 +105,7 @@ class ActivityController < ApplicationController
       )
       render :json => model.as_json(:allow_nan => true), :status => 201
     rescue ArgumentError, TypeError => e
-      message = "Invalid input: #{JSON.parse(hash, :allow_nan => true, :create_additions => true)}"
-      render :json => { :status => 'error', :message => message, :type => e.class, :e => e.to_s }, :status => 400
+      render :json => { :status => 'error', :message => "Invalid input: #{hash}", :type => e.class, :e => e.to_s }, :status => 400
     rescue OpenC3::ActivityInputError => e
       render :json => { :status => 'error', :message => e.message, :type => e.class, :e => e.to_s }, :status => 400
     rescue OpenC3::ActivityOverlapError => e
@@ -257,8 +256,7 @@ class ActivityController < ApplicationController
       )
       render :json => model.as_json(:allow_nan => true), :status => 200
     rescue ArgumentError, TypeError => e
-      message = "Invalid input: #{JSON.parse(hash, :allow_nan => true, :create_additions => true)}"
-      render :json => { :status => 'error', :message => message, :type => e.class, :e => e.to_s }, :status => 400
+      render :json => { :status => 'error', :message => "Invalid input: #{hash}", :type => e.class, :e => e.to_s }, :status => 400
     rescue OpenC3::ActivityInputError => e
       render :json => { :status => 'error', :message => e.message, :type => e.class, :e => e.to_s }, :status => 400
     rescue OpenC3::ActivityOverlapError => e
