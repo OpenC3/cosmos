@@ -1139,26 +1139,52 @@ RANGEBAR INST HEALTH_STATUS TEMP1 -100 100
 ```
 
 ### ROLLUP
-**Displays a notification icon which changes color based on a rollup telemetry**
+<div class="right">(Since 5.17.1)</div>**Displays a notification icon which changes color based on a rollup telemetry**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Icon name | The astro UX icon to display. Valid choices are 'astro' icons taken from
-https://github.com/RocketCommunicationsInc/astro-components/blob/master/static/json/rux-icons.json
- | True |
+| Icon name | The astro UX icon to display. Valid choices are 'astro' icons taken from https://github.com/RocketCommunicationsInc/astro-components/blob/master/static/json/rux-icons.json. | True |
 | Icon label | Text to apply to the icon label | False |
 | Icon sublabel | Text to apply to the icon sublabel | False |
 
 Example Usage:
 ```ruby
 ROLLUP satellite-transmit "SAT 1" "Details"
+  # Screen to open on click
   SETTING SCREEN INST HS
+  # Telemetry items to rollup status
   SETTING TLM INST HEALTH_STATUS TEMP1
   SETTING TLM INST HEALTH_STATUS TEMP2
 ROLLUP antenna "GND 2" "Location"
+  # Screen to open on click
   SETTING SCREEN INST HS
+  # Telemetry items to rollup status
   SETTING TLM INST HEALTH_STATUS TEMP3
   SETTING TLM INST HEALTH_STATUS TEMP4
+```
+
+### SIGNAL
+<div class="right">(Since 5.17.2)</div>**Displays a cellular signal icon which changes based on telemetry value**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Target name | The target name | True |
+| Packet name | The packet name | True |
+| Item name | The item name | True |
+| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED</span> | False |
+
+Example Usage:
+```ruby
+SIGNAL INST HEALTH_STATUS TEMP1
+  # Screen to open on click
+  SETTING SCREEN INST HS
+  # Values to compare when setting the 1-bar, 2-bar and 3-bar icons
+  # Default is 30, 60, 90 (e.g. 0 to 100 range)
+  # Value < -50 display no bars
+  # Value >= -50 and < 0 displays 1 bar
+  # Value >= 0 and < 50 displays 2 bars
+  # Value >= 50 displays 5 bars
+  SETTING RANGE -50 0 50
 ```
 
 ### TEXTBOX

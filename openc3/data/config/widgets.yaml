@@ -1156,12 +1156,11 @@ Telemetry Widgets:
     #   RANGECOLUMN INST HEALTH_STATUS TEMP1 -100 100
     ROLLUP:
       summary: Displays a notification icon which changes color based on a rollup telemetry
+      since: 5.17.1
       parameters:
         - name: Icon name
           required: true
-          description: |
-            The astro UX icon to display. Valid choices are 'astro' icons taken from
-            https://github.com/RocketCommunicationsInc/astro-components/blob/master/static/json/rux-icons.json
+          description: The astro UX icon to display. Valid choices are 'astro' icons taken from https://github.com/RocketCommunicationsInc/astro-components/blob/master/static/json/rux-icons.json.
           values: .+
         - name: Icon label
           required: false
@@ -1173,13 +1172,48 @@ Telemetry Widgets:
           values: .+
       example: |
         ROLLUP satellite-transmit "SAT 1" "Details"
+          # Screen to open on click
           SETTING SCREEN INST HS
+          # Telemetry items to rollup status
           SETTING TLM INST HEALTH_STATUS TEMP1
           SETTING TLM INST HEALTH_STATUS TEMP2
         ROLLUP antenna "GND 2" "Location"
+          # Screen to open on click
           SETTING SCREEN INST HS
+          # Telemetry items to rollup status
           SETTING TLM INST HEALTH_STATUS TEMP3
           SETTING TLM INST HEALTH_STATUS TEMP4
+    SIGNAL:
+      summary: Displays a cellular signal icon which changes based on telemetry value
+      since: 5.17.2
+      parameters:
+        - name: Target name
+          required: true
+          description: The target name
+          values: .+
+        - name: Packet name
+          required: true
+          description: The packet name
+          values: .+
+        - name: Item name
+          required: true
+          description: The item name
+          values: .+
+        - name: Value type
+          required: false
+          description: The type of the value to display. Default is CONVERTED.
+          values: <%= %w(RAW CONVERTED) %>
+      example: |
+        SIGNAL INST HEALTH_STATUS TEMP1
+          # Screen to open on click
+          SETTING SCREEN INST HS
+          # Values to compare when setting the 1-bar, 2-bar and 3-bar icons
+          # Default is 30, 60, 90 (e.g. 0 to 100 range)
+          # Value < -50 display no bars
+          # Value >= -50 and < 0 displays 1 bar
+          # Value >= 0 and < 50 displays 2 bars
+          # Value >= 50 displays 5 bars
+          SETTING RANGE -50 0 50
     TEXTBOX:
       summary: Provides a large box for multiline text
       parameters:

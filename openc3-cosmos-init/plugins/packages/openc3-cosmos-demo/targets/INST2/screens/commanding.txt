@@ -21,7 +21,7 @@ VERTICAL
     # This is an example of using a varible named 'type'. You can operate on variables with Javascript code.
     # All OpenC3 commands (api.cmd) must be separated by double semicolons ';;'. All code separated by semicolons is evaluated together.
     # Note: you can also request and use telemetry in screens using Javascript Promises, e.g.
-    # api.tlm('INST PARAMS VALUE3', 'RAW').then(dur => api.cmd('INST COLLECT with TYPE '+type+', DURATION '+dur))"
+    # api.tlm('INST2 PARAMS VALUE3', 'RAW').then(dur => api.cmd('INST2 COLLECT with TYPE '+type+', DURATION '+dur))"
     # The tlm() function returns a Promise which is resolved with then() at which point we send the command with the parameter
     # The plus '+' symbol indicates string concatenation with newlines.
     # NOTE: Both lines must use the same quote character: ' or "
@@ -50,8 +50,8 @@ VERTICAL
     BUTTON 'Run Script' "var script=screen.getNamedWidget('SCRIPTNAME').text();" \
       "var ctype=screen.getNamedWidget('COLLECT_TYPE').text();" \
       # Set some environment variables to be used by the script as ENV['TYPE']
-      # See INST/procedures/checks.rb for an example of usage
+      # See INST2/procedures/checks.rb for an example of usage
       "var env = {}; env['TYPE'] = ctype;" \
-      "runScript('INST/procedures/'+script, !screen.getNamedWidget('BG').checked(), env)"
+      "runScript('<%= target_name %>/procedures/'+script, !screen.getNamedWidget('BG').checked(), env)"
   END
 END

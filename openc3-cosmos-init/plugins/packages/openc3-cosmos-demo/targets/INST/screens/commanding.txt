@@ -52,6 +52,6 @@ VERTICAL
       # Set some environment variables to be used by the script as ENV['TYPE']
       # See INST/procedures/checks.rb for an example of usage
       "var env = {}; env['TYPE'] = ctype;" \
-      "runScript('INST/procedures/'+script, !screen.getNamedWidget('BG').checked(), env)"
+      "runScript('<%= target_name %>/procedures/'+script, !screen.getNamedWidget('BG').checked(), env)"
   END
 END
