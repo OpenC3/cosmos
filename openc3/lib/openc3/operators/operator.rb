@@ -161,7 +161,7 @@ module OpenC3
 
     def soft_stop
       Thread.new do
-        Logger.debug("Soft shutting down process: #{cmd_line()}", scope: @scope)
+        Logger.info("Soft shutting down process: #{cmd_line()}", scope: @scope)
         begin
           Process.kill("SIGINT", @process.pid) if @process # Signal the process to stop
         rescue Errno::ESRCH
@@ -174,7 +174,7 @@ module OpenC3
       if @process and !@process.exited?
         # Redis may be down at this point so just catch any Logger errors
         begin
-          Logger.debug("Hard shutting down process: #{cmd_line()}", scope: @scope)
+          Logger.info("Hard shutting down process: #{cmd_line()}", scope: @scope)
         rescue Exception
         end
         @process.stop
@@ -343,9 +343,9 @@ module OpenC3
     def shutdown
       @shutdown = true
       @mutex.synchronize do
-        Logger.debug("Shutting down processes...")
+        Logger.info("Shutting down processes...")
         shutdown_processes(@processes)
-        Logger.debug("Shutting down processes complete")
+        Logger.info("Shutting down processes complete")
         @shutdown_complete = true
       end
     end

@@ -184,6 +184,10 @@ Rails.application.routes.draw do
     post "/secrets/:key", to: "secrets#create", key: /[^\/]+/
     delete '/secrets/:key', to: 'secrets#destroy', key: /[^\/]+/
 
+    # This route handles all the JSON DRB requests
+    # It gets routed to the api_controller.rb api method which
+    # ultimately calls OpenC3::Cts.instance.json_drb.process_request
+    # to do the remote procedure call
     post "/api" => "api#api"
     get "/ping" => "api#ping"
 
