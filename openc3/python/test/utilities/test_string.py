@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -37,9 +37,7 @@ class SimpleFormatted(unittest.TestCase):
         self.data = bytes(self.data)
 
     def test_formats_the_data(self):
-        self.assertEqual(
-            simple_formatted(self.data), "1A1B1C1D1E1F202122232425262728292A2B2C2D2E2F"
-        )
+        self.assertEqual(simple_formatted(self.data), "1A1B1C1D1E1F202122232425262728292A2B2C2D2E2F")
 
 
 class TestFormatted(unittest.TestCase):
@@ -75,14 +73,10 @@ class TestFormatted(unittest.TestCase):
         self.assertIn("1A 1B 1C 1D", formatted(self.data, 1, 16, " ", 0, False))
 
     def test_changes_the_address_separator(self):
-        self.assertIn(
-            "00000000= 1A 1B 1C 1D", formatted(self.data, 1, 16, " ", 0, True, "= ")
-        )
+        self.assertIn("00000000= 1A 1B 1C 1D", formatted(self.data, 1, 16, " ", 0, True, "= "))
 
     def test_does_not_show_the_ascii(self):
-        self.assertIn(
-            "29         !\"#$%&'()", formatted(self.data, 1, 16, "", 0, True, "", True)
-        )
+        self.assertIn("29         !\"#$%&'()", formatted(self.data, 1, 16, "", 0, True, "", True))
         self.assertNotIn(
             "29         !\"#$%&'()",
             formatted(self.data, 1, 16, "", 0, True, "", False),
@@ -102,15 +96,11 @@ class TestFormatted(unittest.TestCase):
 
     def test_changes_the_line_separator(self):
         self.assertEqual(
-            formatted(self.data, 1, 16, " ", 0, True, ": ", True, "  ", " ", "~").split(
-                "~"
-            )[0],
+            formatted(self.data, 1, 16, " ", 0, True, ": ", True, "  ", " ", "~").split("~")[0],
             "00000000: 1A 1B 1C 1D 1E 1F 20 21 22 23 24 25 26 27 28 29         !\"#$%&'()",
         )
         self.assertEqual(
-            formatted(self.data, 1, 16, " ", 0, True, ": ", True, "  ", " ", "~").split(
-                "~"
-            )[1],
+            formatted(self.data, 1, 16, " ", 0, True, ": ", True, "  ", " ", "~").split("~")[1],
             "00000010: 2A 2B 2C 2D 2E 2F                                *+,-./          ",
         )
 
@@ -131,9 +121,7 @@ class TestBuildTimestampedFilename(unittest.TestCase):
         self.assertRegex(build_timestamped_filename([None, 1]), r"_1\.txt")
 
     def test_includes_the_tags(self):
-        self.assertRegex(
-            build_timestamped_filename(["this", "is", "a", "test"]), r"this_is_a_test"
-        )
+        self.assertRegex(build_timestamped_filename(["this", "is", "a", "test"]), r"this_is_a_test")
 
     def test_changes_the_extension(self):
         self.assertRegex(build_timestamped_filename(None, ".bin"), r"\.bin")
@@ -142,9 +130,8 @@ class TestBuildTimestampedFilename(unittest.TestCase):
 class ClassNameToFilename(unittest.TestCase):
     def test_converts_a_class_name_to_a_filename(self):
         self.assertEqual(class_name_to_filename("MyGreatClass"), "my_great_class")
-        self.assertEqual(
-            class_name_to_filename("MyGreatClass", True), "my_great_class.py"
-        )
+        self.assertEqual(class_name_to_filename("JsonAccessor"), "json_accessor")
+        self.assertEqual(class_name_to_filename("MyGreatClass", True), "my_great_class.py")
 
 
 class FilenameToClassName(unittest.TestCase):

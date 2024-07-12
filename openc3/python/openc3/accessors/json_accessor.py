@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -24,20 +24,27 @@ class JsonAccessor(Accessor):
     def class_read_item(cls, item, buffer):
         if item.data_type == "DERIVED":
             return None
-        if type(buffer) is bytearray:
+        try:
             buffer = json.loads(buffer.decode())
+        except (UnicodeDecodeError, AttributeError):
+            pass
         result = parse(item.key).find(buffer)
+        if len(result) == 0:
+            return None
         return cls.convert_to_type(result[0].value, item)
 
     @classmethod
     def class_write_item(cls, item, value, buffer):
         if item.data_type == "DERIVED":
             return None
-        if type(buffer) is bytearray:
+        try:
             decoded = json.loads(buffer.decode())
-        else:
+        except (UnicodeDecodeError, AttributeError):
             decoded = buffer
+        except json.decoder.JSONDecodeError:
+            decoded = {}
 
+        print(f"json key:{item.key} value:{value} decoded:{decoded}")
         value = cls.convert_to_type(value, item)
         result = parse(item.key).update(decoded, value)
 
@@ -46,16 +53,20 @@ class JsonAccessor(Accessor):
 
     @classmethod
     def class_read_items(cls, items, buffer):
-        if type(buffer) is bytearray:
+        try:
             buffer = json.loads(buffer.decode())
+        except (UnicodeDecodeError, AttributeError):
+            pass
         return super().class_read_items(items, buffer)
 
     @classmethod
     def class_write_items(cls, items, values, buffer):
-        if type(buffer) is bytearray:
+        try:
             decoded = json.loads(buffer.decode())
-        else:
+        except (UnicodeDecodeError, AttributeError):
             decoded = buffer
+        except json.decoder.JSONDecodeError:
+            decoded = {}
         super().class_write_items(items, values, decoded)
         if type(buffer) is bytearray:
             buffer[0:] = bytearray(json.dumps(decoded), encoding="utf-8")

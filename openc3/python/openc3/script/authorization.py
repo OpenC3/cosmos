@@ -12,7 +12,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -148,7 +148,6 @@ class CosmosKeycloakAuthorization(CosmosAuthorization):
                 "Content-Type": "application/x-www-form-urlencoded",
             },
         }
-        LOGGER.debug("calling with %s", request_kwargs)
         resp = requests.post(**request_kwargs)
         LOGGER.debug(
             "resp: %s total_seconds: %f content: %s",

@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -70,7 +70,7 @@ class XmlAccessor(Accessor):
         node = doc.xpath(path)[0]
         # Determine what the selector was trying to set
         if "@" in parts[-1]:
-            node.attrib[parts[-1][1:]] = value
+            node.attrib[parts[-1][1:]] = str(value)
         elif "text()" == parts[-1]:
             node.text = str(value)
         else:

@@ -459,15 +459,15 @@ class PacketConfig:
             case "TEMPLATE":
                 usage = f"{keyword} <Template string>"
                 parser.verify_num_parameters(1, 1, usage)
-                self.current_packet.template = params[0]
+                self.current_packet.template = bytearray(params[0], "ascii")
 
             case "TEMPLATE_FILE":
                 usage = f"{keyword} <Template file path>"
                 parser.verify_num_parameters(1, 1, usage)
 
                 try:
-                    self.current_packet.template = parser.read_file(params[0])
-                except RuntimeError as error:
+                    self.current_packet.template = bytearray(parser.read_file(params[0]))
+                except OSError as error:
                     raise parser.error(error)
 
             case "RESPONSE":

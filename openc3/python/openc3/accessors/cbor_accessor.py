@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -38,6 +38,7 @@ class CborAccessor(JsonAccessor):
         else:
             decoded = buffer
 
+        print(f"cbor item:{item.name} value:{value} decoded:{decoded}")
         super().class_write_item(item, value, decoded)
 
         if type(buffer) is bytearray:

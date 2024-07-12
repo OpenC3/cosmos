@@ -52,6 +52,27 @@ class TestConfigParser(unittest.TestCase):
         self.assertEqual(results["KEYWORD2"], ["PARAM1"])
         tf.close()
 
+    def test_parse_file_reads_an_absolute_file(self):
+        tf = tempfile.NamedTemporaryFile(mode="w+t")
+        tf.writelines("EXAMPLE DATA")
+        tf.seek(0)
+
+        data = self.cp.read_file(tf.name)
+        self.assertEqual(data, b"EXAMPLE DATA")
+        tf.close()
+
+    def test_parse_file_reads_a_relative_file(self):
+        tf = tempfile.NamedTemporaryFile(mode="w+b")
+        tf.write(b"\x01\x02")
+        tf.seek(0)
+
+        # Set the instance filename so we can't get the relative path
+        self.cp.filename = tf.name
+        # Now only pass the filename itself (basename) and not the path
+        data = self.cp.read_file(os.path.basename(tf.name))
+        self.assertEqual(data, b"\x01\x02")
+        tf.close()
+
     # TODO:
     #   def test_supports ERB syntax(self):
     #     tf = tempfile.NamedTemporaryFile(mode="w+t")

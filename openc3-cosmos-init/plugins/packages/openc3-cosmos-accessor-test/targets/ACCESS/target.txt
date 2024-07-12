@@ -1,3 +1,6 @@
+# Uncomment and use the alternative plugin.txt to test python
+LANGUAGE python
+
 IGNORE_PARAMETER ID_ITEM
 
 CMD_UNIQUE_ID_MODE

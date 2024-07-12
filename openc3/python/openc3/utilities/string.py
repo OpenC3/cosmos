@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -136,8 +136,7 @@ def build_timestamped_filename(tags=None, extension=".txt", time=datetime.now(ti
 # self.return [String] Filename which implements the class name
 def class_name_to_filename(string, include_extension=False):
     filename = ""
-    length = len(string)
-    for index in range(0, length):
+    for index in range(0, len(string)):
         if index != 0 and string[index] == string[index].upper():
             filename += "_"
         filename += string[index].lower()

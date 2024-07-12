@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -63,11 +63,11 @@ class ProcessorConversion(Conversion):
     # @return [String] Config fragment for this conversion
     def to_config(self, read_or_write):
         config = f"    {read_or_write}_CONVERSION {self.__class__.__name__} {self.processor_name} {self.result_name}"
-        if self.converted_type:
+        if self.converted_type is not None:
             config += f" {self.converted_type}"
-        if self.converted_bit_size:
+        if self.converted_bit_size is not None:
             config += f" {self.converted_bit_size}"
-        if self.converted_array_size:
+        if self.converted_array_size is not None:
             config += f" {self.converted_array_size}"
         config += "\n"
         return config
