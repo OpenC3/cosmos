@@ -38,10 +38,10 @@ class CborAccessor(JsonAccessor):
         else:
             decoded = buffer
 
-        print(f"cbor item:{item.name} value:{value} decoded:{decoded}")
         super().class_write_item(item, value, decoded)
 
         if type(buffer) is bytearray:
+            # buffer[0:] syntax so we copy into the buffer
             buffer[0:] = dumps(decoded)
         return value
 
@@ -53,5 +53,6 @@ class CborAccessor(JsonAccessor):
     def class_write_items(cls, items, values, buffer):
         decoded = loads(buffer)
         super().class_write_items(items, values, decoded)
+        # buffer[0:] syntax so we copy into the buffer
         buffer[0:] = dumps(decoded)
         return values

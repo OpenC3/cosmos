@@ -20,6 +20,7 @@ from unittest.mock import *
 from test.test_helper import *
 from openc3.config.config_parser import ConfigParser
 from openc3.packets.packet_config import PacketConfig
+from cbor2 import dump, dumps, loads
 
 
 class TestPacketConfig(unittest.TestCase):
@@ -718,8 +719,9 @@ class TestPacketConfig(unittest.TestCase):
         self.assertEqual(
             self.pc.commands["TGT1"]["PKT99"].buffer,
             # The formatting of this string has to be precise
+            # These are all the defaults from the above definition (note array is [] by definition)
             bytearray(
-                b'{"id_item":1, "item1":101, "more": { "item2":12, "item3":3.14, "item4":"Example", "item5":[4, 3, 2, 1] } }'
+                b'{"id_item": 1, "item1": 101, "more": {"item2": 12, "item3": 3.14, "item4": "Example", "item5": []}}'
             ),
         )
         self.pc.commands["TGT1"]["PKT99"].write("item1", 202)
@@ -741,16 +743,50 @@ class TestPacketConfig(unittest.TestCase):
             data_file.write("File data")
         tf = tempfile.NamedTemporaryFile(mode="w")
         filename = "datafile2.txt"
-        with open(os.path.dirname(tf.name) + "/" + filename, "wb") as file:
-            file.write(b"relative file")
+        with open(os.path.dirname(tf.name) + "/" + filename, "wb") as fp:
+            data = {
+                "id_item": 2,
+                "item1": 101,
+                "more": {"item2": 12, "item3": 3.14, "item4": "Example", "item5": [4, 3, 2, 1]},
+            }
+            dump(data, fp)
         tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
         tf.write(f"TEMPLATE_FILE {os.path.join(os.getcwd(), 'unittest.txt')}\n")
         tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
-        tf.write(f"TEMPLATE_FILE {filename}")
+        tf.write("ACCESSOR CborAccessor\n")
+        tf.write(f"TEMPLATE_FILE {filename}\n")
+        tf.write('APPEND_ID_PARAMETER ID_ITEM 32 INT 1 1 1 "Int Item"\n')
+        tf.write("  KEY $.id_item\n")
+        tf.write('APPEND_PARAMETER ITEM1 16 UINT MIN MAX 101 "Int Item 2"\n')
+        tf.write("  KEY $.item1\n")
+        tf.write("  UNITS CELCIUS C\n")
+        tf.write('APPEND_PARAMETER ITEM2 16 UINT MIN MAX 12 "Int Item 3"\n')
+        tf.write("  KEY $.more.item2\n")
+        tf.write('  FORMAT_STRING "0x%X"\n')
+        tf.write('APPEND_PARAMETER ITEM3 64 FLOAT MIN MAX 3.14 "Float Item"\n')
+        tf.write("  KEY $.more.item3\n")
+        tf.write('APPEND_PARAMETER ITEM4 128 STRING "Example" "String Item"\n')
+        tf.write("  KEY $.more.item4\n")
+        tf.write('APPEND_ARRAY_PARAMETER ITEM5 8 UINT 0 "Array Item"\n')
+        tf.write("  KEY $.more.item5\n")
         tf.seek(0)
         self.pc.process_file(tf.name, "TGT1")
         self.assertEqual(self.pc.telemetry["TGT1"]["PKT1"].template, b"File data")
-        self.assertEqual(self.pc.commands["TGT1"]["PKT1"].template, b"relative file")
+        self.pc.commands["TGT1"]["PKT1"].restore_defaults()
+        self.assertEqual(
+            loads(self.pc.commands["TGT1"]["PKT1"].buffer),
+            # These are all the defaults from the above definition (note array is [] by definition)
+            {"id_item": 1, "item1": 101, "more": {"item2": 12, "item3": 3.14, "item4": "Example", "item5": []}},
+        )
+        self.pc.commands["TGT1"]["PKT1"].write("item1", 202)
+        self.pc.commands["TGT1"]["PKT1"].write("item2", 333)
+        self.pc.commands["TGT1"]["PKT1"].write("item3", 7.89)
+        self.pc.commands["TGT1"]["PKT1"].write("item4", "TEST")
+        self.pc.commands["TGT1"]["PKT1"].write("item5", [6, 7, 8, 9])
+        self.assertEqual(
+            loads(self.pc.commands["TGT1"]["PKT1"].buffer),
+            {"id_item": 1, "item1": 202, "more": {"item2": 333, "item3": 7.89, "item4": "TEST", "item5": [6, 7, 8, 9]}},
+        )
         os.remove(os.path.join(os.getcwd(), "unittest.txt"))
         tf.close()
 

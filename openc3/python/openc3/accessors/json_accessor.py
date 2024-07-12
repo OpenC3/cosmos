@@ -24,10 +24,8 @@ class JsonAccessor(Accessor):
     def class_read_item(cls, item, buffer):
         if item.data_type == "DERIVED":
             return None
-        try:
+        if type(buffer) is bytearray:
             buffer = json.loads(buffer.decode())
-        except (UnicodeDecodeError, AttributeError):
-            pass
         result = parse(item.key).find(buffer)
         if len(result) == 0:
             return None
@@ -37,38 +35,34 @@ class JsonAccessor(Accessor):
     def class_write_item(cls, item, value, buffer):
         if item.data_type == "DERIVED":
             return None
-        try:
+        if type(buffer) is bytearray:
             decoded = json.loads(buffer.decode())
-        except (UnicodeDecodeError, AttributeError):
+        else:
             decoded = buffer
-        except json.decoder.JSONDecodeError:
-            decoded = {}
 
-        print(f"json key:{item.key} value:{value} decoded:{decoded}")
         value = cls.convert_to_type(value, item)
         result = parse(item.key).update(decoded, value)
 
         if type(buffer) is bytearray:
+            # buffer[0:] syntax so we copy into the buffer
             buffer[0:] = bytearray(json.dumps(result), encoding="utf-8")
 
     @classmethod
     def class_read_items(cls, items, buffer):
-        try:
+        if type(buffer) is bytearray:
             buffer = json.loads(buffer.decode())
-        except (UnicodeDecodeError, AttributeError):
-            pass
         return super().class_read_items(items, buffer)
 
     @classmethod
     def class_write_items(cls, items, values, buffer):
-        try:
+        if type(buffer) is bytearray:
             decoded = json.loads(buffer.decode())
-        except (UnicodeDecodeError, AttributeError):
+        else:
             decoded = buffer
-        except json.decoder.JSONDecodeError:
-            decoded = {}
+
         super().class_write_items(items, values, decoded)
         if type(buffer) is bytearray:
+            # buffer[0:] syntax so we copy into the buffer
             buffer[0:] = bytearray(json.dumps(decoded), encoding="utf-8")
 
     def enforce_encoding(self):

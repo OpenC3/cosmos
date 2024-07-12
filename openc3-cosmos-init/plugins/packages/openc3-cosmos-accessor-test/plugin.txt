@@ -6,6 +6,7 @@ TARGET ACCESS <%= access_target_name %>
   LOG_RETAIN_TIME <%= log_retain_time %>
   REDUCED_LOG_RETAIN_TIME <%= reduced_log_retain_time %>
 
-INTERFACE <%= access_target_name %> openc3/interfaces/simulated_target_interface.py sim_access.py
-# INTERFACE <%= access_target_name %> simulated_target_interface.rb sim_access.rb
+# Change to test Python vs Ruby (remember to change language in target.txt and rebuild gem)
+# INTERFACE <%= access_target_name %> openc3/interfaces/simulated_target_interface.py sim_access.py
+INTERFACE <%= access_target_name %> simulated_target_interface.rb sim_access.rb
   MAP_TARGET <%= access_target_name %>

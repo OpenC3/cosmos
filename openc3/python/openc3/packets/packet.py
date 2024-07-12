@@ -751,7 +751,9 @@ class Packet(Structure):
         if skip_item_names:
             upcase_skip_item_names = [name.upper() for name in skip_item_names]
         if self.template and use_template:
+            # Set both the internal buffer and our local copy
             self.buffer = self.template
+            buffer = self._buffer
         for item in self.sorted_items:
             if item.name in Packet.RESERVED_ITEM_NAMES:
                 continue

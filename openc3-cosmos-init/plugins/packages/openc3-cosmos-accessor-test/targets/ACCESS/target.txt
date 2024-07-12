@@ -1,5 +1,5 @@
-# Uncomment and use the alternative plugin.txt to test python
-LANGUAGE python
+# Changle language and edit plugin.txt to test either language
+LANGUAGE ruby
 
 IGNORE_PARAMETER ID_ITEM
 

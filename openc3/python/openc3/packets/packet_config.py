@@ -466,7 +466,7 @@ class PacketConfig:
                 parser.verify_num_parameters(1, 1, usage)
 
                 try:
-                    self.current_packet.template = bytearray(parser.read_file(params[0]))
+                    self.current_packet.template = parser.read_file(params[0])
                 except OSError as error:
                     raise parser.error(error)
 
