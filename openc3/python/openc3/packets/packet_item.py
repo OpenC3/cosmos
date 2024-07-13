@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -190,7 +190,7 @@ class PacketItem(StructureItem):
 
     def check_default_and_range_data_types(self):
         if self.default and not self.write_conversion:
-            if self.array_size:
+            if self.array_size is not None:
                 if type(self.default) is not list:
                     raise AttributeError(
                         f"{self.name}: default must be a list but is a {self.default.__class__.__name__}"
@@ -412,7 +412,7 @@ class PacketItem(StructureItem):
         else:
             description = ""
         if cmd_or_tlm == "TELEMETRY":
-            if self.array_size:
+            if self.array_size is not None:
                 config += f'  ARRAY_ITEM {quote_if_necessary(self.name)} {self.bit_offset} {self.bit_size} {self.data_type} {self.array_size} "{description}"'
             elif self.id_value:
                 id_value = self.id_value
@@ -425,7 +425,7 @@ class PacketItem(StructureItem):
             else:
                 config += f'  ITEM {quote_if_necessary(self.name)} {self.bit_offset} {self.bit_size} {self.data_type} "{description}"'
         else:  # 'COMMAND'
-            if self.array_size:
+            if self.array_size is not None:
                 config += f'  ARRAY_PARAMETER {quote_if_necessary(self.name)} {self.bit_offset} {self.bit_size} {self.data_type} {self.array_size} "{description}"'
             else:
                 config += self.parameter_config()
@@ -482,7 +482,7 @@ class PacketItem(StructureItem):
         config["bit_offset"] = self.bit_offset
         config["bit_size"] = self.bit_size
         config["data_type"] = self.data_type
-        if self.array_size:
+        if self.array_size is not None:
             config["array_size"] = self.array_size
         config["description"] = self.description
         if self.id_value is not None:

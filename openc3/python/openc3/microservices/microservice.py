@@ -58,7 +58,7 @@ class Microservice:
             if microservice:
                 microservice.error = err
                 microservice.state = "DIED_ERROR"
-            Logger.fatal(f"Microservice {name} dying from exception\n{traceback.format_exception(err)}")
+            Logger.fatal(f"Microservice {name} dying from exception\n{traceback.format_exc()}")
 
         finally:
             if microservice:

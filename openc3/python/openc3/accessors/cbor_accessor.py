@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -41,6 +41,7 @@ class CborAccessor(JsonAccessor):
         super().class_write_item(item, value, decoded)
 
         if type(buffer) is bytearray:
+            # buffer[0:] syntax so we copy into the buffer
             buffer[0:] = dumps(decoded)
         return value
 
@@ -52,5 +53,6 @@ class CborAccessor(JsonAccessor):
     def class_write_items(cls, items, values, buffer):
         decoded = loads(buffer)
         super().class_write_items(items, values, decoded)
+        # buffer[0:] syntax so we copy into the buffer
         buffer[0:] = dumps(decoded)
         return values

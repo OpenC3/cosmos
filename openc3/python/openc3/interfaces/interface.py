@@ -498,8 +498,8 @@ class Interface:
                     cmd(cmd_string, log_message=False)
                 else:
                     cmd(cmd_string)
-            except Exception as error:
-                Logger.error(f"Error sending periodic cmd({cmd_string}):\n{traceback.format_exception(error)}")
+            except Exception:
+                Logger.error(f"Error sending periodic cmd({cmd_string}):\n{traceback.format_exc()}")
 
     def scheduler_thread_body(self):
         next_time = time.time()

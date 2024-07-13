@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -213,7 +213,7 @@ class Structure:
         update_needed = False
         if item.bit_offset >= 0:
             if item.bit_size > 0:
-                if item.array_size:
+                if item.array_size is not None:
                     if item.array_size >= 0:
                         item_defined_length_bits = item.bit_offset + item.array_size
                     else:
