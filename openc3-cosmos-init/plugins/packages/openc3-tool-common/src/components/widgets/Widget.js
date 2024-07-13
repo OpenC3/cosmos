@@ -75,6 +75,27 @@ export default {
     },
   },
   created() {
+    // Figure out any subsettings that apply
+    this.settings = this.settings
+      .map((setting) => {
+        const index = parseInt(setting[0])
+        // If the first value isn't a number or if there isn't a widgetIndex
+        // then it's not a subsetting so just return the setting
+        if (isNaN(index) || this.widgetIndex === null) {
+          return setting
+        }
+        // This is our setting so slice off the index and return
+        // this effectively promotes'the subsetting to a setting
+        // on the current widget
+        if (this.widgetIndex === index) {
+          return setting.slice(1)
+        } else {
+          return null
+        }
+      })
+      // Remove any settings that we filtered out with null
+      .filter((setting) => setting !== null)
+
     // Look through the settings and get a reference to the screen
     this.settings.forEach((setting) => {
       if (setting[0] === '__SCREEN__') {
@@ -148,7 +169,7 @@ export default {
             parser,
             `Not enough parameters for ${keyword}.`,
             usage,
-            'https://docs.openc3.com/docs/configuration'
+            'https://docs.openc3.com/docs/configuration',
           )
         }
       }
@@ -158,7 +179,7 @@ export default {
           parser,
           `Too many parameters for ${keyword}.`,
           usage,
-          'https://docs.openc3.com/docs/configuration'
+          'https://docs.openc3.com/docs/configuration',
         )
       }
     },
@@ -170,7 +191,7 @@ export default {
       if (this.widgetIndex !== null) {
         foundSetting = this.settings.find(
           (setting) =>
-            parseInt(setting[0]) === this.widgetIndex && setting[1] === 'WIDTH'
+            parseInt(setting[0]) === this.widgetIndex && setting[1] === 'WIDTH',
         )
       } else {
         foundSetting = this.settings.find((setting) => setting[0] === 'WIDTH')
@@ -202,7 +223,8 @@ export default {
       if (this.widgetIndex !== null) {
         foundSetting = this.settings.find(
           (setting) =>
-            parseInt(setting[0]) === this.widgetIndex && setting[1] === 'HEIGHT'
+            parseInt(setting[0]) === this.widgetIndex &&
+            setting[1] === 'HEIGHT',
         )
       } else {
         foundSetting = this.settings.find((setting) => setting[0] === 'HEIGHT')

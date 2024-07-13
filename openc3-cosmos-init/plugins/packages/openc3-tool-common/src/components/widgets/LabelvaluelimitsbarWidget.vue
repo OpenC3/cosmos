@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -27,7 +27,7 @@
       :settings="labelValueSettings"
     />
     <limitsbar-widget
-      :parameters="limitsBarParameters"
+      :parameters="parameters"
       :settings="[...settings]"
       :widget-index="2"
     />
@@ -57,17 +57,8 @@ export default {
         ...this.settings.filter((x) => x[0] === '__SCREEN__'),
         // Get all the setting that apply to labelvalue (0, 1 widgets)
         ...this.settings.filter(
-          (x) => parseInt(x[0]) === 0 || parseInt(x[0]) === 1
+          (x) => parseInt(x[0]) === 0 || parseInt(x[0]) === 1,
         ),
-      ]
-    },
-    limitsBarParameters() {
-      return [
-        this.parameters[0],
-        this.parameters[1],
-        this.parameters[2],
-        // Always pass CONVERTED to the LimitsBar so it calculate the limits location
-        'CONVERTED',
       ]
     },
   },
