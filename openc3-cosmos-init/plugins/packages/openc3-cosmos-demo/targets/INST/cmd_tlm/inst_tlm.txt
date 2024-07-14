@@ -49,6 +49,7 @@ TELEMETRY <%= target_name %> HEALTH_STATUS BIG_ENDIAN "Health and status from th
     STATE CONNECTED 1 GREEN
     STATE UNAVAILABLE 0 YELLOW
   APPEND_ITEM BLOCKTEST 80 BLOCK "Block data"
+  APPEND_ITEM BRACKET[0] 8 UINT "Regular item with brackets in the name"
   ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
     READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
   ITEM TEMP1HIGH 0 0 DERIVED "High-water mark for TEMP1"
