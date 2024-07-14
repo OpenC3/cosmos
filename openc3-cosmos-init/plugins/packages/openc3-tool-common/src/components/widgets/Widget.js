@@ -48,11 +48,16 @@ export default {
   data() {
     return {
       screen: null,
+      // We make style a data attribute so as we recurse through nested
+      // widgets we can check to see if style attributes have been applied
+      // at any level of the widget, i.e. if LABELVALUE applies a style
+      // to the VALUE component then we don't want the VALUE widget to think
+      // it doesn't have a style when it renders.
+      style: {},
     }
   },
   computed: {
     computedStyle() {
-      let style = {}
       this.settings.forEach((setting) => {
         const index = parseInt(setting[0])
         if (this.widgetIndex !== null) {
@@ -62,19 +67,25 @@ export default {
             return
           }
         }
-        this.applySetting(style, setting)
+        this.applySetting(this.style, setting)
       })
-      // If they haven't defined a width then we add flex to the style
-      if (style['width'] === undefined) {
+      // If nothing has yet defined a width then we add flex to the style
+      if (this.style['width'] === undefined) {
         // This flex allows for alignment in our widgets
         // The value of '0 10 100%' was achieved through trial and error
         // The larger flex-shrink value was critical for success
-        style['flex'] = '0 10 100%' // flex-grow, flex-shrink, flex-basis
+        this.style['flex'] = '0 10 100%' // flex-grow, flex-shrink, flex-basis
       }
-      return style
+      return this.style
     },
   },
   created() {
+    // Look through the settings and get a reference to the screen
+    this.settings.forEach((setting) => {
+      if (setting[0] === '__SCREEN__') {
+        this.screen = setting[1]
+      }
+    })
     // Figure out any subsettings that apply
     this.settings = this.settings
       .map((setting) => {
@@ -89,19 +100,10 @@ export default {
         // on the current widget
         if (this.widgetIndex === index) {
           return setting.slice(1)
-        } else {
-          return null
         }
       })
       // Remove any settings that we filtered out with null
-      .filter((setting) => setting !== null)
-
-    // Look through the settings and get a reference to the screen
-    this.settings.forEach((setting) => {
-      if (setting[0] === '__SCREEN__') {
-        this.screen = setting[1]
-      }
-    })
+      .filter((setting) => setting !== undefined)
   },
   methods: {
     applySetting(style, setting) {
