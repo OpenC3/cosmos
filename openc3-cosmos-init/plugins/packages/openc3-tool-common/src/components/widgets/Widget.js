@@ -48,11 +48,16 @@ export default {
   data() {
     return {
       screen: null,
+      // We make style a data attribute so as we recurse through nested
+      // widgets we can check to see if style attributes have been applied
+      // at any level of the widget, i.e. if LABELVALUE applies a style
+      // to the VALUE component then we don't want the VALUE widget to think
+      // it doesn't have a style when it renders.
+      style: {},
     }
   },
   computed: {
     computedStyle() {
-      let style = {}
       this.settings.forEach((setting) => {
         const index = parseInt(setting[0])
         if (this.widgetIndex !== null) {
@@ -62,16 +67,16 @@ export default {
             return
           }
         }
-        this.applySetting(style, setting)
+        this.applySetting(this.style, setting)
       })
-      // If they haven't defined a width then we add flex to the style
-      if (style['width'] === undefined) {
+      // If nothing has yet defined a width then we add flex to the style
+      if (this.style['width'] === undefined) {
         // This flex allows for alignment in our widgets
         // The value of '0 10 100%' was achieved through trial and error
         // The larger flex-shrink value was critical for success
-        style['flex'] = '0 10 100%' // flex-grow, flex-shrink, flex-basis
+        this.style['flex'] = '0 10 100%' // flex-grow, flex-shrink, flex-basis
       }
-      return style
+      return this.style
     },
   },
   created() {
@@ -81,6 +86,24 @@ export default {
         this.screen = setting[1]
       }
     })
+    // Figure out any subsettings that apply
+    this.settings = this.settings
+      .map((setting) => {
+        const index = parseInt(setting[0])
+        // If the first value isn't a number or if there isn't a widgetIndex
+        // then it's not a subsetting so just return the setting
+        if (isNaN(index) || this.widgetIndex === null) {
+          return setting
+        }
+        // This is our setting so slice off the index and return
+        // this effectively promotes'the subsetting to a setting
+        // on the current widget
+        if (this.widgetIndex === index) {
+          return setting.slice(1)
+        }
+      })
+      // Remove any settings that we filtered out with null
+      .filter((setting) => setting !== undefined)
   },
   methods: {
     applySetting(style, setting) {
@@ -148,7 +171,7 @@ export default {
             parser,
             `Not enough parameters for ${keyword}.`,
             usage,
-            'https://docs.openc3.com/docs/configuration'
+            'https://docs.openc3.com/docs/configuration',
           )
         }
       }
@@ -158,7 +181,7 @@ export default {
           parser,
           `Too many parameters for ${keyword}.`,
           usage,
-          'https://docs.openc3.com/docs/configuration'
+          'https://docs.openc3.com/docs/configuration',
         )
       }
     },
@@ -170,7 +193,7 @@ export default {
       if (this.widgetIndex !== null) {
         foundSetting = this.settings.find(
           (setting) =>
-            parseInt(setting[0]) === this.widgetIndex && setting[1] === 'WIDTH'
+            parseInt(setting[0]) === this.widgetIndex && setting[1] === 'WIDTH',
         )
       } else {
         foundSetting = this.settings.find((setting) => setting[0] === 'WIDTH')
@@ -202,7 +225,8 @@ export default {
       if (this.widgetIndex !== null) {
         foundSetting = this.settings.find(
           (setting) =>
-            parseInt(setting[0]) === this.widgetIndex && setting[1] === 'HEIGHT'
+            parseInt(setting[0]) === this.widgetIndex &&
+            setting[1] === 'HEIGHT',
         )
       } else {
         foundSetting = this.settings.find((setting) => setting[0] === 'HEIGHT')

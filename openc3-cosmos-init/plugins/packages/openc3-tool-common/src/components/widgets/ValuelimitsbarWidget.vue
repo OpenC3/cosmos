@@ -28,7 +28,7 @@
       :widget-index="0"
     />
     <limitsbar-widget
-      :parameters="parameters.slice(0, 4)"
+      :parameters="parameters"
       :settings="[...settings]"
       :widget-index="1"
     />
@@ -45,16 +45,6 @@ export default {
   components: {
     ValueWidget,
     LimitsbarWidget,
-  },
-  computed: {
-    limitsBarParameters() {
-      return [
-        this.parameters[0],
-        this.parameters[1],
-        this.parameters[2],
-        this.parameters[3],
-      ]
-    },
   },
 }
 </script>
