@@ -42,7 +42,8 @@ usage() {
   echo "*  stop: stop the containers (compose stop)" >&2
   echo "*  cleanup [local] [force]: REMOVE volumes / data (compose down -v)" >&2
   echo "*  build: build the containers (compose build)" >&2
-  echo "*  run: run the containers (compose up)" >&2
+  echo "*  run: run the Cosmos containers (compose up)" >&2
+  echo "*  run-all: run all the class containers" >&2
   echo "*  dev: run using compose-dev" >&2
   echo "*  test: test openc3" >&2
   echo "*  util: various helper commands" >&2
@@ -134,6 +135,9 @@ case $1 in
     set +a
     ;;
   run )
+    ${DOCKER_COMPOSE_COMMAND} -f compose.yaml up -d openc3-minio  openc3-redis openc3-redis-ephemeral openc3-cosmos-cmd-tlm-api  openc3-cosmos-script-runner-api  openc3-cosmos-script-runner-api  openc3-traefik openc3-cosmos-init
+    ;;
+  run-all )
     ${DOCKER_COMPOSE_COMMAND} -f compose.yaml up -d
     ;;
   run-ubi )
