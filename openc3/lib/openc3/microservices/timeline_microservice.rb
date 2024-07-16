@@ -137,7 +137,8 @@ module OpenC3
 
           activity.commit(status: 'completed', message: "#{activity.data['script']} => #{response.body}", fulfillment: true)
         else
-          activity.commit(status: 'disabled', fulfillment: true)
+          activity.commit(status: 'disabled', message: 'Execution is disabled')
+          @logger.warn "#{@timeline_name} run_script disabled > #{activity.as_json(:allow_nan => true)}"
         end
       rescue StandardError => e
         activity.commit(status: 'failed', message: e.message)

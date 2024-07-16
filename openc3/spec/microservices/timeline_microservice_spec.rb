@@ -70,6 +70,9 @@ module OpenC3
     before(:each) do
       @redis = mock_redis()
       setup_system()
+      json = JSON.generate({'execEnabled' => true})
+      ToolConfigModel.save_config('calendar-settings', 'default', json, local_mode: false, scope: 'DEFAULT')
+
       # allow(TimelineTopic).to receive(:read_topics) { sleep 5 }.with([]).and_yield(
       #   "topic",
       #   "id-1",
@@ -173,6 +176,8 @@ module OpenC3
         sleep 0.1
       end
 
+      # NOTE: I tried to combine this with the above test case but
+      # something about the JsonDRbObject double was messing up the test
       it "handles a failed command activity" do
         tm = TimelineMicroservice.new("DEFAULT__TIMELINE__TEST")
         # This is normally configured via passing topics to the MicroserviceModel (see timeline_model.rb)
@@ -225,22 +230,17 @@ module OpenC3
         sleep 0.1
       end
 
-      it "adds and processes a script activity" do
+      # NOTE: I tried to combine this with the above test case but
+      # something about the JsonDRbObject double was messing up the test
+      it "handles a disabled command activity" do
         tm = TimelineMicroservice.new("DEFAULT__TIMELINE__TEST")
         # This is normally configured via passing topics to the MicroserviceModel (see timeline_model.rb)
         tm.instance_variable_set(:@topics, ["DEFAULT__openc3_timelines"])
         # Setup the spy so we can expect to get output
-        allow(tm.logger).to receive(:info).and_call_original
+        allow(tm.logger).to receive(:warn).and_call_original
 
-        dbl = double("Net::HTTP").as_null_object
-        allow(Net::HTTP).to receive(:new).and_return(dbl)
-        allow(dbl).to receive(:request) do |args|
-          @request = args
-          response = OpenStruct.new
-          response.body = 'test'
-          response.code = '200'
-          response
-        end
+        json = JSON.generate({'execEnabled' => false})
+        ToolConfigModel.save_config('calendar-settings', 'default', json, local_mode: false, scope: 'DEFAULT')
 
         Thread.new { tm.run }
         sleep 0.1
@@ -251,30 +251,103 @@ module OpenC3
           scope: "DEFAULT",
           start: now + 2,
           stop: now + 2.1,
-          kind: 'script',
-          data: { "script" => "collect.rb" }
+          kind: 'command',
+          data: { "command" => "INST CLEAR" }
         )
         activity.create()
 
         sleep 3.1
-        expect(@request.method).to eql "POST"
-        expect(@request.path).to eql "/script-api/scripts/collect.rb/run?scope=DEFAULT"
-        expect(tm.logger).to have_received(:info).with(/TEST run_script/).once
+        expect(tm.logger).to have_received(:warn).with(/TEST run_command disabled/).once
 
         # Check the activity and primarily the events
         all = ActivityModel.all(name: 'TEST', scope: 'DEFAULT')
         expect(all[0]['name']).to eql('TEST')
-        expect(all[0]['fulfillment']).to be true
+        expect(all[0]['fulfillment']).to be false
         expect(all[0]['start']).to eql(now + 2)
         expect(all[0]['stop']).to eql(now + 2.1)
-        expect(all[0]['kind']).to eql('script')
-        expect(all[0]['data']).to eql({ "script" => "collect.rb" })
+        expect(all[0]['kind']).to eql('command')
+        expect(all[0]['data']).to eql({ "command" => "INST CLEAR" })
         expect(all[0]['events'][0]['event']).to eql('created')
         expect(all[0]['events'][1]['event']).to eql('queued')
-        expect(all[0]['events'][2]['event']).to eql('completed')
+        expect(all[0]['events'][2]['event']).to eql('disabled')
 
         tm.shutdown
         sleep 0.1
+      end
+
+      %w(completed failed disabled).each do |state|
+        context state do
+          it "adds and processes a script activity" do
+            tm = TimelineMicroservice.new("DEFAULT__TIMELINE__TEST")
+            # This is normally configured via passing topics to the MicroserviceModel (see timeline_model.rb)
+            tm.instance_variable_set(:@topics, ["DEFAULT__openc3_timelines"])
+            # Setup the spy so we can expect to get output
+            allow(tm.logger).to receive(:info).and_call_original
+            allow(tm.logger).to receive(:warn).and_call_original
+            allow(tm.logger).to receive(:error).and_call_original
+
+            dbl = double("Net::HTTP").as_null_object
+            allow(Net::HTTP).to receive(:new).and_return(dbl)
+            allow(dbl).to receive(:request) do |args|
+              @request = args
+              response = OpenStruct.new
+              response.body = 'test'
+              if state == 'completed'
+                response.code = '200'
+              else
+                response.code = '400'
+              end
+              response
+            end
+
+            if state == 'disabled'
+              json = JSON.generate({'execEnabled' => false})
+              ToolConfigModel.save_config('calendar-settings', 'default', json, local_mode: false, scope: 'DEFAULT')
+            end
+
+            Thread.new { tm.run }
+            sleep 0.1
+
+            now = Time.now.to_f
+            activity = ActivityModel.new(
+              name: "TEST",
+              scope: "DEFAULT",
+              start: now + 2,
+              stop: now + 2.1,
+              kind: 'script',
+              data: { "script" => "collect.rb" }
+            )
+            activity.create()
+
+            sleep 3.1
+            if state != 'disabled'
+              expect(@request.method).to eql "POST"
+              expect(@request.path).to eql "/script-api/scripts/collect.rb/run?scope=DEFAULT"
+              expect(tm.logger).to have_received(:info).with(/TEST run_script/).once
+            else
+              expect(tm.logger).to have_received(:warn).with(/TEST run_script disabled/).once
+            end
+
+            # Check the activity and primarily the events
+            all = ActivityModel.all(name: 'TEST', scope: 'DEFAULT')
+            expect(all[0]['name']).to eql('TEST')
+            if state == 'completed'
+              expect(all[0]['fulfillment']).to be true
+            else
+              expect(all[0]['fulfillment']).to be false
+            end
+            expect(all[0]['start']).to eql(now + 2)
+            expect(all[0]['stop']).to eql(now + 2.1)
+            expect(all[0]['kind']).to eql('script')
+            expect(all[0]['data']).to eql({ "script" => "collect.rb" })
+            expect(all[0]['events'][0]['event']).to eql('created')
+            expect(all[0]['events'][1]['event']).to eql('queued')
+            expect(all[0]['events'][2]['event']).to eql(state)
+
+            tm.shutdown
+            sleep 0.1
+          end
+        end
       end
 
       # it "run the timeline manager and add an expire." do
@@ -308,6 +381,112 @@ module OpenC3
       #   sleep 5
       #   timeline_manager.shutdown
       #   sleep 5
+      # end
+
+      # it "add a cmd while microservice is running" do
+      #   allow_any_instance_of(Object).to receive(:cmd_no_hazardous_check) { sleep 2 }
+      #   timeline_microservice = TimelineMicroservice.new("DEFAULT__TIMELINE__TEST")
+      #   Thread.new { timeline_microservice.run }
+      #   model = generate_activity(15, "command") # should be 15 seconds in the future
+      #   score = model.start
+      #   array = ActivityModel.all(name: "TEST", scope: "DEFAULT", limit: 10)
+      #   expect(array.empty?).to eql(false)
+      #   expect(array.length).to eql(2)
+      #   sleep 20
+      #   timeline_microservice.shutdown
+      #   sleep 10
+      #   activity = ActivityModel.score(name: "TEST", scope: "DEFAULT", score: score)
+      #   expect(activity).not_to be_nil
+      #   expect(activity.fulfillment).to eql(true)
+      #   expect(activity.events.empty?).to eql(false)
+      #   expect(activity.events.length).to eql(3)
+      #   expect(valid_events?(activity.events, "completed")).to eql(true)
+      # end
+
+      # it "add a cmd activty to run and complete" do
+      #   allow_any_instance_of(Object).to receive(:cmd_no_hazardous_check) { sleep 2 }
+      #   model = generate_activity(15, "command") # should be 15 seconds in the future
+      #   score = model.start
+      #   array = ActivityModel.all(name: "TEST", scope: "DEFAULT", limit: 10)
+      #   expect(array.empty?).to eql(false)
+      #   expect(array.length).to eql(2)
+      #   timeline_microservice = TimelineMicroservice.new("DEFAULT__TIMELINE__TEST")
+      #   Thread.new { timeline_microservice.run }
+      #   sleep 20
+      #   timeline_microservice.shutdown
+      #   sleep 10
+      #   activity = ActivityModel.score(name: "TEST", scope: "DEFAULT", score: score)
+      #   expect(activity).not_to be_nil
+      #   expect(activity.fulfillment).to eql(true)
+      #   expect(activity.events.empty?).to eql(false)
+      #   expect(activity.events.length).to eql(3)
+      #   expect(valid_events?(activity.events, "completed")).to eql(true)
+      # end
+
+      # it "add a script activity to run and complete" do
+      #   allow_any_instance_of(Net::HTTP).to receive(:request).with(
+      #     an_instance_of(Net::HTTP::Post)
+      #   ).and_return(Net::HTTPResponse)
+      #   allow(Net::HTTPResponse).to receive(:body).and_return("test")
+      #   allow(Net::HTTPResponse).to receive(:code).and_return(200)
+      #   model = generate_activity(15, "script") # should be 15 seconds in the future
+      #   score = model.start
+      #   array = ActivityModel.all(name: "TEST", scope: "DEFAULT", limit: 10)
+      #   expect(array.empty?).to eql(false)
+      #   expect(array.length).to eql(2)
+      #   timeline_microservice = TimelineMicroservice.new("DEFAULT__TIMELINE__TEST")
+      #   Thread.new { timeline_microservice.run }
+      #   sleep 20
+      #   timeline_microservice.shutdown
+      #   sleep 10
+      #   activity = ActivityModel.score(name: "TEST", scope: "DEFAULT", score: score)
+      #   expect(activity).not_to be_nil
+      #   expect(activity.fulfillment).to eql(true)
+      #   expect(activity.events.empty?).to eql(false)
+      #   expect(activity.events.length).to eql(3)
+      #   expect(valid_events?(activity.events, "completed")).to eql(true)
+      # end
+
+      # it "add a cmd activity to run and fail" do
+      #   allow_any_instance_of(Object).to receive(:cmd_no_hazardous_check).and_raise("ERROR")
+      #   model = generate_activity(15, "command") # should be 15 seconds in the future
+      #   score = model.start
+      #   array = ActivityModel.all(name: "TEST", scope: "DEFAULT", limit: 10)
+      #   expect(array.empty?).to eql(false)
+      #   expect(array.length).to eql(2)
+      #   timeline_microservice = TimelineMicroservice.new("DEFAULT__TIMELINE__TEST")
+      #   Thread.new { timeline_microservice.run }
+      #   sleep 20
+      #   timeline_microservice.shutdown
+      #   sleep 10
+      #   activity = ActivityModel.score(name: "TEST", scope: "DEFAULT", score: score)
+      #   expect(activity).not_to be_nil
+      #   expect(activity.fulfillment).to eql(false)
+      #   expect(activity.events.empty?).to eql(false)
+      #   expect(activity.events.length).to eql(3)
+      #   expect(valid_events?(activity.events, "failed")).to eql(true)
+      # end
+
+      # it "add a script activity to run and fail" do
+      #   allow_any_instance_of(Net::HTTP).to receive(:request).with(
+      #     an_instance_of(Net::HTTP::Post)
+      #   ).and_raise("ERROR")
+      #   model = generate_activity(15, "script") # should be 15 seconds in the future
+      #   score = model.start
+      #   array = ActivityModel.all(name: "TEST", scope: "DEFAULT", limit: 10)
+      #   expect(array.empty?).to eql(false)
+      #   expect(array.length).to eql(2)
+      #   timeline_microservice = TimelineMicroservice.new("DEFAULT__TIMELINE__TEST")
+      #   Thread.new { timeline_microservice.run }
+      #   sleep 20
+      #   timeline_microservice.shutdown
+      #   sleep 10
+      #   activity = ActivityModel.score(name: "TEST", scope: "DEFAULT", score: score)
+      #   expect(activity).not_to be_nil
+      #   expect(activity.fulfillment).to eql(false)
+      #   expect(activity.events.empty?).to eql(false)
+      #   expect(activity.events.length).to eql(3)
+      #   expect(valid_events?(activity.events, "failed")).to eql(true)
       # end
     end
   end
