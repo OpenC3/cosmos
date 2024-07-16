@@ -1,7 +1,7 @@
 # Make managed in .env-build
 ARG OPENC3_DEPENDENCY_REGISTRY=docker.io
-ARG ALPINE_BUILD
-ARG ALPINE_VERSION
+ARG ALPINE_BUILD=7
+ARG ALPINE_VERSION=3.18
 
 # Should be loaded from ARG
 FROM ${OPENC3_DEPENDENCY_REGISTRY}/alpine:${ALPINE_VERSION}.${ALPINE_BUILD}
@@ -9,19 +9,19 @@ FROM ${OPENC3_DEPENDENCY_REGISTRY}/alpine:${ALPINE_VERSION}.${ALPINE_BUILD}
 # An ARG declared before a FROM is outside of a build stage, so it can’t be
 # used in any instruction after a FROM. So we need to re-ARG ALPINE_VERSION
 
-ARG ALPINE_VERSION
-ARG APK_URL
-ARG RUBYGEMS_URL
+ARG ALPINE_VERSION=7
+ARG APK_URL=https://dl-cdn.alpinelinux.org
+ARG RUBYGEMS_URL=https://rubygems.org
 ARG PYPI_URL=https://pypi.org
 
 ENV ALPINE_VERSION=${ALPINE_VERSION}
-ENV APK_URL=${APK_URL}
-ENV RUBYGEMS_URL=${RUBYGEMS_URL}
+ENV APK_URL=https://dl-cdn.alpinelinux.org
+ENV RUBYGEMS_URL=https://rubygems.org
 ENV PYPI_URL=${PYPI_URL}
 
 # NOTE: This must match the alpine image used above in FROM
-RUN echo "${APK_URL}/alpine/v${ALPINE_VERSION}/main" > /etc/apk/repositories \
-  && echo "${APK_URL}/alpine/v${ALPINE_VERSION}/community" >> /etc/apk/repositories
+RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.18/main" > /etc/apk/repositories \
+  && echo "https://dl-cdn.alpinelinux.org/alpine/v3.18/community" >> /etc/apk/repositories
 
 LABEL maintainer="support@openc3.com"
 

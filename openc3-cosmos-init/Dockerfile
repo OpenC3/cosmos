@@ -110,10 +110,10 @@ FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_BASE_IMAGE}:${OPENC3_TAG} A
 FROM openc3-frontend-tmp AS openc3-tmp5
 
 # Build docs tool
-COPY --from=base /openc3 /openc3/
-COPY --from=docs . packages/openc3-cosmos-tool-docs/
-RUN cd packages/openc3-cosmos-tool-docs/scripts && ruby generate_docs_from_yaml.rb PLUGIN && yarn
-RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-docs"]
+#COPY --from=base /openc3 /openc3/
+#COPY --from=docs . packages/openc3-cosmos-tool-docs/
+#RUN cd packages/openc3-cosmos-tool-docs/scripts && ruby generate_docs_from_yaml.rb PLUGIN && yarn
+#RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-docs"]
 
 FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_BASE_IMAGE}:${OPENC3_TAG}
 

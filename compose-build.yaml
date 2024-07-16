@@ -32,7 +32,7 @@ services:
         RUBYGEMS_URL: ${RUBYGEMS_URL}
         PYPI_URL: ${PYPI_URL}
         OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
-    image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-ruby:${OPENC3_TAG}"
+    image: "registry.ethos.labs:443/openc3-ruby:${OPENC3_TAG}"
 
   openc3-base:
     build:
