@@ -319,6 +319,7 @@ module OpenC3
             cycle_tlm_item(packet, 'temp3', -30.0, 80.0, 2.0)
           end
           cycle_tlm_item(packet, 'temp4', 0.0, 20.0, -0.1)
+          cycle_tlm_item(packet, 'bracket[0]', 0, 255, 10)
 
           packet.timesec = time.tv_sec - @time_offset
           packet.timeus  = time.tv_usec

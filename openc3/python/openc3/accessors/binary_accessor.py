@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -106,7 +106,7 @@ class BinaryAccessor(Accessor):
     def class_read_item(cls, item, buffer):
         if item.data_type == "DERIVED":
             return None
-        if item.array_size:
+        if item.array_size is not None:
             return cls.read_array(
                 item.bit_offset,
                 item.bit_size,
@@ -122,7 +122,7 @@ class BinaryAccessor(Accessor):
     def class_write_item(cls, item, value, buffer):
         if item.data_type == "DERIVED":
             return None
-        if item.array_size:
+        if item.array_size is not None:
             return cls.write_array(
                 value,
                 item.bit_offset,

@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -19,24 +19,23 @@ from unittest.mock import *
 from test.test_helper import *
 from openc3.accessors.cbor_accessor import CborAccessor
 from collections import namedtuple
-from cbor2 import dumps
+from cbor2 import dumps, loads
+from openc3.packets.packet import Packet
+from openc3.packets.packet_item import PacketItem
 
 
 class TestCborAccessor(unittest.TestCase):
     def setUp(self):
-        self.data1 = bytearray(
-            dumps(
-                {
-                    "packet": {
-                        "item1": 1,
-                        "item2": 1.234,
-                        "item3": "a string",
-                        "item4": [1, 2, 3, 4],
-                        "item5": {"another": "object"},
-                    }
-                }
-            )
-        )
+        self.rawData1 = {
+            "packet": {
+                "item1": 1,
+                "item2": 1.234,
+                "item3": "a string",
+                "item4": [1, 2, 3, 4],
+                "item5": {"another": "object"},
+            }
+        }
+        self.data1 = bytearray(dumps(self.rawData1))
         self.data2 = bytearray(
             dumps(
                 [
@@ -65,17 +64,49 @@ class TestCborAccessor(unittest.TestCase):
         self.array_data = bytearray(dumps([4, 3, 2, 1]))
         self.Cbor = namedtuple("Cbor", ("name", "key", "data_type", "array_size"))
 
+    def test_should_return_None_for_an_item_that_does_not_exist(self):
+        item = self.Cbor("item", "$.packet.nope", "INT", None)
+        self.assertEqual(CborAccessor.class_read_item(item, self.hash_data), None)
+
+    def test_should_write_into_a_packet(self):
+        p = Packet("tgt", "pkt")
+        pi = PacketItem("item1", 0, 16, "UINT", "BIG_ENDIAN")
+        pi.key = "$.packet.item1"
+        p.define(pi)
+        pi = PacketItem("item2", 16, 32, "FLOAT", "BIG_ENDIAN")
+        pi.key = "$.packet.item2"
+        p.define(pi)
+        pi = PacketItem("item3", 48, 128, "STRING", "BIG_ENDIAN")
+        pi.key = "$.packet.item3"
+        p.define(pi)
+        pi = PacketItem("item4", 176, 8, "UINT", "BIG_ENDIAN", 32)
+        pi.key = "$.packet.item4"
+        p.define(pi)
+        pi = PacketItem("item5", 184, 0, "BLOCK", "BIG_ENDIAN")
+        pi.key = "$.packet.item5"
+        p.define(pi)
+        p.accessor = CborAccessor()
+        p.template = self.data1
+        p.restore_defaults()
+        data = loads(p.buffer)
+        self.assertEqual(data, self.rawData1)
+        p.write("item1", 5)
+        p.write("item2", 1.23)
+        p.write("item3", "CBOR")
+        p.write("item4", [1, 2, 3, 4])
+        data = loads(p.buffer)
+        self.assertEqual(data["packet"]["item1"], 5)
+        self.assertEqual(data["packet"]["item2"], 1.23)
+        self.assertEqual(data["packet"]["item3"], "CBOR")
+        self.assertEqual(data["packet"]["item4"], [1, 2, 3, 4])
+
     def test_should_read_a_top_level_hash(self):
         item = self.Cbor("item", "$", "OBJECT", None)
-        self.assertEqual(
-            CborAccessor.class_read_item(item, self.hash_data), ({"test": "one"})
-        )
+        self.assertEqual(CborAccessor.class_read_item(item, self.hash_data), ({"test": "one"}))
 
     def test_should_read_a_top_level_array(self):
         item = self.Cbor("item", "$", "INT", 32)
-        self.assertEqual(
-            CborAccessor.class_read_item(item, self.array_data), ([4, 3, 2, 1])
-        )
+        self.assertEqual(CborAccessor.class_read_item(item, self.array_data), ([4, 3, 2, 1]))
 
     def test_should_handle_various_keys(self):
         item = self.Cbor("item", "$.packet.item1", "INT", None)
@@ -101,18 +132,12 @@ class TestCborAccessor(unittest.TestCase):
         item = self.Cbor("item", "$.packet.item4", "INT", 32)
         self.assertEqual(CborAccessor.class_read_item(item, self.data1), [1, 2, 3, 4])
         item = self.Cbor("item", "$.packet.item4", "FLOAT", 32)
-        self.assertEqual(
-            CborAccessor.class_read_item(item, self.data1), [1.0, 2.0, 3.0, 4.0]
-        )
+        self.assertEqual(CborAccessor.class_read_item(item, self.data1), [1.0, 2.0, 3.0, 4.0])
         item = self.Cbor("item", "$.packet.item4", "STRING", 32)
-        self.assertEqual(
-            CborAccessor.class_read_item(item, self.data1), ["1", "2", "3", "4"]
-        )
+        self.assertEqual(CborAccessor.class_read_item(item, self.data1), ["1", "2", "3", "4"])
 
         item = self.Cbor("item", "$.packet.item5", "OBJECT", None)
-        self.assertEqual(
-            CborAccessor.class_read_item(item, self.data1), ({"another": "object"})
-        )
+        self.assertEqual(CborAccessor.class_read_item(item, self.data1), ({"another": "object"}))
 
         item = self.Cbor("item", "$.packet.item5.another", "STRING", None)
         self.assertEqual(CborAccessor.class_read_item(item, self.data1), "object")
@@ -133,9 +158,7 @@ class TestCborAccessor(unittest.TestCase):
         self.assertEqual(CborAccessor.class_read_item(item, self.data2), [1, 2, 3, 4])
 
         item = self.Cbor("item", "$[0].packet.item5", "OBJECT", None)
-        self.assertEqual(
-            CborAccessor.class_read_item(item, self.data2), ({"another": "object"})
-        )
+        self.assertEqual(CborAccessor.class_read_item(item, self.data2), ({"another": "object"}))
 
         item = self.Cbor("item", "$[0].packet.item5.another", "STRING", None)
         self.assertEqual(CborAccessor.class_read_item(item, self.data2), "object")
@@ -150,17 +173,13 @@ class TestCborAccessor(unittest.TestCase):
         self.assertEqual(CborAccessor.class_read_item(item, self.data2), 2.234)
 
         item = self.Cbor("item", "$[1].packet.item3", "STRING", None)
-        self.assertEqual(
-            CborAccessor.class_read_item(item, self.data2), "another string"
-        )
+        self.assertEqual(CborAccessor.class_read_item(item, self.data2), "another string")
 
         item = self.Cbor("item", "$[1].packet.item4", "UINT", 32)
         self.assertEqual(CborAccessor.class_read_item(item, self.data2), [5, 6, 7, 8])
 
         item = self.Cbor("item", "$[1].packet.item5", "OBJECT", None)
-        self.assertEqual(
-            CborAccessor.class_read_item(item, self.data2), ({"another": "packet"})
-        )
+        self.assertEqual(CborAccessor.class_read_item(item, self.data2), ({"another": "packet"}))
 
         item = self.Cbor("item", "$[1].packet.item5.another", "STRING", None)
         self.assertEqual(CborAccessor.class_read_item(item, self.data2), "packet")
@@ -177,9 +196,7 @@ class TestCborAccessor(unittest.TestCase):
         item6 = self.Cbor("ITEM6", "$.packet.item5.another", "STRING", None)
         item7 = self.Cbor("ITEM7", "$.packet.item4[3]", "UINT", None)
 
-        result = CborAccessor.class_read_items(
-            [item1, item2, item3, item4, item5, item6, item7], self.data1
-        )
+        result = CborAccessor.class_read_items([item1, item2, item3, item4, item5, item6, item7], self.data1)
         self.assertEqual(len(result), 7)
         self.assertEqual(result["ITEM1"], 1)
         self.assertEqual(result["ITEM2"], 1.234)
@@ -250,9 +267,7 @@ class TestCborAccessor(unittest.TestCase):
 
         item = self.Cbor("item", "$.packet.item3", "STRING", None)
         CborAccessor.class_write_item(item, "something different", self.data1)
-        self.assertEqual(
-            CborAccessor.class_read_item(item, self.data1), "something different"
-        )
+        self.assertEqual(CborAccessor.class_read_item(item, self.data1), "something different")
 
         item = self.Cbor("item", "$.packet.item4", "INT", 32)
         CborAccessor.class_write_item(item, [7, 8, 9, 10], self.data1)
@@ -260,9 +275,7 @@ class TestCborAccessor(unittest.TestCase):
 
         item = self.Cbor("item", "$.packet.item5", "OBJECT", None)
         CborAccessor.class_write_item(item, {"good": "times"}, self.data1)
-        self.assertEqual(
-            CborAccessor.class_read_item(item, self.data1), ({"good": "times"})
-        )
+        self.assertEqual(CborAccessor.class_read_item(item, self.data1), ({"good": "times"}))
 
         item = self.Cbor("item", "$.packet.item5.good", "STRING", None)
         CborAccessor.class_write_item(item, "friends", self.data1)
@@ -290,9 +303,7 @@ class TestCborAccessor(unittest.TestCase):
 
         item = self.Cbor("item", "$[0].packet.item5", "OBJECT", None)
         CborAccessor.class_write_item(item, {"bill": "ted"}, self.data2)
-        self.assertEqual(
-            CborAccessor.class_read_item(item, self.data2), ({"bill": "ted"})
-        )
+        self.assertEqual(CborAccessor.class_read_item(item, self.data2), ({"bill": "ted"}))
 
         # TODO: This doesn't work because the above overwrites the item5
         # Ruby seems to add but Python replaces ...
@@ -319,15 +330,11 @@ class TestCborAccessor(unittest.TestCase):
 
         item = self.Cbor("item", "$[1].packet.item4", "INT", 32)
         CborAccessor.class_write_item(item, [101, 102, 103, 104], self.data2)
-        self.assertEqual(
-            CborAccessor.class_read_item(item, self.data2), [101, 102, 103, 104]
-        )
+        self.assertEqual(CborAccessor.class_read_item(item, self.data2), [101, 102, 103, 104])
 
         item = self.Cbor("item", "$[1].packet.item5", "OBJECT", None)
         CborAccessor.class_write_item(item, {"happy": "sad"}, self.data2)
-        self.assertEqual(
-            CborAccessor.class_read_item(item, self.data2), ({"happy": "sad"})
-        )
+        self.assertEqual(CborAccessor.class_read_item(item, self.data2), ({"happy": "sad"}))
 
         item = self.Cbor("item", "$[1].packet.item5.happy", "OBJECT", None)
         CborAccessor.class_write_item(item, "art", self.data2)
@@ -359,14 +366,10 @@ class TestCborAccessor(unittest.TestCase):
         CborAccessor.class_write_items(items, values, self.data1)
         self.assertEqual(CborAccessor.class_read_item(item1, self.data1), 3)
         self.assertEqual(CborAccessor.class_read_item(item2, self.data1), 3.14)
-        self.assertEqual(
-            CborAccessor.class_read_item(item3, self.data1), "something different"
-        )
+        self.assertEqual(CborAccessor.class_read_item(item3, self.data1), "something different")
         # item7 writes 15 over the 10 in the array
         self.assertEqual(CborAccessor.class_read_item(item4, self.data1), [7, 8, 9, 15])
-        self.assertEqual(
-            CborAccessor.class_read_item(item5, self.data1), ({"good": "friends"})
-        )
+        self.assertEqual(CborAccessor.class_read_item(item5, self.data1), ({"good": "friends"}))
         self.assertEqual(CborAccessor.class_read_item(item6, self.data1), "friends")
         self.assertEqual(CborAccessor.class_read_item(item7, self.data1), 15)
 
@@ -434,9 +437,7 @@ class TestCborAccessor(unittest.TestCase):
         self.assertEqual(CborAccessor.class_read_item(item9, self.data2), 3.13)
         self.assertEqual(CborAccessor.class_read_item(item10, self.data2), "small")
         # Item14 writes 14 over the 104 in the array
-        self.assertEqual(
-            CborAccessor.class_read_item(item11, self.data2), [101, 102, 103, 14]
-        )
+        self.assertEqual(CborAccessor.class_read_item(item11, self.data2), [101, 102, 103, 14])
         self.assertEqual(
             CborAccessor.class_read_item(item12, self.data2),
             # Item13 writes 'art' over 'sad'

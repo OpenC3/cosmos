@@ -1,5 +1,5 @@
 <!--
-# Copyright 2022 Ball Aerospace & Technologies Corp.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -12,10 +12,6 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-# Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
-# All Rights Reserved
-#
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
@@ -38,48 +34,33 @@
 </template>
 
 <script>
-import Widget from './Widget'
-import { OpenC3Api } from '../../services/openc3-api.js'
-
-const DEFAULT_LIMITS_SET = 'DEFAULT'
+import BarColumn from './BarColumn'
 
 export default {
-  mixins: [Widget],
+  mixins: [BarColumn],
   data() {
     return {
-      width: 20, // px
-      height: 100, // users will override with px
-      redLow: 0,
-      yellowLow: 0,
-      greenLow: 0,
-      greenHigh: 0,
-      yellowHigh: 0,
-      redHigh: 0,
-      blue: 0,
-      api: null,
-      limitsSettings: {
-        DEFAULT: [],
-      },
-      currentLimitsSet: DEFAULT_LIMITS_SET,
-      currentSetRefreshInterval: null,
+      width: 22, // px
+      height: 120, // users will override with px
     }
   },
   computed: {
+    // TODO: Not sure why we have to reimplement this from BarColumn
+    // strangely enough LimitsbarWidget.vue works fine without it
     cssProps: function () {
       let value = null
       if (this.screen) {
         value = this.screen.screenValues[this.valueId][0]
       }
-      this.calcLimits(this.limitsSettings[this.selectedLimitsSet])
+      let limits = this.modifyLimits(
+        this.limitsSettings[this.selectedLimitsSet],
+      )
+      this.calcLimits(limits)
       return {
         '--height': this.height + 'px',
         '--width': this.width + 'px',
         '--container-width': this.width - 5 + 'px',
-        '--position':
-          this.calcPosition(
-            value,
-            this.limitsSettings[this.selectedLimitsSet]
-          ) + '%',
+        '--position': this.calcPosition(value, limits) + '%',
         '--redlow-height': this.redLow + '%',
         '--redhigh-height': this.redHigh + '%',
         '--yellowlow-height': this.yellowLow + '%',
@@ -88,136 +69,6 @@ export default {
         '--greenhigh-height': this.greenHigh + '%',
         '--blue-height': this.blue + '%',
       }
-    },
-    selectedLimitsSet: function () {
-      return this.limitsSettings.hasOwnProperty(this.currentLimitsSet)
-        ? this.currentLimitsSet
-        : DEFAULT_LIMITS_SET
-    },
-  },
-  created() {
-    this.api = new OpenC3Api()
-    this.api
-      .get_limits(this.parameters[0], this.parameters[1], this.parameters[2])
-      .then((data) => {
-        this.limitsSettings = data
-      })
-    this.getCurrentLimitsSet()
-    this.currentSetRefreshInterval = setInterval(
-      this.getCurrentLimitsSet,
-      60 * 1000
-    )
-
-    this.width = this.setWidth(this.parameters[4], 'px', this.width)
-    this.height = this.setHeight(this.parameters[5], 'px', this.height)
-
-    let type = 'CONVERTED'
-    if (this.parameters[3]) {
-      type = this.parameters[3]
-    }
-    this.valueId = `${this.parameters[0]}__${this.parameters[1]}__${this.parameters[2]}__${type}`
-
-    if (this.screen) {
-      this.screen.addItem(this.valueId)
-    }
-  },
-  destroyed() {
-    if (this.screen) {
-      this.screen.deleteItem(this.valueId)
-    }
-    clearInterval(this.currentSetRefreshInterval)
-  },
-  methods: {
-    calcPosition(value, limitsSettings) {
-      if (!value || !limitsSettings) {
-        return
-      }
-      let divisor = 0.8
-      if (limitsSettings[0] === limitsSettings[1]) {
-        divisor += 0.1
-      }
-      if (limitsSettings[2] === limitsSettings[3]) {
-        divisor += 0.1
-      }
-      const scale = (limitsSettings[3] - limitsSettings[0]) / divisor
-      const lowValue = limitsSettings[0] - 0.1 * scale
-      const highValue = limitsSettings[3] - 0.1 * scale
-
-      if (value.raw) {
-        if (value.raw === '-Infinity') {
-          return 0
-        } else {
-          // NaN and Infinity
-          return 100
-        }
-      }
-      if (value < this.min) {
-        return 0
-      } else if (value > this.max) {
-        return 100
-      } else {
-        const result = parseInt(((value - lowValue) / scale) * 100.0)
-        if (result > 100) {
-          return 100
-        } else if (result < 0) {
-          return 0
-        } else {
-          return result
-        }
-      }
-    },
-    calcLimits(limitsSettings) {
-      if (!limitsSettings) {
-        return
-      }
-      let scale = 80
-      if (limitsSettings[0] === limitsSettings[1]) {
-        this.redLow = 0
-        scale += 10
-      } else {
-        this.redLow = 10
-      }
-      if (limitsSettings[2] === limitsSettings[3]) {
-        this.redHigh = 0
-        scale += 10
-      } else {
-        this.redHigh = 10
-      }
-      const range = 1.0 * (limitsSettings[3] - limitsSettings[0])
-      this.yellowLow = Math.round(
-        ((limitsSettings[1] - limitsSettings[0]) / range) * scale
-      )
-      this.yellowHigh = Math.round(
-        ((limitsSettings[3] - limitsSettings[2]) / range) * scale
-      )
-      if (limitsSettings.length > 4) {
-        this.greenLow = Math.round(
-          ((limitsSettings[4] - limitsSettings[1]) / range) * scale
-        )
-        this.greenHigh = Math.round(
-          ((limitsSettings[2] - limitsSettings[5]) / range) * scale
-        )
-        this.blue = Math.round(
-          100 -
-            this.redLow -
-            this.yellowLow -
-            this.greenLow -
-            this.greenHigh -
-            this.yellowHigh -
-            this.redHigh
-        )
-      } else {
-        this.greenLow = Math.round(
-          100 - this.redLow - this.yellowLow - this.yellowHigh - this.redHigh
-        )
-        this.greenHigh = 0
-        this.blue = 0
-      }
-    },
-    getCurrentLimitsSet: function () {
-      this.api.get_limits_set().then((result) => {
-        this.currentLimitsSet = result
-      })
     },
   },
 }

@@ -82,7 +82,7 @@ class SuiteResults:
             if result.exceptions:
                 self._report.append("  Exceptions:")
                 for index, error in enumerate(result.exceptions):
-                    self._report.extend(traceback.format_exception(error))
+                    self._report.extend("".join(traceback.format_exception(error)))
                     # for line in repr(error):
                     #   next if /in run_text/.match?(line)
                     #   next if /running_script.rb/.match?(line)

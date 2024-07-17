@@ -656,7 +656,6 @@ class InterfaceMicroservice(Microservice):
                 pass  # We want to report any connect errors, not disconnect in this case
             raise error
 
-        self.interface.connect()
         self.interface.state = "CONNECTED"
         if self.interface_or_router == "INTERFACE":
             InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)

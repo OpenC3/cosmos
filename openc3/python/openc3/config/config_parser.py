@@ -67,6 +67,18 @@ class ConfigParser:
             url = self.url
         return self.Error(self, message, usage, url)
 
+    # Can be called during parsing to read a referenced file
+    def read_file(self, filename):
+        # Assume the file is there. If not we raise a pretty obvious error
+        if os.path.abspath(filename) == filename:  # absolute path
+            path = filename
+        else:  # relative to the current @filename
+            path = os.path.join(os.path.dirname(self.filename), filename)
+        data = ""
+        with open(path, "rb") as file:
+            data = file.read()
+        return data
+
     # Processes a file and yields |config| to the given block
     #
     # self.param filename [String] The full name and path of the configuration file

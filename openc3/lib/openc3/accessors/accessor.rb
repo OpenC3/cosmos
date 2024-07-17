@@ -104,6 +104,7 @@ module OpenC3
     end
 
     def self.convert_to_type(value, item)
+      return value if value.nil?
       case item.data_type
       when :OBJECT, :ARRAY
         # Do nothing for complex object types

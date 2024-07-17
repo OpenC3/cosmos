@@ -21,16 +21,17 @@
 -->
 
 <template>
-  <div ref="container" class="d-flex flex-column" :style="computedStyle">
+  <div ref="container" :style="computedStyle">
+    <!-- The widget-index is the order in the widget name: VALUELIMITSCOLUMN -->
     <limitscolumn-widget
-      :parameters="limitsColumnParameters"
+      :parameters="parameters"
       :settings="[...settings]"
-      :widget-index="0"
+      :widget-index="1"
     />
     <value-widget
       :parameters="parameters"
       :settings="[...settings]"
-      :widget-index="1"
+      :widget-index="0"
     />
   </div>
 </template>
@@ -45,16 +46,6 @@ export default {
   components: {
     ValueWidget,
     LimitscolumnWidget,
-  },
-  computed: {
-    limitsColumnParameters() {
-      return [
-        this.parameters[0],
-        this.parameters[1],
-        this.parameters[2],
-        'CONVERTED',
-      ]
-    },
   },
 }
 </script>

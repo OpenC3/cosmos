@@ -55,10 +55,10 @@ class Conversion:
     def as_json(self):
         result = {}
         result["class"] = self.__class__.__name__
-        if self.converted_type:
+        if self.converted_type is not None:
             result["converted_type"] = self.converted_type
-        if self.converted_bit_size:
+        if self.converted_bit_size is not None:
             result["converted_bit_size"] = self.converted_bit_size
-        if self.converted_array_size:
+        if self.converted_array_size is not None:
             result["converted_array_size"] = self.converted_array_size
         return result
