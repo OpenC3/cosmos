@@ -23,7 +23,7 @@
 <template>
   <v-card>
     <v-card-title>
-      {{ data.length }} Hello Worlds
+      {{ data.length }} Interfaces
       <v-spacer />
       <v-text-field
         v-model="search"
