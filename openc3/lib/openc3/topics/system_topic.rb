@@ -1,4 +1,6 @@
-# Copyright 2023 OpenC3, Inc.
+# encoding: ascii-8bit
+
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -14,7 +16,25 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-OPENC3_AUTHORIZE = True
+require 'openc3/topics/topic'
 
-# TODO: Import everything somehow?
-# from .tlm_api import *
+module OpenC3
+  class SystemTopic < Topic
+    PRIMARY_KEY = "OPENC3__SYSTEM__EVENTS".freeze
+
+    def self.update_topic_offsets()
+      Topic.update_topic_offsets([PRIMARY_KEY])
+    end
+
+    def self.write(type, event)
+      event['type'] = type
+      Topic.write_topic(PRIMARY_KEY, {event: JSON.generate(event)}, '*', 1000)
+    end
+
+    def self.read()
+      Topic.read_topics([PRIMARY_KEY]) do |_topic, _msg_id, msg_hash, _redis|
+        yield JSON.parse(msg_hash['event'])
+      end
+    end
+  end
+end

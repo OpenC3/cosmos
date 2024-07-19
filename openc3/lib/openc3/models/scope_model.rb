@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -26,6 +26,7 @@ require 'openc3/models/plugin_model'
 require 'openc3/models/microservice_model'
 require 'openc3/models/setting_model'
 require 'openc3/models/trigger_group_model'
+require 'openc3/topics/system_topic'
 
 module OpenC3
   class ScopeModel < Model
@@ -37,9 +38,13 @@ module OpenC3
     attr_accessor :text_log_retain_time
     attr_accessor :tool_log_retain_time
     attr_accessor :cleanup_poll_time
+    attr_accessor :command_authority
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
+    #
+    # The scope keyword is given to support the ModelController method signature
+    # even though it is not used
     def self.get(name:, scope: nil)
       super(PRIMARY_KEY, name: name)
     end
@@ -52,13 +57,13 @@ module OpenC3
       super(PRIMARY_KEY)
     end
 
-    def self.from_json(json, scope: nil)
+    def self.from_json(json)
       json = JSON.parse(json, :allow_nan => true, :create_additions => true) if String === json
       raise "json data is nil" if json.nil?
-      self.new(**json.transform_keys(&:to_sym), scope: scope)
+      self.new(**json.transform_keys(&:to_sym))
     end
 
-    def self.get_model(name:, scope: nil)
+    def self.get_model(name:)
       json = get(name: name)
       if json
         return from_json(json)
@@ -73,18 +78,15 @@ module OpenC3
       text_log_retain_time: nil,
       tool_log_retain_time: nil,
       cleanup_poll_time: 900,
-      updated_at: nil,
-      scope: nil
+      command_authority: false,
+      updated_at: nil
     )
       super(
         PRIMARY_KEY,
         name: name,
-        text_log_cycle_time: text_log_cycle_time,
-        text_log_cycle_size: text_log_cycle_size,
-        text_log_retain_time: text_log_retain_time,
-        tool_log_retain_time: tool_log_retain_time,
-        cleanup_poll_time: cleanup_poll_time,
         updated_at: updated_at,
+        # This sets the @scope variable which is sort of redundant for the ScopeModel
+        # (since its the same as @name) but every model has a @scope
         scope: name
       )
       @text_log_cycle_time = text_log_cycle_time
@@ -92,6 +94,7 @@ module OpenC3
       @text_log_retain_time = text_log_retain_time
       @tool_log_retain_time = tool_log_retain_time
       @cleanup_poll_time = cleanup_poll_time
+      @command_authority = command_authority
       @children = []
     end
 
@@ -100,13 +103,14 @@ module OpenC3
       raise "Invalid scope name: #{@name}" if @name !~ /^[a-zA-Z0-9_-]+$/
       @name = @name.upcase
       super(update: update, force: force, queued: queued)
+      SystemTopic.write(:scope, as_json())
     end
 
     def destroy
       if @name != 'DEFAULT'
         # Remove all the plugins for this scope
         plugins = PluginModel.get_all_models(scope: @name)
-        plugins.each do |plugin_name, plugin|
+        plugins.each do |_plugin_name, plugin|
           plugin.destroy
         end
         super()
@@ -115,7 +119,7 @@ module OpenC3
       end
     end
 
-    def as_json(*a)
+    def as_json(*_a)
       { 'name' => @name,
         'updated_at' => @updated_at,
         'text_log_cycle_time' => @text_log_cycle_time,
@@ -123,6 +127,7 @@ module OpenC3
         'text_log_retain_time' => @text_log_retain_time,
         'tool_log_retain_time' => @tool_log_retain_time,
         'cleanup_poll_time' => @cleanup_poll_time,
+        'command_authority' => @command_authority,
        }
     end
 
