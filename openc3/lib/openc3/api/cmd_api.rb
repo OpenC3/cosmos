@@ -20,6 +20,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+require 'openc3/api/interface_api'
 require 'openc3/models/target_model'
 require 'openc3/topics/command_topic'
 require 'openc3/topics/command_decom_topic'
@@ -161,10 +162,13 @@ module OpenC3
     #
     # @param interface_name [String] The interface to send the raw binary
     # @param data [String] The raw binary data
-    def send_raw(interface_name, data, scope: $openc3_scope, token: $openc3_token)
+    def send_raw(interface_name, data, manual: false, scope: $openc3_scope, token: $openc3_token)
       interface_name = interface_name.upcase
-      authorize(permission: 'cmd_raw', interface_name: interface_name, scope: scope, token: token)
-      get_interface(interface_name, scope: scope, token: token) # Check to make sure the interface exists
+      interface = get_interface(interface_name, scope: scope, token: token)
+      # Verify we have command authority on all the targets mapped to this interface
+      interface['cmd_target_names'].each do |target_name|
+        authorize(permission: 'cmd_raw', interface_name: interface_name, target_name: target_name, manual: manual, scope: scope, token: token)
+      end
       InterfaceTopic.write_raw(interface_name, data, scope: scope)
     end
 
@@ -173,7 +177,7 @@ module OpenC3
     # @param target_name [String] Target name of the command
     # @param command_name [String] Packet name of the command
     # @return [Hash] command hash with last command buffer
-    def get_cmd_buffer(*args, scope: $openc3_scope, token: $openc3_token)
+    def get_cmd_buffer(*args, manual: false, scope: $openc3_scope, token: $openc3_token)
       target_name, command_name = _extract_target_command_names('get_cmd_buffer', *args)
       authorize(permission: 'cmd_info', target_name: target_name, packet_name: command_name, scope: scope, token: token)
       TargetModel.packet(target_name, command_name, type: :CMD, scope: scope)
@@ -191,7 +195,7 @@ module OpenC3
     # @since 5.0.0
     # @param target_name [String] Name of the target
     # @return [Array<Hash>] Array of all commands as a hash
-    def get_all_cmds(target_name, scope: $openc3_scope, token: $openc3_token)
+    def get_all_cmds(target_name, manual: false, scope: $openc3_scope, token: $openc3_token)
       target_name = target_name.upcase
       authorize(permission: 'cmd_info', target_name: target_name, scope: scope, token: token)
       TargetModel.packets(target_name, type: :CMD, scope: scope)
@@ -204,7 +208,7 @@ module OpenC3
     # @since 5.0.6
     # @param target_name [String] Name of the target
     # @return [Array<String>] Array of all command packet names
-    def get_all_cmd_names(target_name, hidden: false, scope: $openc3_scope, token: $openc3_token)
+    def get_all_cmd_names(target_name, hidden: false, manual: false, scope: $openc3_scope, token: $openc3_token)
       begin
         packets = get_all_cmds(target_name, scope: scope, token: token)
       rescue RuntimeError
@@ -227,7 +231,7 @@ module OpenC3
     #
     # @since 5.0.0
     # @return [Hash] Command as a hash
-    def get_cmd(*args, scope: $openc3_scope, token: $openc3_token)
+    def get_cmd(*args, manual: false, scope: $openc3_scope, token: $openc3_token)
       target_name, command_name = _extract_target_command_names('get_cmd', *args)
       authorize(permission: 'cmd_info', target_name: target_name, scope: scope, token: token)
       TargetModel.packet(target_name, command_name, type: :CMD, scope: scope)
@@ -242,7 +246,7 @@ module OpenC3
     # @param command_name [String] Name of the packet
     # @param parameter_name [String] Name of the parameter
     # @return [Hash] Command parameter as a hash
-    def get_param(*args, scope: $openc3_scope, token: $openc3_token)
+    def get_param(*args, manual: false, scope: $openc3_scope, token: $openc3_token)
       target_name, command_name, parameter_name = _extract_target_command_parameter_names('get_param', *args)
       authorize(permission: 'cmd_info', target_name: target_name, packet_name: command_name, scope: scope, token: token)
       TargetModel.packet_item(target_name, command_name, parameter_name, type: :CMD, scope: scope)
@@ -258,7 +262,7 @@ module OpenC3
     #
     # @param args [String|Array<String>] See the description for calling style
     # @return [Boolean] Whether the command is hazardous
-    def get_cmd_hazardous(*args, scope: $openc3_scope, token: $openc3_token, **kwargs)
+    def get_cmd_hazardous(*args, manual: false, scope: $openc3_scope, token: $openc3_token, **kwargs)
       extract_string_kwargs_to_args(args, kwargs)
       case args.length
       when 1
@@ -307,7 +311,7 @@ module OpenC3
     #   get_cmd_value("TGT PKT ITEM", type: :RAW)
     #   get_cmd_value("TGT", "PKT", "ITEM", type: :RAW)
     #   get_cmd_value("TGT", "PKT", "ITEM", :RAW) # DEPRECATED
-    def get_cmd_value(*args, type: :CONVERTED, scope: $openc3_scope, token: $openc3_token)
+    def get_cmd_value(*args, type: :CONVERTED, manual: false, scope: $openc3_scope, token: $openc3_token)
       target_name = nil
       command_name = nil
       parameter_name = nil
@@ -341,7 +345,7 @@ module OpenC3
     # @param command_name [String] Packet name of the command. If not given then
     #    then most recent time from the given target will be returned.
     # @return [Array<Target Name, Command Name, Time Seconds, Time Microseconds>]
-    def get_cmd_time(target_name = nil, command_name = nil, scope: $openc3_scope, token: $openc3_token)
+    def get_cmd_time(target_name = nil, command_name = nil, manual: false, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'cmd_info', target_name: target_name, packet_name: command_name, scope: scope, token: token)
       if target_name and command_name
         target_name = target_name.upcase
@@ -379,7 +383,7 @@ module OpenC3
     # @param target_name [String] Target name of the command
     # @param command_name [String] Packet name of the command
     # @return [Numeric] Transmit count for the command
-    def get_cmd_cnt(*args, scope: $openc3_scope, token: $openc3_token)
+    def get_cmd_cnt(*args, manual: false, scope: $openc3_scope, token: $openc3_token)
       target_name, command_name = _extract_target_command_names('get_cmd_cnt', *args)
       authorize(permission: 'system', target_name: target_name, packet_name: command_name, scope: scope, token: token)
       TargetModel.packet(target_name, command_name, type: :CMD, scope: scope)
@@ -390,7 +394,7 @@ module OpenC3
     #
     # @param target_commands [Array<Array<String, String>>] Array of arrays containing target_name, packet_name
     # @return [Numeric] Transmit count for the command
-    def get_cmd_cnts(target_commands, scope: $openc3_scope, token: $openc3_token)
+    def get_cmd_cnts(target_commands, manual: false, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'system', scope: scope, token: token)
       unless target_commands.is_a?(Array) and target_commands[0].is_a?(Array)
         raise "get_cmd_cnts takes an array of arrays containing target, packet_name, e.g. [['INST', 'COLLECT'], ['INST', 'ABORT']]"
@@ -448,8 +452,8 @@ module OpenC3
       return [target_name, command_name, parameter_name]
     end
 
-    def _cmd_implementation(method_name, *args, range_check:, hazardous_check:, raw:, timeout: nil, log_message: nil,
-                           scope: $openc3_scope, token: $openc3_token, **kwargs)
+    def _cmd_implementation(method_name, *args, range_check:, hazardous_check:, raw:, timeout: nil, log_message: nil, manual: false,
+                            scope: $openc3_scope, token: $openc3_token, **kwargs)
       extract_string_kwargs_to_args(args, kwargs)
       unless [nil, true, false].include?(log_message)
         raise "Invalid log_message parameter: #{log_message}. Must be true or false."
@@ -480,7 +484,7 @@ module OpenC3
       target_name = target_name.upcase
       cmd_name = cmd_name.upcase
       cmd_params = cmd_params.transform_keys(&:upcase)
-      authorize(permission: 'cmd', target_name: target_name, packet_name: cmd_name, scope: scope, token: token)
+      authorize(permission: 'cmd', target_name: target_name, packet_name: cmd_name, manual: manual, scope: scope, token: token)
       packet = TargetModel.packet(target_name, cmd_name, type: :CMD, scope: scope)
       if packet['disabled']
         error = DisabledError.new

@@ -27,7 +27,7 @@ module OpenC3
                        'set_offline_access'
                      ])
 
-    def offline_access_needed(scope: $openc3_scope, token: $openc3_token)
+    def offline_access_needed(manual: false, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'system', scope: scope, token: token)
       begin
         authorize(permission: 'script_run', scope: scope, token: token)
@@ -60,7 +60,7 @@ module OpenC3
       end
     end
 
-    def set_offline_access(offline_access_token, scope: $openc3_scope, token: $openc3_token)
+    def set_offline_access(offline_access_token, manual: false, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'script_run', scope: scope, token: token)
       info = user_info(token)
       username = info['username']

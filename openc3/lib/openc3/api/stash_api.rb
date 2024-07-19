@@ -29,12 +29,12 @@ module OpenC3
                        'stash_delete'
                      ])
 
-    def stash_set(key, value, scope: $openc3_scope, token: $openc3_token)
+    def stash_set(key, value, manual: false, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'script_run', scope: scope, token: token)
       StashModel.set( {name: key, value: JSON.generate(value.as_json(:allow_nan => true)) }, scope: scope)
     end
 
-    def stash_get(key, scope: $openc3_scope, token: $openc3_token)
+    def stash_get(key, manual: false, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'script_view', scope: scope, token: token)
       result = StashModel.get(name: key, scope: scope)
       if result
@@ -44,17 +44,17 @@ module OpenC3
       end
     end
 
-    def stash_all(scope: $openc3_scope, token: $openc3_token)
+    def stash_all(manual: false, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'script_view', scope: scope, token: token)
       StashModel.all(scope: scope).transform_values { |hash| JSON.parse(hash["value"], :allow_nan => true, :create_additions => true) }
     end
 
-    def stash_keys(scope: $openc3_scope, token: $openc3_token)
+    def stash_keys(manual: false, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'script_view', scope: scope, token: token)
       StashModel.names(scope: scope)
     end
 
-    def stash_delete(key, scope: $openc3_scope, token: $openc3_token)
+    def stash_delete(key, manual: false, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'script_run', scope: scope, token: token)
       model = StashModel.get_model(name: key, scope: scope)
       model.destroy if model

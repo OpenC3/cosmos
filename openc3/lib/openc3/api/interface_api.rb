@@ -45,7 +45,7 @@ module OpenC3
     # @since 5.0.0
     # @param interface_name [String] Interface name
     # @return [Hash] Hash of all the interface information
-    def get_interface(interface_name, scope: $openc3_scope, token: $openc3_token)
+    def get_interface(interface_name, manual: false, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'system', interface_name: interface_name, scope: scope, token: token)
       interface = InterfaceModel.get(name: interface_name, scope: scope)
       raise "Interface '#{interface_name}' does not exist" unless interface
@@ -54,7 +54,7 @@ module OpenC3
     end
 
     # @return [Array<String>] All the interface names
-    def get_interface_names(scope: $openc3_scope, token: $openc3_token)
+    def get_interface_names(manual: false, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'system', scope: scope, token: token)
       InterfaceModel.names(scope: scope)
     end
@@ -63,7 +63,8 @@ module OpenC3
     #
     # @param interface_name [String] The name of the interface
     # @param interface_params [Array] Optional parameters to pass to the interface
-    def connect_interface(interface_name, *interface_params, scope: $openc3_scope, token: $openc3_token)
+    def connect_interface(interface_name, *interface_params, manual: false, scope: $openc3_scope, token: $openc3_token)
+      # TODO: Check if they have command authority for the targets mapped to this interface
       authorize(permission: 'system_set', interface_name: interface_name, scope: scope, token: token)
       InterfaceTopic.connect_interface(interface_name, *interface_params, scope: scope)
     end
@@ -71,7 +72,8 @@ module OpenC3
     # Disconnects from an interface and kills its telemetry gathering thread
     #
     # @param interface_name [String] The name of the interface
-    def disconnect_interface(interface_name, scope: $openc3_scope, token: $openc3_token)
+    def disconnect_interface(interface_name, manual: false, scope: $openc3_scope, token: $openc3_token)
+      # TODO: Check if they have command authority for the targets mapped to this interface
       authorize(permission: 'system_set', interface_name: interface_name, scope: scope, token: token)
       InterfaceTopic.disconnect_interface(interface_name, scope: scope)
     end
@@ -79,7 +81,8 @@ module OpenC3
     # Starts raw logging for an interface
     #
     # @param interface_name [String] The name of the interface
-    def start_raw_logging_interface(interface_name = 'ALL', scope: $openc3_scope, token: $openc3_token)
+    def start_raw_logging_interface(interface_name = 'ALL', manual: false, scope: $openc3_scope, token: $openc3_token)
+      # TODO: Check if they have command authority for the targets mapped to this interface
       authorize(permission: 'system_set', interface_name: interface_name, scope: scope, token: token)
       if interface_name == 'ALL'
         get_interface_names().each do |interface_name|
@@ -93,7 +96,8 @@ module OpenC3
     # Stop raw logging for an interface
     #
     # @param interface_name [String] The name of the interface
-    def stop_raw_logging_interface(interface_name = 'ALL', scope: $openc3_scope, token: $openc3_token)
+    def stop_raw_logging_interface(interface_name = 'ALL', manual: false, scope: $openc3_scope, token: $openc3_token)
+      # TODO: Check if they have command authority for the targets mapped to this interface
       authorize(permission: 'system_set', interface_name: interface_name, scope: scope, token: token)
       if interface_name == 'ALL'
         get_interface_names().each do |interface_name|
@@ -110,10 +114,10 @@ module OpenC3
     #   Numeric, Numeric>>] Array of Arrays containing \[name, state, num clients,
     #   TX queue size, RX queue size, TX bytes, RX bytes, Command count,
     #   Telemetry count] for all interfaces
-    def get_all_interface_info(scope: $openc3_scope, token: $openc3_token)
+    def get_all_interface_info(manual: false, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'system', scope: scope, token: token)
       info = []
-      InterfaceStatusModel.all(scope: scope).each do |int_name, int|
+      InterfaceStatusModel.all(scope: scope).each do |_int_name, int|
         info << [int['name'], int['state'], int['clients'], int['txsize'], int['rxsize'],
                  int['txbytes'], int['rxbytes'], int['txcnt'], int['rxcnt']]
       end
@@ -127,7 +131,8 @@ module OpenC3
     #
     # @param target_name [String/Array] The name of the target(s)
     # @param interface_name (see #connect_interface)
-    def map_target_to_interface(target_name, interface_name, cmd_only: false, tlm_only: false, unmap_old: true, scope: $openc3_scope, token: $openc3_token)
+    def map_target_to_interface(target_name, interface_name, cmd_only: false, tlm_only: false, unmap_old: true, manual: false, scope: $openc3_scope, token: $openc3_token)
+      # TODO: Check if they have command authority for the targets mapped to this interface
       authorize(permission: 'system_set', interface_name: interface_name, scope: scope, token: token)
       new_interface = InterfaceModel.get_model(name: interface_name, scope: scope)
       if Array === target_name
@@ -142,12 +147,14 @@ module OpenC3
       nil
     end
 
-    def interface_cmd(interface_name, cmd_name, *cmd_params, scope: $openc3_scope, token: $openc3_token)
+    def interface_cmd(interface_name, cmd_name, *cmd_params, manual: false, scope: $openc3_scope, token: $openc3_token)
+      # TODO: Check if they have command authority for the targets mapped to this interface
       authorize(permission: 'system_set', interface_name: interface_name, scope: scope, token: token)
       InterfaceTopic.interface_cmd(interface_name, cmd_name, *cmd_params, scope: scope)
     end
 
-    def interface_protocol_cmd(interface_name, cmd_name, *cmd_params, read_write: :READ_WRITE, index: -1, scope: $openc3_scope, token: $openc3_token)
+    def interface_protocol_cmd(interface_name, cmd_name, *cmd_params, read_write: :READ_WRITE, index: -1, manual: false, scope: $openc3_scope, token: $openc3_token)
+      # TODO: Check if they have command authority for the targets mapped to this interface
       authorize(permission: 'system_set', interface_name: interface_name, scope: scope, token: token)
       InterfaceTopic.protocol_cmd(interface_name, cmd_name, *cmd_params, read_write: read_write, index: index, scope: scope)
     end

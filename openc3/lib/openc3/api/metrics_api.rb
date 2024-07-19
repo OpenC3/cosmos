@@ -66,7 +66,7 @@ module OpenC3
     SUM_METRICS['text_log_total'] = 0
     SUM_METRICS['text_log_error_total'] = 0
 
-    def get_metrics(scope: $openc3_scope, token: $openc3_token)
+    def get_metrics(manual: false, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'system', scope: scope, token: token)
 
       sum_metrics = SUM_METRICS.dup
@@ -74,7 +74,7 @@ module OpenC3
       delay_metrics = DELAY_METRICS.dup
 
       metrics = MetricModel.all(scope: scope)
-      metrics.each do |microservice_name, metrics|
+      metrics.each do |_microservice_name, metrics|
         next unless metrics and metrics['values']
         metrics['values'].each do |metric_name, data|
           value = data['value']
