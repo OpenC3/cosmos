@@ -39,8 +39,9 @@
         </div>
         COSMOS Enterprise Edition removes all restrictions and offers users with
         role based access control, scaling on kubernetes, cloud platform
-        support, multiple scopes, various integrations with common protocols and
-        hardware, commercial licensing, and much more!<br /><br />
+        support, multiple scopes, Calendar and Autonomic, various integrations
+        with common protocols and hardware, commercial licensing, and much
+        more!<br /><br />
         Learn more at
         <a href="https://openc3.com/enterprise"
           >https://openc3.com/enterprise</a

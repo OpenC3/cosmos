@@ -34,7 +34,7 @@
     />
     <upgrade-to-enterprise-dialog
       v-model="showUpgradeToEnterpriseDialog"
-      reason="Open Source has a single DEFAULT scope."
+      reason="Enterprise allows additional Scopes"
     ></upgrade-to-enterprise-dialog>
   </div>
 </template>

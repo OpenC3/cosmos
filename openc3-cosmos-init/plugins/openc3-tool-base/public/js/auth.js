@@ -47,7 +47,7 @@ class Auth {
     return { name: 'Anonymous' }
   }
   userroles() {
-    return ['ALLSCOPES__admin']
+    return ['admin']
   }
   getInitOptions() {}
   init() {

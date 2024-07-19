@@ -150,7 +150,7 @@ export default {
           this.messages = []
         })
         .catch(function (err) {
-          // Cancelling the dialog forces catch and sets err to true
+          // Canceling the dialog forces catch and sets err to true
         })
     },
   },
