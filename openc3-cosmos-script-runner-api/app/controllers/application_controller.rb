@@ -49,10 +49,18 @@ class ApplicationController < ActionController::API
 
   # Authorize and rescue the possible execeptions
   # @return [Boolean] true if authorize successful
-  def authorization(permission)
+  def authorization(permission, target_name: nil)
+    manual = false
+    # We only check command authority on 'script_run' permission
+    # and only if the manual flag is set in the header
+    if permission == 'script_run' and request.headers['HTTP_MANUAL']
+      manual = true
+    end
     begin
       authorize(
         permission: permission,
+        target_name: target_name,
+        manual: manual,
         scope: params[:scope],
         token: request.headers['HTTP_AUTHORIZATION'],
       )

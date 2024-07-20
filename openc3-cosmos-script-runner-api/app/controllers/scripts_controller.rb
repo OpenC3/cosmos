@@ -96,7 +96,7 @@ class ScriptsController < ApplicationController
   def run
     # Extract the target that this script lives under
     target_name = params[:name].split('/')[0]
-    return unless authorization(permission: 'script_run', target_name: target_name)
+    return unless authorization('script_run', target_name: target_name)
     suite_runner = params[:suiteRunner] ? params[:suiteRunner].as_json(:allow_nan => true) : nil
     disconnect = params[:disconnect] == 'disconnect'
     environment = params[:environment]
@@ -134,7 +134,7 @@ class ScriptsController < ApplicationController
   def syntax
     # Extract the target that this script lives under
     target_name = params[:name].split('/')[0]
-    return unless authorization(permission: 'script_run', target_name: target_name)
+    return unless authorization('script_run', target_name: target_name)
     script = Script.syntax(params[:name], request.body.read)
     if script
       render :json => script
