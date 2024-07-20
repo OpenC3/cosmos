@@ -52,7 +52,7 @@ test('displays the interfaces', async ({ page, utils }) => {
 })
 
 if (process.env.ENTERPRISE !== '1') {
-  test.only('disables cmd authority and shows enterprise upgrade', async ({
+  test('disables cmd authority and shows enterprise upgrade', async ({
     page,
     utils,
   }) => {
