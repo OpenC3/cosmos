@@ -31,7 +31,12 @@
           <!-- including the clicks on the button so the tooltipHandler -->
           <!-- is also the button handler  -->
           <div v-on="on" v-bind="attrs" @click="tooltipHandler('takeAll')">
-            <v-btn color="primary" class="mr-2" :disabled="!commandAuthority">
+            <v-btn
+              color="primary"
+              class="mr-2"
+              :disabled="!commandAuthority"
+              data-test="take-all"
+            >
               Take All Cmd Authority
               <v-icon right> mdi-account-check </v-icon>
             </v-btn>
@@ -49,7 +54,12 @@
       <v-tooltip bottom :disabled="enterprise && commandAuthority">
         <template v-slot:activator="{ on, attrs }">
           <div v-on="on" v-bind="attrs" @click="tooltipHandler('releaseAll')">
-            <v-btn color="primary" class="mr-2" :disabled="!commandAuthority">
+            <v-btn
+              color="primary"
+              class="mr-2"
+              :disabled="!commandAuthority"
+              data-test="release-all"
+            >
               Release All Cmd Authority
               <v-icon right> mdi-account-cancel </v-icon>
             </v-btn>
@@ -156,21 +166,11 @@ export default {
       showUpgradeToEnterpriseDialog: false,
     }
   },
-  created: function () {
-    Api.get('/openc3-api/info').then((response) => {
+  created: async function () {
+    await Api.get('/openc3-api/info').then((response) => {
       if (response.data.enterprise) {
         this.enterprise = true
       }
-    })
-    // Get the initial scope setting
-    Api.get(`/openc3-api/scopes/${window.openc3Scope}`).then((response) => {
-      if (response.data.command_authority) {
-        this.commandAuthority = true
-      }
-    })
-    // Get the initial command authority settings
-    Api.get('/openc3-api/cmdauth').then((response) => {
-      this.cmdAuth = response.data
     })
     // Populate the table once and then just update the data in the
     // update() method. This ensures the data doesn't get deleted
@@ -184,18 +184,30 @@ export default {
         })
       }
     })
-    // Create a cable to the SystemEventsChannel so we can maintain
-    // state with the backend
-    this.cable
-      .createSubscription('SystemEventsChannel', window.openc3Scope, {
-        received: (data) => {
-          this.cable.recordPing()
-          this.handleMessages(data)
-        },
+    if (this.enterprise) {
+      // Get the initial scope setting
+      Api.get(`/openc3-api/scopes/${window.openc3Scope}`).then((response) => {
+        if (response.data.command_authority) {
+          this.commandAuthority = true
+        }
       })
-      .then((systemSubscription) => {
-        this.systemSubscription = systemSubscription
+      // Get the initial command authority settings
+      Api.get('/openc3-api/cmdauth').then((response) => {
+        this.cmdAuth = response.data
       })
+      // Create a cable to the SystemEventsChannel so we can maintain
+      // state with the backend
+      this.cable
+        .createSubscription('SystemEventsChannel', window.openc3Scope, {
+          received: (data) => {
+            this.cable.recordPing()
+            this.handleMessages(data)
+          },
+        })
+        .then((systemSubscription) => {
+          this.systemSubscription = systemSubscription
+        })
+    }
   },
   destroyed() {
     if (this.systemSubscription) {
@@ -204,6 +216,7 @@ export default {
     this.cable.disconnect()
   },
   methods: {
+    // Enterprise only
     handleMessages(data) {
       data.forEach((message) => {
         let event = JSON.parse(message['event'])
@@ -231,7 +244,7 @@ export default {
           window.open('/tools/admin/scopes', '_blank')
         }
       } else {
-        showUpgradeToEnterpriseDialog = true
+        this.showUpgradeToEnterpriseDialog = true
       }
     },
     update() {
