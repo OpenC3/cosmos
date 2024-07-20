@@ -21,6 +21,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/version'
+require 'openc3/io/json_drb'
 require 'faraday'
 
 module OpenC3
@@ -145,7 +146,7 @@ module OpenC3
     def _make_request(headers, data)
       realm = ENV['OPENC3_KEYCLOAK_REALM'] || 'openc3'
       uri = URI("#{@url}/realms/#{realm}/protocol/openid-connect/token")
-      @log[0] = "request uri: #{uri.to_s} header: #{headers.to_s} body: #{data.to_s}"
+      @log[0] = "request uri: #{uri} header: #{headers} body: #{data}"
       STDOUT.puts @log[0] if JsonDRb.debug?
       saved_verbose = $VERBOSE; $VERBOSE = nil
       begin
