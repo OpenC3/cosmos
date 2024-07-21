@@ -1265,12 +1265,15 @@ export default {
     //   }
     // },
     getSize: function (type) {
+      let navDrawerWidth = 0
       const navDrawer = document.getElementById('openc3-nav-drawer')
-      const navDrawerWidth = navDrawer.classList.contains(
-        'v-navigation-drawer--open',
-      )
-        ? navDrawer.clientWidth
-        : 0
+      if (navDrawer) {
+        navDrawerWidth = navDrawer.classList.contains(
+          'v-navigation-drawer--open',
+        )
+          ? navDrawer.clientWidth
+          : 0
+      }
 
       let legendWidth = 0
       if (this.legendPosition === 'right' || this.legendPosition === 'left') {
