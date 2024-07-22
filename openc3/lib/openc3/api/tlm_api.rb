@@ -71,25 +71,25 @@ module OpenC3
     # @return [Object] The telemetry value formatted as requested
     def tlm(*args, type: :CONVERTED, cache_timeout: nil, manual: false, scope: $openc3_scope, token: $openc3_token)
       target_name, packet_name, item_name = _tlm_process_args(args, 'tlm', cache_timeout: cache_timeout, scope: scope)
-      authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
+      authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
       CvtModel.get_item(target_name, packet_name, item_name, type: type.intern, cache_timeout: cache_timeout, scope: scope)
     end
 
     def tlm_raw(*args, cache_timeout: nil, manual: false, scope: $openc3_scope, token: $openc3_token)
-      tlm(*args, type: :RAW, cache_timeout: cache_timeout, scope: scope, token: token)
+      tlm(*args, type: :RAW, cache_timeout: cache_timeout, manual: manual, scope: scope, token: token)
     end
 
     def tlm_formatted(*args, cache_timeout: nil, manual: false, scope: $openc3_scope, token: $openc3_token)
-      tlm(*args, type: :FORMATTED, cache_timeout: cache_timeout, scope: scope, token: token)
+      tlm(*args, type: :FORMATTED, cache_timeout: cache_timeout, manual: manual, scope: scope, token: token)
     end
 
     def tlm_with_units(*args, cache_timeout: nil, manual: false, scope: $openc3_scope, token: $openc3_token)
-      tlm(*args, type: :WITH_UNITS, cache_timeout: cache_timeout, scope: scope, token: token)
+      tlm(*args, type: :WITH_UNITS, cache_timeout: cache_timeout, manual: manual, scope: scope, token: token)
     end
 
     # @deprecated Use tlm with type:
     def tlm_variable(*args, cache_timeout: nil, manual: false, scope: $openc3_scope, token: $openc3_token)
-      tlm(*args[0..-2], type: args[-1].intern, cache_timeout: cache_timeout, scope: scope, token: token)
+      tlm(*args[0..-2], type: args[-1].intern, cache_timeout: cache_timeout, manual: manual, scope: scope, token: token)
     end
 
     # Set a telemetry item in the current value table.
@@ -176,7 +176,7 @@ module OpenC3
 
     # Get the list of CVT overrides
     def get_overrides(manual: false, scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'tlm', scope: scope, token: token)
+      authorize(permission: 'tlm', manual: manual, scope: scope, token: token)
       CvtModel.overrides(scope: scope)
     end
 
@@ -206,7 +206,7 @@ module OpenC3
     # @return [Hash] telemetry hash with last telemetry buffer
     def get_tlm_buffer(*args, manual: false, scope: $openc3_scope, token: $openc3_token)
       target_name, packet_name = _extract_target_packet_names('get_tlm_buffer', *args)
-      authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
+      authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
       TargetModel.packet(target_name, packet_name, scope: scope)
       topic = "#{scope}__TELEMETRY__{#{target_name}}__#{packet_name}"
       msg_id, msg_hash = Topic.get_newest_message(topic)
@@ -228,7 +228,7 @@ module OpenC3
     #   state can be one of {OpenC3::Limits::LIMITS_STATES}
     def get_tlm_packet(*args, stale_time: 30, type: :CONVERTED, cache_timeout: nil, manual: false, scope: $openc3_scope, token: $openc3_token)
       target_name, packet_name = _extract_target_packet_names('get_tlm_packet', *args)
-      authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
+      authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
       packet = TargetModel.packet(target_name, packet_name, scope: scope)
       t = _validate_tlm_type(type)
       raise ArgumentError, "Unknown type '#{type}' for #{target_name} #{packet_name}" if t.nil?
@@ -265,7 +265,7 @@ module OpenC3
       end
       packets.uniq!
       packets.each do |target_name, packet_name|
-        authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
+        authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
       end
       CvtModel.get_tlm_values(cvt_items, stale_time: stale_time, cache_timeout: cache_timeout, scope: scope)
     end
@@ -277,7 +277,7 @@ module OpenC3
     # @return [Array<Hash>] Array of all telemetry packet hashes
     def get_all_tlm(target_name, manual: false, scope: $openc3_scope, token: $openc3_token)
       target_name = target_name.upcase
-      authorize(permission: 'tlm', target_name: target_name, scope: scope, token: token)
+      authorize(permission: 'tlm', target_name: target_name, manual: manual, scope: scope, token: token)
       TargetModel.packets(target_name, type: :TLM, scope: scope)
     end
     alias get_all_telemetry get_all_tlm
@@ -289,7 +289,7 @@ module OpenC3
     # @return [Array<String>] Array of all telemetry packet names
     def get_all_tlm_names(target_name, hidden: false, manual: false, scope: $openc3_scope, token: $openc3_token)
       begin
-        packets = get_all_tlm(target_name, scope: scope, token: token)
+        packets = get_all_tlm(target_name, manual: manual, scope: scope, token: token)
       rescue RuntimeError
         packets = []
       end
@@ -313,7 +313,7 @@ module OpenC3
     # @return [Hash] Telemetry packet hash
     def get_tlm(*args, manual: false, scope: $openc3_scope, token: $openc3_token)
       target_name, packet_name = _extract_target_packet_names('get_tlm', *args)
-      authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
+      authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
       TargetModel.packet(target_name, packet_name, scope: scope)
     end
     alias get_telemetry get_tlm
@@ -327,7 +327,7 @@ module OpenC3
     # @return [Hash] Telemetry packet item hash
     def get_item(*args, manual: false, scope: $openc3_scope, token: $openc3_token)
       target_name, packet_name, item_name = _extract_target_packet_item_names('get_item', *args)
-      authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
+      authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
       TargetModel.packet_item(target_name, packet_name, item_name, scope: scope)
     end
 
@@ -348,7 +348,7 @@ module OpenC3
       packets.each do |target_name, packet_name|
         target_name = target_name.upcase
         packet_name = packet_name.upcase
-        authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
+        authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
         topic = "#{scope}__DECOM__{#{target_name}}__#{packet_name}"
         id, _ = Topic.get_newest_message(topic)
         result[topic] = id ? id : '0-0'
@@ -364,7 +364,7 @@ module OpenC3
     # @param count [Integer] Maximum number of packets to return from EACH packet stream
     # @return [Array<String, Array<Hash>] Array of the ID and array of all packets found
     def get_packets(id, block: nil, count: 1000, manual: false, scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'tlm', scope: scope, token: token)
+      authorize(permission: 'tlm', manual: manual, scope: scope, token: token)
       # Split the list of topic, ID values and turn it into a hash for easy updates
       lookup = Hash[*id.split(SUBSCRIPTION_DELIMITER)]
       xread = Topic.read_topics(lookup.keys, lookup.values, nil, count) # Always don't block
@@ -389,7 +389,7 @@ module OpenC3
     # @return [Numeric] Receive count for the telemetry packet
     def get_tlm_cnt(*args, manual: false, scope: $openc3_scope, token: $openc3_token)
       target_name, packet_name = _extract_target_packet_names('get_tlm_cnt', *args)
-      authorize(permission: 'system', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
+      authorize(permission: 'system', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
       TargetModel.packet(target_name, packet_name, scope: scope)
       Topic.get_cnt("#{scope}__TELEMETRY__{#{target_name}}__#{packet_name}")
     end
@@ -399,7 +399,7 @@ module OpenC3
     # @param target_packets [Array<Array<String, String>>] Array of arrays containing target_name, packet_name
     # @return [Array<Numeric>] Receive count for the telemetry packets
     def get_tlm_cnts(target_packets, manual: false, scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'system', scope: scope, token: token)
+      authorize(permission: 'system', manual: manual, scope: scope, token: token)
       counts = []
       target_packets.each do |target_name, packet_name|
         target_name = target_name.upcase
@@ -416,7 +416,7 @@ module OpenC3
     # @return [Array<String>] All of the ignored telemetry items for a packet.
     def get_packet_derived_items(*args, manual: false, scope: $openc3_scope, token: $openc3_token)
       target_name, packet_name = _extract_target_packet_names('get_packet_derived_items', *args)
-      authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
+      authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
       packet = TargetModel.packet(target_name, packet_name, scope: scope)
       return packet['items'].select { |item| item['data_type'] == 'DERIVED' }.map { |item| item['name'] }
     end

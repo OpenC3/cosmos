@@ -35,17 +35,17 @@ module OpenC3
                      ])
 
     def list_settings(manual: false, scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'system', scope: scope, token: token)
+      authorize(permission: 'system', manual: manual, scope: scope, token: token)
       SettingModel.names(scope: scope)
     end
 
     def get_all_settings(manual: false, scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'system', scope: scope, token: token)
+      authorize(permission: 'system', manual: manual, scope: scope, token: token)
       SettingModel.all(scope: scope)
     end
 
     def get_setting(name, manual: false, scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'system', scope: scope, token: token)
+      authorize(permission: 'system', manual: manual, scope: scope, token: token)
       setting = SettingModel.get(name: name, scope: scope)
       if setting
         setting['data']
@@ -55,14 +55,14 @@ module OpenC3
     end
 
     def get_settings(*settings, manual: false, scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'system', scope: scope, token: token)
+      authorize(permission: 'system', manual: manual, scope: scope, token: token)
       result = []
       settings.each { |name| result << get_setting(name, scope: scope, token: token) }
       result
     end
 
     def set_setting(name, data, manual: false, scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'admin', scope: scope, token: token)
+      authorize(permission: 'admin', manual: manual, scope: scope, token: token)
       SettingModel.set({ name: name, data: data }, scope: scope)
       LocalMode.save_setting(scope, name, data)
     end

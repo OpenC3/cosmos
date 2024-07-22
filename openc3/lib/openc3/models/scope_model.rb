@@ -26,7 +26,18 @@ require 'openc3/models/plugin_model'
 require 'openc3/models/microservice_model'
 require 'openc3/models/setting_model'
 require 'openc3/models/trigger_group_model'
-require 'openc3/topics/system_topic'
+require 'openc3/topics/system_events_topic'
+
+begin
+  require 'openc3-enterprise/models/cmd_authority_model'
+rescue LoadError
+  # Stub out the Enterprise CmdAuthorityModel to do nothing
+  class CmdAuthorityModel
+    def self.names(scope:)
+      []
+    end
+  end
+end
 
 module OpenC3
   class ScopeModel < Model
@@ -103,7 +114,17 @@ module OpenC3
       raise "Invalid scope name: #{@name}" if @name !~ /^[a-zA-Z0-9_-]+$/
       @name = @name.upcase
       super(update: update, force: force, queued: queued)
-      SystemTopic.write(:scope, as_json())
+
+      # If we're updating the scope and disabling command_authority
+      # then we clear out all the existing values so it comes up fresh
+      if update and @command_authority == false
+        CmdAuthorityModel.names(scope: @name).each do |auth_name|
+          model = CmdAuthorityModel.get_model(name: auth_name, scope: @name)
+          model.destroy if model
+        end
+      end
+
+      SystemEventsTopic.write(:scope, as_json())
     end
 
     def destroy

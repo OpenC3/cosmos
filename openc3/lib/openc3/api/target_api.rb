@@ -37,7 +37,7 @@ module OpenC3
     #
     # @return [Array<String>] All target names
     def get_target_names(manual: false, scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'system', scope: scope, token: token)
+      authorize(permission: 'system', manual: manual, scope: scope, token: token)
       TargetModel.names(scope: scope)
     end
     # get_target_list is DEPRECATED
@@ -49,7 +49,7 @@ module OpenC3
     # @param target_name [String] Target name
     # @return [Hash] Hash of all the target properties
     def get_target(target_name, manual: false, scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'system', target_name: target_name, scope: scope, token: token)
+      authorize(permission: 'system', target_name: target_name, manual: manual, scope: scope, token: token)
       TargetModel.get(name: target_name, scope: scope)
     end
 
@@ -57,7 +57,7 @@ module OpenC3
     #
     # @return [Array<Array<String, String] Array of Arrays \[name, interfaces]
     def get_target_interfaces(manual: false, scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'system', scope: scope, token: token)
+      authorize(permission: 'system', manual: manual, scope: scope, token: token)
       info = []
       interfaces = InterfaceModel.all(scope: scope)
       get_target_names(scope: scope, token: token).each do |target_name|
@@ -77,7 +77,7 @@ module OpenC3
     #
     # @return [Array<Array<String, String, Numeric, Numeric>] Array of Arrays \[name, interface, cmd_cnt, tlm_cnt]
     def get_all_target_info(manual: false, scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'system', scope: scope, token: token)
+      authorize(permission: 'system', manual: manual, scope: scope, token: token)
       info = []
       get_target_names(scope: scope, token: token).each do |target_name|
         cmd_cnt = 0

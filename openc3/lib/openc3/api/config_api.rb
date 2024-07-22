@@ -34,27 +34,27 @@ module OpenC3
     ])
 
     def config_tool_names(manual: false, scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'system', scope: scope, token: token)
+      authorize(permission: 'system', manual: manual, scope: scope, token: token)
       ToolConfigModel.config_tool_names(scope: scope)
     end
 
     def list_configs(tool, manual: false, scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'system', scope: scope, token: token)
+      authorize(permission: 'system', manual: manual, scope: scope, token: token)
       ToolConfigModel.list_configs(tool, scope: scope)
     end
 
     def load_config(tool, name, manual: false, scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'system', scope: scope, token: token)
+      authorize(permission: 'system', manual: manual, scope: scope, token: token)
       ToolConfigModel.load_config(tool, name, scope: scope)
     end
 
     def save_config(tool, name, data, manual: false, scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'system_set', scope: scope, token: token)
+      authorize(permission: 'system_set', manual: manual, scope: scope, token: token)
       ToolConfigModel.save_config(tool, name, data, scope: scope)
     end
 
     def delete_config(tool, name, manual: false, scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'system_set', scope: scope, token: token)
+      authorize(permission: 'system_set', manual: manual, scope: scope, token: token)
       ToolConfigModel.delete_config(tool, name, scope: scope)
     end
   end

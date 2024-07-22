@@ -279,18 +279,10 @@ export default {
       })
     },
     takeAll() {
-      Api.post('/openc3-api/cmdauth/take-all', {
-        data: {
-          target_names: this.data.map((target) => target.name),
-        },
-      })
+      Api.post('/openc3-api/cmdauth/take-all')
     },
     releaseAll() {
-      Api.post('/openc3-api/cmdauth/release-all', {
-        data: {
-          target_names: this.data.map((target) => target.name),
-        },
-      })
+      Api.post('/openc3-api/cmdauth/release-all')
     },
   },
 }

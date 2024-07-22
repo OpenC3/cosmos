@@ -19,7 +19,7 @@
 require 'openc3/topics/topic'
 
 module OpenC3
-  class SystemTopic < Topic
+  class SystemEventsTopic < Topic
     PRIMARY_KEY = "OPENC3__SYSTEM__EVENTS".freeze
 
     def self.update_topic_offsets()

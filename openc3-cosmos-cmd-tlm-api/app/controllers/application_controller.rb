@@ -44,6 +44,7 @@ class ApplicationController < ActionController::API
       authorize(
         permission: permission,
         target_name: target_name,
+        manual: request.headers['HTTP_MANUAL'],
         scope: params[:scope],
         token: request.headers['HTTP_AUTHORIZATION'],
       )

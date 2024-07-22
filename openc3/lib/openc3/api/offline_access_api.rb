@@ -28,9 +28,9 @@ module OpenC3
                      ])
 
     def offline_access_needed(manual: false, scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'system', scope: scope, token: token)
+      authorize(permission: 'system', manual: manual, scope: scope, token: token)
       begin
-        authorize(permission: 'script_run', scope: scope, token: token)
+        authorize(permission: 'script_view', manual: manual, scope: scope, token: token)
       rescue
         # Not needed if can't run scripts
         return false
@@ -61,7 +61,7 @@ module OpenC3
     end
 
     def set_offline_access(offline_access_token, manual: false, scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'script_run', scope: scope, token: token)
+      authorize(permission: 'script_view', manual: manual, scope: scope, token: token)
       info = user_info(token)
       username = info['username']
       raise "Invalid username" if not username or username == ''

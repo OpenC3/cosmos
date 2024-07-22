@@ -44,7 +44,7 @@ module OpenC3
     # @param router_name [String] Router name
     # @return [Hash] Hash of all the router information
     def get_router(router_name, manual: false, scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'system', router_name: router_name, scope: scope, token: token)
+      authorize(permission: 'system', router_name: router_name, manual: manual, scope: scope, token: token)
       router = RouterModel.get(name: router_name, scope: scope)
       raise "Router '#{router_name}' does not exist" unless router
 
@@ -53,7 +53,7 @@ module OpenC3
 
     # @return [Array<String>] All the router names
     def get_router_names(manual: false, scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'system', scope: scope, token: token)
+      authorize(permission: 'system', manual: manual, scope: scope, token: token)
       RouterModel.names(scope: scope)
     end
 
@@ -63,7 +63,7 @@ module OpenC3
     # @param router_params [Array] Optional parameters to pass to the router
     def connect_router(router_name, *router_params, manual: false, scope: $openc3_scope, token: $openc3_token)
       # TODO: Check if they have command authority for the targets mapped to this interface
-      authorize(permission: 'system_set', router_name: router_name, scope: scope, token: token)
+      authorize(permission: 'system_set', router_name: router_name, manual: manual, scope: scope, token: token)
       RouterTopic.connect_router(router_name, *router_params, scope: scope)
     end
 
@@ -72,7 +72,7 @@ module OpenC3
     # @param router_name [String] Name of router
     def disconnect_router(router_name, manual: false, scope: $openc3_scope, token: $openc3_token)
       # TODO: Check if they have command authority for the targets mapped to this interface
-      authorize(permission: 'system_set', router_name: router_name, scope: scope, token: token)
+      authorize(permission: 'system_set', router_name: router_name, manual: manual, scope: scope, token: token)
       RouterTopic.disconnect_router(router_name, scope: scope)
     end
 
@@ -81,7 +81,7 @@ module OpenC3
     # @param router_name [String] The name of the router
     def start_raw_logging_router(router_name = 'ALL', manual: false, scope: $openc3_scope, token: $openc3_token)
       # TODO: Check if they have command authority for the targets mapped to this interface
-      authorize(permission: 'system_set', router_name: router_name, scope: scope, token: token)
+      authorize(permission: 'system_set', router_name: router_name, manual: manual, scope: scope, token: token)
       if router_name == 'ALL'
         get_router_names().each do |router_name|
           RouterTopic.start_raw_logging(router_name, scope: scope)
@@ -96,7 +96,7 @@ module OpenC3
     # @param router_name [String] The name of the router
     def stop_raw_logging_router(router_name = 'ALL', manual: false, scope: $openc3_scope, token: $openc3_token)
       # TODO: Check if they have command authority for the targets mapped to this interface
-      authorize(permission: 'system_set', router_name: router_name, scope: scope, token: token)
+      authorize(permission: 'system_set', router_name: router_name, manual: manual, scope: scope, token: token)
       if router_name == 'ALL'
         get_router_names().each do |router_name|
           RouterTopic.stop_raw_logging(router_name, scope: scope)
@@ -113,7 +113,7 @@ module OpenC3
     #   TX queue size, RX queue size, TX bytes, RX bytes, Command count,
     #   Telemetry count] for all routers
     def get_all_router_info(manual: false, scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'system', scope: scope, token: token)
+      authorize(permission: 'system', manual: manual, scope: scope, token: token)
       info = []
       RouterStatusModel.all(scope: scope).each do |_router_name, router|
         info << [router['name'], router['state'], router['clients'], router['txsize'], router['rxsize'],\
@@ -125,13 +125,13 @@ module OpenC3
 
     def router_cmd(router_name, cmd_name, *cmd_params, manual: false, scope: $openc3_scope, token: $openc3_token)
       # TODO: Check if they have command authority for the targets mapped to this interface
-      authorize(permission: 'system_set', router_name: router_name, scope: scope, token: token)
+      authorize(permission: 'system_set', router_name: router_name, manual: manual, scope: scope, token: token)
       RouterTopic.router_cmd(router_name, cmd_name, *cmd_params, scope: scope)
     end
 
     def router_protocol_cmd(router_name, cmd_name, *cmd_params, read_write: :READ_WRITE, index: -1, manual: false, scope: $openc3_scope, token: $openc3_token)
       # TODO: Check if they have command authority for the targets mapped to this interface
-      authorize(permission: 'system_set', router_name: router_name, scope: scope, token: token)
+      authorize(permission: 'system_set', router_name: router_name, manual: manual, scope: scope, token: token)
       RouterTopic.protocol_cmd(router_name, cmd_name, *cmd_params, read_write: read_write, index: index, scope: scope)
     end
   end

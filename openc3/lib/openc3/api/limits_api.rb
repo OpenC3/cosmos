@@ -48,7 +48,7 @@ module OpenC3
     #
     # @return [Array<Array<String, String, String, String>>]
     def get_out_of_limits(manual: false, scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'tlm', scope: scope, token: token)
+      authorize(permission: 'tlm', manual: manual, scope: scope, token: token)
       LimitsEventTopic.out_of_limits(scope: scope)
     end
 
@@ -110,7 +110,7 @@ module OpenC3
     # @return [Boolean] Whether limits are enable for the itme
     def limits_enabled?(*args, manual: false, scope: $openc3_scope, token: $openc3_token)
       target_name, packet_name, item_name = _tlm_process_args(args, 'limits_enabled?', scope: scope)
-      authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
+      authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
       return TargetModel.packet_item(target_name, packet_name, item_name, scope: scope)['limits']['enabled'] ? true : false
     end
     alias limits_enabled limits_enabled?
@@ -126,7 +126,7 @@ module OpenC3
     # @param args [String|Array<String>] See the description for calling style
     def enable_limits(*args, manual: false, scope: $openc3_scope, token: $openc3_token)
       target_name, packet_name, item_name = _tlm_process_args(args, 'enable_limits', scope: scope)
-      authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
+      authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
       packet = TargetModel.packet(target_name, packet_name, scope: scope)
       found_item = nil
       packet['items'].each do |item|
@@ -159,7 +159,7 @@ module OpenC3
     # @param args [String|Array<String>] See the description for calling style
     def disable_limits(*args, manual: false, scope: $openc3_scope, token: $openc3_token)
       target_name, packet_name, item_name = _tlm_process_args(args, 'disable_limits', scope: scope)
-      authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
+      authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
       packet = TargetModel.packet(target_name, packet_name, scope: scope)
       found_item = nil
       packet['items'].each do |item|
@@ -191,7 +191,7 @@ module OpenC3
     #
     # @return [Hash{String => Array<Number, Number, Number, Number, Number, Number>}]
     def get_limits(target_name, packet_name, item_name, cache_timeout: nil, manual: false, scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
+      authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
       limits = {}
       item = _get_item(target_name, packet_name, item_name, cache_timeout: cache_timeout, scope: scope)
       item['limits'].each do |key, vals|
@@ -208,7 +208,7 @@ module OpenC3
     def set_limits(target_name, packet_name, item_name, red_low, yellow_low, yellow_high, red_high,
                    green_low = nil, green_high = nil, limits_set = 'CUSTOM', persistence = nil, enabled = true,
                    manual: false, scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
+      authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
       if (red_low > yellow_low) || (yellow_low >= yellow_high) || (yellow_high > red_high)
         raise "Invalid limits specified. Ensure yellow limits are within red limits."
       end
@@ -260,7 +260,7 @@ module OpenC3
     # @since 5.0.0 Returns hash with values
     # @return [Hash{String => Array<Array<String, String, String>>]
     def get_limits_groups(manual: false, scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'tlm', scope: scope, token: token)
+      authorize(permission: 'tlm', manual: manual, scope: scope, token: token)
       TargetModel.limits_groups(scope: scope)
     end
 
@@ -282,7 +282,7 @@ module OpenC3
     #
     # @return [Array<String>] All defined limits sets
     def get_limits_sets(manual: false, scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'tlm', scope: scope, token: token)
+      authorize(permission: 'tlm', manual: manual, scope: scope, token: token)
       LimitsEventTopic.sets(scope: scope).keys
     end
 
@@ -290,7 +290,7 @@ module OpenC3
     #
     # @param limits_set [String] The name of the limits set
     def set_limits_set(limits_set, manual: false, scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'tlm_set', scope: scope, token: token)
+      authorize(permission: 'tlm_set', manual: manual, scope: scope, token: token)
       message = "Setting Limits Set: #{limits_set}"
       Logger.info(message, scope: scope)
       LimitsEventTopic.write({ type: :LIMITS_SET, set: limits_set.to_s,
@@ -301,7 +301,7 @@ module OpenC3
     #
     # @return [String] The current limits set
     def get_limits_set(manual: false, scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'tlm', scope: scope, token: token)
+      authorize(permission: 'tlm', manual: manual, scope: scope, token: token)
       LimitsEventTopic.current_set(scope: scope)
     end
 
@@ -314,7 +314,7 @@ module OpenC3
     # @return [Hash, Integer] Event hash followed by the offset. The offset can
     #   be used in subsequent calls to return events from where the last call left off.
     def get_limits_events(offset = nil, count: 100, manual: false, scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'tlm', scope: scope, token: token)
+      authorize(permission: 'tlm', manual: manual, scope: scope, token: token)
       LimitsEventTopic.read(offset, count: count, scope: scope)
     end
 

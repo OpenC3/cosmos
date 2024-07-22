@@ -28,7 +28,7 @@ require 'openc3/version'
 module OpenC3
   class Cts
     # This sets a global flag $openc3_authorize = true
-    # which is used by authorization.rb to bypass the
+    # which is used by authorization.rb to enable the
     # role and permission checks. This is because the Cts
     # is an internal microservice inside the trust zone.
     include AuthorizedApi

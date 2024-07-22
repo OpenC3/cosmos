@@ -67,7 +67,7 @@ module OpenC3
     SUM_METRICS['text_log_error_total'] = 0
 
     def get_metrics(manual: false, scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'system', scope: scope, token: token)
+      authorize(permission: 'system', manual: manual, scope: scope, token: token)
 
       sum_metrics = SUM_METRICS.dup
       duration_metrics = DURATION_METRICS.dup
