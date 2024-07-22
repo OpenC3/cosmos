@@ -2,15 +2,16 @@
 file = open_file_dialog(
     "Open a single file", "Choose something interesting", filter=".txt"
 )
-print(file)  # Python File object
-print(file.path)  # Path of the tempfile (generally not used)
-print(file.filename)  # Filename that was selected in the dialog
-print(file.read)
-file.delete
+print(file)  # Python tempfile.NamedTemporaryFile object
+print(file.filename())  # Filename that was selected in the dialog
+print(file.read())
+file.close()
 
 files = open_files_dialog("Open multiple files")  # message is optional
-print(files)  # Array of File objects (even if you select only one)
+print(
+    files
+)  # Array of tempfile.NamedTemporaryFile objects (even if you select only one)
 for file in files:
-    print(file.filename)
-    print(file.read)
-    file.delete
+    print(file.filename())
+    print(file.read())
+    file.close()

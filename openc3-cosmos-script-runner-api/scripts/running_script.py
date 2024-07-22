@@ -17,6 +17,7 @@
 from openc3.script.suite_runner import SuiteRunner
 from openc3.utilities.string import build_timestamped_filename
 from openc3.utilities.bucket_utilities import BucketUtilities
+from openc3.script.storage import _get_storage_file
 import re
 import linecache
 
@@ -135,11 +136,16 @@ def running_script_method(method, *args, **kwargs):
             else:
                 if "open_file" in method:
                     files = []
-                    for filename in input:
-                        # TODO file = _get_storage_file(f"tmp/{filename}", scope = RunningScript.instance.scope)
-                        # Set filename method we added to Tempfile in the core_ext
-                        # file.filename = filename
-                        # files.append(file)
+                    for theFilename in input:
+                        file = _get_storage_file(
+                            f"tmp/{theFilename}", scope=RunningScript.instance.scope
+                        )
+
+                        def filename(self):
+                            return theFilename
+
+                        type(file).filename = filename
+                        files.append(file)
                         pass
                     if method == "open_file_dialog":  # Simply return the only file
                         files = files[0]
