@@ -29,7 +29,7 @@ module OpenC3
       mock_redis()
     end
 
-    describe "class all" do
+    describe "self.all" do
       it "returns all the metrics" do
         model = MetricModel.new(name: "foo", scope: "scope", values: {"test" => {"value" => 5}})
         model.create(force: true)
@@ -41,7 +41,7 @@ module OpenC3
       end
     end
 
-    describe "instance as_json" do
+    describe "as_json" do
       it "encodes all the input parameters" do
         model = MetricModel.new(name: "foo", scope: "scope", values: {"test" => {"value" => 5}})
         json = model.as_json(:allow_nan => true)
@@ -62,6 +62,8 @@ module OpenC3
       it "destroys by name in scope" do
         model = MetricModel.new(name: "baz", scope: "scope", values: {"test "=> {"value" =>6}})
         model.create
+        model = MetricModel.new(name: "bOz", scope: "scope", values: {"test "=> {"value" =>6}})
+        model.create
         MetricModel.destroy(scope: 'scope', name: 'baz')
         result = MetricModel.get(name: "baz", scope: "scope")
         expect(result).to be_nil
@@ -80,7 +82,7 @@ module OpenC3
     describe "redis_metrics" do
       it "returns redis metrics from Store and Ephemeral Store" do
         values = {
-          'connected_clients' => {'value' => 0},
+          'connected_clients' => {'value' => 37},
           'used_memory_rss' => {'value' => 0},
           'total_commands_processed' => {'value' => 0},
           'instantaneous_ops_per_sec' => {'value' => 0},
@@ -106,14 +108,7 @@ module OpenC3
 
         result = MetricModel.redis_metrics
         expect(result.empty?).to eql(false)
-        if (!(result['bar'].nil?)) then
-          expect(result['bar'].not_to be_nil)
-          expect(result["bar"].empty?).to eql(false)
-          expect(result["bar"]["scope"]).to eql(nil)
-          expect(result["bar"]["values"]["test"]["value"]).to eql(7)
-        end
-      rescue StandardError => e
-        puts e
+        expect(result['redis_connected_clients_total']['value']).to eql(37)
       end
     end
   end

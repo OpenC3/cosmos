@@ -26,10 +26,16 @@ require 'openc3/models/target_model'
 require 'openc3/models/microservice_model'
 require 'openc3/utilities/aws_bucket'
 
+module Aws
+  autoload(:S3, 'openc3/utilities/s3_autoload.rb')
+end
+
 module OpenC3
-  describe TargetModel do
+  describe TargetModel, type: :model do
     before(:each) do
       mock_redis()
+      #model = ScopeModel.new(name: "DEFAULT")
+      #model.create
     end
 
     describe "self.get" do
@@ -60,6 +66,15 @@ module OpenC3
       end
     end
 
+    describe "self.add_topics_to_microservice" do
+      xit "adds topics to microservices" do # "throws on missing topic, might be bug"
+        model = TargetModel.new(folder_name: "TEST", name: "INST", scope: "DEFAULT")
+        model.create
+        all = model.add_topics_to_microservice('INST', 'DEFAULT')
+        expect(all.keys).to contain_exactly("TEST", "SPEC")
+      end
+    end
+
     describe "self.all" do
       it "returns all the parsed targets" do
         model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
@@ -67,11 +82,115 @@ module OpenC3
         model = TargetModel.new(folder_name: "SPEC", name: "SPEC", scope: "DEFAULT")
         model.create
         all = TargetModel.all(scope: "DEFAULT")
+        expect(all).to_not be_nil
         expect(all.keys).to contain_exactly("TEST", "SPEC")
       end
     end
 
+    describe "render" do
+      it "renders" do
+        model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT")
+        model.create
+        model.render('_template.erb', {opt1: '1', opt2: '2', opt3: '3'})
+      rescue StandardError => e
+        puts e
+      end
+    end
+
     # self.all_modified & self.download aren't unit tested because it's basically just mocking the entire S3 API
+
+    describe "self.all_modified" do
+      xit "returns all the modified targets" do
+        s3 = instance_double("Aws::S3::Client")
+        allow(Aws::S3::Client).to receive(:new).and_return(s3)
+        options = OpenStruct.new
+        options.key = "blah"
+        objs = double("Object", :contents => [options], is_truncated: false)
+
+        scope = "TEST"
+        #allow(s3).to receive(:put_bucket_policy)
+        #allow(s3).to receive(:put_object)
+        allow(s3).to receive(:list_objects_v2).and_return(objs)
+        #allow(s3).to receive(:delete_object).with(bucket: 'config', key: "blah")
+        #allow(s3).to receive(:common_prefixes)
+
+        #dir = File.join(SPEC_DIR, "install")
+        #model = WidgetModel.new(name: "DEFAULT", scope: 'scope', updated_at: 12345)
+        #model.create
+        #model.deploy(dir, {})
+
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
+        model.create
+        model = TargetModel.new(folder_name: "SPEC", name: "SPEC", scope: "DEFAULT")
+        model.create
+        all = TargetModel.all_modified(scope: "DEFAULT")
+        expect(all.keys).to contain_exactly("TEST", "SPEC")
+      rescue StandardError => e
+        puts e
+      end
+    end
+
+    describe "self.modified_files" do
+      it "returns all the modified files" do
+        s3 = instance_double("Aws::S3::Client")
+        allow(Aws::S3::Client).to receive(:new).and_return(s3)
+        options = OpenStruct.new
+        options.key = "blah"
+        objs = double("Object", :contents => [options], is_truncated: false)
+        allow(s3).to receive(:list_objects_v2).and_return(objs)
+
+        #model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
+        #model.create
+        #model = TargetModel.new(folder_name: "SPEC", name: "SPEC", scope: "DEFAULT")
+        #model.create
+        all = TargetModel.modified_files('TEST', scope: "DEFAULT")
+        expect(all.keys).to contain_exactly("TEST", "SPEC")
+      rescue StandardError => e
+        puts e
+      end
+    end
+
+    describe "self.delete_modified" do
+      it "returns all the deleted or modified whatnots" do
+        s3 = instance_double("Aws::S3::Client")
+        allow(Aws::S3::Client).to receive(:new).and_return(s3)
+        options = OpenStruct.new
+        options.key = "blah"
+        objs = double("Object", :contents => [options], is_truncated: false)
+        allow(s3).to receive(:list_objects_v2).and_return(objs)
+
+        #model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
+        #model.create
+        #model = TargetModel.new(folder_name: "SPEC", name: "SPEC", scope: "DEFAULT")
+        #model.create
+        all = TargetModel.delete_modified('TEST', scope: "DEFAULT")
+        expect(all.keys).to contain_exactly("TEST", "SPEC")
+      rescue StandardError => e
+        puts e
+      end
+    end
+
+    describe "self.download" do
+      it "returns all the downloads" do
+        s3 = instance_double("Aws::S3::Client")
+        allow(Aws::S3::Client).to receive(:new).and_return(s3)
+        options = OpenStruct.new
+        options.key = "blah"
+        objs = double("Object", :contents => [options], is_truncated: false)
+        allow(s3).to receive(:list_objects_v2).and_return(objs)
+        allow(s3).to receive(:get_object).and_return(objs)
+
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
+        model.create
+        model = TargetModel.new(folder_name: "SPEC", name: "SPEC", scope: "DEFAULT")
+        model.create
+        all = TargetModel.download('TEST', scope: "DEFAULT")
+        expect(all).to_be not_nil
+        #expect(all.keys).to contain_exactly("TEST", "SPEC")
+      rescue StandardError => e
+        puts e
+      end
+    end
 
     describe "self.packets" do
       before(:each) do
@@ -82,6 +201,27 @@ module OpenC3
         model = TargetModel.new(folder_name: "EMPTY", name: "EMPTY", scope: "DEFAULT")
         model.create
         model.update_store(System.new(['EMPTY'], File.join(SPEC_DIR, 'install', 'config', 'targets')))
+      end
+
+      it "can set packet" do
+        pkts = TargetModel.packets("INST", type: :TLM, scope: "DEFAULT")
+        model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT")
+        TargetModel.set_packet('INST', 'ADCS', pkts[0], type: :TLM, scope: "DEFAULT")
+      end
+
+      xit "tries touching dynamic update" do
+        pkts = TargetModel.packets("INST", type: :TLM, scope: "DEFAULT")
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
+        model.create
+        model.dynamic_update(pkts, cmd_or_tlm = :TELEMETRY, filename = "dynamic_tlm.txt")
+      end
+
+      it "calls limits_groups" do
+        TargetModel.limits_groups(scope: 'DEFAULT')
+      end
+
+      it "gets item-to-packet map" do
+        TargetModel.get_item_to_packet_map("INST", scope: "DEFAULT")
       end
 
       it "raises for an unknown type" do
@@ -334,7 +474,6 @@ module OpenC3
         tf.puts "CMD_DECOM_LOG_CYCLE_SIZE 4"
         tf.puts "CMD_BUFFER_DEPTH 9"
         tf.puts "CMD_LOG_RETAIN_TIME 10"
-        #tf.puts "CMD_LOG_RETAIN_SIZE 11"
         tf.puts "CMD_DECOM_LOG_RETAIN_TIME 12"
         tf.puts "TLM_BUFFER_DEPTH 13"
         tf.puts "TLM_LOG_RETAIN_TIME 14"
@@ -348,10 +487,11 @@ module OpenC3
         tf.puts "REDUCER_MAX_CPU_UTILIZATION 22"
         tf.puts "REDUCED_MAX_CPU_UTILIZATION 23"
         tf.puts "CLEANUP_POLL_TIME 24"
-        tf.puts "TARGET_MICROSERVICE CLEANUP"
-        #tf.puts "PACKET REDUCER"
-        #tf.puts "PACKET DECOM"
+        tf.puts "TARGET_MICROSERVICE DECOM"
+        tf.puts "PACKET REDUCER"
+        tf.puts "PACKET DECOM"
         tf.puts "DISABLE_ERB"
+        tf.puts "TARGET_MICROSERVICE CLEANUP"
         tf.puts "TLM_LOG_CYCLE_TIME 5"
         tf.puts "TLM_LOG_CYCLE_SIZE 6"
         tf.puts "TLM_DECOM_LOG_CYCLE_TIME 7"

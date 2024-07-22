@@ -31,6 +31,14 @@ end
 module OpenC3
   describe WidgetModel, type: :model do
 
+    before(:all) do
+      widget_path = File.join(SPEC_DIR, 'install', 'tools', 'widgets', 'DefaultWidget')
+      FileUtils.mkdir_p(widget_path) unless File.exist?(widget_path)
+      widget_file = File.join(widget_path, 'DefaultWidget.umd.min.js')
+      FileUtils.touch(widget_file)
+      FileUtils.touch(widget_file+'.map')
+    end
+
     before(:each) do
       mock_redis()
       model = ScopeModel.new(name: "DEFAULT")
@@ -41,12 +49,14 @@ module OpenC3
       it "creates a widget model instance" do
         model = WidgetModel.new(name: 'widget1', scope: 'scope')
         expect(model).to_not be_nil
+        expect(model.name).to eq('widget1')
       end
     end
 
     describe "all_scopes" do
       it "exist" do
        model = WidgetModel.new(name: 'widget1', scope: 'scope')
+       model.create
        expect(WidgetModel.all_scopes).to_not be_nil
       end
     end
@@ -73,16 +83,17 @@ module OpenC3
     describe "handle_config" do
       parser = OpenC3::ConfigParser.new("https://openc3.com")
 
-      it "for the class" do
+      it "self.handle_config" do
         # blows up
-        #model = WidgetModel.handle_config(parser, 'WIDGET', ['DEFAULT', 'label'], scope: 'scope')
-        #expect(model).to be_a WidgetModel
+        # parms = ['name', 'label']
+        # model = WidgetModel.handle_config(parser, 'WIDGET', parms, scope: 'scope')
+        # expect(model).to be_a WidgetModel
         expect{
           WidgetModel.handle_config(parser, 'NOT_A_KEYWORD', ['some', 'parms'], scope: 'scope')
         }.to raise_error(OpenC3::ConfigParser::Error)
       end
 
-      it "for the instance" do
+      it "handle_config" do
         model = WidgetModel.new(name: "DEFAULT", scope: 'scope')
         expect(model).to be_a WidgetModel
         model.handle_config(parser, 'DISABLE_ERB', ['aParm'])
@@ -93,7 +104,7 @@ module OpenC3
     end
 
     describe "self.names" do
-      it "returns all scope names" do
+      it "returns all widget names" do
         model = WidgetModel.new(name: "TEST", scope: 'DEFAULT')
         model.create
         model = WidgetModel.new(name: "OTHER", scope: 'DEFAULT')
@@ -105,7 +116,7 @@ module OpenC3
     end
 
     describe "self.all" do
-      it "returns all the parsed scopes" do
+      it "returns all the parsed widgets" do
         model = WidgetModel.new(name: "DEFAULT", scope: 'scope')
         model.create
         model = WidgetModel.new(name: "OTHER", scope: 'scope')
@@ -156,7 +167,7 @@ module OpenC3
         objs = double("Object", :contents => [options], is_truncated: false)
 
         scope = "TEST"
-        allow(s3).to receive(:put_bucket_policy)
+        expect(s3).to receive(:put_bucket_policy)
         allow(s3).to receive(:put_object)
         allow(s3).to receive(:list_objects_v2).and_return(objs)
         allow(s3).to receive(:delete_object).with(bucket: 'config', key: "blah")
