@@ -172,7 +172,8 @@ module OpenC3
         expect(all[0]['events'][1]['event']).to eql('queued')
         expect(all[0]['events'][2]['event']).to eql('completed')
 
-        tm.shutdown
+        tm.shutdown()
+        shutdown_script()
         sleep 0.1
       end
 
@@ -226,7 +227,8 @@ module OpenC3
         expect(all[0]['events'][1]['event']).to eql('queued')
         expect(all[0]['events'][2]['event']).to eql('failed')
 
-        tm.shutdown
+        tm.shutdown()
+        shutdown_script()
         sleep 0.1
       end
 
