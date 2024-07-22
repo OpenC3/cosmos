@@ -135,7 +135,7 @@ module OpenC3
     alias build_command build_cmd
 
     # Helper method for disable_cmd / enable_cmd
-    def _get_and_set_cmd(method, *args, scope: $openc3_scope, token: $openc3_token)
+    def _get_and_set_cmd(method, *args, manual:, scope:, token:)
       target_name, command_name = _extract_target_command_names(method, *args)
       authorize(permission: 'admin', target_name: target_name, packet_name: command_name, manual: manual, scope: scope, token: token)
       command = yield TargetModel.packet(target_name, command_name, type: :CMD, scope: scope)
@@ -144,7 +144,7 @@ module OpenC3
 
     # @since 5.15.1
     def enable_cmd(*args, manual: false, scope: $openc3_scope, token: $openc3_token)
-      _get_and_set_cmd('enable_cmd', *args, scope: scope, token: token) do |command|
+      _get_and_set_cmd('enable_cmd', *args, manual: manual, scope: scope, token: token) do |command|
         command['disabled'] = false
         command
       end
@@ -152,7 +152,7 @@ module OpenC3
 
     # @since 5.15.1
     def disable_cmd(*args, manual: false, scope: $openc3_scope, token: $openc3_token)
-      _get_and_set_cmd('disable_cmd', *args, scope: scope, token: token) do |command|
+      _get_and_set_cmd('disable_cmd', *args, manual: manual, scope: scope, token: token) do |command|
         command['disabled'] = true
         command
       end
