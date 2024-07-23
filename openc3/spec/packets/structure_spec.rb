@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -231,16 +231,6 @@ module OpenC3
         expect(@s.sorted_items[1].name).to eql "TEST2"
         expect(@s.defined_length).to eql 4
       end
-
-      it "complains if appending after a variably sized item" do
-        @s.define_item("test1", 0, 0, :BLOCK)
-        expect { @s.append_item("test2", 8, :UINT) }.to raise_error(ArgumentError, "Can't append an item after a variably sized item")
-      end
-
-      it "complains if appending after a variably sized array" do
-        @s.define_item("test1", 0, 8, :UINT, -8)
-        expect { @s.append_item("test2", 8, :UINT) }.to raise_error(ArgumentError, "Can't append an item after a variably sized item")
-      end
     end
 
     describe "append" do
@@ -257,12 +247,6 @@ module OpenC3
         expect(@s.sorted_items[0].name).to eql "TEST1"
         expect(@s.sorted_items[1].name).to eql "TEST2"
         expect(@s.defined_length).to eql 3
-      end
-
-      it "complains if appending after a variably sized item" do
-        @s.define_item("test1", 0, 0, :BLOCK)
-        item = StructureItem.new("test2", 0, 16, :UINT, :BIG_ENDIAN)
-        expect { @s.append(item) }.to raise_error(ArgumentError, "Can't append an item after a variably sized item")
       end
     end
 

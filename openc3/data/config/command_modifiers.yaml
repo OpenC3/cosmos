@@ -244,3 +244,7 @@ SCREEN:
       description: Screen Name of related telemetry screen
       values: .+
   since: 5.14.0
+VIRTUAL:
+  summary: Marks this packet as virtual and not participating in identification
+  description: Used for packet definitions that can be used as structures for items with a given packet.
+  since: 5.18.0

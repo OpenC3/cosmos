@@ -37,7 +37,7 @@ module OpenC3
     #
     # @return [Array<String>] All target names
     def get_target_names(scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'tlm', scope: scope, token: token)
+      authorize(permission: 'system', scope: scope, token: token)
       TargetModel.names(scope: scope)
     end
     # get_target_list is DEPRECATED

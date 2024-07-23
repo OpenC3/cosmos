@@ -61,6 +61,8 @@ static ID id_ivar_stored = 0;
 static ID id_ivar_extra = 0;
 static ID id_ivar_template = 0;
 static ID id_ivar_packet_time = 0;
+static ID id_ivar_ignore_overlap = 0;
+static ID id_ivar_virtual = 0;
 
 /* Sets the target name this packet is associated with. Unidentified packets
  * will have target name set to nil.
@@ -285,6 +287,8 @@ static VALUE packet_initialize(int argc, VALUE *argv, VALUE self)
   rb_ivar_set(self, id_ivar_extra, Qnil);
   rb_ivar_set(self, id_ivar_template, Qnil);
   rb_ivar_set(self, id_ivar_packet_time, Qnil);
+  rb_ivar_set(self, id_ivar_ignore_overlap, Qfalse);
+  rb_ivar_set(self, id_ivar_virtual, Qfalse);
   return self;
 }
 
@@ -326,6 +330,8 @@ void Init_packet(void)
   id_ivar_extra = rb_intern("@extra");
   id_ivar_template = rb_intern("@template");
   id_ivar_packet_time = rb_intern("@packet_time");
+  id_ivar_ignore_overlap = rb_intern("@ignore_overlap");
+  id_ivar_virtual = rb_intern("@virtual");
 
   cPacket = rb_define_class_under(mOpenC3, "Packet", cStructure);
   rb_define_method(cPacket, "initialize", packet_initialize, -1);

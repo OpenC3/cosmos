@@ -176,3 +176,7 @@ IGNORE_OVERLAP:
   description: Packet items which overlap normally generate a warning unless each individual item has the OVERLAP keyword.
     This ignores overlaps across the entire packet.
   since: 5.16.0
+VIRTUAL:
+  summary: Marks this packet as virtual and not participating in identification
+  description: Used for packet definitions that can be used as structures for items with a given packet.
+  since: 5.18.0

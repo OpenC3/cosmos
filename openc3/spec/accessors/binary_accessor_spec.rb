@@ -23,9 +23,137 @@
 require 'spec_helper'
 require 'openc3'
 require 'openc3/accessors/binary_accessor'
+require 'openc3/packets/packet'
 
 module OpenC3
   describe BinaryAccessor, no_ext: true do
+    describe "multiple variable sized items" do
+      before(:each) do
+        @packet = Packet.new
+      end
+
+      it "can define multiple variable sized items" do
+        item1_length = @packet.append_item("item1_length", 32, :INT)
+        expect(item1_length.bit_offset).to eql 0
+
+        item1 = @packet.append_item("item1", 0, :STRING)
+        @packet.write("item1_length", 0)
+        item1.variable_bit_size = {'length_item_name' => 'item1_length', 'length_value_bit_offset' => 0, 'length_bits_per_count' => 8}
+        expect(item1.bit_offset).to eql 32
+
+        item2_length = @packet.append_item("item2_length", 16, :UINT)
+        expect(item2_length.bit_offset).to eql 32
+
+        item2 = @packet.append_item("item2", 0, :STRING)
+        @packet.write("item2_length", 0)
+        item2.variable_bit_size = {'length_item_name' => 'item2_length', 'length_value_bit_offset' => 0, 'length_bits_per_count' => 8}
+        expect(item2.bit_offset).to eql 48
+        expect(@packet.buffer).to eql "\x00\x00\x00\x00\x00\x00"
+
+        item3_length = @packet.append_item("item3_length", 8, :UINT)
+        expect(item3_length.bit_offset).to eql 48
+        expect(@packet.buffer).to eql "\x00\x00\x00\x00\x00\x00\x00"
+
+        item3 = @packet.append_item("item3", 8, :UINT, 0)
+        @packet.write("item3_length", 0)
+        item3.variable_bit_size = {'length_item_name' => 'item3_length', 'length_value_bit_offset' => 0, 'length_bits_per_count' => 8}
+        expect(item3.bit_offset).to eql 56
+        expect(@packet.buffer).to eql "\x00\x00\x00\x00\x00\x00\x00"
+
+        @packet.write("item1", "This is Awesome")
+        expect(@packet.buffer).to eql "\x00\x00\x00\x0FThis is Awesome\x00\x00\x00"
+        expect(item1_length.bit_offset).to eq 0
+        expect(item1.bit_offset).to eq 32
+        expect(item2_length.bit_offset).to eq 152
+        expect(item2.bit_offset).to eq 168
+        expect(item3_length.bit_offset).to eq 168
+        expect(item3.bit_offset).to eq 176
+
+        @packet.write("item2", "So is this")
+        expect(@packet.buffer).to eql "\x00\x00\x00\x0FThis is Awesome\x00\x0ASo is this\x00"
+        expect(item1_length.bit_offset).to eq 0
+        expect(item1.bit_offset).to eq 32
+        expect(item2_length.bit_offset).to eq 152
+        expect(item2.bit_offset).to eq 168
+        expect(item3_length.bit_offset).to eq 248
+        expect(item3.bit_offset).to eq 256
+
+        @packet.write("item3", [1, 2, 3, 4, 5])
+        expect(@packet.buffer).to eql "\x00\x00\x00\x0FThis is Awesome\x00\x0ASo is this\x05\x01\x02\x03\x04\x05"
+        expect(item1_length.bit_offset).to eq 0
+        expect(item1.bit_offset).to eq 32
+        expect(item2_length.bit_offset).to eq 152
+        expect(item2.bit_offset).to eq 168
+        expect(item3_length.bit_offset).to eq 248
+        expect(item3.bit_offset).to eq 256
+
+        @packet.write("item2", "Small")
+        expect(@packet.buffer).to eql "\x00\x00\x00\x0FThis is Awesome\x00\x05Small\x05\x01\x02\x03\x04\x05"
+        expect(item1_length.bit_offset).to eq 0
+        expect(item1.bit_offset).to eq 32
+        expect(item2_length.bit_offset).to eq 152
+        expect(item2.bit_offset).to eq 168
+        expect(item3_length.bit_offset).to eq 208
+        expect(item3.bit_offset).to eq 216
+
+        @packet.write("item1", "Yo")
+        expect(@packet.buffer).to eql "\x00\x00\x00\x02Yo\x00\x05Small\x05\x01\x02\x03\x04\x05"
+        expect(item1_length.bit_offset).to eq 0
+        expect(item1.bit_offset).to eq 32
+        expect(item2_length.bit_offset).to eq 48
+        expect(item2.bit_offset).to eq 64
+        expect(item3_length.bit_offset).to eq 104
+        expect(item3.bit_offset).to eq 112
+
+        # Recalculates offsets when buffer is written
+        @packet.buffer = "\x00\x00\x00\x03Ok!\x00\x04Cool\x02\xA5\x5A"
+        expect(item1_length.bit_offset).to eql 0
+        expect(item1.bit_offset).to eql 32
+        expect(item2_length.bit_offset).to eql 56
+        expect(item2.bit_offset).to eql 72
+        expect(item3_length.bit_offset).to eql 104
+        expect(item3.bit_offset).to eql 112
+        expect(@packet.read("item1_length")).to eql 3
+        expect(@packet.read("item1")).to eql "Ok!"
+        expect(@packet.read("item2_length")).to eql 4
+        expect(@packet.read("item2")).to eql "Cool"
+        expect(@packet.read("item3_length")).to eql 2
+        expect(@packet.read("item3")).to eql [0xA5, 0x5A]
+      end
+
+      it "can define multiple variable sized items with non-zero value offsets" do
+        item1_length = @packet.append_item("item1_length", 32, :INT)
+        expect(item1_length.bit_offset).to eql 0
+        expect(@packet.buffer).to eql "\x00\x00\x00\x00"
+        item1 = @packet.append_item("item1", 0, :STRING)
+        @packet.write("item1_length", 4) # Lengths must be initialized to zero equivalent
+        expect(@packet.buffer).to eql "\x00\x00\x00\x04"
+        item1.variable_bit_size = {'length_item_name' => 'item1_length', 'length_value_bit_offset' => -32, 'length_bits_per_count' => 8}
+        expect(item1.bit_offset).to eql 32
+        item2_length = @packet.append_item("item2_length", 16, :UINT)
+        expect(item2_length.bit_offset).to eql 32
+        expect(@packet.buffer).to eql "\x00\x00\x00\x04\x00\x00"
+        item2 = @packet.append_item("item2", 0, :STRING)
+        expect(@packet.buffer).to eql "\x00\x00\x00\x04\x00\x00"
+        @packet.write("item2_length", 8) # Lengths must be initialized to zero equivalent
+        item2.variable_bit_size = {'length_item_name' => 'item2_length', 'length_value_bit_offset' => -64, 'length_bits_per_count' => 8}
+        expect(item2.bit_offset).to eql 48
+        expect(@packet.buffer).to eql "\x00\x00\x00\x04\x00\x08"
+        @packet.write("item1", "This is Awesome")
+        expect(@packet.buffer).to eql "\x00\x00\x00\x13This is Awesome\x00\x08"
+        expect(item1_length.bit_offset).to eq 0
+        expect(item1.bit_offset).to eq 32
+        expect(item2_length.bit_offset).to eq 152
+        expect(item2.bit_offset).to eq 168
+        @packet.write("item2", "So is this")
+        expect(@packet.buffer).to eql "\x00\x00\x00\x13This is Awesome\x00\x12So is this"
+        expect(item1_length.bit_offset).to eq 0
+        expect(item1.bit_offset).to eq 32
+        expect(item2_length.bit_offset).to eq 152
+        expect(item2.bit_offset).to eq 168
+      end
+    end
+
     describe "read only" do
       before(:each) do
         @data = "\x80\x81\x82\x83\x84\x85\x86\x87\x00\x09\x0A\x0B\x0C\x0D\x0E\x0F"
