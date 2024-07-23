@@ -46,6 +46,8 @@ def get_docker_version(path)
         if version.include?("${")
           version = args[version[2..-2]]
         end
+        # Stop at the first FROM
+        break
       end
     end
   end
@@ -351,11 +353,10 @@ def check_keycloak(client, containers)
   validate_versions(versions, version, 'keycloak')
 end
 
-def check_container_version(client, containers, repo_path)
-  name = repo_path.split('/')[-1]
+def check_container_version(client, containers, name)
   container = containers.select { |val| val[:name].include?(name) }[0]
   version = container[:base_image].split(':')[-1]
-  resp = client.get("https://registry.hub.docker.com/v2/repositories/#{repo_path}/tags?page_size=1024").body
+  resp = client.get("https://registry.hub.docker.com/v2/repositories/library/#{name}/tags?page_size=1024").body
   images = JSON.parse(resp)['results']
   versions = []
   images.each do |image|
