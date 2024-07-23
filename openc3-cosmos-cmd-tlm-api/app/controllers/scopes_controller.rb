@@ -30,12 +30,12 @@ class ScopesController < ModelController
 
   def index
     # No authorization required
-    render :json => @model_class.names(scope: params[:scope])
+    render :json => @model_class.names()
   end
 
   def create(update_model = false)
     return unless authorization('superadmin')
-    model = @model_class.from_json(params[:json], scope: params[:scope])
+    model = @model_class.from_json(params[:json])
     if update_model
       model.update
       OpenC3::Logger.info("#{@model_class.name} updated: #{params[:json]}", scope: params[:scope], user: username())

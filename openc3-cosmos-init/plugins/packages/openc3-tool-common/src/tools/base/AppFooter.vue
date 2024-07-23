@@ -35,6 +35,7 @@
     <div class="justify-right"><clock-footer /></div>
     <upgrade-to-enterprise-dialog
       v-model="showUpgradeToEnterpriseDialog"
+      reason="Enterprise is Commercially Licensed"
     ></upgrade-to-enterprise-dialog>
   </v-footer>
 </template>

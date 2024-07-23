@@ -22,9 +22,7 @@
 
 require 'spec_helper'
 require 'openc3/models/scope_model'
-module Aws
-  autoload(:S3, 'openc3/utilities/s3_autoload.rb')
-end
+require 'openc3/utilities/s3_autoload'
 
 module OpenC3
   describe ScopeModel do
@@ -70,6 +68,46 @@ module OpenC3
         model.create
         all = ScopeModel.all()
         expect(all.keys).to contain_exactly("DEFAULT", "OTHER")
+      end
+    end
+
+    describe "self.get_model" do
+      it "returns nil if the model is not found" do
+        model = ScopeModel.get_model(name: "NOPE")
+        expect(model).to be nil
+      end
+
+      it "returns the model" do
+        ScopeModel.new(name: "DEFAULT",
+                       text_log_cycle_time: 1,
+                       text_log_cycle_size: 2,
+                       text_log_retain_time: 3,
+                       tool_log_retain_time: 4,
+                       cleanup_poll_time: 5,
+                       command_authority: true,
+                       updated_at: 6,
+                      ).create()
+        model = ScopeModel.get_model(name: "DEFAULT")
+        expect(model.text_log_cycle_time).to eql 1
+        expect(model.text_log_cycle_size).to eql 2
+        expect(model.text_log_retain_time).to eql 3
+        expect(model.tool_log_retain_time).to eql 4
+        expect(model.cleanup_poll_time).to eql 5
+        expect(model.command_authority).to eql true
+        # model.updated_at is going to be time now
+      end
+    end
+
+    describe "update" do
+      it "updates command_authority and works in open source" do
+        model = ScopeModel.new(name: "DEFAULT", command_authority: true, updated_at: 12345)
+        model.create()
+        json = model.as_json(:allow_nan => true)
+        expect(json['command_authority']).to eql true
+        model.command_authority = false
+        model.update()
+        json = model.as_json(:allow_nan => true)
+        expect(json['command_authority']).to eql false
       end
     end
 

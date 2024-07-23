@@ -40,3 +40,5 @@ Gemspec/RequireMFA:
 # We use this in our APIs like WHITELIST ||= []
 Lint/OrAssignmentToConstant:
   Enabled: false
+Lint/UnusedMethodArgument:
+  Enabled: false

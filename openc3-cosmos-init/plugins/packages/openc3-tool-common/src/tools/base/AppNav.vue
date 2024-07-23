@@ -156,6 +156,7 @@
     </v-app-bar>
     <upgrade-to-enterprise-dialog
       v-model="showUpgradeToEnterpriseDialog"
+      reason="Enterprise adds Calendar and Autonomic"
     ></upgrade-to-enterprise-dialog>
   </div>
 </template>

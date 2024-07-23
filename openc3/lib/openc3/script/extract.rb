@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -34,10 +34,12 @@ module OpenC3
       # Split keywords into string keywords (part of our API, e.g. "PARAM" => 123) and
       # symbol keywords which are meant for the internal methods, e.g. scope:, token:, timeout:
       # If the user tries to pass symbol keywords then that is an error
-      str, sym = kwargs.partition {|k, v| k.is_a?(String) }.map(&:to_h)
+      str, sym = kwargs.partition {|k, _v| k.is_a?(String) }.map(&:to_h)
+      # We use :manual in all our APIs so we remove it from the check
+      sym.delete(:manual)
       unless sym.empty?
         raise ArgumentError, "Unknown symbol keyword(s): #{sym.keys.join(', ')}. "\
-          "COSMOS command parameters must be passed as strings: \"#{sym.to_a[0][0].to_s}\" => ..."
+          "COSMOS command parameters must be passed as strings: \"#{sym.to_a[0][0]}\" => ..."
       end
       args << str unless str.empty?
     end

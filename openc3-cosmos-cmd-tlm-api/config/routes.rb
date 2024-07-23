@@ -68,11 +68,6 @@ Rails.application.routes.draw do
     match '/scopes/:id', to: 'scopes#update', id: /[^\/]+/, via: [:patch, :put]
     delete '/scopes/:id', to: 'scopes#destroy', id: /[^\/]+/
 
-    resources :roles, only: [:index, :create]
-    get '/roles/:id', to: 'roles#show', id: /[^\/]+/
-    match '/roles/:id', to: 'roles#update', id: /[^\/]+/, via: [:patch, :put]
-    delete '/roles/:id', to: 'roles#destroy', id: /[^\/]+/
-
     resources :widgets, only: [:index, :create]
     get '/widgets/:id', to: 'widgets#show', id: /[^\/]+/
     match '/widgets/:id', to: 'widgets#update', id: /[^\/]+/, via: [:patch, :put]
@@ -195,11 +190,6 @@ Rails.application.routes.draw do
     post "/auth/verify" => "auth#verify"
     post "/auth/set" => "auth#set"
 
-    get "/users/active" => "users#active"
-    match "/users/logout/:user", to: "users#logout", id: /[^\/]+/, via: [:patch, :put]
-
-    get "/info" => "info#info"
-
     get "/internal/health" => "internal_health#health"
     get "/internal/metrics" => "internal_metrics#index"
     get "/internal/status" => "internal_status#status"
@@ -210,5 +200,22 @@ Rails.application.routes.draw do
     get "/traefik" => "microservices#traefik"
 
     post "/redis/exec" => "redis#execute_raw"
+
+    # The remaining routes are Enterprise only
+    get "/users/active" => "users#active"
+    match "/users/logout/:user", to: "users#logout", id: /[^\/]+/, via: [:patch, :put]
+
+    get "/info" => "info#info"
+
+    resources :roles, only: [:index, :create]
+    get '/roles/:id', to: 'roles#show', id: /[^\/]+/
+    match '/roles/:id', to: 'roles#update', id: /[^\/]+/, via: [:patch, :put]
+    delete '/roles/:id', to: 'roles#destroy', id: /[^\/]+/
+
+    get '/cmdauth', to: 'cmd_authority#index'
+    post '/cmdauth/take', to: 'cmd_authority#take'
+    post '/cmdauth/release', to: 'cmd_authority#release'
+    post '/cmdauth/take-all', to: 'cmd_authority#take_all'
+    post '/cmdauth/release-all', to: 'cmd_authority#release_all'
   end
 end

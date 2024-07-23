@@ -284,6 +284,17 @@ module OpenC3
     end
   end
 
+  # System Events WebSocket
+  class SystemEventsWebSocketApi < CmdTlmWebSocketApi
+    def initialize(history_count: 0, url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
+      @identifier = {
+        channel: "SystemEventsChannel",
+        history_count: history_count
+      }
+      super(url: url, write_timeout: write_timeout, read_timeout: read_timeout, connect_timeout: connect_timeout, authentication: authentication, scope: scope)
+    end
+  end
+
   # Timeline WebSocket
   class TimelineEventsWebSocketApi < CmdTlmWebSocketApi
     def initialize(history_count: 0, url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
