@@ -71,9 +71,9 @@ client = Faraday.new do |f|
   f.response :follow_redirects
 end
 check_alpine(client)
-check_container_version(client, containers, 'library/traefik')
+check_container_version(client, containers, 'traefik')
 check_minio(client, containers)
-check_container_version(client, containers, 'library/redis')
+check_container_version(client, containers, 'redis')
 base_pkgs = %w(import-map-overrides regenerator-runtime single-spa systemjs vue vue-router vuetify vuex)
 check_tool_base('openc3-cosmos-init/plugins/openc3-tool-base', base_pkgs)
 
