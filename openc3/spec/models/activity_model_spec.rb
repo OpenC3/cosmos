@@ -218,7 +218,7 @@ module OpenC3
     end
 
     describe "self.activites" do
-      it "returns metrics for the next hour" do
+      it "returns activities for the next hour" do
         name = "foobar"
         scope = "scope"
         activity = generate_activity(name: name, scope: scope, start: 1)
@@ -235,7 +235,7 @@ module OpenC3
     end
 
     describe "self.get" do
-      it "returns all metrics between X and Y" do
+      it "returns all activities between X and Y" do
         name = "foobar"
         scope = "scope"
         activity1 = generate_activity(name: name, scope: scope, start: 1.5, kind: 'SCRIPT')

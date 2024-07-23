@@ -167,7 +167,7 @@ class CosmosAsyncStream(Thread):
         except Exception as e:
             logging.exception(e)
         finally:
-            logging.debug(f"exitting task: {endpoint}")
+            logging.debug(f"exiting task: {endpoint}")
             self._queues.pop(endpoint, None)
             self._events.pop(endpoint, None)
 
