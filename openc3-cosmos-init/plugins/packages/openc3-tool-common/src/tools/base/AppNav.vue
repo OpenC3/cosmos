@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -229,6 +229,7 @@ export default {
       .catch((error) => {
         // Do nothing
       })
+    // Tools are global and are always installed into the DEFAULT scope
     Api.get('/openc3-api/tools/all', { params: { scope: 'DEFAULT' } }).then(
       (response) => {
         this.appNav = response.data
