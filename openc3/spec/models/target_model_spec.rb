@@ -120,7 +120,7 @@ module OpenC3
         options = OpenStruct.new
         options.key = "blah"
         objs = double("Object", :contents => [options], is_truncated: false)
-        expect(s3).to receive(:list_objects_v2).and_return(objs)
+        allow(s3).to receive(:list_objects_v2).and_return(objs)
 
         model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
         model.create
