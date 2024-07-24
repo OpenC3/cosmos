@@ -113,6 +113,7 @@ module OpenC3
       # Ensure there are no "." in the scope name - prevents gems accidently becoming scope names
       raise "Invalid scope name: #{@name}" if @name !~ /^[a-zA-Z0-9_-]+$/
       @name = @name.upcase
+      @scope = @name # Ensure @scope matches @name
       super(update: update, force: force, queued: queued)
 
       # If we're updating the scope and disabling command_authority

@@ -127,6 +127,7 @@ export default {
         data: {
           position: evt.newIndex,
         },
+        // Tools are global and are always installed into the DEFAULT scope
         params: { scope: 'DEFAULT' },
       }).then((response) => {
         this.$notify.normal({
@@ -136,12 +137,13 @@ export default {
       })
     },
     update() {
+      // Tools are global and are always installed into the DEFAULT scope
       Api.get('/openc3-api/tools', { params: { scope: 'DEFAULT' } }).then(
         (response) => {
           this.tools = response.data
           this.name = ''
           this.url = ''
-        },
+        }
       )
     },
     add() {
@@ -155,6 +157,7 @@ export default {
             window: 'NEW',
           }),
         },
+        // Tools are global and are always installed into the DEFAULT scope
         params: { scope: 'DEFAULT' },
       }).then((response) => {
         this.$notify.normal({
@@ -165,6 +168,7 @@ export default {
     },
     editTool(name) {
       Api.get(`/openc3-api/tools/${name}`, {
+        // Tools are global and are always installed into the DEFAULT scope
         params: { scope: 'DEFAULT' },
       }).then((response) => {
         this.tool_id = name
@@ -188,6 +192,7 @@ export default {
           data: {
             json: content,
           },
+          // Tools are global and are always installed into the DEFAULT scope
           params: { scope: 'DEFAULT' },
         }).then((response) => {
           this.$notify.normal({
@@ -205,6 +210,7 @@ export default {
         })
         .then(function (dialog) {
           return Api.delete(`/openc3-api/tools/${name}`, {
+            // Tools are global and are always installed into the DEFAULT scope
             params: { scope: 'DEFAULT' },
           })
         })
