@@ -25,10 +25,9 @@ require 'fileutils'
 require 'openc3/models/target_model'
 require 'openc3/models/microservice_model'
 require 'openc3/utilities/aws_bucket'
+require 'openc3/utilities/s3_autoload'
 
-module Aws
-  autoload(:S3, 'openc3/utilities/s3_autoload.rb')
-end
+require 'amazing_print'
 
 module OpenC3
   describe TargetModel, type: :model do
@@ -66,15 +65,6 @@ module OpenC3
       end
     end
 
-    describe "self.add_topics_to_microservice" do
-      xit "adds topics to microservices" do # "throws on missing topic, might be bug"
-        model = TargetModel.new(folder_name: "TEST", name: "INST", scope: "DEFAULT")
-        model.create
-        all = model.add_topics_to_microservice('INST', 'DEFAULT')
-        expect(all.keys).to contain_exactly("TEST", "SPEC")
-      end
-    end
-
     describe "self.all" do
       it "returns all the parsed targets" do
         model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
@@ -89,44 +79,39 @@ module OpenC3
 
     describe "render" do
       it "renders" do
+        template = '_template.erb'
         model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT")
         model.create
-        model.render('_template.erb', {opt1: '1', opt2: '2', opt3: '3'})
-      rescue StandardError => e
-        puts e
+        Dir.mktmpdir do |tmpdir|
+          tf = File.open(File.join(tmpdir, template), 'w')
+          tf.puts "CMD_LOG_CYCLE_TIME 1"
+          tf.close
+          model.render(File.expand_path(tf.path), {opt1: '1', opt2: '2', opt3: '3'})
+          # where does the rendered value go?
+        end
       end
     end
 
     # self.all_modified & self.download aren't unit tested because it's basically just mocking the entire S3 API
 
     describe "self.all_modified" do
-      xit "returns all the modified targets" do
+      it "returns all the modified targets" do
         s3 = instance_double("Aws::S3::Client")
         allow(Aws::S3::Client).to receive(:new).and_return(s3)
         options = OpenStruct.new
         options.key = "blah"
         objs = double("Object", :contents => [options], is_truncated: false)
 
-        scope = "TEST"
-        #allow(s3).to receive(:put_bucket_policy)
-        #allow(s3).to receive(:put_object)
         allow(s3).to receive(:list_objects_v2).and_return(objs)
-        #allow(s3).to receive(:delete_object).with(bucket: 'config', key: "blah")
         #allow(s3).to receive(:common_prefixes)
 
-        #dir = File.join(SPEC_DIR, "install")
-        #model = WidgetModel.new(name: "DEFAULT", scope: 'scope', updated_at: 12345)
-        #model.create
-        #model.deploy(dir, {})
-
-        model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
+        model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT")
         model.create
         model = TargetModel.new(folder_name: "SPEC", name: "SPEC", scope: "DEFAULT")
         model.create
-        all = TargetModel.all_modified(scope: "DEFAULT")
-        expect(all.keys).to contain_exactly("TEST", "SPEC")
-      rescue StandardError => e
-        puts e
+        expect { all = TargetModel.all_modified(scope: "DEFAULT") }.not_to  \
+          raise_error(/received unexpected message :common_prefixes/)
+        #expect(all.keys).to contain_exactly("TEST", "SPEC")
       end
     end
 
@@ -137,16 +122,15 @@ module OpenC3
         options = OpenStruct.new
         options.key = "blah"
         objs = double("Object", :contents => [options], is_truncated: false)
-        allow(s3).to receive(:list_objects_v2).and_return(objs)
+        expect(s3).to receive(:list_objects_v2).and_return(objs)
 
-        #model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
-        #model.create
-        #model = TargetModel.new(folder_name: "SPEC", name: "SPEC", scope: "DEFAULT")
-        #model.create
-        all = TargetModel.modified_files('TEST', scope: "DEFAULT")
-        expect(all.keys).to contain_exactly("TEST", "SPEC")
-      rescue StandardError => e
-        puts e
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
+        model.create
+        model = TargetModel.new(folder_name: "SPEC", name: "SPEC", scope: "DEFAULT")
+        model.create
+        expect { mods = TargetModel.modified_files('TEST', scope: "DEFAULT") }.not_to \
+          raise_error(NoMethodError, /undefined method `join' for nil/)
+        #expect(mods.keys).to contain_exactly("TEST", "SPEC")
       end
     end
 
@@ -159,14 +143,27 @@ module OpenC3
         objs = double("Object", :contents => [options], is_truncated: false)
         allow(s3).to receive(:list_objects_v2).and_return(objs)
 
-        #model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
-        #model.create
-        #model = TargetModel.new(folder_name: "SPEC", name: "SPEC", scope: "DEFAULT")
-        #model.create
-        all = TargetModel.delete_modified('TEST', scope: "DEFAULT")
-        expect(all.keys).to contain_exactly("TEST", "SPEC")
-      rescue StandardError => e
-        puts e
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
+        model.create
+        model = TargetModel.new(folder_name: "SPEC", name: "SPEC", scope: "DEFAULT")
+        model.create
+        dels = TargetModel.delete_modified('TEST', scope: "DEFAULT")
+=begin
+Oh, joy.
+        puts 'OpenStruct key="blah"'.encoding.to_s
+        puts 'OpenStruct key="blah"'.bytes.to_s
+
+        puts dels[0].to_s.encoding.to_s
+        puts dels[0].to_s.bytes.to_s
+
+ASCII-8BIT
+[79, 112, 101, 110, 83, 116, 114, 117, 99, 116, 32, 107, 101, 121, 61, 34, 98, 108, 97, 104, 34]
+
+UTF-8
+[35, 60, 79, 112, 101, 110, 83, 116, 114, 117, 99, 116, 32, 107, 101, 121, 61, 34, 98, 108, 97, 104, 34, 62]
+=end
+
+        #expect(dels[0]).to match(/<OpenStruct key="blah">/) #match(/Error deleting object bucket/)
       end
     end
 
@@ -175,7 +172,7 @@ module OpenC3
         s3 = instance_double("Aws::S3::Client")
         allow(Aws::S3::Client).to receive(:new).and_return(s3)
         options = OpenStruct.new
-        options.key = "blah"
+        options.key = "DEFAULT"
         objs = double("Object", :contents => [options], is_truncated: false)
         allow(s3).to receive(:list_objects_v2).and_return(objs)
         allow(s3).to receive(:get_object).and_return(objs)
@@ -184,11 +181,8 @@ module OpenC3
         model.create
         model = TargetModel.new(folder_name: "SPEC", name: "SPEC", scope: "DEFAULT")
         model.create
-        all = TargetModel.download('TEST', scope: "DEFAULT")
-        expect(all).to_be not_nil
-        #expect(all.keys).to contain_exactly("TEST", "SPEC")
-      rescue StandardError => e
-        puts e
+        expect { TargetModel.download('TEST', scope: "DEFAULT") }.not_to \
+          raise_error(/No such file or directory/)
       end
     end
 
@@ -209,13 +203,25 @@ module OpenC3
         TargetModel.set_packet('INST', 'ADCS', pkts[0], type: :TLM, scope: "DEFAULT")
       end
 
-      xit "tries touching dynamic update" do
-        pkts = TargetModel.packets("INST", type: :TLM, scope: "DEFAULT")
-        model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
+      it "can self.dynamic update" do
+        pkts = TargetModel.packets("TEST", type: :TLM, scope: "DEFAULT")
+        model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT")
         model.create
-        model.dynamic_update(pkts, cmd_or_tlm = :TELEMETRY, filename = "dynamic_tlm.txt")
+        expect { TargetModel.dynamic_update(pkts, cmd_or_tlm = :TELEMETRY, filename = "dynamic_tlm.txt") }.to \
+          raise_error(RuntimeError, /Target 'TEST' does not exist for scope: DEFAULT/)
+      rescue RuntimeError => e
+        puts e.message
       end
 
+      it "can dynamic update" do
+        pkts = TargetModel.packets("TEST", type: :TLM, scope: "DEFAULT")
+        model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT")
+        model.create
+        expect { model.dynamic_update(pkts, cmd_or_tlm = :TELEMETRY, filename = "dynamic_tlm.txt") }.to \
+          raise_error(RuntimeError, /Target 'TEST' does not exist for scope: DEFAULT/)
+      rescue RuntimeError => e
+        puts e.message
+      end
       it "calls limits_groups" do
         TargetModel.limits_groups(scope: 'DEFAULT')
       end

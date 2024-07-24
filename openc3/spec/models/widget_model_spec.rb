@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 Ball Aerospace & Technologies Corp.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -13,9 +13,6 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-# Modified by OpenC3, Inc.
-# All changes Copyright 2022,2024 OpenC3, Inc.
-# All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -23,10 +20,7 @@
 require 'spec_helper'
 require 'openc3/config/config_parser'
 require 'openc3/models/widget_model'
-
-module Aws
-  autoload(:S3, 'openc3/utilities/s3_autoload.rb')
-end
+require 'openc3/utilities/s3_autoload'
 
 module OpenC3
   describe WidgetModel, type: :model do
@@ -82,6 +76,13 @@ module OpenC3
 
     describe "handle_config" do
       parser = OpenC3::ConfigParser.new("https://openc3.com")
+
+      it "only recognizes WIDGET" do
+        #parser = double("ConfigParser").as_null_object
+        expect(parser).to receive(:verify_num_parameters)
+        WidgetModel.handle_config(parser, "WIDGET", ["TEST_INT"], scope: "DEFAULT")
+        expect { WidgetModel.handle_config(parser, "DISABLE_ERB", ["TEST_INT"], scope: "DEFAULT") }.to raise_error(ConfigParser::Error)
+      end
 
       it "self.handle_config" do
         # blows up
@@ -141,52 +142,22 @@ module OpenC3
         model = WidgetModel.new(name: "DEFAULT", scope: 'scope', updated_at: 12346)
         model.create
         model.deploy(dir, {}, validate_only: true)
-        # not sure how to validate this
       end
 
-      xit "the Widget's microservice" do
-        dir = File.join(SPEC_DIR, "install")
-        model = WidgetModel.new(name: "DEFAULT", scope: 'DEFAULT', updated_at: 12345)
-        model.create
-        model.deploy(dir, {})
-        # Ensure scope_model creates the UNKNOWN target and streams
-        target = TargetModel.get(name: "UNKNOWN", scope: "DEFAULT")
-        expect(target["name"]).to eql "UNKNOWN"
-        # and undeploy
-        model.undeploy
-        # nor how to validate undeployemnt
-      end
-    end
-
-    describe "destroy" do
-      it "destroys the scope and all microservices" do
+      it "the Widget's microservice and undeploy it" do
         s3 = instance_double("Aws::S3::Client")
         allow(Aws::S3::Client).to receive(:new).and_return(s3)
         options = OpenStruct.new
         options.key = "blah"
         objs = double("Object", :contents => [options], is_truncated: false)
-
-        scope = "TEST"
         expect(s3).to receive(:put_bucket_policy)
-        allow(s3).to receive(:put_object)
-        allow(s3).to receive(:list_objects_v2).and_return(objs)
-        allow(s3).to receive(:delete_object).with(bucket: 'config', key: "blah")
+        expect(s3).to receive(:put_object).twice
 
         dir = File.join(SPEC_DIR, "install")
         model = WidgetModel.new(name: "DEFAULT", scope: 'scope', updated_at: 12345)
         model.create
         model.deploy(dir, {})
-=begin
-        topics = EphemeralStore.scan_each(match: "#{scope}*", type: 'hash', count: 100).to_a.uniq.sort
-        expect(topics).to eql(['TEST__TRIGGER__GROUP', 'TEST__openc3_targets'])
-        topics = EphemeralStore.scan_each(match: "#{scope}*", type: 'stream', count: 100).to_a.uniq.sort
-        expect(topics).to eql(['TEST__openc3_autonomic'])
-        model.destroy
-        topics = EphemeralStore.scan_each(match: "#{scope}*", type: 'hash', count: 100).to_a.uniq.sort
-        expect(topics).to eql([])
-        topics = EphemeralStore.scan_each(match: "#{scope}*", type: 'stream', count: 100).to_a.uniq.sort
-        expect(topics).to eql([])
-=end
+        model.undeploy
       end
     end
   end
