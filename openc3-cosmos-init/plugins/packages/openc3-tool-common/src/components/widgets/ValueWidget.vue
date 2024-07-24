@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -31,7 +31,6 @@
           single-line
           hide-no-data
           hide-details
-          placeholder="Value"
           :value="_value"
           :class="valueClass"
           :prepend-inner-icon="astroIcon"
@@ -105,14 +104,14 @@ export default {
       'VALUE',
       3,
       5,
-      'VALUE <TARGET> <PACKET> <ITEM> <TYPE> <WIDTH>',
+      'VALUE <TARGET> <PACKET> <ITEM> <TYPE> <WIDTH>'
     )
     // Note: TYPE is parameters[3]
     // This works because NaN selects the default width
     this.setWidth(
       parseInt(this.parameters[4]) + INPUT_PADDING,
       'ch',
-      this.width,
+      this.width
     )
   },
 }
