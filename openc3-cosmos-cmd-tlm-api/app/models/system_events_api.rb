@@ -1,4 +1,6 @@
-# Copyright 2023 OpenC3, Inc.
+# encoding: ascii-8bit
+
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -14,7 +16,16 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-OPENC3_AUTHORIZE = True
+require 'topics_thread'
 
-# TODO: Import everything somehow?
-# from .tlm_api import *
+class SystemEventsApi
+  def initialize(uuid, channel, history_count = 0, scope:)
+    topics = ["OPENC3__SYSTEM__EVENTS"]
+    @thread = TopicsThread.new(topics, channel, history_count)
+    @thread.start
+  end
+
+  def kill
+    @thread.stop
+  end
+end

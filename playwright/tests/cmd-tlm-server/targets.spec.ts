@@ -50,3 +50,36 @@ test('displays the interfaces', async ({ page, utils }) => {
     'TEMPLATED_INT',
   )
 })
+
+if (process.env.ENTERPRISE !== '1') {
+  test('disables cmd authority and shows enterprise upgrade', async ({
+    page,
+    utils,
+  }) => {
+    await expect(page.locator('[data-test=take-all]')).toBeVisible()
+    await expect(page.locator('[data-test=take-all]')).toBeDisabled()
+    // Have to force click because the button is disabled
+    await page.locator('[data-test=take-all]').click({ force: true })
+    await expect(page.getByText('Upgrade to COSMOS Enterprise')).toBeVisible()
+    await expect(
+      page.getByText('Command Authority is Enterprise Only', { exact: true }),
+    ).toBeVisible()
+    await page.getByRole('button', { name: 'Ok' }).click()
+    await expect(
+      page.getByText('Upgrade to COSMOS Enterprise'),
+    ).not.toBeVisible()
+
+    await expect(page.locator('[data-test=release-all]')).toBeVisible()
+    await expect(page.locator('[data-test=release-all]')).toBeDisabled()
+    // Have to force click because the button is disabled
+    await page.locator('[data-test=release-all]').click({ force: true })
+    await expect(page.getByText('Upgrade to COSMOS Enterprise')).toBeVisible()
+    await expect(
+      page.getByText('Command Authority is Enterprise Only', { exact: true }),
+    ).toBeVisible()
+    await page.getByRole('button', { name: 'Ok' }).click()
+    await expect(
+      page.getByText('Upgrade to COSMOS Enterprise'),
+    ).not.toBeVisible()
+  })
+}

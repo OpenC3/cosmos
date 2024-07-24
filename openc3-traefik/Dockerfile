@@ -1,5 +1,6 @@
 ARG OPENC3_DEPENDENCY_REGISTRY=docker.io
 ARG TRAEFIK_CONFIG=traefik.yaml
+# NOTE: 2.11.2 is the last valid 2.11 version on IronBank
 FROM ${OPENC3_DEPENDENCY_REGISTRY}/traefik:v2.11.2
 
 # An ARG declared before a FROM is outside of a build stage, so it can’t be

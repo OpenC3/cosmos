@@ -1,3 +1,5 @@
+# encoding: ascii-8bit
+
 # Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
@@ -10,31 +12,29 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
-#
+
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+require 'openc3/topics/topic'
 
-class AuthError(RuntimeError):
-    pass
+module OpenC3
+  class SystemEventsTopic < Topic
+    PRIMARY_KEY = "OPENC3__SYSTEM__EVENTS".freeze
 
+    def self.update_topic_offsets()
+      Topic.update_topic_offsets([PRIMARY_KEY])
+    end
 
-# All the authorization is done by Ruby code in the Ruby API backend.
-# This code is basically a NOOP for now. If we ever want to build a whole
-# new API endpoint in Python we'll have to implement an Enterprise
-# authorize() like in Ruby.
-def authorize(
-    permission=None,
-    target_name=None,
-    packet_name=None,
-    interface_name=None,
-    router_name=None,
-    manual=False,
-    scope=None,
-):
-    if not scope:
-        raise AuthError("Scope is required")
+    def self.write(type, event)
+      event['type'] = type
+      Topic.write_topic(PRIMARY_KEY, {event: JSON.generate(event)}, '*', 1000)
+    end
 
-
-def user_info(_token):
-    return {}  # EE does stuff here
+    def self.read()
+      Topic.read_topics([PRIMARY_KEY]) do |_topic, _msg_id, msg_hash, _redis|
+        yield JSON.parse(msg_hash['event'])
+      end
+    end
+  end
+end

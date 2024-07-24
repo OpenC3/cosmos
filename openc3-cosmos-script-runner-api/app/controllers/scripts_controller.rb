@@ -21,6 +21,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'json'
+require_relative '../models/script'
 
 class ScriptsController < ApplicationController
   # This REGEX is also found in running_script.rb
@@ -93,7 +94,9 @@ class ScriptsController < ApplicationController
   end
 
   def run
-    return unless authorization('script_run')
+    # Extract the target that this script lives under
+    target_name = params[:name].split('/')[0]
+    return unless authorization('script_run', target_name: target_name)
     suite_runner = params[:suiteRunner] ? params[:suiteRunner].as_json(:allow_nan => true) : nil
     disconnect = params[:disconnect] == 'disconnect'
     environment = params[:environment]
@@ -129,7 +132,9 @@ class ScriptsController < ApplicationController
   end
 
   def syntax
-    return unless authorization('script_run')
+    # Extract the target that this script lives under
+    target_name = params[:name].split('/')[0]
+    return unless authorization('script_run', target_name: target_name)
     script = Script.syntax(params[:name], request.body.read)
     if script
       render :json => script

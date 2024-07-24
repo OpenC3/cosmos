@@ -425,7 +425,7 @@ def load_plugin(plugin_file_path, scope:, plugin_hash_file: nil, force: false)
     unless OpenC3::ScopeModel.names.include?(scope)
       begin
         puts "Creating scope: #{scope}"
-        scope_model = OpenC3::ScopeModel.new(name: scope, scope: scope)
+        scope_model = OpenC3::ScopeModel.new(name: scope)
         scope_model.create
         scope_model.deploy(".", {})
       rescue => e

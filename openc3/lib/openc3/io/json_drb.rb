@@ -14,18 +14,16 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-require 'thread'
 require 'socket'
 require 'json'
 # require 'drb/acl'
 require 'drb/drb'
-require 'set'
 require 'openc3/io/json_rpc'
 require 'openc3/io/json_drb_rack'
 require 'rackup'
@@ -185,10 +183,10 @@ module OpenC3
                 "Make sure all sockets/streams are closed in all applications,\n" +
                 "wait 1 minute and try again."
         # Something else went wrong which is fatal
-        rescue => error
+        rescue => e
           @server = nil
-          Logger.error "JsonDRb http server could not be started or unexpectedly died.\n#{error.formatted}"
-          OpenC3.handle_fatal_exception(error)
+          Logger.error "JsonDRb http server could not be started or unexpectedly died.\n#{e.formatted}"
+          OpenC3.handle_fatal_exception(e)
         end
 
         # Wait for the server to be started in the thread before returning.
@@ -272,42 +270,42 @@ module OpenC3
             if request.id
               response = JsonRpcSuccessResponse.new(result, request.id)
             end
-          rescue Exception => error
+          rescue Exception => e
             # Filter out the framework stack trace (rails, rack, puma etc)
-            lines = error.formatted.split("\n")
+            lines = e.formatted.split("\n")
             i = lines.find_index { |row| row.include?('actionpack') || row.include?('activesupport') }
             Logger.error lines[0...i].join("\n")
 
             if request.id
-              if NoMethodError === error
+              if NoMethodError === e
                 error_code = JsonRpcError::ErrorCode::METHOD_NOT_FOUND
                 response = JsonRpcErrorResponse.new(
-                  JsonRpcError.new(error_code, "Method not found", error), request.id
+                  JsonRpcError.new(error_code, "Method not found", e), request.id
                 )
-              elsif ArgumentError === error
+              elsif ArgumentError === e
                 error_code = JsonRpcError::ErrorCode::INVALID_PARAMS
                 response = JsonRpcErrorResponse.new(
-                  JsonRpcError.new(error_code, "Invalid params", error), request.id
+                  JsonRpcError.new(error_code, "Invalid params", e), request.id
                 )
-              elsif AuthError === error
+              elsif AuthError === e
                 error_code = JsonRpcError::ErrorCode::AUTH_ERROR
                 response = JsonRpcErrorResponse.new(
-                  JsonRpcError.new(error_code, error.message, error), request.id
+                  JsonRpcError.new(error_code, e.message, e), request.id
                 )
-              elsif ForbiddenError === error
+              elsif ForbiddenError === e
                 error_code = JsonRpcError::ErrorCode::FORBIDDEN_ERROR
                 response = JsonRpcErrorResponse.new(
-                  JsonRpcError.new(error_code, error.message, error), request.id
+                  JsonRpcError.new(error_code, e.message, e), request.id
                 )
-              elsif HazardousError === error
+              elsif HazardousError === e
                 error_code = JsonRpcError::ErrorCode::HAZARDOUS_ERROR
                 response = JsonRpcErrorResponse.new(
-                  JsonRpcError.new(error_code, error.message, error), request.id
+                  JsonRpcError.new(error_code, e.message, e), request.id
                 )
               else
                 error_code = JsonRpcError::ErrorCode::OTHER_ERROR
                 response = JsonRpcErrorResponse.new(
-                  JsonRpcError.new(error_code, error.message, error), request.id
+                  JsonRpcError.new(error_code, e.message, e), request.id
                 )
               end
             end
@@ -322,9 +320,9 @@ module OpenC3
         end
         response_data = process_response(response, start_time) if response
         return response_data, error_code
-      rescue => error
+      rescue => e
         error_code = JsonRpcError::ErrorCode::INVALID_REQUEST
-        response = JsonRpcErrorResponse.new(JsonRpcError.new(error_code, "Invalid Request", error), nil)
+        response = JsonRpcErrorResponse.new(JsonRpcError.new(error_code, "Invalid Request", e), nil)
         response_data = process_response(response, start_time)
         return response_data, error_code
       end

@@ -22,7 +22,12 @@
 
 <template>
   <div>
-    <v-navigation-drawer v-model="drawer" app id="openc3-nav-drawer">
+    <v-navigation-drawer
+      v-if="!chromeless"
+      v-model="drawer"
+      app
+      id="openc3-nav-drawer"
+    >
       <img :src="logo" class="logo" alt="OpenC3" />
       <div class="cosmos" @click="showUpgradeToEnterpriseDialog = true">
         COSMOS
@@ -115,7 +120,7 @@
         </template>
       </v-treeview>
     </v-navigation-drawer>
-    <v-app-bar app id="openc3-app-toolbar">
+    <v-app-bar app v-if="!chromeless" id="openc3-app-toolbar">
       <v-row
         class="flex-nowrap"
         justify="space-between"
@@ -151,6 +156,7 @@
     </v-app-bar>
     <upgrade-to-enterprise-dialog
       v-model="showUpgradeToEnterpriseDialog"
+      reason="Enterprise adds Calendar and Autonomic"
     ></upgrade-to-enterprise-dialog>
   </div>
 </template>
@@ -188,6 +194,7 @@ export default {
       logo: logo,
       initiallyOpen: [],
       showUpgradeToEnterpriseDialog: false,
+      chromeless: this.$route.query.chromeless,
     }
   },
   computed: {
