@@ -27,8 +27,6 @@ require 'openc3/models/microservice_model'
 require 'openc3/utilities/aws_bucket'
 require 'openc3/utilities/s3_autoload'
 
-require 'amazing_print'
-
 module OpenC3
   describe TargetModel, type: :model do
     before(:each) do
