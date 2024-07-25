@@ -22,7 +22,7 @@ require 'openc3/microservices/cleanup_microservice'
 module OpenC3
   class ScopeCleanupMicroservice < CleanupMicroservice
     def run
-      scope = ScopeModel.get_model(name: @scope, scope: @scope)
+      scope = ScopeModel.get_model(name: @scope)
 
       areas = [
         ["#{@scope}/text_logs", scope.text_log_retain_time],

@@ -45,8 +45,8 @@ class StreamingThread
         thread_body()
         break if @cancel_thread
       end
-    rescue => err
-      OpenC3::Logger.error "#{self.class.name} unexpectedly died\n#{err.formatted}"
+    rescue => e
+      OpenC3::Logger.error "#{self.class.name} unexpectedly died\n#{e.formatted}"
     ensure
       @streaming_api.complete_thread(self)
     end
@@ -65,7 +65,7 @@ class StreamingThread
       @collection.remove(object)
     end
     if @collection.objects.length == 0
-      OpenC3::Logger.info "Last object removed, cancelling streaming."
+      OpenC3::Logger.info "Last object removed, canceling streaming."
       @cancel_thread = true
     end
   end

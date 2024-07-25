@@ -355,6 +355,12 @@ module OpenC3
         sleep 0.01
         expect(@interface_data).to eql "\x00\x01\x02\x03"
       end
+
+      it "sends raw data to an interface" do
+        @api.send_raw("inst_int", "\x00\x01\x02\x03")
+        sleep 0.01
+        expect(@interface_data).to eql "\x00\x01\x02\x03"
+      end
     end
 
     describe 'get_all_cmds' do
@@ -463,6 +469,10 @@ module OpenC3
 
       it "raises with the wrong number of arguments" do
         expect { @api.get_cmd_hazardous("INST", "COLLECT", "TYPE", "SPECIAL") }.to raise_error(/Invalid number of arguments/)
+      end
+
+      it "ignores the manual keyword" do
+        @api.get_cmd_hazardous("INST CLEAR", manual: true)
       end
     end
 

@@ -81,6 +81,7 @@
     </v-menu>
     <upgrade-to-enterprise-dialog
       v-model="showUpgradeToEnterpriseDialog"
+      reason="Enterprise has individual users with RBAC"
     ></upgrade-to-enterprise-dialog>
   </div>
 </template>
@@ -118,7 +119,7 @@ export default {
         if (this.name !== 'Anonymous') {
           Api.get('/openc3-api/users/active').then((response) => {
             this.activeUsers = response.data.filter(
-              (item) => !item.includes(this.name)
+              (item) => !item.includes(this.name),
             )
             if (this.activeUsers.length === 0) {
               this.activeUsers = ['None']
@@ -140,15 +141,7 @@ export default {
       if (this.name === 'Anonymous') {
         return 'Admin'
       } else {
-        return [
-          ...new Set( // Use Set to remove duplicates
-            OpenC3Auth.userroles()
-              // Roles are like ALLSCOPES__custom DEFAULT__viewer
-              // but it also includes default-roles-openc3
-              .map((element) => element.split('__')[1])
-              .filter(Boolean) // Get rid of non roles (default-roles-openc3)
-          ),
-        ]
+        return OpenC3Auth.userroles()
           .map((element) => this.capitalize(element))
           .sort()
           .join(', ')

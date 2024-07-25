@@ -1,3 +1,5 @@
+# encoding: ascii-8bit
+
 # Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
@@ -10,31 +12,23 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
-#
+
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+class SystemEventsChannel < ApplicationCable::Channel
+  def subscribed
+    stream_from uuid
+    @broadcasters ||= {}
+    @broadcasters[uuid] = SystemEventsApi.new(uuid, self, params['history_count'], scope: scope)
+  end
 
-class AuthError(RuntimeError):
-    pass
-
-
-# All the authorization is done by Ruby code in the Ruby API backend.
-# This code is basically a NOOP for now. If we ever want to build a whole
-# new API endpoint in Python we'll have to implement an Enterprise
-# authorize() like in Ruby.
-def authorize(
-    permission=None,
-    target_name=None,
-    packet_name=None,
-    interface_name=None,
-    router_name=None,
-    manual=False,
-    scope=None,
-):
-    if not scope:
-        raise AuthError("Scope is required")
-
-
-def user_info(_token):
-    return {}  # EE does stuff here
+  def unsubscribed
+    if @broadcasters[uuid]
+      stop_stream_from uuid
+      @broadcasters[uuid].kill
+      @broadcasters[uuid] = nil
+      @broadcasters.delete(uuid)
+    end
+  end
+end

@@ -21,7 +21,7 @@
 -->
 
 <template>
-  <v-footer id="footer" app height="33">
+  <v-footer id="footer" app v-if="!chromeless" height="33">
     <img :src="icon" alt="OpenC3" />
     <span :class="footerClass" @click="upgrade"
       >OpenC3 {{ edition }} {{ version }} &copy; 2024 - License:
@@ -35,6 +35,7 @@
     <div class="justify-right"><clock-footer /></div>
     <upgrade-to-enterprise-dialog
       v-model="showUpgradeToEnterpriseDialog"
+      reason="Enterprise is Commercially Licensed"
     ></upgrade-to-enterprise-dialog>
   </v-footer>
 </template>
@@ -60,6 +61,7 @@ export default {
       sourceUrl: '',
       version: '',
       showUpgradeToEnterpriseDialog: false,
+      chromeless: this.$route.query.chromeless,
     }
   },
   created: function () {

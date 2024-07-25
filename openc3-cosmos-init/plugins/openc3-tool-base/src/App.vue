@@ -25,7 +25,7 @@
     <app-nav class="d-print-none" />
 
     <!-- Sizes your content based upon application components -->
-    <v-main>
+    <v-main :style="mainStyle">
       <v-container fluid>
         <div id="openc3-tool"></div>
         <div><router-view /></div>
@@ -48,5 +48,15 @@ export default {
     TimeCheck,
   },
   mixins: [ClassificationBanners],
+  data() {
+    return {
+      mainStyle: {},
+    }
+  },
+  created() {
+    if (this.$route.query.chromeless) {
+      this.mainStyle = { 'padding-top': '0px !important' }
+    }
+  },
 }
 </script>

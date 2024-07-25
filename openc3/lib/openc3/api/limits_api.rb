@@ -47,8 +47,8 @@ module OpenC3
     #   [[target name, packet name, item name, item limits state], ...]
     #
     # @return [Array<Array<String, String, String, String>>]
-    def get_out_of_limits(scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'tlm', scope: scope, token: token)
+    def get_out_of_limits(manual: false, scope: $openc3_scope, token: $openc3_token)
+      authorize(permission: 'tlm', manual: manual, scope: scope, token: token)
       LimitsEventTopic.out_of_limits(scope: scope)
     end
 
@@ -59,7 +59,7 @@ module OpenC3
     # @param ignored_items [Array<Array<String, String, String|nil>>] Array of [TGT, PKT, ITEM] strings
     #   to ignore when determining overall state. Note, ITEM can be nil to indicate to ignore entire packet.
     # @return [String] The overall limits state for the system, one of 'GREEN', 'YELLOW', 'RED'
-    def get_overall_limits_state(ignored_items = nil, scope: $openc3_scope, token: $openc3_token)
+    def get_overall_limits_state(ignored_items = nil, manual: false, scope: $openc3_scope, token: $openc3_token)
       # We only need to check out of limits items so call get_out_of_limits() which authorizes
       out_of_limits = get_out_of_limits(scope: scope, token: token)
       overall = 'GREEN'
@@ -108,9 +108,9 @@ module OpenC3
     #
     # @param args [String|Array<String>] See the description for calling style
     # @return [Boolean] Whether limits are enable for the itme
-    def limits_enabled?(*args, scope: $openc3_scope, token: $openc3_token)
+    def limits_enabled?(*args, manual: false, scope: $openc3_scope, token: $openc3_token)
       target_name, packet_name, item_name = _tlm_process_args(args, 'limits_enabled?', scope: scope)
-      authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
+      authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
       return TargetModel.packet_item(target_name, packet_name, item_name, scope: scope)['limits']['enabled'] ? true : false
     end
     alias limits_enabled limits_enabled?
@@ -124,9 +124,9 @@ module OpenC3
     # Favor the first syntax where possible as it is more succinct.
     #
     # @param args [String|Array<String>] See the description for calling style
-    def enable_limits(*args, scope: $openc3_scope, token: $openc3_token)
+    def enable_limits(*args, manual: false, scope: $openc3_scope, token: $openc3_token)
       target_name, packet_name, item_name = _tlm_process_args(args, 'enable_limits', scope: scope)
-      authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
+      authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
       packet = TargetModel.packet(target_name, packet_name, scope: scope)
       found_item = nil
       packet['items'].each do |item|
@@ -157,9 +157,9 @@ module OpenC3
     # Favor the first syntax where possible as it is more succinct.
     #
     # @param args [String|Array<String>] See the description for calling style
-    def disable_limits(*args, scope: $openc3_scope, token: $openc3_token)
+    def disable_limits(*args, manual: false, scope: $openc3_scope, token: $openc3_token)
       target_name, packet_name, item_name = _tlm_process_args(args, 'disable_limits', scope: scope)
-      authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
+      authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
       packet = TargetModel.packet(target_name, packet_name, scope: scope)
       found_item = nil
       packet['items'].each do |item|
@@ -190,8 +190,8 @@ module OpenC3
     #               'TVAC' => [-25, -10, 50, 55] }
     #
     # @return [Hash{String => Array<Number, Number, Number, Number, Number, Number>}]
-    def get_limits(target_name, packet_name, item_name, cache_timeout: nil, scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
+    def get_limits(target_name, packet_name, item_name, cache_timeout: nil, manual: false, scope: $openc3_scope, token: $openc3_token)
+      authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
       limits = {}
       item = _get_item(target_name, packet_name, item_name, cache_timeout: cache_timeout, scope: scope)
       item['limits'].each do |key, vals|
@@ -207,8 +207,8 @@ module OpenC3
     # is created to avoid overriding existing limits.
     def set_limits(target_name, packet_name, item_name, red_low, yellow_low, yellow_high, red_high,
                    green_low = nil, green_high = nil, limits_set = 'CUSTOM', persistence = nil, enabled = true,
-                   scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
+                   manual: false, scope: $openc3_scope, token: $openc3_token)
+      authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
       if (red_low > yellow_low) || (yellow_low >= yellow_high) || (yellow_high > red_high)
         raise "Invalid limits specified. Ensure yellow limits are within red limits."
       end
@@ -259,38 +259,38 @@ module OpenC3
     # Returns all limits_groups and their members
     # @since 5.0.0 Returns hash with values
     # @return [Hash{String => Array<Array<String, String, String>>]
-    def get_limits_groups(scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'tlm', scope: scope, token: token)
+    def get_limits_groups(manual: false, scope: $openc3_scope, token: $openc3_token)
+      authorize(permission: 'tlm', manual: manual, scope: scope, token: token)
       TargetModel.limits_groups(scope: scope)
     end
 
     # Enables limits for all the items in the group
     #
     # @param group_name [String] Name of the group to enable
-    def enable_limits_group(group_name, scope: $openc3_scope, token: $openc3_token)
-      _limits_group(group_name, action: :enable, scope: scope, token: token)
+    def enable_limits_group(group_name, manual: false, scope: $openc3_scope, token: $openc3_token)
+      _limits_group(group_name, action: :enable, manual: manual, scope: scope, token: token)
     end
 
     # Disables limits for all the items in the group
     #
     # @param group_name [String] Name of the group to disable
-    def disable_limits_group(group_name, scope: $openc3_scope, token: $openc3_token)
-      _limits_group(group_name, action: :disable, scope: scope, token: token)
+    def disable_limits_group(group_name, manual: false, scope: $openc3_scope, token: $openc3_token)
+      _limits_group(group_name, action: :disable, manual: manual, scope: scope, token: token)
     end
 
     # Returns all defined limits sets
     #
     # @return [Array<String>] All defined limits sets
-    def get_limits_sets(scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'tlm', scope: scope, token: token)
+    def get_limits_sets(manual: false, scope: $openc3_scope, token: $openc3_token)
+      authorize(permission: 'tlm', manual: manual, scope: scope, token: token)
       LimitsEventTopic.sets(scope: scope).keys
     end
 
     # Changes the active limits set that applies to all telemetry
     #
     # @param limits_set [String] The name of the limits set
-    def set_limits_set(limits_set, scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'tlm_set', scope: scope, token: token)
+    def set_limits_set(limits_set, manual: false, scope: $openc3_scope, token: $openc3_token)
+      authorize(permission: 'tlm_set', manual: manual, scope: scope, token: token)
       message = "Setting Limits Set: #{limits_set}"
       Logger.info(message, scope: scope)
       LimitsEventTopic.write({ type: :LIMITS_SET, set: limits_set.to_s,
@@ -300,8 +300,8 @@ module OpenC3
     # Returns the active limits set that applies to all telemetry
     #
     # @return [String] The current limits set
-    def get_limits_set(scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'tlm', scope: scope, token: token)
+    def get_limits_set(manual: false, scope: $openc3_scope, token: $openc3_token)
+      authorize(permission: 'tlm', manual: manual, scope: scope, token: token)
       LimitsEventTopic.current_set(scope: scope)
     end
 
@@ -313,8 +313,8 @@ module OpenC3
     # @param count [Integer] The total number of events returned. Default is 100.
     # @return [Hash, Integer] Event hash followed by the offset. The offset can
     #   be used in subsequent calls to return events from where the last call left off.
-    def get_limits_events(offset = nil, count: 100, scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'tlm', scope: scope, token: token)
+    def get_limits_events(offset = nil, count: 100, manual: false, scope: $openc3_scope, token: $openc3_token)
+      authorize(permission: 'tlm', manual: manual, scope: scope, token: token)
       LimitsEventTopic.read(offset, count: count, scope: scope)
     end
 
@@ -323,8 +323,8 @@ module OpenC3
     ###########################################################################
 
     # Enables or disables a limits group
-    def _limits_group(group_name, action:, scope:, token:)
-      authorize(permission: 'tlm_set', scope: scope, token: token)
+    def _limits_group(group_name, action:, manual:, scope:, token:)
+      authorize(permission: 'tlm_set', manual: manual, scope: scope, token: token)
       group_name.upcase!
       group = get_limits_groups(scope: scope, token: token)[group_name]
       raise "LIMITS_GROUP #{group_name} undefined. Ensure your telemetry definition contains the line: LIMITS_GROUP #{group_name}" unless group

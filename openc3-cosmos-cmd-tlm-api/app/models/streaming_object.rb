@@ -83,7 +83,7 @@ class StreamingObject
     else
       @realtime = false
     end
-    authorize(permission: @cmd_or_tlm.to_s.downcase, target_name: @target_name, packet_name: @packet_name, scope: scope, token: token)
+    authorize(permission: @cmd_or_tlm.to_s.downcase, target_name: @target_name, packet_name: @packet_name, manual: false, scope: scope, token: token)
     @topic = "#{@scope}__#{type}__{#{@target_name}}__#{@packet_name}"
     @offset = "0-0"
     @offset = OpenC3::Topic.get_last_offset(@topic) unless @start_time

@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -21,21 +21,22 @@
 -->
 
 <template>
-  <div ref="container" class="d-flex flex-column" :style="computedStyle">
+  <div ref="container" :style="computedStyle">
+    <!-- The widget-index is the order in the widget name: LABELVALUELIMITSCOLUMN -->
     <label-widget
       :parameters="[parameters[2]]"
       :settings="[...settings]"
       :widget-index="0"
     />
     <limitscolumn-widget
-      :parameters="limitsColumnParameters"
+      :parameters="parameters"
       :settings="[...settings]"
-      :widget-index="1"
+      :widget-index="2"
     />
     <value-widget
       :parameters="parameters"
       :settings="[...settings]"
-      :widget-index="2"
+      :widget-index="1"
     />
   </div>
 </template>
@@ -52,16 +53,6 @@ export default {
     LabelWidget,
     ValueWidget,
     LimitscolumnWidget,
-  },
-  computed: {
-    limitsColumnParameters() {
-      return [
-        this.parameters[0],
-        this.parameters[1],
-        this.parameters[2],
-        'CONVERTED',
-      ]
-    },
   },
 }
 </script>

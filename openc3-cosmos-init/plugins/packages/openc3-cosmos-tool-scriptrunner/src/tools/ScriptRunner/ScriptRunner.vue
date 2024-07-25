@@ -879,15 +879,7 @@ export default {
     window.onbeforeunload = this.unlockFile
 
     let user = OpenC3Auth.user()
-    let roles = [
-      ...new Set( // Use Set to remove duplicates
-        OpenC3Auth.userroles()
-          // Roles are like ALLSCOPES__custom DEFAULT__viewer
-          // but it also includes default-roles-openc3
-          .map((element) => element.split('__')[1])
-          .filter(Boolean), // Get rid of non roles (default-roles-openc3)
-      ),
-    ]
+    let roles = OpenC3Auth.userroles()
     this.readOnlyUser = true
     this.executeUser = false
     for (let role of roles) {
