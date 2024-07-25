@@ -105,6 +105,48 @@
     <classification-banner-settings />
     <v-divider />
     <v-card>
+      <v-card-title> Subtitle </v-card-title>
+      <v-card-subtitle>
+        This sets a subtitle to display below the COSMOS logo in the Navigation
+        bar.
+      </v-card-subtitle>
+      <v-card-text class="pb-0 ml-2">
+        <v-text-field
+          label="Subtitle"
+          v-model="subtitle"
+          data-test="subtitle"
+        />
+      </v-card-text>
+      <v-card-actions>
+        <v-container class="pt-0">
+          <v-row dense>
+            <v-col class="pl-0">
+              <v-btn
+                @click="saveSubtitle"
+                color="success"
+                text
+                data-test="save-subtitle"
+              >
+                Save
+              </v-btn>
+            </v-col>
+          </v-row>
+          <v-alert v-model="subtitleErrorSaving" type="error" dismissible dense>
+            Error saving
+          </v-alert>
+          <v-alert
+            v-model="subtitleSuccessSaving"
+            type="success"
+            dismissible
+            dense
+          >
+            Saved! (Refresh the page to see changes)
+          </v-alert>
+        </v-container>
+      </v-card-actions>
+    </v-card>
+    <v-divider />
+    <v-card>
       <v-card-title> Source code URL </v-card-title>
       <v-card-subtitle>
         This sets the URL for the "Source" link in the footer. This is required
@@ -257,13 +299,16 @@ export default {
       lastConfigs: [],
       selectedLastConfigs: [],
       selectAllLastConfigs: false,
+      subtitle: '',
+      subtitleErrorSaving: false,
+      subtitleSuccessSaving: false,
       sourceUrl: '',
-      rubygemsUrl: '',
-      pypiUrl: '',
       sourceUrlErrorSaving: false,
       sourceUrlSuccessSaving: false,
+      rubygemsUrl: '',
       rubygemsUrlErrorSaving: false,
       rubygemsUrlSuccessSaving: false,
+      pypiUrl: '',
       pypiUrlErrorSaving: false,
       pypiUrlSuccessSaving: false,
     }
@@ -272,7 +317,7 @@ export default {
     selectAllSuppressedWarnings: function (val) {
       if (val) {
         this.selectedSuppressedWarnings = this.suppressedWarnings.map(
-          (warning) => warning.key,
+          (warning) => warning.key
         )
       } else {
         this.selectedSuppressedWarnings = []
@@ -289,6 +334,7 @@ export default {
   created() {
     this.loadSuppressedWarnings()
     this.loadLastConfigs()
+    this.loadSubtitle()
     this.loadSourceUrl()
     this.loadRubygemsUrl()
     this.loadPypiUrl()
@@ -337,68 +383,55 @@ export default {
         value: localStorage[key],
       }
     },
-    loadSourceUrl: function () {
+    loadSetting: function (setting, variable, defaultValue) {
       this.api
-        .get_setting('source_url')
+        .get_setting(setting)
         .then((response) => {
-          this.sourceUrl = response
+          this[variable] = response
         })
         .catch(() => {
-          this.sourceUrl = 'https://github.com/OpenC3/cosmos'
+          this[variable] = defaultValue
         })
+    },
+    saveSetting: function (setting, variable) {
+      this.api
+        .set_setting(setting, this[variable])
+        .then(() => {
+          this[`${variable}ErrorSaving`] = false
+          this[`${variable}SuccessSaving`] = true
+        })
+        .catch(() => {
+          this[`${variable}ErrorSaving`] = true
+          this[`${variable}SuccessSaving`] = false
+        })
+    },
+    loadSubtitle: function () {
+      this.loadSetting('subtitle', 'subtitle', null)
+    },
+    saveSubtitle: function () {
+      this.saveSetting('subtitle', 'subtitle')
+    },
+    loadSourceUrl: function () {
+      this.loadSetting(
+        'source_url',
+        'sourceUrl',
+        'https://github.com/OpenC3/cosmos'
+      )
     },
     saveSourceUrl: function () {
-      this.api
-        .set_setting('source_url', this.sourceUrl)
-        .then(() => {
-          this.sourceUrlErrorSaving = false
-          this.sourceUrlSuccessSaving = true
-        })
-        .catch(() => {
-          this.sourceUrlErrorSaving = true
-        })
+      this.saveSetting('source_url', 'sourceUrl')
     },
     loadRubygemsUrl: function () {
-      this.api
-        .get_setting('rubygems_url')
-        .then((response) => {
-          this.rubygemsUrl = response
-        })
-        .catch(() => {
-          this.rubygemsUrl = 'https://rubygems.org'
-        })
+      this.loadSetting('rubygems_url', 'rubygemsUrl', 'https://rubygems.org')
     },
     saveRubygemsUrl: function () {
-      this.api
-        .set_setting('rubygems_url', this.rubygemsUrl)
-        .then(() => {
-          this.rubygemsUrlErrorSaving = false
-          this.rubygemsUrlSuccessSaving = true
-        })
-        .catch(() => {
-          this.rubygemsUrlErrorSaving = true
-        })
+      this.saveSetting('rubygems_url', 'rubygemsUrl')
     },
     loadPypiUrl: function () {
-      this.api
-        .get_setting('pypi_url')
-        .then((response) => {
-          this.pypiUrl = response
-        })
-        .catch(() => {
-          this.pypiUrl = 'https://pypi.org'
-        })
+      this.loadSetting('pypi_url', 'pypiUrl', 'https://pypi.org')
     },
     savePypiUrl: function () {
-      this.api
-        .set_setting('pypi_url', this.pypiUrl)
-        .then(() => {
-          this.pypiUrlErrorSaving = false
-          this.pypiUrlSuccessSaving = true
-        })
-        .catch(() => {
-          this.pypiUrlErrorSaving = true
-        })
+      this.saveSetting('pypi_url', 'pypiUrl')
     },
   },
 }

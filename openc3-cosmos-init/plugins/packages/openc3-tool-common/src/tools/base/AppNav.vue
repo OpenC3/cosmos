@@ -32,6 +32,9 @@
       <div class="cosmos" @click="showUpgradeToEnterpriseDialog = true">
         COSMOS
       </div>
+      <div style="text-align: center; font-size: 18pt">
+        {{ subtitle }}
+      </div>
       <div v-for="(tool, name) in adminTools" :key="name" class="ma-3">
         <v-btn
           block
@@ -185,6 +188,8 @@ export default {
   },
   data() {
     return {
+      api: new OpenC3Api(),
+      subtitle: null,
       astro: {
         hideClock: false,
       },
@@ -219,11 +224,21 @@ export default {
     },
   },
   created() {
-    new OpenC3Api()
+    this.api
       .get_setting('astro')
       .then((response) => {
         if (response) {
           this.astro = JSON.parse(response)
+        }
+      })
+      .catch((error) => {
+        // Do nothing
+      })
+    this.api
+      .get_setting('subtitle')
+      .then((response) => {
+        if (response) {
+          this.subtitle = response
         }
       })
       .catch((error) => {
@@ -245,7 +260,7 @@ export default {
               // TODO: Make this initiallyOpen configurable like with a CATEGORY parameter?
               this.initiallyOpen.push(this.appNav[key].category)
               const result = this.items.filter(
-                (item) => item.name === this.appNav[key].category,
+                (item) => item.name === this.appNav[key].category
               )
               if (result.length === 0) {
                 // Create category and first item
@@ -332,7 +347,7 @@ export default {
             }
           })
         }, 60000)
-      },
+      }
     )
   },
   methods: {
