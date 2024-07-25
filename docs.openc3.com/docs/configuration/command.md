@@ -142,6 +142,15 @@ Example Usage:
 KEY $.book.title
 ```
 
+#### VARIABLE_BIT_SIZE
+<div class="right">(Since 5.18.0)</div>**Marks an item as having its bit size defined by another length item**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Length Item Name | The name of the associated length item | True |
+| Length Bits Per Count | Bits per count of the length item. Defaults to 8 | False |
+| Length Value Bit Offset | Offset in Bits to Apply to Length Field Value. Defaults to 0 | False |
+
 #### REQUIRED
 **Parameter is required to be populated in scripts**
 
@@ -594,6 +603,12 @@ Generally the template file is formatted in JSON or HTML and then values are fil
 | Target Name | Target Name of related telemetry screen | True |
 | Screen Name | Screen Name of related telemetry screen | True |
 
+### VIRTUAL
+<div class="right">(Since 5.18.0)</div>**Marks this packet as virtual and not participating in identification**
+
+Used for packet definitions that can be used as structures for items with a given packet.
+
+
 ## SELECT_COMMAND
 **Selects an existing command packet for editing**
 
@@ -628,7 +643,7 @@ COMMAND TARGET COLLECT_DATA BIG_ENDIAN "Commands my target to collect data"
   PARAMETER CCSDSSEQCNT 18 14 UINT 0 16383 0 "CCSDS PRIMARY HEADER SEQUENCE COUNT"
   PARAMETER CCSDSLENGTH 32 16 UINT 4 4 4 "CCSDS PRIMARY HEADER PACKET LENGTH"
   PARAMETER ANGLE 48 32 FLOAT -180.0 180.0 0.0 "ANGLE OF INSTRUMENT IN DEGREES"
-  POLY_WRITE_CONVERSION 0 0.01745 0 0
+    POLY_WRITE_CONVERSION 0 0.01745 0 0
   PARAMETER MODE 80 8 UINT 0 1 0 "DATA COLLECTION MODE"
     STATE NORMAL 0
     STATE DIAG 1

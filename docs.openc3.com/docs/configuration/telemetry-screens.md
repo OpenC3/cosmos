@@ -79,7 +79,7 @@ GLOBAL_SETTING LABELVALUELIMITSBAR TEXTCOLOR BLACK
 ## GLOBAL_SUBSETTING
 **Applies a widget subsetting to all widgets of a certain type**
 
-Subsettings are only valid for widgets that are made up of more than one subwidget. For example, LABELVALUE is made up of a LABEL at subwidget index 0 and a VALUE at subwidget index 1. This allows for passing settings to specific subwidgets. Some widgets are made up of multiple subwidgets, e.g. LABELVALUELIMITSBAR. To set the label text color, pass '0:0' as the Subwidget Index to first index the LABELVALUE and then the LABEL.
+Subsettings are only valid for widgets that are made up of more than one subwidget. For example, LABELVALUE is made up of a LABEL at subwidget index 0 and a VALUE at subwidget index 1. This allows for passing settings to specific subwidgets. Some widgets are made up of multiple subwidgets, e.g. LABELVALUELIMITSBAR. To set the Label widget, pass 0 as the Subwidget Index, pass 1 for the Value widget, and 2 for the LimitsBar widget.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -91,7 +91,7 @@ Subsettings are only valid for widgets that are made up of more than one subwidg
 Example Usage:
 ```ruby
 # Set all text color to white for labelvaluelimitsbars
-GLOBAL_SUBSETTING LABELVALUELIMITSBAR 0:0 TEXTCOLOR white
+GLOBAL_SUBSETTING LABELVALUELIMITSBAR 0 TEXTCOLOR white
 ```
 
 ## SETTING
@@ -256,7 +256,7 @@ LABEL "Label 1"
 ## SUBSETTING
 **Applies a widget subsetting to the previously defined widget**
 
-Subsettings are only valid for widgets that are made up of more than one subwidget. For example, LABELVALUE is made up of a LABEL at subwidget index 0 and a VALUE at subwidget index 1. This allows for passing settings to specific subwidgets. Some widgets are made up of multiple subwidgets, e.g. LABELVALUELIMITSBAR. To set the label text color, pass '0:0' as the Subwidget Index to first index the LABELVALUE and then the LABEL.
+Subsettings are only valid for widgets that are made up of more than one subwidget. For example, LABELVALUE is made up of a LABEL at subwidget index 0 and a VALUE at subwidget index 1. This allows for passing settings to specific subwidgets. Some widgets are made up of multiple subwidgets, e.g. LABELVALUELIMITSBAR. To set the Label widget, pass 0 as the Subwidget Index, pass 1 for the Value widget, and 2 for the LimitsBar widget.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -268,9 +268,9 @@ Example Usage:
 ```ruby
 VERTICALBOX
   LABELVALUE INST HEALTH_STATUS TEMP1
-  SUBSETTING 0 TEXTCOLOR blue # Change the label's text to blue
+    SUBSETTING 0 TEXTCOLOR blue # Change the label's text to blue
   LABELVALUELIMITSBAR INST HEALTH_STATUS TEMP1
-  SUBSETTING 0:0 TEXTCOLOR green # Change the label's text to green
+    SUBSETTING 0 TEXTCOLOR green # Change the label's text to green
 END
 ```
 
