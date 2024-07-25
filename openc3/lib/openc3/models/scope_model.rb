@@ -303,6 +303,10 @@ module OpenC3
     end
 
     def undeploy
+      # Delete UNKNOWN target
+      target = TargetModel.get_model(name: "UNKNOWN", scope: @scope)
+      target.destroy
+
       model = MicroserviceModel.get_model(name: "#{@scope}__SCOPEMULTI__#{@scope}", scope: @scope)
       model.destroy if model
       model = MicroserviceModel.get_model(name: "#{@scope}__SCOPECLEANUP__#{@scope}", scope: @scope)
