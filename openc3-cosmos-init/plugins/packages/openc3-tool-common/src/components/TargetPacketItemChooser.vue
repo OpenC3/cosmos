@@ -44,7 +44,7 @@
           dense
           outlined
           @change="packetNameChanged"
-          :disabled="packetsDisabled || buttonDisabled"
+          :disabled="packetsDisabled || autocompleteDisabled"
           :items="packetNames"
           item-text="label"
           item-value="value"
@@ -52,7 +52,7 @@
         />
       </v-col>
       <v-col
-        v-if="chooseItem && !buttonDisabled"
+        v-if="chooseItem"
         :cols="colSize"
         class="select"
         data-test="select-item"
@@ -63,7 +63,7 @@
           dense
           outlined
           @change="itemNameChanged($event)"
-          :disabled="itemsDisabled || buttonDisabled"
+          :disabled="itemsDisabled || autocompleteDisabled"
           :items="itemNames"
           item-text="label"
           item-value="value"
@@ -82,7 +82,7 @@
           dense
           outlined
           @change="indexChanged($event)"
-          :disabled="itemsDisabled || buttonDisabled"
+          :disabled="itemsDisabled || autocompleteDisabled"
           :items="arrayIndexes()"
           item-text="label"
           item-value="value"
@@ -286,8 +286,17 @@ export default {
       }
       return this.buttonText
     },
-    buttonDisabled: function () {
+    autocompleteDisabled: function () {
       return this.disabled || this.internalDisabled
+    },
+    buttonDisabled: function () {
+      return (
+        this.disabled ||
+        this.internalDisabled ||
+        this.selectedTargetName === null ||
+        this.selectedPacketName === null ||
+        this.selectedItemNameWIndex === null
+      )
     },
     colSize: function () {
       return this.vertical ? 12 : false
@@ -397,12 +406,12 @@ export default {
             reducedType: this.selectedReducedType,
           })
           this.internalDisabled = false
-        },
+        }
       )
     },
     itemIsArray: function () {
       let i = this.itemNames.findIndex(
-        (item) => item.value === this.selectedItemName,
+        (item) => item.value === this.selectedItemName
       )
       if (i === -1) {
         this.selectedArrayIndex = null
@@ -420,7 +429,7 @@ export default {
     },
     arrayIndexes: function () {
       let i = this.itemNames.findIndex(
-        (item) => item.value === this.selectedItemName,
+        (item) => item.value === this.selectedItemName
       )
       let indexes = [...Array(this.itemNames[i].array).keys()]
       if (this.allowAll) {
@@ -433,12 +442,22 @@ export default {
       this.selectedTargetName = value
       this.selectedPacketName = ''
       this.selectedItemName = ''
-      this.updatePackets()
+      // When the target name is completed deleted in the v-autocomplete
+      // the @change handler is fired but the value is null
+      // In this case we don't want to update packets
+      if (value !== null) {
+        this.updatePackets()
+      }
     },
 
     packetNameChanged: function (value) {
       this.selectedItemName = ''
-      this.updatePacketDetails(value)
+      // When the packet name is completed deleted in the v-autocomplete
+      // the @change handler is fired but the value is null
+      // In this case we don't want to update packet details
+      if (value !== null) {
+        this.updatePacketDetails(value)
+      }
     },
 
     updatePacketDetails: function (value) {
@@ -457,7 +476,7 @@ export default {
             (packet) => {
               this.description = packet.description
               this.hazardous = packet.hazardous
-            },
+            }
           )
         }
       }
@@ -546,7 +565,7 @@ export default {
                 reducedType: this.selectedReducedType,
               })
             })
-          },
+          }
         )
       })
     },
