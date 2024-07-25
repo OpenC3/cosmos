@@ -110,10 +110,8 @@ module OpenC3
         expect { StructureItem.new("test", 0, nil, :UINT, :BIG_ENDIAN, nil) }.to raise_error(ArgumentError, "TEST: bit_size must be an Integer")
       end
 
-      it "complains about 0 size INT, UINT, and FLOAT" do
-        %w(INT UINT FLOAT).each do |type|
-          expect { StructureItem.new("test", 0, 0, type.to_sym, :BIG_ENDIAN, nil) }.to raise_error(ArgumentError, "TEST: bit_size cannot be negative or zero for :INT, :UINT, and :FLOAT items: 0")
-        end
+      it "complains about 0 size FLOAT" do
+        expect { StructureItem.new("test", 0, 0, :FLOAT, :BIG_ENDIAN, nil) }.to raise_error(ArgumentError, "TEST: bit_size cannot be negative or zero for :FLOAT items: 0")
       end
 
       it "complains about bad float bit sizes" do
