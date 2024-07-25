@@ -6,6 +6,10 @@ gem 'ruby-termios', '>= 0.9' if RbConfig::CONFIG['target_os'] !~ /mswin|mingw|cy
 
 gemspec :name => 'openc3'
 
+# Temporary until grpc updated
+gem 'google-protobuf', '3.24.0'
+gem 'grpc', '1.59.2'
+
 # Include the rails gems for the convenience of custom microservice plugins
 gem 'bootsnap', '>= 1.9.3', require: false
 gem 'mock_redis', '0.44'
