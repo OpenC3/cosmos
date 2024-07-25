@@ -42,11 +42,9 @@ async function openFile(page, utils, filename) {
   await expect(page.locator('.v-dialog')).not.toBeVisible()
   await utils.sleep(500)
 
-  // Check for potential "Someone else is editing this script"
+  // Check for potential "<User> is editing this script"
   // This can happen if we had to do a retry on this test
-  const someone = page.getByText(
-    'Someone else is editing this script. Editor is in read-only mode',
-  )
+  const someone = page.getByText('is editing this script')
   if (await someone.isVisible()) {
     await page.locator('[data-test="unlock-button"]').click()
     await page.locator('[data-test="confirm-dialog-force unlock"]').click()
