@@ -171,8 +171,8 @@ module OpenC3
     def bit_size=(bit_size)
       raise ArgumentError, "#{@name}: bit_size must be an Integer" unless Integer === bit_size
       byte_multiple = ((bit_size % 8) == 0)
-      if bit_size <= 0 and (@data_type == :INT or @data_type == :UINT or @data_type == :FLOAT)
-        raise ArgumentError, "#{@name}: bit_size cannot be negative or zero for :INT, :UINT, and :FLOAT items: #{bit_size}"
+      if bit_size <= 0 and (@data_type == :FLOAT)
+        raise ArgumentError, "#{@name}: bit_size cannot be negative or zero for :FLOAT items: #{bit_size}"
       end
       if (@data_type == :STRING or @data_type == :BLOCK) and !byte_multiple
         raise ArgumentError, "#{@name}: bit_size for STRING and BLOCK items must be byte multiples"
@@ -246,11 +246,11 @@ module OpenC3
       # Comparison Operator based on bit_offset. This means that StructureItems
       # with different names or bit sizes are equal if they have the same bit
       # offset.
-      def <=>(other_item)
-        return nil unless other_item.kind_of?(StructureItem)
+      def <=>(other)
+        return nil unless other.kind_of?(StructureItem)
 
-        other_bit_offset = other_item.bit_offset
-        other_bit_size = other_item.bit_size
+        other_bit_offset = other.bit_offset
+        other_bit_size = other.bit_size
 
         # Handle same bit offset case
         if (@bit_offset == 0) && (other_bit_offset == 0)
@@ -259,7 +259,7 @@ module OpenC3
           # Compare based on bit size then create index
           if @bit_size == other_bit_size
             if @create_index
-              if @create_index <= other_item.create_index
+              if @create_index <= other.create_index
                 return -1
               else
                 return 1
@@ -279,7 +279,7 @@ module OpenC3
           # Both Have Same Sign
           if @bit_offset == other_bit_offset
             if @create_index
-              if @create_index <= other_item.create_index
+              if @create_index <= other.create_index
                 return -1
               else
                 return 1
@@ -296,7 +296,7 @@ module OpenC3
           # Different Signs
           if @bit_offset == other_bit_offset
             if @create_index
-              if @create_index < other_item.create_index
+              if @create_index < other.create_index
                 return -1
               else
                 return 1

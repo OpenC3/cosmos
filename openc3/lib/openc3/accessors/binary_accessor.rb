@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -85,8 +85,6 @@ module OpenC3
     # Valid overflow types
     OVERFLOW_TYPES = [:TRUNCATE, :SATURATE, :ERROR, :ERROR_ALLOW_HEX]
 
-    protected
-
     # Determines the endianness of the host running this code
     #
     # This method is protected to force the use of the constant
@@ -108,8 +106,6 @@ module OpenC3
       raise ArgumentError, "#{buffer.length} byte buffer insufficient to #{read_write} #{data_type} at bit_offset #{given_bit_offset} with bit_size #{given_bit_size}"
     end
 
-    public
-
     # Store the host endianness so that it only has to be determined once
     HOST_ENDIANNESS = get_host_endianness()
     # Valid endianess
@@ -122,6 +118,7 @@ module OpenC3
       else
         if item.data_type == :INT or item.data_type == :UINT
           # QUIC encoding is currently assumed for individual variable sized integers
+          # see https://datatracker.ietf.org/doc/html/rfc9000#name-variable-length-integer-enc
           case length_value
           when 0
             item.bit_size = 6
@@ -148,6 +145,7 @@ module OpenC3
       # Update length field to new size
       if (item.data_type == :INT or item.data_type == :UINT) and not item.original_array_size
         # QUIC encoding is currently assumed for individual variable sized integers
+        # see https://datatracker.ietf.org/doc/html/rfc9000#name-variable-length-integer-enc
 
         # Calculate current bit size so we can preserve bytes after the item
         length_item_value = @packet.read(item.variable_bit_size['length_item_name'], :CONVERTED)
@@ -210,6 +208,22 @@ module OpenC3
 
         # Later items need their bit_offset adjusted by the change in this item
         adjustment = new_bit_size - current_bit_size
+        bytes = (adjustment / 8)
+        item_offset = item.bit_offset / 8
+        if bytes > 0
+          original_length = buffer.length
+          # Add extra bytes because we're adjusting larger
+          buffer << ("\000" * bytes)
+          # We added bytes to the end so now we have to shift the buffer over
+          #   NOTE: buffer[offset, length]
+          # We copy to the shifted offset location with the remaining buffer length
+          buffer[item_offset + bytes, buffer.length - (item_offset + bytes)] =
+              # We copy from the original offset location with the original length minus the offset
+              buffer[item_offset, original_length - item_offset]
+        elsif bytes < 0
+          # Remove extra bytes because we're adjusting smaller
+          buffer[item_offset + -bytes, -bytes] = ''
+        end
       elsif item.data_type == :FLOAT
         raise "Variable bit size not currently supported for FLOAT data type"
       else
@@ -238,7 +252,6 @@ module OpenC3
 
       # Recalculate bit offsets after this item
       if adjustment != 0 and item.bit_offset >= 0
-        found = false
         @packet.sorted_items.each do |sitem|
           if sitem.data_type == :DERIVED or sitem.bit_offset < item.bit_offset
             # Skip items before this item and derived items and items with negative bit offsets
@@ -532,7 +545,7 @@ module OpenC3
                 # String was completely empty
                 if end_bytes > 0
                   # Preserve bytes at end of buffer
-                  buffer << "\000" * value.length
+                  buffer << ("\000" * value.length)
                   buffer[lower_bound + value.length, end_bytes] = buffer[lower_bound, end_bytes]
                 end
               elsif bit_size == 0
@@ -544,7 +557,7 @@ module OpenC3
               elsif (upper_bound > old_upper_bound) && (end_bytes > 0)
                 # Preserve bytes at end of buffer
                 diff = upper_bound - old_upper_bound
-                buffer << "\000" * diff
+                buffer << ("\000" * diff)
                 buffer[upper_bound + 1, end_bytes] = buffer[old_upper_bound + 1, end_bytes]
               end
             else # given_bit_size > 0
@@ -731,7 +744,6 @@ module OpenC3
         return value
       end
 
-      protected
 
       # Check the bit size and bit offset for problems. Recalulate the bit offset
       # and return back through the passed in pointer.
@@ -849,7 +861,6 @@ module OpenC3
         (bit_size == 8) || (bit_size == 16) || (bit_size == 32) || (bit_size == 64)
       end
 
-      public
 
     end
 
@@ -1092,7 +1103,7 @@ module OpenC3
             # Grow buffer and preserve bytes at end of buffer if necesssary
             buffer_length = buffer.length
             diff = upper_bound - old_upper_bound
-            buffer << ZERO_STRING * diff
+            buffer << (ZERO_STRING * diff)
             if end_bytes > 0
               buffer[(upper_bound + 1)..(buffer.length - 1)] = buffer[(old_upper_bound + 1)..(buffer_length - 1)]
             end
@@ -1119,7 +1130,7 @@ module OpenC3
       end
 
       # Ensure the buffer has enough room
-      if bit_offset + num_writes * bit_size > buffer.length * 8
+      if bit_offset + (num_writes * bit_size) > buffer.length * 8
         raise_buffer_error(:write, buffer, data_type, given_bit_offset, given_bit_size)
       end
 

@@ -338,8 +338,9 @@ module OpenC3
         if item.variable_bit_size
           minimum_data_bits = 0
           if (item.data_type == :INT or item.data_type == :UINT) and not item.original_array_size
-            # Minimum QUIC encoded integer
+            # Minimum QUIC encoded integer, see https://datatracker.ietf.org/doc/html/rfc9000#name-variable-length-integer-enc
             minimum_data_bits = 6
+          # :STRING, :BLOCK, or array item
           elsif item.variable_bit_size['length_value_bit_offset'] > 0
             minimum_data_bits = item.variable_bit_size['length_value_bit_offset'] * item.variable_bit_size['length_bits_per_count']
           end
