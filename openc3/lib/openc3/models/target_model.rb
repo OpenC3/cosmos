@@ -660,7 +660,10 @@ module OpenC3
       Store.del(item_map_key)
       @@item_map_cache[@name] = nil
 
-      ConfigTopic.write({ kind: 'deleted', type: 'target', name: @name, plugin: @plugin }, scope: @scope)
+      topic = { kind: 'deleted', type: 'target', name: @name }
+      # The UNKNOWN target doesn't have an associated plugin
+      topic[:plugin] = @plugin if @plugin
+      ConfigTopic.write(topic, scope: @scope)
     rescue Exception => e
       Logger.error("Error undeploying target model #{@name} in scope #{@scope} due to #{e}")
     end

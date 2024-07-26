@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -31,6 +31,9 @@
       <img :src="logo" class="logo" alt="OpenC3" />
       <div class="cosmos" @click="showUpgradeToEnterpriseDialog = true">
         COSMOS
+      </div>
+      <div style="text-align: center; font-size: 18pt">
+        {{ subtitle }}
       </div>
       <div v-for="(tool, name) in adminTools" :key="name" class="ma-3">
         <v-btn
@@ -185,6 +188,8 @@ export default {
   },
   data() {
     return {
+      api: new OpenC3Api(),
+      subtitle: null,
       astro: {
         hideClock: false,
       },
@@ -219,7 +224,7 @@ export default {
     },
   },
   created() {
-    new OpenC3Api()
+    this.api
       .get_setting('astro')
       .then((response) => {
         if (response) {
@@ -229,6 +234,17 @@ export default {
       .catch((error) => {
         // Do nothing
       })
+    this.api
+      .get_setting('subtitle')
+      .then((response) => {
+        if (response) {
+          this.subtitle = response
+        }
+      })
+      .catch((error) => {
+        // Do nothing
+      })
+    // Tools are global and are always installed into the DEFAULT scope
     Api.get('/openc3-api/tools/all', { params: { scope: 'DEFAULT' } }).then(
       (response) => {
         this.appNav = response.data
@@ -244,7 +260,7 @@ export default {
               // TODO: Make this initiallyOpen configurable like with a CATEGORY parameter?
               this.initiallyOpen.push(this.appNav[key].category)
               const result = this.items.filter(
-                (item) => item.name === this.appNav[key].category,
+                (item) => item.name === this.appNav[key].category
               )
               if (result.length === 0) {
                 // Create category and first item
@@ -331,7 +347,7 @@ export default {
             }
           })
         }, 60000)
-      },
+      }
     )
   },
   methods: {

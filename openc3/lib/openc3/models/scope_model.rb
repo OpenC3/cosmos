@@ -113,6 +113,7 @@ module OpenC3
       # Ensure there are no "." in the scope name - prevents gems accidently becoming scope names
       raise "Invalid scope name: #{@name}" if @name !~ /^[a-zA-Z0-9_-]+$/
       @name = @name.upcase
+      @scope = @name # Ensure @scope matches @name
       super(update: update, force: force, queued: queued)
 
       # If we're updating the scope and disabling command_authority
@@ -302,6 +303,10 @@ module OpenC3
     end
 
     def undeploy
+      # Delete UNKNOWN target
+      target = TargetModel.get_model(name: "UNKNOWN", scope: @scope)
+      target.destroy
+
       model = MicroserviceModel.get_model(name: "#{@scope}__SCOPEMULTI__#{@scope}", scope: @scope)
       model.destroy if model
       model = MicroserviceModel.get_model(name: "#{@scope}__SCOPECLEANUP__#{@scope}", scope: @scope)

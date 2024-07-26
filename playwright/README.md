@@ -11,7 +11,7 @@ NOTE: All commands are assumed to be executed from this (playwright) directory u
 1.  Install testing dependencies with yarn
 
         playwright> yarn
-        playwright> npx playwright install
+        playwright> yarn playwright install
 
 1.  Generate the test plugins (must be located above this directory). If openc3.sh isn't in your path you might need to use an absolute or relative path to it.
 
@@ -22,13 +22,14 @@ NOTE: All commands are assumed to be executed from this (playwright) directory u
         openc3-pw-test> openc3.sh cliroot rake build VERSION=1.0.0
         openc3-pw-test> cp openc3-cosmos-pw-test-1.0.0.gem openc3-cosmos-pw-test-1.0.1.gem
 
-1.  Set Enterprise if running against OpenC3 COSMOS Enterprise
-
-        playwright> set ENTERPRISE=1
-
-1.  Open playwright and run tests
+1.  Open playwright and run tests. The first example is running against Open Source, the second against Enterprise.
 
         playwright> yarn playwright test --headed --project=chromium
+        playwright> ENTERPRISE=1 yarn playwright test --headed --project=chromium
+
+1.  Playback a trace file. Note that the Github 'OpenC3 Playwright Tests' action stores the trace under the Summary link. Click Details next to the 'OpenC3 Playwright Tests' then Summary in the top left. Scroll down and download the playwright artifact. Unzip it and copy the files into the playwright/test-results directory. Then playback the trace to help debug.
+
+        playwright> yarn playwright show-trace /test-results/<NAME OF TEST>/trace.zip
 
 1.  Run with the playwright UI
 

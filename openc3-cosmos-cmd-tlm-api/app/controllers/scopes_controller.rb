@@ -38,11 +38,13 @@ class ScopesController < ModelController
     model = @model_class.from_json(params[:json])
     if update_model
       model.update
-      OpenC3::Logger.info("#{@model_class.name} updated: #{params[:json]}", scope: params[:scope], user: username())
+      # Scopes are global so the scope is always 'DEFAULT'
+      OpenC3::Logger.info("#{@model_class.name} updated: #{params[:json]}", scope: 'DEFAULT', user: username())
     else
       model.create
       model.deploy(".", {})
-      OpenC3::Logger.info("#{@model_class.name} created: #{params[:json]}", scope: params[:scope], user: username())
+      # Scopes are global so the scope is always 'DEFAULT'
+      OpenC3::Logger.info("#{@model_class.name} created: #{params[:json]}", scope: 'DEFAULT', user: username())
     end
     head :ok
   rescue Exception => e
@@ -51,6 +53,7 @@ class ScopesController < ModelController
 
   def destroy
     return unless authorization('superadmin')
+    # Scopes are global so the scope is always 'DEFAULT'
     result = OpenC3::ProcessManager.instance.spawn(["ruby", "/openc3/bin/openc3cli", "destroyscope", params[:id]], "scope_uninstall", params[:id], Time.now + 2.hours, scope: 'DEFAULT')
     render :json => result
   rescue Exception => e

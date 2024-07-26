@@ -714,6 +714,16 @@ UTF-8
         @target_dir = File.join(SPEC_DIR, "install", "config")
       end
 
+      it "works on created but not deployed instances" do
+        model = TargetModel.new(name: "UNKNOWN", scope: "DEFAULT")
+        model.create
+        tgt = JSON.parse(Store.hget("DEFAULT__openc3_targets", "UNKNOWN"))
+        expect(tgt['name']).to eql "UNKNOWN"
+        model.destroy
+        tgt = Store.hget("DEFAULT__openc3_targets", "UNKNOWN")
+        expect(tgt).to be nil
+      end
+
       it "destroys any deployed Target microservices" do
         orig_keys = get_all_redis_keys()
         # Add in the keys that remain when a target is destroyed
