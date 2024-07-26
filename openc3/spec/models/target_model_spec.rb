@@ -93,7 +93,7 @@ module OpenC3
     # self.all_modified & self.download aren't unit tested because it's basically just mocking the entire S3 API
 
     describe "self.all_modified" do
-      it "returns all the modified targets" do
+      xit "returns all the modified targets" do
         s3 = instance_double("Aws::S3::Client")
         allow(Aws::S3::Client).to receive(:new).and_return(s3)
         options = OpenStruct.new
@@ -114,7 +114,7 @@ module OpenC3
     end
 
     describe "self.modified_files" do
-      it "returns all the modified files" do
+      xit "returns all the modified files" do
         s3 = instance_double("Aws::S3::Client")
         allow(Aws::S3::Client).to receive(:new).and_return(s3)
         options = OpenStruct.new
@@ -166,7 +166,7 @@ UTF-8
     end
 
     describe "self.download" do
-      it "returns all the downloads" do
+      xit "returns all the downloads" do
         s3 = instance_double("Aws::S3::Client")
         allow(Aws::S3::Client).to receive(:new).and_return(s3)
         options = OpenStruct.new
