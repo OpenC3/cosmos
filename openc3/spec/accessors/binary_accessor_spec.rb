@@ -32,7 +32,7 @@ module OpenC3
         @packet = Packet.new
       end
 
-      it "can write QUIC encoded variable sized UINTs" do
+      it "can write QUIC encoded variable sized integers" do
         @packet.append_item("marker", 16, :STRING)
         @packet.write("marker", "**")
         expect(@packet.buffer).to eql "\x2A\x2A"
@@ -49,62 +49,60 @@ module OpenC3
         @packet.write("marker", "##")
         expect(@packet.buffer).to eql "\x2A\x2A\x00\x23\x23"
 
+        @packet.append_item("item2_length", 2, :UINT)
+        item2 = @packet.append_item("item2", 0, :INT)
+        item2.variable_bit_size = {'length_item_name' => 'item2_length', 'length_value_bit_offset' => 0, 'length_bits_per_count' => 8}
+        # This is required to get the defined_length_bits set correctly
+        # It is normally called by packet_config when constructing the packet
+        @packet.set_item(item2)
+        expect(@packet.buffer).to eql "\x2A\x2A\x00\x23\x23\x00"
+
+        @packet.append_item("marker", 16, :STRING)
+        @packet.write("marker", "$$")
+        expect(@packet.buffer).to eql "\x2A\x2A\x00\x23\x23\x00\x24\x24"
+
         # For all these example the 2 bits indicate the length
         # 0 is 6, 1 is 14, 2 is 30, 4 is 62
         # The 2 bit length field itself makes up a full byte boundary
 
         @packet.write("item1", 0)
-        expect(@packet.buffer).to eql "\x2A\x2A\x00\x23\x23"
+        @packet.write("item2", 0)
+        expect(@packet.buffer).to eql "\x2A\x2A\x00\x23\x23\x00\x24\x24"
         expect(@packet.read("item1")).to eql(0x0)
+        expect(@packet.read("item2")).to eql(0x0)
 
-        # TODO: Probably a way to automate this and test both INT and UINT and multiple values in a loop
-        # min_int6  = -(2**5)
-        # max_int6  = (2**5) - 1
-        max_uint6 = (2**6) - 1
+        # Loop through all the combinations of bits
+        [[6, 'c', 0], [14, 's>', 0x4000], [30, 'l>', 0x80000000], [62, 'q>', 0xC000000000000000]].each do |bits, format_string, length_bits|
+          min_unsigned = 0
+          max_unsigned = (2**bits) - 1
+          mask = max_unsigned
+          min_signed = -(2**(bits-1))
+          max_signed = (2**(bits-1)) - 1
 
-        @packet.write("item1", max_uint6)
-        expect(@packet.buffer).to eql "\x2A\x2A\x3F\x23\x23"
-        expect(@packet.read("item1")).to eql(max_uint6)
+          @packet.write("item1", min_unsigned)
+          @packet.write("item2", min_signed)
+          # We know min unsigned is just 0 so pack that
+          buffer = "\x2A\x2A\x00\x23\x23"
+          # Mask off the length bits then set them
+          buffer += [(min_signed & mask) | length_bits].pack(format_string)
+          buffer += "\x24\x24"
+          expect(@packet.buffer).to eql buffer
+          expect(@packet.read("item1")).to eql(min_unsigned)
+          expect(@packet.read("item2")).to eql(min_signed)
 
-        @packet.write("item1", 0x40) # This bumps us into the 14 bit field
-        # Now the top two bits are 01 for a 14 bit data field
-        expect(@packet.buffer).to eql "\x2A\x2A\x40\x40\x23\x23"
-        expect(@packet.read("item1")).to eql(0x40)
-
-        @packet.write("item1", 0x3FFF)
-        expect(@packet.buffer).to eql "\x2A\x2A\x7F\xFF\x23\x23"
-        expect(@packet.read("item1")).to eql(0x3FFF)
-
-        @packet.write("item1", 0x4000)
-        # Now the top two bits are 10 for a 32 bit data field
-        expect(@packet.buffer).to eql "\x2A\x2A\x80\x00\x40\x00\x23\x23"
-        expect(@packet.read("item1")).to eql(0x4000)
-
-        @packet.write("item1", 0x3FFFFFFF)
-        expect(@packet.buffer).to eql "\x2A\x2A\xBF\xFF\xFF\xFF\x23\x23"
-        expect(@packet.read("item1")).to eql(0x3FFFFFFF)
-
-        @packet.write("item1", 0x40000000)
-        # Now the top two bits are 11 for a 62 bit data field
-        expect(@packet.buffer).to eql "\x2A\x2A\xC0\x00\x00\x00\x40\x00\x00\x00\x23\x23"
-        expect(@packet.read("item1")).to eql(0x40000000)
-
-        @packet.write("item1", 0x3FFFFFFFFFFFFFFF)
-        expect(@packet.buffer).to eql "\x2A\x2A\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x23\x23"
-        expect(@packet.read("item1")).to eql(0x3FFFFFFFFFFFFFFF)
-
-        # Now go back down in size
-        @packet.write("item1", 0x3FFFFFFF)
-        expect(@packet.buffer).to eql "\x2A\x2A\xBF\xFF\xFF\xFF\x23\x23"
-        expect(@packet.read("item1")).to eql(0x3FFFFFFF)
-
-        @packet.write("item1", 0x3FFF)
-        expect(@packet.buffer).to eql "\x2A\x2A\x7F\xFF\x23\x23"
-        expect(@packet.read("item1")).to eql(0x3FFF)
-
-        @packet.write("item1", 1)
-        expect(@packet.buffer).to eql "\x2A\x2A\x01\x23\x23"
-        expect(@packet.read("item1")).to eql(1)
+          @packet.write("item1", max_unsigned)
+          @packet.write("item2", max_signed)
+          buffer = "\x2A\x2A"
+          # Mask off the length bits then set them
+          buffer += [(max_unsigned & mask) | length_bits].pack(format_string)
+          buffer += "\x23\x23"
+          # Mask off the length bits then set them
+          buffer += [(max_signed & mask) | length_bits].pack(format_string)
+          buffer += "\x24\x24"
+          expect(@packet.buffer).to eql buffer
+          expect(@packet.read("item1")).to eql(max_unsigned)
+          expect(@packet.read("item2")).to eql(max_signed)
+        end
       end
 
       it "can define multiple variable sized items" do

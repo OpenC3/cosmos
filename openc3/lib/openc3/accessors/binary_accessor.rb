@@ -222,8 +222,10 @@ module OpenC3
               buffer[item_offset, original_length - item_offset]
         elsif bytes < 0
           # Remove extra bytes because we're adjusting smaller
-          buffer[item_offset + -bytes, -bytes] = ''
+          buffer[item_offset + 1, -bytes] = ''
         end
+      # Probably not possible to get this condition because we don't allow 0 sized floats
+      # but check for it just to cover all the possible data_types
       elsif item.data_type == :FLOAT
         raise "Variable bit size not currently supported for FLOAT data type"
       else
