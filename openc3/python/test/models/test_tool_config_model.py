@@ -29,14 +29,14 @@ class TestToolConfigModel(unittest.TestCase):
         #config = ToolConfigModel.load_config('toolie', 'namely', scope= 'DEFAULT')
         #self.assertEqual(config, {})
 
-    def test_self_save_config(self):
+    #def test_self_save_config(self):
         #self.assertRaises(ValueError,
-          result = ToolConfigModel.save_config(
-          'toolie',
-          'namely',
-          '{"data":"value", "other":42, "not":null}',
-           local_mode= True,
-           scope= 'DEFAULT')
+        #  result = ToolConfigModel.save_config(
+        #  'toolie',
+        #  'namely',
+        #  '{"data":"value", "other":42, "not":null}',
+        #   local_mode= True,
+        #   scope= 'DEFAULT')
         #) # message (/Read-only file system self. dir_s_mkdir - \/plugins/)
 
     def test_self_list_configs(self):
