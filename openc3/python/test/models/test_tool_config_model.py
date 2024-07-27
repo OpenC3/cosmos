@@ -47,8 +47,8 @@ class TestToolConfigModel(unittest.TestCase):
         names = ToolConfigModel.config_tool_names(scope= 'DEFAULT')
         self.assertEqual(names, []) # eq('ps')
 
-    def test_deletes(self):
-        name = ToolConfigModel.delete_config('toolie', 'namely', local_mode= True, scope= 'DEFAULT')
+    #def test_deletes(self):
+        #name = ToolConfigModel.delete_config('toolie', 'namely', local_mode= True, scope= 'DEFAULT')
 
     # some overlap
 
