@@ -167,6 +167,15 @@ Example Usage:
 KEY $.book.title
 ```
 
+#### VARIABLE_BIT_SIZE
+<div class="right">(Since 5.18.0)</div>**Marks an item as having its bit size defined by another length item**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Length Item Name | The name of the associated length item | True |
+| Length Bits Per Count | Bits per count of the length item. Defaults to 8 | False |
+| Length Value Bit Offset | Offset in Bits to Apply to Length Field Value. Defaults to 0 | False |
+
 #### STATE
 **Defines a key/value pair for the current item**
 
@@ -487,6 +496,12 @@ Defines the class that is used too read raw values from the packet. Defaults to 
 <div class="right">(Since 5.16.0)</div>**Ignores any packet items which overlap**
 
 Packet items which overlap normally generate a warning unless each individual item has the OVERLAP keyword. This ignores overlaps across the entire packet.
+
+
+### VIRTUAL
+<div class="right">(Since 5.18.0)</div>**Marks this packet as virtual and not participating in identification**
+
+Used for packet definitions that can be used as structures for items with a given packet.
 
 
 ## SELECT_TELEMETRY

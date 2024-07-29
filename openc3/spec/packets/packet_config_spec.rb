@@ -53,6 +53,32 @@ module OpenC3
         expect(@pc.telemetry["UNKNOWN"].keys).to eql ["UNKNOWN"]
       end
 
+      it "dyanamically adds packets" do
+        tf = Tempfile.new('unittest')
+        tf.puts 'TELEMETRY tgt1 pkt1 BIG_ENDIAN "Packet"'
+        tf.puts 'ID_ITEM myitem 0 8 UINT 1 "Test Item id=1"'
+        tf.puts 'COMMAND tgt1 pkt10 BIG_ENDIAN "Packet"'
+        tf.puts 'ID_PARAMETER myitem 0 8 UINT 10 10 10 "Test Item id=1"'
+        tf.close
+        @pc.process_file(tf.path, "TGT1")
+        tf.unlink
+
+        expect(@pc.tlm_id_value_hash["TGT1"].keys).to eql([[1]])
+        expect(@pc.cmd_id_value_hash["TGT1"].keys).to eql([[10]])
+
+        pkt = Packet.new("TGT1", "PKT2")
+        pkt.append_item("item2", 32, :UINT, nil, :BIG_ENDIAN, :ERROR, nil, nil, nil, 2)
+        @pc.dynamic_add_packet(pkt, :TELEMETRY, affect_ids: true)
+        expect(@pc.telemetry["TGT1"]["PKT2"]).to eql pkt
+        expect(@pc.tlm_id_value_hash["TGT1"].keys).to eql([[1], [2]])
+
+        pkt = Packet.new("TGT1", "PKT11")
+        pkt.append_item("item12", 32, :UINT, nil, :BIG_ENDIAN, :ERROR, nil, nil, nil, 11)
+        @pc.dynamic_add_packet(pkt, :COMMAND, affect_ids: true)
+        expect(@pc.commands["TGT1"]["PKT11"]).to eql pkt
+        expect(@pc.cmd_id_value_hash["TGT1"].keys).to eql([[10], [11]])
+      end
+
       it "outputs parsed definitions back to a file" do
         tf = Tempfile.new('unittest')
         tlm = "TELEMETRY TGT1 PKT1 LITTLE_ENDIAN \"Telemetry\"\n"\
@@ -83,7 +109,11 @@ module OpenC3
           # Keywords that require a current packet from TELEMETRY keyword
           @tlm_keywords = %w(SELECT_ITEM ITEM ID_ITEM ARRAY_ITEM APPEND_ITEM APPEND_ID_ITEM APPEND_ARRAY_ITEM PROCESSOR META)
           # Keywords that require both a current packet and current item
-          @item_keywords = %w(STATE READ_CONVERSION WRITE_CONVERSION POLY_READ_CONVERSION POLY_WRITE_CONVERSION SEG_POLY_READ_CONVERSION SEG_POLY_WRITE_CONVERSION GENERIC_READ_CONVERSION_START GENERIC_WRITE_CONVERSION_START LIMITS LIMITS_RESPONSE UNITS FORMAT_STRING DESCRIPTION META)
+          @item_keywords = %w(STATE READ_CONVERSION WRITE_CONVERSION POLY_READ_CONVERSION)
+          @item_keywords += %w(POLY_WRITE_CONVERSION SEG_POLY_READ_CONVERSION SEG_POLY_WRITE_CONVERSION)
+          @item_keywords += %w(GENERIC_READ_CONVERSION_START GENERIC_WRITE_CONVERSION_START REQUIRED)
+          @item_keywords += %w(LIMITS LIMITS_RESPONSE UNITS FORMAT_STRING DESCRIPTION)
+          @item_keywords += %w(MINIMUM_VALUE MAXIMUM_VALUE DEFAULT_VALUE OVERFLOW OVERLAP KEY VARIABLE_BIT_SIZE)
         end
 
         it "complains if a current packet is not defined" do
@@ -130,7 +160,12 @@ module OpenC3
           end
 
           @item_keywords.each do |keyword|
-            next if %w(GENERIC_READ_CONVERSION_START GENERIC_WRITE_CONVERSION_START).include? keyword
+            ignore = %w(GENERIC_READ_CONVERSION_START GENERIC_WRITE_CONVERSION_START)
+            # The following have 0 parameters
+            ignore += %w(OVERLAP)
+            # The following are command only
+            ignore += %w(REQUIRED MINIMUM_VALUE MAXIMUM_VALUE DEFAULT_VALUE)
+            next if ignore.include? keyword
 
             tf = Tempfile.new('unittest')
             tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"'
@@ -214,7 +249,11 @@ module OpenC3
 
           @item_keywords.each do |keyword|
             # The following can have an "unlimited" number of arguments
-            next if %w(POLY_READ_CONVERSION POLY_WRITE_CONVERSION READ_CONVERSION WRITE_CONVERSION SEG_POLY_READ_CONVERSION SEG_POLY_WRITE_CONVERSION LIMITS_RESPONSE META).include? keyword
+            ignore = %w(POLY_READ_CONVERSION POLY_WRITE_CONVERSION READ_CONVERSION WRITE_CONVERSION)
+            ignore += %w(SEG_POLY_READ_CONVERSION SEG_POLY_WRITE_CONVERSION LIMITS_RESPONSE META)
+            # The following are command only
+            ignore += %w(REQUIRED MINIMUM_VALUE MAXIMUM_VALUE DEFAULT_VALUE)
+            next if ignore.include? keyword
 
             tf = Tempfile.new('unittest')
             tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"'
@@ -228,8 +267,12 @@ module OpenC3
               tf.puts 'LIMITS mylimits 1 ENABLED 0 10 20 30 12 18 20'
             when "UNITS"
               tf.puts 'UNITS degrees deg extra'
-            when "FORMAT_STRING", "DESCRIPTION"
+            when "FORMAT_STRING", "DESCRIPTION", "OVERFLOW", "KEY"
               tf.puts "#{keyword} 'string' extra"
+            when "VARIABLE_BIT_SIZE"
+              tf.puts "#{keyword} LEN 8 0 extra"
+            else
+              tf.puts "#{keyword} extra"
             end
             tf.close
             expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Too many parameters for #{keyword}/)
@@ -474,6 +517,20 @@ module OpenC3
           expect(@pc.commands["TGT1"]["PKT1"].disabled).to be true
           expect(@pc.commands["TGT1"]["PKT2"].hidden).to be false
           expect(@pc.commands["TGT1"]["PKT2"].disabled).to be false
+          tf.unlink
+        end
+      end
+
+      context "with VIRTUAL" do
+        it "marks the packet as a virtual packet" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
+          tf.puts 'VIRTUAL'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.telemetry["TGT1"]["PKT1"].hidden).to be true
+          expect(@pc.telemetry["TGT1"]["PKT1"].disabled).to be true
+          expect(@pc.telemetry["TGT1"]["PKT1"].virtual).to be true
           tf.unlink
         end
       end
@@ -998,6 +1055,20 @@ module OpenC3
           expect(@pc.telemetry["TGT1"]["PKT1"].get_item('item2').overflow).to eql :SATURATE
           expect(@pc.telemetry["TGT1"]["PKT1"].get_item('item3').overflow).to eql :ERROR
           expect(@pc.telemetry["TGT1"]["PKT1"].get_item('item4').overflow).to eql :ERROR_ALLOW_HEX
+          tf.unlink
+        end
+      end
+
+      context "with VARIABLE_BIT_SIZE" do
+        it "sets the variable bit size variables" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"'
+          tf.puts '  ITEM item1 0 8 UINT'
+          tf.puts '    VARIABLE_BIT_SIZE LEN 16 8'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          vbs = {"length_item_name"=>"LEN", "length_bits_per_count"=>16, "length_value_bit_offset"=>8}
+          expect(@pc.telemetry["TGT1"]["PKT1"].get_item('item1').variable_bit_size).to eql vbs
           tf.unlink
         end
       end

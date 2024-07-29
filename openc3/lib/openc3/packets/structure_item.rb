@@ -44,9 +44,19 @@ module OpenC3
     # @return [Integer] 0 based bit offset
     attr_reader :bit_offset
 
+    # Original bit offset when the structure is first defined
+    # Will reflect the bit offset with all variable sized items at their
+    # minimum size
+    # @return [Integer] 0 based bit offset
+    attr_reader :original_bit_offset
+
     # The number of bits which represent this StructureItem in the binary buffer.
     # @return [Integer] Size in bits
     attr_reader :bit_size
+
+    # Original bit size when the structure is first defined
+    # @return [Integer] 0 based bit offset
+    attr_reader :original_bit_size
 
     # The data type is what kind of data this StructureItem
     # represents when extracted from the binary buffer. :INT and :UINT are
@@ -70,6 +80,10 @@ module OpenC3
     # @return [Integer, nil] Array size of the item in bits
     attr_reader :array_size
 
+    # Original array size when the structure is first defined
+    # @return [Integer] total array size in bits
+    attr_accessor :original_array_size
+
     # How to handle overflow for :INT, :UINT, :STRING, and :BLOCK data types
     # Note: Has no meaning for :FLOAT data types
     # @return [Symbol] {BinaryAccessor::OVERFLOW_TYPES}
@@ -77,6 +91,9 @@ module OpenC3
 
     # @return [Boolean] Whether this structure item can overlap another item in the same packet
     attr_accessor :overlap
+
+    # @return [Hash] Variable bit size information
+    attr_reader :variable_bit_size
 
     # Create a StructureItem by setting all the attributes. It
     # calls all the setter routines to do the attribute verification and then
@@ -98,10 +115,14 @@ module OpenC3
       self.endianness = endianness
       self.data_type = data_type
       self.bit_offset = bit_offset
+      @original_bit_offset = self.bit_offset
       self.bit_size = bit_size
+      @original_bit_size = self.bit_size
       self.array_size = array_size
+      @original_array_size = self.array_size
       self.overflow = overflow
       self.overlap = false
+      self.variable_bit_size = nil
       @create_index = @@create_index
       @@create_index += 1
       @structure_item_constructed = true
@@ -150,8 +171,8 @@ module OpenC3
     def bit_size=(bit_size)
       raise ArgumentError, "#{@name}: bit_size must be an Integer" unless Integer === bit_size
       byte_multiple = ((bit_size % 8) == 0)
-      if bit_size <= 0 and (@data_type == :INT or @data_type == :UINT or @data_type == :FLOAT)
-        raise ArgumentError, "#{@name}: bit_size cannot be negative or zero for :INT, :UINT, and :FLOAT items: #{bit_size}"
+      if bit_size <= 0 and (@data_type == :FLOAT)
+        raise ArgumentError, "#{@name}: bit_size cannot be negative or zero for :FLOAT items: #{bit_size}"
       end
       if (@data_type == :STRING or @data_type == :BLOCK) and !byte_multiple
         raise ArgumentError, "#{@name}: bit_size for STRING and BLOCK items must be byte multiples"
@@ -205,6 +226,18 @@ module OpenC3
       verify_overall() if @structure_item_constructed
     end
 
+    def variable_bit_size=(variable_bit_size)
+      if variable_bit_size
+        raise ArgumentError, "#{@name}: variable_bit_size must be a Hash" unless Hash === variable_bit_size
+        raise ArgumentError, "#{@name}: variable_bit_size['length_item_name'] must be a String" unless String === variable_bit_size['length_item_name']
+        raise ArgumentError, "#{@name}: variable_bit_size['length_value_bit_offset'] must be an Integer" unless Integer === variable_bit_size['length_value_bit_offset']
+        raise ArgumentError, "#{@name}: variable_bit_size['length_bits_per_count'] must be an Integer" unless Integer === variable_bit_size['length_bits_per_count']
+      end
+      @variable_bit_size = variable_bit_size
+
+      verify_overall() if @structure_item_constructed
+    end
+
     def create_index
       @create_index.to_i
     end
@@ -213,11 +246,11 @@ module OpenC3
       # Comparison Operator based on bit_offset. This means that StructureItems
       # with different names or bit sizes are equal if they have the same bit
       # offset.
-      def <=>(other_item)
-        return nil unless other_item.kind_of?(StructureItem)
+      def <=>(other)
+        return nil unless other.kind_of?(StructureItem)
 
-        other_bit_offset = other_item.bit_offset
-        other_bit_size = other_item.bit_size
+        other_bit_offset = other.bit_offset
+        other_bit_size = other.bit_size
 
         # Handle same bit offset case
         if (@bit_offset == 0) && (other_bit_offset == 0)
@@ -226,7 +259,7 @@ module OpenC3
           # Compare based on bit size then create index
           if @bit_size == other_bit_size
             if @create_index
-              if @create_index <= other_item.create_index
+              if @create_index <= other.create_index
                 return -1
               else
                 return 1
@@ -246,7 +279,7 @@ module OpenC3
           # Both Have Same Sign
           if @bit_offset == other_bit_offset
             if @create_index
-              if @create_index <= other_item.create_index
+              if @create_index <= other.create_index
                 return -1
               else
                 return 1
@@ -263,7 +296,7 @@ module OpenC3
           # Different Signs
           if @bit_offset == other_bit_offset
             if @create_index
-              if @create_index < other_item.create_index
+              if @create_index < other.create_index
                 return -1
               else
                 return 1
@@ -303,11 +336,11 @@ module OpenC3
       hash = {}
       hash['name'] = self.name
       hash['key'] = self.key
-      hash['bit_offset'] = self.bit_offset
-      hash['bit_size'] = self.bit_size
+      hash['bit_offset'] = self.original_bit_offset
+      hash['bit_size'] = self.original_bit_size
       hash['data_type'] = self.data_type
       hash['endianness'] = self.endianness
-      hash['array_size'] = self.array_size
+      hash['array_size'] = self.original_array_size
       hash['overflow'] = self.overflow
       hash
     end
