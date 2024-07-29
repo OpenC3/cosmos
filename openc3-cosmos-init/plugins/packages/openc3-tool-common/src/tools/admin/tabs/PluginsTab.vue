@@ -373,13 +373,13 @@ export default {
               this.update()
             }, 5000)
           }
-        },
+        }
       )
     },
     formatDate(nanoSecs) {
       return format(
         toDate(parseInt(nanoSecs) / 1_000_000),
-        'yyyy-MM-dd HH:mm:ss.SSS',
+        'yyyy-MM-dd HH:mm:ss.SSS'
       )
     },
     upload: function (existing = null) {
@@ -395,13 +395,14 @@ export default {
         headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: function (progressEvent) {
           var percentCompleted = Math.round(
-            (progressEvent.loaded * 100) / progressEvent.total,
+            (progressEvent.loaded * 100) / progressEvent.total
           )
           self.progress = percentCompleted
         },
       })
       promise
         .then((response) => {
+          this.progress = 100
           this.alert = 'Uploaded file'
           this.alertType = 'success'
           this.showAlert = true
@@ -574,7 +575,7 @@ export default {
                 {
                   okText: 'Ok',
                   cancelText: 'Cancel',
-                },
+                }
               )
               .then(() => {
                 this.upload(this.currentPlugin)
@@ -601,7 +602,7 @@ export default {
                   {
                     okText: 'Ok',
                     cancelText: 'Cancel',
-                  },
+                  }
                 )
                 .then(() => {
                   this.upload(this.currentPlugin)
