@@ -21,7 +21,9 @@ require 'openc3/conversions/conversion'
 module OpenC3
   class ObjectReadConversion < Conversion
     def initialize(cmd_or_tlm, target_name, packet_name)
-      @cmd_or_tlm = cmd_or_tlm.to_s.intern
+      super()
+      @cmd_or_tlm = cmd_or_tlm.to_s.upcase.intern
+      raise ArgumentError, "Unknown type: #{cmd_or_tlm}" unless %i(CMD TLM).include?(@cmd_or_tlm)
       @target_name = target_name.to_s.upcase
       @packet_name = packet_name.to_s.upcase
       @converted_type = :OBJECT
@@ -35,7 +37,7 @@ module OpenC3
     # @param buffer [String] The packet buffer
     # @return The converted value
     def call(value, _packet, buffer)
-      if cmd_or_tlm == :CMD
+      if @cmd_or_tlm == :CMD
         fill_packet = System.commands.packet(@target_name, @packet_name)
       else
         fill_packet = System.telemetry.packet(@target_name, @packet_name)
@@ -49,10 +51,10 @@ module OpenC3
       "#{self.class.to_s.split('::')[-1]} #{@cmd_or_tlm} #{@target_name} #{@packet_name}"
     end
 
-    # @param read_or_write [String] Either 'READ' or 'WRITE'
+    # @param read_or_write [String] Not used
     # @return [String] Config fragment for this conversion
     def to_config(read_or_write)
-      "    #{read_or_write}_CONVERSION #{self.class.name.class_name_to_filename} #{@cmd_or_tlm} #{@target_name} #{@packet_name}\n"
+      "    READ_CONVERSION #{self.class.name.class_name_to_filename} #{@cmd_or_tlm} #{@target_name} #{@packet_name}\n"
     end
 
     def as_json(*a)

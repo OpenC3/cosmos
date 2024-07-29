@@ -74,13 +74,13 @@ module OpenC3
     attr_reader :latest_data
 
     # @return [Hash<String>=>Hash<Array>=>Packet] Hash keyed by target name
-    # that returns a hash keyed by an array of id values.  The id values resolve to the packet
-    # defined by that identification.  Command version
+    # that returns a hash keyed by an array of id values. The id values resolve to the packet
+    # defined by that identification. Command version
     attr_reader :cmd_id_value_hash
 
     # @return [Hash<String>=>Hash<Array>=>Packet] Hash keyed by target name
-    # that returns a hash keyed by an array of id values.  The id values resolve to the packet
-    # defined by that identification.  Telemetry version
+    # that returns a hash keyed by an array of id values. The id values resolve to the packet
+    # defined by that identification. Telemetry version
     attr_reader :tlm_id_value_hash
 
     # @return [String] Language of current target (ruby or python)
@@ -219,7 +219,7 @@ module OpenC3
               'PARAMETER', 'ID_ITEM', 'ID_PARAMETER', 'ARRAY_ITEM', 'ARRAY_PARAMETER', 'APPEND_ITEM',\
               'APPEND_PARAMETER', 'APPEND_ID_ITEM', 'APPEND_ID_PARAMETER', 'APPEND_ARRAY_ITEM',\
               'APPEND_ARRAY_PARAMETER', 'ALLOW_SHORT', 'HAZARDOUS', 'PROCESSOR', 'META',\
-              'DISABLE_MESSAGES', 'HIDDEN', 'DISABLED', 'ACCESSOR', 'TEMPLATE', 'TEMPLATE_FILE',\
+              'DISABLE_MESSAGES', 'HIDDEN', 'DISABLED', 'VIRTUAL', 'ACCESSOR', 'TEMPLATE', 'TEMPLATE_FILE',\
               'RESPONSE', 'ERROR_RESPONSE', 'SCREEN', 'RELATED_ITEM', 'IGNORE_OVERLAP'
             raise parser.error("No current packet for #{keyword}") unless @current_packet
 
@@ -740,7 +740,7 @@ module OpenC3
         variable_bit_size['length_bits_per_count'] = Integer(params[1]) if params[1]
         variable_bit_size['length_value_bit_offset'] = Integer(params[2]) if params[2]
 
-        item.variable_bit_size = variable_bit_size
+        @current_item.variable_bit_size = variable_bit_size
       end
     end
 
