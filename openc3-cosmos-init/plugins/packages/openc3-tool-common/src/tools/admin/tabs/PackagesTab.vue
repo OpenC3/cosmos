@@ -230,7 +230,6 @@ export default {
       })
       Promise.all(promises)
         .then((responses) => {
-          this.progress = 100
           this.alert = `Uploaded ${responses.length} package${
             responses.length > 1 ? 's' : ''
           }`
