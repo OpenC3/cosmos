@@ -32,6 +32,7 @@ test('resets clock sync warning suppression', async ({ page, utils }) => {
   )
   await page.reload()
   // Must force due to "subtree intercepts pointer events"
+  await expect(page.getByText('Clock out of sync with server')).toBeVisible()
   await page
     .locator('[data-test=select-all-suppressed-warnings]')
     .click({ force: true })
