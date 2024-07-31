@@ -62,6 +62,18 @@ test('clears default configs', async ({ page, utils }) => {
   )
 })
 
+test('hides the astro clock', async ({ page, utils }) => {
+  await expect(page.locator('.rux-clock')).toBeVisible()
+  await page.locator('[data-test=hide-astro-clock]').click()
+  await page.reload()
+  await expect(page.locator('.rux-clock')).not.toBeVisible()
+  await page.locator('[data-test=hide-astro-clock]').click()
+  await page.reload()
+  await expect(page.locator('.rux-clock')).toBeVisible()
+})
+
+// TODO: Change time zone
+
 test('sets a classification banner', async ({ page, utils }) => {
   const bannerText = 'Test Classification Banner'
   const bannerHeight = '32'
@@ -110,4 +122,20 @@ test('changes the source url', async ({ page, utils }) => {
   )
 })
 
-// TODO: Test Rubygems URL
+test('changes the rubygems url', async ({ page, utils }) => {
+  await page.locator('[data-test=rubygems-url]').fill('https://myrubygems.com')
+  await page.locator('[data-test=save-rubygems-url]').click()
+  await page.reload()
+  await expect(page.locator('[data-test=rubygems-url]')).toContainText(
+    'https://myrubygems.com',
+  )
+})
+
+test('changes the pypi url', async ({ page, utils }) => {
+  await page.locator('[data-test=pypi-url]').fill('https://mypypi.com')
+  await page.locator('[data-test=save-pypi-url]').click()
+  await page.reload()
+  await expect(page.locator('[data-test=pypi-url]')).toContainText(
+    'https://mypypi.com',
+  )
+})
