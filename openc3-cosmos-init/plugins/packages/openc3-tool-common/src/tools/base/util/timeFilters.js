@@ -1,5 +1,5 @@
 /*
-# Copyright 2022 Ball Aerospace & Technologies Corp.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -12,10 +12,6 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-# Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
-# All Rights Reserved
-#
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 */
@@ -23,6 +19,9 @@
 import { format, parseISO } from 'date-fns'
 import { formatInTimeZone } from 'date-fns-tz'
 
+const dateFormat = 'yyyy-MM-dd'
+const timeFormat = 'HH:mm:ss.SSS'
+const dateTimeFormat = `${dateFormat} ${timeFormat}`
 export default {
   // filters: {
   //   time: function (val, tz) {
@@ -50,30 +49,34 @@ export default {
   //   },
   // },
   methods: {
-    formatTimestamp(timestamp, timeZone) {
+    formatDateTime(date, timeZone) {
       if (timeZone === 'local') {
-        // timestamp: 2021-01-20T21:08:49.784Z
-        return format(parseISO(timestamp), 'yyyy-MM-dd HH:mm:ss.SSS')
+        return format(date, dateTimeFormat)
       } else {
-        return formatInTimeZone(
-          parseISO(timestamp),
-          timeZone,
-          'yyyy-MM-dd HH:mm:ss.SSS',
-        )
+        return formatInTimeZone(date, timeZone, dateTimeFormat)
       }
+    },
+    formatTimestamp(timestamp, timeZone) {
+      return this.formatDateTime(parseISO(timestamp, timeZone))
+    },
+    formatNanoseconds(nanoSecs, timeZone) {
+      return this.formatDateTime(
+        new Date(parseInt(nanoSecs) / 1_000_000),
+        timeZone,
+      )
     },
     formatDate: function (date, timeZone) {
       if (timeZone === 'local') {
-        return format(date, 'yyyy-MM-dd')
+        return format(date, dateFormat)
       } else {
-        return formatInTimeZone(date, this.timeZone, 'yyyy-MM-dd')
+        return formatInTimeZone(date, this.timeZone, dateFormat)
       }
     },
     formatTime: function (date, timeZone) {
       if (timeZone === 'local') {
-        return format(date, 'HH:mm:ss.SSS')
+        return format(date, timeFormat)
       } else {
-        return formatInTimeZone(date, this.timeZone, 'HH:mm:ss.SSS')
+        return formatInTimeZone(date, this.timeZone, timeFormat)
       }
     },
 

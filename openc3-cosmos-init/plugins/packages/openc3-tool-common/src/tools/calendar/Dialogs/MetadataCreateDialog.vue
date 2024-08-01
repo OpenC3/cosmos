@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -144,7 +144,7 @@
 <script>
 import Api from '@openc3/tool-common/src/services/api'
 import CreateDialog from '@openc3/tool-common/src/tools/calendar/Dialogs/CreateDialog.js'
-import TimeFilters from '@openc3/tool-common/src/tools/calendar/Filters/timeFilters.js'
+import TimeFilters from '@openc3/tool-common/src/tools/base/util/timeFilters.js'
 import ColorSelectForm from '@openc3/tool-common/src/tools/calendar/Forms/ColorSelectForm'
 import MetadataInputForm from '@openc3/tool-common/src/tools/calendar/Forms/MetadataInputForm'
 import { format } from 'date-fns'

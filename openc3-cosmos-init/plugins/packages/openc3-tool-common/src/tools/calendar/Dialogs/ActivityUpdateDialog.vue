@@ -243,7 +243,7 @@ import { format } from 'date-fns'
 import Api from '@openc3/tool-common/src/services/api'
 import EnvironmentChooser from '@openc3/tool-common/src/components/EnvironmentChooser'
 import ScriptChooser from '@openc3/tool-common/src/components/ScriptChooser'
-import TimeFilters from '@openc3/tool-common/src/tools/calendar/Filters/timeFilters.js'
+import TimeFilters from '@openc3/tool-common/src/tools/base/util/timeFilters.js'
 
 export default {
   components: {
@@ -354,10 +354,10 @@ export default {
     updateActivity: function () {
       // Call the api to update the activity
       const start = this.toIsoString(
-        Date.parse(`${this.startDate}T${this.startTime}`)
+        Date.parse(`${this.startDate}T${this.startTime}`),
       )
       const stop = this.toIsoString(
-        Date.parse(`${this.stopDate}T${this.stopTime}`)
+        Date.parse(`${this.stopDate}T${this.stopTime}`),
       )
       const kind = this.kind.toLowerCase()
       let data = { environment: this.activityEnvironment }
@@ -370,7 +370,7 @@ export default {
           frequency: this.frequency,
           span: this.timeSpan,
           end: this.toIsoString(
-            Date.parse(`${this.recurringEndDate}T${this.recurringEndTime}`)
+            Date.parse(`${this.recurringEndDate}T${this.recurringEndTime}`),
           ),
         }
       }
@@ -379,7 +379,7 @@ export default {
       })
         .then((response) => {
           const activityTime = this.generateDateTime(
-            new Date(response.data.start * 1000)
+            new Date(response.data.start * 1000),
           )
           this.$notify.normal({
             title: 'Updated Activity',
