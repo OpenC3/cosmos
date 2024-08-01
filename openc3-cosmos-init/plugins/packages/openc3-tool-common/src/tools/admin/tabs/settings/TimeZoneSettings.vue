@@ -41,7 +41,8 @@
         hide-details
         prepend-icon="mdi-map-clock"
         single-line
-      ></v-select>
+        data-test="time-zone"
+      />
     </v-card-text>
     <v-card-actions>
       <v-btn @click="save" color="success" text data-test="save-time-zone">

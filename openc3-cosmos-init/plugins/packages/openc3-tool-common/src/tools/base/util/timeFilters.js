@@ -62,6 +62,21 @@ export default {
         )
       }
     },
+    formatDate: function (date, timeZone) {
+      if (timeZone === 'local') {
+        return format(date, 'yyyy-MM-dd')
+      } else {
+        return formatInTimeZone(date, this.timeZone, 'yyyy-MM-dd')
+      }
+    },
+    formatTime: function (date, timeZone) {
+      if (timeZone === 'local') {
+        return format(date, 'HH:mm:ss.SSS')
+      } else {
+        return formatInTimeZone(date, this.timeZone, 'HH:mm:ss.SSS')
+      }
+    },
+
     // logFormat(date, utc) {
     //   if (utc) {
     //     return formatInTimeZone(date, 'UTC', 'yyyy-MM-dd HH:mm:ss.SSS')

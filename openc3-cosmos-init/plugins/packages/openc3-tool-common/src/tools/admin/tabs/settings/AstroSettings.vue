@@ -68,7 +68,7 @@ export default {
     },
     parseSetting: function (response) {
       if (response) {
-        parsed = JSON.parse(response)
+        let parsed = JSON.parse(response)
         this.hideClock = parsed.hideClock
       }
     },

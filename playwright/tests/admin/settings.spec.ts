@@ -72,7 +72,7 @@ test('hides the astro clock', async ({ page, utils }) => {
   await expect(page.locator('.rux-clock')).toBeVisible()
 })
 
-// TODO: Change time zone
+// Change time zone is tested in the individual apps
 
 test('sets a classification banner', async ({ page, utils }) => {
   const bannerText = 'Test Classification Banner'
