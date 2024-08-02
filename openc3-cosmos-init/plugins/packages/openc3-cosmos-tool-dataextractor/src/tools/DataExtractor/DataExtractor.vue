@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -553,24 +553,24 @@ export default {
       }
     },
   },
-  created() {
+  async created() {
     this.api = new OpenC3Api()
-    this.api
+    await this.api
       .get_setting('time_zone')
       .then((response) => {
         if (response) {
           this.timeZone = response
-          let now = new Date()
-          this.todaysDate = this.formatDate(now, this.timeZone)
-          this.startDate = this.formatDate(now, this.timeZone)
-          this.startTime = this.formatTime(now - 3600000, this.timeZone) // last hr data
-          this.endTime = this.formatTime(now, this.timeZone)
-          this.endDate = this.formatDate(now, this.timeZone)
         }
       })
       .catch((error) => {
         // Do nothing
       })
+    let now = new Date()
+    this.todaysDate = this.formatDate(now, this.timeZone)
+    this.startDate = this.formatDate(now, this.timeZone)
+    this.startTime = this.formatTime(now - 3600000, this.timeZone) // last hr data
+    this.endTime = this.formatTime(now, this.timeZone)
+    this.endDate = this.formatDate(now, this.timeZone)
   },
   mounted: function () {
     // Called like /tools/dataextractor?config=config
