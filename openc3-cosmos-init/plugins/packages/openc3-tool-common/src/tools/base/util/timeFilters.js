@@ -16,7 +16,7 @@
 # if purchased from OpenC3, Inc.
 */
 
-import { format, parseISO } from 'date-fns'
+import { format, parseISO, subMinutes } from 'date-fns'
 import { formatInTimeZone } from 'date-fns-tz'
 
 const dateFormat = 'yyyy-MM-dd'
@@ -49,6 +49,18 @@ export default {
   //   },
   // },
   methods: {
+    // Convert a UTC stamp into a local time
+    formatUtc(date, timeZone) {
+      if (timeZone === 'local') {
+        // subtrack off the timezone offset to get it back to local time
+        return format(
+          subMinutes(date, date.getTimezoneOffset()),
+          dateTimeFormat,
+        )
+      } else {
+        return format(date, dateTimeFormat)
+      }
+    },
     formatDateTime(date, timeZone) {
       if (timeZone === 'local') {
         return format(date, dateTimeFormat)

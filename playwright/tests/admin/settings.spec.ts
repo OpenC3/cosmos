@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -64,10 +64,12 @@ test('clears default configs', async ({ page, utils }) => {
 
 test('hides the astro clock', async ({ page, utils }) => {
   await expect(page.locator('.rux-clock')).toBeVisible()
-  await page.locator('[data-test=hide-astro-clock]').click()
+  await page.locator('[data-test=hide-astro-clock]').click({ force: true })
+  await page.locator('[data-test=save-astro-settings]').click()
   await page.reload()
   await expect(page.locator('.rux-clock')).not.toBeVisible()
-  await page.locator('[data-test=hide-astro-clock]').click()
+  await page.locator('[data-test=hide-astro-clock]').click({ force: true })
+  await page.locator('[data-test=save-astro-settings]').click()
   await page.reload()
   await expect(page.locator('.rux-clock')).toBeVisible()
 })
@@ -126,7 +128,7 @@ test('changes the rubygems url', async ({ page, utils }) => {
   await page.locator('[data-test=rubygems-url]').fill('https://myrubygems.com')
   await page.locator('[data-test=save-rubygems-url]').click()
   await page.reload()
-  await expect(page.locator('[data-test=rubygems-url]')).toContainText(
+  await expect(page.locator('[data-test=rubygems-url]')).toHaveValue(
     'https://myrubygems.com',
   )
 })
@@ -135,7 +137,7 @@ test('changes the pypi url', async ({ page, utils }) => {
   await page.locator('[data-test=pypi-url]').fill('https://mypypi.com')
   await page.locator('[data-test=save-pypi-url]').click()
   await page.reload()
-  await expect(page.locator('[data-test=pypi-url]')).toContainText(
+  await expect(page.locator('[data-test="pypi-url"]')).toHaveValue(
     'https://mypypi.com',
   )
 })

@@ -40,7 +40,7 @@
       />
     </v-card-text>
     <v-card-actions>
-      <v-btn @click="save" color="success" text data-test="save-subtitle">
+      <v-btn @click="save" color="success" text data-test="save-source-url">
         Save
       </v-btn>
     </v-card-actions>
