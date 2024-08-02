@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -73,6 +73,7 @@
             :counter="item.counter"
             :parameters="[targetName, packetName, item.name]"
             :settings="[['WIDTH', '100%']]"
+            :time-zone="timeZone"
           />
         </template>
         <template v-slot:footer.prepend
@@ -171,6 +172,7 @@ export default {
       configKey: 'packet_viewer',
       showOpenConfig: false,
       showSaveConfig: false,
+      timeZone: 'local',
       search: '',
       data: [],
       headers: [
@@ -325,6 +327,16 @@ export default {
   },
   created() {
     this.api = new OpenC3Api()
+    this.api
+      .get_setting('time_zone')
+      .then((response) => {
+        if (response) {
+          this.timeZone = response
+        }
+      })
+      .catch((error) => {
+        // Do nothing
+      })
 
     // Called like /tools/packetviewer?config=temps
     if (this.$route.query && this.$route.query.config) {

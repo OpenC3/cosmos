@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -113,7 +113,7 @@
             <span>Temporarily Hide Item</span>
           </v-tooltip>
         </v-row>
-        <v-divider v-if="index < items.length - 1" :key="index" />
+        <v-divider v-if="index < items.length" :key="index" />
       </div>
       <div class="footer">
         Note: Timestamp is "now" for items currently out of limits when the page
@@ -173,7 +173,7 @@ import Cable from '@openc3/tool-common/src/services/cable.js'
 import LabelvalueWidget from '@openc3/tool-common/src/components/widgets/LabelvalueWidget'
 import LabelvaluelimitsbarWidget from '@openc3/tool-common/src/components/widgets/LabelvaluelimitsbarWidget'
 import Vue from 'vue'
-import { toDate, format } from 'date-fns'
+import TimeFilters from '@openc3/tool-common/src/tools/base/util/timeFilters.js'
 
 export default {
   components: {
@@ -185,7 +185,12 @@ export default {
       type: Array,
       default: () => [],
     },
+    timeZone: {
+      type: String,
+      default: 'local',
+    },
   },
+  mixins: [TimeFilters],
   data() {
     return {
       api: null,
@@ -323,7 +328,7 @@ export default {
           let itemInfo = {
             key: item.slice(0, 3).join('__'),
             parameters: item.slice(0, 3),
-            timestamp: format(new Date(), 'yyyy-MM-dd HH:mm:ss.SSS'),
+            timestamp: this.formatDateTime(new Date(), this.timeZone),
           }
           if (item[3].includes('YELLOW') && this.overallState !== 'RED') {
             this.overallState = 'YELLOW'
@@ -445,10 +450,7 @@ export default {
         }
         let itemInfo = {
           key: itemName,
-          timestamp: format(
-            toDate(parseInt(message.time_nsec) / 1_000_000),
-            'yyyy-MM-dd HH:mm:ss.SSS',
-          ),
+          timestamp: this.formatNanoseconds(message.time_nsec, this.timeZone),
           parameters: [
             message.target_name,
             message.packet_name,

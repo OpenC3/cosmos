@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -32,6 +32,7 @@ test('resets clock sync warning suppression', async ({ page, utils }) => {
   )
   await page.reload()
   // Must force due to "subtree intercepts pointer events"
+  await expect(page.getByText('Clock out of sync with server')).toBeVisible()
   await page
     .locator('[data-test=select-all-suppressed-warnings]')
     .click({ force: true })
@@ -60,6 +61,20 @@ test('clears default configs', async ({ page, utils }) => {
     'Packet viewer',
   )
 })
+
+test('hides the astro clock', async ({ page, utils }) => {
+  await expect(page.locator('.rux-clock')).toBeVisible()
+  await page.locator('[data-test=hide-astro-clock]').click({ force: true })
+  await page.locator('[data-test=save-astro-settings]').click()
+  await page.reload()
+  await expect(page.locator('.rux-clock')).not.toBeVisible()
+  await page.locator('[data-test=hide-astro-clock]').click({ force: true })
+  await page.locator('[data-test=save-astro-settings]').click()
+  await page.reload()
+  await expect(page.locator('.rux-clock')).toBeVisible()
+})
+
+// Change time zone is tested in the individual apps
 
 test('sets a classification banner', async ({ page, utils }) => {
   const bannerText = 'Test Classification Banner'
@@ -109,4 +124,20 @@ test('changes the source url', async ({ page, utils }) => {
   )
 })
 
-// TODO: Test Rubygems URL
+test('changes the rubygems url', async ({ page, utils }) => {
+  await page.locator('[data-test=rubygems-url]').fill('https://myrubygems.com')
+  await page.locator('[data-test=save-rubygems-url]').click()
+  await page.reload()
+  await expect(page.locator('[data-test=rubygems-url]')).toHaveValue(
+    'https://myrubygems.com',
+  )
+})
+
+test('changes the pypi url', async ({ page, utils }) => {
+  await page.locator('[data-test=pypi-url]').fill('https://mypypi.com')
+  await page.locator('[data-test=save-pypi-url]').click()
+  await page.reload()
+  await expect(page.locator('[data-test="pypi-url"]')).toHaveValue(
+    'https://mypypi.com',
+  )
+})

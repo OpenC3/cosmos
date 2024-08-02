@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -23,9 +23,14 @@
 <template>
   <div>
     <top-bar :menus="menus" :title="title" />
-    <limits-control ref="control" v-model="ignored" :key="renderKey" />
+    <limits-control
+      ref="control"
+      v-model="ignored"
+      :key="renderKey"
+      :time-zone="timeZone"
+    />
     <div style="height: 15px" />
-    <limits-events />
+    <limits-events :time-zone="timeZone" />
     <!-- Note we're using v-if here so it gets re-created each time and refreshes the list -->
     <open-config-dialog
       v-if="openConfig"
@@ -103,6 +108,7 @@ export default {
       title: 'Limits Monitor',
       configKey: 'limits_monitor',
       api: new OpenC3Api(),
+      timeZone: 'local',
       renderKey: 0,
       ignored: [],
       openConfig: false,
@@ -164,6 +170,16 @@ export default {
     this.api.get_limits_sets().then((sets) => {
       this.limitsSets = sets
     })
+    this.api
+      .get_setting('time_zone')
+      .then((response) => {
+        if (response) {
+          this.timeZone = response
+        }
+      })
+      .catch((error) => {
+        // Do nothing
+      })
   },
   mounted: function () {
     // Called like /tools/limitsmonitor?config=ignored

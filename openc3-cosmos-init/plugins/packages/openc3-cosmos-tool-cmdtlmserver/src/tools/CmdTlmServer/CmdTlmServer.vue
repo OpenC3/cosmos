@@ -45,7 +45,7 @@
       </v-expansion-panels>
     </v-card>
     <div style="height: 15px" />
-    <log-messages />
+    <log-messages :time-zone="timeZone" />
     <v-dialog v-model="optionsDialog" max-width="300">
       <v-card>
         <v-system-bar>
@@ -82,6 +82,7 @@ export default {
     return {
       api: null,
       title: 'CmdTlmServer',
+      timeZone: 'local',
       panel: 0,
       curTab: null,
       tabs: [
@@ -138,6 +139,16 @@ export default {
   },
   created() {
     this.api = new OpenC3Api()
+    this.api
+      .get_setting('time_zone')
+      .then((response) => {
+        if (response) {
+          this.timeZone = response
+        }
+      })
+      .catch((error) => {
+        // Do nothing
+      })
   },
   methods: {
     clearCounters() {
