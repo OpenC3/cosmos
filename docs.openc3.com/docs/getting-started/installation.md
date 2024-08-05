@@ -113,7 +113,7 @@ Continue to [Getting Started](gettingstarted.md).
 
 :::note Find a problem in the documentation?
 
-    Please [create an issue](https://github.com/OpenC3/cosmos/issues/new/choose">create an issue) on
-    GitHub describing what we can do to make it better.
+Please [create an issue](https://github.com/OpenC3/cosmos/issues/new/choose) on
+GitHub describing what we can do to make it better.
 
 :::
