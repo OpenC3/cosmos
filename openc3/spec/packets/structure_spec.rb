@@ -97,6 +97,12 @@ module OpenC3
         @s.define_item("test5", -16, 8, :UINT)
         expect(@s.defined_length).to eql 4
         expect(@s.fixed_size).to be false
+        @s.buffer = "\x12\x34\x56\x78"
+        expect(@s.read("test1")).to eql 0x78
+        expect(@s.read("test2")).to eql 0x1
+        expect(@s.read("test3")).to eql 0x2
+        expect(@s.read("test4")).to eql "\x56\x78"
+        expect(@s.read("test5")).to eql 0x56
       end
 
       it "adds item with negative offset" do
@@ -117,6 +123,12 @@ module OpenC3
         @s.define_item("test4", 8, 0, :BLOCK)
         expect(@s.defined_length).to eql 3
         expect(@s.fixed_size).to be false
+        @s.buffer = "\x12\x34\x56\x78\x90"
+        expect(@s.read("test1")).to eql 0x90
+        expect(@s.read("test2")).to eql 0x1
+        expect(@s.read("test3")).to eql 0x2
+        expect(@s.read("test4")).to eql "\x34\x56\x78\x90"
+        expect(@s.read("test5")).to eql 0x78
       end
 
       it "recalulates sorted_items when adding multiple items" do
@@ -144,6 +156,55 @@ module OpenC3
         expect(@s.items["TEST1"].data_type).to eql :INT
         expect(@s.defined_length).to eql 2
         expect(@s.fixed_size).to be true
+      end
+
+      it "recalculates the bit offsets for 0 size" do
+        s = Structure.new(:BIG_ENDIAN)
+        s.append_item("test1", 40, :BLOCK)
+        s.append_item("test2", 0, :BLOCK)
+        s.define_item("test3", -32, 16, :UINT)
+        s.define_item("test4", -16, 16, :UINT)
+        s.buffer = "\x01\x02\x03\x04\x05\x0a\x0b\x0b\x0a\xAA\x55\xBB\x66"
+        expect(s.read("test1")).to eql "\x01\x02\x03\x04\x05"
+        expect(s.read("test2")).to eql "\x0a\x0b\x0b\x0a\xAA\x55\xBB\x66"
+        expect(s.read("test3")).to eql 0xAA55
+        expect(s.read("test4")).to eql 0xBB66
+      end
+
+      it "handles blocks" do
+        s = Structure.new(:BIG_ENDIAN)
+        s.append_item("ccsdsheader", 32, :UINT)
+        s.append_item("ccsdslength", 16, :UINT)
+        s.append_item("timesec", 32, :UINT)
+        s.append_item("timeus", 32, :UINT)
+        s.append_item("pktid", 16, :UINT)
+        s.append_item("block", 8000, :BLOCK)
+        s.append_item("image", 0, :BLOCK)
+        s.define_item("bytes", 128, 32, :UINT)
+        s.define_item("derived", 0, 0, :DERIVED)
+        data = "\xDE\xAD\xBE\xEF\x55\x55\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09"
+        data += Array.new(1000) { Array(0..15).sample }.pack("C*")
+        data += Array.new(10) { 10 }.pack("C*")
+
+        s.buffer = data
+        expect(s.read("ccsdsheader")).to eql 0xDEADBEEF
+        expect(s.read("ccsdslength")).to eql 0x5555
+        expect(s.read("timesec")).to eql 0x00010203
+        expect(s.read("timeus")).to eql 0x04050607
+        expect(s.read("pktid")).to eql 0x0809
+        expect(s.read("block").length).to eql 1000
+        expect(s.read("image")).to eql "\x0A\x0A\x0A\x0A\x0A\x0A\x0A\x0A\x0A\x0A"
+
+        s.enable_method_missing
+        s.block = Array.new(1000) { Array(0..15).sample }.pack("C*")
+        s.image = Array.new(10) { 5 }.pack("C*")
+        expect(s.read("ccsdsheader")).to eql 0xDEADBEEF
+        expect(s.read("ccsdslength")).to eql 0x5555
+        expect(s.read("timesec")).to eql 0x00010203
+        expect(s.read("timeus")).to eql 0x04050607
+        expect(s.read("pktid")).to eql 0x0809
+        expect(s.read("block").length).to eql 1000
+        expect(s.read("image")).to eql ([5]*10).pack("C*")
       end
     end # describe "define_item"
 
@@ -516,7 +577,7 @@ module OpenC3
         s.write("test3", "\x07\x08\x09\x0A")
         buffer = "\x0A\x0B\x0C\x0D\xDE\xAD\xBE\xEF"
         expect(s.formatted(:CONVERTED, 0, buffer)).to include("TEST1: [10, 11]")
-        expect(s.formatted(:CONVERTED, 0, buffer)).to include("TEST2: #{0x0C0D}")
+        expect(s.formatted(:CONVERTED, 0, buffer)).to include("TEST2: 3085")
         expect(s.formatted(:CONVERTED, 0, buffer)).to include("TEST3")
         expect(s.formatted(:CONVERTED, 0, buffer)).to include("00000000: DE AD BE EF")
       end
