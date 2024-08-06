@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -230,6 +230,7 @@ export default {
       })
       Promise.all(promises)
         .then((responses) => {
+          this.progress = 100
           this.alert = `Uploaded ${responses.length} package${
             responses.length > 1 ? 's' : ''
           }`
