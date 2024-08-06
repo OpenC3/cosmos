@@ -48,7 +48,7 @@ module OpenC3
     # Will reflect the bit offset with all variable sized items at their
     # minimum size
     # @return [Integer] 0 based bit offset
-    attr_reader :original_bit_offset
+    attr_accessor :original_bit_offset
 
     # The number of bits which represent this StructureItem in the binary buffer.
     # @return [Integer] Size in bits
