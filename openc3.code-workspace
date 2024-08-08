@@ -2,16 +2,28 @@
   "folders": [
     {
       "path": "."
+    },
+    {
+      "path": "../cosmos-project"
+    },
+    {
+      "path": "../cosmos-enterprise"
     }
   ],
   "settings": {
     "vetur.validation.template": false,
-    "eslint.validate": ["vue", "html", "javascript"],
-    "eslint.workingDirectories": ["./openc3-cosmos-init/plugins"],
+    "eslint.validate": [
+      "vue",
+      "html",
+      "javascript"
+    ],
+    "eslint.workingDirectories": [
+      "./openc3-cosmos-init/plugins"
+    ],
     "eslint.packageManager": "yarn",
     "editor.formatOnSave": true,
     "editor.codeActionsOnSave": {
-      "source.fixAll.eslint": true
+      "source.fixAll.eslint": "explicit"
     },
     "explorer.confirmDragAndDrop": true,
     "editor.tabSize": 2,

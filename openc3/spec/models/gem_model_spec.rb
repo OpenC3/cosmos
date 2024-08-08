@@ -68,7 +68,7 @@ module OpenC3
         expect { GemModel.put('another.gem', scope: 'DEFAULT') }.to raise_error(/does not exist/)
       end
 
-      it "installs the gem to the gem server" do
+      it "puts the gem to the gem server" do
         pm = class_double("OpenC3::ProcessManager").as_stubbed_const(:transfer_nested_constants => true)
         result = double("fakepm")
         expect(result).to receive(:name).and_return("1234__56")
@@ -80,12 +80,30 @@ module OpenC3
       end
     end
 
+    describe "self.install" do
+      it "existing gemfile and handles missing" do
+        expect { GemModel.install("openc3-test1.gem", scope: 'DEFAULT') }.to \
+          raise_error(Gem::Package::FormatError, /package metadata is missing/)
+        expect { GemModel.install("openc3-test3.gem", scope: 'DEFAULT') }.to \
+          raise_error(RuntimeError, /Gem openc3-test3.gem not found/)
+      end
+    end
+
     describe "self.destroy" do
       it "removes the gem from the gem server" do
         uninstaller = instance_double("Gem::Uninstaller").as_null_object
         expect(Gem::Uninstaller).to receive(:new).and_return(uninstaller)
         expect(uninstaller).to receive(:uninstall)
         GemModel.destroy("openc3-test1.gem")
+      end
+    end
+
+    describe "self.destroy_all_other_versions" do
+      it "removes the gem from the gem server" do
+        uninstaller = instance_double("Gem::Uninstaller").as_null_object
+        expect(Gem::Uninstaller).to receive(:new).and_return(uninstaller)
+        expect(uninstaller).to receive(:uninstall)
+        GemModel.destroy_all_other_versions("openc3-test1.gem")
       end
     end
   end

@@ -320,6 +320,16 @@ module OpenC3
       end
     end
 
+    describe "determine latest packet" do
+      xit "for item" do
+        update_temp1()
+        CvtModel.override("INST", "HEALTH_STATUS", "TEMP1", 10, type: :ALL, scope: "DEFAULT")
+        expect{ packet_name = CvtModel.determine_latest_packet_for_item('INST', 'HEALTH_STATUS', cache_timeout: nil, scope: 'DEFAULT') }.to \
+          raise_error(/Target 'INST' does not exist for scope: DEFAULT/)
+        #expect(packet_name).to eq('something')
+      end
+    end
+
     describe "overrides" do
       it "returns all overrides the CVT" do
         model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT")

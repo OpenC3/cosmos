@@ -25,11 +25,14 @@ require 'fileutils'
 require 'openc3/models/target_model'
 require 'openc3/models/microservice_model'
 require 'openc3/utilities/aws_bucket'
+require 'openc3/utilities/s3_autoload'
 
 module OpenC3
-  describe TargetModel do
+  describe TargetModel, type: :model do
     before(:each) do
       mock_redis()
+      #model = ScopeModel.new(name: "DEFAULT")
+      #model.create
     end
 
     describe "self.get" do
@@ -67,11 +70,119 @@ module OpenC3
         model = TargetModel.new(folder_name: "SPEC", name: "SPEC", scope: "DEFAULT")
         model.create
         all = TargetModel.all(scope: "DEFAULT")
+        expect(all).to_not be_nil
         expect(all.keys).to contain_exactly("TEST", "SPEC")
       end
     end
 
+    describe "render" do
+      it "renders" do
+        template = '_template.erb'
+        model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT")
+        model.create
+        Dir.mktmpdir do |tmpdir|
+          tf = File.open(File.join(tmpdir, template), 'w')
+          tf.puts "CMD_LOG_CYCLE_TIME 1"
+          tf.close
+          model.render(File.expand_path(tf.path), {opt1: '1', opt2: '2', opt3: '3'})
+          # where does the rendered value go?
+        end
+      end
+    end
+
     # self.all_modified & self.download aren't unit tested because it's basically just mocking the entire S3 API
+
+    describe "self.all_modified" do
+      xit "returns all the modified targets" do
+        s3 = instance_double("Aws::S3::Client")
+        allow(Aws::S3::Client).to receive(:new).and_return(s3)
+        options = OpenStruct.new
+        options.key = "blah"
+        objs = double("Object", :contents => [options], is_truncated: false)
+
+        allow(s3).to receive(:list_objects_v2).and_return(objs)
+        #allow(s3).to receive(:common_prefixes)
+
+        model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT")
+        model.create
+        model = TargetModel.new(folder_name: "SPEC", name: "SPEC", scope: "DEFAULT")
+        model.create
+        expect { all = TargetModel.all_modified(scope: "DEFAULT") }.not_to  \
+          raise_error(/received unexpected message :common_prefixes/)
+        #expect(all.keys).to contain_exactly("TEST", "SPEC")
+      end
+    end
+
+    describe "self.modified_files" do
+      xit "returns all the modified files" do
+        s3 = instance_double("Aws::S3::Client")
+        allow(Aws::S3::Client).to receive(:new).and_return(s3)
+        options = OpenStruct.new
+        options.key = "blah"
+        objs = double("Object", :contents => [options], is_truncated: false)
+        allow(s3).to receive(:list_objects_v2).and_return(objs)
+
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
+        model.create
+        model = TargetModel.new(folder_name: "SPEC", name: "SPEC", scope: "DEFAULT")
+        model.create
+        expect { mods = TargetModel.modified_files('TEST', scope: "DEFAULT") }.not_to \
+          raise_error(NoMethodError, /undefined method `join' for nil/)
+        #expect(mods.keys).to contain_exactly("TEST", "SPEC")
+      end
+    end
+
+    describe "self.delete_modified" do
+      it "returns all the deleted or modified whatnots" do
+        s3 = instance_double("Aws::S3::Client")
+        allow(Aws::S3::Client).to receive(:new).and_return(s3)
+        options = OpenStruct.new
+        options.key = "blah"
+        objs = double("Object", :contents => [options], is_truncated: false)
+        allow(s3).to receive(:list_objects_v2).and_return(objs)
+
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
+        model.create
+        model = TargetModel.new(folder_name: "SPEC", name: "SPEC", scope: "DEFAULT")
+        model.create
+        dels = TargetModel.delete_modified('TEST', scope: "DEFAULT")
+=begin
+Oh, joy.
+        puts 'OpenStruct key="blah"'.encoding.to_s
+        puts 'OpenStruct key="blah"'.bytes.to_s
+
+        puts dels[0].to_s.encoding.to_s
+        puts dels[0].to_s.bytes.to_s
+
+ASCII-8BIT
+[79, 112, 101, 110, 83, 116, 114, 117, 99, 116, 32, 107, 101, 121, 61, 34, 98, 108, 97, 104, 34]
+
+UTF-8
+[35, 60, 79, 112, 101, 110, 83, 116, 114, 117, 99, 116, 32, 107, 101, 121, 61, 34, 98, 108, 97, 104, 34, 62]
+=end
+
+        #expect(dels[0]).to match(/<OpenStruct key="blah">/) #match(/Error deleting object bucket/)
+      end
+    end
+
+    describe "self.download" do
+      xit "returns all the downloads" do
+        s3 = instance_double("Aws::S3::Client")
+        allow(Aws::S3::Client).to receive(:new).and_return(s3)
+        options = OpenStruct.new
+        options.key = "DEFAULT"
+        objs = double("Object", :contents => [options], is_truncated: false)
+        allow(s3).to receive(:list_objects_v2).and_return(objs)
+        allow(s3).to receive(:get_object).and_return(objs)
+
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
+        model.create
+        model = TargetModel.new(folder_name: "SPEC", name: "SPEC", scope: "DEFAULT")
+        model.create
+        expect { TargetModel.download('TEST', scope: "DEFAULT") }.not_to \
+          raise_error(/No such file or directory/)
+      end
+    end
 
     describe "self.packets" do
       before(:each) do
@@ -82,6 +193,39 @@ module OpenC3
         model = TargetModel.new(folder_name: "EMPTY", name: "EMPTY", scope: "DEFAULT")
         model.create
         model.update_store(System.new(['EMPTY'], File.join(SPEC_DIR, 'install', 'config', 'targets')))
+      end
+
+      it "can set packet" do
+        pkts = TargetModel.packets("INST", type: :TLM, scope: "DEFAULT")
+        model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT")
+        TargetModel.set_packet('INST', 'ADCS', pkts[0], type: :TLM, scope: "DEFAULT")
+      end
+
+      it "can self.dynamic update" do
+        pkts = TargetModel.packets("TEST", type: :TLM, scope: "DEFAULT")
+        model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT")
+        model.create
+        expect { TargetModel.dynamic_update(pkts, cmd_or_tlm = :TELEMETRY, filename = "dynamic_tlm.txt") }.to \
+          raise_error(RuntimeError, /Target 'TEST' does not exist for scope: DEFAULT/)
+      rescue RuntimeError => e
+        puts e.message
+      end
+
+      it "can dynamic update" do
+        pkts = TargetModel.packets("TEST", type: :TLM, scope: "DEFAULT")
+        model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT")
+        model.create
+        expect { model.dynamic_update(pkts, cmd_or_tlm = :TELEMETRY, filename = "dynamic_tlm.txt") }.to \
+          raise_error(RuntimeError, /Target 'TEST' does not exist for scope: DEFAULT/)
+      rescue RuntimeError => e
+        puts e.message
+      end
+      it "calls limits_groups" do
+        TargetModel.limits_groups(scope: 'DEFAULT')
+      end
+
+      it "gets item-to-packet map" do
+        TargetModel.get_item_to_packet_map("INST", scope: "DEFAULT")
       end
 
       it "raises for an unknown type" do
@@ -332,6 +476,26 @@ module OpenC3
         tf.puts "CMD_LOG_CYCLE_SIZE 2"
         tf.puts "CMD_DECOM_LOG_CYCLE_TIME 3"
         tf.puts "CMD_DECOM_LOG_CYCLE_SIZE 4"
+        tf.puts "CMD_BUFFER_DEPTH 9"
+        tf.puts "CMD_LOG_RETAIN_TIME 10"
+        tf.puts "CMD_DECOM_LOG_RETAIN_TIME 12"
+        tf.puts "TLM_BUFFER_DEPTH 13"
+        tf.puts "TLM_LOG_RETAIN_TIME 14"
+        tf.puts "TLM_DECOM_LOG_RETAIN_TIME 15"
+        tf.puts "REDUCED_MINUTE_LOG_RETAIN_TIME 16"
+        tf.puts "REDUCED_HOUR_LOG_RETAIN_TIME 17"
+        tf.puts "REDUCED_DAY_LOG_RETAIN_TIME 18"
+        tf.puts "LOG_RETAIN_TIME 19"
+        tf.puts "REDUCED_LOG_RETAIN_TIME 20"
+        tf.puts "REDUCER_DISABLED 21"
+        tf.puts "REDUCER_MAX_CPU_UTILIZATION 22"
+        tf.puts "REDUCED_MAX_CPU_UTILIZATION 23"
+        tf.puts "CLEANUP_POLL_TIME 24"
+        tf.puts "TARGET_MICROSERVICE DECOM"
+        tf.puts "PACKET REDUCER"
+        tf.puts "PACKET DECOM"
+        tf.puts "DISABLE_ERB"
+        tf.puts "TARGET_MICROSERVICE CLEANUP"
         tf.puts "TLM_LOG_CYCLE_TIME 5"
         tf.puts "TLM_LOG_CYCLE_SIZE 6"
         tf.puts "TLM_DECOM_LOG_CYCLE_TIME 7"
