@@ -4,6 +4,7 @@
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
+
 # under the terms of the GNU Affero General Public License
 # as published by the Free Software Foundation; version 3 with
 # attribution addendums as found in the LICENSE.txt
@@ -22,15 +23,31 @@ require "openc3/utilities/aws_bucket"
 module OpenC3
   describe AwsBucket do
     before(:all) do |example|
+    # These tests work if there's a mock S3 or a MINIO service available. To enable
+    # access to MINIO for testing, change the compose.yaml services stanza to:
+    #
+    # services:
+    #   openc3-minio:
+    #     ports:
+    #       - "127.0.0.1:9000:9000"
+      begin
+        sock = Socket.new(Socket::Constants::AF_INET, Socket::Constants::SOCK_STREAM, 0)
+        sock.bind(Socket.pack_sockaddr_in(9000, '127.0.0.1')) #raise if listening
+        #mock_s3()
+        #Logger.info("No S3 listener - using Mock-S3 local client")
+      rescue Errno::EADDRINUSE;
+        Logger.error("Found listener on port 9000; presumably Minio")
+      end
+
       @bucket = Bucket.getClient.create("bucket#{rand(1000)}")
-    # These tests only work if there's an actual MINIO service available to talk to
-    # Thus we'll just skip them all if we get a networking error
-    # To enable access to MINIO for testing change the compose.yaml file and add
-    # the following to services: openc3-minio:
-    #   ports:
-    #     - "127.0.0.1:9000:9000"
     rescue Seahorse::Client::NetworkingError, Aws::Errors::NoSuchEndpointError => e
+    # We'll just skip them all if we get a networking error.
       example.skip e.message
+    end
+
+    after(:each) do
+      sleep 0.1
+      kill_leftover_threads
     end
 
     after(:all) do
@@ -39,22 +56,31 @@ module OpenC3
 
     let(:client) { Bucket.getClient() }
 
-    describe "create, exist?, delete" do
-      it "creates, checks, and deletes a bucket" do
+    describe "basically it" do
+      it "checks a bucket" do
         expect(client.exist?(@bucket)).to be true
-        # Calling create again does nothing
+      end
+       # Calling create again does nothing
+      it "creates and checks a bucket" do
         client.create(@bucket)
         expect(client.exist?(@bucket)).to be true
-
+      end
+      it "deletes and checks a bucket" do
         client.delete(@bucket)
         expect(client.exist?(@bucket)).to be false
-        # Calling delete again does nothing
+      end
+      it "deletes a deleted bucket" do
+      # Calling delete again does nothing
         client.delete(@bucket)
         expect(client.exist?(@bucket)).to be false
-
+      end
+      it "creates and checks a bucket" do
         # Recreate for the rest of the tests
         client.create(@bucket)
         expect(client.exist?(@bucket)).to be true
+      end
+      it "ensures public" do
+        expect{client.ensure_public(@bucket)}.not_to raise_error
       end
     end
 
@@ -76,7 +102,8 @@ module OpenC3
     end
 
     describe 'get_object' do
-      it "raises if no object" do
+      # formerly read,       it "raises if no object" do
+      it "returns nil if no object" do
         expect(client.get_object(bucket: @bucket, key: 'nope')).to eql nil
       end
 
@@ -89,6 +116,22 @@ module OpenC3
         expect(File.exist?(local_path)).to be true
         expect(File.read(local_path)).to eql 'contents'
         client.delete_object(bucket: @bucket, key: 'test')
+      end
+
+      it "internal presigned_request" do
+        client.put_object(bucket: @bucket, key: 'test4', body: 'contents')
+        expect{
+          client.presigned_request(bucket: @bucket, key: 'test4', method: 'pre_sign', internal: true)
+        }.to raise_error(NoMethodError, /undefined method `build_request'/ )
+        client.delete_object(bucket: @bucket, key: 'test4')
+      end
+
+      it "external presigned_request" do
+        client.put_object(bucket: @bucket, key: 'test5', body: 'contents')
+        expect{
+          client.presigned_request(bucket: @bucket, key: 'test5', method: 'pre_sign', internal: false)
+        }.to raise_error(NoMethodError, /undefined method `build_request'/ )
+        client.delete_object(bucket: @bucket, key: 'test5')
       end
     end
 
