@@ -104,6 +104,9 @@ module OpenC3
     # @return [Boolean] Whether to ignore overlapping items
     attr_accessor :ignore_overlap
 
+    # @return [Boolean] If this packet should be used for identification
+    attr_reader :virtual
+
     # Valid format types
     VALUE_TYPES = [:RAW, :CONVERTED, :FORMATTED, :WITH_UNITS]
 
@@ -144,6 +147,7 @@ module OpenC3
         @template = nil
         @packet_time = nil
         @ignore_overlap = false
+        @virtual = false
       end
 
       # Sets the target name this packet is associated with. Unidentified packets
@@ -233,6 +237,7 @@ module OpenC3
     # @return [Boolean] Whether or not the buffer of data is this packet
     def identify?(buffer)
       return false unless buffer
+      return false if @virtual
       return true unless @id_items
 
       @id_items.each do |item|
@@ -284,6 +289,14 @@ module OpenC3
 
     def packet_time=(time)
       @packet_time = time
+    end
+
+    def virtual=(v)
+      @virtual = v
+      if @virtual
+        @hidden = true
+        @disabled = true
+      end
     end
 
     # Calculates a unique hashing sum that changes if the parts of the packet configuration change that could affect
@@ -1058,7 +1071,9 @@ module OpenC3
       config << "  ALLOW_SHORT\n" if @short_buffer_allowed
       config << "  HAZARDOUS #{@hazardous_description.to_s.quote_if_necessary}\n" if @hazardous
       config << "  DISABLE_MESSAGES\n" if @messages_disabled
-      if @disabled
+      if @virtual
+        config << "  VIRTUAL"
+      elsif @disabled
         config << "  DISABLED\n"
       elsif @hidden
         config << "  HIDDEN\n"
@@ -1122,6 +1137,7 @@ module OpenC3
       config['messages_disabled'] = true if @messages_disabled
       config['disabled'] = true if @disabled
       config['hidden'] = true if @hidden
+      config['virtual'] = true if @virtual
       config['accessor'] = @accessor.class.to_s
       config['accessor_args'] = @accessor.args
       config['template'] = Base64.encode64(@template) if @template
@@ -1176,6 +1192,7 @@ module OpenC3
       packet.messages_disabled = hash['messages_disabled']
       packet.disabled = hash['disabled']
       packet.hidden = hash['hidden']
+      packet.virtual = hash['virtual']
       if hash['accessor']
         begin
           accessor = OpenC3::const_get(hash['accessor'])

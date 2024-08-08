@@ -74,13 +74,13 @@ module OpenC3
     attr_reader :latest_data
 
     # @return [Hash<String>=>Hash<Array>=>Packet] Hash keyed by target name
-    # that returns a hash keyed by an array of id values.  The id values resolve to the packet
-    # defined by that identification.  Command version
+    # that returns a hash keyed by an array of id values. The id values resolve to the packet
+    # defined by that identification. Command version
     attr_reader :cmd_id_value_hash
 
     # @return [Hash<String>=>Hash<Array>=>Packet] Hash keyed by target name
-    # that returns a hash keyed by an array of id values.  The id values resolve to the packet
-    # defined by that identification.  Telemetry version
+    # that returns a hash keyed by an array of id values. The id values resolve to the packet
+    # defined by that identification. Telemetry version
     attr_reader :tlm_id_value_hash
 
     # @return [String] Language of current target (ruby or python)
@@ -219,7 +219,7 @@ module OpenC3
               'PARAMETER', 'ID_ITEM', 'ID_PARAMETER', 'ARRAY_ITEM', 'ARRAY_PARAMETER', 'APPEND_ITEM',\
               'APPEND_PARAMETER', 'APPEND_ID_ITEM', 'APPEND_ID_PARAMETER', 'APPEND_ARRAY_ITEM',\
               'APPEND_ARRAY_PARAMETER', 'ALLOW_SHORT', 'HAZARDOUS', 'PROCESSOR', 'META',\
-              'DISABLE_MESSAGES', 'HIDDEN', 'DISABLED', 'ACCESSOR', 'TEMPLATE', 'TEMPLATE_FILE',\
+              'DISABLE_MESSAGES', 'HIDDEN', 'DISABLED', 'VIRTUAL', 'ACCESSOR', 'TEMPLATE', 'TEMPLATE_FILE',\
               'RESPONSE', 'ERROR_RESPONSE', 'SCREEN', 'RELATED_ITEM', 'IGNORE_OVERLAP'
             raise parser.error("No current packet for #{keyword}") unless @current_packet
 
@@ -232,7 +232,7 @@ module OpenC3
               'POLY_WRITE_CONVERSION', 'SEG_POLY_READ_CONVERSION', 'SEG_POLY_WRITE_CONVERSION',\
               'GENERIC_READ_CONVERSION_START', 'GENERIC_WRITE_CONVERSION_START', 'REQUIRED',\
               'LIMITS', 'LIMITS_RESPONSE', 'UNITS', 'FORMAT_STRING', 'DESCRIPTION',\
-              'MINIMUM_VALUE', 'MAXIMUM_VALUE', 'DEFAULT_VALUE', 'OVERFLOW', 'OVERLAP', 'KEY'
+              'MINIMUM_VALUE', 'MAXIMUM_VALUE', 'DEFAULT_VALUE', 'OVERFLOW', 'OVERLAP', 'KEY', 'VARIABLE_BIT_SIZE'
             raise parser.error("No current item for #{keyword}") unless @current_item
 
             process_current_item(parser, keyword, params)
@@ -317,16 +317,20 @@ module OpenC3
         if @current_cmd_or_tlm == COMMAND
           PacketParser.check_item_data_types(@current_packet)
           @commands[@current_packet.target_name][@current_packet.packet_name] = @current_packet
-          hash = @cmd_id_value_hash[@current_packet.target_name]
-          hash = {} unless hash
-          @cmd_id_value_hash[@current_packet.target_name] = hash
-          update_id_value_hash(@current_packet, hash)
+          unless @current_packet.virtual
+            hash = @cmd_id_value_hash[@current_packet.target_name]
+            hash = {} unless hash
+            @cmd_id_value_hash[@current_packet.target_name] = hash
+            update_id_value_hash(@current_packet, hash)
+          end
         else
           @telemetry[@current_packet.target_name][@current_packet.packet_name] = @current_packet
-          hash = @tlm_id_value_hash[@current_packet.target_name]
-          hash = {} unless hash
-          @tlm_id_value_hash[@current_packet.target_name] = hash
-          update_id_value_hash(@current_packet, hash)
+          unless @current_packet.virtual
+            hash = @tlm_id_value_hash[@current_packet.target_name]
+            hash = {} unless hash
+            @tlm_id_value_hash[@current_packet.target_name] = hash
+            update_id_value_hash(@current_packet, hash)
+          end
         end
         @current_packet = nil
         @current_item = nil
@@ -337,7 +341,7 @@ module OpenC3
       if cmd_or_tlm == :COMMAND
         @commands[packet.target_name][packet.packet_name] = packet
 
-        if affect_ids
+        if affect_ids and not packet.virtual
           hash = @cmd_id_value_hash[packet.target_name]
           hash = {} unless hash
           @cmd_id_value_hash[packet.target_name] = hash
@@ -354,7 +358,7 @@ module OpenC3
           latest_data_packets << packet unless latest_data_packets.include?(packet)
         end
 
-        if affect_ids
+        if affect_ids and not packet.virtual
           hash = @tlm_id_value_hash[packet.target_name]
           hash = {} unless hash
           @tlm_id_value_hash[packet.target_name] = hash
@@ -468,6 +472,13 @@ module OpenC3
         parser.verify_num_parameters(0, 0, usage)
         @current_packet.hidden = true
         @current_packet.disabled = true
+
+      when 'VIRTUAL'
+        usage = "#{keyword}"
+        parser.verify_num_parameters(0, 0, usage)
+        @current_packet.hidden = true
+        @current_packet.disabled = true
+        @current_packet.virtual = true
 
       when 'ACCESSOR'
         usage = "#{keyword} <Accessor class name>"
@@ -720,6 +731,16 @@ module OpenC3
       when 'KEY'
         parser.verify_num_parameters(1, 1, 'KEY <key or path into data>')
         @current_item.key = params[0]
+
+      when 'VARIABLE_BIT_SIZE'
+        parser.verify_num_parameters(1, 3, 'VARIABLE_BIT_SIZE <length_item_name> <length_bits_per_count = 8> <length_value_bit_offset = 0>')
+
+        variable_bit_size = {'length_bits_per_count' => 8, 'length_value_bit_offset' => 0}
+        variable_bit_size['length_item_name'] = params[0].upcase
+        variable_bit_size['length_bits_per_count'] = Integer(params[1]) if params[1]
+        variable_bit_size['length_value_bit_offset'] = Integer(params[2]) if params[2]
+
+        @current_item.variable_bit_size = variable_bit_size
       end
     end
 

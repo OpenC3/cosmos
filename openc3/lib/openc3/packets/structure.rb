@@ -299,7 +299,6 @@ module OpenC3
     # @param overflow (see #define_item)
     # @return (see #define_item)
     def append_item(name, bit_size, data_type, array_size = nil, endianness = @default_endianness, overflow = :ERROR)
-      raise ArgumentError, "Can't append an item after a variably sized item" if !@fixed_size
       if data_type == :DERIVED
         return define_item(name, 0, bit_size, data_type, array_size, endianness, overflow)
       else
@@ -313,8 +312,6 @@ module OpenC3
     # @param item (see #define)
     # @return (see #define)
     def append(item)
-      raise ArgumentError, "Can't append an item after a variably sized item" if !@fixed_size
-
       if item.data_type == :DERIVED
         item.bit_offset = 0
       else
@@ -337,6 +334,20 @@ module OpenC3
     def set_item(item)
       if @items[item.name]
         @items[item.name] = item
+        # Need to allocate space for the variable length item if its minimum size is greater than zero
+        if item.variable_bit_size
+          minimum_data_bits = 0
+          if (item.data_type == :INT or item.data_type == :UINT) and not item.original_array_size
+            # Minimum QUIC encoded integer, see https://datatracker.ietf.org/doc/html/rfc9000#name-variable-length-integer-enc
+            minimum_data_bits = 6
+          # :STRING, :BLOCK, or array item
+          elsif item.variable_bit_size['length_value_bit_offset'] > 0
+            minimum_data_bits = item.variable_bit_size['length_value_bit_offset'] * item.variable_bit_size['length_bits_per_count']
+          end
+          if minimum_data_bits > 0 and item.bit_offset >= 0 and @defined_length_bits == item.bit_offset
+            @defined_length_bits += minimum_data_bits
+          end
+        end
       else
         raise ArgumentError, "Unknown item: #{item.name} - Ensure item name is uppercase"
       end
@@ -566,12 +577,57 @@ module OpenC3
       end
     end
 
+    def calculate_total_bit_size(item)
+      if item.variable_bit_size
+        # Bit size is determined by length field
+        length_value = self.read(item.variable_bit_size['length_item_name'], :CONVERTED)
+        if item.data_type == :INT or item.data_type == :UINT and not item.original_array_size
+          case length_value
+          when 0
+            return 6
+          when 1
+            return 14
+          when 2
+            return 30
+          else
+            return 62
+          end
+        else
+          return (length_value * item.variable_bit_size['length_bits_per_count']) + item.variable_bit_size['length_value_bit_offset']
+        end
+      elsif item.original_bit_size <= 0
+        # Bit size is full packet length - bits before item + negative bits saved at end
+        return (@buffer.length * 8) - item.bit_offset + item.original_bit_size
+      elsif item.original_array_size and item.original_array_size <= 0
+        # Bit size is full packet length - bits before item + negative bits saved at end
+        return (@buffer.length * 8) - item.bit_offset + item.original_array_size
+      else
+        raise "Unexpected use of calculate_total_bit_size for non-variable-sized item"
+      end
+    end
+
+    def recalculate_bit_offsets
+      adjustment = 0
+      @sorted_items.each do |item|
+        # Anything with a negative bit offset should be left alone
+        if item.original_bit_offset >= 0
+          item.bit_offset = item.original_bit_offset + adjustment
+          if item.data_type != :DERIVED and (item.variable_bit_size or item.original_bit_size <= 0 or (item.original_array_size and item.original_array_size <= 0))
+            adjustment += calculate_total_bit_size(item)
+          end
+        end
+      end
+    end
+
     def internal_buffer_equals(buffer)
       raise ArgumentError, "Buffer class is #{buffer.class} but must be String" unless String === buffer
 
       @buffer = buffer.dup
       if @accessor.enforce_encoding
         @buffer.force_encoding(@accessor.enforce_encoding)
+      end
+      if not @fixed_size
+        recalculate_bit_offsets()
       end
       if @accessor.enforce_length
         if @buffer.length != @defined_length

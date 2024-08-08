@@ -23,9 +23,210 @@
 require 'spec_helper'
 require 'openc3'
 require 'openc3/accessors/binary_accessor'
+require 'openc3/packets/packet'
 
 module OpenC3
   describe BinaryAccessor, no_ext: true do
+    describe "multiple variable sized items" do
+      before(:each) do
+        @packet = Packet.new
+      end
+
+      it "can write QUIC encoded variable sized integers" do
+        @packet.append_item("marker", 16, :STRING)
+        @packet.write("marker", "**")
+        expect(@packet.buffer).to eql "\x2A\x2A"
+
+        @packet.append_item("item1_length", 2, :UINT)
+        item1 = @packet.append_item("item1", 0, :UINT)
+        item1.variable_bit_size = {'length_item_name' => 'item1_length', 'length_value_bit_offset' => 0, 'length_bits_per_count' => 8}
+        # This is required to get the defined_length_bits set correctly
+        # It is normally called by packet_config when constructing the packet
+        @packet.set_item(item1)
+        expect(@packet.buffer).to eql "\x2A\x2A\x00"
+
+        @packet.append_item("marker", 16, :STRING)
+        @packet.write("marker", "##")
+        expect(@packet.buffer).to eql "\x2A\x2A\x00\x23\x23"
+
+        @packet.append_item("item2_length", 2, :UINT)
+        item2 = @packet.append_item("item2", 0, :INT)
+        item2.variable_bit_size = {'length_item_name' => 'item2_length', 'length_value_bit_offset' => 0, 'length_bits_per_count' => 8}
+        # This is required to get the defined_length_bits set correctly
+        # It is normally called by packet_config when constructing the packet
+        @packet.set_item(item2)
+        expect(@packet.buffer).to eql "\x2A\x2A\x00\x23\x23\x00"
+
+        @packet.append_item("marker", 16, :STRING)
+        @packet.write("marker", "$$")
+        expect(@packet.buffer).to eql "\x2A\x2A\x00\x23\x23\x00\x24\x24"
+
+        # For all these example the 2 bits indicate the length
+        # 0 is 6, 1 is 14, 2 is 30, 4 is 62
+        # The 2 bit length field itself makes up a full byte boundary
+
+        @packet.write("item1", 0)
+        @packet.write("item2", 0)
+        expect(@packet.buffer).to eql "\x2A\x2A\x00\x23\x23\x00\x24\x24"
+        expect(@packet.read("item1")).to eql(0x0)
+        expect(@packet.read("item2")).to eql(0x0)
+
+        # Loop through all the combinations of bits
+        [[6, 'c', 0], [14, 's>', 0x4000], [30, 'l>', 0x80000000], [62, 'q>', 0xC000000000000000]].each do |bits, format_string, length_bits|
+          min_unsigned = 0
+          max_unsigned = (2**bits) - 1
+          mask = max_unsigned
+          min_signed = -(2**(bits-1))
+          max_signed = (2**(bits-1)) - 1
+
+          @packet.write("item1", min_unsigned)
+          @packet.write("item2", min_signed)
+          # We know min unsigned is just 0 so pack that
+          buffer = "\x2A\x2A\x00\x23\x23"
+          # Mask off the length bits then set them
+          buffer += [(min_signed & mask) | length_bits].pack(format_string)
+          buffer += "\x24\x24"
+          expect(@packet.buffer).to eql buffer
+          expect(@packet.read("item1")).to eql(min_unsigned)
+          expect(@packet.read("item2")).to eql(min_signed)
+
+          @packet.write("item1", max_unsigned)
+          @packet.write("item2", max_signed)
+          buffer = "\x2A\x2A"
+          # Mask off the length bits then set them
+          buffer += [(max_unsigned & mask) | length_bits].pack(format_string)
+          buffer += "\x23\x23"
+          # Mask off the length bits then set them
+          buffer += [(max_signed & mask) | length_bits].pack(format_string)
+          buffer += "\x24\x24"
+          expect(@packet.buffer).to eql buffer
+          expect(@packet.read("item1")).to eql(max_unsigned)
+          expect(@packet.read("item2")).to eql(max_signed)
+        end
+      end
+
+      it "can define multiple variable sized items" do
+        item1_length = @packet.append_item("item1_length", 32, :INT)
+        expect(item1_length.bit_offset).to eql 0
+
+        item1 = @packet.append_item("item1", 0, :STRING)
+        @packet.write("item1_length", 0)
+        item1.variable_bit_size = {'length_item_name' => 'item1_length', 'length_value_bit_offset' => 0, 'length_bits_per_count' => 8}
+        expect(item1.bit_offset).to eql 32
+
+        item2_length = @packet.append_item("item2_length", 16, :UINT)
+        expect(item2_length.bit_offset).to eql 32
+
+        item2 = @packet.append_item("item2", 0, :STRING)
+        @packet.write("item2_length", 0)
+        item2.variable_bit_size = {'length_item_name' => 'item2_length', 'length_value_bit_offset' => 0, 'length_bits_per_count' => 8}
+        expect(item2.bit_offset).to eql 48
+        expect(@packet.buffer).to eql "\x00\x00\x00\x00\x00\x00"
+
+        item3_length = @packet.append_item("item3_length", 8, :UINT)
+        expect(item3_length.bit_offset).to eql 48
+        expect(@packet.buffer).to eql "\x00\x00\x00\x00\x00\x00\x00"
+
+        item3 = @packet.append_item("item3", 8, :UINT, 0)
+        @packet.write("item3_length", 0)
+        item3.variable_bit_size = {'length_item_name' => 'item3_length', 'length_value_bit_offset' => 0, 'length_bits_per_count' => 8}
+        expect(item3.bit_offset).to eql 56
+        expect(@packet.buffer).to eql "\x00\x00\x00\x00\x00\x00\x00"
+
+        @packet.write("item1", "This is Awesome")
+        expect(@packet.buffer).to eql "\x00\x00\x00\x0FThis is Awesome\x00\x00\x00"
+        expect(item1_length.bit_offset).to eq 0
+        expect(item1.bit_offset).to eq 32
+        expect(item2_length.bit_offset).to eq 152
+        expect(item2.bit_offset).to eq 168
+        expect(item3_length.bit_offset).to eq 168
+        expect(item3.bit_offset).to eq 176
+
+        @packet.write("item2", "So is this")
+        expect(@packet.buffer).to eql "\x00\x00\x00\x0FThis is Awesome\x00\x0ASo is this\x00"
+        expect(item1_length.bit_offset).to eq 0
+        expect(item1.bit_offset).to eq 32
+        expect(item2_length.bit_offset).to eq 152
+        expect(item2.bit_offset).to eq 168
+        expect(item3_length.bit_offset).to eq 248
+        expect(item3.bit_offset).to eq 256
+
+        @packet.write("item3", [1, 2, 3, 4, 5])
+        expect(@packet.buffer).to eql "\x00\x00\x00\x0FThis is Awesome\x00\x0ASo is this\x05\x01\x02\x03\x04\x05"
+        expect(item1_length.bit_offset).to eq 0
+        expect(item1.bit_offset).to eq 32
+        expect(item2_length.bit_offset).to eq 152
+        expect(item2.bit_offset).to eq 168
+        expect(item3_length.bit_offset).to eq 248
+        expect(item3.bit_offset).to eq 256
+
+        @packet.write("item2", "Small")
+        expect(@packet.buffer).to eql "\x00\x00\x00\x0FThis is Awesome\x00\x05Small\x05\x01\x02\x03\x04\x05"
+        expect(item1_length.bit_offset).to eq 0
+        expect(item1.bit_offset).to eq 32
+        expect(item2_length.bit_offset).to eq 152
+        expect(item2.bit_offset).to eq 168
+        expect(item3_length.bit_offset).to eq 208
+        expect(item3.bit_offset).to eq 216
+
+        @packet.write("item1", "Yo")
+        expect(@packet.buffer).to eql "\x00\x00\x00\x02Yo\x00\x05Small\x05\x01\x02\x03\x04\x05"
+        expect(item1_length.bit_offset).to eq 0
+        expect(item1.bit_offset).to eq 32
+        expect(item2_length.bit_offset).to eq 48
+        expect(item2.bit_offset).to eq 64
+        expect(item3_length.bit_offset).to eq 104
+        expect(item3.bit_offset).to eq 112
+
+        # Recalculates offsets when buffer is written
+        @packet.buffer = "\x00\x00\x00\x03Ok!\x00\x04Cool\x02\xA5\x5A"
+        expect(item1_length.bit_offset).to eql 0
+        expect(item1.bit_offset).to eql 32
+        expect(item2_length.bit_offset).to eql 56
+        expect(item2.bit_offset).to eql 72
+        expect(item3_length.bit_offset).to eql 104
+        expect(item3.bit_offset).to eql 112
+        expect(@packet.read("item1_length")).to eql 3
+        expect(@packet.read("item1")).to eql "Ok!"
+        expect(@packet.read("item2_length")).to eql 4
+        expect(@packet.read("item2")).to eql "Cool"
+        expect(@packet.read("item3_length")).to eql 2
+        expect(@packet.read("item3")).to eql [0xA5, 0x5A]
+      end
+
+      it "can define multiple variable sized items with non-zero value offsets" do
+        item1_length = @packet.append_item("item1_length", 32, :INT)
+        expect(item1_length.bit_offset).to eql 0
+        expect(@packet.buffer).to eql "\x00\x00\x00\x00"
+        item1 = @packet.append_item("item1", 0, :STRING)
+        @packet.write("item1_length", 4) # Lengths must be initialized to zero equivalent
+        expect(@packet.buffer).to eql "\x00\x00\x00\x04"
+        item1.variable_bit_size = {'length_item_name' => 'item1_length', 'length_value_bit_offset' => -32, 'length_bits_per_count' => 8}
+        expect(item1.bit_offset).to eql 32
+        item2_length = @packet.append_item("item2_length", 16, :UINT)
+        expect(item2_length.bit_offset).to eql 32
+        expect(@packet.buffer).to eql "\x00\x00\x00\x04\x00\x00"
+        item2 = @packet.append_item("item2", 0, :STRING)
+        expect(@packet.buffer).to eql "\x00\x00\x00\x04\x00\x00"
+        @packet.write("item2_length", 8) # Lengths must be initialized to zero equivalent
+        item2.variable_bit_size = {'length_item_name' => 'item2_length', 'length_value_bit_offset' => -64, 'length_bits_per_count' => 8}
+        expect(item2.bit_offset).to eql 48
+        expect(@packet.buffer).to eql "\x00\x00\x00\x04\x00\x08"
+        @packet.write("item1", "This is Awesome")
+        expect(@packet.buffer).to eql "\x00\x00\x00\x13This is Awesome\x00\x08"
+        expect(item1_length.bit_offset).to eq 0
+        expect(item1.bit_offset).to eq 32
+        expect(item2_length.bit_offset).to eq 152
+        expect(item2.bit_offset).to eq 168
+        @packet.write("item2", "So is this")
+        expect(@packet.buffer).to eql "\x00\x00\x00\x13This is Awesome\x00\x12So is this"
+        expect(item1_length.bit_offset).to eq 0
+        expect(item1.bit_offset).to eq 32
+        expect(item2_length.bit_offset).to eq 152
+        expect(item2.bit_offset).to eq 168
+      end
+    end
+
     describe "read only" do
       before(:each) do
         @data = "\x80\x81\x82\x83\x84\x85\x86\x87\x00\x09\x0A\x0B\x0C\x0D\x0E\x0F"
@@ -150,7 +351,7 @@ module OpenC3
         it "reads 7-bit signed integers" do
           expected = [0x40, 0x02]
           bit_size = 7
-          expected.each_with_index { |value, index| expected[index] = value - 2**bit_size if value >= 2**(bit_size - 1) }
+          expected.each_with_index { |value, index| expected[index] = value - (2**bit_size) if value >= 2**(bit_size - 1) }
           expect(BinaryAccessor.read(8, bit_size, :INT, @data, :BIG_ENDIAN)).to eql(expected[0])
           expect(BinaryAccessor.read(3, bit_size, :INT, @data, :BIG_ENDIAN)).to eql(expected[1])
         end
@@ -165,7 +366,7 @@ module OpenC3
         it "reads 13-bit signed integers" do
           expected = [0x1C24, 0x20]
           bit_size = 13
-          expected.each_with_index { |value, index| expected[index] = value - 2**bit_size if value >= 2**(bit_size - 1) }
+          expected.each_with_index { |value, index| expected[index] = value - (2**bit_size) if value >= 2**(bit_size - 1) }
           expect(BinaryAccessor.read(30, bit_size, :INT, @data, :BIG_ENDIAN)).to eql(expected[0])
           expect(BinaryAccessor.read(1,  bit_size, :INT, @data, :BIG_ENDIAN)).to eql(expected[1])
         end
@@ -184,7 +385,7 @@ module OpenC3
           index = 0
           0.step((@data.length - 1) * 8, 16) do |bit_offset|
             expected = expected_array[index]
-            expected = expected - 2**16 if expected >= 2**15
+            expected = expected - (2**16) if expected >= 2**15
             expect(BinaryAccessor.read(bit_offset, 16, :INT, @data, :BIG_ENDIAN)).to eql(expected)
             index += 1
           end
@@ -204,7 +405,7 @@ module OpenC3
           index = 0
           0.step((@data.length - 1) * 8, 32) do |bit_offset|
             expected = expected_array[index]
-            expected = expected - 2**32 if expected >= 2**31
+            expected = expected - (2**32) if expected >= 2**31
             expect(BinaryAccessor.read(bit_offset, 32, :INT, @data, :BIG_ENDIAN)).to eql(expected)
             index += 1
           end
@@ -228,7 +429,7 @@ module OpenC3
         it "reads 37-bit signed integers" do
           expected = [0x8182838485 >> 3, 0x00090A0B0C]
           bit_size = 37
-          expected.each_with_index { |value, index| expected[index] = value - 2**bit_size if value >= 2**(bit_size - 1) }
+          expected.each_with_index { |value, index| expected[index] = value - (2**bit_size) if value >= 2**(bit_size - 1) }
           expect(BinaryAccessor.read(8,  bit_size, :INT, @data, :BIG_ENDIAN)).to eql(expected[0])
           expect(BinaryAccessor.read(67, bit_size, :INT, @data, :BIG_ENDIAN)).to eql(expected[1])
         end
@@ -243,7 +444,7 @@ module OpenC3
         it "reads 63-bit signed integers" do
           expected = [0x8081828384858687 >> 1, 0x00090A0B0C0D0E0F]
           bit_size = 63
-          expected.each_with_index { |value, index| expected[index] = value - 2**bit_size if value >= 2**(bit_size - 1) }
+          expected.each_with_index { |value, index| expected[index] = value - (2**bit_size) if value >= 2**(bit_size - 1) }
           expect(BinaryAccessor.read(0,  bit_size, :INT, @data, :BIG_ENDIAN)).to eql(expected[0])
           expect(BinaryAccessor.read(65, bit_size, :INT, @data, :BIG_ENDIAN)).to eql(expected[1])
         end
@@ -258,7 +459,7 @@ module OpenC3
         it "reads 67-bit signed integers" do
           expected = [0x808182838485868700 >> 5, 0x8700090A0B0C0D0E0F >> 5]
           bit_size = 67
-          expected.each_with_index { |value, index| expected[index] = value - 2**bit_size if value >= 2**(bit_size - 1) }
+          expected.each_with_index { |value, index| expected[index] = value - (2**bit_size) if value >= 2**(bit_size - 1) }
           expect(BinaryAccessor.read(0,  bit_size, :INT, @data, :BIG_ENDIAN)).to eql(expected[0])
           expect(BinaryAccessor.read(56, bit_size, :INT, @data, :BIG_ENDIAN)).to eql(expected[1])
         end
@@ -277,7 +478,7 @@ module OpenC3
           index = 0
           0.step((@data.length - 1) * 8, 64) do |bit_offset|
             expected = expected_array[index]
-            expected = expected - 2**64 if expected >= 2**63
+            expected = expected - (2**64) if expected >= 2**63
             expect(BinaryAccessor.read(bit_offset, 64, :INT, @data, :BIG_ENDIAN)).to eql(expected)
             index += 1
           end
@@ -327,7 +528,7 @@ module OpenC3
         it "reads 7-bit signed integers" do
           expected = [0x40, 0x60]
           bit_size = 7
-          expected.each_with_index { |value, index| expected[index] = value - 2**bit_size if value >= 2**(bit_size - 1) }
+          expected.each_with_index { |value, index| expected[index] = value - (2**bit_size) if value >= 2**(bit_size - 1) }
           expect(BinaryAccessor.read(8, bit_size, :INT, @data, :LITTLE_ENDIAN)).to eql(expected[0])
           expect(BinaryAccessor.read(15, bit_size, :INT, @data, :LITTLE_ENDIAN)).to eql(expected[1])
         end
@@ -342,7 +543,7 @@ module OpenC3
         it "reads 13-bit signed integers" do
           expected = [0x038281 >> 5, 0x0180 >> 2]
           bit_size = 13
-          expected.each_with_index { |value, index| expected[index] = value - 2**bit_size if value >= 2**(bit_size - 1) }
+          expected.each_with_index { |value, index| expected[index] = value - (2**bit_size) if value >= 2**(bit_size - 1) }
           expect(BinaryAccessor.read(30, bit_size, :INT, @data, :LITTLE_ENDIAN)).to eql(expected[0])
           expect(BinaryAccessor.read(9,  bit_size, :INT, @data, :LITTLE_ENDIAN)).to eql(expected[1])
         end
@@ -361,7 +562,7 @@ module OpenC3
           index = 0
           0.step((@data.length - 1) * 8, 16) do |bit_offset|
             expected = expected_array[index]
-            expected = expected - 2**16 if expected >= 2**15
+            expected = expected - (2**16) if expected >= 2**15
             expect(BinaryAccessor.read(bit_offset, 16, :INT, @data, :LITTLE_ENDIAN)).to eql(expected)
             index += 1
           end
@@ -381,7 +582,7 @@ module OpenC3
           index = 0
           0.step((@data.length - 1) * 8, 32) do |bit_offset|
             expected = expected_array[index]
-            expected = expected - 2**32 if expected >= 2**31
+            expected = expected - (2**32) if expected >= 2**31
             expect(BinaryAccessor.read(bit_offset, 32, :INT, @data, :LITTLE_ENDIAN)).to eql(expected)
             index += 1
           end
@@ -405,7 +606,7 @@ module OpenC3
         it "reads 37-bit signed integers" do
           expected = [0x8584838281 >> 3, 0x0F0E0D0C0B]
           bit_size = 37
-          expected.each_with_index { |value, index| expected[index] = value - 2**bit_size if value >= 2**(bit_size - 1) }
+          expected.each_with_index { |value, index| expected[index] = value - (2**bit_size) if value >= 2**(bit_size - 1) }
           expect(BinaryAccessor.read(40,  bit_size, :INT, @data, :LITTLE_ENDIAN)).to eql(expected[0])
           expect(BinaryAccessor.read(123, bit_size, :INT, @data, :LITTLE_ENDIAN)).to eql(expected[1])
         end
@@ -420,7 +621,7 @@ module OpenC3
         it "reads 63-bit signed integers" do
           expected = [0x0F0E0D0C0B0A0900 >> 1, 0x0786858483828180]
           bit_size = 63
-          expected.each_with_index { |value, index| expected[index] = value - 2**bit_size if value >= 2**(bit_size - 1) }
+          expected.each_with_index { |value, index| expected[index] = value - (2**bit_size) if value >= 2**(bit_size - 1) }
           expect(BinaryAccessor.read(120,  bit_size, :INT, @data, :LITTLE_ENDIAN)).to eql(expected[0])
           expect(BinaryAccessor.read(57,   bit_size, :INT, @data, :LITTLE_ENDIAN)).to eql(expected[1])
         end
@@ -434,7 +635,7 @@ module OpenC3
         it "reads 67-bit signed integers" do
           expected = [0x0F0E0D0C0B0A090087 >> 5]
           bit_size = 67
-          expected.each_with_index { |value, index| expected[index] = value - 2**bit_size if value >= 2**(bit_size - 1) }
+          expected.each_with_index { |value, index| expected[index] = value - (2**bit_size) if value >= 2**(bit_size - 1) }
           expect(BinaryAccessor.read(120, bit_size, :INT, @data, :LITTLE_ENDIAN)).to eql(expected[0])
         end
 
@@ -452,7 +653,7 @@ module OpenC3
           index = 0
           0.step((@data.length - 1) * 8, 64) do |bit_offset|
             expected = expected_array[index]
-            expected = expected - 2**64 if expected >= 2**63
+            expected = expected - (2**64) if expected >= 2**63
             expect(BinaryAccessor.read(bit_offset, 64, :INT, @data, :LITTLE_ENDIAN)).to eql(expected)
             index += 1
           end
@@ -522,12 +723,12 @@ module OpenC3
 
           it "returns an empty array if the offset equals the negative array size" do
             @data.unpack('C*')
-            expect(BinaryAccessor.read_array(@data.length * 8 - 32, 8, :UINT, -32, @data, :LITTLE_ENDIAN)).to eql([])
+            expect(BinaryAccessor.read_array((@data.length * 8) - 32, 8, :UINT, -32, @data, :LITTLE_ENDIAN)).to eql([])
           end
 
           it "complains if the offset is greater than the negative array size" do
             @data.unpack('C*')
-            offset = @data.length * 8 - 16
+            offset = (@data.length * 8) - 16
             expect { BinaryAccessor.read_array(offset, 8, :UINT, -32, @data, :LITTLE_ENDIAN) }.to raise_error(ArgumentError, "16 byte buffer insufficient to read UINT at bit_offset #{offset} with bit_size 8")
           end
         end
@@ -544,7 +745,7 @@ module OpenC3
           end
 
           it "complains if the offset is larger than the buffer" do
-            expect { BinaryAccessor.read_array(-(@data.length * 8 + 1), 8, :UINT, @data.length * 8, @data, :LITTLE_ENDIAN) }.to raise_error(ArgumentError, "#{@data.length} byte buffer insufficient to read #{:UINT} at bit_offset -#{@data.length * 8 + 1} with bit_size 8")
+            expect { BinaryAccessor.read_array(-((@data.length * 8) + 1), 8, :UINT, @data.length * 8, @data, :LITTLE_ENDIAN) }.to raise_error(ArgumentError, "#{@data.length} byte buffer insufficient to read UINT at bit_offset -#{(@data.length * 8) + 1} with bit_size 8")
           end
 
           it "complains with zero array_size" do
@@ -826,7 +1027,7 @@ module OpenC3
           BinaryAccessor.write(data, 0, -16, :BLOCK, buffer, :BIG_ENDIAN, :ERROR)
           expect(buffer[0..-3]).to eql data
           expect(buffer[-2..-1]).to eql preserve
-          data = BinaryAccessor.read(0, data.length * 8 + 16, :BLOCK, buffer, :BIG_ENDIAN)
+          data = BinaryAccessor.read(0, (data.length * 8) + 16, :BLOCK, buffer, :BIG_ENDIAN)
           expect(data).to eql buffer
         end
 
@@ -841,7 +1042,7 @@ module OpenC3
           expect(buffer[0..1]).to eql "\x00\x01"
           expect(buffer[2..-5]).to eql data
           expect(buffer[-4..-1]).to eql preserve
-          data = BinaryAccessor.read(0, 16 + data.length * 8 + 32, :BLOCK, buffer, :BIG_ENDIAN)
+          data = BinaryAccessor.read(0, 16 + (data.length * 8) + 32, :BLOCK, buffer, :BIG_ENDIAN)
           expect(data).to eql buffer
         end
 
@@ -856,7 +1057,7 @@ module OpenC3
           BinaryAccessor.write(data, 0, -16, :BLOCK, buffer, :BIG_ENDIAN, :ERROR)
           expect(buffer[0..-3]).to eql data
           expect(buffer[-2..-1]).to eql preserve
-          data = BinaryAccessor.read(0, data.length * 8 + 16, :BLOCK, buffer, :BIG_ENDIAN)
+          data = BinaryAccessor.read(0, (data.length * 8) + 16, :BLOCK, buffer, :BIG_ENDIAN)
           expect(data).to eql buffer
         end
 
@@ -871,7 +1072,7 @@ module OpenC3
           end
           expected = buffer.clone
           BinaryAccessor.write(data, 128 * 8, -128 * 8, :BLOCK, buffer, :BIG_ENDIAN, :ERROR)
-          expect(buffer.length).to eql (128 + 512 + 128)
+          expect(buffer.length).to eql(128 + 512 + 128)
           expect(buffer[0...128]).to eql expected[0...128]
           expect(buffer[128...-128]).to eql data
           expect(buffer[-128..-1]).to eql expected[0...128]
@@ -888,7 +1089,7 @@ module OpenC3
           end
           expected = buffer.clone
           BinaryAccessor.write(data, 384 * 8, -384 * 8, :BLOCK, buffer, :BIG_ENDIAN, :ERROR)
-          expect(buffer.length).to eql (384 + 512 + 384)
+          expect(buffer.length).to eql(384 + 512 + 384)
           expect(buffer[0...384]).to eql expected[0...384]
           expect(buffer[384...-384]).to eql data
           expect(buffer[-384..-1]).to eql expected[0...384]
@@ -1084,7 +1285,7 @@ module OpenC3
           index = 0
           0.step((@data.length - 1) * 8, 16) do |bit_offset|
             expected = expected_array[index]
-            expected = expected - 2**16 if expected >= 2**15
+            expected = expected - (2**16) if expected >= 2**15
             BinaryAccessor.write(expected, bit_offset, 16, :INT, @data, :BIG_ENDIAN, :ERROR)
             index += 1
           end
@@ -1106,7 +1307,7 @@ module OpenC3
           index = 0
           0.step((@data.length - 1) * 8, 32) do |bit_offset|
             expected = expected_array[index]
-            expected = expected - 2**32 if expected >= 2**31
+            expected = expected - (2**32) if expected >= 2**31
             BinaryAccessor.write(expected, bit_offset, 32, :INT, @data, :BIG_ENDIAN, :ERROR_ALLOW_HEX)
             index += 1
           end
@@ -1137,7 +1338,7 @@ module OpenC3
         end
 
         it "writes 37-bit signed integers" do
-          BinaryAccessor.write((0x8182838485 >> 3) - 2**37, 8, 37, :INT, @data, :BIG_ENDIAN, :ERROR)
+          BinaryAccessor.write((0x8182838485 >> 3) - (2**37), 8, 37, :INT, @data, :BIG_ENDIAN, :ERROR)
           BinaryAccessor.write(0x00090A0B0C, 67, 37, :INT, @data, :BIG_ENDIAN, :ERROR)
           expect(@data).to eql("\x00\x81\x82\x83\x84\x80\x00\x00\x00\x09\x0A\x0B\x0C\x00\x00\x00")
         end
@@ -1152,7 +1353,7 @@ module OpenC3
         end
 
         it "writes 63-bit signed integers" do
-          BinaryAccessor.write((0x8081828384858687 >> 1) - 2**63, 0, 63, :INT, @data, :BIG_ENDIAN, :ERROR)
+          BinaryAccessor.write((0x8081828384858687 >> 1) - (2**63), 0, 63, :INT, @data, :BIG_ENDIAN, :ERROR)
           BinaryAccessor.write(0x00090A0B0C0D0E0F, 65, 63, :INT, @data, :BIG_ENDIAN, :ERROR)
           expect(@data).to eql("\x80\x81\x82\x83\x84\x85\x86\x86\x00\x09\x0A\x0B\x0C\x0D\x0E\x0F")
         end
@@ -1163,7 +1364,7 @@ module OpenC3
         end
 
         it "writes 67-bit signed integers" do
-          BinaryAccessor.write((0x8081828384858687FF >> 5) - 2**67, 0, 67, :INT, @data, :BIG_ENDIAN, :ERROR)
+          BinaryAccessor.write((0x8081828384858687FF >> 5) - (2**67), 0, 67, :INT, @data, :BIG_ENDIAN, :ERROR)
           expect(@data).to eql("\x80\x81\x82\x83\x84\x85\x86\x87\xE0\x00\x00\x00\x00\x00\x00\x00")
         end
 
@@ -1182,7 +1383,7 @@ module OpenC3
           index = 0
           0.step((@data.length - 1) * 8, 64) do |bit_offset|
             expected = expected_array[index]
-            expected = expected - 2**64 if expected >= 2**63
+            expected = expected - (2**64) if expected >= 2**63
             BinaryAccessor.write(expected, bit_offset, 64, :INT, @data, :BIG_ENDIAN, :ERROR_ALLOW_HEX)
             index += 1
           end
@@ -1300,7 +1501,7 @@ module OpenC3
           index = 0
           0.step((@data.length - 1) * 8, 16) do |bit_offset|
             expected = expected_array[index]
-            expected = expected - 2**16 if expected >= 2**15
+            expected = expected - (2**16) if expected >= 2**15
             BinaryAccessor.write(expected, bit_offset, 16, :INT, @data, :LITTLE_ENDIAN, :ERROR)
             index += 1
           end
@@ -1322,7 +1523,7 @@ module OpenC3
           index = 0
           0.step((@data.length - 1) * 8, 32) do |bit_offset|
             expected = expected_array[index]
-            expected = expected - 2**32 if expected >= 2**31
+            expected = expected - (2**32) if expected >= 2**31
             BinaryAccessor.write(expected_array[index], bit_offset, 32, :INT, @data, :LITTLE_ENDIAN, :ERROR_ALLOW_HEX)
             index += 1
           end
@@ -1348,7 +1549,7 @@ module OpenC3
         end
 
         it "writes 37-bit signed integers" do
-          BinaryAccessor.write(0x1584838281 - 2**37, 43,  37, :INT, @data, :LITTLE_ENDIAN, :ERROR)
+          BinaryAccessor.write(0x1584838281 - (2**37), 43,  37, :INT, @data, :LITTLE_ENDIAN, :ERROR)
           BinaryAccessor.write(0x0C0B0A0900 >> 3, 96, 37, :INT, @data, :LITTLE_ENDIAN, :ERROR)
           expect(@data).to eql("\x00\x81\x82\x83\x84\x15\x00\x00\x00\x09\x0A\x0B\x0C\x00\x00\x00")
         end
@@ -1360,7 +1561,7 @@ module OpenC3
         end
 
         it "writes 63-bit signed integers" do
-          BinaryAccessor.write(0x4786858483828180 - 2**63, 57, 63, :INT, @data, :LITTLE_ENDIAN, :ERROR)
+          BinaryAccessor.write(0x4786858483828180 - (2**63), 57, 63, :INT, @data, :LITTLE_ENDIAN, :ERROR)
           BinaryAccessor.write(0x0F0E0D0C0B0A0900 >> 1, 120, 63, :INT, @data, :LITTLE_ENDIAN, :ERROR)
           expect(@data).to eql("\x80\x81\x82\x83\x84\x85\x86\x47\x00\x09\x0A\x0B\x0C\x0D\x0E\x0F")
         end
@@ -1390,7 +1591,7 @@ module OpenC3
           index = 0
           0.step((@data.length - 1) * 8, 64) do |bit_offset|
             expected = expected_array[index]
-            expected = expected - 2**64 if expected >= 2**63
+            expected = expected - (2**64) if expected >= 2**63
             BinaryAccessor.write(expected_array[index], bit_offset, 64, :INT, @data, :LITTLE_ENDIAN, :ERROR_ALLOW_HEX)
             index += 1
           end
@@ -1538,31 +1739,31 @@ module OpenC3
         end
 
         it "truncates 8-bit UINT" do
-          bit_size = 8; data_type = :UINT; value = 2**bit_size + 1; truncated_value = 1
+          bit_size = 8; data_type = :UINT; value = (2**bit_size) + 1; truncated_value = 1
           BinaryAccessor.write(value, 0, bit_size, data_type, @data, :BIG_ENDIAN, :TRUNCATE)
           expect(BinaryAccessor.read(0, bit_size, data_type, @data, :BIG_ENDIAN)).to eql truncated_value
         end
 
         it "truncates 16-bit UINT" do
-          bit_size = 16; data_type = :UINT; value = 2**bit_size + 1; truncated_value = 1
+          bit_size = 16; data_type = :UINT; value = (2**bit_size) + 1; truncated_value = 1
           BinaryAccessor.write(value, 0, bit_size, data_type, @data, :BIG_ENDIAN, :TRUNCATE)
           expect(BinaryAccessor.read(0, bit_size, data_type, @data, :BIG_ENDIAN)).to eql truncated_value
         end
 
         it "truncates 32-bit UINT" do
-          bit_size = 32; data_type = :UINT; value = 2**bit_size + 1; truncated_value = 1
+          bit_size = 32; data_type = :UINT; value = (2**bit_size) + 1; truncated_value = 1
           BinaryAccessor.write(value, 0, bit_size, data_type, @data, :BIG_ENDIAN, :TRUNCATE)
           expect(BinaryAccessor.read(0, bit_size, data_type, @data, :BIG_ENDIAN)).to eql truncated_value
         end
 
         it "truncates 64-bit UINT" do
-          bit_size = 64; data_type = :UINT; value = 2**bit_size + 1; truncated_value = 1
+          bit_size = 64; data_type = :UINT; value = (2**bit_size) + 1; truncated_value = 1
           BinaryAccessor.write(value, 0, bit_size, data_type, @data, :BIG_ENDIAN, :TRUNCATE)
           expect(BinaryAccessor.read(0, bit_size, data_type, @data, :BIG_ENDIAN)).to eql truncated_value
         end
 
         it "truncates 3-bit UINT" do
-          bit_size = 3; data_type = :UINT; value = 2**bit_size + 1; truncated_value = 1
+          bit_size = 3; data_type = :UINT; value = (2**bit_size) + 1; truncated_value = 1
           BinaryAccessor.write(value, 0, bit_size, data_type, @data, :BIG_ENDIAN, :TRUNCATE)
           expect(BinaryAccessor.read(0, bit_size, data_type, @data, :BIG_ENDIAN)).to eql truncated_value
         end
@@ -1658,31 +1859,31 @@ module OpenC3
         end
 
         it "allows hex value entry of 8-bit INT" do
-          bit_size = 8; data_type = :INT; value = 2**bit_size - 1; allowed_value = -1
+          bit_size = 8; data_type = :INT; value = (2**bit_size) - 1; allowed_value = -1
           BinaryAccessor.write(value, 0, bit_size, data_type, @data, :BIG_ENDIAN, :ERROR_ALLOW_HEX)
           expect(BinaryAccessor.read(0, bit_size, data_type, @data, :BIG_ENDIAN)).to eql allowed_value
         end
 
         it "allows hex value entry of 16-bit INT" do
-          bit_size = 16; data_type = :INT; value = 2**bit_size - 1; allowed_value = -1
+          bit_size = 16; data_type = :INT; value = (2**bit_size) - 1; allowed_value = -1
           BinaryAccessor.write(value, 0, bit_size, data_type, @data, :BIG_ENDIAN, :ERROR_ALLOW_HEX)
           expect(BinaryAccessor.read(0, bit_size, data_type, @data, :BIG_ENDIAN)).to eql allowed_value
         end
 
         it "allows hex value entry of 32-bit INT" do
-          bit_size = 32; data_type = :INT; value = 2**bit_size - 1; allowed_value = -1
+          bit_size = 32; data_type = :INT; value = (2**bit_size) - 1; allowed_value = -1
           BinaryAccessor.write(value, 0, bit_size, data_type, @data, :BIG_ENDIAN, :ERROR_ALLOW_HEX)
           expect(BinaryAccessor.read(0, bit_size, data_type, @data, :BIG_ENDIAN)).to eql allowed_value
         end
 
         it "allows hex value entry of 64-bit INT" do
-          bit_size = 64; data_type = :INT; value = 2**bit_size - 1; allowed_value = -1
+          bit_size = 64; data_type = :INT; value = (2**bit_size) - 1; allowed_value = -1
           BinaryAccessor.write(value, 0, bit_size, data_type, @data, :BIG_ENDIAN, :ERROR_ALLOW_HEX)
           expect(BinaryAccessor.read(0, bit_size, data_type, @data, :BIG_ENDIAN)).to eql allowed_value
         end
 
         it "allows hex value entry of 3-bit INT" do
-          bit_size = 3; data_type = :INT; value = 2**bit_size - 1; allowed_value = -1
+          bit_size = 3; data_type = :INT; value = (2**bit_size) - 1; allowed_value = -1
           BinaryAccessor.write(value, 0, bit_size, data_type, @data, :BIG_ENDIAN, :ERROR_ALLOW_HEX)
           expect(BinaryAccessor.read(0, bit_size, data_type, @data, :BIG_ENDIAN)).to eql allowed_value
         end
@@ -1753,11 +1954,11 @@ module OpenC3
       it "zeros fill if array_size > number of values passed" do
         data = @baseline_data.clone
         BinaryAccessor.write_array(["\x01", "\x02", "\x03", "\x04"], 0, 8, :BLOCK, 64, @baseline_data, :BIG_ENDIAN, :ERROR)
-        expect(@baseline_data).to eql("\x01\x02\x03\x04" + "\x00" * 4 + data[8..-1])
+        expect(@baseline_data).to eql("\x01\x02\x03\x04" + ("\x00" * 4) + data[8..-1])
       end
 
       it "writes blocks with fixed array_size at non zero offset" do
-        BinaryAccessor.write_array(@baseline_data_array[0..-5], 32, 8, :BLOCK, @baseline_data_array.length * 8 - 32, @data, :BIG_ENDIAN, :ERROR)
+        BinaryAccessor.write_array(@baseline_data_array[0..-5], 32, 8, :BLOCK, (@baseline_data_array.length * 8) - 32, @data, :BIG_ENDIAN, :ERROR)
         expect(@data).to eql(("\x00" * 4) + @baseline_data[0..-5])
       end
 
@@ -1789,7 +1990,7 @@ module OpenC3
 
       it "does not write if the offset equals the negative array size" do
         data = @data.clone
-        BinaryAccessor.write_array([], @data.length * 8 - 32, 8, :BLOCK, -32, @data, :LITTLE_ENDIAN, :ERROR)
+        BinaryAccessor.write_array([], (@data.length * 8) - 32, 8, :BLOCK, -32, @data, :LITTLE_ENDIAN, :ERROR)
         expect(@data).to eql(data)
       end
 
@@ -1821,7 +2022,7 @@ module OpenC3
       end
 
       it "expands the buffer if the offset is greater than the negative array size" do
-        offset = @data.length * 8 - 16
+        offset = (@data.length * 8) - 16
         data = @data.clone
         BinaryAccessor.write_array([1, 2], offset, 8, :UINT, -32, @data, :LITTLE_ENDIAN, :ERROR)
         expect(@data).to eql(data[0..-3] + "\x01\x02" + data[-4..-1])
@@ -2186,31 +2387,31 @@ module OpenC3
         end
 
         it "truncates 8-bit UINT" do
-          bit_size = 8; data_type = :UINT; value = 2**bit_size + 1; truncated_value = 1
+          bit_size = 8; data_type = :UINT; value = (2**bit_size) + 1; truncated_value = 1
           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, @data, :BIG_ENDIAN, :TRUNCATE)
           expect(BinaryAccessor.read(0, bit_size, data_type, @data, :BIG_ENDIAN)).to eql truncated_value
         end
 
         it "truncates 16-bit UINT" do
-          bit_size = 16; data_type = :UINT; value = 2**bit_size + 1; truncated_value = 1
+          bit_size = 16; data_type = :UINT; value = (2**bit_size) + 1; truncated_value = 1
           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, @data, :BIG_ENDIAN, :TRUNCATE)
           expect(BinaryAccessor.read(0, bit_size, data_type, @data, :BIG_ENDIAN)).to eql truncated_value
         end
 
         it "truncates 32-bit UINT" do
-          bit_size = 32; data_type = :UINT; value = 2**bit_size + 1; truncated_value = 1
+          bit_size = 32; data_type = :UINT; value = (2**bit_size) + 1; truncated_value = 1
           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, @data, :BIG_ENDIAN, :TRUNCATE)
           expect(BinaryAccessor.read(0, bit_size, data_type, @data, :BIG_ENDIAN)).to eql truncated_value
         end
 
         it "truncates 64-bit UINT" do
-          bit_size = 64; data_type = :UINT; value = 2**bit_size + 1; truncated_value = 1
+          bit_size = 64; data_type = :UINT; value = (2**bit_size) + 1; truncated_value = 1
           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, @data, :BIG_ENDIAN, :TRUNCATE)
           expect(BinaryAccessor.read(0, bit_size, data_type, @data, :BIG_ENDIAN)).to eql truncated_value
         end
 
         it "truncates 3-bit UINT" do
-          bit_size = 3; data_type = :UINT; value = 2**bit_size + 1; truncated_value = 1
+          bit_size = 3; data_type = :UINT; value = (2**bit_size) + 1; truncated_value = 1
           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, @data, :BIG_ENDIAN, :TRUNCATE)
           expect(BinaryAccessor.read(0, bit_size, data_type, @data, :BIG_ENDIAN)).to eql truncated_value
         end
@@ -2276,31 +2477,31 @@ module OpenC3
         end
 
         it "allows hex value entry of 8-bit INT" do
-          bit_size = 8; data_type = :INT; value = 2**bit_size - 1; allowed_value = -1
+          bit_size = 8; data_type = :INT; value = (2**bit_size) - 1; allowed_value = -1
           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, @data, :BIG_ENDIAN, :ERROR_ALLOW_HEX)
           expect(BinaryAccessor.read(0, bit_size, data_type, @data, :BIG_ENDIAN)).to eql allowed_value
         end
 
         it "allows hex value entry of 16-bit INT" do
-          bit_size = 16; data_type = :INT; value = 2**bit_size - 1; allowed_value = -1
+          bit_size = 16; data_type = :INT; value = (2**bit_size) - 1; allowed_value = -1
           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, @data, :BIG_ENDIAN, :ERROR_ALLOW_HEX)
           expect(BinaryAccessor.read(0, bit_size, data_type, @data, :BIG_ENDIAN)).to eql allowed_value
         end
 
         it "allows hex value entry of 32-bit INT" do
-          bit_size = 32; data_type = :INT; value = 2**bit_size - 1; allowed_value = -1
+          bit_size = 32; data_type = :INT; value = (2**bit_size) - 1; allowed_value = -1
           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, @data, :BIG_ENDIAN, :ERROR_ALLOW_HEX)
           expect(BinaryAccessor.read(0, bit_size, data_type, @data, :BIG_ENDIAN)).to eql allowed_value
         end
 
         it "allows hex value entry of 64-bit INT" do
-          bit_size = 64; data_type = :INT; value = 2**bit_size - 1; allowed_value = -1
+          bit_size = 64; data_type = :INT; value = (2**bit_size) - 1; allowed_value = -1
           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, @data, :BIG_ENDIAN, :ERROR_ALLOW_HEX)
           expect(BinaryAccessor.read(0, bit_size, data_type, @data, :BIG_ENDIAN)).to eql allowed_value
         end
 
         it "allows hex value entry of 3-bit INT" do
-          bit_size = 3; data_type = :INT; value = 2**bit_size - 1; allowed_value = -1
+          bit_size = 3; data_type = :INT; value = (2**bit_size) - 1; allowed_value = -1
           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, @data, :BIG_ENDIAN, :ERROR_ALLOW_HEX)
           expect(BinaryAccessor.read(0, bit_size, data_type, @data, :BIG_ENDIAN)).to eql allowed_value
         end
