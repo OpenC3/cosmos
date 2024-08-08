@@ -33,6 +33,7 @@ module OpenC3
       begin
         sock = Socket.new(Socket::Constants::AF_INET, Socket::Constants::SOCK_STREAM, 0)
         sock.bind(Socket.pack_sockaddr_in(9000, '127.0.0.1')) #raise if listening
+        sock.close
         #mock_s3()
         #Logger.info("No S3 listener - using Mock-S3 local client")
       rescue Errno::EADDRINUSE;
