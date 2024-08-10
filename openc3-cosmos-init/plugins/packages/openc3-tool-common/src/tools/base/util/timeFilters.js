@@ -51,7 +51,8 @@ export default {
   methods: {
     // Convert a UTC stamp into a local time
     formatUtc(date, timeZone) {
-      if (timeZone === 'local') {
+      // Default to local time if the timezone isn't set
+      if (!timeZone || timeZone === 'local') {
         // subtrack off the timezone offset to get it back to local time
         return format(
           subMinutes(date, date.getTimezoneOffset()),
@@ -62,34 +63,40 @@ export default {
       }
     },
     formatDateTime(date, timeZone) {
-      if (timeZone === 'local') {
+      // Default to local time if the timezone isn't set
+      if (!timeZone || timeZone === 'local') {
         return format(date, dateTimeFormat)
       } else {
         return formatInTimeZone(date, timeZone, dateTimeFormat)
       }
     },
-    formatTimestamp(timestamp, timeZone) {
-      return this.formatDateTime(parseISO(timestamp, timeZone))
-    },
-    formatNanoseconds(nanoSecs, timeZone) {
-      return this.formatDateTime(
-        new Date(parseInt(nanoSecs) / 1_000_000),
-        timeZone,
-      )
-    },
     formatDate: function (date, timeZone) {
-      if (timeZone === 'local') {
+      // Default to local time if the timezone isn't set
+      if (!timeZone || timeZone === 'local') {
         return format(date, dateFormat)
       } else {
         return formatInTimeZone(date, this.timeZone, dateFormat)
       }
     },
     formatTime: function (date, timeZone) {
-      if (timeZone === 'local') {
+      // Default to local time if the timezone isn't set
+      if (!timeZone || timeZone === 'local') {
         return format(date, timeFormat)
       } else {
         return formatInTimeZone(date, this.timeZone, timeFormat)
       }
+    },
+    formatTimestamp(timestamp, timeZone) {
+      return this.formatDateTime(parseISO(timestamp), timeZone)
+    },
+    formatSeconds(secs, timeZone) {
+      return this.formatDateTime(new Date(secs * 1000), timeZone)
+    },
+    formatNanoseconds(nanoSecs, timeZone) {
+      return this.formatDateTime(
+        new Date(parseInt(nanoSecs) / 1_000_000),
+        timeZone,
+      )
     },
 
     // logFormat(date, utc) {
