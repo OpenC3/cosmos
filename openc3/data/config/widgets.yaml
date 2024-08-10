@@ -1023,7 +1023,8 @@ Telemetry Widgets:
           values: .+
         - name: Item name
           required: true
-          description: The item name
+          description: The item name to pull the CONVERTED value from.
+            If additional processing (base64 encoding) is needed consider using a DERIVED item.
           values: .+
         - name: Format
           required: true
