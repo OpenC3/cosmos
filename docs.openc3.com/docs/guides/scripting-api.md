@@ -1186,7 +1186,7 @@ check_tolerance("INST HEALTH_STATUS TEMP1", 50000, 20000, type='RAW')
 
 ### check_expression
 
-Evaluates an expression. If the expression evaluates to false the script will be paused with an error. This method can be used to perform more complicated comparisons than using check as shown in the example. Note: In most cases using [wait_check_expression](#waitcheckexpression) is a better choice than using check_expression.
+Evaluates an expression. If the expression evaluates to false the script will be paused with an error. This method can be used to perform more complicated comparisons than using check as shown in the example. Note: In most cases using [wait_check_expression](#wait_check_expression) is a better choice than using check_expression.
 
 Remember that everything inside the check_expression string will be evaluated directly and thus must be valid syntax. A common mistake is to check a variable like so (Ruby variable interpolation):
 
@@ -1897,7 +1897,7 @@ success = wait_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, type='RAW
 
 ### wait_expression
 
-Pauses the script until an expression is evaluated to be true or a timeout occurs. If a timeout occurs the script will continue. This method can be used to perform more complicated comparisons than using wait as shown in the example. Note that on a timeout, wait_expression does not stop the script, usually [wait_check_expression](#waitcheckexpression) is a better choice.
+Pauses the script until an expression is evaluated to be true or a timeout occurs. If a timeout occurs the script will continue. This method can be used to perform more complicated comparisons than using wait as shown in the example. Note that on a timeout, wait_expression does not stop the script, usually [wait_check_expression](#wait_check_expression) is a better choice.
 
 Syntax:
 
@@ -2018,7 +2018,7 @@ elapsed = wait_check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, typ
 
 ### wait_check_expression
 
-Pauses the script until an expression is evaluated to be true or a timeout occurs. If a timeout occurs the script will stop. This method can be used to perform more complicated comparisons than using wait as shown in the example. Also see the syntax notes for [check_expression](#checkexpression).
+Pauses the script until an expression is evaluated to be true or a timeout occurs. If a timeout occurs the script will stop. This method can be used to perform more complicated comparisons than using wait as shown in the example. Also see the syntax notes for [check_expression](#check_expression).
 
 Ruby / Python Syntax:
 
