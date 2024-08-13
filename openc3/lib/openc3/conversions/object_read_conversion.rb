@@ -16,18 +16,42 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+require 'openc3/config/config_parser'
 require 'openc3/conversions/conversion'
 
 module OpenC3
   class ObjectReadConversion < Conversion
     def initialize(cmd_or_tlm, target_name, packet_name)
       super()
-      @cmd_or_tlm = cmd_or_tlm.to_s.upcase.intern
-      raise ArgumentError, "Unknown type: #{cmd_or_tlm}" unless %i(CMD TLM).include?(@cmd_or_tlm)
+      cmd_or_tlm = ConfigParser.handle_nil(cmd_or_tlm)
+      if cmd_or_tlm
+        @cmd_or_tlm = cmd_or_tlm.to_s.upcase.intern
+        raise ArgumentError, "Unknown type: #{cmd_or_tlm}" unless %i(CMD TLM COMMAND TELEMETRY).include?(@cmd_or_tlm)
+      else
+        # Unknown - Will need to search
+        @cmd_or_tlm = nil
+      end
       @target_name = target_name.to_s.upcase
       @packet_name = packet_name.to_s.upcase
       @converted_type = :OBJECT
       @converted_bit_size = 0
+    end
+
+    def lookup_packet
+      if @cmd_or_tlm
+        if @cmd_or_tlm == :CMD or @cmd_or_tlm == :COMMAND
+          return System.commands.packet(@target_name, @packet_name)
+        else
+          return System.telemetry.packet(@target_name, @packet_name)
+        end
+      else
+        # Always searches commands first
+        begin
+          return System.commands.packet(@target_name, @packet_name)
+        rescue
+          return System.telemetry.packet(@target_name, @packet_name)
+        end
+      end
     end
 
     # Perform the conversion on the value.
@@ -37,24 +61,20 @@ module OpenC3
     # @param buffer [String] The packet buffer
     # @return The converted value
     def call(value, _packet, buffer)
-      if @cmd_or_tlm == :CMD
-        fill_packet = System.commands.packet(@target_name, @packet_name)
-      else
-        fill_packet = System.telemetry.packet(@target_name, @packet_name)
-      end
+      fill_packet = lookup_packet()
       fill_packet.buffer = value
       return fill_packet.read_all(:CONVERTED, buffer, true).to_h
     end
 
     # @return [String] The conversion class
     def to_s
-      "#{self.class.to_s.split('::')[-1]} #{@cmd_or_tlm} #{@target_name} #{@packet_name}"
+      "#{self.class.to_s.split('::')[-1]} #{@cmd_or_tlm ? @cmd_or_tlm : "nil"} #{@target_name} #{@packet_name}"
     end
 
     # @param read_or_write [String] Not used
     # @return [String] Config fragment for this conversion
     def to_config(read_or_write)
-      "    READ_CONVERSION #{self.class.name.class_name_to_filename} #{@cmd_or_tlm} #{@target_name} #{@packet_name}\n"
+      "    #{read_or_write}_CONVERSION #{self.class.name.class_name_to_filename} #{@cmd_or_tlm ? @cmd_or_tlm : "nil"} #{@target_name} #{@packet_name}\n"
     end
 
     def as_json(*a)
