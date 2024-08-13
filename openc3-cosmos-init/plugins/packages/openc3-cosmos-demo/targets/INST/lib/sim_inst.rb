@@ -47,8 +47,14 @@ module OpenC3
       @position_file_bytes_read = 0
       @attitude_file_bytes_read = 0
 
+      @images = []
       data = File.read(File.join(@target.dir, 'public', 'spiral.jpg'), mode: "rb")
-      @image = Base64.encode64(data)
+      @images << Base64.encode64(data)
+      data = File.read(File.join(@target.dir, 'public', 'sun.jpg'), mode: "rb")
+      @images << Base64.encode64(data)
+      data = File.read(File.join(@target.dir, 'public', 'ganymede.jpg'), mode: "rb")
+      @images << Base64.encode64(data)
+      @cur_image = 0
 
       @pos_packet = Structure.new(:BIG_ENDIAN)
       @pos_packet.append_item('DAY', 16, :UINT)
@@ -360,12 +366,16 @@ module OpenC3
         when 'IMAGE'
           packet.timesec = time.tv_sec - @time_offset
           packet.timeus = time.tv_usec
-          packet.image = @image
+          packet.ccsdsseqcnt += 1
+          if packet.ccsdsseqcnt % 20 == 0
+            @cur_image += 1
+            @cur_image = 0 if @cur_image == @images.length
+          end
+          packet.image = @images[@cur_image]
           # Create an Array and then initialize
           # using a sample of all possible hex values (0..15)
           # finally pack it into binary using the Character 'C' specifier
           packet.block = Array.new(1000) { Array(0..15).sample }.pack("C*")
-          packet.ccsdsseqcnt += 1
 
         when 'MECH'
           packet.timesec = time.tv_sec - @time_offset
