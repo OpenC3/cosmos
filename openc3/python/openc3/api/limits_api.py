@@ -227,7 +227,7 @@ def get_limits(target_name, packet_name, item_name, scope=OPENC3_SCOPE):
     limits = {}
     item = _get_item(target_name, packet_name, item_name, scope=scope)
     for key, vals in item["limits"].items():
-        if type(vals) != dict:
+        if not isinstance(vals, dict):
             continue
 
         limits[key] = [

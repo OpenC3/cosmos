@@ -141,7 +141,7 @@ class JsonDRbObject(JsonApiObject):
 
     def handle_response(self, response: JsonRpcSuccessResponse | JsonRpcErrorResponse):
         # The code below will always either raise or return breaking out of the loop
-        if type(response) == JsonRpcErrorResponse:
+        if isinstance(response, JsonRpcErrorResponse):
             if response.error.data:
                 error = JsonDRbError.from_hash(response.error.data)
                 raise error

@@ -295,8 +295,8 @@ class Commands:
                 maximum = item.maximum
                 if minimum is not None and maximum is not None:
                     # Perform Range Check on command parameter
-                    if type(range_check_value) is str or range_check_value < minimum or range_check_value > maximum:
-                        if type(range_check_value) is str:
+                    if isinstance(range_check_value, str) or range_check_value < minimum or range_check_value > maximum:
+                        if isinstance(range_check_value, str):
                             range_check_value = f"'{range_check_value}'"
                         raise RuntimeError(
                             f"Command parameter '{command.target_name} {command.packet_name} {item_upcase}' = {range_check_value} not in valid range of {minimum} to {maximum}"

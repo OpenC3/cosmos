@@ -11,7 +11,7 @@ number = ask("Enter a number.")
 if not isinstance(number, (int, float)):
     raise RuntimeError("Bad return")
 number = ask_string("Enter a number.")
-if not type(number) == str:
+if not isinstance(number, str):
     raise RuntimeError("Bad return")
 
 result = message_box("Click something.", "CHOICE1", "CHOICE2")

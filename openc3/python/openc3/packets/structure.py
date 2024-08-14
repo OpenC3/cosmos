@@ -38,7 +38,7 @@ class Structure:
     ):
         if (default_endianness == "BIG_ENDIAN") or (default_endianness == "LITTLE_ENDIAN"):
             self.default_endianness = default_endianness
-            if buffer is not None and not isinstance(buffer, (bytes, bytearray)):  # type(buffer) != str:
+            if buffer is not None and not isinstance(buffer, (bytes, bytearray)):
                 raise TypeError(f"wrong argument type {buffer.__class__.__name__} (expected bytes)")
             if buffer is None:
                 self._buffer = None

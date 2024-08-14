@@ -19,6 +19,7 @@ import copy
 from openc3.packets.structure_item import StructureItem
 from openc3.packets.packet_item_limits import PacketItemLimits
 from openc3.utilities.string import quote_if_necessary, simple_formatted
+from openc3.conversions.conversion import Conversion
 
 
 class PacketItem(StructureItem):
@@ -64,7 +65,7 @@ class PacketItem(StructureItem):
     @format_string.setter
     def format_string(self, format_string):
         if format_string:
-            if type(format_string) is not str:
+            if not isinstance(format_string, str):
                 raise AttributeError(
                     f"{self.name}: format_string must be a str but is a {format_string.__class__.__name__}"
                 )
@@ -81,10 +82,7 @@ class PacketItem(StructureItem):
     @read_conversion.setter
     def read_conversion(self, read_conversion):
         if read_conversion:
-            # NOTE: issubclass is not reliable ...
-            # if not issubclass(read_conversion.__class__, Conversion):
-            # TODO: This is weak comparison to the name rather than the type
-            if "Conversion" not in read_conversion.__class__.__name__:
+            if not isinstance(read_conversion, Conversion):
                 raise AttributeError(
                     f"{self.name}: read_conversion must be a Conversion but is a {read_conversion.__class__.__name__}"
                 )
@@ -99,9 +97,7 @@ class PacketItem(StructureItem):
     @write_conversion.setter
     def write_conversion(self, write_conversion):
         if write_conversion:
-            # NOTE: issubclass is not reliable ...
-            # if not issubclass(write_conversion.__class__, Conversion):
-            if "Conversion" not in write_conversion.__class__.__name__:
+            if not isinstance(write_conversion, Conversion):
                 raise AttributeError(
                     f"{self.name}: write_conversion must be a Conversion but is a {write_conversion.__class__.__name__}"
                 )
@@ -128,7 +124,7 @@ class PacketItem(StructureItem):
     @states.setter
     def states(self, states):
         if states is not None:
-            if type(states) is not dict:
+            if not isinstance(states, dict):
                 raise AttributeError(f"{self.name}: states must be a dict but is a {states.__class__.__name__}")
 
             # Make sure all states are in upper case
@@ -154,7 +150,7 @@ class PacketItem(StructureItem):
     @description.setter
     def description(self, description):
         if description:
-            if type(description) is not str:
+            if not isinstance(description, str):
                 raise AttributeError(
                     f"{self.name}: description must be a str but is a {description.__class__.__name__}"
                 )
@@ -169,7 +165,7 @@ class PacketItem(StructureItem):
     @units_full.setter
     def units_full(self, units_full):
         if units_full:
-            if type(units_full) is not str:
+            if not isinstance(units_full, str):
                 raise AttributeError(f"{self.name}: units_full must be a str but is a {units_full.__class__.__name__}")
             self.__units_full = units_full
         else:
@@ -182,7 +178,7 @@ class PacketItem(StructureItem):
     @units.setter
     def units(self, units):
         if units:
-            if type(units) is not str:
+            if not isinstance(units, str):
                 raise AttributeError(f"{self.name}: units must be a str but is a {units.__class__.__name__}")
             self.__units = units
         else:
@@ -191,72 +187,47 @@ class PacketItem(StructureItem):
     def check_default_and_range_data_types(self):
         if self.default and not self.write_conversion:
             if self.array_size is not None:
-                if type(self.default) is not list:
+                if not isinstance(self.default, list):
                     raise AttributeError(
                         f"{self.name}: default must be a list but is a {self.default.__class__.__name__}"
                     )
             else:
                 match self.data_type:
                     case "INT" | "UINT":
-                        if type(self.default) is not int:
+                        if not isinstance(self.default, int):
                             raise AttributeError(
                                 f"{self.name}: default must be a int but is a {self.default.__class__.__name__}"
                             )
-                        if type(self.minimum) is not int:
+                        if not isinstance(self.minimum, int):
                             raise AttributeError(
                                 f"{self.name}: minimum must be a int but is a {self.minimum.__class__.__name__}"
                             )
-                        if type(self.maximum) is not int:
+                        if not isinstance(self.maximum, int):
                             raise AttributeError(
                                 f"{self.name}: maximum must be a int but is a {self.maximum.__class__.__name__}"
                             )
                     case "FLOAT":
-                        if type(self.default) not in [float, int]:
+                        if not isinstance(self.default, (float, int)):
                             raise AttributeError(
                                 f"{self.name}: default must be a float but is a {self.default.__class__.__name__}"
                             )
 
                         self.default = float(self.default)
 
-                        if type(self.minimum) not in [int, float]:
+                        if not isinstance(self.minimum, (int, float)):
                             raise AttributeError(
                                 f"{self.name}: minimum must be a float but is a {self.minimum.__class__.__name__}"
                             )
-                        if type(self.maximum) not in [int, float]:
+                        if not isinstance(self.maximum, (int, float)):
                             raise AttributeError(
                                 f"{self.name}: maximum must be a float but is a {self.maximum.__class__.__name__}"
                             )
-                        # if self.range:
-                        #     if type(self.range.start) not in [float, int]:
-                        #         raise AttributeError(
-                        #             f"{self.name}: minimum must be a float or int but is a {self.range.start.__class__.__name__}"
-                        #         )
-                        #     if type(self.range.stop) not in [float, int]:
-                        #         raise AttributeError(
-                        #             f"{self.name}: maximum must be a float or int but is a {self.range.stop.__class__.__name__}"
-                        #         )
-                        #     self.range = frange(self.range.start, self.range.stop)
                     case "BLOCK" | "STRING":
-                        if type(self.default) not in [str, bytes, bytearray]:
+                        if not isinstance(self.default, (str, bytes, bytearray)):
                             raise AttributeError(
                                 f"{self.name}: default must be a str but is a {self.default.__class__.__name__}"
                             )
                         self.default = str(self.default)
-
-    # @property
-    # def range(self):
-    #     return self.__range
-
-    # @range.setter
-    # def range(self, range):
-    #     if range:
-    #         if type(range).__name__ not in ["range", "frange"]:
-    #             raise AttributeError(
-    #                 f"{self.name}: range must be a range but is a {range.__class__.__name__}"
-    #             )
-    #         self.__range = range
-    #     else:
-    #         self.__range = None
 
     @property
     def hazardous(self):
@@ -265,7 +236,7 @@ class PacketItem(StructureItem):
     @hazardous.setter
     def hazardous(self, hazardous):
         if hazardous is not None:
-            if type(hazardous) is not dict:
+            if not isinstance(hazardous, dict):
                 raise AttributeError(f"{self.name}: hazardous must be a dict but is a {hazardous.__class__.__name__}")
             self.__hazardous = hazardous
         else:
@@ -278,7 +249,7 @@ class PacketItem(StructureItem):
     @messages_disabled.setter
     def messages_disabled(self, messages_disabled):
         if messages_disabled is not None:
-            if type(messages_disabled) is not dict:
+            if not isinstance(messages_disabled, dict):
                 raise AttributeError(
                     f"{self.name}: messages_disabled must be a dict but is a {messages_disabled.__class__.__name__}"
                 )
@@ -294,7 +265,7 @@ class PacketItem(StructureItem):
     @state_colors.setter
     def state_colors(self, state_colors):
         if state_colors is not None:
-            if type(state_colors) is not dict:
+            if not isinstance(state_colors, dict):
                 raise AttributeError(
                     f"{self.name}: state_colors must be a dict but is a {state_colors.__class__.__name__}"
                 )
@@ -310,7 +281,7 @@ class PacketItem(StructureItem):
     @limits.setter
     def limits(self, limits):
         if limits is not None:
-            if type(limits) is not PacketItemLimits:
+            if not isinstance(limits, PacketItemLimits):
                 raise AttributeError(
                     f"{self.name}: limits must be a PacketItemLimits but is a {limits.__class__.__name__}"
                 )
@@ -326,7 +297,7 @@ class PacketItem(StructureItem):
     @meta.setter
     def meta(self, meta):
         if meta is not None:
-            if type(meta) is not dict:
+            if not isinstance(meta, dict):
                 raise AttributeError(f"{self.name}: meta must be a dict but is a {meta.__class__.__name__}")
 
             self.__meta = meta

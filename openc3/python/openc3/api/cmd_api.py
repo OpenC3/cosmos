@@ -352,7 +352,7 @@ def get_cmd_hazardous(*args, scope=OPENC3_SCOPE):
         for name, hash in item["states"].items():
             parameter_name = parameters[item["name"]]
             # Remove quotes from string parameters
-            if type(parameter_name) == str:
+            if isinstance(parameter_name, str):
                 parameter_name = parameter_name.replace('"', "").replace("'", "")
             # To be hazardous the state must be marked hazardous
             # Check if either the state name or value matches the param passed
@@ -492,7 +492,7 @@ def get_cmd_cnt(*args, scope=OPENC3_SCOPE):
 # @return [Numeric] Transmit count for the command
 def get_cmd_cnts(target_commands, scope=OPENC3_SCOPE):
     authorize(permission="system", scope=scope)
-    if type(target_commands) is list and type(target_commands[0] is list):
+    if isinstance(target_commands, list) and isinstance(target_commands[0], list):
         counts = []
         for target_name, command_name in target_commands:
             target_name = target_name.upper()

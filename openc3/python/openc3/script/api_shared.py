@@ -647,7 +647,7 @@ def _check_tolerance_process_args(args):
     if length == 3:
         target_name, packet_name, item_name = extract_fields_from_tlm_text(args[0])
         expected_value = args[1]
-        if type(args[2]) == list:
+        if isinstance(args[2], list):
             tolerance = [abs(x) for x in args[2]]
         else:
             tolerance = abs(args[2])
@@ -656,7 +656,7 @@ def _check_tolerance_process_args(args):
         packet_name = args[1]
         item_name = args[2]
         expected_value = args[3]
-        if type(args[4]) == list:
+        if isinstance(args[4], list):
             tolerance = [abs(x) for x in args[4]]
         else:
             tolerance = abs(args[4])
@@ -739,7 +739,7 @@ def _execute_wait(
         polling_rate,
         scope,
     )
-    if type(value) == str:
+    if isinstance(value, str):
         value = f"'{value}'"  # Show user the check against a quoted string
     time_diff = time.time() - start_time
     wait_str = f"WAIT: {_upcase(target_name, packet_name, item_name)} {comparison_to_eval}"
@@ -757,7 +757,7 @@ def _wait_tolerance_process_args(args, function_name):
     if length == 4 or length == 5:
         target_name, packet_name, item_name = extract_fields_from_tlm_text(args[0])
         expected_value = args[1]
-        if type(args[2]) == list:
+        if isinstance(args[2], list):
             tolerance = [abs(x) for x in args[2]]
         else:
             tolerance = abs(args[2])
@@ -771,7 +771,7 @@ def _wait_tolerance_process_args(args, function_name):
         packet_name = args[1]
         item_name = args[2]
         expected_value = args[3]
-        if type(args[4]) == list:
+        if isinstance(args[4], list):
             tolerance = [abs(x) for x in args[4]]
         else:
             tolerance = abs(args[4])

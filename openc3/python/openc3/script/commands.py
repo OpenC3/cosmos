@@ -148,14 +148,14 @@ def _cmd_string(target_name, cmd_name, cmd_params, raw):
         for key, value in cmd_params.items():
             if key in Packet.RESERVED_ITEM_NAMES:
                 continue
-            if type(value) == str:
+            if isinstance(value, str):
                 value = convert_to_value(value)
                 if len(value) > 256:
                     value = value[:255] + "...'"
                 if not value.isascii():
                     value = "BINARY"
                 value = value.replace('"', "'")
-            elif type(value) == list:
+            elif isinstance(value, list):
                 value = str(value)
             params.append(f"{key} {value}")
         params = ", ".join(params)

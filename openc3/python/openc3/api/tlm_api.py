@@ -260,7 +260,7 @@ def get_tlm_packet(*args, stale_time: int = 30, type: str = "CONVERTED", scope: 
 #   Array consisting of the item value and limits state
 #   given as symbols such as :RED, :YELLOW, :STALE
 def get_tlm_values(items, stale_time=30, cache_timeout=0.1, scope=OPENC3_SCOPE):
-    if type(items) is not list or len(items) == 0 or type(items[0]) is not str:
+    if not isinstance(items, list) or len(items) == 0 or not isinstance(items[0], str):
         raise AttributeError("items must be array of strings: ['TGT__PKT__ITEM__TYPE', ...]")
     packets = []
     cvt_items = []
@@ -373,7 +373,7 @@ def subscribe_packets(packets, scope=OPENC3_SCOPE):
     Return:
         (str) ID which should be passed to get_packets
     """
-    if type(packets) is not list or type(packets[0]) is not list:
+    if not isinstance(packets, list) or not isinstance(packets[0], list):
         raise RuntimeError("packets must be nested array: [['TGT','PKT'],...]")
 
     result = {}

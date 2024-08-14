@@ -198,9 +198,9 @@ class Store(metaclass=StoreMeta):
                     if result and len(result) > 0:
                         for topic, messages in result:
                             for msg_id, msg_hash in messages:
-                                if type(topic) is bytes:
+                                if isinstance(topic, bytes):
                                     topic = topic.decode()
-                                if type(msg_id) is bytes:
+                                if isinstance(msg_id, bytes):
                                     msg_id = msg_id.decode()
                                 topic_offsets[topic] = msg_id
                                 yield topic, msg_id, msg_hash, redis

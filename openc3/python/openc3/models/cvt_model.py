@@ -160,7 +160,7 @@ class CvtModel(Model):
                 )
             hash = packet_lookup[target_packet_key]
             item_result = []
-            if type(value_keys) is dict:  # Set in _parse_item to indicate override
+            if isinstance(value_keys, dict):  # Set in _parse_item to indicate override
                 item_result.insert(0, value_keys["value"])
             else:
                 for key in value_keys:

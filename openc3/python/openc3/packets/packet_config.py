@@ -427,7 +427,7 @@ class PacketConfig:
                 else:
                     meta_values = []
                 for index, value in enumerate(meta_values):
-                    if type(value) is str:
+                    if isinstance(value, str):
                         meta_values[index] = value
                 if self.current_item:
                     # Item META
