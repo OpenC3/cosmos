@@ -21,7 +21,6 @@ from unittest.mock import *
 from test.test_helper import *
 from openc3.accessors.binary_accessor import BinaryAccessor
 from openc3.packets.packet import Packet
-from openc3.utilities.string import simple_formatted
 
 
 class TestBinaryAccessorWrite(unittest.TestCase):

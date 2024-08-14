@@ -20,7 +20,7 @@ from unittest.mock import *
 from test.test_helper import *
 from openc3.config.config_parser import ConfigParser
 from openc3.packets.packet_config import PacketConfig
-from cbor2 import dump, dumps, loads
+from cbor2 import dump, loads
 
 
 class TestPacketConfig(unittest.TestCase):
@@ -823,7 +823,7 @@ class TestPacketConfig(unittest.TestCase):
     def test_handles_bad_tesmplate_files(self):
         tf = tempfile.NamedTemporaryFile(mode="w")
         tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
-        tf.write(f"TEMPLATE_FILE nope.txt\n")
+        tf.write("TEMPLATE_FILE nope.txt\n")
         tf.seek(0)
         with self.assertRaisesRegex(ConfigParser.Error, "No such file or directory"):
             self.pc.process_file(tf.name, "TGT1")

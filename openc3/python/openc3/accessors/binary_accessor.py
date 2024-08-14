@@ -18,7 +18,6 @@ import sys
 import math
 import struct
 from .accessor import Accessor
-from openc3.utilities.string import simple_formatted
 
 
 class BinaryAccessor(Accessor):
