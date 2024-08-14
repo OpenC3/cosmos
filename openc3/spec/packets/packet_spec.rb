@@ -280,6 +280,51 @@ module OpenC3
         expect(i.write_conversion).to be_nil
         expect(i.id_value).to be_nil
       end
+
+      it "handles blocks and size 0" do
+        p = Packet.new("tgt", "pkt")
+        p.restore_defaults
+        p.enable_method_missing
+        p.append_item("ccsdsheader", 32, :UINT)
+        p.append_item("ccsdslength", 16, :UINT)
+        p.append_item("timesec", 32, :UINT)
+        p.append_item("timeus", 32, :UINT)
+        p.append_item("pktid", 16, :UINT)
+        p.append_item("block", 8000, :BLOCK)
+        p.append_item("image", 0, :BLOCK)
+        p.define_item("bytes", 128, 32, :UINT)
+        p.define_item("derived", 0, 0, :DERIVED)
+        data = "\xDE\xAD\xBE\xEF\x55\x55\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09"
+        data += Array.new(1000) { Array(0..15).sample }.pack("C*")
+        image_data = File.read(File.join(SPEC_DIR, 'install', 'config', 'targets', 'INST', 'public', 'spiral.jpg'), mode: "rb")
+        @image = Base64.encode64(image_data)
+        data += @image
+
+        5.times do
+          p.buffer = data
+          expect(p.read("ccsdsheader")).to eql 0xDEADBEEF
+          expect(p.read("ccsdslength")).to eql 0x5555
+          expect(p.read("timesec")).to eql 0x00010203
+          expect(p.read("timeus")).to eql 0x04050607
+          expect(p.read("pktid")).to eql 0x0809
+          expect(p.read("block").length).to eql 1000
+          expect(p.read("image")).to eql @image
+        end
+
+        p.ccsdslength = 0
+        5.times do |x|
+          p.image = @image
+          p.block = Array.new(1000) { Array(0..15).sample }.pack("C*")
+          p.ccsdslength = x
+          expect(p.read("ccsdsheader")).to eql 0xDEADBEEF
+          expect(p.read("ccsdslength")).to eql x
+          expect(p.read("timesec")).to eql 0x00010203
+          expect(p.read("timeus")).to eql 0x04050607
+          expect(p.read("pktid")).to eql 0x0809
+          expect(p.read("block").length).to eql 1000
+          expect(p.read("image")).to eql @image
+        end
+      end
     end
 
     describe "define" do

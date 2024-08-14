@@ -1098,10 +1098,8 @@ The following settings apply to LABELSPARKLINE. They are applied using the SETTI
 |-----------|-------------|----------|
 | Target name | The target name | True |
 | Packet name | The packet name | True |
-| Item name | The item name | True |
+| Item name | The item name to pull the CONVERTED value from. If additional processing (base64 encoding) is needed consider using a DERIVED item. | True |
 | Format | The image format of the base64 data (e.g. jpg, png, etc) | True |
-| Width | Width of the widget | False |
-| Height | Height of the widget | False |
 
 Example Usage:
 ```ruby
