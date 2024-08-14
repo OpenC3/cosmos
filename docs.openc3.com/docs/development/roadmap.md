@@ -4,12 +4,12 @@ title: Roadmap
 
 ## Key Features Still to Come in OpenC3 COSMOS 5.x:
 
-- [ ] Command Authority (Enterprise)
+- [x] Command Authority (Enterprise)
 - [ ] Critical Commanding (Two Operators - Enterprise)
 - [ ] Log Message Extractor Tool (Enterprise)
 - [ ] System Health Tool (Enterprise)
 
-## OpenC3 COSMOS 6.0 (Summer 2024)
+## OpenC3 COSMOS 6.0 (Late 2024)
 
 Core Features:
 
@@ -23,7 +23,7 @@ Functionality For 6.1+:
 - [ ] libCSP Interface
 - [ ] Standardized Interfaces for All Common Message Buses
 
-## OpenC3 COSMOS 7.0 (Summer 2025)
+## OpenC3 COSMOS 7.0
 
 Core Features:
 

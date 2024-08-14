@@ -51,9 +51,17 @@ class SimInst(SimulatedTarget):
         self.position_file_bytes_read = 0
         self.attitude_file_bytes_read = 0
 
+        self.images = []
         with open(os.path.join(self.target.dir, "public", "spiral.jpg"), "rb") as f:
             data = f.read()
-            self.image = base64.b64encode(data)
+            self.images.append(base64.b64encode(data))
+        with open(os.path.join(self.target.dir, "public", "sun.jpg"), "rb") as f:
+            data = f.read()
+            self.images.append(base64.b64encode(data))
+        with open(os.path.join(self.target.dir, "public", "ganymede.jpg"), "rb") as f:
+            data = f.read()
+            self.images.append(base64.b64encode(data))
+        self.cur_image = 0
 
         self.pos_packet = Structure("BIG_ENDIAN")
         self.pos_packet.append_item("DAY", 16, "UINT")
@@ -359,10 +367,14 @@ class SimInst(SimulatedTarget):
                 case "IMAGE":
                     packet.write("timesec", int(time - self.time_offset))
                     packet.write("timeus", int((time % 1) * 1000000))
-                    packet.write("image", self.image)
+                    packet.write("ccsdsseqcnt", packet.read("ccsdsseqcnt") + 1)
+                    if packet.read("ccsdsseqcnt") % 20 == 0:
+                        self.cur_image += 1
+                        if self.cur_image == len(self.images):
+                            self.cur_image = 0
+                        packet.write("image", self.images[self.cur_image])
                     # Create an Array of random bytes
                     packet.write("block", random.randbytes(1000))
-                    packet.write("ccsdsseqcnt", packet.read("ccsdsseqcnt") + 1)
 
                 case "MECH":
                     packet.write("timesec", int(time - self.time_offset))

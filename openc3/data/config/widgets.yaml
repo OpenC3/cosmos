@@ -1023,20 +1023,13 @@ Telemetry Widgets:
           values: .+
         - name: Item name
           required: true
-          description: The item name
+          description: The item name to pull the CONVERTED value from.
+            If additional processing (base64 encoding) is needed consider using a DERIVED item.
           values: .+
         - name: Format
           required: true
           description: The image format of the base64 data (e.g. jpg, png, etc)
           values: .+
-        - name: Width
-          required: false
-          description: Width of the widget
-          values: .*
-        - name: Height
-          required: false
-          description: Height of the widget
-          values: .*
       example: |
         IMAGEVIEWER INST IMAGE IMAGE jpg
     PROGRESSBAR:

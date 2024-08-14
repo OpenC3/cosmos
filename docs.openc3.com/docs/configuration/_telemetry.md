@@ -42,15 +42,24 @@ RECEIVED_TIME is the time that COSMOS receives the packet. This is set by the in
 
 PACKET_TIME defaults to RECEIVED_TIME, but can be set as a derived item with a time object in the telemetry configuration file. This helps support stored telemetry packets so that they can be more reasonably handled by other COSMOS tools such as Telemetry Grapher and Data Extractor. You can set the 'stored' flag in your interface and the current value table is unaffected.
 
-The \_TIMEFORMATTED items returns the date and time in a YYYY/MM/DD HH:MM:SS.sss format and the \_TIMESECONDS returns the Unix seconds of the time.
+The \_TIMEFORMATTED items returns the date and time in a YYYY/MM/DD HH:MM:SS.sss format and the \_TIMESECONDS returns the Unix seconds of the time. Internally these are both stored as either a Ruby Time object or Python date object.
 
 #### Example
 
-COSMOS provides a Unix time conversion class which returns a Ruby time object based on the number of seconds and (optionally) microseconds since the Unix epoch. Note: This returns a Ruby Time object and not a float or string!
+COSMOS provides a Unix time conversion class which returns a Ruby Time object or Python date object based on the number of seconds and (optionally) microseconds since the Unix epoch. Note: This returns a native object and not a float or string!
 
-```
+Ruby Example:
+
+```ruby
 ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
     READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
+```
+
+Python Example:
+
+```python
+ITEM PACKET_TIME 0 0 DERIVED "Python time based on TIMESEC and TIMEUS"
+    READ_CONVERSION openc3/conversions/unix_time_conversion.py TIMESEC TIMEUS
 ```
 
 Definining PACKET_TIME allows the PACKET_TIMESECONDS and PACKET_TIMEFORMATTED to be calculated against an internal Packet time rather than the time COSMOS receives the packet.
