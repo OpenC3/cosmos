@@ -401,6 +401,7 @@ module OpenC3
       config << " #{self.endianness}" if self.endianness != default_endianness && self.data_type != :STRING && self.data_type != :BLOCK
       config << "\n"
 
+      config << "    VARIABLE_BIT_SIZE '#{self.variable_bit_size['length_item_name']}' #{self.variable_bit_size['length_bits_per_count']} #{self.variable_bit_size['length_value_bit_offset']}\n" if self.variable_bit_size
       config << "    REQUIRED\n" if self.required
       config << "    FORMAT_STRING #{self.format_string.to_s.quote_if_necessary}\n" if self.format_string
       config << "    UNITS #{self.units_full.to_s.quote_if_necessary} #{self.units.to_s.quote_if_necessary}\n" if self.units
@@ -510,6 +511,9 @@ module OpenC3
       end
 
       config['meta'] = @meta if @meta
+      if @variable_bit_size
+        config['variable_bit_size'] = @variable_bit_size
+      end
       config
     end
 
@@ -571,6 +575,7 @@ module OpenC3
         item.limits.values = values if values.length > 0
       end
       item.meta = hash['meta']
+      item.variable_bit_size = hash['variable_bit_size']
       item
     end
 
