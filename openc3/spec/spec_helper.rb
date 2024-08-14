@@ -212,23 +212,15 @@ def mock_redis
 end
 
 OpenC3.disable_warnings do
-=begin
   require 'aws-sdk-s3'
   require 'openc3/utilities/s3_autoload.rb'
-  require 'mock-s3/lib/mocks3/client_local'
-=end
 end
 
-def mock_s3
-  require 'aws-sdk-s3'
-  require 'mock-s3/lib/mocks3/client_local'
-  require 'openc3/utilities/s3_autoload.rb'
-=begin
+def local_s3
+  require 'local_s3'
   require 'rspec/mocks/standalone'
-  client_local = MockS3::ClientLocal.new
-  allow(Aws::S3::Client).to receive(:new).and_return(client_local)
-  client_local
-=end
+  local_filesystem_client = LocalS3::ClientLocal.new
+  allow(Aws::S3::Client).to receive(:new).and_return(local_filesystem_client)
 end
 
 # Set the logger to output everything and capture it all in a StringIO object

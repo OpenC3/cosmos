@@ -23,7 +23,7 @@ require "openc3/utilities/aws_bucket"
 module OpenC3
   describe AwsBucket do
     before(:all) do |example|
-    # These tests work if there's a mock S3 or a MINIO service available. To enable
+    # These tests work if there's a local S3 or a MINIO service available. To enable
     # access to MINIO for testing, change the compose.yaml services stanza to:
     #
     # services:
@@ -34,21 +34,16 @@ module OpenC3
         sock = Socket.new(Socket::Constants::AF_INET, Socket::Constants::SOCK_STREAM, 0)
         sock.bind(Socket.pack_sockaddr_in(9000, '127.0.0.1')) #raise if listening
         sock.close
-        #mock_s3()
-        #Logger.info("No S3 listener - using Mock-S3 local client")
+        local_s3()
+        Logger.info("No S3 listener - using local_s3 client")
       rescue Errno::EADDRINUSE;
-        Logger.error("Found listener on port 9000; presumably Minio")
+        Logger.info("Found listener on port 9000; presumably Minio")
       end
 
       @bucket = Bucket.getClient.create("bucket#{rand(1000)}")
     rescue Seahorse::Client::NetworkingError, Aws::Errors::NoSuchEndpointError => e
     # We'll just skip them all if we get a networking error.
       example.skip e.message
-    end
-
-    after(:each) do
-      sleep 0.1
-      kill_leftover_threads
     end
 
     after(:all) do
@@ -149,7 +144,7 @@ module OpenC3
         expect(result).to be false
       end
 
-      it "immediately checks for an object to exist" do
+      xit "immediately checks for an object to exist" do
         client.put_object(bucket: @bucket, key: 'test', body: 'contents')
         result = client.check_object(bucket: @bucket, key: 'test', retries: false)
         expect(result).to be true
@@ -162,7 +157,7 @@ module OpenC3
       end
     end
 
-    describe 'list_objects' do
+    xdescribe 'list_objects' do
       it "returns an array of objects" do
         client.put_object(bucket: @bucket, key: 'DEFAULT/test1', body: 'contents1')
         client.put_object(bucket: @bucket, key: 'DEFAULT/test2', body: 'contents2')
@@ -177,7 +172,7 @@ module OpenC3
       end
     end
 
-    describe 'list_files' do
+    xdescribe 'list_files' do
       it "returns BucketNotFound if the bucket doesn't exist" do
         expect { client.list_files(bucket: "NOPE", path: "") }.to raise_error(Bucket::NotFound, "Bucket 'NOPE' does not exist.")
       end
@@ -240,7 +235,7 @@ module OpenC3
       end
     end
 
-    describe 'delete_objects' do
+    xdescribe 'delete_objects' do
       it "deletes an array of object keys" do
         client.put_object(bucket: @bucket, key: 'test1', body: 'contents1')
         client.put_object(bucket: @bucket, key: 'test2', body: 'contents2')

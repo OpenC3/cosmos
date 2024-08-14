@@ -29,6 +29,15 @@ module OpenC3
     # the following to services: open3-minio:
     #   ports:
     #     - "127.0.0.1:9000:9000"
+      begin
+        sock = Socket.new(Socket::Constants::AF_INET, Socket::Constants::SOCK_STREAM, 0)
+        sock.bind(Socket.pack_sockaddr_in(9000, '127.0.0.1')) #raise if listening
+        sock.close
+        local_s3()
+        Logger.info("No S3 listener - using local_s3 client")
+      rescue Errno::EADDRINUSE;
+        Logger.info("Found listener on port 9000; presumably Minio")
+      end
     rescue Seahorse::Client::NetworkingError, Aws::Errors::NoSuchEndpointError => err
       example.skip err.message
     end
