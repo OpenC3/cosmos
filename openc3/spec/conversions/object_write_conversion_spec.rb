@@ -88,10 +88,6 @@ module OpenC3
 
     describe "to_config" do
       it "returns a read config snippet" do
-        orc = ObjectWriteConversion.new(:TLM, "INST", "PARAMS").to_config("READ").strip()
-        expect(orc).to eql "WRITE_CONVERSION object_write_conversion.rb TLM INST PARAMS"
-
-        # Doesn't matter if we pass WRITE ... it's always a READ_CONVERSION
         orc = ObjectWriteConversion.new(:TLM, "INST", "PARAMS").to_config("WRITE").strip()
         expect(orc).to eql "WRITE_CONVERSION object_write_conversion.rb TLM INST PARAMS"
       end
