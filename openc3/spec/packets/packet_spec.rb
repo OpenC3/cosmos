@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -27,6 +27,17 @@ require 'openc3/conversions/generic_conversion'
 
 module OpenC3
   describe Packet do
+    describe "initialize", no_ext: true do
+      it "initializes the instance variables" do
+        pkt = Packet.new("TGT", "PKT", :LITTLE_ENDIAN, "Description", "\x00\x01")
+        expect(pkt.target_name).to eql "TGT"
+        expect(pkt.packet_name).to eql "PKT"
+        expect(pkt.default_endianness).to eql :LITTLE_ENDIAN
+        expect(pkt.description).to eql "Description"
+        expect(pkt.buffer).to eql "\x00\x01"
+      end
+    end
+
     describe "template=" do
       it "sets the template" do
         p = Packet.new("tgt", "pkt")
@@ -374,7 +385,7 @@ module OpenC3
     end
 
     describe "read and read_item" do
-      before (:each) do
+      before(:each) do
         @p = Packet.new("tgt", "pkt")
       end
 
@@ -605,7 +616,7 @@ module OpenC3
     end
 
     describe "write and write_item" do
-      before (:each) do
+      before(:each) do
         @p = Packet.new("tgt", "pkt")
         @buffer = "\x00\x00\x00\x00"
       end
@@ -824,26 +835,26 @@ module OpenC3
         p.write("test4", "Test")
         expect(p.formatted).to include("TEST1: [1, 2]")
         expect(p.formatted).to include("TEST2: TRUE")
-        expect(p.formatted).to include("TEST3: #{0x02030405}")
+        expect(p.formatted).to include("TEST3: 33752069")
         expect(p.formatted).to include("TEST4: Test")
         # Test the data_type parameter
         expect(p.formatted(:RAW)).to include("TEST1: [1, 2]")
-        expect(p.formatted(:RAW)).to include("TEST2: #{0x0304}")
-        expect(p.formatted(:RAW)).to include("TEST3: #{0x0406080A}")
+        expect(p.formatted(:RAW)).to include("TEST2: 772")
+        expect(p.formatted(:RAW)).to include("TEST3: 67504138")
         expect(p.formatted(:RAW)).to include("00000000: 54 65 73 74") # Raw TEST4 block
         # Test the indent parameter
         expect(p.formatted(:CONVERTED, 4)).to include("    TEST1: [1, 2]")
         # Test the buffer parameter
         buffer = "\x02\x03\x04\x05\x00\x00\x00\x02\x44\x45\x41\x44"
         expect(p.formatted(:CONVERTED, 0, buffer)).to include("TEST1: [2, 3]")
-        expect(p.formatted(:CONVERTED, 0, buffer)).to include("TEST2: #{0x0405}")
+        expect(p.formatted(:CONVERTED, 0, buffer)).to include("TEST2: 1029")
         expect(p.formatted(:CONVERTED, 0, buffer)).to include("TEST3: 1")
         expect(p.formatted(:CONVERTED, 0, buffer)).to include("TEST4: DEAD")
         # Test the ignored parameter
         string = p.formatted(:CONVERTED, 0, p.buffer, %w(TEST1 TEST4))
         expect(string).not_to include("TEST1")
         expect(string).to include("TEST2: TRUE")
-        expect(string).to include("TEST3: #{0x02030405}")
+        expect(string).to include("TEST3: 33752069")
         expect(string).not_to include("TEST4")
       end
     end

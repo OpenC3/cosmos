@@ -156,8 +156,10 @@ module OpenC3
           current_bit_size = 14
         when 2
           current_bit_size = 30
-        else
+        when 3
           current_bit_size = 62
+        else
+          raise "Value #{item.variable_bit_size['length_item_name']} has unknown QUIC bit size encoding: #{length_item_value}"
         end
 
         if item.data_type == :UINT

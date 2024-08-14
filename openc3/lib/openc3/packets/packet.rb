@@ -1072,7 +1072,7 @@ module OpenC3
       config << "  HAZARDOUS #{@hazardous_description.to_s.quote_if_necessary}\n" if @hazardous
       config << "  DISABLE_MESSAGES\n" if @messages_disabled
       if @virtual
-        config << "  VIRTUAL"
+        config << "  VIRTUAL\n"
       elsif @disabled
         config << "  DISABLED\n"
       elsif @hidden

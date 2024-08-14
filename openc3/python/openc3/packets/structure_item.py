@@ -55,10 +55,14 @@ class StructureItem:
         self.endianness = endianness
         self.data_type = data_type
         self.bit_offset = bit_offset
+        self.original_bit_offset = bit_offset
         self.bit_size = bit_size
+        self.original_bit_size = bit_size
         self.array_size = array_size
+        self.original_array_size = array_size
         self.overflow = overflow
         self.overlap = False
+        self.variable_bit_size = False
         self.create_index = StructureItem.create_index
         StructureItem.create_index += 1
         self.structure_item_constructed = True
@@ -139,10 +143,8 @@ class StructureItem:
             raise AttributeError(f"{self.name}: bit_size must be an Integer")
 
         byte_multiple = (bit_size % 8) == 0
-        if bit_size <= 0 and (self.data_type == "INT" or self.data_type == "UINT" or self.data_type == "FLOAT"):
-            raise AttributeError(
-                f"{self.name}: bit_size cannot be negative or zero for 'INT', 'UINT', and 'FLOAT' items: {bit_size}"
-            )
+        if bit_size <= 0 and self.data_type == "FLOAT":
+            raise AttributeError(f"{self.name}: bit_size cannot be negative or zero for 'FLOAT' items: {bit_size}")
         if (self.data_type == "STRING" or self.data_type == "BLOCK") and not byte_multiple:
             raise AttributeError(f"{self.name}: bit_size for STRING and BLOCK items must be byte multiples")
         if self.data_type == "FLOAT" and bit_size != 32 and bit_size != 64:
@@ -209,6 +211,25 @@ class StructureItem:
         if self.structure_item_constructed:
             self.verify_overall()
 
+    @property
+    def variable_bit_size(self):
+        return self.__variable_bit_size
+
+    @variable_bit_size.setter
+    def variable_bit_size(self, variable_bit_size):
+        if variable_bit_size:
+            if type(variable_bit_size) != dict:
+                raise AttributeError(f"{self.name}: variable_bit_size must be a dict")
+            if type(variable_bit_size["length_item_name"]) != str:
+                raise AttributeError(f"{self.name}: variable_bit_size['length_item_name'] must be a String")
+            if type(variable_bit_size["length_value_bit_offset"]) != int:
+                raise AttributeError(f"{self.name}: variable_bit_size['length_value_bit_offset'] must be an Integer")
+            if type(variable_bit_size["length_bits_per_count"]) != int:
+                raise AttributeError(f"{self.name}: variable_bit_size['length_bits_per_count'] must be an Integer")
+        self.__variable_bit_size = variable_bit_size
+        if self.structure_item_constructed:
+            self.verify_overall()
+
     def __eq__(self, other):
         # Sort by first bit_offset, then bit_size, then create_index
         if self.bit_offset == other.bit_offset:
@@ -269,11 +290,11 @@ class StructureItem:
         hash = {}
         hash["name"] = self.name
         hash["key"] = self.key
-        hash["bit_offset"] = self.bit_offset
-        hash["bit_size"] = self.bit_size
+        hash["bit_offset"] = self.original_bit_offset
+        hash["bit_size"] = self.original_bit_size
         hash["data_type"] = self.data_type
         hash["endianness"] = self.endianness
-        hash["array_size"] = self.array_size
+        hash["array_size"] = self.original_array_size
         hash["overflow"] = self.overflow
         return hash
 

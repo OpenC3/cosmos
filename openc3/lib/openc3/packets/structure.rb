@@ -316,6 +316,7 @@ module OpenC3
         item.bit_offset = 0
       else
         item.bit_offset = @defined_length_bits
+        item.original_bit_offset = @defined_length_bits
       end
       return define(item)
     end

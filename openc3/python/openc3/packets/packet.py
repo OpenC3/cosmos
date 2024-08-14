@@ -96,6 +96,7 @@ class Packet(Structure):
         self.screen = None
         self.related_items = None
         self.ignore_overlap = False
+        self.virtual = False
 
     @property
     def target_name(self):
@@ -188,6 +189,17 @@ class Packet(Structure):
         self.__received_count = received_count
         self.read_conversion_cache = {}
 
+    @property
+    def virtual(self):
+        return self.__virtual
+
+    @virtual.setter
+    def virtual(self, virtual):
+        self.__virtual = virtual
+        if virtual:
+            self.hidden = True
+            self.disabled = True
+
     # Tries to identify if a buffer represents the currently defined packet. It:
     # does this by iterating over all the packet items that were created with
     # an ID value and checking whether that ID value is present at the correct
@@ -202,6 +214,8 @@ class Packet(Structure):
     # self.return [Boolean] Whether or not the buffer of data is this packet
     def identify(self, buffer):
         if not buffer:
+            return False
+        if self.virtual:
             return False
         if not self.id_items:
             return True
@@ -952,7 +966,9 @@ class Packet(Structure):
             config += f"  HAZARDOUS {quote_if_necessary(self.hazardous_description)}\n"
         if self.messages_disabled:
             config += "  DISABLE_MESSAGES\n"
-        if self.disabled:
+        if self.virtual:
+            config += "  VIRTUAL\n"
+        elif self.disabled:
             config += "  DISABLED\n"
         elif self.hidden:
             config += "  HIDDEN\n"
@@ -1011,6 +1027,8 @@ class Packet(Structure):
             config["disabled"] = True
         if self.hidden:
             config["hidden"] = True
+        if self.virtual:
+            config["virtual"] = True
         config["accessor"] = self.accessor.__class__.__name__
         # config["accessor_args"] = self.accessor.args
         if self.template:
@@ -1059,6 +1077,7 @@ class Packet(Structure):
         packet.messages_disabled = hash.get("messages_disabled")
         packet.disabled = hash.get("disabled")
         packet.hidden = hash.get("hidden")
+        packet.virtual = hash.get("virtual")
         if "accessor" in hash:
             try:
                 filename = class_name_to_filename(hash["accessor"])

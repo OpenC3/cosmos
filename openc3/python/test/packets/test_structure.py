@@ -268,28 +268,6 @@ class TestStructureAppendItem(unittest.TestCase):
         self.assertEqual(self.s.sorted_items[1].name, "TEST2")
         self.assertEqual(self.s.defined_length, 4)
 
-    def test_complains_if_appending_after_a_variably_sized_item(self):
-        self.s.define_item("test1", 0, 0, "BLOCK")
-        self.assertRaisesRegex(
-            AttributeError,
-            "Can't append an item after a variably sized item",
-            self.s.append_item,
-            "test2",
-            8,
-            "UINT",
-        )
-
-    def test_complains_if_appending_after_a_variably_sized_array(self):
-        self.s.define_item("test1", 0, 8, "UINT", -8)
-        self.assertRaisesRegex(
-            AttributeError,
-            "Can't append an item after a variably sized item",
-            self.s.append_item,
-            "test2",
-            8,
-            "UINT",
-        )
-
 
 class TestStructureAppend(unittest.TestCase):
     def setUp(self):
@@ -305,16 +283,6 @@ class TestStructureAppend(unittest.TestCase):
         self.assertEqual(self.s.sorted_items[1].name, "TEST2")
         self.assertEqual(self.s.defined_length, 3)
 
-    def test_complains_if_appending_after_a_variably_sized_define_item(self):
-        self.s.define_item("test1", 0, 0, "BLOCK")
-        item = StructureItem("test2", 0, 16, "UINT", "BIG_ENDIAN")
-        self.assertRaisesRegex(
-            AttributeError,
-            "Can't append an item after a variably sized item",
-            self.s.append,
-            item,
-        )
-
 
 class TestStructureGetItem(unittest.TestCase):
     def setUp(self):
@@ -325,9 +293,7 @@ class TestStructureGetItem(unittest.TestCase):
         self.assertIsNotNone(self.s.get_item("test1"))
 
     def test_complains_if_an_item_doesnt_exist(self):
-        self.assertRaisesRegex(
-            AttributeError, "Unknown item: test2", self.s.get_item, "test2"
-        )
+        self.assertRaisesRegex(AttributeError, "Unknown item: test2", self.s.get_item, "test2")
 
 
 class TestStructureSetItem(unittest.TestCase):
@@ -362,9 +328,7 @@ class TestStructureDeleteItem(unittest.TestCase):
         self.s.append_item("test2", 16, "UINT")
         self.assertEqual(self.s.defined_length, 3)
         self.s.delete_item("test1")
-        self.assertRaisesRegex(
-            AttributeError, "Unknown item: test1", self.s.get_item, "test1"
-        )
+        self.assertRaisesRegex(AttributeError, "Unknown item: test1", self.s.get_item, "test1")
         self.assertEqual(self.s.defined_length, 3)
         self.assertIsNone(self.s.items.get("TEST1"))
         self.assertIsNotNone(self.s.items["TEST2"])
@@ -447,9 +411,7 @@ class TestStructureWriteItem(unittest.TestCase):
 
 class TestStructureRead(unittest.TestCase):
     def test_complains_if_item_doesnt_exist(self):
-        self.assertRaisesRegex(
-            AttributeError, "Unknown item: BLAH", Structure().read, "BLAH"
-        )
+        self.assertRaisesRegex(AttributeError, "Unknown item: BLAH", Structure().read, "BLAH")
 
     def test_reads_data_from_the_buffer(self):
         s = Structure()
@@ -600,17 +562,13 @@ class TestStructureBuffer(unittest.TestCase):
     def test_complains_if_the_given_buffer_is_too_small(self):
         s = Structure("BIG_ENDIAN")
         s.append_item("test1", 16, "UINT")
-        with self.assertRaisesRegex(
-            AttributeError, "Buffer length less than defined length"
-        ):
+        with self.assertRaisesRegex(AttributeError, "Buffer length less than defined length"):
             s.buffer = b"\x00"
 
     def test_complains_if_the_given_buffer_is_too_big(self):
         s = Structure("BIG_ENDIAN")
         s.append_item("test1", 16, "UINT")
-        with self.assertRaisesRegex(
-            AttributeError, "Buffer length greater than defined length"
-        ):
+        with self.assertRaisesRegex(AttributeError, "Buffer length greater than defined length"):
             s.buffer = b"\x00\x00\x00"
 
     def test_does_not_complain_if_the_given_buffer_is_too_big_and_were_not_fixed_length(

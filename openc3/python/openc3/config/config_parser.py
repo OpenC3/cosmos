@@ -128,7 +128,7 @@ class ConfigParser:
                 raise ConfigParser.Error(self, f"Not enough parameters for {self.keyword}.", usage, self.url)
 
         # If they pass None for max_params we don't check for a maximum number
-        if max_num_params and self.parameters[max_num_params : max_num_params + 1]:
+        if max_num_params is not None and self.parameters[max_num_params : max_num_params + 1]:
             raise ConfigParser.Error(self, f"Too many parameters for {self.keyword}.", usage, self.url)
 
     # Verifies the indicated parameter in the config doesn't start or end
