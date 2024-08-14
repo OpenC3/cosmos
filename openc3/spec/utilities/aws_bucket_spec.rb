@@ -48,6 +48,7 @@ module OpenC3
 
     after(:all) do
       Bucket.getClient.delete(@bucket) if @bucket
+      local_s3_unset()
     end
 
     let(:client) { Bucket.getClient() }
