@@ -32,6 +32,7 @@
           min-width="290px"
         >
           <template v-slot:activator="{ on }">
+            <!-- TODO: Investigate using Date Chooser or something that better supports timezones -->
             <!-- We set the :name attribute to be unique to avoid auto-completion -->
             <v-text-field
               :label="dateLabel"
@@ -46,6 +47,7 @@
         </v-menu>
       </v-col>
       <v-col>
+        <!-- TODO: Investigate using Time Chooser or something that better supports timezones -->
         <!-- We set the :name attribute to be unique to avoid auto-completion -->
         <v-text-field
           :label="timeLabel"
@@ -63,7 +65,8 @@
 </template>
 
 <script>
-import { isValid, parse, format, toDate } from 'date-fns'
+import TimeFilters from '@openc3/tool-common/src/tools/base/util/timeFilters.js'
+import { isValid, parse, toDate } from 'date-fns'
 
 export default {
   props: {
@@ -83,7 +86,12 @@ export default {
       type: String,
       default: 'Time',
     },
+    timeZone: {
+      type: String,
+      default: 'local',
+    },
   },
+  mixins: [TimeFilters],
   data() {
     return {
       date: null,
@@ -133,9 +141,21 @@ export default {
   },
   created() {
     if (this.dateTime) {
-      let initialDate = toDate(this.dateTime / 1_000_000)
-      this.date = format(initialDate, 'yyyy-MM-dd')
-      this.time = format(initialDate, 'HH:mm:ss')
+      // let initialDate = toDate(this.dateTime / 1_000_000)
+      // this.date = format(initialDate, 'yyyy-MM-dd')
+      // this.time = format(initialDate, 'HH:mm:ss')
+
+      let date = toDate(this.dateTime / 1_000_000)
+      console.log(date)
+      // this.date = this.formatDate(date, this.timeZone)
+      // this.time = this.formatTime(date, this.timeZone)
+      if (this.timeZone == 'local') {
+        this.date = format(date, 'yyyy-MM-dd')
+        this.time = format(date, 'HH:mm:ss.SSS')
+      } else {
+        this.date = formatInTimeZone(date, this.timeZone, 'yyyy-MM-dd')
+        this.time = formatInTimeZone(date, this.timeZone, 'HH:mm:ss.SSS')
+      }
     }
   },
   methods: {

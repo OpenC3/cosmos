@@ -680,6 +680,24 @@ module OpenC3
         expect(s.read("test2")).to eql 0x0203
         expect(s.read("test3")).to eql 0x04050607
       end
+
+      it "recalculates the bit offsets for 0 size" do
+        s = Structure.new(:BIG_ENDIAN)
+        # APPEND_ITEM BLOCK 8000 BLOCK "Raw Data"
+        # APPEND_ITEM IMAGE 0 BLOCK "Image Data"
+
+        s.append_item("test1", 80, :BLOCK)
+        s.append_item("test2", 0, :BLOCK)
+        s.define_item("test3", -16, 16, :UINT)
+        s.buffer = "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09" +
+          "\x0a\x0b\x0c\x0d\x0e\x0f\x0f\x0e\x0d\x0c\x0b\x0a\xAA\x55"
+        puts s.read("test1").formatted
+        puts s.read("test2").formatted
+        puts s.read("test3")
+        expect(s.read("test1")).to eql "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09"
+        # expect(s.read("test2")).to eql "\x0a\x0b\x0c\x0d\x0e\x0f\x0e\x0d\x0c\x0b\x0a"
+        expect(s.read("test3")).to eql 0xAA55
+      end
     end
 
     describe "clone" do

@@ -107,6 +107,7 @@
               :points-saved="settings.pointsSaved.value"
               :points-graphed="settings.pointsGraphed.value"
               :refresh-interval-ms="settings.refreshIntervalMs.value"
+              :time-zone="timeZone"
               @close-graph="() => closeGraph(graph)"
               @min-max-graph="() => minMaxGraph(graph)"
               @resize="() => resize()"
@@ -144,6 +145,7 @@
 </template>
 
 <script>
+import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 import Config from '@openc3/tool-common/src/components/config/Config'
 import Graph from '@openc3/tool-common/src/components/Graph.vue'
 import OpenConfigDialog from '@openc3/tool-common/src/components/config/OpenConfigDialog'
@@ -172,6 +174,8 @@ export default {
       showOpenConfig: false,
       showSaveConfig: false,
       showSettingsDialog: false,
+      api: null,
+      timeZone: null, // deliberately null so we know when it is set
       grid: null,
       panel: 0,
       state: 'stop', // Valid: stop, start, pause
@@ -324,6 +328,9 @@ export default {
       }
     },
   },
+  created() {
+    this.api = new OpenC3Api()
+  },
   mounted: function () {
     this.grid = new Muuri('.grid', {
       dragEnabled: true,
@@ -471,6 +478,21 @@ export default {
       }
     },
     applyConfig: async function (config) {
+      // Grab the timeZone if we haven't already
+      // This ensures we're waiting for it and pass it to the graphs
+      if (this.timeZone === null) {
+        await this.api
+          .get_setting('time_zone')
+          .then((response) => {
+            if (response) {
+              this.timeZone = response
+            }
+          })
+          .catch((error) => {
+            // Do nothing
+          })
+      }
+
       // Don't save the default config while we're applying new config
       this.dontSaveDefaultConfig = true
       this.closeAllGraphs()

@@ -251,10 +251,12 @@ module OpenC3
           recurrance = @recurring['frequency'].to_i * 86400
         end
 
-        # Get all the existing events in the recurring time range as well as those before
-        # the start of the recurring time range to ensure we don't start inside an existing event
-        existing = Store.zrevrangebyscore(@primary_key, @recurring['end'] - 1, @recurring['start'] - MAX_DURATION)
-        existing.map! {|value| JSON.parse(value, :allow_nan => true, :create_additions => true) }
+        if overlap
+          # Get all the existing events in the recurring time range as well as those before
+          # the start of the recurring time range to ensure we don't start inside an existing event
+          existing = Store.zrevrangebyscore(@primary_key, @recurring['end'] - 1, @recurring['start'] - MAX_DURATION)
+          existing.map! {|value| JSON.parse(value, :allow_nan => true, :create_additions => true) }
+        end
         last_stop = nil
 
         # Update @updated_at and add an event assuming it all completes ok
@@ -270,11 +272,13 @@ module OpenC3
               @events.pop # Remove previously created event
               raise ActivityOverlapError.new "Recurring activity overlap. Increase recurrance delta or decrease activity duration."
             end
-            existing.each do |value|
-              if (@start >= value['start'] and @start < value['stop']) ||
-                (@stop > value['start'] and @stop <= value['stop'])
-                @events.pop # Remove previously created event
-                raise ActivityOverlapError.new "activity overlaps existing at #{value['start']}"
+            if overlap
+              existing.each do |value|
+                if (@start >= value['start'] and @start < value['stop']) ||
+                  (@stop > value['start'] and @stop <= value['stop'])
+                  @events.pop # Remove previously created event
+                  raise ActivityOverlapError.new "activity overlaps existing at #{value['start']}"
+                end
               end
             end
             multi.zadd(@primary_key, @start, JSON.generate(self.as_json(:allow_nan => true)))

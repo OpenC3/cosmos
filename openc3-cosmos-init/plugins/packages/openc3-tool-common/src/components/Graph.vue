@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -171,7 +171,7 @@
       <v-expand-transition>
         <div class="pa-1" id="chart" ref="chart" v-show="expand">
           <div :id="`chart${id}`"></div>
-          <div id="betweenCharts" />
+          <div id="betweenCharts"></div>
           <div :id="`overview${id}`" v-show="showOverview"></div>
         </div>
       </v-expand-transition>
@@ -210,7 +210,7 @@
                     />
                   </v-card-text>
                 </v-col>
-                <v-col style="margin-top=5px">
+                <v-col>
                   <v-select
                     label="Legend Position"
                     dense
@@ -234,6 +234,7 @@
                 time-label="Start Time"
                 :date-time="graphStartDateTime"
                 @date-time="graphStartDateTime = $event"
+                :time-zone="timeZone"
               />
               <v-card-text class="pa-0">
                 Select a end date/time for the graph. Leave blank for continuous
@@ -244,6 +245,7 @@
                 time-label="End Time"
                 :date-time="graphEndDateTime"
                 @date-time="graphEndDateTime = $event"
+                :time-zone="timeZone"
               />
             </div>
           </v-tab-item>
@@ -513,8 +515,9 @@ import DateTimeChooser from './DateTimeChooser'
 import GraphEditItemDialog from './GraphEditItemDialog'
 import uPlot from 'uplot'
 import bs from 'binary-search'
-import { toDate, format } from 'date-fns'
 import Cable from '../services/cable.js'
+import TimeFilters from '@openc3/tool-common/src/tools/base/util/timeFilters.js'
+import { subMinutes } from 'date-fns'
 
 require('uplot/dist/uPlot.min.css')
 
@@ -579,7 +582,12 @@ export default {
     width: {
       type: Number,
     },
+    timeZone: {
+      type: String,
+      default: 'local',
+    },
   },
+  mixins: [TimeFilters],
   data() {
     return {
       tab: 0,
@@ -810,20 +818,24 @@ export default {
         document.getElementById(`chart${this.id}`),
       )
     } else {
+      // Uplot wants the real timezone name ('local' doesn't work)
+      let timeZoneName = Intl.DateTimeFormat().resolvedOptions().timeZone
+      if (this.timeZone && this.timeZone !== 'local') {
+        timeZoneName = this.timeZone
+      }
       chartOpts = {
         ...this.getSize('chart'),
         ...this.getScales(),
         ...this.getAxes('chart'),
         // series: series, // TODO: Uncomment with the performance code
         plugins: [this.linesPlugin()],
+        tzDate: (ts) => uPlot.tzDate(new Date(ts * 1e3), timeZoneName),
         series: [
           {
             label: 'Time',
             value: (u, v) =>
               // Convert the unix timestamp into a formatted date / time
-              v == null
-                ? '--'
-                : format(toDate(v * 1000), 'yyyy-MM-dd HH:mm:ss'),
+              v == null ? '--' : this.formatSeconds(v, this.timeZone),
           },
           ...chartSeries,
         ],
@@ -921,7 +933,7 @@ export default {
           ],
         },
       }
-      // console.time('chart')
+
       this.graph = new uPlot(
         chartOpts,
         this.data,
@@ -933,12 +945,10 @@ export default {
         ...this.getScales(),
         ...this.getAxes('overview'),
         // series: series, // TODO: Uncomment with the performance code
+        tzDate: (ts) => uPlot.tzDate(new Date(ts * 1e3), timeZoneName),
         series: [...overviewSeries],
         cursor: {
           y: false,
-          points: {
-            show: false, // TODO: This isn't working
-          },
           drag: {
             setScale: false,
             x: true,
@@ -1024,10 +1034,18 @@ export default {
       this.setGraphRange()
     },
     graphStartDateTime: function (newVal, oldVal) {
+      console.log(`graphStartDateTime new:${newVal} type:${typeof newVal}`)
       this.needToUpdate = true
       if (newVal && typeof newVal === 'string') {
-        this.graphStartDateTime =
-          new Date(this.graphStartDateTime).getTime() * 1_000_000
+        this.graphStartDateTime = new Date(this.graphStartDateTime)
+        console.log(`graphStartDateTime:${this.graphStartDateTime}`)
+        this.graphStartDateTime = subMinutes(
+          this.graphStartDateTime,
+          new Date().getTimezoneOffset(),
+        )
+        console.log(`graphStartDateTime:${this.graphStartDateTime}`)
+        this.graphStartDateTime = this.graphStartDateTime.getTime() * 1_000_000
+        console.log(`graphStartDateTime:${this.graphStartDateTime}`)
       }
     },
     graphEndDateTime: function (newVal, oldVal) {
@@ -1359,7 +1377,7 @@ export default {
             },
             // Forces the axis values to be formatted correctly
             // especially with really small or large values
-            values(self, splits) {
+            values(u, splits) {
               if (
                 splits.some((el) => el >= 10_000_000) ||
                 splits.every((el) => el < 0.01)

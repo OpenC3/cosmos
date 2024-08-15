@@ -24,6 +24,7 @@ require 'openc3/models/timeline_model'
 
 class TimelineController < ApplicationController
   def initialize
+    super()
     @model_class = OpenC3::TimelineModel
   end
 
@@ -157,7 +158,7 @@ class TimelineController < ApplicationController
     else
       begin
         use_force = params[:force].nil? == false && params[:force] == 'true'
-        ret = @model_class.delete(name: params[:name], scope: params[:scope], force: use_force)
+        @model_class.delete(name: params[:name], scope: params[:scope], force: use_force)
         model.undeploy()
         model.notify(kind: 'deleted')
         OpenC3::Logger.info("Timeline destroyed: #{params[:name]}", scope: params[:scope], user: username())
