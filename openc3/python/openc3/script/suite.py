@@ -373,18 +373,16 @@ class Group:
                     openc3.script.RUNNING_SCRIPT.instance.exceptions = None
 
             except Exception as error:
-                # Check that the error belongs to the StopScript inheritance chain
-                if issubclass(error.__class__, StopScript):
+                if isinstance(error, StopScript):
                     result.stopped = True
                     result.result = "STOP"
-                # Check that the error belongs to the SkipScript inheritance chain
-                if issubclass(error.__class__, SkipScript):
+                if isinstance(error, SkipScript):
                     result.result = "SKIP"
                     if hasattr(error, "message"):
                         result.message = result.message or ""
                         result.message += error.message + "\n"
                 else:
-                    if not issubclass(error.__class__, StopScript) and (
+                    if not isinstance(error, StopScript) and (
                         not openc3.script.RUNNING_SCRIPT
                         or not openc3.script.RUNNING_SCRIPT.instance
                         or not openc3.script.RUNNING_SCRIPT.instance.exceptions

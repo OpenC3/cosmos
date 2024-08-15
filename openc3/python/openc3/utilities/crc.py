@@ -384,7 +384,7 @@ class Crc:
 
         if self.reflect:
             for byte in data:
-                if type(byte) is str:
+                if isinstance(byte, str):
                     byte = ord(byte)
                 crc = (crc << 8 & filter_mask) ^ self.table[(crc >> right_shift) ^ self.bit_reverse_8(byte)]
 
@@ -395,7 +395,7 @@ class Crc:
                 return final_bit_reverse(crc)
         else:
             for byte in data:
-                if type(byte) is str:
+                if isinstance(byte, str):
                     byte = ord(byte)
                 crc = ((crc << 8) & filter_mask) ^ self.table[(crc >> right_shift) ^ byte]
 

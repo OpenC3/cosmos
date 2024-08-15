@@ -789,7 +789,7 @@ module OpenC3
         end
       end
 
-      context "with READ_CONVERSION and WRITE_CONVERSION" do
+      context "with READ_CONVERSION and WRITE_CONVERSION", no_ext: true do
         it "complains about missing conversion file" do
           filename = File.join(File.dirname(__FILE__), "../test_only.rb")
           File.delete(filename) if File.exist?(filename)
@@ -800,7 +800,7 @@ module OpenC3
           tf.puts '  ITEM item1 0 16 INT "Integer Item"'
           tf.puts '  READ_CONVERSION test_only.rb'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Unable to require test_only.rb due to cannot load such file -- test_only.rb. Ensure test_only.rb is in the OpenC3 lib directory./)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(/Unable to require test_only.rb due to cannot load such file -- test_only.rb. Ensure test_only.rb is in the OpenC3 lib directory./)
           tf.unlink
 
           tf = Tempfile.new('unittest')
@@ -808,7 +808,7 @@ module OpenC3
           tf.puts '  PARAMETER item1 0 16 INT 0 0 0'
           tf.puts '  WRITE_CONVERSION test_only.rb'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Unable to require test_only.rb due to cannot load such file -- test_only.rb. Ensure test_only.rb is in the OpenC3 lib directory./)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(/Unable to require test_only.rb due to cannot load such file -- test_only.rb. Ensure test_only.rb is in the OpenC3 lib directory./)
           tf.unlink
         end
 

@@ -141,7 +141,7 @@ def map_target_to_interface(
 ):
     authorize(permission="system_set", interface_name=interface_name, scope=scope)
     new_interface = InterfaceModel.get_model(name=interface_name, scope=scope)
-    if type(target_name) is list:
+    if isinstance(target_name, list):
         target_names = target_name
     else:
         target_names = [target_name]

@@ -27,22 +27,12 @@ module OpenC3
     # @param buffer [String] The packet buffer
     # @return Raw BLOCK data
     def call(value, _packet, buffer)
-      if @cmd_or_tlm == :CMD
-        fill_packet = System.commands.packet(@target_name, @packet_name)
-      else
-        fill_packet = System.telemetry.packet(@target_name, @packet_name)
-      end
+      fill_packet = lookup_packet()
       fill_packet.restore_defaults()
       value.each do |key, write_value|
         fill_packet.write(key, write_value)
       end
       return fill_packet.buffer
-    end
-
-    # @param read_or_write [String] Not used
-    # @return [String] Config fragment for this conversion
-    def to_config(read_or_write)
-      "    WRITE_CONVERSION #{self.class.name.class_name_to_filename} #{@cmd_or_tlm} #{@target_name} #{@packet_name}\n"
     end
   end
 end

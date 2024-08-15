@@ -207,6 +207,7 @@ class PacketConfig:
                         | "DISABLE_MESSAGES"
                         | "HIDDEN"
                         | "DISABLED"
+                        | "VIRTUAL"
                         | "ACCESSOR"
                         | "TEMPLATE"
                         | "TEMPLATE_FILE"
@@ -245,6 +246,7 @@ class PacketConfig:
                         | "OVERFLOW"
                         | "OVERLAP"
                         | "KEY"
+                        | "VARIABLE_BIT_SIZE"
                     ):
                         if not self.current_item:
                             raise parser.error(f"No current item for {keyword}")
@@ -320,18 +322,20 @@ class PacketConfig:
             if self.current_cmd_or_tlm == PacketConfig.COMMAND:
                 PacketParser.check_item_data_types(self.current_packet)
                 self.commands[self.current_packet.target_name][self.current_packet.packet_name] = self.current_packet
-                hash = self.cmd_id_value_hash.get(self.current_packet.target_name)
-                if not hash:
-                    hash = {}
-                self.cmd_id_value_hash[self.current_packet.target_name] = hash
-                self.update_id_value_hash(hash)
+                if not self.current_packet.virtual:
+                    hash = self.cmd_id_value_hash.get(self.current_packet.target_name)
+                    if not hash:
+                        hash = {}
+                    self.cmd_id_value_hash[self.current_packet.target_name] = hash
+                    self.update_id_value_hash(hash)
             else:
                 self.telemetry[self.current_packet.target_name][self.current_packet.packet_name] = self.current_packet
-                hash = self.tlm_id_value_hash.get(self.current_packet.target_name)
-                if not hash:
-                    hash = {}
-                self.tlm_id_value_hash[self.current_packet.target_name] = hash
-                self.update_id_value_hash(hash)
+                if not self.current_packet.virtual:
+                    hash = self.tlm_id_value_hash.get(self.current_packet.target_name)
+                    if not hash:
+                        hash = {}
+                    self.tlm_id_value_hash[self.current_packet.target_name] = hash
+                    self.update_id_value_hash(hash)
 
             self.current_packet = None
             self.current_item = None
@@ -423,7 +427,7 @@ class PacketConfig:
                 else:
                     meta_values = []
                 for index, value in enumerate(meta_values):
-                    if type(value) is str:
+                    if isinstance(value, str):
                         meta_values[index] = value
                 if self.current_item:
                     # Item META
@@ -442,6 +446,13 @@ class PacketConfig:
                 parser.verify_num_parameters(0, 0, usage)
                 self.current_packet.hidden = True
                 self.current_packet.disabled = True
+
+            case "VIRTUAL":
+                usage = keyword
+                parser.verify_num_parameters(0, 0, usage)
+                self.current_packet.hidden = True
+                self.current_packet.disabled = True
+                self.current_packet.virtual = True
 
             case "ACCESSOR":
                 usage = f"{keyword} <Accessor class name>"
@@ -703,6 +714,21 @@ class PacketConfig:
             case "KEY":
                 parser.verify_num_parameters(1, 1, "KEY <key or path into data>")
                 self.current_item.key = params[0]
+
+            case "VARIABLE_BIT_SIZE":
+                parser.verify_num_parameters(
+                    1,
+                    3,
+                    "VARIABLE_BIT_SIZE <length_item_name> <length_bits_per_count = 8> <length_value_bit_offset = 0>",
+                )
+
+                variable_bit_size = {"length_bits_per_count": 8, "length_value_bit_offset": 0}
+                variable_bit_size["length_item_name"] = params[0].upper()
+                if len(params) > 1:
+                    variable_bit_size["length_bits_per_count"] = int(params[1])
+                if len(params) > 2:
+                    variable_bit_size["length_value_bit_offset"] = int(params[2])
+                self.current_item.variable_bit_size = variable_bit_size
 
     def start_item(self, parser):
         self.finish_item()

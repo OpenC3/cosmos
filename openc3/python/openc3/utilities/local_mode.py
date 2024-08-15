@@ -333,7 +333,7 @@ class LocalMode:
         full_folder_path = f"{cls.LOCAL_MODE_PATH}/{path}"
         os.makedirs(os.path.dirname(full_folder_path), exist_ok=True)
         flags = "w"
-        if type(io_or_string) == bytes:
+        if isinstance(io_or_string, bytes):
             flags += "b"
         with open(full_folder_path, flags) as file:
             if hasattr(io_or_string, "read"):

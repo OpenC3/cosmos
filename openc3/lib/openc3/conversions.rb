@@ -17,12 +17,17 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 module OpenC3
   autoload(:Conversion, 'openc3/conversions/conversion.rb')
+  autoload(:BitReverseConversion, 'openc3/conversions/bit_reverse_conversion.rb')
   autoload(:GenericConversion, 'openc3/conversions/generic_conversion.rb')
+  autoload(:IpReadConversion, 'openc3/conversions/ip_read_conversion.rb')
+  autoload(:IpWriteConversion, 'openc3/conversions/ip_write_conversion.rb')
+  autoload(:ObjectReadConversion, 'openc3/conversions/object_read_conversion.rb')
+  autoload(:ObjectWriteConversion, 'openc3/conversions/object_write_conversion.rb')
   autoload(:PacketTimeFormattedConversion, 'openc3/conversions/packet_time_formatted_conversion.rb')
   autoload(:PacketTimeSecondsConversion, 'openc3/conversions/packet_time_seconds_conversion.rb')
   autoload(:PolynomialConversion, 'openc3/conversions/polynomial_conversion.rb')

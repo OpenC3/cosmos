@@ -131,10 +131,8 @@ class JsonApiObject:
         scope = kwargs.get("scope", None)
         if not scope:
             raise JsonApiError(f"no scope keyword found: {kwargs}")
-        elif type(scope) is not str:
-            raise JsonApiError(
-                f"incorrect type for keyword 'scope' MUST be String: {scope}"
-            )
+        elif not isinstance(scope, str):
+            raise JsonApiError(f"incorrect type for keyword 'scope' MUST be String: {scope}")
         return scope
 
     def _generate_headers(self, kwargs):
@@ -142,10 +140,8 @@ class JsonApiObject:
         headers = kwargs.get("headers", None)
         if not headers:
             headers = kwargs["headers"] = {}
-        elif type(headers) is not dict:
-            raise JsonApiError(
-                f"incorrect type for keyword 'headers' MUST be Dictionary: {headers}"
-            )
+        elif not isinstance(headers, dict):
+            raise JsonApiError(f"incorrect type for keyword 'headers' MUST be Dictionary: {headers}")
 
         if "json" in kwargs and kwargs["json"]:
             headers["Content-Type"] = "application/json"
@@ -165,10 +161,8 @@ class JsonApiObject:
         data = kwargs.get("data", None)
         if not data:
             data = kwargs["data"] = {}
-        elif type(data) is not dict and type(data) is not str:
-            raise JsonApiError(
-                f"incorrect type for keyword 'data' MUST be Dictionary or String: {data}"
-            )
+        elif not isinstance(data, dict) and not isinstance(data, str):
+            raise JsonApiError(f"incorrect type for keyword 'data' MUST be Dictionary or String: {data}")
         if "json" in kwargs and kwargs["json"]:
             return json.dumps(kwargs["data"])
         else:
@@ -180,10 +174,8 @@ class JsonApiObject:
         query = kwargs.get("query", None)
         if query is None:
             query = kwargs["query"] = {}
-        elif type(query) is not dict:
-            raise JsonApiError(
-                f"incorrect type for keyword 'query' MUST be Dictionary: {query}"
-            )
+        elif not isinstance(query, dict):
+            raise JsonApiError(f"incorrect type for keyword 'query' MUST be Dictionary: {query}")
         if "scope" in kwargs and kwargs["scope"]:
             kwargs["query"]["scope"] = kwargs["scope"]
         return kwargs["query"]
@@ -194,9 +186,7 @@ class JsonApiObject:
             kwargs["url"] = f"{self.url}{endpoint}"
             self.log[0] = f"{method} Request: {kwargs}"
             resp = getattr(self.http, method)(**kwargs)
-            self.log[1] = (
-                f"{method} Response: {resp.status_code} {resp.headers} {resp.text}"
-            )
+            self.log[1] = f"{method} Response: {resp.status_code} {resp.headers} {resp.text}"
             self.response_data = resp.text
             return resp
         except Exception as error:

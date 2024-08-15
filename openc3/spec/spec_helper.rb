@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -29,6 +29,8 @@
 #   Kernel.load(file, wrap)
 # end
 
+require 'rspec'
+
 # NOTE: You MUST require simplecov before anything else!
 if !ENV['OPENC3_NO_SIMPLECOV']
   require 'simplecov'
@@ -38,6 +40,13 @@ if !ENV['OPENC3_NO_SIMPLECOV']
   else
     SimpleCov.formatter = SimpleCov::Formatter::HTMLFormatter
   end
+  # Explicitly set the command_name so we don't clobber the results
+  # of the regular run with the '--tag no_ext' run
+  name = "test:unit"
+  if RSpec.configuration.filter_manager.inclusions.rules[:no_ext]
+    name += ':no_ext'
+  end
+  SimpleCov.command_name name
   SimpleCov.start do
     merge_timeout 60 * 60 # merge the last hour of results
     add_filter '/spec/' # no coverage on spec files
@@ -52,7 +61,6 @@ if !ENV['OPENC3_NO_SIMPLECOV']
     SimpleCov.result.format!
   end
 end
-require 'rspec'
 
 # Disable Redis and Fluentd in the Logger
 ENV['OPENC3_NO_STORE'] = 'true'
@@ -99,11 +107,11 @@ module OpenC3
     end
 
     alias old_method_missing method_missing
-    def method_missing(message, *args, **kwargs, &block)
+    def method_missing(message, *args, **kwargs, &)
       if $store_queued
-        old_method_missing(message, *args, **kwargs, &block)
+        old_method_missing(message, *args, **kwargs, &)
       else
-        @store.public_send(message, *args, **kwargs, &block)
+        @store.public_send(message, *args, **kwargs, &)
       end
     end
   end
@@ -140,10 +148,10 @@ OpenC3.disable_warnings do
     module StreamMethods
       private
 
-      def with_stream_at(key, &blk)
+      def with_stream_at(key, &)
         @mutex ||= Mutex.new
         @mutex.synchronize do
-          return with_thing_at(key, :assert_streamy, proc { Stream.new }, &blk)
+          return with_thing_at(key, :assert_streamy, proc { Stream.new }, &)
         end
       end
 

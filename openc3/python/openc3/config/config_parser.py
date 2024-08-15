@@ -128,7 +128,7 @@ class ConfigParser:
                 raise ConfigParser.Error(self, f"Not enough parameters for {self.keyword}.", usage, self.url)
 
         # If they pass None for max_params we don't check for a maximum number
-        if max_num_params and self.parameters[max_num_params : max_num_params + 1]:
+        if max_num_params is not None and self.parameters[max_num_params : max_num_params + 1]:
             raise ConfigParser.Error(self, f"Too many parameters for {self.keyword}.", usage, self.url)
 
     # Verifies the indicated parameter in the config doesn't start or end
@@ -185,7 +185,7 @@ class ConfigParser:
     # self.return [None|Object]
     @classmethod
     def handle_none(cls, value):
-        if type(value) == str:
+        if isinstance(value, str):
             match value.upper():
                 case "" | "NONE" | "NULL":
                     return None
@@ -199,7 +199,7 @@ class ConfigParser:
     # self.return [True|False|Object]
     @classmethod
     def handle_true_false(cls, value):
-        if type(value) == str:
+        if isinstance(value, str):
             match value.upper():
                 case "TRUE":
                     return True
@@ -214,7 +214,7 @@ class ConfigParser:
     # self.return [True|False|None|Object]
     @classmethod
     def handle_true_false_none(cls, value):
-        if type(value) == str:
+        if isinstance(value, str):
             match value.upper():
                 case "TRUE":
                     return True
@@ -236,7 +236,7 @@ class ConfigParser:
     # self.return [Numeric] The converted value. Either a Fixnum or Float.
     @classmethod
     def handle_defined_constants(cls, value, data_type=None, bit_size=None):
-        if type(value) == str:
+        if isinstance(value, str):
             match value.upper():
                 case "MIN" | "MAX":
                     return ConfigParser.calculate_range_value(value.upper(), data_type, bit_size)
