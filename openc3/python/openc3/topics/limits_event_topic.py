@@ -203,7 +203,7 @@ class LimitsEventTopic(Topic):
                     enabled = limits_settings.get("enabled", None)
                     persistence = limits_settings.get("persistence_setting", 1)
                     for limits_set, settings in limits_settings.items():
-                        if type(settings) != dict:
+                        if not isinstance(settings, dict):
                             continue
                         System.limits.set(
                             target_name,

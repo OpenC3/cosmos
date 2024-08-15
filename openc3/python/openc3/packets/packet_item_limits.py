@@ -58,7 +58,7 @@ class PacketItemLimits:
     @values.setter
     def values(self, values):
         if values is not None:
-            if type(values) is not dict:
+            if not isinstance(values, dict):
                 raise AttributeError(f"values must be a Hash but is a {values.__class__.__name__}")
             if "DEFAULT" not in values:
                 raise AttributeError("values must be a Hash with a 'DEFAULT' key")

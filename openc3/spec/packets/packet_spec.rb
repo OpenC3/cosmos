@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -27,6 +27,17 @@ require 'openc3/conversions/generic_conversion'
 
 module OpenC3
   describe Packet do
+    describe "initialize", no_ext: true do
+      it "initializes the instance variables" do
+        pkt = Packet.new("TGT", "PKT", :LITTLE_ENDIAN, "Description", "\x00\x01")
+        expect(pkt.target_name).to eql "TGT"
+        expect(pkt.packet_name).to eql "PKT"
+        expect(pkt.default_endianness).to eql :LITTLE_ENDIAN
+        expect(pkt.description).to eql "Description"
+        expect(pkt.buffer).to eql "\x00\x01"
+      end
+    end
+
     describe "template=" do
       it "sets the template" do
         p = Packet.new("tgt", "pkt")

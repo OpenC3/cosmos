@@ -168,7 +168,7 @@ class JsonRpcResponse(JsonRpc):
         """
 
         msg = f"invalid json-rpc 2.0 response{response_data}\n"
-        if type(response_data) == str:
+        if isinstance(response_data, str):
             try:
                 return json.loads(response_data)  # .decode("latin-1"))
             except Exception as e:

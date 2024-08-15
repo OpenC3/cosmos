@@ -62,7 +62,7 @@ class SuiteResults:
     # or a single OpenC3TestResult object
     def process_result(self, results):
         # If we were passed an array we concat it to the results global
-        if type(results) == list:
+        if isinstance(results, list):
             self.results.append(results)
         # A single result is appended and then turned into an array
         else:

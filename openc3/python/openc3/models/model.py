@@ -80,7 +80,7 @@ class Model:
         Return:
             [Model] Model generated from the passed JSON
         """
-        if type(json_data) is str:
+        if isinstance(json_data, str):
             json_data = json.loads(json_data)
         if json_data is None:
             raise RuntimeError("json data is nil")
