@@ -14,7 +14,7 @@
     "@astrouxds/astro-web-components": "7.22.1",
     "@openc3/tool-common": "5.17.2-beta0",
     "ace-builds": "1.35.4",
-    "axios": "1.7.4",
+    "axios": "1.7.2",
     "date-fns": "3.6.0",
     "lodash": "4.17.21",
     "portal-vue": "2.1.7",
