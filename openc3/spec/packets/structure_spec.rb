@@ -191,6 +191,16 @@ module OpenC3
 
         bit_offsets = s.sorted_items.map {|si| si.bit_offset}
         expect(bit_offsets).to eql [0, 8, 10, 16, 48, 80, 88, 88]
+
+        s.buffer = "\x00\x80\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00\x00\x00"
+
+        bit_offsets = s.sorted_items.map {|si| si.bit_offset}
+        expect(bit_offsets).to eql [0, 8, 10, 40, 72, 104, 112, 128]
+
+        s.buffer = "\x00" * 13
+
+        bit_offsets = s.sorted_items.map {|si| si.bit_offset}
+        expect(bit_offsets).to eql [0, 8, 10, 16, 48, 80, 88, 88]
       end
 
       it "handles blocks" do

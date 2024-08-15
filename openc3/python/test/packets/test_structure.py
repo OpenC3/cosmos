@@ -210,7 +210,21 @@ class TestStructureDefineItem(unittest.TestCase):
             bit_offsets.append(item.bit_offset)
         self.assertEqual(bit_offsets, [0, 8, 10, 16, 48, 80, 88, 88])
 
-        self.s.buffer = ("\x00" * self.s.defined_length).encode("ASCII")
+        self.s.buffer = ("\x00" * self.s.defined_length).encode("LATIN-1")
+
+        bit_offsets = []
+        for item in self.s.sorted_items:
+            bit_offsets.append(item.bit_offset)
+        self.assertEqual(bit_offsets, [0, 8, 10, 16, 48, 80, 88, 88])
+
+        self.s.buffer = "\x00\x80\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00\x00\x00".encode("LATIN-1")
+
+        bit_offsets = []
+        for item in self.s.sorted_items:
+            bit_offsets.append(item.bit_offset)
+        self.assertEqual(bit_offsets, [0, 8, 10, 40, 72, 104, 112, 128])
+
+        self.s.buffer = ("\x00" * 13).encode("LATIN-1")
 
         bit_offsets = []
         for item in self.s.sorted_items:
