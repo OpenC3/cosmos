@@ -48,7 +48,7 @@ module OpenC3
     # Will reflect the bit offset with all variable sized items at their
     # minimum size
     # @return [Integer] 0 based bit offset
-    attr_reader :original_bit_offset
+    attr_accessor :original_bit_offset
 
     # The number of bits which represent this StructureItem in the binary buffer.
     # @return [Integer] Size in bits
@@ -329,6 +329,7 @@ module OpenC3
       si = StructureItem.new(hash['name'], hash['bit_offset'], hash['bit_size'], data_type,
         endianness, hash['array_size'], overflow)
       si.key = hash['key'] || hash['name']
+      si.variable_bit_size = hash['variable_bit_size']
       si
     end
 
@@ -342,6 +343,9 @@ module OpenC3
       hash['endianness'] = self.endianness
       hash['array_size'] = self.original_array_size
       hash['overflow'] = self.overflow
+      if @variable_bit_size
+        hash['variable_bit_size'] = @variable_bit_size
+      end
       hash
     end
 

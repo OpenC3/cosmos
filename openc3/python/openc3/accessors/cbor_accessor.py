@@ -23,7 +23,7 @@ class CborAccessor(JsonAccessor):
     def class_read_item(cls, item, buffer):
         if item.data_type == "DERIVED":
             return None
-        if type(buffer) is bytearray:
+        if isinstance(buffer, bytearray):
             parsed = loads(buffer)
         else:
             parsed = buffer
@@ -33,14 +33,14 @@ class CborAccessor(JsonAccessor):
     def class_write_item(cls, item, value, buffer):
         if item.data_type == "DERIVED":
             return None
-        if type(buffer) is bytearray:
+        if isinstance(buffer, bytearray):
             decoded = loads(buffer)
         else:
             decoded = buffer
 
         super().class_write_item(item, value, decoded)
 
-        if type(buffer) is bytearray:
+        if isinstance(buffer, bytearray):
             # buffer[0:] syntax so we copy into the buffer
             buffer[0:] = dumps(decoded)
         return value

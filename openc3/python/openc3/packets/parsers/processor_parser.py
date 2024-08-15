@@ -16,6 +16,7 @@
 
 from openc3.top_level import get_class_from_module
 from openc3.utilities.string import filename_to_module, filename_to_class_name
+from openc3.processors.processor import Processor
 
 
 class ProcessorParser:
@@ -52,9 +53,7 @@ class ProcessorParser:
                 processor = klass(*self.parser.parameters[2 : (len(self.parser.parameters))])
             else:
                 processor = klass()
-            # NOTE: issubclass is not reliable ...
-            # if not issubclass(type(processor), Processor):
-            if "Processor" not in processor.__class__.__name__:
+            if not isinstance(processor, Processor):
                 raise AttributeError(f"processor must be a Processor but is a {processor.__class__.__name__}")
 
             processor.name = self._get_processor_name()

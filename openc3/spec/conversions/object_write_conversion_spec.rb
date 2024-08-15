@@ -28,12 +28,12 @@ module OpenC3
 
     describe "initialize" do
       it "takes cmd/tlm, target name, packet name" do
-        orc = ObjectWriteConversion.new("TLM", "inst", "HEALTH_STATUS")
-        expect(orc.instance_variable_get("@cmd_or_tlm")).to eql :TLM
-        expect(orc.instance_variable_get("@target_name")).to eql "INST"
-        expect(orc.instance_variable_get("@packet_name")).to eql "HEALTH_STATUS"
-        expect(orc.converted_type).to eql :OBJECT
-        expect(orc.converted_bit_size).to eql 0
+        owc = ObjectWriteConversion.new("TLM", "inst", "HEALTH_STATUS")
+        expect(owc.instance_variable_get("@cmd_or_tlm")).to eql :TLM
+        expect(owc.instance_variable_get("@target_name")).to eql "INST"
+        expect(owc.instance_variable_get("@packet_name")).to eql "HEALTH_STATUS"
+        expect(owc.converted_type).to eql :OBJECT
+        expect(owc.converted_bit_size).to eql 0
       end
 
       it "complains about invalid cmd/tlm" do
@@ -52,8 +52,8 @@ module OpenC3
         pkt.write("PKTID", 5)
         pkt.write("CCSDSSEQCNT", 10)
 
-        orc = ObjectWriteConversion.new(:CMD, "INST", "ABORT")
-        result = orc.call(values, pkt, pkt.buffer)
+        owc = ObjectWriteConversion.new(:CMD, "INST", "ABORT")
+        result = owc.call(values, pkt, pkt.buffer)
         expect(result).to be_a String
         expect(result).to eql pkt.buffer
       end
@@ -72,8 +72,8 @@ module OpenC3
         pkt.write("VALUE2", 1)
         pkt.write("VALUE4", 1)
 
-        orc = ObjectWriteConversion.new(:TLM, "INST", "PARAMS")
-        result = orc.call(values, pkt, pkt.buffer)
+        owc = ObjectWriteConversion.new(:TLM, "INST", "PARAMS")
+        result = owc.call(values, pkt, pkt.buffer)
         expect(result).to be_a String
         expect(result).to eql pkt.buffer
       end
@@ -81,26 +81,22 @@ module OpenC3
 
     describe "to_s" do
       it "returns the parameters" do
-        orc = ObjectWriteConversion.new(:TLM, "INST", "PARAMS").to_s
-        expect(orc).to eql "ObjectWriteConversion TLM INST PARAMS"
+        owc = ObjectWriteConversion.new(:TLM, "INST", "PARAMS").to_s
+        expect(owc).to eql "ObjectWriteConversion TLM INST PARAMS"
       end
     end
 
     describe "to_config" do
       it "returns a read config snippet" do
-        orc = ObjectWriteConversion.new(:TLM, "INST", "PARAMS").to_config("READ").strip()
-        expect(orc).to eql "WRITE_CONVERSION object_write_conversion.rb TLM INST PARAMS"
-
-        # Doesn't matter if we pass WRITE ... it's always a READ_CONVERSION
-        orc = ObjectWriteConversion.new(:TLM, "INST", "PARAMS").to_config("WRITE").strip()
-        expect(orc).to eql "WRITE_CONVERSION object_write_conversion.rb TLM INST PARAMS"
+        owc = ObjectWriteConversion.new(:TLM, "INST", "PARAMS").to_config("WRITE").strip()
+        expect(owc).to eql "WRITE_CONVERSION object_write_conversion.rb TLM INST PARAMS"
       end
     end
 
     describe "as_json" do
       it "creates a reproducable format" do
-        orc = ObjectWriteConversion.new(:TLM, "INST", "PARAMS")
-        json = orc.as_json(allow_nil: true)
+        owc = ObjectWriteConversion.new(:TLM, "INST", "PARAMS")
+        json = owc.as_json(allow_nil: true)
         expect(json['class']).to eql "OpenC3::ObjectWriteConversion"
         expect(json['converted_type']).to eql :OBJECT
         expect(json['converted_bit_size']).to eql 0

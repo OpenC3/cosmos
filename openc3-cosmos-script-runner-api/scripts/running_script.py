@@ -527,8 +527,8 @@ class RunningScript:
     def exception_instrumentation(self, filename, line_number):
         _, error, _ = sys.exc_info()
         if (
-            issubclass(error.__class__, StopScript)
-            or issubclass(error.__class__, SkipScript)
+            isinstance(error, StopScript)
+            or isinstance(error, SkipScript)
             or not self.use_instrumentation
         ):
             raise error
@@ -994,9 +994,7 @@ class RunningScript:
                 )
 
         except Exception as error:
-            if issubclass(error.__class__, StopScript) or issubclass(
-                error.__class__, SkipScript
-            ):
+            if isinstance(error, StopScript) or isinstance(error, SkipScript):
                 self.handle_output_io()
                 self.scriptrunner_puts(
                     f"Script stopped: {os.path.basename(self.filename)}"

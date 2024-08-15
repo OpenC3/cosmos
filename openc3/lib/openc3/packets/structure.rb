@@ -315,7 +315,12 @@ module OpenC3
       if item.data_type == :DERIVED
         item.bit_offset = 0
       else
+        # We're appending a new item so set the bit_offset
         item.bit_offset = @defined_length_bits
+        # Also set original_bit_offset because it's currently 0
+        # due to PacketItemParser::create_packet_item
+        # get_bit_offset() returning 0 if append
+        item.original_bit_offset = @defined_length_bits
       end
       return define(item)
     end
@@ -613,7 +618,10 @@ module OpenC3
         if item.original_bit_offset >= 0
           item.bit_offset = item.original_bit_offset + adjustment
           if item.data_type != :DERIVED and (item.variable_bit_size or item.original_bit_size <= 0 or (item.original_array_size and item.original_array_size <= 0))
-            adjustment += calculate_total_bit_size(item)
+            new_bit_size = calculate_total_bit_size(item)
+            if item.original_bit_size != new_bit_size
+              adjustment += (new_bit_size - item.original_bit_size)
+            end
           end
         end
       end

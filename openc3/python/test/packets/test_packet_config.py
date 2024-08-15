@@ -20,7 +20,7 @@ from unittest.mock import *
 from test.test_helper import *
 from openc3.config.config_parser import ConfigParser
 from openc3.packets.packet_config import PacketConfig
-from cbor2 import dump, dumps, loads
+from cbor2 import dump, loads
 
 
 class TestPacketConfig(unittest.TestCase):
@@ -111,12 +111,19 @@ class TestPacketConfig(unittest.TestCase):
         "SEG_POLY_WRITE_CONVERSION",
         "GENERIC_READ_CONVERSION_START",
         "GENERIC_WRITE_CONVERSION_START",
+        "REQUIRED",
         "LIMITS",
         "LIMITS_RESPONSE",
         "UNITS",
         "FORMAT_STRING",
         "DESCRIPTION",
-        "META",
+        "MINIMUM_VALUE",
+        "MAXIMUM_VALUE",
+        "DEFAULT_VALUE",
+        "OVERFLOW",
+        "OVERLAP",
+        "KEY",
+        "VARIABLE_BIT_SIZE",
     ]
 
     def test_complains_if_a_current_packet_is_not_defined(self):
@@ -132,9 +139,6 @@ class TestPacketConfig(unittest.TestCase):
     def test_complains_if_a_current_item_is_not_defined(self):
         # Check for missing ITEM definitions
         for keyword in TestPacketConfig.item_keywords:
-            if keyword == "META":
-                continue
-
             tf = tempfile.NamedTemporaryFile(mode="w")
             tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
             tf.write(keyword)
@@ -162,7 +166,12 @@ class TestPacketConfig(unittest.TestCase):
             tf.close()
 
         for keyword in TestPacketConfig.item_keywords:
-            if keyword == "GENERIC_READ_CONVERSION_START" or keyword == "GENERIC_WRITE_CONVERSION_START":
+            ignore = ["GENERIC_READ_CONVERSION_START", "GENERIC_WRITE_CONVERSION_START"]
+            # The following have 0 parameters
+            ignore.append("OVERLAP")
+            # The following are command only
+            ignore.extend(["REQUIRED", "MINIMUM_VALUE", "MAXIMUM_VALUE", "DEFAULT_VALUE"])
+            if keyword in ignore:
                 continue
 
             tf = tempfile.NamedTemporaryFile(mode="w")
@@ -253,6 +262,11 @@ class TestPacketConfig(unittest.TestCase):
                 "SEG_POLY_WRITE_CONVERSION",
                 "LIMITS_RESPONSE",
                 "META",
+                # The following are command only
+                "REQUIRED",
+                "MINIMUM_VALUE",
+                "MAXIMUM_VALUE",
+                "DEFAULT_VALUE",
             ]:
                 continue
 
@@ -263,14 +277,19 @@ class TestPacketConfig(unittest.TestCase):
                 case "STATE":
                     tf.write("STATE mystate 0 RED extra\n")
                 case "GENERIC_READ_CONVERSION_START" | "GENERIC_WRITE_CONVERSION_START":
-                    tf.write(f"{keyword} FLOAT 64 extra")
+                    tf.write(f"{keyword} FLOAT 64 extra\n")
                 case "LIMITS":
                     tf.write("LIMITS mylimits 1 ENABLED 0 10 20 30 12 18 20\n")
                 case "UNITS":
                     tf.write("UNITS degrees deg extra\n")
-                case "FORMAT_STRING" | "DESCRIPTION":
-                    tf.write(f"{keyword} 'string' extra")
+                case "FORMAT_STRING" | "DESCRIPTION" | "OVERFLOW" | "KEY":
+                    tf.write(f"{keyword} 'string' extra\n")
+                case "VARIABLE_BIT_SIZE":
+                    tf.write(f"{keyword} LEN 8 0 extra\n")
+                case _:
+                    tf.write(f"{keyword} extra\n")
             tf.seek(0)
+            print(keyword)
             with self.assertRaisesRegex(ConfigParser.Error, f"Too many parameters for {keyword}"):
                 self.pc.process_file(tf.name, "TGT1")
             tf.close()
@@ -508,6 +527,17 @@ class TestPacketConfig(unittest.TestCase):
         self.assertTrue(self.pc.commands["TGT1"]["PKT1"].disabled)
         self.assertFalse(self.pc.commands["TGT1"]["PKT2"].hidden)
         self.assertFalse(self.pc.commands["TGT1"]["PKT2"].disabled)
+        tf.close()
+
+    def test_marks_the_packet_as_a_virtual_packet(self):
+        tf = tempfile.NamedTemporaryFile(mode="w")
+        tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
+        tf.write("VIRTUAL\n")
+        tf.seek(0)
+        self.pc.process_file(tf.name, "TGT1")
+        self.assertTrue(self.pc.telemetry["TGT1"]["PKT1"].hidden)
+        self.assertTrue(self.pc.telemetry["TGT1"]["PKT1"].disabled)
+        self.assertTrue(self.pc.telemetry["TGT1"]["PKT1"].virtual)
         tf.close()
 
     def test_sets_the_accessor_for_the_packet(self):
@@ -793,7 +823,7 @@ class TestPacketConfig(unittest.TestCase):
     def test_handles_bad_tesmplate_files(self):
         tf = tempfile.NamedTemporaryFile(mode="w")
         tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
-        tf.write(f"TEMPLATE_FILE nope.txt\n")
+        tf.write("TEMPLATE_FILE nope.txt\n")
         tf.seek(0)
         with self.assertRaisesRegex(ConfigParser.Error, "No such file or directory"):
             self.pc.process_file(tf.name, "TGT1")
@@ -1094,6 +1124,17 @@ class TestPacketConfig(unittest.TestCase):
             self.pc.telemetry["TGT1"]["PKT1"].get_item("item4").overflow,
             "ERROR_ALLOW_HEX",
         )
+        tf.close()
+
+    def test_sets_the_variable_bit_size_variables(self):
+        tf = tempfile.NamedTemporaryFile(mode="w")
+        tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
+        tf.write("  ITEM item1 0 8 UINT\n")
+        tf.write("    VARIABLE_BIT_SIZE LEN 16 8\n")
+        tf.seek(0)
+        self.pc.process_file(tf.name, "TGT1")
+        vbs = {"length_item_name": "LEN", "length_bits_per_count": 16, "length_value_bit_offset": 8}
+        self.assertEqual(self.pc.telemetry["TGT1"]["PKT1"].get_item("item1").variable_bit_size, vbs)
         tf.close()
 
     def test_allows_item_overlap(self):

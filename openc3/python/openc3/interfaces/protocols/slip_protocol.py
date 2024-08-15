@@ -87,7 +87,7 @@ class SlipProtocol(TerminatedProtocol):
 
     def read_data(self, data, extra=None):
         data, extra = super().read_data(data, extra)
-        if len(data) <= 0 or type(data) is str:
+        if len(data) <= 0 or isinstance(data, str):
             return (data, extra)
 
         if self.read_strip_characters:

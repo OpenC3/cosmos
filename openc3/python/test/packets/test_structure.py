@@ -67,7 +67,7 @@ class TestStructure(unittest.TestCase):
 
 class TestStructureDefineItem(unittest.TestCase):
     def setUp(self):
-        self.s = Structure()
+        self.s = Structure("BIG_ENDIAN")
 
     def test_adds_item_to_items_and_sorted_items(self):
         self.assertIsNone(self.s.items.get("test1"))
@@ -166,7 +166,7 @@ class TestStructureDefineItem(unittest.TestCase):
         self.assertFalse(self.s.fixed_size)
         self.assertEqual(self.s.buffer, b"\x00\x00\x00")
 
-    def test_recalulates_sorted_items_when_adding_multiple_items(self):
+    def test_recalculates_sorted_items_when_adding_multiple_items(self):
         self.s.define_item("test1", 8, 32, "UINT")
         self.assertEqual(self.s.sorted_items[0].name, "TEST1")
         self.assertEqual(self.s.defined_length, 5)
@@ -192,6 +192,44 @@ class TestStructureDefineItem(unittest.TestCase):
         self.assertEqual(self.s.defined_length, 2)
         self.assertTrue(self.s.fixed_size)
         self.assertEqual(self.s.buffer, b"\x00\x00")
+
+    def test_correctly_recalculates_bit_offsets(self):
+        self.s.append_item("item1", 8, "UINT")
+        self.s.append_item("item2", 2, "UINT")
+        item = self.s.append_item("item3", 6, "UINT")
+        item.variable_bit_size = {"length_item_name": "item2", "length_bits_per_count": 8, "length_value_bit_offset": 0}
+        self.s.append_item("item4", 32, "UINT")
+        self.s.append_item("item5", 32, "UINT")
+        self.s.append_item("item6", 8, "UINT")
+        item = self.s.append_item("item7", 0, "STRING")
+        item.variable_bit_size = {"length_item_name": "item6", "length_bits_per_count": 8, "length_value_bit_offset": 0}
+        self.s.append_item("item8", 16, "UINT")
+
+        bit_offsets = []
+        for item in self.s.sorted_items:
+            bit_offsets.append(item.bit_offset)
+        self.assertEqual(bit_offsets, [0, 8, 10, 16, 48, 80, 88, 88])
+
+        self.s.buffer = ("\x00" * self.s.defined_length).encode("LATIN-1")
+
+        bit_offsets = []
+        for item in self.s.sorted_items:
+            bit_offsets.append(item.bit_offset)
+        self.assertEqual(bit_offsets, [0, 8, 10, 16, 48, 80, 88, 88])
+
+        self.s.buffer = "\x00\x80\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00\x00\x00".encode("LATIN-1")
+
+        bit_offsets = []
+        for item in self.s.sorted_items:
+            bit_offsets.append(item.bit_offset)
+        self.assertEqual(bit_offsets, [0, 8, 10, 40, 72, 104, 112, 128])
+
+        self.s.buffer = ("\x00" * 13).encode("LATIN-1")
+
+        bit_offsets = []
+        for item in self.s.sorted_items:
+            bit_offsets.append(item.bit_offset)
+        self.assertEqual(bit_offsets, [0, 8, 10, 16, 48, 80, 88, 88])
 
 
 class TestStructureDefine(unittest.TestCase):
@@ -268,28 +306,6 @@ class TestStructureAppendItem(unittest.TestCase):
         self.assertEqual(self.s.sorted_items[1].name, "TEST2")
         self.assertEqual(self.s.defined_length, 4)
 
-    def test_complains_if_appending_after_a_variably_sized_item(self):
-        self.s.define_item("test1", 0, 0, "BLOCK")
-        self.assertRaisesRegex(
-            AttributeError,
-            "Can't append an item after a variably sized item",
-            self.s.append_item,
-            "test2",
-            8,
-            "UINT",
-        )
-
-    def test_complains_if_appending_after_a_variably_sized_array(self):
-        self.s.define_item("test1", 0, 8, "UINT", -8)
-        self.assertRaisesRegex(
-            AttributeError,
-            "Can't append an item after a variably sized item",
-            self.s.append_item,
-            "test2",
-            8,
-            "UINT",
-        )
-
 
 class TestStructureAppend(unittest.TestCase):
     def setUp(self):
@@ -305,16 +321,6 @@ class TestStructureAppend(unittest.TestCase):
         self.assertEqual(self.s.sorted_items[1].name, "TEST2")
         self.assertEqual(self.s.defined_length, 3)
 
-    def test_complains_if_appending_after_a_variably_sized_define_item(self):
-        self.s.define_item("test1", 0, 0, "BLOCK")
-        item = StructureItem("test2", 0, 16, "UINT", "BIG_ENDIAN")
-        self.assertRaisesRegex(
-            AttributeError,
-            "Can't append an item after a variably sized item",
-            self.s.append,
-            item,
-        )
-
 
 class TestStructureGetItem(unittest.TestCase):
     def setUp(self):
@@ -325,9 +331,7 @@ class TestStructureGetItem(unittest.TestCase):
         self.assertIsNotNone(self.s.get_item("test1"))
 
     def test_complains_if_an_item_doesnt_exist(self):
-        self.assertRaisesRegex(
-            AttributeError, "Unknown item: test2", self.s.get_item, "test2"
-        )
+        self.assertRaisesRegex(AttributeError, "Unknown item: test2", self.s.get_item, "test2")
 
 
 class TestStructureSetItem(unittest.TestCase):
@@ -362,9 +366,7 @@ class TestStructureDeleteItem(unittest.TestCase):
         self.s.append_item("test2", 16, "UINT")
         self.assertEqual(self.s.defined_length, 3)
         self.s.delete_item("test1")
-        self.assertRaisesRegex(
-            AttributeError, "Unknown item: test1", self.s.get_item, "test1"
-        )
+        self.assertRaisesRegex(AttributeError, "Unknown item: test1", self.s.get_item, "test1")
         self.assertEqual(self.s.defined_length, 3)
         self.assertIsNone(self.s.items.get("TEST1"))
         self.assertIsNotNone(self.s.items["TEST2"])
@@ -447,9 +449,7 @@ class TestStructureWriteItem(unittest.TestCase):
 
 class TestStructureRead(unittest.TestCase):
     def test_complains_if_item_doesnt_exist(self):
-        self.assertRaisesRegex(
-            AttributeError, "Unknown item: BLAH", Structure().read, "BLAH"
-        )
+        self.assertRaisesRegex(AttributeError, "Unknown item: BLAH", Structure().read, "BLAH")
 
     def test_reads_data_from_the_buffer(self):
         s = Structure()
@@ -600,17 +600,13 @@ class TestStructureBuffer(unittest.TestCase):
     def test_complains_if_the_given_buffer_is_too_small(self):
         s = Structure("BIG_ENDIAN")
         s.append_item("test1", 16, "UINT")
-        with self.assertRaisesRegex(
-            AttributeError, "Buffer length less than defined length"
-        ):
+        with self.assertRaisesRegex(AttributeError, "Buffer length less than defined length"):
             s.buffer = b"\x00"
 
     def test_complains_if_the_given_buffer_is_too_big(self):
         s = Structure("BIG_ENDIAN")
         s.append_item("test1", 16, "UINT")
-        with self.assertRaisesRegex(
-            AttributeError, "Buffer length greater than defined length"
-        ):
+        with self.assertRaisesRegex(AttributeError, "Buffer length greater than defined length"):
             s.buffer = b"\x00\x00\x00"
 
     def test_does_not_complain_if_the_given_buffer_is_too_big_and_were_not_fixed_length(

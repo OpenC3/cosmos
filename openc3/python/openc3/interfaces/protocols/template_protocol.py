@@ -219,7 +219,7 @@ class TemplateProtocol(TerminatedProtocol):
         raw_packet = Packet(None, None)
         raw_packet.buffer = bytes(self.template, "ascii")
         raw_packet = super().write_packet(raw_packet)
-        if type(raw_packet) is str:
+        if isinstance(raw_packet, str):
             return raw_packet
 
         data = raw_packet.buffer

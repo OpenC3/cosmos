@@ -532,7 +532,7 @@ class InterfaceMicroservice(Microservice):
                             if not self.interface.connected():
                                 self.handle_connection_lost()
         except RuntimeError as error:
-            if type(error) != SystemExit:  # or signal exception
+            if not isinstance(error, SystemExit):  # or signal exception
                 self.logger.error(f"{self.interface.name}: Packet reading thread died: {repr(error)}")
                 # handle_fatal_exception(error)
             # Try to do clean disconnect because we're going down
