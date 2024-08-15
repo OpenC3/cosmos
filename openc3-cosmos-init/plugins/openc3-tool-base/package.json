@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@astrouxds/astro-web-components": "7.22.1",
-    "@rails/actioncable": "7.2.0",
+    "@rails/actioncable": "7.1.3-4",
     "axios": "1.7.4",
     "date-fns": "3.6.0",
     "import-map-overrides": "3.1.1",
