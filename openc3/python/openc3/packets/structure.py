@@ -560,7 +560,9 @@ class Structure:
                     or item.original_bit_size <= 0
                     or (item.original_array_size and item.original_array_size <= 0)
                 ):
-                    adjustment += self.calculate_total_bit_size(item)
+                    new_bit_size = self.calculate_total_bit_size(item)
+                    if item.original_bit_size != new_bit_size:
+                        adjustment += new_bit_size - item.original_bit_size
 
     def internal_buffer_equals(self, buffer):
         if not isinstance(buffer, (bytes, bytearray)):

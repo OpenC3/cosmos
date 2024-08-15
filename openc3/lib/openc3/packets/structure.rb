@@ -618,7 +618,10 @@ module OpenC3
         if item.original_bit_offset >= 0
           item.bit_offset = item.original_bit_offset + adjustment
           if item.data_type != :DERIVED and (item.variable_bit_size or item.original_bit_size <= 0 or (item.original_array_size and item.original_array_size <= 0))
-            adjustment += calculate_total_bit_size(item)
+            new_bit_size = calculate_total_bit_size(item)
+            if item.original_bit_size != new_bit_size
+              adjustment += (new_bit_size - item.original_bit_size)
+            end
           end
         end
       end

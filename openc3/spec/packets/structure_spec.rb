@@ -171,6 +171,28 @@ module OpenC3
         expect(s.read("test4")).to eql 0xBB66
       end
 
+      it "correctly recalculates bit offsets" do
+        s = Structure.new(:BIG_ENDIAN)
+        s.append_item("item1", 8, :UINT)
+        s.append_item("item2", 2, :UINT)
+        item = s.append_item("item3", 6, :UINT)
+        item.variable_bit_size = {'length_item_name' => "item2", 'length_bits_per_count' => 8, 'length_value_bit_offset' => 0}
+        s.append_item("item4", 32, :UINT)
+        s.append_item("item5", 32, :UINT)
+        s.append_item("item6", 8, :UINT)
+        item = s.append_item("item7", 0, :STRING)
+        item.variable_bit_size = {'length_item_name' => "item6", 'length_bits_per_count' => 8, 'length_value_bit_offset' => 0}
+        s.append_item("item8", 16, :UINT)
+
+        bit_offsets = s.sorted_items.map {|si| si.bit_offset}
+        expect(bit_offsets).to eql [0, 8, 10, 16, 48, 80, 88, 88]
+
+        s.buffer = "\x00" * s.defined_length
+
+        bit_offsets = s.sorted_items.map {|si| si.bit_offset}
+        expect(bit_offsets).to eql [0, 8, 10, 16, 48, 80, 88, 88]
+      end
+
       it "handles blocks" do
         s = Structure.new(:BIG_ENDIAN)
         s.append_item("ccsdsheader", 32, :UINT)

@@ -43,7 +43,7 @@ export default {
     },
   },
   created: function () {
-    // TODO: We're hard coding COVERTED because the existing 4th parameter is the image format
+    // TODO: We're hard coding CONVERTED because the existing 4th parameter is the image format
     // Future breaking change would be to put the type as 4th and format as fifth
     this.valueId = `${this.parameters[0]}__${this.parameters[1]}__${this.parameters[2]}__CONVERTED`
     this.screen.addItem(this.valueId)
