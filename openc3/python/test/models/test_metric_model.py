@@ -35,8 +35,8 @@ class TestMetricModel(unittest.TestCase):
     def test_returns_all_the_metrics(self):
         model = MetricModel(name= "foo", scope= "scope", values= {"test" : {"value" : 5}})
         model.create(force= True)
-        all = MetricModel.all(scope= "scope")
-        self.assertEqual(all["foo"]["values"]["test"]["value"], (5))
+        all_metrics = MetricModel.all(scope= "scope")
+        self.assertEqual(all_metrics["foo"]["values"]["test"]["value"], (5))
 
     def test_encodes_all_the_input_parameters(self):
         model = MetricModel(name= "foo", scope= "scope", values= {"test" : {"value" : 5}})
@@ -44,23 +44,19 @@ class TestMetricModel(unittest.TestCase):
         self.assertEqual(json["name"], ("foo"))
 
     def test_gets_by_name_in_scope(self):
-        model = MetricModel(name= "baz", scope= "scope", values= {"test ": {"value" :6}})
-        model.create
+        MetricModel(name= "baz", scope= "scope", values= {"test ": {"value" :6}})
         result = MetricModel.get(name= "baz", scope= "scope")
         self.assertIsNone(result) #self.assertEqual(result['name'], ('baz'))
 
     def test_destroys_by_name_in_scope(self):
-        model = MetricModel(name= "baz", scope= "scope", values= {"test ": {"value" :6}})
-        model.create
-        model = MetricModel(name= "bOz", scope= "scope", values= {"test ": {"value" :6}})
-        model.create
+        MetricModel(name= "baz", scope= "scope", values= {"test ": {"value" :6}})
+        MetricModel(name= "bOz", scope= "scope", values= {"test ": {"value" :6}})
         MetricModel.destroy(scope= 'scope', name= 'baz')
         result = MetricModel.get(name= "baz", scope= "scope")
         self.assertIsNone(result)
 
     def test_returns_all_names(self):
-        model = MetricModel(name= 'baz', scope= "scope", values= {"test ": {"value" :6}})
-        model.create
+        MetricModel(name= 'baz', scope= "scope", values= {"test ": {"value" :6}})
         result = MetricModel.names(scope= "scope")
         self.assertListEqual(result, []) #self.assertEqual(result[0], ('baz'))
 
@@ -80,7 +76,7 @@ class TestMetricModel(unittest.TestCase):
         json = {}
         json['name'] = 'all'
         json['values'] = values
-        model = MetricModel.set(json, scope= 'scope')
+        MetricModel.set(json, scope= 'scope')
 
         # awaiting FakeRedis support for the server INFO command
         # allow(openc3.Store.instance).to receive(:info) do

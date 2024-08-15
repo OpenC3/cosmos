@@ -40,8 +40,8 @@ class TestToolConfigModel(unittest.TestCase):
         #) # message (/Read-only file system self. dir_s_mkdir - \/plugins/)
 
     def test_self_list_configs(self):
-        all = ToolConfigModel.list_configs('toolie', scope= 'DEFAULT')
-        self.assertEqual(all, []) # eq('ps')
+        all_tc = ToolConfigModel.list_configs('toolie', scope= 'DEFAULT')
+        self.assertEqual(all_tc, []) # eq('ps')
 
     def test_self_config_tool_names(self):
         names = ToolConfigModel.config_tool_names(scope= 'DEFAULT')

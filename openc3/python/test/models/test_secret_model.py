@@ -30,7 +30,6 @@ class TestSecretModel(unittest.TestCase):
 
     def test_creates_new(self):
         model = SecretModel(name= 'secret', value= 'tacit', scope= 'DEFAULT')
-        model.create
         self.assertIsInstance(model, SecretModel)
 
     def test_self_get(self):
@@ -38,8 +37,8 @@ class TestSecretModel(unittest.TestCase):
         self.assertIsNone(name) # eq('secret')
 
     def test_self_all(self):
-        all = SecretModel.all(scope= 'DEFAULT')
-        self.assertEqual(all, {}) # eq('secret')
+        all_secrets = SecretModel.all(scope= 'DEFAULT')
+        self.assertEqual(all_secrets, {}) # eq('secret')
 
     def test_self_names(self):
         names = SecretModel.names(scope= 'DEFAULT')

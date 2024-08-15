@@ -38,8 +38,8 @@ class TestStashModel(unittest.TestCase):
         self.assertIsNone(name) # eq('sm')
 
     def test_self_all(self):
-        all = StashModel.all(scope= 'DEFAULT')
-        self.assertEqual(all, {}) # eq('sm')
+        all_stash = StashModel.all(scope= 'DEFAULT')
+        self.assertEqual(all_stash, {}) # eq('sm')
 
     def test_self_names(self):
         names = StashModel.names(scope= 'DEFAULT')

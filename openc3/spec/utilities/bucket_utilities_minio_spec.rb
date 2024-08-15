@@ -29,7 +29,7 @@ module OpenC3
     #   ports:
     #     - "127.0.0.1:9000:9000"
 
-    # FIXME: checking for a port listener doesn't work right here, so force reset the Client double
+    # checking for a port listener doesn't work right here, so force reset the Client double
       local_s3()
       local_s3_unset()
 

@@ -122,11 +122,9 @@ module LocalS3
       # bucket query
       fullpath = File.expand_path(File.join(@fs_root, bucket.name))
       filenames = Dir.glob(File.join(fullpath, "**/*")).sort
-=begin
       if (con_token)
         filenames = filenames.sort.select {|fname| !(fname.nil?) && fname >= con_token}
       end
-=end
       contents = []
       filenames.each do |fname|
         if (!File.directory?(fname))
@@ -171,7 +169,7 @@ module LocalS3
     def put_object(bucket:, key:, body:, content_type:, cache_control:, metadata:, checksum_algorithm:)
       bucket_obj = get_bucket(bucket)
       if !bucket_obj
-        # Lazily create a bucket.  TODO fix this to return the proper error
+        # Lazily create a bucket.  Make this return the proper error.
         bucket_obj = create_bucket(bucket)
       end
       # ignores args[:metadata] for now
@@ -185,7 +183,7 @@ module LocalS3
     end
 
     def get_objects(args)
-      # TODO:
+      # August 15, 2024
     end
 
     def wait_until(waiter, args, opts)
@@ -200,6 +198,8 @@ module LocalS3
           sleep(delay)
         end
         raise Aws::Waiters::Errors::TooManyAttemptsError.new(max_attempts)
+      else
+        false
       end
       false
     end
