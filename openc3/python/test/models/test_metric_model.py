@@ -22,7 +22,7 @@
 import time
 import unittest
 import fakeredis
-from unittest.mock import *
+import unittest.mock
 from test.test_helper import *
 from openc3.models.metric_model import MetricModel
 from openc3.conversions.generic_conversion import GenericConversion

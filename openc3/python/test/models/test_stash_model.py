@@ -18,7 +18,7 @@
 
 import time
 import unittest
-from unittest.mock import *
+import unittest.mock
 from test.test_helper import *
 from openc3.models.stash_model import StashModel
 from openc3.conversions.generic_conversion import GenericConversion
