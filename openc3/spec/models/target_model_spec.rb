@@ -28,7 +28,7 @@ require 'openc3/utilities/aws_bucket'
 require 'openc3/utilities/s3_autoload'
 
 module OpenC3
-  AwsS3Client = Aws::S3::Client
+  AwsS3Client = 'Aws::S3::Client'
 
   describe TargetModel, type: :model do
     before(:each) do
@@ -96,8 +96,8 @@ module OpenC3
 
     describe "self.all_modified" do
       xit "returns all the modified targets" do
-        s3 = instance_double("Aws::S3::Client")
-        allow(AwsS3Client).to receive(:new).and_return(s3)
+        s3 = instance_double(AwsS3Client)
+        allow(Aws::S3::Client).to receive(:new).and_return(s3)
         options = OpenStruct.new
         options.key = "blah"
         objs = double("Object", :contents => [options], is_truncated: false)
@@ -117,8 +117,8 @@ module OpenC3
 
     describe "self.modified_files" do
       xit "returns all the modified files" do
-        s3 = instance_double("Aws::S3::Client")
-        allow(AwsS3Client).to receive(:new).and_return(s3)
+        s3 = instance_double(AwsS3Client)
+        allow(Aws::S3::Client).to receive(:new).and_return(s3)
         options = OpenStruct.new
         options.key = "blah"
         objs = double("Object", :contents => [options], is_truncated: false)
@@ -136,8 +136,8 @@ module OpenC3
 
     describe "self.delete_modified" do
       it "returns all the deleted or modified whatnots" do
-        s3 = instance_double("Aws::S3::Client")
-        allow(AwsS3Client).to receive(:new).and_return(s3)
+        s3 = instance_double(AwsS3Client)
+        allow(Aws::S3::Client).to receive(:new).and_return(s3)
         options = OpenStruct.new
         options.key = "blah"
         objs = double("Object", :contents => [options], is_truncated: false)
@@ -169,8 +169,8 @@ UTF-8
 
     describe "self.download" do
       xit "returns all the downloads" do
-        s3 = instance_double("Aws::S3::Client")
-        allow(AwsS3Client).to receive(:new).and_return(s3)
+        s3 = instance_double(AwsS3Client)
+        allow(Aws::S3::Client).to receive(:new).and_return(s3)
         options = OpenStruct.new
         options.key = "DEFAULT"
         objs = double("Object", :contents => [options], is_truncated: false)
@@ -524,9 +524,9 @@ UTF-8
       before(:each) do
         @scope = "DEFAULT"
         @target = "INST"
-        @s3 = instance_double("Aws::S3::Client") # .as_null_object
+        @s3 = instance_double(AwsS3Client) # .as_null_object
         allow(@s3).to receive(:put_object)
-        allow(AwsS3Client).to receive(:new).and_return(@s3)
+        allow(Aws::S3::Client).to receive(:new).and_return(@s3)
         @target_dir = File.join(SPEC_DIR, "install", "config")
       end
 
@@ -709,11 +709,11 @@ UTF-8
 
     describe "destroy" do
       before(:each) do
-        @s3 = instance_double("Aws::S3::Client")
+        @s3 = instance_double(AwsS3Client)
         allow(@s3).to receive(:put_object)
         objs = double("Object", :contents => [], is_truncated: false)
         allow(@s3).to receive(:list_objects_v2).and_return(objs)
-        allow(AwsS3Client).to receive(:new).and_return(@s3)
+        allow(Aws::S3::Client).to receive(:new).and_return(@s3)
         @target_dir = File.join(SPEC_DIR, "install", "config")
       end
 
