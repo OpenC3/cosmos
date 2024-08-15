@@ -158,7 +158,7 @@ module OpenC3
       end
     end
 
-    xdescribe 'list_objects' do
+    describe 'list_objects' do
       it "returns an array of objects" do
         client.put_object(bucket: @bucket, key: 'DEFAULT/test1', body: 'contents1')
         client.put_object(bucket: @bucket, key: 'DEFAULT/test2', body: 'contents2')
@@ -173,12 +173,12 @@ module OpenC3
       end
     end
 
-    xdescribe 'list_files' do
+    describe 'list_files' do
       it "returns BucketNotFound if the bucket doesn't exist" do
         expect { client.list_files(bucket: "NOPE", path: "") }.to raise_error(Bucket::NotFound, "Bucket 'NOPE' does not exist.")
       end
 
-      it "lists the root" do
+      xit "lists the root" do
         client.put_object(bucket: @bucket, key: 'DEFAULT/targets_modified/root.txt', body: 'contents0')
         dirs, files = client.list_files(bucket: @bucket, path: "") # Empty path
         expect(dirs.length).to eql 1
@@ -191,7 +191,7 @@ module OpenC3
         client.delete_object(bucket: @bucket, key: 'DEFAULT/targets_modified/root.txt')
       end
 
-      it "lists files under a path" do
+      xit "lists files under a path" do
         client.put_object(bucket: @bucket, key: 'DEFAULT/targets_modified/root.txt', body: 'contents0')
         client.put_object(bucket: @bucket, key: 'DEFAULT/targets_modified/INST/file1.txt', body: 'contents1')
         client.put_object(bucket: @bucket, key: 'DEFAULT/targets_modified/INST/file2.txt', body: 'contents2')
@@ -221,7 +221,7 @@ module OpenC3
         client.delete_object(bucket: @bucket, key: 'DEFAULT/targets_modified/OTHER/file3.txt')
       end
 
-      it "lists only directories under a path" do
+      xit "lists only directories under a path" do
         client.put_object(bucket: @bucket, key: 'DEFAULT/targets_modified/root.txt', body: 'contents0')
         client.put_object(bucket: @bucket, key: 'DEFAULT/targets_modified/INST/file1.txt', body: 'contents1')
         client.put_object(bucket: @bucket, key: 'DEFAULT/targets_modified/INST/file2.txt', body: 'contents2')
@@ -236,8 +236,8 @@ module OpenC3
       end
     end
 
-    xdescribe 'delete_objects' do
-      it "deletes an array of object keys" do
+    describe 'delete_objects' do
+      xit "deletes an array of object keys" do
         client.put_object(bucket: @bucket, key: 'test1', body: 'contents1')
         client.put_object(bucket: @bucket, key: 'test2', body: 'contents2')
         client.put_object(bucket: @bucket, key: 'test3', body: 'contents3')
