@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -32,11 +32,12 @@ test.beforeEach(async ({ page, utils }) => {
   })
 })
 
-async function showScreen(page, target, screen, callback = null) {
+async function showScreen(page, utils, target, screen, callback = null) {
   await page.locator('div[role="button"]:has-text("Select Target")').click()
   await page.locator(`.v-list-item__title:text-is("${target}")`).click()
   await page.locator('div[role="button"]:has-text("Select Screen")').click()
   await page.locator(`.v-list-item__title:text-is("${screen}")`).click()
+  await utils.sleep(500) // Allow screen to display so we don't double display
   await page.locator('[data-test="show-screen"]').click()
   await expect(
     page.locator(`.v-system-bar:has-text("${target} ${screen}")`),
@@ -61,19 +62,19 @@ test('changes targets', async ({ page, utils }) => {
 })
 
 test('displays INST ADCS', async ({ page, utils }) => {
-  await showScreen(page, 'INST', 'ADCS')
+  await showScreen(page, utils, 'INST', 'ADCS')
 })
 
 test('displays INST ARRAY', async ({ page, utils }) => {
-  await showScreen(page, 'INST', 'ARRAY')
+  await showScreen(page, utils, 'INST', 'ARRAY')
 })
 
 test('displays INST BLOCK', async ({ page, utils }) => {
-  await showScreen(page, 'INST', 'BLOCK')
+  await showScreen(page, utils, 'INST', 'BLOCK')
 })
 
 test('displays INST COMMANDING', async ({ page, utils }) => {
-  await showScreen(page, 'INST', 'COMMANDING', async function () {
+  await showScreen(page, utils, 'INST', 'COMMANDING', async function () {
     await page.getByRole('button', { name: 'NORMAL' }).click()
     await page.getByRole('option', { name: 'NORMAL' }).click()
     await page.getByRole('button', { name: 'Start Collect' }).click()
@@ -98,15 +99,15 @@ test('displays INST COMMANDING', async ({ page, utils }) => {
 })
 
 test('displays INST GRAPHS', async ({ page, utils }) => {
-  await showScreen(page, 'INST', 'GRAPHS')
+  await showScreen(page, utils, 'INST', 'GRAPHS')
 })
 
 test('displays INST GROUND', async ({ page, utils }) => {
-  await showScreen(page, 'INST', 'GROUND')
+  await showScreen(page, utils, 'INST', 'GROUND')
 })
 
 test('displays INST HS', async ({ page, utils }) => {
-  await showScreen(page, 'INST', 'HS', async function () {
+  await showScreen(page, utils, 'INST', 'HS', async function () {
     await expect(page.locator('text=Health and Status')).toBeVisible()
     await page.locator('[data-test=minimize-screen-icon]').click()
     await expect(page.locator('text=Health and Status')).not.toBeVisible()
@@ -116,11 +117,11 @@ test('displays INST HS', async ({ page, utils }) => {
 })
 
 test('displays INST IMAGE', async ({ page, utils }) => {
-  await showScreen(page, 'INST', 'IMAGE')
+  await showScreen(page, utils, 'INST', 'IMAGE')
 })
 
 test('displays INST LATEST', async ({ page, utils }) => {
-  await showScreen(page, 'INST', 'LATEST')
+  await showScreen(page, utils, 'INST', 'LATEST')
 })
 
 test('displays INST LAUNCHER', async ({ page, utils }) => {
@@ -161,24 +162,24 @@ test('displays INST LAUNCHER', async ({ page, utils }) => {
 })
 
 test('displays INST LIMITS', async ({ page, utils }) => {
-  await showScreen(page, 'INST', 'LIMITS')
+  await showScreen(page, utils, 'INST', 'LIMITS')
 })
 
 test('displays INST OTHER', async ({ page, utils }) => {
-  await showScreen(page, 'INST', 'OTHER')
+  await showScreen(page, utils, 'INST', 'OTHER')
 })
 
 test('displays INST PARAMS', async ({ page, utils }) => {
-  await showScreen(page, 'INST', 'PARAMS')
+  await showScreen(page, utils, 'INST', 'PARAMS')
 })
 
 test('displays INST ROLLUP', async ({ page, utils }) => {
-  await showScreen(page, 'INST', 'ROLLUP')
+  await showScreen(page, utils, 'INST', 'ROLLUP')
 })
 
 test('displays INST SIMPLE', async ({ page, utils }) => {
   const text = 'TEST' + Math.floor(Math.random() * 10000)
-  await showScreen(page, 'INST', 'SIMPLE', async function () {
+  await showScreen(page, utils, 'INST', 'SIMPLE', async function () {
     await expect(page.locator(`text=${text}`)).not.toBeVisible()
     await page.locator('[data-test=edit-screen-icon]').click()
     await page.locator('textarea').fill(`
@@ -208,11 +209,11 @@ test('displays INST SIMPLE', async ({ page, utils }) => {
 })
 
 test('displays INST TABS', async ({ page, utils }) => {
-  await showScreen(page, 'INST', 'TABS')
+  await showScreen(page, utils, 'INST', 'TABS')
 })
 
 test('displays INST WEB', async ({ page, utils }) => {
-  await showScreen(page, 'INST', 'WEB')
+  await showScreen(page, utils, 'INST', 'WEB')
 })
 
 // Create the screen name as upcase because OpenC3 upcases the name

@@ -15,20 +15,20 @@
   "dependencies": {
     "@emotion/react": "^11.11.3",
     "@emotion/styled": "^11.11.0",
-    "@mui/material": "^5.15.3",
+    "@mui/material": "^5.16.7",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "single-spa-react": "^5.1.4"
   },
   "devDependencies": {
-    "@babel/core": "^7.23.7",
-    "@babel/eslint-parser": "^7.23.3",
+    "@babel/core": "^7.25.2",
+    "@babel/eslint-parser": "^7.25.1",
     "@babel/plugin-transform-runtime": "^7.23.7",
-    "@babel/preset-env": "^7.23.8",
+    "@babel/preset-env": "^7.25.3",
     "@babel/preset-react": "^7.23.3",
-    "@babel/runtime": "^7.23.8",
-    "@testing-library/jest-dom": "^6.2.0",
-    "@testing-library/react": "^14.1.2",
+    "@babel/runtime": "^7.25.0",
+    "@testing-library/jest-dom": "^6.4.8",
+    "@testing-library/react": "^16.0.0",
     "babel-jest": "^29.7.0",
     "concurrently": "^8.2.2",
     "cross-env": "^7.0.3",
@@ -45,6 +45,6 @@
     "webpack-cli": "^5.1.4",
     "webpack-config-single-spa-react": "^4.0.5",
     "webpack-dev-server": "^5.0.4",
-    "webpack-merge": "^5.10.0"
+    "webpack-merge": "^6.0.1"
   }
 }
