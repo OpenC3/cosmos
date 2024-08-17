@@ -181,33 +181,41 @@ The Ignore Packet protocol drops specified command packets sent by COSMOS or dro
 
 Creating a custom protocol is easy and should be the default solution for customizing COSMOS Interfaces (rather than creating a new Interface class). However, creating custom Interfaces is still useful for defaulting parameters to values that always are fixed for your target and for including the necessary Protocols. The base COSMOS Interfaces take a lot of parameters that can be confusing to your end users. Thus you may want to create a custom Interface just to hard coded these values and cut the available parameters down to something like the hostname and port to connect to.
 
-All custom Protocols should derive from the Protocol class found in the COSMOS gem at [lib/openc3/interfaces/protocols/protocol.rb](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/interfaces/protocols/protocol.rb). This class defines the 9 methods that are relevant to writing your own protocol. The base class implementation for each method is included below as well as a discussion as to how the methods should be overridden and used in your own Protocols.
+All custom Protocols should derive from the Protocol class [openc3/interfaces/protocols/protocol.rb](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/interfaces/protocols/protocol.rb) (Ruby) and [openc3/interfaces/protocols/protocol.py](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/interfaces/protocols/protocol.py) (Python). This class defines the 9 methods that are relevant to writing your own protocol. The base class implementation for each method is included below as well as a discussion as to how the methods should be overridden and used in your own Protocols.
 
-:::info Protocol APIs
+:::info Ruby Protocol APIs
 Protocols should not `require 'openc3/script'` since they are part of a COSMOS interface. They should use the COSMOS library code directly like [System](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/system/system.rb), [Packet](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/packets/packet.rb), [Bucket](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/utilities/bucket.rb), [BinaryAccessor](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/accessors/binary_accessor.rb), etc. When in doubt, consult the existing COSMOS [protocol](https://github.com/OpenC3/cosmos/tree/main/openc3/lib/openc3/interfaces/protocols) classes.
+:::
+
+:::info Python Protocol APIs
+Protocols should not `from openc3.script import *` since they are part of a COSMOS interface. They should use the COSMOS library code directly like [System](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/system/system.py), [Packet](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/packets/packet.py), [Bucket](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/utilities/bucket.py), [BinaryAccessor](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/accessors/binary_accessor.py), etc. When in doubt, consult the existing COSMOS [protocol](https://github.com/OpenC3/cosmos/tree/main/openc3/python/openc3/interfaces/protocols) classes.
 :::
 
 To really understand how Protocols work, you first must understand the logic within the base Interface class read and write methods.
 
 Let's first discuss the read method.
 
+:::info Ruby Symbols, Python Strings
+In the following discussions an all caps word is a symbol in Ruby and a string in Python. So a reference to STOP means :STOP in Ruby and "STOP" in Python.
+:::
+
 ![Interface Read Logic](/img/interface_read_logic.png)
 
-On EVERY call to read, an empty Ruby string "" is first passed down to each of the read Protocol's read_data() method BEFORE new raw data is attempted to be read using the Interface's read_interface() method. This is a signal to Protocols that have cached up more than one packet worth of data to output those cached packets before any new data is read from the Interface. Typically no data will be cached up and one of the Protocols read_data() methods will return :STOP in response to the empty string, indicating that more data is required to generate a packet. Each Protocol's read_data() method can return one of three things: data that will be passed down to any additional Protocols or turned into a Packet, :STOP which means more data is required from the Interface for the Protocol to continue, or :DISCONNECT which means that something has happened that requires disconnecting the Interface (and by default trying to reconnect). Each Protocol's read_data method is passed the data that will eventually be turned into a packet and returns a possibly modified set of data. If the data passes through all Protocol's read_data() methods it is then converted into a COSMOS packet using the Interface's convert_data_to_packet() method. This packet is then run in a similar fashion through each Read Protocol's read_packet() method. This method has essentially the same return possibilities: a Packet (instead of data as in read_data()), :STOP, or :DISCONNECT. If the Packet makes it through all read_packet() methods then the Interface packet read counter is incremented and the Packet is returned to the Interface.
+On _every_ call to read, an empty string "" is first passed down to each of the read Protocol's `read_data()` method _before_ new raw data is attempted to be read using the Interface's `read_interface()` method. This is a signal to Protocols that have cached up more than one packet worth of data to output those cached packets before any new data is read from the Interface. Typically no data will be cached up and one of the Protocols `read_data()` methods will return STOP in response to the empty string, indicating that more data is required to generate a packet. Each Protocol's `read_data()` method can return one of three things: data that will be passed down to any additional Protocols or turned into a Packet, STOP which means more data is required from the Interface for the Protocol to continue, or DISCONNECT which means that something has happened that requires disconnecting the Interface (and by default trying to reconnect). Each Protocol's `read_data()` method is passed the data that will eventually be turned into a packet and returns a possibly modified set of data. If the data passes through all Protocol's `read_data()` methods it is then converted into a COSMOS packet using the Interface's convert_data_to_packet() method. This packet is then run in a similar fashion through each Read Protocol's read_packet() method. This method has essentially the same return possibilities: a Packet (instead of data as in `read_data()`), STOP, or DISCONNECT. If the Packet makes it through all read_packet() methods then the Interface packet read counter is incremented and the Packet is returned to the Interface.
 
 ![Interface Write Logic](/img/interface_write_logic.png)
 
 The Interface write() method works very similarly to read. (It should be mentioned that by default write protocols run in the reverse order of read protocols. This makes sense because when reading you're typically stripping layers of data and when writing you're typically adding on layers in reverse order.)
 
-First, the packet write counter is incremented. Then each write Protocol is given a chance to modify the packet by its write_packet() method being called. This method can either return a potentially modified packet, :STOP, or :DISCONNECT. If a write Protocol returns :STOP no data will be written out the Interface and it is assumed that more packets are necessary before a final packet can be output. :DISCONNECT will disconnect the Interface. If the packet makes it through all the write Protocol's write_packet() methods, then it is converted to binary data using the Interface's convert_packet_to_data() method. Next the write_data() method is called for each write Protocol giving it a chance to modify the lower level data. The same return options are available except a Ruby string of data is returned instead of a COSMOS packet. If the data makes it through all write_data() methods, then it is written out on the Interface using the write_interface() method. Afterwards, each Protocol's post_write_interface() method is called with both the final modified Packet, and the actual data written out to the Interface. This method allows follow-up such as waiting for a response after writing out a message.
+First, the packet write counter is incremented. Then each write Protocol is given a chance to modify the packet by its write_packet() method being called. This method can either return a potentially modified packet, STOP, or DISCONNECT. If a write Protocol returns STOP no data will be written out the Interface and it is assumed that more packets are necessary before a final packet can be output. DISCONNECT will disconnect the Interface. If the packet makes it through all the write Protocol's write_packet() methods, then it is converted to binary data using the Interface's convert_packet_to_data() method. Next the write_data() method is called for each write Protocol giving it a chance to modify the lower level data. The same return options are available except a Ruby string of data is returned instead of a COSMOS packet. If the data makes it through all write_data() methods, then it is written out on the Interface using the write_interface() method. Afterwards, each Protocol's post_write_interface() method is called with both the final modified Packet, and the actual data written out to the Interface. This method allows follow-up such as waiting for a response after writing out a message.
 
 ## Method discussions
 
-### initialize
+### initialize or **init**
 
 This is the constructor for your custom Protocol. It should always call super(allow_empty_data) to initialize the base Protocol class.
 
-Base class implementation:
+Base class Ruby implementation:
 
 ```ruby
 # @param allow_empty_data [true/false] Whether STOP should be returned on empty data
@@ -218,17 +226,33 @@ def initialize(allow_empty_data = false)
 end
 ```
 
-As you can see, every Protocol maintains state on at least two items. @interface holds the Interface class instance that the protocol is associated with. This is sometimes necessary to introspect details that only the Interface knows. @allow_empty_data is a flag used by the read_data(data) method that is discussed later in this document.
+Base class Python implementation:
+
+```python
+def __init__(self, allow_empty_data=None):
+    self.interface = None
+    self.allow_empty_data = ConfigParser.handle_true_false_none(allow_empty_data)
+    self.reset()
+```
+
+As you can see, every Protocol maintains state on at least two items. The interface variable holds the Interface class instance that the protocol is associated with. This is sometimes necessary to introspect details that only the Interface knows. allow_empty_data is a flag used by the `read_data(data)` method that is discussed later in this document.
 
 ### reset
 
 The reset method is used to reset internal protocol state when the Interface is connected and/or disconnected. This method should be used for common resetting logic. Connect and Disconnect specific logic are handled in the next two methods.
 
-Base class implementation:
+Base class Ruby implementation:
 
 ```ruby
 def reset
 end
+```
+
+Base class Python implementation:
+
+```python
+def reset(self):
+    pass
 ```
 
 As you can see, the base class reset implementation doesn't do anything.
@@ -237,12 +261,19 @@ As you can see, the base class reset implementation doesn't do anything.
 
 The connect_reset method is used to reset internal Protocol state each time the Interface is connected.
 
-Base class implementation:
+Base class Ruby implementation:
 
 ```ruby
 def connect_reset
   reset()
 end
+```
+
+Base class Python implementation:
+
+```python
+def connect_reset(self):
+    self.reset()
 ```
 
 The base class connect_reset implementation just calls the reset method to ensure common reset logic is run.
@@ -251,7 +282,7 @@ The base class connect_reset implementation just calls the reset method to ensur
 
 The disconnect_reset method is used to reset internal Protocol state each time the Interface is disconnected.
 
-Base class implementation:
+Base class Ruby implementation:
 
 ```ruby
 def disconnect_reset
@@ -259,13 +290,20 @@ def disconnect_reset
 end
 ```
 
+Base class Python implementation:
+
+```python
+def disconnect_reset(self):
+    self.reset()
+```
+
 The base class disconnect_reset implementation just calls the reset method to ensure common reset logic is run.
 
 ### read_data
 
-The read_data method is used to analyze and potentially modify any raw data read by an Interface. It takes one parameter as the current state of the data to be analyzed. It can return either a Ruby string of data, :STOP, or :DISCONNECT. If it returns a Ruby string, then it believes that data may be ready to be a full packet, and is ready for processing by any following Protocols. If :STOP is returned then the Protocol believes it needs more data to complete a full packet. If :DISCONNECT is returned then the Protocol believes the Interface should be disconnected (and typically automatically reconnected).
+The read_data method is used to analyze and potentially modify any raw data read by an Interface. It takes one parameter as the current state of the data to be analyzed. It can return either a string of data, STOP, or DISCONNECT. If it returns a string, then it believes that data may be ready to be a full packet, and is ready for processing by any following Protocols. If STOP is returned then the Protocol believes it needs more data to complete a full packet. If DISCONNECT is returned then the Protocol believes the Interface should be disconnected (and typically automatically reconnected).
 
-Base Class Implemenation:
+Base class Ruby implemenation:
 
 ```ruby
 def read_data(data)
@@ -282,13 +320,28 @@ def read_data(data)
 end
 ```
 
-The base class implementation does nothing except return the data it was given. The only exception to this is when handling an empty string. If the allow_empty_data flag is false or if it nil and the Protocol is the last in the chain, then the base implementation will return :STOP data to indicate that it is time to call the Interface read_interface() method to get more data. Blank strings are used to signal Protocols that they have an opportunity to return a cached packet.
+Base class Python implemenation:
+
+```python
+def read_data(self, data, extra=None):
+    if len(data) <= 0:
+        if self.allow_empty_data is None:
+            if self.interface and self.interface.read_protocols[-1] == self:
+                # Last read interface in chain with auto self.allow_empty_data
+                return ("STOP", extra)
+        elif self.allow_empty_data:
+            # Don't self.allow_empty_data means STOP
+            return ("STOP", extra)
+    return (data, extra)
+```
+
+The base class implementation does nothing except return the data it was given. The only exception to this is when handling an empty string. If the allow_empty_data flag is false / False or if it is nil / None and the Protocol is the last in the chain, then the base implementation will return STOP to indicate that it is time to call the Interface `read_interface()` method to get more data. Blank strings are used to signal Protocols that they have an opportunity to return a cached packet.
 
 ### read_packet
 
-The read_packet method is used to analyze and potentially modify a COSMOS packet before it is returned by the Interface. It takes one parameter as the current state of the packet to be analyzed. It can return either a COSMOS packet, :STOP, or :DISCONNECT. If it returns a COSMOS packet, then it believes that the packet is valid, should be returned, and is ready for processing by any following Protocols. If :STOP is returned then the Protocol believes the packet should be silently dropped. If :DISCONNECT is returned then the Protocol believes the Interface should be disconnected (and typically automatically reconnected). This method is where a Protocol would set the stored flag on a packet if it determines that the packet is stored telemetry instead of real-time telemetry.
+The read_packet method is used to analyze and potentially modify a COSMOS packet before it is returned by the Interface. It takes one parameter as the current state of the packet to be analyzed. It can return either a COSMOS packet, STOP, or DISCONNECT. If it returns a COSMOS packet, then it believes that the packet is valid, should be returned, and is ready for processing by any following Protocols. If STOP is returned then the Protocol believes the packet should be silently dropped. If DISCONNECT is returned then the Protocol believes the Interface should be disconnected (and typically automatically reconnected). This method is where a Protocol would set the stored flag on a packet if it determines that the packet is stored telemetry instead of real-time telemetry.
 
-Base Class Implementation:
+Base class Ruby implementation:
 
 ```ruby
 def read_packet(packet)
@@ -296,13 +349,20 @@ def read_packet(packet)
 end
 ```
 
+Base class Python implementation:
+
+```python
+def read_packet(self, packet):
+    return packet
+```
+
 The base class always just returns the packet given.
 
 ### write_packet
 
-The write_packet method is used to analyze and potentially modify a COSMOS packet before it is output by the Interface. It takes one parameter as the current state of the packet to be analyzed. It can return either a COSMOS packet, :STOP, or :DISCONNECT. If it returns a COSMOS packet, then it believes that the packet is valid, should be written out the Interface, and is ready for processing by any following Protocols. If :STOP is returned then the Protocol believes the packet should be silently dropped. If :DISCONNECT is returned then the Protocol believes the Interface should be disconnected (and typically automatically reconnected).
+The write_packet method is used to analyze and potentially modify a COSMOS packet before it is output by the Interface. It takes one parameter as the current state of the packet to be analyzed. It can return either a COSMOS packet, STOP, or DISCONNECT. If it returns a COSMOS packet, then it believes that the packet is valid, should be written out the Interface, and is ready for processing by any following Protocols. If STOP is returned then the Protocol believes the packet should be silently dropped. If DISCONNECT is returned then the Protocol believes the Interface should be disconnected (and typically automatically reconnected).
 
-Base Class Implementation:
+Base class Ruby implementation:
 
 ```ruby
 def write_packet(packet)
@@ -310,13 +370,20 @@ def write_packet(packet)
 end
 ```
 
+Base class Python implementation:
+
+```python
+def write_packet(self, packet):
+    return packet
+```
+
 The base class always just returns the packet given.
 
 ### write_data
 
-The write_data method is used to analyze and potentially modify data before it is written out by the Interface. It takes one parameter as the current state of the data to be analyzed and sent. It can return either a Ruby String of data, :STOP, or :DISCONNECT. If it returns a Ruby string of data, then it believes that the data is valid, should be written out the Interface, and is ready for processing by any following Protocols. If :STOP is returned then the Protocol believes the data should be silently dropped. If :DISCONNECT is returned then the Protocol believes the Interface should be disconnected (and typically automatically reconnected).
+The write_data method is used to analyze and potentially modify data before it is written out by the Interface. It takes one parameter as the current state of the data to be analyzed and sent. It can return either a string of data, STOP, or DISCONNECT. If it returns a string of data, then it believes that the data is valid, should be written out the Interface, and is ready for processing by any following Protocols. If STOP is returned then the Protocol believes the data should be silently dropped. If DISCONNECT is returned then the Protocol believes the Interface should be disconnected (and typically automatically reconnected).
 
-Base Class Implementation:
+Base class Ruby implementation:
 
 ```ruby
 def write_data(data)
@@ -324,13 +391,20 @@ def write_data(data)
 end
 ```
 
+Base class Python implementation:
+
+```python
+def write_data(self, data, extra=None):
+    return (data, extra)
+```
+
 The base class always just returns the data given.
 
 ### post_write_interface
 
-The post_write_interface method is called after data has been written out the Interface. The typical use of this method is to provide a hook to implement command/response type interfaces where a response is always immediately expected in response to a command. It takes two parameters, the packet after all modifications by write_packet() and the data that was actually written out the Interface. It can return either the same pair of packet/data, :STOP, or :DISCONNECT. If it returns a packet/data pair then they are passed on to any other Protocols. If :STOP is returned then the Interface write() call completes and no further Protocols post_write_interface() methods are called. If :DISCONNECT is returned then the Protocol believes the Interface should be disconnected (and typically automatically reconnected). Note that only the first parameter "packet", is checked to be :STOP, or :DISCONNECT on the return.
+The post_write_interface method is called after data has been written out the Interface. The typical use of this method is to provide a hook to implement command/response type interfaces where a response is always immediately expected in response to a command. It takes two parameters, the packet after all modifications by `write_packet()` and the data that was actually written out the Interface. It can return either the same pair of packet/data, STOP, or DISCONNECT. If it returns a packet/data pair then they are passed on to any other Protocols. If STOP is returned then the Interface write() call completes and no further Protocols `post_write_interface()` methods are called. If DISCONNECT is returned then the Protocol believes the Interface should be disconnected (and typically automatically reconnected). Note that only the first parameter "packet", is checked to be STOP, or DISCONNECT on the return.
 
-Base Class Implementation:
+Base class Ruby implementation:
 
 ```ruby
 def post_write_interface(packet, data)
@@ -338,17 +412,38 @@ def post_write_interface(packet, data)
 end
 ```
 
+Base class Python implementation:
+
+```python
+def post_write_interface(self, packet, data, extra=None):
+    return (packet, data, extra)
+```
+
 The base class always just returns the packet/data given.
+
+### protocol_cmd
+
+The protocol_cmd method is used to send commands to the protocol itself. This is useful to change protocol behavior during runtime. See [interface_protocol_cmd](../guides/scripting-api#interface_protocol_cmd) for more information.
+
+Base class Ruby implementation:
+
+```ruby
+def protocol_cmd(cmd_name, *cmd_args)
+  # Default do nothing - Implemented by subclasses
+  return false
+end
+```
+
+Base class Python implementation:
+
+```python
+def protocol_cmd(self, cmd_name, *cmd_args):
+    # Default do nothing - Implemented by subclasses
+    return False
+```
+
+The base class does nothing as this is special functionality implemented by subclasses.
 
 ## Examples
 
-Please see the included COSMOS protocol code for examples of the above methods in action.
-
-[lib/openc3/interfaces/protocols/protocol.rb](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/interfaces/protocols/protocol.rb)
-[lib/openc3/interfaces/protocols/burst_protocol.rb](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/interfaces/protocols/burst_protocol.rb)
-[lib/openc3/interfaces/protocols/fixed_protocol.rb](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/interfaces/protocols/fixed_protocol.rb)
-[lib/openc3/interfaces/protocols/length_protocol.rb](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/interfaces/protocols/length_protocol.rb)
-[lib/openc3/interfaces/protocols/terminated_protocol.rb](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/interfaces/protocols/terminated_protocol.rb)
-[lib/openc3/interfaces/protocols/template_protocol.rb](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/interfaces/protocols/template_protocol.rb)
-[lib/openc3/interfaces/protocols/crc_protocol.rb](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/interfaces/protocols/crc_protocol.rb)
-[lib/openc3/interfaces/protocols/preidentified_protocol.rb](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/interfaces/protocols/preidentified_protocol.rb)
+Please see the linked [Ruby Protocol](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/interfaces/protocols) and [Python Protocol](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/interfaces/protocols) code for examples of the above methods in action.

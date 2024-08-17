@@ -1230,7 +1230,7 @@ Interactive widgets are used to gather input from the user. Unlike all other wid
 ### BUTTON
 **Displays a rectangular clickable button**
 
-Upon clicking, the button executes the Ruby code assigned. Buttons
+Upon clicking, the button executes the Javascript code assigned. Buttons
 can be used to send commands and perform other tasks. If you want your button
 to use values from other widgets, define them as named widgets and read their
 values using the `screen.getNamedWidget("WIDGET_NAME").text()` method.
@@ -1244,7 +1244,7 @@ be evaluated separately. Note that all OpenC3 commands (using api.cmd) must be
 separated by `;;`.
 
 You can send commands with buttons using api.cmd(). The cmd() syntax looks exactly
-like the standard COSMOS Ruby scripting syntax. You can also request and use
+like the standard COSMOS scripting syntax. You can also request and use
 telemetry in screens using Javascript Promises.
 
 `api.tlm('INST PARAMS VALUE3', 'RAW').then(dur => api.cmd('INST COLLECT with TYPE NORMAL, DURATION '+dur))"`

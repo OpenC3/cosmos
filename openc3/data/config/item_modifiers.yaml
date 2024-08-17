@@ -31,14 +31,14 @@ STATE:
       values: ['GREEN', 'YELLOW', 'RED']
 READ_CONVERSION:
   summary: Applies a conversion to the current telemetry item
-  description: Conversions are implemented in a custom Ruby file which should be
-    located in the target's lib folder. The class must require 'openc3/conversions/conversion'
-    and inherit from Conversion. It must implement the initialize method if it
-    takes extra parameters and must always implement the call method. The conversion
+  description: Conversions are implemented in a custom Ruby or Python file which should be
+    located in the target's lib folder. The class must inherit from Conversion.
+    It must implement the `initialize` (Ruby) or `__init__` (Python) method if it
+    takes extra parameters and must always implement the `call` method. The conversion
     factor is applied to the raw value in the telemetry packet before it is displayed
     to the user. The user still has the ability to see the raw unconverted value
     in a details dialog.
-  example: |
+  ruby_example: |
     READ_CONVERSION the_great_conversion.rb 1000
 
     Defined in the_great_conversion.rb:
@@ -55,14 +55,26 @@ READ_CONVERSION:
         end
       end
     end
+  python_example: |
+    READ_CONVERSION the_great_conversion.py 1000
+
+    Defined in the_great_conversion.py:
+
+    from openc3.conversions.conversion import Conversion
+    class TheGreatConversion(Conversion):
+        def __init__(self, multiplier):
+            super().__init__()
+            self.multiplier = float(multiplier)
+        def call(self, value, packet, buffer):
+            return value * multiplier
   parameters:
     - name: Class Filename
       required: true
-      description: The filename which contains the Ruby class. The filename must
+      description: The filename which contains the Ruby or Python class. The filename must
         be named after the class such that the class is a CamelCase version of the
         underscored filename. For example, 'the_great_conversion.rb' should contain
         'class TheGreatConversion'.
-      values: .*\.rb
+      values: .*
     - name: Parameter
       required: false
       description: Additional parameter values for the conversion which are passed
@@ -118,19 +130,24 @@ GENERIC_READ_CONVERSION_START:
     This conversion factor is applied to the raw value in the telemetry packet
     before it is displayed to the user. The user still has the ability to see the
     raw unconverted value in a details dialog. The conversion is specified as
-    ruby code that receives two implied parameters. 'value' which is the raw
+    Ruby or Python code that receives two implied parameters. 'value' which is the raw
     value being read and 'packet' which is a reference to the telemetry packet
     class (Note, referencing the packet as 'myself' is still supported for backwards
-    compatibility). The last line of ruby code given should return the converted
+    compatibility). The last line of code should return the converted
     value. The GENERIC_READ_CONVERSION_END keyword specifies that all lines of
-    ruby code for the conversion have been given.
+    code for the conversion have been given.
   warning: Generic conversions are not a good long term solution. Consider creating
     a conversion class and using READ_CONVERSION instead. READ_CONVERSION is easier
-    to debug and higher performance.
-  example: |
+    to debug and has higher performance.
+  ruby_example: |
     APPEND_ITEM ITEM1 32 UINT
       GENERIC_READ_CONVERSION_START
-        value * 1.5  # Convert the value by a scale factor
+        return (value * 1.5).to_i # Convert the value by a scale factor
+      GENERIC_READ_CONVERSION_END
+  python_example: |
+    APPEND_ITEM ITEM1 32 UINT
+      GENERIC_READ_CONVERSION_START
+        return int(value * 1.5) # Convert the value by a scale factor
       GENERIC_READ_CONVERSION_END
   parameters:
     - name: Converted Type
@@ -208,12 +225,13 @@ LIMITS:
       values: .+
 LIMITS_RESPONSE:
   summary: Defines a response class that is called when the limits state of the current item changes
-  example: LIMITS_RESPONSE example_limits_response.rb 10
+  ruby_example: LIMITS_RESPONSE example_limits_response.rb 10
+  python_example: LIMITS_RESPONSE example_limits_response.py 10
   parameters:
     - name: Response Class Filename
       required: true
-      description: Name of the Ruby file which implements the limits response.
-        This file should be in the config/TARGET/lib directory so it can be found by OpenC3.
+      description: Name of the Ruby or Python file which implements the limits response.
+        This file should be in the target's lib directory.
       values: .+
     - name: Response Specific Options
       required: false
