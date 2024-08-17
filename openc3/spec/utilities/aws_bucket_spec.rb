@@ -145,7 +145,7 @@ module OpenC3
         expect(result).to be false
       end
 
-      xit "immediately checks for an object to exist" do
+      it "immediately checks for an object to exist" do
         client.put_object(bucket: @bucket, key: 'test', body: 'contents')
         result = client.check_object(bucket: @bucket, key: 'test', retries: false)
         expect(result).to be true
@@ -237,7 +237,7 @@ module OpenC3
     end
 
     describe 'delete_objects' do
-      xit "deletes an array of object keys" do
+      it "deletes an array of object keys" do
         client.put_object(bucket: @bucket, key: 'test1', body: 'contents1')
         client.put_object(bucket: @bucket, key: 'test2', body: 'contents2')
         client.put_object(bucket: @bucket, key: 'test3', body: 'contents3')

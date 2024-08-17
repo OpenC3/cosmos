@@ -50,25 +50,24 @@ module LocalS3
       bucket = S3Bucket.new(args[:bucket], '', opts)
     end
 
-    def check_object(args)
-      File.open(File.expand_path(File.join(@fs_root, args[:bucket], args[:key])))
-      true
-    rescue Errno::ENOENT
-      false
-    end
-
     def delete_bucket(args)
       # Dir.rmdir(File.expand_path(File.join(@fs_root, args[:bucket])))
       FileUtils.rm_r(File.expand_path(File.join(@fs_root, args[:bucket])))
     end
 
     def delete_object(args)
+      response = Struct.new(:delete_marker, :version_id, :request_charged)
+      resp = response.new(true, '1', 'requester')
       File.delete(File.expand_path(File.join(@fs_root, args[:bucket], args[:key])))
+    rescue Errno::ENOENT
+      resp.delete_marker = false
+    ensure
+      return resp
     end
 
     def delete_objects(args)
       args[:delete][:objects].each do |h|
-        delete_object(args[:bucket], args[:key])
+        delete_object({bucket: args[:bucket], key: h[:key]})
       end
     end
 
@@ -90,19 +89,26 @@ module LocalS3
       nil
     end
 
-    def head_object(args)
-      s3_obj = S3Object.new(bucket_name: args[:bucket], key: args[:key])
-      s3_obj = get_object(args[:bucket], args[:key])
-      raise Aws::S3::Errors::NotFound.new(nil, nil) if s3_obj.nil?
-      true
-    rescue
-      raise Aws::S3::Errors::NotFound.new(nil, nil)
-    end
-
     def head_bucket(args)
       bucket = get_bucket(args[:bucket])
       raise Aws::S3::Errors::NotFound.new(nil, "no such bucket") if bucket.nil?
       bucket
+    end
+
+    ## returns object/raises only NotFound
+    #
+    def head_object(args)
+      File.open(File.expand_path(File.join(@fs_root, args[:bucket], args[:key])))
+
+#      s3_obj = S3Object.new(bucket_name: args[:bucket], key: args[:key])
+#      s3_obj = get_object(args[:bucket], args[:key])
+#      raise Aws::S3::Errors::NotFound.new(nil, nil) if s3_obj.nil?
+
+#      h_obj = Aws::S3::Types::HeadObjectOutput.new()
+      true
+    rescue Exception => e
+       puts "HEAD_OBJECT: #{e.message}"
+       raise Aws::S3::Errors::NotFound.new(nil, "not found")
     end
 
     def list_objects(args)
@@ -179,7 +185,6 @@ module LocalS3
       File.open(fullpath, 'wb') do |file|
         file.write(body)
       end
-      #store_object(bucket_obj, args[:key])
     end
 
     def get_objects(args)
@@ -192,7 +197,7 @@ module LocalS3
       case waiter
       when :object_exists
         max_attempts.downto(1) do
-          if (check_object(args))
+          if (obj_file_exists?(args))
             return true
           end
           sleep(delay)
@@ -203,5 +208,19 @@ module LocalS3
       end
       false
     end
+
+    private
+    ## returns yes/no
+    #
+    def obj_file_exists?(args)
+      File.open(File.expand_path(File.join(@fs_root, args[:bucket], args[:key])))
+      true
+    rescue Errno::ENOENT
+      false
+    rescue Exception => e
+      puts e.message
+    end
+
   end
+
 end
