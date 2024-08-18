@@ -178,7 +178,7 @@ module OpenC3
         expect { client.list_files(bucket: "NOPE", path: "") }.to raise_error(Bucket::NotFound, "Bucket 'NOPE' does not exist.")
       end
 
-      xit "lists the root" do
+      it "lists the root" do
         client.put_object(bucket: @bucket, key: 'DEFAULT/targets_modified/root.txt', body: 'contents0')
         dirs, files = client.list_files(bucket: @bucket, path: "") # Empty path
         expect(dirs.length).to eql 1
@@ -191,7 +191,7 @@ module OpenC3
         client.delete_object(bucket: @bucket, key: 'DEFAULT/targets_modified/root.txt')
       end
 
-      xit "lists files under a path" do
+      it "lists files under a path" do
         client.put_object(bucket: @bucket, key: 'DEFAULT/targets_modified/root.txt', body: 'contents0')
         client.put_object(bucket: @bucket, key: 'DEFAULT/targets_modified/INST/file1.txt', body: 'contents1')
         client.put_object(bucket: @bucket, key: 'DEFAULT/targets_modified/INST/file2.txt', body: 'contents2')
@@ -221,7 +221,7 @@ module OpenC3
         client.delete_object(bucket: @bucket, key: 'DEFAULT/targets_modified/OTHER/file3.txt')
       end
 
-      xit "lists only directories under a path" do
+      it "lists only directories under a path" do
         client.put_object(bucket: @bucket, key: 'DEFAULT/targets_modified/root.txt', body: 'contents0')
         client.put_object(bucket: @bucket, key: 'DEFAULT/targets_modified/INST/file1.txt', body: 'contents1')
         client.put_object(bucket: @bucket, key: 'DEFAULT/targets_modified/INST/file2.txt', body: 'contents2')

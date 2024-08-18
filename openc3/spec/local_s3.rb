@@ -1,7 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2024 OpenC3, Inc
-# All Rights Reserved.
+# Copyright 2024 OpenC3, Inc All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it under
 # the terms of the GNU Affero General Public License as published by the Free
@@ -25,6 +24,9 @@ module LocalS3
 
   class S3Object < ::Aws::S3::Object
     attr_accessor :body
+    attr_accessor :name
+    attr_accessor :size
+    attr_accessor :last_modified
   end
 
   class ClientLocal
@@ -95,19 +97,14 @@ module LocalS3
       bucket
     end
 
-    ## returns object/raises only NotFound
+    ## returns true/raises only NotFound
     #
     def head_object(args)
       File.open(File.expand_path(File.join(@fs_root, args[:bucket], args[:key])))
 
-#      s3_obj = S3Object.new(bucket_name: args[:bucket], key: args[:key])
-#      s3_obj = get_object(args[:bucket], args[:key])
-#      raise Aws::S3::Errors::NotFound.new(nil, nil) if s3_obj.nil?
-
-#      h_obj = Aws::S3::Types::HeadObjectOutput.new()
+      # h_obj = Aws::S3::Types::HeadObjectOutput.new()
       true
     rescue Exception => e
-       puts "HEAD_OBJECT: #{e.message}"
        raise Aws::S3::Errors::NotFound.new(nil, "not found")
     end
 
@@ -124,45 +121,59 @@ module LocalS3
       max = 1000 unless (max.between?(1, 1000))
       is_truncated = false
       con_token = next_token = args[:continuation_token] # ???
+      delim = args[:delimiter].nil? ? '/' : args[:delimiter]
+      prefix = args[:prefix]
       cmn_pfxs = {}
-      # bucket query
-      fullpath = File.expand_path(File.join(@fs_root, bucket.name))
-      filenames = Dir.glob(File.join(fullpath, "**/*")).sort
-      if (con_token)
-        filenames = filenames.sort.select {|fname| !(fname.nil?) && fname >= con_token}
-      end
       contents = []
+
+      # Bucket::list_objects seems only called without a delimiter present and with prefix set to nil
+      glob = "**/*"       # files in directories recursively
+      prefix ||= ''
+      if (args[:delimiter])
+        glob = "*"        # just one directory, so most likely root
+      end
+
+      bucket_prefix = File.join(bucket.name, prefix)
+      fullpath = File.expand_path(File.join(@fs_root, bucket_prefix))
+      filenames = Dir.glob(File.join(fullpath, glob)).sort
+      if (con_token)
+        filenames = filenames.select {|fname| !(fname.nil?) && fname >= con_token}
+      end
+
       filenames.each do |fname|
-        if (!File.directory?(fname))
-          pattern = "\\S*#{args[:bucket]}\/(\\S*)" # get only bucket thru filename
-          obj_key = ""
-          if (match = fname.match(pattern))
-            obj_key = match.captures[0]
+        b_name = File.basename(fname)
+        next if b_name == '.' || b_name == '..'
+
+        pfx_pattern = "\\S*\/#{bucket_prefix}(\\S*)" # get only between prefix and final directory
+        if (File.directory?(fname))
+          if (match = fname.match(pfx_pattern))
+            dir = match.captures[0]
+            cmn_pfxs[dir] = 1
           end
-          b_name = File.basename(fname)
-          pattern = "/\S*#{args[:bucket]}(\S*)#{b_name}/" # get only between bucket and basename
-          case b_name
-          when (count > max)
+        else
+          if (count > max)
             next_token = fname
             is_truncated = true
             break
-          when '.', '..'
-          # just fall through
           else
             count += 1
+            oky_pattern = "\\S*#{args[:bucket]}\/(\\S*)" # get only prefix thru filename
+            obj_key = (match = fname.match(oky_pattern)) ?  obj_key = match.captures[0] : ""
             s3_obj = S3Object.new(bucket_name: args[:bucket], key: obj_key)
+            s3_obj.last_modified = Time.now
+            s3_obj.size = File.size(fname)
             contents << s3_obj
-            prefix = File.dirname(fname).match(pattern).to_s
-            commoner = ''
-            prefix.split(args[:delimiter]).each do |chunk|
-              commoner += '/'+chunk
-              cmn_pfxs[commoner] = 1
-            end
           end
         end
       end
+
+      common_prefixes =  cmn_pfxs.keys.sort.map do |cpfx|
+        pfx = Aws::S3::Types::CommonPrefix.new()
+        pfx.prefix = cpfx
+        pfx
+      end
       response = Struct.new(:contents, :is_truncated, :next_continuation_token, :common_prefixes)
-      resp = response.new(contents, is_truncated, next_token, cmn_pfxs.keys.sort)
+      resp = response.new(contents, is_truncated, next_token, common_prefixes)
       return resp
     end
 
@@ -187,10 +198,6 @@ module LocalS3
       end
     end
 
-    def get_objects(args)
-      # August 15, 2024
-    end
-
     def wait_until(waiter, args, opts)
       max_attempts = opts[:max_attempts].to_i
       delay = opts[:delay].to_f
@@ -210,6 +217,7 @@ module LocalS3
     end
 
     private
+
     ## returns yes/no
     #
     def obj_file_exists?(args)
