@@ -53,7 +53,6 @@ module LocalS3
     end
 
     def delete_bucket(args)
-      # Dir.rmdir(File.expand_path(File.join(@fs_root, args[:bucket])))
       FileUtils.rm_r(File.expand_path(File.join(@fs_root, args[:bucket])))
     end
 
@@ -121,7 +120,6 @@ module LocalS3
       max = 1000 unless (max.between?(1, 1000))
       is_truncated = false
       con_token = next_token = args[:continuation_token] # ???
-      delim = args[:delimiter].nil? ? '/' : args[:delimiter]
       prefix = args[:prefix]
       cmn_pfxs = {}
       contents = []
@@ -134,6 +132,8 @@ module LocalS3
       end
 
       bucket_prefix = File.join(bucket.name, prefix)
+      pfx_pattern = "\\S*\/#{bucket_prefix}(\\S*)" # get only between prefix and final directory
+      oky_pattern = "\\S*#{args[:bucket]}\/(\\S*)" # get only prefix thru filename
       fullpath = File.expand_path(File.join(@fs_root, bucket_prefix))
       filenames = Dir.glob(File.join(fullpath, glob)).sort
       if (con_token)
@@ -144,7 +144,6 @@ module LocalS3
         b_name = File.basename(fname)
         next if b_name == '.' || b_name == '..'
 
-        pfx_pattern = "\\S*\/#{bucket_prefix}(\\S*)" # get only between prefix and final directory
         if (File.directory?(fname))
           if (match = fname.match(pfx_pattern))
             dir = match.captures[0]
@@ -157,8 +156,7 @@ module LocalS3
             break
           else
             count += 1
-            oky_pattern = "\\S*#{args[:bucket]}\/(\\S*)" # get only prefix thru filename
-            obj_key = (match = fname.match(oky_pattern)) ?  obj_key = match.captures[0] : ""
+            obj_key = (match = fname.match(oky_pattern)) ? obj_key = match.captures[0] : ""
             s3_obj = S3Object.new(bucket_name: args[:bucket], key: obj_key)
             s3_obj.last_modified = Time.now
             s3_obj.size = File.size(fname)
