@@ -119,6 +119,7 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'webrick', '~> 1.8'
   s.add_runtime_dependency 'websocket', '~> 1.2'
   s.add_runtime_dependency 'websocket-native', '~> 1.0'
+  s.add_runtime_dependency 'listen', '~> 3.9'
 
   # Development Dependencies
   s.add_development_dependency 'benchmark-ips', '~> 2.9'
