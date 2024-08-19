@@ -1,6 +1,6 @@
 {
   "name": "@openc3/tool-common",
-  "version": "5.17.2-beta0",
+  "version": "5.18.0",
   "dependencies": {
     "@astrouxds/astro-web-components": "7.22.1",
     "@rails/actioncable": "7.1.3-4",
