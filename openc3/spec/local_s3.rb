@@ -158,7 +158,7 @@ module LocalS3
             count += 1
             obj_key = (match = fname.match(oky_pattern)) ? obj_key = match.captures[0] : ""
             s3_obj = S3Object.new(bucket_name: args[:bucket], key: obj_key)
-            s3_obj.last_modified = Time.now
+            s3_obj.last_modified = File.mtime(fname)
             s3_obj.size = File.size(fname)
             contents << s3_obj
           end
@@ -178,8 +178,6 @@ module LocalS3
     def put_bucket_policy(*args)
       # no-op: this space intentionally left blank
     end
-
-    # MEMO: raise ::Aws::S3::Errors::NoSuchKey.new(nil, nil) if s3_obj.nil?
 
     def put_object(bucket:, key:, body:, content_type:, cache_control:, metadata:, checksum_algorithm:)
       bucket_obj = get_bucket(bucket)

@@ -31,17 +31,6 @@ module OpenC3
 
       it "self.load_config" do
         config = ToolConfigModel.load_config('toolie', 'namely', scope: 'DEFAULT')
-        puts config.inspect
-      end
-
-      xit "self.save_config" do
-        expect{
-          ToolConfigModel.save_config('toolie',
-          'namely',
-          '{"data":"value", "other":42, "not":null}',
-           local_mode: true,
-           scope: 'DEFAULT')
-        }.to raise_error(/Read-only file system @ dir_s_mkdir - \/plugins/)
       end
 
       it "self.list_configs" do
@@ -56,7 +45,6 @@ module OpenC3
 
       it "deletes" do
         name = ToolConfigModel.delete_config('toolie', 'namely', local_mode: true, scope: 'DEFAULT')
-
       end
 
     end
