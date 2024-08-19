@@ -43,7 +43,7 @@ VERTICAL
   END
 
   VERTICALBOX "Run Script:"
-    NAMED_WIDGET SCRIPTNAME COMBOBOX collect.rb checks.rb
+    NAMED_WIDGET SCRIPTNAME COMBOBOX collect.py checks.py
     NAMED_WIDGET BG CHECKBUTTON 'Background'
     # The backslash '\' character indicates string concatenation without newlines.
     # NOTE: Both lines must use the same quote character: ' or "

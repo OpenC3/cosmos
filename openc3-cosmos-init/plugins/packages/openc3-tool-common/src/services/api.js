@@ -31,13 +31,13 @@ const request = async function (
     headers,
     noAuth = false,
     noScope = false,
-    onUploadProgress = {},
-  } = {},
+    onUploadProgress = false,
+  } = {}
 ) {
   if (!noAuth) {
     try {
       let refreshed = await OpenC3Auth.updateToken(
-        OpenC3Auth.defaultMinValidity,
+        OpenC3Auth.defaultMinValidity
       )
       if (refreshed) {
         OpenC3Auth.setTokens()
@@ -82,7 +82,7 @@ export default {
       noScope,
       noAuth,
       onUploadProgress,
-    } = {},
+    } = {}
   ) {
     return request('get', path, {
       params,
@@ -102,7 +102,7 @@ export default {
       noScope,
       noAuth,
       onUploadProgress,
-    } = {},
+    } = {}
   ) {
     return request('put', path, {
       data,
@@ -123,7 +123,7 @@ export default {
       noScope,
       noAuth,
       onUploadProgress,
-    } = {},
+    } = {}
   ) {
     return request('post', path, {
       data,
@@ -143,7 +143,7 @@ export default {
       noScope,
       noAuth,
       onUploadProgress,
-    } = {},
+    } = {}
   ) {
     return request('delete', path, {
       params,

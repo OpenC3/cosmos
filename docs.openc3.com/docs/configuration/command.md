@@ -204,10 +204,10 @@ APPEND_PARAMETER STRING 1024 STRING "NOOP" "String parameter"
 #### WRITE_CONVERSION
 **Applies a conversion when writing the current command parameter**
 
-Conversions are implemented in a custom Ruby file which should be
-located in the target's lib folder. The class must require 'openc3/conversions/conversion'
-and inherit from Conversion. It must implement the initialize method if it
-takes extra parameters and must always implement the call method. The conversion
+Conversions are implemented in a custom Ruby or Python file which should be
+located in the target's lib folder. The class must inherit from Conversion.
+It must implement the `initialize` (Ruby) or `__init__` (Python) method if it
+takes extra parameters and must always implement the `call` method. The conversion
 factor is applied to the value entered by the user before it is written into
 the binary command packet and sent.
 
@@ -223,10 +223,10 @@ values to the command. That can be used to check parameter values passed in.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Class Filename | The filename which contains the Ruby class. The filename must be named after the class such that the class is a CamelCase version of the underscored filename. For example, 'the_great_conversion.rb' should contain 'class TheGreatConversion'. | True |
+| Class Filename | The filename which contains the Ruby or Python class. The filename must be named after the class such that the class is a CamelCase version of the underscored filename. For example, 'the_great_conversion.rb' should contain 'class TheGreatConversion'. | True |
 | Parameter | Additional parameter values for the conversion which are passed to the class constructor. | False |
 
-Example Usage:
+Ruby Example:
 ```ruby
 WRITE_CONVERSION the_great_conversion.rb 1000
 
@@ -244,6 +244,21 @@ module OpenC3
     end
   end
 end
+```
+
+Python Example:
+```python
+WRITE_CONVERSION the_great_conversion.py 1000
+
+Defined in the_great_conversion.py:
+
+from openc3.conversions.conversion import Conversion
+class TheGreatConversion(Conversion):
+    def __init__(self, multiplier):
+        super().__init__()
+        self.multiplier = float(multiplier)
+    def call(self, value, packet, buffer):
+        return value * multiplier
 ```
 
 #### POLY_WRITE_CONVERSION
@@ -285,12 +300,12 @@ SEG_POLY_WRITE_CONVERSION 100 12 0.5 0.3 # Apply the conversion to all values >=
 Adds a generic conversion function to the current command parameter.
 This conversion factor is applied to the value entered by the user before it
 is written into the binary command packet and sent. The conversion is specified
-as ruby code that receives two implied parameters. 'value' which is the raw
+as Ruby or Python code that receives two implied parameters. 'value' which is the raw
 value being written and 'packet' which is a reference to the command packet
 class (Note, referencing the packet as 'myself' is still supported for backwards
-compatibility). The last line of ruby code given should return the converted
+compatibility). The last line of code should return the converted
 value. The GENERIC_WRITE_CONVERSION_END keyword specifies that all lines of
-ruby code for the conversion have been given.
+code for the conversion have been given.
 
 :::info Multiple write conversions on command parameters
 When a command is built, each item gets written (and write conversions are run)
@@ -307,11 +322,19 @@ Generic conversions are not a good long term solution. Consider creating a conve
 :::
 
 
-Example Usage:
+Ruby Example:
 ```ruby
 APPEND_PARAMETER ITEM1 32 UINT 0 0xFFFFFFFF 0
   GENERIC_WRITE_CONVERSION_START
-    (value * 1.5).to_i # Convert the value by a scale factor
+    return (value * 1.5).to_i # Convert the value by a scale factor
+  GENERIC_WRITE_CONVERSION_END
+```
+
+Python Example:
+```python
+APPEND_PARAMETER ITEM1 32 UINT 0 0xFFFFFFFF 0
+  GENERIC_WRITE_CONVERSION_START
+    return int(value * 1.5) # Convert the value by a scale factor
   GENERIC_WRITE_CONVERSION_END
 ```
 

@@ -1,5 +1,5 @@
 ---
-tcpip_client_interface.rb:
+tcpip_client_interface:
   parameters:
     - name: Host
       required: true
@@ -29,7 +29,7 @@ tcpip_client_interface.rb:
       # prettier-ignore
       values:
         <%= MetaConfigParser.load('protocols.yaml').to_meta_config_yaml(8) %>
-tcpip_server_interface.rb:
+tcpip_server_interface:
   parameters:
     - name: Write Port
       required: true
@@ -54,7 +54,7 @@ tcpip_server_interface.rb:
       # prettier-ignore
       values:
         <%= MetaConfigParser.load('protocols.yaml').to_meta_config_yaml(8) %>
-udp_interface.rb:
+udp_interface:
   description: The UDP interface uses UDP packets to send and receive telemetry
     from the target
   parameters:
@@ -100,7 +100,7 @@ udp_interface.rb:
       required: false
       description: Address to bind UDP ports to
       values: .+
-serial_interface.rb:
+serial_interface:
   description: Connects to a target over a serial port. OpenC3 provides drivers
     for both Windows and POSIX drivers for UNIX based systems.
   parameters:
