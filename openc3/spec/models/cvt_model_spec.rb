@@ -328,7 +328,7 @@ module OpenC3
         update_temp1()
         CvtModel.override("INST", "HEALTH_STATUS", "TEMP1", 10, type: :ALL, scope: "DEFAULT")
         expect{ packet_name = CvtModel.determine_latest_packet_for_item('INST', 'HEALTH_STATUS', cache_timeout: nil, scope: 'DEFAULT') }.to \
-          raise_error(/Target 'INST' does not exist for scope: DEFAULT/)
+          raise_error(/Item 'INST LATEST HEALTH_STATUS' does not exist for scope: DEFAULT/)
         expect(packet_name).not_to eq('something')
       end
     end
