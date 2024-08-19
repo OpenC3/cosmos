@@ -46,6 +46,8 @@ module OpenC3
     before(:each) do
       mock_redis()
       setup_system()
+      local_s3()
+      local_s3_unset()
     end
 
     describe "self.set" do
