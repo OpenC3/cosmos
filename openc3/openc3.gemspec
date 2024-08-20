@@ -45,7 +45,7 @@ spec = Gem::Specification.new do |s|
     s.platform = Gem::Platform::CURRENT
   end
 
-  s.version = '5.17.2.pre.beta0'
+  s.version = '5.18.1.pre.beta0'
   s.licenses = ['AGPL-3.0-only', 'Nonstandard']
 
   # Executables
@@ -119,6 +119,7 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'webrick', '~> 1.8'
   s.add_runtime_dependency 'websocket', '~> 1.2'
   s.add_runtime_dependency 'websocket-native', '~> 1.0'
+  s.add_runtime_dependency 'listen', '~> 3.9'
 
   # Development Dependencies
   s.add_development_dependency 'benchmark-ips', '~> 2.9'

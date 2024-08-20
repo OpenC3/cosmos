@@ -29,6 +29,8 @@ jobs:
     environment: Release
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.QA_PAT }}
       - name: Set up Ruby 3.2
         uses: ruby/setup-ruby@v1
         with:
@@ -73,6 +75,7 @@ jobs:
         with:
           commit_message: "[Github Action] Update version to ${{ github.event.inputs.version }}"
           tagging_message: "v${{ github.event.inputs.version }}"
+          push_options: --force
       - name: Build Python Package
         working-directory: openc3/python
         run: python -m build
@@ -132,3 +135,4 @@ jobs:
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "[Github Action] Update version to ${{ github.event.inputs.next_version }}"
+          push_options: --force
