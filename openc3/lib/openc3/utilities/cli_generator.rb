@@ -41,10 +41,13 @@ module OpenC3
         abort("No gemspec file detected. #{args[0].to_s.downcase} generator should be run within an existing plugin.")
       end
 
-      if args[-1] == '--python'
-        @@language = 'py'
-      else
-        @@language = 'rb'
+      case args[-1]
+        when '--python'
+          @@language = 'py'
+        when '--ruby'
+          @@language = 'rb'
+        else
+          abort("One of --python or --ruby is required.")
       end
     end
 
