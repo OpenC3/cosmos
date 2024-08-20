@@ -206,16 +206,6 @@ UTF-8
         TargetModel.set_packet('INST', 'ADCS', pkts[0], type: :TLM, scope: "DEFAULT")
       end
 
-      xit "can dynamic update" do
-        model = TargetModel.new(folder_name: "INST", name: "TEST", scope: "DEFAULT")
-        pkts = TargetModel.packets("INST", type: :TLM, scope: "DEFAULT")
-        model.create
-        expect { model.dynamic_update(pkts, cmd_or_tlm = :TELEMETRY, filename = "dynamic_tlm.txt") }.to \
-          raise_error(RuntimeError, /Target 'TEST' does not exist for scope: DEFAULT/)
-      rescue RuntimeError => e
-        puts e.message
-      end
-
       it "calls limits_groups" do
         TargetModel.limits_groups(scope: 'DEFAULT')
       end
