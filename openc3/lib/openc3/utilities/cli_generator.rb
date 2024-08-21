@@ -41,10 +41,17 @@ module OpenC3
         abort("No gemspec file detected. #{args[0].to_s.downcase} generator should be run within an existing plugin.")
       end
 
-      if args[-1] == '--python'
+      gen_lang = ENV['OPENC3_LANGUAGE']
+      if (args[-1] == '--python' || args[-1] == '--ruby')
+        gen_lang = args[-1][2, 6]
+      end
+      case gen_lang
+      when 'python'
         @@language = 'py'
-      else
+      when 'ruby'
         @@language = 'rb'
+      else
+        abort("One of --python or --ruby is required unless OPENC3_LANGUAGE is set.")
       end
     end
 
@@ -72,8 +79,8 @@ module OpenC3
     end
 
     def self.generate_plugin(args)
-      if args.length != 2
-        abort("Usage: cli generate #{args[0]} <NAME>")
+      if args.length < 2 or args.length > 3
+        abort("Usage: cli generate #{args[0]} <NAME> (--ruby or --python)")
       end
 
       # Create the local variables
@@ -196,8 +203,8 @@ module OpenC3
     end
 
     def self.generate_widget(args)
-      if args.length != 2
-        abort("Usage: cli generate #{args[0]} <SuperdataWidget>")
+      if args.length < 2 or args.length > 3
+        abort("Usage: cli generate #{args[0]} <SuperdataWidget> (--ruby or --python)")
       end
       # Per https://stackoverflow.com/a/47591707/453280
       if args[1] !~ /.*Widget$/ or args[1][0...-6] != args[1][0...-6].capitalize
@@ -242,8 +249,8 @@ module OpenC3
     end
 
     def self.generate_tool(args)
-      if args.length != 2
-        abort("Usage: cli generate #{args[0]} 'Tool Name'")
+      if args.length < 2 or args.length > 3
+        abort("Usage: cli generate #{args[0]} 'Tool Name' (--ruby or --python)")
       end
 
       # Create the local variables

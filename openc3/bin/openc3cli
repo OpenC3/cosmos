@@ -68,7 +68,7 @@ def print_usage
   puts "  cli load /PATH/FILENAME.gem SCOPE variables.txt     # Loads a COSMOS plugin gem file"
   puts "  cli list <SCOPE>                  # Lists installed plugins, SCOPE is DEFAULT if not given"
   puts "  cli generate TYPE OPTIONS         # Generate various COSMOS entities"
-  puts "    OPTIONS: --ruby or --python to specify the language in the generated code"
+  puts "    OPTIONS: --ruby or --python is required to specify the language in the generated code unless OPENC3_LANGUAGE is set"
   puts "  #{MIGRATE_PARSER}"
   puts "  cli bridge CONFIG_FILENAME        # Run COSMOS host bridge"
   puts "  cli bridgegem gem_name variable1=value1 variable2=value2 # Runs bridge using gem bridge.txt"
