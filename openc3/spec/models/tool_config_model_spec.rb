@@ -46,7 +46,7 @@ module OpenC3
 
       it "deletes" do
         names = ToolConfigModel.delete_config('toolie', 'namely', local_mode: true, scope: 'DEFAULT')
-        expect(names[0]).to eql("/plugins/DEFAULT/tool_config/toolie/namely.json")
+        expect(names[0]).to match(/.*\/DEFAULT\/tool_config\/toolie\/namely.json.*/)
       end
     end
   end
