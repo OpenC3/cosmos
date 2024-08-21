@@ -110,6 +110,18 @@ class CosmosMetaTag
         page << "#{data['example'].strip}\n"
         page << "```\n"
       end
+      if data['ruby_example']
+        page << "\nRuby Example:\n"
+        page << "```ruby\n"
+        page << "#{data['ruby_example'].strip}\n"
+        page << "```\n"
+      end
+      if data['python_example']
+        page << "\nPython Example:\n"
+        page << "```python\n"
+        page << "#{data['python_example'].strip}\n"
+        page << "```\n"
+      end
       saved_level = @level
       if data['modifiers']
         bump_level = false

@@ -13,7 +13,7 @@ When defining telemetry items you can choose from the following data types: INT,
 
 :::info Printing Data
 
-Most data types can be printed in a COSMOS script simply by doing <code>puts tlm("TGT PKT ITEM")</code>. However, if the ITEM is a BLOCK data type and contains binary (non-ASCII) data then that won't work. COSMOS comes with a built-in method called <code>formatted</code> to help you view binary data. If ITEM is a BLOCK type containing binary try <code>puts tlm("TGT PKT ITEM").formatted</code> which will print the bytes out as hex.
+Most data types can be printed in a COSMOS script simply by doing <code>print(tlm("TGT PKT ITEM"))</code>. However, if the ITEM is a BLOCK data type and contains binary (non-ASCII) data then that won't work. COSMOS comes with a built-in method called <code>formatted</code> to help you view binary data. If ITEM is a BLOCK type containing binary try <code>puts tlm("TGT PKT ITEM").formatted</code> (Ruby) and <code>print(formatted(tlm("TGT PKT ITEM")))</code> (Python) which will print the bytes out as hex.
 :::
 
 ### ID Items
@@ -211,14 +211,14 @@ APPEND_ITEM STRING 1024 STRING "String"
 #### READ_CONVERSION
 **Applies a conversion to the current telemetry item**
 
-Conversions are implemented in a custom Ruby file which should be located in the target's lib folder. The class must require 'openc3/conversions/conversion' and inherit from Conversion. It must implement the initialize method if it takes extra parameters and must always implement the call method. The conversion factor is applied to the raw value in the telemetry packet before it is displayed to the user. The user still has the ability to see the raw unconverted value in a details dialog.
+Conversions are implemented in a custom Ruby or Python file which should be located in the target's lib folder. The class must inherit from Conversion. It must implement the `initialize` (Ruby) or `__init__` (Python) method if it takes extra parameters and must always implement the `call` method. The conversion factor is applied to the raw value in the telemetry packet before it is displayed to the user. The user still has the ability to see the raw unconverted value in a details dialog.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Class Filename | The filename which contains the Ruby class. The filename must be named after the class such that the class is a CamelCase version of the underscored filename. For example, 'the_great_conversion.rb' should contain 'class TheGreatConversion'. | True |
+| Class Filename | The filename which contains the Ruby or Python class. The filename must be named after the class such that the class is a CamelCase version of the underscored filename. For example, 'the_great_conversion.rb' should contain 'class TheGreatConversion'. | True |
 | Parameter | Additional parameter values for the conversion which are passed to the class constructor. | False |
 
-Example Usage:
+Ruby Example:
 ```ruby
 READ_CONVERSION the_great_conversion.rb 1000
 
@@ -236,6 +236,21 @@ module OpenC3
     end
   end
 end
+```
+
+Python Example:
+```python
+READ_CONVERSION the_great_conversion.py 1000
+
+Defined in the_great_conversion.py:
+
+from openc3.conversions.conversion import Conversion
+class TheGreatConversion(Conversion):
+    def __init__(self, multiplier):
+        super().__init__()
+        self.multiplier = float(multiplier)
+    def call(self, value, packet, buffer):
+        return value * multiplier
 ```
 
 #### POLY_READ_CONVERSION
@@ -274,10 +289,10 @@ SEG_POLY_READ_CONVERSION 100 12 0.5 0.3 # Apply the conversion to all values >= 
 #### GENERIC_READ_CONVERSION_START
 **Start a generic read conversion**
 
-Adds a generic conversion function to the current telemetry item. This conversion factor is applied to the raw value in the telemetry packet before it is displayed to the user. The user still has the ability to see the raw unconverted value in a details dialog. The conversion is specified as ruby code that receives two implied parameters. 'value' which is the raw value being read and 'packet' which is a reference to the telemetry packet class (Note, referencing the packet as 'myself' is still supported for backwards compatibility). The last line of ruby code given should return the converted value. The GENERIC_READ_CONVERSION_END keyword specifies that all lines of ruby code for the conversion have been given.
+Adds a generic conversion function to the current telemetry item. This conversion factor is applied to the raw value in the telemetry packet before it is displayed to the user. The user still has the ability to see the raw unconverted value in a details dialog. The conversion is specified as Ruby or Python code that receives two implied parameters. 'value' which is the raw value being read and 'packet' which is a reference to the telemetry packet class (Note, referencing the packet as 'myself' is still supported for backwards compatibility). The last line of code should return the converted value. The GENERIC_READ_CONVERSION_END keyword specifies that all lines of code for the conversion have been given.
 
 :::warning
-Generic conversions are not a good long term solution. Consider creating a conversion class and using READ_CONVERSION instead. READ_CONVERSION is easier to debug and higher performance.
+Generic conversions are not a good long term solution. Consider creating a conversion class and using READ_CONVERSION instead. READ_CONVERSION is easier to debug and has higher performance.
 :::
 
 | Parameter | Description | Required |
@@ -285,11 +300,19 @@ Generic conversions are not a good long term solution. Consider creating a conve
 | Converted Type | Type of the converted value<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, STRING, BLOCK</span> | False |
 | Converted Bit Size | Bit size of converted value | False |
 
-Example Usage:
+Ruby Example:
 ```ruby
 APPEND_ITEM ITEM1 32 UINT
   GENERIC_READ_CONVERSION_START
-    value * 1.5  # Convert the value by a scale factor
+    return (value * 1.5).to_i # Convert the value by a scale factor
+  GENERIC_READ_CONVERSION_END
+```
+
+Python Example:
+```python
+APPEND_ITEM ITEM1 32 UINT
+  GENERIC_READ_CONVERSION_START
+    return int(value * 1.5) # Convert the value by a scale factor
   GENERIC_READ_CONVERSION_END
 ```
 
@@ -325,12 +348,17 @@ LIMITS TVAC 3 ENABLED -80.0 -30.0 30.0 80.0
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Response Class Filename | Name of the Ruby file which implements the limits response. This file should be in the config/TARGET/lib directory so it can be found by OpenC3. | True |
+| Response Class Filename | Name of the Ruby or Python file which implements the limits response. This file should be in the target's lib directory. | True |
 | Response Specific Options | Variable length number of options that will be passed to the class constructor | False |
 
-Example Usage:
+Ruby Example:
 ```ruby
 LIMITS_RESPONSE example_limits_response.rb 10
+```
+
+Python Example:
+```python
+LIMITS_RESPONSE example_limits_response.py 10
 ```
 
 ### APPEND_ITEM
@@ -472,12 +500,17 @@ META FSW_TYPE "struct tlm_packet"
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Processor Name | The name of the processor | True |
-| Processor Class Filename | Name of the Ruby file which implements the processor. This file should be in the config/TARGET/lib directory so it can be found by OpenC3. | True |
+| Processor Class Filename | Name of the Ruby or Python file which implements the processor. This file should be in the target's lib directory. | True |
 | Processor Specific Options | Variable length number of options that will be passed to the class constructor. | False |
 
-Example Usage:
+Ruby Example:
 ```ruby
 PROCESSOR TEMP1HIGH watermark_processor.rb TEMP1
+```
+
+Python Example:
+```python
+PROCESSOR TEMP1HIGH watermark_processor.py TEMP1
 ```
 
 ### ALLOW_SHORT

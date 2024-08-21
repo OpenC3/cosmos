@@ -135,7 +135,8 @@ META:
       values: .*
 PROCESSOR:
   summary: Defines a processor class that executes code every time a packet is received
-  example: PROCESSOR TEMP1HIGH watermark_processor.rb TEMP1
+  ruby_example: PROCESSOR TEMP1HIGH watermark_processor.rb TEMP1
+  python_example: PROCESSOR TEMP1HIGH watermark_processor.py TEMP1
   parameters:
     - name: Processor Name
       required: true
@@ -143,9 +144,9 @@ PROCESSOR:
       values: .+
     - name: Processor Class Filename
       required: true
-      description: Name of the Ruby file which implements the processor.
-        This file should be in the config/TARGET/lib directory so it can be found by OpenC3.
-      values: '.+\.rb'
+      description: Name of the Ruby or Python file which implements the processor.
+        This file should be in the target's lib directory.
+      values: '.+'
     - name: Processor Specific Options
       required: false
       description: Variable length number of options that will be passed to the class constructor.
