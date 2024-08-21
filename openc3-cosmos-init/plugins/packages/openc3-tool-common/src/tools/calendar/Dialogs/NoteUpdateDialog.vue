@@ -5,7 +5,7 @@
 # This program is free software; you can modify and/or redistribute it
 # under the terms of the GNU Affero General Public License
 # as published by the Free Software Foundation; version 3 with
-# attribution addstopums as found in the LICENSE.txt
+# attribution addendums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -42,7 +42,7 @@
           </v-system-bar>
           <v-stepper v-model="dialogStep" vertical non-linear>
             <v-stepper-step editable step="1">
-              Input start time, stop time
+              Input start time, end time
             </v-stepper-step>
             <v-stepper-content step="1">
               <v-card-text>
@@ -68,33 +68,22 @@
                   </v-row>
                   <v-row dense>
                     <v-text-field
-                      v-model="stopDate"
+                      v-model="endDate"
                       type="date"
                       label="End Date"
                       class="mx-1"
                       :rules="[rules.required]"
-                      data-test="note-stop-date"
+                      data-test="note-end-date"
                     />
                     <v-text-field
-                      v-model="stopTime"
+                      v-model="endTime"
                       type="time"
                       step="1"
                       label="End Time"
                       class="mx-1"
                       :rules="[rules.required]"
-                      data-test="note-stop-time"
+                      data-test="note-end-time"
                     />
-                  </v-row>
-                  <v-row class="mx-2 mb-2">
-                    <v-radio-group
-                      v-model="utcOrLocal"
-                      row
-                      hide-details
-                      class="mt-0"
-                    >
-                      <v-radio label="LST" value="loc" data-test="lst-radio" />
-                      <v-radio label="UTC" value="utc" data-test="utc-radio" />
-                    </v-radio-group>
                   </v-row>
                   <v-row>
                     <span
@@ -191,9 +180,8 @@ export default {
       dialogStep: 1,
       startDate: '',
       startTime: '',
-      stopDate: '',
-      stopTime: '',
-      utcOrLocal: 'loc',
+      endDate: '',
+      endTime: '',
       description: '',
       color: '',
       rules: {
@@ -210,12 +198,12 @@ export default {
     timeError: function () {
       const now = new Date()
       const start = Date.parse(`${this.startDate}T${this.startTime}`)
-      const stop = Date.parse(`${this.stopDate}T${this.stopTime}`)
-      if (start === stop) {
-        return 'Invalid start, stop time. Notes must have different start and stop times.'
+      const end = Date.parse(`${this.endDate}T${this.endTime}`)
+      if (start === end) {
+        return 'Invalid start, end time. Notes must have different start and end times.'
       }
-      if (start > stop) {
-        return 'Invalid start time. Note start before stop.'
+      if (start > end) {
+        return 'Invalid start time. Note start before end.'
       }
       return null
     },
@@ -238,25 +226,25 @@ export default {
     updateValues: function () {
       this.dialogStep = 1
       const sDate = new Date(this.note.start * 1000)
-      const eDate = new Date(this.note.stop * 1000)
+      const eDate = new Date(this.note.end * 1000)
       this.startDate = format(sDate, 'yyyy-MM-dd')
       this.startTime = format(sDate, 'HH:mm:ss')
-      this.stopDate = format(eDate, 'yyyy-MM-dd')
-      this.stopTime = format(eDate, 'HH:mm:ss')
+      this.endDate = format(eDate, 'yyyy-MM-dd')
+      this.endTime = format(eDate, 'HH:mm:ss')
       this.color = this.note.color
       this.description = this.note.description
     },
     updateNote: function () {
       const start = this.toIsoString(
-        Date.parse(`${this.startDate}T${this.startTime}`),
+        Date.parse(`${this.startDate}T${this.startTime}`)
       )
-      const stop = this.toIsoString(
-        Date.parse(`${this.stopDate}T${this.stopTime}`),
+      const end = this.toIsoString(
+        Date.parse(`${this.endDate}T${this.endTime}`)
       )
       const color = this.color
       const description = this.description
       Api.put(`/openc3-api/notes/${this.note.start}`, {
-        data: { start, stop, color, description },
+        data: { start, end, color, description },
       }).then((response) => {
         const desc =
           response.data.description.length > 16

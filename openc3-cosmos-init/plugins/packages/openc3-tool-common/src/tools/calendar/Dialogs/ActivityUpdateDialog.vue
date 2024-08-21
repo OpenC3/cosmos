@@ -5,7 +5,7 @@
 # This program is free software; you can modify and/or redistribute it
 # under the terms of the GNU Affero General Public License
 # as published by the Free Software Foundation; version 3 with
-# attribution addstopums as found in the LICENSE.txt
+# attribution addendums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -69,35 +69,24 @@
                 </v-row>
                 <v-row dense>
                   <v-text-field
-                    v-model="stopDate"
+                    v-model="endDate"
                     type="date"
                     label="End Date"
                     class="mx-1"
                     :rules="[rules.required]"
-                    data-test="activity-stop-date"
+                    data-test="activity-end-date"
                   />
                   <v-text-field
-                    v-model="stopTime"
+                    v-model="endTime"
                     type="time"
                     step="1"
                     label="End Time"
                     class="mx-1"
                     :rules="[rules.required]"
-                    data-test="activity-stop-time"
+                    data-test="activity-end-time"
                   />
                 </v-row>
                 <v-row style="margin-top: 0px">
-                  <v-col>
-                    <v-radio-group
-                      v-model="utcOrLocal"
-                      row
-                      hide-details
-                      class="mt-0"
-                    >
-                      <v-radio label="LST" value="loc" data-test="lst-radio" />
-                      <v-radio label="UTC" value="utc" data-test="utc-radio" />
-                    </v-radio-group>
-                  </v-col>
                   <v-col>
                     <v-checkbox
                       style="padding-top: 0px; margin-top: 0px"
@@ -263,9 +252,8 @@ export default {
       dialogStep: 1,
       startDate: '',
       startTime: '',
-      stopDate: '',
-      stopTime: '',
-      utcOrLocal: 'loc',
+      endDate: '',
+      endTime: '',
       kind: '',
       // Should match list in ActivityCreateDialog
       types: ['COMMAND', 'SCRIPT', 'RESERVE'],
@@ -291,15 +279,15 @@ export default {
     timeError: function () {
       const now = new Date()
       const start = Date.parse(`${this.startDate}T${this.startTime}`)
-      const stop = Date.parse(`${this.stopDate}T${this.stopTime}`)
-      if (start === stop) {
-        return 'Invalid start, stop time. Activity must have different start and stop times.'
+      const end = Date.parse(`${this.endDate}T${this.endTime}`)
+      if (start === end) {
+        return 'Invalid start, end time. Activity must have different start and end times.'
       }
       if (now > start) {
         return 'Invalid start time. Activity must be in the future.'
       }
-      if (start > stop) {
-        return 'Invalid start time. Activity start before stop.'
+      if (start > end) {
+        return 'Invalid start time. Activity start before end.'
       }
       return null
     },
@@ -331,11 +319,11 @@ export default {
     },
     updateValues: function () {
       const sDate = new Date(this.activity.start * 1000)
-      const eDate = new Date(this.activity.stop * 1000)
+      const eDate = new Date(this.activity.end * 1000)
       this.startDate = format(sDate, 'yyyy-MM-dd')
       this.startTime = format(sDate, 'HH:mm:ss')
-      this.stopDate = format(eDate, 'yyyy-MM-dd')
-      this.stopTime = format(eDate, 'HH:mm:ss')
+      this.endDate = format(eDate, 'yyyy-MM-dd')
+      this.endTime = format(eDate, 'HH:mm:ss')
       this.kind = this.activity.kind.toUpperCase()
       this.activityData = this.activity.data[this.activity.kind]
       this.activityEnvironment = this.activity.data.environment
@@ -354,10 +342,10 @@ export default {
     updateActivity: function () {
       // Call the api to update the activity
       const start = this.toIsoString(
-        Date.parse(`${this.startDate}T${this.startTime}`),
+        Date.parse(`${this.startDate}T${this.startTime}`)
       )
-      const stop = this.toIsoString(
-        Date.parse(`${this.stopDate}T${this.stopTime}`),
+      const end = this.toIsoString(
+        Date.parse(`${this.endDate}T${this.endTime}`)
       )
       const kind = this.kind.toLowerCase()
       let data = { environment: this.activityEnvironment }
@@ -370,16 +358,16 @@ export default {
           frequency: this.frequency,
           span: this.timeSpan,
           end: this.toIsoString(
-            Date.parse(`${this.recurringEndDate}T${this.recurringEndTime}`),
+            Date.parse(`${this.recurringEndDate}T${this.recurringEndTime}`)
           ),
         }
       }
       Api.put(`/openc3-api/timeline/${tName}/activity/${aStart}`, {
-        data: { start, stop, kind, data, recurring },
+        data: { start, end, kind, data, recurring },
       })
         .then((response) => {
           const activityTime = this.generateDateTime(
-            new Date(response.data.start * 1000),
+            new Date(response.data.start * 1000)
           )
           this.$notify.normal({
             title: 'Updated Activity',

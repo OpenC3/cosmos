@@ -21,6 +21,7 @@ import { formatInTimeZone } from 'date-fns-tz'
 
 const dateFormat = 'yyyy-MM-dd'
 const timeFormat = 'HH:mm:ss.SSS'
+const timeFormatHMS = 'HH:mm:ss'
 const dateTimeFormat = `${dateFormat} ${timeFormat}`
 export default {
   // filters: {
@@ -78,13 +79,16 @@ export default {
         return formatInTimeZone(date, this.timeZone, dateFormat)
       }
     },
-    formatTime: function (date, timeZone) {
+    formatTime: function (date, timeZone, formatString = timeFormat) {
       // Default to local time if the timezone isn't set
       if (!timeZone || timeZone === 'local') {
-        return format(date, timeFormat)
+        return format(date, formatString)
       } else {
-        return formatInTimeZone(date, this.timeZone, timeFormat)
+        return formatInTimeZone(date, this.timeZone, formatString)
       }
+    },
+    formatTimeHMS: function (date, timeZone) {
+      return this.formatTime(date, timeZone, timeFormatHMS)
     },
     formatTimestamp(timestamp, timeZone) {
       return this.formatDateTime(parseISO(timestamp), timeZone)

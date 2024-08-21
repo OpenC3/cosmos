@@ -5,7 +5,7 @@
 # This program is free software; you can modify and/or redistribute it
 # under the terms of the GNU Affero General Public License
 # as published by the Free Software Foundation; version 3 with
-# attribution addstopums as found in the LICENSE.txt
+# attribution addendums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -67,17 +67,6 @@
                       :rules="[rules.required]"
                       data-test="metadata-start-time"
                     />
-                  </v-row>
-                  <v-row class="mx-2 mb-2">
-                    <v-radio-group
-                      v-model="utcOrLocal"
-                      row
-                      hide-details
-                      class="mt-0"
-                    >
-                      <v-radio label="LST" value="loc" data-test="lst-radio" />
-                      <v-radio label="UTC" value="utc" data-test="utc-radio" />
-                    </v-radio-group>
                   </v-row>
                   <v-row>
                     <span
@@ -147,7 +136,6 @@ import CreateDialog from '@openc3/tool-common/src/tools/calendar/Dialogs/CreateD
 import TimeFilters from '@openc3/tool-common/src/tools/base/util/timeFilters.js'
 import ColorSelectForm from '@openc3/tool-common/src/tools/calendar/Forms/ColorSelectForm'
 import MetadataInputForm from '@openc3/tool-common/src/tools/calendar/Forms/MetadataInputForm'
-import { format } from 'date-fns'
 
 export default {
   components: {
@@ -194,7 +182,7 @@ export default {
         return 'Please enter a value in the metadata table.'
       }
       const emptyKeyValue = this.metadata.find(
-        (meta) => meta.key === '' || meta.value === '',
+        (meta) => meta.key === '' || meta.value === ''
       )
       if (emptyKeyValue) {
         return 'Missing or empty key, value in the metadata table.'
@@ -213,8 +201,6 @@ export default {
   methods: {
     updateValues: function () {
       this.dialogStep = 1
-      // Set a time so we round down, Metadata can't be in the future
-      this.time = format(new Date(), 'HH:mm:ss')
       this.calcStartDateTime()
       this.color = '#003784'
       this.metadata = []
@@ -226,9 +212,15 @@ export default {
         return result
       }, {})
       const data = { color, metadata }
-      data.start = this.toIsoString(
-        Date.parse(`${this.startDate}T${this.startTime}`),
-      )
+      if (this.timeZone === 'local') {
+        data.start = new Date(
+          this.startDate + ' ' + this.startTime
+        ).toISOString()
+      } else {
+        data.start = new Date(
+          this.startDate + ' ' + this.startTime + 'Z'
+        ).toISOString()
+      }
       Api.post('/openc3-api/metadata', {
         data,
       }).then((response) => {
