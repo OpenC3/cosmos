@@ -67,6 +67,7 @@ jobs:
           docker image ls | grep localhost:12345/openc3/openc3-traefik | grep mine
       - name: openc3.sh util generate
         shell: 'script -q -e -c "bash {0}"'
+        env: OPENC3_LANGUAGE: ruby
         run: |
           set -e
           ### PLUGIN ###

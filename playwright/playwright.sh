@@ -29,9 +29,9 @@ case $1 in
 
     build-plugin )
         rm -rf openc3-cosmos-pw-test
-        ../openc3.sh cli generate plugin PW_TEST
+        ../openc3.sh cli generate plugin PW_TEST --ruby
         cd openc3-cosmos-pw-test
-        ../../openc3.sh cli generate target PW_TEST
+        ../../openc3.sh cli generate target PW_TEST --ruby
         ../../openc3.sh cli rake build VERSION=1.0.0
         cp openc3-cosmos-pw-test-1.0.0.gem openc3-cosmos-pw-test-1.0.1.gem
         ../../openc3.sh cli validate openc3-cosmos-pw-test-1.0.0.gem
