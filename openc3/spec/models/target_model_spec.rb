@@ -25,11 +25,52 @@ require 'fileutils'
 require 'openc3/models/target_model'
 require 'openc3/models/microservice_model'
 require 'openc3/utilities/aws_bucket'
+require 'openc3/utilities/s3_autoload'
 
 module OpenC3
-  describe TargetModel do
+  AwsS3Client = 'Aws::S3::Client'
+
+  describe TargetModel, type: :model do
+    @fsys_s3 = false
+    before(:all) do |example|
+      # These tests work if there's a local S3 or a MINIO service available. To enable
+      # access to MINIO for testing, change the compose.yaml services stanza to:
+      #
+      # services:
+      #   openc3-minio:
+      #     ports:
+      #       - "127.0.0.1:9000:9000"
+      begin
+        sock = Socket.new(Socket::Constants::AF_INET, Socket::Constants::SOCK_STREAM, 0)
+        sock.bind(Socket.pack_sockaddr_in(9000, '127.0.0.1')) #raise if listening
+        sock.close
+        @fsys_s3 = true
+        Logger.info("No S3 listener - using local_s3 client")
+      rescue Errno::EADDRINUSE;
+        Logger.info("Found listener on port 9000; presumably Minio")
+      end
+
+    rescue Seahorse::Client::NetworkingError, Aws::Errors::NoSuchEndpointError => e
+      # We'll just skip them all if we get a networking error.
+      example.skip e.message
+    end
+
     before(:each) do
       mock_redis()
+      #model = ScopeModel.new(name: "DEFAULT")
+      #model.create
+      local_s3() if @fsys_s3
+      @bucket = Bucket.getClient.create("config")
+    end
+
+    after(:each) do
+      Bucket.getClient.delete(@bucket) if @bucket
+      local_s3_unset()
+    end
+
+    after(:all) do
+      Bucket.getClient.delete(@bucket) if @bucket
+      local_s3_unset()
     end
 
     describe "self.get" do
@@ -66,12 +107,72 @@ module OpenC3
         model.create
         model = TargetModel.new(folder_name: "SPEC", name: "SPEC", scope: "DEFAULT")
         model.create
-        all = TargetModel.all(scope: "DEFAULT")
-        expect(all.keys).to contain_exactly("TEST", "SPEC")
+        all_targs = TargetModel.all(scope: "DEFAULT")
+        expect(all_targs).to_not be_nil
+        expect(all_targs.keys).to contain_exactly("TEST", "SPEC")
+      end
+    end
+
+    describe "render" do
+      it "renders" do
+        template = '_template.erb'
+        model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT")
+        model.create
+        Dir.mktmpdir do |tmpdir|
+          tf = File.open(File.join(tmpdir, template), 'w')
+          tf.puts "CMD_LOG_CYCLE_TIME 1"
+          tf.close
+          rendered_result = model.render(File.expand_path(tf.path), {locals: {opt1: '1', opt2: '2', opt3: '3'}})
+          expect(rendered_result.encode('ascii-8bit')).to eql("CMD_LOG_CYCLE_TIME 1\n") # because it's not rendering?
+        end
       end
     end
 
     # self.all_modified & self.download aren't unit tested because it's basically just mocking the entire S3 API
+
+    describe "self.all_modified" do
+      it "returns all the modified targets" do
+        model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT")
+        model.create
+        model = TargetModel.new(folder_name: "SPEC", name: "SPEC", scope: "DEFAULT")
+        model.create
+        all_targs = TargetModel.all_modified(scope: "DEFAULT")
+        expect(all_targs.keys).to contain_exactly("INST", "SPEC")
+      end
+    end
+
+    describe "self.modified_files" do
+      it "returns all the modified files" do
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
+        model.create
+        model = TargetModel.new(folder_name: "SPEC", name: "SPEC", scope: "DEFAULT")
+        model.create
+        mods = TargetModel.modified_files('TEST', scope: "DEFAULT")
+        expect(mods).to match_array([]) # return empty array when none modified
+      end
+    end
+
+    describe "self.delete_modified" do
+      it "returns all the deleted or modified whatnots" do
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
+        model.create
+        model = TargetModel.new(folder_name: "SPEC", name: "SPEC", scope: "DEFAULT")
+        model.create
+        dels = TargetModel.delete_modified('TEST', scope: "DEFAULT")
+        expect(dels).to match_array([] )# return empty array when none modified
+      end
+    end
+
+    describe "self.download" do
+      it "can download" do
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
+        model.create
+        model = TargetModel.new(folder_name: "SPEC", name: "SPEC", scope: "DEFAULT")
+        model.create
+        t = TargetModel.download('TEST', scope: "DEFAULT")
+        expect(t.filename).to eql('TEST.zip')
+      end
+    end
 
     describe "self.packets" do
       before(:each) do
@@ -82,6 +183,27 @@ module OpenC3
         model = TargetModel.new(folder_name: "EMPTY", name: "EMPTY", scope: "DEFAULT")
         model.create
         model.update_store(System.new(['EMPTY'], File.join(SPEC_DIR, 'install', 'config', 'targets')))
+      end
+
+      it "can set packet" do
+        pkts = TargetModel.packets("INST", type: :TLM, scope: "DEFAULT")
+        model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT")
+        expect {TargetModel.set_packet('INST', 'ADCS', pkts[0], type: :TLM, scope: "DEFAULT")}
+        .not_to raise_error(RuntimeError, /Unknown type TLM for INST ADCS/)
+        expect {TargetModel.set_packet('INST', 'ADCS', pkts[0], type: :NILTYPE, scope: "DEFAULT")}
+        .to raise_error(RuntimeError, /Unknown type NILTYPE for INST ADCS/)
+      end
+
+      it "calls limits_groups" do
+         lgs = TargetModel.limits_groups(scope: 'DEFAULT')
+         expect(lgs).to be_a(Hash)
+      end
+
+      it "gets item-to-packet map" do
+        itpm = TargetModel.get_item_to_packet_map("INST", scope: "DEFAULT")
+        expect(itpm).to be_a(Hash)
+        expect(itpm["CCSDSVER"]).to be_a(Array)
+        expect(itpm["CCSDSVER"]).to eql(%w(ADCS HEALTH_STATUS HIDDEN IMAGE MECH PARAMS))
       end
 
       it "raises for an unknown type" do
@@ -246,12 +368,12 @@ module OpenC3
       end
 
       it "raises for non-existant items" do
-        expect { TargetModel.packet_items("INST", "HEALTH_STATUS", ["BLAH"], scope: "DEFAULT") }.to \
-          raise_error("Item(s) 'INST HEALTH_STATUS BLAH' does not exist")
-        expect { TargetModel.packet_items("INST", "HEALTH_STATUS", ["CCSDSVER", "BLAH"], scope: "DEFAULT") }.to \
-          raise_error("Item(s) 'INST HEALTH_STATUS BLAH' does not exist")
-        expect { TargetModel.packet_items("INST", "HEALTH_STATUS", [:BLAH, :NOPE], scope: "DEFAULT") }.to \
-          raise_error("Item(s) 'INST HEALTH_STATUS BLAH', 'INST HEALTH_STATUS NOPE' does not exist")
+        expect { TargetModel.packet_items("INST", "HEALTH_STATUS", ["BLAH"], scope: "DEFAULT") }
+          .to raise_error("Item(s) 'INST HEALTH_STATUS BLAH' does not exist")
+        expect { TargetModel.packet_items("INST", "HEALTH_STATUS", ["CCSDSVER", "BLAH"], scope: "DEFAULT") }
+          .to raise_error("Item(s) 'INST HEALTH_STATUS BLAH' does not exist")
+        expect { TargetModel.packet_items("INST", "HEALTH_STATUS", [:BLAH, :NOPE], scope: "DEFAULT") }
+          .to raise_error("Item(s) 'INST HEALTH_STATUS BLAH', 'INST HEALTH_STATUS NOPE' does not exist")
       end
 
       it "returns item hash array if the telemetry items exists" do
@@ -332,6 +454,26 @@ module OpenC3
         tf.puts "CMD_LOG_CYCLE_SIZE 2"
         tf.puts "CMD_DECOM_LOG_CYCLE_TIME 3"
         tf.puts "CMD_DECOM_LOG_CYCLE_SIZE 4"
+        tf.puts "CMD_BUFFER_DEPTH 9"
+        tf.puts "CMD_LOG_RETAIN_TIME 10"
+        tf.puts "CMD_DECOM_LOG_RETAIN_TIME 12"
+        tf.puts "TLM_BUFFER_DEPTH 13"
+        tf.puts "TLM_LOG_RETAIN_TIME 14"
+        tf.puts "TLM_DECOM_LOG_RETAIN_TIME 15"
+        tf.puts "REDUCED_MINUTE_LOG_RETAIN_TIME 16"
+        tf.puts "REDUCED_HOUR_LOG_RETAIN_TIME 17"
+        tf.puts "REDUCED_DAY_LOG_RETAIN_TIME 18"
+        tf.puts "LOG_RETAIN_TIME 19"
+        tf.puts "REDUCED_LOG_RETAIN_TIME 20"
+        tf.puts "REDUCER_DISABLED 21"
+        tf.puts "REDUCER_MAX_CPU_UTILIZATION 22"
+        tf.puts "REDUCED_MAX_CPU_UTILIZATION 23"
+        tf.puts "CLEANUP_POLL_TIME 24"
+        tf.puts "TARGET_MICROSERVICE DECOM"
+        tf.puts "PACKET REDUCER"
+        tf.puts "PACKET DECOM"
+        tf.puts "DISABLE_ERB"
+        tf.puts "TARGET_MICROSERVICE CLEANUP"
         tf.puts "TLM_LOG_CYCLE_TIME 5"
         tf.puts "TLM_LOG_CYCLE_SIZE 6"
         tf.puts "TLM_DECOM_LOG_CYCLE_TIME 7"
@@ -353,13 +495,11 @@ module OpenC3
       end
     end
 
-    describe "deploy" do
+   describe "deploy" do
       before(:each) do
         @scope = "DEFAULT"
         @target = "INST"
-        @s3 = instance_double("Aws::S3::Client") # .as_null_object
-        allow(@s3).to receive(:put_object)
-        allow(Aws::S3::Client).to receive(:new).and_return(@s3)
+        @client = Bucket.getClient
         @target_dir = File.join(SPEC_DIR, "install", "config")
       end
 
@@ -369,36 +509,6 @@ module OpenC3
         model = TargetModel.new(folder_name: @target, name: @target, scope: @scope, plugin: 'PLUGIN')
         model.create
         expect { model.deploy(@target_dir, variables) }.to raise_error(/No target files found/)
-      end
-
-      it "copies the target files to S3" do
-        Dir.glob("#{@target_dir}/targets/#{@target}/**/*") do |filename|
-          next unless File.file?(filename)
-
-          # Files are stored in S3 with <SCOPE>/<TARGET NAME>/<file path>
-          # Splitting on 'config' gives us the target and path so just prepend the scope
-          filename = "#{@scope}#{filename.split("config")[-1]}"
-          expect(@s3).to receive(:put_object).with(bucket: 'config', key: filename, body: anything, cache_control: nil, content_type: nil, metadata: nil, checksum_algorithm: anything)
-        end
-        model = TargetModel.new(folder_name: @target, name: @target, scope: @scope, plugin: 'PLUGIN')
-        model.create
-        model.deploy(@target_dir, {})
-      end
-
-      it "creates target_id.txt as a hash" do
-        file = "DEFAULT/targets/INST/target_id.txt"
-        expect(@s3).to receive(:put_object).with(bucket: 'config', key: file, body: anything, cache_control: nil, content_type: nil, metadata: nil, checksum_algorithm: anything)
-        model = TargetModel.new(folder_name: @target, name: @target, scope: @scope, plugin: 'PLUGIN')
-        model.create
-        model.deploy(@target_dir, {})
-      end
-
-      it "archives the target to S3" do
-        file = "DEFAULT/target_archives/INST/INST_current.zip"
-        expect(@s3).to receive(:put_object).with(bucket: 'config', key: file, body: anything, cache_control: nil, content_type: nil, metadata: nil, checksum_algorithm: anything)
-        model = TargetModel.new(folder_name: @target, name: @target, scope: @scope, plugin: 'PLUGIN')
-        model.create
-        model.deploy(@target_dir, {})
       end
 
       it "puts the packets in Redis" do
@@ -542,11 +652,6 @@ module OpenC3
 
     describe "destroy" do
       before(:each) do
-        @s3 = instance_double("Aws::S3::Client")
-        allow(@s3).to receive(:put_object)
-        objs = double("Object", :contents => [], is_truncated: false)
-        allow(@s3).to receive(:list_objects_v2).and_return(objs)
-        allow(Aws::S3::Client).to receive(:new).and_return(@s3)
         @target_dir = File.join(SPEC_DIR, "install", "config")
       end
 

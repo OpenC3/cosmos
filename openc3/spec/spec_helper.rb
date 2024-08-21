@@ -219,7 +219,23 @@ def mock_redis
   redis
 end
 
-# Set the logger to output everthing and capture it all in a StringIO object
+OpenC3.disable_warnings do
+  require 'aws-sdk-s3'
+
+  def local_s3
+    require 'openc3/utilities/s3_autoload.rb'
+    require 'local_s3'
+    require 'rspec/mocks/standalone'
+    local_filesystem_client = LocalS3::ClientLocal.new
+    allow(Aws::S3::Client).to receive(:new).and_return(local_filesystem_client)
+  end
+
+  def local_s3_unset
+    RSpec::Mocks.space.proxy_for(Aws::S3::Client).reset
+  end
+end
+
+# Set the logger to output everything and capture it all in a StringIO object
 # which is yielded back to the block. Then restore everything.
 def capture_io(output = false)
   # Set the logger level to DEBUG so we see all output
@@ -331,7 +347,7 @@ RSpec.configure do |config|
     threads = running_threads
     thread_count = threads.size
     running_threads_str = threads.join("\n")
-
+    #Thread.list.each {|thr| thr.kill if thr.status == 'sleep_forever'}
     expect(thread_count).to eql(1),
     "At end of test expect 1 remaining thread but found #{thread_count}.\nEnsure you kill all spawned threads before the test finishes.\nThreads:\n#{running_threads_str}"
   end

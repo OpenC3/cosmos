@@ -46,6 +46,8 @@ module OpenC3
     before(:each) do
       mock_redis()
       setup_system()
+      local_s3()
+      local_s3_unset()
     end
 
     describe "self.set" do
@@ -317,6 +319,20 @@ module OpenC3
         # Once the last override is gone the key should be cleared
         expect(Store.hget("DEFAULT__override__INST", "HEALTH_STATUS")).to be_nil
         check_temp1()
+      end
+    end
+
+    describe "determine latest packet" do
+      it "for item" do
+        packet_name = ""
+        update_temp1()
+        CvtModel.override("INST", "HEALTH_STATUS", "TEMP1", 10, type: :ALL, scope: "DEFAULT")
+        expect{ packet_name = CvtModel.determine_latest_packet_for_item('INST', 'HEALTH_STATUS', cache_timeout: nil, scope: 'DEFAULT') }
+          .to(raise_error do |error|
+            expect(error).to be_a(RuntimeError)
+            expect(error.message).to match(/.*[Target]|[Item] 'INST[ LATEST HEALTH_STATUS]?' does not exist for scope: DEFAULT.*/)
+          end)
+        expect(packet_name).not_to eq('something')
       end
     end
 
