@@ -247,7 +247,7 @@ export default {
         (this.valueId.includes('PACKET_TIMEFORMATTED') ||
           this.valueId.includes('RECEIVED_TIMEFORMATTED'))
       ) {
-        return this.formatUtc(new Date(value), this.timeZone)
+        return this.formatUtcToLocal(new Date(value), this.timeZone)
       }
       // Convert json raw strings into the raw bytes
       // Only convert the first 32 bytes before adding an ellipse

@@ -29,7 +29,7 @@ export default defineConfig({
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry once on CI */
-  retries: process.env.CI ? 1 : 2,
+  retries: process.env.CI ? 1 : 0,
   workers: 1,
   /* See if explict WORKERS count was given, otherwise allow parallelism on CI/CD */
   // workers: process.env.WORKERS

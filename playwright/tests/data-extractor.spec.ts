@@ -13,13 +13,14 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 */
 
 // @ts-check
 import { test, expect } from './fixture'
 import { format, add, sub } from 'date-fns'
+import { parse, addMinutes, subMinutes, isWithinInterval } from 'date-fns'
 
 test.use({
   toolPath: '/tools/dataextractor',
@@ -362,4 +363,92 @@ test('outputs unique values only', async ({ page, utils }) => {
     expect(lines[0]).toContain('CCSDSVER')
     expect(lines.length).toEqual(2) // header and a single value
   })
+})
+
+test('works with UTC date / times', async ({ page, utils }) => {
+  let now = new Date()
+  // Verify the local date / time
+  let startTimeString =
+    (await page.inputValue('[data-test=start-time]'))?.trim() || ''
+  let startTime = parse(startTimeString, 'HH:mm:ss.SSS', now)
+  expect(
+    isWithinInterval(startTime, {
+      // Start time is automatically 1hr in the past
+      start: subMinutes(now, 61),
+      end: subMinutes(now, 59),
+    }),
+  ).toBeTruthy()
+  let endTimeString =
+    (await page.inputValue('[data-test=end-time]'))?.trim() || ''
+  let endTime = parse(endTimeString, 'HH:mm:ss.SSS', now)
+  expect(
+    isWithinInterval(endTime, {
+      // end time is now
+      start: subMinutes(now, 1),
+      end: addMinutes(now, 1),
+    }),
+  ).toBeTruthy()
+
+  // Switch to UTC
+  await page.goto('/tools/admin/settings')
+  await expect(page.locator('.v-app-bar')).toContainText('Administrator')
+  await page.locator('[data-test=time-zone]').click()
+  await page.getByRole('option', { name: 'UTC' }).click()
+  await page.locator('[data-test="save-time-zone"]').click()
+
+  await page.goto('/tools/dataextractor')
+  await expect(page.locator('.v-app-bar')).toContainText('Data Extractor', {
+    timeout: 20000,
+  })
+  await page.locator('rux-icon-apps path').click()
+  await expect(page.locator('#openc3-nav-drawer')).toBeHidden()
+
+  now = new Date()
+  // The date is now in UTC but we parse it like it is local time
+  startTimeString =
+    (await page.inputValue('[data-test=start-time]'))?.trim() || ''
+  startTime = parse(startTimeString, 'HH:mm:ss.SSS', now)
+  // so subtrack off the timezone offset to get it back to local time
+  let localStartTime = subMinutes(startTime, now.getTimezoneOffset())
+  expect(
+    isWithinInterval(localStartTime, {
+      // Start time is automatically 1hr in the past
+      start: subMinutes(now, 61),
+      end: subMinutes(now, 59),
+    }),
+  ).toBeTruthy()
+  // The date is now in UTC but we parse it like it is local time
+  endTimeString = (await page.inputValue('[data-test=end-time]'))?.trim() || ''
+  endTime = parse(endTimeString, 'HH:mm:ss.SSS', now)
+  // so subtrack off the timezone offset to get it back to local time
+  endTime = subMinutes(endTime, now.getTimezoneOffset())
+  expect(
+    isWithinInterval(endTime, {
+      // end time is now
+      start: subMinutes(now, 1),
+      end: addMinutes(now, 1),
+    }),
+  ).toBeTruthy()
+
+  const start = sub(startTime, { minutes: 2 })
+  await page.locator('[data-test=start-time]').fill(format(start, 'HH:mm:ss'))
+  await utils.addTargetPacketItem('INST', 'MECH')
+
+  await utils.download(page, 'text=Process', function (contents) {
+    var lines = contents.split('\n')
+    expect(lines[0]).toContain('SLRPNL1')
+    expect(lines[0]).toContain('SLRPNL2')
+    expect(lines[0]).toContain('SLRPNL3')
+    expect(lines[0]).toContain('SLRPNL4')
+    expect(lines[0]).toContain('SLRPNL5')
+    expect(lines[0]).toContain(',') // csv
+    expect(lines.length).toBeGreaterThan(60) // 2 min at 60Hz is 120 samples
+  })
+
+  // Switch back to local time
+  await page.goto('/tools/admin/settings')
+  await expect(page.locator('.v-app-bar')).toContainText('Administrator')
+  await page.locator('[data-test=time-zone]').click()
+  await page.getByRole('option', { name: 'local' }).click()
+  await page.locator('[data-test="save-time-zone"]').click()
 })

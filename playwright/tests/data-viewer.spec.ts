@@ -13,12 +13,19 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 */
 
 // @ts-check
 import { test, expect } from './fixture'
+import {
+  parse,
+  addSeconds,
+  addMinutes,
+  subMinutes,
+  isWithinInterval,
+} from 'date-fns'
 
 test.use({
   toolPath: '/tools/dataviewer',
@@ -364,4 +371,67 @@ test('validates start and end time values', async ({ page, utils }) => {
   await expect(page.locator('.warning')).toContainText(
     'Note: End date/time is greater than current date/time. Data will continue to stream in real-time until 4000-01-01 12:15:15 is reached.',
   )
+})
+
+test('works with UTC date / times', async ({ page, utils }) => {
+  let now = new Date()
+  // Verify the local date / time
+  let startTimeString =
+    (await page.inputValue('[data-test=start-time]'))?.trim() || ''
+  let startTime = parse(startTimeString, 'HH:mm:ss.SSS', now)
+  expect(
+    isWithinInterval(startTime, {
+      start: subMinutes(now, 1),
+      end: addMinutes(now, 1),
+    }),
+  ).toBeTruthy()
+
+  // Switch to UTC
+  await page.goto('/tools/admin/settings')
+  await expect(page.locator('.v-app-bar')).toContainText('Administrator')
+  await page.locator('[data-test=time-zone]').click()
+  await page.getByRole('option', { name: 'UTC' }).click()
+  await page.locator('[data-test="save-time-zone"]').click()
+
+  await page.goto('/tools/dataviewer')
+  await expect(page.locator('.v-app-bar')).toContainText('Data Viewer', {
+    timeout: 20000,
+  })
+  await page.locator('rux-icon-apps path').click()
+  await expect(page.locator('#openc3-nav-drawer')).toBeHidden()
+
+  now = new Date()
+  // The date is now in UTC but we parse it like it is local time
+  let startDateString =
+    (await page.inputValue('[data-test=start-date]'))?.trim() || ''
+  startTimeString =
+    (await page.inputValue('[data-test=start-time]'))?.trim() || ''
+  startTime = parse(
+    startDateString + ' ' + startTimeString,
+    'yyyy-MM-dd HH:mm:ss.SSS',
+    now,
+  )
+  // so subtrack off the timezone offset to get it back to local time
+  let localStartTime = subMinutes(startTime, now.getTimezoneOffset())
+  expect(
+    isWithinInterval(localStartTime, {
+      start: subMinutes(now, 1),
+      end: addMinutes(now, 1),
+    }),
+  ).toBeTruthy()
+
+  await addComponent(page, utils, 'INST', 'ADCS')
+  await page.locator('[data-test=start-button]').click()
+  await utils.sleep(500)
+  localStartTime = addSeconds(localStartTime, 2)
+  expect(
+    await page.inputValue('[data-test=history-component-text-area]'),
+  ).toContain(localStartTime.toISOString().split('.')[0])
+
+  // Switch back to local time
+  await page.goto('/tools/admin/settings')
+  await expect(page.locator('.v-app-bar')).toContainText('Administrator')
+  await page.locator('[data-test=time-zone]').click()
+  await page.getByRole('option', { name: 'local' }).click()
+  await page.locator('[data-test="save-time-zone"]').click()
 })

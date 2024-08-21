@@ -50,7 +50,7 @@ export default {
   // },
   methods: {
     // Convert a UTC stamp into a local time
-    formatUtc(date, timeZone) {
+    formatUtctoLocal(date, timeZone) {
       // Default to local time if the timezone isn't set
       if (!timeZone || timeZone === 'local') {
         // subtrack off the timezone offset to get it back to local time
