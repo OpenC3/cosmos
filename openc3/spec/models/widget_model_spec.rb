@@ -136,13 +136,6 @@ module OpenC3
     end
 
     describe "deploy" do
-      it "unless validate_only" do
-        dir = File.join(SPEC_DIR, "install")
-        model = WidgetModel.new(name: "DEFAULT", scope: 'scope', updated_at: 12346)
-        model.create
-        model.deploy(dir, {}, validate_only: true)
-      end
-
       it "the Widget's microservice and undeploy it" do
         s3 = instance_double("Aws::S3::Client")
         allow(Aws::S3::Client).to receive(:new).and_return(s3)

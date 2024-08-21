@@ -31,6 +31,7 @@ module OpenC3
 
       it "self.load_config" do
         config = ToolConfigModel.load_config('toolie', 'namely', scope: 'DEFAULT')
+        expect(config).to be_nil
       end
 
       it "self.list_configs" do
@@ -44,9 +45,9 @@ module OpenC3
       end
 
       it "deletes" do
-        name = ToolConfigModel.delete_config('toolie', 'namely', local_mode: true, scope: 'DEFAULT')
+        names = ToolConfigModel.delete_config('toolie', 'namely', local_mode: true, scope: 'DEFAULT')
+        expect(names[0]).to eql("/plugins/DEFAULT/tool_config/toolie/namely.json")
       end
-
     end
   end
 end

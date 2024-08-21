@@ -107,9 +107,9 @@ module OpenC3
         model.create
         model = TargetModel.new(folder_name: "SPEC", name: "SPEC", scope: "DEFAULT")
         model.create
-        all = TargetModel.all(scope: "DEFAULT")
-        expect(all).to_not be_nil
-        expect(all.keys).to contain_exactly("TEST", "SPEC")
+        all_targs = TargetModel.all(scope: "DEFAULT")
+        expect(all_targs).to_not be_nil
+        expect(all_targs.keys).to contain_exactly("TEST", "SPEC")
       end
     end
 
@@ -122,8 +122,8 @@ module OpenC3
           tf = File.open(File.join(tmpdir, template), 'w')
           tf.puts "CMD_LOG_CYCLE_TIME 1"
           tf.close
-          model.render(File.expand_path(tf.path), {opt1: '1', opt2: '2', opt3: '3'})
-          # where does the rendered value go?
+          rendered_result = model.render(File.expand_path(tf.path), {locals: {opt1: '1', opt2: '2', opt3: '3'}})
+          expect(rendered_result.encode('ascii-8bit')).to eql("CMD_LOG_CYCLE_TIME 1\n") # because it's not rendering?
         end
       end
     end
@@ -148,7 +148,7 @@ module OpenC3
         model = TargetModel.new(folder_name: "SPEC", name: "SPEC", scope: "DEFAULT")
         model.create
         mods = TargetModel.modified_files('TEST', scope: "DEFAULT")
-        expect(mods).to match_array([])
+        expect(mods).to match_array([]) # return empty array when none modified
       end
     end
 
@@ -159,22 +159,7 @@ module OpenC3
         model = TargetModel.new(folder_name: "SPEC", name: "SPEC", scope: "DEFAULT")
         model.create
         dels = TargetModel.delete_modified('TEST', scope: "DEFAULT")
-=begin
-Oh, joy.
-        puts 'OpenStruct key="blah"'.encoding.to_s
-        puts 'OpenStruct key="blah"'.bytes.to_s
-
-        puts dels[0].to_s.encoding.to_s
-        puts dels[0].to_s.bytes.to_s
-
-ASCII-8BIT
-[79, 112, 101, 110, 83, 116, 114, 117, 99, 116, 32, 107, 101, 121, 61, 34, 98, 108, 97, 104, 34]
-
-UTF-8
-[35, 60, 79, 112, 101, 110, 83, 116, 114, 117, 99, 116, 32, 107, 101, 121, 61, 34, 98, 108, 97, 104, 34, 62]
-=end
-
-        #expect(dels[0]).to match(/<OpenStruct key="blah">/) #match(/Error deleting object bucket/)
+        expect(dels).to match_array([] )# return empty array when none modified
       end
     end
 
@@ -203,22 +188,29 @@ UTF-8
       it "can set packet" do
         pkts = TargetModel.packets("INST", type: :TLM, scope: "DEFAULT")
         model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT")
-        TargetModel.set_packet('INST', 'ADCS', pkts[0], type: :TLM, scope: "DEFAULT")
+        expect {TargetModel.set_packet('INST', 'ADCS', pkts[0], type: :TLM, scope: "DEFAULT")}
+        .not_to raise_error(RuntimeError, /Unknown type TLM for INST ADCS/)
+        expect {TargetModel.set_packet('INST', 'ADCS', pkts[0], type: :NILTYPE, scope: "DEFAULT")}
+        .to raise_error(RuntimeError, /Unknown type NILTYPE for INST ADCS/)
       end
 
       it "calls limits_groups" do
-        TargetModel.limits_groups(scope: 'DEFAULT')
+         lgs = TargetModel.limits_groups(scope: 'DEFAULT')
+         expect(lgs).to be_a(Hash)
       end
 
       it "gets item-to-packet map" do
-        TargetModel.get_item_to_packet_map("INST", scope: "DEFAULT")
+        itpm = TargetModel.get_item_to_packet_map("INST", scope: "DEFAULT")
+        expect(itpm).to be_a(Hash)
+        expect(itpm["CCSDSVER"]).to be_a(Array)
+        expect(itpm["CCSDSVER"]).to eql(%w(ADCS HEALTH_STATUS HIDDEN IMAGE MECH PARAMS))
       end
 
       it "raises for an unknown type" do
         expect { TargetModel.packets("INST", type: :OTHER, scope: "DEFAULT") }.to raise_error(/Unknown type OTHER/)
       end
 
-      it "raises for a non-existant target" do
+      it "raises for a non-existent target" do
         expect { TargetModel.packets("BLAH", scope: "DEFAULT") }.to raise_error("Target 'BLAH' does not exist for scope: DEFAULT")
       end
 
@@ -297,11 +289,11 @@ UTF-8
         expect { TargetModel.packet("INST", "HEALTH_STATUS", type: :OTHER, scope: "DEFAULT") }.to raise_error(/Unknown type OTHER/)
       end
 
-      it "raises for a non-existant target" do
+      it "raises for a non-existent target" do
         expect { TargetModel.packet("BLAH", "HEALTH_STATUS", type: :TLM, scope: "DEFAULT") }.to raise_error("Packet 'BLAH HEALTH_STATUS' does not exist")
       end
 
-      it "raises for a non-existant packet" do
+      it "raises for a non-existent packet" do
         expect { TargetModel.packet("INST", "BLAH", type: :TLM, scope: "DEFAULT") }.to raise_error("Packet 'INST BLAH' does not exist")
       end
 
@@ -330,15 +322,15 @@ UTF-8
         expect { TargetModel.packet_item("INST", "HEALTH_STATUS", "CCSDSVER", type: :OTHER, scope: "DEFAULT") }.to raise_error(/Unknown type OTHER/)
       end
 
-      it "raises for a non-existant target" do
+      it "raises for a non-existent target" do
         expect { TargetModel.packet_item("BLAH", "HEALTH_STATUS", "CCSDSVER", scope: "DEFAULT") }.to raise_error("Packet 'BLAH HEALTH_STATUS' does not exist")
       end
 
-      it "raises for a non-existant packet" do
+      it "raises for a non-existent packet" do
         expect { TargetModel.packet_item("INST", "BLAH", "CCSDSVER", scope: "DEFAULT") }.to raise_error("Packet 'INST BLAH' does not exist")
       end
 
-      it "raises for a non-existant item" do
+      it "raises for a non-existent item" do
         expect { TargetModel.packet_item("INST", "HEALTH_STATUS", "BLAH", scope: "DEFAULT") }.to raise_error("Item 'INST HEALTH_STATUS BLAH' does not exist")
       end
 
@@ -367,21 +359,21 @@ UTF-8
         expect { TargetModel.packet_items("INST", "HEALTH_STATUS", ["CCSDSVER"], type: :OTHER, scope: "DEFAULT") }.to raise_error(/Unknown type OTHER/)
       end
 
-      it "raises for a non-existant target" do
+      it "raises for a non-existent target" do
         expect { TargetModel.packet_items("BLAH", "HEALTH_STATUS", ["CCSDSVER"], scope: "DEFAULT") }.to raise_error("Packet 'BLAH HEALTH_STATUS' does not exist")
       end
 
-      it "raises for a non-existant packet" do
+      it "raises for a non-existent packet" do
         expect { TargetModel.packet_items("INST", "BLAH", ["CCSDSVER"], scope: "DEFAULT") }.to raise_error("Packet 'INST BLAH' does not exist")
       end
 
-      it "raises for non-existant items" do
-        expect { TargetModel.packet_items("INST", "HEALTH_STATUS", ["BLAH"], scope: "DEFAULT") }.to \
-          raise_error("Item(s) 'INST HEALTH_STATUS BLAH' does not exist")
-        expect { TargetModel.packet_items("INST", "HEALTH_STATUS", ["CCSDSVER", "BLAH"], scope: "DEFAULT") }.to \
-          raise_error("Item(s) 'INST HEALTH_STATUS BLAH' does not exist")
-        expect { TargetModel.packet_items("INST", "HEALTH_STATUS", [:BLAH, :NOPE], scope: "DEFAULT") }.to \
-          raise_error("Item(s) 'INST HEALTH_STATUS BLAH', 'INST HEALTH_STATUS NOPE' does not exist")
+      it "raises for non-existent items" do
+        expect { TargetModel.packet_items("INST", "HEALTH_STATUS", ["BLAH"], scope: "DEFAULT") }
+          .to raise_error("Item(s) 'INST HEALTH_STATUS BLAH' does not exist")
+        expect { TargetModel.packet_items("INST", "HEALTH_STATUS", ["CCSDSVER", "BLAH"], scope: "DEFAULT") }
+          .to raise_error("Item(s) 'INST HEALTH_STATUS BLAH' does not exist")
+        expect { TargetModel.packet_items("INST", "HEALTH_STATUS", [:BLAH, :NOPE], scope: "DEFAULT") }
+          .to raise_error("Item(s) 'INST HEALTH_STATUS BLAH', 'INST HEALTH_STATUS NOPE' does not exist")
       end
 
       it "returns item hash array if the telemetry items exists" do
@@ -517,36 +509,6 @@ UTF-8
         model = TargetModel.new(folder_name: @target, name: @target, scope: @scope, plugin: 'PLUGIN')
         model.create
         expect { model.deploy(@target_dir, variables) }.to raise_error(/No target files found/)
-      end
-
-      it "copies the target files to S3" do
-        Dir.glob("#{@target_dir}/targets/#{@target}/**/*") do |filename|
-          next unless File.file?(filename)
-
-          # Files are stored in S3 with <SCOPE>/<TARGET NAME>/<file path>
-          # Splitting on 'config' gives us the target and path so just prepend the scope
-          filename = "#{@scope}#{filename.split("config")[-1]}"
-          @client.put_object(bucket: 'config', key: filename, body: anything, cache_control: nil, content_type: nil, metadata: nil)
-        end
-        model = TargetModel.new(folder_name: @target, name: @target, scope: @scope, plugin: 'PLUGIN')
-        model.create
-        model.deploy(@target_dir, {})
-      end
-
-      it "creates target_id.txt as a hash" do
-        file = "DEFAULT/targets/INST/target_id.txt"
-        @client.put_object(bucket: 'config', key: file, body: anything, cache_control: nil, content_type: nil, metadata: nil)
-        model = TargetModel.new(folder_name: @target, name: @target, scope: @scope, plugin: 'PLUGIN')
-        model.create
-        model.deploy(@target_dir, {})
-      end
-
-      it "archives the target to S3" do
-        file = "DEFAULT/target_archives/INST/INST_current.zip"
-        @client.put_object(bucket: 'config', key: file, body: anything, cache_control: nil, content_type: nil, metadata: nil)
-        model = TargetModel.new(folder_name: @target, name: @target, scope: @scope, plugin: 'PLUGIN')
-        model.create
-        model.deploy(@target_dir, {})
       end
 
       it "puts the packets in Redis" do

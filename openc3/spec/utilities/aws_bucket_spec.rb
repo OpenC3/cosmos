@@ -53,7 +53,7 @@ module OpenC3
 
     let(:client) { Bucket.getClient() }
 
-    describe "basically it" do
+    describe "create, exist?, delete" do
       it "checks a bucket" do
         expect(client.exist?(@bucket)).to be true
       end
