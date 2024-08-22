@@ -342,7 +342,7 @@
       v-if="inputMetadata.show"
       v-model="inputMetadata.show"
       :events="inputMetadata.events"
-      :utc="false"
+      :time-zone="timeZone"
       new-metadata
       @close="inputMetadata.callback"
     />

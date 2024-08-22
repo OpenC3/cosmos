@@ -24,10 +24,11 @@
   <div>
     <v-dialog persistent v-model="show" width="600">
       <v-card>
-        <form @submit.prevent="updateNote">
+        <form @submit.prevent="createNote">
           <v-system-bar>
             <v-spacer />
-            <span>Update Note</span>
+            <span v-if="note">Update Note</span>
+            <span v-else>Create Note</span>
             <v-spacer />
             <v-tooltip top>
               <template v-slot:activator="{ on, attrs }">
@@ -96,7 +97,7 @@
                     <v-spacer />
                     <v-btn
                       @click="dialogStep = 2"
-                      data-test="update-note-step-two-btn"
+                      data-test="note-step-two-btn"
                       color="success"
                       :disabled="!!timeError"
                     >
@@ -120,7 +121,7 @@
                       v-model="description"
                       type="text"
                       label="Note Description"
-                      data-test="update-note-description"
+                      data-test="note-description"
                     />
                   </div>
                   <v-row v-show="typeError">
@@ -132,16 +133,16 @@
                       @click="show = !show"
                       outlined
                       class="mx-2"
-                      data-test="update-note-cancel-btn"
+                      data-test="note-cancel-btn"
                     >
                       Cancel
                     </v-btn>
                     <v-btn
-                      @click.prevent="updateNote"
+                      @click.prevent="createNote"
                       class="mx-2"
                       color="primary"
                       type="submit"
-                      data-test="update-note-submit-btn"
+                      data-test="note-submit-btn"
                       :disabled="!!timeError || !!typeError"
                     >
                       Ok
@@ -158,8 +159,8 @@
 </template>
 
 <script>
-import { format } from 'date-fns'
 import Api from '@openc3/tool-common/src/services/api'
+import CreateDialog from '@openc3/tool-common/src/tools/calendar/Dialogs/CreateDialog.js'
 import TimeFilters from '@openc3/tool-common/src/tools/base/util/timeFilters.js'
 import ColorSelectForm from '@openc3/tool-common/src/tools/calendar/Forms/ColorSelectForm'
 
@@ -168,46 +169,49 @@ export default {
     ColorSelectForm,
   },
   props: {
+    value: Boolean, // value is the default prop when using v-model
     note: {
       type: Object,
-      required: true,
     },
-    value: Boolean, // value is the default prop when using v-model
   },
-  mixins: [TimeFilters],
+  mixins: [CreateDialog, TimeFilters],
   data() {
     return {
       dialogStep: 1,
-      startDate: '',
-      startTime: '',
-      endDate: '',
-      endTime: '',
       description: '',
-      color: '',
+      color: '#8F3400',
       rules: {
         required: (value) => !!value || 'Required',
       },
     }
   },
-  watch: {
-    show: function () {
-      this.updateValues()
-    },
+  mounted: function () {
+    this.updateValues()
   },
   computed: {
     timeError: function () {
       const now = new Date()
-      const start = Date.parse(`${this.startDate}T${this.startTime}`)
-      const end = Date.parse(`${this.endDate}T${this.endTime}`)
+      let start
+      let end
+      if (this.timeZone === 'local') {
+        start = new Date(this.startDate + ' ' + this.startTime)
+        end = new Date(this.endDate + ' ' + this.endTime)
+      } else {
+        start = new Date(this.startDate + ' ' + this.startTime + 'Z')
+        end = new Date(this.endDate + ' ' + this.endTime + 'Z')
+      }
       if (start === end) {
         return 'Invalid start, end time. Notes must have different start and end times.'
       }
       if (start > end) {
-        return 'Invalid start time. Note start before end.'
+        return 'Invalid start time. Notes start before end.'
       }
       return null
     },
     typeError: function () {
+      if (!this.color) {
+        return 'A color is required.'
+      }
       if (!this.description) {
         return 'A description is required for a valid note.'
       }
@@ -225,41 +229,67 @@ export default {
   methods: {
     updateValues: function () {
       this.dialogStep = 1
-      const sDate = new Date(this.note.start * 1000)
-      const eDate = new Date(this.note.end * 1000)
-      this.startDate = format(sDate, 'yyyy-MM-dd')
-      this.startTime = format(sDate, 'HH:mm:ss')
-      this.endDate = format(eDate, 'yyyy-MM-dd')
-      this.endTime = format(eDate, 'HH:mm:ss')
-      this.color = this.note.color
-      this.description = this.note.description
+      if (this.note) {
+        const sDate = new Date(this.note.start * 1000)
+        this.startDate = this.formatDate(sDate, this.timeZone)
+        this.startTime = this.formatTime(sDate, this.timeZone)
+        const eDate = new Date(this.note.stop * 1000)
+        this.endDate = this.formatDate(eDate, this.timeZone)
+        this.endTime = this.formatTime(eDate, this.timeZone)
+        this.color = this.note.color
+        this.description = this.note.description
+      } else {
+        this.calcStartDateTime()
+        this.color = '#8F3400'
+        this.description = ''
+      }
     },
-    updateNote: function () {
-      const start = this.toIsoString(
-        Date.parse(`${this.startDate}T${this.startTime}`)
-      )
-      const end = this.toIsoString(
-        Date.parse(`${this.endDate}T${this.endTime}`)
-      )
+    createNote: function () {
+      let start
+      let stop // API takes stop rather than end
+      if (this.timeZone === 'local') {
+        start = new Date(this.startDate + ' ' + this.startTime).toISOString()
+        stop = new Date(this.endDate + ' ' + this.endTime).toISOString()
+      } else {
+        start = new Date(
+          this.startDate + ' ' + this.startTime + 'Z'
+        ).toISOString()
+        stop = new Date(this.endDate + ' ' + this.endTime + 'Z').toISOString()
+      }
       const color = this.color
       const description = this.description
-      Api.put(`/openc3-api/notes/${this.note.start}`, {
-        data: { start, end, color, description },
-      }).then((response) => {
-        const desc =
-          response.data.description.length > 16
-            ? `${response.data.description.substring(0, 16)}...`
-            : response.data.description
-        this.$notify.normal({
-          title: 'Updated Note',
-          body: `Note updated: (${response.data.start}): "${desc}"`,
+      if (this.note) {
+        Api.put(`/openc3-api/notes/${this.note.start}`, {
+          data: { start, stop, color, description },
+        }).then((response) => {
+          const desc =
+            response.data.description.length > 16
+              ? `${response.data.description.substring(0, 16)}...`
+              : response.data.description
+          this.$notify.normal({
+            title: 'Updated Note',
+            body: `Note updated: (${response.data.start}): "${desc}"`,
+          })
+          this.$emit('update', response.data)
+          this.show = !this.show
         })
-        console.log(response.data)
-        this.$emit('update', response.data)
-      })
-      this.$emit('close')
-      this.show = !this.show
-      this.updateValues()
+      } else {
+        Api.post('/openc3-api/notes', {
+          data: { start, stop, color, description },
+        }).then((response) => {
+          const desc =
+            response.data.description.length > 16
+              ? `${response.data.description.substring(0, 16)}...`
+              : response.data.description
+          this.$notify.normal({
+            title: 'Created new Note',
+            body: `Note: (${response.data.start}) created: "${desc}"`,
+          })
+          this.$emit('update', response.data)
+          this.show = !this.show
+        })
+      }
+      // We don't do the $emit or set show here because it has to be in the callback
     },
   },
 }
