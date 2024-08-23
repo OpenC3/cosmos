@@ -32,7 +32,6 @@
           min-width="290px"
         >
           <template v-slot:activator="{ on }">
-            <!-- TODO: Investigate using Date Chooser or something that better supports timezones -->
             <!-- We set the :name attribute to be unique to avoid auto-completion -->
             <v-text-field
               :label="dateLabel"
@@ -47,7 +46,6 @@
         </v-menu>
       </v-col>
       <v-col>
-        <!-- TODO: Investigate using Time Chooser or something that better supports timezones -->
         <!-- We set the :name attribute to be unique to avoid auto-completion -->
         <v-text-field
           :label="timeLabel"

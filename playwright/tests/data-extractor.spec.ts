@@ -304,7 +304,7 @@ test('fills values', async ({ page, utils }) => {
   await utils.download(page, 'text=Process', function (contents) {
     let lines = contents.split('\n')
     expect(lines[0]).toContain('CCSDSSEQCNT')
-    let [header1, header2, header3, header4] = lines[0].split(',')
+    let header3 = lines[0].split(',')[2]
     let adcsFirst = false
     if (header3 === 'INST ADCS CCSDSSEQCNT') {
       adcsFirst = true

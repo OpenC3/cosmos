@@ -105,10 +105,6 @@ def combo_box(string, *buttons, **options):
     return message_box(string, *buttons, **options)
 
 
-def metadata_input():
-    pass
-
-
 def open_file_dialog(title, message="Open File", filter=None):
     _file_dialog(title, message, filter)
 

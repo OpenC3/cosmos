@@ -68,20 +68,12 @@
                       data-test="metadata-start-time"
                     />
                   </v-row>
-                  <v-row>
-                    <span
-                      class="ma-2 red--text"
-                      v-show="timeError"
-                      v-text="timeError"
-                    />
-                  </v-row>
                   <v-row class="mt-2">
                     <v-spacer />
                     <v-btn
                       @click="dialogStep = 2"
                       data-test="metadata-step-two-btn"
                       color="success"
-                      :disabled="!!timeError"
                     >
                       Continue
                     </v-btn>
@@ -115,7 +107,7 @@
                       color="primary"
                       type="submit"
                       data-test="metadata-submit-btn"
-                      :disabled="!!timeError || !!typeError"
+                      :disabled="!!typeError"
                     >
                       Ok
                     </v-btn>
@@ -164,16 +156,6 @@ export default {
     this.updateValues()
   },
   computed: {
-    timeError: function () {
-      const now = new Date()
-      let start
-      if (this.timeZone === 'local') {
-        start = new Date(this.startDate + ' ' + this.startTime)
-      } else {
-        start = new Date(this.startDate + ' ' + this.startTime + 'Z')
-      }
-      return null
-    },
     typeError: function () {
       if (!this.color) {
         return 'A color is required.'
