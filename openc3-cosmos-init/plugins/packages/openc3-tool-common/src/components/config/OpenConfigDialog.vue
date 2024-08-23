@@ -193,10 +193,10 @@ export default {
           new OpenC3Api().delete_config(this.configKey, item.config)
         })
         .catch((error) => {
-          if (error) {
+          if (error !== true) {
             this.$emit(
               'warning',
-              `Failed to delete config ${item.config} Error: ${error}`,
+              `Failed to delete config ${item.config} Error: ${error}`
             )
           }
         })

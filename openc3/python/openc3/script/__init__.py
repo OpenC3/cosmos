@@ -106,7 +106,6 @@ def combo_box(string, *buttons, **options):
 
 
 def metadata_input():
-    # TODO: Not currently implemented
     pass
 
 

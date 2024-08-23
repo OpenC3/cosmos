@@ -366,7 +366,7 @@ export default {
       this.activityData = ''
     },
     fileHandler: function (event) {
-      this.activityData = event ? event : null
+      this.activityData = event
     },
     updateValues: function () {
       console.log(`timeZone:${this.timeZone}`)
@@ -429,7 +429,7 @@ export default {
       const kind = this.kind.toLowerCase()
       let data = { environment: this.activityEnvironment }
       data[kind] = this.activityData
-      var recurring = {}
+      let recurring = {}
       if (this.recurring) {
         recurring = {
           frequency: this.frequency,

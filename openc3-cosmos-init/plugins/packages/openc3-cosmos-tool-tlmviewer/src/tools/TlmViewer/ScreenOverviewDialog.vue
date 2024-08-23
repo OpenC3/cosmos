@@ -206,7 +206,7 @@ export default {
           this.$emit('update', updateObject)
         })
         .catch((error) => {
-          if (error) {
+          if (error !== true) {
             const alertObject = {
               text: `Failed to delete screen ${screen.name} Error: ${error}`,
               type: 'error',

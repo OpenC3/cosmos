@@ -2390,7 +2390,7 @@ class TestSuite(Suite):
           this.newFile()
         })
         .catch((error) => {
-          if (error) {
+          if (error !== true) {
             const alertObject = {
               text: `Failed Multi-Delete. ${error}`,
               type: 'error',

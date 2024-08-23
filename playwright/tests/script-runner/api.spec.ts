@@ -207,6 +207,10 @@ async function testMetadataApis(page, utils, filename) {
   await expect(page.locator('[data-test=state]')).toHaveValue('stopped', {
     timeout: 20000,
   })
+}
+
+test('test ruby metadata apis', async ({ page, utils }) => {
+  await testMetadataApis(page, utils, 'metadata.rb')
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     '"setkey"=>1',
   )
@@ -219,12 +223,20 @@ async function testMetadataApis(page, utils, filename) {
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     '"inputkey"=>"inputvalue"',
   )
-}
-
-test('test ruby metadata apis', async ({ page, utils }) => {
-  await testMetadataApis(page, utils, 'metadata.rb')
 })
 
-// test('test python metadata apis', async ({ page, utils }) => {
-//   await testMetadataApis(page, utils, 'metadata.py')
-// })
+test('test python metadata apis', async ({ page, utils }) => {
+  await testMetadataApis(page, utils, 'metadata.py')
+  await expect(page.locator('[data-test=output-messages]')).toContainText(
+    "{'setkey': 1}",
+  )
+  await expect(page.locator('[data-test=output-messages]')).toContainText(
+    "{'setkey': 2}",
+  )
+  await expect(page.locator('[data-test=output-messages]')).toContainText(
+    "{'updatekey': 3}",
+  )
+  await expect(page.locator('[data-test=output-messages]')).toContainText(
+    "{'inputkey': 'inputvalue'}",
+  )
+})

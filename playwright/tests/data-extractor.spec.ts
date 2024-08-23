@@ -19,8 +19,15 @@
 
 // @ts-check
 import { test, expect } from './fixture'
-import { format, add, sub } from 'date-fns'
-import { parse, addMinutes, subMinutes, isWithinInterval } from 'date-fns'
+import {
+  format,
+  add,
+  sub,
+  parse,
+  addMinutes,
+  subMinutes,
+  isWithinInterval,
+} from 'date-fns'
 
 test.use({
   toolPath: '/tools/dataextractor',
@@ -232,7 +239,7 @@ test('creates CSV output', async ({ page, utils }) => {
     expect(contents).toContain('NaN')
     expect(contents).toContain('Infinity')
     expect(contents).toContain('-Infinity')
-    var lines = contents.split('\n')
+    let lines = contents.split('\n')
     expect(lines[0]).toContain('TEMP1')
     expect(lines[0]).toContain('TEMP2')
     expect(lines[0]).toContain(',') // csv
@@ -249,7 +256,7 @@ test('creates tab delimited output', async ({ page, utils }) => {
   await utils.addTargetPacketItem('INST', 'HEALTH_STATUS', 'TEMP2')
 
   await utils.download(page, 'text=Process', function (contents) {
-    var lines = contents.split('\n')
+    let lines = contents.split('\n')
     expect(lines[0]).toContain('TEMP1')
     expect(lines[0]).toContain('TEMP2')
     expect(lines[0]).toContain('\t') // tab delimited
@@ -266,7 +273,7 @@ test('outputs full column names', async ({ page, utils }) => {
   await utils.addTargetPacketItem('INST', 'HEALTH_STATUS', 'TEMP2')
 
   await utils.download(page, 'text=Process', function (contents) {
-    var lines = contents.split('\n')
+    let lines = contents.split('\n')
     expect(lines[0]).toContain('INST HEALTH_STATUS TEMP1')
     expect(lines[0]).toContain('INST HEALTH_STATUS TEMP2')
   })
@@ -295,19 +302,19 @@ test('fills values', async ({ page, utils }) => {
   await utils.addTargetPacketItem('INST', 'HEALTH_STATUS', 'CCSDSSEQCNT')
 
   await utils.download(page, 'text=Process', function (contents) {
-    var lines = contents.split('\n')
+    let lines = contents.split('\n')
     expect(lines[0]).toContain('CCSDSSEQCNT')
-    var [header1, header2, header3, header4] = lines[0].split(',')
-    var adcsFirst = false
+    let [header1, header2, header3, header4] = lines[0].split(',')
+    let adcsFirst = false
     if (header3 === 'INST ADCS CCSDSSEQCNT') {
       adcsFirst = true
     }
-    var firstHS = -2
+    let firstHS = -2
     for (let i = 1; i < lines.length; i++) {
       if (firstHS > 0) {
         if (adcsFirst) {
-          var [tgt1, pkt1, adcs1, hs1] = lines[firstHS].split(',')
-          var [tgt2, pkt2, adcs2, hs2] = lines[i].split(',')
+          let [tgt1, pkt1, adcs1, hs1] = lines[firstHS].split(',')
+          let [tgt2, pkt2, adcs2, hs2] = lines[i].split(',')
           expect(tgt1).toEqual(tgt2) // Both INST
           expect(pkt1).toEqual('HEALTH_STATUS')
           expect(pkt2).toEqual('ADCS')
@@ -315,8 +322,8 @@ test('fills values', async ({ page, utils }) => {
           expect(parseInt(hs1)).toBeGreaterThan(1) // Double check for a value
           expect(hs1).toEqual(hs2) // HEALTH_STATUS should be the same
         } else {
-          var [tgt1, pkt1, hs1, adcs1] = lines[firstHS].split(',')
-          var [tgt2, pkt2, hs2, adcs2] = lines[i].split(',')
+          let [tgt1, pkt1, hs1, adcs1] = lines[firstHS].split(',')
+          let [tgt2, pkt2, hs2, adcs2] = lines[i].split(',')
           expect(tgt1).toEqual(tgt2) // Both INST
           expect(pkt1).toEqual('HEALTH_STATUS')
           expect(pkt2).toEqual('ADCS')
@@ -359,7 +366,7 @@ test('outputs unique values only', async ({ page, utils }) => {
   await utils.addTargetPacketItem('INST', 'HEALTH_STATUS', 'CCSDSVER')
 
   await utils.download(page, 'text=Process', function (contents) {
-    var lines = contents.split('\n')
+    let lines = contents.split('\n')
     expect(lines[0]).toContain('CCSDSVER')
     expect(lines.length).toEqual(2) // header and a single value
   })
@@ -435,7 +442,7 @@ test('works with UTC date / times', async ({ page, utils }) => {
   await utils.addTargetPacketItem('INST', 'MECH')
 
   await utils.download(page, 'text=Process', function (contents) {
-    var lines = contents.split('\n')
+    let lines = contents.split('\n')
     expect(lines[0]).toContain('SLRPNL1')
     expect(lines[0]).toContain('SLRPNL2')
     expect(lines[0]).toContain('SLRPNL3')

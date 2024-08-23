@@ -12,7 +12,7 @@ print(metadata_update({"setkey": 4}))  # Ensure updatekey stays
 check_expression(f"{metadata_get()['metadata']['setkey']} == 4")
 check_expression(f"{metadata_get()['metadata']['updatekey']} == 3")
 check_expression(f"{len(metadata_all())} >= 1")
-# TODO: metadata_input()  # Creates a new entry
+metadata_input()  # Creates a new entry
 metadata_set({"input": 5})  # Simulate metadat_input for now
 check_expression(f"{len(metadata_all())} >= 2")
 wait(2)  # Allow time to advance or it's an error

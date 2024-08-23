@@ -172,9 +172,6 @@ export default {
       } else {
         start = new Date(this.startDate + ' ' + this.startTime + 'Z')
       }
-      if (now < start) {
-        return 'Invalid start time. Can not be in the future'
-      }
       return null
     },
     typeError: function () {

@@ -40,7 +40,6 @@ export default {
   },
   methods: {
     calcStartDateTime: function () {
-      console.log(`date:${this.date} time:${this.time}`)
       if (this.date) {
         this.startDate = this.date
         this.endDate = this.date
@@ -60,14 +59,6 @@ export default {
       }
       this.startTime = format(start, 'HH:mm:ss')
       this.endTime = format(add(start, { minutes: 30 }), 'HH:mm:ss')
-
-      // if (this.timeZone === 'local') {
-      //   this.startTime = new Date(this.date + ' ' + this.time)
-      //   this.endTime = new Date(this.date + ' ' + this.time)
-      // } else {
-      //   startTemp = new Date(this.date + ' ' + this.time + 'Z')
-      //   endTemp = new Date(this.date + ' ' + this.time + 'Z')
-      // }
     },
   },
 }

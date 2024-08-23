@@ -190,7 +190,6 @@ export default {
   },
   computed: {
     timeError: function () {
-      const now = new Date()
       let start
       let end
       if (this.timeZone === 'local') {

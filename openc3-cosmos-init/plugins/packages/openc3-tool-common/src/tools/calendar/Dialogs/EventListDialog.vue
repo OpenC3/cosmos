@@ -231,7 +231,7 @@ export default {
         case 'metadata':
           let rows = []
           Object.entries(event.metadata.metadata).forEach(([key, value]) =>
-            rows.push(`${key} => ${value}`)
+            rows.push(`${key}: ${value}`)
           )
           data = rows.join(', ')
           break

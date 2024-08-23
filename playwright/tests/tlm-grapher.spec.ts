@@ -19,8 +19,14 @@
 
 // @ts-check
 import { test, expect } from './fixture'
-import { format, sub } from 'date-fns'
-import { parse, addMinutes, subMinutes, isWithinInterval } from 'date-fns'
+import {
+  format,
+  sub,
+  parse,
+  addMinutes,
+  subMinutes,
+  isWithinInterval,
+} from 'date-fns'
 
 test.use({
   toolPath: '/tools/tlmgrapher',

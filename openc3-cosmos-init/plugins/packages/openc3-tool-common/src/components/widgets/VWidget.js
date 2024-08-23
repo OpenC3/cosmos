@@ -74,7 +74,7 @@ export default {
                 this.parameters[1] +
                 '/' +
                 this.parameters[2],
-              '_blank',
+              '_blank'
             )
           },
         },
@@ -235,7 +235,7 @@ export default {
   },
   methods: {
     getType() {
-      var type = 'WITH_UNITS'
+      let type = 'WITH_UNITS'
       if (this.parameters[3]) {
         type = this.parameters[3]
       }

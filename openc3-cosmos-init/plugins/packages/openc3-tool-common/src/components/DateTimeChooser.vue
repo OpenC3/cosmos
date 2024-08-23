@@ -141,15 +141,8 @@ export default {
   },
   created() {
     if (this.dateTime) {
-      // let initialDate = toDate(this.dateTime / 1_000_000)
-      // this.date = format(initialDate, 'yyyy-MM-dd')
-      // this.time = format(initialDate, 'HH:mm:ss')
-
       let date = toDate(this.dateTime / 1_000_000)
-      console.log(date)
-      // this.date = this.formatDate(date, this.timeZone)
-      // this.time = this.formatTime(date, this.timeZone)
-      if (this.timeZone == 'local') {
+      if (this.timeZone === 'local') {
         this.date = format(date, 'yyyy-MM-dd')
         this.time = format(date, 'HH:mm:ss.SSS')
       } else {
