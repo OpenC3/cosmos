@@ -19,5 +19,5 @@ wait(2)  # Allow time to advance or it's an error
 metadata_set({"new": 5})  # Another new entry
 check_expression(f"{len(metadata_all())} >= 3")
 # The first entry is the newest one we created
-print(metadata_all)
+print(metadata_all())
 check_expression(f"{metadata_all()[0]['metadata']} == {{'new':5}}")

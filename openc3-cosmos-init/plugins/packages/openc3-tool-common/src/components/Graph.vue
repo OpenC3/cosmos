@@ -1034,18 +1034,14 @@ export default {
       this.setGraphRange()
     },
     graphStartDateTime: function (newVal, oldVal) {
-      console.log(`graphStartDateTime new:${newVal} type:${typeof newVal}`)
       this.needToUpdate = true
       if (newVal && typeof newVal === 'string') {
         this.graphStartDateTime = new Date(this.graphStartDateTime)
-        console.log(`graphStartDateTime:${this.graphStartDateTime}`)
         this.graphStartDateTime = subMinutes(
           this.graphStartDateTime,
           new Date().getTimezoneOffset()
         )
-        console.log(`graphStartDateTime:${this.graphStartDateTime}`)
         this.graphStartDateTime = this.graphStartDateTime.getTime() * 1_000_000
-        console.log(`graphStartDateTime:${this.graphStartDateTime}`)
       }
     },
     graphEndDateTime: function (newVal, oldVal) {

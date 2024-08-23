@@ -369,7 +369,6 @@ export default {
       this.activityData = event
     },
     updateValues: function () {
-      console.log(`timeZone:${this.timeZone}`)
       this.dialogStep = 1
       if (this.activity) {
         this.timeline = this.activity.name
@@ -377,10 +376,8 @@ export default {
         const eDate = new Date(this.activity.stop * 1000)
         this.startDate = this.formatDate(sDate, this.timeZone)
         this.startTime = this.formatTime(sDate, this.timeZone)
-        console.log(`start:${this.startDate} time:${this.startTime}`)
         this.endDate = this.formatDate(eDate, this.timeZone)
         this.endTime = this.formatTime(eDate, this.timeZone)
-        console.log(`end:${this.endDate} time:${this.endTime}`)
         this.kind = this.activity.kind.toUpperCase()
         this.activityData = this.activity.data[this.activity.kind]
         this.activityEnvironment = this.activity.data.environment
