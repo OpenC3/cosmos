@@ -373,7 +373,7 @@ export default {
       }
       return {
         start_time: startTemp.getTime() * 1_000_000,
-        end_time: this.endTemp ? this.endTemp.getTime() * 1_000_000 : null,
+        end_time: endTemp ? endTemp.getTime() * 1_000_000 : null,
       }
     },
     allPackets: function () {

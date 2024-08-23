@@ -419,7 +419,6 @@ def check_tool_base(path, base_pkgs)
       end
       unless existing.include?(latest)
         puts "Existing #{package}: #{existing}, doesn't match latest: #{latest}. Upgrading..."
-        additional = ''
         # Handle nuances in individual packages
         # Search here to get the URLs: https://cdnjs.com/
         case package

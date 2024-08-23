@@ -64,10 +64,10 @@
             <span> No events </span>
           </template>
           <template v-slot:item.start="{ item }">
-            {{ logFormat(item.start, utc) }}
+            {{ formatDateTime(item.start, timeZone) }}
           </template>
           <template v-slot:item.end="{ item }">
-            {{ logFormat(item.end, utc) }}
+            {{ formatDateTime(item.end, timeZone) }}
           </template>
           <template v-slot:item.type="{ item }">
             {{ item.type.charAt(0).toUpperCase() + item.type.slice(1) }}
@@ -183,8 +183,8 @@ export default {
       search: '',
       localEvents: [...this.events],
       eventHeaders: [
-        { text: 'Start', value: 'start', width: 190 },
-        { text: 'Stop', value: 'end', width: 190 },
+        { text: 'Start', value: 'start', width: 215 },
+        { text: 'Stop', value: 'end', width: 215 },
         { text: 'Type', value: 'type' },
         { text: 'Data', value: 'data' },
         { text: 'Actions', value: 'actions', sortable: false },

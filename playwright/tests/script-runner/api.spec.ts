@@ -197,11 +197,11 @@ async function testMetadataApis(page, utils, filename) {
     timeout: 20000,
   })
   await page.locator('[data-test="new-event"]').click()
-  await page.locator('[data-test="create-metadata-step-two-btn"]').click()
+  await page.locator('[data-test="metadata-step-two-btn"]').click()
   await page.locator('[data-test="new-metadata-icon"]').click()
   await page.locator('[data-test="key-0"]').fill('inputkey')
   await page.locator('[data-test="value-0"]').fill('inputvalue')
-  await page.locator('[data-test="create-metadata-submit-btn"]').click()
+  await page.locator('[data-test="metadata-submit-btn"]').click()
   await page.locator('[data-test="close-event-list"]').click()
 
   await expect(page.locator('[data-test=state]')).toHaveValue('stopped', {
