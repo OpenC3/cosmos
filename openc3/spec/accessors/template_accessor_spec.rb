@@ -34,6 +34,36 @@ module OpenC3
     end
 
     describe "read_item and read_items" do
+      it "should escape regexp chars" do
+        packet = Packet.new
+        packet.template = 'VOLT <VOLTAGE>, ($1); VOLT? (+1)'
+        data = 'VOLT 5, ($1); VOLT? (+1)'
+        accessor = TemplateAccessor.new(packet)
+        packet.buffer = data
+
+        item1 = OpenStruct.new
+        item1.name = 'VOLTAGE'
+        item1.key = 'VOLTAGE'
+        item1.data_type = :FLOAT
+        value = accessor.read_item(item1, packet.buffer(false))
+        expect(value).to eq 5.0
+      end
+
+      it "should allow different delimiters" do
+        packet = Packet.new
+        packet.template = 'VOLT (VOLTAGE), *1.0; VOLT? *1.0'
+        data = 'VOLT 5, *1.0; VOLT? *1.0'
+        accessor = TemplateAccessor.new(packet, '(', ')')
+        packet.buffer = data
+
+        item1 = OpenStruct.new
+        item1.name = 'VOLTAGE'
+        item1.key = 'VOLTAGE'
+        item1.data_type = :FLOAT
+        value = accessor.read_item(item1, packet.buffer(false))
+        expect(value).to eq 5.0
+      end
+
       it "should read values" do
         accessor = TemplateAccessor.new(@packet)
         @packet.buffer = @data
