@@ -77,7 +77,7 @@ module OpenC3
     end
 
     describe "packets" do
-      it "complains about non-existant targets" do
+      it "complains about non-existent targets" do
         expect { @tlm.packets("tgtX") }.to raise_error(RuntimeError, "Telemetry target 'TGTX' does not exist")
       end
 
@@ -96,11 +96,11 @@ module OpenC3
     end
 
     describe "packet" do
-      it "complains about non-existant targets" do
+      it "complains about non-existent targets" do
         expect { @tlm.packet("tgtX", "pkt1") }.to raise_error(RuntimeError, "Telemetry target 'TGTX' does not exist")
       end
 
-      it "complains about non-existant packets" do
+      it "complains about non-existent packets" do
         expect { @tlm.packet("TGT1", "PKTX") }.to raise_error(RuntimeError, "Telemetry packet 'TGT1 PKTX' does not exist")
       end
 
@@ -116,11 +116,11 @@ module OpenC3
     end
 
     describe "items" do
-      it "complains about non-existant targets" do
+      it "complains about non-existent targets" do
         expect { @tlm.items("tgtX", "pkt1") }.to raise_error(RuntimeError, "Telemetry target 'TGTX' does not exist")
       end
 
-      it "complains about non-existant packets" do
+      it "complains about non-existent packets" do
         expect { @tlm.items("TGT1", "PKTX") }.to raise_error(RuntimeError, "Telemetry packet 'TGT1 PKTX' does not exist")
       end
 
@@ -154,15 +154,15 @@ module OpenC3
     end
 
     describe "packet_and_item" do
-      it "complains about non-existant targets" do
+      it "complains about non-existent targets" do
         expect { @tlm.packet_and_item("tgtX", "pkt1", "item1") }.to raise_error(RuntimeError, "Telemetry target 'TGTX' does not exist")
       end
 
-      it "complains about non-existant packets" do
+      it "complains about non-existent packets" do
         expect { @tlm.packet_and_item("TGT1", "PKTX", "ITEM1") }.to raise_error(RuntimeError, "Telemetry packet 'TGT1 PKTX' does not exist")
       end
 
-      it "complains about non-existant items" do
+      it "complains about non-existent items" do
         expect { @tlm.packet_and_item("TGT1", "PKT1", "ITEMX") }.to raise_error(RuntimeError, "Packet item 'TGT1 PKT1 ITEMX' does not exist")
       end
 
@@ -179,11 +179,11 @@ module OpenC3
     end
 
     describe "latest_packets" do
-      it "complains about non-existant targets" do
+      it "complains about non-existent targets" do
         expect { @tlm.latest_packets("tgtX", "item1") }.to raise_error(RuntimeError, "Telemetry target 'TGTX' does not exist")
       end
 
-      it "complains about non-existant items" do
+      it "complains about non-existent items" do
         expect { @tlm.latest_packets("TGT1", "ITEMX") }.to raise_error(RuntimeError, "Telemetry item 'TGT1 LATEST ITEMX' does not exist")
       end
 
@@ -196,11 +196,11 @@ module OpenC3
     end
 
     describe "newest_packet" do
-      it "complains about non-existant targets" do
+      it "complains about non-existent targets" do
         expect { @tlm.newest_packet("tgtX", "item1") }.to raise_error(RuntimeError, "Telemetry target 'TGTX' does not exist")
       end
 
-      it "complains about non-existant items" do
+      it "complains about non-existent items" do
         expect { @tlm.newest_packet("TGT1", "ITEMX") }.to raise_error(RuntimeError, "Telemetry item 'TGT1 LATEST ITEMX' does not exist")
       end
 
@@ -349,11 +349,11 @@ module OpenC3
     end
 
     describe "update!" do
-      it "complains about non-existant targets" do
+      it "complains about non-existent targets" do
         expect { @tlm.update!("TGTX", "PKT1", "\x00") }.to raise_error(RuntimeError, "Telemetry target 'TGTX' does not exist")
       end
 
-      it "complains about non-existant packets" do
+      it "complains about non-existent packets" do
         expect { @tlm.update!("TGT1", "PKTX", "\x00") }.to raise_error(RuntimeError, "Telemetry packet 'TGT1 PKTX' does not exist")
       end
 
@@ -417,15 +417,15 @@ module OpenC3
     end
 
     describe "value" do
-      it "complains about non-existant targets" do
+      it "complains about non-existent targets" do
         expect { @tlm.value("TGTX", "PKT1", "ITEM1") }.to raise_error(RuntimeError, "Telemetry target 'TGTX' does not exist")
       end
 
-      it "complains about non-existant packets" do
+      it "complains about non-existent packets" do
         expect { @tlm.value("TGT1", "PKTX", "ITEM1") }.to raise_error(RuntimeError, "Telemetry packet 'TGT1 PKTX' does not exist")
       end
 
-      it "complains about non-existant items" do
+      it "complains about non-existent items" do
         expect { @tlm.value("TGT1", "PKT1", "ITEMX") }.to raise_error(RuntimeError, "Packet item 'TGT1 PKT1 ITEMX' does not exist")
       end
 
@@ -439,15 +439,15 @@ module OpenC3
     end
 
     describe "set_value" do
-      it "complains about non-existant targets" do
+      it "complains about non-existent targets" do
         expect { @tlm.set_value("TGTX", "PKT1", "ITEM1", 1) }.to raise_error(RuntimeError, "Telemetry target 'TGTX' does not exist")
       end
 
-      it "complains about non-existant packets" do
+      it "complains about non-existent packets" do
         expect { @tlm.set_value("TGT1", "PKTX", "ITEM1", 1) }.to raise_error(RuntimeError, "Telemetry packet 'TGT1 PKTX' does not exist")
       end
 
-      it "complains about non-existant items" do
+      it "complains about non-existent items" do
         expect { @tlm.set_value("TGT1", "PKT1", "ITEMX", 1) }.to raise_error(RuntimeError, "Packet item 'TGT1 PKT1 ITEMX' does not exist")
       end
 
@@ -469,19 +469,19 @@ module OpenC3
         allow(Redis).to receive(:new).and_return(redis)
       end
 
-      it "complains about non-existant targets" do
+      it "complains about non-existent targets" do
         expect { @tlm.values_and_limits_states([["TGTX", "PKT1", "ITEM1"]]) }.to raise_error(RuntimeError, "Telemetry target 'TGTX' does not exist")
       end
 
-      it "complains about non-existant packets" do
+      it "complains about non-existent packets" do
         expect { @tlm.values_and_limits_states([["TGT1", "PKTX", "ITEM1"]]) }.to raise_error(RuntimeError, "Telemetry packet 'TGT1 PKTX' does not exist")
       end
 
-      it "complains about non-existant items" do
+      it "complains about non-existent items" do
         expect { @tlm.values_and_limits_states([["TGT1", "PKT1", "ITEMX"]]) }.to raise_error(RuntimeError, "Packet item 'TGT1 PKT1 ITEMX' does not exist")
       end
 
-      it "complains about non-existant value_types" do
+      it "complains about non-existent value_types" do
         expect { @tlm.values_and_limits_states([["TGT1", "PKT1", "ITEM1"]], :MINE) }.to raise_error(ArgumentError, "Unknown value type 'MINE', must be :RAW, :CONVERTED, :FORMATTED, or :WITH_UNITS")
       end
 

@@ -104,7 +104,7 @@ test('sets environment variables', async ({ page, utils }) => {
     '"KEY"=>"VALUE"',
   )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    '"USER"=>"JASON"', // JASON not RYAN because it was overriden locally
+    '"USER"=>"JASON"', // JASON not RYAN because it was overridden locally
   )
   await page.locator('[data-test=clear-log]').click()
   await page.locator('button:has-text("Clear")').click()

@@ -85,11 +85,11 @@ module OpenC3
 
       it "self.handle_config" do
         # blows up
-        # parms = ['name', 'label']
-        # model = WidgetModel.handle_config(parser, 'WIDGET', parms, scope: 'scope')
+        # params = ['name', 'label']
+        # model = WidgetModel.handle_config(parser, 'WIDGET', params, scope: 'scope')
         # expect(model).to be_a WidgetModel
         expect{
-          WidgetModel.handle_config(parser, 'NOT_A_KEYWORD', ['some', 'parms'], scope: 'scope')
+          WidgetModel.handle_config(parser, 'NOT_A_KEYWORD', ['some', 'params'], scope: 'scope')
         }.to raise_error(OpenC3::ConfigParser::Error)
       end
 
@@ -98,7 +98,7 @@ module OpenC3
         expect(model).to be_a WidgetModel
         model.handle_config(parser, 'DISABLE_ERB', ['aParm'])
         expect{
-          model.handle_config(parser, 'NOT_A_KEYWORD', ['other', 'parms'])
+          model.handle_config(parser, 'NOT_A_KEYWORD', ['other', 'params'])
         }.to raise_error(OpenC3::ConfigParser::Error)
       end
     end

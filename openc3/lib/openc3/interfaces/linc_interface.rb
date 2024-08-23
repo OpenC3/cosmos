@@ -128,11 +128,11 @@ module OpenC3
       raise "Interface not connected" unless connected?()
 
       # Add a GUID to the GUID field if its defined
-      # A GUID means it's an asychronous packet type.
+      # A GUID means it's an asynchronous packet type.
       if @fieldname_guid
         guid = get_guid(packet)
       else
-        # If @fieldname_guid is not defined (syncronous) we don't care what the
+        # If @fieldname_guid is not defined (synchronous) we don't care what the
         # GUID is because we're not trying to match it up with anything.
         # As soon as we get a response we free the command.
         guid = 0
@@ -323,7 +323,7 @@ module OpenC3
       # first looks up the handshake before removing it.
       @handshakes_mutex.synchronize do
         if @fieldname_guid
-          # A GUID means it's an asychronous packet type.
+          # A GUID means it's an asynchronous packet type.
           # So look at the list of incoming handshakes and pick off (deleting)
           # the handshake from the list if it's for this command.
           #

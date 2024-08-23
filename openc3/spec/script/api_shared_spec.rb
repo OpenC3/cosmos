@@ -148,7 +148,7 @@ module OpenC3
         expect { check("INST HEALTH_STATUS TEMP1 == \xFF") }.to raise_error(/ERROR: Invalid comparison to non-ascii value/)
       end
 
-      it "prints the value with no comparision" do
+      it "prints the value with no comparison" do
         capture_io do |stdout|
           check("INST", "HEALTH_STATUS", "TEMP1")
           expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS TEMP1 == 1/)

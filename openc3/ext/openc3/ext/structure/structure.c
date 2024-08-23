@@ -384,7 +384,7 @@ static void write_bitfield(int lower_bound, int upper_bound, int bit_offset, int
   memcpy(&buffer[lower_bound], write_value, num_bytes);
 }
 
-/* Check the bit size and bit offset for problems. Recalulate the bit offset
+/* Check the bit size and bit offset for problems. Recalculate the bit offset
  * and return back through the passed in pointer. */
 static void check_bit_offset_and_size(VALUE self, VALUE type_param, VALUE bit_offset_param, VALUE bit_size_param, VALUE data_type_param, VALUE buffer_param, int *new_bit_offset)
 {
@@ -1140,7 +1140,7 @@ static VALUE binary_accessor_write(VALUE self, VALUE value, VALUE param_bit_offs
         c_value = NUM2ULL(value);
         break;
       }
-      /* If the passed endianess doesn't match the host we reverse the bytes.
+      /* If the passed endianness doesn't match the host we reverse the bytes.
        * Then shift the result over so it's at the bottom of the long long value. */
       if (param_endianness != HOST_ENDIANNESS)
       {

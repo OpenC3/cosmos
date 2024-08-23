@@ -50,7 +50,7 @@ test('loads and saves the configuration', async ({ page, utils }) => {
   await page.getByRole('button', { name: 'Dismiss' }).click({ timeout: 20000 })
   await expect(page.locator('tbody > tr')).toHaveCount(2)
 
-  // Delete this test configuation
+  // Delete this test configuration
   await page.locator('[data-test=data-extractor-file]').click()
   await page.locator('text=Open Configuration').click()
   await page.locator(`tr:has-text("${config}") [data-test=item-delete]`).click()
@@ -68,7 +68,7 @@ test('validates dates and times', async ({ page, utils }) => {
   await expect(page.locator('text=Required')).toBeVisible()
   // Note: Firefox doesn't implement min/max the same way as Chrome
   // Chromium limits you to just putting in the day since it has a min/max value
-  // Firefox doesn't apppear to limit at all so you need to enter entire date
+  // Firefox doesn't appear to limit at all so you need to enter entire date
   // End result is that in Chromium the date gets entered as the 2 digit year
   // e.g. "22", which is fine because even if you go big it will round down.
   await page.locator('[data-test=start-date]').type(format(d, 'MM'))

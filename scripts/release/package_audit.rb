@@ -23,7 +23,7 @@ require_relative 'package_audit_lib'
 require 'faraday'
 require 'faraday/follow_redirects'
 require 'dotenv'
-Dotenv.overload # Overload existing so we use .env exclusivly
+Dotenv.overload # Overload existing so we use .env exclusively
 
 version_tag = ARGV[0] || "latest"
 

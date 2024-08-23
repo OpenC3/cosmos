@@ -175,7 +175,7 @@ See [INTERFACE](plugins.md#interface) for a description of the INTERFACE keyword
 
 ## Streams
 
-Streams are low level classes that implement read, read_nonblock, write, connect, connected? and disconnect methods. The build-in Stream classes are SerialStream, TcpipSocketStream and TcpipClientStream and they are automatically used when creating a Serial Interface, TCP/IP Server Interface, or TCP/IP Client Interface.
+Streams are low level classes that implement read, read_nonblock, write, connect, connected? and disconnect methods. The built-in Stream classes are SerialStream, TcpipSocketStream and TcpipClientStream and they are automatically used when creating a Serial Interface, TCP/IP Server Interface, or TCP/IP Client Interface.
 
 ## Protocols
 

@@ -405,7 +405,7 @@ module OpenC3
       #   expect(valid_events?(activity.events, "completed")).to eql(true)
       # end
 
-      # it "add a cmd activty to run and complete" do
+      # it "add a cmd activity to run and complete" do
       #   allow_any_instance_of(Object).to receive(:cmd_no_hazardous_check) { sleep 2 }
       #   model = generate_activity(15, "command") # should be 15 seconds in the future
       #   score = model.start

@@ -217,7 +217,7 @@ module OpenC3
       end
     end
 
-    describe "self.activites" do
+    describe "self.activities" do
       it "returns activities for the next hour" do
         name = "foobar"
         scope = "scope"
@@ -547,7 +547,7 @@ module OpenC3
         }.to raise_error(ActivityInputError, /activity must be in the future/)
       end
 
-      it "allows EXPIRE activies with start before now" do
+      it "allows EXPIRE activities with start before now" do
         name = "foobar"
         scope = "scope"
         dt_now = DateTime.now

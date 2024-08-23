@@ -69,15 +69,15 @@ module OpenC3
     end
 
     describe "get_limits" do
-      it "complains about non-existant targets" do
+      it "complains about non-existent targets" do
         expect { @api.get_limits("BLAH", "HEALTH_STATUS", "TEMP1") }.to raise_error(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist")
       end
 
-      it "complains about non-existant packets" do
+      it "complains about non-existent packets" do
         expect { @api.get_limits("INST", "BLAH", "TEMP1") }.to raise_error(RuntimeError, "Packet 'INST BLAH' does not exist")
       end
 
-      it "complains about non-existant items" do
+      it "complains about non-existent items" do
         expect { @api.get_limits("INST", "HEALTH_STATUS", "BLAH") }.to raise_error(RuntimeError, "Item 'INST HEALTH_STATUS BLAH' does not exist")
       end
 
@@ -98,15 +98,15 @@ module OpenC3
     end
 
     describe "set_limits" do
-      it "complains about non-existant targets" do
+      it "complains about non-existent targets" do
         expect { @api.set_limits("BLAH", "HEALTH_STATUS", "TEMP1", 0.0, 10.0, 20.0, 30.0) }.to raise_error(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist")
       end
 
-      it "complains about non-existant packets" do
+      it "complains about non-existent packets" do
         expect { @api.set_limits("INST", "BLAH", "TEMP1", 0.0, 10.0, 20.0, 30.0) }.to raise_error(RuntimeError, "Packet 'INST BLAH' does not exist")
       end
 
-      it "complains about non-existant items" do
+      it "complains about non-existent items" do
         expect { @api.set_limits("INST", "HEALTH_STATUS", "BLAH", 0.0, 10.0, 20.0, 30.0) }.to raise_error(RuntimeError, "Item 'INST HEALTH_STATUS BLAH' does not exist")
       end
 
@@ -337,15 +337,15 @@ module OpenC3
     end
 
     describe "limits_enabled?" do
-      it "complains about non-existant targets" do
+      it "complains about non-existent targets" do
         expect { @api.limits_enabled?("BLAH", "HEALTH_STATUS", "TEMP1") }.to raise_error(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist")
       end
 
-      it "complains about non-existant packets" do
+      it "complains about non-existent packets" do
         expect { @api.limits_enabled?("INST", "BLAH", "TEMP1") }.to raise_error(RuntimeError, "Packet 'INST BLAH' does not exist")
       end
 
-      it "complains about non-existant items" do
+      it "complains about non-existent items" do
         expect { @api.limits_enabled?("INST", "HEALTH_STATUS", "BLAH") }.to raise_error(RuntimeError, "Item 'INST HEALTH_STATUS BLAH' does not exist")
       end
 
@@ -355,15 +355,15 @@ module OpenC3
     end
 
     describe "enable_limits" do
-      it "complains about non-existant targets" do
+      it "complains about non-existent targets" do
         expect { @api.enable_limits("BLAH", "HEALTH_STATUS", "TEMP1") }.to raise_error(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist")
       end
 
-      it "complains about non-existant packets" do
+      it "complains about non-existent packets" do
         expect { @api.enable_limits("INST", "BLAH", "TEMP1") }.to raise_error(RuntimeError, "Packet 'INST BLAH' does not exist")
       end
 
-      it "complains about non-existant items" do
+      it "complains about non-existent items" do
         expect { @api.enable_limits("INST", "HEALTH_STATUS", "BLAH") }.to raise_error(RuntimeError, "Item 'INST HEALTH_STATUS BLAH' does not exist")
       end
 
@@ -377,15 +377,15 @@ module OpenC3
     end
 
     describe "disable_limits" do
-      it "complains about non-existant targets" do
+      it "complains about non-existent targets" do
         expect { @api.disable_limits("BLAH", "HEALTH_STATUS", "TEMP1") }.to raise_error(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist")
       end
 
-      it "complains about non-existant packets" do
+      it "complains about non-existent packets" do
         expect { @api.disable_limits("INST", "BLAH", "TEMP1") }.to raise_error(RuntimeError, "Packet 'INST BLAH' does not exist")
       end
 
-      it "complains about non-existant items" do
+      it "complains about non-existent items" do
         expect { @api.disable_limits("INST", "HEALTH_STATUS", "BLAH") }.to raise_error(RuntimeError, "Item 'INST HEALTH_STATUS BLAH' does not exist")
       end
 

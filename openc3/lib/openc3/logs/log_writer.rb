@@ -20,13 +20,12 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-require 'thread'
 require 'openc3/config/config_parser'
 require 'openc3/topics/topic'
 require 'openc3/utilities/bucket_utilities'
 
 module OpenC3
-  # Creates a log. Can automatically cycle the log based on an elasped
+  # Creates a log. Can automatically cycle the log based on an elapsed
   # time period or when the log file reaches a predefined size.
   class LogWriter
     # @return [String] The filename of the packet log
@@ -275,10 +274,10 @@ module OpenC3
       @last_time = nil
       @previous_time_nsec_since_epoch = nil
       Logger.debug "Log File Opened : #{@filename}"
-    rescue => err
-      Logger.error "Error starting new log file: #{err.formatted}"
+    rescue => e
+      Logger.error "Error starting new log file: #{e.formatted}"
       @logging_enabled = false
-      OpenC3.handle_critical_exception(err)
+      OpenC3.handle_critical_exception(e)
     end
 
     # @enforce_time_order requires the timestamps on each write to be greater than the previous
@@ -328,10 +327,10 @@ module OpenC3
             @last_offsets.each do |redis_topic, last_offset|
               @cleanup_offsets[-1][redis_topic] = last_offset
             end
-            @cleanup_times << Time.now + CLEANUP_DELAY
+            @cleanup_times << (Time.now + CLEANUP_DELAY)
             @last_offsets.clear
-          rescue Exception => err
-            Logger.error "Error closing #{@filename} : #{err.formatted}"
+          rescue Exception => e
+            Logger.error "Error closing #{@filename} : #{e.formatted}"
           end
 
           @file = nil

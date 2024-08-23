@@ -20,7 +20,6 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-require 'thread' # For Mutex
 require 'openc3/streams/stream'
 require 'openc3/config/config_parser'
 require 'openc3/io/serial_driver'
@@ -40,11 +39,11 @@ module OpenC3
     # @param parity [Symbol] Must be :NONE, :EVEN, or :ODD
     # @param stop_bits [Integer] Stop bits. Must be 1 or 2.
     # @param write_timeout [Integer] Seconds to wait for the write to complete.
-    #   The {SerialDriver} will continously try to send the data until
+    #   The {SerialDriver} will continuously try to send the data until
     #   it has been sent or an error occurs.
     # @param read_timeout [Integer] Seconds to wait for the read to complete.
     #   Pass nil to block until the read is complete. The {SerialDriver} will
-    #   continously try to read data until it has received data or an error occurs.
+    #   continuously try to read data until it has received data or an error occurs.
     # @param flow_control [Symbol] Currently supported :NONE and :RTSCTS (default :NONE)
     # @param data_bits [Integer] Number of data bits (default 8)
     def initialize(write_port_name,

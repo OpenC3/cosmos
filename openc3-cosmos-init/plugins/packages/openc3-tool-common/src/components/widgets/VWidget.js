@@ -25,7 +25,7 @@ import 'sprintf-js'
 export default {
   mixins: [Widget],
   // ValueWidget can either get it's value and limitsState directly through props
-  // or it will register itself in the Vuex store and be updated asyncronously
+  // or it will register itself in the Vuex store and be updated asynchronously
   props: {
     value: {
       default: null,
@@ -69,7 +69,7 @@ export default {
                 this.parameters[1] +
                 '/' +
                 this.parameters[2],
-              '_blank',
+              '_blank'
             )
           },
         },

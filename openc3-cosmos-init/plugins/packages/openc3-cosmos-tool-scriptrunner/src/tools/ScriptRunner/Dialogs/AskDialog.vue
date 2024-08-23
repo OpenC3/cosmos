@@ -126,9 +126,9 @@ export default {
 }
 </script>
 
-<sytle lang="scss" scoped>
+<style lang="scss" scoped>
 .question {
   font-size: 1rem;
   white-space: pre-line;
 }
-</sytle>
+</style>

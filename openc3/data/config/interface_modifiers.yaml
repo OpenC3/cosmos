@@ -60,7 +60,7 @@ DISABLE_DISCONNECT:
   description:
     Use this keyword to prevent the user from disconnecting from the interface.
     This is typically used in a 'production' environment where you would not want
-    the user to inadvertantly disconnect from a target.
+    the user to inadvertently disconnect from a target.
 LOG_RAW:
   summary: Deprecated, use LOG_STREAM
 LOG_STREAM:

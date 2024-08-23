@@ -445,7 +445,7 @@ module OpenC3
         visited["#{trigger.name}__P"] = Hash.new
       end
       if visited["#{head.name}__P"][trigger.name]
-        # Not sure if this is posible as on create it validates that the dependents are already created
+        # Not sure if this is possible as on create it validates that the dependents are already created
         message = "loop detected from #{head.name} -> #{trigger.name} path: #{visited["#{head.name}__P"]}"
         notify(name: trigger.name, severity: 'error', message: message)
         return visited["#{trigger.name}__R"] = -1
@@ -494,7 +494,7 @@ module OpenC3
   end
 
   # The trigger manager starts a thread pool and subscribes
-  # to the telemtry decom topic. It adds the "packet" to the thread pool queue
+  # to the telemetry decom topic. It adds the "packet" to the thread pool queue
   # and the thread will evaluate the "trigger".
   class TriggerGroupManager
     attr_reader :name, :scope, :share, :group, :topics, :thread_pool
@@ -621,7 +621,7 @@ module OpenC3
       loop do
         triggers = TriggerModel.all(scope: @scope, group: @group)
         @share.trigger_base.rebuild(triggers: triggers)
-        @manager.refresh() # Everytime we do a full base update we refesh the manager
+        @manager.refresh() # Every time we do a full base update we refresh the manager
         break if @cancel_thread
         block_for_updates()
         break if @cancel_thread

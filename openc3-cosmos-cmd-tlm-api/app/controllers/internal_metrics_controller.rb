@@ -25,10 +25,10 @@ require 'openc3/models/metric_model'
 
 # This Controller is designed to output metrics from the openc3/utilities/metric.rb
 # Find all scopes currently active in the openc3 system, we use the openc3/models/scope_model
-# then seach redis for the #{scope}__openc3__metrics key. This key uses subkeys that are the name
+# then search redis for the #{scope}__openc3__metrics key. This key uses subkeys that are the name
 # the metrics. The value of the metric is a list of prometheus labels these are hashes with key
 # value pairs. The value for the metric is contained in this hash in the metric__value key. These
-# hashes are converted into a string with key="value" and wraped in {} to make up the labels.
+# hashes are converted into a string with key="value" and wrapped in {} to make up the labels.
 # examples:
 #    TYPE foobar histogram",
 #    HELP foobar internal metric generated from openc3/utilities/metric.rb."
@@ -55,7 +55,7 @@ class InternalMetricsController < ApplicationController
         render plain: "failed to access datastore", :status => 500
       end
       OpenC3::Logger.debug("metrics search for scope: #{scope}, returned: #{scope_resp}")
-      scope_resp.each do |key, label_json|
+      scope_resp.each do |_key, label_json|
         name = label_json.delete("metric_name")
         if not data_hash.has_key?(name)
           data_hash[name] = [

@@ -61,7 +61,7 @@ class TcpipSocketStream(Stream):
             try:
                 data = self.read_socket.recv(4096, socket.MSG_DONTWAIT)
             # Non-blocking sockets return an errno EAGAIN or EWOULDBLOCK
-            # if there is no data avilable
+            # if there is no data available
             except socket.error as error:
                 if error.errno == socket.EAGAIN or error.errno == socket.EWOULDBLOCK:
                     # If select returns something it means the socket is now available for

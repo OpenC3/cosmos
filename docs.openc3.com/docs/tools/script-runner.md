@@ -50,14 +50,14 @@ style={{"float": 'left', "margin-right": 50 + 'px', "height": 330 + 'px'}} />
 - Display started and finished scripts
 - Show environment variables
 - Show defined metadata
-- Show overriden telemetry values
+- Show overridden telemetry values
 - Perform a syntax check
 - Perform a script mnemonic check
 - View the instrumented script
 - Shows the script call stack
 - Display the [debug](script-runner.md#debugging-scripts) prompt
 - Disconnect from real interfaces
-- Delete all sccript breakpoints
+- Delete all script breakpoints
 
 The Execution Status popup lists the currently running scripts. This allows other users to connect to running scripts and follow along with the currently executing script. It also lists previously executed scripts so you can download the script log.
 
