@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -50,7 +50,7 @@
       data-test="limits-events"
     >
       <template v-slot:item.time_nsec="{ item }">
-        <span>{{ formatDate(item.time_nsec) }}</span>
+        <span>{{ formatNanoseconds(item.time_nsec, timeZone) }}</span>
       </template>
       <template v-slot:item.level="{ item }">
         <rux-status :status="getStatus(item.message)"></rux-status>
@@ -63,16 +63,21 @@
 </template>
 
 <script>
-import { toDate, format } from 'date-fns'
 import Cable from '@openc3/tool-common/src/services/cable.js'
+import TimeFilters from '@openc3/tool-common/src/tools/base/util/timeFilters.js'
 
 export default {
   props: {
-    history_count: {
+    historyCount: {
       type: Number,
       default: 1000,
     },
+    timeZone: {
+      type: String,
+      default: 'local',
+    },
   },
+  mixins: [TimeFilters],
   data() {
     return {
       data: [],
@@ -97,7 +102,7 @@ export default {
           },
         },
         {
-          history_count: 1000,
+          historyCount: 1000,
         },
       )
       .then((limitsSubscription) => {
@@ -116,15 +121,9 @@ export default {
         let event = JSON.parse(messages[i]['event'])
         this.data.unshift(event)
       }
-      if (this.data.length > this.history_count) {
-        this.data.length = this.history_count
+      if (this.data.length > this.historyCount) {
+        this.data.length = this.historyCount
       }
-    },
-    formatDate(nanoSecs) {
-      return format(
-        toDate(parseInt(nanoSecs) / 1_000_000),
-        'yyyy-MM-dd HH:mm:ss.SSS',
-      )
     },
     getStatus(message) {
       if (message.includes('GREEN')) {

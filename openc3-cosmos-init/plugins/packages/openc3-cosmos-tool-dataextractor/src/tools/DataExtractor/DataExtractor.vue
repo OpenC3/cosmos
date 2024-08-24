@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -74,12 +74,6 @@
             <v-radio-group v-model="cmdOrTlm" row hide-details class="mt-0">
               <v-radio label="Command" value="cmd" data-test="cmd-radio" />
               <v-radio label="Telemetry" value="tlm" data-test="tlm-radio" />
-            </v-radio-group>
-          </v-col>
-          <v-col>
-            <v-radio-group v-model="utcOrLocal" row hide-details class="mt-0">
-              <v-radio label="LST" value="loc" data-test="lst-radio" />
-              <v-radio label="UTC" value="utc" data-test="utc-radio" />
             </v-radio-group>
           </v-col>
         </v-row>
@@ -333,14 +327,14 @@
 // Putting large data into Vue data section causes lots of overhead
 var dataExtractorRawData = []
 
+import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 import Config from '@openc3/tool-common/src/components/config/Config'
 import OpenConfigDialog from '@openc3/tool-common/src/components/config/OpenConfigDialog'
 import SaveConfigDialog from '@openc3/tool-common/src/components/config/SaveConfigDialog'
 import TargetPacketItemChooser from '@openc3/tool-common/src/components/TargetPacketItemChooser'
 import Cable from '@openc3/tool-common/src/services/cable.js'
-import { format } from 'date-fns'
 import TopBar from '@openc3/tool-common/src/components/TopBar'
-import TimeFilters from '@/tools/DataExtractor/Filters/timeFilters.js'
+import TimeFilters from '@openc3/tool-common/src/tools/base/util/timeFilters.js'
 
 export default {
   components: {
@@ -356,17 +350,19 @@ export default {
       configKey: 'data_extractor',
       openConfig: false,
       saveConfig: false,
+      api: null,
+      timeZone: 'local',
       progress: 0,
       packetsReceived: 0,
       totalPacketsReceived: 0,
       itemsReceived: 0,
       totalItemsReceived: 0,
       processButtonText: 'Process',
-      todaysDate: format(new Date(), 'yyyy-MM-dd'),
-      startDate: format(new Date(), 'yyyy-MM-dd'),
-      startTime: format(new Date() - 3600000, 'HH:mm:ss'), // last hr data
-      endTime: format(new Date(), 'HH:mm:ss'),
-      endDate: format(new Date(), 'yyyy-MM-dd'),
+      todaysDate: null,
+      startDate: null,
+      startTime: null,
+      endTime: null,
+      endDate: null,
       startDateTime: null,
       endDateTime: null,
       startDateTimeFilename: '',
@@ -374,7 +370,6 @@ export default {
         required: (value) => !!value || 'Required',
       },
       cmdOrTlm: 'tlm',
-      utcOrLocal: 'loc',
       items: [],
       search: '',
       headers: [
@@ -534,9 +529,6 @@ export default {
     cmdOrTlm: function () {
       this.saveDefaultConfig(this.currentConfig)
     },
-    utcOrLocal: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
     items: {
       handler: function () {
         this.saveDefaultConfig(this.currentConfig)
@@ -556,11 +548,29 @@ export default {
         uniqueOnly: this.uniqueOnly,
         columnMode: this.columnMode,
         cmdOrTlm: this.cmdOrTlm,
-        utcOrLocal: this.utcOrLocal,
         items: this.items,
         itemsPerPage: this.itemsPerPage,
       }
     },
+  },
+  async created() {
+    this.api = new OpenC3Api()
+    await this.api
+      .get_setting('time_zone')
+      .then((response) => {
+        if (response) {
+          this.timeZone = response
+        }
+      })
+      .catch((error) => {
+        // Do nothing
+      })
+    let now = new Date()
+    this.todaysDate = this.formatDate(now, this.timeZone)
+    this.startDate = this.formatDate(now, this.timeZone)
+    this.startTime = this.formatTime(now - 3600000, this.timeZone) // last hr data
+    this.endTime = this.formatTime(now, this.timeZone)
+    this.endDate = this.formatDate(now, this.timeZone)
   },
   mounted: function () {
     // Called like /tools/dataextractor?config=config
@@ -587,12 +597,12 @@ export default {
       this.matlabHeader = false
       this.uniqueOnly = false
       this.columnMode = 'normal'
-      this.startDate = format(new Date(), 'yyyy-MM-dd')
-      this.startTime = format(new Date() - 3600000, 'HH:mm:ss')
-      this.endTime = format(new Date(), 'HH:mm:ss')
-      this.endDate = format(new Date(), 'yyyy-MM-dd')
+      let now = new Date()
+      this.startDate = this.formatDate(now, this.timeZone)
+      this.startTime = this.formatTime(now - 3600000, this.timeZone) // last hr data
+      this.endTime = this.formatTime(now, this.timeZone)
+      this.endDate = this.formatDate(now, this.timeZone)
       this.cmdOrTlm = 'tlm'
-      this.utcOrLocal = 'loc'
       this.items = []
       this.itemsPerPage = 20
       this.applyConfig(this.currentConfig)
@@ -611,7 +621,6 @@ export default {
       this.menus[1].radioGroup =
         this.columnMode === 'normal' ? 'Normal Columns' : 'Full Column Names'
       this.cmdOrTlm = config.cmdOrTlm
-      this.utcOrLocal = config.utcOrLocal
       this.items = config.items
       this.itemsPerPage = config.itemsPerPage
     },
@@ -688,20 +697,21 @@ export default {
     },
     setTimestamps: function () {
       this.startDateTimeFilename = this.startDate + '_' + this.startTime
-      // Replace the colons and dashes with underscores in the filename
+      // Replace the colons, dashes and periods with underscores in the filename
       this.startDateTimeFilename = this.startDateTimeFilename.replace(
-        /(:|-)\s*/g,
+        /(:|-|\.)\s*/g,
         '_',
       )
       let startTemp
       let endTemp
       try {
-        if (this.utcOrLocal === 'utc') {
-          startTemp = new Date(this.startDate + ' ' + this.startTime + 'Z')
-          endTemp = new Date(this.endDate + ' ' + this.endTime + 'Z')
-        } else {
+        if (this.timeZone === 'local') {
           startTemp = new Date(this.startDate + ' ' + this.startTime)
           endTemp = new Date(this.endDate + ' ' + this.endTime)
+        } else {
+          startTemp = new Date(this.startDate + ' ' + this.startTime + 'Z')
+          endTemp = new Date(this.endDate + ' ' + this.endTime + 'Z')
+          this.startDateTimeFilename += '_UTC'
         }
       } catch (e) {
         return
@@ -1003,7 +1013,7 @@ export default {
       link.setAttribute(
         'download',
         this.startDateTimeFilename +
-          '.' +
+          '_' +
           this.fileCount +
           downloadFileExtension,
       )

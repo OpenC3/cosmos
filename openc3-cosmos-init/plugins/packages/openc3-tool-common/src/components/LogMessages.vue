@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -117,20 +117,26 @@
 </template>
 
 <script>
-import { parseISO, format } from 'date-fns'
+import { format } from 'date-fns'
 import Cable from '../services/cable.js'
 import {
   AstroStatusColors,
   UnknownToAstroStatus,
 } from '@openc3/tool-common/src/components/icons'
+import TimeFilters from '@openc3/tool-common/src/tools/base/util/timeFilters.js'
 
 export default {
   props: {
-    history_count: {
+    historyCount: {
       type: Number,
       default: 200,
     },
+    timeZone: {
+      type: String,
+      default: 'local',
+    },
   },
+  mixins: [TimeFilters],
   data() {
     return {
       AstroStatusColors,
@@ -197,8 +203,8 @@ export default {
           {
             received: (messages) => {
               this.cable.recordPing()
-              if (messages.length > this.history_count) {
-                messages.splice(0, messages.length - this.history_count)
+              if (messages.length > this.historyCount) {
+                messages.splice(0, messages.length - this.historyCount)
               }
               // Filter messages before they're added to the table
               // This prevents a bunch of invisible 'INFO' messages from pushing
@@ -240,7 +246,10 @@ export default {
                 return false
               })
               messages.map((message) => {
-                message.timestamp = this.formatDate(message['@timestamp'])
+                message.timestamp = this.formatTimestamp(
+                  message['@timestamp'],
+                  this.timeZone,
+                )
                 if (
                   message.message.raw &&
                   message.message.json_class === 'String'
@@ -262,8 +271,8 @@ export default {
                 }
               })
               this.data = messages.reverse().concat(this.data)
-              if (this.data.length > this.history_count) {
-                this.data.length = this.history_count
+              if (this.data.length > this.historyCount) {
+                this.data.length = this.historyCount
               }
               if (!this.paused) {
                 this.shownData = this.data
@@ -271,16 +280,12 @@ export default {
             },
           },
           {
-            history_count: this.history_count,
+            historyCount: this.historyCount,
           },
         )
         .then((subscription) => {
           this.subscription = subscription
         })
-    },
-    formatDate(timestamp) {
-      // timestamp: 2021-01-20T21:08:49.784Z
-      return format(parseISO(timestamp), 'yyyy-MM-dd HH:mm:ss.SSS')
     },
     getColor(level) {
       return AstroStatusColors[UnknownToAstroStatus[level]]

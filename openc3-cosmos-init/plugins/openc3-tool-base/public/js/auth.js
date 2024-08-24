@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -54,7 +54,7 @@ class Auth {
     return emptyPromise(true)
   }
 }
-var OpenC3Auth = new Auth()
+let OpenC3Auth = new Auth()
 
 Object.defineProperty(OpenC3Auth, 'defaultMinValidity', {
   value: 30,

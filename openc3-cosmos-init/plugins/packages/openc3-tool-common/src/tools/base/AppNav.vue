@@ -190,6 +190,7 @@ export default {
     return {
       api: new OpenC3Api(),
       subtitle: null,
+      // Update AstroSettings.vue when changing this
       astro: {
         hideClock: false,
       },
@@ -228,6 +229,7 @@ export default {
       .get_setting('astro')
       .then((response) => {
         if (response) {
+          // The response is an object with settings
           this.astro = JSON.parse(response)
         }
       })
@@ -260,7 +262,7 @@ export default {
               // TODO: Make this initiallyOpen configurable like with a CATEGORY parameter?
               this.initiallyOpen.push(this.appNav[key].category)
               const result = this.items.filter(
-                (item) => item.name === this.appNav[key].category
+                (item) => item.name === this.appNav[key].category,
               )
               if (result.length === 0) {
                 // Create category and first item
@@ -347,7 +349,7 @@ export default {
             }
           })
         }, 60000)
-      }
+      },
     )
   },
   methods: {
