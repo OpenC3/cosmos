@@ -356,7 +356,7 @@ export default {
         )}?bucket=OPENC3_${this.root.toUpperCase()}_BUCKET`,
       )
       // This pushes the file into storage by using the fields in the presignedRequest
-      // See storage_controller.rb get_presigned_request()
+      // See storage_controller.rb get_upload_presigned_request()
       const response = await axios({
         ...presignedRequest,
         data: this.file,
