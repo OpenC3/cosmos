@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -64,10 +64,10 @@
             <span> No events </span>
           </template>
           <template v-slot:item.start="{ item }">
-            {{ logFormat(item.start, utc) }}
+            {{ formatDateTime(item.start, timeZone) }}
           </template>
           <template v-slot:item.end="{ item }">
-            {{ logFormat(item.end, utc) }}
+            {{ formatDateTime(item.end, timeZone) }}
           </template>
           <template v-slot:item.type="{ item }">
             {{ item.type.charAt(0).toUpperCase() + item.type.slice(1) }}
@@ -110,23 +110,33 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
-    <activity-update-dialog
+    <!-- Edit existing events -->
+    <activity-create-dialog
+      v-if="showActivityUpdate"
       v-model="showActivityUpdate"
       :activity="editActivity"
+      :time-zone="timeZone"
       @update="updateActivity"
     />
-    <metadata-update-dialog
+    <metadata-create-dialog
+      v-if="showMetadataUpdate"
       v-model="showMetadataUpdate"
-      :metadata-obj="editMetadata"
+      :metadata="editMetadata"
+      :time-zone="timeZone"
       @update="updateMetadata"
     />
-    <note-update-dialog
+    <note-create-dialog
+      v-if="showNoteUpdate"
       v-model="showNoteUpdate"
       :note="editNote"
+      :time-zone="timeZone"
       @update="updateNote"
     />
+    <!-- Create new metadata -->
     <metadata-create-dialog
+      v-if="showMetadataCreate"
       v-model="showMetadataCreate"
+      :time-zone="timeZone"
       @update="addMetadata"
     />
   </div>
@@ -134,19 +144,17 @@
 
 <script>
 import Api from '@openc3/tool-common/src/services/api'
-import TimeFilters from '@openc3/tool-common/src/tools/calendar/Filters/timeFilters.js'
+import TimeFilters from '@openc3/tool-common/src/tools/base/util/timeFilters.js'
 import DeleteItem from '@openc3/tool-common/src/tools/calendar/Dialogs/DeleteItem.js'
+import ActivityCreateDialog from '@openc3/tool-common/src/tools/calendar/Dialogs/ActivityCreateDialog'
 import MetadataCreateDialog from '@openc3/tool-common/src/tools/calendar/Dialogs/MetadataCreateDialog'
-import ActivityUpdateDialog from '@openc3/tool-common/src/tools/calendar/Dialogs/ActivityUpdateDialog'
-import MetadataUpdateDialog from '@openc3/tool-common/src/tools/calendar/Dialogs/MetadataUpdateDialog'
-import NoteUpdateDialog from '@openc3/tool-common/src/tools/calendar/Dialogs/NoteUpdateDialog'
+import NoteCreateDialog from '@openc3/tool-common/src/tools/calendar/Dialogs/NoteCreateDialog'
 
 export default {
   components: {
+    ActivityCreateDialog,
     MetadataCreateDialog,
-    ActivityUpdateDialog,
-    MetadataUpdateDialog,
-    NoteUpdateDialog,
+    NoteCreateDialog,
   },
   mixins: [TimeFilters, DeleteItem],
   props: {
@@ -154,12 +162,12 @@ export default {
       type: Array,
       required: true,
     },
-    utc: {
-      type: Boolean,
-      default: true,
-    },
     value: {
       type: Boolean,
+      required: true,
+    },
+    timeZone: {
+      type: String,
       required: true,
     },
     types: {
@@ -175,8 +183,8 @@ export default {
       search: '',
       localEvents: [...this.events],
       eventHeaders: [
-        { text: 'Start', value: 'start', width: 190 },
-        { text: 'Stop', value: 'end', width: 190 },
+        { text: 'Start', value: 'start', width: 215 },
+        { text: 'Stop', value: 'end', width: 215 },
         { text: 'Type', value: 'type' },
         { text: 'Data', value: 'data' },
         { text: 'Actions', value: 'actions', sortable: false },
@@ -223,7 +231,7 @@ export default {
         case 'metadata':
           let rows = []
           Object.entries(event.metadata.metadata).forEach(([key, value]) =>
-            rows.push(`${key} => ${value}`),
+            rows.push(`${key}: ${value}`)
           )
           data = rows.join(', ')
           break
@@ -276,7 +284,7 @@ export default {
           {
             okText: 'Delete',
             cancelText: 'Cancel',
-          },
+          }
         )
         .then((dialog) => {
           this.localEvents.splice(deleteIndex, 1)

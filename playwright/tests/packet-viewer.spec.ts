@@ -13,12 +13,13 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 */
 
 // @ts-check
 import { test, expect } from './fixture'
+import { parse, addMinutes, subMinutes, isWithinInterval } from 'date-fns'
 
 test.use({
   toolPath: '/tools/packetviewer',
@@ -214,7 +215,7 @@ test('shows ignored items', async ({ page, utils }) => {
 
 test('displays derived first', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
-  // First row is the header: Index, Name, Value so grab second (1)
+  // First row (0) is the header: Index, Name, Value
   await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIMESECONDS')
   await page.locator('[data-test=packet-viewer-view]').click()
   await page.locator('text=Display Derived').click()
@@ -222,4 +223,86 @@ test('displays derived first', async ({ page, utils }) => {
   // Check 2 because TIMESEC is included in PACKET_<TIMESEC>ONDS
   // so the first check could result in a false positive
   await expect(page.locator('tr').nth(2)).toContainText('TIMEUS')
+})
+
+test('displays local time and UTC time', async ({ page, utils }) => {
+  let now = new Date()
+  await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
+  await expect(page.locator('tbody')).toContainText('PACKET_TIMEFORMATTED')
+  await expect(page.locator('tbody')).toContainText('RECEIVED_TIMEFORMATTED')
+
+  let dateTimeString =
+    (await (
+      await page.inputValue(`tr:has(td:text-is("PACKET_TIMEFORMATTED")) input`)
+    ).trim()) || ''
+  let dateTime = parse(dateTimeString, 'yyyy-MM-dd HH:mm:ss.SSS', now)
+  expect(
+    isWithinInterval(dateTime, {
+      start: subMinutes(now, 1),
+      end: addMinutes(now, 1),
+    }),
+  ).toBeTruthy()
+  dateTimeString =
+    (await (
+      await page.inputValue(
+        `tr:has(td:text-is("RECEIVED_TIMEFORMATTED")) input`,
+      )
+    ).trim()) || ''
+  dateTime = parse(dateTimeString, 'yyyy-MM-dd HH:mm:ss.SSS', now)
+  expect(
+    isWithinInterval(dateTime, {
+      start: subMinutes(now, 1),
+      end: addMinutes(now, 1),
+    }),
+  ).toBeTruthy()
+
+  // Switch to UTC
+  await page.goto('/tools/admin/settings')
+  await expect(page.locator('.v-app-bar')).toContainText('Administrator')
+  await page.locator('[data-test=time-zone]').click()
+  await page.getByRole('option', { name: 'UTC' }).click()
+  await page.locator('[data-test="save-time-zone"]').click()
+
+  await page.goto('/tools/packetviewer/INST/HEALTH_STATUS')
+  await expect(page.locator('.v-app-bar')).toContainText('Packet Viewer')
+  await expect(page.locator('tbody')).toContainText('PACKET_TIMEFORMATTED')
+  await expect(page.locator('tbody')).toContainText('RECEIVED_TIMEFORMATTED')
+
+  now = new Date()
+  await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
+  dateTimeString =
+    (await (
+      await page.inputValue(`tr:has(td:text-is("PACKET_TIMEFORMATTED")) input`)
+    ).trim()) || ''
+  dateTime = parse(dateTimeString, 'yyyy-MM-dd HH:mm:ss.SSS', now)
+  // dateTime is now in UTC so subtrack off the timezone offset to get it back to local time
+  dateTime = subMinutes(dateTime, now.getTimezoneOffset())
+  expect(
+    isWithinInterval(dateTime, {
+      start: subMinutes(now, 1),
+      end: addMinutes(now, 1),
+    }),
+  ).toBeTruthy()
+  dateTimeString =
+    (await (
+      await page.inputValue(
+        `tr:has(td:text-is("RECEIVED_TIMEFORMATTED")) input`,
+      )
+    ).trim()) || ''
+  dateTime = parse(dateTimeString, 'yyyy-MM-dd HH:mm:ss.SSS', now)
+  // dateTime is now in UTC so subtrack off the timezone offset to get it back to local time
+  dateTime = subMinutes(dateTime, now.getTimezoneOffset())
+  expect(
+    isWithinInterval(dateTime, {
+      start: subMinutes(now, 1),
+      end: addMinutes(now, 1),
+    }),
+  ).toBeTruthy()
+
+  // Switch back to local time
+  await page.goto('/tools/admin/settings')
+  await expect(page.locator('.v-app-bar')).toContainText('Administrator')
+  await page.locator('[data-test=time-zone]').click()
+  await page.getByRole('option', { name: 'local' }).click()
+  await page.locator('[data-test="save-time-zone"]').click()
 })

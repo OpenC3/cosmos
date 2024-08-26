@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -171,7 +171,7 @@
       <v-expand-transition>
         <div class="pa-1" id="chart" ref="chart" v-show="expand">
           <div :id="`chart${id}`"></div>
-          <div id="betweenCharts" />
+          <div id="betweenCharts"></div>
           <div :id="`overview${id}`" v-show="showOverview"></div>
         </div>
       </v-expand-transition>
@@ -210,7 +210,7 @@
                     />
                   </v-card-text>
                 </v-col>
-                <v-col style="margin-top=5px">
+                <v-col>
                   <v-select
                     label="Legend Position"
                     dense
@@ -234,6 +234,7 @@
                 time-label="Start Time"
                 :date-time="graphStartDateTime"
                 @date-time="graphStartDateTime = $event"
+                :time-zone="timeZone"
               />
               <v-card-text class="pa-0">
                 Select a end date/time for the graph. Leave blank for continuous
@@ -244,6 +245,7 @@
                 time-label="End Time"
                 :date-time="graphEndDateTime"
                 @date-time="graphEndDateTime = $event"
+                :time-zone="timeZone"
               />
             </div>
           </v-tab-item>
@@ -513,8 +515,9 @@ import DateTimeChooser from './DateTimeChooser'
 import GraphEditItemDialog from './GraphEditItemDialog'
 import uPlot from 'uplot'
 import bs from 'binary-search'
-import { toDate, format } from 'date-fns'
 import Cable from '../services/cable.js'
+import TimeFilters from '@openc3/tool-common/src/tools/base/util/timeFilters.js'
+import { subMinutes } from 'date-fns'
 
 require('uplot/dist/uPlot.min.css')
 
@@ -579,7 +582,12 @@ export default {
     width: {
       type: Number,
     },
+    timeZone: {
+      type: String,
+      default: 'local',
+    },
   },
+  mixins: [TimeFilters],
   data() {
     return {
       tab: 0,
@@ -763,7 +771,7 @@ export default {
         })
         return seriesObj
       },
-      { chartSeries: [], overviewSeries: [] },
+      { chartSeries: [], overviewSeries: [] }
     )
 
     let chartOpts = {}
@@ -807,23 +815,27 @@ export default {
       this.graph = new uPlot(
         chartOpts,
         this.data,
-        document.getElementById(`chart${this.id}`),
+        document.getElementById(`chart${this.id}`)
       )
     } else {
+      // Uplot wants the real timezone name ('local' doesn't work)
+      let timeZoneName = Intl.DateTimeFormat().resolvedOptions().timeZone
+      if (this.timeZone && this.timeZone !== 'local') {
+        timeZoneName = this.timeZone
+      }
       chartOpts = {
         ...this.getSize('chart'),
         ...this.getScales(),
         ...this.getAxes('chart'),
         // series: series, // TODO: Uncomment with the performance code
         plugins: [this.linesPlugin()],
+        tzDate: (ts) => uPlot.tzDate(new Date(ts * 1e3), timeZoneName),
         series: [
           {
             label: 'Time',
             value: (u, v) =>
               // Convert the unix timestamp into a formatted date / time
-              v == null
-                ? '--'
-                : format(toDate(v * 1000), 'yyyy-MM-dd HH:mm:ss'),
+              v == null ? '--' : this.formatSeconds(v, this.timeZone),
           },
           ...chartSeries,
         ],
@@ -857,10 +869,10 @@ export default {
               if (key === 'x' && !this.zoomOverview && this.overview) {
                 this.zoomChart = true
                 let left = Math.round(
-                  this.overview.valToPos(chart.scales.x.min, 'x'),
+                  this.overview.valToPos(chart.scales.x.min, 'x')
                 )
                 let right = Math.round(
-                  this.overview.valToPos(chart.scales.x.max, 'x'),
+                  this.overview.valToPos(chart.scales.x.max, 'x')
                 )
                 this.overview.setSelect({ left, width: right - left })
                 this.zoomChart = false
@@ -921,11 +933,11 @@ export default {
           ],
         },
       }
-      // console.time('chart')
+
       this.graph = new uPlot(
         chartOpts,
         this.data,
-        document.getElementById(`chart${this.id}`),
+        document.getElementById(`chart${this.id}`)
       )
 
       const overviewOpts = {
@@ -933,12 +945,10 @@ export default {
         ...this.getScales(),
         ...this.getAxes('overview'),
         // series: series, // TODO: Uncomment with the performance code
+        tzDate: (ts) => uPlot.tzDate(new Date(ts * 1e3), timeZoneName),
         series: [...overviewSeries],
         cursor: {
           y: false,
-          points: {
-            show: false, // TODO: This isn't working
-          },
           drag: {
             setScale: false,
             x: true,
@@ -960,7 +970,7 @@ export default {
                 let min = chart.posToVal(chart.select.left, 'x')
                 let max = chart.posToVal(
                   chart.select.left + chart.select.width,
-                  'x',
+                  'x'
                 )
                 this.graph.setScale('x', { min, max })
                 this.zoomOverview = false
@@ -972,7 +982,7 @@ export default {
       this.overview = new uPlot(
         overviewOpts,
         this.data,
-        document.getElementById(`overview${this.id}`),
+        document.getElementById(`overview${this.id}`)
       )
       //console.timeEnd('chart')
       this.moveLegend(this.legendPosition)
@@ -1026,8 +1036,12 @@ export default {
     graphStartDateTime: function (newVal, oldVal) {
       this.needToUpdate = true
       if (newVal && typeof newVal === 'string') {
-        this.graphStartDateTime =
-          new Date(this.graphStartDateTime).getTime() * 1_000_000
+        this.graphStartDateTime = new Date(this.graphStartDateTime)
+        this.graphStartDateTime = subMinutes(
+          this.graphStartDateTime,
+          new Date().getTimezoneOffset()
+        )
+        this.graphStartDateTime = this.graphStartDateTime.getTime() * 1_000_000
       }
     },
     graphEndDateTime: function (newVal, oldVal) {
@@ -1269,7 +1283,7 @@ export default {
       const navDrawer = document.getElementById('openc3-nav-drawer')
       if (navDrawer) {
         navDrawerWidth = navDrawer.classList.contains(
-          'v-navigation-drawer--open',
+          'v-navigation-drawer--open'
         )
           ? navDrawer.clientWidth
           : 0
@@ -1286,7 +1300,7 @@ export default {
         legendWidth
       const viewHeight = Math.max(
         document.documentElement.clientHeight,
-        window.innerHeight || 0,
+        window.innerHeight || 0
       )
 
       const chooser = document.getElementsByClassName('tgt-pkt-item-chooser')[0]
@@ -1359,7 +1373,7 @@ export default {
             },
             // Forces the axis values to be formatted correctly
             // especially with really small or large values
-            values(self, splits) {
+            values(u, splits) {
               if (
                 splits.some((el) => el >= 10_000_000) ||
                 splits.every((el) => el < 0.01)
@@ -1433,7 +1447,7 @@ export default {
                 ctx.moveTo(bbox.left, u.valToPos(line.yValue, 'y', true))
                 ctx.lineTo(
                   bbox.left + bbox.width,
-                  u.valToPos(line.yValue, 'y', true),
+                  u.valToPos(line.yValue, 'y', true)
                 )
                 ctx.stroke()
                 ctx.restore()
@@ -1576,7 +1590,7 @@ export default {
               }
             },
           },
-          index,
+          index
         )
         if (this.overview) {
           this.overview.addSeries(
@@ -1586,7 +1600,7 @@ export default {
                 return this.items[seriesIdx - 1].color
               },
             },
-            index,
+            index
           )
         }
         let newData = Array(this.data[0].length)
@@ -1619,7 +1633,7 @@ export default {
               start_time: theStartTime,
               end_time: this.graphEndDateTime,
             })
-          },
+          }
         )
       }
     },
@@ -1771,8 +1785,6 @@ export default {
 /* For the Y Axis item editor within the Edit Dialog */
 .v-small-dialog__content {
   background-color: var(--color-background-surface-selected);
-}
-.v-small-dialog__content {
   padding: 5px 5px;
 }
 /* left right stacked legend */

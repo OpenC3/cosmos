@@ -58,9 +58,9 @@ export class OpenC3Api {
           },
         },
       )
-      // var data = response.data
+      // let data = response.data
       // if (data.error) {
-      //   var err = new Error()
+      //   let err = new Error()
       //   err.name = data.error.data.class
       //   err.message = data.error.data.message
       //   console.log(data.error.data.backtrace.join('\n'))
@@ -68,7 +68,7 @@ export class OpenC3Api {
       // }
       return response.data.result
     } catch (error) {
-      var err = new Error()
+      let err = new Error()
       if (error.response) {
         // The request was made and the server responded with a
         // status code that falls out of the range of 2xx
@@ -243,9 +243,9 @@ export class OpenC3Api {
     })
     // Make sure data isn't null or undefined. Note this is the only valid use of == or !=
     if (data != null) {
-      var len = data.length
-      var converted = null
-      for (var i = 0; i < len; i++) {
+      let len = data.length
+      let converted = null
+      for (let i = 0; i < len; i++) {
         converted = this.decode_openc3_type(data[i][1])
         if (converted !== null) {
           data[i][1] = converted
@@ -267,9 +267,9 @@ export class OpenC3Api {
     const data = await this.exec('get_tlm_values', [items], {
       stale_time: stale_time,
     })
-    var len = data[0].length
-    var converted = null
-    for (var i = 0; i < len; i++) {
+    let len = data[0].length
+    let converted = null
+    for (let i = 0; i < len; i++) {
       converted = this.decode_openc3_type(data[0][i])
       if (converted !== null) {
         data[0][i] = converted
@@ -294,7 +294,7 @@ export class OpenC3Api {
       ) {
         data = await this.exec('tlm', [target_name], { type: packet_name })
       } else {
-        var err = new Error()
+        let err = new Error()
         err.name = 'TypeError'
         err.message = `Invalid data type ${packet_name}. Valid options are RAW, CONVERTED, FORMATTED, and WITH_UNITS.`
         throw err
@@ -304,7 +304,7 @@ export class OpenC3Api {
         type: value_type,
       })
     }
-    var converted = this.decode_openc3_type(data)
+    let converted = this.decode_openc3_type(data)
     if (converted !== null) {
       data = converted
     }
@@ -384,8 +384,8 @@ export class OpenC3Api {
 
   // Implementation of functionality shared by cmd methods with param_lists.
   _cmd(method, target_name, command_name, param_list, headerOptions) {
-    var converted = null
-    for (var key in param_list) {
+    let converted = null
+    for (let key in param_list) {
       if (Object.prototype.hasOwnProperty.call(param_list, key)) {
         converted = this.encode_openc3_type(param_list[key])
         if (converted !== null) {

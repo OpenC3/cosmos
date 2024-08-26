@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -342,7 +342,7 @@
       v-if="inputMetadata.show"
       v-model="inputMetadata.show"
       :events="inputMetadata.events"
-      :utc="false"
+      :time-zone="timeZone"
       new-metadata
       @close="inputMetadata.callback"
     />
@@ -576,6 +576,7 @@ export default {
       showOverrides: false,
       activePromptId: '',
       api: null,
+      timeZone: 'local',
       screens: [],
       screenKeywords: null,
       idCounter: 0,
@@ -873,6 +874,16 @@ export default {
     // Ensure Offline Access Is Setup For the Current User
     this.api = new OpenC3Api()
     this.api.ensure_offline_access()
+    this.api
+      .get_setting('time_zone')
+      .then((response) => {
+        if (response) {
+          this.timeZone = response
+        }
+      })
+      .catch((error) => {
+        // Do nothing
+      })
 
     // Make NEW_FILENAME available to the template
     this.NEW_FILENAME = NEW_FILENAME
@@ -2379,7 +2390,7 @@ class TestSuite(Suite):
           this.newFile()
         })
         .catch((error) => {
-          if (error) {
+          if (error !== true) {
             const alertObject = {
               text: `Failed Multi-Delete. ${error}`,
               type: 'error',

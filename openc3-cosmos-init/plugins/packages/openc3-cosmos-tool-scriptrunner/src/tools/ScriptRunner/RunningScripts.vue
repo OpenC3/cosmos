@@ -240,7 +240,7 @@ export default {
           this.getRunningScripts()
         })
         .catch((error) => {
-          if (error) {
+          if (error !== true) {
             this.$notify.caution({
               body: `Failed to stop script: ${script.id} ${script.name}`,
             })
@@ -267,7 +267,7 @@ export default {
           this.getRunningScripts()
         })
         .catch((error) => {
-          if (error) {
+          if (error !== true) {
             this.$notify.caution({
               body: `Failed to stop script: ${script.id} ${script.name}`,
             })

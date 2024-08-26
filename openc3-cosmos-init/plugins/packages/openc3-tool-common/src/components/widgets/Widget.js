@@ -164,14 +164,14 @@ export default {
 
       // This syntax works with 0 because each doesn't return any values
       // for a backwards range
-      for (var index = 1; index <= min_num_params; index++) {
+      for (let index = 1; index <= min_num_params; index++) {
         // If the parameter is nil (0 based) then we have a problem
         if (this.parameters[index - 1] === undefined) {
           throw new ConfigParserError(
             parser,
             `Not enough parameters for ${keyword}.`,
             usage,
-            'https://docs.openc3.com/docs/configuration',
+            'https://docs.openc3.com/docs/configuration'
           )
         }
       }
@@ -181,7 +181,7 @@ export default {
           parser,
           `Too many parameters for ${keyword}.`,
           usage,
-          'https://docs.openc3.com/docs/configuration',
+          'https://docs.openc3.com/docs/configuration'
         )
       }
     },
@@ -193,7 +193,7 @@ export default {
       if (this.widgetIndex !== null) {
         foundSetting = this.settings.find(
           (setting) =>
-            parseInt(setting[0]) === this.widgetIndex && setting[1] === 'WIDTH',
+            parseInt(setting[0]) === this.widgetIndex && setting[1] === 'WIDTH'
         )
       } else {
         foundSetting = this.settings.find((setting) => setting[0] === 'WIDTH')
@@ -225,8 +225,7 @@ export default {
       if (this.widgetIndex !== null) {
         foundSetting = this.settings.find(
           (setting) =>
-            parseInt(setting[0]) === this.widgetIndex &&
-            setting[1] === 'HEIGHT',
+            parseInt(setting[0]) === this.widgetIndex && setting[1] === 'HEIGHT'
         )
       } else {
         foundSetting = this.settings.find((setting) => setting[0] === 'HEIGHT')

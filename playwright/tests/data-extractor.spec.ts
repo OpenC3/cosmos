@@ -13,13 +13,21 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 */
 
 // @ts-check
 import { test, expect } from './fixture'
-import { format, add, sub } from 'date-fns'
+import {
+  format,
+  add,
+  sub,
+  parse,
+  addMinutes,
+  subMinutes,
+  isWithinInterval,
+} from 'date-fns'
 
 test.use({
   toolPath: '/tools/dataextractor',
@@ -231,7 +239,7 @@ test('creates CSV output', async ({ page, utils }) => {
     expect(contents).toContain('NaN')
     expect(contents).toContain('Infinity')
     expect(contents).toContain('-Infinity')
-    var lines = contents.split('\n')
+    let lines = contents.split('\n')
     expect(lines[0]).toContain('TEMP1')
     expect(lines[0]).toContain('TEMP2')
     expect(lines[0]).toContain(',') // csv
@@ -248,7 +256,7 @@ test('creates tab delimited output', async ({ page, utils }) => {
   await utils.addTargetPacketItem('INST', 'HEALTH_STATUS', 'TEMP2')
 
   await utils.download(page, 'text=Process', function (contents) {
-    var lines = contents.split('\n')
+    let lines = contents.split('\n')
     expect(lines[0]).toContain('TEMP1')
     expect(lines[0]).toContain('TEMP2')
     expect(lines[0]).toContain('\t') // tab delimited
@@ -265,7 +273,7 @@ test('outputs full column names', async ({ page, utils }) => {
   await utils.addTargetPacketItem('INST', 'HEALTH_STATUS', 'TEMP2')
 
   await utils.download(page, 'text=Process', function (contents) {
-    var lines = contents.split('\n')
+    let lines = contents.split('\n')
     expect(lines[0]).toContain('INST HEALTH_STATUS TEMP1')
     expect(lines[0]).toContain('INST HEALTH_STATUS TEMP2')
   })
@@ -294,19 +302,19 @@ test('fills values', async ({ page, utils }) => {
   await utils.addTargetPacketItem('INST', 'HEALTH_STATUS', 'CCSDSSEQCNT')
 
   await utils.download(page, 'text=Process', function (contents) {
-    var lines = contents.split('\n')
+    let lines = contents.split('\n')
     expect(lines[0]).toContain('CCSDSSEQCNT')
-    var [header1, header2, header3, header4] = lines[0].split(',')
-    var adcsFirst = false
+    let header3 = lines[0].split(',')[2]
+    let adcsFirst = false
     if (header3 === 'INST ADCS CCSDSSEQCNT') {
       adcsFirst = true
     }
-    var firstHS = -2
+    let firstHS = -2
     for (let i = 1; i < lines.length; i++) {
       if (firstHS > 0) {
         if (adcsFirst) {
-          var [tgt1, pkt1, adcs1, hs1] = lines[firstHS].split(',')
-          var [tgt2, pkt2, adcs2, hs2] = lines[i].split(',')
+          let [tgt1, pkt1, adcs1, hs1] = lines[firstHS].split(',')
+          let [tgt2, pkt2, adcs2, hs2] = lines[i].split(',')
           expect(tgt1).toEqual(tgt2) // Both INST
           expect(pkt1).toEqual('HEALTH_STATUS')
           expect(pkt2).toEqual('ADCS')
@@ -314,8 +322,8 @@ test('fills values', async ({ page, utils }) => {
           expect(parseInt(hs1)).toBeGreaterThan(1) // Double check for a value
           expect(hs1).toEqual(hs2) // HEALTH_STATUS should be the same
         } else {
-          var [tgt1, pkt1, hs1, adcs1] = lines[firstHS].split(',')
-          var [tgt2, pkt2, hs2, adcs2] = lines[i].split(',')
+          let [tgt1, pkt1, hs1, adcs1] = lines[firstHS].split(',')
+          let [tgt2, pkt2, hs2, adcs2] = lines[i].split(',')
           expect(tgt1).toEqual(tgt2) // Both INST
           expect(pkt1).toEqual('HEALTH_STATUS')
           expect(pkt2).toEqual('ADCS')
@@ -358,8 +366,96 @@ test('outputs unique values only', async ({ page, utils }) => {
   await utils.addTargetPacketItem('INST', 'HEALTH_STATUS', 'CCSDSVER')
 
   await utils.download(page, 'text=Process', function (contents) {
-    var lines = contents.split('\n')
+    let lines = contents.split('\n')
     expect(lines[0]).toContain('CCSDSVER')
     expect(lines.length).toEqual(2) // header and a single value
   })
+})
+
+test('works with UTC date / times', async ({ page, utils }) => {
+  let now = new Date()
+  // Verify the local date / time
+  let startTimeString =
+    (await page.inputValue('[data-test=start-time]'))?.trim() || ''
+  let startTime = parse(startTimeString, 'HH:mm:ss.SSS', now)
+  expect(
+    isWithinInterval(startTime, {
+      // Start time is automatically 1hr in the past
+      start: subMinutes(now, 61),
+      end: subMinutes(now, 59),
+    }),
+  ).toBeTruthy()
+  let endTimeString =
+    (await page.inputValue('[data-test=end-time]'))?.trim() || ''
+  let endTime = parse(endTimeString, 'HH:mm:ss.SSS', now)
+  expect(
+    isWithinInterval(endTime, {
+      // end time is now
+      start: subMinutes(now, 1),
+      end: addMinutes(now, 1),
+    }),
+  ).toBeTruthy()
+
+  // Switch to UTC
+  await page.goto('/tools/admin/settings')
+  await expect(page.locator('.v-app-bar')).toContainText('Administrator')
+  await page.locator('[data-test=time-zone]').click()
+  await page.getByRole('option', { name: 'UTC' }).click()
+  await page.locator('[data-test="save-time-zone"]').click()
+
+  await page.goto('/tools/dataextractor')
+  await expect(page.locator('.v-app-bar')).toContainText('Data Extractor', {
+    timeout: 20000,
+  })
+  await page.locator('rux-icon-apps path').click()
+  await expect(page.locator('#openc3-nav-drawer')).toBeHidden()
+
+  now = new Date()
+  // The date is now in UTC but we parse it like it is local time
+  startTimeString =
+    (await page.inputValue('[data-test=start-time]'))?.trim() || ''
+  startTime = parse(startTimeString, 'HH:mm:ss.SSS', now)
+  // so subtrack off the timezone offset to get it back to local time
+  let localStartTime = subMinutes(startTime, now.getTimezoneOffset())
+  expect(
+    isWithinInterval(localStartTime, {
+      // Start time is automatically 1hr in the past
+      start: subMinutes(now, 61),
+      end: subMinutes(now, 59),
+    }),
+  ).toBeTruthy()
+  // The date is now in UTC but we parse it like it is local time
+  endTimeString = (await page.inputValue('[data-test=end-time]'))?.trim() || ''
+  endTime = parse(endTimeString, 'HH:mm:ss.SSS', now)
+  // so subtrack off the timezone offset to get it back to local time
+  endTime = subMinutes(endTime, now.getTimezoneOffset())
+  expect(
+    isWithinInterval(endTime, {
+      // end time is now
+      start: subMinutes(now, 1),
+      end: addMinutes(now, 1),
+    }),
+  ).toBeTruthy()
+
+  const start = sub(startTime, { minutes: 2 })
+  await page.locator('[data-test=start-time]').fill(format(start, 'HH:mm:ss'))
+  await utils.addTargetPacketItem('INST', 'MECH')
+
+  await utils.download(page, 'text=Process', function (contents) {
+    let lines = contents.split('\n')
+    expect(lines[0]).toContain('SLRPNL1')
+    expect(lines[0]).toContain('SLRPNL2')
+    expect(lines[0]).toContain('SLRPNL3')
+    expect(lines[0]).toContain('SLRPNL4')
+    expect(lines[0]).toContain('SLRPNL5')
+    expect(lines[0]).toContain(',') // csv
+    expect(lines.length).toBeGreaterThan(60) // 2 min at 60Hz is 120 samples
+  })
+
+  // Switch back to local time
+  await page.goto('/tools/admin/settings')
+  await expect(page.locator('.v-app-bar')).toContainText('Administrator')
+  await page.locator('[data-test=time-zone]').click()
+  await page.getByRole('option', { name: 'local' }).click()
+  await page.locator('[data-test="save-time-zone"]').click()
 })

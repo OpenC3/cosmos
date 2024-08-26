@@ -26,24 +26,26 @@ export default {
     time: {
       type: String,
     },
+    timeZone: {
+      type: String,
+    },
   },
   data() {
     return {
       startDate: '',
       startTime: '',
-      stopDate: '',
-      stopTime: '',
-      utcOrLocal: 'loc',
+      endDate: '',
+      endTime: '',
     }
   },
   methods: {
     calcStartDateTime: function () {
       if (this.date) {
         this.startDate = this.date
-        this.stopDate = this.date
+        this.endDate = this.date
       } else {
         this.startDate = format(new Date(), 'yyyy-MM-dd')
-        this.stopDate = format(new Date(), 'yyyy-MM-dd')
+        this.endDate = format(new Date(), 'yyyy-MM-dd')
       }
       let ms = 1000 * 60 * 30 // 30 min
       let start = null
@@ -56,7 +58,7 @@ export default {
         start = new Date(Math.ceil(new Date().getTime() / ms) * ms)
       }
       this.startTime = format(start, 'HH:mm:ss')
-      this.stopTime = format(add(start, { minutes: 30 }), 'HH:mm:ss')
+      this.endTime = format(add(start, { minutes: 30 }), 'HH:mm:ss')
     },
   },
 }

@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -254,13 +254,14 @@
 </template>
 
 <script>
-import { format } from 'date-fns'
+import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 import Api from '@openc3/tool-common/src/services/api'
 import Config from '@openc3/tool-common/src/components/config/Config'
 import OpenConfigDialog from '@openc3/tool-common/src/components/config/OpenConfigDialog'
 import SaveConfigDialog from '@openc3/tool-common/src/components/config/SaveConfigDialog'
 import Cable from '@openc3/tool-common/src/services/cable.js'
 import TopBar from '@openc3/tool-common/src/components/TopBar'
+import TimeFilters from '@openc3/tool-common/src/tools/base/util/timeFilters.js'
 
 import AddComponentDialog from '@/tools/DataViewer/AddComponentDialog'
 // DynamicComponent is how we load custom user components
@@ -277,11 +278,13 @@ export default {
     DumpComponent,
     TopBar,
   },
-  mixins: [Config],
+  mixins: [Config, TimeFilters],
   data() {
     return {
       title: 'Data Viewer',
       configKey: 'data_viewer',
+      api: null,
+      timeZone: 'local',
       // Initialize with all built-in components
       components: [{ label: 'COSMOS Raw/Decom', value: 'DumpComponent' }],
       counter: 0,
@@ -292,10 +295,10 @@ export default {
       saveConfig: false,
       cable: new Cable(),
       subscription: null,
-      startDate: format(new Date(), 'yyyy-MM-dd'),
-      startTime: format(new Date(), 'HH:mm:ss'),
-      endDate: '',
-      endTime: '',
+      startDate: null,
+      startTime: null,
+      endDate: null,
+      endTime: null,
       rules: {
         required: (value) => !!value || 'Required',
       },
@@ -351,12 +354,26 @@ export default {
   },
   computed: {
     startEndTime: function () {
+      let startTemp = null
+      let endTemp = null
+      try {
+        if (this.timeZone === 'local') {
+          startTemp = new Date(this.startDate + ' ' + this.startTime)
+          if (this.endDate !== null && this.endTime !== null) {
+            endTemp = new Date(this.endDate + ' ' + this.endTime)
+          }
+        } else {
+          startTemp = new Date(this.startDate + ' ' + this.startTime + 'Z')
+          if (this.endDate !== null && this.endTime !== null) {
+            endTemp = new Date(this.endDate + ' ' + this.endTime + 'Z')
+          }
+        }
+      } catch (e) {
+        return
+      }
       return {
-        start_time:
-          new Date(this.startDate + ' ' + this.startTime).getTime() * 1_000_000,
-        end_time: this.endDate
-          ? new Date(this.endDate + ' ' + this.endTime).getTime() * 1_000_000
-          : null,
+        start_time: startTemp.getTime() * 1_000_000,
+        end_time: endTemp ? endTemp.getTime() * 1_000_000 : null,
       }
     },
     allPackets: function () {
@@ -384,7 +401,22 @@ export default {
       deep: true,
     },
   },
-  created() {
+  async created() {
+    this.api = new OpenC3Api()
+    await this.api
+      .get_setting('time_zone')
+      .then((response) => {
+        if (response) {
+          this.timeZone = response
+        }
+      })
+      .catch((error) => {
+        // Do nothing
+      })
+    let now = new Date()
+    this.startDate = this.formatDate(now, this.timeZone)
+    this.startTime = this.formatTime(now, this.timeZone)
+
     // Determine if there are any user added widgets
     Api.get('/openc3-api/widgets').then((response) => {
       response.data.forEach((widget) => {
@@ -437,7 +469,7 @@ export default {
     start: function () {
       this.autoStart = false
       // Check for a future start time
-      if (new Date(this.startDate + ' ' + this.startTime) > Date.now()) {
+      if (this.startEndTime.start_time > new Date().getTime() * 1_000_000) {
         this.warningText = 'Start date/time is in the future!'
         this.warning = true
         return
@@ -449,7 +481,7 @@ export default {
         return
       }
       // Check for a future End Time
-      if (new Date(this.endDate + ' ' + this.endTime) > Date.now()) {
+      if (this.startEndTime.end_time) {
         this.warningText =
           'Note: End date/time is greater than current date/time. Data will continue to stream in real-time until ' +
           this.endDate +
@@ -651,7 +683,7 @@ export default {
         packets: [...event.packets], // Make a copy
         type: type,
         component: component,
-        config: {}, // Set an empty config object
+        config: { timeZone: this.timeZone },
         ref: `component${this.counter}`,
       })
       this.counter++

@@ -197,16 +197,20 @@ async function testMetadataApis(page, utils, filename) {
     timeout: 20000,
   })
   await page.locator('[data-test="new-event"]').click()
-  await page.locator('[data-test="create-metadata-step-two-btn"]').click()
+  await page.locator('[data-test="metadata-step-two-btn"]').click()
   await page.locator('[data-test="new-metadata-icon"]').click()
   await page.locator('[data-test="key-0"]').fill('inputkey')
   await page.locator('[data-test="value-0"]').fill('inputvalue')
-  await page.locator('[data-test="create-metadata-submit-btn"]').click()
+  await page.locator('[data-test="metadata-submit-btn"]').click()
   await page.locator('[data-test="close-event-list"]').click()
 
   await expect(page.locator('[data-test=state]')).toHaveValue('stopped', {
     timeout: 20000,
   })
+}
+
+test('test ruby metadata apis', async ({ page, utils }) => {
+  await testMetadataApis(page, utils, 'metadata.rb')
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     '"setkey"=>1',
   )
@@ -219,12 +223,20 @@ async function testMetadataApis(page, utils, filename) {
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     '"inputkey"=>"inputvalue"',
   )
-}
-
-test('test ruby metadata apis', async ({ page, utils }) => {
-  await testMetadataApis(page, utils, 'metadata.rb')
 })
 
-// test('test python metadata apis', async ({ page, utils }) => {
-//   await testMetadataApis(page, utils, 'metadata.py')
-// })
+test('test python metadata apis', async ({ page, utils }) => {
+  await testMetadataApis(page, utils, 'metadata.py')
+  await expect(page.locator('[data-test=output-messages]')).toContainText(
+    "'setkey': 1",
+  )
+  await expect(page.locator('[data-test=output-messages]')).toContainText(
+    "'setkey': 2",
+  )
+  await expect(page.locator('[data-test=output-messages]')).toContainText(
+    "'updatekey': 3",
+  )
+  await expect(page.locator('[data-test=output-messages]')).toContainText(
+    "'inputkey': 'inputvalue'",
+  )
+})

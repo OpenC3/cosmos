@@ -266,6 +266,10 @@ export default {
       type: Boolean,
       default: true,
     },
+    timeZone: {
+      type: String,
+      default: 'local',
+    },
   },
   data() {
     return {

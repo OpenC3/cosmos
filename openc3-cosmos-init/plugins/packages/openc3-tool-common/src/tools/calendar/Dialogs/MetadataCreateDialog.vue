@@ -5,7 +5,7 @@
 # This program is free software; you can modify and/or redistribute it
 # under the terms of the GNU Affero General Public License
 # as published by the Free Software Foundation; version 3 with
-# attribution addstopums as found in the LICENSE.txt
+# attribution addendums as found in the LICENSE.txt
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -13,14 +13,13 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
-<!-- TODO: COmbine with MetadataUpdateDialog -->
 <template>
   <div>
     <v-dialog persistent v-model="show" width="600">
@@ -28,7 +27,8 @@
         <form @submit.prevent="createMetadata">
           <v-system-bar>
             <v-spacer />
-            <span>Create Metadata</span>
+            <span v-if="metadata">Update Metadata</span>
+            <span v-else>Create Metadata</span>
             <v-spacer />
             <v-tooltip top>
               <template v-slot:activator="{ on, attrs }">
@@ -68,31 +68,12 @@
                       data-test="metadata-start-time"
                     />
                   </v-row>
-                  <v-row class="mx-2 mb-2">
-                    <v-radio-group
-                      v-model="utcOrLocal"
-                      row
-                      hide-details
-                      class="mt-0"
-                    >
-                      <v-radio label="LST" value="loc" data-test="lst-radio" />
-                      <v-radio label="UTC" value="utc" data-test="utc-radio" />
-                    </v-radio-group>
-                  </v-row>
-                  <v-row>
-                    <span
-                      class="ma-2 red--text"
-                      v-show="timeError"
-                      v-text="timeError"
-                    />
-                  </v-row>
                   <v-row class="mt-2">
                     <v-spacer />
                     <v-btn
                       @click="dialogStep = 2"
-                      data-test="create-metadata-step-two-btn"
+                      data-test="metadata-step-two-btn"
                       color="success"
-                      :disabled="!!timeError"
                     >
                       Continue
                     </v-btn>
@@ -105,7 +86,7 @@
               <v-card-text>
                 <div class="pa-2">
                   <div style="min-height: 200px">
-                    <metadata-input-form v-model="metadata" />
+                    <metadata-input-form v-model="metadataVals" />
                   </div>
                   <v-row v-show="typeError">
                     <span class="ma-2 red--text" v-text="typeError" />
@@ -116,7 +97,7 @@
                       @click="show = !show"
                       outlined
                       class="mx-2"
-                      data-test="create-metadata-cancel-btn"
+                      data-test="metadata-cancel-btn"
                     >
                       Cancel
                     </v-btn>
@@ -125,8 +106,8 @@
                       class="mx-2"
                       color="primary"
                       type="submit"
-                      data-test="create-metadata-submit-btn"
-                      :disabled="!!timeError || !!typeError"
+                      data-test="metadata-submit-btn"
+                      :disabled="!!typeError"
                     >
                       Ok
                     </v-btn>
@@ -144,10 +125,9 @@
 <script>
 import Api from '@openc3/tool-common/src/services/api'
 import CreateDialog from '@openc3/tool-common/src/tools/calendar/Dialogs/CreateDialog.js'
-import TimeFilters from '@openc3/tool-common/src/tools/calendar/Filters/timeFilters.js'
+import TimeFilters from '@openc3/tool-common/src/tools/base/util/timeFilters.js'
 import ColorSelectForm from '@openc3/tool-common/src/tools/calendar/Forms/ColorSelectForm'
 import MetadataInputForm from '@openc3/tool-common/src/tools/calendar/Forms/MetadataInputForm'
-import { format } from 'date-fns'
 
 export default {
   components: {
@@ -156,45 +136,35 @@ export default {
   },
   props: {
     value: Boolean, // value is the default prop when using v-model
+    metadata: {
+      type: Object,
+      default: null,
+    },
   },
   mixins: [CreateDialog, TimeFilters],
   data() {
     return {
-      scope: window.openc3Scope,
       dialogStep: 1,
       color: '#003784',
-      metadata: [],
+      metadataVals: [],
       rules: {
         required: (value) => !!value || 'Required',
       },
     }
   },
-  watch: {
-    show: function () {
-      this.updateValues()
-    },
-  },
   mounted: function () {
     this.updateValues()
   },
   computed: {
-    timeError: function () {
+    typeError: function () {
       if (!this.color) {
         return 'A color is required.'
       }
-      const now = new Date()
-      const start = Date.parse(`${this.startDate}T${this.startTime}`)
-      if (now < start) {
-        return 'Invalid start time. Can not be in the future'
-      }
-      return null
-    },
-    typeError: function () {
-      if (this.metadata.length < 1) {
+      if (this.metadataVals.length < 1) {
         return 'Please enter a value in the metadata table.'
       }
-      const emptyKeyValue = this.metadata.find(
-        (meta) => meta.key === '' || meta.value === '',
+      const emptyKeyValue = this.metadataVals.find(
+        (meta) => meta.key === '' || meta.value === ''
       )
       if (emptyKeyValue) {
         return 'Missing or empty key, value in the metadata table.'
@@ -213,33 +183,60 @@ export default {
   methods: {
     updateValues: function () {
       this.dialogStep = 1
-      // Set a time so we round down, Metadata can't be in the future
-      this.time = format(new Date(), 'HH:mm:ss')
-      this.calcStartDateTime()
-      this.color = '#003784'
-      this.metadata = []
+      if (this.metadata) {
+        const sDate = new Date(this.metadata.start * 1000)
+        this.startDate = this.formatDate(sDate, this.timeZone)
+        this.startTime = this.formatTime(sDate, this.timeZone)
+        this.color = this.metadata.color
+        this.metadataVals = Object.keys(this.metadata.metadata).map((k) => {
+          return { key: k, value: this.metadata.metadata[k] }
+        })
+      } else {
+        this.calcStartDateTime()
+        this.color = '#003784'
+        this.metadataVals = []
+      }
     },
     createMetadata: function () {
       const color = this.color
-      const metadata = this.metadata.reduce((result, element) => {
+      const metadata = this.metadataVals.reduce((result, element) => {
         result[element.key] = element.value
         return result
       }, {})
       const data = { color, metadata }
-      data.start = this.toIsoString(
-        Date.parse(`${this.startDate}T${this.startTime}`),
-      )
-      Api.post('/openc3-api/metadata', {
-        data,
-      }).then((response) => {
-        this.$notify.normal({
-          title: 'Created new Metadata',
-          body: `Metadata: (${response.data.start})`,
+      if (this.timeZone === 'local') {
+        data.start = new Date(
+          this.startDate + ' ' + this.startTime
+        ).toISOString()
+      } else {
+        data.start = new Date(
+          this.startDate + ' ' + this.startTime + 'Z'
+        ).toISOString()
+      }
+      if (this.metadata) {
+        Api.put(`/openc3-api/metadata/${this.metadata.start}`, {
+          data,
+        }).then((response) => {
+          this.$notify.normal({
+            title: 'Updated Metadata',
+            body: `Metadata updated: (${response.data.start})`,
+          })
+          this.$emit('update', response.data)
+          this.show = !this.show
         })
-        this.$emit('update', response.data)
-      })
-      this.show = !this.show
-      this.updateValues()
+      } else {
+        Api.post('/openc3-api/metadata', {
+          data,
+        }).then((response) => {
+          this.$notify.normal({
+            title: 'Created new Metadata',
+            body: `Metadata: (${response.data.start})`,
+          })
+          this.$emit('update', response.data)
+          this.show = !this.show
+        })
+      }
+      // We don't do the $emit or set show here because it has to be in the callback
     },
   },
 }

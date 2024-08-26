@@ -29,11 +29,10 @@ module OpenC3
       mock_redis()
     end
 
-    def generate_activity(name:, scope:, start:, kind: "COMMAND", stop: 1.0)
+    def generate_activity(name:, scope:, start:, kind: "COMMAND", stop: 1.0, data: { "test" => "test" })
       dt = DateTime.now.new_offset(0)
       start_time = dt + (start / 24.0)
       end_time = dt + ((start + stop) / 24.0)
-      data = { "test" => "test" }
       ActivityModel.new(
         name: name,
         scope: scope,
@@ -324,15 +323,31 @@ module OpenC3
     end
 
     describe "self.destroy" do
-      it "removes the score form of the timeline" do
-        name = "foobar"
-        scope = "scope"
-        activity = generate_activity(name: name, scope: scope, start: 2.0)
-        activity.create()
-        ret = ActivityModel.destroy(name: name, scope: scope, score: activity.start)
-        expect(ret).to eql(1)
-        count = ActivityModel.count(name: name, scope: scope)
-        expect(count).to eql(0)
+      it "removes the activity" do
+        start = Time.now.to_i + 10
+        ActivityModel.new(
+          name: 'timeline',
+          scope: 'DEFAULT',
+          start: start,
+          stop: start + 10,
+          kind: 'COMMAND',
+          data: {'key' => 'val1'}
+        ).create()
+        # Create another activity with the same start time
+        ActivityModel.new(
+          name: 'timeline',
+          scope: 'DEFAULT',
+          start: start,
+          stop: start + 10,
+          kind: 'COMMAND',
+          data: {'key' => 'val2'}
+        ).create()
+        expect(ActivityModel.count(name: 'timeline', scope: 'DEFAULT')).to eql 2
+        # TODO: Deleting both acitvities with the same start is not what we want
+        # Probably need a UUID like with recurring items to support overlap
+        ret = ActivityModel.destroy(name: 'timeline', scope: 'DEFAULT', score: start)
+        expect(ret).to eql(2)
+        expect(ActivityModel.count(name: 'timeline', scope: 'DEFAULT')).to eql 0
       end
     end
 

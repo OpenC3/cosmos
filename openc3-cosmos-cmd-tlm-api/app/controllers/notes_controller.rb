@@ -25,6 +25,7 @@ require 'time'
 
 class NotesController < ApplicationController
   def initialize
+    super()
     @model_class = OpenC3::NoteModel
   end
 

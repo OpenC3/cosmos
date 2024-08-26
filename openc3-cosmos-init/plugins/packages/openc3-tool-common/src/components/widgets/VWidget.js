@@ -13,17 +13,18 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 */
 
+import TimeFilters from '../../tools/base/util/timeFilters.js'
 import Widget from './Widget'
 import 'sprintf-js'
 export default {
-  mixins: [Widget],
+  mixins: [Widget, TimeFilters],
   // ValueWidget can either get it's value and limitsState directly through props
   // or it will register itself in the Vuex store and be updated asynchronously
   props: {
@@ -38,6 +39,10 @@ export default {
       default: null,
     },
     formatString: null,
+    timeZone: {
+      type: String,
+      default: 'local',
+    },
   },
   data() {
     return {
@@ -107,7 +112,6 @@ export default {
               this.curValue = this.screen.screenValues[this.valueId][0]
             }
           }
-          // }
         } else {
           this.curValue = null
         }
@@ -218,6 +222,7 @@ export default {
 
       if (this.screen) {
         this.screen.addItem(this.valueId)
+        this.timeZone = this.screen.timeZone
       }
     }
   },
@@ -230,13 +235,20 @@ export default {
   },
   methods: {
     getType() {
-      var type = 'WITH_UNITS'
+      let type = 'WITH_UNITS'
       if (this.parameters[3]) {
         type = this.parameters[3]
       }
       return type
     },
     formatValue(value) {
+      if (
+        this.valueId &&
+        (this.valueId.includes('PACKET_TIMEFORMATTED') ||
+          this.valueId.includes('RECEIVED_TIMEFORMATTED'))
+      ) {
+        return this.formatUtcToLocal(new Date(value), this.timeZone)
+      }
       // Convert json raw strings into the raw bytes
       // Only convert the first 32 bytes before adding an ellipse
       // TODO: Handle units on a BLOCK item
