@@ -1933,6 +1933,7 @@ export default {
           }
           this.showMetadata()
           break
+        // This is called continuously by the backend
         case 'open_file_dialog':
         case 'open_files_dialog':
           this.file.title = data.args[0]
@@ -1953,7 +1954,6 @@ export default {
       }
     },
     async fileDialogCallback(files) {
-      this.file.show = false // Close the dialog
       // Set fileNames to 'Cancel' in case they cancelled
       // otherwise we will populate it with the file names they selected
       let fileNames = 'Cancel'
@@ -1981,11 +1981,8 @@ export default {
           )
         })
       }
-
       // We have to wait for all the upload API requests to finish before notifying the prompt
       Promise.all(promises).then((responses) => {
-        // eslint-disable-next-line
-        console.log('post prompt')
         Api.post(`/script-api/running-script/${this.scriptId}/prompt`, {
           data: {
             method: this.file.multiple
@@ -1994,6 +1991,8 @@ export default {
             answer: fileNames,
             prompt_id: this.activePromptId,
           },
+        }).then((response) => {
+          this.file.show = false // Close the dialog
         })
       })
     },
