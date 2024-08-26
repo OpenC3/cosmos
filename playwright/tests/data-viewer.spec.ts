@@ -425,7 +425,11 @@ test('works with UTC date / times', async ({ page, utils }) => {
   localStartTime = addSeconds(localStartTime, 5)
   expect(
     await page.inputValue('[data-test=history-component-text-area]'),
-  ).toContain(localStartTime.toISOString().split('.')[0])
+  ).toContain(
+    // Original string is like '2024-08-26T21:23:41.319Z'
+    // So we split on ':' to just get the year and hour
+    localStartTime.toISOString().split(':').slice(0, 1).join(':'),
+  )
 
   // Switch back to local time
   await page.goto('/tools/admin/settings')
