@@ -422,7 +422,6 @@ test('works with UTC date / times', async ({ page, utils }) => {
 
   await addComponent(page, utils, 'INST', 'ADCS')
   await page.locator('[data-test=start-button]').click()
-  await utils.sleep(500)
   localStartTime = addSeconds(localStartTime, 3)
   expect(
     await page.inputValue('[data-test=history-component-text-area]'),
