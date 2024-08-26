@@ -93,7 +93,7 @@ module OpenC3
         expect(all['TRIG1']['operator']).to eql('>')
         expect(all['TRIG1']['right']).to_not be_nil()
         expect(all['TRIG1']['dependents']).to be_truthy()
-        # scope seperation returns no trigger models
+        # scope separation returns no trigger models
         all = TriggerModel.all(group: TMO_GROUP, scope: 'TRIG1')
         expect(all.empty?).to be_truthy()
       end

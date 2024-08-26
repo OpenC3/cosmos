@@ -467,7 +467,7 @@ class Structure:
     # further modifications to the buffer have no effect on the structure
     # items.
     #
-    # self.param buffer [String] Buffer of data to back the stucture items
+    # self.param buffer [String] Buffer of data to back the structure items
     @buffer.setter
     def buffer(self, buffer):
         with self.synchronize():

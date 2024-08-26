@@ -64,7 +64,7 @@ module OpenC3
         expect(all.empty?).to be_falsey()
         expect(all[TGMO_GROUP]['name']).to eql(TGMO_GROUP)
         expect(all[TGMO_GROUP]['scope']).to eql($openc3_scope)
-        # scope seperation returns no trigger models
+        # scope separation returns no trigger models
         all = TriggerGroupModel.all(scope: 'foobar')
         expect(all.empty?).to be_truthy()
       end

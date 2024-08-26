@@ -140,7 +140,7 @@ module OpenC3
     end
 
     describe "self.delete error" do
-      it "trys to delete a timeline with activities on it" do
+      it "tries to delete a timeline with activities on it" do
         name = "foobar"
         scope = "scope"
         TimelineModel.delete(name: name, scope: scope)

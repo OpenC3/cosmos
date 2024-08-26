@@ -493,7 +493,7 @@ module OpenC3
     # further modifications to the buffer have no effect on the structure
     # items.
     #
-    # @param buffer [String] Buffer of data to back the stucture items
+    # @param buffer [String] Buffer of data to back the structure items
     def buffer=(buffer)
       synchronize() do
         internal_buffer_equals(buffer)

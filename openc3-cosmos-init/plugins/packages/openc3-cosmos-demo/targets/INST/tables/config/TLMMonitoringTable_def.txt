@@ -13,7 +13,7 @@ TABLE "TLM_Monitoring" BIG_ENDIAN ROW_COLUMN 100 "Telemetry Monitoring Table"
     STATE GREATER_THAN 1
     STATE EQUAL_TO 2
     STATE NOT_EQUAL_TO 3
-  APPEND_PARAMETER "Action" 32 UINT 0 4 0 "Action to take when Persistance is met"
+  APPEND_PARAMETER "Action" 32 UINT 0 4 0 "Action to take when Persistence is met"
     STATE NO_ACTION_REQUIRED 0
     STATE INITIATE_RESET 1
     STATE CHANGE_MODE_SAFE 2

@@ -31,7 +31,7 @@ export default defineConfig({
   /* Retry once on CI */
   retries: process.env.CI ? 1 : 2,
   workers: 1,
-  /* See if explict WORKERS count was given, otherwise allow parallelism on CI/CD */
+  /* See if explicit WORKERS count was given, otherwise allow parallelism on CI/CD */
   // workers: process.env.WORKERS
   //   ? parseInt(process.env.WORKERS)
   //   : process.env.CI
