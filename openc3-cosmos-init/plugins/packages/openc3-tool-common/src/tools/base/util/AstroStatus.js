@@ -41,14 +41,14 @@ const _getLevelIndeces = function (levels) {
 }
 
 const highestLevel = function (levels) {
-  const indeces = _getLevelIndeces(levels)
-  const index = Math.min(...indeces)
+  const indices = _getLevelIndeces(levels)
+  const index = Math.min(...indices)
   return _levels[index]
 }
 
 const lowestLevel = function (levels) {
-  const indeces = _getLevelIndeces(levels)
-  const index = Math.max(...indeces)
+  const indices = _getLevelIndeces(levels)
+  const index = Math.max(...indices)
   return _levels[index]
 }
 

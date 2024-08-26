@@ -100,7 +100,7 @@ class Structure:
     def accessor(self, accessor):
         self.__accessor = accessor
         # isinstance can fail if the class is reloaded because the class becomes a new class
-        # so direcly check the class name which is basically equivalent
+        # so directly check the class name which is basically equivalent
         if self.__accessor.enforce_short_buffer_allowed():
             self.short_buffer_allowed = True
 
@@ -144,21 +144,21 @@ class Structure:
 
     # Define an item in the structure. This creates a new instance of the
     # item_class as given in the constructor and adds it to the items hash. It
-    # also resizes the buffer to accomodate the new item.
+    # also resizes the buffer to accommodate the new item.
     #
     # self.param name [String] Name of the item. Used by the items hash to retrieve
     #   the item.
     # self.param bit_offset [Integer] Bit offset of the item in the raw buffer
     # self.param bit_size [Integer] Bit size of the item in the raw buffer
     # self.param data_type [Symbol] Type of data contained by the item. This is
-    #   dependant on the item_class but by default see StructureItem.
+    #   dependent on the item_class but by default see StructureItem.
     # self.param array_size [Integer] Set to a non None value if the item is to
     #   represented as an array.
     # self.param endianness [Symbol] Endianness of this item. By default the
-    #   endianness as set in the constructure is used.
+    #   endianness as set in the constructor is used.
     # self.param overflow [Symbol] How to handle value overflows. This is
-    #   dependant on the item_class but by default see StructureItem.
-    # self.return [StrutureItem] The struture item defined
+    #   dependent on the item_class but by default see StructureItem.
+    # self.return [StrutureItem] The structure item defined
     def define_item(
         self,
         name,
@@ -176,10 +176,10 @@ class Structure:
         return self.define(item)
 
     # Adds the given item to the items hash. It also resizes the buffer to
-    # accomodate the new item.
+    # accommodate the new item.
     #
     # self.param item [StructureItem] The structure item to add
-    # self.return [StrutureItem] The struture item defined
+    # self.return [StrutureItem] The structure item defined
     def define(self, item):
         # Handle Overwriting Existing Item
         if self.items.get(item.name):
@@ -247,7 +247,7 @@ class Structure:
 
     # Define an item at the end of the structure. This creates a new instance of the
     # item_class as given in the constructor and adds it to the items hash. It
-    # also resizes the buffer to accomodate the new item.
+    # also resizes the buffer to accommodate the new item.
     #
     # self.param name (see #define_item)
     # self.param bit_size (see #define_item)
@@ -281,7 +281,7 @@ class Structure:
             )
 
     # Adds an item at the  of the structure. It adds the item to the items
-    # hash and resizes the buffer to accomodate the new item.
+    # hash and resizes the buffer to accommodate the new item.
     #
     # self.param item (see #define)
     # self.return (see #define)
@@ -467,7 +467,7 @@ class Structure:
     # further modifications to the buffer have no effect on the structure
     # items.
     #
-    # self.param buffer [String] Buffer of data to back the stucture items
+    # self.param buffer [String] Buffer of data to back the structure items
     @buffer.setter
     def buffer(self, buffer):
         with self.synchronize():

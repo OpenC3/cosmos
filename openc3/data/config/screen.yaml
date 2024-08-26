@@ -93,7 +93,7 @@ SETTING:
     GLOBAL_SETTING and GLOBAL_SUBSETTING applies to all widgets.
 
     Common wiget settings are defined here. Some widgets define their own
-    unqiue settings which are documented under that specific widget.
+    unique settings which are documented under that specific widget.
   collection:
     <%= MetaConfigParser.load('settings.yaml').to_meta_config_yaml(4) %>
 SUBSETTING:
@@ -127,7 +127,7 @@ SUBSETTING:
     END
 NAMED_WIDGET:
   summary: Name a widget to allow access to it via the getNamedWidget method
-  description: To programatically access parts of a telemetry screen you need
+  description: To programmatically access parts of a telemetry screen you need
     to name the widget. This is useful when creating screens with buttons that
     read values from other widgets.
   warning: getNamedWidget returns the widget itself and thus must be operated

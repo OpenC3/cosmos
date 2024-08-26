@@ -155,7 +155,7 @@ class Interface:
             first = True
             while True:
                 # Protocols may have cached data for a packet, so initially just inject a blank string
-                # Otherwise we can hold off outputing other packets where all the data has already
+                # Otherwise we can hold off outputting other packets where all the data has already
                 # been received
                 if not first or len(self.read_protocols) <= 0:
                     # Read data for a packet

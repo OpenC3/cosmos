@@ -385,7 +385,7 @@ export default {
     },
   },
   watch: {
-    // Everytime the filename changes we figure out if there is an associated upload & download script
+    // Every time the filename changes we figure out if there is an associated upload & download script
     filename: function (val) {
       let upload =
         this.filename.split('/').slice(0, 2).join('/') + '/procedures/upload'
@@ -395,7 +395,7 @@ export default {
       Api.get(`/openc3-api/tables/${upload}.rb`, {
         headers: {
           Accept: 'application/json',
-          // Since we're just checking for existance, 404 is possible so ignore it
+          // Since we're just checking for existence, 404 is possible so ignore it
           'Ignore-Errors': '404',
         },
       })
@@ -407,7 +407,7 @@ export default {
           Api.get(`/openc3-api/tables/${upload}.py`, {
             headers: {
               Accept: 'application/json',
-              // Since we're just checking for existance, 404 is possible so ignore it
+              // Since we're just checking for existence, 404 is possible so ignore it
               'Ignore-Errors': '404',
             },
           })
@@ -422,7 +422,7 @@ export default {
       Api.get(`/openc3-api/tables/${download}.rb`, {
         headers: {
           Accept: 'application/json',
-          // Since we're just checking for existance, 404 is possible so ignore it
+          // Since we're just checking for existence, 404 is possible so ignore it
           'Ignore-Errors': '404',
         },
       })
@@ -434,7 +434,7 @@ export default {
           Api.get(`/openc3-api/tables/${download}.py`, {
             headers: {
               Accept: 'application/json',
-              // Since we're just checking for existance, 404 is possible so ignore it
+              // Since we're just checking for existence, 404 is possible so ignore it
               'Ignore-Errors': '404',
             },
           })

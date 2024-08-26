@@ -125,7 +125,7 @@ test('opens and resets the configuration', async ({ page, utils }) => {
   ).toContainText('GROUND2STATUS')
   await page.locator('button:has-text("Ok")').click()
 
-  // Reset this test configuation
+  // Reset this test configuration
   await page.locator('[data-test=limits-monitor-file]').click()
   await page.locator('text=Reset Configuration').click()
   await utils.sleep(200) // Allow menu to close
@@ -133,7 +133,7 @@ test('opens and resets the configuration', async ({ page, utils }) => {
     'Some items ignored',
   )
 
-  // Delete this test configuation
+  // Delete this test configuration
   await page.locator('[data-test=limits-monitor-file]').click()
   await page.locator('text=Open Configuration').click()
   await page

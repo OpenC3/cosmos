@@ -177,7 +177,7 @@ static VALUE received_count_equals(VALUE self, VALUE received_count)
   return rb_ivar_get(self, id_ivar_received_count);
 }
 
-/* Creates a new packet by initalizing the attributes.
+/* Creates a new packet by initializing the attributes.
  *
  * @param target_name [String] Name of the target this packet is associated with
  * @param packet_name [String] Name of the packet

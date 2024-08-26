@@ -14,7 +14,7 @@ Autonomic operates with some basic building blocks: Trigger Groups, Triggers, an
 
 ### TriggerGroups
 
-Triggers are organized into groups, these groups are both for organization and to ensure that we can scale. It also allows triggers to be evaluated independently and simulataneously and can be useful for overlapping or high priority triggers. However, each trigger group spawns system resources so they should only be created as needed.
+Triggers are organized into groups, these groups are both for organization and to ensure that we can scale. It also allows triggers to be evaluated independently and simultaneously and can be useful for overlapping or high priority triggers. However, each trigger group spawns system resources so they should only be created as needed.
 
 ![TriggerGroups](/img/autonomic/trigger_groups.png)
 

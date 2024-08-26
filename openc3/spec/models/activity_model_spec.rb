@@ -216,7 +216,7 @@ module OpenC3
       end
     end
 
-    describe "self.activites" do
+    describe "self.activities" do
       it "returns activities for the next hour" do
         name = "foobar"
         scope = "scope"
@@ -343,7 +343,7 @@ module OpenC3
           data: {'key' => 'val2'}
         ).create()
         expect(ActivityModel.count(name: 'timeline', scope: 'DEFAULT')).to eql 2
-        # TODO: Deleting both acitvities with the same start is not what we want
+        # TODO: Deleting both activities with the same start is not what we want
         # Probably need a UUID like with recurring items to support overlap
         ret = ActivityModel.destroy(name: 'timeline', scope: 'DEFAULT', score: start)
         expect(ret).to eql(2)
@@ -562,7 +562,7 @@ module OpenC3
         }.to raise_error(ActivityInputError, /activity must be in the future/)
       end
 
-      it "allows EXPIRE activies with start before now" do
+      it "allows EXPIRE activities with start before now" do
         name = "foobar"
         scope = "scope"
         dt_now = DateTime.now

@@ -48,7 +48,7 @@ OVERLAP:
   summary: This item is allowed to overlap other items in the packet
   description:
     If an item's bit offset overlaps another item, OpenC3 issues a warning. This keyword explicitly
-    allows an item to overlap another and supresses the warning message.
+    allows an item to overlap another and suppresses the warning message.
   since: 4.4.1
 KEY:
   summary: Defines the key used to access this raw value in the packet.

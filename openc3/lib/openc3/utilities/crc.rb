@@ -45,9 +45,9 @@ module OpenC3
       0x0F, 0x8F, 0x4F, 0xCF, 0x2F, 0xAF, 0x6F, 0xEF, 0x1F, 0x9F, 0x5F, 0xDF, 0x3F, 0xBF, 0x7F, 0xFF
     ]
 
-    # @return [Integer] The polynomial used when calcuating the CRC
+    # @return [Integer] The polynomial used when calculating the CRC
     attr_reader :poly
-    # @return [Integer] Seed value used to start the calulation
+    # @return [Integer] Seed value used to start the calculation
     attr_reader :seed
     # @return [Boolean] Whether the result is XORed with 0xFFFF
     attr_reader :xor
@@ -221,7 +221,7 @@ module OpenC3
     # Seed for 8-bit CRC
     DEFAULT_SEED = 0x00
 
-    # Creates a 8 bit CRC algorithm instance. By default it is initialzed to
+    # Creates a 8 bit CRC algorithm instance. By default it is initialized to
     # use the CRC-8-DVB-S2 algorithm.
     #
     # @param poly [Integer] Polynomial to use when calculating the CRC
@@ -246,7 +246,7 @@ module OpenC3
     # Seed for 16-bit CRC
     DEFAULT_SEED = 0xFFFF
 
-    # Creates a 16 bit CRC algorithm instance. By default it is initialzed to
+    # Creates a 16 bit CRC algorithm instance. By default it is initialized to
     # use the CRC-16-CCITT algorithm.
     #
     # @param poly [Integer] Polynomial to use when calculating the CRC
@@ -271,7 +271,7 @@ module OpenC3
     # Default Seed for 32-bit CRC
     DEFAULT_SEED = 0xFFFFFFFF
 
-    # Creates a 32 bit CRC algorithm instance. By default it is initialzed to
+    # Creates a 32 bit CRC algorithm instance. By default it is initialized to
     # use the CRC-32 algorithm.
     #
     # @param poly [Integer] Polynomial to use when calculating the CRC
@@ -296,7 +296,7 @@ module OpenC3
     # Default Seed for 64-bit CRC
     DEFAULT_SEED = 0xFFFFFFFFFFFFFFFF
 
-    # Creates a 64 bit CRC algorithm instance. By default it is initialzed to
+    # Creates a 64 bit CRC algorithm instance. By default it is initialized to
     # use the algorithm.
     #
     # @param poly [Integer] Polynomial to use when calculating the CRC

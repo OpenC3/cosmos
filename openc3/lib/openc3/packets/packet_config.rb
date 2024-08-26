@@ -409,7 +409,7 @@ module OpenC3
           else # DELETE
             @current_packet.delete_item(params[0])
           end
-        rescue # Rescue the default execption to provide a nicer error message
+        rescue # Rescue the default exception to provide a nicer error message
           raise parser.error("#{params[0]} not found in #{@current_cmd_or_tlm.downcase} packet #{@current_packet.target_name} #{@current_packet.packet_name}", usage)
         end
 
@@ -675,7 +675,7 @@ module OpenC3
           raise parser.error("#{keyword} only applies to command parameters")
         end
 
-      # Update the mimimum value for the current command parameter
+      # Update the minimum value for the current command parameter
       when 'MINIMUM_VALUE'
         if @current_cmd_or_tlm == TELEMETRY
           raise parser.error("#{keyword} only applies to command parameters")

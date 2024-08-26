@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -58,7 +58,7 @@ module OpenC3
     end
 
     describe "as_json" do
-      it "creates a reproducable format" do
+      it "creates a reproducible format" do
         spc = SegmentedPolynomialConversion.new()
         spc.add_segment(10, 1, 2)
         spc.add_segment(5,  2, 2)
@@ -69,9 +69,9 @@ module OpenC3
         spc.segments.each_with_index do |segment, index|
           expect(segment).to be == new_spc.segments[index]
         end
-        expect(spc.converted_type).to eql (new_spc.converted_type)
-        expect(spc.converted_bit_size).to eql (new_spc.converted_bit_size)
-        expect(spc.converted_array_size).to eql (new_spc.converted_array_size)
+        expect(spc.converted_type).to eql(new_spc.converted_type)
+        expect(spc.converted_bit_size).to eql(new_spc.converted_bit_size)
+        expect(spc.converted_array_size).to eql(new_spc.converted_array_size)
         expect(spc.call(1, nil, nil)).to eql new_spc.call(1, nil, nil)
         expect(spc.call(5, nil, nil)).to eql new_spc.call(5, nil, nil)
         expect(spc.call(11, nil, nil)).to eql new_spc.call(11, nil, nil)

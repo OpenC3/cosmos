@@ -166,7 +166,7 @@ password = ask("Enter your password", False, True)
 
 ### ask_string
 
-Prompts the user for input with a question. User input is always returned as a string. For exampe if the user enters "1", the string "1" will be returned.
+Prompts the user for input with a question. User input is always returned as a string. For example if the user enters "1", the string "1" will be returned.
 
 Ruby / Python Syntax:
 
@@ -560,7 +560,7 @@ cmd_no_hazardous_check("INST", "CLEAR")
 
 ### cmd_no_checks
 
-Sends a specified command without performing the parameter range checks or notification if it is a hazardous command. This should only be used when it is necessary to fully automate testing involving hazardous commands that intentially have invalid parameters.
+Sends a specified command without performing the parameter range checks or notification if it is a hazardous command. This should only be used when it is necessary to fully automate testing involving hazardous commands that intentionally have invalid parameters.
 
 Ruby Syntax:
 
@@ -717,7 +717,7 @@ cmd_raw_no_hazardous_check("INST", "CLEAR")
 
 ### cmd_raw_no_checks
 
-Sends a specified command without running conversions or performing the parameter range checks or notification if it is a hazardous command. This should only be used when it is necessary to fully automate testing involving hazardous commands that intentially have invalid parameters.
+Sends a specified command without running conversions or performing the parameter range checks or notification if it is a hazardous command. This should only be used when it is necessary to fully automate testing involving hazardous commands that intentionally have invalid parameters.
 
 Ruby Syntax:
 
@@ -1114,7 +1114,7 @@ These methods allow the user to interact with telemetry items.
 
 ### check, check_raw, check_formatted, check_with_units
 
-Performs a verification of a telemetry item using its specified telemetry type. If the verification fails then the script will be paused with an error. If no comparision is given to check then the telemetry item is simply printed to the script output. Note: In most cases using wait_check is a better choice than using check.
+Performs a verification of a telemetry item using its specified telemetry type. If the verification fails then the script will be paused with an error. If no comparison is given to check then the telemetry item is simply printed to the script output. Note: In most cases using wait_check is a better choice than using check.
 
 Ruby / Python Syntax:
 
@@ -1631,7 +1631,7 @@ normalize_tlm("INST HEALTH_STATUS TEMP1", type='RAW') # clear only the RAW overr
 
 ### get_overrides
 
-Returns an array of the the currently overriden values set by override_tlm. NOTE: This returns all the value types that are overriden which by default is all 4 values types when using override_tlm.
+Returns an array of the the currently overridden values set by override_tlm. NOTE: This returns all the value types that are overridden which by default is all 4 values types when using override_tlm.
 
 Ruby / Python Syntax:
 
@@ -2281,7 +2281,7 @@ set_limits(<Target Name>, <Packet Name>, <Item Name>, <Red Low>, <Yellow Low>, <
 | Red High    | Red High setting for this limits set. Any value above this value will be make the item red.                                                                                         |
 | Green Low   | Optional. If given, any value greater than Green Low and less than Green_High will make the item blue indicating a good operational value.                                          |
 | Green High  | Optional. If given, any value greater than Green Low and less than Green_High will make the item blue indicating a good operational value.                                          |
-| Limits Set  | Optional. Set the limits for a specific limits set. If not given then it defaults to setting limts for the CUSTOM limits set.                                                       |
+| Limits Set  | Optional. Set the limits for a specific limits set. If not given then it defaults to setting limits for the CUSTOM limits set.                                                      |
 | Persistence | Optional. Set the number of samples this item must be out of limits before changing limits state. Defaults to no change. Note: This affects all limits settings across limits sets. |
 | Enabled     | Optional. Whether or not limits are enabled for this item. Defaults to true. Note: This affects all limits settings across limits sets.                                             |
 
@@ -3323,7 +3323,7 @@ print(get_max_output()) #=> 50000
 ### disable_instrumentation
 
 Disables instrumentation for a block of code (line highlighting and exception catching). This is especially useful for speeding up loops that are very slow if lines are instrumented.
-Consider breaking code like this into a seperate file and using either require/load to read the file for the same effect while still allowing errors to be caught by your script.
+Consider breaking code like this into a separate file and using either require/load to read the file for the same effect while still allowing errors to be caught by your script.
 
 :::warning Use with Caution
 Disabling instrumentation will cause any error that occurs while disabled to cause your script to completely stop.
@@ -3531,11 +3531,11 @@ Ruby / Python Syntax:
 metadata_set(<Metadata>, start, color)
 ```
 
-| Parameter | Description                                                                    |
-| --------- | ------------------------------------------------------------------------------ |
-| Metadata  | Hash or dict of key value pairs to store as metadata.                          |
-| start     | Named parameter, time at which to store metadata. Default is now.              |
-| color     | Named parameter, color to display metadat in the calendar. Default is #003784. |
+| Parameter | Description                                                                     |
+| --------- | ------------------------------------------------------------------------------- |
+| Metadata  | Hash or dict of key value pairs to store as metadata.                           |
+| start     | Named parameter, time at which to store metadata. Default is now.               |
+| color     | Named parameter, color to display metadata in the calendar. Default is #003784. |
 
 Ruby Example:
 
@@ -3561,11 +3561,11 @@ Ruby / Python Syntax:
 metadata_update(<Metadata>, start, color)
 ```
 
-| Parameter | Description                                                                    |
-| --------- | ------------------------------------------------------------------------------ |
-| Metadata  | Hash or dict of key value pairs to update as metadata.                         |
-| start     | Named parameter, time at which to update metadata. Default is latest metadata. |
-| color     | Named parameter, color to display metadat in the calendar. Default is #003784. |
+| Parameter | Description                                                                     |
+| --------- | ------------------------------------------------------------------------------- |
+| Metadata  | Hash or dict of key value pairs to update as metadata.                          |
+| start     | Named parameter, time at which to update metadata. Default is latest metadata.  |
+| color     | Named parameter, color to display metadata in the calendar. Default is #003784. |
 
 Ruby Example:
 
@@ -3697,7 +3697,7 @@ print(get_settings('pypi_url')) #=> 'https://mypypiserver'
 
 ## Configuration
 
-Many COSMOS tools have the ability to load and save a configuration. These APIs allow you to programatically load and save the configuration.
+Many COSMOS tools have the ability to load and save a configuration. These APIs allow you to programmatically load and save the configuration.
 
 ### config_tool_names
 

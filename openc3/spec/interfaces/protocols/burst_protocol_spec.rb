@@ -254,7 +254,7 @@ module OpenC3
     end
 
     describe "write_raw" do
-      it "doesnt change the data" do
+      it "does not change the data" do
         $data = ''
         # Discard first 2 bytes (the sync pattern), include and fill the sync pattern
         @interface.instance_variable_set(:@stream, StreamStub.new)

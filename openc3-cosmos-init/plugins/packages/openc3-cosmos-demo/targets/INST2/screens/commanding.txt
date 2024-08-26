@@ -18,7 +18,7 @@ VERTICAL
       LABEL "  Duration: "
       NAMED_WIDGET DURATION TEXTFIELD 12 "10.0"
     END
-    # This is an example of using a varible named 'type'. You can operate on variables with Javascript code.
+    # This is an example of using a variable named 'type'. You can operate on variables with Javascript code.
     # All OpenC3 commands (api.cmd) must be separated by double semicolons ';;'. All code separated by semicolons is evaluated together.
     # Note: you can also request and use telemetry in screens using Javascript Promises, e.g.
     # api.tlm('INST2 PARAMS VALUE3', 'RAW').then(dur => api.cmd('INST2 COLLECT with TYPE '+type+', DURATION '+dur))"

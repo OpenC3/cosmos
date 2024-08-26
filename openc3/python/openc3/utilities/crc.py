@@ -430,7 +430,7 @@ class Crc8(Crc):
     # Seed for 8-bit CRC
     DEFAULT_SEED = 0x00
 
-    # Creates a 8 bit CRC algorithm instance. By default it is initialzed to
+    # Creates a 8 bit CRC algorithm instance. By default it is initialized to
     # use the CRC-8-DVB-S2 algorithm.
     #
     # self.param poly [Integer] Polynomial to use when calculating the CRC
@@ -449,7 +449,7 @@ class Crc16(Crc):
     # Seed for 16-bit CRC
     DEFAULT_SEED = 0xFFFF
 
-    # Creates a 16 bit CRC algorithm instance. By default it is initialzed to
+    # Creates a 16 bit CRC algorithm instance. By default it is initialized to
     # use the CRC-16-CCITT algorithm.
     #
     # self.param poly [Integer] Polynomial to use when calculating the CRC
@@ -468,7 +468,7 @@ class Crc32(Crc):
     # Default Seed for 32-bit CRC
     DEFAULT_SEED = 0xFFFFFFFF
 
-    # Creates a 32 bit CRC algorithm instance. By default it is initialzed to
+    # Creates a 32 bit CRC algorithm instance. By default it is initialized to
     # use the CRC-32 algorithm.
     #
     # self.param poly [Integer] Polynomial to use when calculating the CRC
@@ -487,7 +487,7 @@ class Crc64(Crc):
     # Default Seed for 64-bit CRC
     DEFAULT_SEED = 0xFFFFFFFFFFFFFFFF
 
-    # Creates a 64 bit CRC algorithm instance. By default it is initialzed to
+    # Creates a 64 bit CRC algorithm instance. By default it is initialized to
     # use the algorithm.
     #
     # self.param poly [Integer] Polynomial to use when calculating the CRC

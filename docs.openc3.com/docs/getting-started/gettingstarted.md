@@ -63,7 +63,7 @@ The cli runs as the default COSMOS container user which is the recommended pract
    ```
 
 :::info Generators
-There are a number of generators available. Run `openc3.bat cli generate` to see all the avilable options.
+There are a number of generators available. Run `openc3.bat cli generate` to see all the available options.
 :::
 
 1. The target generator creates a single target named BOB. Best practice is to create a single target per plugin to make it easier to share targets and upgrade them individually. Lets see what the target generator created for us. Open the openc3-cosmos-bob/targets/BOB/cmd_tlm/cmd.txt:
@@ -88,7 +88,7 @@ There are a number of generators available. Run `openc3.bat cli generate` to see
    - Then we APPEND_PARAMETER a third parameter called BOOL which is a 8-bit unsigned integer (UINT) with a minimum value of MIN (meaning the smallest value a UINT supports, e.g 0), a maximum value of MAX (largest value a UINT supports, e.g. 255), and a default value of 0. BOOL has two states which are just a fancy way of giving meaning to the integer values 0 and 1. The STATE FALSE has a value of 0 and the STATE TRUE has a value of 1.
    - Finally we APPEND_PARAMETER called LABEL which is a 0-bit (meaning it takes up all the remaining space in the packet) string (STRING) with a default value of "OpenC3". Strings don't have minimum or maximum values as that doesn't make sense for STRING types.
 
-   Check out the full [Command](../configuration/command.md) documention for more.
+   Check out the full [Command](../configuration/command.md) documentation for more.
 
 1. Now open the openc3-cosmos-bob/targets/BOB/cmd_tlm/tlm.txt:
 
@@ -107,7 +107,7 @@ There are a number of generators available. Run `openc3.bat cli generate` to see
    - We start by defininig an ID_ITEM called ID that is a 16-bit signed integer (INT) with an id value of 1 and described as "Identifier". Id items are used to take unidentified blobs of bytes and determine which packet they are. In this case if a blob comes in with a value of 1, at bit offset 0 (since we APPEND this item first), interpreted as a 16-bit integer, then this packet will be "identified" as STATUS. Note the first packet defined without any ID_ITEMS is a "catch-all" packet that matches all incoming data (even if the data lengths don't match).
    - Next we define three items similar to the command definition above.
 
-   Check out the full [Telemetry](../configuration/telemetry.md) documention for more.
+   Check out the full [Telemetry](../configuration/telemetry.md) documentation for more.
 
 1. COSMOS has defined an example command and telemetry packet for our target. Most targets will obviously have more than one command and telemetry packet. To add more simply create additional COMMAND and TELEMETRY lines in your text files. Actual packets should match the structure of your command and telemetry. Be sure to add at least one unique [ID_PARAMETER](../configuration/command.md#id_parameter) and [ID_ITEM](../configuration/telemetry.md#id_item) so your packets can be distinguished from each other.
 
@@ -147,7 +147,7 @@ In a plugin that you plan to reuse you should make things like hostnames and por
      File: openc3-cosmos-bob-1.0.0.20210618174517.gem
    ```
 
-   - Note that the VERSION is required to specify the version to build. We recommend [sematic versioning](https://semver.org/) when building your plugin so people using your plugin (including you) know when there are breaking changes.
+   - Note that the VERSION is required to specify the version to build. We recommend [semantic versioning](https://semver.org/) when building your plugin so people using your plugin (including you) know when there are breaking changes.
 
 1. Once our plugin is built we need to upload it to COSMOS. Go back to the Admin page and click the Plugins Tab. Click on "Click to install plugin" and select the openc3-cosmos-bob-1.0.0.20210618174517.gem file. Then click Upload. Go back to the CmdTlmServer and you should see the plugin being deployed at which point the BOB_INT interface should appear and try to connect. Go ahead and click 'Cancel' because unless you really have something listening on port 8080 this will never connect. At this point you can explore the other CmdTlmServer tabs and other tools to see your newly defined BOB target.
 

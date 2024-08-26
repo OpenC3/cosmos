@@ -104,13 +104,13 @@ test('opens and resets the configuration', async ({ page, utils }) => {
   await page.getByRole('tab', { name: 'Test2' }).click()
   await expect(page.getByText('Current Time:')).toBeVisible()
 
-  // Reset this test configuation
+  // Reset this test configuration
   await page.locator('[data-test=data-viewer-file]').click()
   await page.locator('text=Reset Configuration').click()
   await utils.sleep(200) // Allow menu to close
   await expect(page.getByText("You're not viewing any packets")).toBeVisible()
 
-  // Delete this test configuation
+  // Delete this test configuration
   await page.locator('[data-test="data-viewer-file"]').click()
   await page.locator('text=Open Configuration').click()
   await page

@@ -40,7 +40,7 @@ class MessagesThread < TopicsThread
       @types = [@types] unless Array === @types
     end
     @level = level
-    @redis_offset = nil # Redis offset to transistion from files
+    @redis_offset = nil # Redis offset to transition from files
     @scope = scope
     @thread_mode = :SETUP
     @topics = ["#{scope}__openc3_log_messages"]
@@ -150,7 +150,7 @@ class MessagesThread < TopicsThread
 
   def redis_thread_body
     results = []
-    OpenC3::Topic.read_topics(@topics, @offsets) do |topic, msg_id, msg_hash, redis|
+    OpenC3::Topic.read_topics(@topics, @offsets) do |topic, msg_id, msg_hash, _redis|
       @offsets[@offset_index_by_topic[topic]] = msg_id
       msg_hash[:msg_id] = msg_id
       result_entry = handle_log_entry(msg_hash)
@@ -180,7 +180,7 @@ class MessagesThread < TopicsThread
     # Grab next Redis offset
     type = log_entry["type"]
     if type == "offset"
-      # Save Redis offset for transistion
+      # Save Redis offset for transition
       @redis_offset = log_entry["last_offset"]
       return nil
     end

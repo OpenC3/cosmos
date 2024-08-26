@@ -18,7 +18,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 # This file converts OASIS CSTOL files to OpenC3 scripts
@@ -163,7 +163,7 @@ def parse_expression(vars, quoted = false, in_eval = false)
     when /(\+|-|\*|\/)/ # Arithmetic operator
       str = str + " " + vars[i].tr('[]"', '') + " "
 
-    # Verfies Number followed immediately by units
+    # Verifies Number followed immediately by units
     when /\dDN\z|\ddn\z|\dDEG\z|\ddeg\z|\dRAD\z|\drad\z|\dV\z|\dA\z|\dv\z|\da\z|\dc\z|\dC\z|\df\z|\dF\z|\dDPS\z|\dM\z|\dMPS\z|\dm\z|\dmps\z/ # Checks for decimal/degrees/volts and amps
       temp = vars[i].tr('[]"', '')
       temp = temp.gsub(/DN\z|dn\z|DEG\z|deg\z|RAD\z|rad\z|V\z|A\z|v\z|a\z|c\z|C\z|f\z|F\z|DPS\z|M\z|MPS\z|m\z|mps\z/, '')
@@ -190,7 +190,7 @@ def parse_expression(vars, quoted = false, in_eval = false)
       str = str + parse_time(vars[i].tr('[]"', ''))
 
     when /\dE/ # Floating point
-      temp_number = vars[i].tr('E', '').to_f * 10**vars[i + 2].to_f
+      temp_number = vars[i].tr('E', '').to_f * (10**vars[i + 2].to_f)
       str = str + "#{temp_number}"
       finished = true
     when /\d/ # Decimal number
@@ -279,7 +279,7 @@ def parse_id(id, quoted = false, in_eval = false, in_command = false, in_single_
   elsif id.match?(/\dE\+\d/) # Floating point
     id = id.gsub('+', ' + ')
     temp_num_arr = id.split(' ')
-    temp_number = temp_num_arr[0].tr('E', '').to_f * 10**temp_num_arr[2].to_f
+    temp_number = temp_num_arr[0].tr('E', '').to_f * (10**temp_num_arr[2].to_f)
     str = str + "#{temp_number}"
   elsif id.match(/\A\d/) or id.match(/\A-\d/) # starts with Decimal number
     str = id
@@ -332,7 +332,7 @@ def parse_time(time)
     end
 
     # Compute the number of seconds
-    secs = (3600 * tok[0].to_i + 60 * tok[1].to_i + tok[2].to_i).to_s
+    secs = ((3600 * tok[0].to_i) + (60 * tok[1].to_i) + tok[2].to_i).to_s
 
   # Other cases not handled
   else
@@ -341,7 +341,7 @@ def parse_time(time)
 end
 
 def parse_tlm_item(tlm)
-  # Remove preceeding parentheses
+  # Remove preceding parentheses
   if tlm[0].index("(") == 0
     tlm[0] = tlm[0][1..-1]
   end
@@ -371,7 +371,7 @@ def parse_line(full_line, loc_out_file, wait_check_flag = false)
     return
   end
 
-  # Detemine the location of any comments in this line
+  # Determine the location of any comments in this line
   commentIdx = full_line.index(";")
 
   # If we found a comment operator
@@ -653,7 +653,7 @@ def parse_line(full_line, loc_out_file, wait_check_flag = false)
     # TODO not sure if this is wise, for some files the loop is infinite and
     # there's no exist case
     if words[1] == nil
-      str = str + "# TODO Possible inifinite loop case check script file" +
+      str = str + "# TODO Possible infinite loop case check script file" +
             "\n" + str + "while(true)"
     else
       str = str + words[1] + ".times do |i|"
@@ -694,7 +694,7 @@ def parse_line(full_line, loc_out_file, wait_check_flag = false)
       # Print the function name and the first argument
       str = str + "def " + words[1].downcase + "(" + parse_id(listWords[0])
 
-      # Print the remaining arguments preceeded by a separator
+      # Print the remaining arguments preceded by a separator
       (listWords.length - 1).times do |i|
         str = str + ", " + parse_id(listWords[i + 1])
       end
@@ -759,7 +759,7 @@ def parse_line(full_line, loc_out_file, wait_check_flag = false)
       # Print the function name and the first argument
       str = str + words[1].downcase + "(" + parse_id(listWords[0])
 
-      # Print the remaining arguments preceeded by a separator
+      # Print the remaining arguments preceded by a separator
       (listWords.length - 1).times do |i|
         str = str + ", " + parse_id(listWords[i + 1])
       end
@@ -783,7 +783,7 @@ def parse_line(full_line, loc_out_file, wait_check_flag = false)
     str = str + "# SCL Ignored: " + line
 
   when "wait"
-    # add a space incase there's no space between or and parantheses
+    # add a space in case there's no space between or and parentheses
     line = line.gsub(')or', ') or')
     words = line.split(' ')
     # Only a wait
@@ -1055,8 +1055,8 @@ end
 
 begin
   opts.parse!(ARGV)
-rescue => err
-  puts err
+rescue => e
+  puts e
   puts opts
   exit
 end
@@ -1164,7 +1164,7 @@ else
       @universal_index = 0
       @data_by_lines = @data.lines.to_a
       # Parse each line in the file
-      @data_by_lines.each do |line|
+      @data_by_lines.each do |_line|
         if @verify_wait_check == true
           # Skip line
           @verify_wait_check = false

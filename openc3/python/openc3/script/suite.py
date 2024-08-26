@@ -43,7 +43,7 @@ class Suite:
     # START PUBLIC API
     ###########################################################################
 
-    # Explictly avoid creating an initialize method which forces users to call super()
+    # Explicitly avoid creating an initialize method which forces users to call super()
 
     # Add a group to the suite
     def add_group(self, group_class):
@@ -287,7 +287,7 @@ class Group:
     abort_on_exception = False
     current_result = None
 
-    # Explictly avoid creating an initialize method which forces users to call super()
+    # Explicitly avoid creating an initialize method which forces users to call super()
 
     @classmethod
     def scripts(cls):

@@ -58,7 +58,7 @@ The VARIABLE keyword defines a variable that will be requested for the user to e
 ## NEEDS_DEPENDENCIES
 <div class="right">(Since 5.5.0)</div>**Indicates the plugin needs dependencies and sets the GEM_HOME environment variable**
 
-If the plugin has a top level lib folder or lists runtime dependencies in the gemspec, NEEDS_DEPENDENCIES is effectively already set. Note that in Enterprise Edition, having NEEDS_DEPENDENCIES adds the NFS volume mount to the Kuberentes pod.
+If the plugin has a top level lib folder or lists runtime dependencies in the gemspec, NEEDS_DEPENDENCIES is effectively already set. Note that in Enterprise Edition, having NEEDS_DEPENDENCIES adds the NFS volume mount to the Kubernetes pod.
 
 
 ## INTERFACE
@@ -153,7 +153,7 @@ If DONT_RECONNECT is not present the Server will try to reconnect to an interfac
 ### DISABLE_DISCONNECT
 **Disable the Disconnect button on the Interfaces tab in the Server**
 
-Use this keyword to prevent the user from disconnecting from the interface. This is typically used in a 'production' environment where you would not want the user to inadvertantly disconnect from a target.
+Use this keyword to prevent the user from disconnecting from the interface. This is typically used in a 'production' environment where you would not want the user to inadvertently disconnect from a target.
 
 
 ### LOG_RAW
@@ -807,7 +807,7 @@ Defines a custom widget that can be used in Telemetry Viewer screens.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Widget Name | The name of the widget wil be used to build a path to the widget implementation. For example, `WIDGET HELLOWORLD` will find the as-built file tools/widgets/HelloworldWidget/HelloworldWidget.umd.min.js. See the [Custom Widgets](../guides/custom-widgets.md) guide for more details. | True |
+| Widget Name | The name of the widget will be used to build a path to the widget implementation. For example, `WIDGET HELLOWORLD` will find the as-built file tools/widgets/HelloworldWidget/HelloworldWidget.umd.min.js. See the [Custom Widgets](../guides/custom-widgets.md) guide for more details. | True |
 
 Example Usage:
 ```ruby

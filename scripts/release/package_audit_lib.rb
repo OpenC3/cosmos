@@ -443,7 +443,7 @@ def check_tool_base(path, base_pkgs)
           `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/#{package}.min.js --output public/js/#{package}-#{latest}.min.js`
         end
         FileUtils.rm existing
-        # Now update the files with references to <package>-<verison>.min.js
+        # Now update the files with references to <package>-<version>.min.js
         %w(src/index.ejs src/index-allow-http.ejs).each do |filename|
           ejs = File.read(filename)
           ejs.gsub!(/#{package}-\d+\.\d+\.\d+\.min\.js/, "#{package}-#{latest}.min.js")

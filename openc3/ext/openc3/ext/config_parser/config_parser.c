@@ -77,7 +77,7 @@ static VALUE string_remove_quotes(VALUE self)
 
 /*
  * Method to read a line from the config file.
- * This is a seperate method so that it can be protected.
+ * This is a separate method so that it can be protected.
  */
 static VALUE config_parser_readline(VALUE io)
 {

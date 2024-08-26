@@ -268,11 +268,11 @@ export default {
                   }
                   if (rawString !== null) {
                     // Slice the number of bytes in case they added UNITS
-                    // Othewise we would render the units,
+                    // Otherwise we would render the units,
                     // e.g. UNITS of 'B' becomes 20 42 (space, B)
                     rawString = rawString.slice(
                       0,
-                      parseInt(this.details.bit_size) / 8,
+                      parseInt(this.details.bit_size) / 8
                     )
                     // Only display the first 64 bytes at which point ...
                     let ellipse = false
@@ -288,7 +288,7 @@ export default {
                         } else {
                           return ('0' + (byte & 0xff).toString(16)).slice(-2)
                         }
-                      },
+                      }
                     )
                       .join(' ')
                       .toUpperCase()
@@ -354,13 +354,13 @@ export default {
         await this.api.enable_limits(
           this.targetName,
           this.packetName,
-          this.itemName,
+          this.itemName
         )
       } else {
         await this.api.disable_limits(
           this.targetName,
           this.packetName,
-          this.itemName,
+          this.itemName
         )
       }
     },

@@ -63,7 +63,7 @@ class String
   # @param unprintable_character [String] The string to output when data in the
   #   binary String does not result in a printable ASCII character. Only used if
   #   show_ascii is true.
-  # @param line_separator [String] The string used to end a line.  Normaly newline.
+  # @param line_separator [String] The string used to end a line. Normally newline.
   def formatted(
     word_size = 1,
     words_per_line = 16,
@@ -149,7 +149,7 @@ class String
     string
   end
 
-  # Uses the String each_line method to interate through the lines and removes
+  # Uses the String each_line method to iterate through the lines and removes
   # the line specified.
   #
   # @param line_number [Integer] The line to remove from the string (1 based)

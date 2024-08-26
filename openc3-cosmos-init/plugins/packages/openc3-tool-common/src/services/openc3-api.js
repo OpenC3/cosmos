@@ -260,7 +260,7 @@ export class OpenC3Api {
   get_all_tlm(target_name) {
     return this.exec('get_all_tlm', [target_name])
   }
-  // DEPREACTE
+  // DEPRECATED
   get_all_telemetry(target_name) {
     return this.exec('get_all_telemetry', [target_name])
   }

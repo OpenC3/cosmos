@@ -146,7 +146,7 @@ class TargetModel(Model):
             not_found = []
             for item in items - found_items:
                 not_found.append(f"'{target_name} {packet_name} {item}'")
-            # 'does not exist' not gramatically correct but we use it in every other exception
+            # 'does not exist' not grammatically correct but we use it in every other exception
             raise RuntimeError(f"Item(s) {', '.join(not_found)} does not exist")
         return found
 

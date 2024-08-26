@@ -60,7 +60,7 @@ module OpenC3
     end
 
     describe "as_json" do
-      it "creates a reproducable format" do
+      it "creates a reproducible format" do
         brc = BitReverseConversion.new(:UINT, 8)
         json = brc.as_json(:allow_nan => true)
         expect(json['class']).to eql "OpenC3::BitReverseConversion"

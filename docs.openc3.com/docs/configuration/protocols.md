@@ -303,7 +303,7 @@ The base class disconnect_reset implementation just calls the reset method to en
 
 The read_data method is used to analyze and potentially modify any raw data read by an Interface. It takes one parameter as the current state of the data to be analyzed. It can return either a string of data, STOP, or DISCONNECT. If it returns a string, then it believes that data may be ready to be a full packet, and is ready for processing by any following Protocols. If STOP is returned then the Protocol believes it needs more data to complete a full packet. If DISCONNECT is returned then the Protocol believes the Interface should be disconnected (and typically automatically reconnected).
 
-Base class Ruby implemenation:
+Base class Ruby implementation:
 
 ```ruby
 def read_data(data)
@@ -320,7 +320,7 @@ def read_data(data)
 end
 ```
 
-Base class Python implemenation:
+Base class Python implementation:
 
 ```python
 def read_data(self, data, extra=None):

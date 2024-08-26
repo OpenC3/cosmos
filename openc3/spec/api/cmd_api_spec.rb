@@ -559,12 +559,12 @@ module OpenC3
     end
 
     describe "get_cmd_cnt" do
-      it "complains about non-existant targets" do
+      it "complains about non-existent targets" do
         expect { @api.get_cmd_cnt("BLAH", "ABORT") }.to raise_error("Packet 'BLAH ABORT' does not exist")
         expect { @api.get_cmd_cnt("BLAH ABORT") }.to raise_error("Packet 'BLAH ABORT' does not exist")
       end
 
-      it "complains about non-existant packets" do
+      it "complains about non-existent packets" do
         expect { @api.get_cmd_cnt("INST", "BLAH") }.to raise_error("Packet 'INST BLAH' does not exist")
       end
 

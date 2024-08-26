@@ -24,7 +24,7 @@ require 'openc3/logs/log_writer'
 require 'socket'
 
 module OpenC3
-  # Creates a text log. Can automatically cycle the log based on an elasped
+  # Creates a text log. Can automatically cycle the log based on an elapsed
   # time period or when the log file reaches a predefined size.
   class TextLogWriter < LogWriter
     NEWLINE = "\n".freeze
@@ -48,9 +48,9 @@ module OpenC3
         prepare_write(time_nsec_since_epoch, data.length, redis_topic, redis_offset)
         write_entry(time_nsec_since_epoch, data) if @file
       end
-    rescue => err
-      Logger.instance.error "Error writing #{@filename} : #{err.formatted}"
-      OpenC3.handle_critical_exception(err)
+    rescue => e
+      Logger.instance.error "Error writing #{@filename} : #{e.formatted}"
+      OpenC3.handle_critical_exception(e)
     end
 
     def write_entry(time_nsec_since_epoch, data)
