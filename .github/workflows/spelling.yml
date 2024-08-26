@@ -11,7 +11,7 @@ jobs:
     name: Check Spelling
     permissions:
       contents: read
-      pull-requests: read
+      pull-requests: write
       actions: read
     outputs:
       followup: ${{ steps.spelling.outputs.followup }}
@@ -21,7 +21,7 @@ jobs:
       # note: If you use only_check_changed_files, you do not want cancel-in-progress
       cancel-in-progress: true
     steps:
-    # - uses: actions/checkout@v4
+    - uses: actions/checkout@v4
     - name: check-spelling
       id: spelling
       uses: check-spelling/check-spelling@main
@@ -33,7 +33,12 @@ jobs:
         use_magic_file: 1
         report-timing: 1
         warnings: bad-regex,binary-file,deprecated-feature,large-file,limited-references,no-newline-at-eof,noisy-file,non-alpha-in-dictionary,token-is-substring,unexpected-line-ending,whitespace-in-dictionary,minified-file,unsupported-configuration,no-files-to-check
-
+        extra_dictionaries:
+          cspell:software-terms/dict/softwareTerms.txt
+          cspell:python/src/python/python-lib.txt
+          cspell:python/src/python/python.txt
+          cspell:npm/dict/npm.txt
+          cspell:ruby/dict/ruby.txt
   comment-push:
     name: Report (Push)
     runs-on: ubuntu-latest
