@@ -94,7 +94,7 @@ module OpenC3
     end
 
     describe "as_json" do
-      it "creates a reproducable format" do
+      it "creates a reproducible format" do
         owc = ObjectWriteConversion.new(:TLM, "INST", "PARAMS")
         json = owc.as_json(allow_nil: true)
         expect(json['class']).to eql "OpenC3::ObjectWriteConversion"

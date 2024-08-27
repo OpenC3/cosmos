@@ -190,7 +190,7 @@ module OpenC3
     # @param remove_quotes [Boolean] Whether to remove beginning and ending single
     #   or double quote characters from parameters.
     # @param run_erb [Boolean] Whether or not to run ERB on the file
-    # @param variables [Hash] variables to pash to ERB context
+    # @param variables [Hash] variables to push to ERB context
     # @param block [Block] The block to yield to
     # @yieldparam keyword [String] The keyword in the current parsed line
     # @yieldparam parameters [Array<String>] The parameters in the current parsed line

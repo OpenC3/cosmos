@@ -53,7 +53,7 @@ module OpenC3
         expect(@pc.telemetry["UNKNOWN"].keys).to eql ["UNKNOWN"]
       end
 
-      it "dyanamically adds packets" do
+      it "dynamically adds packets" do
         tf = Tempfile.new('unittest')
         tf.puts 'TELEMETRY tgt1 pkt1 BIG_ENDIAN "Packet"'
         tf.puts 'ID_ITEM myitem 0 8 UINT 1 "Test Item id=1"'

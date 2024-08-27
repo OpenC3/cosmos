@@ -32,7 +32,7 @@ module OpenC3
     # These source keywords are ignored in the YAML
     EXCEPTIONS = %w(CONVERTED RAW FORMATTED WITH_UNITS NONE DYNAMIC ROUTE)
     EXCEPTIONS.concat(%w(MINUTE HOUR DAY AVG MIN MAX STDDEV AGING CRC CMD_RESPONSE OVERRIDE IGNORE_PACKET))
-    # These yaml keywords aren't obvious in the source so we explictly add them
+    # These yaml keywords aren't obvious in the source so we explicitly add them
     # They're primarily SETTINGs used by the widgets
     ADDITIONS = %w(UNKNOWN NEEDS_DEPENDENCIES VALUE_EQ STARTTIME HISTORY SECONDSGRAPHED POINTSSAVED)
     ADDITIONS.concat(%w(POINTSGRAPHED SIZE WIDTH HEIGHT MARGIN PADDING BACKCOLOR TEXTCOLOR BORDERCOLOR RAW))

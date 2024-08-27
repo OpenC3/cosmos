@@ -275,7 +275,7 @@ module OpenC3
         expect { CvtModel.normalize("INST", "HEALTH_STATUS", "TEMP1", type: :OTHER, scope: "DEFAULT") }.to raise_error(/Unknown type 'OTHER'/)
       end
 
-      it "does nothing if no value overriden" do
+      it "does nothing if no value overridden" do
         update_temp1()
         cache_copy = CvtModel.class_variable_get(:@@override_cache).dup
         CvtModel.normalize("INST", "HEALTH_STATUS", "TEMP1", type: :RAW, scope: "DEFAULT")
@@ -291,7 +291,7 @@ module OpenC3
 
         CvtModel.normalize("INST", "HEALTH_STATUS", "TEMP1", type: :RAW, scope: "DEFAULT")
         expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :RAW, scope: "DEFAULT")).to eql 1
-        # The rest are still overriden
+        # The rest are still overridden
         expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :CONVERTED, scope: "DEFAULT")).to eql 0
         expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :FORMATTED, scope: "DEFAULT")).to eql "0"
         expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :WITH_UNITS, scope: "DEFAULT")).to eql "0"
@@ -330,7 +330,7 @@ module OpenC3
         expect{ packet_name = CvtModel.determine_latest_packet_for_item('INST', 'HEALTH_STATUS', cache_timeout: nil, scope: 'DEFAULT') }
           .to(raise_error do |error|
             expect(error).to be_a(RuntimeError)
-            expect(error.message).to match(/.*[Target]|[Item] 'INST[ LATEST HEALTH_STATUS]?' does not exist for scope: DEFAULT.*/)
+            expect(error.message).to match(/.*[Target]|[Item] 'INST[ LATESH_U]?' does not exist for scope: DEFAULT.*/)
           end)
         expect(packet_name).not_to eq('something')
       end
@@ -347,7 +347,7 @@ module OpenC3
         CvtModel.override("INST", "HEALTH_STATUS", "TEMP1", 0, type: :RAW, scope: "DEFAULT")
         # Override an individual type
         CvtModel.override("INST", "HEALTH_STATUS", "TEMP2", 1, type: :FORMATTED, scope: "DEFAULT")
-        # Since we're overriding all the previous one will also be overriden
+        # Since we're overriding all the previous one will also be overridden
         CvtModel.override("INST", "HEALTH_STATUS", "TEMP2", 2, type: :ALL, scope: "DEFAULT")
         CvtModel.override("INST", "ADCS", "POSX", 3, type: :ALL, scope: "DEFAULT")
         CvtModel.override("SYSTEM", "META", "OPERATOR_NAME", "JASON", type: :CONVERTED, scope: "DEFAULT")

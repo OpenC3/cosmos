@@ -34,7 +34,7 @@ module OpenC3
     # @return The result of the method call.
     def metadata_all(limit: 100, scope: $openc3_scope)
       response = $api_server.request('get', "/openc3-api/metadata", query: { limit: limit }, scope: scope)
-      # Non-existant just returns nil
+      # Non-existent just returns nil
       return nil if response.nil? || response.status != 200
       return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
     end
@@ -49,7 +49,7 @@ module OpenC3
       else
         response = $api_server.request('get', "/openc3-api/metadata/latest", scope: scope)
       end
-      # Non-existant just returns nil
+      # Non-existent just returns nil
       return nil if response.nil? || response.status != 200
       return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
     end

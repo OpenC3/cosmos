@@ -7,9 +7,11 @@ This is a wrapper for [Ace Editor](http://ace.c9.io/) to provide a 2-panel diffi
 It's built on top of [google-diff-match-patch](https://code.google.com/p/google-diff-match-patch/) library. That lib handles the hard part: the computation of the document diffs. Ace-diff just visualizes that information as line-diffs in the editors.
 
 ## Dependencies
+
 - Ace Editor: this could the [official Ace builds](https://github.com/ajaxorg/ace-builds), [Brace](https://github.com/thlorenz/brace) and any other similar Ace editor build (like the ones from public CDNs)
 
 ## Demos
+
 Take a look at [demos on Ace-diff page](https://ace-diff.github.io/ace-diff/). The demos illustrate a few different configurations and styles. Hopefully they'll give you a rough sense of what it does and how it works.
 
 ## Features
@@ -31,28 +33,35 @@ yarn add ace-diff
 ```
 
 ```js
-import AceDiff from 'ace-diff';
+import AceDiff from 'ace-diff'
 
 // optionally, include CSS, or use your own
-import 'ace-diff/dist/ace-diff.min.css';
+import 'ace-diff/dist/ace-diff.min.css'
 // Or use the dark mode
-import 'ace-diff/dist/ace-diff-dark.min.css';
+import 'ace-diff/dist/ace-diff-dark.min.css'
 ```
 
 ### Use CDN
+
 Grab ace-diff from CDN:
 
 ```html
-<!-- Inlude Ace Editor - e.g. with this: -->
+<!-- Include Ace Editor - e.g. with this: -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.13.1/ace.js"></script>
 
 <script src="https://unpkg.com/ace-diff@^3.0.0"></script>
 
 <!-- optionally include CSS, or use your own -->
-<link href="https://unpkg.com/ace-diff@^3.0.0/dist/ace-diff.min.css" rel="stylesheet">
+<link
+  href="https://unpkg.com/ace-diff@^3.0.0/dist/ace-diff.min.css"
+  rel="stylesheet"
+/>
 
 <!-- optionally there is also a dark mode CSS -->
-<link href="https://unpkg.com/ace-diff@^3.0.0/dist/ace-diff-dark.min.css" rel="stylesheet">
+<link
+  href="https://unpkg.com/ace-diff@^3.0.0/dist/ace-diff-dark.min.css"
+  rel="stylesheet"
+/>
 ```
 
 ### HTML
@@ -62,6 +71,7 @@ Grab ace-diff from CDN:
 ```
 
 ### JavaScript
+
 Here's an example of how you'd instantiate AceDiff.
 
 ```js
@@ -74,14 +84,14 @@ const differ = new AceDiff({
   right: {
     content: 'your second file content here',
   },
-});
+})
 ```
 
 When using with Brace or any build system like Webpack, you can pass the editor as an option:
 
 ```js
 // If you are using Brace editor, you can pass it as well
-const ace = require('brace');
+const ace = require('brace')
 
 const differ = new AceDiff({
   ace, // using Brace
@@ -92,7 +102,7 @@ const differ = new AceDiff({
   right: {
     content: 'your second file content here',
   },
-});
+})
 ```
 
 ### CSS
@@ -105,11 +115,9 @@ If you want the ace editor's to change height/width based on a user's browser, I
 
 Take a look at the [demos](https://ace-diff.github.io/ace-diff/) for some ideas. They all use flexbox for the layouts, but include some different styles and class names just so you can see.
 
-
 ## Configuration
 
 You can configure your Ace-diff instance through a number of config settings. This object is what you pass to the constructor, like the **JavaScript** section above.
-
 
 ### Default settings
 
@@ -148,12 +156,11 @@ Here are all the defaults. I'll explain each one in details below. Note: you onl
 }
 ```
 
-
 ### Diffing settings
 
 - `ace` (object, optional, default: `window.ace`). The Ace Editor instance to use.
 - `element` (string<DOM selector> or element object, required). The element used for Ace-diff
-- `mode` (string, optional). this is the mode for the Ace Editor, e.g. `"ace/mode/javascript"`. Check out the Ace docs for that. This setting will be applied to both editors. I figured 99.999999% of the time you're going to want the same mode for both of them so you can just set it once here. If you're a mad genius and want to have different modes for each side, (a) *whoah man, what's your use-case?*, and (b) you can override this setting in one of the settings below. Read on.
+- `mode` (string, optional). this is the mode for the Ace Editor, e.g. `"ace/mode/javascript"`. Check out the Ace docs for that. This setting will be applied to both editors. I figured 99.999999% of the time you're going to want the same mode for both of them so you can just set it once here. If you're a mad genius and want to have different modes for each side, (a) _whoah man, what's your use-case?_, and (b) you can override this setting in one of the settings below. Read on.
 - `theme` (string, optional). This lets you set the theme for both editors.
 - `diffGranularity` (string, optional, default: `broad`). this has two options (`specific`, and `broad`). Basically this determines how aggressively AceDiff combines diffs to simplify the interface. I found that often it's a judgement call as to whether multiple diffs on one side should be grouped. This setting provides a little control over it.
 - `showDiffs` (boolean, optional, default: `true`). Whether or not the diffs are enabled. This basically turns everything off.
@@ -166,13 +173,12 @@ Here are all the defaults. I'll explain each one in details below. Note: you onl
 - `left.editable / right.editable` (boolean, optional, default: `true`). Whether the left editor is editable or not.
 - `left.copyLinkEnabled / right.copyLinkEnabled` (boolean, optional, default: `true`). Whether the copy to right/left arrows should appear.
 
-
 ### Classes
+
 - `diff`: the class for a diff line on either editor
 - `connector`: the SVG connector
 - `newCodeConnectorLinkContent`: the content of the copy to right link. Defaults to a unicode right arrow ('&#8594;')
 - `deletedCodeConnectorLinkContent`: the content of the copy to left link. Defaults to a unicode right arrow ('&#8592;')
-
 
 ## API
 
@@ -184,10 +190,10 @@ There are a few API methods available on your AceDiff instance.
 - `aceInstance.diff()`: updates the diff. This shouldn't ever be required because AceDiff automatically recognizes the key events like changes to the editor and window resizing. But I've included it because there may always be that fringe case...
 - `aceInstance.destroy()`: destroys the AceDiff instance. Basically this just destroys both editors and cleans out the gutter.
 
-
 ## Browser Support
+
 All modern browsers. Open a ticket if you find otherwise.
 
-
 ## License
+
 MIT.

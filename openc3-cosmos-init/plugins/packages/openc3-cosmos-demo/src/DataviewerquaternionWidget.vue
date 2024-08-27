@@ -79,21 +79,20 @@ export default {
           text += `Q4: ${d}\n`
           // You'd probably want to do the magnitude as a TLM item conversion
           let magnitude = Math.sqrt(
-            Math.pow(a, 2) + Math.pow(b, 2) + Math.pow(c, 2) + Math.pow(d, 2)
+            Math.pow(a, 2) + Math.pow(b, 2) + Math.pow(c, 2) + Math.pow(d, 2),
           )
           a = a.toString().padStart(9)
-          let na = (-a).toString().padStart(9)
           b = b.toString().padStart(9)
-          let nb = (-b).toString().padStart(9)
+          let negB = (-b).toString().padStart(9)
           c = c.toString().padStart(9)
-          let nc = (-c).toString().padStart(9)
+          let negC = (-c).toString().padStart(9)
           d = d.toString().padStart(9)
-          let nd = (-d).toString().padStart(9)
+          let negD = (-d).toString().padStart(9)
           text += `Matrix:\n`
-          text += `[${a} ${nb} ${nc} ${nd}]\n`
-          text += `[${b} ${a} ${nd} ${c}]\n`
-          text += `[${c} ${d} ${a} ${nb}]\n`
-          text += `[${d} ${nc} ${b} ${a}]\n`
+          text += `[${a} ${negB} ${negC} ${negD}]\n`
+          text += `[${b} ${a} ${negD} ${c}]\n`
+          text += `[${c} ${d} ${a} ${negB}]\n`
+          text += `[${d} ${negC} ${b} ${a}]\n`
           text += `Magnitude: ${magnitude}`
         }
       }

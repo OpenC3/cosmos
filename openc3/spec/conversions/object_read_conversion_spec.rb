@@ -84,7 +84,7 @@ module OpenC3
     end
 
     describe "as_json" do
-      it "creates a reproducable format" do
+      it "creates a reproducible format" do
         orc = ObjectReadConversion.new(:TLM, "INST", "PARAMS")
         json = orc.as_json(allow_nil: true)
         expect(json['class']).to eql "OpenC3::ObjectReadConversion"

@@ -287,7 +287,7 @@ module OpenC3
         tf = Tempfile.new('unittest')
         tf.puts "KEYWORD PARAM1 'continues ' \\"
         tf.puts "next line" # Forgot quotes
-        tf.puts "KEYWORD2 PARAM2" # Ensure we proces the next line
+        tf.puts "KEYWORD2 PARAM2" # Ensure we process the next line
         tf.close
         @cp.parse_file(tf.path) do |keyword, params|
           if keyword == 'KEYWORD'

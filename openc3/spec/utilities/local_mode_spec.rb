@@ -405,7 +405,7 @@ module OpenC3
         allow(OpenC3::GemModel).to receive(:get).and_return(test_gems[1])
         full_folder_path = File.dirname(test_gems[0])
         plugin_file_path = "test1-0.0.0.gem"
-        plugin_hash = {"name": "test2-0.0.0.gem__2022080810203"}
+        plugin_hash = {name: "test2-0.0.0.gem__2022080810203"}
         gem_name = "test1"
         expect(File.read(test_gems[0])).to eq "I'm a gem! 1"
         expect(JSON.parse(File.read(test_plugin_instances[0]))).to eq({"name" => "test1-0.0.0.gem__2022080810203"})
@@ -419,7 +419,7 @@ module OpenC3
         allow(OpenC3::GemModel).to receive(:get).and_return(test_gems[1])
         full_folder_path = File.dirname(test_gems[0])
         plugin_file_path = test_gems[2]
-        plugin_hash = {"name": "test2-0.0.0.gem__2022080810203"}
+        plugin_hash = {name: "test2-0.0.0.gem__2022080810203"}
         gem_name = "test1"
         expect(File.read(test_gems[0])).to eq "I'm a gem! 1"
         expect(JSON.parse(File.read(test_plugin_instances[0]))).to eq({"name" => "test1-0.0.0.gem__2022080810203"})
@@ -678,7 +678,7 @@ module OpenC3
         catalog = LocalMode.build_remote_catalog(Bucket.getClient, scope: 'DEFAULT')
         expect(catalog.length).to eql 6
         6.times do |index|
-          expect(catalog["DEFAULT/targets_modified/INST/screens/myscreen#{index}.txt"]).to be (index * 10)
+          expect(catalog["DEFAULT/targets_modified/INST/screens/myscreen#{index}.txt"]).to be(index * 10)
         end
 
         resp = OpenStruct.new
@@ -696,7 +696,7 @@ module OpenC3
         catalog = LocalMode.build_remote_catalog(Bucket.getClient, scope: 'OTHER')
         expect(catalog.length).to eql 3
         3.times do |index|
-          expect(catalog["OTHER/targets_modified/INST/screens/myscreen#{index}.txt"]).to be (index * 10)
+          expect(catalog["OTHER/targets_modified/INST/screens/myscreen#{index}.txt"]).to be(index * 10)
         end
       end
     end
@@ -968,14 +968,14 @@ module OpenC3
 
     describe "put_target_file" do
       it "puts a target file locally" do
-        path = "DEFAULT/demo-plugin/afile.rb"
+        path = "DEFAULT/demo-plugin/a_file.rb"
         string = "Some data for the file"
         LocalMode.put_target_file(path, string, scope: 'DEFAULT')
         full_path = "#{@tmp_dir}/#{path}"
         expect(File.exist?(full_path)).to be true
         expect(File.read(full_path)).to eq string
 
-        path = "DEFAULT/demo-plugin/bfile.rb"
+        path = "DEFAULT/demo-plugin/b_file.rb"
         stringio = StringIO.new("Some data for the file again")
         LocalMode.put_target_file(path, stringio, scope: 'DEFAULT')
         full_path = "#{@tmp_dir}/#{path}"

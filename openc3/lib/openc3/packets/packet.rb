@@ -111,7 +111,7 @@ module OpenC3
     VALUE_TYPES = [:RAW, :CONVERTED, :FORMATTED, :WITH_UNITS]
 
     if RUBY_ENGINE != 'ruby' or ENV['OPENC3_NO_EXT']
-      # Creates a new packet by initalizing the attributes.
+      # Creates a new packet by initializing the attributes.
       #
       # @param target_name [String] Name of the target this packet is associated with
       # @param packet_name [String] Name of the packet
@@ -122,7 +122,7 @@ module OpenC3
       #   subclass of PacketItem)
       def initialize(target_name = nil, packet_name = nil, default_endianness = :BIG_ENDIAN, description = nil, buffer = nil, item_class = PacketItem)
         super(default_endianness, buffer, item_class)
-        # Explictly call the defined setter methods
+        # Explicitly call the defined setter methods
         self.target_name = target_name
         self.packet_name = packet_name
         self.description = description
@@ -511,20 +511,20 @@ module OpenC3
 
     # Define an item in the packet. This creates a new instance of the
     # item_class as given in the constructor and adds it to the items hash. It
-    # also resizes the buffer to accomodate the new item.
+    # also resizes the buffer to accommodate the new item.
     #
     # @param name [String] Name of the item. Used by the items hash to retrieve
     #   the item.
     # @param bit_offset [Integer] Bit offset of the item in the raw buffer
     # @param bit_size [Integer] Bit size of the item in the raw buffer
     # @param data_type [Symbol] Type of data contained by the item. This is
-    #   dependant on the item_class but by default see StructureItem.
+    #   dependent on the item_class but by default see StructureItem.
     # @param array_size [Integer] Set to a non nil value if the item is to
     #   represented as an array.
     # @param endianness [Symbol] Endianness of this item. By default the
-    #   endianness as set in the constructure is used.
+    #   endianness as set in the constructor is used.
     # @param overflow [Symbol] How to handle value overflows. This is
-    #   dependant on the item_class but by default see StructureItem.
+    #   dependent on the item_class but by default see StructureItem.
     # @param format_string [String] String to pass to Kernel#sprintf
     # @param read_conversion [Conversion] Conversion to apply when reading the
     #   item from the packet buffer
@@ -540,7 +540,7 @@ module OpenC3
     end
 
     # Add an item to the packet by adding it to the items hash. It also
-    # resizes the buffer to accomodate the new item.
+    # resizes the buffer to accommodate the new item.
     #
     # @param item [PacketItem] Item to add to the packet
     # @return [PacketItem] The same packet item
@@ -553,7 +553,7 @@ module OpenC3
 
     # Define an item at the end of the packet. This creates a new instance of the
     # item_class as given in the constructor and adds it to the items hash. It
-    # also resizes the buffer to accomodate the new item.
+    # also resizes the buffer to accommodate the new item.
     #
     # @param name (see #define_item)
     # @param bit_size (see #define_item)

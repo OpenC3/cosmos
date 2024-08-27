@@ -28,7 +28,7 @@ from openc3.utilities.string import build_timestamped_filename
 from openc3.utilities.time import from_nsec_from_epoch, to_timestamp
 
 
-# Creates a log. Can automatically cycle the log based on an elasped
+# Creates a log. Can automatically cycle the log based on an elapsed
 # time period or when the log file reaches a predefined size.
 class LogWriter:
     # The cycle time interval. Cycle times are only checked at this level of

@@ -8,7 +8,7 @@ title: Tables
 ## Table Definition Files
 
 Table definition files define the binary tables that can be displayed in COSMOS [Table Manager](../tools/table-manager.md)
-. Table definitions are defined in the target's tables/config directory and are typically named after the table such as `PPSSelectionTable_def.txt`. The `_def.txt` extention helps to identify the file as a table definition. Table definitions can be combined using the `TABLEFILE` keyword. This allows you to build individual table components into a larger binary.
+. Table definitions are defined in the target's tables/config directory and are typically named after the table such as `PPSSelectionTable_def.txt`. The `_def.txt` extension helps to identify the file as a table definition. Table definitions can be combined using the `TABLEFILE` keyword. This allows you to build individual table components into a larger binary.
 
 The Table definition files share a lot of similarity with the [Command Configuration](command.md). You have the same data types: INT, UINT, FLOAT, STRING, BLOCK. These correspond to integers, unsigned integers, floating point numbers, strings and binary blocks of data.
 
@@ -131,7 +131,7 @@ META TEST "This parameter is for test purposes only"
 #### OVERLAP
 <div class="right">(Since 4.4.1)</div>**This item is allowed to overlap other items in the packet**
 
-If an item's bit offset overlaps another item, OpenC3 issues a warning. This keyword explicitly allows an item to overlap another and supresses the warning message.
+If an item's bit offset overlaps another item, OpenC3 issues a warning. This keyword explicitly allows an item to overlap another and suppresses the warning message.
 
 
 #### KEY
@@ -351,7 +351,7 @@ APPEND_PARAMETER ITEM1 32 UINT 0 0xFFFFFFFF 0
 #### OVERFLOW
 **Set the behavior when writing a value overflows the type**
 
-By default OpenC3 throws an error if you try to write a value which overflows its specified type, e.g. writing 255 to a 8 bit signed value. Setting the overflow behavior also allows for OpenC3 to 'TRUNCATE' the value by eliminating any high order bits. You can also set 'SATURATE' which causes OpenC3 to replace the value with the maximum or minimum allowable value for that type. Finally you can specify 'ERROR_ALLOW_HEX' which will allow for a maximum hex value to be writen, e.g. you can successfully write 255 to a 8 bit signed value.
+By default OpenC3 throws an error if you try to write a value which overflows its specified type, e.g. writing 255 to a 8 bit signed value. Setting the overflow behavior also allows for OpenC3 to 'TRUNCATE' the value by eliminating any high order bits. You can also set 'SATURATE' which causes OpenC3 to replace the value with the maximum or minimum allowable value for that type. Finally you can specify 'ERROR_ALLOW_HEX' which will allow for a maximum hex value to be written, e.g. you can successfully write 255 to a 8 bit signed value.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -406,7 +406,7 @@ When Data Type is STRING, BLOCK the remaining parameters are:
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Table | The name of the existin table | True |
+| Table | The name of the existing table | True |
 
 ## DEFAULT
 **Specify default values for a SINGLE row in a multi-column table**

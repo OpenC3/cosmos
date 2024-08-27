@@ -203,7 +203,7 @@ WIDGET Helloworld
 
 ## Tool Generator
 
-The tool generator creates the scaffolding for a new COSMOS Tool. It's It must operate inside an existing COSMOS plugin and requires a tool name. Developing a custom tool requires intensive knowledge of a Javascript framework such as Vue.js, Angular, React, or Svelt. Since all the COSMOS tools are built in Vue.js, that is the recommended framework for new tool development. For additional help on frontend development, see [Running a Frontend Application](../development/developing#running-a-frontend-application).
+The tool generator creates the scaffolding for a new COSMOS Tool. It's It must operate inside an existing COSMOS plugin and requires a tool name. Developing a custom tool requires intensive knowledge of a Javascript framework such as Vue.js, Angular, React, or Svelte. Since all the COSMOS tools are built in Vue.js, that is the recommended framework for new tool development. For additional help on frontend development, see [Running a Frontend Application](../development/developing#running-a-frontend-application).
 
 ```bash
 openc3-cosmos-gse % openc3.sh cli generate tool
@@ -225,7 +225,7 @@ This creates the following files and directories:
 | src/tools/datavis/datavis.vue | Fully functional tool which displays a simple button. This can be expanded using existing COSMOS Vue.js code to create any tool imaginable.                                                                             |
 | package.json                  | Build and dependency definition file. Used by npm or yarn to build the tool.                                                                                                                                            |
 | vue.config.js                 | Vue configuration file used to serve the application in development and build the application.                                                                                                                          |
-| \<dotfiles\>                  | Various dotfiles which help configure formatters and tools for Javascript frontend developemnt                                                                                                                          |
+| \<dotfiles\>                  | Various dotfiles which help configure formatters and tools for Javascript frontend development                                                                                                                          |
 
 It also updates the plugin.txt file to add the new tool. The icon can be changed to any of the material design icons found [here](https://pictogrammers.com/library/mdi/).
 

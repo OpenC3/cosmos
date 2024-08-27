@@ -69,7 +69,7 @@ module OpenC3
     end
 
     # Called by the PluginsController to parse the plugin variables
-    # Doesn't actaully create the plugin during the phase
+    # Doesn't actually create the plugin during the phase
     def self.install_phase1(gem_file_path, existing_variables: nil, existing_plugin_txt_lines: nil, process_existing: false, scope:, validate_only: false)
       gem_name = File.basename(gem_file_path).split("__")[0]
 
@@ -140,8 +140,8 @@ module OpenC3
     end
 
     # Called by the PluginsController to create the plugin
-    # Because this uses ERB it must be run in a seperate process from the API to
-    # prevent corruption and single require problems in the current proces
+    # Because this uses ERB it must be run in a separate process from the API to
+    # prevent corruption and single require problems in the current process
     def self.install_phase2(plugin_hash, scope:, gem_file_path: nil, validate_only: false)
       # Register plugin to aid in uninstall if install fails
       plugin_hash.delete("existing_plugin_txt_lines")

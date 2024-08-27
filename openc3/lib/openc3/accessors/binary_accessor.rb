@@ -108,7 +108,7 @@ module OpenC3
 
     # Store the host endianness so that it only has to be determined once
     HOST_ENDIANNESS = get_host_endianness()
-    # Valid endianess
+    # Valid endianness
     ENDIANNESS = [:BIG_ENDIAN, :LITTLE_ENDIAN]
 
     def handle_read_variable_bit_size(item, _buffer)
@@ -749,7 +749,7 @@ module OpenC3
       end
 
 
-      # Check the bit size and bit offset for problems. Recalulate the bit offset
+      # Check the bit size and bit offset for problems. Recalculate the bit offset
       # and return back through the passed in pointer.
       def self.check_bit_offset_and_size(read_or_write, given_bit_offset, given_bit_size, data_type, buffer)
         bit_offset = given_bit_offset
@@ -1104,7 +1104,7 @@ module OpenC3
             # Remove extra bytes from old buffer
             buffer[(upper_bound + 1)..old_upper_bound] = ''
           elsif upper_bound > old_upper_bound
-            # Grow buffer and preserve bytes at end of buffer if necesssary
+            # Grow buffer and preserve bytes at end of buffer if necessary
             buffer_length = buffer.length
             diff = upper_bound - old_upper_bound
             buffer << (ZERO_STRING * diff)
@@ -1408,7 +1408,7 @@ module OpenC3
       return false
     end
 
-    # If this is true it will enfore that COSMOS DERIVED items must have a
+    # If this is true it will enforce that COSMOS DERIVED items must have a
     # write_conversion to be written
     def enforce_derived_write_conversion(_item)
       return true

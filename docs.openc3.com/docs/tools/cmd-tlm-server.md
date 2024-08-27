@@ -4,7 +4,7 @@ title: Command and Telemetry Server
 
 ## Introduction
 
-The Command and Telemetry Server application provides status about the [interfaces](../configuration/interfaces.md) and targets instantiated in your COSMOS installation. Intefaces can be connected or disconnected and raw byte counts are returned. The application also provides quick shortcuts to view
+The Command and Telemetry Server application provides status about the [interfaces](../configuration/interfaces.md) and targets instantiated in your COSMOS installation. Interfaces can be connected or disconnected and raw byte counts are returned. The application also provides quick shortcuts to view
 both raw and formatted command and telemetry packets as they go through the COSMOS system. At the bottom of the Command and Telemetry Server is the Log Messages showing server messages.
 
 ![Cmd Tlm Server](/img/cmd_tlm_server/cmd_tlm_server.png)

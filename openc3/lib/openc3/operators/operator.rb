@@ -105,7 +105,7 @@ module OpenC3
     def cmd_line
       # In ProcessManager processes, the process_definition is the actual thing run
       # e.g. OpenC3::ProcessManager.instance.spawn(["ruby", "/openc3/bin/openc3cli", "load", ...])
-      # However, if the MicroserviceOperator is spawning the proceses it sets
+      # However, if the MicroserviceOperator is spawning the processes it sets
       # process_definition = ["ruby", "plugin_microservice.rb"]
       # which then calls exec(*@config["cmd"]) to actually run
       # So check if the @config['cmd'] is defined to give the user more info in the log

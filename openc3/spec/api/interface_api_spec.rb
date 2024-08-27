@@ -154,7 +154,7 @@ module OpenC3
     end
 
     describe "interface_cmd" do
-      it "sends a comamnd to an interface" do
+      it "sends a command to an interface" do
         expect_any_instance_of(OpenC3::Interface).to receive(:interface_cmd).with("cmd1")
         @api.interface_cmd("INST_INT", "cmd1")
 
@@ -164,7 +164,7 @@ module OpenC3
     end
 
     describe "interface_protocol_cmd" do
-      it "sends a comamnd to an interface" do
+      it "sends a command to an interface" do
         expect_any_instance_of(OpenC3::Interface).to receive(:protocol_cmd).with("cmd1", {index: -1, read_write: "READ_WRITE"})
         @api.interface_protocol_cmd("INST_INT", "cmd1")
 

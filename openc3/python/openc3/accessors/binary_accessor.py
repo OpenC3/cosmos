@@ -99,7 +99,7 @@ class BinaryAccessor(Accessor):
             f"{len(buffer)} byte buffer insufficient to {read_write} {data_type} at bit_offset {given_bit_offset} with bit_size {given_bit_size}"
         )
 
-    # Valid endianess
+    # Valid endianness
     ENDIANNESS = ["BIG_ENDIAN", "LITTLE_ENDIAN"]
 
     def handle_read_variable_bit_size(self, item, _buffer):
@@ -684,7 +684,7 @@ class BinaryAccessor(Accessor):
 
         return value
 
-    # Check the bit size and bit offset for problems. Recalulate the bit offset
+    # Check the bit size and bit offset for problems. Recalculate the bit offset
     # and return back through the passed in pointer.
     @classmethod
     def check_bit_offset_and_size(cls, read_or_write, given_bit_offset, given_bit_size, data_type, buffer):
@@ -997,7 +997,7 @@ class BinaryAccessor(Accessor):
                     # Remove extra bytes from old buffer
                     buffer[(upper_bound + 1) : old_upper_bound + 1] = b""
                 elif upper_bound > old_upper_bound:
-                    # Grow buffer and preserve bytes at  of buffer if necesssary
+                    # Grow buffer and preserve bytes at  of buffer if necessary
                     buffer_length = len(buffer)
                     diff = upper_bound - old_upper_bound
                     buffer += BinaryAccessor.ZERO_STRING * diff

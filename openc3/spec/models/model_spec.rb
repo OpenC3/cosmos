@@ -66,7 +66,7 @@ module OpenC3
         expect { model.create }.to raise_error(/model already exists/)
       end
 
-      it "complains if updating non-existant" do
+      it "complains if updating non-existent" do
         model = Model.new("primary_key", name: "model")
         expect { model.create(update: true) }.to raise_error(/model doesn't exist/)
       end

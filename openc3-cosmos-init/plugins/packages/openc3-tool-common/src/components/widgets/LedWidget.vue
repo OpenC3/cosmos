@@ -63,7 +63,7 @@ export default {
       }
     },
   },
-  // Note Vuejs still treats this syncronously, but this allows us to dispatch
+  // Note Vuejs still treats this synchronously, but this allows us to dispatch
   // the store mutation and return the array index.
   // What this means practically is that future lifecycle hooks may not have valueId set.
   created() {

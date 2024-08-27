@@ -19,7 +19,7 @@
 require 'openc3/logs/packet_log_writer'
 
 module OpenC3
-  # Creates a packet log. Can automatically cycle the log based on an elasped
+  # Creates a packet log. Can automatically cycle the log based on an elapsed
   # time period or when the log file reaches a predefined size.
   class BufferedPacketLogWriter < PacketLogWriter
     # @param remote_log_directory [String] The path to store the log files
@@ -123,8 +123,8 @@ module OpenC3
         @buffer.each do |entry|
           write(*entry[0..-3], allow_new_file: false, take_mutex: false, received_time_nsec_since_epoch: entry[-2], extra: entry[-1])
         end
-      rescue => err
-        Logger.instance.error "Error writing out buffer : #{err.formatted}"
+      rescue => e
+        Logger.instance.error "Error writing out buffer : #{e.formatted}"
       end
       @buffer = []
     end

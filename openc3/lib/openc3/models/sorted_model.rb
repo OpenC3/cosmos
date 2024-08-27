@@ -34,15 +34,15 @@ module OpenC3
   class SortedOverlapError < SortedError; end
 
   class SortedModel < Model
-    SORTED_TYPE = 'sorted'.freeze # To be overriden by base class
-    PRIMARY_KEY = '__SORTED'.freeze # To be overriden by base class
+    SORTED_TYPE = 'sorted'.freeze # To be overridden by base class
+    PRIMARY_KEY = '__SORTED'.freeze # To be overridden by base class
 
-    # MUST be overriden by any subclasses
+    # MUST be overridden by any subclasses
     def self.pk(scope)
       return "#{scope}#{PRIMARY_KEY}"
     end
 
-    # MUST be overriden by any subclasses
+    # MUST be overridden by any subclasses
     def self.notify(scope:, kind:, start:, stop: nil)
       # Do nothing by default
     end

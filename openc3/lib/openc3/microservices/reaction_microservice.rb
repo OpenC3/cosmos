@@ -368,7 +368,7 @@ module OpenC3
   end
 
   # The reaction snooze manager starts a thread pool and keeps track of when a
-  # reaction is activated and to evalute triggers when the snooze is complete.
+  # reaction is activated and to evaluate triggers when the snooze is complete.
   class ReactionSnoozeManager
     attr_reader :name, :scope, :share, :thread_pool
 
@@ -432,7 +432,7 @@ module OpenC3
 
     def shutdown
       @cancel_thread = true
-      @worker_count.times do |i|
+      @worker_count.times do |_i|
         @share.queue_base.enqueue(kind: nil, data: nil)
       end
     end

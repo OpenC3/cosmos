@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -33,7 +33,7 @@ module OpenC3
       it "adds a file, removes a file, lists all files" do
         inst_filename = "DEFAULT/decom_logs/tlm/INST/20211122/20211229191610578229500__20211229192610563836500__DEFAULT__INST__ALL__rt__decom.bin.gz"
         ReducerModel.add_file(inst_filename)
-        # NOTE: Indentical except INST2
+        # NOTE: Identical except INST2
         inst2_filename = "DEFAULT/decom_logs/tlm/INST2/20211122/20211229191610578229500__20211229192610563836500__DEFAULT__INST2__ALL__rt__decom.bin.gz"
         ReducerModel.add_file(inst2_filename)
         expect(ReducerModel.all_files(type: :DECOM, target: "INST", scope: "DEFAULT")).to eql [inst_filename]

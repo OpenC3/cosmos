@@ -5,7 +5,7 @@ COMMAND <%= target_name %> JSONCMD BIG_ENDIAN "JSON Accessor Command"
     KEY $.id_item
   APPEND_PARAMETER ITEM1 16 UINT MIN MAX 101 "Int Item 2"
     KEY $.item1
-    UNITS CELCIUS C
+    UNITS CELSIUS C
   APPEND_PARAMETER ITEM2 16 UINT MIN MAX 12 "Int Item 3"
     KEY $.more.item2
     FORMAT_STRING "0x%X"
@@ -23,7 +23,7 @@ COMMAND <%= target_name %> CBORCMD BIG_ENDIAN "CBOR Accessor Command"
     KEY $.id_item
   APPEND_PARAMETER ITEM1 16 UINT MIN MAX 101 "Int Item 2"
     KEY $.item1
-    UNITS CELCIUS C
+    UNITS CELSIUS C
   APPEND_PARAMETER ITEM2 16 UINT MIN MAX 12 "Int Item 3"
     KEY $.more.item2
     FORMAT_STRING "0x%X"
@@ -41,7 +41,7 @@ COMMAND <%= target_name %> XMLCMD BIG_ENDIAN "XML Accessor Command"
     KEY "/html/head/script/@src"
   APPEND_PARAMETER ITEM1 16 UINT MIN MAX 101 "Int Item 2"
     KEY "/html/head/noscript/text()"
-    UNITS CELCIUS C
+    UNITS CELSIUS C
   APPEND_PARAMETER ITEM2 16 UINT MIN MAX 12 "Int Item 3"
     KEY "/html/body/img/@src"
     FORMAT_STRING "0x%X"
@@ -57,7 +57,7 @@ COMMAND <%= target_name %> HTMLCMD BIG_ENDIAN "HTML Accessor Command"
     KEY "/html/head/title/text()"
   APPEND_PARAMETER ITEM1 16 UINT MIN MAX 101 "Int Item 2"
     KEY "/html/head/script/@src"
-    UNITS CELCIUS C
+    UNITS CELSIUS C
   APPEND_PARAMETER ITEM2 16 UINT MIN MAX 12 "Int Item 3"
     KEY "/html/body/noscript/text()"
     FORMAT_STRING "0x%X"
