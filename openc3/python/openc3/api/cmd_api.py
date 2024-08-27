@@ -14,6 +14,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import traceback
 from contextlib import contextmanager
 from openc3.api import WHITELIST
 from openc3.api.interface_api import get_interface
@@ -29,7 +30,6 @@ from openc3.topics.command_topic import CommandTopic
 from openc3.topics.interface_topic import InterfaceTopic
 from openc3.topics.decom_interface_topic import DecomInterfaceTopic
 from openc3.topics.command_decom_topic import CommandDecomTopic
-
 from openc3.packets.packet import Packet
 
 WHITELIST.extend(
@@ -582,22 +582,24 @@ def _cmd_implementation(
     target_name = target_name.upper()
     cmd_name = cmd_name.upper()
     cmd_params = {k.upper(): v for k, v in cmd_params.items()}
-    authorize(permission="cmd", target_name=target_name, packet_name=cmd_name, scope=scope)
+    user = authorize(permission="cmd", target_name=target_name, packet_name=cmd_name, scope=scope)
+    if not user:
+        stack_trace = traceback.extract_stack()
+        for frame in stack_trace:
+            # Look for the following line in the stack trace which indicates custom code
+            # File "/tmp/tmpp96e6j83/targets/INST2/lib/example_limits_response.py", line 25, in call"
+            if f"/targets/{target_name}" in frame.filename:
+                user = {}
+                # username is the name of the custom code file
+                user["username"] = frame.filename.split("/targets/")[-1].split('"')[0]
+                break
+
     packet = TargetModel.packet(target_name, cmd_name, type="CMD", scope=scope)
     if packet.get("disabled", False):
         error = DisabledError()
         error.target_name = target_name
         error.cmd_name = cmd_name
         raise error
-
-    command = {
-        "target_name": target_name,
-        "cmd_name": cmd_name,
-        "cmd_params": cmd_params,
-        "range_check": str(range_check),
-        "hazardous_check": str(hazardous_check),
-        "raw": str(raw),
-    }
 
     timeout = None
     if kwargs.get("timeout") is not None:
@@ -631,11 +633,21 @@ def _cmd_implementation(
         if kwargs["log_message"] not in [True, False]:
             raise RuntimeError(f"Invalid log_message parameter: {log_message}. Must be True or False.")
         log_message = kwargs["log_message"]
+    cmd_string = _cmd_log_string(method_name, target_name, cmd_name, cmd_params, packet)
     if log_message:
-        Logger.info(
-            _cmd_log_string(method_name, target_name, cmd_name, cmd_params, packet),
-            scope,
-        )
+        Logger.info(cmd_string, scope)
+
+    username = user["username"] if user and user["username"] else "anonymous"
+    command = {
+        "target_name": target_name,
+        "cmd_name": cmd_name,
+        "cmd_params": cmd_params,
+        "range_check": str(range_check),
+        "hazardous_check": str(hazardous_check),
+        "raw": str(raw),
+        "cmd_stirng": cmd_string,
+        "username": username,
+    }
     return CommandTopic.send_command(command, timeout, scope)
 
 

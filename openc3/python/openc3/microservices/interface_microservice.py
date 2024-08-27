@@ -208,12 +208,15 @@ class InterfaceCmdHandlerThread:
                 self.logger.error(f"{self.interface.name}: {repr(error)}")
                 return repr(error)
 
+            command.extra = {} or command.extra
+            command.extra["cmd_string"] = msg_hash["cmd_string"]
+            command.extra["username"] = msg_hash["username"]
             if hazardous_check:
                 hazardous, hazardous_description = System.commands.cmd_pkt_hazardous(command)
                 # Return back the error, description, and the formatted command
                 # This allows the error handler to simply re-send the command
                 if hazardous:
-                    return f"HazardousError\n{hazardous_description}\n{System.commands.format(command)}"
+                    return f"HazardousError\n{hazardous_description}\n{msg_hash["cmd_string"]}"
 
             try:
                 if self.interface.connected():
@@ -222,8 +225,10 @@ class InterfaceCmdHandlerThread:
                         self.metric.set(name="interface_cmd_total", value=self.count, type="counter")
 
                     self.interface.write(command)
-                    CommandTopic.write_packet(command, scope=self.scope)
                     CommandDecomTopic.write_packet(command, scope=self.scope)
+                    # Remove cmd_string from the raw packet logging
+                    command.extra.pop("cmd_string")
+                    CommandTopic.write_packet(command, scope=self.scope)
                     InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
                     return "SUCCESS"
                 else:

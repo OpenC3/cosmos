@@ -281,6 +281,7 @@ export default {
         'openc3-cosmos-tool-admin',
         'openc3-cosmos-tool-bucketexplorer',
         'openc3-cosmos-tool-cmdsender',
+        'openc3-cosmos-tool-cmdhistory', // Enterprise only
         'openc3-cosmos-tool-cmdtlmserver',
         'openc3-cosmos-tool-dataextractor',
         'openc3-cosmos-tool-dataviewer',
@@ -293,11 +294,11 @@ export default {
         'openc3-cosmos-tool-tablemanager',
         'openc3-cosmos-tool-tlmgrapher',
         'openc3-cosmos-tool-tlmviewer',
-        'openc3-cosmos-enterprise-tool-admin',
-        'openc3-cosmos-tool-autonomic',
-        'openc3-cosmos-tool-calendar',
-        'openc3-cosmos-tool-grafana',
-        'openc3-enterprise-tool-base',
+        'openc3-cosmos-enterprise-tool-admin', // Enterprise only
+        'openc3-cosmos-tool-autonomic', // Enterprise only
+        'openc3-cosmos-tool-calendar', // Enterprise only
+        'openc3-cosmos-tool-grafana', // Enterprise only
+        'openc3-enterprise-tool-base', // Enterprise only
         'openc3-tool-base',
       ],
     }

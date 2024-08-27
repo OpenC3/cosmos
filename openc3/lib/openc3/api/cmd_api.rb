@@ -484,7 +484,19 @@ module OpenC3
       target_name = target_name.upcase
       cmd_name = cmd_name.upcase
       cmd_params = cmd_params.transform_keys(&:upcase)
-      authorize(permission: 'cmd', target_name: target_name, packet_name: cmd_name, manual: manual, scope: scope, token: token)
+      user = authorize(permission: 'cmd', target_name: target_name, packet_name: cmd_name, manual: manual, scope: scope, token: token)
+      if user.nil?
+        caller.each do |frame|
+          # Look for the following line in the stack trace which indicates custom code
+          # /tmp/d20240827-62-8e57pf/targets/INST/lib/example_limits_response.rb:31:in `call'
+          if frame.include?("/targets/#{target_name}")
+            user = {}
+            # username is the name of the custom code file
+            user['username'] = frame.split("/targets/")[-1].split(':')[0]
+            break
+          end
+        end
+      end
       packet = TargetModel.packet(target_name, cmd_name, type: :CMD, scope: scope)
       if packet['disabled']
         error = DisabledError.new
@@ -493,14 +505,6 @@ module OpenC3
         raise error
       end
 
-      command = {
-        'target_name' => target_name,
-        'cmd_name' => cmd_name,
-        'cmd_params' => cmd_params,
-        'range_check' => range_check.to_s,
-        'hazardous_check' => hazardous_check.to_s,
-        'raw' => raw.to_s
-      }
       if log_message.nil? # This means the default was used, no argument was passed
         log_message = true # Default is true
         # If the packet has the DISABLE_MESSAGES keyword then no messages by default
@@ -513,9 +517,22 @@ module OpenC3
           end
         end
       end
+      cmd_string = _build_cmd_output_string(method_name, target_name, cmd_name, cmd_params, packet)
       if log_message
-        Logger.info(_build_cmd_output_string(method_name, target_name, cmd_name, cmd_params, packet), scope: scope)
+        Logger.info(cmd_string, scope: scope)
       end
+
+      username = user && user['username'] ? user['username'] : 'anonymous'
+      command = {
+        'target_name' => target_name,
+        'cmd_name' => cmd_name,
+        'cmd_params' => cmd_params,
+        'range_check' => range_check.to_s,
+        'hazardous_check' => hazardous_check.to_s,
+        'raw' => raw.to_s,
+        'cmd_string' => cmd_string,
+        'username' => username
+      }
       CommandTopic.send_command(command, timeout: timeout, scope: scope)
     end
 

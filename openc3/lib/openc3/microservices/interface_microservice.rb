@@ -191,11 +191,14 @@ module OpenC3
               next e.message
             end
 
+            command.extra ||= {}
+            command.extra['cmd_string'] = msg_hash['cmd_string']
+            command.extra['username'] = msg_hash['username']
             if hazardous_check
               hazardous, hazardous_description = System.commands.cmd_pkt_hazardous?(command)
               # Return back the error, description, and the formatted command
               # This allows the error handler to simply re-send the command
-              next "HazardousError\n#{hazardous_description}\n#{System.commands.format(command)}" if hazardous
+              next "HazardousError\n#{hazardous_description}\n#{msg_hash['cmd_string']}" if hazardous
             end
 
             begin
@@ -204,8 +207,10 @@ module OpenC3
                 @metric.set(name: 'interface_cmd_total', value: @count, type: 'counter') if @metric
 
                 @interface.write(command)
-                CommandTopic.write_packet(command, scope: @scope)
                 CommandDecomTopic.write_packet(command, scope: @scope)
+                # Remove cmd_string from the raw packet logging
+                command.extra.delete('cmd_string')
+                CommandTopic.write_packet(command, scope: @scope)
                 InterfaceStatusModel.set(@interface.as_json(:allow_nan => true), queued: true, scope: @scope)
                 next 'SUCCESS'
               else
