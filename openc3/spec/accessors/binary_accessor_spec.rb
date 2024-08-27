@@ -1221,6 +1221,55 @@ module OpenC3
         expect { BinaryAccessor.write("abc123", 0, 8, :UINT, @data, :BIG_ENDIAN, :ERROR) }.to raise_error(ArgumentError)
       end
 
+      describe 'self.adjust_packed_size' do
+        context 'when num_bytes is greater than packed length' do
+          it 'adds zero bytes to the end of packed' do
+            result = BinaryAccessor.adjust_packed_size(5, "abc")
+            expect(result).to eq("abc\x00\x00")
+            expect(result.length).to eq(5)
+          end
+
+          it 'returns the same string when num_bytes equals packed length' do
+            result = BinaryAccessor.adjust_packed_size(3, "abc")
+            expect(result).to eq("abc")
+            expect(result.length).to eq(3)
+          end
+
+          it 'handles empty packed string' do
+            result = BinaryAccessor.adjust_packed_size(3, "")
+            expect(result).to eq("\x00\x00\x00")
+            expect(result.length).to eq(3)
+          end
+        end
+
+        context 'when num_bytes is less than packed length' do
+          it 'truncates packed to num_bytes' do
+            result = BinaryAccessor.adjust_packed_size(2, "abcd")
+            expect(result).to eq("ab")
+            expect(result.length).to eq(2)
+          end
+
+          it 'returns an empty string when num_bytes is 0' do
+            result = BinaryAccessor.adjust_packed_size(0, "abcd")
+            expect(result).to eq("")
+            expect(result.length).to eq(0)
+          end
+        end
+
+        it 'handles non-ASCII characters correctly' do
+          result = BinaryAccessor.adjust_packed_size(5, "あいう")
+          expect(result).to eq("あいう\x00\x00")
+          expect(result.length).to eq(5)
+        end
+
+        it 'handles binary data correctly' do
+          binary_data = "\x00\x01\x02\x03"
+          result = BinaryAccessor.adjust_packed_size(6, binary_data)
+          expect(result).to eq("\x00\x01\x02\x03\x00\x00")
+          expect(result.length).to eq(6)
+        end
+      end
+
       describe "given big endian data" do
         it "writes 1-bit unsigned integers" do
           BinaryAccessor.write(0x1, 8, 1, :UINT, @data, :BIG_ENDIAN, :ERROR)
