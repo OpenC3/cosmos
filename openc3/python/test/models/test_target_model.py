@@ -18,16 +18,11 @@
 import time
 from typing import Optional
 import unittest
-
 from test.test_helper import *
-
 from openc3.models.model import Model
-
-from unittest.mock import *
+from unittest.mock import patch, MagicMock
 from openc3.models.target_model import TargetModel
 from openc3.conversions.generic_conversion import GenericConversion
-
-from pprint import pprint
 
 class TestTargetModel(unittest.TestCase):
     def setUp(self):
@@ -35,18 +30,47 @@ class TestTargetModel(unittest.TestCase):
       #model = ScopeModel.new(name: "DEFAULT")
       #model.create
 
-    def test_returns_all_model_names(self):
-        model = TargetModel(folder_name= "TEST", name= "TEST", scope= "DEFAULT")
-        pprint(dir(model))
-        model.create
-        model = TargetModel(folder_name= "SPEC", name= "SPEC", scope= "DEFAULT")
-        model.create
-        model = TargetModel(folder_name= "OTHER", name= "OTHER", scope= "OTHER")
-        model.create
-        names = TargetModel.names(scope= "DEFAULT")
-        pprint(names)
-        # contain_exactly doesn't care about ordering and neither do we
-        #expect(names).to contain_exactly("TEST", "SPEC")
-        #names = TargetModel.names(scope= "OTHER")
-        #expect(names).to contain_exactly("OTHER")
+    @patch('openc3.models.model.Model.names')
+    def test_names_with_default_scope(self, mock_super_names):
+        # Arrange
+        expected_names = ['TARGET1', 'TARGET2', 'TARGET3']
+        mock_super_names.return_value = expected_names
+        default_scope = 'DEFAULT'
+        # Act
+        result = TargetModel.names(default_scope)
+        # Assert
+        self.assertEqual(result, expected_names)
+        mock_super_names.assert_called_once_with(f'{default_scope}__openc3_targets')
 
+    @patch('openc3.models.model.Model.names')
+    def test_names_with_custom_scope(self, mock_super_names):
+        # Arrange
+        expected_names = ['CUSTOM_TARGET1', 'CUSTOM_TARGET2']
+        mock_super_names.return_value = expected_names
+        custom_scope = 'CUSTOM_SCOPE'
+        # Act
+        result = TargetModel.names(custom_scope)
+        # Assert
+        self.assertEqual(result, expected_names)
+        mock_super_names.assert_called_once_with(f'{custom_scope}__openc3_targets')
+
+    @patch('openc3.models.model.Model.names')
+    def test_names_with_empty_result(self, mock_super_names):
+        # Arrange
+        mock_super_names.return_value = []
+        scope = 'EMPTY_SCOPE'
+        # Act
+        result = TargetModel.names(scope)
+        # Assert
+        self.assertEqual(result, [])
+        mock_super_names.assert_called_once_with(f'{scope}__openc3_targets')
+
+    @patch('openc3.models.model.Model.names')
+    def test_names_with_none_scope(self, mock_super_names):
+        # Arrange
+        expected_names = ['TARGET_X', 'TARGET_Y']
+        mock_super_names.return_value = expected_names
+        # Act & Assert
+        with self.assertRaises(TypeError):
+            TargetModel.names(None)
+        mock_super_names.assert_not_called()

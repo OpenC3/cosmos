@@ -15,7 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
-from unittest.mock import *
+from unittest.mock import patch, MagicMock
 from test.test_helper import *
 from openc3.models.interface_model import InterfaceModel
 from openc3.models.router_model import RouterModel
