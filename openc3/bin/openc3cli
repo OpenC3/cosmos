@@ -682,6 +682,7 @@ def await_script(args=[])
     wait_limit = args[0][2..-1].to_i
     args.shift
   end
+  abort("No script file provided") if args[0].nil?
   require 'openc3/script'
   # REVIEW: is there a case to be made for requiring script/ once at the top of this file?
   id = script_run(args[0], disconnect: false, environment: nil, scope: 'DEFAULT')
