@@ -64,6 +64,8 @@ def print_usage
   puts "  cli help                          # Displays this information"
   puts "  cli rake                          # Runs rake in the local directory"
   puts "  cli irb                           # Runs irb in the local directory"
+  puts "  cli script <SCRIPT_NAME>          # Starts named script and waits for it to complete"
+  puts "    OPTION: --MAX_SECONDS overrides OPENC3_SCRIPT_AWAIT if present"
   puts "  cli validate /PATH/FILENAME.gem SCOPE variables.txt # Validate a COSMOS plugin gem file"
   puts "  cli load /PATH/FILENAME.gem SCOPE variables.txt     # Loads a COSMOS plugin gem file"
   puts "  cli list <SCOPE>                  # Lists installed plugins, SCOPE is DEFAULT if not given"
@@ -648,6 +650,27 @@ def run_bridge(filename, params)
   end
 end
 
+def await_script(args=[])
+  # REVIEW: are we limiting the wait for status, or the script's execution?
+  #         do we want 0 to mean 'forever'?
+  #         do we want to accept suite, scope, and environment options?
+  wait_limit = ENV['OPENC3_SCRIPT_AWAIT'].to_i
+  if args[0] =~ /^--d*/
+    wait_limit = args[0][2..-1].to_i
+    args.shift
+  end
+  # REVIEW: pretty sure there's no way to set OPENC3_SCRIPT_API_TIMEOUT through the api
+  #         but I guess that's not what we want here anyway
+  require 'openc3/script'
+  # REVIEW: is there a case to be made for requiring script/ once at the top of this file?
+  id = script_run(args[0], disconnect: false, environment: nil, scope: 'DEFAULT')
+  OpenC3::RunningScriptWebSocketApi.new(id: id) do |api|
+    while true
+      puts api.read
+    end
+  end
+end
+
 if not ARGV[0].nil? # argument(s) given
 
   # Handle each task
@@ -656,6 +679,9 @@ if not ARGV[0].nil? # argument(s) given
   when 'irb'
     ARGV.clear
     IRB.start
+
+  when 'script'
+    await_script(ARGV[1..-1])
 
   when 'rake'
     if File.exist?('Rakefile')
