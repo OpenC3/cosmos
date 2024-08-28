@@ -691,9 +691,9 @@ def await_script(args=[])
   else
     Timeout::timeout(wait_limit, nil, "MAX_SECONDS #{wait_limit} exceeded") do
       await_dotter(id)
-    rescue Timeout::Error => te # also thrown by Websocket API, so we check
-      if te.message =~ /^MAX_SECONDS /
-         puts te.message+", detaching from running script #{args[0]}"
+    rescue Timeout::Error => tmoexcp # also thrown by Websocket API, so we check
+      if tmoexcp.message =~ /^MAX_SECONDS /
+         puts tmoexcp.message+", detaching from running script #{args[0]}"
       else
         raise
       end
