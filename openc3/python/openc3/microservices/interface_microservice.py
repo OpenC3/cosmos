@@ -149,7 +149,7 @@ class InterfaceCmdHandlerThread:
                     InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
                 except RuntimeError as error:
                     self.logger.error(f"{self.interface.name}: interface_cmd: {repr(error)}")
-                    return error.message
+                    return error.str()
                 return "SUCCESS"
             if msg_hash.get(b"protocol_cmd"):
                 params = json.loads(msg_hash[b"protocol_cmd"])
@@ -167,7 +167,7 @@ class InterfaceCmdHandlerThread:
                     InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
                 except RuntimeError as error:
                     self.logger.error(f"{self.interface.name}: protocol_cmd:{repr(error)}")
-                    return error.message
+                    return error.str()
                 return "SUCCESS"
             if msg_hash.get(b"inject_tlm"):
                 handle_inject_tlm(msg_hash[b"inject_tlm"], self.scope)
@@ -208,33 +208,61 @@ class InterfaceCmdHandlerThread:
                 self.logger.error(f"{self.interface.name}: {repr(error)}")
                 return repr(error)
 
-            command.extra = {} or command.extra
-            command.extra["cmd_string"] = msg_hash["cmd_string"]
-            command.extra["username"] = msg_hash["username"]
+            command.extra = command.extra or {}
+            print(f"msg_hash:{msg_hash}")
+            command.extra["cmd_string"] = msg_hash[b"cmd_string"]
+            command.extra["username"] = msg_hash[b"username"]
+            print(f"extra:{command.extra}")
             if hazardous_check:
                 hazardous, hazardous_description = System.commands.cmd_pkt_hazardous(command)
                 # Return back the error, description, and the formatted command
                 # This allows the error handler to simply re-send the command
                 if hazardous:
-                    return f"HazardousError\n{hazardous_description}\n{msg_hash["cmd_string"]}"
+                    return f"HazardousError\n{hazardous_description}\n{msg_hash[b'cmd_string']}"
 
             try:
                 if self.interface.connected():
+                    result = True
+                    reason = None
+                    if command.validator:
+                        try:
+                            result, reason = command.validator.pre_check(command)
+                        except Exception as error:
+                            result = False
+                            reason = repr(error)
+                        if not result:
+                            message = f"pre_check returned false for {command.extra['cmd_string']} due to {reason}"
+                            raise WriteRejectError(message)
+
                     self.count += 1
                     if self.metric is not None:
                         self.metric.set(name="interface_cmd_total", value=self.count, type="counter")
-
                     self.interface.write(command)
+
+                    if command.validator:
+                        try:
+                            result, reason = command.validator.post_check(command)
+                        except Exception as error:
+                            result = False
+                            reason = repr(error)
+                        command.extra["post_check"] = result
+                        if reason:
+                            command.extra["post_check_reason"] = reason
+
                     CommandDecomTopic.write_packet(command, scope=self.scope)
-                    # Remove cmd_string from the raw packet logging
-                    command.extra.pop("cmd_string")
                     CommandTopic.write_packet(command, scope=self.scope)
+                    print(f"interface json:{self.interface.as_json()}")
                     InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
+
+                    if not result:
+                        message = f"post_check returned false for {command.extra['cmd_string']} due to {reason}"
+                        raise WriteRejectError(message)
+
                     return "SUCCESS"
                 else:
                     return f"Interface not connected: {self.interface.name}"
             except WriteRejectError as error:
-                return error.message
+                return error.str()
         except RuntimeError as error:
             self.logger.error(f"{self.interface.name}: {repr(error)}")
             return repr(error)
@@ -323,7 +351,7 @@ class RouterTlmHandlerThread:
                         self.router.interface_cmd(params["cmd_name"], *params["cmd_params"])
                     except RuntimeError as error:
                         self.logger.error(f"{self.router.name}: router_cmd: {repr(error)}")
-                        return error.message
+                        return error.str()
                     return "SUCCESS"
                 if msg_hash.get(b"protocol_cmd"):
                     params = json.loads(msg_hash[b"protocol_cmd"])
@@ -339,7 +367,7 @@ class RouterTlmHandlerThread:
                         )
                     except RuntimeError as error:
                         self.logger.error(f"{self.router.name}: protoco_cmd: {repr(error)}")
-                        return error.message
+                        return error.str()
                     return "SUCCESS"
                 return "SUCCESS"
 
@@ -363,7 +391,7 @@ class RouterTlmHandlerThread:
                     return "SUCCESS"
                 except RuntimeError as error:
                     self.logger.error(f"{self.router.name}: {repr(error)}")
-                    return error.message
+                    return error.str()
 
 
 class InterfaceMicroservice(Microservice):
@@ -470,9 +498,7 @@ class InterfaceMicroservice(Microservice):
             return self.interface  # Return the interface/router since we may have recreated it
         # Need to rescue Exception so we cover LoadError
         except RuntimeError as error:
-            self.logger.error(
-                f"Attempting connection #{self.interface.connection_string} failed due to {error.message}"
-            )
+            self.logger.error(f"Attempting connection #{self.interface.connection_string} failed due to {repr(error)}")
             # if SignalException === error:
             #   self.logger.info(f"{self.interface.name}: Closing from signal")
             #   self.cancel_thread = True
@@ -619,9 +645,7 @@ class InterfaceMicroservice(Microservice):
         # case Errno='ECONNREFUSED', Errno='ECONNRESET', Errno='ETIMEDOUT', Errno='ENOTSOCK', Errno='EHOSTUNREACH', IOError:
         #   # Do not write an exception file for these extremely common cases
         # else _:
-        if connect_error is RuntimeError and (
-            "canceled" in connect_error.message or "timeout" in connect_error.message
-        ):
+        if connect_error is RuntimeError and ("canceled" in connect_error.message or "timeout" in connect_error.str()):
             pass  # Do not write an exception file for these extremely common cases
         else:
             self.logger.error(f"{self.interface.name}: {str(connect_error)}")

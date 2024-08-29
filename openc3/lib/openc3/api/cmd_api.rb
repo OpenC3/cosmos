@@ -452,7 +452,7 @@ module OpenC3
       return [target_name, command_name, parameter_name]
     end
 
-    def _cmd_implementation(method_name, *args, range_check:, hazardous_check:, raw:, timeout: nil, log_message: nil, manual: false,
+    def _cmd_implementation(method_name, *args, range_check:, hazardous_check:, raw:, timeout: nil, log_message: nil, manual: false, validator: true,
                             scope: $openc3_scope, token: $openc3_token, **kwargs)
       extract_string_kwargs_to_args(args, kwargs)
       unless [nil, true, false].include?(log_message)
@@ -486,16 +486,21 @@ module OpenC3
       cmd_params = cmd_params.transform_keys(&:upcase)
       user = authorize(permission: 'cmd', target_name: target_name, packet_name: cmd_name, manual: manual, scope: scope, token: token)
       if user.nil?
-        caller.each do |frame|
-          # Look for the following line in the stack trace which indicates custom code
-          # /tmp/d20240827-62-8e57pf/targets/INST/lib/example_limits_response.rb:31:in `call'
-          if frame.include?("/targets/#{target_name}")
-            user = {}
-            # username is the name of the custom code file
-            user['username'] = frame.split("/targets/")[-1].split(':')[0]
-            break
-          end
-        end
+        user = {}
+        user['username'] = ENV['OPENC3_MICROSERVICE_NAME']
+
+        # Get the caller stack trace to determine the point in the code where the command was called
+        # This code works but ultimately we didn't want to overload 'username' and take a performance hit
+        # caller.each do |frame|
+        #   # Look for the following line in the stack trace which indicates custom code
+        #   # /tmp/d20240827-62-8e57pf/targets/INST/lib/example_limits_response.rb:31:in `call'
+        #   if frame.include?("/targets/#{target_name}")
+        #     user = {}
+        #     # username is the name of the custom code file
+        #     user['username'] = frame.split("/targets/")[-1].split(':')[0]
+        #     break
+        #   end
+        # end
       end
       packet = TargetModel.packet(target_name, cmd_name, type: :CMD, scope: scope)
       if packet['disabled']
@@ -531,7 +536,8 @@ module OpenC3
         'hazardous_check' => hazardous_check.to_s,
         'raw' => raw.to_s,
         'cmd_string' => cmd_string,
-        'username' => username
+        'username' => username,
+        'validator' => validator
       }
       CommandTopic.send_command(command, timeout: timeout, scope: scope)
     end

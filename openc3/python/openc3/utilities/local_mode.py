@@ -387,7 +387,7 @@ class LocalMode:
     #         # Only save if the parse was successful
     #         ToolConfigModel.save_config(parts[-2], File.basename(config, '.json'), data, scope: scope, local_mode: False)
     #       except: JSON:'P'arserError : error
-    #         puts "Unable to initialize tool config due to {error.message}"
+    #         puts "Unable to initialize tool config due to {repr(error)}"
 
     @classmethod
     def save_tool_config(cls, scope, tool, name, data):

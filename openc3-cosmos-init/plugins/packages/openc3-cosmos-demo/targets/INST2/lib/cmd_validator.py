@@ -10,21 +10,21 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
-#
+
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from openc3.packets.limits_response import LimitsResponse
-from openc3.api.cmd_api import cmd
+from openc3.packets.command_validator import CommandValidator
 
 
-class ExampleLimitsResponse(LimitsResponse):
-    def call(self, _packet, item, _old_limits_state):
-        match item.limits.state:
-            case "RED_HIGH":
-                cmd(
-                    "<%= target_name %> COLLECT with TYPE NORMAL, DURATION 8",
-                    validator=False,
-                )
-            case "RED_LOW":
-                cmd("<%= target_name %> ABORT", validator=False)
+class CmdValidator(CommandValidator):
+    def pre_check(self, command):
+        self.cmd_acpt_cnt = tlm("INST HEALTH_STATUS CMD_ACPT_CNT")
+        return [True, None]
+
+    def post_check(self, command):
+        if command.packet_name == "CLEAR":
+            wait_check("INST HEALTH_STATUS CMD_ACPT_CNT == 0", 10)
+        else:
+            wait_check(f"INST HEALTH_STATUS CMD_ACPT_CNT > {self.cmd_acpt_cnt}", 10)
+        return [True, None]

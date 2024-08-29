@@ -220,7 +220,7 @@ module OpenC3
               'APPEND_PARAMETER', 'APPEND_ID_ITEM', 'APPEND_ID_PARAMETER', 'APPEND_ARRAY_ITEM',\
               'APPEND_ARRAY_PARAMETER', 'ALLOW_SHORT', 'HAZARDOUS', 'PROCESSOR', 'META',\
               'DISABLE_MESSAGES', 'HIDDEN', 'DISABLED', 'VIRTUAL', 'ACCESSOR', 'TEMPLATE', 'TEMPLATE_FILE',\
-              'RESPONSE', 'ERROR_RESPONSE', 'SCREEN', 'RELATED_ITEM', 'IGNORE_OVERLAP'
+              'RESPONSE', 'ERROR_RESPONSE', 'SCREEN', 'RELATED_ITEM', 'IGNORE_OVERLAP', 'VALIDATOR'
             raise parser.error("No current packet for #{keyword}") unless @current_packet
 
             process_current_packet(parser, keyword, params)
@@ -480,22 +480,23 @@ module OpenC3
         @current_packet.disabled = true
         @current_packet.virtual = true
 
-      when 'ACCESSOR'
-        usage = "#{keyword} <Accessor class name>"
+      when 'ACCESSOR', 'VALIDATOR'
+        usage = "#{keyword} <Class name> <Optional parameters> ..."
         parser.verify_num_parameters(1, nil, usage)
         begin
+          keyword_equals = "#{keyword.downcase}=".to_sym
           if @language == 'ruby'
             klass = OpenC3.require_class(params[0])
             if params.length > 1
-              @current_packet.accessor = klass.new(@current_packet, *params[1..-1])
+              @current_packet.public_send(keyword_equals, klass.new(@current_packet, *params[1..-1]))
             else
-              @current_packet.accessor = klass.new(@current_packet)
+              @current_packet.public_send(keyword_equals, klass.new(@current_packet))
             end
           else
             if params.length > 1
-              @current_packet.accessor = PythonProxy.new('Accessor', params[0], @current_packet, *params[1..-1])
+              @current_packet.public_send(keyword_equals, PythonProxy.new(keyword.capitalize, params[0], @current_packet, *params[1..-1]))
             else
-              @current_packet.accessor = PythonProxy.new('Accessor', params[0], @current_packet)
+              @current_packet.public_send(keyword_equals, PythonProxy.new(keyword.capitalize, params[0], @current_packet))
             end
           end
         rescue Exception => e

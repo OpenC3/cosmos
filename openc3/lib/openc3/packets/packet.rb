@@ -104,6 +104,9 @@ module OpenC3
     # @return [Boolean] Whether to ignore overlapping items
     attr_accessor :ignore_overlap
 
+    # @return [Validator] Instance of class used to validate commands
+    attr_accessor :validator
+
     # @return [Boolean] If this packet should be used for identification
     attr_reader :virtual
 
@@ -148,6 +151,7 @@ module OpenC3
         @packet_time = nil
         @ignore_overlap = false
         @virtual = false
+        @validator = nil
       end
 
       # Sets the target name this packet is associated with. Unidentified packets

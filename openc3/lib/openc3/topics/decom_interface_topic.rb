@@ -37,7 +37,7 @@ module OpenC3
       timeout = 5 # Arbitrary 5s timeout
       time = Time.now
       while (Time.now - time) < timeout
-        Topic.read_topics([ack_topic]) do |topic, msg_id, msg_hash, redis|
+        Topic.read_topics([ack_topic]) do |_topic, _msg_id, msg_hash, _redis|
           if msg_hash["id"] == decom_id
             if msg_hash["result"] == "SUCCESS"
               return msg_hash

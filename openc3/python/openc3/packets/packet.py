@@ -97,6 +97,7 @@ class Packet(Structure):
         self.related_items = None
         self.ignore_overlap = False
         self.virtual = False
+        self.validator = None
 
     @property
     def target_name(self):

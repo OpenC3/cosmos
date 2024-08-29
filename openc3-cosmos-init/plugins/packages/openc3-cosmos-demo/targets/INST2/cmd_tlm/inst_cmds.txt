@@ -1,4 +1,5 @@
 COMMAND <%= target_name %> COLLECT BIG_ENDIAN "Starts a collect on the <%= target_name %> target"
+  VALIDATOR cmd_validator.py
   <%= render "_ccsds_cmd.txt", locals: {id: 1} %>
   PARAMETER    TYPE           64  16  UINT MIN MAX 0 "Collect type which can be normal or special. Note the special collects are hazarous and require user confirmation."
     REQUIRED
@@ -14,14 +15,17 @@ COMMAND <%= target_name %> COLLECT BIG_ENDIAN "Starts a collect on the <%= targe
   RELATED_ITEM <%= target_name %> HEALTH_STATUS COLLECT_TYPE
 
 COMMAND <%= target_name %> ABORT BIG_ENDIAN "Aborts a collect on the <%= target_name %> instrument"
+  VALIDATOR cmd_validator.py
   <%= render "_ccsds_cmd.txt", locals: {id: 2} %>
 
 COMMAND <%= target_name %> CLEAR BIG_ENDIAN "Clears counters on the <%= target_name %> instrument"
+  VALIDATOR cmd_validator.py
   HAZARDOUS "Clearing counters may lose valuable information."
   <%= render "_ccsds_cmd.txt", locals: {id: 3} %>
   RELATED_ITEM <%= target_name %> HEALTH_STATUS COLLECTS
 
 COMMAND <%= target_name %> SETPARAMS BIG_ENDIAN "Sets numbered parameters"
+  VALIDATOR cmd_validator.py
   <%= render "_ccsds_cmd.txt", locals: {id: 4} %>
   # ERB syntax:
   <% (1..5).each do |i| %>
@@ -33,6 +37,7 @@ COMMAND <%= target_name %> SETPARAMS BIG_ENDIAN "Sets numbered parameters"
     POLY_WRITE_CONVERSION 0 2
 
 COMMAND <%= target_name %> ASCIICMD BIG_ENDIAN "Enumerated ASCII command"
+  VALIDATOR cmd_validator.py
   <%= render "_ccsds_cmd.txt", locals: {id: 5} %>
   APPEND_PARAMETER STRING 2048 STRING "NOOP" "Enumerated string parameter"
     STATE "ARM LASER" "ARM LASER" HAZARDOUS "Arming the laser poses an eye safety hazard."
@@ -43,16 +48,19 @@ COMMAND <%= target_name %> ASCIICMD BIG_ENDIAN "Enumerated ASCII command"
   RELATED_ITEM <%= target_name %> HEALTH_STATUS ASCIICMD
 
 COMMAND <%= target_name %> FLTCMD BIG_ENDIAN "Command with float parameters"
+  VALIDATOR cmd_validator.py
   <%= render "_ccsds_cmd.txt", locals: {id: 6} %>
   PARAMETER    FLOAT32        64  32  FLOAT MIN MAX 0.0 "Float32 parameter"
   PARAMETER    FLOAT64        96  64  FLOAT MIN MAX 0.0 "Float64 parameter"
 
 COMMAND <%= target_name %> ARYCMD BIG_ENDIAN "Command with array parameter"
+  VALIDATOR cmd_validator.py
   <%= render "_ccsds_cmd.txt", locals: {id: 7} %>
   ARRAY_PARAMETER ARRAY       64  32  UINT -8 "Array parameter"
   PARAMETER    CRC            -8   8  UINT MIN MAX 0 "CRC"
 
 COMMAND <%= target_name %> SLRPNLDEPLOY BIG_ENDIAN "Deploy solar array panels"
+  VALIDATOR cmd_validator.py
   <%= render "_ccsds_cmd.txt", locals: {id: 8} %>
   RELATED_ITEM <%= target_name %> MECH SLRPNL1
   RELATED_ITEM <%= target_name %> MECH SLRPNL2
@@ -61,6 +69,7 @@ COMMAND <%= target_name %> SLRPNLDEPLOY BIG_ENDIAN "Deploy solar array panels"
   RELATED_ITEM <%= target_name %> MECH SLRPNL5
 
 COMMAND <%= target_name %> SLRPNLRESET BIG_ENDIAN "Reset solar array panels"
+  VALIDATOR cmd_validator.py
   <%= render "_ccsds_cmd.txt", locals: {id: 9} %>
   RELATED_ITEM <%= target_name %> MECH SLRPNL1
   RELATED_ITEM <%= target_name %> MECH SLRPNL2
@@ -69,17 +78,26 @@ COMMAND <%= target_name %> SLRPNLRESET BIG_ENDIAN "Reset solar array panels"
   RELATED_ITEM <%= target_name %> MECH SLRPNL5
 
 COMMAND <%= target_name %> MEMLOAD BIG_ENDIAN "Load memory"
+  VALIDATOR cmd_validator.py
   DISABLE_MESSAGES # Disable messages on a command that could be sent many many times
   <%= render "_ccsds_cmd.txt", locals: {id: 10} %>
   APPEND_PARAMETER DATA 80 BLOCK "" "Block of data"
   RELATED_ITEM <%= target_name %> HEALTH_STATUS BLOCKTEST
 
 COMMAND <%= target_name %> QUIET BIG_ENDIAN "Enable/disable no out of limits in the demo"
+  VALIDATOR cmd_validator.py
   <%= render "_ccsds_cmd.txt", locals: {id: 11} %>
   APPEND_PARAMETER STATE 8 UINT 0 1 1
     STATE FALSE 0
     STATE TRUE 1
 
 COMMAND <%= target_name %> TIME_OFFSET BIG_ENDIAN "Subtract the packet time by the given seconds"
+  VALIDATOR cmd_validator.py
   <%= render "_ccsds_cmd.txt", locals: {id: 12} %>
   APPEND_PARAMETER SECONDS 32 UINT MIN MAX 0 "Seconds to subtract from packet time"
+
+COMMAND <%= target_name %> HIDDEN BIG_ENDIAN "Hidden command to bump the hidden packet"
+  VALIDATOR cmd_validator.py
+  HIDDEN
+  <%= render "_ccsds_cmd.txt", locals: {id: 13} %>
+  APPEND_PARAMETER COUNT 32 UINT MIN MAX 0 "Count to set"

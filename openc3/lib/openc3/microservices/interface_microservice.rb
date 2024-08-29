@@ -31,6 +31,7 @@ require 'openc3/topics/command_topic'
 require 'openc3/topics/command_decom_topic'
 require 'openc3/topics/interface_topic'
 require 'openc3/topics/router_topic'
+require 'openc3/interfaces/interface'
 
 module OpenC3
   class InterfaceCmdHandlerThread
@@ -203,15 +204,44 @@ module OpenC3
 
             begin
               if @interface.connected?
+                result = true
+                reason = nil
+                if command.validator and msg_hash['validator']
+                  begin
+                    result, reason = command.validator.pre_check(command)
+                  rescue => e
+                    result = false
+                    reason = e.message
+                  end
+                  unless result
+                    message = "pre_check returned false for #{msg_hash['cmd_string']} due to #{reason}"
+                    raise WriteRejectError.new(message)
+                  end
+                end
+
                 @count += 1
                 @metric.set(name: 'interface_cmd_total', value: @count, type: 'counter') if @metric
-
                 @interface.write(command)
+
+                if command.validator and msg_hash['validator']
+                  begin
+                    result, reason = command.validator.post_check(command)
+                  rescue => e
+                    result = false
+                    reason = e.message
+                  end
+                  command.extra['post_check'] = result
+                  command.extra['post_check_reason'] = reason if reason
+                end
+
                 CommandDecomTopic.write_packet(command, scope: @scope)
-                # Remove cmd_string from the raw packet logging
-                command.extra.delete('cmd_string')
                 CommandTopic.write_packet(command, scope: @scope)
                 InterfaceStatusModel.set(@interface.as_json(:allow_nan => true), queued: true, scope: @scope)
+
+                unless result
+                  message = "post_check returned false for #{msg_hash['cmd_string']} due to #{reason}"
+                  raise WriteRejectError.new(message)
+                end
                 next 'SUCCESS'
               else
                 next "Interface not connected: #{@interface.name}"
