@@ -669,12 +669,13 @@ def await_dotter(script_id)
       else
         puts resp
       end
+      sleep(2)
     end
   end
 end
 
 def await_script(args=[])
-  #  we are limiting the wait for status, not the scipt run time
+  #  we are limiting the wait for status, not the script run time
   #  we want 0 to mean 'forever'
   #  REVIEW:       do we want to accept suite, scope, and environment options at the cli?
   wait_limit = 0
@@ -691,6 +692,7 @@ def await_script(args=[])
   else
     Timeout::timeout(wait_limit, nil, "MAX_SECONDS #{wait_limit} exceeded") do
       await_dotter(id)
+      # Timeout::ExitException
     rescue Timeout::Error => tmoexcp # also thrown by Websocket API, so we check
       if tmoexcp.message =~ /^MAX_SECONDS /
          puts tmoexcp.message+", detaching from running script #{args[0]}"
