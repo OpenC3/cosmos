@@ -59,8 +59,7 @@ MIGRATE_PARSER = OptionParser.new do |opts|
 end
 ERROR_CODE = 1
 
-CLI_Script_actions = %w(help list run wait)
-Dash_num_pattern=/^--?(\d+)/ # one or two dashes followed by at least one digit, capturing the digits
+CLI_SCRIPT_ACTION = %w(help list run spawn)
 $script_left_waiting = ''
 trap('INT') do
   abort("Interrupted at console; exiting.#{$script_left_waiting}")
@@ -72,12 +71,13 @@ def print_usage
   puts "  cli help                          # Displays this information"
   puts "  cli rake                          # Runs rake in the local directory"
   puts "  cli irb                           # Runs irb in the local directory"
-  puts "  cli script run NAME SCOPE  variable1=value1 variable2=value2  # Starts named script"
-  puts "  cli script wait NAME SCOPE variable1=value1 variable2=value2  # Starts named script showing status on console,\
-  default until error or exit"
+  puts "  cli script list /PATH SCOPE       # lists script names filtered by path within scope, 'DEFAULT' if not given"
+  puts "  cli script spawn NAME SCOPE  variable1=value1 variable2=value2  # Starts named script remotely"
+  puts "  cli script run NAME SCOPE variable1=value1 variable2=value2  # Starts named script, monitoring status on console,\
+  by default until error or exit"
   puts "    PARAMETERS name-value pairs to form the script's runtime environment"
-  puts "    OPTIONS: --MAX_SECONDS to show status before detaching from the running script; ie --100"
-  puts "             --disconnect will run the script without connecting"
+  puts "    OPTIONS: --wait 0 seconds to monitor status before detaching from the running script; ie --wait 100"
+  puts "             --disconnect run the script without connecting"
   puts "  cli validate /PATH/FILENAME.gem SCOPE variables.txt # Validate a COSMOS plugin gem file"
   puts "  cli load /PATH/FILENAME.gem SCOPE variables.txt     # Loads a COSMOS plugin gem file"
   puts "  cli list <SCOPE>                  # Lists installed plugins, SCOPE is DEFAULT if not given"
@@ -656,7 +656,8 @@ def run_bridge(filename, params)
   end
 end
 
-def await_dotter(script_id)
+def script_monitor(script_id)
+  ret_code = ERROR_CODE
   OpenC3::RunningScriptWebSocketApi.new(id: script_id) do |api|
     while (resp = api.read) do
       # see ScriptRunner.vue for types and states
@@ -690,22 +691,45 @@ def await_dotter(script_id)
       when 'complete'
         $script_left_waiting = ''
         puts 'script complete'
+        ret_code = 0
         break
       else
         puts resp.pretty_inspect
       end
     end
   end
+  return ret_code
 end
 
-def cli_script_await(disconnect=false, environment={}, args=[])
+def cli_script_list(args=[])
+  path = ''
+  if (args[0] && args[0][0] == '/')
+    path = (args.shift)[1..-1]+'/'
+  end
+  scope = args[0]
+  scope ||= 'DEFAULT'
+  script_list(scope: scope).each do |script_name|
+    puts (script_name) if script_name.start_with?(path)
+  end
+  return 0
+end
+
+def cli_script_run(disconnect=false, environment={}, args=[])
   #  we are limiting the wait for status, not the script run time
   #  we make 0 mean 'forever'
+  ret_code = ERROR_CODE
   wait_limit = 0
-  if (match = args[0].match(Dash_num_pattern))
-    wait_limit = match.captures[0].to_i
-    puts "Will use MAX_SECONDS [#{match.captures[0]}]"
-    args.shift
+  if (i = args.index('--wait'))
+    begin
+      args.delete('--wait')
+      # pull out the flag
+      seconds = args[i]
+      wait_limit = Integer(seconds, 10) # only decimal, ignore leading 0
+      args.delete_at(i)
+      # and its value
+    rescue ArgumentError
+      abort("  --wait requires a number of seconds to wait, not [#{seconds}]")
+    end
   end
   abort("No script file provided") if args[0].nil?
   scope = args[1]
@@ -713,48 +737,49 @@ def cli_script_await(disconnect=false, environment={}, args=[])
   id = script_run(args[0], disconnect: disconnect, environment: environment, scope: scope) # could raise
   $script_left_waiting = "  Script #{args[0]} still running remotely.\n" # for Ctrl-C
   if (wait_limit < 1) then
-    await_dotter(id)
+    ret_code = script_monitor(id)
   else
-    Timeout::timeout(wait_limit, nil, "MAX_SECONDS #{wait_limit} exceeded") do
-      await_dotter(id)
+    Timeout::timeout(wait_limit, nil, "--wait #{wait_limit} exceeded") do
+      script_monitor(id)
     rescue Timeout::ExitException, Timeout::Error => tmoexcp
       # Timeout exceptions are also thrown by the Websocket API, so we check
-      if tmoexcp.message =~ /^MAX_SECONDS /
+      if tmoexcp.message =~ /^--wait /
         puts tmoexcp.message+", detaching from running script #{args[0]}"
       else
         raise
       end
     end
   end
+  return ret_code
 end
 
-def cli_script_run(disconnect=false, environment={}, args=[])
-  if (match = args[0].match(Dash_num_pattern)) # -11, --11, and 11 are probably not a script file name
-    wrong_wait = match.captures[0]
-    wrong_wait ||= '0'
-    abort("Did you mean \"script wait --#{wrong_wait.to_i} #{args[1]}\"?")
+def cli_script_spawn(disconnect=false, environment={}, args=[])
+ret_code = ERROR_CODE
+  if (args.index('--wait'))
+    abort("Did you mean \"script run --wait <seconds> [...]\"?")
   end
   abort("No script file provided") if args[0].nil?
   # heaven help you if you left out the script name
   scope = args[1]
   scope ||= 'DEFAULT'
   if (id = script_run(args[0], disconnect: disconnect, environment: environment, scope: scope))
-      puts "Script #{args[0]} started remotely."
-    await_dotter(id)
+    puts "Script #{args[0]} started remotely."
+    ret_code = script_monitor(id)
   else
     puts "\nFailed to start #{args[0]}"
   end
+  return ret_code
 end
 
-## cli_script(args) turns an ARGV of [run|wait] < --123... > < --disconnect > SCRIPT <scope> <ENV_A=1 ENV_B=2 ...>
-#                   into function calls and tidied parameters to remote-control RunningScriptWebSocketApi
+## cli_script(args) turns an ARGV of [spawn|run] <--wait 123...> <--disconnect> SCRIPT <scope> <ENV_A=1 ENV_B=2 ...>
+#                   into function calls and tidied parameters to remote-control a script via RunningScriptWebSocketApi
 def cli_script(args=[])
+  ret_code = ERROR_CODE
   # handled lower down #scope ||= 'DEFAULT'
   check_environment()
 
-  command = args[0]
-  args.shift
-  # peel off the command
+  command = args.shift
+
   discon = args.delete('--disconnect'){true}
   discon ||= false
   # pull out the disconnect flag
@@ -768,17 +793,26 @@ def cli_script(args=[])
     end
   end
   case command
-  # args[] should now be ["--100", "script_name", "<scope>"]
-  #                   or ["--100", "script_name"]
+  # for list
+  # args[] should now be ["/<path>", "<scope>"]
+  #                   or ["/<path>"]
+  #                   or ["<scope>"]
+  #                   or []
+  when 'list'
+    ret_code = cli_script_list(args)
+  # for spawn or run
+  # args[] should now be ["--wait 100", "script_name", "<scope>"]
+  #                   or ["--wait 100", "script_name"]
   #                   or ["script_name", "<scope>"]
   #                   or ["script_name"]
+  when 'spawn'
+    ret_code = cli_script_spawn(discon, environ, args)
   when 'run'
-    cli_script_run(discon, environ, args)
-  when 'wait'
-    cli_script_wait(discon, environ, args)
+    ret_code = cli_script_run(discon, environ, args)
   else
-    abort 'openc3cli internall error: parsing arguments'
+    abort 'openc3cli internal error: parsing arguments'
   end
+  return ret_code
 end
 
 if not ARGV[0].nil? # argument(s) given
@@ -791,16 +825,15 @@ if not ARGV[0].nil? # argument(s) given
     IRB.start
 
   when 'script'
+    ret_code = ERROR_CODE
     case ARGV[1]
-    when 'list'
-      # list, list running, and list completed are future features
-      abort ("[#{ARGV[1]}] not implemented")
-    when 'run', 'wait'
-      cli_script(ARGV[1..-1])
+    when 'list', 'run', 'spawn'
+      ret_code = cli_script(ARGV[1..-1])
     else
       # invalid actions, misplaced and malformed leading options and 'help' come here
       abort ("cli script <action> must be one of #{CLI_Script_actions}, not [#{ARGV[1]}]")
     end
+    ret_code
 
   when 'rake'
     if File.exist?('Rakefile')
