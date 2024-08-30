@@ -59,10 +59,10 @@ MIGRATE_PARSER = OptionParser.new do |opts|
 end
 ERROR_CODE = 1
 
-CLI_SCRIPT_ACTION = %w(help list run spawn)
-$script_left_waiting = ''
+CLI_SCRIPT_ACTIONS = %w(help list run spawn)
+$script_interrupt_text = ''
 trap('INT') do
-  abort("Interrupted at console; exiting.#{$script_left_waiting}")
+  abort("Interrupted at console; exiting.#{$script_interrupt_text}")
 end
 
 # Prints the usage text for the openc3cli executable
@@ -665,7 +665,7 @@ def script_monitor(script_id)
       when 'running', 'breakpoint', 'waiting'
         puts resp.pretty_inspect
       when 'error', 'fatal'
-        $script_left_waiting = ''
+        $script_interrupt_text = ''
         puts 'script failed'
         break
       when 'file'
@@ -674,7 +674,7 @@ def script_monitor(script_id)
         fn = resp['filename'].nil? ? '<no file>' : resp['filename']
         puts "At [#{fn}:#{resp['line_no']}] state [#{resp['state']}]"
         if resp['state'] == 'error'
-          $script_left_waiting = ''
+          $script_interrupt_text = ''
           puts 'script failed'
           break
         end
@@ -682,14 +682,14 @@ def script_monitor(script_id)
         puts resp['line']
       when 'paused'
         if resp['state'] == 'fatal'
-          $script_left_waiting = ''
+          $script_interrupt_text = ''
           puts 'script failed'
           break
         end
       when 'time'
         puts resp.pretty_inspect
       when 'complete'
-        $script_left_waiting = ''
+        $script_interrupt_text = ''
         puts 'script complete'
         ret_code = 0
         break
@@ -735,7 +735,7 @@ def cli_script_run(disconnect=false, environment={}, args=[])
   scope = args[1]
   scope ||= 'DEFAULT'
   id = script_run(args[0], disconnect: disconnect, environment: environment, scope: scope) # could raise
-  $script_left_waiting = "  Script #{args[0]} still running remotely.\n" # for Ctrl-C
+  $script_interrupt_text = "  Script #{args[0]} still running remotely.\n" # for Ctrl-C
   if (wait_limit < 1) then
     ret_code = script_monitor(id)
   else
@@ -775,7 +775,6 @@ end
 #                   into function calls and tidied parameters to remote-control a script via RunningScriptWebSocketApi
 def cli_script(args=[])
   ret_code = ERROR_CODE
-  # handled lower down #scope ||= 'DEFAULT'
   check_environment()
 
   command = args.shift
@@ -831,7 +830,7 @@ if not ARGV[0].nil? # argument(s) given
       ret_code = cli_script(ARGV[1..-1])
     else
       # invalid actions, misplaced and malformed leading options and 'help' come here
-      abort ("cli script <action> must be one of #{CLI_Script_actions}, not [#{ARGV[1]}]")
+      abort ("cli script <action> must be one of #{CLI_SCRIPT_ACTIONS}, not [#{ARGV[1]}]")
     end
     ret_code
 
@@ -987,3 +986,5 @@ if not ARGV[0].nil? # argument(s) given
 else # No arguments given
   print_usage()
 end
+
+exit(ret_code)
