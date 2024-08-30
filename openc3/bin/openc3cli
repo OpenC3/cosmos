@@ -33,7 +33,6 @@ require 'openc3/models/gem_model'
 require 'openc3/models/migration_model'
 require 'openc3/models/tool_model'
 require 'openc3/packets/packet_config'
-require 'openc3/script'
 require 'openc3/bridge/bridge'
 require 'ostruct'
 require 'optparse'
@@ -404,6 +403,7 @@ def list_plugins(scope:)
   if $openc3_in_cluster
     names = OpenC3::PluginModel.names(scope: scope)
   else
+    require 'openc3/script'
     names = plugin_list(scope: scope)
   end
   names.each do |name|
@@ -505,6 +505,7 @@ def load_plugin(plugin_file_path, scope:, plugin_hash_file: nil, force: false)
     end
   else
     # Outside Cluster
+    require 'openc3/script'
     if plugin_hash_file
       plugin_hash = JSON.parse(File.read(plugin_hash_file), :allow_nan => true, :create_additions => true)
     else
@@ -532,6 +533,7 @@ def unload_plugin(plugin_name, scope:)
     end
   else
     # Outside Cluster
+    require 'openc3/script'
     process_name = plugin_uninstall(plugin_name, scope: scope)
     print "Uninstalling..."
     wait_process_complete(process_name)
@@ -549,6 +551,7 @@ def cli_pkg_install(filename, scope:)
     end
   else
     # Outside Cluster
+    require 'openc3/script'
     process_name = package_install(filename, scope: scope)
     print "Installing..."
     wait_process_complete(process_name)
@@ -566,6 +569,7 @@ def cli_pkg_uninstall(filename, scope:)
     end
   else
     # Outside Cluster
+    require 'openc3/script'
     process_name = package_uninstall(filename, scope: scope)
     if File.extname(filename) == '.rb'
       puts "Uninstalled"
@@ -658,6 +662,7 @@ end
 
 def script_monitor(script_id)
   ret_code = ERROR_CODE
+  require 'openc3/script'
   OpenC3::RunningScriptWebSocketApi.new(id: script_id) do |api|
     while (resp = api.read) do
       # see ScriptRunner.vue for types and states
@@ -708,6 +713,7 @@ def cli_script_list(args=[])
   end
   scope = args[0]
   scope ||= 'DEFAULT'
+  require 'openc3/script'
   script_list(scope: scope).each do |script_name|
     puts (script_name) if script_name.start_with?(path)
   end
@@ -734,13 +740,14 @@ def cli_script_run(disconnect=false, environment={}, args=[])
   abort("No script file provided") if args[0].nil?
   scope = args[1]
   scope ||= 'DEFAULT'
+  require 'openc3/script'
   id = script_run(args[0], disconnect: disconnect, environment: environment, scope: scope) # could raise
   $script_interrupt_text = "  Script #{args[0]} still running remotely.\n" # for Ctrl-C
   if (wait_limit < 1) then
     ret_code = script_monitor(id)
   else
     Timeout::timeout(wait_limit, nil, "--wait #{wait_limit} exceeded") do
-      script_monitor(id)
+      ret_code = script_monitor(id)
     rescue Timeout::ExitException, Timeout::Error => tmoexcp
       # Timeout exceptions are also thrown by the Websocket API, so we check
       if tmoexcp.message =~ /^--wait /
@@ -754,7 +761,7 @@ def cli_script_run(disconnect=false, environment={}, args=[])
 end
 
 def cli_script_spawn(disconnect=false, environment={}, args=[])
-ret_code = ERROR_CODE
+  ret_code = ERROR_CODE
   if (args.index('--wait'))
     abort("Did you mean \"script run --wait <seconds> [...]\"?")
   end
@@ -762,6 +769,7 @@ ret_code = ERROR_CODE
   # heaven help you if you left out the script name
   scope = args[1]
   scope ||= 'DEFAULT'
+  require 'openc3/script'
   if (id = script_run(args[0], disconnect: disconnect, environment: environment, scope: scope))
     puts "Script #{args[0]} started remotely."
     ret_code = script_monitor(id)
@@ -811,7 +819,7 @@ def cli_script(args=[])
   else
     abort 'openc3cli internal error: parsing arguments'
   end
-  return ret_code
+  exit(ret_code)
 end
 
 if not ARGV[0].nil? # argument(s) given
@@ -824,15 +832,13 @@ if not ARGV[0].nil? # argument(s) given
     IRB.start
 
   when 'script'
-    ret_code = ERROR_CODE
     case ARGV[1]
     when 'list', 'run', 'spawn'
-      ret_code = cli_script(ARGV[1..-1])
+      cli_script(ARGV[1..-1])
     else
       # invalid actions, misplaced and malformed leading options and 'help' come here
       abort ("cli script <action> must be one of #{CLI_SCRIPT_ACTIONS}, not [#{ARGV[1]}]")
     end
-    ret_code
 
   when 'rake'
     if File.exist?('Rakefile')
@@ -986,5 +992,3 @@ if not ARGV[0].nil? # argument(s) given
 else # No arguments given
   print_usage()
 end
-
-exit(ret_code)
