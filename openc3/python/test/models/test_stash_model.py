@@ -16,12 +16,10 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import time
 import unittest
 import unittest.mock
 from test.test_helper import *
 from openc3.models.stash_model import StashModel
-from openc3.conversions.generic_conversion import GenericConversion
 
 
 class TestStashModel(unittest.TestCase):

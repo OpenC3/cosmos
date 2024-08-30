@@ -406,7 +406,6 @@ class Interface:
         self.written_raw_data_time = datetime.now(timezone.utc)
         self.written_raw_data = data
         self.bytes_written += len(data)
-        print(f"bytes_written: {self.bytes_written}")
         if self.stream_log_pair:
             self.stream_log_pair.write_log.write(data)
 

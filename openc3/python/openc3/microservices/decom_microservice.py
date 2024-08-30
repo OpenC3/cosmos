@@ -170,6 +170,8 @@ class DecomMicroservice(Microservice):
 
         if item.limits.response is not None:
             try:
+                # TODO: The limits response is user code and should be run as a separate thread / process
+                # If this code blocks it will delay TelemetryDecomTopic.write_packet
                 item.limits.response.call(packet, item, old_limits_state)
             except Exception as error:
                 self.error = error

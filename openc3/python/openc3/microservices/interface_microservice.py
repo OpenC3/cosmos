@@ -149,7 +149,7 @@ class InterfaceCmdHandlerThread:
                     InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
                 except RuntimeError as error:
                     self.logger.error(f"{self.interface.name}: interface_cmd: {repr(error)}")
-                    return error.str()
+                    return repr(error)
                 return "SUCCESS"
             if msg_hash.get(b"protocol_cmd"):
                 params = json.loads(msg_hash[b"protocol_cmd"])
@@ -167,7 +167,7 @@ class InterfaceCmdHandlerThread:
                     InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
                 except RuntimeError as error:
                     self.logger.error(f"{self.interface.name}: protocol_cmd:{repr(error)}")
-                    return error.str()
+                    return repr(error)
                 return "SUCCESS"
             if msg_hash.get(b"inject_tlm"):
                 handle_inject_tlm(msg_hash[b"inject_tlm"], self.scope)
@@ -216,7 +216,7 @@ class InterfaceCmdHandlerThread:
                 # Return back the error, description, and the formatted command
                 # This allows the error handler to simply re-send the command
                 if hazardous:
-                    return f"HazardousError\n{hazardous_description}\n{msg_hash[b'cmd_string']}"
+                    return f"HazardousError\n{hazardous_description}\n{command.extra['cmd_string']}"
 
             validator = ConfigParser.handle_true_false(msg_hash[b"validator"].decode())
             try:
@@ -349,7 +349,7 @@ class RouterTlmHandlerThread:
                         self.router.interface_cmd(params["cmd_name"], *params["cmd_params"])
                     except RuntimeError as error:
                         self.logger.error(f"{self.router.name}: router_cmd: {repr(error)}")
-                        return error.str()
+                        return error.message
                     return "SUCCESS"
                 if msg_hash.get(b"protocol_cmd"):
                     params = json.loads(msg_hash[b"protocol_cmd"])
@@ -365,7 +365,7 @@ class RouterTlmHandlerThread:
                         )
                     except RuntimeError as error:
                         self.logger.error(f"{self.router.name}: protoco_cmd: {repr(error)}")
-                        return error.str()
+                        return error.message
                     return "SUCCESS"
                 return "SUCCESS"
 
@@ -389,7 +389,7 @@ class RouterTlmHandlerThread:
                     return "SUCCESS"
                 except RuntimeError as error:
                     self.logger.error(f"{self.router.name}: {repr(error)}")
-                    return error.str()
+                    return repr(error)
 
 
 class InterfaceMicroservice(Microservice):
@@ -643,7 +643,7 @@ class InterfaceMicroservice(Microservice):
         # case Errno='ECONNREFUSED', Errno='ECONNRESET', Errno='ETIMEDOUT', Errno='ENOTSOCK', Errno='EHOSTUNREACH', IOError:
         #   # Do not write an exception file for these extremely common cases
         # else _:
-        if connect_error is RuntimeError and ("canceled" in connect_error.message or "timeout" in connect_error.str()):
+        if connect_error is RuntimeError and ("canceled" in connect_error.message or "timeout" in repr(connect_error)):
             pass  # Do not write an exception file for these extremely common cases
         else:
             self.logger.error(f"{self.interface.name}: {str(connect_error)}")
