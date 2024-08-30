@@ -537,7 +537,7 @@ module OpenC3
         'raw' => raw.to_s,
         'cmd_string' => cmd_string,
         'username' => username,
-        'validator' => validator
+        'validator' => validator.to_s
       }
       CommandTopic.send_command(command, timeout: timeout, scope: scope)
     end

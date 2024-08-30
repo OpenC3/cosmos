@@ -102,19 +102,21 @@ class DecomMicroservice(Microservice):
         if extra is not None:
             packet.extra = json.loads(extra)
         packet.buffer = msg_hash[b"buffer"]
-        # The Processor and LimitsResponse are user code points which must be rescued
+        # Processors are user code points which must be rescued
         # so the TelemetryDecomTopic can write the packet
         try:
             packet.process()  # Run processors
-            packet.check_limits(
-                System.limits_set()
-            )  # Process all the limits and call the limits_change_callback (as necessary)
         except Exception as error:
             self.error_count += 1
             self.metric.set(name="decom_error_total", value=self.error_count, type="counter")
             self.error = error
             self.logger.error(repr(error))
+        # Process all the limits and call the limits_change_callback (as necessary)
+        # check_limits also can call user code in the limits response
+        # but that is rescued separately in the limits_change_callback
+        packet.check_limits(System.limits_set())
 
+        # This is what updates the CVT
         TelemetryDecomTopic.write_packet(packet, scope=self.scope)
         diff = time.time() - start  # seconds as a float
         self.metric.set(name="decom_duration_seconds", value=diff, type="gauge", unit="seconds")

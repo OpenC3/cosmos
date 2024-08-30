@@ -17,53 +17,51 @@
 import unittest
 from unittest.mock import *
 from test.test_helper import *
-from openc3.script import *
-from openc3.io.json_drb_object import JsonDRbError
+from openc3.api import *
 
 cancel = False
 count = True
 received_count = 0
 
 
-class Proxy:
-    def tlm(target_name, packet_name, item_name, type="CONVERTED", scope="DEFAULT"):
-        global count
-        global received_count
+def tlm(target_name, packet_name, item_name, type="CONVERTED", scope="DEFAULT"):
+    global count
+    global received_count
 
-        if scope != "DEFAULT":
-            raise RuntimeError(f"Packet '{target_name} {packet_name}' does not exist")
-        match item_name:
-            case "TEMP1":
-                match type:
-                    case "RAW":
-                        return 1
-                    case "CONVERTED":
-                        return 10
-                    case "FORMATTED":
-                        return "10.000"
-                    case "WITH_UNITS":
-                        return "10.000 C"
-            case "TEMP2":
-                match type:
-                    case "RAW":
-                        return 1.5
-                    case "CONVERTED":
-                        return 10.5
-            case "CCSDSSHF":
-                return "FALSE"
-            case "BLOCKTEST":
-                return b"\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF"
-            case "ARY":
-                return [2, 3, 4]
-            case "RECEIVED_COUNT":
-                if count:
-                    received_count += 1
-                    print(f"RECEIVED_COUNT:{received_count}")
-                    return received_count
-                else:
-                    return None
-            case _:
+    if scope != "DEFAULT":
+        raise RuntimeError(f"Packet '{target_name} {packet_name}' does not exist")
+    match item_name:
+        case "TEMP1":
+            match type:
+                case "RAW":
+                    return 1
+                case "CONVERTED":
+                    return 10
+                case "FORMATTED":
+                    return "10.000"
+                case "WITH_UNITS":
+                    return "10.000 C"
+        case "TEMP2":
+            match type:
+                case "RAW":
+                    return 1.5
+                case "CONVERTED":
+                    return 10.5
+        case "CCSDSSHF":
+            return "FALSE"
+        case "BLOCKTEST":
+            return b"\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF"
+        case "ARY":
+            return [2, 3, 4]
+        case "RECEIVED_COUNT":
+            if count:
+                received_count += 1
+                print(f"RECEIVED_COUNT:{received_count}")
+                return received_count
+            else:
                 return None
+        case _:
+            return None
 
 
 # sleep in a script - returns true if canceled mid sleep
@@ -72,18 +70,18 @@ def my_openc3_script_sleep(sleep_time=None):
     return cancel
 
 
-# Don't setup any patching and verify we dispatch to the JsonDRb which will raise an error
-class TestApiSharedProxy(unittest.TestCase):
-    def test_proxy_to_api_server(self):
-        with self.assertRaisesRegex(
-            JsonDRbError,
-            "No response from server",
-        ):
-            wait_check("INST HEALTH_STATUS COLLECTS < 0", 1)
+# Test that we go right to the API method (Redis) when we're not using a proxy
+class TestApiSharedNoProxy(unittest.TestCase):
+    def setUp(self):
+        mock_redis(self)
+        setup_system()
+
+    def test_import_api_no_proxy(self):
+        wait_check("INST HEALTH_STATUS COLLECTS == None", 1)
 
 
-@patch("openc3.script.API_SERVER", Proxy)
-@patch("openc3.script.api_shared.openc3_script_sleep", my_openc3_script_sleep)
+@patch("openc3.api.api_shared.tlm", tlm)
+@patch("openc3.api.api_shared.openc3_script_sleep", my_openc3_script_sleep)
 class TestApiShared(unittest.TestCase):
     def setUp(self):
         global received_count
@@ -128,16 +126,6 @@ class TestApiShared(unittest.TestCase):
             r"CHECK: INST HEALTH_STATUS TEMP1 > 100 failed with value == 10",
         ):
             check("INST HEALTH_STATUS TEMP1 > 100")
-
-    def test_check_logs_instead_of_raises_when_disconnected(self):
-        openc3.script.DISCONNECT = True
-        for stdout in capture_io():
-            check("INST HEALTH_STATUS TEMP1 > 100")
-            self.assertIn(
-                "CHECK: INST HEALTH_STATUS TEMP1 > 100 failed with value == 10",
-                stdout.getvalue(),
-            )
-        openc3.script.DISCONNECT = False
 
     def test_check_warns_when_checking_a_state_against_a_constant(self):
         for stdout in capture_io():
@@ -208,22 +196,6 @@ class TestApiShared(unittest.TestCase):
             "CHECK: INST HEALTH_STATUS TEMP2 failed to be within range 10.9 to 11.1 with value == 10.5",
         ):
             check_tolerance("INST HEALTH_STATUS TEMP2", 11, 0.1)
-
-    def test_check_tolerance_logs_instead_of_raises_exception_when_disconnected(self):
-        openc3.script.DISCONNECT = True
-        for stdout in capture_io():
-            check_tolerance("INST HEALTH_STATUS TEMP2", 11, 0.1)
-            self.assertIn(
-                "CHECK: INST HEALTH_STATUS TEMP2 failed to be within range 10.9 to 11.1 with value == 10.5",
-                stdout.getvalue(),
-            )
-        for stdout in capture_io():
-            check_tolerance("INST HEALTH_STATUS ARY", 3, 0.1)
-            self.assertIn(
-                "INST HEALTH_STATUS ARY[0] failed to be within range 2.9 to 3.1 with value == 2",
-                stdout.getvalue(),
-            )
-        openc3.script.DISCONNECT = False
 
     def test_checks_that_an_array_value_is_within_a_single_tolerance(self):
         for stdout in capture_io():
@@ -308,13 +280,6 @@ class TestApiShared(unittest.TestCase):
             self.assertIn("CHECK: True == True is TRUE", stdout.getvalue())
         with self.assertRaisesRegex(CheckError, "CHECK: True == False is FALSE"):
             check_expression("True == False")
-
-    def test_check_expression_logs_instead_of_raises_when_disconnected(self):
-        openc3.script.DISCONNECT = True
-        for stdout in capture_io():
-            check_expression("True == False")
-            self.assertIn("CHECK: True == False is FALSE", stdout.getvalue())
-        openc3.script.DISCONNECT = False
 
     def test_checks_a_logical_expression(self):
         for stdout in capture_io():
@@ -564,17 +529,6 @@ class TestApiShared(unittest.TestCase):
         ):
             wait_check("INST HEALTH_STATUS TEMP1 > 100", 0.01)
 
-    def test_wait_check_logs_instead_of_raises_when_disconnected(self):
-        openc3.script.DISCONNECT = True
-        for stdout in capture_io():
-            result = wait_check("INST HEALTH_STATUS TEMP1 > 100", 0.01)
-            self.assertTrue(isinstance(result, float))
-            self.assertIn(
-                "CHECK: INST HEALTH_STATUS TEMP1 > 100 failed with value == 10",
-                stdout.getvalue(),
-            )
-        openc3.script.DISCONNECT = False
-
     def test_fails_against_binary_data(self):
         data = "\xFF" * 10
         with self.assertRaisesRegex(RuntimeError, "ERROR: Invalid comparison to non-ascii value"):
@@ -667,24 +621,6 @@ class TestApiShared(unittest.TestCase):
         ):
             wait_check_tolerance("INST HEALTH_STATUS ARY", 3, 0.1, 0.1)
 
-    def test_wait_check_tolerance_logs_instead_of_raises_when_disconnected(self):
-        openc3.script.DISCONNECT = True
-        for stdout in capture_io():
-            result = wait_check_tolerance("INST HEALTH_STATUS TEMP2", 11, 0.1, 0.1)
-            self.assertTrue(isinstance(result, float))
-            self.assertIn(
-                "CHECK: INST HEALTH_STATUS TEMP2 failed to be within range 10.9 to 11.1 with value == 10.5",
-                stdout.getvalue(),
-            )
-        for stdout in capture_io():
-            result = wait_check_tolerance("INST HEALTH_STATUS ARY", 3, 0.1, 0.1)
-            self.assertTrue(isinstance(result, float))
-            self.assertIn(
-                "CHECK: INST HEALTH_STATUS ARY[0] failed to be within range 2.9 to 3.1 with value == 2",
-                stdout.getvalue(),
-            )
-        openc3.script.DISCONNECT = False
-
     def test_wait_checks_that_multiple_array_values_are_within_tolerance(self):
         for stdout in capture_io():
             result = wait_check_tolerance("INST", "HEALTH_STATUS", "ARY", [2, 3, 4], 0.1, 5)
@@ -726,14 +662,6 @@ class TestApiShared(unittest.TestCase):
             self.assertIn("CHECK: True == True is TRUE", stdout.getvalue())
         with self.assertRaisesRegex(CheckError, "CHECK: True == False is FALSE"):
             wait_check_expression("True == False", 0.1)
-
-    def test_wait_check_expression_logs_instead_of_raises_when_disconnected(self):
-        openc3.script.DISCONNECT = True
-        for stdout in capture_io():
-            result = wait_check_expression("True == False", 5)
-            self.assertTrue(isinstance(result, float))
-            self.assertIn("CHECK: True == False is FALSE", stdout.getvalue())
-        openc3.script.DISCONNECT = False
 
     def test_waits_and_checks_a_logical_expression(self):
         for stdout in capture_io():
@@ -788,19 +716,6 @@ class TestApiShared(unittest.TestCase):
         ):
             wait_check_packet("INST", "HEALTH_STATUS", 1, 0.5)
 
-    def test_wait_check_packet_logs_instead_of_raises_if_disconnected(self):
-        openc3.script.DISCONNECT = True
-        global count
-        count = False
-        for stdout in capture_io():
-            result = wait_check_packet("INST", "HEALTH_STATUS", 1, 0.5)
-            self.assertTrue(isinstance(result, float))
-            self.assertIn(
-                "CHECK: INST HEALTH_STATUS expected to be received 1 times but only received 0 times",
-                stdout.getvalue(),
-            )
-        openc3.script.DISCONNECT = False
-
     def test_wait_check_packet_prints_success_if_the_packet_is_received(self):
         global cancel
         global count
@@ -819,46 +734,3 @@ class TestApiShared(unittest.TestCase):
                 "CHECK: INST HEALTH_STATUS received 5 times after waiting",
                 stdout.getvalue(),
             )
-
-    def test_does_nothing_if_runningscript_is_not_defined(self):
-        for stdout in capture_io():
-            with disable_instrumentation():
-                print("HI")
-            self.assertIn("HI", stdout.getvalue())
-
-    def test_sets_runningscript_instance_use_instrumentation(self):
-        openc3.script.RUNNING_SCRIPT = Mock()
-        for stdout in capture_io():
-            self.assertTrue(openc3.script.RUNNING_SCRIPT.instance.use_instrumentation)
-            with disable_instrumentation():
-                self.assertFalse(openc3.script.RUNNING_SCRIPT.instance.use_instrumentation)
-                print("HI")
-            self.assertTrue(openc3.script.RUNNING_SCRIPT.instance.use_instrumentation)
-            self.assertIn("HI", stdout.getvalue())
-
-    def test_gets_and_sets_runningscript_line_delay(self):
-        openc3.script.RUNNING_SCRIPT = Mock()
-        set_line_delay(10)
-        self.assertEqual(openc3.script.RUNNING_SCRIPT.line_delay, 10)
-        self.assertEqual(get_line_delay(), 10)
-
-    def test_gets_and_sets_runningscript_max_output_characters(self):
-        openc3.script.RUNNING_SCRIPT = Mock()
-        set_max_output(100)
-        self.assertEqual(openc3.script.RUNNING_SCRIPT.max_output_characters, 100)
-        self.assertEqual(get_max_output(), 100)
-
-    def test_starts_a_script(self):
-        with open("tester.py", "w") as f:
-            f.write("print('Hello World')")
-
-        for stdout in capture_io():
-            start("tester.py")
-            self.assertIn("Hello World", stdout.getvalue())
-
-    def test_load_utility_raises(self):
-        with self.assertRaisesRegex(
-            RuntimeError,
-            "load_utility not supported outside of Script Runner",
-        ):
-            load_utility("tester.py")

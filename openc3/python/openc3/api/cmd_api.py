@@ -636,11 +636,18 @@ def _cmd_implementation(
     # If they explicitly set the log_message kwarg then that overrides the above
     if kwargs.get("log_message") is not None:
         if kwargs["log_message"] not in [True, False]:
-            raise RuntimeError(f"Invalid log_message parameter: {log_message}. Must be True or False.")
+            raise RuntimeError(f"Invalid log_message parameter: {kwargs['log_message']}. Must be True or False.")
         log_message = kwargs["log_message"]
     cmd_string = _cmd_log_string(method_name, target_name, cmd_name, cmd_params, packet)
     if log_message:
         Logger.info(cmd_string, scope)
+
+    # Check for the validator kwarg
+    validator = True
+    if kwargs.get("validator") is not None:
+        if kwargs["validator"] not in [True, False]:
+            raise RuntimeError(f"Invalid validator parameter: {kwargs['validator']}. Must be True or False.")
+        validator = kwargs["validator"]
 
     username = user["username"] if user and user["username"] else "anonymous"
     command = {
@@ -652,6 +659,7 @@ def _cmd_implementation(
         "raw": str(raw),
         "cmd_string": cmd_string,
         "username": username,
+        "validator": str(validator),
     }
     return CommandTopic.send_command(command, timeout, scope)
 

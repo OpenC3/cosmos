@@ -202,11 +202,12 @@ module OpenC3
               next "HazardousError\n#{hazardous_description}\n#{msg_hash['cmd_string']}" if hazardous
             end
 
+            validator = ConfigParser.handle_true_false(msg_hash['validator'])
             begin
               if @interface.connected?
                 result = true
                 reason = nil
-                if command.validator and msg_hash['validator']
+                if command.validator and validator
                   begin
                     result, reason = command.validator.pre_check(command)
                   rescue => e
@@ -223,16 +224,18 @@ module OpenC3
                 @metric.set(name: 'interface_cmd_total', value: @count, type: 'counter') if @metric
                 @interface.write(command)
 
-                if command.validator and msg_hash['validator']
+                if command.validator and validator
                   begin
                     result, reason = command.validator.post_check(command)
+                    puts "post_check result:#{result} reason:#{reason}"
                   rescue => e
                     result = false
                     reason = e.message
                   end
-                  command.extra['post_check'] = result
-                  command.extra['post_check_reason'] = reason if reason
+                  command.extra['cmd_success'] = result
+                  command.extra['cmd_reason'] = reason if reason
                 end
+                puts "command.extra:#{command.extra}"
 
                 CommandDecomTopic.write_packet(command, scope: @scope)
                 CommandTopic.write_packet(command, scope: @scope)

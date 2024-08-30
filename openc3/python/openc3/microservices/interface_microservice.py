@@ -209,10 +209,8 @@ class InterfaceCmdHandlerThread:
                 return repr(error)
 
             command.extra = command.extra or {}
-            print(f"msg_hash:{msg_hash}")
-            command.extra["cmd_string"] = msg_hash[b"cmd_string"]
-            command.extra["username"] = msg_hash[b"username"]
-            print(f"extra:{command.extra}")
+            command.extra["cmd_string"] = msg_hash[b"cmd_string"].decode()
+            command.extra["username"] = msg_hash[b"username"].decode()
             if hazardous_check:
                 hazardous, hazardous_description = System.commands.cmd_pkt_hazardous(command)
                 # Return back the error, description, and the formatted command
@@ -220,11 +218,12 @@ class InterfaceCmdHandlerThread:
                 if hazardous:
                     return f"HazardousError\n{hazardous_description}\n{msg_hash[b'cmd_string']}"
 
+            validator = ConfigParser.handle_true_false(msg_hash[b"validator"].decode())
             try:
                 if self.interface.connected():
                     result = True
                     reason = None
-                    if command.validator:
+                    if command.validator and validator:
                         try:
                             result, reason = command.validator.pre_check(command)
                         except Exception as error:
@@ -239,19 +238,18 @@ class InterfaceCmdHandlerThread:
                         self.metric.set(name="interface_cmd_total", value=self.count, type="counter")
                     self.interface.write(command)
 
-                    if command.validator:
+                    if command.validator and validator:
                         try:
                             result, reason = command.validator.post_check(command)
                         except Exception as error:
                             result = False
                             reason = repr(error)
-                        command.extra["post_check"] = result
+                        command.extra["cmd_success"] = result
                         if reason:
-                            command.extra["post_check_reason"] = reason
+                            command.extra["cmd_reason"] = reason
 
                     CommandDecomTopic.write_packet(command, scope=self.scope)
                     CommandTopic.write_packet(command, scope=self.scope)
-                    print(f"interface json:{self.interface.as_json()}")
                     InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
 
                     if not result:
@@ -262,7 +260,7 @@ class InterfaceCmdHandlerThread:
                 else:
                     return f"Interface not connected: {self.interface.name}"
             except WriteRejectError as error:
-                return error.str()
+                return repr(error)
         except RuntimeError as error:
             self.logger.error(f"{self.interface.name}: {repr(error)}")
             return repr(error)

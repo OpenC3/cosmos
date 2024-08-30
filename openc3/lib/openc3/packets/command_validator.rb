@@ -1,3 +1,5 @@
+# encoding: ascii-8bit
+
 # Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
@@ -14,21 +16,27 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from openc3.packets.command_validator import CommandValidator
-from openc3.api import *
+# This file implements a class to handle command validation
 
+require 'openc3/api/api'
 
-class CmdValidator(CommandValidator):
-    def pre_check(self, command):
-        self.cmd_acpt_cnt = tlm("<%= target_name %> HEALTH_STATUS CMD_ACPT_CNT")
-        return [True, None]
+module OpenC3
+  # This class defines methods which are called when a command is sent.
+  # This class must be subclassed and the pre_check or
+  # post_check methods implemented. Do NOT use this class directly.
+  class CommandValidator
+    include Api
 
-    def post_check(self, command):
-        if command.packet_name == "CLEAR":
-            wait_check("<%= target_name %> HEALTH_STATUS CMD_ACPT_CNT == 0", 10)
-        else:
-            wait_check(
-                f"<%= target_name %> HEALTH_STATUS CMD_ACPT_CNT > {self.cmd_acpt_cnt}",
-                10,
-            )
-        return [True, None]
+    def initialize(command = nil)
+      @command = command
+    end
+
+    def pre_check(command)
+      return [true, nil]
+    end
+
+    def post_check(command)
+      return [true, nil]
+    end
+  end
+end

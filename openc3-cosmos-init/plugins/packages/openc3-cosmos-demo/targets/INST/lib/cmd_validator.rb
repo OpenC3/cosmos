@@ -20,17 +20,15 @@ require 'openc3/packets/command_validator'
 
 class CmdValidator < OpenC3::CommandValidator
   def pre_check(command)
-    @cmd_acpt_cnt = tlm("INST HEALTH_STATUS CMD_ACPT_CNT")
-    puts "pre_check: #{@cmd_acpt_cnt}"
+    @cmd_acpt_cnt = tlm("<%= target_name %> HEALTH_STATUS CMD_ACPT_CNT")
     return [true, nil]
   end
 
   def post_check(command)
-    puts "post_check: #{@cmd_acpt_cnt}"
     if command.packet_name == 'CLEAR'
-      wait_check("INST HEALTH_STATUS CMD_ACPT_CNT == 0", 10)
+      wait_check("<%= target_name %> HEALTH_STATUS CMD_ACPT_CNT == 0", 10)
     else
-      wait_check("INST HEALTH_STATUS CMD_ACPT_CNT > #{@cmd_acpt_cnt}", 10)
+      wait_check("<%= target_name %> HEALTH_STATUS CMD_ACPT_CNT > #{@cmd_acpt_cnt}", 10)
     end
     return [true, nil]
   end

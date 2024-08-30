@@ -784,7 +784,7 @@ class BuildCommand(unittest.TestCase):
         time.sleep(0.001)
 
     def test_complains_about_unknown_targets(self):
-        with self.assertRaisesRegex(RuntimeError, "Timeout of 30s waiting for cmd ack. Does target 'BLAH' exist?"):
+        with self.assertRaisesRegex(RuntimeError, "Timeout of 5s waiting for cmd ack. Does target 'BLAH' exist?"):
             build_cmd("BLAH COLLECT")
 
     def test_complains_about_unknown_commands(self):
