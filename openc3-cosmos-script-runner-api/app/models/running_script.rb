@@ -427,10 +427,11 @@ class RunningScript
 
     # Retrieve file
     @body = ::Script.body(@scope, name)
+    raise "nothing runnable in scope: [#{@scope} for name: [#{name}]]" if @body.nil?
     breakpoints = @@breakpoints[filename]&.filter { |_, present| present }&.map { |line_number, _| line_number - 1 } # -1 because frontend lines are 0-indexed
     breakpoints ||= []
     OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"),
-                          JSON.generate({ type: :file, filename: @filename, scope: @scope, text: @body&.to_utf8, breakpoints: breakpoints }))
+                          JSON.generate({ type: :file, filename: @filename, scope: @scope, text: @body.to_utf8, breakpoints: breakpoints }))
     if (@body =~ SUITE_REGEX)
       # Process the suite file in this context so we can load it
       # TODO: Do we need to worry about success or failure of the suite processing?
