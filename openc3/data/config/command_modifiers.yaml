@@ -299,4 +299,4 @@ VALIDATOR:
         def post_check(self, command):
             wait_check(f"INST HEALTH_STATUS CMD_ACPT_CNT > {self.cmd_acpt_cnt}", 10)
             return [True, None]
-  since: 5.18.0
+  since: 5.19.0

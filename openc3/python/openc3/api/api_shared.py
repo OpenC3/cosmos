@@ -794,7 +794,6 @@ def _openc3_script_wait(
         while True:
             work_start = time.time()
             value = tlm(target_name, packet_name, item_name, type=value_type, scope=scope)
-            print(f"WAIT: {value}")
             try:
                 if eval(exp_to_eval):
                     return True, value

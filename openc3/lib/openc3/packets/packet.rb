@@ -1068,9 +1068,12 @@ module OpenC3
       if @accessor.class.to_s != 'OpenC3::BinaryAccessor'
         config << "  ACCESSOR #{@accessor.class} #{@accessor.args.map { |a| a.to_s.quote_if_necessary }.join(" ")}\n"
       end
+      if @validator
+        config << "  VALIDATOR #{@validator.class}\n"
+      end
       # TODO: Add TEMPLATE_ENCODED so this can always be done inline regardless of content
       if @template
-        config << "  TEMPLATE '#{@template}'"
+        config << "  TEMPLATE '#{@template}'\n"
       end
       config << "  ALLOW_SHORT\n" if @short_buffer_allowed
       config << "  HAZARDOUS #{@hazardous_description.to_s.quote_if_necessary}\n" if @hazardous
@@ -1110,21 +1113,21 @@ module OpenC3
       end
 
       if @response
-        config << "  RESPONSE #{@response[0].to_s.quote_if_necessary} #{@response[1].to_s.quote_if_necessary}"
+        config << "  RESPONSE #{@response[0].to_s.quote_if_necessary} #{@response[1].to_s.quote_if_necessary}\n"
       end
       if @error_response
-        config << "  ERROR_RESPONSE #{@error_response[0].to_s.quote_if_necessary} #{@error_response[1].to_s.quote_if_necessary}"
+        config << "  ERROR_RESPONSE #{@error_response[0].to_s.quote_if_necessary} #{@error_response[1].to_s.quote_if_necessary}\n"
       end
       if @screen
-        config << "  SCREEN #{@screen[0].to_s.quote_if_necessary} #{@screen[1].to_s.quote_if_necessary}"
+        config << "  SCREEN #{@screen[0].to_s.quote_if_necessary} #{@screen[1].to_s.quote_if_necessary}\n"
       end
       if @related_items
         @related_items.each do |target_name, packet_name, item_name|
-          config << "  RELATED_ITEM #{target_name.to_s.quote_if_necessary} #{packet_name.to_s.quote_if_necessary} #{item_name.to_s.quote_if_necessary}"
+          config << "  RELATED_ITEM #{target_name.to_s.quote_if_necessary} #{packet_name.to_s.quote_if_necessary} #{item_name.to_s.quote_if_necessary}\n"
         end
       end
       if @ignore_overlap
-        config << "  IGNORE_OVERLAP"
+        config << "  IGNORE_OVERLAP\n"
       end
       config
     end
@@ -1144,6 +1147,7 @@ module OpenC3
       config['virtual'] = true if @virtual
       config['accessor'] = @accessor.class.to_s
       config['accessor_args'] = @accessor.args
+      config['validator'] = @validator.class.to_s if @validator
       config['template'] = Base64.encode64(@template) if @template
       config['config_name'] = self.config_name
 
@@ -1207,6 +1211,14 @@ module OpenC3
           end
         rescue => e
           Logger.instance.error "#{packet.target_name} #{packet.packet_name} accessor of #{hash['accessor']} could not be found due to #{e}"
+        end
+      end
+      if hash['validator']
+        begin
+          validator = OpenC3::const_get(hash['validator'])
+          packet.validator = validator.new(packet)
+        rescue => e
+          Logger.instance.error "#{packet.target_name} #{packet.packet_name} validator of #{hash['validator']} could not be found due to #{e}"
         end
       end
       packet.template = Base64.decode64(hash['template']) if hash['template']

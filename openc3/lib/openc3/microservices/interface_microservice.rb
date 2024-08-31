@@ -227,7 +227,6 @@ module OpenC3
                 if command.validator and validator
                   begin
                     result, reason = command.validator.post_check(command)
-                    puts "post_check result:#{result} reason:#{reason}"
                   rescue => e
                     result = false
                     reason = e.message
@@ -235,7 +234,6 @@ module OpenC3
                   command.extra['cmd_success'] = result
                   command.extra['cmd_reason'] = reason if reason
                 end
-                puts "command.extra:#{command.extra}"
 
                 CommandDecomTopic.write_packet(command, scope: @scope)
                 CommandTopic.write_packet(command, scope: @scope)
