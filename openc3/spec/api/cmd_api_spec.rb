@@ -239,7 +239,7 @@ module OpenC3
       end
 
       it "complains about unknown targets" do
-        expect { @api.build_cmd("BLAH COLLECT") }.to raise_error(/Timeout of 30s waiting for cmd ack. Does target 'BLAH' exist?/)
+        expect { @api.build_cmd("BLAH COLLECT") }.to raise_error(/Timeout of 5s waiting for cmd ack. Does target 'BLAH' exist?/)
       end
 
       it "complains about unknown commands" do

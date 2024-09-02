@@ -115,7 +115,7 @@ module OpenC3
         target = System.targets[target_name]
         if target and target.cmd_unique_id_mode
           # Iterate through the packets and see if any represent the buffer
-          target_packets.each do |packet_name, packet|
+          target_packets.each do |_packet_name, packet|
             if packet.identify?(packet_data)
               identified_packet = packet
               break
@@ -195,7 +195,7 @@ module OpenC3
         items = packet.read_all(:FORMATTED)
         raw = false
       end
-      items.delete_if { |item_name, item_value| ignored_parameters.include?(item_name) }
+      items.delete_if { |item_name, _item_value| ignored_parameters.include?(item_name) }
       return build_cmd_output_string(packet.target_name, packet.packet_name, items, raw)
     end
 
@@ -207,7 +207,7 @@ module OpenC3
       end
       target_name = 'UNKNOWN' unless target_name
       cmd_name = 'UNKNOWN' unless cmd_name
-      output_string << target_name + ' ' + cmd_name
+      output_string << (target_name + ' ' + cmd_name)
       if cmd_params.nil? or cmd_params.empty?
         output_string << '")'
       else
@@ -247,7 +247,7 @@ module OpenC3
           params << "#{key} #{value}"
         end
         params = params.join(", ")
-        output_string << ' with ' + params + '")'
+        output_string << (' with ' + params + '")')
       end
       return output_string
     end
@@ -289,14 +289,6 @@ module OpenC3
       # Build a command without range checking, perform conversions, and don't
       # check required parameters since we're not actually using the command.
       cmd_pkt_hazardous?(build_cmd(target_name, packet_name, params, false, false, false))
-    end
-
-    def clear_counters
-      @config.commands.each do |target_name, target_packets|
-        target_packets.each do |packet_name, packet|
-          packet.received_count = 0
-        end
-      end
     end
 
     def all

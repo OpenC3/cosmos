@@ -408,20 +408,6 @@ module OpenC3
       end
     end
 
-    describe "clear_counters" do
-      it "clears the received counters in all packets" do
-        @cmd.packet("TGT1", "PKT1").received_count = 1
-        @cmd.packet("TGT1", "PKT2").received_count = 2
-        @cmd.packet("TGT2", "PKT3").received_count = 3
-        @cmd.packet("TGT2", "PKT4").received_count = 4
-        @cmd.clear_counters
-        expect(@cmd.packet("TGT1", "PKT1").received_count).to eql 0
-        expect(@cmd.packet("TGT1", "PKT2").received_count).to eql 0
-        expect(@cmd.packet("TGT2", "PKT3").received_count).to eql 0
-        expect(@cmd.packet("TGT2", "PKT4").received_count).to eql 0
-      end
-    end
-
     describe "all" do
       it "returns all packets" do
         expect(@cmd.all.keys).to eql %w(UNKNOWN TGT1 TGT2)
