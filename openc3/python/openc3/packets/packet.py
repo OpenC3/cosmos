@@ -962,9 +962,9 @@ class Packet(Structure):
         else:
             config += f'COMMAND {quote_if_necessary(self.target_name)} {quote_if_necessary(self.packet_name)} {self.default_endianness} "{self.description}"\n'
         if self.accessor.__class__.__name__ != "BinaryAccessor":
-            config << f"  ACCESSOR {self.accessor.__class__.__name__}\n"
+            config += f"  ACCESSOR {self.accessor.__class__.__name__}\n"
         if self.validator:
-            config << f"  VALIDATOR {self.validator.__class__.__name__}\n"
+            config += f"  VALIDATOR {self.validator.__class__.__name__}\n"
         if self.short_buffer_allowed:
             config += "  ALLOW_SHORT\n"
         if self.hazardous:
