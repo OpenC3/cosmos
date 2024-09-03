@@ -37,7 +37,7 @@ class ApplicationController < ActionController::API
     return username
   end
 
-  # Authorize and rescue the possible execeptions
+  # Authorize and rescue the possible exceptions
   # @return [Boolean] true if authorize successful
   def authorization(permission, target_name: nil)
     begin

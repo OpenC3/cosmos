@@ -23,7 +23,7 @@ class Telemetry:
 
     This should not be confused with the Api module which implements the JSON
     API that is used by tools when accessing the Server. The Api module always
-    provides Ruby primatives where the Telemetry class can return actual
+    provides Ruby primitives where the Telemetry class can return actual
     Packet or PacketItem objects. While there are some overlapping methods between
     the two, these are separate interfaces into the system."""
 

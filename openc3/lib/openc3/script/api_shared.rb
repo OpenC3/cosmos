@@ -530,7 +530,7 @@ module OpenC3
     ###########################################################################
 
     # This must be here for custom microservices that might block.
-    # Overriden by running_script.rb for script sleep
+    # Overridden by running_script.rb for script sleep
     def openc3_script_sleep(sleep_time = nil)
       if sleep_time
         sleep(sleep_time)
@@ -545,7 +545,7 @@ module OpenC3
       "#{target_name.upcase} #{packet_name.upcase} #{item_name.upcase}"
     end
 
-    # Implementaton of the various check commands. It yields back to the
+    # Implementation of the various check commands. It yields back to the
     # caller to allow the return of the value through various telemetry calls.
     # This method should not be called directly by application code.
     def _check(*args, scope: $openc3_scope, token: $openc3_token)

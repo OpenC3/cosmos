@@ -76,7 +76,7 @@ udp_interface:
       description: Port on the local machine to send commands from. Default is
         'nil' (socket is not bound to an outgoing port).
       values: \d{2,5}
-    - name: Inteface Address
+    - name: Interface Address
       required: false
       description:
         If the remote machine supports multicast the interface address

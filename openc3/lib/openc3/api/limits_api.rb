@@ -107,7 +107,7 @@ module OpenC3
     # Favor the first syntax where possible as it is more succinct.
     #
     # @param args [String|Array<String>] See the description for calling style
-    # @return [Boolean] Whether limits are enable for the itme
+    # @return [Boolean] Whether limits are enable for the item
     def limits_enabled?(*args, manual: false, scope: $openc3_scope, token: $openc3_token)
       target_name, packet_name, item_name = _tlm_process_args(args, 'limits_enabled?', scope: scope)
       authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)

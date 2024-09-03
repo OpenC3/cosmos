@@ -50,8 +50,8 @@ module OpenC3
       config = TableConfig.process_file(definition_filename)
       begin
         load_binary(config, binary)
-      rescue CoreError => err
-        report.puts "Error: #{err.message}\n"
+      rescue CoreError => e
+        report.puts "Error: #{e.message}\n"
       end
 
       config.tables.each do |table_name, table|
@@ -83,7 +83,7 @@ module OpenC3
           report.write "#{rowtext}, "
           (0...table.num_columns).each do |c|
             if table.type == :ROW_COLUMN
-              table_item = items[c + r * table.num_columns]
+              table_item = items[c + (r * table.num_columns)]
             else
               table_item = items[r]
             end
@@ -104,7 +104,7 @@ module OpenC3
     def self.generate(definition_filename)
       config = TableConfig.process_file(definition_filename)
       binary = ''
-      config.tables.each do |table_name, table|
+      config.tables.each do |_table_name, table|
         table.restore_defaults
         binary += table.buffer
       end
@@ -125,7 +125,7 @@ module OpenC3
         end
       end
       binary = ''
-      config.tables.each { |table_name, table| binary += table.buffer }
+      config.tables.each { |_table_name, table| binary += table.buffer }
       binary
     end
 
@@ -137,8 +137,8 @@ module OpenC3
       json = { tables: tables }
       begin
         load_binary(config, binary)
-      rescue CoreError => err
-        json['errors'] = err.message
+      rescue CoreError => e
+        json['errors'] = e.message
       end
       config.tables.each do |table_name, table|
         tables << {
@@ -150,7 +150,7 @@ module OpenC3
         }
         col = 0
         row = 0
-        table.sorted_items.each_with_index do |item, index|
+        table.sorted_items.each_with_index do |item, _index|
           next if item.hidden
           if table.num_columns == 1
             if row == 0
@@ -197,10 +197,10 @@ module OpenC3
     def self.load_binary(config, data)
       binary_data_index = 0
       total_table_length = 0
-      config.tables.each do |table_name, table|
+      config.tables.each do |_table_name, table|
         total_table_length += table.length
       end
-      config.tables.each do |table_name, table|
+      config.tables.each do |_table_name, table|
         if binary_data_index + table.length > data.length
           table.buffer = data[binary_data_index..-1]
           raise MismatchError,
@@ -213,7 +213,7 @@ module OpenC3
       if binary_data_index < data.length
         raise MismatchError,
           "Binary size of #{data.length} larger than table definition of length #{total_table_length}. "+
-          "Discarding the remaing #{data.length - binary_data_index} bytes."
+          "Discarding the remaining #{data.length - binary_data_index} bytes."
       end
     end
 

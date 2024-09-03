@@ -374,7 +374,7 @@ class PacketConfig:
                         self.current_item = self.current_packet.get_item(params[0])
                     else:  # DELETE
                         self.current_packet.delete_item(params[0])
-                except AttributeError:  # Rescue the default execption to provide a nicer error message
+                except AttributeError:  # Rescue the default exception to provide a nicer error message
                     raise parser.error(
                         f"{params[0]} not found in {self.current_cmd_or_tlm.lower()} packet {self.current_packet.target_name} {self.current_packet.packet_name}",
                         usage,
@@ -673,7 +673,7 @@ class PacketConfig:
                 else:
                     raise parser.error(f"{keyword} only applies to command parameters")
 
-            # Update the mimimum value for the current command parameter
+            # Update the minimum value for the current command parameter
             case "MINIMUM_VALUE":
                 if self.current_cmd_or_tlm == PacketConfig.TELEMETRY:
                     raise parser.error(f"{keyword} only applies to command parameters")

@@ -178,7 +178,7 @@ test('warns for hazardous commands', async ({ page, utils }) => {
 test('warns for required parameters', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'COLLECT')
   await page.locator('[data-test="select-send"]').click()
-  // Break apart the checks so we have output flexibily in the future
+  // Break apart the checks so we have output flexibility in the future
   await expect(page.locator('.v-dialog')).toContainText('Error sending')
   await expect(page.locator('.v-dialog')).toContainText('INST COLLECT TYPE')
   await expect(page.locator('.v-dialog')).toContainText('not in valid range')

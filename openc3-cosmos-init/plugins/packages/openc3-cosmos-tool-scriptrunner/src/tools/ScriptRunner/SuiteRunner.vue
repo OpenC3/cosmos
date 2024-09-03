@@ -154,7 +154,7 @@
                   </div>
                 </template>
                 <span
-                  >Checked continuously executes until explictly stopped<br />
+                  >Checked continuously executes until explicitly stopped<br />
                   Unchecked executes only the started script(s)</span
                 >
               </v-tooltip>

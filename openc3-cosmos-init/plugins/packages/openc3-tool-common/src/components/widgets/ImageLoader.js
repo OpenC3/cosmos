@@ -39,7 +39,7 @@ export default {
         {
           headers: {
             Accept: 'application/json',
-            // Since we're just checking for existance, 404 is possible so ignore it
+            // Since we're just checking for existence, 404 is possible so ignore it
             'Ignore-Errors': '404',
           },
         }

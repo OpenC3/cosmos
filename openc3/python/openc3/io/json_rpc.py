@@ -23,7 +23,7 @@ class RequestError(RuntimeError):
 
     Parameters:
         message (str): The Request Error from Cosmos v5
-        request (openc3.execptions.CosmosJsonRpcRequest): CosmosJsonRpcRequest v5
+        request (openc3.exceptions.CosmosJsonRpcRequest): CosmosJsonRpcRequest v5
     """
 
     def __init__(self, message: str, request):
@@ -36,8 +36,8 @@ class ResponseError(RuntimeError):
     ResponseError
 
     Parameters:
-        request (openc3.execptions.CosmosJsonRpcRequest): CosmosJsonRpcRequest v5
-        response (openc3.execptions.CosmosJsonRpcErrorResponse): CosmosJsonRpcErrorResponse v5
+        request (openc3.exceptions.CosmosJsonRpcRequest): CosmosJsonRpcRequest v5
+        response (openc3.exceptions.CosmosJsonRpcErrorResponse): CosmosJsonRpcErrorResponse v5
     """
 
     def __init__(self, request, response):
@@ -114,7 +114,7 @@ class JsonRpcRequest(JsonRpc):
         request_data -- JSON encoded string representing the request
         request_headers -- Request header to include the auth token
         """
-        msg = "invaid json-rpc 2.0 request"
+        msg = "invalid json-rpc 2.0 request"
         try:
             hash = json.loads(request_data)
             if request_headers.get("HTTP_AUTHORIZATION"):

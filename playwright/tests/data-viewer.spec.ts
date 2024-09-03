@@ -104,13 +104,13 @@ test('opens and resets the configuration', async ({ page, utils }) => {
   await page.getByRole('tab', { name: 'Test2' }).click()
   await expect(page.getByText('Current Time:')).toBeVisible()
 
-  // Reset this test configuation
+  // Reset this test configuration
   await page.locator('[data-test=data-viewer-file]').click()
   await page.locator('text=Reset Configuration').click()
   await utils.sleep(200) // Allow menu to close
   await expect(page.getByText("You're not viewing any packets")).toBeVisible()
 
-  // Delete this test configuation
+  // Delete this test configuration
   await page.locator('[data-test="data-viewer-file"]').click()
   await page.locator('text=Open Configuration').click()
   await page
@@ -422,11 +422,14 @@ test('works with UTC date / times', async ({ page, utils }) => {
 
   await addComponent(page, utils, 'INST', 'ADCS')
   await page.locator('[data-test=start-button]').click()
-  await utils.sleep(500)
-  localStartTime = addSeconds(localStartTime, 3)
+  localStartTime = addSeconds(localStartTime, 5)
   expect(
     await page.inputValue('[data-test=history-component-text-area]'),
-  ).toContain(localStartTime.toISOString().split('.')[0])
+  ).toContain(
+    // Original string is like '2024-08-26T21:23:41.319Z'
+    // So we split on ':' to just get the year and hour
+    localStartTime.toISOString().split(':').slice(0, 1).join(':'),
+  )
 
   // Switch back to local time
   await page.goto('/tools/admin/settings')

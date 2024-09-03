@@ -18,7 +18,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 */
 
@@ -93,7 +93,7 @@ __attribute__((noreturn)) static void catch_sigsegv(int sig_num)
            timeinfo.tm_min,
            timeinfo.tm_sec);
 
-  // Fortify warns about Path Manipulation here. We explictly allow this to let
+  // Fortify warns about Path Manipulation here. We explicitly allow this to let
   // segfault files be written to a directory of their choosing.
   // The input is validated above for length and to ensure it is a writable directory.
   // If the checks fail the directory is set to the current directory without additional info.
@@ -124,7 +124,7 @@ __attribute__((noreturn)) static void catch_sigsegv(int sig_num)
 void Init_platform(void)
 {
 #ifdef _WIN32
-  /* Only supprt linux segfault catching */
+  /* Only support linux segfault catching */
 #else
   signal(SIGSEGV, catch_sigsegv);
   signal(SIGILL, catch_sigsegv);

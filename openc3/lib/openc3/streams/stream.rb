@@ -17,11 +17,11 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 module OpenC3
-  # Class that implments the following methods: read, write(data),
+  # Class that implements the following methods: read, write(data),
   # connect, connected? and disconnect. Streams are simply data sources which
   # {Protocol} classes read and write to. This separation of concerns
   # allows Streams to simply focus on getting and sending raw data while the

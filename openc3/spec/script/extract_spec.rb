@@ -102,7 +102,7 @@ module OpenC3
         expect { extract_fields_from_cmd_text("TEST TEST TEST") }.to raise_error(/Only Target Name and Command Name must be given/)
       end
 
-      it "should complain if any key value pairs are misformed" do
+      it "should complain if any key value pairs are malformed" do
         expect { extract_fields_from_cmd_text("TEST TEST with KEY VALUE, KEY VALUE, VALUE") }.to raise_error(/Missing value for last command parameter/)
         expect { extract_fields_from_cmd_text("TEST TEST with KEY VALUE KEY VALUE") }.to raise_error(/Missing comma in command parameters/)
         expect { extract_fields_from_cmd_text("TEST TEST with KEY VALUE KEY, KEY VALUE") }.to raise_error(/Missing comma in command parameters/)

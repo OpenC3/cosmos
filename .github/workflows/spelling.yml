@@ -1,0 +1,20 @@
+name: Check Spelling
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  spelling:
+    name: Codespell
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: codespell-project/actions-codespell@v2
+      with:
+        # Skip generated code as well as cstol_converter which has false
+        # positivies on ADN and Adn
+        skip: ./docs,*.map,*.min.js,*.pem,*.bin,cstol_converter
+        ignore_words_file: .whitelist

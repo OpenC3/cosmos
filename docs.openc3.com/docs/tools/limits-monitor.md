@@ -4,7 +4,7 @@ title: Limits Monitor
 
 ## Introduction
 
-The Limits Monitor application provides situational awareness for all telemetry items with limits. All limits items which violate their yellow or red limits are shown and continue to be shown until explicity dismissed. Individual items and entire packets can be manually ignored to filter out known issues. In addition, all limits events are logged in a table which can be searched.
+The Limits Monitor application provides situational awareness for all telemetry items with limits. All limits items which violate their yellow or red limits are shown and continue to be shown until explicitly dismissed. Individual items and entire packets can be manually ignored to filter out known issues. In addition, all limits events are logged in a table which can be searched.
 
 ![Cmd Tlm Server](/img/limits_monitor/limits_monitor.png)
 

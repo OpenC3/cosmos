@@ -41,7 +41,7 @@ After you activate the environment, your command prompt will be modified to refl
 
 ### Development requirements-dev.txt
 
-Althought requests is required, when doing development work it is helpful to test with pytest, use black, and coverage. These can be found in `requirements-dev.txt`
+Although requests is required, when doing development work it is helpful to test with pytest, use black, and coverage. These can be found in `requirements-dev.txt`
 
 ```
 > py -m pip install -r requirements-dev.txt

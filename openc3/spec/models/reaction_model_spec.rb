@@ -103,7 +103,7 @@ module OpenC3
     end
 
     describe "self.all" do
-      it "scope seperation returns no trigger models" do
+      it "scope separation returns no trigger models" do
         generate_reaction()
         all = ReactionModel.all(scope: 'NOPE')
         expect(all.empty?).to be_truthy()

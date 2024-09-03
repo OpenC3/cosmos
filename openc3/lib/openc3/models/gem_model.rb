@@ -90,16 +90,16 @@ module OpenC3
       Gem.sources = [rubygems_url] if rubygems_url
       Gem.done_installing_hooks.clear
       begin
-        # Look for local gems only first, this avoids lengthly timeouts when checking rubygems in airgap env
+        # Look for local gems only first, this avoids lengthy timeouts when checking rubygems in airgap env
         Gem.install(gem_file_path, "> 0.pre", build_args: ['--no-document'], prerelease: true, domain: :local)
-      rescue Gem::Exception => err
+      rescue Gem::Exception => e
         # If there is a failure look for both local and remote gems
         Gem.install(gem_file_path, "> 0.pre", build_args: ['--no-document'], prerelease: true, domain: :both)
       end
-    rescue => err
-      message = "Gem file #{gem_file_path} error installing to #{ENV['GEM_HOME']}\n#{err.formatted}"
+    rescue => e
+      message = "Gem file #{gem_file_path} error installing to #{ENV['GEM_HOME']}\n#{e.formatted}"
       Logger.error message
-      raise err
+      raise e
     end
 
     def self.destroy(name, log_and_raise_needed_errors: true)
@@ -114,9 +114,9 @@ module OpenC3
       else
         begin
           Gem::Uninstaller.new(gem_name, {:version => version, :force => true}).uninstall
-        rescue => err
-          Logger.error "Gem file #{name} error uninstalling\n#{err.formatted}"
-          raise err
+        rescue => e
+          Logger.error "Gem file #{name} error uninstalling\n#{e.formatted}"
+          raise e
         end
       end
     end

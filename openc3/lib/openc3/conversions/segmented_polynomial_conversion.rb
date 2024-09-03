@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/conversions/conversion'
@@ -42,7 +42,7 @@ module OpenC3
       attr_reader :coeffs
 
       # Creates a polynomial conversion segment. Multiple Segments are used to
-      # implemnt a {SegmentedPolynomialConversion}.
+      # implement a {SegmentedPolynomialConversion}.
       #
       # @param lower_bound [Integer] The value at which point this polynomial conversion
       #   should apply. All values >= to this value will be converted using the
@@ -60,16 +60,16 @@ module OpenC3
       # @param other_segment [Segment] The segment to compare
       # @return [Integer] 1 if self.lower_bound > other_segment.lower_bound, 0
       #   if they are equal, -1 if self.lower_bound < other_segment.lower_bound
-      def <=>(other_segment)
-        return other_segment.lower_bound <=> @lower_bound
+      def <=>(other)
+        return other.lower_bound <=> @lower_bound
       end
 
       # Implement equality operator primarily for ease of testing
       #
       # @param segment [Segment] Other segment
-      def ==(other_segment)
-        @lower_bound == other_segment.lower_bound &&
-          @coeffs == other_segment.coeffs
+      def ==(other)
+        @lower_bound == other.lower_bound &&
+          @coeffs == other.coeffs
       end
 
       # Perform the polynomial conversion

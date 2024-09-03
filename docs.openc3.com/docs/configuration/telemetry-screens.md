@@ -104,7 +104,7 @@ SETTING and SUBSETTING applies only to the widget defined immediately before it.
 GLOBAL_SETTING and GLOBAL_SUBSETTING applies to all widgets.
 
 Common wiget settings are defined here. Some widgets define their own
-unqiue settings which are documented under that specific widget.
+unique settings which are documented under that specific widget.
 
 
 
@@ -277,7 +277,7 @@ END
 ## NAMED_WIDGET
 **Name a widget to allow access to it via the getNamedWidget method**
 
-To programatically access parts of a telemetry screen you need to name the widget. This is useful when creating screens with buttons that read values from other widgets.
+To programmatically access parts of a telemetry screen you need to name the widget. This is useful when creating screens with buttons that read values from other widgets.
 
 :::warning
 getNamedWidget returns the widget itself and thus must be operated on using methods native to that widget
@@ -429,7 +429,7 @@ END
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Tab text | Text to diplay in the tab | True |
+| Tab text | Text to display in the tab | True |
 
 Example Usage:
 ```ruby
@@ -1109,6 +1109,14 @@ IMAGEVIEWER INST IMAGE IMAGE jpg
 ### PROGRESSBAR
 **Displays a progress bar that is useful for displaying percentages**
 
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Target name | The target name | True |
+| Packet name | The packet name | True |
+| Item name | The item name | True |
+| Scale factor | Value to multiple the telemetry item by before displaying the in the progress bar. Final value should be in the range of 0 to 100. Default is 1.0. | False |
+| Width | Width of the progress bar (default = 100 pixels) | False |
+| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
 
 Example Usage:
 ```ruby

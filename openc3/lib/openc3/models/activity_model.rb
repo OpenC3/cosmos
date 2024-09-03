@@ -162,7 +162,7 @@ module OpenC3
     # need to return all the activities that may start before us and verify that we don't overlap them.
     # Activities are only inserted by @start time so we need to go back to verify we don't overlap existing @stop.
     # Note: Score is the Seconds since the Unix Epoch: (%s) Number of seconds since 1970-01-01 00:00:00 UTC.
-    # zrange rev byscore finds activites from in reverse order so the first task is the closest task to the current score.
+    # zrange rev byscore finds activities from in reverse order so the first task is the closest task to the current score.
     # In this case a parameter ignore_score allows the request to ignore that time and skip to the next time
     # but if nothing is found in the time range we can return nil.
     #
@@ -241,14 +241,14 @@ module OpenC3
         @recurring['uuid'] = SecureRandom.uuid
         @recurring['start'] = @start
         duration = @stop - @start
-        recurrance = 0
+        recurrence = 0
         case @recurring['span']
         when 'minutes'
-          recurrance = @recurring['frequency'].to_i * 60
+          recurrence = @recurring['frequency'].to_i * 60
         when 'hours'
-          recurrance = @recurring['frequency'].to_i * 3600
+          recurrence = @recurring['frequency'].to_i * 3600
         when 'days'
-          recurrance = @recurring['frequency'].to_i * 86400
+          recurrence = @recurring['frequency'].to_i * 86400
         end
 
         if overlap
@@ -264,13 +264,13 @@ module OpenC3
         add_event(status: 'created')
 
         Store.multi do |multi|
-          (@start..@recurring['end']).step(recurrance).each do |start_time|
+          (@start..@recurring['end']).step(recurrence).each do |start_time|
             @start = start_time
             @stop = start_time + duration
 
             if last_stop and @start < last_stop
               @events.pop # Remove previously created event
-              raise ActivityOverlapError.new "Recurring activity overlap. Increase recurrance delta or decrease activity duration."
+              raise ActivityOverlapError.new "Recurring activity overlap. Increase recurrence delta or decrease activity duration."
             end
             if overlap
               existing.each do |value|

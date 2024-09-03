@@ -22,7 +22,7 @@
 
 <template>
   <span id="cosmos-rux-icon" :title="label" :style="style" :size="size">
-    <!-- Camel case props becase svg -->
+    <!-- Camel case props because svg -->
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 128 128"

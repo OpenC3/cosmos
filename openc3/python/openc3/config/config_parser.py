@@ -87,7 +87,7 @@ class ConfigParser:
     # self.param remove_quotes [Boolean] Whether to remove beginning and ending single
     #   or double quote characters from parameters.
     # self.param run_erb [Boolean] Whether or not to run ERB on the file - Has no effect in Python
-    # self.param variables [Hash] variables to pash to ERB context
+    # self.param variables [Hash] variables to push to ERB context
     # self.param block [Block] The block to yield to
     # self.yieldparam keyword [String] The keyword in the current parsed line
     # self.yieldparam parameters [Array<String>] The parameters in the current parsed line

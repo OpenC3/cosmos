@@ -147,4 +147,4 @@ openc3-cosmos-cmd-tlm-api % bundle install
 openc3-cosmos-cmd-tlm-api % bundle exec rails s
 ```
 
-1.  Once the `bundle exec rails s` command returns you should see API requests coming from interations in the frontend code. If you add code (like Ruby debugging statements) to the cmd-tlm-api code you need to stop the server (CTRL-C) and restart it to see the effect.
+1.  Once the `bundle exec rails s` command returns you should see API requests coming from interactions in the frontend code. If you add code (like Ruby debugging statements) to the cmd-tlm-api code you need to stop the server (CTRL-C) and restart it to see the effect.

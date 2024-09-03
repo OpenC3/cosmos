@@ -65,7 +65,7 @@ class Packet(Structure):
         item_class=PacketItem,
     ):
         super().__init__(default_endianness, buffer, item_class)
-        # Explictly call the defined setter methods
+        # Explicitly call the defined setter methods
         self.target_name = target_name
         self.packet_name = packet_name
         self.description = description
@@ -409,20 +409,20 @@ class Packet(Structure):
 
     # Define an item in the packet. This creates a new instance of the
     # item_class as given in the constructor and adds it to the items hash. It
-    # also resizes the buffer to accomodate the new item.
+    # also resizes the buffer to accommodate the new item.
     #
     # self.param name [String] Name of the item. Used by the items hash to retrieve
     #   the item.
     # self.param bit_offset [Integer] Bit offset of the item in the raw buffer
     # self.param bit_size [Integer] Bit size of the item in the raw buffer
     # self.param data_type [Symbol] Type of data contained by the item. This is
-    #   dependant on the item_class but by default see StructureItem.
+    #   dependent on the item_class but by default see StructureItem.
     # self.param array_size [Integer] Set to a non None value if the item is to:
     #   represented as an array.
     # self.param endianness [Symbol] Endianness of this item. By default the
-    #   endianness as set in the constructure is used.
+    #   endianness as set in the constructor is used.
     # self.param overflow [Symbol] How to handle value overflows. This is
-    #   dependant on the item_class but by default see StructureItem.
+    #   dependent on the item_class but by default see StructureItem.
     # self.param format_string [String] String to pass to Kernel#sprintf
     # self.param read_conversion [Conversion] Conversion to apply case reading the
     #   item from the packet buffer
@@ -452,7 +452,7 @@ class Packet(Structure):
         return self.packet_define_item(item, format_string, read_conversion, write_conversion, id_value)
 
     # Add an item to the packet by adding it to the items hash. It also
-    # resizes the buffer to accomodate the new item.
+    # resizes the buffer to accommodate the new item.
     #
     # self.param item [PacketItem] Item to add to the packet
     # self.return [PacketItem] The same packet item
@@ -464,7 +464,7 @@ class Packet(Structure):
 
     # Define an item at the end of the packet. This creates a new instance of the
     # item_class as given in the constructor and adds it to the items hash. It
-    # also resizes the buffer to accomodate the new item.
+    # also resizes the buffer to accommodate the new item.
     #
     # self.param name (see #define_item)
     # self.param bit_size (see #define_item)

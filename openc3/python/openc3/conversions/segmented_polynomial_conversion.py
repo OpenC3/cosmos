@@ -26,7 +26,7 @@ class SegmentedPolynomialConversion(Conversion):
     # encountered.
     class Segment:
         # Creates a polynomial conversion segment. Multiple Segments are used to
-        # implemnt a {SegmentedPolynomialConversion}.
+        # implement a {SegmentedPolynomialConversion}.
         #
         # @param lower_bound [Integer] The value at which point this polynomial conversion
         #   should apply. All values >= to this value will be converted using the

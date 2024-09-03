@@ -1933,6 +1933,7 @@ export default {
           }
           this.showMetadata()
           break
+        // This is called continuously by the backend
         case 'open_file_dialog':
         case 'open_files_dialog':
           this.file.title = data.args[0]
@@ -1953,34 +1954,46 @@ export default {
       }
     },
     async fileDialogCallback(files) {
-      this.file.show = false // Close the dialog
       // Set fileNames to 'Cancel' in case they cancelled
       // otherwise we will populate it with the file names they selected
       let fileNames = 'Cancel'
+      // Record all the API request promises so we can ensure they complete
+      let promises = []
       if (files != 'Cancel') {
         fileNames = []
-        await files.forEach(async (file) => {
+        files.forEach((file) => {
           fileNames.push(file.name)
-          // Reassign data to presignedRequest for readability
-          const { data: presignedRequest } = await Api.get(
-            `/openc3-api/storage/upload/${encodeURIComponent(
-              `${window.openc3Scope}/tmp/${file.name}`,
-            )}?bucket=OPENC3_CONFIG_BUCKET`,
+          promises.push(
+            Api.get(
+              `/openc3-api/storage/upload/${encodeURIComponent(
+                `${window.openc3Scope}/tmp/${file.name}`,
+              )}?bucket=OPENC3_CONFIG_BUCKET`,
+            ).then((response) => {
+              // This pushes the file into storage by using the fields in the presignedRequest
+              // See storage_controller.rb get_upload_presigned_request()
+              promises.push(
+                axios({
+                  ...response.data,
+                  data: file,
+                }),
+              )
+            }),
           )
-          // This pushes the file into storage by using the fields in the presignedRequest
-          // See storage_controller.rb get_presigned_request()
-          const response = await axios({
-            ...presignedRequest,
-            data: file,
-          })
         })
       }
-      await Api.post(`/script-api/running-script/${this.scriptId}/prompt`, {
-        data: {
-          method: this.file.multiple ? 'open_files_dialog' : 'open_file_dialog',
-          answer: fileNames,
-          prompt_id: this.activePromptId,
-        },
+      // We have to wait for all the upload API requests to finish before notifying the prompt
+      Promise.all(promises).then((responses) => {
+        Api.post(`/script-api/running-script/${this.scriptId}/prompt`, {
+          data: {
+            method: this.file.multiple
+              ? 'open_files_dialog'
+              : 'open_file_dialog',
+            answer: fileNames,
+            prompt_id: this.activePromptId,
+          },
+        }).then((response) => {
+          this.file.show = false // Close the dialog
+        })
       })
     },
     setError(event) {
