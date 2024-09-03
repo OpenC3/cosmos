@@ -751,7 +751,7 @@ def cli_script_run(disconnect=false, environment={}, args=[])
     rescue Timeout::ExitException, Timeout::Error => tmoexcp
       # Timeout exceptions are also thrown by the Websocket API, so we check
       if tmoexcp.message =~ /^--wait /
-        puts tmoexcp.message+", detaching from running script #{args[0]}"
+        puts tmoexcp.message + ", detaching from running script #{args[0]}"
       else
         raise
       end
@@ -771,10 +771,8 @@ def cli_script_spawn(disconnect=false, environment={}, args=[])
   scope ||= 'DEFAULT'
   require 'openc3/script'
   if (id = script_run(args[0], disconnect: disconnect, environment: environment, scope: scope))
-    puts "Script #{args[0]} started remotely."
-    ret_code = script_monitor(id)
-  else
-    puts "\nFailed to start #{args[0]}"
+    puts id
+    ret_code = 0
   end
   return ret_code
 end
