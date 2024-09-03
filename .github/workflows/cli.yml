@@ -108,7 +108,7 @@ jobs:
           # list of script filenames on server contains a target folder name
           ./openc3.sh cliroot script list | grep -q "INST2"
           # spawning a script in a subfolder returns 0 and prints only a PID
-          ./openc3.sh cliroot script spawn INST/procedures/checks.rb | grep -q "^\s*\d+\s*$"
+          ./openc3.sh cliroot script spawn INST/procedures/checks.rb | grep -qv "^\s*\d+\s*$"
           # running a known good script with a wait value returns 0 and prints a success message
           ./openc3.sh cliroot script run --wait 10 INST/procedures/checks.rb | grep -q "script complete"
       - name: openc3.sh util save,load

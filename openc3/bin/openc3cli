@@ -660,7 +660,7 @@ def run_bridge(filename, params)
   end
 end
 
-def script_monitor(script_id)
+def cli_script_monitor(script_id)
   ret_code = ERROR_CODE
   require 'openc3/script'
   OpenC3::RunningScriptWebSocketApi.new(id: script_id) do |api|
@@ -744,12 +744,12 @@ def cli_script_run(disconnect=false, environment={}, args=[])
   id = script_run(args[0], disconnect: disconnect, environment: environment, scope: scope) # could raise
   $script_interrupt_text = "  Script #{args[0]} still running remotely.\n" # for Ctrl-C
   if (wait_limit < 1) then
-    ret_code = script_monitor(id)
+    ret_code = cli_script_monitor(id)
   else
     Timeout::timeout(wait_limit, nil, "--wait #{wait_limit} exceeded") do
-      ret_code = script_monitor(id)
+      ret_code = cli_script_monitor(id)
     rescue Timeout::ExitException, Timeout::Error => tmoexcp
-      # Timeout exceptions are also thrown by the Websocket API, so we check
+      # Timeout exceptions are also raised by the Websocket API, so we check
       if tmoexcp.message =~ /^--wait /
         puts tmoexcp.message + ", detaching from running script #{args[0]}"
       else
