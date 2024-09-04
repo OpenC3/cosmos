@@ -66,7 +66,7 @@ TOOL:
       description:
         Position of the tool starting at 2 (1 is reserved for Admin Console).
         Tools without a position are appended to the end as they are installed.
-        All COSMOS open source tools have consequtive integer values for position.
+        All COSMOS open source tools have consecutive integer values for position.
       since: 5.0.8
       parameters:
         - name: Position

@@ -72,7 +72,7 @@ test('selects a target and packet to display', async ({ page, utils }) => {
   await expect(page.locator('id=openc3-tool')).toContainText('BYTES')
 })
 
-test.only('gets details with right click', async ({ page, utils }) => {
+test('gets details with right click', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
   await page
     .getByRole('cell', { name: 'TEMP1', exact: true })
