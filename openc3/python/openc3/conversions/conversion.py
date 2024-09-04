@@ -25,12 +25,14 @@ class Conversion:
     # attr_reader :converted_bit_size
     # # self.return [Integer] The size in bits of the converted array value
     # attr_reader :converted_array_size
+    # attr_reader :args
 
     # Create a new conversion
     def __init__(self):
         self.converted_type = None
         self.converted_bit_size = None
         self.converted_array_size = None
+        self.args = None
 
     # Perform the conversion on the value.
     #
@@ -61,4 +63,6 @@ class Conversion:
             result["converted_bit_size"] = self.converted_bit_size
         if self.converted_array_size is not None:
             result["converted_array_size"] = self.converted_array_size
+        if self.args is not None:
+            result["args"] = json.dumps(self.args)
         return result
