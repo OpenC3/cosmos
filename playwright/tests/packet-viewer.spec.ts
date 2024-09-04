@@ -72,11 +72,11 @@ test('selects a target and packet to display', async ({ page, utils }) => {
   await expect(page.locator('id=openc3-tool')).toContainText('BYTES')
 })
 
-test('gets details with right click', async ({ page, utils }) => {
+test.only('gets details with right click', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
-  // await page.getByRole('row', { name: 'TEMP2 Value' }).locator('[data-test="value"]').click({
   await page
-    .getByRole('row', { name: 'TEMP2' })
+    .getByRole('cell', { name: 'TEMP1', exact: true })
+    .locator('xpath=..') // parent row
     .locator('[data-test="value"]')
     .click({
       button: 'right',
@@ -84,14 +84,17 @@ test('gets details with right click', async ({ page, utils }) => {
   await page.getByRole('menuitem', { name: 'Details' }).click()
   await expect(page.locator('.v-dialog--active')).toBeVisible()
   await expect(page.locator('.v-dialog--active')).toContainText(
-    'INST HEALTH_STATUS TEMP2',
+    'INST HEALTH_STATUS TEMP1',
   )
   // Check that a few of the details are there ... that proves the API request
-  await expect(page.locator('.v-dialog--active')).toContainText('FLOAT')
+  await expect(page.locator('.v-dialog--active')).toContainText('UINT')
   await expect(page.locator('.v-dialog--active')).toContainText(
     'PolynomialConversion',
   )
   await expect(page.locator('.v-dialog--active')).toContainText('CELSIUS')
+  await expect(page.locator('.v-dialog--active')).toContainText(
+    'ExampleLimitsResponse',
+  )
 
   // Get out of the details dialog
   await page.locator('[data-test="notifications"]').click({ force: true })
@@ -100,7 +103,6 @@ test('gets details with right click', async ({ page, utils }) => {
   // Scroll to the top to allow better right click
   await page.mouse.wheel(0, 0)
   await utils.sleep(100)
-  // await page.getByRole('row', { name: 'PACKET_TIMESECONDS * Value' }).locator('[data-test="value"]').click({
   await page
     .getByRole('row', { name: 'PACKET_TIMESECONDS' })
     .locator('[data-test="value"]')
