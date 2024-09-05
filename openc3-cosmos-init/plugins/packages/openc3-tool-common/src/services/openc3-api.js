@@ -265,8 +265,8 @@ export class OpenC3Api {
     return this.exec('get_all_telemetry', [target_name])
   }
 
-  get_all_tlm_names(target_name) {
-    return this.exec('get_all_tlm_names', [target_name])
+  get_all_tlm_names(target_name, hidden = false) {
+    return this.exec('get_all_tlm_names', [target_name], { hidden: hidden })
   }
   // DEPRECATED
   get_all_telemetry_names(target_name) {
@@ -403,8 +403,8 @@ export class OpenC3Api {
     return this.exec('get_all_commands', [target_name])
   }
 
-  get_all_cmd_names(target_name) {
-    return this.exec('get_all_cmd_names', [target_name])
+  get_all_cmd_names(target_name, hidden = false) {
+    return this.exec('get_all_cmd_names', [target_name], { hidden: hidden })
   }
   // DEPRECATED for get_all_cmd_names
   get_all_command_names(target_name) {

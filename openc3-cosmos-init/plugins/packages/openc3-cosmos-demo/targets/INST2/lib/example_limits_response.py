@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -15,13 +15,16 @@
 # if purchased from OpenC3, Inc.
 
 from openc3.packets.limits_response import LimitsResponse
-from openc3.api.cmd_api import cmd, cmd_no_hazardous_check
+from openc3.api.cmd_api import cmd
 
 
 class ExampleLimitsResponse(LimitsResponse):
-    def call(self, packet, item, old_limits_state):
+    def call(self, _packet, item, _old_limits_state):
         match item.limits.state:
             case "RED_HIGH":
-                cmd("<%= target_name %>", "COLLECT", {"TYPE": "NORMAL", "DURATION": 7})
+                cmd(
+                    "<%= target_name %> COLLECT with TYPE NORMAL, DURATION 8",
+                    validator=False,
+                )
             case "RED_LOW":
-                cmd_no_hazardous_check("<%= target_name %>", "CLEAR")
+                cmd("<%= target_name %> ABORT", validator=False)

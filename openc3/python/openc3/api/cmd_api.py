@@ -14,6 +14,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import os
 from contextlib import contextmanager
 from openc3.api import WHITELIST
 from openc3.api.interface_api import get_interface
@@ -29,7 +30,6 @@ from openc3.topics.command_topic import CommandTopic
 from openc3.topics.interface_topic import InterfaceTopic
 from openc3.topics.decom_interface_topic import DecomInterfaceTopic
 from openc3.topics.command_decom_topic import CommandDecomTopic
-
 from openc3.packets.packet import Packet
 
 WHITELIST.extend(
@@ -582,22 +582,29 @@ def _cmd_implementation(
     target_name = target_name.upper()
     cmd_name = cmd_name.upper()
     cmd_params = {k.upper(): v for k, v in cmd_params.items()}
-    authorize(permission="cmd", target_name=target_name, packet_name=cmd_name, scope=scope)
+    user = authorize(permission="cmd", target_name=target_name, packet_name=cmd_name, scope=scope)
+    if not user:
+        user = {}
+        user["username"] = os.environ.get("OPENC3_MICROSERVICE_NAME")
+
+        # Get the caller stack trace to determine the point in the code where the command was called
+        # This code works but ultimately we didn't want to overload 'username' and take a performance hit
+        # stack_trace = traceback.extract_stack()
+        # for frame in stack_trace:
+        #     # Look for the following line in the stack trace which indicates custom code
+        #     # File "/tmp/tmpp96e6j83/targets/INST2/lib/example_limits_response.py", line 25, in call"
+        #     if f"/targets/{target_name}" in frame.filename:
+        #         user = {}
+        #         # username is the name of the custom code file
+        #         user["username"] = frame.filename.split("/targets/")[-1].split('"')[0]
+        #         break
+
     packet = TargetModel.packet(target_name, cmd_name, type="CMD", scope=scope)
     if packet.get("disabled", False):
         error = DisabledError()
         error.target_name = target_name
         error.cmd_name = cmd_name
         raise error
-
-    command = {
-        "target_name": target_name,
-        "cmd_name": cmd_name,
-        "cmd_params": cmd_params,
-        "range_check": str(range_check),
-        "hazardous_check": str(hazardous_check),
-        "raw": str(raw),
-    }
 
     timeout = None
     if kwargs.get("timeout") is not None:
@@ -629,13 +636,31 @@ def _cmd_implementation(
     # If they explicitly set the log_message kwarg then that overrides the above
     if kwargs.get("log_message") is not None:
         if kwargs["log_message"] not in [True, False]:
-            raise RuntimeError(f"Invalid log_message parameter: {log_message}. Must be True or False.")
+            raise RuntimeError(f"Invalid log_message parameter: {kwargs['log_message']}. Must be True or False.")
         log_message = kwargs["log_message"]
+    cmd_string = _cmd_log_string(method_name, target_name, cmd_name, cmd_params, packet)
     if log_message:
-        Logger.info(
-            _cmd_log_string(method_name, target_name, cmd_name, cmd_params, packet),
-            scope,
-        )
+        Logger.info(cmd_string, scope)
+
+    # Check for the validator kwarg
+    validator = True
+    if kwargs.get("validator") is not None:
+        if kwargs["validator"] not in [True, False]:
+            raise RuntimeError(f"Invalid validator parameter: {kwargs['validator']}. Must be True or False.")
+        validator = kwargs["validator"]
+
+    username = user["username"] if user and user["username"] else "anonymous"
+    command = {
+        "target_name": target_name,
+        "cmd_name": cmd_name,
+        "cmd_params": cmd_params,
+        "range_check": str(range_check),
+        "hazardous_check": str(hazardous_check),
+        "raw": str(raw),
+        "cmd_string": cmd_string,
+        "username": username,
+        "validator": str(validator),
+    }
     return CommandTopic.send_command(command, timeout, scope)
 
 
@@ -650,30 +675,29 @@ def _cmd_log_string(method_name, target_name, cmd_name, cmd_params, packet):
             if key in Packet.RESERVED_ITEM_NAMES:
                 continue
 
-        found = False
-        for item in packet["items"]:
-            if item["name"] == key:
-                found = item
-                break
-        if found and "data_type" in found:
-            item_type = found["data_type"]
-        else:
-            item_type = None
-
-        if isinstance(value, str):
-            if item_type == "BLOCK" or item_type == "STRING":
-                if not value.isascii():
-                    value = "0x" + simple_formatted(value)
-                else:
-                    value = f"'{str(value)}'"
+            found = False
+            for item in packet["items"]:
+                if item["name"] == key:
+                    found = item
+                    break
+            if found and "data_type" in found:
+                item_type = found["data_type"]
             else:
-                value = convert_to_value(value)
-            if len(value) > 256:
-                value = value[:256] + "...'"
-            value = value.replace('"', "'")
-        elif isinstance(value, list):
-            value = f"[{', '.join(str(i) for i in value)}]"
-        params.append(f"{key} {value}")
-        params = ", ".join(params)
-        output_string += " with " + params + '")'
+                item_type = None
+
+            if isinstance(value, str):
+                if item_type == "BLOCK" or item_type == "STRING":
+                    if not value.isascii():
+                        value = "0x" + simple_formatted(value)
+                    else:
+                        value = f"'{str(value)}'"
+                else:
+                    value = convert_to_value(value)
+                if len(value) > 256:
+                    value = value[:256] + "...'"
+                value = value.replace('"', "'")
+            elif isinstance(value, list):
+                value = f"[{', '.join(str(i) for i in value)}]"
+            params.append(f"{key} {value}")
+        output_string += " with " + ", ".join(params) + '")'
     return output_string

@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -165,29 +165,27 @@ class SimInst(SimulatedTarget):
 
         match name:
             case "COLLECT":
+                hs_packet.write("cmd_acpt_cnt", hs_packet.read("cmd_acpt_cnt") + 1)
                 hs_packet.write("collects", hs_packet.read("collects") + 1)
                 hs_packet.write("duration", packet.read("duration"))
                 hs_packet.write("collect_type", packet.read("type"))
+            case "ABORT" | "FLTCMD" | "ARYCMD":
+                hs_packet.write("cmd_acpt_cnt", hs_packet.read("cmd_acpt_cnt") + 1)
             case "CLEAR":
+                hs_packet.write("cmd_acpt_cnt", 0)
                 hs_packet.write("collects", 0)
-            case "MEMLOAD":
-                hs_packet.write("blocktest", packet.read("data"))
-            case "QUIET":
-                if packet.read("state") == "TRUE":
-                    self.quiet = True
-                else:
-                    self.quiet = False
-            case "TIME_OFFSET":
-                self.time_offset = packet.read("seconds")
             case "SETPARAMS":
+                hs_packet.write("cmd_acpt_cnt", hs_packet.read("cmd_acpt_cnt") + 1)
                 params_packet.write("value1", packet.read("value1"))
                 params_packet.write("value2", packet.read("value2"))
                 params_packet.write("value3", packet.read("value3"))
                 params_packet.write("value4", packet.read("value4"))
                 params_packet.write("value5", packet.read("value5"))
             case "ASCIICMD":
+                hs_packet.write("cmd_acpt_cnt", hs_packet.read("cmd_acpt_cnt") + 1)
                 hs_packet.write("asciicmd", packet.read("string"))
             case "SLRPNLDEPLOY":
+                hs_packet.write("cmd_acpt_cnt", hs_packet.read("cmd_acpt_cnt") + 1)
                 if self.solar_panel_thread and self.solar_panel_thread.is_alive():
                     return
                 self.solar_panel_thread = threading.Thread(
@@ -195,8 +193,24 @@ class SimInst(SimulatedTarget):
                 )
                 self.solar_panel_thread.start()
             case "SLRPNLRESET":
+                hs_packet.write("cmd_acpt_cnt", hs_packet.read("cmd_acpt_cnt") + 1)
                 kill_thread(self, self.solar_panel_thread)
                 self.solar_panel_positions = SimInst.SOLAR_PANEL_DFLTS[:]
+            case "MEMLOAD":
+                hs_packet.write("cmd_acpt_cnt", hs_packet.read("cmd_acpt_cnt") + 1)
+                hs_packet.write("blocktest", packet.read("data"))
+            case "QUIET":
+                hs_packet.write("cmd_acpt_cnt", hs_packet.read("cmd_acpt_cnt") + 1)
+                if packet.read("state") == "TRUE":
+                    self.quiet = True
+                else:
+                    self.quiet = False
+            case "TIME_OFFSET":
+                hs_packet.write("cmd_acpt_cnt", hs_packet.read("cmd_acpt_cnt") + 1)
+                self.time_offset = packet.read("seconds")
+            case "HIDDEN":
+                # Deliberately do not increment cmd_acpt_cnt
+                self.tlm_packets["HIDDEN"].count = packet.read("count")
 
     def solar_panel_thread_method(self):
         self.solar_panel_thread_cancel = False

@@ -291,14 +291,6 @@ module OpenC3
       cmd_pkt_hazardous?(build_cmd(target_name, packet_name, params, false, false, false))
     end
 
-    def clear_counters
-      @config.commands.each do |_target_name, target_packets|
-        target_packets.each do |_packet_name, packet|
-          packet.received_count = 0
-        end
-      end
-    end
-
     def all
       @config.commands
     end
