@@ -471,10 +471,20 @@ test('ignores normal range checks', async ({ page, utils }) => {
   await page.locator('[data-test="clear-history"]').click()
   await utils.selectTargetPacketItem('INST', 'COLLECT')
   await selectValue(page, 'TYPE', 'NORMAL') // Ensure TYPE is set since its required
+  await page.locator('[data-test="select-send"]').click()
+  await expect(page.locator('main')).toContainText(
+    'cmd("INST COLLECT with TYPE \'NORMAL\', DURATION 1, OPCODE 171, TEMP 0")',
+  )
+  await checkHistory(
+    page,
+    'cmd("INST COLLECT with TYPE \'NORMAL\', DURATION 1, OPCODE 171, TEMP 0")',
+  )
   await setValue(page, 'TEMP', '100')
   await page.locator('[data-test="select-send"]').click()
   // Dialog should pop up with error
-  await expect(page.locator('.v-dialog')).toContainText('not in valid range')
+  await expect(page.locator('.v-dialog')).toContainText(
+    "Error sending INST COLLECT due to RuntimeError: Command parameter 'INST COLLECT TEMP' = 100 not in valid range of 0.0 to 25.0",
+  )
   await page.locator('button:has-text("Ok")').click()
   // Disable range checks
   await page.locator('[data-test=command-sender-mode]').click()
@@ -487,6 +497,27 @@ test('ignores normal range checks', async ({ page, utils }) => {
     page,
     'cmd_no_range_check("INST COLLECT with TYPE \'NORMAL\', DURATION 1, OPCODE 171, TEMP 100")',
   )
+
+  // Enable range checks
+  await page.locator('[data-test=command-sender-mode]').click()
+  await page.locator('text=Ignore Range Checks').click()
+
+  await utils.selectTargetPacketItem('EXAMPLE', 'START')
+  await page.locator('[data-test=sender-history]').click()
+  await page
+    .locator('[data-test="sender-history"]')
+    .press('ControlOrMeta+ArrowRight')
+  await page.locator('[data-test="sender-history"]').press('ArrowLeft')
+  await page.locator('[data-test="sender-history"]').press('ArrowLeft')
+  await page.locator('[data-test="sender-history"]').press('ArrowLeft')
+  await page.locator('[data-test="sender-history"]').press('5')
+  await utils.sleep(100)
+  await page.locator('[data-test="sender-history"]').press('Enter')
+  // Dialog should pop up with error
+  await expect(page.locator('.v-dialog')).toContainText(
+    "Error sending INST COLLECT due to RuntimeError: Command parameter 'INST COLLECT TEMP' = 50 not in valid range of 0.0 to 25.0",
+  )
+  await page.locator('button:has-text("Ok")').click()
 })
 
 test('ignores hazardous range checks', async ({ page, utils }) => {
