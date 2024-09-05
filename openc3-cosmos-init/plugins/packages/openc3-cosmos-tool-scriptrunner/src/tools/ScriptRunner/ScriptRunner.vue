@@ -900,6 +900,9 @@ export default {
       if (role == 'admin' || role == 'operator') {
         this.readOnlyUser = false
         this.executeUser = true
+      } else if (role == 'runner') {
+        this.readOnlyUser = true
+        this.executeUser = true
       } else {
         await Api.get(`/openc3-api/roles/${role}`).then((response) => {
           if (response.data.permissions !== undefined) {
