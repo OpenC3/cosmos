@@ -310,6 +310,7 @@ $system_exit_count = 0
 alias old_exit exit
 def exit(*args)
   $system_exit_count += 1
+  super(*args)
 end
 
 RSpec.configure do |config|
