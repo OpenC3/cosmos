@@ -372,15 +372,6 @@ module OpenC3
       end
     end
 
-    # Clears the received_count value on every packet in every target
-    def clear_counters
-      @config.telemetry.each do |_target_name, target_packets|
-        target_packets.each do |_packet_name, packet|
-          packet.received_count = 0
-        end
-      end
-    end
-
     # Resets metadata on every packet in every target
     def reset
       @config.telemetry.each do |_target_name, target_packets|
@@ -388,18 +379,6 @@ module OpenC3
           packet.reset
         end
       end
-    end
-
-    # Returns the first non-hidden packet
-    def first_non_hidden
-      @config.telemetry.each do |target_name, target_packets|
-        next if target_name == 'UNKNOWN'
-
-        target_packets.each do |_packet_name, packet|
-          return packet unless packet.hidden
-        end
-      end
-      nil
     end
 
     # Returns an array with a "TARGET_NAME PACKET_NAME ITEM_NAME" string for every item in the system

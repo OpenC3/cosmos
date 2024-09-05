@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -102,9 +102,22 @@ module OpenC3
           packet.extra = extra
         end
         packet.buffer = msg_hash["buffer"]
-        packet.process # Run processors
-        packet.check_limits(System.limits_set) # Process all the limits and call the limits_change_callback (as necessary)
+        # Processors are user code points which must be rescued
+        # so the TelemetryDecomTopic can write the packet
+        begin
+          packet.process # Run processors
+        rescue Exception => e
+          @error_count += 1
+          @metric.set(name: 'decom_error_total', value: @error_count, type: 'counter')
+          @error = e
+          @logger.error e.message
+        end
+        # Process all the limits and call the limits_change_callback (as necessary)
+        # check_limits also can call user code in the limits response
+        # but that is rescued separately in the limits_change_callback
+        packet.check_limits(System.limits_set)
 
+        # This is what updates the CVT
         TelemetryDecomTopic.write_packet(packet, scope: @scope)
         diff = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start # seconds as a float
         @metric.set(name: 'decom_duration_seconds', value: diff, type: 'gauge', unit: 'seconds')
@@ -150,12 +163,14 @@ module OpenC3
 
       if item.limits.response
         begin
+          # TODO: The limits response is user code and should be run as a separate thread / process
+          # If this code blocks it will delay TelemetryDecomTopic.write_packet
           item.limits.response.call(packet, item, old_limits_state)
         rescue Exception => e
           @error = e
           @logger.error "#{packet.target_name} #{packet.packet_name} #{item.name} Limits Response Exception!"
           @logger.error "Called with old_state = #{old_limits_state}, new_state = #{item.limits.state}"
-          @logger.error e.formatted
+          @logger.error e.filtered
         end
       end
     end

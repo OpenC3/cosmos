@@ -42,12 +42,10 @@ class RouterMicroservice(InterfaceMicroservice):
                 except RuntimeError:
                     self.logger.warn(f"Error defining packet of {len(packet)} bytes")
 
-        print(f"packet:{packet} tgt:{packet.target_name} pkt:{packet.packet_name}")
         target_name = packet.target_name
         if not target_name:
             target_name = "UNKNOWN"
         target = System.targets.get(target_name)
-        print(f"int:{self.interface} cmd:{self.interface.cmd_target_names}")
 
         try:
             try:
