@@ -1069,7 +1069,7 @@ module OpenC3
         config << "  ACCESSOR #{@accessor.class} #{@accessor.args.map { |a| a.to_s.quote_if_necessary }.join(" ")}\n"
       end
       if @validator
-        config << "  VALIDATOR #{@validator.class}\n"
+        config << "  VALIDATOR #{@validator.class} #{@validator.args.map { |a| a.to_s.quote_if_necessary }.join(" ")}\n"
       end
       # TODO: Add TEMPLATE_ENCODED so this can always be done inline regardless of content
       if @template

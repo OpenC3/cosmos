@@ -171,6 +171,10 @@ ACCESSOR:
       required: true
       description: The name of the accessor class
       values: .+
+    - name: Argument
+      required: false
+      description: Additional argument passed to the accessor class constructor
+      values: .+
   since: 5.0.10
 TEMPLATE:
   summary: Defines a template string used to initialize the command before default values are filled in
@@ -259,10 +263,9 @@ VALIDATOR:
         underscored filename. For example, 'command_validator.rb' should contain
         'class CommandValidator'.
       values: .*
-    - name: Parameter
+    - name: Argument
       required: false
-      description: Additional parameter values for the validator class which are passed
-        to the class constructor.
+      description: Additional argument passed to the validator class constructor
       values: .*
   ruby_example: |
     VALIDATOR custom_validator.rb

@@ -25,10 +25,12 @@ module OpenC3
   # This class must be subclassed and the pre_check or
   # post_check methods implemented. Do NOT use this class directly.
   class CommandValidator
+    attr_reader :args
     include Api
 
     def initialize(command = nil)
       @command = command
+      @args = []
     end
 
     def pre_check(command)

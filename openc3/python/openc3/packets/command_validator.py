@@ -23,9 +23,13 @@
 class CommandValidator:
     def __init__(self, command=None):
         self.command = command
+        self.args = []
 
     def pre_check(self, command):
         return [True, None]
 
     def post_check(self, command):
         return [True, None]
+
+    def args(self):
+        return self.args
