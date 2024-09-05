@@ -32,7 +32,7 @@ module OpenC3
   describe InterfaceMicroservice do
     before(:each) do
       # This must be here in order to work when running more than this individual file
-      class TestInterface < Interface
+      class TestInterface < Interface # rubocop:disable Lint/ConstantDefinitionInBlock
         def initialize(hostname = "default", port = 12345)
           @hostname = hostname
           @port = port
@@ -110,7 +110,7 @@ module OpenC3
         CvtModel.set(json_hash, target_name: packet.target_name, packet_name: packet.packet_name, scope: "DEFAULT")
       end
 
-      class ApiTest
+      class ApiTest # rubocop:disable Lint/ConstantDefinitionInBlock
         include Extract
         include Api
         include Authorization
@@ -266,8 +266,14 @@ module OpenC3
       interface = im.instance_variable_get(:@interface)
       interface.reconnect_delay = 0.1 # Override the reconnect delay to be quick
 
+      # Mock this because it calls exit which breaks SimpleCov
+      allow(OpenC3).to receive(:handle_fatal_exception) do |exception, _message|
+        expect(exception.message).to eql "test-error"
+      end
+
       capture_io do |stdout|
         Thread.new { im.run }
+
         sleep 0.1 # Allow to start and immediately crash
         expect(stdout.string).to include("RuntimeError")
 

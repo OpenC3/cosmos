@@ -29,13 +29,13 @@ require 'openc3/microservices/router_microservice'
 
 module OpenC3
   describe RouterMicroservice do
-    class ApiTest
+    class ApiTest # rubocop:disable Lint/ConstantDefinitionInBlock
       include Extract
       include Api
       include Authorization
     end
 
-    class TestInterface < Interface
+    class TestRouter < Interface # rubocop:disable Lint/ConstantDefinitionInBlock
       def initialize
         super
         @connected = false
@@ -82,7 +82,7 @@ module OpenC3
       interface = double("Interface").as_null_object
       allow(interface).to receive(:connected?).and_return(true)
       allow(System).to receive(:targets).and_return({ "INST" => interface })
-      model = RouterModel.new(name: "TEST_INT", scope: "DEFAULT", target_names: ["INST"], cmd_target_names: ["INST"], tlm_target_names: ["INST"], config_params: ["TestInterface"])
+      model = RouterModel.new(name: "TEST_INT", scope: "DEFAULT", target_names: ["INST"], cmd_target_names: ["INST"], tlm_target_names: ["INST"], config_params: ["TestRouter"])
       model.create
       model = MicroserviceModel.new(folder_name: "TEST", name: "DEFAULT__ROUTER__TEST_INT", scope: "DEFAULT", target_names: ["INST"])
       model.create
