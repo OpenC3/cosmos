@@ -106,6 +106,7 @@ jobs:
         run: |
           set -e
           echo "OPENC3_API_PASSWORD=password" >> "$GITHUB_ENV"
+          docker exec -it cosmos-openc3-redis-1 sh -c "echo -e 'AUTH openc3 openc3password\nset OPENC3__TOKEN 5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8' | redis-cli"
           # listing script filenames on server also shows a target folder name
           # orig #./openc3.sh cliroot script list | grep -q "INST2"
           ./openc3.sh cliroot script list
