@@ -105,6 +105,7 @@ jobs:
         shell: 'script -q -e -c "bash {0}"'
         run: |
           set -e
+          echo "OPENC3_API_PASSWORD=password" >> "$GITHUB_ENV"
           # listing script filenames on server also shows a target folder name
           # orig #./openc3.sh cliroot script list | grep -q "INST2"
           ./openc3.sh cliroot script list
