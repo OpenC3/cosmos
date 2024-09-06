@@ -373,7 +373,7 @@ test('executes commands from history', async ({ page, utils }) => {
   await page.locator('[data-test=sender-history]').press('ArrowLeft')
   await page.locator('[data-test=sender-history]').press('ArrowLeft')
   await page.locator('[data-test=sender-history]').press('Backspace')
-  await page.locator('[data-test=sender-history]').type('5')
+  await page.locator('[data-test=sender-history]').pressSequentially('5')
   await page.locator('[data-test=sender-history]').press('Enter')
   await expect(page.locator('main')).toContainText(
     'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 5") sent.',
@@ -507,25 +507,13 @@ test('ignores normal range checks', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('EXAMPLE', 'START')
   await page.locator('[data-test=sender-history]').click()
   await utils.sleep(500) // Allow focus to change
-  await page
-    .locator('[data-test="sender-history"]')
-    .press('ControlOrMeta+ArrowRight')
-  await utils.sleep(100)
-  await page
-    .locator('[data-test="sender-history"]')
-    .press('ControlOrMeta+ArrowRight')
-  await utils.sleep(100)
-  await page
-    .locator('[data-test="sender-history"]')
-    .press('ControlOrMeta+ArrowRight')
+  await page.locator('[data-test=sender-history]').press('End')
   await utils.sleep(100)
   await page.locator('[data-test="sender-history"]').press('ArrowLeft')
-  await utils.sleep(100)
+  await page.locator('[data-test="sender-history"]').press('ArrowLeft')
   await page.locator('[data-test="sender-history"]').press('ArrowLeft')
   await utils.sleep(100)
-  await page.locator('[data-test="sender-history"]').press('ArrowLeft')
-  await utils.sleep(100)
-  await page.locator('[data-test="sender-history"]').press('5')
+  await page.locator('[data-test="sender-history"]').pressSequentially('5')
   await utils.sleep(100)
   await page.locator('[data-test="sender-history"]').press('Enter')
   // Dialog should pop up with error
