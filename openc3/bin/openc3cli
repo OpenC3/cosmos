@@ -76,7 +76,7 @@ def print_usage
   by default until error or exit"
   puts "    PARAMETERS name-value pairs to form the script's runtime environment"
   puts "    OPTIONS: --wait 0 seconds to monitor status before detaching from the running script; ie --wait 100"
-  puts "             --disconnect run the script without connecting"
+  puts "             --disconnect run the script in disconnect mode"
   puts "  cli validate /PATH/FILENAME.gem SCOPE variables.txt # Validate a COSMOS plugin gem file"
   puts "  cli load /PATH/FILENAME.gem SCOPE variables.txt     # Loads a COSMOS plugin gem file"
   puts "  cli list <SCOPE>                  # Lists installed plugins, SCOPE is DEFAULT if not given"
@@ -782,19 +782,17 @@ end
 def cli_script(args=[])
   ret_code = ERROR_CODE
   check_environment()
-
   command = args.shift
-
-  discon = args.delete('--disconnect'){true}
-  discon ||= false
   # pull out the disconnect flag
+  discon = args.delete('--disconnect')
+  discon = (discon.is_a? String) ? true : false
   environ = {}
   args.each do |arg|
     name, value = arg.split('=')
     if name and value
+    # add env[k]=v ; pull out "k=v"
       environ[name] = value
       args.delete(arg)
-      # add env[k]=v ; pull out "k=v"
     end
   end
   case command
