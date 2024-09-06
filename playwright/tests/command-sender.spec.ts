@@ -504,12 +504,17 @@ test('ignores normal range checks', async ({ page, utils }) => {
 
   await utils.selectTargetPacketItem('EXAMPLE', 'START')
   await page.locator('[data-test=sender-history]').click()
+  await utils.sleep(500) // Allow focus to change
   await page
     .locator('[data-test="sender-history"]')
     .press('ControlOrMeta+ArrowRight')
+  await utils.sleep(100)
   await page.locator('[data-test="sender-history"]').press('ArrowLeft')
+  await utils.sleep(100)
   await page.locator('[data-test="sender-history"]').press('ArrowLeft')
+  await utils.sleep(100)
   await page.locator('[data-test="sender-history"]').press('ArrowLeft')
+  await utils.sleep(100)
   await page.locator('[data-test="sender-history"]').press('5')
   await utils.sleep(100)
   await page.locator('[data-test="sender-history"]').press('Enter')
