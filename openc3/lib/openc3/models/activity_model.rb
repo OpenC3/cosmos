@@ -47,7 +47,11 @@ module OpenC3
       start_score = now - 15
       stop_score = (now + 3660)
       array = Store.zrangebyscore("#{scope}#{PRIMARY_KEY}__#{name}", start_score, stop_score)
-      return array.map { |value| ActivityModel.from_json(value, name: name, scope: scope) }
+      ret_array = Array.new
+      array.each do |value|
+        ret_array << ActivityModel.from_json(value, name: name, scope: scope)
+      end
+      return ret_array
     end
 
     # @return [Array|nil] Array up to 100 of this model or empty array if name not found under primary_key
@@ -55,20 +59,32 @@ module OpenC3
       if start > stop
         raise ActivityInputError.new "start: #{start} must be before stop: #{stop}"
       end
+
       array = Store.zrangebyscore("#{scope}#{PRIMARY_KEY}__#{name}", start, stop, :limit => [0, limit])
-      return array.map { |value| JSON.parse(value, :allow_nan => true, :create_additions => true) }
+      ret_array = Array.new
+      array.each do |value|
+        ret_array << JSON.parse(value, :allow_nan => true, :create_additions => true)
+      end
+      return ret_array
     end
 
     # @return [Array<Hash>] Array up to the limit of the models (as Hash objects) stored under the primary key
     def self.all(name:, scope:, limit: 100)
       array = Store.zrange("#{scope}#{PRIMARY_KEY}__#{name}", 0, -1, :limit => [0, limit])
-      return array.map { |value| JSON.parse(value, :allow_nan => true, :create_additions => true) }
+      ret_array = Array.new
+      array.each do |value|
+        ret_array << JSON.parse(value, :allow_nan => true, :create_additions => true)
+      end
+      return ret_array
     end
 
     # @return [String|nil] String of the saved json or nil if score not found under primary_key
     def self.score(name:, score:, scope:)
       array = Store.zrangebyscore("#{scope}#{PRIMARY_KEY}__#{name}", score, score, :limit => [0, 1])
-      return array.map { |value| ActivityModel.from_json(value, name: name, scope: scope) }
+      array.each do |value|
+        return ActivityModel.from_json(value, name: name, scope: scope)
+      end
+      return nil
     end
 
     # @return [Integer] count of the members stored under the primary key
@@ -113,7 +129,7 @@ module OpenC3
       self.new(**json.transform_keys(&:to_sym), name: name, scope: scope)
     end
 
-    attr_reader :start, :stop, :kind, :data, :fulfillment, :events, :uuid, :recurring
+    attr_reader :start, :stop, :kind, :data, :events, :fulfillment, :recurring
 
     def initialize(
       name:,
@@ -125,18 +141,16 @@ module OpenC3
       updated_at: 0,
       fulfillment: nil,
       events: nil,
-      uuid: nil,
       recurring: {}
     )
       super("#{scope}#{PRIMARY_KEY}__#{name}", name: name, scope: scope)
       set_input(
+        fulfillment: fulfillment,
         start: start,
         stop: stop,
         kind: kind,
         data: data,
-        fulfillment: fulfillment,
         events: events,
-        uuid: uuid,
         recurring: recurring,
       )
       @updated_at = updated_at
@@ -204,16 +218,15 @@ module OpenC3
     end
 
     # Set the values of the instance, @start, @kind, @data, @events...
-    def set_input(start:, stop:, kind: nil, data: nil, fulfillment: nil, events: nil, uuid: nil, recurring: nil)
+    def set_input(start:, stop:, kind: nil, data: nil, events: nil, fulfillment: nil, recurring: nil)
       kind = kind.to_s.downcase
       validate_input(start: start, stop: stop, kind: kind, data: data)
       @start = start
       @stop = stop
+      @fulfillment = fulfillment.nil? ? false : fulfillment
       @kind = kind
       @data = data.nil? ? @data : data
-      @fulfillment = fulfillment.nil? ? false : fulfillment
       @events = events.nil? ? Array.new : events
-      @uuid = SecureRandom.uuid unless uuid
       @recurring = recurring.nil? ? @recurring : recurring
     end
 
@@ -389,7 +402,6 @@ module OpenC3
         'fulfillment' => @fulfillment,
         'start' => @start,
         'stop' => @stop,
-        'uuid' => @uuid,
         'kind' => @kind,
         'events' => @events,
         'data' => @data.as_json(*a),
