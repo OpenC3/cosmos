@@ -29,13 +29,13 @@ require 'openc3/microservices/router_microservice'
 
 module OpenC3
   describe RouterMicroservice do
-    class ApiTest # rubocop:disable Lint/ConstantDefinitionInBlock
+    class ApiTest
       include Extract
       include Api
       include Authorization
     end
 
-    class TestRouter < Interface # rubocop:disable Lint/ConstantDefinitionInBlock
+    class TestRouter < Interface
       def initialize
         super
         @connected = false

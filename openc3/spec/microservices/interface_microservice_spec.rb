@@ -32,7 +32,7 @@ module OpenC3
   describe InterfaceMicroservice do
     before(:each) do
       # This must be here in order to work when running more than this individual file
-      class TestInterface < Interface # rubocop:disable Lint/ConstantDefinitionInBlock
+      class TestInterface < Interface
         def initialize(hostname = "default", port = 12345)
           @hostname = hostname
           @port = port
@@ -115,7 +115,7 @@ module OpenC3
         CvtModel.set(json_hash, target_name: packet.target_name, packet_name: packet.packet_name, scope: "DEFAULT")
       end
 
-      class ApiTest # rubocop:disable Lint/ConstantDefinitionInBlock
+      class ApiTest
         include Extract
         include Api
         include Authorization
