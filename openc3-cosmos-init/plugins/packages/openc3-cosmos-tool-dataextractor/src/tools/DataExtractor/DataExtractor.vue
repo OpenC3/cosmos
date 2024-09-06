@@ -83,6 +83,7 @@
               @click="addItem($event)"
               button-text="Add Item"
               :mode="cmdOrTlm"
+              :hidden="true"
               choose-item
               allow-all
             />

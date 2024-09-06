@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@playwright/test": "1.46.0",
-    "date-fns": "^3.2.0",
+    "date-fns": "3.6.0",
     "jszip": "^3.10.1",
     "nyc": "^17.0.0",
     "prettier": "^3.1.1"

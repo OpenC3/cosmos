@@ -26,9 +26,6 @@ from openc3.utilities.logger import Logger
 from openc3.utilities.secrets import Secrets
 from openc3.logs.stream_log_pair import StreamLogPair
 
-# TODO:
-# require 'openc3/api/api'
-
 
 class WriteRejectError(RuntimeError):
     """Define a class to allow interfaces and protocols to reject commands without disconnecting the interface"""
@@ -275,7 +272,7 @@ class Interface:
         try:
             yield
         except WriteRejectError as error:
-            Logger.error(f"{self.name}: Write rejected by interface {error.message}")
+            Logger.error(f"{self.name}: Write rejected by interface {repr(error)}")
             raise error
         except RuntimeError as error:
             Logger.error(f"{self.name}: Error writing to interface")

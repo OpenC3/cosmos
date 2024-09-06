@@ -271,11 +271,6 @@ class Commands:
         # check required parameters since we're not actually using the command.
         return self.cmd_pkt_hazardous(self.build_cmd(target_name, packet_name, params, False, False, False))
 
-    def clear_counters(self):
-        for target_name, target_packets in self.config.commands.items():
-            for packet_name, packet in target_packets.items():
-                packet.received_count = 0
-
     def all(self):
         return self.config.commands
 

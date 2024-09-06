@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -26,7 +26,7 @@ require 'openc3/utilities/open_telemetry'
 
 module OpenC3
   class CommandTopic < Topic
-    COMMAND_ACK_TIMEOUT_S = 5
+    COMMAND_ACK_TIMEOUT_S = 30
 
     def self.write_packet(packet, scope:)
       topic = "#{scope}__COMMAND__{#{packet.target_name}}__#{packet.packet_name}"
@@ -52,7 +52,7 @@ module OpenC3
       cmd_id = Topic.write_topic("{#{scope}__CMD}TARGET__#{command['target_name']}", command, '*', 100)
       time = Time.now
       while (Time.now - time) < timeout
-        Topic.read_topics([ack_topic]) do |topic, msg_id, msg_hash, redis|
+        Topic.read_topics([ack_topic]) do |_topic, _msg_id, msg_hash, _redis|
           if msg_hash["id"] == cmd_id
             if msg_hash["result"] == "SUCCESS"
               return [command['target_name'], command['cmd_name'], cmd_params]
