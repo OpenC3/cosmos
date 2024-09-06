@@ -391,6 +391,8 @@ test('executes commands from history', async ({ page, utils }) => {
 
   // Reload page and verify history still exists
   await page.reload()
+  await expect(page.locator('.v-app-bar')).toContainText('Command Sender')
+  await utils.sleep(500)
   await checkHistory(page, 'cmd("INST CLEAR")')
   await checkHistory(
     page,
@@ -505,6 +507,14 @@ test('ignores normal range checks', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('EXAMPLE', 'START')
   await page.locator('[data-test=sender-history]').click()
   await utils.sleep(500) // Allow focus to change
+  await page
+    .locator('[data-test="sender-history"]')
+    .press('ControlOrMeta+ArrowRight')
+  await utils.sleep(100)
+  await page
+    .locator('[data-test="sender-history"]')
+    .press('ControlOrMeta+ArrowRight')
+  await utils.sleep(100)
   await page
     .locator('[data-test="sender-history"]')
     .press('ControlOrMeta+ArrowRight')
