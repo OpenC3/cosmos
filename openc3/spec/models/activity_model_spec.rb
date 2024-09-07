@@ -151,7 +151,7 @@ module OpenC3
           activity.create()
         end
 
-        it "aborts if recurring overlap existing" do
+        it "can abort if recurring overlaps existing" do
           # Create a normal activity 1 hrs out
           now = Time.now + 10
           start = now + 3600 # 1 hr
@@ -181,9 +181,13 @@ module OpenC3
             data: data,
             recurring: recurring
           )
-          expect { activity.create() }.to raise_error(ActivityOverlapError, /activity overlaps existing/)
+          expect { activity.create(overlap: false) }.to raise_error(ActivityOverlapError, /activity overlaps existing/)
           array = ActivityModel.all(name: 'recurring', scope: 'DEFAULT')
           expect(array.length).to eql(1)
+
+          activity.create() # overlap: true is the default
+          array = ActivityModel.all(name: 'recurring', scope: 'DEFAULT')
+          expect(array.length).to eql(4)
         end
       end
 
@@ -195,7 +199,7 @@ module OpenC3
           recurring_end = start + 7200 # 2 hours
           # Create a recurring every 30 min
           recurring = { 'frequency' => '30', 'span' => 'minutes', 'end' => recurring_end.to_i }
-          activity = ActivityModel.new(
+          ActivityModel.new(
             name: 'recurring',
             scope: 'DEFAULT',
             start: start.to_i,
@@ -203,14 +207,13 @@ module OpenC3
             kind: "COMMAND",
             data: data,
             recurring: recurring
-          )
-          activity.create()
+          ).create()
           array = ActivityModel.all(name: 'recurring', scope: 'DEFAULT')
           expect(array.length).to eql(5)
           # Delete one of the activities
-          ActivityModel.from_json(array[2], name: 'recurring', scope: 'DEFAULT').destroy()
+          ActivityModel.destroy(name: 'recurring', scope: 'DEFAULT', score: array[0]['start'], uuid: array[0]['uuid'])
           expect(ActivityModel.count(name: 'recurring', scope: 'DEFAULT')).to eql(4)
-          ActivityModel.from_json(array[1], name: 'recurring', scope: 'DEFAULT').destroy(recurring: true)
+          ActivityModel.destroy(name: 'recurring', scope: 'DEFAULT', score: array[1]['start'], uuid: array[1]['uuid'], recurring: true)
           expect(ActivityModel.count(name: 'recurring', scope: 'DEFAULT')).to eql(0)
         end
       end
@@ -250,6 +253,12 @@ module OpenC3
         expect(array[0]["kind"]).to eql("script")
         expect(array[0]["start"]).to eql(activity1.start)
         expect(array[0]["stop"]).to eql(activity1.stop)
+      end
+
+      it "verifies start > stop" do
+        expect {
+          ActivityModel.get(name: 'test', scope: 'DEFAULT', start: 101, stop: 100)
+        }.to raise_error(ActivityInputError, "start: 101 must be <= stop: 100")
       end
     end
 
@@ -325,28 +334,31 @@ module OpenC3
     describe "self.destroy" do
       it "removes the activity" do
         start = Time.now.to_i + 10
-        ActivityModel.new(
+        model1 = ActivityModel.new(
           name: 'timeline',
           scope: 'DEFAULT',
           start: start,
           stop: start + 10,
           kind: 'COMMAND',
           data: {'key' => 'val1'}
-        ).create()
+        )
+        model1.create()
         # Create another activity with the same start time
-        ActivityModel.new(
+        model2 = ActivityModel.new(
           name: 'timeline',
           scope: 'DEFAULT',
           start: start,
           stop: start + 10,
           kind: 'COMMAND',
           data: {'key' => 'val2'}
-        ).create()
+        )
+        model2.create()
         expect(ActivityModel.count(name: 'timeline', scope: 'DEFAULT')).to eql 2
-        # TODO: Deleting both activities with the same start is not what we want
-        # Probably need a UUID like with recurring items to support overlap
-        ret = ActivityModel.destroy(name: 'timeline', scope: 'DEFAULT', score: start)
-        expect(ret).to eql(2)
+        ActivityModel.destroy(name: 'timeline', scope: 'DEFAULT', score: start, uuid: model1.uuid)
+        # expect(ret).to eql(1) # TODO: mock_redis 0.44 not returning the correct value (Redis v4 vs v5 behavior)
+        expect(ActivityModel.count(name: 'timeline', scope: 'DEFAULT')).to eql 1
+        ActivityModel.destroy(name: 'timeline', scope: 'DEFAULT', score: start, uuid: model2.uuid)
+        # expect(ret).to eql(1) # TODO: mock_redis 0.44 not returning the correct value (Redis v4 vs v5 behavior)
         expect(ActivityModel.count(name: 'timeline', scope: 'DEFAULT')).to eql 0
       end
     end
@@ -587,15 +599,25 @@ module OpenC3
       it "raises error due to update is overlapping time point" do
         name = "foobar"
         scope = "scope"
-        activity = generate_activity(name: name, scope: scope, start: 0.5, stop: 1.0)
+        activity = generate_activity(name: name, scope: scope, start: 0.5)
         activity.create()
         model = generate_activity(name: name, scope: scope, start: 2.0)
         model.create()
-        new_start = activity.start + 3600
-        new_stop = activity.stop + 3600
+
+        # First activity is 0.5 to 1.5 and second is 2.0 to 3.0
+        # We add 3600 (1hr) + 1800 (30min) + 100 to the first activity
+        # to place it inside the second
+        new_start = activity.start + 5500
+        new_stop = activity.stop + 5500
         expect {
           activity.update(start: new_start, stop: new_stop, kind: "COMMAND", data: {}, overlap: false)
         }.to raise_error(ActivityOverlapError)
+
+        activity.update(start: new_start, stop: new_stop, kind: "COMMAND", data: {}, overlap: true)
+        array = ActivityModel.all(name: name, scope: scope)
+        expect(array.length).to eql(2)
+        expect(array[0]["start"]).to eql(model.start)
+        expect(array[1]["start"]).to eql(new_start)
       end
     end
 
@@ -665,17 +687,13 @@ module OpenC3
         activity = generate_activity(name: name, scope: scope, start: 1.0)
         activity.notify(kind: "new")
       end
-    end
 
-    describe "destroy" do
-      it "the model to remove it" do
+      it "rescues errors in TimelineTopic" do
         name = "foobar"
         scope = "scope"
         activity = generate_activity(name: name, scope: scope, start: 1.0)
-        activity.create
-        activity.destroy
-        activity = ActivityModel.score(name: name, scope: scope, score: activity.start)
-        expect(activity).to eql(nil)
+        allow(TimelineTopic).to receive(:write_activity).and_raise(StandardError)
+        expect { activity.notify(kind: "new") }.to raise_error(ActivityError)
       end
     end
 

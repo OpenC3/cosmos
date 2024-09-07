@@ -284,12 +284,7 @@ class ActivityController < ApplicationController
   def destroy
     return unless authorization('script_run')
     begin
-      model = @model_class.score(name: params[:name], score: params[:id].to_i, scope: params[:scope])
-      if model.nil?
-        render :json => { :status => 'error', :message => 'not found' }, :status => 404
-        return
-      end
-      ret = model.destroy(recurring: params[:recurring])
+      ret = @model_class.destroy(name: params[:name], scope: params[:scope], score: params[:id].to_i, uuid: params[:uuid], recurring: params[:recurring])
       OpenC3::Logger.info(
         "Activity destroyed name: #{params[:name]} id:#{params[:id]} recurring:#{params[:recurring]}",
         scope: params[:scope],

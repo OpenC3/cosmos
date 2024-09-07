@@ -43,7 +43,7 @@ stop = start + timedelta(minutes=30)
 act = create_timeline_activity("Mine", kind="reserve", start=start, stop=stop)
 tlas = get_timeline_activities("Mine")
 check_expression(f"{len(tlas)} == 2")
-delete_timeline_activity("Mine", act["start"])
+delete_timeline_activity("Mine", act["start"], act["uuid"])
 tlas = get_timeline_activities("Mine")
 check_expression(f"{len(tlas)} == 1")
 

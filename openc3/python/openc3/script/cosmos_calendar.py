@@ -92,8 +92,10 @@ def get_timeline_activity(name, start=None, scope=OPENC3_SCOPE):
     return _handle_response(response, "Failed to get timeline activity")
 
 
-def delete_timeline_activity(name, start, scope=OPENC3_SCOPE):
-    response = openc3.script.API_SERVER.request("delete", f"/openc3-api/timeline/{name}/activity/{start}", scope=scope)
+def delete_timeline_activity(name, start, uuid, scope=OPENC3_SCOPE):
+    response = openc3.script.API_SERVER.request(
+        "delete", f"/openc3-api/timeline/{name}/activity/{start}/{uuid}", scope=scope
+    )
     return _handle_response(response, "Failed to delete timeline activity")
 
 
