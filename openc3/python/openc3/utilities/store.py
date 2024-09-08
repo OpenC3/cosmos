@@ -21,7 +21,7 @@ if OPENC3_REDIS_CLUSTER:
 else:
     openc3_redis_cluster = False
 
-from openc3.utilities.store_implementation import Store, StoreConnectionPool, StoreMeta, EphemeralStore
+from openc3.utilities.store_implementation import Store, StoreConnectionPool, StoreMeta, EphemeralStore  # noqa: F401
 
 if openc3_redis_cluster:
-    import openc3enterprise.utilities.store
+    import openc3enterprise.utilities.store  # noqa: F401
