@@ -392,9 +392,7 @@ class ActivityController < ApplicationController
       next if input.is_a?(Hash) == false || input['id'].nil? || input['name'].nil? || input['uuid'].nil?
 
       begin
-        puts "destroy:#{input[:name]} #{input[:id]} #{input[:uuid]}"
         result = @model_class.destroy(name: input[:name], score: input[:id].to_i, uuid: input[:uuid], scope: params[:scope])
-        puts "return:#{result}"
         OpenC3::Logger.info("Activity destroyed: #{input['name']}", scope: params[:scope], user: username())
         ret << { 'status' => 'removed', 'removed' => result, 'input' => input, 'type' => e.class }
       rescue StandardError => e # includes OpenC3::ActivityInputError
