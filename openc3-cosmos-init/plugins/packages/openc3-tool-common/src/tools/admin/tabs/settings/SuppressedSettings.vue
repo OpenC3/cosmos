@@ -37,7 +37,7 @@
           :label="warning.text"
           :value="warning.key"
           class="mt-0"
-          dense
+          density="compact"
         />
       </template>
       <template v-else> No warnings to reset </template>

@@ -195,8 +195,8 @@
           <v-tab :key="1"> Scale / Lines </v-tab>
           <v-tab :key="1"> Items </v-tab>
         </v-tabs>
-        <v-tabs-items v-model="tab">
-          <v-tab-item :key="0" eager="true" class="tab">
+        <v-window v-model="tab">
+          <v-window-item :key="0" eager="true" class="tab">
             <div class="edit-box">
               <v-row
                 ><v-col>
@@ -248,8 +248,8 @@
                 :time-zone="timeZone"
               />
             </div>
-          </v-tab-item>
-          <v-tab-item :key="1" eager="true" class="tab">
+          </v-window-item>
+          <v-window-item :key="1" eager="true" class="tab">
             <div class="edit-box">
               <v-card-text class="pa-0">
                 Set a min or max Y value to override automatic scaling
@@ -344,8 +344,8 @@
                 </template>
               </v-data-table>
             </div>
-          </v-tab-item>
-          <v-tab-item :key="2" eager="true" class="tab">
+          </v-window-item>
+          <v-window-item :key="2" eager="true" class="tab">
             <v-data-table
               item-key="itemId"
               class="elevation-1 my-2"
@@ -377,8 +377,8 @@
                 <span>Currently no items on this graph</span>
               </template>
             </v-data-table>
-          </v-tab-item>
-        </v-tabs-items>
+          </v-window-item>
+        </v-window>
         <v-card-actions>
           <v-spacer />
           <v-btn color="primary" @click="editGraphClose"> Ok </v-btn>
@@ -416,10 +416,7 @@
     <v-menu
       v-if="editGraphMenu"
       v-model="editGraphMenu"
-      :position-x="editGraphMenuX"
-      :position-y="editGraphMenuY"
-      absolute
-      offset-y
+      :target="[editGraphMenuX, editGraphMenuY]"
     >
       <v-list>
         <v-list-item @click="editGraph = true">
@@ -442,32 +439,20 @@
     />
 
     <!-- Edit Item right click context menu -->
-    <v-menu
-      v-if="itemMenu"
-      v-model="itemMenu"
-      :position-x="itemMenuX"
-      :position-y="itemMenuY"
-      absolute
-      offset-y
-    >
+    <v-menu v-if="itemMenu" v-model="itemMenu" :target="[itemMenuX, itemMenuY]">
       <v-list nav density="compact">
-        <v-subheader>
+        <v-list-subheader>
           {{ selectedItem.targetName }}
           {{ selectedItem.packetName }}
           {{ selectedItem.itemName }}
-        </v-subheader>
-        <v-list-item @click="editItem = true">
-          <v-list-item-icon>
-            <v-icon>mdi-pencil</v-icon>
-          </v-list-item-icon>
+        </v-list-subheader>
+        <v-list-item icon @click="editItem = true">
+          <v-icon>mdi-pencil</v-icon>
 
           <v-list-item-title> Edit </v-list-item-title>
         </v-list-item>
-        <v-list-item @click="removeItems([selectedItem])">
-          <v-list-item-icon>
-            <v-icon>mdi-delete</v-icon>
-          </v-list-item-icon>
-
+        <v-list-item icon @click="removeItems([selectedItem])">
+          <v-icon>mdi-delete</v-icon>
           <v-list-item-title> Delete </v-list-item-title>
         </v-list-item>
       </v-list>
@@ -477,10 +462,7 @@
     <v-menu
       v-if="legendMenu"
       v-model="legendMenu"
-      :position-x="legendMenuX"
-      :position-y="legendMenuY"
-      absolute
-      offset-y
+      :target="[legendMenuX, legendMenuY]"
     >
       <v-list>
         <v-list-item @click="moveLegend('top')">
@@ -774,8 +756,8 @@ export default {
 
     let chartOpts = {}
     if (this.sparkline) {
-      this.hideSystemBar = true
-      this.hideOverview = true
+      this.hideSystemBar = true // TODO: don't mutate props
+      this.hideOverview = true // TODO: don't mutate props
       this.showOverview = false
       chartOpts = {
         width: this.width,

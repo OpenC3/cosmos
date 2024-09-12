@@ -30,7 +30,7 @@
             >Plugin: {{ target.plugin }}</v-list-item-subtitle
           >
 
-          <v-list-item-icon>
+          <template v-slot:append>
             <div class="mx-3" v-if="target.modified">
               <v-tooltip location="bottom">
                 <template v-slot:activator="{ props }">
@@ -49,7 +49,7 @@
               </template>
               <span>Show Target Details</span>
             </v-tooltip>
-          </v-list-item-icon>
+          </template>
         </v-list-item>
         <v-divider />
       </div>

@@ -27,9 +27,7 @@
       v-model="showNotificationPane"
       transition="slide-y-transition"
       :close-on-content-click="false"
-      :nudge-width="340"
-      offset-y
-      :nudge-bottom="20"
+      :offset="20"
     >
       <template v-slot:activator="{ props }">
         <rux-monitoring-icon
@@ -85,9 +83,9 @@
           <template v-for="(notification, index) in notificationList">
             <template v-if="notification.header">
               <v-divider v-if="index !== 0" :key="index" class="mb-2" />
-              <v-subheader :key="notification.header">
+              <v-list-subheader :key="notification.header">
                 {{ notification.header }}
-              </v-subheader>
+              </v-list-subheader>
             </template>
 
             <v-list-item
@@ -97,7 +95,7 @@
               class="pl-2"
             >
               <v-badge location="left" inline color="transparent">
-                <v-list-item-content class="pt-0 pb-0">
+                <v-list-item-subtitle class="pt-0 pb-0">
                   <v-list-item-title
                     :class="{
                       'text--secondary': notification.read,
@@ -110,7 +108,7 @@
                     {{ formatShortDateTime(notification.time) }}
                   </v-list-item-subtitle>
                   <div style="height: 20px" />
-                </v-list-item-content>
+                </v-list-item-subtitle>
                 <template v-slot:badge>
                   <rux-status
                     :status="getStatus(notification.level)"

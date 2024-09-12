@@ -27,8 +27,8 @@
         {{ tab.parameters[0] }}
       </v-tab>
     </v-tabs>
-    <v-tabs-items v-model="curTab">
-      <v-tab-item v-for="(tab, tabIndex) in widgets" :key="tabIndex">
+    <v-window v-model="curTab">
+      <v-window-item v-for="(tab, tabIndex) in widgets" :key="tabIndex">
         <component
           v-for="(widget, widgetIndex) in tab.widgets"
           v-on="$listeners"
@@ -42,8 +42,8 @@
           :line="widget.line"
           :lineNumber="widget.lineNumber"
         />
-      </v-tab-item>
-    </v-tabs-items>
+      </v-window-item>
+    </v-window>
   </div>
 </template>
 

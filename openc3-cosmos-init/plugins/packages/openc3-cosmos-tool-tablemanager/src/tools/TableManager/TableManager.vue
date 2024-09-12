@@ -31,7 +31,7 @@
     >
       <v-icon> mdi-pencil-off </v-icon>
       {{ lockedBy }} is editing this script. Editor is in read-only mode
-      <template v-slot:action="{ attrs }">
+      <template v-slot:actions="{ attrs }">
         <v-btn
           variant="text"
           v-bind="attrs"
@@ -104,7 +104,7 @@
               data-test="download-file-binary"
             >
               Binary
-              <v-icon end dark> mdi-file-code </v-icon>
+              <v-icon end theme="dark"> mdi-file-code </v-icon>
             </v-btn>
             <v-btn
               dense
@@ -115,7 +115,7 @@
               data-test="download-file-definition"
             >
               Definition
-              <v-icon end dark> mdi-file-document-edit </v-icon>
+              <v-icon end theme="dark"> mdi-file-document-edit </v-icon>
             </v-btn>
             <v-btn
               dense
@@ -125,7 +125,7 @@
               data-test="download-file-report"
             >
               Report
-              <v-icon end dark> mdi-file-document </v-icon>
+              <v-icon end theme="dark"> mdi-file-document </v-icon>
             </v-btn>
           </v-col>
           <v-col cols="auto">
@@ -137,7 +137,7 @@
               data-test="upload-file"
             >
               Upload
-              <v-icon end dark> mdi-file-upload </v-icon>
+              <v-icon end theme="dark"> mdi-file-upload </v-icon>
             </v-btn>
           </v-col>
           <v-col cols="auto">
@@ -149,7 +149,7 @@
               data-test="download-file"
             >
               Download
-              <v-icon end dark> mdi-file-download </v-icon>
+              <v-icon end theme="dark"> mdi-file-download </v-icon>
             </v-btn>
           </v-col>
           <v-col cols="auto">
@@ -189,8 +189,8 @@
           {{ table.name }}
         </v-tab>
       </v-tabs>
-      <v-tabs-items v-model="curTab">
-        <v-tab-item
+      <v-window :model-value="curTab">
+        <v-window-item
           v-for="(table, index) in tables"
           :key="`${filename}${index}`"
         >
@@ -226,7 +226,7 @@
                   data-test="download-table-binary"
                 >
                   Binary
-                  <v-icon end dark> mdi-file-code </v-icon>
+                  <v-icon end theme="dark"> mdi-file-code </v-icon>
                 </v-btn>
                 <v-btn
                   dense
@@ -237,7 +237,7 @@
                   data-test="download-table-definition"
                 >
                   Definition
-                  <v-icon end dark> mdi-file-document-edit </v-icon>
+                  <v-icon end theme="dark"> mdi-file-document-edit </v-icon>
                 </v-btn>
                 <v-btn
                   dense
@@ -247,13 +247,13 @@
                   data-test="download-table-report"
                 >
                   Report
-                  <v-icon end dark> mdi-file-document </v-icon>
+                  <v-icon end theme="dark"> mdi-file-document </v-icon>
                 </v-btn>
               </div>
             </template>
           </v-data-table>
-        </v-tab-item>
-      </v-tabs-items>
+        </v-window-item>
+      </v-window>
     </v-card>
     <file-open-save-dialog
       v-if="fileOpen"

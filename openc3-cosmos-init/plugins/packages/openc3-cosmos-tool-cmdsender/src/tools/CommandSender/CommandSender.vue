@@ -116,13 +116,7 @@
     </multipane>
     <div style="height: 15px" />
 
-    <v-menu
-      v-model="contextMenuShown"
-      :position-x="x"
-      :position-y="y"
-      absolute
-      offset-y
-    >
+    <v-menu v-model="contextMenuShown" :target="[x, y]">
       <v-list>
         <v-list-item
           v-for="(item, index) in contextMenuOptions"

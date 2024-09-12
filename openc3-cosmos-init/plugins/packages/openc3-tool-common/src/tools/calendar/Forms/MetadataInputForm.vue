@@ -40,41 +40,39 @@
             </v-tooltip>
           </th>
         </tr>
-        <template v-for="(meta, i) in metadata">
-          <tr :key="`tr-${i}`">
-            <td>
-              <v-text-field
-                v-model="meta.key"
-                type="text"
-                density="compact"
-                :data-test="`key-${i}`"
-              />
-            </td>
-            <td>
-              <v-text-field
-                v-model="meta.value"
-                type="text"
-                density="compact"
-                :data-test="`value-${i}`"
-              />
-            </td>
-            <td>
-              <v-tooltip location="top">
-                <template v-slot:activator="{ props }">
-                  <div v-bind="props">
-                    <v-icon
-                      :data-test="`delete-metadata-icon-${i}`"
-                      @click="rm(i)"
-                    >
-                      mdi-delete
-                    </v-icon>
-                  </div>
-                </template>
-                <span> Delete Metadata </span>
-              </v-tooltip>
-            </td>
-          </tr>
-        </template>
+        <tr v-for="(meta, i) in metadata" :key="`tr-${i}`">
+          <td>
+            <v-text-field
+              v-model="meta.key"
+              type="text"
+              density="compact"
+              :data-test="`key-${i}`"
+            />
+          </td>
+          <td>
+            <v-text-field
+              v-model="meta.value"
+              type="text"
+              density="compact"
+              :data-test="`value-${i}`"
+            />
+          </td>
+          <td>
+            <v-tooltip location="top">
+              <template v-slot:activator="{ props }">
+                <div v-bind="props">
+                  <v-icon
+                    :data-test="`delete-metadata-icon-${i}`"
+                    @click="rm(i)"
+                  >
+                    mdi-delete
+                  </v-icon>
+                </div>
+              </template>
+              <span> Delete Metadata </span>
+            </v-tooltip>
+          </td>
+        </tr>
       </tbody>
     </v-table>
   </div>

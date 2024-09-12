@@ -25,7 +25,6 @@
     <v-navigation-drawer
       v-if="!chromeless"
       v-model="drawer"
-      app
       id="openc3-nav-drawer"
     >
       <img :src="logo" class="logo" alt="OpenC3" />
@@ -123,7 +122,7 @@
         </template>
       </v-treeview>
     </v-navigation-drawer>
-    <v-app-bar app v-if="!chromeless" id="openc3-app-toolbar">
+    <v-app-bar v-if="!chromeless" id="openc3-app-toolbar">
       <v-row
         class="flex-nowrap"
         justify="space-between"

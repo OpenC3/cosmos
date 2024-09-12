@@ -33,9 +33,9 @@
             {{ microservice_status[microservice].count }}
           </v-list-item-subtitle>
 
-          <div v-if="microservice_status[microservice]">
-            <div v-show="!!microservice_status[microservice].error">
-              <v-list-item-icon>
+          <template v-slot:append>
+            <div v-if="microservice_status[microservice]">
+              <div v-show="!!microservice_status[microservice].error">
                 <v-tooltip location="bottom">
                   <template v-slot:activator="{ props }">
                     <v-icon
@@ -47,10 +47,8 @@
                   </template>
                   <span>View Error</span>
                 </v-tooltip>
-              </v-list-item-icon>
+              </div>
             </div>
-          </div>
-          <v-list-item-icon>
             <v-tooltip location="bottom">
               <template v-slot:activator="{ props }">
                 <v-icon @click="showMicroservice(microservice)" v-bind="props">
@@ -59,7 +57,7 @@
               </template>
               <span>View Microservice</span>
             </v-tooltip>
-          </v-list-item-icon>
+          </template>
         </v-list-item>
         <v-divider />
       </div>

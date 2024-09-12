@@ -26,10 +26,8 @@
     <v-menu
       v-model="showUserMenu"
       transition="slide-y-transition"
-      offset-y
       :close-on-content-click="false"
-      :nudge-width="120"
-      :nudge-bottom="20"
+      :offset="20"
     >
       <template v-slot:activator="{ props }">
         <rux-monitoring-icon

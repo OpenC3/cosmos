@@ -68,7 +68,6 @@
     <!-- TODO This alert shows both success and failure. Make consistent with rest of OpenC3. -->
     <v-alert
       closable
-      transition="scale-transition"
       :type="alertType"
       v-model="showAlert"
       data-test="plugin-alert"
@@ -100,7 +99,7 @@
             <span v-text="' Updated At: ' + formatDate(process.updated_at)"
           /></v-list-item-subtitle>
 
-          <v-list-item-icon>
+          <template v-slot:append>
             <div v-if="process.state === 'Running'">
               <v-progress-circular indeterminate color="primary" />
             </div>
@@ -116,7 +115,7 @@
               </template>
               <span>Show Output</span>
             </v-tooltip>
-          </v-list-item-icon>
+          </template>
         </v-list-item>
         <v-divider />
       </div>
@@ -140,7 +139,7 @@
             </span>
           </v-list-item-subtitle>
 
-          <v-list-item-icon>
+          <template v-slot:append>
             <div class="mx-3">
               <v-tooltip location="bottom">
                 <template v-slot:activator="{ props }">
@@ -197,7 +196,7 @@
                 <span>Delete Plugin</span>
               </v-tooltip>
             </div>
-          </v-list-item-icon>
+          </template>
         </v-list-item>
         <v-divider v-if="index < plugins.length - 1" :key="index" />
       </div>

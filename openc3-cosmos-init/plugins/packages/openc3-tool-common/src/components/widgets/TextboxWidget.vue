@@ -27,20 +27,13 @@
       density="compact"
       readonly
       hide-details
-      :height="height"
       :model-value="_value"
       :class="valueClass"
       :style="[computedStyle, aging]"
       data-test="valueText"
       @contextmenu="showContextMenu"
     />
-    <v-menu
-      v-model="contextMenuShown"
-      :position-x="x"
-      :position-y="y"
-      absolute
-      offset-y
-    >
+    <v-menu v-model="contextMenuShown" :target="[x, y]">
       <v-list>
         <v-list-item
           v-for="(item, index) in contextMenuOptions"

@@ -57,8 +57,10 @@
           :headers="eventHeaders"
           :items="localEvents"
           :search="search"
-          sort-by="start"
-          sort-desc
+          :sort-by="{
+            key: 'start',
+            order: 'desc',
+          }"
         >
           <template v-slot:no-data>
             <span> No events </span>

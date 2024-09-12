@@ -129,8 +129,8 @@
           <span>Add Component</span>
         </v-tooltip>
       </v-tabs>
-      <v-tabs-items v-model="curTab">
-        <v-tab-item v-for="(tab, index) in config.tabs" :key="tab.ref" eager>
+      <v-window :model-value="curTab">
+        <v-window-item v-for="(tab, index) in config.tabs" :key="tab.ref" eager>
           <keep-alive>
             <v-card flat>
               <v-divider />
@@ -165,8 +165,8 @@
               </v-card-text>
             </v-card></keep-alive
           >
-        </v-tab-item>
-      </v-tabs-items>
+        </v-window-item>
+      </v-window>
       <v-card v-if="!config.tabs.length">
         <v-card-title>You're not viewing any packets</v-card-title>
         <v-card-text>Click the new tab icon to start.</v-card-text>
@@ -223,13 +223,7 @@
       </v-card>
     </v-dialog>
     <!-- Menu for right clicking on a tab -->
-    <v-menu
-      v-model="showTabMenu"
-      :position-x="tabMenuX"
-      :position-y="tabMenuY"
-      absolute
-      offset-y
-    >
+    <v-menu v-model="showTabMenu" :target="[tabMenuX, tabMenuY]">
       <v-list>
         <v-list-item data-test="context-menu-rename">
           <v-list-item-title style="cursor: pointer" @click="openTabNameDialog">

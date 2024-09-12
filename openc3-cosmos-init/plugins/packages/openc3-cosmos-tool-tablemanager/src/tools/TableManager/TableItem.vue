@@ -24,7 +24,7 @@
   <td>
     <v-checkbox
       v-if="isCheckbox"
-      dense
+      density="compact"
       hide-details
       v-model="checkValue"
       @update:model-value="checkboxChange"

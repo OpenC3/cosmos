@@ -41,43 +41,41 @@
             </v-tooltip>
           </th>
         </tr>
-        <template v-for="(env, i) in selected">
-          <tr :key="`tr-${i}`">
-            <td>
-              <v-text-field
-                v-model="env.key"
-                density="compact"
-                type="text"
-                :readonly="env.readonly"
-                :data-test="`key-${i}`"
-              />
-            </td>
-            <td>
-              <v-text-field
-                v-model="env.value"
-                density="compact"
-                type="text"
-                :readonly="env.readonly"
-                :data-test="`value-${i}`"
-              />
-            </td>
-            <td>
-              <v-tooltip location="top">
-                <template v-slot:activator="{ props }">
-                  <div v-bind="props">
-                    <v-icon
-                      :data-test="`remove-env-icon-${i}`"
-                      @click="delEnvVar(i)"
-                    >
-                      mdi-delete
-                    </v-icon>
-                  </div>
-                </template>
-                <span> Delete Environment </span>
-              </v-tooltip>
-            </td>
-          </tr>
-        </template>
+        <tr v-for="(env, i) in selected" :key="`tr-${i}`">
+          <td>
+            <v-text-field
+              v-model="env.key"
+              density="compact"
+              type="text"
+              :readonly="env.readonly"
+              :data-test="`key-${i}`"
+            />
+          </td>
+          <td>
+            <v-text-field
+              v-model="env.value"
+              density="compact"
+              type="text"
+              :readonly="env.readonly"
+              :data-test="`value-${i}`"
+            />
+          </td>
+          <td>
+            <v-tooltip location="top">
+              <template v-slot:activator="{ props }">
+                <div v-bind="props">
+                  <v-icon
+                    :data-test="`remove-env-icon-${i}`"
+                    @click="delEnvVar(i)"
+                  >
+                    mdi-delete
+                  </v-icon>
+                </div>
+              </template>
+              <span> Delete Environment </span>
+            </v-tooltip>
+          </td>
+        </tr>
       </tbody>
     </v-table>
   </div>

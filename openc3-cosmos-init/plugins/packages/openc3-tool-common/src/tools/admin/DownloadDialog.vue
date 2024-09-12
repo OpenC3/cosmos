@@ -42,7 +42,7 @@
                   :disabled="disableSearch"
                 >
                   Github
-                  <v-icon end dark> mdi-github </v-icon>
+                  <v-icon end theme="dark"> mdi-github </v-icon>
                 </v-btn>
               </div>
             </v-col>
@@ -76,7 +76,7 @@
               <v-list-item>
                 <v-list-item-title>{{ data.name }}</v-list-item-title>
 
-                <v-list-item-icon>
+                <v-list-item icon>
                   <div v-if="activeDownload">
                     <v-progress-circular indeterminate color="primary" />
                   </div>
@@ -94,7 +94,7 @@
                       <span>Download Gem</span>
                     </v-tooltip>
                   </div>
-                </v-list-item-icon>
+                </v-list-item>
               </v-list-item>
               <v-divider v-if="index < listData.length - 1" :key="index" />
             </div>

@@ -41,8 +41,8 @@
           </v-tabs>
         </v-row>
         <form v-on:submit.prevent="submit">
-          <v-tabs-items v-model="tab">
-            <v-tab-item :key="0" eager="true" class="tab">
+          <v-window v-model="tab">
+            <v-window-item :key="0" eager="true" class="tab">
               <div class="pa-3">
                 <v-row class="mt-3">
                   <div v-for="(value, name) in localVariables" :key="name">
@@ -57,8 +57,8 @@
                   </div>
                 </v-row>
               </div>
-            </v-tab-item>
-            <v-tab-item
+            </v-window-item>
+            <v-window-item
               v-if="existingPluginTxt === null"
               :key="1 + '-new'"
               eager="true"
@@ -68,8 +68,13 @@
                 ><v-col>This can be edited before installation.</v-col></v-row
               >
               <pre ref="editor" class="editor"></pre>
-            </v-tab-item>
-            <v-tab-item v-else :key="1 + '-existing'" eager="true" class="tab">
+            </v-window-item>
+            <v-window-item
+              v-else
+              :key="1 + '-existing'"
+              eager="true"
+              class="tab"
+            >
               <v-row class="pa-3"
                 ><v-col
                   >Existing plugin.txt. This can be edited before
@@ -79,8 +84,8 @@
                 ></v-row
               >
               <pre ref="editor" class="editor"></pre>
-            </v-tab-item>
-          </v-tabs-items>
+            </v-window-item>
+          </v-window>
 
           <!-- <v-row class="pt-5"> -->
           <v-card-actions class="mt-2">

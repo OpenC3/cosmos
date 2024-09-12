@@ -37,7 +37,7 @@
           :label="config.text"
           :value="config.key"
           class="mt-0"
-          dense
+          density="compact"
         />
       </template>
       <template v-else> No configs to clear </template>

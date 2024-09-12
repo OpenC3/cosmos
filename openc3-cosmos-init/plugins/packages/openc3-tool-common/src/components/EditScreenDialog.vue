@@ -78,13 +78,7 @@
             class="editor"
             @contextmenu.prevent="showContextMenu"
           ></pre>
-          <v-menu
-            v-model="contextMenu"
-            :position-x="menuX"
-            :position-y="menuY"
-            absolute
-            offset-y
-          >
+          <v-menu v-model="contextMenu" :target="[menuX, menuY]">
             <v-list>
               <v-list-item link>
                 <v-list-item-title @click="openDocumentation">

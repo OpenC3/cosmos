@@ -25,7 +25,6 @@
     <v-row>
       <v-autocomplete
         v-model="selected"
-        cache-items
         density="compact"
         variant="outlined"
         hide-no-data
@@ -45,6 +44,9 @@
 import Api from '../services/api'
 
 export default {
+  // TODO: cache items
+  // this was previously handled by Vuetify and the `cache-items` prop on `v-autocomplete`, but that feature was
+  // dropped in Vuetify 3
   props: {
     value: String, // value is the default prop when using v-model
   },

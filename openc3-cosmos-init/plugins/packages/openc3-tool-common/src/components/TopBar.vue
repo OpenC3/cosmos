@@ -28,7 +28,7 @@
       >
     </v-row>
     <v-row dense class="flex-nowrap">
-      <v-menu offset-y ref="topmenu" v-for="(menu, i) in menus" :key="i">
+      <v-menu ref="topmenu" v-for="(menu, i) in menus" :key="i">
         <template v-slot:activator="{ props }">
           <v-btn
             variant="outlined"
@@ -54,18 +54,18 @@
                 v-else-if="option.subMenu && option.subMenu.length > 0"
                 :key="j + '-submenu'"
               >
-                <v-menu open-on-hover offset-x location="bottom" :key="k">
+                <v-menu open-on-hover location="bottom" :key="k">
                   <template v-slot:activator="{ props }">
                     <v-list-item
                       :disabled="option.disabled"
                       :key="j"
                       v-bind="props"
                     >
-                      <v-list-item-icon v-if="option.icon">
-                        <v-icon :disabled="option.disabled">{{
-                          option.icon
-                        }}</v-icon>
-                      </v-list-item-icon>
+                      <template v-slot:prepend v-if="option.icon">
+                        <v-icon :disabled="option.disabled">
+                          {{ option.icon }}
+                        </v-icon>
+                      </template>
                       <v-list-item-title
                         v-if="!option.radio && !option.checkbox"
                         :style="
@@ -83,9 +83,7 @@
                       :key="k"
                       @click="subMenuClick(submenu)"
                     >
-                      <v-list-item-icon v-if="submenu.icon">
-                        <v-icon>{{ submenu.icon }}</v-icon>
-                      </v-list-item-icon>
+                      <v-icon v-if="submenu.icon">{{ submenu.icon }}</v-icon>
                       <v-list-item-title>{{ submenu.label }}</v-list-item-title>
                     </v-list-item>
                   </v-list>
@@ -112,9 +110,9 @@
                     :label="option.label"
                   />
                 </v-list-item-action>
-                <v-list-item-icon v-if="option.icon">
+                <v-list-item-action v-if="option.icon">
                   <v-icon :disabled="option.disabled">{{ option.icon }}</v-icon>
-                </v-list-item-icon>
+                </v-list-item-action>
                 <v-list-item-title
                   v-if="!option.radio && !option.checkbox"
                   :style="

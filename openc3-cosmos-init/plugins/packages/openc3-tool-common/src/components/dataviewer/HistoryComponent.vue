@@ -69,18 +69,13 @@
             data-test="history-component-text-area"
           />
           <div class="floating-buttons">
-            <v-menu
-              :close-on-content-click="false"
-              :min-width="700"
-              :nudge-left="710"
-              :nudge-top="250"
-            >
+            <v-menu :close-on-content-click="false" :min-width="700">
               <template v-slot:activator="{ props }">
                 <v-btn
                   class="ml-2"
                   color="secondary"
                   v-bind="props"
-                  fab
+                  icon
                   size="small"
                   data-test="history-component-open-settings"
                 >
@@ -173,7 +168,7 @@
               class="ml-2"
               v-on:click="download"
               color="secondary"
-              fab
+              icon
               size="small"
               data-test="history-component-download"
             >
@@ -184,7 +179,7 @@
               :class="{ pulse: paused }"
               v-on:click="togglePlayPause"
               color="primary"
-              fab
+              icon
               data-test="history-component-play-pause"
             >
               <v-icon size="large" v-if="paused">mdi-play</v-icon>

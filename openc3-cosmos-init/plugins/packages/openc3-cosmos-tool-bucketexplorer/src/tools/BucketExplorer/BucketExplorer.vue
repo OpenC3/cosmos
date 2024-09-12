@@ -78,8 +78,10 @@
           prevIcon: 'mdi-chevron-left',
           nextIcon: 'mdi-chevron-right',
         }"
-        sort-by="modified"
-        sort-desc="true"
+        :sort-by="{
+          key: 'modified',
+          order: 'desc',
+        }"
         @click:row="fileClick"
         calculate-widths
         multi-sort

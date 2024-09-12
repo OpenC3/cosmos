@@ -31,7 +31,7 @@
     >
       <v-icon> mdi-{{ alertType }} </v-icon>
       {{ alertText }}
-      <template v-slot:action="{ attrs }">
+      <template v-slot:actions="{ attrs }">
         <v-btn variant="text" v-bind="attrs" @click="showAlert = false">
           Close
         </v-btn>
@@ -45,7 +45,7 @@
     >
       <v-icon> mdi-pencil-off </v-icon>
       {{ lockedBy }} is editing this script. Editor is in read-only mode
-      <template v-slot:action="{ attrs }">
+      <template v-slot:actions="{ attrs }">
         <v-btn
           variant="text"
           v-bind="attrs"
@@ -246,13 +246,7 @@
           class="editor"
           @contextmenu.prevent="showExecuteSelectionMenu"
         ></pre>
-        <v-menu
-          v-model="executeSelectionMenu"
-          :position-x="menuX"
-          :position-y="menuY"
-          absolute
-          offset-y
-        >
+        <v-menu v-model="executeSelectionMenu" :target="[menuX, menuY]">
           <v-list>
             <v-list-item
               v-for="item in executeSelectionMenuItems"

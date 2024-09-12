@@ -50,8 +50,10 @@
         dense
         calculate-widths
         multi-sort
-        sort-by="start_time"
-        sort-desc
+        :sort-by="{
+          key: 'start_time',
+          order: 'desc',
+        }"
         data-test="running-scripts"
         :footer-props="{
           itemsPerPageOptions: [3],
@@ -107,8 +109,10 @@
         dense
         calculate-widths
         multi-sort
-        sort-by="start"
-        sort-desc
+        :sort-by="{
+          key: 'start',
+          order: 'desc',
+        }"
         data-test="completed-scripts"
         :footer-props="{
           itemsPerPageOptions: [5],

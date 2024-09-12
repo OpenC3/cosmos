@@ -32,7 +32,7 @@
           :disabled="!name || !url || !icon"
         >
           Add
-          <v-icon end dark>{{ icon }}</v-icon>
+          <v-icon end theme="dark">{{ icon }}</v-icon>
         </v-btn>
       </v-col>
       <v-col cols="3">
@@ -52,14 +52,13 @@
     >
     <v-list class="list" data-test="toolList" id="toollist">
       <div v-for="(tool, index) in tools" :key="tool">
-        <v-list-item :class="{ filter: tool === 'Base' || tool === 'Admin' }">
-          <v-list-item-icon>
-            <v-icon> mdi-drag-horizontal </v-icon>
-          </v-list-item-icon>
-
+        <v-list-item
+          :class="{ filter: tool === 'Base' || tool === 'Admin' }"
+          prepend-icon="mdi-drag-horizontal"
+        >
           <v-list-item-title>{{ tool }}</v-list-item-title>
 
-          <v-list-item-icon>
+          <template v-slot:append>
             <v-tooltip location="bottom">
               <template v-slot:activator="{ props }">
                 <v-icon @click="editTool(tool)" v-bind="props">
@@ -68,8 +67,6 @@
               </template>
               <span>Edit Tool</span>
             </v-tooltip>
-          </v-list-item-icon>
-          <v-list-item-icon>
             <v-tooltip location="bottom">
               <template v-slot:activator="{ props }">
                 <v-icon @click="deleteTool(tool)" v-bind="props">
@@ -78,7 +75,7 @@
               </template>
               <span>Delete Tool</span>
             </v-tooltip>
-          </v-list-item-icon>
+          </template>
         </v-list-item>
         <v-divider v-if="index < tools.length - 1" :key="index" />
       </div>

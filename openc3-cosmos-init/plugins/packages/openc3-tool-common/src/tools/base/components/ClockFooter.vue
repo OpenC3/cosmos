@@ -32,13 +32,7 @@
       {{ formatDate(displayLocal ? localDate : utcDate, formatString) }}
       ({{ displayLocal ? 'local' : 'UTC' }})
     </span>
-    <v-menu
-      v-model="showMenu"
-      :position-x="menuX"
-      :position-y="menuY"
-      absolute
-      offset-y
-    >
+    <v-menu v-model="showMenu" :target="[menuX, menuY]">
       <v-list>
         <v-list-item>
           <v-list-item-title

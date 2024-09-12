@@ -23,7 +23,7 @@
 <template>
   <v-checkbox
     hide-details
-    dense
+    density="compact"
     :label="label"
     v-model="value"
     :style="computedStyle"

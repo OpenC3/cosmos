@@ -61,7 +61,7 @@
                 }
               "
               color="primary"
-              fab
+              icon
               data-test="start-graph"
             >
               <v-icon size="large">mdi-play</v-icon>
@@ -75,7 +75,7 @@
                 }
               "
               color="primary"
-              fab
+              icon
               data-test="pause-graph"
             >
               <v-icon size="large">mdi-pause</v-icon>

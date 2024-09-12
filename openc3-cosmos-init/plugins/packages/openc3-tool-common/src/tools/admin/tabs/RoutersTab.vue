@@ -27,7 +27,7 @@
         <v-list-item>
           <v-list-item-title>{{ router }}</v-list-item-title>
 
-          <v-list-item-icon>
+          <template v-slot:append>
             <v-tooltip location="bottom">
               <template v-slot:activator="{ props }">
                 <v-icon @click="showRouter(router)" v-bind="props">
@@ -36,7 +36,7 @@
               </template>
               <span>Show Router Details</span>
             </v-tooltip>
-          </v-list-item-icon>
+          </template>
         </v-list-item>
         <v-divider />
       </div>

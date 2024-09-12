@@ -45,20 +45,16 @@
         :disabled="files.length < 1"
         :loading="loadingPackage"
       >
-        <v-icon start dark>mdi-cloud-upload</v-icon>
+        <v-icon start theme="dark">mdi-cloud-upload</v-icon>
         <span> Upload </span>
         <template v-slot:loader>
           <span>Loading...</span>
         </template>
       </v-btn>
     </v-row>
-    <v-alert
-      v-model="showAlert"
-      closable
-      transition="scale-transition"
-      :type="alertType"
-      >{{ alert }}</v-alert
-    >
+    <v-alert v-model="showAlert" closable :type="alertType">{{
+      alert
+    }}</v-alert>
     <v-list
       v-if="Object.keys(processes).length > 0"
       class="list"
@@ -85,7 +81,7 @@
             <span v-text="' Updated At: ' + formatDate(process.updated_at)" />
           </v-list-item-subtitle>
 
-          <v-list-item-icon v-if="process.state !== 'Running'">
+          <template v-slot:append v-if="process.state !== 'Running'">
             <v-tooltip location="bottom">
               <template v-slot:activator="{ props }">
                 <v-icon @click="showOutput(process)" v-bind="props">
@@ -94,7 +90,7 @@
               </template>
               <span>Show Output</span>
             </v-tooltip>
-          </v-list-item-icon>
+          </template>
         </v-list-item>
         <v-divider />
       </div>
@@ -105,7 +101,7 @@
         <v-list-item>
           <v-list-item-title>{{ gem }}</v-list-item-title>
 
-          <v-list-item-icon>
+          <template v-slot:append>
             <v-tooltip location="bottom">
               <template v-slot:activator="{ props }">
                 <v-icon @click="deletePackage(gem)" v-bind="props">
@@ -114,7 +110,7 @@
               </template>
               <span>Delete Package</span>
             </v-tooltip>
-          </v-list-item-icon>
+          </template>
         </v-list-item>
         <v-divider />
       </div>
@@ -123,7 +119,7 @@
         <v-list-item>
           <v-list-item-title>{{ pkg }}</v-list-item-title>
 
-          <v-list-item-icon>
+          <template v-slot:append>
             <v-tooltip location="bottom">
               <template v-slot:activator="{ props }">
                 <v-icon @click="deletePackage(pkg)" v-bind="props">
@@ -132,7 +128,7 @@
               </template>
               <span>Delete Package</span>
             </v-tooltip>
-          </v-list-item-icon>
+          </template>
         </v-list-item>
         <v-divider />
       </div>

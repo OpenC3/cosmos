@@ -44,12 +44,11 @@
                 v-model="search"
                 flat
                 autofocus
-                variant="solo-inverted"
+                variant="solo-inverted outlined"
                 hide-details
                 clearable
                 label="Search"
                 prepend-inner-icon="mdi-magnify"
-                variant="outlined"
                 density="compact"
                 data-test="file-open-save-search"
               />

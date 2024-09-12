@@ -71,7 +71,7 @@
         :headers="headers"
         :items="commands"
         class="monospace"
-        item-class="monospace"
+        row-props="monospace"
         calculate-widths
         disable-pagination
         hide-default-footer
