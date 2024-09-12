@@ -200,6 +200,10 @@ export default {
       type: Boolean,
       default: false,
     },
+    hidden: {
+      type: Boolean,
+      default: false,
+    },
   },
   data() {
     return {
@@ -338,7 +342,7 @@ export default {
       this.internalDisabled = true
       const cmd =
         this.mode === 'tlm' ? 'get_all_tlm_names' : 'get_all_cmd_names'
-      this.api[cmd](this.selectedTargetName).then((names) => {
+      this.api[cmd](this.selectedTargetName, this.hidden).then((names) => {
         this.packetNames = names.map((name) => {
           return {
             label: name,

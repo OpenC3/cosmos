@@ -232,8 +232,8 @@ export class OpenC3Api {
     return this.exec('get_all_tlm', [target_name])
   }
 
-  get_all_tlm_names(target_name) {
-    return this.exec('get_all_tlm_names', [target_name])
+  get_all_tlm_names(target_name, hidden = false) {
+    return this.exec('get_all_tlm_names', [target_name], { hidden: hidden })
   }
 
   async get_tlm_packet(target_name, packet_name, value_type, stale_time = 30) {
@@ -352,8 +352,8 @@ export class OpenC3Api {
     return this.exec('get_all_cmds', [target_name])
   }
 
-  get_all_cmd_names(target_name) {
-    return this.exec('get_all_cmd_names', [target_name])
+  get_all_cmd_names(target_name, hidden = false) {
+    return this.exec('get_all_cmd_names', [target_name], { hidden: hidden })
   }
 
   get_cmd(target_name, command_name) {

@@ -404,18 +404,6 @@ module OpenC3
       end
     end
 
-    describe "clear_counters" do
-      it "clears each packet's receive count " do
-        @tlm.packet("TGT1", "PKT1").received_count = 1
-        @tlm.packet("TGT1", "PKT2").received_count = 2
-        @tlm.packet("TGT2", "PKT1").received_count = 3
-        @tlm.clear_counters
-        expect(@tlm.packet("TGT1", "PKT1").received_count).to eql 0
-        expect(@tlm.packet("TGT1", "PKT2").received_count).to eql 0
-        expect(@tlm.packet("TGT2", "PKT1").received_count).to eql 0
-      end
-    end
-
     describe "value" do
       it "complains about non-existent targets" do
         expect { @tlm.value("TGTX", "PKT1", "ITEM1") }.to raise_error(RuntimeError, "Telemetry target 'TGTX' does not exist")

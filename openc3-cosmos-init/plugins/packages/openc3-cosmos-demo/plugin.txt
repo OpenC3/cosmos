@@ -91,7 +91,6 @@ VARIABLE reduced_log_retain_time 2592000
   # This expression builds the correct hostname for Open Source or Enterprise Edition in Kubernetes
   <% example_host = ENV['KUBERNETES_SERVICE_HOST'] ? "#{scope}-user-#{example_microservice_name.downcase.gsub('__', '-').gsub('_', '-')}-service" : "openc3-operator" %>
   INTERFACE <%= example_int_name %> example_interface.rb <%= example_host %> <%= example_port %>
-    PROTOCOL WRITE MyRejectProtocol
     MAP_TARGET <%= example_target_name %>
     DONT_CONNECT
     # Override the default log time of 600

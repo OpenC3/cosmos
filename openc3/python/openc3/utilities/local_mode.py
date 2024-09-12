@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -26,6 +26,7 @@ class LocalMode:
         "openc3-cosmos-tool-admin",
         "openc3-cosmos-tool-bucketexplorer",
         "openc3-cosmos-tool-cmdsender",
+        "openc3-cosmos-tool-cmdhistory",
         "openc3-cosmos-tool-cmdtlmserver",
         "openc3-cosmos-tool-dataextractor",
         "openc3-cosmos-tool-dataviewer",
@@ -386,7 +387,7 @@ class LocalMode:
     #         # Only save if the parse was successful
     #         ToolConfigModel.save_config(parts[-2], File.basename(config, '.json'), data, scope: scope, local_mode: False)
     #       except: JSON:'P'arserError : error
-    #         puts "Unable to initialize tool config due to {error.message}"
+    #         puts "Unable to initialize tool config due to {repr(error)}"
 
     @classmethod
     def save_tool_config(cls, scope, tool, name, data):

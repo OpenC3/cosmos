@@ -46,6 +46,7 @@ rescue LoadError
             raise AuthError.new("Password is invalid for '#{permission}' permission")
           end
         end
+        return "anonymous"
       end
 
       def user_info(_token)
