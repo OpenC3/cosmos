@@ -7,7 +7,6 @@ module.exports = {
   filenameHashing: false,
   transpileDependencies: ['vuetify'],
   chainWebpack(config) {
-    config.resolve.alias.set('vue', '@vue/compat')
     config.module
       .rule('js')
       .use('babel-loader')
@@ -22,11 +21,6 @@ module.exports = {
       .tap((options) => {
         return {
           prettify: false,
-          compilerOptions: {
-            compatConfig: {
-              MODE: 3,
-            },
-          },
         }
       })
     config.externals(['vue', 'vuetify', 'vuex', 'vue-router'])

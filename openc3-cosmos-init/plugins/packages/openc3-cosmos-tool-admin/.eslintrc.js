@@ -5,7 +5,6 @@ module.exports = {
   },
   extends: [
     'plugin:vue/essential',
-    'plugin:vuetify/base',
     'plugin:prettier/recommended',
     '@vue/prettier',
   ],
