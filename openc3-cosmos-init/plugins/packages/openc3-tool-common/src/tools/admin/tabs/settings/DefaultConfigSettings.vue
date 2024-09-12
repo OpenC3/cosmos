@@ -47,7 +47,7 @@
         :disabled="!selectedLastConfigs.length"
         @click="clearLastConfigs"
         color="warning"
-        text
+        variant="text"
         class="ml-2"
         data-test="clear-default-configs"
       >

@@ -35,10 +35,9 @@
             data-test="search"
             prepend-inner-icon="mdi-magnify"
             clearable
-            outlined
-            dense
+            variant="outlined"
+            density="compact"
             clear-icon="mdi-close-circle-outline"
-            clearable
             single-line
             hide-details
           />
@@ -48,10 +47,10 @@
             <v-select
               label="Select Target"
               hide-details
-              dense
-              @change="targetNameChanged"
+              density="compact"
+              @update:model-value="targetNameChanged"
               :items="targetNames"
-              item-text="label"
+              item-title="label"
               item-value="value"
               v-model="selectedTargetName"
               data-test="select-target"
@@ -73,9 +72,9 @@
               }"
             >
               <template v-slot:item.actions="{ item }">
-                <v-tooltip top>
-                  <template v-slot:activator="{ on, attrs }">
-                    <div v-on="on" v-bind="attrs">
+                <v-tooltip location="top">
+                  <template v-slot:activator="{ props }">
+                    <div v-bind="props">
                       <v-btn
                         icon
                         data-test="deleteScreenIcon"
@@ -90,7 +89,7 @@
               </template>
               <template v-slot:expanded-item="{ headers, item }">
                 <td :colspan="headers.length">
-                  <v-textarea readonly rows="8" :value="item" />
+                  <v-textarea readonly rows="8" :model-value="item" />
                 </td>
               </template>
               <template v-slot:no-data>
@@ -99,7 +98,7 @@
             </v-data-table>
           </v-row>
           <v-row>
-            <span class="ma-2 red--text" v-show="text" v-text="text" />
+            <span class="ma-2 text-red" v-show="text" v-text="text" />
           </v-row>
         </v-card-text>
       </v-card>

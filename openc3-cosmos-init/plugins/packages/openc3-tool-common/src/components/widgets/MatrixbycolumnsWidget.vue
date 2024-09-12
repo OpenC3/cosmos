@@ -61,7 +61,7 @@ export default {
           (setting) =>
             setting[0] === 'MARGIN' ||
             (setting[0] === 'RAW' &&
-              setting[1].toUpperCase().includes('MARGIN'))
+              setting[1].toUpperCase().includes('MARGIN')),
         )
         if (found === undefined) {
           widget.settings.push(['MARGIN', margin])

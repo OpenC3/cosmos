@@ -39,8 +39,8 @@
           label="Search"
           prepend-inner-icon="mdi-magnify"
           clearable
-          outlined
-          dense
+          variant="outlined"
+          density="compact"
           single-line
           hide-details
           class="search"
@@ -103,7 +103,7 @@
               step="100"
               type="number"
               label="Refresh Interval (ms)"
-              :value="refreshInterval"
+              :model-value="refreshInterval"
               @change="refreshInterval = $event"
               data-test="refresh-interval"
             />
@@ -115,7 +115,7 @@
               step="1"
               type="number"
               label="Time at which to mark data Stale (seconds)"
-              :value="staleLimit"
+              :model-value="staleLimit"
               @change="staleLimit = parseInt($event)"
               data-test="stale-limit"
             />

@@ -28,9 +28,9 @@
     <v-card :min-height="height" :min-width="width">
       <v-system-bar>
         <div v-show="errors.length !== 0">
-          <v-tooltip top>
-            <template v-slot:activator="{ on, attrs }">
-              <div v-on="on" v-bind="attrs">
+          <v-tooltip location="top">
+            <template v-slot:activator="{ props }">
+              <div v-bind="props">
                 <v-icon
                   data-test="error-graph-icon"
                   @click="errorDialog = true"
@@ -42,9 +42,9 @@
             <span> Errors </span>
           </v-tooltip>
         </div>
-        <v-tooltip top>
-          <template v-slot:activator="{ on, attrs }">
-            <div v-on="on" v-bind="attrs">
+        <v-tooltip location="top">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
               <v-icon data-test="edit-screen-icon" @click="openEdit">
                 mdi-pencil
               </v-icon>
@@ -52,9 +52,9 @@
           </template>
           <span> Edit Screen </span>
         </v-tooltip>
-        <v-tooltip top v-if="!fixFloated">
-          <template v-slot:activator="{ on, attrs }">
-            <div v-on="on" v-bind="attrs">
+        <v-tooltip location="top" v-if="!fixFloated">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
               <v-icon data-test="float-screen-icon" @click="floatScreen">
                 {{ floated ? 'mdi-balloon' : 'mdi-view-grid-outline' }}
               </v-icon>
@@ -62,9 +62,9 @@
           </template>
           <span> {{ floated ? 'Unfloat Screen' : 'Float Screen' }} </span>
         </v-tooltip>
-        <v-tooltip top v-if="floated">
-          <template v-slot:activator="{ on, attrs }">
-            <div v-on="on" v-bind="attrs">
+        <v-tooltip location="top" v-if="floated">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
               <v-icon data-test="up-screen-icon" @click="upScreen">
                 mdi-arrow-up
               </v-icon>
@@ -72,9 +72,9 @@
           </template>
           <span> Move Screen Up </span>
         </v-tooltip>
-        <v-tooltip top v-if="floated && zIndex > minZ">
-          <template v-slot:activator="{ on, attrs }">
-            <div v-on="on" v-bind="attrs">
+        <v-tooltip location="top" v-if="floated && zIndex > minZ">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
               <v-icon data-test="down-screen-icon" @click="downScreen">
                 mdi-arrow-down
               </v-icon>
@@ -85,9 +85,9 @@
         <v-spacer />
         <span>{{ target }} {{ screen }}</span>
         <v-spacer />
-        <v-tooltip top>
-          <template v-slot:activator="{ on, attrs }">
-            <div v-on="on" v-bind="attrs">
+        <v-tooltip location="top">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
               <v-icon
                 data-test="minimize-screen-icon"
                 @click="minMaxTransition"
@@ -107,9 +107,9 @@
           <span v-show="expand"> Minimize Screen </span>
           <span v-show="!expand"> Maximize Screen </span>
         </v-tooltip>
-        <v-tooltip v-if="showClose" top>
-          <template v-slot:activator="{ on, attrs }">
-            <div v-on="on" v-bind="attrs">
+        <v-tooltip v-if="showClose" location="top">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
               <v-icon
                 data-test="close-screen-icon"
                 @click="$emit('close-screen')"
@@ -130,7 +130,7 @@
         >
           <v-overlay
             style="pointer-events: none"
-            :value="errors.length !== 0"
+            :model-value="errors.length !== 0"
             opacity="0.8"
             absolute
           />
@@ -163,7 +163,7 @@
         <v-spacer />
       </v-system-bar>
       <v-card>
-        <v-textarea class="errors" readonly rows="13" :value="error" />
+        <v-textarea class="errors" readonly rows="13" :model-value="error" />
       </v-card>
     </v-dialog>
   </div>

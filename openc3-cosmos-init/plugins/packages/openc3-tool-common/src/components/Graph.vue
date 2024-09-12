@@ -28,9 +28,9 @@
         v-show="!hideSystemBar"
       >
         <div v-show="errors.length !== 0" class="mx-2">
-          <v-tooltip top>
-            <template v-slot:activator="{ on, attrs }">
-              <div v-on="on" v-bind="attrs">
+          <v-tooltip location="top">
+            <template v-slot:activator="{ props }">
+              <div v-bind="props">
                 <v-icon data-test="error-graph-icon" @click="errorDialog = true"
                   >mdi-alert</v-icon
                 >
@@ -40,9 +40,9 @@
           </v-tooltip>
         </div>
 
-        <v-tooltip top>
-          <template v-slot:activator="{ on, attrs }">
-            <div v-on="on" v-bind="attrs">
+        <v-tooltip location="top">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
               <v-icon data-test="edit-graph-icon" @click="editGraph = true">
                 mdi-pencil
               </v-icon>
@@ -56,9 +56,9 @@
         <v-spacer />
 
         <div v-show="expand">
-          <v-tooltip top>
-            <template v-slot:activator="{ on, attrs }">
-              <div v-on="on" v-bind="attrs">
+          <v-tooltip location="top">
+            <template v-slot:activator="{ props }">
+              <div v-bind="props">
                 <v-icon
                   data-test="collapse-all"
                   v-show="calcFullSize"
@@ -81,9 +81,9 @@
         </div>
 
         <div v-show="expand">
-          <v-tooltip top>
-            <template v-slot:activator="{ on, attrs }">
-              <div v-on="on" v-bind="attrs">
+          <v-tooltip location="top">
+            <template v-slot:activator="{ props }">
+              <div v-bind="props">
                 <v-icon
                   data-test="collapse-width"
                   v-show="fullWidth"
@@ -106,9 +106,9 @@
         </div>
 
         <div v-show="expand">
-          <v-tooltip top>
-            <template v-slot:activator="{ on, attrs }">
-              <div v-on="on" v-bind="attrs">
+          <v-tooltip location="top">
+            <template v-slot:activator="{ props }">
+              <div v-bind="props">
                 <v-icon
                   data-test="collapse-height"
                   v-show="fullHeight"
@@ -130,9 +130,9 @@
           </v-tooltip>
         </div>
 
-        <v-tooltip top>
-          <template v-slot:activator="{ on, attrs }">
-            <div v-on="on" v-bind="attrs">
+        <v-tooltip location="top">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
               <v-icon
                 data-test="minimize-screen-icon"
                 @click="minMaxTransition"
@@ -153,9 +153,9 @@
           <span v-show="!expand"> Maximize </span>
         </v-tooltip>
 
-        <v-tooltip top>
-          <template v-slot:activator="{ on, attrs }">
-            <div v-on="on" v-bind="attrs">
+        <v-tooltip location="top">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
               <v-icon
                 data-test="close-graph-icon"
                 @click="$emit('close-graph')"
@@ -181,7 +181,7 @@
     <v-dialog
       v-model="editGraph"
       @keydown.esc="$emit('input')"
-      @input="editGraphClose()"
+      @update:model-value="editGraphClose()"
       max-width="700"
     >
       <v-system-bar>
@@ -213,8 +213,8 @@
                 <v-col>
                   <v-select
                     label="Legend Position"
-                    dense
-                    outlined
+                    density="compact"
+                    variant="outlined"
                     hide-details
                     :items="legendPositions"
                     v-model="legendPosition"
@@ -307,7 +307,7 @@
                     {{ props.item.color }}
                     <template v-slot:input>
                       <v-select
-                        outlined
+                        variant="outlined"
                         hide-details
                         label="Color"
                         :items="colors"
@@ -317,16 +317,16 @@
                   </v-edit-dialog>
                 </template>
                 <template v-slot:footer.prepend>
-                  <v-btn small style="margin-top: 3px" @click="addLine">
+                  <v-btn size="small" style="margin-top: 3px" @click="addLine">
                     New Horizontal Line
                   </v-btn>
                   &nbsp;&nbsp;Click to edit values, Enter to save
                   <v-spacer />
                 </template>
                 <template v-slot:item.actions="{ item }">
-                  <v-tooltip top>
-                    <template v-slot:activator="{ on, attrs }">
-                      <div v-on="on" v-bind="attrs">
+                  <v-tooltip location="top">
+                    <template v-slot:activator="{ props }">
+                      <div v-bind="props">
                         <v-btn
                           icon
                           :data-test="`delete-line-icon${item.lineId}`"
@@ -358,9 +358,9 @@
               }"
             >
               <template v-slot:item.actions="{ item }">
-                <v-tooltip top>
-                  <template v-slot:activator="{ on, attrs }">
-                    <div v-on="on" v-bind="attrs">
+                <v-tooltip location="top">
+                  <template v-slot:activator="{ props }">
+                    <div v-bind="props">
                       <v-btn
                         icon
                         :data-test="`delete-item-icon${item.itemId}`"
@@ -404,7 +404,7 @@
           />
         </v-row>
         <v-row class="my-3">
-          <v-textarea readonly rows="8" :value="error" />
+          <v-textarea readonly rows="8" :model-value="error" />
         </v-row>
         <v-row>
           <v-btn block @click="clearErrors"> Clear </v-btn>
@@ -450,7 +450,7 @@
       absolute
       offset-y
     >
-      <v-list nav dense>
+      <v-list nav density="compact">
         <v-subheader>
           {{ selectedItem.targetName }}
           {{ selectedItem.packetName }}
@@ -460,17 +460,15 @@
           <v-list-item-icon>
             <v-icon>mdi-pencil</v-icon>
           </v-list-item-icon>
-          <v-list-item-content>
-            <v-list-item-title> Edit </v-list-item-title>
-          </v-list-item-content>
+
+          <v-list-item-title> Edit </v-list-item-title>
         </v-list-item>
         <v-list-item @click="removeItems([selectedItem])">
           <v-list-item-icon>
             <v-icon>mdi-delete</v-icon>
           </v-list-item-icon>
-          <v-list-item-content>
-            <v-list-item-title> Delete </v-list-item-title>
-          </v-list-item-content>
+
+          <v-list-item-title> Delete </v-list-item-title>
         </v-list-item>
       </v-list>
     </v-menu>
@@ -771,7 +769,7 @@ export default {
         })
         return seriesObj
       },
-      { chartSeries: [], overviewSeries: [] }
+      { chartSeries: [], overviewSeries: [] },
     )
 
     let chartOpts = {}
@@ -815,7 +813,7 @@ export default {
       this.graph = new uPlot(
         chartOpts,
         this.data,
-        document.getElementById(`chart${this.id}`)
+        document.getElementById(`chart${this.id}`),
       )
     } else {
       // Uplot wants the real timezone name ('local' doesn't work)
@@ -869,10 +867,10 @@ export default {
               if (key === 'x' && !this.zoomOverview && this.overview) {
                 this.zoomChart = true
                 let left = Math.round(
-                  this.overview.valToPos(chart.scales.x.min, 'x')
+                  this.overview.valToPos(chart.scales.x.min, 'x'),
                 )
                 let right = Math.round(
-                  this.overview.valToPos(chart.scales.x.max, 'x')
+                  this.overview.valToPos(chart.scales.x.max, 'x'),
                 )
                 this.overview.setSelect({ left, width: right - left })
                 this.zoomChart = false
@@ -937,7 +935,7 @@ export default {
       this.graph = new uPlot(
         chartOpts,
         this.data,
-        document.getElementById(`chart${this.id}`)
+        document.getElementById(`chart${this.id}`),
       )
 
       const overviewOpts = {
@@ -970,7 +968,7 @@ export default {
                 let min = chart.posToVal(chart.select.left, 'x')
                 let max = chart.posToVal(
                   chart.select.left + chart.select.width,
-                  'x'
+                  'x',
                 )
                 this.graph.setScale('x', { min, max })
                 this.zoomOverview = false
@@ -982,7 +980,7 @@ export default {
       this.overview = new uPlot(
         overviewOpts,
         this.data,
-        document.getElementById(`overview${this.id}`)
+        document.getElementById(`overview${this.id}`),
       )
       //console.timeEnd('chart')
       this.moveLegend(this.legendPosition)
@@ -1039,7 +1037,7 @@ export default {
         this.graphStartDateTime = new Date(this.graphStartDateTime)
         this.graphStartDateTime = subMinutes(
           this.graphStartDateTime,
-          new Date().getTimezoneOffset()
+          new Date().getTimezoneOffset(),
         )
         this.graphStartDateTime = this.graphStartDateTime.getTime() * 1_000_000
       }
@@ -1283,7 +1281,7 @@ export default {
       const navDrawer = document.getElementById('openc3-nav-drawer')
       if (navDrawer) {
         navDrawerWidth = navDrawer.classList.contains(
-          'v-navigation-drawer--open'
+          'v-navigation-drawer--open',
         )
           ? navDrawer.clientWidth
           : 0
@@ -1300,7 +1298,7 @@ export default {
         legendWidth
       const viewHeight = Math.max(
         document.documentElement.clientHeight,
-        window.innerHeight || 0
+        window.innerHeight || 0,
       )
 
       const chooser = document.getElementsByClassName('tgt-pkt-item-chooser')[0]
@@ -1447,7 +1445,7 @@ export default {
                 ctx.moveTo(bbox.left, u.valToPos(line.yValue, 'y', true))
                 ctx.lineTo(
                   bbox.left + bbox.width,
-                  u.valToPos(line.yValue, 'y', true)
+                  u.valToPos(line.yValue, 'y', true),
                 )
                 ctx.stroke()
                 ctx.restore()
@@ -1590,7 +1588,7 @@ export default {
               }
             },
           },
-          index
+          index,
         )
         if (this.overview) {
           this.overview.addSeries(
@@ -1600,7 +1598,7 @@ export default {
                 return this.items[seriesIdx - 1].color
               },
             },
-            index
+            index,
           )
         }
         let newData = Array(this.data[0].length)
@@ -1633,7 +1631,7 @@ export default {
               start_time: theStartTime,
               end_time: this.graphEndDateTime,
             })
-          }
+          },
         )
       }
     },

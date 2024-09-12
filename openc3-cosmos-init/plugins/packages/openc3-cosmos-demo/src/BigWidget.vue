@@ -22,22 +22,21 @@
 
 <template>
   <div class="value-widget-container">
-    <v-tooltip bottom>
-      <template v-slot:activator="{ on, attrs }">
+    <v-tooltip location="bottom">
+      <template v-slot:activator="{ props }">
         <v-text-field
-          solo
-          dense
+          variant="solo"
+          density="compact"
           readonly
           single-line
           hide-no-data
           hide-details
-          :value="_value"
+          :model-value="_value"
           :class="valueClass"
           :style="computedStyle"
           data-test="value"
           @contextmenu="showContextMenu"
-          v-bind="attrs"
-          v-on="on"
+          v-bind="props"
         />
       </template>
       <span>{{ fullName }}</span>

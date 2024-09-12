@@ -67,7 +67,7 @@
     <v-divider />
     <!-- TODO This alert shows both success and failure. Make consistent with rest of OpenC3. -->
     <v-alert
-      dismissible
+      closable
       transition="scale-transition"
       :type="alertType"
       v-model="showAlert"
@@ -88,29 +88,27 @@
       </v-row>
       <div v-for="process in processes" :key="process.name">
         <v-list-item>
-          <v-list-item-content>
-            <v-list-item-title>
-              <span
-                :class="process.state.toLowerCase()"
-                v-text="
-                  `Processing ${process.process_type}: ${process.detail} - ${process.state}`
-                "
-              />
-            </v-list-item-title>
-            <v-list-item-subtitle>
-              <span v-text="' Updated At: ' + formatDate(process.updated_at)"
-            /></v-list-item-subtitle>
-          </v-list-item-content>
+          <v-list-item-title>
+            <span
+              :class="process.state.toLowerCase()"
+              v-text="
+                `Processing ${process.process_type}: ${process.detail} - ${process.state}`
+              "
+            />
+          </v-list-item-title>
+          <v-list-item-subtitle>
+            <span v-text="' Updated At: ' + formatDate(process.updated_at)"
+          /></v-list-item-subtitle>
+
           <v-list-item-icon>
             <div v-if="process.state === 'Running'">
               <v-progress-circular indeterminate color="primary" />
             </div>
-            <v-tooltip v-else bottom>
-              <template v-slot:activator="{ on, attrs }">
+            <v-tooltip v-else location="bottom">
+              <template v-slot:activator="{ props }">
                 <v-icon
                   @click="showOutput(process)"
-                  v-bind="attrs"
-                  v-on="on"
+                  v-bind="props"
                   data-test="show-output"
                 >
                   mdi-eye
@@ -127,33 +125,28 @@
       <v-row class="px-4"><v-col class="text-h6">Plugin List</v-col></v-row>
       <div v-for="(plugin, index) in shownPlugins" :key="index">
         <v-list-item>
-          <v-list-item-content>
-            <v-list-item-title
-              ><span v-if="isModified(plugin)">* </span
-              >{{ plugin }}</v-list-item-title
-            >
-            <v-list-item-subtitle v-if="pluginTargets(plugin).length !== 0">
-              <span
-                v-for="(target, index) in pluginTargets(plugin)"
-                :key="index"
-              >
-                <a
-                  v-if="target.modified"
-                  @click.prevent="downloadTarget(target.name)"
-                  >{{ target.name }}
-                </a>
-                <span v-else>{{ target.name }} </span>
-              </span>
-            </v-list-item-subtitle>
-          </v-list-item-content>
+          <v-list-item-title
+            ><span v-if="isModified(plugin)">* </span
+            >{{ plugin }}</v-list-item-title
+          >
+          <v-list-item-subtitle v-if="pluginTargets(plugin).length !== 0">
+            <span v-for="(target, index) in pluginTargets(plugin)" :key="index">
+              <a
+                v-if="target.modified"
+                @click.prevent="downloadTarget(target.name)"
+                >{{ target.name }}
+              </a>
+              <span v-else>{{ target.name }} </span>
+            </span>
+          </v-list-item-subtitle>
+
           <v-list-item-icon>
             <div class="mx-3">
-              <v-tooltip bottom>
-                <template v-slot:activator="{ on, attrs }">
+              <v-tooltip location="bottom">
+                <template v-slot:activator="{ props }">
                   <v-icon
                     @click="downloadPlugin(plugin)"
-                    v-bind="attrs"
-                    v-on="on"
+                    v-bind="props"
                     data-test="download-plugin"
                   >
                     mdi-download
@@ -163,12 +156,11 @@
               </v-tooltip>
             </div>
             <div class="mx-3">
-              <v-tooltip bottom>
-                <template v-slot:activator="{ on, attrs }">
+              <v-tooltip location="bottom">
+                <template v-slot:activator="{ props }">
                   <v-icon
                     @click="editPlugin(plugin)"
-                    v-bind="attrs"
-                    v-on="on"
+                    v-bind="props"
                     data-test="edit-plugin"
                   >
                     mdi-pencil
@@ -178,12 +170,11 @@
               </v-tooltip>
             </div>
             <div class="mx-3">
-              <v-tooltip bottom>
-                <template v-slot:activator="{ on, attrs }">
+              <v-tooltip location="bottom">
+                <template v-slot:activator="{ props }">
                   <v-icon
                     @click="upgradePlugin(plugin)"
-                    v-bind="attrs"
-                    v-on="on"
+                    v-bind="props"
                     data-test="upgrade-plugin"
                   >
                     mdi-update
@@ -193,12 +184,11 @@
               </v-tooltip>
             </div>
             <div class="mx-3">
-              <v-tooltip bottom>
-                <template v-slot:activator="{ on, attrs }">
+              <v-tooltip location="bottom">
+                <template v-slot:activator="{ props }">
                   <v-icon
                     @click="deletePrompt(plugin)"
-                    v-bind="attrs"
-                    v-on="on"
+                    v-bind="props"
                     data-test="delete-plugin"
                   >
                     mdi-delete
@@ -373,13 +363,13 @@ export default {
               this.update()
             }, 5000)
           }
-        }
+        },
       )
     },
     formatDate(nanoSecs) {
       return format(
         toDate(parseInt(nanoSecs) / 1_000_000),
-        'yyyy-MM-dd HH:mm:ss.SSS'
+        'yyyy-MM-dd HH:mm:ss.SSS',
       )
     },
     upload: function (existing = null) {
@@ -395,7 +385,7 @@ export default {
         headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: function (progressEvent) {
           var percentCompleted = Math.round(
-            (progressEvent.loaded * 100) / progressEvent.total
+            (progressEvent.loaded * 100) / progressEvent.total,
           )
           self.progress = percentCompleted
         },
@@ -575,7 +565,7 @@ export default {
                 {
                   okText: 'Ok',
                   cancelText: 'Cancel',
-                }
+                },
               )
               .then(() => {
                 this.upload(this.currentPlugin)
@@ -602,7 +592,7 @@ export default {
                   {
                     okText: 'Ok',
                     cancelText: 'Cancel',
-                  }
+                  },
                 )
                 .then(() => {
                   this.upload(this.currentPlugin)

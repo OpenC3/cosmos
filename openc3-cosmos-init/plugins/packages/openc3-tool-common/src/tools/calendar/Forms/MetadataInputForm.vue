@@ -22,15 +22,15 @@
 
 <template>
   <div>
-    <v-simple-table dense>
+    <v-table dense>
       <tbody>
         <tr>
           <th scope="col" class="text-left">Key</th>
           <th scope="col" class="text-left">Value</th>
           <th scope="col" class="text-right">
-            <v-tooltip top>
-              <template v-slot:activator="{ on, attrs }">
-                <div v-on="on" v-bind="attrs">
+            <v-tooltip location="top">
+              <template v-slot:activator="{ props }">
+                <div v-bind="props">
                   <v-icon data-test="new-metadata-icon" @click="newMetadata">
                     mdi-plus
                   </v-icon>
@@ -46,7 +46,7 @@
               <v-text-field
                 v-model="meta.key"
                 type="text"
-                dense
+                density="compact"
                 :data-test="`key-${i}`"
               />
             </td>
@@ -54,14 +54,14 @@
               <v-text-field
                 v-model="meta.value"
                 type="text"
-                dense
+                density="compact"
                 :data-test="`value-${i}`"
               />
             </td>
             <td>
-              <v-tooltip top>
-                <template v-slot:activator="{ on, attrs }">
-                  <div v-on="on" v-bind="attrs">
+              <v-tooltip location="top">
+                <template v-slot:activator="{ props }">
+                  <div v-bind="props">
                     <v-icon
                       :data-test="`delete-metadata-icon-${i}`"
                       @click="rm(i)"
@@ -76,7 +76,7 @@
           </tr>
         </template>
       </tbody>
-    </v-simple-table>
+    </v-table>
   </div>
 </template>
 

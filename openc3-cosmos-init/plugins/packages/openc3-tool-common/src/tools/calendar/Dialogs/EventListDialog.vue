@@ -28,9 +28,9 @@
           <v-spacer />
           <span v-if="newMetadata">Metadata</span><span v-else>Events</span>
           <v-spacer />
-          <v-tooltip top>
-            <template v-slot:activator="{ on, attrs }">
-              <div v-on="on" v-bind="attrs">
+          <v-tooltip location="top">
+            <template v-slot:activator="{ props }">
+              <div v-bind="props">
                 <v-icon data-test="close-metadata-icon" @click="close">
                   mdi-close-box
                 </v-icon>
@@ -47,8 +47,8 @@
             label="Search"
             prepend-inner-icon="mdi-magnify"
             clearable
-            outlined
-            dense
+            variant="outlined"
+            density="compact"
             single-line
             hide-details
           />
@@ -77,14 +77,18 @@
           </template>
           <template v-slot:item.actions="{ item }">
             <v-icon
-              small
+              size="small"
               class="mr-2"
               @click="editAction(item)"
               data-test="edit-event"
             >
               mdi-pencil
             </v-icon>
-            <v-icon small @click="deleteAction(item)" data-test="delete-event">
+            <v-icon
+              size="small"
+              @click="deleteAction(item)"
+              data-test="delete-event"
+            >
               mdi-delete
             </v-icon>
           </template>
@@ -92,7 +96,7 @@
         <v-card-actions>
           <v-spacer />
           <v-btn
-            outlined
+            variant="outlined"
             class="mx-2"
             data-test="close-event-list"
             @click="close"
@@ -231,7 +235,7 @@ export default {
         case 'metadata':
           let rows = []
           Object.entries(event.metadata.metadata).forEach(([key, value]) =>
-            rows.push(`${key}: ${value}`)
+            rows.push(`${key}: ${value}`),
           )
           data = rows.join(', ')
           break
@@ -284,7 +288,7 @@ export default {
           {
             okText: 'Delete',
             cancelText: 'Cancel',
-          }
+          },
         )
         .then((dialog) => {
           this.localEvents.splice(deleteIndex, 1)

@@ -25,13 +25,12 @@
     <v-list class="list" data-test="routerList">
       <div v-for="(router, index) in routers" :key="index">
         <v-list-item>
-          <v-list-item-content>
-            <v-list-item-title>{{ router }}</v-list-item-title>
-          </v-list-item-content>
+          <v-list-item-title>{{ router }}</v-list-item-title>
+
           <v-list-item-icon>
-            <v-tooltip bottom>
-              <template v-slot:activator="{ on, attrs }">
-                <v-icon @click="showRouter(router)" v-bind="attrs" v-on="on">
+            <v-tooltip location="bottom">
+              <template v-slot:activator="{ props }">
+                <v-icon @click="showRouter(router)" v-bind="props">
                   mdi-eye
                 </v-icon>
               </template>

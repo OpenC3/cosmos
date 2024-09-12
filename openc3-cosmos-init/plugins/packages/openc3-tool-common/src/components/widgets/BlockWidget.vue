@@ -23,14 +23,14 @@
 <template>
   <div class="block-widget-container">
     <v-textarea
-      solo
-      dense
+      variant="solo"
+      density="compact"
       readonly
       no-resize
       hide-details
       :width="width"
       :height="height"
-      :value="_value"
+      :model-value="_value"
       :class="valueClass"
       :style="[computedStyle, aging]"
       data-test="valueText"

@@ -13,8 +13,8 @@
         <div v-if="params.validateText" class="validate mt-4">
           Enter {{ params.validateText }} to confirm!
           <v-text-field
-            solo
-            dense
+            variant="solo"
+            density="compact"
             single-line
             v-model="validationText"
             :label="Confirm"
@@ -28,7 +28,7 @@
         <v-btn
           v-if="params.cancelText"
           class="mx-2"
-          outlined
+          variant="outlined"
           :data-test="dataTestCancel"
           @click="cancel"
           >{{ params.cancelText }}</v-btn

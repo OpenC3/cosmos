@@ -22,8 +22,8 @@
 
 <template>
   <v-text-field
-    solo
-    dense
+    variant="solo"
+    density="compact"
     single-line
     hide-no-data
     hide-details

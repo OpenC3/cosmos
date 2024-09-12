@@ -30,18 +30,16 @@
           existing modified files?
         </div>
         <v-list-item
-          two-line
+          lines="two"
           v-for="(target, index) in modifiedTargets"
           :key="index"
         >
-          <v-list-item-content>
-            <v-list-item-title>{{ target.name }}</v-list-item-title>
-            <v-list-item-subtitle
-              v-for="(file, itemIndex) in target.files"
-              :key="itemIndex"
-              >{{ file }}</v-list-item-subtitle
-            >
-          </v-list-item-content>
+          <v-list-item-title>{{ target.name }}</v-list-item-title>
+          <v-list-item-subtitle
+            v-for="(file, itemIndex) in target.files"
+            :key="itemIndex"
+            >{{ file }}</v-list-item-subtitle
+          >
         </v-list-item>
         <v-checkbox
           v-model="deleteModified"
@@ -54,11 +52,13 @@
         <v-spacer />
         <v-btn
           class="mx-2"
-          outlined
+          variant="outlined"
           data-test="modified-plugin-cancel"
           @click="
-            show = false
-            $emit('cancel')
+            () => {
+              show = false
+              $emit('cancel')
+            }
           "
           >Cancel</v-btn
         >
@@ -67,8 +67,10 @@
           color="primary"
           data-test="modified-plugin-submit"
           @click="
-            show = false
-            $emit('submit', deleteModified)
+            () => {
+              show = false
+              $emit('submit', deleteModified)
+            }
           "
           >Confirm
         </v-btn>
@@ -114,7 +116,7 @@ export default {
               files: response.data,
             })
           }
-        }
+        },
       )
     }
   },

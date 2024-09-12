@@ -37,8 +37,8 @@
             label="Search"
             prepend-inner-icon="mdi-magnify"
             clearable
-            outlined
-            dense
+            variant="outlined"
+            density="compact"
             single-line
             hide-details
             data-test="running-search" /></v-row
@@ -62,19 +62,19 @@
         <template v-slot:item.connect="{ item }">
           <v-btn color="primary" @click="connectScript(item)">
             <span>Connect</span>
-            <v-icon right v-show="connectInNewTab"> mdi-open-in-new </v-icon>
+            <v-icon end v-show="connectInNewTab"> mdi-open-in-new </v-icon>
           </v-btn>
         </template>
         <template v-slot:item.stop="{ item }">
           <v-btn color="primary" @click="stopScript(item)">
             <span>Stop</span>
-            <v-icon right> mdi-close-circle-outline </v-icon>
+            <v-icon end> mdi-close-circle-outline </v-icon>
           </v-btn>
         </template>
         <template v-slot:item.delete="{ item }">
           <v-btn color="primary" @click="deleteScript(item)">
             <span>Delete</span>
-            <v-icon right> mdi-alert-octagon-outline </v-icon>
+            <v-icon end> mdi-alert-octagon-outline </v-icon>
           </v-btn>
         </template>
       </v-data-table>
@@ -92,8 +92,8 @@
             label="Search"
             prepend-inner-icon="mdi-magnify"
             clearable
-            outlined
-            dense
+            variant="outlined"
+            density="compact"
             single-line
             hide-details
           />
@@ -126,7 +126,7 @@
               >Script Report</span
             >
             <span v-else>Script Log</span>
-            <v-icon right> mdi-file-download-outline </v-icon>
+            <v-icon end> mdi-file-download-outline </v-icon>
             <template v-slot:loader>
               <span>Loading...</span>
             </template>

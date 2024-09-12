@@ -29,7 +29,7 @@
           class="ma-2"
           @click.stop="selectBucket(bucket)"
         >
-          <v-avatar left>
+          <v-avatar start>
             <v-icon>mdi-bucket</v-icon>
           </v-avatar>
           {{ bucket }}
@@ -44,7 +44,7 @@
           class="ma-2"
           @click.stop="selectVolume(volume)"
         >
-          <v-avatar left>
+          <v-avatar start>
             <v-icon>mdi-folder</v-icon>
           </v-avatar>
           {{ volume }}
@@ -58,8 +58,8 @@
           label="Search"
           prepend-inner-icon="mdi-magnify"
           clearable
-          outlined
-          dense
+          variant="outlined"
+          density="compact"
           single-line
           hide-details
           class="search"
@@ -165,7 +165,7 @@
               <v-spacer />
               <v-btn
                 @click="uploadPathDialog = false"
-                outlined
+                variant="outlined"
                 class="mx-2"
                 data-test="upload-file-cancel-btn"
               >

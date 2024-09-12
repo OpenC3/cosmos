@@ -39,10 +39,9 @@
                 type="text"
                 prepend-inner-icon="mdi-magnify"
                 clearable
-                outlined
-                dense
+                variant="outlined"
+                density="compact"
                 clear-icon="mdi-close-circle-outline"
-                clearable
                 autofocus
                 single-line
                 hide-details
@@ -73,14 +72,14 @@
               </template>
             </v-data-table>
             <v-row dense>
-              <span class="ma-2 red--text" v-show="error" v-text="error" />
+              <span class="ma-2 text-red" v-show="error" v-text="error" />
             </v-row>
           </div>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
           <v-btn
-            outlined
+            variant="outlined"
             class="mx-2"
             @click="cancel"
             data-test="open-config-cancel-btn"
@@ -196,7 +195,7 @@ export default {
           if (error !== true) {
             this.$emit(
               'warning',
-              `Failed to delete config ${item.config} Error: ${error}`
+              `Failed to delete config ${item.config} Error: ${error}`,
             )
           }
         })

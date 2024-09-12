@@ -30,9 +30,9 @@
     <v-card>
       <div ref="bar">
         <v-system-bar>
-          <v-tooltip top>
-            <template v-slot:activator="{ on, attrs }">
-              <div v-on="on" v-bind="attrs">
+          <v-tooltip location="top">
+            <template v-slot:activator="{ props }">
+              <div v-bind="props">
                 <v-icon data-test="copy-icon" @click="copyRawData">
                   mdi-content-copy
                 </v-icon>
@@ -40,9 +40,9 @@
             </template>
             <span> Copy </span>
           </v-tooltip>
-          <v-tooltip top>
-            <template v-slot:activator="{ on, attrs }">
-              <div v-on="on" v-bind="attrs">
+          <v-tooltip location="top">
+            <template v-slot:activator="{ props }">
+              <div v-bind="props">
                 <v-icon data-test="download" @click="downloadRawData">
                   mdi-download
                 </v-icon>
@@ -53,9 +53,9 @@
           <v-spacer />
           <span> {{ type }} </span>
           <v-spacer />
-          <v-tooltip top>
-            <template v-slot:activator="{ on, attrs }">
-              <div v-on="on" v-bind="attrs">
+          <v-tooltip location="top">
+            <template v-slot:activator="{ props }">
+              <div v-bind="props">
                 <v-icon data-test="close" @click="$emit('close')">
                   mdi-close-box
                 </v-icon>
@@ -68,9 +68,9 @@
       <v-card-title>
         <span> {{ header }} </span>
         <v-spacer />
-        <v-tooltip top>
-          <template v-slot:activator="{ on, attrs }">
-            <div v-on="on" v-bind="attrs">
+        <v-tooltip location="top">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
               <v-btn icon data-test="pause" @click="pause">
                 <v-icon> {{ buttonIcon }} </v-icon>
               </v-btn>

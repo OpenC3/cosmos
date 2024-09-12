@@ -28,11 +28,11 @@
         <v-autocomplete
           label="Select Target"
           hide-details
-          dense
-          outlined
-          @change="targetNameChanged"
+          density="compact"
+          variant="outlined"
+          @update:model-value="targetNameChanged"
           :items="targetNames"
-          item-text="label"
+          item-title="label"
           item-value="value"
           v-model="selectedTargetName"
         />
@@ -41,12 +41,12 @@
         <v-autocomplete
           label="Select Packet"
           hide-details
-          dense
-          outlined
-          @change="packetNameChanged"
+          density="compact"
+          variant="outlined"
+          @update:model-value="packetNameChanged"
           :disabled="packetsDisabled || autocompleteDisabled"
           :items="packetNames"
-          item-text="label"
+          item-title="label"
           item-value="value"
           v-model="selectedPacketName"
         />
@@ -60,12 +60,12 @@
         <v-autocomplete
           label="Select Item"
           hide-details
-          dense
-          outlined
-          @change="itemNameChanged($event)"
+          density="compact"
+          variant="outlined"
+          @update:model-value="itemNameChanged($event)"
           :disabled="itemsDisabled || autocompleteDisabled"
           :items="itemNames"
-          item-text="label"
+          item-title="label"
           item-value="value"
           v-model="selectedItemName"
         />
@@ -79,12 +79,12 @@
         <v-combobox
           label="Array Index"
           hide-details
-          dense
-          outlined
+          density="compact"
+          variant="outlined"
           @change="indexChanged($event)"
           :disabled="itemsDisabled || autocompleteDisabled"
           :items="arrayIndexes()"
-          item-text="label"
+          item-title="label"
           item-value="value"
           v-model="selectedArrayIndex"
         />
@@ -106,8 +106,8 @@
         <v-autocomplete
           label="Value Type"
           hide-details
-          dense
-          outlined
+          density="compact"
+          variant="outlined"
           :items="valueTypes"
           v-model="selectedValueType"
         />
@@ -116,8 +116,8 @@
         <v-autocomplete
           label="Reduced"
           hide-details
-          dense
-          outlined
+          density="compact"
+          variant="outlined"
           :items="reductionModes"
           v-model="selectedReduced"
         />
@@ -126,8 +126,8 @@
         <v-autocomplete
           label="Reduced Type"
           hide-details
-          dense
-          outlined
+          density="compact"
+          variant="outlined"
           :disabled="selectedReduced === 'DECOM'"
           :items="reducedTypes"
           v-model="selectedReducedType"
@@ -406,12 +406,12 @@ export default {
             reducedType: this.selectedReducedType,
           })
           this.internalDisabled = false
-        }
+        },
       )
     },
     itemIsArray: function () {
       let i = this.itemNames.findIndex(
-        (item) => item.value === this.selectedItemName
+        (item) => item.value === this.selectedItemName,
       )
       if (i === -1) {
         this.selectedArrayIndex = null
@@ -429,7 +429,7 @@ export default {
     },
     arrayIndexes: function () {
       let i = this.itemNames.findIndex(
-        (item) => item.value === this.selectedItemName
+        (item) => item.value === this.selectedItemName,
       )
       let indexes = [...Array(this.itemNames[i].array).keys()]
       if (this.allowAll) {
@@ -476,7 +476,7 @@ export default {
             (packet) => {
               this.description = packet.description
               this.hazardous = packet.hazardous
-            }
+            },
           )
         }
       }
@@ -565,7 +565,7 @@ export default {
                 reducedType: this.selectedReducedType,
               })
             })
-          }
+          },
         )
       })
     },

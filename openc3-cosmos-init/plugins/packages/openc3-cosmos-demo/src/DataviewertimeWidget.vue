@@ -26,66 +26,66 @@
       <v-col>Current Time:</v-col>
       <v-col>
         <v-text-field
-          solo
-          dense
+          variant="solo"
+          density="compact"
           readonly
           single-line
           hide-no-data
           hide-details
           placeholder="Time"
-          :value="date" /></v-col
+          :model-value="date" /></v-col
     ></v-row>
     <v-row dense>
       <v-col>UTC Time:</v-col>
       <v-col>
         <v-text-field
-          solo
-          dense
+          variant="solo"
+          density="compact"
           readonly
           single-line
           hide-no-data
           hide-details
           placeholder="Time"
-          :value="utc" /></v-col
+          :model-value="utc" /></v-col
     ></v-row>
     <v-row dense>
       <v-col>Stream Time (UTC):</v-col>
       <v-col>
         <v-text-field
-          solo
-          dense
+          variant="solo"
+          density="compact"
           readonly
           single-line
           hide-no-data
           hide-details
           placeholder="Time"
-          :value="streamTime" /></v-col
+          :model-value="streamTime" /></v-col
     ></v-row>
     <v-row dense v-if="hasDecom">
       <v-col>Packet Time:</v-col>
       <v-col>
         <v-text-field
-          solo
-          dense
+          variant="solo"
+          density="compact"
           readonly
           single-line
           hide-no-data
           hide-details
           placeholder="Time"
-          :value="packetTime" /></v-col
+          :model-value="packetTime" /></v-col
     ></v-row>
     <v-row dense v-if="hasDecom">
       <v-col>Received Time:</v-col>
       <v-col>
         <v-text-field
-          solo
-          dense
+          variant="solo"
+          density="compact"
           readonly
           single-line
           hide-no-data
           hide-details
           placeholder="Time"
-          :value="receivedTime" /></v-col
+          :model-value="receivedTime" /></v-col
     ></v-row>
   </v-container>
 </template>

@@ -5,6 +5,7 @@ module.exports = {
   },
   extends: [
     'plugin:vue/essential',
+    'plugin:vuetify/base',
     'plugin:prettier/recommended',
     '@vue/prettier',
   ],
@@ -26,6 +27,7 @@ module.exports = {
       },
     ],
   },
+  parser: 'vue-eslint-parser',
   parserOptions: {
     parser: '@babel/eslint-parser',
   },

@@ -31,14 +31,14 @@
           max-width="290px"
           min-width="290px"
         >
-          <template v-slot:activator="{ on }">
+          <template v-slot:activator="{ props }">
             <!-- We set the :name attribute to be unique to avoid auto-completion -->
             <v-text-field
               :label="dateLabel"
               :name="`date${Date.now()}`"
               :rules="dateRules"
               v-model="date"
-              v-on="on"
+              v-bind="props"
               type="date"
               data-test="date-chooser"
             />

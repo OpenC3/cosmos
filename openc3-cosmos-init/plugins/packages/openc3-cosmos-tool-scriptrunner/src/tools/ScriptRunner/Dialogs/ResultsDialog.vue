@@ -30,12 +30,20 @@
       </v-system-bar>
       <div class="pa-2">
         <v-card-text style="width: 100%; max-height: 80vh; overflow: auto">
-          <v-textarea readonly hide-details dense auto-grow :value="text" />
+          <v-textarea
+            readonly
+            hide-details
+            density="compact"
+            auto-grow
+            :model-value="text"
+          />
         </v-card-text>
       </div>
       <v-card-actions>
         <v-spacer />
-        <v-btn class="mx-2" outlined @click="downloadResults"> Download </v-btn>
+        <v-btn class="mx-2" variant="outlined" @click="downloadResults">
+          Download
+        </v-btn>
         <v-btn
           class="mx-2"
           color="primary"

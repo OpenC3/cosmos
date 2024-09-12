@@ -22,7 +22,7 @@
 
 <template>
   <div>
-    <v-overlay :value="showUserMenu" class="overlay" />
+    <v-overlay :model-value="showUserMenu" class="overlay" />
     <v-menu
       v-model="showUserMenu"
       transition="slide-y-transition"
@@ -31,10 +31,9 @@
       :nudge-width="120"
       :nudge-bottom="20"
     >
-      <template v-slot:activator="{ on, attrs }">
+      <template v-slot:activator="{ props }">
         <rux-monitoring-icon
-          v-bind="attrs"
-          v-on="on"
+          v-bind="props"
           class="rux-icon"
           icon="person"
           status="off"

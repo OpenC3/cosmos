@@ -65,8 +65,8 @@
             label="Limits Set"
             :items="limitsSets"
             v-model="currentLimitsSet"
-            dense
-            outlined
+            density="compact"
+            variant="outlined"
             data-test="limits-set"
             hide-details
             class="pt-3"
@@ -75,7 +75,11 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn @click="limitsSetDialog = false" outlined class="mx-2">
+          <v-btn
+            @click="limitsSetDialog = false"
+            variant="outlined"
+            class="mx-2"
+          >
             Cancel
           </v-btn>
           <v-btn @click="setLimitsSet" color="primary"> Ok </v-btn>

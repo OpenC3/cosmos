@@ -24,9 +24,9 @@
   <div>
     <v-text-field
       v-if="states === null"
-      :value="textfieldValue"
+      :model-value="textfieldValue"
       hide-details
-      dense
+      density="compact"
       @change="handleChange"
       data-test="cmd-param-value"
     />
@@ -36,23 +36,23 @@
           <v-select
             :items="states"
             v-model="value.selected_state"
-            @change="handleStateChange"
-            item-text="label"
+            @update:model-value="handleStateChange"
+            item-title="label"
             item-value="value"
             style="primary"
             :class="stateClass()"
             hide-details
-            dense
-            outlined
+            density="compact"
+            variant="outlined"
             data-test="cmd-param-select"
           />
         </v-col>
         <v-col>
           <v-text-field
-            :value="stateValue"
+            :model-value="stateValue"
             @change="handleChange"
             hide-details
-            dense
+            density="compact"
             data-test="cmd-param-value"
           />
         </v-col>

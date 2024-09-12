@@ -45,8 +45,8 @@
             label="Search"
             prepend-inner-icon="mdi-magnify"
             clearable
-            outlined
-            dense
+            variant="outlined"
+            density="compact"
             single-line
             hide-details
             class="search"
@@ -85,9 +85,9 @@
             <v-card-subtitle>
               Editable Command History: (Pressing Enter on the line re-executes
               the command)
-              <v-tooltip top>
-                <template v-slot:activator="{ on, attrs }">
-                  <div v-on="on" v-bind="attrs" class="float-right">
+              <v-tooltip location="top">
+                <template v-slot:activator="{ props }">
+                  <div v-bind="props" class="float-right">
                     <v-btn icon data-test="clear-history" @click="clearHistory">
                       <v-icon> mdi-delete </v-icon>
                     </v-btn>
@@ -186,8 +186,10 @@
             </v-row>
             <v-row>
               <v-spacer />
-              <v-btn @click="cancelHazardousCmd" outlined> Cancel </v-btn>
-              <v-btn @click="sendHazardousCmd" class="primary mx-1">
+              <v-btn @click="cancelHazardousCmd" variant="outlined">
+                Cancel
+              </v-btn>
+              <v-btn @click="sendHazardousCmd" class="bg-primary mx-1">
                 Send
               </v-btn>
             </v-row>
@@ -209,11 +211,11 @@
               <v-col>Interface:</v-col>
               <v-col>
                 <v-select
-                  solo
+                  variant="solo"
                   hide-details
-                  dense
+                  density="compact"
                   :items="interfaces"
-                  item-text="label"
+                  item-title="label"
                   item-value="value"
                   v-model="selectedInterface"
                 />
@@ -227,10 +229,14 @@
             </v-row>
             <v-row>
               <v-spacer />
-              <v-btn @click="cancelRawCmd" outlined data-test="raw-cancel">
+              <v-btn
+                @click="cancelRawCmd"
+                variant="outlined"
+                data-test="raw-cancel"
+              >
                 Cancel
               </v-btn>
-              <v-btn @click="sendRawCmd" class="primary" data-test="raw-ok">
+              <v-btn @click="sendRawCmd" class="bg-primary" data-test="raw-ok">
                 Ok
               </v-btn>
             </v-row>

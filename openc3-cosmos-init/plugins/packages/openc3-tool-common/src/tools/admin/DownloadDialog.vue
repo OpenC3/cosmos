@@ -42,7 +42,7 @@
                   :disabled="disableSearch"
                 >
                   Github
-                  <v-icon right dark> mdi-github </v-icon>
+                  <v-icon end dark> mdi-github </v-icon>
                 </v-btn>
               </div>
             </v-col>
@@ -74,20 +74,18 @@
           <div class="mt-4" v-else>
             <div v-for="(data, index) in listData" :key="index">
               <v-list-item>
-                <v-list-item-content>
-                  <v-list-item-title>{{ data.name }}</v-list-item-title>
-                </v-list-item-content>
+                <v-list-item-title>{{ data.name }}</v-list-item-title>
+
                 <v-list-item-icon>
                   <div v-if="activeDownload">
                     <v-progress-circular indeterminate color="primary" />
                   </div>
                   <div v-else>
-                    <v-tooltip bottom>
-                      <template v-slot:activator="{ on, attrs }">
+                    <v-tooltip location="bottom">
+                      <template v-slot:activator="{ props }">
                         <v-icon
                           @click="downloadGem(data)"
-                          v-bind="attrs"
-                          v-on="on"
+                          v-bind="props"
                           :disabled="activeDownload"
                         >
                           mdi-cloud-download

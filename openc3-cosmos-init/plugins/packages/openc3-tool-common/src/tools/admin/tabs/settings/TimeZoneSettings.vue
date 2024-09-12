@@ -23,13 +23,13 @@
       The time zone to display for all COSMOS tools. (Note: All timestamps are
       UTC in the backend).
     </v-card-subtitle>
-    <v-alert v-model="errorLoading" type="error" dismissible dense>
+    <v-alert v-model="errorLoading" type="error" closable density="compact">
       Error loading previous configuration due to {{ errorText }}
     </v-alert>
-    <v-alert v-model="errorSaving" type="error" dismissible dense>
+    <v-alert v-model="errorSaving" type="error" closable density="compact">
       Error saving due to {{ errorText }}
     </v-alert>
-    <v-alert v-model="successSaving" type="success" dismissible dense>
+    <v-alert v-model="successSaving" type="success" closable density="compact">
       Saved! (Refresh the page to see changes)
     </v-alert>
     <v-card-text>
@@ -45,7 +45,12 @@
       />
     </v-card-text>
     <v-card-actions>
-      <v-btn @click="save" color="success" text data-test="save-time-zone">
+      <v-btn
+        @click="save"
+        color="success"
+        variant="text"
+        data-test="save-time-zone"
+      >
         Save
       </v-btn>
     </v-card-actions>

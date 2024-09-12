@@ -26,15 +26,15 @@
       <v-autocomplete
         v-model="selected"
         cache-items
-        dense
-        outlined
+        density="compact"
+        variant="outlined"
         hide-no-data
         hide-details
         class="mb-5"
         label="Select script"
         :loading="loading"
         :items="items"
-        :search-input.sync="search"
+        :search.sync="search"
         data-test="select-script"
       />
     </v-row>

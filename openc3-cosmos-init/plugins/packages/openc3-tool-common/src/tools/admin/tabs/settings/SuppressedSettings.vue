@@ -47,7 +47,7 @@
         :disabled="!selectedSuppressedWarnings.length"
         @click="resetSuppressedWarnings"
         color="warning"
-        text
+        variant="text"
         class="ml-2"
         data-test="reset-suppressed-warnings"
       >

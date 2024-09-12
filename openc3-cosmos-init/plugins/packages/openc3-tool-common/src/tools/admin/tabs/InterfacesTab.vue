@@ -25,17 +25,12 @@
     <v-list class="list" data-test="interfaceList">
       <div v-for="openc3_interface in interfaces" :key="openc3_interface">
         <v-list-item>
-          <v-list-item-content>
-            <v-list-item-title>{{ openc3_interface }}</v-list-item-title>
-          </v-list-item-content>
+          <v-list-item-title>{{ openc3_interface }}</v-list-item-title>
+
           <v-list-item-icon>
-            <v-tooltip bottom>
-              <template v-slot:activator="{ on, attrs }">
-                <v-icon
-                  @click="showInterface(openc3_interface)"
-                  v-bind="attrs"
-                  v-on="on"
-                >
+            <v-tooltip location="bottom">
+              <template v-slot:activator="{ props }">
+                <v-icon @click="showInterface(openc3_interface)" v-bind="props">
                   mdi-eye
                 </v-icon>
               </template>

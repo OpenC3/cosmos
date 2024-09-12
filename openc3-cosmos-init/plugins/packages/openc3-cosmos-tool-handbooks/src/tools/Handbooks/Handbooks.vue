@@ -30,12 +30,12 @@
             <v-select
               class="ma-0 pa-0"
               label="Select Target(s)"
-              dense
+              density="compact"
               hide-details
-              outlined
+              variant="outlined"
               :items="targetNames"
               v-model="selectedTargetNames"
-              @change="targetSelect"
+              @update:model-value="targetSelect"
               multiple
             >
               <template v-slot:prepend-item>
@@ -45,9 +45,8 @@
                       {{ icon }}
                     </v-icon>
                   </v-list-item-action>
-                  <v-list-item-content>
-                    <v-list-item-title> Select All </v-list-item-title>
-                  </v-list-item-content>
+
+                  <v-list-item-title> Select All </v-list-item-title>
                 </v-list-item>
                 <v-divider class="mt-2"></v-divider>
               </template>
@@ -55,7 +54,7 @@
           </v-col>
           <v-col>
             <v-btn
-              class="primary"
+              class="bg-primary"
               @click="renderedTargetNames = selectedTargetNames"
             >
               Display
@@ -64,9 +63,9 @@
           <v-col>
             <v-select
               label="Item Columns"
-              dense
+              density="compact"
               hide-details
-              outlined
+              variant="outlined"
               v-model="columns"
               :items="columnItems"
             ></v-select>

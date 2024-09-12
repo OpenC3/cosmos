@@ -23,7 +23,7 @@
 <template>
   <v-radio-group
     hide-details
-    dense
+    density="compact"
     v-model="selectedIndex"
     :style="computedStyle"
   >

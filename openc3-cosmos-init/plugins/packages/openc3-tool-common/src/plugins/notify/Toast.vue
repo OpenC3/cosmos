@@ -52,7 +52,9 @@
         </span>
       </div>
       <v-spacer />
-      <v-btn text @click.stop="hide" class="notification-text"> Dismiss </v-btn>
+      <v-btn variant="text" @click.stop="hide" class="notification-text">
+        Dismiss
+      </v-btn>
     </v-sheet>
   </v-slide-y-transition>
 </template>

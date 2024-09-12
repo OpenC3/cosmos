@@ -26,7 +26,7 @@
       <v-card-text>
         <v-card-title>{{ pluginName }} </v-card-title>
         <v-row v-if="existingPluginTxt !== null" class="notice d-flex flex-row">
-          <v-icon x-large left color="yellow">mdi-alert-box</v-icon>
+          <v-icon size="x-large" start color="yellow">mdi-alert-box</v-icon>
           <div style="flex: 1">
             The existing plugin.txt is different from the {{ pluginName }}'s
             plugin.txt. Navigate the diffs making whatever edits you want before
@@ -37,10 +37,7 @@
         <v-row class="pb-3 pr-3">
           <v-tabs v-model="tab" class="ml-3">
             <v-tab :key="0"> Variables </v-tab>
-            <v-tab v-if="existingPluginTxt === null" :key="1">
-              plugin.txt
-            </v-tab>
-            <v-tab v-else :key="1"> plugin.txt </v-tab>
+            <v-tab :key="1"> plugin.txt </v-tab>
           </v-tabs>
         </v-row>
         <form v-on:submit.prevent="submit">
@@ -63,7 +60,7 @@
             </v-tab-item>
             <v-tab-item
               v-if="existingPluginTxt === null"
-              :key="1"
+              :key="1 + '-new'"
               eager="true"
               class="tab"
             >
@@ -72,7 +69,7 @@
               >
               <pre ref="editor" class="editor"></pre>
             </v-tab-item>
-            <v-tab-item v-else :key="1" eager="true" class="tab">
+            <v-tab-item v-else :key="1 + '-existing'" eager="true" class="tab">
               <v-row class="pa-3"
                 ><v-col
                   >Existing plugin.txt. This can be edited before
@@ -96,7 +93,7 @@
             <v-spacer />
             <v-btn
               @click.prevent="close"
-              outlined
+              variant="outlined"
               class="mx-2"
               data-test="edit-cancel"
             >

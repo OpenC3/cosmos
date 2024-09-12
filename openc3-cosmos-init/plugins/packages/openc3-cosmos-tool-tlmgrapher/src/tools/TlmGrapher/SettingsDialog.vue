@@ -41,7 +41,7 @@
           </v-row>
         </div>
         <v-row>
-          <span class="red--text">
+          <span class="text-red">
             Increasing these values may cause issues
           </span>
         </v-row>

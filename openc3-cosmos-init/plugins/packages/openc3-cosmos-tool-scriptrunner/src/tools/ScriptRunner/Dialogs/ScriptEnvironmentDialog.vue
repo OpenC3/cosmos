@@ -38,7 +38,7 @@
         <v-btn
           @click="cancel"
           class="mx-2"
-          outlined
+          variant="outlined"
           data-test="environment-dialog-cancel"
         >
           Cancel

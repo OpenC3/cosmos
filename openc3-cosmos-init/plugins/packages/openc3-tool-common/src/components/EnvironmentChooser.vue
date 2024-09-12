@@ -22,16 +22,16 @@
 
 <template>
   <div>
-    <v-simple-table dense>
+    <v-table dense>
       <span> Add environment variables (optional)</span>
       <tbody>
         <tr>
           <th scope="col" class="text-left">Key</th>
           <th scope="col" class="text-left">Value</th>
           <th scope="col" class="text-right">
-            <v-tooltip top>
-              <template v-slot:activator="{ on, attrs }">
-                <div v-on="on" v-bind="attrs">
+            <v-tooltip location="top">
+              <template v-slot:activator="{ props }">
+                <div v-bind="props">
                   <v-icon data-test="new-metadata-icon" @click="addEnvVar">
                     mdi-plus
                   </v-icon>
@@ -46,7 +46,7 @@
             <td>
               <v-text-field
                 v-model="env.key"
-                dense
+                density="compact"
                 type="text"
                 :readonly="env.readonly"
                 :data-test="`key-${i}`"
@@ -55,16 +55,16 @@
             <td>
               <v-text-field
                 v-model="env.value"
-                dense
+                density="compact"
                 type="text"
                 :readonly="env.readonly"
                 :data-test="`value-${i}`"
               />
             </td>
             <td>
-              <v-tooltip top>
-                <template v-slot:activator="{ on, attrs }">
-                  <div v-on="on" v-bind="attrs">
+              <v-tooltip location="top">
+                <template v-slot:activator="{ props }">
+                  <div v-bind="props">
                     <v-icon
                       :data-test="`remove-env-icon-${i}`"
                       @click="delEnvVar(i)"
@@ -79,7 +79,7 @@
           </tr>
         </template>
       </tbody>
-    </v-simple-table>
+    </v-table>
   </div>
 </template>
 

@@ -23,9 +23,9 @@
 <template>
   <v-card>
     <v-card-title>
-      <v-tooltip top>
-        <template v-slot:activator="{ on, attrs }">
-          <div v-on="on" v-bind="attrs">
+      <v-tooltip location="top">
+        <template v-slot:activator="{ props }">
+          <div v-bind="props">
             <v-btn
               icon
               class="mx-2"
@@ -39,9 +39,9 @@
         <span> Download Log </span>
       </v-tooltip>
       <span> Log Messages </span>
-      <v-tooltip top>
-        <template v-slot:activator="{ on, attrs }">
-          <div v-on="on" v-bind="attrs">
+      <v-tooltip location="top">
+        <template v-slot:activator="{ props }">
+          <div v-bind="props">
             <v-btn icon data-test="pause" @click="pause">
               <v-icon> {{ buttonIcon }} </v-icon>
             </v-btn>
@@ -53,8 +53,8 @@
       <v-select
         label="Filter by log level"
         hide-details
-        outlined
-        dense
+        variant="outlined"
+        density="compact"
         :items="logLevels"
         v-model="logLevel"
         class="mr-2"
@@ -67,17 +67,17 @@
         label="Search"
         prepend-inner-icon="mdi-magnify"
         clearable
-        outlined
-        dense
+        variant="outlined"
+        density="compact"
         single-line
         hide-details
         style="max-width: 300px"
         class="search"
         data-test="search-log-messages"
       />
-      <v-tooltip top>
-        <template v-slot:activator="{ on, attrs }">
-          <div v-on="on" v-bind="attrs">
+      <v-tooltip location="top">
+        <template v-slot:activator="{ props }">
+          <div v-bind="props">
             <v-btn icon class="mx-2" data-test="clear-log" @click="clearLog">
               <v-icon> mdi-delete </v-icon>
             </v-btn>

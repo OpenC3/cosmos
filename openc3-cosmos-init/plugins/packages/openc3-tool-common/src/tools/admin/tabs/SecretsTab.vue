@@ -52,7 +52,7 @@
           :disabled="secretName === '' || (file == null && secretValue === '')"
           :loading="loadingSecret"
         >
-          <v-icon left dark>mdi-cloud-upload</v-icon>
+          <v-icon start dark>mdi-cloud-upload</v-icon>
           <span> Set </span>
           <template v-slot:loader>
             <span>Loading...</span>
@@ -62,7 +62,7 @@
     </v-row>
     <v-alert
       v-model="showAlert"
-      dismissible
+      closable
       transition="scale-transition"
       :type="alertType"
       >{{ alert }}</v-alert
@@ -70,13 +70,12 @@
     <v-list data-test="secretList">
       <div v-for="(secret, index) in secrets" :key="index">
         <v-list-item>
-          <v-list-item-content>
-            <v-list-item-title>{{ secret }}</v-list-item-title>
-          </v-list-item-content>
+          <v-list-item-title>{{ secret }}</v-list-item-title>
+
           <v-list-item-icon>
-            <v-tooltip bottom>
-              <template v-slot:activator="{ on, attrs }">
-                <v-icon @click="deleteSecret(secret)" v-bind="attrs" v-on="on">
+            <v-tooltip location="bottom">
+              <template v-slot:activator="{ props }">
+                <v-icon @click="deleteSecret(secret)" v-bind="props">
                   mdi-delete
                 </v-icon>
               </template>

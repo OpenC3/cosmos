@@ -26,10 +26,8 @@
     <v-card>
       <v-expansion-panels v-model="panel" style="margin-bottom: 5px">
         <v-expansion-panel>
-          <v-expansion-panel-header
-            style="z-index: 1"
-          ></v-expansion-panel-header>
-          <v-expansion-panel-content>
+          <v-expansion-panel-title style="z-index: 1"></v-expansion-panel-title>
+          <v-expansion-panel-text>
             <v-row dense>
               <v-col>
                 <v-text-field
@@ -92,14 +90,14 @@
                 </v-btn>
               </v-col>
             </v-row>
-          </v-expansion-panel-content>
+          </v-expansion-panel-text>
         </v-expansion-panel>
       </v-expansion-panels>
       <div class="mb-3" v-show="warning || error || connectionFailure">
-        <v-alert type="warning" v-model="warning" dismissible>
+        <v-alert type="warning" v-model="warning" closable>
           {{ warningText }}
         </v-alert>
-        <v-alert type="error" v-model="error" dismissible>
+        <v-alert type="error" v-model="error" closable>
           {{ errorText }}
         </v-alert>
         <v-alert type="error" v-model="connectionFailure">
@@ -115,14 +113,13 @@
         >
           {{ tab.tabName }}
         </v-tab>
-        <v-tooltip bottom>
-          <template v-slot:activator="{ on, attrs }">
+        <v-tooltip location="bottom">
+          <template v-slot:activator="{ props }">
             <v-btn
               icon
               class="mt-2 ml-2"
               @click="addTab"
-              v-bind="attrs"
-              v-on="on"
+              v-bind="props"
               :class="config.tabs.length === 0 ? 'pulse-button' : ''"
               data-test="new-tab"
             >
@@ -140,13 +137,12 @@
               <v-card-title class="pa-3">
                 <span v-text="tab.name" />
                 <v-spacer />
-                <v-tooltip bottom>
-                  <template v-slot:activator="{ on, attrs }">
+                <v-tooltip location="bottom">
+                  <template v-slot:activator="{ props }">
                     <v-btn
                       icon
                       @click="() => deleteComponent(index)"
-                      v-bind="attrs"
-                      v-on="on"
+                      v-bind="props"
                       data-test="delete-component"
                     >
                       <v-icon>mdi-delete</v-icon>
@@ -207,7 +203,7 @@
         <v-card-actions>
           <v-spacer />
           <v-btn
-            outlined
+            variant="outlined"
             class="mx-2"
             data-test="cancel-rename"
             @click="cancelTabRename"

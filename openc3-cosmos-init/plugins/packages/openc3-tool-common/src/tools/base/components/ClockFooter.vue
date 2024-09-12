@@ -29,7 +29,7 @@
       class="font-weight-bold"
       @contextmenu="openMenu"
     >
-      {{ (displayLocal ? localDate : utcDate) | date(formatString) }}
+      {{ formatDate(displayLocal ? localDate : utcDate, formatString) }}
       ({{ displayLocal ? 'local' : 'UTC' }})
     </span>
     <v-menu
@@ -94,7 +94,7 @@ export default {
   computed: {
     utcDate: function () {
       return new Date(
-        this.localDate.getTime() + this.localDate.getTimezoneOffset() * 60000
+        this.localDate.getTime() + this.localDate.getTimezoneOffset() * 60000,
       )
     },
     formatString: function () {
@@ -145,7 +145,7 @@ export default {
         this.intervalCount++
         this.localDate = new Date()
       },
-      this.intervalCount < 10 ? 100 : 1000 // get the seconds to about 100ms accuracy
+      this.intervalCount < 10 ? 100 : 1000, // get the seconds to about 100ms accuracy
     )
   },
   methods: {
@@ -173,9 +173,7 @@ export default {
     setNumber: function () {
       this.dateMode = 'number'
     },
-  },
-  filters: {
-    date: function (val, formatString) {
+    formatDate: function (val, formatString) {
       return format(val, formatString, { useAdditionalDayOfYearTokens: true })
     },
   },

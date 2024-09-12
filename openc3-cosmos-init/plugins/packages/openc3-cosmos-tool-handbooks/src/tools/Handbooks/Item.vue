@@ -21,7 +21,7 @@
 -->
 
 <template>
-  <v-card class="mx-auto" outlined>
+  <v-card class="mx-auto" border>
     <v-card-title class="justify-center">
       {{ item.name }}
     </v-card-title>

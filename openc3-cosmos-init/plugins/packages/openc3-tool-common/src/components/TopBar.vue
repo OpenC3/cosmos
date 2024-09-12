@@ -29,39 +29,37 @@
     </v-row>
     <v-row dense class="flex-nowrap">
       <v-menu offset-y ref="topmenu" v-for="(menu, i) in menus" :key="i">
-        <template v-slot:activator="{ on, attrs }">
+        <template v-slot:activator="{ props }">
           <v-btn
-            outlined
-            v-bind="attrs"
-            v-on="on"
+            variant="outlined"
+            v-bind="props"
             class="mx-1 menu-button"
             :data-test="formatDT(`${title} ${menu.label}`)"
           >
             <span v-text="menu.label" />
-            <v-icon class="myicon" right> mdi-menu-down </v-icon>
+            <v-icon class="myicon" end> mdi-menu-down </v-icon>
           </v-btn>
         </template>
         <v-list>
           <!-- The radio-group is necessary in case the application wants radio buttons -->
           <v-radio-group
-            :value="menu.radioGroup"
+            :model-value="menu.radioGroup"
             hide-details
-            dense
+            density="compact"
             class="ma-0 pa-0"
           >
             <template v-for="(option, j) in menu.items">
-              <v-divider v-if="option.divider" :key="j" />
+              <v-divider v-if="option.divider" :key="j + '-divider'" />
               <div
                 v-else-if="option.subMenu && option.subMenu.length > 0"
-                :key="j"
+                :key="j + '-submenu'"
               >
-                <v-menu open-on-hover offset-x bottom :key="k">
-                  <template v-slot:activator="{ on, attrs }">
+                <v-menu open-on-hover offset-x location="bottom" :key="k">
+                  <template v-slot:activator="{ props }">
                     <v-list-item
                       :disabled="option.disabled"
                       :key="j"
-                      v-bind="attrs"
-                      v-on="on"
+                      v-bind="props"
                     >
                       <v-list-item-icon v-if="option.icon">
                         <v-icon :disabled="option.disabled">{{
@@ -98,7 +96,7 @@
                 @click="option.command(option)"
                 :disabled="option.disabled"
                 :data-test="formatDT(`${title} ${menu.label} ${option.label}`)"
-                :key="j"
+                :key="j + '-list'"
               >
                 <v-list-item-action v-if="option.radio">
                   <v-radio

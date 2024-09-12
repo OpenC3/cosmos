@@ -30,8 +30,8 @@
         label="Search"
         prepend-inner-icon="mdi-magnify"
         clearable
-        outlined
-        dense
+        variant="outlined"
+        density="compact"
         single-line
         hide-details
         class="search"
@@ -71,7 +71,7 @@
           @click="openCmdSender(item.target_name, item.packet_name)"
         >
           View In Command Sender
-          <v-icon right> mdi-open-in-new </v-icon>
+          <v-icon end> mdi-open-in-new </v-icon>
         </v-btn>
       </template>
     </v-data-table>

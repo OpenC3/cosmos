@@ -39,10 +39,9 @@
                 data-test="search"
                 prepend-inner-icon="mdi-magnify"
                 clearable
-                outlined
-                dense
+                variant="outlined"
+                density="compact"
                 clear-icon="mdi-close-circle-outline"
-                clearable
                 autofocus
                 single-line
                 hide-details

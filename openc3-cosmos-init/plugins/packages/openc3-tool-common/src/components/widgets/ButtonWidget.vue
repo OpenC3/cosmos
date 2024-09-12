@@ -35,8 +35,10 @@
             </v-row>
             <v-row>
               <v-spacer />
-              <v-btn @click="cancelHazardousCmd" outlined> Cancel </v-btn>
-              <v-btn @click="sendHazardousCmd" class="primary mx-1">
+              <v-btn @click="cancelHazardousCmd" variant="outlined">
+                Cancel
+              </v-btn>
+              <v-btn @click="sendHazardousCmd" class="bg-primary mx-1">
                 Send
               </v-btn>
             </v-row>

@@ -48,12 +48,12 @@
           :disabled="!redisCommandText.length"
           @click="executeRaw"
           color="success"
-          text
+          variant="text"
           class="ml-2 mr-3"
         >
           Execute
         </v-btn>
-        <v-radio-group v-model="redisEndpoint" row hide-details class="mt-0">
+        <v-radio-group v-model="redisEndpoint" inline hide-details class="mt-0">
           <v-radio
             label="Persistent"
             value="/openc3-api/redis/exec"

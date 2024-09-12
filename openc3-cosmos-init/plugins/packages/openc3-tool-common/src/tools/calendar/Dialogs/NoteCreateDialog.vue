@@ -30,9 +30,9 @@
             <span v-if="note">Update Note</span>
             <span v-else>Create Note</span>
             <v-spacer />
-            <v-tooltip top>
-              <template v-slot:activator="{ on, attrs }">
-                <div v-on="on" v-bind="attrs">
+            <v-tooltip location="top">
+              <template v-slot:activator="{ props }">
+                <div v-bind="props">
                   <v-icon data-test="close-note-icon" @click="show = !show">
                     mdi-close-box
                   </v-icon>
@@ -88,7 +88,7 @@
                   </v-row>
                   <v-row>
                     <span
-                      class="ma-2 red--text"
+                      class="ma-2 text-red"
                       v-show="timeError"
                       v-text="timeError"
                     />
@@ -125,13 +125,13 @@
                     />
                   </div>
                   <v-row v-show="typeError">
-                    <span class="ma-2 red--text" v-text="typeError" />
+                    <span class="ma-2 text-red" v-text="typeError" />
                   </v-row>
                   <v-row class="mt-2">
                     <v-spacer />
                     <v-btn
                       @click="show = !show"
-                      outlined
+                      variant="outlined"
                       class="mx-2"
                       data-test="note-cancel-btn"
                     >
@@ -251,7 +251,7 @@ export default {
         stop = new Date(this.endDate + ' ' + this.endTime).toISOString()
       } else {
         start = new Date(
-          this.startDate + ' ' + this.startTime + 'Z'
+          this.startDate + ' ' + this.startTime + 'Z',
         ).toISOString()
         stop = new Date(this.endDate + ' ' + this.endTime + 'Z').toISOString()
       }

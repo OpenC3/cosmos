@@ -60,7 +60,7 @@
           <v-spacer />
           <v-btn
             @click="cancelHandler"
-            outlined
+            variant="outlined"
             class="mx-1"
             data-test="file-cancel"
           >

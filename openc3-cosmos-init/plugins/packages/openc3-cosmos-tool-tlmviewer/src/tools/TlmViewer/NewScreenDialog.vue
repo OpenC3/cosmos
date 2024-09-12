@@ -24,9 +24,9 @@
         <v-spacer />
         <span>Create New Screen</span>
         <v-spacer />
-        <v-tooltip top>
-          <template v-slot:activator="{ on, attrs }">
-            <div v-on="on" v-bind="attrs">
+        <v-tooltip location="top">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
               <v-icon data-test="new-screen-close-icon" @click="show = false">
                 mdi-close-box
               </v-icon>
@@ -36,7 +36,12 @@
         </v-tooltip>
       </v-system-bar>
       <v-card-text>
-        <v-alert v-model="duplicateScreenAlert" type="error" dismissible dense>
+        <v-alert
+          v-model="duplicateScreenAlert"
+          type="error"
+          closable
+          density="compact"
+        >
           Screen {{ newScreenName.toUpperCase() }} already exists!
         </v-alert>
         <v-row class="pt-3">
@@ -47,10 +52,10 @@
             <v-select
               label="Select Target"
               :items="targets"
-              item-text="label"
+              item-title="label"
               item-value="value"
               v-model="selectedTarget"
-              @change="targetSelect" /></v-col
+              @update:model-value="targetSelect" /></v-col
         ></v-row>
 
         <v-row dense>
@@ -68,10 +73,10 @@
             <v-autocomplete
               label="New screen packet"
               hide-details
-              dense
-              @change="packetNameChanged"
+              density="compact"
+              @update:model-value="packetNameChanged"
               :items="packetNames"
-              item-text="label"
+              item-title="label"
               item-value="value"
               v-model="selectedPacketName"
               data-test="new-screen-packet"
@@ -96,7 +101,9 @@
       <v-divider />
       <v-card-actions>
         <v-spacer />
-        <v-btn outlined class="mx-2" @click="show = false"> Cancel </v-btn>
+        <v-btn variant="outlined" class="mx-2" @click="show = false">
+          Cancel
+        </v-btn>
         <v-btn color="primary" class="mx-2" @click="saveNewScreen">
           Save
         </v-btn>

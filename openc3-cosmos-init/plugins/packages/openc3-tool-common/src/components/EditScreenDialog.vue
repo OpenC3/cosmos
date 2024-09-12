@@ -22,9 +22,9 @@
     <v-card>
       <v-system-bar>
         <div class="mx-2">
-          <v-tooltip top>
-            <template v-slot:activator="{ on, attrs }">
-              <div v-on="on" v-bind="attrs">
+          <v-tooltip location="top">
+            <template v-slot:activator="{ props }">
+              <div v-bind="props">
                 <v-icon data-test="delete-screen-icon" @click="deleteScreen">
                   mdi-delete
                 </v-icon>
@@ -37,9 +37,9 @@
         <span> Edit Screen: {{ target }} {{ screen }} </span>
         <v-spacer />
         <div class="mx-2">
-          <v-tooltip top>
-            <template v-slot:activator="{ on, attrs }">
-              <div v-on="on" v-bind="attrs">
+          <v-tooltip location="top">
+            <template v-slot:activator="{ props }">
+              <div v-bind="props">
                 <v-icon
                   data-test="download-screen-icon"
                   @click="downloadScreen"
@@ -95,7 +95,7 @@
           </v-menu>
         </v-row>
         <v-row v-for="(error, index) in editErrors" :key="index" class="my-3">
-          <span class="red--text" v-text="error"></span>
+          <span class="text-red" v-text="error"></span>
         </v-row>
         <v-row>
           <span
@@ -106,7 +106,7 @@
           <v-btn
             @click="$emit('cancel')"
             class="mx-2"
-            outlined
+            variant="outlined"
             data-test="edit-screen-cancel"
           >
             Cancel
@@ -240,13 +240,13 @@ export default {
         `${
           window.location.origin
         }/tools/staticdocs/docs/configuration/telemetry-screens#${this.docsKeyword.toLowerCase()}`,
-        '_blank'
+        '_blank',
       )
     },
     buildScreenMode() {
       var oop = ace.require('ace/lib/oop')
       var TextHighlightRules = ace.require(
-        'ace/mode/text_highlight_rules'
+        'ace/mode/text_highlight_rules',
       ).TextHighlightRules
 
       let list = this.keywords.join('|')

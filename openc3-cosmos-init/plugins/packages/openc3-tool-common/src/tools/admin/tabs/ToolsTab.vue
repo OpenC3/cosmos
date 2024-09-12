@@ -32,7 +32,7 @@
           :disabled="!name || !url || !icon"
         >
           Add
-          <v-icon right dark>{{ icon }}</v-icon>
+          <v-icon end dark>{{ icon }}</v-icon>
         </v-btn>
       </v-col>
       <v-col cols="3">
@@ -56,13 +56,13 @@
           <v-list-item-icon>
             <v-icon> mdi-drag-horizontal </v-icon>
           </v-list-item-icon>
-          <v-list-item-content>
-            <v-list-item-title>{{ tool }}</v-list-item-title>
-          </v-list-item-content>
+
+          <v-list-item-title>{{ tool }}</v-list-item-title>
+
           <v-list-item-icon>
-            <v-tooltip bottom>
-              <template v-slot:activator="{ on, attrs }">
-                <v-icon @click="editTool(tool)" v-bind="attrs" v-on="on">
+            <v-tooltip location="bottom">
+              <template v-slot:activator="{ props }">
+                <v-icon @click="editTool(tool)" v-bind="props">
                   mdi-pencil
                 </v-icon>
               </template>
@@ -70,9 +70,9 @@
             </v-tooltip>
           </v-list-item-icon>
           <v-list-item-icon>
-            <v-tooltip bottom>
-              <template v-slot:activator="{ on, attrs }">
-                <v-icon @click="deleteTool(tool)" v-bind="attrs" v-on="on">
+            <v-tooltip location="bottom">
+              <template v-slot:activator="{ props }">
+                <v-icon @click="deleteTool(tool)" v-bind="props">
                   mdi-delete
                 </v-icon>
               </template>
@@ -143,7 +143,7 @@ export default {
           this.tools = response.data
           this.name = ''
           this.url = ''
-        }
+        },
       )
     },
     add() {

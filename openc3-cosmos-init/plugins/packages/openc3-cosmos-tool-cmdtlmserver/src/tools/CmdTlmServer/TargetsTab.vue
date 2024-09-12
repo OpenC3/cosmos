@@ -25,12 +25,12 @@
     <v-card-title>
       {{ data.length }} Targets
       <v-spacer />
-      <v-tooltip bottom :disabled="enterprise && commandAuthority">
-        <template v-slot:activator="{ on, attrs }">
+      <v-tooltip location="bottom" :disabled="enterprise && commandAuthority">
+        <template v-slot:activator="{ props }">
           <!-- This is a little weird because it captures all the clicks -->
           <!-- including the clicks on the button so the tooltipHandler -->
           <!-- is also the button handler  -->
-          <div v-on="on" v-bind="attrs" @click="tooltipHandler('takeAll')">
+          <div v-bind="props" @click="tooltipHandler('takeAll')">
             <v-btn
               color="primary"
               class="mr-2"
@@ -38,7 +38,7 @@
               data-test="take-all"
             >
               Take All Cmd Authority
-              <v-icon right> mdi-account-check </v-icon>
+              <v-icon end> mdi-account-check </v-icon>
             </v-btn>
           </div>
         </template>
@@ -51,9 +51,9 @@
           learn more.
         </span>
       </v-tooltip>
-      <v-tooltip bottom :disabled="enterprise && commandAuthority">
-        <template v-slot:activator="{ on, attrs }">
-          <div v-on="on" v-bind="attrs" @click="tooltipHandler('releaseAll')">
+      <v-tooltip location="bottom" :disabled="enterprise && commandAuthority">
+        <template v-slot:activator="{ props }">
+          <div v-bind="props" @click="tooltipHandler('releaseAll')">
             <v-btn
               color="primary"
               class="mr-2"
@@ -61,7 +61,7 @@
               data-test="release-all"
             >
               Release All Cmd Authority
-              <v-icon right> mdi-account-cancel </v-icon>
+              <v-icon end> mdi-account-cancel </v-icon>
             </v-btn>
           </div>
         </template>
@@ -79,8 +79,8 @@
         label="Search"
         prepend-inner-icon="mdi-magnify"
         clearable
-        outlined
-        dense
+        variant="outlined"
+        density="compact"
         single-line
         hide-details
         class="search"
@@ -106,7 +106,7 @@
           :disabled="!commandAuthority"
         >
           Take
-          <v-icon right> mdi-account-check </v-icon>
+          <v-icon end> mdi-account-check </v-icon>
         </v-btn>
       </template>
       <template v-slot:item.release="{ item }">
@@ -119,7 +119,7 @@
           :disabled="!commandAuthority"
         >
           Release
-          <v-icon right> mdi-account-cancel </v-icon>
+          <v-icon end> mdi-account-cancel </v-icon>
         </v-btn>
       </template>
     </v-data-table>

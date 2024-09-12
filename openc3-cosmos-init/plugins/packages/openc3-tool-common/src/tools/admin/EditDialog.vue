@@ -29,9 +29,9 @@
           <span v-text="title" />
           <v-spacer />
           <div class="mx-2">
-            <v-tooltip top>
-              <template v-slot:activator="{ on, attrs }">
-                <div v-on="on" v-bind="attrs">
+            <v-tooltip location="top">
+              <template v-slot:activator="{ props }">
+                <div v-bind="props">
                   <v-icon data-test="downloadIcon" @click="download">
                     mdi-download
                   </v-icon>
@@ -76,13 +76,13 @@
               <pre class="editor" ref="editor"></pre>
             </v-row>
             <v-row class="my-3">
-              <span class="red--text" v-show="error" v-text="error" />
+              <span class="text-red" v-show="error" v-text="error" />
             </v-row>
             <v-row>
               <v-spacer />
               <v-btn
                 @click.prevent="close"
-                outlined
+                variant="outlined"
                 class="mx-2"
                 data-test="editCancelBtn"
               >

@@ -23,19 +23,31 @@
 <template>
   <div>
     <top-bar :menus="menus" :title="title" />
-    <v-snackbar v-model="showAlert" top :color="alertType" :timeout="3000">
+    <v-snackbar
+      v-model="showAlert"
+      location="top"
+      :color="alertType"
+      :timeout="3000"
+    >
       <v-icon> mdi-{{ alertType }} </v-icon>
       {{ alertText }}
       <template v-slot:action="{ attrs }">
-        <v-btn text v-bind="attrs" @click="showAlert = false"> Close </v-btn>
+        <v-btn variant="text" v-bind="attrs" @click="showAlert = false">
+          Close
+        </v-btn>
       </template>
     </v-snackbar>
-    <v-snackbar v-model="showEditingToast" top :timeout="-1" color="orange">
+    <v-snackbar
+      v-model="showEditingToast"
+      location="top"
+      :timeout="-1"
+      color="orange"
+    >
       <v-icon> mdi-pencil-off </v-icon>
       {{ lockedBy }} is editing this script. Editor is in read-only mode
       <template v-slot:action="{ attrs }">
         <v-btn
-          text
+          variant="text"
           v-bind="attrs"
           color="danger"
           @click="confirmLocalUnlock"
@@ -44,7 +56,7 @@
           Unlock
         </v-btn>
         <v-btn
-          text
+          variant="text"
           v-bind="attrs"
           @click="
             () => {
@@ -98,11 +110,10 @@
           <v-icon v-if="showDisconnect" class="mr-2" color="red">
             mdi-connection
           </v-icon>
-          <v-tooltip bottom>
-            <template v-slot:activator="{ on, attrs }">
+          <v-tooltip location="bottom">
+            <template v-slot:activator="{ props }">
               <v-btn
-                v-on="on"
-                v-bind="attrs"
+                v-bind="props"
                 icon
                 @click="reloadFile"
                 :disabled="filename === NEW_FILENAME"
@@ -114,15 +125,15 @@
           </v-tooltip>
           <v-select
             v-model="filenameSelect"
-            @change="fileNameChanged"
+            @update:model-value="fileNameChanged"
             :items="fileList"
             :disabled="fileList.length <= 1"
             label="Filename"
             id="filename"
             data-test="filename"
             style="width: 300px"
-            dense
-            outlined
+            density="compact"
+            variant="outlined"
             hide-details
           />
           <v-text-field
@@ -131,8 +142,8 @@
             data-test="id"
             class="shrink ml-2 script-state"
             style="width: 100px"
-            dense
-            outlined
+            density="compact"
+            variant="outlined"
             readonly
             hide-details
           />
@@ -142,8 +153,8 @@
             data-test="state"
             class="shrink ml-2 script-state"
             style="width: 120px"
-            dense
-            outlined
+            density="compact"
+            variant="outlined"
             readonly
             hide-details
           />
@@ -168,11 +179,10 @@
             >
               <span> Start </span>
             </v-btn>
-            <v-tooltip bottom>
-              <template v-slot:activator="{ on, attrs }">
+            <v-tooltip location="bottom">
+              <template v-slot:activator="{ props }">
                 <v-btn
-                  v-on="on"
-                  v-bind="attrs"
+                  v-bind="props"
                   @click="scriptEnvironment.show = !scriptEnvironment.show"
                   class="mx-1"
                   data-test="env-button"
@@ -225,8 +235,7 @@
         <v-snackbar
           v-model="showSave"
           absolute
-          top
-          right
+          location="top right"
           :timeout="-1"
           class="saving"
         >
@@ -271,12 +280,12 @@
               data-test="step-button"
             >
               Step
-              <v-icon right> mdi-step-forward </v-icon>
+              <v-icon end> mdi-step-forward </v-icon>
             </v-btn>
             <v-text-field
               class="mb-2"
-              outlined
-              dense
+              variant="outlined"
+              density="compact"
               hide-details
               label="Debug"
               v-model="debug"

@@ -23,12 +23,17 @@
 <template>
   <div>
     <top-bar :menus="menus" :title="title" />
-    <v-snackbar v-model="showReadOnlyToast" top :timeout="-1" color="orange">
+    <v-snackbar
+      v-model="showReadOnlyToast"
+      location="top"
+      :timeout="-1"
+      color="orange"
+    >
       <v-icon> mdi-pencil-off </v-icon>
       {{ lockedBy }} is editing this script. Editor is in read-only mode
       <template v-slot:action="{ attrs }">
         <v-btn
-          text
+          variant="text"
           v-bind="attrs"
           color="danger"
           @click="confirmLocalUnlock"
@@ -37,7 +42,7 @@
           Unlock
         </v-btn>
         <v-btn
-          text
+          variant="text"
           v-bind="attrs"
           @click="
             () => {
@@ -62,8 +67,8 @@
         <v-row dense>
           <v-col cols="6">
             <v-text-field
-              outlined
-              dense
+              variant="outlined"
+              density="compact"
               readonly
               hide-details
               label="Filename"
@@ -75,8 +80,8 @@
           </v-col>
           <v-col cols="6">
             <v-text-field
-              outlined
-              dense
+              variant="outlined"
+              density="compact"
               readonly
               hide-details
               label="Definition"
@@ -99,7 +104,7 @@
               data-test="download-file-binary"
             >
               Binary
-              <v-icon right dark> mdi-file-code </v-icon>
+              <v-icon end dark> mdi-file-code </v-icon>
             </v-btn>
             <v-btn
               dense
@@ -110,7 +115,7 @@
               data-test="download-file-definition"
             >
               Definition
-              <v-icon right dark> mdi-file-document-edit </v-icon>
+              <v-icon end dark> mdi-file-document-edit </v-icon>
             </v-btn>
             <v-btn
               dense
@@ -120,7 +125,7 @@
               data-test="download-file-report"
             >
               Report
-              <v-icon right dark> mdi-file-document </v-icon>
+              <v-icon end dark> mdi-file-document </v-icon>
             </v-btn>
           </v-col>
           <v-col cols="auto">
@@ -132,7 +137,7 @@
               data-test="upload-file"
             >
               Upload
-              <v-icon right dark> mdi-file-upload </v-icon>
+              <v-icon end dark> mdi-file-upload </v-icon>
             </v-btn>
           </v-col>
           <v-col cols="auto">
@@ -144,13 +149,13 @@
               data-test="download-file"
             >
               Download
-              <v-icon right dark> mdi-file-download </v-icon>
+              <v-icon end dark> mdi-file-download </v-icon>
             </v-btn>
           </v-col>
           <v-col cols="auto">
-            <v-tooltip bottom>
-              <template v-slot:activator="{ on, attrs }">
-                <span v-bind="attrs" v-on="on">
+            <v-tooltip location="bottom">
+              <template v-slot:activator="{ props }">
+                <span v-bind="props">
                   <v-checkbox
                     v-model="scriptBackground"
                     label="B/G"
@@ -172,8 +177,8 @@
           label="Search"
           prepend-inner-icon="mdi-magnify"
           clearable
-          outlined
-          dense
+          variant="outlined"
+          density="compact"
           single-line
           hide-details
           class="search"
@@ -221,7 +226,7 @@
                   data-test="download-table-binary"
                 >
                   Binary
-                  <v-icon right dark> mdi-file-code </v-icon>
+                  <v-icon end dark> mdi-file-code </v-icon>
                 </v-btn>
                 <v-btn
                   dense
@@ -232,7 +237,7 @@
                   data-test="download-table-definition"
                 >
                   Definition
-                  <v-icon right dark> mdi-file-document-edit </v-icon>
+                  <v-icon end dark> mdi-file-document-edit </v-icon>
                 </v-btn>
                 <v-btn
                   dense
@@ -242,7 +247,7 @@
                   data-test="download-table-report"
                 >
                   Report
-                  <v-icon right dark> mdi-file-document </v-icon>
+                  <v-icon end dark> mdi-file-document </v-icon>
                 </v-btn>
               </div>
             </template>

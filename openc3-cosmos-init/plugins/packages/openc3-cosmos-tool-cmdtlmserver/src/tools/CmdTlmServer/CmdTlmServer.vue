@@ -26,7 +26,7 @@
     <v-card>
       <v-expansion-panels v-model="panel">
         <v-expansion-panel>
-          <v-expansion-panel-header>
+          <v-expansion-panel-title>
             <v-tabs v-model="curTab" fixed-tabs>
               <v-tab
                 v-for="(tab, index) in tabs"
@@ -37,10 +37,10 @@
                 {{ tab.name }}
               </v-tab>
             </v-tabs>
-          </v-expansion-panel-header>
-          <v-expansion-panel-content>
+          </v-expansion-panel-title>
+          <v-expansion-panel-text>
             <router-view :refresh-interval="refreshInterval" />
-          </v-expansion-panel-content>
+          </v-expansion-panel-text>
         </v-expansion-panel>
       </v-expansion-panels>
     </v-card>
@@ -60,7 +60,7 @@
             step="100"
             type="number"
             label="Refresh Interval (ms)"
-            :value="refreshInterval"
+            :model-value="refreshInterval"
             @change="refreshInterval = $event"
           />
         </div>

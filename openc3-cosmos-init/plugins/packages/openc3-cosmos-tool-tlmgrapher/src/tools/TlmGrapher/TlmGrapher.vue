@@ -25,8 +25,8 @@
     <top-bar :menus="menus" :title="title" />
     <v-expansion-panels v-model="panel" style="margin-bottom: 5px">
       <v-expansion-panel>
-        <v-expansion-panel-header style="z-index: 1"></v-expansion-panel-header>
-        <v-expansion-panel-content>
+        <v-expansion-panel-title style="z-index: 1"></v-expansion-panel-title>
+        <v-expansion-panel-text>
           <div v-show="this.selectedGraphId === null">
             <v-row class="my-5">
               <v-spacer />
@@ -64,7 +64,7 @@
               fab
               data-test="start-graph"
             >
-              <v-icon large>mdi-play</v-icon>
+              <v-icon size="large">mdi-play</v-icon>
             </v-btn>
             <v-btn
               v-show="state === 'start'"
@@ -78,13 +78,13 @@
               fab
               data-test="pause-graph"
             >
-              <v-icon large>mdi-pause</v-icon>
+              <v-icon size="large">mdi-pause</v-icon>
             </v-btn>
             <div class="graph-info">
               Click item name in Legend to toggle. Right click to edit.
             </div>
           </v-row>
-        </v-expansion-panel-content>
+        </v-expansion-panel-text>
       </v-expansion-panel>
     </v-expansion-panels>
     <div>

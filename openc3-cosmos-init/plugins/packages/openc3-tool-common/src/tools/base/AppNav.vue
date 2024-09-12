@@ -38,7 +38,7 @@
       <div v-for="(tool, name) in adminTools" :key="name" class="ma-3">
         <v-btn
           block
-          small
+          size="small"
           :href="tool.url"
           onclick="singleSpaNavigate(event)"
           class="fixcenter"

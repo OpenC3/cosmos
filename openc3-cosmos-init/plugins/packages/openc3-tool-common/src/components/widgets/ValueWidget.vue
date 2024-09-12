@@ -22,22 +22,21 @@
 
 <template>
   <div class="value-widget-container" :style="[computedStyle, aging]">
-    <v-tooltip bottom>
-      <template v-slot:activator="{ on, attrs }">
+    <v-tooltip location="bottom">
+      <template v-slot:activator="{ props }">
         <v-text-field
-          solo
-          dense
+          variant="solo"
+          density="compact"
           readonly
           single-line
           hide-no-data
           hide-details
-          :value="_value"
+          :model-value="_value"
           :class="valueClass"
           :prepend-inner-icon="astroIcon"
           data-test="value"
           @contextmenu="showContextMenu"
-          v-bind="attrs"
-          v-on="on"
+          v-bind="props"
         />
       </template>
       <span>{{ fullName }}</span>
@@ -104,14 +103,14 @@ export default {
       'VALUE',
       3,
       5,
-      'VALUE <TARGET> <PACKET> <ITEM> <TYPE> <WIDTH>'
+      'VALUE <TARGET> <PACKET> <ITEM> <TYPE> <WIDTH>',
     )
     // Note: TYPE is parameters[3]
     // This works because NaN selects the default width
     this.setWidth(
       parseInt(this.parameters[4]) + INPUT_PADDING,
       'ch',
-      this.width
+      this.width,
     )
   },
 }

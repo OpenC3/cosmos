@@ -23,8 +23,8 @@
 <template>
   <v-select
     hide-details
-    dense
-    outlined
+    density="compact"
+    variant="outlined"
     :items="items"
     v-model="value"
     :style="computedStyle"

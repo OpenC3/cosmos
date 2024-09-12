@@ -25,24 +25,22 @@
     <v-list class="list" data-test="microserviceList">
       <div v-for="microservice in microservices" :key="microservice">
         <v-list-item>
-          <v-list-item-content>
-            <v-list-item-title>{{ microservice }}</v-list-item-title>
-            <v-list-item-subtitle v-if="microservice_status[microservice]">
-              Updated:
-              {{ formatDate(microservice_status[microservice].updated_at) }},
-              State: {{ microservice_status[microservice].state }}, Count:
-              {{ microservice_status[microservice].count }}
-            </v-list-item-subtitle>
-          </v-list-item-content>
+          <v-list-item-title>{{ microservice }}</v-list-item-title>
+          <v-list-item-subtitle v-if="microservice_status[microservice]">
+            Updated:
+            {{ formatDate(microservice_status[microservice].updated_at) }},
+            State: {{ microservice_status[microservice].state }}, Count:
+            {{ microservice_status[microservice].count }}
+          </v-list-item-subtitle>
+
           <div v-if="microservice_status[microservice]">
             <div v-show="!!microservice_status[microservice].error">
               <v-list-item-icon>
-                <v-tooltip bottom>
-                  <template v-slot:activator="{ on, attrs }">
+                <v-tooltip location="bottom">
+                  <template v-slot:activator="{ props }">
                     <v-icon
                       @click="showMicroserviceError(microservice)"
-                      v-bind="attrs"
-                      v-on="on"
+                      v-bind="props"
                     >
                       mdi-alert
                     </v-icon>
@@ -53,13 +51,9 @@
             </div>
           </div>
           <v-list-item-icon>
-            <v-tooltip bottom>
-              <template v-slot:activator="{ on, attrs }">
-                <v-icon
-                  @click="showMicroservice(microservice)"
-                  v-bind="attrs"
-                  v-on="on"
-                >
+            <v-tooltip location="bottom">
+              <template v-slot:activator="{ props }">
+                <v-icon @click="showMicroservice(microservice)" v-bind="props">
                   mdi-eye
                 </v-icon>
               </template>

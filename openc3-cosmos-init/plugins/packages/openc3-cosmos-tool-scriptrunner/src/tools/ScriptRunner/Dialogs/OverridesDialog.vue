@@ -46,8 +46,8 @@
               label="Search"
               prepend-inner-icon="mdi-magnify"
               clearable
-              outlined
-              dense
+              variant="outlined"
+              density="compact"
               single-line
               hide-details
             />
@@ -69,13 +69,9 @@
             dense
           >
             <template v-slot:item.delete="{ item }">
-              <v-tooltip bottom>
-                <template v-slot:activator="{ on, attrs }">
-                  <v-icon
-                    @click="deleteOverride(item)"
-                    v-bind="attrs"
-                    v-on="on"
-                  >
+              <v-tooltip location="bottom">
+                <template v-slot:activator="{ props }">
+                  <v-icon @click="deleteOverride(item)" v-bind="props">
                     mdi-delete
                   </v-icon>
                 </template>

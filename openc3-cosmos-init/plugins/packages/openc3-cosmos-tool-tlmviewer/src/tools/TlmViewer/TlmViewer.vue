@@ -25,36 +25,36 @@
     <top-bar :title="title" :menus="menus" />
     <v-expansion-panels v-model="panel" style="margin-bottom: 5px">
       <v-expansion-panel>
-        <v-expansion-panel-header></v-expansion-panel-header>
-        <v-expansion-panel-content>
+        <v-expansion-panel-title></v-expansion-panel-title>
+        <v-expansion-panel-text>
           <v-container>
             <v-row class="pt-3">
               <v-select
                 class="pa-0 mr-4"
-                dense
+                density="compact"
                 hide-details
-                outlined
+                variant="outlined"
                 label="Select Target"
                 :items="Object.keys(screens).sort()"
-                item-text="label"
+                item-title="label"
                 item-value="value"
                 v-model="selectedTarget"
-                @change="targetSelect"
+                @update:model-value="targetSelect"
                 style="max-width: 300px"
               />
               <v-select
                 class="pa-0 mr-4"
-                dense
+                density="compact"
                 hide-details
-                outlined
+                variant="outlined"
                 label="Select Screen"
                 :items="screens[selectedTarget]"
                 v-model="selectedScreen"
-                @change="screenSelect"
+                @update:model-value="screenSelect"
                 style="max-width: 300px"
               />
               <v-btn
-                class="primary mr-2"
+                class="bg-primary mr-2"
                 :disabled="!selectedScreen"
                 @click="() => showScreen(selectedTarget, selectedScreen)"
                 data-test="show-screen"
@@ -62,7 +62,7 @@
                 Show
               </v-btn>
               <v-btn
-                class="primary"
+                class="bg-primary"
                 @click="() => newScreen(selectedTarget)"
                 data-test="new-screen"
               >
@@ -71,7 +71,7 @@
               </v-btn>
             </v-row>
           </v-container>
-        </v-expansion-panel-content>
+        </v-expansion-panel-text>
       </v-expansion-panel>
     </v-expansion-panels>
     <div class="grid">
