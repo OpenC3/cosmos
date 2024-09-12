@@ -64,6 +64,13 @@ module.exports = (webpackConfigEnv, argv) => {
         {
           test: /\.vue$/,
           loader: 'vue-loader',
+          options: {
+            compilerOptions: {
+              compatConfig: {
+                MODE: 3,
+              },
+            },
+          },
         },
         {
           test: /\.html$/i,
@@ -91,6 +98,7 @@ module.exports = (webpackConfigEnv, argv) => {
       extensions: ['.js', '.vue', '.json'],
       alias: {
         '@': resolve('src'),
+        vue: '@vue/compat',
       },
     },
     externals: [

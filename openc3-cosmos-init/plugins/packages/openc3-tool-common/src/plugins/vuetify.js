@@ -20,13 +20,10 @@
 # if purchased from OpenC3, Inc.
 */
 
-import Vue from 'vue'
-import Vuetify from 'vuetify/lib'
+import { createVuetify } from 'vuetify'
 import { AstroIconVuetifyValues } from '../components/icons/index.js'
 
-Vue.use(Vuetify)
-
-export default new Vuetify({
+export default createVuetify({
   theme: {
     dark: true,
     options: {

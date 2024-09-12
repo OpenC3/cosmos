@@ -1,5 +1,4 @@
 import 'systemjs-webpack-interop/auto-public-path/2'
-import Vue from 'vue'
 import singleSpaVue from 'single-spa-vue'
 
 import App from './App.vue'
@@ -14,22 +13,25 @@ import Dialog from '@openc3/tool-common/src/plugins/dialog'
 import PortalVue from 'portal-vue'
 import Notify from '@openc3/tool-common/src/plugins/notify'
 
-Vue.use(PortalVue)
-Vue.use(Dialog)
-Vue.use(Notify, { store })
+const { createApp } = Vue
 
 const vueLifecycles = singleSpaVue({
-  Vue,
+  createApp,
   appOptions: {
-    router,
-    store,
-    vuetify,
     render(h) {
       return h(App, {
         props: {},
       })
     },
     el: '#openc3-tool',
+  },
+  handleInstance: (app) => {
+    app.use(vuetify)
+    app.use(router)
+    app.use(store)
+    app.use(PortalVue)
+    app.use(Dialog)
+    app.use(Notify, { store })
   },
 })
 

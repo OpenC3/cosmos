@@ -17,8 +17,8 @@
 # All Rights Reserved
 */
 
-import Vue from 'vue'
-import Vuetify from 'vuetify'
+import { createVuetify } from 'vuetify'
+
 // Import and define the individual astro components we use
 import { AstroIconVuetifyValues } from '../../../packages/openc3-tool-common/src/components/icons/index.js'
 import { RuxClock } from '@astrouxds/astro-web-components/dist/components/rux-clock'
@@ -78,9 +78,7 @@ customElements.define('rux-icon-solar', RuxIconSolar)
 import { RuxIconThermal } from '@astrouxds/astro-web-components/dist/components/rux-icon-thermal'
 customElements.define('rux-icon-thermal', RuxIconThermal)
 
-Vue.use(Vuetify)
-
-export default new Vuetify({
+export default createVuetify({
   theme: {
     dark: true,
     options: {

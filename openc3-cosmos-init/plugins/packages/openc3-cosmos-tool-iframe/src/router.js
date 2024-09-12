@@ -16,13 +16,10 @@
 # if purchased from OpenC3, Inc.
 */
 
-import Vue from 'vue'
-import Router from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router'
 
-Vue.use(Router)
-
-export default new Router({
-  mode: 'history',
+export default createRouter({
+  history: createWebHistory(),
   base: process.env.BASE_URL,
   routes: [
     {
@@ -31,7 +28,7 @@ export default new Router({
       component: () => import('./tools/Iframe/Iframe.vue'),
     },
     {
-      path: '*',
+      path: ':pathMatch(.*)*',
       name: 'NotFound',
       component: () => import('@openc3/tool-common/src/components/NotFound'),
     },
