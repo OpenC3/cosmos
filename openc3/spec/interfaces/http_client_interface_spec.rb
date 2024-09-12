@@ -18,7 +18,8 @@
 
 =begin
 
-This RSpec test program covers all the methods in the HttpClientInterface class and aims to maximize coverage. It includes tests for:
+This RSpec test program covers all the methods in the HttpClientInterface
+class and aims to maximize coverage. It includes tests for:
 
 1. Initialization with default and custom parameters
 2. Connection string generation
@@ -36,30 +37,6 @@ require 'openc3/interfaces/http_client_interface'
 
 module OpenC3
   describe HttpClientInterface do
-=begin
-    describe "initialize" do
-      it "sets all the instance variables" do
-        i = HttpClientInterface.new('localhost', '8080', 'https', '10', '11', '12')
-        expect(i.name).to eql "HttpClientInterface"
-        expect(i.instance_variable_get(:@hostname)).to eql 'localhost'
-        expect(i.instance_variable_get(:@port)).to eql 8080
-      end
-    end
-
-    describe "connection_string" do
-      it "builds a human readable connection string" do
-        i = HttpClientInterface.new('localhost', '80', 'http', '10', '11', '12')
-        expect(i.connection_string).to eql "http://localhost"
-
-        i = HttpClientInterface.new('machine', '443', 'https', '10', '11', '12')
-        expect(i.connection_string).to eql "https://machine"
-
-        i = HttpClientInterface.new('127.0.0.1', '8080', 'http', '10', '11', '12')
-        expect(i.connection_string).to eql "http://127.0.0.1:8080"
-      end
-    end
-=end
-
     before(:each) do
       @interface = HttpClientInterface.new('example.com', 8080, 'https', 10, 15, 5, true)
     end

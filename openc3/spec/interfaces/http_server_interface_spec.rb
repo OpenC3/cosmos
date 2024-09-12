@@ -42,13 +42,16 @@ require 'openc3/system/system'
 
 module OpenC3
   describe HttpServerInterface do
+    before(:all) do
+      setup_system()
+    end
+
     before(:each) do
       @interface = HttpServerInterface.new
-      allow(System).to receive_message_chain(:commands, :packets).and_return({
-        'TARGET' => {
-          'PACKET' => Packet.new('TARGET', 'PACKET')
-        }
-      })
+    end
+
+    after (:each) do
+      kill_leftover_threads()
     end
 
     describe "#initialize" do
@@ -76,13 +79,25 @@ module OpenC3
     end
 
     describe "#connect" do
-      it "creates a WEBrick server and mounts routes" do
-        allow(WEBrick::HTTPServer).to receive(:new).and_return(double('server').as_null_object)
+      it "connects to a web server and mounts routes" do
         allow_any_instance_of(Packet).to receive(:read).with('HTTP_PATH').and_return('/test')
-        #expect(@interface).to receive(:super)
+        allow_any_instance_of(Packet).to receive(:read).with('HTTP_STATUS').and_return(200)
         @interface.connect
         expect(@interface.instance_variable_get(:@server)).to_not be_nil
-        kill_leftover_threads()
+      end
+
+      it "creates a response hook for every command packet" do
+        @interface.target_names = ['INST']
+        server_double = double
+        allow(WEBrick::HTTPServer).to receive(:new).and_return(server_double)
+        request = OpenStruct.new(header: {alpha: "bet"}, query: {what: "is"}, status: nil, body: nil)
+        response = OpenStruct.new(status: nil, body: nil)
+        allow(server_double).to receive(:mount_proc).with('/test').and_yield(request, response)
+        expect(server_double).to receive(:start) do
+          sleep(0.1)
+        end
+        @interface.connect
+        sleep 0.2
       end
     end
 
@@ -104,7 +119,6 @@ module OpenC3
         @interface.instance_variable_set(:@server, server)
         @interface.instance_variable_set(:@request_queue, Queue.new)
         @interface.instance_variable_get(:@request_queue).push("test")
-        #expect(@interface).to receive(:super)
         @interface.disconnect
         expect(@interface.instance_variable_get(:@server)).to be_nil
         expect(@interface.instance_variable_get(:@request_queue).size).to eq(1)
