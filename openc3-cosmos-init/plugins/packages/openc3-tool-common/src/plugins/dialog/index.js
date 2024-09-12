@@ -58,14 +58,14 @@ class Dialog {
       this.$root.dialog(
         { title, text, okText, okClass, validateText, cancelText, html },
         resolve,
-        reject
+        reject,
       )
     })
   }
 
   confirm = function (
     text,
-    { okText = 'Ok', cancelText = 'Cancel', okClass = 'primary' }
+    { okText = 'Ok', cancelText = 'Cancel', okClass = 'primary' },
   ) {
     return this.open({
       title: 'Confirm',
@@ -79,7 +79,7 @@ class Dialog {
   }
   alert = function (
     text,
-    { okText = 'Ok', html = false, okClass = 'primary' }
+    { okText = 'Ok', html = false, okClass = 'primary' },
   ) {
     return this.open({
       title: 'Alert',
@@ -98,7 +98,7 @@ class Dialog {
       validateText = 'CONFIRM',
       cancelText = 'Cancel',
       okClass = 'primary',
-    }
+    },
   ) {
     return this.open({
       title: 'Confirm',
@@ -114,10 +114,12 @@ class Dialog {
 
 export default {
   install(Vue, options) {
-    if (!Vue.prototype.hasOwnProperty('$dialog')) {
+    const vueProto = Object.getPrototypeOf(Vue)
+    if (!vueProto.hasOwnProperty('$dialog')) {
       Vue.dialog = new Dialog(Vue, options)
 
-      Object.defineProperties(Vue.prototype, {
+      Object.setPrototypeOf(Vue, {
+        ...vueProto,
         $dialog: {
           get() {
             return Vue.dialog

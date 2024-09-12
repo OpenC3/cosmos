@@ -220,10 +220,12 @@ class Notify {
 
 export default {
   install(Vue, options) {
-    if (!Vue.prototype.hasOwnProperty('$notify')) {
+    const vueProto = Object.getPrototypeOf(Vue)
+    if (!vueProto.hasOwnProperty('$notify')) {
       Vue.notify = new Notify(Vue, options)
 
-      Object.defineProperties(Vue.prototype, {
+      Object.setPrototypeOf(Vue, {
+        ...vueProto,
         $notify: {
           get() {
             return Vue.notify

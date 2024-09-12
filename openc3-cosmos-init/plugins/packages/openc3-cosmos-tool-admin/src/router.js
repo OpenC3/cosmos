@@ -24,8 +24,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { TabsList } from '@openc3/tool-common/src/tools/admin/tabs'
 
 export default createRouter({
-  history: createWebHistory(),
-  base: process.env.BASE_URL,
+  history: createWebHistory(process.env.BASE_URL),
   routes: [
     {
       path: '/',
@@ -41,7 +40,7 @@ export default createRouter({
       ],
     },
     {
-      path: ':pathMatch(.*)*',
+      path: '/:pathMatch(.*)*',
       name: 'NotFound',
       component: () => import('@openc3/tool-common/src/components/NotFound'),
     },

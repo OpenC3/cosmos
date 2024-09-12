@@ -85,13 +85,19 @@
     ></import-map-overrides-full>
     <script>
       ;(function () {
+        Object.getPrototypeOf(System).firstGlobalProp = true;
         Promise.all([
-          System.import('single-spa'),
           System.import('vue'),
-          System.import('vuetify'),
-          System.import('vue-router'),
-          System.import('vuex'),
-        ]).then(function (modules) {
+        ]).then(function () {
+          System.set(System.resolve('vue'), window.Vue)
+          return Promise.all([
+            System.import('single-spa'),
+            System.import('vuetify'),
+            System.import('vue-router'),
+            System.import('vuex'),
+          ])
+        }).then(function () {
+          System.set(System.resolve('vue-router'), window.VueRouter)
           System.import('openc3-tool-base')
         })
       })()

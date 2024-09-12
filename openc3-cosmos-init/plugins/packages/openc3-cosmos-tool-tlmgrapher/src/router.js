@@ -23,8 +23,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 export default createRouter({
-  history: createWebHistory(),
-  base: process.env.BASE_URL,
+  history: createWebHistory(process.env.BASE_URL),
   routes: [
     {
       path: '/:target?/:packet?/:item?',
@@ -32,7 +31,7 @@ export default createRouter({
       component: () => import('./tools/TlmGrapher/TlmGrapher.vue'),
     },
     {
-      path: ':pathMatch(.*)*',
+      path: '/:pathMatch(.*)*',
       name: 'NotFound',
       component: () => import('@openc3/tool-common/src/components/NotFound'),
     },
