@@ -79,7 +79,7 @@
                   size="small"
                   data-test="history-component-open-settings"
                 >
-                  <v-icon>$astro-settings</v-icon>
+                  <v-icon>astro:settings</v-icon>
                 </v-btn>
               </template>
               <v-card>

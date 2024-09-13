@@ -229,6 +229,7 @@ export default {
       return this.ignored.map((x) => x.split('__').join(' '))
     },
     astroIcon() {
+      // TODO: fix for vuetify 3 icon sets
       switch (this.overallState) {
         case 'GREEN':
           return '$vuetify.icons.astro-status-normal'

@@ -66,7 +66,7 @@
             class="ml-1"
             data-test="notification-settings"
           >
-            <v-icon> $astro-settings </v-icon>
+            <v-icon> astro:settings </v-icon>
           </v-btn>
         </v-card-title>
         <v-card-text v-if="notifications.length === 0">
@@ -178,6 +178,7 @@
 import { formatDistanceToNow } from 'date-fns'
 import {
   AstroStatusColors,
+  AstroStatusIndicator,
   UnknownToAstroStatus,
 } from '../../../components/icons'
 import { highestLevel, orderByLevel, groupByLevel } from '../util/AstroStatus'
@@ -187,6 +188,9 @@ import Api from '../../../services/api'
 const NOTIFICATION_HISTORY_MAX_LENGTH = 1000
 
 export default {
+  components: {
+    AstroStatusIndicator,
+  },
   props: {
     size: {
       type: [String, Number],

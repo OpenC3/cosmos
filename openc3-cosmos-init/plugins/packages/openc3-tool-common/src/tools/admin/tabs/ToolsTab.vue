@@ -101,7 +101,7 @@ export default {
   data() {
     return {
       name: null,
-      icon: '$astro-add-small',
+      icon: 'astro:add-small',
       url: null,
       tools: [],
       jsonContent: '',

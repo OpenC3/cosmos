@@ -20,6 +20,7 @@
 # if purchased from OpenC3, Inc.
 */
 
+import { h } from 'vue'
 import AstroIcon from './AstroIcon'
 import AstroStatusIndicator from './AstroStatusIndicator'
 
@@ -147,35 +148,30 @@ const getStatusColorContrast = function (severityLevel) {
 
 const AstroStatuses = Object.keys(AstroStatusColors)
 
-const AstroRegularIcons = AstroIconLibrary.reduce((values, icon) => {
-  return {
-    [`astro-${icon}`]: {
-      component: AstroIcon,
-      props: {
-        icon,
-      },
+const AstroIconVuetifySets = {
+  astro: {
+    component: (props) => {
+      return h(AstroIcon, {
+        ...props,
+      })
     },
-    ...values,
-  }
-}, {})
-const AstroStatusIcons = AstroStatuses.reduce((values, status) => {
-  return {
-    [`astro-status-${status}`]: {
-      component: AstroStatusIndicator,
-      props: {
-        status: status,
-      },
+  },
+  ['astro-status']: {
+    component: (props) => {
+      return h(AstroStatusIndicator, {
+        ...props,
+        status: props.icon,
+      })
     },
-    ...values,
-  }
-}, {})
-const AstroIconVuetifyValues = { ...AstroRegularIcons, ...AstroStatusIcons }
+  },
+}
 
 export {
   AstroIconLibrary,
-  AstroIconVuetifyValues,
+  AstroIconVuetifySets,
   AstroStatuses,
   AstroStatusColors,
+  AstroStatusIndicator,
   getStatusColorContrast,
   UnknownToAstroStatus,
   UnknownToCosmosStatus,

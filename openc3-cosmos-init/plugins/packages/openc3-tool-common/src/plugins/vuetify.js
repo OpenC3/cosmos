@@ -21,9 +21,18 @@
 */
 
 import { createVuetify } from 'vuetify'
-import { AstroIconVuetifyValues } from '../components/icons/index.js'
+import * as components from 'vuetify/components'
+import * as directives from 'vuetify/directives'
+import { aliases, mdi } from 'vuetify/iconsets/mdi'
+import { VTreeview } from 'vuetify/labs/VTreeview'
+import { AstroIconVuetifySets } from '../components/icons/index.js'
 
 export default createVuetify({
+  components: {
+    ...components,
+    VTreeview,
+  },
+  directives,
   theme: {
     dark: true,
     options: {
@@ -42,8 +51,13 @@ export default createVuetify({
     },
   },
   icons: {
-    values: {
-      ...AstroIconVuetifyValues,
+    defaultSet: 'mdi',
+    aliases: {
+      ...aliases,
+    },
+    sets: {
+      mdi,
+      ...AstroIconVuetifySets,
     },
   },
 })

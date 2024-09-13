@@ -65,7 +65,9 @@ module.exports = (webpackConfigEnv, argv) => {
           test: /\.vue$/,
           loader: 'vue-loader',
           options: {
-            compilerOptions: {},
+            compilerOptions: {
+              isCustomElement: (tag) => tag.startsWith('rux-'),
+            },
           },
         },
         {

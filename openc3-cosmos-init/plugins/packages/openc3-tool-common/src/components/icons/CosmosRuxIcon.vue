@@ -60,7 +60,7 @@ export default {
   },
   computed: {
     style: function () {
-      return '--iconColor=' + this.propscolor
+      return '--iconColor=' + this.color
     },
   },
   methods: {

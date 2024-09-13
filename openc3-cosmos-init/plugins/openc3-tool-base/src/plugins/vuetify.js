@@ -17,68 +17,141 @@
 # All Rights Reserved
 */
 
+import { defineCustomElement } from 'vue'
 import { createVuetify } from 'vuetify'
+import * as components from 'vuetify/components'
+import * as directives from 'vuetify/directives'
+import { aliases, mdi } from 'vuetify/iconsets/mdi'
+import { VTreeview } from 'vuetify/labs/VTreeview'
+import { AstroIconVuetifySets } from '../../../packages/openc3-tool-common/src/components/icons/index.js'
 
 // Import and define the individual astro components we use
-import { AstroIconVuetifyValues } from '../../../packages/openc3-tool-common/src/components/icons/index.js'
 import { RuxClock } from '@astrouxds/astro-web-components/dist/components/rux-clock'
-customElements.define('rux-clock', RuxClock)
+window.customElements.define('rux-clock', defineCustomElement(RuxClock))
 import { RuxIcon } from '@astrouxds/astro-web-components/dist/components/rux-icon'
-customElements.define('rux-icon', RuxIcon)
+window.customElements.define('rux-icon', defineCustomElement(RuxIcon))
 import { RuxIconApps } from '@astrouxds/astro-web-components/dist/components/rux-icon-apps'
-customElements.define('rux-icon-apps', RuxIconApps)
+window.customElements.define('rux-icon-apps', defineCustomElement(RuxIconApps))
 import { RuxIconNotifications } from '@astrouxds/astro-web-components/dist/components/rux-icon-notifications'
-customElements.define('rux-icon-notifications', RuxIconNotifications)
+window.customElements.define(
+  'rux-icon-notifications',
+  defineCustomElement(RuxIconNotifications),
+)
 import { RuxIconWarning } from '@astrouxds/astro-web-components/dist/components/rux-icon-warning'
-customElements.define('rux-icon-warning', RuxIconWarning)
+window.customElements.define(
+  'rux-icon-warning',
+  defineCustomElement(RuxIconWarning),
+)
 import { RuxIconPerson } from '@astrouxds/astro-web-components/dist/components/rux-icon-person'
-customElements.define('rux-icon-person', RuxIconPerson)
+window.customElements.define(
+  'rux-icon-person',
+  defineCustomElement(RuxIconPerson),
+)
 import { RuxMonitoringIcon } from '@astrouxds/astro-web-components/dist/components/rux-monitoring-icon'
-customElements.define('rux-monitoring-icon', RuxMonitoringIcon)
+window.customElements.define(
+  'rux-monitoring-icon',
+  defineCustomElement(RuxMonitoringIcon),
+)
 import { RuxStatus } from '@astrouxds/astro-web-components/dist/components/rux-status'
-customElements.define('rux-status', RuxStatus)
+window.customElements.define('rux-status', defineCustomElement(RuxStatus))
 import { RuxProgress } from '@astrouxds/astro-web-components/dist/components/rux-progress'
-customElements.define('rux-progress', RuxProgress)
+window.customElements.define('rux-progress', defineCustomElement(RuxProgress))
 import '@astrouxds/astro-web-components/dist/astro-web-components/astro-web-components.css'
 // Define all the 'astro' icons take from
 // https://github.com/RocketCommunicationsInc/astro-components/blob/master/static/json/rux-icons.json
 // It would be nice if this could be a list and be dynamic but that caueses issue with webpack
 import { RuxIconAltitude } from '@astrouxds/astro-web-components/dist/components/rux-icon-altitude'
-customElements.define('rux-icon-altitude', RuxIconAltitude)
+window.customElements.define(
+  'rux-icon-altitude',
+  defineCustomElement(RuxIconAltitude),
+)
 import { RuxIconAntenna } from '@astrouxds/astro-web-components/dist/components/rux-icon-antenna'
-customElements.define('rux-icon-antenna', RuxIconAntenna)
+window.customElements.define(
+  'rux-icon-antenna',
+  defineCustomElement(RuxIconAntenna),
+)
 import { RuxIconAntennaOff } from '@astrouxds/astro-web-components/dist/components/rux-icon-antenna-off'
-customElements.define('rux-icon-antenna-off', RuxIconAntennaOff)
+window.customElements.define(
+  'rux-icon-antenna-off',
+  defineCustomElement(RuxIconAntennaOff),
+)
 import { RuxIconAntennaReceive } from '@astrouxds/astro-web-components/dist/components/rux-icon-antenna-receive'
-customElements.define('rux-icon-antenna-receive', RuxIconAntennaReceive)
+window.customElements.define(
+  'rux-icon-antenna-receive',
+  defineCustomElement(RuxIconAntennaReceive),
+)
 import { RuxIconAntennaTransmit } from '@astrouxds/astro-web-components/dist/components/rux-icon-antenna-transmit'
-customElements.define('rux-icon-antenna-transmit', RuxIconAntennaTransmit)
+window.customElements.define(
+  'rux-icon-antenna-transmit',
+  defineCustomElement(RuxIconAntennaTransmit),
+)
 import { RuxIconEquipment } from '@astrouxds/astro-web-components/dist/components/rux-icon-equipment'
-customElements.define('rux-icon-equipment', RuxIconEquipment)
+window.customElements.define(
+  'rux-icon-equipment',
+  defineCustomElement(RuxIconEquipment),
+)
 import { RuxIconMission } from '@astrouxds/astro-web-components/dist/components/rux-icon-mission'
-customElements.define('rux-icon-mission', RuxIconMission)
+window.customElements.define(
+  'rux-icon-mission',
+  defineCustomElement(RuxIconMission),
+)
 import { RuxIconNetcom } from '@astrouxds/astro-web-components/dist/components/rux-icon-netcom'
-customElements.define('rux-icon-netcom', RuxIconNetcom)
+window.customElements.define(
+  'rux-icon-netcom',
+  defineCustomElement(RuxIconNetcom),
+)
 import { RuxIconPayload } from '@astrouxds/astro-web-components/dist/components/rux-icon-payload'
-customElements.define('rux-icon-payload', RuxIconPayload)
+window.customElements.define(
+  'rux-icon-payload',
+  defineCustomElement(RuxIconPayload),
+)
 import { RuxIconProcessor } from '@astrouxds/astro-web-components/dist/components/rux-icon-processor'
-customElements.define('rux-icon-processor', RuxIconProcessor)
+window.customElements.define(
+  'rux-icon-processor',
+  defineCustomElement(RuxIconProcessor),
+)
 import { RuxIconProcessorAlt } from '@astrouxds/astro-web-components/dist/components/rux-icon-processor-alt'
-customElements.define('rux-icon-processor-alt', RuxIconProcessorAlt)
+window.customElements.define(
+  'rux-icon-processor-alt',
+  defineCustomElement(RuxIconProcessorAlt),
+)
 import { RuxIconPropulsionPower } from '@astrouxds/astro-web-components/dist/components/rux-icon-propulsion-power'
-customElements.define('rux-icon-propulsion-power', RuxIconPropulsionPower)
+window.customElements.define(
+  'rux-icon-propulsion-power',
+  defineCustomElement(RuxIconPropulsionPower),
+)
 import { RuxIconSatelliteOff } from '@astrouxds/astro-web-components/dist/components/rux-icon-satellite-off'
-customElements.define('rux-icon-satellite-off', RuxIconSatelliteOff)
+window.customElements.define(
+  'rux-icon-satellite-off',
+  defineCustomElement(RuxIconSatelliteOff),
+)
 import { RuxIconSatelliteReceive } from '@astrouxds/astro-web-components/dist/components/rux-icon-satellite-receive'
-customElements.define('rux-icon-satellite-receive', RuxIconSatelliteReceive)
+window.customElements.define(
+  'rux-icon-satellite-receive',
+  defineCustomElement(RuxIconSatelliteReceive),
+)
 import { RuxIconSatelliteTransmit } from '@astrouxds/astro-web-components/dist/components/rux-icon-satellite-transmit'
-customElements.define('rux-icon-satellite-transmit', RuxIconSatelliteTransmit)
+window.customElements.define(
+  'rux-icon-satellite-transmit',
+  defineCustomElement(RuxIconSatelliteTransmit),
+)
 import { RuxIconSolar } from '@astrouxds/astro-web-components/dist/components/rux-icon-solar'
-customElements.define('rux-icon-solar', RuxIconSolar)
+window.customElements.define(
+  'rux-icon-solar',
+  defineCustomElement(RuxIconSolar),
+)
 import { RuxIconThermal } from '@astrouxds/astro-web-components/dist/components/rux-icon-thermal'
-customElements.define('rux-icon-thermal', RuxIconThermal)
+window.customElements.define(
+  'rux-icon-thermal',
+  defineCustomElement(RuxIconThermal),
+)
 
 export default createVuetify({
+  components: {
+    ...components,
+    VTreeview,
+  },
+  directives,
   theme: {
     dark: true,
     options: {
@@ -97,8 +170,13 @@ export default createVuetify({
     },
   },
   icons: {
-    values: {
-      ...AstroIconVuetifyValues,
+    defaultSet: 'mdi',
+    aliases: {
+      ...aliases,
+    },
+    sets: {
+      mdi,
+      ...AstroIconVuetifySets,
     },
   },
 })
