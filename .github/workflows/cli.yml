@@ -109,15 +109,14 @@ jobs:
         run: |
           set -e
           docker exec -it cosmos-openc3-redis-1 sh -c "echo -e 'AUTH openc3 openc3password\nset OPENC3__TOKEN 5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8' | redis-cli"
-          # listing script filenames on server also shows a target folder name
-          # orig #./openc3.sh cliroot script list | grep -q "INST2"
-          ./openc3.sh cliroot script list
-          # spawning a script in a subfolder prints only a PID
-          # orig #./openc3.sh cliroot script spawn INST/procedures/checks.rb | grep -qv "^\s*\d+\s*$"
-          ./openc3.sh cliroot script spawn INST/procedures/checks.rb
-          # running a known good script with a wait value longer than its run time prints a success message
-          # orig # ./openc3.sh cliroot script run --wait 10 --disconnect INST/procedures/checks.rb | grep -q "script complete"
-          ./openc3.sh cliroot script run --wait 10 INST/procedures/checks.rb
+          # list shows all the available file names
+          ./openc3.sh cliroot script list | tee /dev/tty | grep "INST/procedures/stash.rb"
+          # spawning a script prints only a PID
+          ./openc3.sh cliroot script spawn INST/procedures/checks.rb | grep -v "^\s*\d+\s*$"
+          # run a script that will fail and look for the failure message
+          ./openc3.sh cliroot script run --wait 10 INST/procedures/checks.rb | tee /dev/tty | grep -q "script failed"
+          # run a script that will complete successfully
+          ./openc3.sh cliroot script run INST/procedures/stash.rb | tee /dev/tty | grep "script complete"
       - name: openc3.sh util save,load
         shell: 'script -q -e -c "bash {0}"'
         run: |
