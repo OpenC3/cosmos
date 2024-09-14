@@ -550,6 +550,7 @@ def disable_instrumentation():
 def set_line_delay(delay):
     if openc3.script.RUNNING_SCRIPT and delay >= 0.0:
         openc3.script.RUNNING_SCRIPT.line_delay = delay
+        print(f"set_line_delay({delay})")
 
 
 def get_line_delay():

@@ -461,8 +461,9 @@ module OpenC3
     end
 
     def set_line_delay(delay)
-      if defined? RunningScript
-        RunningScript.line_delay = delay if delay >= 0.0
+      if defined? RunningScript and delay >= 0.0
+        RunningScript.line_delay = delay
+        puts "set_line_delay(#{delay})"
       end
     end
 

@@ -953,6 +953,7 @@ class RunningScript:
                 output = f"Starting script: {os.path.basename(self.filename)}"
                 if RunningScript.disconnect:
                     output += " in DISCONNECT mode"
+                output += f", line_delay = {RunningScript.line_delay}"
                 self.scriptrunner_puts(output)
             self.handle_output_io()
 
