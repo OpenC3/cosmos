@@ -617,6 +617,7 @@ class RunningScript
   end
 
   def self.line_delay=(value)
+    @@instance.scriptrunner_puts("set_line_delay(#{value})")
     @@line_delay = value
   end
 
@@ -1107,6 +1108,7 @@ class RunningScript
         unless close_on_complete
           output = "Starting script: #{File.basename(@filename)}"
           output += " in DISCONNECT mode" if $disconnect
+          output += "\nget_line_delay() #=> #{@@line_delay}"
           scriptrunner_puts(output)
         end
         handle_output_io()
