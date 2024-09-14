@@ -173,8 +173,8 @@ def migrate(args)
   end
 
   # Migrate cmd_tlm_server.txt info to plugin.txt
-  Dir.glob('targets/**/cmd_tlm_server*.txt') do |file|
-    File.open(file) do |file|
+  Dir.glob('targets/**/cmd_tlm_server*.txt') do |cmd_tlm_server_file|
+    File.open(cmd_tlm_server_file) do |file|
       file.each do |line|
         next if line =~ /^\s*#/ # Ignore comments
         next if line.strip.empty? # Ignore empty lines
@@ -206,9 +206,9 @@ def migrate(args)
     lines = screen.split("\n")
     lines.map! do |line|
       if line.include?('Qt.')
-        line = "# FIXME (no Qt): #{line.sub("<%", "< %").sub("%>", "% >")}"
+        "# FIXME (no Qt): #{line.sub("<%", "< %").sub("%>", "% >")}"
       elsif line.include?('Cosmos::')
-        line = "# FIXME (no Cosmos::): #{line.sub("<%", "< %").sub("%>", "% >")}"
+        "# FIXME (no Cosmos::): #{line.sub("<%", "< %").sub("%>", "% >")}"
       else
         line
       end
@@ -667,8 +667,6 @@ def cli_script_monitor(script_id)
     while (resp = api.read) do
       # see ScriptRunner.vue for types and states
       case resp['type']
-      when 'running', 'breakpoint', 'waiting'
-        puts resp.pretty_inspect
       when 'error', 'fatal'
         $script_interrupt_text = ''
         puts 'script failed'
@@ -691,13 +689,13 @@ def cli_script_monitor(script_id)
           puts 'script failed'
           break
         end
-      when 'time'
-        puts resp.pretty_inspect
       when 'complete'
         $script_interrupt_text = ''
         puts 'script complete'
         ret_code = 0
         break
+      # These conditions are all handled by the else
+      # when 'running', 'breakpoint', 'waiting', 'time'
       else
         puts resp.pretty_inspect
       end
@@ -711,11 +709,11 @@ def cli_script_list(args=[])
   if (args[0] && args[0][0] == '/')
     path = (args.shift)[1..-1]+'/'
   end
-  scope = args[0]
+  scope = args[1]
   scope ||= 'DEFAULT'
   require 'openc3/script'
   script_list(scope: scope).each do |script_name|
-    puts (script_name) if script_name.start_with?(path)
+    puts(script_name) if script_name.start_with?(path)
   end
   return 0
 end
@@ -748,10 +746,10 @@ def cli_script_run(disconnect=false, environment={}, args=[])
   else
     Timeout::timeout(wait_limit, nil, "--wait #{wait_limit} exceeded") do
       ret_code = cli_script_monitor(id)
-    rescue Timeout::ExitException, Timeout::Error => tmoexcp
+    rescue Timeout::ExitException, Timeout::Error => e
       # Timeout exceptions are also raised by the Websocket API, so we check
-      if tmoexcp.message =~ /^--wait /
-        puts tmoexcp.message + ", detaching from running script #{args[0]}"
+      if e.message =~ /^--wait /
+        puts e.message + ", detaching from running script #{args[0]}"
       else
         raise
       end
@@ -782,6 +780,11 @@ end
 def cli_script(args=[])
   ret_code = ERROR_CODE
   check_environment()
+  # Double check for the OPENC3_API_PASSWORD because it is absolutely required
+  # We always pass it via openc3.sh even if it's not defined so check for empty
+  if ENV['OPENC3_API_PASSWORD'].nil? or ENV['OPENC3_API_PASSWORD'].empty?
+    abort "OPENC3_API_PASSWORD environment variable is required for cli script"
+  end
   command = args.shift
   # pull out the disconnect flag
   discon = args.delete('--disconnect')
@@ -833,7 +836,7 @@ if not ARGV[0].nil? # argument(s) given
       cli_script(ARGV[1..-1])
     else
       # invalid actions, misplaced and malformed leading options and 'help' come here
-      abort ("cli script <action> must be one of #{CLI_SCRIPT_ACTIONS}, not [#{ARGV[1]}]")
+      abort("cli script <action> must be one of #{CLI_SCRIPT_ACTIONS}, not [#{ARGV[1]}]")
     end
 
   when 'rake'
