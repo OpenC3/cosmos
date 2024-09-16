@@ -49,9 +49,9 @@ module OpenC3
         sock = Socket.new(Socket::Constants::AF_INET, Socket::Constants::SOCK_STREAM, 0)
         sock.bind(Socket.pack_sockaddr_in(80, '127.0.0.1')) #raise if listening
         sock.close
-        @socket_80 = 81
       rescue Errno::EACCES => e;
         Logger.info("Found listener on port 80; presumably in CI\n#{e.message}")
+        @socket_80 = 81
       end
     end
 
