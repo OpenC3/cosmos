@@ -44,10 +44,19 @@ module OpenC3
   describe HttpServerInterface do
     before(:all) do
       setup_system()
+      @socket_80 = 80 # make desktop spec not collide with dev/CI env where Cosmos is already running
+      begin
+        sock = Socket.new(Socket::Constants::AF_INET, Socket::Constants::SOCK_STREAM, 0)
+        sock.bind(Socket.pack_sockaddr_in(80, '127.0.0.1')) #raise if listening
+        sock.close
+        @socket_80 = 81
+      rescue Errno::EACCES => e;
+        Logger.info("Found listener on port 80; presumably in CI\n#{e.message}")
+      end
     end
 
     before(:each) do
-      @interface = HttpServerInterface.new
+      @interface = HttpServerInterface.new(@socket_80)
     end
 
     after (:each) do
@@ -56,12 +65,12 @@ module OpenC3
 
     describe "#initialize" do
       it "initializes with default port" do
-        expect(@interface.instance_variable_get(:@port)).to eq(80)
+        expect(@interface.instance_variable_get(:@port)).to eq(@socket_80)
       end
 
       it "initializes with custom port" do
-        interface = HttpServerInterface.new(8080)
-        expect(interface.instance_variable_get(:@port)).to eq(8080)
+        interface = HttpServerInterface.new("80#{@socket_80}".to_i)
+        expect(interface.instance_variable_get(:@port)).to eq("80#{@socket_80}".to_i)
       end
     end
 
@@ -74,7 +83,7 @@ module OpenC3
 
     describe "#connection_string" do
       it "returns the correct connection string" do
-        expect(@interface.connection_string).to eq("listening on 0.0.0.0:80")
+        expect(@interface.connection_string).to eq("listening on 0.0.0.0:#{@socket_80}")
       end
     end
 
