@@ -37,8 +37,16 @@ require 'openc3/interfaces/http_client_interface'
 
 module OpenC3
   describe HttpClientInterface do
+    before(:all) do
+      @api_resource = '/api/resource'
+      @application_json = 'application/json'
+      @content_type = 'Content-Type'
+      @example_com = 'example.com'
+      @packet_data = 'packet data'
+    end
+
     before(:each) do
-      @interface = HttpClientInterface.new('example.com', 8080, 'https', 10, 15, 5, true)
+      @interface = HttpClientInterface.new(@example_com, 8080, 'https', 10, 15, 5, true)
     end
 
     describe "#initialize" do
@@ -50,14 +58,14 @@ module OpenC3
       end
 
       it "initializes with default parameters" do
-        interface = HttpClientInterface.new('example.com')
-        expect(interface.instance_variable_get(:@hostname)).to eq('example.com')
+        interface = HttpClientInterface.new(@example_com)
+        expect(interface.instance_variable_get(:@hostname)).to eq(@example_com)
         expect(interface.instance_variable_get(:@port)).to eq(80)
         expect(interface.instance_variable_get(:@protocol)).to eq('http')
       end
 
       it "initializes with custom parameters" do
-        expect(@interface.instance_variable_get(:@hostname)).to eq('example.com')
+        expect(@interface.instance_variable_get(:@hostname)).to eq(@example_com)
         expect(@interface.instance_variable_get(:@port)).to eq(8080)
         expect(@interface.instance_variable_get(:@protocol)).to eq('https')
         expect(@interface.instance_variable_get(:@write_timeout)).to eq(10.0)
@@ -146,7 +154,7 @@ module OpenC3
         allow(mock_response).to receive(:body).and_return('')
 
         expect(@interface.instance_variable_get(:@http)).to receive(:delete)
-          .with('/api/resource/1', { 'confirm' => 'true' }, { 'Authorization' => 'Bearer token' })
+          .with("#{@api_resource}/1", { 'confirm' => 'true' }, { 'Authorization' => 'Bearer token' })
           .and_return(mock_response)
 
         @interface.write_interface(data, extra)
@@ -166,13 +174,13 @@ module OpenC3
         data = '{"post": "data"}'
         extra = {
           'HTTP_METHOD' => 'post',
-          'HTTP_URI' => '/api/resource',
+          'HTTP_URI' => @api_resource,
           'HTTP_QUERIES' => { 'param' => 'value' },
-          'HTTP_HEADERS' => { 'Content-Type' => 'application/json' }
+          'HTTP_HEADERS' => { @content_type => 'application/json' }
         }
 
         mock_response = double('response')
-        allow(mock_response).to receive(:headers).and_return({'Content-Type' => 'application/json'})
+        allow(mock_response).to receive(:headers).and_return({@content_type => @application_json})
         allow(mock_response).to receive(:status).and_return(201)
         allow(mock_response).to receive(:body).and_return('{"id": 1}')
 
@@ -183,7 +191,7 @@ module OpenC3
         @interface.write_interface(data, extra)
         expect(@interface.instance_variable_get(:@response_queue).pop).to eq(['{"id": 1}', {
           'HTTP_REQUEST' => [data, extra],
-          'HTTP_HEADERS' => {'Content-Type' => 'application/json'},
+          'HTTP_HEADERS' => {@content_type => @application_json},
           'HTTP_STATUS' => 201
         }])
       end
@@ -192,13 +200,13 @@ module OpenC3
         data = '{"put": "data"}'
         extra = {
           'HTTP_METHOD' => 'put',
-          'HTTP_URI' => '/api/resource/1',
+          'HTTP_URI' => "#{@api_resource}/1",
           'HTTP_QUERIES' => { 'param' => 'value' },
-          'HTTP_HEADERS' => { 'Content-Type' => 'application/json' }
+          'HTTP_HEADERS' => { @content_type => @application_json }
         }
 
         mock_response = double('response')
-        allow(mock_response).to receive(:headers).and_return({'Content-Type' => 'application/json'})
+        allow(mock_response).to receive(:headers).and_return({@content_type => @application_json})
         allow(mock_response).to receive(:status).and_return(200)
         allow(mock_response).to receive(:body).and_return('{"updated": true}')
 
@@ -209,7 +217,7 @@ module OpenC3
         @interface.write_interface(data, extra)
         expect(@interface.instance_variable_get(:@response_queue).pop).to eq(['{"updated": true}', {
           'HTTP_REQUEST' => [data, extra],
-          'HTTP_HEADERS' => {'Content-Type' => 'application/json'},
+          'HTTP_HEADERS' => {@content_type => @application_json},
           'HTTP_STATUS' => 200
         }])
       end
@@ -239,36 +247,36 @@ module OpenC3
     describe "#convert_packet_to_data" do
       it "converts a packet to data and extra hash" do
         packet = double('packet')
-        allow(packet).to receive(:buffer).and_return('packet data')
-        allow(packet).to receive(:read).with('HTTP_PATH').and_return('/api/resource')
+        allow(packet).to receive(:buffer).and_return( @packet_data )
+        allow(packet).to receive(:read).with('HTTP_PATH').and_return(@api_resource)
         allow(packet).to receive(:target_name).and_return('TARGET')
         allow(packet).to receive(:packet_name).and_return('PACKET')
         allow(packet).to receive(:extra).and_return(nil)
 
         data, extra = @interface.convert_packet_to_data(packet)
 
-        expect(data).to eq('packet data')
+        expect(data).to eq( @packet_data )
         expect(extra['HTTP_REQUEST_TARGET_NAME']).to eq('TARGET')
         expect(extra['HTTP_REQUEST_PACKET_NAME']).to eq('PACKET')
         uri_str = extra['HTTP_URI'].encode('ASCII-8BIT', 'UTF-8')
-        expect(uri_str).to eq('https://example.com:8080/api/resource')
+        expect(uri_str).to eq("https://example.com:8080#{@api_resource}")
       end
 
       it "preserves existing extra data" do
         packet = double('packet')
-        allow(packet).to receive(:buffer).and_return('packet data')
-        allow(packet).to receive(:read).with('HTTP_PATH').and_return('/api/resource')
+        allow(packet).to receive(:buffer).and_return( @packet_data )
+        allow(packet).to receive(:read).with('HTTP_PATH').and_return(@api_resource)
         allow(packet).to receive(:target_name).and_return('TARGET')
         allow(packet).to receive(:packet_name).and_return('PACKET')
         allow(packet).to receive(:extra).and_return({'EXISTING' => 'DATA'})
 
         data, extra = @interface.convert_packet_to_data(packet)
 
-        expect(data).to eq('packet data')
+        expect(data).to eq( @packet_data )
         expect(extra['EXISTING']).to eq('DATA')
         uri_str = extra['HTTP_URI'].encode('ASCII-8BIT', 'UTF-8')
 
-        expect(uri_str).to eq('https://example.com:8080/api/resource')
+        expect(uri_str).to eq("https://example.com:8080#{@api_resource}")
         expect(extra['HTTP_REQUEST_TARGET_NAME']).to eq('TARGET')
         expect(extra['HTTP_REQUEST_PACKET_NAME']).to eq('PACKET')
       end

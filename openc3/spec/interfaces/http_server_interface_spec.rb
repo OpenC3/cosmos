@@ -44,10 +44,11 @@ module OpenC3
   describe HttpServerInterface do
     before(:all) do
       setup_system()
+      @localhost = '127.0.0.1'
       @socket_80 = 80 # make desktop spec not collide with dev/CI env where Cosmos is already running
       begin
         sock = Socket.new(Socket::Constants::AF_INET, Socket::Constants::SOCK_STREAM, 0)
-        sock.bind(Socket.pack_sockaddr_in(80, '127.0.0.1')) #raise if listening
+        sock.bind(Socket.pack_sockaddr_in(80,  @localhost )) #raise if listening
         sock.close
       rescue Errno::EACCES => e;
         Logger.info("Found listener on port 80; presumably in CI\n#{e.message}")
@@ -76,8 +77,8 @@ module OpenC3
 
     describe "#set_option" do
       it "sets the listen address" do
-        @interface.set_option("LISTEN_ADDRESS", ["127.0.0.1"])
-        expect(@interface.instance_variable_get(:@listen_address)).to eq("127.0.0.1")
+        @interface.set_option("LISTEN_ADDRESS", [ @localhost ])
+        expect(@interface.instance_variable_get(:@listen_address)).to eq( @localhost )
       end
     end
 
