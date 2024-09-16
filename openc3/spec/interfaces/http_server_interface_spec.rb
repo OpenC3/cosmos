@@ -56,7 +56,7 @@ module OpenC3
     end
 
     before(:each) do
-      @interface = HttpServerInterface.new(@socket_80)
+      @interface = HttpServerInterface.new(8000+@socket_80)
     end
 
     after (:each) do
@@ -64,13 +64,13 @@ module OpenC3
     end
 
     describe "#initialize" do
-      it "initializes with default port" do
-        expect(@interface.instance_variable_get(:@port)).to eq(@socket_80)
+      it "initializes with default port" do # above the privileged port range
+        expect(@interface.instance_variable_get(:@port)).to eq(8000+@socket_80)
       end
 
       it "initializes with custom port" do
-        interface = HttpServerInterface.new("80#{@socket_80}".to_i)
-        expect(interface.instance_variable_get(:@port)).to eq("80#{@socket_80}".to_i)
+        interface = HttpServerInterface.new(8000+@socket_80)
+        expect(interface.instance_variable_get(:@port)).to eq(8000+@socket_80)
       end
     end
 
@@ -83,7 +83,7 @@ module OpenC3
 
     describe "#connection_string" do
       it "returns the correct connection string" do
-        expect(@interface.connection_string).to eq("listening on 0.0.0.0:#{@socket_80}")
+        expect(@interface.connection_string).to eq("listening on 0.0.0.0:#{8000+@socket_80}")
       end
     end
 
@@ -91,7 +91,7 @@ module OpenC3
       it "connects to a web server and mounts routes" do
         allow_any_instance_of(Packet).to receive(:read).with('HTTP_PATH').and_return('/test')
         allow_any_instance_of(Packet).to receive(:read).with('HTTP_STATUS').and_return(200)
-        @interface.instance_variable_set(:@port, @socket_80)
+        @interface.instance_variable_set(:@port, 8000+@socket_80)
         @interface.connect
         expect(@interface.instance_variable_get(:@server)).to_not be_nil
       end
@@ -106,7 +106,7 @@ module OpenC3
         expect(server_double).to receive(:start) do
           sleep(0.1)
         end
-        @interface.instance_variable_set(:@port, @socket_80)
+        @interface.instance_variable_set(:@port, 8000+@socket_80)
         @interface.connect
         sleep 0.2
       end
