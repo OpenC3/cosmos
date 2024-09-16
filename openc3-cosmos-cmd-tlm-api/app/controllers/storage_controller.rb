@@ -139,8 +139,8 @@ class StorageController < ApplicationController
     raise "Unknown bucket #{params[:bucket]}" unless bucket_name
     path = sanitize_path(params[:object_id])
     key_split = path.split('/')
-    # Anywhere other than config/SCOPE/targets_modified requires admin
-    if !(params[:bucket] == 'OPENC3_CONFIG_BUCKET' && key_split[1] == 'targets_modified')
+    # Anywhere other than config/SCOPE/targets_modified or config/SCOPE/tmp requires admin
+    if !(params[:bucket] == 'OPENC3_CONFIG_BUCKET' && (key_split[1] == 'targets_modified' || key_split[1] == 'tmp'))
       return unless authorization('admin')
     end
 
@@ -160,9 +160,9 @@ class StorageController < ApplicationController
   def delete
     return unless authorization('system_set')
     if params[:bucket].presence
-      delete_bucket_item(params)
+      return unless delete_bucket_item(params)
     elsif params[:volume].presence
-      delete_volume_item(params)
+      return unless delete_volume_item(params)
     else
       raise "Must pass bucket or volume parameter!"
     end
@@ -193,9 +193,9 @@ class StorageController < ApplicationController
     raise "Unknown bucket #{params[:bucket]}" unless bucket_name
     path = sanitize_path(params[:object_id])
     key_split = path.split('/')
-    # Anywhere other than config/SCOPE/targets_modified requires admin
-    if !(params[:bucket] == 'OPENC3_CONFIG_BUCKET' && key_split[1] == 'targets_modified')
-      return unless authorization('admin')
+    # Anywhere other than config/SCOPE/targets_modified or config/SCOPE/tmp requires admin
+    if !(params[:bucket] == 'OPENC3_CONFIG_BUCKET' && (key_split[1] == 'targets_modified' || key_split[1] == 'tmp'))
+      return false unless authorization('admin')
     end
 
     if ENV['OPENC3_LOCAL_MODE']
@@ -208,7 +208,7 @@ class StorageController < ApplicationController
 
   def delete_volume_item(params)
     # Deleting requires admin
-    return unless authorization('admin')
+    return false unless authorization('admin')
     volume = ENV[params[:volume]] # Get the actual volume name
     raise "Unknown volume #{params[:volume]}" unless volume
     filename = "/#{volume}/#{params[:object_id]}"
