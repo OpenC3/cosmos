@@ -662,14 +662,38 @@ module OpenC3
       it "update the events and commit them to redis" do
         name = "foobar"
         scope = "scope"
-        activity = generate_activity(name: name, scope: scope, start: 1.0)
-        expect(activity.fulfillment).to eql(false)
-        activity.commit(status: "test", message: "message", fulfillment: true)
-        expect(activity.fulfillment).to eql(true)
-        activity = ActivityModel.score(name: name, scope: scope, score: activity.start)
-        expect(activity.fulfillment).to eql(true)
+        start = 1.0
+        dt = DateTime.now.new_offset(0)
+        start_time = dt + (start / 24.0)
+        end_time = dt + ((start + 1) / 24.0)
+        activity1 = ActivityModel.new(
+          name: name,
+          scope: scope,
+          start: start_time.strftime("%s").to_i,
+          stop: end_time.strftime("%s").to_i,
+          kind: "RESERVE",
+          data: {}
+        )
+        activity1.create()
+        activity2 = ActivityModel.new(
+          name: name,
+          scope: scope,
+          start: start_time.strftime("%s").to_i,
+          stop: end_time.strftime("%s").to_i,
+          kind: "COMMAND",
+          data: {}
+        )
+        activity2.create()
+        activities = ActivityModel.all(name: name, scope: scope)
+        expect(activities.length).to eql(2)
+
+        expect(activity1.fulfillment).to eql(false)
+        expect(activity2.fulfillment).to eql(false)
+        activity1.commit(status: "test", message: "message", fulfillment: true)
+        expect(activity1.fulfillment).to eql(true)
+
         valid_commit = false
-        activity.events.each do |event|
+        activity1.events.each do |event|
           if event["event"] == "test"
             expect(event["message"]).to eql("message")
             expect(event["commit"]).to eql(true)
@@ -677,6 +701,15 @@ module OpenC3
           end
         end
         expect(valid_commit).to eql(true)
+
+        activities = ActivityModel.all(name: name, scope: scope)
+        expect(activities.length).to eql(2)
+        expect(activities[0]["fulfillment"]).to eql(true)
+        expect(activities[0]["kind"]).to eql('reserve')
+        expect(activities[0]["events"].length).to eql(2)
+        expect(activities[1]["fulfillment"]).to eql(false)
+        expect(activities[1]["kind"]).to eql('command')
+        expect(activities[1]["events"].length).to eql(1)
       end
     end
 

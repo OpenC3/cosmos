@@ -258,6 +258,16 @@ RSpec.describe ActivityController, :type => :controller do
       expect(response).to have_http_status(:no_content)
     end
 
+    it "deletes items without uuids if uuid is not given" do
+      hash = generate_activity_hash(1.0)
+      post :create, params: hash.merge({ 'scope'=>'DEFAULT', 'name'=>'test' })
+      expect(response).to have_http_status(:created)
+      created = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      expect(created['start']).not_to be_nil
+      delete :destroy, params: {'scope'=>'DEFAULT', 'name'=>'test', 'id'=>created['start']}
+      expect(response).to have_http_status(:no_content)
+    end
+
     it "returns a status code 404" do
       delete :destroy, params: {'scope'=>'DEFAULT', 'name'=>'test', "id"=>"200", "uuid"=>"123456"}
       ret = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
@@ -349,7 +359,6 @@ RSpec.describe ActivityController, :type => :controller do
       get :index, params: {"scope"=>"DEFAULT", "name"=>"test"}
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
-      pp json
       expect(json.empty?).to eql(true)
     end
 

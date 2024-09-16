@@ -81,7 +81,7 @@ module OpenC3
 
     # Remove one member from a sorted set.
     # @return [Integer] count of the members removed
-    def self.destroy(name:, scope:, score:, uuid:, recurring: nil)
+    def self.destroy(name:, scope:, score:, uuid: nil, recurring: nil)
       result = 0
 
       # Delete all recurring activities
@@ -103,9 +103,17 @@ module OpenC3
       json = Store.zrangebyscore("#{scope}#{PRIMARY_KEY}__#{name}", score, score, :limit => [0, 100])
       parsed = json.map { |value| JSON.parse(value, :allow_nan => true, :create_additions => true) }
       parsed.each_with_index do |value, index|
-        if value['uuid'] == uuid
+        if uuid
+          # If the uuid is given then only delete activities that match the uuid
+          if value['uuid'] == uuid
+            result = Store.zrem("#{scope}#{PRIMARY_KEY}__#{name}", json[index])
+            break
+          end
+        else
+          # If the uuid is not given (backwards compatibility) then delete all activities
+          # at the score that do NOT have a uuid
+          next if value['uuid']
           result = Store.zrem("#{scope}#{PRIMARY_KEY}__#{name}", json[index])
-          break
         end
       end
 
@@ -268,7 +276,7 @@ module OpenC3
           recurrence = @recurring['frequency'].to_i * 86400
         end
 
-        if !overlap
+        unless overlap
           # Get all the existing events in the recurring time range as well as those before
           # the start of the recurring time range to ensure we don't start inside an existing event
           existing = Store.zrevrangebyscore(@primary_key, @recurring['end'] - 1, @recurring['start'] - MAX_DURATION)
@@ -289,7 +297,7 @@ module OpenC3
               @events.pop # Remove previously created event
               raise ActivityOverlapError.new "Recurring activity overlap. Increase recurrence delta or decrease activity duration."
             end
-            if !overlap
+            unless overlap
               existing.each do |value|
                 if (@start >= value['start'] and @start < value['stop']) ||
                   (@stop > value['start'] and @stop <= value['stop'])
@@ -305,7 +313,7 @@ module OpenC3
         notify(kind: 'created')
       else
         validate_input(start: @start, stop: @stop, kind: @kind, data: @data)
-        if !overlap
+        unless overlap
           # If we don't allow overlap we need to validate the time
           collision = validate_time(@start, @stop)
           unless collision.nil?
@@ -329,7 +337,7 @@ module OpenC3
       end
 
       old_start = @start
-      if !overlap
+      unless overlap
         # If we don't allow overlap we need to validate the time
         collision = validate_time(start, stop, ignore_score: old_start)
         unless collision.nil?
@@ -340,9 +348,15 @@ module OpenC3
       @updated_at = Time.now.to_nsec_from_epoch
 
       add_event(status: 'updated')
-      Store.multi do |multi|
-        multi.zremrangebyscore(@primary_key, old_start, old_start)
-        multi.zadd(@primary_key, @start, JSON.generate(self.as_json(:allow_nan => true)))
+      json = Store.zrangebyscore(@primary_key, old_start, old_start)
+      parsed = json.map { |value| JSON.parse(value, :allow_nan => true, :create_additions => true) }
+      parsed.each_with_index do |value, index|
+        if value['uuid'] == @uuid
+          Store.multi do |multi|
+            multi.zrem(@primary_key, json[index])
+            multi.zadd(@primary_key, @start, JSON.generate(self.as_json(:allow_nan => true)))
+          end
+        end
       end
       notify(kind: 'updated', extra: old_start)
       return @start
@@ -360,9 +374,16 @@ module OpenC3
       event['message'] = message unless message.nil?
       @fulfillment = fulfillment.nil? ? @fulfillment : fulfillment
       @events << event
-      Store.multi do |multi|
-        multi.zremrangebyscore(@primary_key, @start, @start)
-        multi.zadd(@primary_key, @start, JSON.generate(self.as_json(:allow_nan => true)))
+
+      json = Store.zrangebyscore(@primary_key, @start, @start)
+      parsed = json.map { |value| JSON.parse(value, :allow_nan => true, :create_additions => true) }
+      parsed.each_with_index do |value, index|
+        if value['uuid'] == @uuid
+          Store.multi do |multi|
+            multi.zrem(@primary_key, json[index])
+            multi.zadd(@primary_key, @start, JSON.generate(self.as_json(:allow_nan => true)))
+          end
+        end
       end
       notify(kind: 'event')
     end

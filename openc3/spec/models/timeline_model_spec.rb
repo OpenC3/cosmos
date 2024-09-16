@@ -93,10 +93,9 @@ module OpenC3
 
     describe "self.names" do
       it "returns all the timeline names" do
-        scope = "scope"
-        model = TimelineModel.new(name: "foo", scope: scope)
+        model = TimelineModel.new(name: "foo", scope: "SCOPE")
         model.create()
-        model = TimelineModel.new(name: "bar", scope: scope)
+        model = TimelineModel.new(name: "bar", scope: "DEFAULT")
         model.create()
         names = TimelineModel.names()
         expect(names.empty?).to eql(false)
