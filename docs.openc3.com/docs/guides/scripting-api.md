@@ -2239,25 +2239,36 @@ limits_sets = get_limits_sets()
 
 ### get_limits
 
-Returns limits settings for a telemetry point.
+Returns hash / dict of all the limits settings for a telemetry point.
 
 Ruby / Python Syntax:
 
 ```ruby
-get_limits(<Target Name>, <Packet Name>, <Item Name>, <Limits Set (optional)>)
+get_limits(<Target Name>, <Packet Name>, <Item Name>)
 ```
 
-| Parameter   | Description                                                                                                                   |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Target Name | Name of the target of the telemetry item.                                                                                     |
-| Packet Name | Name of the telemetry packet of the telemetry item.                                                                           |
-| Item Name   | Name of the telemetry item.                                                                                                   |
-| Limits Set  | Get the limits for a specific limits set. If not given then it defaults to returning the settings for the current limits set. |
+| Parameter   | Description                                        |
+| ----------- | -------------------------------------------------- |
+| Target Name | Name of the target of the telemetry item           |
+| Packet Name | Name of the telemetry packet of the telemetry item |
+| Item Name   | Name of the telemetry item                         |
 
-Ruby / Python Example:
+Ruby Example:
 
 ```ruby
-limits_set, persistence_setting, enabled, red_low, yellow_low, yellow_high, red_high, green_low, green_high = get_limits('INST', 'HEALTH_STATUS', 'TEMP1')
+result = get_limits('INST', 'HEALTH_STATUS', 'TEMP1')
+puts result #=> {"DEFAULT"=>[-80.0, -70.0, 60.0, 80.0, -20.0, 20.0], "TVAC"=>[-80.0, -30.0, 30.0, 80.0]}
+puts result.keys #=> ['DEFAULT', 'TVAC']
+puts result['DEFAULT'] #=> [-80.0, -70.0, 60.0, 80.0, -20.0, 20.0]
+```
+
+Python Example:
+
+```python
+result = get_limits('INST', 'HEALTH_STATUS', 'TEMP1')
+print(result) #=> {'DEFAULT'=>[-80.0, -70.0, 60.0, 80.0, -20.0, 20.0], 'TVAC'=>[-80.0, -30.0, 30.0, 80.0]}
+print(result.keys()) #=> dict_keys(['DEFAULT', 'TVAC'])
+print(result['DEFAULT']) #=> [-80.0, -70.0, 60.0, 80.0, -20.0, 20.0]
 ```
 
 ### set_limits
