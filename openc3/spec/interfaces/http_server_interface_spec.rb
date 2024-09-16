@@ -91,6 +91,7 @@ module OpenC3
       it "connects to a web server and mounts routes" do
         allow_any_instance_of(Packet).to receive(:read).with('HTTP_PATH').and_return('/test')
         allow_any_instance_of(Packet).to receive(:read).with('HTTP_STATUS').and_return(200)
+        @interface.instance_variable_set(:@port, @socket_80)
         @interface.connect
         expect(@interface.instance_variable_get(:@server)).to_not be_nil
       end
@@ -105,6 +106,7 @@ module OpenC3
         expect(server_double).to receive(:start) do
           sleep(0.1)
         end
+        @interface.instance_variable_set(:@port, @socket_80)
         @interface.connect
         sleep 0.2
       end
