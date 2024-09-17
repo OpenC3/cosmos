@@ -15,7 +15,6 @@
     "@openc3/ace-diff": "5.18.1-beta0",
     "@openc3/tool-common": "5.18.1-beta0",
     "ace-builds": "1.35.4",
-    "portal-vue": "3.0.0",
     "single-spa-vue": "3.0.0",
     "systemjs-webpack-interop": "2.3.7",
     "vue": "3.5.4",

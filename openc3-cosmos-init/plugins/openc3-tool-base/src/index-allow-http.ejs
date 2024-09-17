@@ -87,17 +87,15 @@
       ;(function () {
         Object.getPrototypeOf(System).firstGlobalProp = true;
         Promise.all([
+          System.import('single-spa'),
           System.import('vue'),
-        ]).then(function () {
+          System.import('vue-router'),
+          System.import('vuex'),
+        ]).then(function (modules) {
           System.set(System.resolve('vue'), window.Vue)
-          return Promise.all([
-            System.import('single-spa'),
-            System.import('vuetify'),
-            System.import('vue-router'),
-            System.import('vuex'),
-          ])
-        }).then(function () {
           System.set(System.resolve('vue-router'), window.VueRouter)
+          return System.import('vuetify')
+        }).then(function () {
           System.import('openc3-tool-base')
         })
       })()

@@ -1,10 +1,13 @@
+import { createApp } from 'vue'
+
 import App from './App.vue'
+import { registerAstroComponents } from './plugins/astrouxds'
 import vuetify from './plugins/vuetify'
 import router from './router'
 import store from '../../packages/openc3-tool-common/src/plugins/store'
 import '../../packages/openc3-tool-common/src/assets/stylesheets/layout/layout.scss'
 
-const { createApp } = Vue // this is because I used global.min.js ... TODO should I not?
+registerAstroComponents()
 
 const app = createApp(App)
 

@@ -39,7 +39,7 @@
           block
           size="small"
           :href="tool.url"
-          onclick="singleSpaNavigate(event)"
+          :onclick="() => navigateToUrl(tool.url)"
           class="fixcenter"
           color="primary"
         >
@@ -64,7 +64,7 @@
             <a
               v-if="item.window === 'INLINE'"
               :href="item.url"
-              onclick="singleSpaNavigate(event)"
+              :onclick="() => navigateToUrl(item.url)"
             >
               <v-icon> {{ item.icon }} </v-icon>
             </a>
@@ -75,12 +75,12 @@
         </template>
 
         <!-- Link Text -->
-        <template v-slot:label="{ item }">
+        <template v-slot:title="{ item }">
           <!-- Category has no Icon -->
           <a
             v-if="!item.icon"
             :href="item.url"
-            onclick="singleSpaNavigate(event)"
+            :onclick="() => navigateToUrl(item.url)"
           >
             {{ item.name }}
           </a>
@@ -89,7 +89,7 @@
             <a
               v-if="item.window === 'INLINE'"
               :href="item.url"
-              onclick="singleSpaNavigate(event)"
+              :onclick="() => navigateToUrl(item.url)"
             >
               {{ item.name }}
             </a>
@@ -167,7 +167,7 @@
 import { OpenC3Api } from '../../services/openc3-api'
 import Api from '../../services/api'
 import logo from '../../../public/img/logo.png'
-import { registerApplication, start } from 'single-spa'
+import { navigateToUrl, registerApplication, start } from 'single-spa'
 import ScopeSelector from './components/ScopeSelector.vue'
 import Notifications from './components/Notifications.vue'
 import UserMenu from './components/UserMenu.vue'

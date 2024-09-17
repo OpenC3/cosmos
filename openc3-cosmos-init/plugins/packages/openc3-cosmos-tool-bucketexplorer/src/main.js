@@ -9,24 +9,20 @@ import store from '@openc3/tool-common/src/plugins/store'
 import '@openc3/tool-common/src/assets/stylesheets/layout/layout.scss'
 import vuetify from '@openc3/tool-common/src/plugins/vuetify'
 import Dialog from '@openc3/tool-common/src/plugins/dialog'
-import PortalVue from 'portal-vue'
 import Notify from '@openc3/tool-common/src/plugins/notify'
 
 const vueLifecycles = singleSpaVue({
   createApp,
   appOptions: {
     render() {
-      return h(App, {
-        props: {},
-      })
+      return h(App, {})
     },
     el: '#openc3-tool',
   },
   handleInstance: (app) => {
-    app.use(vuetify)
     app.use(router)
     app.use(store)
-    app.use(PortalVue)
+    app.use(vuetify)
     app.use(Dialog)
     app.use(Notify, { store })
   },

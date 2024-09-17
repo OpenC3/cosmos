@@ -33,5 +33,12 @@ export default createRouter({
           '../../packages/openc3-tool-common/src/tools/base/components/Login'
         ),
     },
+    {
+      // Empty component for all other routes to avoid VueRouter warnings, since all other routes are handled by single-spa
+      path: '/:pathMatch(.*)*',
+      name: '',
+      component: () =>
+        import('../../packages/openc3-tool-common/src/components/Empty'),
+    },
   ],
 })

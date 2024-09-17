@@ -21,7 +21,7 @@
 -->
 
 <template>
-  <mounting-portal mount-to="#openc3-menu" append>
+  <teleport to="#openc3-menu">
     <v-row no-gutters
       ><v-col align-self="end">
         <span class="app-title mr-2">{{ title }}</span></v-col
@@ -126,7 +126,7 @@
         </v-list>
       </v-menu>
     </v-row>
-  </mounting-portal>
+  </teleport>
 </template>
 
 <script>

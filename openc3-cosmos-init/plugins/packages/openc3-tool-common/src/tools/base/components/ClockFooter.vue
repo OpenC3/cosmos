@@ -23,8 +23,6 @@
 <template>
   <div>
     <span
-      v-bind="attrs"
-      v-on="on"
       style="cursor: context-menu"
       class="font-weight-bold"
       @contextmenu="openMenu"
