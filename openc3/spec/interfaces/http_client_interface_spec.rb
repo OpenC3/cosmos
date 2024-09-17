@@ -16,22 +16,6 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-=begin
-
-This RSpec test program covers all the methods in the HttpClientInterface
-class and aims to maximize coverage. It includes tests for:
-
-1. Initialization with default and custom parameters
-2. Connection string generation
-3. Connecting and disconnecting
-4. Checking connection status
-5. Reading from and writing to the interface
-6. Converting data to packets and packets to data
-7. Handling different HTTP methods (GET, POST, PUT, DELETE)
-8. Error handling and special case responses
-
-=end
-
 require 'spec_helper'
 require 'openc3/interfaces/http_client_interface'
 

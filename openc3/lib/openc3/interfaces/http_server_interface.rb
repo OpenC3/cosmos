@@ -75,7 +75,7 @@ module OpenC3
                 # No HTTP_STATUS - Leave at default
               end
 
-              # TODO: is packet.extra ever set?
+              # http_accessor stores all the pseudo-derived HTTP configuration in extra
               if packet.extra
                 headers = packet.extra['HTTP_HEADERS']
                 if headers

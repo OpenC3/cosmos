@@ -16,25 +16,6 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-=begin
-Here's a complete runnable RSpec test program for the HttpServerInterface class:
-
-This RSpec test program covers all the methods in the HttpServerInterface class and aims to maximize coverage. It includes tests for:
-
-1. Initialization with default and custom ports
-2. Setting options
-3. Connection string generation
-4. Connecting and creating the WEBrick server
-5. Checking connection status
-6. Disconnecting and cleaning up
-7. Reading from the interface
-8. Writing to the interface (which raises an error)
-9. Converting data to packets
-10. Converting packets to data (which raises an error)
-
-Note that some methods like `connect` are more challenging to test thoroughly due to their complexity and dependencies. In a real-world scenario, you might want to consider using more advanced mocking techniques or integration tests to cover these areas more comprehensively.
-=end
-
 require 'spec_helper'
 require 'openc3/interfaces/http_server_interface'
 require 'openc3/packets/packet'
@@ -60,7 +41,7 @@ module OpenC3
       @interface = HttpServerInterface.new(8000+@socket_80)
     end
 
-    after (:each) do
+    after(:each) do
       kill_leftover_threads()
     end
 
