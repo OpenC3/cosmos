@@ -202,6 +202,10 @@ class MessagesThread < TopicsThread
         return nil if @level == "ERROR" or @level == "FATAL"
       when "ERROR"
         return nil if @level == "FATAL"
+      when 'FATAL'
+        return log_entry
+      else
+        return log_entry
       end
       # when "FATAL" fall through and return the log_entry
     end

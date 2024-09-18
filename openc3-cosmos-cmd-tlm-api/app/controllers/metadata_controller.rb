@@ -25,6 +25,7 @@ require 'time'
 
 class MetadataController < ApplicationController
   def initialize
+    @not_found = 'not found'
     @model_class = OpenC3::MetadataModel
   end
 
@@ -110,7 +111,7 @@ class MetadataController < ApplicationController
       if model_hash
         render json: model_hash, status: 200
       else
-        render json: { status: 'error', message: 'not found' }, status: 404
+        render json: { status: 'error', message: @not_found }, status: 404
       end
     end
   end
@@ -141,7 +142,7 @@ class MetadataController < ApplicationController
     action do
       hash = @model_class.get(start: params[:id].to_i, scope: params[:scope])
       if hash.nil?
-        render json: { status: 'error', message: 'not found' }, status: 404
+        render json: { status: 'error', message: @not_found }, status: 404
         return
       end
       model = @model_class.from_json(hash.symbolize_keys, scope: params[:scope])
@@ -179,7 +180,7 @@ class MetadataController < ApplicationController
     action do
       count = @model_class.destroy(start: params[:id].to_i, scope: params[:scope])
       if count == 0
-        render json: { status: 'error', message: 'not found' }, status: 404
+        render json: { status: 'error', message: @not_found }, status: 404
         return
       end
       OpenC3::Logger.info(
