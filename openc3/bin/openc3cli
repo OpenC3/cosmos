@@ -58,12 +58,25 @@ MIGRATE_PARSER = OptionParser.new do |opts|
 end
 ERROR_CODE = 1
 
+CLI_SCRIPT_ACTIONS = %w(help list run spawn)
+$script_interrupt_text = ''
+trap('INT') do
+  abort("Interrupted at console; exiting.#{$script_interrupt_text}")
+end
+
 # Prints the usage text for the openc3cli executable
 def print_usage
   puts "Usage:"
   puts "  cli help                          # Displays this information"
   puts "  cli rake                          # Runs rake in the local directory"
   puts "  cli irb                           # Runs irb in the local directory"
+  puts "  cli script list /PATH SCOPE       # lists script names filtered by path within scope, 'DEFAULT' if not given"
+  puts "  cli script spawn NAME SCOPE  variable1=value1 variable2=value2  # Starts named script remotely"
+  puts "  cli script run NAME SCOPE variable1=value1 variable2=value2  # Starts named script, monitoring status on console,\
+  by default until error or exit"
+  puts "    PARAMETERS name-value pairs to form the script's runtime environment"
+  puts "    OPTIONS: --wait 0 seconds to monitor status before detaching from the running script; ie --wait 100"
+  puts "             --disconnect run the script in disconnect mode"
   puts "  cli validate /PATH/FILENAME.gem SCOPE variables.txt # Validate a COSMOS plugin gem file"
   puts "  cli load /PATH/FILENAME.gem SCOPE variables.txt     # Loads a COSMOS plugin gem file"
   puts "  cli list <SCOPE>                  # Lists installed plugins, SCOPE is DEFAULT if not given"
@@ -160,8 +173,8 @@ def migrate(args)
   end
 
   # Migrate cmd_tlm_server.txt info to plugin.txt
-  Dir.glob('targets/**/cmd_tlm_server*.txt') do |file|
-    File.open(file) do |file|
+  Dir.glob('targets/**/cmd_tlm_server*.txt') do |cmd_tlm_server_file|
+    File.open(cmd_tlm_server_file) do |file|
       file.each do |line|
         next if line =~ /^\s*#/ # Ignore comments
         next if line.strip.empty? # Ignore empty lines
@@ -193,9 +206,9 @@ def migrate(args)
     lines = screen.split("\n")
     lines.map! do |line|
       if line.include?('Qt.')
-        line = "# FIXME (no Qt): #{line.sub("<%", "< %").sub("%>", "% >")}"
+        "# FIXME (no Qt): #{line.sub("<%", "< %").sub("%>", "% >")}"
       elsif line.include?('Cosmos::')
-        line = "# FIXME (no Cosmos::): #{line.sub("<%", "< %").sub("%>", "% >")}"
+        "# FIXME (no Cosmos::): #{line.sub("<%", "< %").sub("%>", "% >")}"
       else
         line
       end
@@ -493,7 +506,6 @@ def load_plugin(plugin_file_path, scope:, plugin_hash_file: nil, force: false)
   else
     # Outside Cluster
     require 'openc3/script'
-
     if plugin_hash_file
       plugin_hash = JSON.parse(File.read(plugin_hash_file), :allow_nan => true, :create_additions => true)
     else
@@ -648,6 +660,167 @@ def run_bridge(filename, params)
   end
 end
 
+def cli_script_monitor(script_id)
+  ret_code = ERROR_CODE
+  require 'openc3/script'
+  OpenC3::RunningScriptWebSocketApi.new(id: script_id) do |api|
+    while (resp = api.read) do
+      # see ScriptRunner.vue for types and states
+      case resp['type']
+      when 'error', 'fatal'
+        $script_interrupt_text = ''
+        puts 'script failed'
+        break
+      when 'file'
+        puts "Filename #{resp['filename']} scope #{resp['scope']}"
+      when 'line'
+        fn = resp['filename'].nil? ? '<no file>' : resp['filename']
+        puts "At [#{fn}:#{resp['line_no']}] state [#{resp['state']}]"
+        if resp['state'] == 'error'
+          $script_interrupt_text = ''
+          puts 'script failed'
+          break
+        end
+      when 'output'
+        puts resp['line']
+      when 'paused'
+        if resp['state'] == 'fatal'
+          $script_interrupt_text = ''
+          puts 'script failed'
+          break
+        end
+      when 'complete'
+        $script_interrupt_text = ''
+        puts 'script complete'
+        ret_code = 0
+        break
+      # These conditions are all handled by the else
+      # when 'running', 'breakpoint', 'waiting', 'time'
+      else
+        puts resp.pretty_inspect
+      end
+    end
+  end
+  return ret_code
+end
+
+def cli_script_list(args=[])
+  path = ''
+  if (args[0] && args[0][0] == '/')
+    path = (args.shift)[1..-1]+'/'
+  end
+  scope = args[1]
+  scope ||= 'DEFAULT'
+  require 'openc3/script'
+  script_list(scope: scope).each do |script_name|
+    puts(script_name) if script_name.start_with?(path)
+  end
+  return 0
+end
+
+def cli_script_run(disconnect=false, environment={}, args=[])
+  #  we are limiting the wait for status, not the script run time
+  #  we make 0 mean 'forever'
+  ret_code = ERROR_CODE
+  wait_limit = 0
+  if (i = args.index('--wait'))
+    begin
+      args.delete('--wait')
+      # pull out the flag
+      seconds = args[i]
+      wait_limit = Integer(seconds, 10) # only decimal, ignore leading 0
+      args.delete_at(i)
+      # and its value
+    rescue ArgumentError
+      abort("  --wait requires a number of seconds to wait, not [#{seconds}]")
+    end
+  end
+  abort("No script file provided") if args[0].nil?
+  scope = args[1]
+  scope ||= 'DEFAULT'
+  require 'openc3/script'
+  id = script_run(args[0], disconnect: disconnect, environment: environment, scope: scope) # could raise
+  $script_interrupt_text = "  Script #{args[0]} still running remotely.\n" # for Ctrl-C
+  if (wait_limit < 1) then
+    ret_code = cli_script_monitor(id)
+  else
+    Timeout::timeout(wait_limit, nil, "--wait #{wait_limit} exceeded") do
+      ret_code = cli_script_monitor(id)
+    rescue Timeout::ExitException, Timeout::Error => e
+      # Timeout exceptions are also raised by the Websocket API, so we check
+      if e.message =~ /^--wait /
+        puts e.message + ", detaching from running script #{args[0]}"
+      else
+        raise
+      end
+    end
+  end
+  return ret_code
+end
+
+def cli_script_spawn(disconnect=false, environment={}, args=[])
+  ret_code = ERROR_CODE
+  if (args.index('--wait'))
+    abort("Did you mean \"script run --wait <seconds> [...]\"?")
+  end
+  abort("No script file provided") if args[0].nil?
+  # heaven help you if you left out the script name
+  scope = args[1]
+  scope ||= 'DEFAULT'
+  require 'openc3/script'
+  if (id = script_run(args[0], disconnect: disconnect, environment: environment, scope: scope))
+    puts id
+    ret_code = 0
+  end
+  return ret_code
+end
+
+## cli_script(args) turns an ARGV of [spawn|run] <--wait 123...> <--disconnect> SCRIPT <scope> <ENV_A=1 ENV_B=2 ...>
+#                   into function calls and tidied parameters to remote-control a script via RunningScriptWebSocketApi
+def cli_script(args=[])
+  ret_code = ERROR_CODE
+  check_environment()
+  # Double check for the OPENC3_API_PASSWORD because it is absolutely required
+  # We always pass it via openc3.sh even if it's not defined so check for empty
+  if ENV['OPENC3_API_PASSWORD'].nil? or ENV['OPENC3_API_PASSWORD'].empty?
+    abort "OPENC3_API_PASSWORD environment variable is required for cli script"
+  end
+  command = args.shift
+  # pull out the disconnect flag
+  discon = args.delete('--disconnect')
+  discon = (discon.is_a? String) ? true : false
+  environ = {}
+  args.each do |arg|
+    name, value = arg.split('=')
+    if name and value
+    # add env[k]=v ; pull out "k=v"
+      environ[name] = value
+      args.delete(arg)
+    end
+  end
+  case command
+  # for list
+  # args[] should now be ["/<path>", "<scope>"]
+  #                   or ["/<path>"]
+  #                   or ["<scope>"]
+  #                   or []
+  when 'list'
+    ret_code = cli_script_list(args)
+  # for spawn or run
+  # args[] should now be ["--wait 100", "script_name", "<scope>"]
+  #                   or ["--wait 100", "script_name"]
+  #                   or ["script_name", "<scope>"]
+  #                   or ["script_name"]
+  when 'spawn'
+    ret_code = cli_script_spawn(discon, environ, args)
+  when 'run'
+    ret_code = cli_script_run(discon, environ, args)
+  else
+    abort 'openc3cli internal error: parsing arguments'
+  end
+  exit(ret_code)
+end
+
 if not ARGV[0].nil? # argument(s) given
 
   # Handle each task
@@ -656,6 +829,15 @@ if not ARGV[0].nil? # argument(s) given
   when 'irb'
     ARGV.clear
     IRB.start
+
+  when 'script'
+    case ARGV[1]
+    when 'list', 'run', 'spawn'
+      cli_script(ARGV[1..-1])
+    else
+      # invalid actions, misplaced and malformed leading options and 'help' come here
+      abort("cli script <action> must be one of #{CLI_SCRIPT_ACTIONS}, not [#{ARGV[1]}]")
+    end
 
   when 'rake'
     if File.exist?('Rakefile')

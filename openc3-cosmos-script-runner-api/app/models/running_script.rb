@@ -427,6 +427,7 @@ class RunningScript
 
     # Retrieve file
     @body = ::Script.body(@scope, name)
+    raise "Script not found: #{name}" if @body.nil?
     breakpoints = @@breakpoints[filename]&.filter { |_, present| present }&.map { |line_number, _| line_number - 1 } # -1 because frontend lines are 0-indexed
     breakpoints ||= []
     OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"),
@@ -1271,6 +1272,7 @@ class RunningScript
       OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :file, filename: filename, text: @body.to_utf8, breakpoints: breakpoints }))
     else
       text = ::Script.body(@scope, filename)
+      raise "Script not found: #{filename}" if text.nil?
       @@file_cache[filename] = text
       @body = text
       OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :file, filename: filename, text: @body.to_utf8, breakpoints: breakpoints }))

@@ -63,17 +63,14 @@ case $1 in
     # This allows tools running in the container to have a consistent path to the current working directory.
     # Run the command "ruby /openc3/bin/openc3cli" with all parameters starting at 2 since the first is 'openc3'
     args=`echo $@ | { read _ args; echo $args; }`
-    # Make sure the network exists
-    (docker network create openc3-cosmos-network || true) &> /dev/null
-    docker run -it --rm --env-file "$(dirname -- "$0")/.env" --user=$OPENC3_USER_ID:$OPENC3_GROUP_ID --network openc3-cosmos-network -v `pwd`:/openc3/local:z -w /openc3/local $OPENC3_REGISTRY/$OPENC3_NAMESPACE/openc3-operator$OPENC3_IMAGE_SUFFIX:$OPENC3_TAG ruby /openc3/bin/openc3cli $args
+    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" run -it --rm -v `pwd`:/openc3/local:z -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli $args
     set +a
     ;;
   cliroot )
     set -a
     . "$(dirname -- "$0")/.env"
     args=`echo $@ | { read _ args; echo $args; }`
-    (docker network create openc3-cosmos-network || true) &> /dev/null
-    docker run -it --rm --env-file "$(dirname -- "$0")/.env" --user=root --network openc3-cosmos-network -v `pwd`:/openc3/local:z -w /openc3/local $OPENC3_REGISTRY/$OPENC3_NAMESPACE/openc3-operator$OPENC3_IMAGE_SUFFIX:$OPENC3_TAG ruby /openc3/bin/openc3cli $args
+    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" run -it --rm --user=root -v `pwd`:/openc3/local:z -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli $args
     set +a
     ;;
   start )
