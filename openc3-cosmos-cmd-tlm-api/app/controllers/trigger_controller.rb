@@ -58,7 +58,7 @@ class TriggerController < ApplicationController
     begin
       model = @model_class.get(name: params[:name], group: params[:group], scope: params[:scope])
       if model.nil?
-        render :json => { :status => 'error', :message => @not_found }, :status => 404
+        render :json => { :status => 'error', :message => NOT_FOUND }, :status => 404
         return
       end
       render :json => model.as_json(:allow_nan => true), :status => 200
@@ -151,7 +151,7 @@ class TriggerController < ApplicationController
     begin
       model = @model_class.get(name: params[:name], group: params[:group], scope: params[:scope])
       if model.nil?
-        render json: { status: 'error', message: @not_found }, status: 404
+        render json: { status: 'error', message: NOT_FOUND }, status: 404
         return
       end
       hash = params.to_unsafe_h.slice(:left, :operator, :right).to_h
@@ -194,7 +194,7 @@ class TriggerController < ApplicationController
     begin
       model = @model_class.get(name: params[:name], group: params[:group], scope: params[:scope])
       if model.nil?
-        render :json => { :status => 'error', :message => @not_found }, :status => 404
+        render :json => { :status => 'error', :message => NOT_FOUND }, :status => 404
         return
       end
       # Notify the TriggerGroupMicroservice to enable the TriggerModel
@@ -229,7 +229,7 @@ class TriggerController < ApplicationController
     begin
       model = @model_class.get(name: params[:name], group: params[:group], scope: params[:scope])
       if model.nil?
-        render :json => { :status => 'error', :message => @not_found }, :status => 404
+        render :json => { :status => 'error', :message => NOT_FOUND }, :status => 404
         return
       end
       # Notify the TriggerGroupMicroservice to disable the TriggerModel
@@ -258,7 +258,7 @@ class TriggerController < ApplicationController
     begin
       model = @model_class.get(name: params[:name], group: params[:group], scope: params[:scope])
       if model.nil?
-        render :json => { :status => 'error', :message => @not_found }, :status => 404
+        render :json => { :status => 'error', :message => NOT_FOUND }, :status => 404
         return
       end
       unless model.dependents.empty?
@@ -276,5 +276,5 @@ class TriggerController < ApplicationController
   end
 
   private
-  @not_found = 'not found'
+  NOT_FOUND = 'not found'
 end

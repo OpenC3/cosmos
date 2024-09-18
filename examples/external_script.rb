@@ -38,26 +38,26 @@ puts tlm('INST ADCS POSX')
 
 puts cmd("INST ABORT")
 
-inst_test_txt = 'INST/test.txt'
-inst_test_bin = 'INST/test.bin'
-put_target_file(inst_test_txt, "this is a string test")
-file = get_target_file(inst_test_txt)
+INST_TEST_TXT = 'INST/test.txt'
+INST_TEST_BIN = 'INST/test.bin'
+put_target_file(INST_TEST_TXT, "this is a string test")
+file = get_target_file(INST_TEST_TXT)
 puts file.read
 file.unlink
-delete_target_file(inst_test_txt)
+delete_target_file(INST_TEST_TXT)
 
 save_file = Tempfile.new('test')
 save_file.write("this is a Io test")
 save_file.rewind
-put_target_file(inst_test_txt, save_file)
+put_target_file(INST_TEST_TXT, save_file)
 save_file.unlink
-file = get_target_file(inst_test_txt)
+file = get_target_file(INST_TEST_TXT)
 puts file.read
 file.unlink
-delete_target_file(inst_test_txt)
+delete_target_file(INST_TEST_TXT)
 
-put_target_file(inst_test_bin, "\x00\x01\x02\x03\xFF\xEE\xDD\xCC")
-file = get_target_file(inst_test_bin)
+put_target_file(INST_TEST_BIN, "\x00\x01\x02\x03\xFF\xEE\xDD\xCC")
+file = get_target_file(INST_TEST_BIN)
 puts file.read.formatted
 file.unlink
-delete_target_file(inst_test_bin)
+delete_target_file(INST_TEST_BIN)

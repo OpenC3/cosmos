@@ -207,7 +207,6 @@ class MessagesThread < TopicsThread
       else
         return log_entry
       end
-      # when "FATAL" fall through and return the log_entry
     end
 
     return log_entry
