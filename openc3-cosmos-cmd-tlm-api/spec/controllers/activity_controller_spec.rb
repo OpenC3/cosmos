@@ -21,6 +21,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'rails_helper'
+require 'openc3/utilities/store_autoload'
 
 RSpec.describe ActivityController, :type => :controller do
   before(:each) do
@@ -264,6 +265,10 @@ RSpec.describe ActivityController, :type => :controller do
       expect(response).to have_http_status(:created)
       created = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
       expect(created['start']).not_to be_nil
+      # We have to manually delete the uuid because it's always added
+      created.delete('uuid')
+      # Now add it back to the store and write over the existing activity
+      OpenC3::Store.zadd('DEFAULT__openc3_timelines__test', created['start'], JSON.generate(created))
       delete :destroy, params: {'scope'=>'DEFAULT', 'name'=>'test', 'id'=>created['start']}
       expect(response).to have_http_status(:no_content)
     end

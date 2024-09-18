@@ -337,6 +337,7 @@ module OpenC3
       end
 
       old_start = @start
+      old_uuid = @uuid
       unless overlap
         # If we don't allow overlap we need to validate the time
         collision = validate_time(start, stop, ignore_score: old_start)
@@ -351,7 +352,7 @@ module OpenC3
       json = Store.zrangebyscore(@primary_key, old_start, old_start)
       parsed = json.map { |value| JSON.parse(value, :allow_nan => true, :create_additions => true) }
       parsed.each_with_index do |value, index|
-        if value['uuid'] == @uuid
+        if value['uuid'] == old_uuid
           Store.multi do |multi|
             multi.zrem(@primary_key, json[index])
             multi.zadd(@primary_key, @start, JSON.generate(self.as_json(:allow_nan => true)))
