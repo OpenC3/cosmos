@@ -286,7 +286,14 @@ export default {
       api: null,
       timeZone: 'local',
       // Initialize with all built-in components
-      components: [{ label: 'COSMOS Raw/Decom', value: 'DumpComponent' }],
+      components: [
+        {
+          label: 'COSMOS Packet Raw/Decom',
+          value: 'DumpComponent',
+          items: false,
+        },
+        { label: 'COSMOS Value Viewer', value: 'ValueComponent', items: true },
+      ],
       counter: 0,
       panel: 0,
       componentType: null,
@@ -425,6 +432,7 @@ export default {
         if (found) {
           Api.get(`/openc3-api/widgets/${widget}`).then((response) => {
             let label = response.data.label
+            let items = response.data.items
             if (label === null) {
               label = response.data.name.slice(10)
               label = label.charAt(0) + label.slice(1).toLowerCase()
@@ -432,6 +440,7 @@ export default {
             this.components.push({
               label: label,
               value: found[0],
+              items: items,
             })
           })
         }
@@ -491,11 +500,11 @@ export default {
         this.warning = true
       }
       this.running = true
-      this.addPacketsToSubscription()
+      this.addToSubscription()
     },
     stop: function () {
       this.running = false
-      this.removePacketsFromSubscription()
+      this.removeFromSubscription()
     },
     subscribe: function () {
       this.cable
@@ -519,10 +528,11 @@ export default {
         })
         .then((subscription) => {
           this.subscription = subscription
-          if (this.running) this.addPacketsToSubscription()
+          if (this.running) this.addToSubscription()
         })
     },
-    addPacketsToSubscription: function (packets) {
+    addToSubscription: function (packets) {
+      console.log(packets)
       packets = packets || this.allPackets
       // Group by mode
       const modeGroups = packets.reduce((groups, packet) => {
@@ -537,6 +547,7 @@ export default {
         // This eliminates duplicates by converted to Set and back to Array
         modeGroups[mode] = [...new Set(modeGroups[mode])]
       })
+      console.log(modeGroups)
       OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(
         (refreshed) => {
           if (refreshed) {
@@ -553,7 +564,7 @@ export default {
         },
       )
     },
-    removePacketsFromSubscription: function (packets) {
+    removeFromSubscription: function (packets) {
       packets = packets || this.allPackets
       if (packets.length > 0) {
         this.subscription.perform('remove', {
@@ -563,7 +574,34 @@ export default {
         })
       }
     },
+    // TODO: Combine with addToSubscription so it's one method
+    addItemsToSubscription: function (itemArray) {
+      console.log(itemArray)
+      OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(
+        (refreshed) => {
+          if (refreshed) {
+            OpenC3Auth.setTokens()
+          }
+          this.subscription.perform('add', {
+            scope: window.openc3Scope,
+            token: localStorage.openc3Token,
+            items: itemArray.map(this.itemSubscriptionKey),
+            ...this.startEndTime,
+          })
+        },
+      )
+    },
+    // removeItemsFromSubscription: function (itemArray = this.items) {
+    //   if (this.itemSubscription) {
+    //     this.itemSubscription.perform('remove', {
+    //       scope: window.openc3Scope,
+    //       token: localStorage.openc3Token,
+    //       items: itemArray.map(this.itemSubscriptionKey),
+    //     })
+    //   }
+    // },
     received: function (parsed) {
+      console.log(parsed)
       this.cable.recordPing()
       if (parsed['error']) {
         this.errorText = parsed['error']
@@ -582,6 +620,7 @@ export default {
         }
         return groups
       }, {})
+      console.log(groupedPackets)
       this.config.tabs.forEach((tab, i) => {
         tab.packets.forEach((packetConfig) => {
           let packetName = this.packetKey(packetConfig)
@@ -604,10 +643,26 @@ export default {
       if (packet.mode === 'DECOM') key += `__${packet.valueType}`
       return key
     },
+    itemKey: function (item) {
+      let key = item.mode + '__'
+      if (item.cmdOrTlm === 'TLM') {
+        key += 'TLM'
+      } else {
+        key += 'CMD'
+      }
+      key += `__${item.targetName}__${item.packetName}__${item.itemName}`
+      if (item.mode === 'DECOM') key += `__${item.valueType}`
+      return key
+    },
+    // Maybe combine subscriptionKey with itemSubscriptionKey
     subscriptionKey: function (packet) {
       const cmdOrTlm = packet.cmdOrTlm.toUpperCase()
       let key = `${packet.mode}__${cmdOrTlm}__${packet.targetName}__${packet.packetName}`
       if (packet.mode === 'DECOM') key += `__${packet.valueType}`
+      return key
+    },
+    itemSubscriptionKey: function (item) {
+      let key = `DECOM__TLM__${item.targetName}__${item.packetName}__${item.itemName}__${item.valueType}`
       return key
     },
     resetConfig: function () {
@@ -665,6 +720,7 @@ export default {
       }
     },
     addComponent: function (event) {
+      console.log(event)
       // Built-in components are just themselves
       let type = event.component.value
       let component = event.component.value
@@ -676,6 +732,9 @@ export default {
           event.component.value.slice(1).toLowerCase()
         component = `${name}Widget`
       }
+      console.log(
+        `adding component name:${event.component.label} counter:${this.counter} component:${component}`,
+      )
       this.config.tabs.push({
         name: event.component.label,
         // Most tabs only have 1 packet so it's a good way to name them
@@ -690,7 +749,11 @@ export default {
       this.curTab = this.config.tabs.length - 1
 
       if (this.running) {
-        this.addPacketsToSubscription(event.packets)
+        if (event.component.items) {
+          this.addItemsToSubscription(event.packets)
+        } else {
+          this.addToSubscription(event.packets)
+        }
       }
       this.cancelAddComponent()
     },
@@ -710,7 +773,7 @@ export default {
         (packet) => packetsInUse.indexOf(this.packetKey(packet)) === -1,
       )
       if (filtered.length > 0) {
-        this.removePacketsFromSubscription(filtered)
+        this.removeFromSubscription(filtered)
       }
       this.config.tabs.splice(tabIndex, 1)
     },

@@ -75,6 +75,10 @@ WIDGET:
         guide for more details.
       required: true
       values: .+
+    - name: Label
+      description: The label for the widget that will appear in the Data Viewer component drop down
+      required: false
+      values: .+
   modifiers:
     DISABLE_ERB:
       summary: Disable ERB processing

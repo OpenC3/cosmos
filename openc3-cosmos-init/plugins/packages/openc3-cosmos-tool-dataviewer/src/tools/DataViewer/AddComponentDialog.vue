@@ -23,7 +23,8 @@
 <template>
   <div>
     <!-- Dialog for adding a new component to a tab -->
-    <v-dialog v-model="show" width="800">
+    <!-- width choosen to fit target-packet-item-chooser at full width -->
+    <v-dialog v-model="show" width="1200">
       <v-card>
         <v-system-bar>
           <v-spacer />
@@ -75,10 +76,10 @@
             <v-row>
               <v-col>
                 <target-packet-item-chooser
-                  @click="addPacket"
-                  button-text="Add Packet"
+                  @click="addValue"
+                  :button-text="chooseItem ? 'Add Item' : 'Add Packet'"
                   :mode="newPacketCmdOrTlm"
-                  unknown
+                  :chooseItem="chooseItem"
                 />
               </v-col>
             </v-row>
@@ -88,6 +89,7 @@
                   <v-radio
                     label="Raw"
                     value="RAW"
+                    :disabled="disableRadioOptions"
                     data-test="new-packet-raw-radio"
                   />
                   <v-radio
@@ -192,10 +194,13 @@ export default {
       newPacketMode: 'RAW',
       valueTypes: ['CONVERTED', 'RAW', 'FORMATTED', 'WITH_UNITS'],
       newPacketValueType: 'WITH_UNITS',
+      chooseItem: false,
+      disableRadioOptions: false,
       headers: [
         { text: 'Cmd/Tlm', value: 'cmdOrTlm' },
         { text: 'Target', value: 'targetName' },
         { text: 'Packet', value: 'packetName' },
+        { text: 'Item', value: 'itemName' },
         { text: 'Mode', value: 'mode' },
         { text: 'ValueType', value: 'valueType' },
         { text: 'Delete', value: 'delete' },
@@ -211,12 +216,6 @@ export default {
       } else {
         return false
       }
-    },
-    disableRadioOptions: function () {
-      if (this.newPacket) {
-        return this.newPacket.packet === 'UNKNOWN'
-      }
-      return false
     },
     show: {
       get() {
@@ -234,9 +233,22 @@ export default {
         this.newPacket = null
       },
     },
+    selectedComponent: {
+      handler: function () {
+        if (this.selectedComponent.items) {
+          this.chooseItem = true
+          this.newPacketMode = 'DECOM'
+          this.disableRadioOptions = true
+        } else {
+          this.chooseItem = false
+          this.newPacketMode = 'RAW'
+          this.disableRadioOptions = false
+        }
+      },
+    },
   },
   methods: {
-    addPacket: function (event) {
+    addValue: function (event) {
       let type = this.newPacketValueType
       if (this.newPacketMode === 'RAW') {
         type = 'N/A'
@@ -245,6 +257,7 @@ export default {
         cmdOrTlm: this.newPacketCmdOrTlm.toUpperCase(),
         targetName: event.targetName,
         packetName: event.packetName,
+        itemName: event.itemName,
         mode: this.newPacketMode,
         valueType: type,
       })

@@ -72,12 +72,12 @@
       </v-col>
       <v-col
         v-if="itemIsArray()"
-        :cols="colSize"
+        cols="1"
         class="select"
         data-test="array-index"
       >
         <v-combobox
-          label="Array Index"
+          label="Index"
           hide-details
           dense
           outlined
