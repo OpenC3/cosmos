@@ -21,7 +21,7 @@
 -->
 
 <template>
-  <div :style="style" />
+  <div :style="localStyle" />
 </template>
 
 <script>
@@ -30,7 +30,7 @@ import Widget from './Widget'
 export default {
   mixins: [Widget],
   computed: {
-    style: function () {
+    localStyle: function () {
       return [
         `width: ${this.parameters[0]}px;`,
         `height: ${this.parameters[1]}px;`,
