@@ -140,7 +140,7 @@ class ReactionController < ApplicationController
     begin
       model = @model_class.get(name: params[:name], scope: params[:scope])
       if model.nil?
-        render :json => { :status => 'error', :message => 'not found' }, :status => 404
+        render :json => { :status => 'error', :message => NOT_FOUND }, :status => 404
         return
       end
       hash = params.to_unsafe_h.slice(:snooze, :triggers, :triggerLevel, :actions).to_h
@@ -183,7 +183,7 @@ class ReactionController < ApplicationController
     begin
       model = @model_class.get(name: params[:name], scope: params[:scope])
       if model.nil?
-        render :json => { :status => 'error', :message => 'not found' }, :status => 404
+        render :json => { :status => 'error', :message => NOT_FOUND }, :status => 404
         return
       end
       # Notify the ReactionMicroservice to enable the ReactionModel
@@ -217,7 +217,7 @@ class ReactionController < ApplicationController
     begin
       model = @model_class.get(name: params[:name], scope: params[:scope])
       if model.nil?
-        render :json => { :status => 'error', :message => 'not found' }, :status => 404
+        render :json => { :status => 'error', :message => NOT_FOUND }, :status => 404
         return
       end
       # Notify the ReactionMicroservice to disable the ReactionModel
@@ -236,7 +236,7 @@ class ReactionController < ApplicationController
     begin
       model = @model_class.get(name: params[:name], scope: params[:scope])
       if model.nil?
-        render :json => { :status => 'error', :message => 'not found' }, :status => 404
+        render :json => { :status => 'error', :message => NOT_FOUND }, :status => 404
         return
       end
       # Notify the ReactionMicroservice to execute the ReactionModel
@@ -266,7 +266,7 @@ class ReactionController < ApplicationController
     begin
       model = @model_class.get(name: params[:name], scope: params[:scope])
       if model.nil?
-        render :json => { :status => 'error', :message => 'not found' }, :status => 404
+        render :json => { :status => 'error', :message => NOT_FOUND }, :status => 404
         return
       end
       # Notify the ReactionMicroservice to delete the ReactionModel
@@ -282,4 +282,7 @@ class ReactionController < ApplicationController
       render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
     end
   end
+
+  private
+  NOT_FOUND = 'not found'
 end

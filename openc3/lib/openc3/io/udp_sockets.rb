@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'socket'
@@ -30,6 +30,7 @@ Socket::IP_MULTICAST_TTL = 10 unless Socket.const_defined?('IP_MULTICAST_TTL')
 
 module OpenC3
   class UdpReadWriteSocket
+    HOST_0_0_0_0 = '0.0.0.0'
     # @param bind_port [Integer[ Port to write data out from and receive data on (0 = randomly assigned)
     # @param bind_address [String] Local address to bind to (0.0.0.0 = All local addresses)
     # @param external_port [Integer] External port to write to
@@ -40,7 +41,7 @@ module OpenC3
     # @param write_multicast [Boolean] Whether or not to write to the external address as multicast
     def initialize(
       bind_port = 0,
-      bind_address = "0.0.0.0",
+      bind_address = HOST_0_0_0_0,
       external_port = nil,
       external_address = nil,
       multicast_interface_address = nil,
@@ -76,7 +77,7 @@ module OpenC3
 
         # Receive messages sent to the multicast address
         if read_multicast
-          multicast_interface_address = "0.0.0.0" unless multicast_interface_address
+          multicast_interface_address = HOST_0_0_0_0 unless multicast_interface_address
           membership = IPAddr.new(external_address).hton + IPAddr.new(multicast_interface_address).hton
           @socket.setsockopt(Socket::IPPROTO_IP, Socket::IP_ADD_MEMBERSHIP, membership)
         end
@@ -155,7 +156,7 @@ module OpenC3
       src_port = nil,
       multicast_interface_address = nil,
       ttl = 1,
-      bind_address = "0.0.0.0"
+      bind_address = HOST_0_0_0_0
     )
 
       super(
@@ -180,7 +181,7 @@ module OpenC3
       recv_port = 0,
       multicast_address = nil,
       multicast_interface_address = nil,
-      bind_address = "0.0.0.0"
+      bind_address = HOST_0_0_0_0
     )
 
       super(

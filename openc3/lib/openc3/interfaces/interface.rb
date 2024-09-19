@@ -574,8 +574,7 @@ module OpenC3
     end
 
     def interface_cmd(cmd_name, *_cmd_args)
-      case cmd_name
-      when 'clear_counters'
+      if ('clear_counters' == cmd_name)
         @write_queue_size = 0
         @read_queue_size = 0
         @bytes_written = 0

@@ -157,7 +157,7 @@ class ActivityController < ApplicationController
     begin
       model = @model_class.score(name: params[:name], score: params[:id].to_i, scope: params[:scope])
       if model.nil?
-        render :json => { :status => 'error', :message => 'not found' }, :status => 404
+        render :json => { :status => 'error', :message => NOT_FOUND }, :status => 404
       else
         render :json => model.as_json(:allow_nan => true), :status => 200
       end
@@ -191,7 +191,7 @@ class ActivityController < ApplicationController
     return unless authorization('script_run')
     model = @model_class.score(name: params[:name], score: params[:id].to_i, scope: params[:scope])
     if model.nil?
-      render :json => { :status => 'error', :message => 'not found' }, :status => 404
+      render :json => { :status => 'error', :message => NOT_FOUND }, :status => 404
       return
     end
     begin
@@ -239,7 +239,7 @@ class ActivityController < ApplicationController
     return unless authorization('script_run')
     model = @model_class.score(name: params[:name], score: params[:id].to_i, scope: params[:scope])
     if model.nil?
-      render :json => { :status => 'error', :message => 'not found' }, :status => 404
+      render :json => { :status => 'error', :message => NOT_FOUND }, :status => 404
       return
     end
     begin
@@ -286,7 +286,7 @@ class ActivityController < ApplicationController
     begin
       model = @model_class.score(name: params[:name], score: params[:id].to_i, scope: params[:scope])
       if model.nil?
-        render :json => { :status => 'error', :message => 'not found' }, :status => 404
+        render :json => { :status => 'error', :message => NOT_FOUND }, :status => 404
         return
       end
       ret = model.destroy(recurring: params[:recurring])
@@ -419,4 +419,7 @@ class ActivityController < ApplicationController
     end
     render :json => ret, :status => 200
   end
+
+  private
+  NOT_FOUND = 'not found'
 end
