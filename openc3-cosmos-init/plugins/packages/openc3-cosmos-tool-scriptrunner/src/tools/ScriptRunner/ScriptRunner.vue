@@ -630,8 +630,8 @@ export default {
               },
             },
             {
-              label: 'New Test Suite',
-              icon: 'mdi-file-plus',
+              label: 'New Suite',
+              icon: 'mdi-file-document-plus',
               disabled: this.scriptId || this.readOnlyUser,
               subMenu: [
                 {

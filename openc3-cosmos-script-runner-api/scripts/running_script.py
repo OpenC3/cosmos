@@ -525,16 +525,18 @@ class RunningScript:
             self.handle_output_io(filename, line_number)
 
     def exception_instrumentation(self, filename, line_number):
-        _, error, _ = sys.exc_info()
+        exc_type, exc_value, exc_traceback = sys.exc_info()
         if (
-            isinstance(error, StopScript)
-            or isinstance(error, SkipScript)
+            exc_type == StopScript
+            or exc_type == SkipScript
             or not self.use_instrumentation
         ):
-            raise error
-        elif not error == RunningScript.error:
+            raise exc_value
+        elif not exc_value == RunningScript.error:
             line_number = line_number + self.line_offset
-            return self.handle_exception(error, False, filename, line_number)
+            return self.handle_exception(
+                exc_type, exc_value, exc_traceback, False, filename, line_number
+            )
 
     def perform_wait(self, prompt):
         self.mark_waiting()
@@ -1000,11 +1002,12 @@ class RunningScript:
                     f"Script stopped: {os.path.basename(self.filename)}"
                 )
             else:
-                uncaught_exception = True
                 exc_type, exc_value, exc_traceback = sys.exc_info()
                 filename = exc_traceback.tb_frame.f_code.co_filename
                 line_number = exc_traceback.tb_lineno
-                self.handle_exception(error, True, filename, line_number)
+                self.handle_exception(
+                    exc_type, exc_value, exc_traceback, True, filename, line_number
+                )
                 self.handle_output_io()
                 self.scriptrunner_puts(
                     f"Exception in Control Statement - Script stopped: {os.path.basename(self.filename)}"
@@ -1111,19 +1114,23 @@ class RunningScript:
                 time.sleep(sleep_time)
         self.pre_line_time = time.time()
 
-    def handle_exception(self, error, fatal, filename=None, line_number=0):
+    def handle_exception(
+        self, exc_type, exc_value, exc_traceback, fatal, filename=None, line_number=0
+    ):
         self.exceptions = self.exceptions or []
-        self.exceptions.append(error)
-        RunningScript.error = error
+        self.exceptions.append(exc_value)
+        RunningScript.error = exc_value
 
-        if error.__class__.__name__ == "DRbConnError":
+        if exc_type.__name__ == "DRbConnError":
             Logger.error("Error Connecting to Command and Telemetry Server")
         else:
-            # Logger.error(repr(error))
-            exc_type, exc_value, exc_tb = sys.exc_info()
-            Logger.error(
-                "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
+            formatted_lines = traceback.format_exception(
+                exc_type, exc_value, exc_traceback
             )
+            Logger.error(formatted_lines[-1])  # Print the error itself
+            if os.environ.get("OPENC3_FULL_BACKTRACE"):
+                Logger.error("\n".join(formatted_lines))
+
         self.handle_output_io(filename, line_number)
 
         if (
@@ -1131,11 +1138,11 @@ class RunningScript:
             and not self.continue_after_error
             and not fatal
         ):
-            raise error
+            raise exc_value
 
         if not fatal and RunningScript.pause_on_error:
             self.mark_error()
-            self.wait_for_go_or_stop_or_retry(error)
+            self.wait_for_go_or_stop_or_retry(exc_value)
 
         if self.retry_needed:
             self.retry_needed = False
