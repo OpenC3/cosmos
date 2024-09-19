@@ -51,6 +51,8 @@ Rails.application.routes.draw do
     get '/microservices/:id', to: 'microservices#show', id: /[^\/]+/
     match '/microservices/:id', to: 'microservices#update', id: /[^\/]+/, via: [:patch, :put]
     delete '/microservices/:id', to: 'microservices#destroy', id: /[^\/]+/
+    post '/microservices/:id/start', to: 'microservices#start', id: /[^\/]+/
+    post '/microservices/:id/stop', to: 'microservices#stop', id: /[^\/]+/
 
     resources :process_status, only: [:index]
     get '/process_status/:id', to: 'process_status#show', id: /[^\/]+/
