@@ -40,6 +40,7 @@ module OpenC3
     # @param read_timeout [Float|nil] Seconds to wait before aborting reads.
     #   Pass nil to block until the read is complete.
     # @param bind_address [String] Address to bind UDP ports to
+    HOST_127_0_0_1 = '127.0.0.1'
     def initialize(
       hostname,
       write_dest_port,
@@ -56,7 +57,7 @@ module OpenC3
       @hostname = ConfigParser.handle_nil(hostname)
       if @hostname
         @hostname = @hostname.to_s
-        @hostname = '127.0.0.1' if @hostname.casecmp('LOCALHOST').zero?
+        @hostname = HOST_127_0_0_1 if @hostname.casecmp('LOCALHOST').zero?
       end
       @write_dest_port = ConfigParser.handle_nil(write_dest_port)
       @write_dest_port = write_dest_port.to_i if @write_dest_port
@@ -66,7 +67,7 @@ module OpenC3
       @write_src_port = @write_src_port.to_i if @write_src_port
       @interface_address = ConfigParser.handle_nil(interface_address)
       if @interface_address && @interface_address.casecmp('LOCALHOST').zero?
-        @interface_address = '127.0.0.1'
+        @interface_address = HOST_127_0_0_1
       end
       @ttl = ttl.to_i
       @ttl = 1 if @ttl < 1
@@ -81,7 +82,7 @@ module OpenC3
       @read_timeout = @read_timeout.to_f if @read_timeout
       @bind_address = ConfigParser.handle_nil(bind_address)
       if @bind_address && @bind_address.casecmp('LOCALHOST').zero?
-        @bind_address = '127.0.0.1'
+        @bind_address = HOST_127_0_0_1
       end
       @write_socket = nil
       @read_socket = nil

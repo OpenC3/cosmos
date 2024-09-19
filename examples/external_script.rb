@@ -61,3 +61,4 @@ file = get_target_file(INST_TEST_BIN)
 puts file.read.formatted
 file.unlink
 delete_target_file(INST_TEST_BIN)
+routes.

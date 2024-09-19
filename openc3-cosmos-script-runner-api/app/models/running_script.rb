@@ -36,6 +36,9 @@ require 'openc3/utilities/bucket_require'
 
 RAILS_ROOT = File.expand_path(File.join(__dir__, '..', '..'))
 
+SCRIPT_API = 'script-api'
+RUNNING_SCRIPTS = RUNNING_SCRIPTS
+
 module OpenC3
   module Script
     private
@@ -97,21 +100,21 @@ module OpenC3
           # Use cached instrumentation
           instrumented_script = instrumented_cache
           cached = true
-          OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :file, filename: procedure_name, text: text.to_utf8, breakpoints: breakpoints }))
+          OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :file, filename: procedure_name, text: text.to_utf8, breakpoints: breakpoints }))
         else
           # Retrieve file
           text = ::Script.body(RunningScript.instance.scope, procedure_name)
           raise "Unable to retrieve: #{procedure_name}" unless text
-          OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :file, filename: procedure_name, text: text.to_utf8, breakpoints: breakpoints }))
+          OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :file, filename: procedure_name, text: text.to_utf8, breakpoints: breakpoints }))
 
           # Cache instrumentation into RAM
           instrumented_script = RunningScript.instrument_script(text, path, true)
           RunningScript.instrumented_cache[path] = [instrumented_script, text]
           cached = false
         end
-        running = OpenC3::Store.smembers("running-scripts")
+        running = OpenC3::Store.smembers(RUNNING_SCRIPTS)
         running ||= []
-        OpenC3::Store.publish(["script-api", "all-scripts-channel"].compact.join(":"), JSON.generate({ type: :start, filename: procedure_name, active_scripts: running.length }))
+        OpenC3::Store.publish([SCRIPT_API, "all-scripts-channel"].compact.join(":"), JSON.generate({ type: :start, filename: procedure_name, active_scripts: running.length }))
         Object.class_eval(instrumented_script, path, 1)
 
         # Return whether we had to load and instrument this file, i.e. it was not cached
@@ -145,7 +148,7 @@ module OpenC3
       # sleep in a script - returns true if canceled mid sleep
       def openc3_script_sleep(sleep_time = nil)
         return true if $disconnect
-        OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :line, filename: RunningScript.instance.current_filename, line_no: RunningScript.instance.current_line_number, state: :waiting }))
+        OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :line, filename: RunningScript.instance.current_filename, line_no: RunningScript.instance.current_line_number, state: :waiting }))
 
         sleep_time = 30000000 unless sleep_time # Handle infinite wait
         if sleep_time > 0.0
@@ -155,7 +158,7 @@ module OpenC3
             sleep(0.01)
             count += 1
             if (count % 100) == 0 # Approximately Every Second
-              OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :line, filename: RunningScript.instance.current_filename, line_no: RunningScript.instance.current_line_number, state: :waiting }))
+              OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :line, filename: RunningScript.instance.current_filename, line_no: RunningScript.instance.current_line_number, state: :waiting }))
             end
             if RunningScript.instance.pause?
               RunningScript.instance.perform_pause
@@ -170,24 +173,24 @@ module OpenC3
 
       def display_screen(target_name, screen_name, x = nil, y = nil, scope: RunningScript.instance.scope)
         definition = get_screen_definition(target_name, screen_name, scope: scope)
-        OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :screen, target_name: target_name, screen_name: screen_name, definition: definition, x: x, y: y }))
+        OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :screen, target_name: target_name, screen_name: screen_name, definition: definition, x: x, y: y }))
       end
 
       def clear_screen(target_name, screen_name)
-        OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :clearscreen, target_name: target_name, screen_name: screen_name }))
+        OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :clearscreen, target_name: target_name, screen_name: screen_name }))
       end
 
       def clear_all_screens
-        OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :clearallscreens }))
+        OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :clearallscreens }))
       end
 
       def local_screen(screen_name, definition, x = nil, y = nil)
-        OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :screen, target_name: "LOCAL", screen_name: screen_name, definition: definition, x: x, y: y }))
+        OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :screen, target_name: "LOCAL", screen_name: screen_name, definition: definition, x: x, y: y }))
       end
 
       def download_file(path, scope: RunningScript.instance.scope)
         url = get_download_url(path, scope: scope)
-        OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :downloadfile, filename: File.basename(path), url: url }))
+        OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :downloadfile, filename: File.basename(path), url: url }))
       end
     end
   end
@@ -254,7 +257,7 @@ class RunningScript
   end
 
   def self.all
-    array = OpenC3::Store.smembers('running-scripts')
+    array = OpenC3::Store.smembers(RUNNING_SCRIPTS)
     items = []
     array.each do |member|
       items << JSON.parse(member, :allow_nan => true, :create_additions => true)
@@ -273,11 +276,11 @@ class RunningScript
 
   def self.delete(id)
     OpenC3::Store.del("running-script:#{id}")
-    running = OpenC3::Store.smembers("running-scripts")
+    running = OpenC3::Store.smembers(RUNNING_SCRIPTS)
     running.each do |item|
       parsed = JSON.parse(item, :allow_nan => true, :create_additions => true)
       if parsed["id"].to_s == id.to_s
-        OpenC3::Store.srem("running-scripts", item)
+        OpenC3::Store.srem(RUNNING_SCRIPTS, item)
         break
       end
     end
@@ -305,7 +308,7 @@ class RunningScript
       disconnect: disconnect,
       environment: environment
     }
-    OpenC3::Store.sadd('running-scripts', details.as_json(:allow_nan => true).to_json(:allow_nan => true))
+    OpenC3::Store.sadd(RUNNING_SCRIPTS, details.as_json(:allow_nan => true).to_json(:allow_nan => true))
     details[:hostname] = Socket.gethostname
     # details[:pid] = process.pid
     details[:state] = :spawning
@@ -429,7 +432,7 @@ class RunningScript
     @body = ::Script.body(@scope, name)
     breakpoints = @@breakpoints[filename]&.filter { |_, present| present }&.map { |line_number, _| line_number - 1 } # -1 because frontend lines are 0-indexed
     breakpoints ||= []
-    OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"),
+    OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{@id}"].compact.join(":"),
                           JSON.generate({ type: :file, filename: @filename, scope: @scope, text: @body.to_utf8, breakpoints: breakpoints }))
     if (@body =~ SUITE_REGEX)
       # Process the suite file in this context so we can load it
@@ -491,7 +494,7 @@ class RunningScript
 
   # Sets step mode and lets the script continue but with pause set
   def step
-    OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :step, filename: @current_filename, line_no: @current_line_number, state: @state }))
+    OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :step, filename: @current_filename, line_no: @current_line_number, state: @state }))
     @step = true
     @go = true
     @pause = true
@@ -533,7 +536,7 @@ class RunningScript
 
   def clear_prompt
     # Allow things to continue once the prompt is cleared
-    OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :script, prompt_complete: @prompt_id }))
+    OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :script, prompt_complete: @prompt_id }))
     @prompt_id = nil
   end
 
@@ -807,7 +810,7 @@ class RunningScript
         OpenC3::Logger.detail_string = detail_string
       end
 
-      OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :line, filename: @current_filename, line_no: @current_line_number, state: :running }))
+      OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :line, filename: @current_filename, line_no: @current_line_number, state: :running }))
       handle_pause(filename, line_number)
       handle_line_delay()
     end
@@ -917,7 +920,7 @@ class RunningScript
 
   def scriptrunner_puts(string, color = 'BLACK')
     line_to_write = Time.now.sys.formatted + " (SCRIPTRUNNER): " + string
-    OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :output, line: line_to_write, color: color }))
+    OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :output, line: line_to_write, color: color }))
   end
 
   def handle_output_io(filename = @current_filename, line_number = @current_line_number)
@@ -963,7 +966,7 @@ class RunningScript
       else
         published_lines = lines_to_write
       end
-      OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :output, line: published_lines.as_json(:allow_nan => true), color: color }))
+      OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :output, line: published_lines.as_json(:allow_nan => true), color: color }))
       # Add to the message log
       message_log.write(lines_to_write)
     end
@@ -981,8 +984,8 @@ class RunningScript
       sleep(0.01)
       count += 1
       if count % 100 == 0 # Approximately Every Second
-        OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :line, filename: @current_filename, line_no: @current_line_number, state: @state }))
-        OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :script, method: prompt['method'], prompt_id: prompt['id'], args: prompt['args'], kwargs: prompt['kwargs'] })) if prompt
+        OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :line, filename: @current_filename, line_no: @current_line_number, state: @state }))
+        OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :script, method: prompt['method'], prompt_id: prompt['id'], args: prompt['args'], kwargs: prompt['kwargs'] })) if prompt
       end
     end
     clear_prompt() if prompt
@@ -1000,7 +1003,7 @@ class RunningScript
       sleep(0.01)
       count += 1
       if (count % 100) == 0 # Approximately Every Second
-        OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :line, filename: @current_filename, line_no: @current_line_number, state: @state }))
+        OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :line, filename: @current_filename, line_no: @current_line_number, state: @state }))
       end
     end
     @go = false
@@ -1011,32 +1014,32 @@ class RunningScript
 
   def mark_running
     @state = :running
-    OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :line, filename: @current_filename, line_no: @current_line_number, state: @state }))
+    OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :line, filename: @current_filename, line_no: @current_line_number, state: @state }))
   end
 
   def mark_paused
     @state = :paused
-    OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :line, filename: @current_filename, line_no: @current_line_number, state: @state }))
+    OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :line, filename: @current_filename, line_no: @current_line_number, state: @state }))
   end
 
   def mark_waiting
     @state = :waiting
-    OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :line, filename: @current_filename, line_no: @current_line_number, state: @state }))
+    OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :line, filename: @current_filename, line_no: @current_line_number, state: @state }))
   end
 
   def mark_error
     @state = :error
-    OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :line, filename: @current_filename, line_no: @current_line_number, state: @state }))
+    OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :line, filename: @current_filename, line_no: @current_line_number, state: @state }))
   end
 
   def mark_fatal
     @state = :fatal
-    OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :line, filename: @current_filename, line_no: @current_line_number, state: @state }))
+    OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :line, filename: @current_filename, line_no: @current_line_number, state: @state }))
   end
 
   def mark_stopped
     @state = :stopped
-    OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :line, filename: @current_filename, line_no: @current_line_number, state: @state }))
+    OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :line, filename: @current_filename, line_no: @current_line_number, state: @state }))
     if OpenC3::SuiteRunner.suite_results
       OpenC3::SuiteRunner.suite_results.complete
       # context looks like the following:
@@ -1059,7 +1062,7 @@ class RunningScript
       elsif parts[0] and init_split.length > 1
         parts[0] += "_#{init_split[-1]}"
       end
-      OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :report, report: OpenC3::SuiteRunner.suite_results.report }))
+      OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :report, report: OpenC3::SuiteRunner.suite_results.report }))
       # Write out the report to a local file
       log_dir = File.join(RAILS_ROOT, 'log')
       filename = File.join(log_dir, File.build_timestamped_filename(['sr', parts.join('__')]))
@@ -1077,12 +1080,12 @@ class RunningScript
       # Wait for the file to get moved to S3 because after this the process will likely die
       thread.join
     end
-    OpenC3::Store.publish(["script-api", "cmd-running-script-channel:#{@id}"].compact.join(":"), JSON.generate("shutdown"))
+    OpenC3::Store.publish([SCRIPT_API, "cmd-running-script-channel:#{@id}"].compact.join(":"), JSON.generate("shutdown"))
   end
 
   def mark_breakpoint
     @state = :breakpoint
-    OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :line, filename: @current_filename, line_no: @current_line_number, state: @state }))
+    OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :line, filename: @current_filename, line_no: @current_line_number, state: @state }))
   end
 
   def run_text(text,
@@ -1096,7 +1099,7 @@ class RunningScript
     saved_run_thread = @@run_thread
     @@instance = self
     if initial_filename
-      OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :file, filename: initial_filename, text: text.to_utf8, breakpoints: [] }))
+      OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :file, filename: initial_filename, text: text.to_utf8, breakpoints: [] }))
     end
     @@run_thread = Thread.new do
       begin
@@ -1267,12 +1270,12 @@ class RunningScript
     cached = @@file_cache[filename]
     if cached
       @body = cached
-      OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :file, filename: filename, text: @body.to_utf8, breakpoints: breakpoints }))
+      OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :file, filename: filename, text: @body.to_utf8, breakpoints: breakpoints }))
     else
       text = ::Script.body(@scope, filename)
       @@file_cache[filename] = text
       @body = text
-      OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :file, filename: filename, text: @body.to_utf8, breakpoints: breakpoints }))
+      OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :file, filename: filename, text: @body.to_utf8, breakpoints: breakpoints }))
     end
   end
 

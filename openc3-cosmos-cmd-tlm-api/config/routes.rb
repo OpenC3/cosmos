@@ -24,8 +24,8 @@
 
 Rails.application.routes.draw do
   AUTONOMIC_REACTION = '/autonomic/reaction'
-  AUTONOMIC_GROUP_TRIGGER = '/autonomic/:group/trigger'
   AUTONOMIC_GROUP = '/autonomic/group'
+  AUTONOMIC_GROUP_TRIGGER = '/autonomic/:group/trigger'
   INTERFACES_ID = '/interfaces/:id'
   METADATA_ID = '/metadata/:id'
   MICROSERVICES_ID = '/microservices/:id'
@@ -36,8 +36,8 @@ Rails.application.routes.draw do
   SCOPES_ID = '/scopes/:id'
   TABLES_NAME = '/tables/*name'
   TARGETS_ID = '/targets/:id'
-  TIMELINE_NAME = '/timeline/:name'
   TIMELINE_ACTIVITY_ID = '/timeline/:name/activity/:id'
+  TIMELINE_NAME = '/timeline/:name'
   TOOLS_ID = '/tools/:id'
   WIDGETS_ID = '/widgets/:id'
 

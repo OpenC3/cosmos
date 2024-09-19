@@ -222,8 +222,7 @@ module OpenC3
     # Returns if the command was handled
     def microservice_cmd(topic, msg_id, msg_hash, _redis)
       command = msg_hash['command']
-      case command
-      when 'ADD_TOPICS'
+      if ('ADD_TOPICS' == command)
         topics = JSON.parse(msg_hash['topics'])
         if topics and Array === topics
           topics.each do |new_topic|
