@@ -41,7 +41,7 @@ rescue LoadError
         raise AuthError.new("Scope is required") unless scope
 
         if $openc3_authorize
-          raise AuthError.new("Password is required") unless token
+          raise AuthError.new("Token is required") unless token
           unless OpenC3::AuthModel.verify(token)
             raise AuthError.new("Password is invalid")
           end
