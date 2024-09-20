@@ -502,6 +502,7 @@ export default {
       showDisconnect: false,
       files: {},
       breakpoints: {},
+      enableStackTraces: false,
       filename: NEW_FILENAME,
       readOnlyUser: false,
       executeUser: true,
@@ -836,6 +837,15 @@ export default {
               disabled: this.scriptId,
               command: () => {
                 this.toggleDisconnect()
+              },
+            },
+            {
+              label: 'Enable Stack Traces',
+              checkbox: true,
+              checked: false,
+              disabled: this.scriptId,
+              command: (item) => {
+                this.enableStackTraces = item.checked
               },
             },
             {
@@ -1334,10 +1344,17 @@ export default {
           breakpoints,
         },
       })
-        .then((response) => {
+        .then((_response) => {
+          let env = this.scriptEnvironment.env
+          if (this.enableStackTraces) {
+            env = env.concat({
+              key: 'OPENC3_FULL_BACKTRACE',
+              value: '1',
+            })
+          }
           return Api.post(`/script-api/scripts/${selectionTempFilename}/run`, {
             data: {
-              environment: this.scriptEnvironment.env,
+              environment: env,
             },
           })
         })
@@ -1554,8 +1571,15 @@ export default {
       if (this.showDisconnect) {
         url += '/disconnect'
       }
+      let env = this.scriptEnvironment.env
+      if (this.enableStackTraces) {
+        env = env.concat({
+          key: 'OPENC3_FULL_BACKTRACE',
+          value: '1',
+        })
+      }
       let data = {
-        environment: this.scriptEnvironment.env,
+        environment: env,
       }
       if (suiteRunner) {
         data['suiteRunner'] = event
