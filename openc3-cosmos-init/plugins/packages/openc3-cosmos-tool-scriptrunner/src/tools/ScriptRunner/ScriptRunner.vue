@@ -725,6 +725,27 @@ export default {
                 this.editor.execCommand('replace')
               },
             },
+            {
+              label: 'Set Line Delay',
+              icon: 'mdi-invoice-text-clock',
+              disabled: this.scriptId,
+              command: () => {
+                this.$dialog.open({
+                  title: 'Info',
+                  text:
+                    'You can set the line delay in seconds using the api method set_line_delay().<br/><br/>' +
+                    'The default line delay is 0.1 seconds between lines. ' +
+                    'Adding set_line_delay(0) to the top of your script will execute the script at maximum speed. ' +
+                    'However, this can make it difficult to see and pause the script. ' +
+                    'Executing set_line_delay(1) will cause a 1 second delay between lines.',
+                  okText: 'OK',
+                  okClass: 'primary',
+                  validateText: null,
+                  cancelText: null,
+                  html: true,
+                })
+              },
+            },
           ],
         },
         {
@@ -899,6 +920,8 @@ export default {
       }
       if (role == 'admin' || role == 'operator') {
         this.readOnlyUser = false
+        this.executeUser = true
+      } else if (role == 'runner') {
         this.executeUser = true
       } else {
         await Api.get(`/openc3-api/roles/${role}`).then((response) => {
