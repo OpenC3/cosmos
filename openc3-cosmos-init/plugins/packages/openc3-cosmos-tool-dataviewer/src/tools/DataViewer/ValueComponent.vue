@@ -46,47 +46,21 @@ export default {
       let text = ''
       if (this.currentConfig.showTimestamp) {
         const milliseconds = packet.__time / 1000000
-        const receivedSeconds = (milliseconds / 1000).toFixed(7)
+        // const receivedSeconds = (milliseconds / 1000).toFixed(7)
         const receivedDate = new Date(milliseconds).toISOString()
-        let timestamp = '********************************************\n'
-        timestamp += `* Received seconds: ${receivedSeconds}\n`
-        timestamp += `* Received time: ${receivedDate}\n`
-        timestamp += '********************************************\n'
-        text = `${timestamp}${text}`
+        text = `RxTime: ${receivedDate}  `
       }
-      if ('buffer' in packet) {
-        // Split its buffer into lines of the selected length
-        text += _.chunk([...packet.buffer], this.currentConfig.bytesPerLine)
-          .map((lineBytes, index) => {
-            // Map each line into ASCII or hex values
-            let mappedBytes = lineBytes.map((byte) =>
-              byte.charCodeAt(0).toString(16).padStart(2, '0'),
-            )
-            let lineLength = this.currentConfig.bytesPerLine * 3 - 1
-            let line = mappedBytes.join(' ').padEnd(lineLength, ' ')
-            if (this.currentConfig.showAscii) {
-              line += '    '
-              mappedBytes = lineBytes.map((byte) =>
-                byte.replaceAll(/\n/g, '\\n').replaceAll(/\r/g, '\\r'),
-              )
-              line += mappedBytes.join('')
-            }
-            // Prepend the line address if needed
-            if (this.currentConfig.showLineAddress) {
-              const address = (index * this.currentConfig.bytesPerLine)
-                .toString(16)
-                .padStart(8, '0')
-              line = `${address}: ${line}`
-            }
-            return line
-          })
-          .join('\n') // end of one line
-      } else {
-        text += Object.keys(packet)
-          .filter((item) => item.slice(0, 2) != '__')
-          .map((item) => `${item}: ${packet[item]}`)
-          .join('\n')
-      }
+      text += Object.keys(packet)
+        .map((item) => {
+          if (item.includes('DECOM__TLM')) {
+            let name = item.split('__')[4]
+            return `${name}: ${packet[item]}`
+          } else {
+            return undefined
+          }
+        })
+        .filter((item) => item !== undefined)
+        .join('  ')
       return text
     },
   },

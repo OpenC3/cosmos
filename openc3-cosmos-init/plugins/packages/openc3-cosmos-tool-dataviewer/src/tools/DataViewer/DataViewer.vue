@@ -268,6 +268,7 @@ import AddComponentDialog from '@/tools/DataViewer/AddComponentDialog'
 import DynamicComponent from '@/tools/DataViewer/DynamicComponent'
 // Import the built-in DataViewer components
 import DumpComponent from '@/tools/DataViewer/DumpComponent'
+import ValueComponent from '@/tools/DataViewer/ValueComponent'
 
 export default {
   components: {
@@ -276,6 +277,7 @@ export default {
     SaveConfigDialog,
     DynamicComponent,
     DumpComponent,
+    ValueComponent,
     TopBar,
   },
   mixins: [Config, TimeFilters],
@@ -532,10 +534,38 @@ export default {
         })
     },
     addToSubscription: function (packets) {
-      console.log(packets)
       packets = packets || this.allPackets
+      console.log(packets)
+
+      let itemBased = []
+      let packetBased = []
+      packets.forEach((packet) => {
+        if (packet.hasOwnProperty('itemName')) {
+          itemBased.push(packet)
+        } else {
+          packetBased.push(packet)
+        }
+      })
+      console.log(itemBased)
+      console.log(packetBased)
+
+      // Add the items to the subscription
+      OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(
+        (refreshed) => {
+          if (refreshed) {
+            OpenC3Auth.setTokens()
+          }
+          this.subscription.perform('add', {
+            scope: window.openc3Scope,
+            token: localStorage.openc3Token,
+            items: itemBased.map(this.itemSubscriptionKey),
+            ...this.startEndTime,
+          })
+        },
+      )
+
       // Group by mode
-      const modeGroups = packets.reduce((groups, packet) => {
+      const modeGroups = packetBased.reduce((groups, packet) => {
         if (groups[packet.mode]) {
           groups[packet.mode].push(packet)
         } else {
@@ -574,23 +604,6 @@ export default {
         })
       }
     },
-    // TODO: Combine with addToSubscription so it's one method
-    addItemsToSubscription: function (itemArray) {
-      console.log(itemArray)
-      OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(
-        (refreshed) => {
-          if (refreshed) {
-            OpenC3Auth.setTokens()
-          }
-          this.subscription.perform('add', {
-            scope: window.openc3Scope,
-            token: localStorage.openc3Token,
-            items: itemArray.map(this.itemSubscriptionKey),
-            ...this.startEndTime,
-          })
-        },
-      )
-    },
     // removeItemsFromSubscription: function (itemArray = this.items) {
     //   if (this.itemSubscription) {
     //     this.itemSubscription.perform('remove', {
@@ -612,25 +625,59 @@ export default {
         this.stop()
         return
       }
-      const groupedPackets = parsed.reduce((groups, packet) => {
-        if (groups[packet.__packet]) {
-          groups[packet.__packet].push(packet)
-        } else {
-          groups[packet.__packet] = [packet]
-        }
-        return groups
-      }, {})
-      console.log(groupedPackets)
-      this.config.tabs.forEach((tab, i) => {
-        tab.packets.forEach((packetConfig) => {
-          let packetName = this.packetKey(packetConfig)
-          this.receivedPackets[packetName] = true
-          if (groupedPackets[packetName]) {
-            this.$refs[tab.ref][0].receive(groupedPackets[packetName])
+
+      // Iterate over the parsed data and send it to the appropriate component
+
+      // If the parsed data has a __type of ITEMS, we're dealing with an array
+      // of items with attributes named after the item. We need to filter
+      // the items per tab and send them to the appropriate component.
+      if (parsed[0].__type === 'ITEMS') {
+        this.config.tabs.forEach((tab, i) => {
+          // Skip tabs without items
+          if (!tab.items) return
+
+          console.log(tab)
+          let keys = tab.packets.map((itemConfig) => this.itemKey(itemConfig))
+          let filtered = parsed.map((item) => {
+            let newItem = {}
+            // These fields are always in the item subscription
+            newItem['__type'] = item['__type']
+            newItem['__time'] = item['__time']
+            keys.forEach((key) => {
+              newItem[key] = item[key]
+            })
+            return newItem
+          })
+          if (typeof this.$refs[tab.ref][0].receive === 'function') {
+            this.$refs[tab.ref][0].receive(filtered)
           }
         })
-      })
-      this.receivedPackets = { ...this.receivedPackets }
+      } else {
+        const groupedPackets = parsed.reduce((groups, packet) => {
+          if (groups[packet.__packet]) {
+            groups[packet.__packet].push(packet)
+          } else {
+            groups[packet.__packet] = [packet]
+          }
+          return groups
+        }, {})
+        this.config.tabs.forEach((tab, i) => {
+          // Skip tabs with items
+          if (tab.items) return
+          console.log(tab)
+          tab.packets.forEach((packetConfig) => {
+            let packetName = this.packetKey(packetConfig)
+            this.receivedPackets[packetName] = true
+            if (
+              groupedPackets[packetName] &&
+              typeof this.$refs[tab.ref][0].receive === 'function'
+            ) {
+              this.$refs[tab.ref][0].receive(groupedPackets[packetName])
+            }
+          })
+        })
+        this.receivedPackets = { ...this.receivedPackets }
+      }
     },
     packetKey: function (packet) {
       let key = packet.mode + '__'
@@ -720,7 +767,6 @@ export default {
       }
     },
     addComponent: function (event) {
-      console.log(event)
       // Built-in components are just themselves
       let type = event.component.value
       let component = event.component.value
@@ -732,9 +778,6 @@ export default {
           event.component.value.slice(1).toLowerCase()
         component = `${name}Widget`
       }
-      console.log(
-        `adding component name:${event.component.label} counter:${this.counter} component:${component}`,
-      )
       this.config.tabs.push({
         name: event.component.label,
         // Most tabs only have 1 packet so it's a good way to name them
@@ -742,6 +785,7 @@ export default {
         packets: [...event.packets], // Make a copy
         type: type,
         component: component,
+        items: event.component.items,
         config: { timeZone: this.timeZone },
         ref: `component${this.counter}`,
       })
@@ -749,11 +793,11 @@ export default {
       this.curTab = this.config.tabs.length - 1
 
       if (this.running) {
-        if (event.component.items) {
-          this.addItemsToSubscription(event.packets)
-        } else {
-          this.addToSubscription(event.packets)
-        }
+        // if (event.component.items) {
+        //   this.addItemsToSubscription(event.packets)
+        // } else {
+        this.addToSubscription(event.packets)
+        // }
       }
       this.cancelAddComponent()
     },
