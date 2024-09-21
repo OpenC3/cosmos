@@ -25,7 +25,7 @@
     <!-- Camel case props because svg -->
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 128 128"
+      viewBox="0 0 24 24"
       preserveAspectRatio="xMidYMid meet"
       focusable="false"
     >
@@ -48,6 +48,7 @@ export default {
     },
     color: {
       type: String,
+      default: 'white',
     },
     library: {
       type: String,
@@ -60,7 +61,7 @@ export default {
   },
   computed: {
     style: function () {
-      return '--iconColor=' + this.color
+      return 'fill: ' + this.color
     },
   },
   methods: {

@@ -126,7 +126,7 @@ module OpenC3
     def initialize(
       name:,
       folder_name: nil,
-      icon: 'astro:caution',
+      icon: 'astro:warning',
       url: nil,
       inline_url: nil,
       window: 'INLINE',

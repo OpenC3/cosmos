@@ -21,54 +21,8 @@
 */
 
 import { h } from 'vue'
-import AstroIcon from './AstroIcon'
+import CosmosRuxIcon from './CosmosRuxIcon'
 import AstroStatusIndicator from './AstroStatusIndicator'
-
-const AstroRuxIcons = [
-  // These are the 'astro' icons taken from
-  // https://github.com/RocketCommunicationsInc/astro-components/blob/master/static/json/rux-icons.json
-  'altitude',
-  'antenna',
-  'antenna-off',
-  'antenna-receive',
-  'antenna-transmit',
-  'equipment',
-  'mission',
-  'netcom',
-  'payload',
-  'processor',
-  'processor-alt',
-  'propulsion-power',
-  'satellite-off',
-  'satellite-receive',
-  'satellite-transmit',
-  'solar',
-  'thermal',
-]
-
-const AstroIconLibrary = [
-  // These are from the IDs in the default RuxIcon library: https://github.com/RocketCommunicationsInc/astro-components/blob/master/static/icons/astro.svg
-  ...AstroRuxIcons,
-  'add-large',
-  'add-small',
-  'close-large',
-  'close-small',
-  'collapse',
-  'expand',
-  'lock',
-  'unlock',
-  'search',
-  'caution',
-  'maintenance',
-  'notifications',
-  'settings',
-
-  // These are in that SVG file, but they're broken in RuxIcon:
-  // 'twitter', // the twitter logo
-  // 'progress', // circle
-  // 'resources', // filing cabinet
-  // 'solar', // grid
-]
 
 const UnknownToAstroStatus = {
   fatal: 'critical',
@@ -151,7 +105,7 @@ const AstroStatuses = Object.keys(AstroStatusColors)
 const AstroIconVuetifySets = {
   astro: {
     component: (props) => {
-      return h(AstroIcon, {
+      return h(CosmosRuxIcon, {
         ...props,
       })
     },
@@ -167,7 +121,6 @@ const AstroIconVuetifySets = {
 }
 
 export {
-  AstroIconLibrary,
   AstroIconVuetifySets,
   AstroStatuses,
   AstroStatusColors,

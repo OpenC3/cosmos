@@ -23,9 +23,10 @@
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
-import { aliases, mdi } from 'vuetify/iconsets/mdi'
+import { mdi } from 'vuetify/iconsets/mdi'
 import { VTreeview } from 'vuetify/labs/VTreeview'
 import { AstroIconVuetifySets } from '../components/icons/index.js'
+import cosmosDark from './cosmosThemeDark'
 
 export default createVuetify({
   components: {
@@ -34,27 +35,13 @@ export default createVuetify({
   },
   directives,
   theme: {
-    dark: true,
-    options: {
-      customProperties: true,
-    },
+    defaultTheme: 'cosmosDark',
     themes: {
-      dark: {
-        primary: '#005a8f',
-        secondary: '#4dacff',
-        tertiary: '#283f58',
-      },
-      light: {
-        primary: '#cce6ff',
-        secondary: '#cce6ff',
-      },
+      cosmosDark,
     },
   },
   icons: {
     defaultSet: 'mdi',
-    aliases: {
-      ...aliases,
-    },
     sets: {
       mdi,
       ...AstroIconVuetifySets,

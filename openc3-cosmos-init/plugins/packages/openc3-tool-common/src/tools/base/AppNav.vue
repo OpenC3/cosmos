@@ -123,16 +123,11 @@
       </v-treeview>
     </v-navigation-drawer>
     <v-app-bar v-if="!chromeless" id="openc3-app-toolbar">
-      <v-row
-        class="flex-nowrap"
-        justify="space-between"
-        no-gutters
-        style="margin-top: 20px"
-      >
-        <v-col align-self="center">
+      <v-row class="flex-nowrap" justify="space-between" no-gutters>
+        <v-col align-self="start">
           <v-row class="flex-nowrap">
             <rux-icon
-              class="mr-2 pa-2"
+              class="ml-3 mr-2 pa-2"
               size="small"
               icon="apps"
               @click="drawer = !drawer"
@@ -148,7 +143,7 @@
           ></rux-clock>
         </v-col>
         <v-col align-self="center">
-          <v-row class="flex-nowrap" style="margin-top: 10px">
+          <v-row class="flex-nowrap">
             <v-spacer />
             <scope-selector class="mr-6 mt-4" />
             <notifications class="mr-6" data-test="notifications" />
@@ -400,21 +395,21 @@ a.fixcenter {
 /* Remove the padding on root level nodes since we removed the expand icon */
 #openc3-nav-drawer
   .v-treeview
-  > .v-treeview-node
-  > .v-treeview-node__root
-  > .v-treeview-node__level {
+  > .v-treeview-item
+  > .v-treeview-item__root
+  > .v-treeview-item__level {
   width: 0px;
 }
 #openc3-nav-drawer
   .v-treeview
-  > .v-treeview-node
-  > .v-treeview-node__root
-  > .v-treeview-node__toggle {
+  > .v-treeview-item
+  > .v-treeview-item__root
+  > .v-treeview-item__toggle {
   width: 0px;
 }
 #openc3-nav-drawer
-  .v-treeview-node__children
-  div.v-treeview-node__level:nth-child(1) {
+  .v-treeview-item__children
+  div.v-treeview-item__level:nth-child(1) {
   width: 0px;
 }
 </style>
