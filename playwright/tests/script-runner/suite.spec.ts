@@ -96,7 +96,7 @@ async function runAndCheckResults(
 
 async function suiteTemplate(page, utils, type) {
   await page.locator('[data-test=script-runner-file]').click()
-  await page.getByText('New Test Suite').hover()
+  await page.getByText('New Suite').hover()
   await page.getByText(type).click()
   await utils.sleep(1000)
   // Verify the drop downs are populated

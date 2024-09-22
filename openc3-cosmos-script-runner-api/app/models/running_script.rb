@@ -1239,11 +1239,8 @@ class RunningScript
     else
       OpenC3::Logger.error(error.class.to_s.split('::')[-1] + ' : ' + error.message)
       if ENV['OPENC3_FULL_BACKTRACE']
-        relevent_lines = error.backtrace
-      else
-        relevent_lines = error.backtrace.select { |line| !line.include?("/src/app") && !line.include?("/openc3/lib") && !line.include?("/usr/lib/ruby") }
+        OpenC3::Logger.error(error.backtrace.join("\n\n"))
       end
-      OpenC3::Logger.error(relevent_lines.join("\n\n")) unless relevent_lines.empty?
     end
     handle_output_io(filename, line_number)
 
