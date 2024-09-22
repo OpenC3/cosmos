@@ -34,10 +34,14 @@ module OpenC3
     end
 
     def pre_check(command)
+      # Return true to indicate Success, false to indicate Failure,
+      # and nil to indicate Unknown. The second value is the optional message.
       return [true, nil]
     end
 
     def post_check(command)
+      # Return true to indicate Success, false to indicate Failure,
+      # and nil to indicate Unknown. The second value is the optional message.
       return [true, nil]
     end
   end
