@@ -178,6 +178,7 @@ span.v-btn__content span {
   border-radius: 3px;
   height: 36px !important;
   width: 36px !important;
+  margin-top: -1px;
 }
 .v-list :deep(.v-label) {
   margin-left: 5px;
