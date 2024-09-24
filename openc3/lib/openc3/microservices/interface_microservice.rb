@@ -214,7 +214,8 @@ module OpenC3
                     result = false
                     reason = e.message
                   end
-                  unless result
+                  # Explicitly check for false to allow nil to represent unknown
+                  if result == false
                     message = "pre_check returned false for #{msg_hash['cmd_string']} due to #{reason}"
                     raise WriteRejectError.new(message)
                   end
@@ -239,7 +240,8 @@ module OpenC3
                 CommandTopic.write_packet(command, scope: @scope)
                 InterfaceStatusModel.set(@interface.as_json(:allow_nan => true), queued: true, scope: @scope)
 
-                unless result
+                # Explicitly check for false to allow nil to represent unknown
+                if result == false
                   message = "post_check returned false for #{msg_hash['cmd_string']} due to #{reason}"
                   raise WriteRejectError.new(message)
                 end

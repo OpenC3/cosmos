@@ -20,18 +20,25 @@ from openc3.api import *
 
 class Inst2CmdValidator(CommandValidator):
     def pre_check(self, command):
+        # Record the current value of CMD_ACPT_CNT for comparison in post_check
         self.cmd_acpt_cnt = tlm("<%= target_name %> HEALTH_STATUS CMD_ACPT_CNT")
         return [True, None]
 
     def post_check(self, command):
         if command.packet_name == "TIME_OFFSET":
-            # This is just an example of how to return a failure with a message
+            # Return Failure with a message
             return [False, "TIME_OFFSET failure description"]
+        if command.packet_name == "MEMLOAD":
+            # Return Unknown with a message
+            return [None, "MEMLOAD validation unknown"]
         if command.packet_name == "CLEAR":
             wait_check("<%= target_name %> HEALTH_STATUS CMD_ACPT_CNT == 0", 10)
+            # Return Success with a message
+            return [True, "CMD_ACPT_CNT cleared"]
         else:
             wait_check(
                 f"<%= target_name %> HEALTH_STATUS CMD_ACPT_CNT > {self.cmd_acpt_cnt}",
                 10,
             )
-        return [True, None]
+            # Return Success without a message
+            return [True, None]
