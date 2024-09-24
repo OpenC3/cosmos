@@ -195,12 +195,14 @@ module OpenC3
       if @process
         stdout = @process.io.stdout.extract
         if stdout.length > 0
-          STDOUT.puts "STDOUT #{stdout.length} bytes from #{cmd_line()}:"
+          message = "STDOUT #{stdout.length} bytes from #{cmd_line()}:"
+          STDOUT.puts Logger.build_log_data(Logger::INFO_LEVEL, message, user: nil, type: OpenC3::Logger::LOG, url: nil).as_json(:allow_nan => true).to_json(:allow_nan => true)
           STDOUT.puts stdout
         end
         stderr = @process.io.stderr.extract
         if stderr.length > 0
-          STDERR.puts "STDERR #{stderr.length} bytes from #{cmd_line()}:"
+          message = "STDERR #{stderr.length} bytes from #{cmd_line()}:"
+          STDERR.puts Logger.build_log_data(Logger::ERROR_LEVEL, message, user: nil, type: OpenC3::Logger::LOG, url: nil).as_json(:allow_nan => true).to_json(:allow_nan => true)
           STDERR.puts stderr
         end
       end

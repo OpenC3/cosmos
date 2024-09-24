@@ -46,7 +46,7 @@ Rails.application.configure do
   # config.action_view.annotate_rendered_view_with_filenames = true
 
   # Disable ActionCable logging
-  ActionCable.server.config.logger = Logger.new(STDOUT, level: Logger::ERROR)
+  # ActionCable.server.config.logger = Logger.new(STDOUT, level: Logger::ERROR)
 
   # Uncomment if you wish to allow Action Cable access from any origin.
   # config.action_cable.disable_request_forgery_protection = true

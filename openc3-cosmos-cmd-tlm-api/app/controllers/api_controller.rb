@@ -43,7 +43,7 @@ class ApiController < ApplicationController
           OpenC3::Logger.info("API data: #{request_data}", scope: nil, user: username())
           OpenC3::Logger.debug("API headers: #{request_headers}", scope: nil, user: username())
           status, content_type, body = handle_post(request_data, request_headers)
-        rescue OpenC3::AuthError => e
+        rescue OpenC3::AuthError, OpenC3::ForbiddenError => e
           id = 1
           begin
             parsed = JSON.parse(request_data, :allow_nan => true)
@@ -51,11 +51,16 @@ class ApiController < ApplicationController
           rescue
             OpenC3::Logger.warn("Unable to extract id from JSON-RPC message")
           end
-          error_code = OpenC3::JsonRpcError::ErrorCode::AUTH_ERROR
+          if OpenC3::AuthError === e
+            error_code = OpenC3::JsonRpcError::ErrorCode::AUTH_ERROR
+            status = 401
+          else
+            error_code = OpenC3::JsonRpcError::ErrorCode::FORBIDDEN_ERROR
+            status = 403
+          end
           response = OpenC3::JsonRpcErrorResponse.new(
             OpenC3::JsonRpcError.new(error_code, e.message, e), id
           )
-          status = 401
           content_type = "application/json-rpc"
           body = response.to_json(:allow_nan => true)
         end
