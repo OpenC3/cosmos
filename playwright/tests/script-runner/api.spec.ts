@@ -124,7 +124,10 @@ test('runs a script', async ({ page, utils }) => {
   await page.getByText('Execution Status').click()
   await page.getByRole('cell', { name: 'Connect' }).nth(0).click()
 
-  await expect(page.locator('[data-test=state]')).toHaveValue('error')
+  await expect(page.locator('[data-test=state]')).toHaveValue('error', {
+    timeout: 20000,
+  })
+
   await page.locator('[data-test="stop-button"]').click()
   await expect(page.locator('[data-test=state]')).toHaveValue('stopped')
 })

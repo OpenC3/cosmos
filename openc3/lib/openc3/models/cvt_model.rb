@@ -100,15 +100,21 @@ module OpenC3
       result, types = self._handle_item_override(target_name, packet_name, item_name, type: type, cache_timeout: cache_timeout, scope: scope)
       return result if result
       hash = get(target_name: target_name, packet_name: packet_name, cache_timeout: cache_timeout, scope: scope)
-      hash.values_at(*types).each do |result|
-        if result
+      hash.values_at(*types).each do |cvt_value|
+        if cvt_value
           if type == :FORMATTED or type == :WITH_UNITS
-            return result.to_s
+            return cvt_value.to_s
           end
-          return result
+          return cvt_value
         end
       end
-      return nil
+      # RECEIVED_COUNT is a special case where it is 0 if it doesn't exist
+      # This allows scripts to check against the value to see if the packet was ever received
+      if types[-1] == "RECEIVED_COUNT"
+        return 0
+      else
+        return nil
+      end
     end
 
     # Return all item values and limit state from the CVT

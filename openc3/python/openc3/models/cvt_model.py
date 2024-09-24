@@ -127,12 +127,17 @@ class CvtModel(Model):
         if result is not None:
             return result
         hash = cls.get(target_name, packet_name, scope=scope)
-        for result in [hash[x] for x in types if x in hash]:
-            if result is not None:
+        for cvt_value in [hash[x] for x in types if x in hash]:
+            if cvt_value is not None:
                 if type == "FORMATTED" or type == "WITH_UNITS":
-                    return str(result)
-                return result
-        return None
+                    return str(cvt_value)
+                return cvt_value
+        # RECEIVED_COUNT is a special case where it is 0 if it doesn't exist
+        # This allows scripts to check against the value to see if the packet was ever received
+        if types[-1] == "RECEIVED_COUNT":
+            return 0
+        else:
+            return None
 
     # Return all item values and limit state from the CVT
     #
