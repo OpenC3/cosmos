@@ -172,7 +172,7 @@ module OpenC3
       @@scope = scope
     end
 
-    def build_log_data(log_level, message, user: nil, type: nil, url: nil, other: nil)
+    def build_log_data(log_level, message, user: nil, type: nil, url: nil, other: nil, &block)
       time = Time.now.utc
       # timestamp iso8601 with 6 decimal places to match the python output format
       data = { time: time.to_nsec_from_epoch, '@timestamp' => time.iso8601(6), level: log_level }
@@ -196,9 +196,9 @@ module OpenC3
 
     protected
 
-    def log_message(log_level, message, scope:, user:, type:, url:, other: nil)
+    def log_message(log_level, message, scope:, user:, type:, url:, other: nil, &block)
       @@mutex.synchronize do
-        data = build_log_data(log_level, message, user: user, type: type, url: url, other: other)
+        data = build_log_data(log_level, message, user: user, type: type, url: url, other: other, &block)
         if @stdout
           case log_level
           when WARN_LEVEL, ERROR_LEVEL, FATAL_LEVEL
