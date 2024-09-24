@@ -173,45 +173,11 @@
 import Api from '../services/api'
 import { ConfigParserService } from '../services/config-parser'
 import { OpenC3Api } from '../services/openc3-api'
-import Vue from 'vue'
 import upperFirst from 'lodash/upperFirst'
 import camelCase from 'lodash/camelCase'
 import EditScreenDialog from './EditScreenDialog'
 
 const MAX_ERRORS = 20
-
-// Globally register all XxxWidget.vue components
-const requireComponent = require.context(
-  // The relative path of the components folder
-  '@openc3/tool-common/src/components/widgets',
-  // Whether or not to look in subfolders
-  false,
-  // The regular expression used to match base component filenames
-  /[A-Z][a-z]+Widget\.vue$/,
-)
-
-requireComponent.keys().forEach((filename) => {
-  // Get component config
-  const componentConfig = requireComponent(filename)
-  // Get PascalCase name of component
-  const componentName = upperFirst(
-    camelCase(
-      // Gets the filename regardless of folder depth
-      filename
-        .split('/')
-        .pop()
-        .replace(/\.\w+$/, ''),
-    ),
-  )
-  // Register component globally
-  Vue.component(
-    componentName,
-    // Look for the component options on `.default`, which will
-    // exist if the component was exported with `export default`,
-    // otherwise fall back to module's root.
-    componentConfig.default || componentConfig,
-  )
-})
 
 export default {
   components: {
@@ -369,6 +335,37 @@ export default {
     return false
   },
   created() {
+    // Globally register all XxxWidget.vue components
+    const requireComponent = require.context(
+      // The relative path of the components folder
+      '@openc3/tool-common/src/components/widgets',
+      // Whether or not to look in subfolders
+      false,
+      // The regular expression used to match base component filenames
+      /[A-Z][a-z]+Widget\.vue$/,
+    )
+
+    requireComponent.keys().forEach((filename) => {
+      // Get component config
+      const componentConfig = requireComponent(filename)
+      // Get PascalCase name of component
+      const componentName = upperFirst(
+        camelCase(
+          // Gets the filename regardless of folder depth
+          filename
+            .split('/')
+            .pop()
+            .replace(/\.\w+$/, ''),
+        ),
+      )
+      // Register component locally
+      this.$options.components[componentName] =
+        // Look for the component options on `.default`, which will
+        // exist if the component was exported with `export default`,
+        // otherwise fall back to module's root.
+        componentConfig.default || componentConfig
+    })
+
     this.api = new OpenC3Api()
     this.configParser = new ConfigParserService()
     this.parseDefinition()
@@ -707,7 +704,7 @@ export default {
         // Give all the widgets a reference to this screen
         // Use settings so we don't break existing custom widgets
         settings.push(['__SCREEN__', this])
-        if (Vue.options.components[componentName]) {
+        if (this.$options.components[componentName]) {
           this.currentLayout.widgets.push({
             type: componentName,
             target: this.target,
@@ -784,12 +781,12 @@ export default {
       this.updateCounter += 1
       for (let i = 0; i < values.length; i++) {
         values[i].push(this.updateCounter)
-        Vue.set(this.screenValues, this.screenItems[i], values[i])
+        this.screenValues[this.screenItems[i]] = values[i]
       }
     },
     addItem: function (valueId) {
       this.screenItems.push(valueId)
-      Vue.set(this.screenValues, valueId, [null, null, 0])
+      this.screenValues[valueId] = [null, null, 0]
     },
     deleteItem: function (valueId) {
       let index = this.screenItems.indexOf(valueId)

@@ -81,7 +81,7 @@
           hide-details
           density="compact"
           variant="outlined"
-          @update="indexChanged($event)"
+          @update:model-value="indexChanged($event)"
           :disabled="itemsDisabled || autocompleteDisabled"
           :items="arrayIndexes()"
           item-title="label"

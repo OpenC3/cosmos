@@ -32,10 +32,10 @@
                 v-for="(tab, index) in tabs"
                 :key="index"
                 :to="tab.url"
+                :text="tab.name"
+                base-color="var(--color-text-interactive-default)"
                 @click.native.stop
-              >
-                {{ tab.name }}
-              </v-tab>
+              />
             </v-tabs>
           </v-expansion-panel-title>
           <v-expansion-panel-text>
@@ -61,7 +61,7 @@
             type="number"
             label="Refresh Interval (ms)"
             :model-value="refreshInterval"
-            @change="refreshInterval = $event"
+            @update:model-value="refreshInterval = $event"
           />
         </div>
       </v-card>

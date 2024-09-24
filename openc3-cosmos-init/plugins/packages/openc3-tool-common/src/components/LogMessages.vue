@@ -22,33 +22,38 @@
 
 <template>
   <v-card>
-    <v-card-title>
-      <v-tooltip location="top">
-        <template v-slot:activator="{ props }">
-          <div v-bind="props">
-            <v-btn
-              icon
-              class="mx-2"
-              data-test="download-log"
-              @click="downloadLog"
-            >
-              <v-icon> mdi-download </v-icon>
-            </v-btn>
-          </div>
-        </template>
-        <span> Download Log </span>
-      </v-tooltip>
-      <span> Log Messages </span>
-      <v-tooltip location="top">
-        <template v-slot:activator="{ props }">
-          <div v-bind="props">
-            <v-btn icon data-test="pause" @click="pause">
-              <v-icon> {{ buttonIcon }} </v-icon>
-            </v-btn>
-          </div>
-        </template>
-        <span> {{ buttonLabel }} </span>
-      </v-tooltip>
+    <v-card-title class="d-flex align-center justify-content-space-between">
+      <div class="d-flex align-baseline">
+        <v-tooltip location="top">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
+              <v-btn
+                icon="mdi-download"
+                variant="text"
+                size="small"
+                class="mr-2"
+                data-test="download-log"
+                @click="downloadLog"
+              />
+            </div>
+          </template>
+          <span> Download Log </span>
+        </v-tooltip>
+        <span> Log Messages </span>
+        <v-tooltip location="top">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
+              <v-btn
+                :icon="buttonIcon"
+                variant="text"
+                data-test="pause"
+                @click="pause"
+              />
+            </div>
+          </template>
+          <span> {{ buttonLabel }} </span>
+        </v-tooltip>
+      </div>
       <v-spacer />
       <v-select
         label="Filter by log level"
@@ -78,9 +83,13 @@
       <v-tooltip location="top">
         <template v-slot:activator="{ props }">
           <div v-bind="props">
-            <v-btn icon class="mx-2" data-test="clear-log" @click="clearLog">
-              <v-icon> mdi-delete </v-icon>
-            </v-btn>
+            <v-btn
+              icon="mdi-delete"
+              variant="text"
+              class="ml-2"
+              data-test="clear-log"
+              @click="clearLog"
+            />
           </div>
         </template>
         <span> Clear Log </span>
@@ -94,7 +103,7 @@
       disable-pagination
       hide-default-footer
       multi-sort
-      dense
+      density="compact"
       height="70vh"
       data-test="log-messages"
     >
@@ -146,10 +155,10 @@ export default {
       logLevel: 'INFO',
       search: '',
       headers: [
-        { text: 'Time', value: 'timestamp', width: 220 },
-        { text: 'Level', value: 'level' },
-        { text: 'Source', value: 'microservice_name' },
-        { text: 'Message', value: 'message' },
+        { title: 'Time', value: 'timestamp', width: 220 },
+        { title: 'Level', value: 'level' },
+        { title: 'Source', value: 'microservice_name' },
+        { title: 'Message', value: 'message' },
       ],
       cable: new Cable(),
       subscription: null,

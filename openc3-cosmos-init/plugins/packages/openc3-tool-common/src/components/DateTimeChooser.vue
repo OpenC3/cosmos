@@ -50,10 +50,10 @@
           :label="timeLabel"
           :name="`time${Date.now()}`"
           :rules="timeRules"
-          v-model="time"
+          :model-value="time"
           type="time"
           step="1"
-          @change="onChange"
+          @update:model-value="onChange"
           data-test="time-chooser"
         />
       </v-col>

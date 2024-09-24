@@ -27,7 +27,7 @@
       :model-value="textfieldValue"
       hide-details
       density="compact"
-      @change="handleChange"
+      @update:model-value="handleChange"
       data-test="cmd-param-value"
     />
     <v-container v-else>
@@ -50,7 +50,7 @@
         <v-col>
           <v-text-field
             :model-value="stateValue"
-            @change="handleChange"
+            @update:model-value="handleChange"
             hide-details
             density="compact"
             data-test="cmd-param-value"

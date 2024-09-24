@@ -202,7 +202,7 @@ test('deletes a component and tab', async ({ page, utils }) => {
     page.getByRole('tab', { name: 'INST ADCS [ RAW ]' }),
   ).toBeVisible()
   await page.locator('[data-test=delete-component]').click()
-  await expect(page.locator('.v-card > .v-card__title').first()).toHaveText(
+  await expect(page.locator('.v-card > .v-card-title').first()).toHaveText(
     "You're not viewing any packets",
   )
 })
@@ -397,8 +397,8 @@ test('works with UTC date / times', async ({ page, utils }) => {
   await expect(page.locator('.v-app-bar')).toContainText('Data Viewer', {
     timeout: 20000,
   })
-  await page.locator('rux-icon-apps path').click()
-  await expect(page.locator('#openc3-nav-drawer')).toBeHidden()
+  await page.locator('rux-icon-apps').getByRole('img').click()
+  await expect(page.locator('#openc3-nav-drawer')).not.toBeInViewport()
 
   now = new Date()
   // The date is now in UTC but we parse it like it is local time

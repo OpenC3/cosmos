@@ -48,7 +48,7 @@
       single-line
       hide-no-data
       hide-details
-      @change="textChange"
+      @update:model-value="textChange"
       :model-value="format(dataItem.value)"
       :disabled="!dataItem.editable"
       data-test="table-item-text-field"

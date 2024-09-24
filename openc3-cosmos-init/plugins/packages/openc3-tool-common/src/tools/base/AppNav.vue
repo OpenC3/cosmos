@@ -24,7 +24,7 @@
   <div>
     <v-navigation-drawer
       v-if="!chromeless"
-      v-model="drawer"
+      :model-value="drawer"
       id="openc3-nav-drawer"
     >
       <img :src="logo" class="logo" alt="OpenC3" />

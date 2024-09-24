@@ -542,7 +542,7 @@ test('disable parameter conversions', async ({ page, utils }) => {
   await page.locator('[data-test="clear-history"]').click()
   await utils.selectTargetPacketItem('INST', 'SETPARAMS')
   await page.locator('[data-test="select-send"]').click()
-  await page.locator('rux-icon-apps path').click()
+  await page.locator('rux-icon-apps').getByRole('img').click()
 
   await page.locator('text=Script Runner').click()
   await expect(page.locator('.v-app-bar')).toContainText('Script Runner')

@@ -22,7 +22,7 @@
 
 <template>
   <v-card>
-    <v-card-title>
+    <v-card-title class="d-flex align-center justify-content-space-between">
       {{ data.length }} Targets
       <v-spacer />
       <v-tooltip location="bottom" :disabled="enterprise && commandAuthority">
@@ -91,7 +91,7 @@
       :items="data"
       :search="search"
       :items-per-page="10"
-      :footer-props="{ itemsPerPageOptions: [10, 20, -1] }"
+      :items-per-page-options="[10, 20, -1]"
       calculate-widths
       multi-sort
       data-test="targets-table"
@@ -152,14 +152,14 @@ export default {
       cable: new Cable(),
       enterprise: false,
       headers: [
-        { text: 'Target Name', value: 'name' },
-        { text: 'Interfaces', value: 'interface' },
+        { title: 'Target Name', value: 'name' },
+        { title: 'Interfaces', value: 'interface' },
         {
-          text: 'Command Authority Username',
+          title: 'Command Authority Username',
           value: 'username',
         },
-        { text: 'Take Command Authority', value: 'take' },
-        { text: 'Release Command Authority', value: 'release' },
+        { title: 'Take Command Authority', value: 'take' },
+        { title: 'Release Command Authority', value: 'release' },
       ],
       cmdAuth: {},
       commandAuthority: false,

@@ -29,7 +29,7 @@
   >
     <v-card>
       <div ref="bar">
-        <v-system-bar>
+        <v-system-bar absolute>
           <v-tooltip location="top">
             <template v-slot:activator="{ props }">
               <div v-bind="props">
@@ -65,15 +65,18 @@
           </v-tooltip>
         </v-system-bar>
       </div>
-      <v-card-title>
+      <v-card-title class="d-flex align-center justify-content-space-between">
         <span> {{ header }} </span>
         <v-spacer />
         <v-tooltip location="top">
           <template v-slot:activator="{ props }">
             <div v-bind="props">
-              <v-btn icon data-test="pause" @click="pause">
-                <v-icon> {{ buttonIcon }} </v-icon>
-              </v-btn>
+              <v-btn
+                :icon="buttonIcon"
+                variant="text"
+                data-test="pause"
+                @click="pause"
+              />
             </div>
           </template>
           <span> {{ buttonLabel }} </span>
@@ -350,5 +353,9 @@ export default {
   margin-top: 10px;
   font-family: 'Courier New', Courier, monospace;
   overflow-y: scroll;
+}
+
+.v-system-bar {
+  position: relative !important;
 }
 </style>

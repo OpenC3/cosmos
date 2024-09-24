@@ -22,7 +22,7 @@
 
 <template>
   <v-card>
-    <v-card-title>
+    <v-card-title class="d-flex align-center justify-content-space-between">
       {{ data.length }} Interfaces
       <v-spacer />
       <v-text-field
@@ -43,7 +43,7 @@
       :search="search"
       :custom-sort="sortTable"
       :items-per-page="10"
-      :footer-props="{ itemsPerPageOptions: [10, 20, -1] }"
+      :items-per-page-options="[10, 20, -1]"
       calculate-widths
       multi-sort
       data-test="interfaces-table"
@@ -82,21 +82,21 @@ export default {
       data: [],
       buttonsDisabled: false,
       headers: [
-        { text: 'Name', value: 'name' },
+        { title: 'Name', value: 'name' },
         {
-          text: 'Action',
+          title: 'Action',
           value: 'connect',
           sortable: false,
           filterable: false,
         },
-        { text: 'Connected', value: 'connected' },
-        { text: 'Clients', value: 'clients' },
-        { text: 'Tx Q', value: 'tx_q_size' },
-        { text: 'Rx Q', value: 'rx_q_size' },
-        { text: 'Tx bytes', value: 'tx_bytes' },
-        { text: 'Rx bytes', value: 'rx_bytes' },
-        { text: 'Cmd pkts', value: 'cmd_pkts' },
-        { text: 'Tlm pkts', value: 'tlm_pkts' },
+        { title: 'Connected', value: 'connected' },
+        { title: 'Clients', value: 'clients' },
+        { title: 'Tx Q', value: 'tx_q_size' },
+        { title: 'Rx Q', value: 'rx_q_size' },
+        { title: 'Tx bytes', value: 'tx_bytes' },
+        { title: 'Rx bytes', value: 'rx_bytes' },
+        { title: 'Cmd pkts', value: 'cmd_pkts' },
+        { title: 'Tlm pkts', value: 'tlm_pkts' },
       ],
     }
   },

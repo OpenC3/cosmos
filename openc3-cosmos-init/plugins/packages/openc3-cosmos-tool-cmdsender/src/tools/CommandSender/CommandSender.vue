@@ -29,7 +29,7 @@
           :initial-target-name="this.$route.params.target"
           :initial-packet-name="this.$route.params.packet"
           @on-set="commandChanged($event)"
-          @click="buildCmd($event)"
+          @click.self="buildCmd($event)"
           :disabled="sendDisabled"
           button-text="Send"
           mode="cmd"

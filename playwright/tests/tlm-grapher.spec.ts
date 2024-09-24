@@ -200,7 +200,7 @@ test('works with UTC time', async ({ page, utils }) => {
   await page.locator('text=Add Graph').click()
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS', 'TEMP1')
   await page.locator('button:has-text("Add Item")').click()
-  await page.locator('.v-expansion-panel-header').click()
+  await page.locator('.v-expansion-panel-title').click()
   await utils.sleep(3000) // Wait for graphing to occur
   // We can't check the canvas legend because its a canvas
   await page.locator('#chart0 canvas').click({
@@ -234,7 +234,7 @@ test('works with UTC time', async ({ page, utils }) => {
 
   await page.goto('/tools/tlmgrapher')
   await expect(page.locator('.v-app-bar')).toContainText('Telemetry Grapher')
-  await page.locator('.v-expansion-panel-header').click()
+  await page.locator('.v-expansion-panel-title').click()
   await utils.sleep(3000) // Wait for graphing to occur
   await page.locator('#chart0 canvas').click({
     position: { x: 200, y: 100 },

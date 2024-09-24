@@ -22,7 +22,7 @@
 
 <template>
   <v-card>
-    <v-card-title>
+    <v-card-title class="d-flex align-center justify-content-space-between">
       {{ data.length }} Telemetry Packets
       <v-spacer />
       <v-text-field
@@ -42,14 +42,17 @@
       :items="data"
       :search="search"
       :items-per-page="10"
-      :footer-props="{
-        itemsPerPageOptions: [10, 20, 50, 100],
-        showFirstLastPage: true,
-      }"
-      sort-by="target_name"
-      @current-items="currentItems"
+      :items-per-page-options="[10, 20, 50, 100]"
+      :sort-by="[
+        {
+          key: 'target_name',
+        },
+        {
+          key: 'packet_name',
+        },
+      ]"
+      @update:current-items="currentItems"
       calculate-widths
-      multi-sort
       data-test="tlm-packets-table"
     >
       <template v-slot:item.view_raw="{ item }">
@@ -107,11 +110,11 @@ export default {
       search: '',
       data: [],
       headers: [
-        { text: 'Target Name', value: 'target_name' },
-        { text: 'Packet Name', value: 'packet_name' },
-        { text: 'Packet Count', value: 'count' },
-        { text: 'View Raw', value: 'view_raw' },
-        { text: 'View In Packet Viewer', value: 'view_in_pkt_viewer' },
+        { title: 'Target Name', value: 'target_name' },
+        { title: 'Packet Name', value: 'packet_name' },
+        { title: 'Packet Count', value: 'count' },
+        { title: 'View Raw', value: 'view_raw' },
+        { title: 'View In Packet Viewer', value: 'view_in_pkt_viewer' },
       ],
       rawDialogs: [],
       visible: null,
@@ -157,12 +160,12 @@ export default {
     },
     currentItems(event) {
       this.visible = event.map((i) => {
-        return [i.target_name, i.packet_name]
+        return [i.columns.target_name, i.columns.packet_name]
       })
     },
     update() {
       if (this.tabId != this.curTab) return
-      if (this.currentItems === null) return
+      if (this.visible === null) return
       this.api.get_tlm_cnts(this.visible).then((counts) => {
         for (let i = 0; i < counts.length; i++) {
           let index = this.data.findIndex(

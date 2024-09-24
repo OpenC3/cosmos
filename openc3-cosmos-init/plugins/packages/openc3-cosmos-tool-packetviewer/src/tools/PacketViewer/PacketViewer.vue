@@ -104,7 +104,7 @@
               type="number"
               label="Refresh Interval (ms)"
               :model-value="refreshInterval"
-              @change="refreshInterval = $event"
+              @update:model-value="refreshInterval = $event"
               data-test="refresh-interval"
             />
           </div>
@@ -116,7 +116,7 @@
               type="number"
               label="Time at which to mark data Stale (seconds)"
               :model-value="staleLimit"
-              @change="staleLimit = parseInt($event)"
+              @update:model-value="staleLimit = parseInt($event)"
               data-test="stale-limit"
             />
           </div>

@@ -18,13 +18,13 @@
 
 <template>
   <v-dialog v-model="show" width="650px">
+    <v-system-bar>
+      <v-spacer />
+      <span> Upgrade to COSMOS Enterprise Edition </span>
+      <v-spacer />
+    </v-system-bar>
     <v-card>
-      <v-system-bar>
-        <v-spacer />
-        <span> Upgrade to COSMOS Enterprise Edition </span>
-        <v-spacer />
-      </v-system-bar>
-      <v-card-text class="mt-2">
+      <v-card-text class="mt-4">
         <div class="logo">
           <img :src="logo" alt="OpenC3" />
           <div class="cosmos">Enterprise Edition</div>
@@ -64,9 +64,10 @@ import logo from '../../public/img/logo.png'
 
 export default {
   props: {
-    value: Boolean, // value is the default prop when using v-model
+    modelValue: Boolean, // value is the default prop when using v-model
     reason: String,
   },
+  emits: ['update:modelValue'],
   data() {
     return {
       logo: logo,
@@ -75,10 +76,10 @@ export default {
   computed: {
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value) // update is the default event when using v-model
       },
     },
   },

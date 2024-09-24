@@ -36,7 +36,6 @@
       <v-select
         v-model="timeZone"
         :items="timeZones"
-        menu-props="auto"
         label="Select time display"
         hide-details
         prepend-icon="mdi-map-clock"

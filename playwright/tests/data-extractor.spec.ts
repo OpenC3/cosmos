@@ -215,7 +215,7 @@ test('processes commands', async ({ page, utils }) => {
   const start = sub(new Date(), { minutes: 1 })
   await page.goto('/tools/dataextractor')
   await expect(page.locator('.v-app-bar')).toContainText('Data Extractor')
-  await page.locator('rux-icon-apps path').click()
+  await page.locator('rux-icon-apps').getByRole('img').click()
   await page.locator('[data-test=start-time]').fill(format(start, 'HH:mm:ss'))
   await page.locator('label:has-text("Command")').click()
   await utils.sleep(500) // Allow the command to switch
@@ -407,8 +407,8 @@ test('works with UTC date / times', async ({ page, utils }) => {
   await expect(page.locator('.v-app-bar')).toContainText('Data Extractor', {
     timeout: 20000,
   })
-  await page.locator('rux-icon-apps path').click()
-  await expect(page.locator('#openc3-nav-drawer')).toBeHidden()
+  await page.locator('rux-icon-apps').getByRole('img').click()
+  await expect(page.locator('#openc3-nav-drawer')).not.toBeInViewport()
 
   now = new Date()
   // The date is now in UTC but we parse it like it is local time

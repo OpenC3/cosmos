@@ -42,7 +42,7 @@ test('displays the command count', async ({ page, utils }) => {
   await utils.sleep(1500) // Allow API to fetch counts
   await page
     .locator(
-      'div.v-card__title:has-text("Command Packets") >> input[type="text"]',
+      'div.v-card-title:has-text("Command Packets") >> input[type="text"]',
     )
     .fill('abort')
   await expect
@@ -78,7 +78,7 @@ test('displays the command count', async ({ page, utils }) => {
   await utils.sleep(1500) // Allow API to fetch counts
   await page
     .locator(
-      'div.v-card__title:has-text("Command Packets") >> input[type="text"]',
+      'div.v-card-title:has-text("Command Packets") >> input[type="text"]',
     )
     .fill('abort')
   await expect
