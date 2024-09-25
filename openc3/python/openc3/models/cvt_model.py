@@ -134,7 +134,7 @@ class CvtModel(Model):
                 return cvt_value
         # RECEIVED_COUNT is a special case where it is 0 if it doesn't exist
         # This allows scripts to check against the value to see if the packet was ever received
-        if types[-1] == "RECEIVED_COUNT":
+        if item_name == "RECEIVED_COUNT":
             return 0
         else:
             return None
