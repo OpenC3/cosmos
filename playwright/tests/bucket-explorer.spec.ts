@@ -240,7 +240,7 @@ test('navigate logs and tools bucket', async ({ page, utils }) => {
   // Verify no bad dates
   await expect(page.getByText('1970')).not.toBeVisible()
   await page.getByRole('cell', { name: date }).click()
-  await expect(page.getByRole('cell', { name: date })).toBeVisible()
+  // Don't check for date because 2 files could be present
   await expect(
     page.getByText('DEFAULT__INST__ALL__rt__raw').first(),
   ).toBeVisible()
