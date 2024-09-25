@@ -127,7 +127,6 @@ test('runs a script', async ({ page, utils }) => {
   await expect(page.locator('[data-test=state]')).toHaveValue('error', {
     timeout: 20000,
   })
-
   await page.locator('[data-test="stop-button"]').click()
   await expect(page.locator('[data-test=state]')).toHaveValue('stopped')
 })
