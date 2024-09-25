@@ -213,7 +213,7 @@ module OpenC3
           # Delete one of the activities
           ActivityModel.destroy(name: 'recurring', scope: 'DEFAULT', score: array[0]['start'], uuid: array[0]['uuid'])
           expect(ActivityModel.count(name: 'recurring', scope: 'DEFAULT')).to eql(4)
-          ActivityModel.destroy(name: 'recurring', scope: 'DEFAULT', score: array[1]['start'], uuid: array[1]['uuid'], recurring: true)
+          ActivityModel.destroy(name: 'recurring', scope: 'DEFAULT', score: array[1]['start'], uuid: array[1]['recurring']['uuid'], recurring: true)
           expect(ActivityModel.count(name: 'recurring', scope: 'DEFAULT')).to eql(0)
         end
       end

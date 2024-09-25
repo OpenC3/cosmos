@@ -80,7 +80,7 @@ module OpenC3
     end
 
     # Remove one member from a sorted set.
-    # @return [Integer] count of the members removed
+    # @return [Integer] count of the members removed, 0 indicates the member was not found
     def self.destroy(name:, scope:, score:, uuid: nil, recurring: nil)
       result = 0
 
@@ -88,12 +88,12 @@ module OpenC3
       if recurring
         activity = self.score(name: name, score: score, scope: scope)
         if activity and activity.recurring['end'] and activity.recurring['uuid']
-          uuid = activity.recurring['uuid']
           json = Store.zrangebyscore("#{scope}#{PRIMARY_KEY}__#{name}", activity.recurring['start'], activity.recurring['end'])
           parsed = json.map { |value| ActivityModel.from_json(value, name: name, scope: scope) }
           parsed.each_with_index do |value, index|
             if value.recurring['uuid'] == uuid
               Store.zrem("#{scope}#{PRIMARY_KEY}__#{name}", json[index])
+              result += 1
             end
           end
         end
@@ -106,14 +106,16 @@ module OpenC3
         if uuid
           # If the uuid is given then only delete activities that match the uuid
           if value['uuid'] == uuid
-            result = Store.zrem("#{scope}#{PRIMARY_KEY}__#{name}", json[index])
+            Store.zrem("#{scope}#{PRIMARY_KEY}__#{name}", json[index])
+            result += 1
             break
           end
         else
           # If the uuid is not given (backwards compatibility) then delete all activities
           # at the score that do NOT have a uuid
           next if value['uuid']
-          result = Store.zrem("#{scope}#{PRIMARY_KEY}__#{name}", json[index])
+          Store.zrem("#{scope}#{PRIMARY_KEY}__#{name}", json[index])
+          result += 1
         end
       end
 
