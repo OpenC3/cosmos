@@ -642,12 +642,12 @@ def _cmd_implementation(
     if log_message:
         Logger.info(cmd_string, scope)
 
-    # Check for the validator kwarg
-    validator = True
-    if kwargs.get("validator") is not None:
-        if kwargs["validator"] not in [True, False]:
-            raise RuntimeError(f"Invalid validator parameter: {kwargs['validator']}. Must be True or False.")
-        validator = kwargs["validator"]
+    # Check for the validate kwarg
+    validate = True
+    if kwargs.get("validate") is not None:
+        if kwargs["validate"] not in [True, False]:
+            raise RuntimeError(f"Invalid validate parameter: {kwargs['validate']}. Must be True or False.")
+        validate = kwargs["validate"]
 
     username = user["username"] if user and user["username"] else "anonymous"
     command = {
@@ -659,7 +659,7 @@ def _cmd_implementation(
         "raw": str(raw),
         "cmd_string": cmd_string,
         "username": username,
-        "validator": str(validator),
+        "validate": str(validate),
     }
     return CommandTopic.send_command(command, timeout, scope)
 

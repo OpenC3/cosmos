@@ -209,6 +209,7 @@ def _cmd(
     *args,
     timeout=None,
     log_message=None,
+    validate=True,
     scope=OPENC3_SCOPE,
 ):
     """Send the command and log the results
@@ -224,7 +225,7 @@ def _cmd(
     else:
         try:
             target_name, cmd_name, cmd_params = getattr(openc3.script.API_SERVER, cmd)(
-                *args, timeout=timeout, log_message=log_message, scope=scope
+                *args, timeout=timeout, log_message=log_message, validate=validate, scope=scope
             )
             if log_message is None or log_message:
                 _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
@@ -239,7 +240,7 @@ def _cmd(
             )
             if ok_to_proceed:
                 target_name, cmd_name, cmd_params = getattr(openc3.script.API_SERVER, cmd_no_hazardous)(
-                    *args, scope=scope, timeout=timeout
+                    *args, timeout=timeout, log_message=log_message, validate=validate, scope=scope
                 )
                 if log_message is None or log_message:
                     _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)

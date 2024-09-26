@@ -28,9 +28,9 @@ class ExampleLimitsResponse < OpenC3::LimitsResponse
   def call(packet, item, old_limits_state)
     case item.limits.state
     when :RED_HIGH
-      cmd('<%= target_name %> COLLECT with TYPE NORMAL, DURATION 7', validator: false)
+      cmd('<%= target_name %> COLLECT with TYPE NORMAL, DURATION 7', validate: false)
     when :RED_LOW
-      cmd('<%= target_name %> ABORT', validator: false)
+      cmd('<%= target_name %> ABORT', validate: false)
     end
   end
 end

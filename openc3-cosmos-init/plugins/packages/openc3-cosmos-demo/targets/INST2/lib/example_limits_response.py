@@ -24,7 +24,7 @@ class ExampleLimitsResponse(LimitsResponse):
             case "RED_HIGH":
                 cmd(
                     "<%= target_name %> COLLECT with TYPE NORMAL, DURATION 8",
-                    validator=False,
+                    validate=False,
                 )
             case "RED_LOW":
-                cmd("<%= target_name %> ABORT", validator=False)
+                cmd("<%= target_name %> ABORT", validate=False)
