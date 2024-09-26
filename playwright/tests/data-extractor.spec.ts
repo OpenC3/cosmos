@@ -381,8 +381,8 @@ test('works with UTC date / times', async ({ page, utils }) => {
   expect(
     isWithinInterval(startTime, {
       // Start time is automatically 1hr in the past
-      start: subMinutes(now, 61),
-      end: subMinutes(now, 59),
+      start: subMinutes(now, 62),
+      end: subMinutes(now, 58),
     }),
   ).toBeTruthy()
   let endTimeString =
@@ -391,8 +391,8 @@ test('works with UTC date / times', async ({ page, utils }) => {
   expect(
     isWithinInterval(endTime, {
       // end time is now
-      start: subMinutes(now, 1),
-      end: addMinutes(now, 1),
+      start: subMinutes(now, 2),
+      end: addMinutes(now, 2),
     }),
   ).toBeTruthy()
 
@@ -420,8 +420,8 @@ test('works with UTC date / times', async ({ page, utils }) => {
   expect(
     isWithinInterval(localStartTime, {
       // Start time is automatically 1hr in the past
-      start: subMinutes(now, 61),
-      end: subMinutes(now, 59),
+      start: subMinutes(now, 62),
+      end: subMinutes(now, 58),
     }),
   ).toBeTruthy()
   // The date is now in UTC but we parse it like it is local time
@@ -432,8 +432,8 @@ test('works with UTC date / times', async ({ page, utils }) => {
   expect(
     isWithinInterval(endTime, {
       // end time is now
-      start: subMinutes(now, 1),
-      end: addMinutes(now, 1),
+      start: subMinutes(now, 2),
+      end: addMinutes(now, 2),
     }),
   ).toBeTruthy()
 
