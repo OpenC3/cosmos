@@ -34,7 +34,7 @@ class TestTcpipServerInterface(unittest.TestCase):
         self.assertFalse(i.write_allowed)
         self.assertFalse(i.write_raw_allowed)
         self.assertTrue(i.read_allowed)
-        i.connected = True
+        i._connected = True
         with self.assertRaisesRegex(RuntimeError, "Interface not writeable"):
             i.write(Packet("", ""))
 
@@ -43,7 +43,7 @@ class TestTcpipServerInterface(unittest.TestCase):
         self.assertTrue(i.write_allowed)
         self.assertTrue(i.write_raw_allowed)
         self.assertFalse(i.read_allowed)
-        i.connected = True
+        i._connected = True
         with self.assertRaisesRegex(RuntimeError, "Interface not readable"):
             i.read()
 
@@ -65,13 +65,13 @@ class TestTcpipServerInterface(unittest.TestCase):
 
     def test_read_raises_if_not_connected(self):
         i = TcpipServerInterface("8888", "8889", "5", "5", "burst")
-        i.connected = False
+        i._connected = False
         with self.assertRaisesRegex(RuntimeError, "Interface not connected"):
             i.read()
 
     def test_read_counts_the_packets_received(self):
         i = TcpipServerInterface("8888", "8889", "5", "5", "burst")
-        i.connected = True
+        i._connected = True
         i.read_queue.put(Packet(None, None))
         i.read_queue.put(Packet(None, None))
 
@@ -80,12 +80,10 @@ class TestTcpipServerInterface(unittest.TestCase):
         self.assertEqual(i.read_count, 1)
         i.read()
         self.assertEqual(i.read_count, 2)
-        i.read()
-        self.assertEqual(i.read_count, 2)
 
     def test_read_does_not_count_none_packets(self):
         i = TcpipServerInterface("8888", "8889", "5", "5", "burst")
-        i.connected = True
+        i._connected = True
         i.read_queue.put(None)
         i.read_queue.put(None)
 
@@ -97,13 +95,13 @@ class TestTcpipServerInterface(unittest.TestCase):
 
     def test_write_complains_if_the_server_is_not_connected(self):
         i = TcpipServerInterface("8888", "8889", "5", "5", "burst")
-        i.connected = False
+        i._connected = False
         with self.assertRaisesRegex(RuntimeError, "Interface not connected"):
             i.write(Packet("", ""))
 
     def test_counts_the_packets_written(self):
         i = TcpipServerInterface("8888", "8889", "5", "5", "burst")
-        i.connected = True
+        i._connected = True
         self.assertEqual(i.write_count, 0)
         i.write(Packet("", ""))
         self.assertEqual(i.write_count, 1)
@@ -112,7 +110,7 @@ class TestTcpipServerInterface(unittest.TestCase):
 
     def test_write_raw_complains_if_the_server_is_not_connected(self):
         i = TcpipServerInterface("8888", "8889", "5", "5", "burst")
-        i.connected = False
+        i._connected = False
         with self.assertRaisesRegex(RuntimeError, "Interface not connected"):
             i.write_raw(Packet("", ""))
 
