@@ -39,7 +39,7 @@ def _openc3_script_sleep(sleep_time=None):
         ),
     )
 
-    if not sleep_time:  # Handle infinite wait
+    if sleep_time is None:  # Handle infinite wait
         sleep_time = 30000000
     if sleep_time > 0.0:
         end_time = time.time() + sleep_time

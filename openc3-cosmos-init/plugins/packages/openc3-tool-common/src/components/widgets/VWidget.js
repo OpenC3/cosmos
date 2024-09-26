@@ -243,6 +243,7 @@ export default {
     },
     formatValue(value) {
       if (
+        value &&
         this.valueId &&
         (this.valueId.includes('PACKET_TIMEFORMATTED') ||
           this.valueId.includes('RECEIVED_TIMEFORMATTED'))
