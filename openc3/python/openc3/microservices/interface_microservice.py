@@ -218,12 +218,12 @@ class InterfaceCmdHandlerThread:
                 if hazardous:
                     return f"HazardousError\n{hazardous_description}\n{command.extra['cmd_string']}"
 
-            validator = ConfigParser.handle_true_false(msg_hash[b"validator"].decode())
+            validate = ConfigParser.handle_true_false(msg_hash[b"validate"].decode())
             try:
                 if self.interface.connected():
                     result = True
                     reason = None
-                    if command.validator and validator:
+                    if command.validator and validate:
                         try:
                             result, reason = command.validator.pre_check(command)
                         except Exception as error:
@@ -238,7 +238,7 @@ class InterfaceCmdHandlerThread:
                         self.metric.set(name="interface_cmd_total", value=self.count, type="counter")
                     self.interface.write(command)
 
-                    if command.validator and validator:
+                    if command.validator and validate:
                         try:
                             result, reason = command.validator.post_check(command)
                         except Exception as error:
