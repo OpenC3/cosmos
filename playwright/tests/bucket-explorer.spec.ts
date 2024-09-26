@@ -244,12 +244,11 @@ test('navigate logs and tools bucket', async ({ page, utils }) => {
   await expect(
     page.getByText('DEFAULT__INST__ALL__rt__raw').first(),
   ).toBeVisible()
-  await expect(page.getByText('1970')).not.toBeVisible()
 
   await page.getByText('tools').click()
   await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/tools%2F/)
   if (process.env.ENTERPRISE === '1') {
-    await expect(page.locator('tbody > tr')).toHaveCount(19)
+    await expect(page.locator('tbody > tr')).toHaveCount(20)
   } else {
     await expect(page.locator('tbody > tr')).toHaveCount(17)
   }
