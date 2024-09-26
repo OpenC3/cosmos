@@ -31,7 +31,7 @@
         </v-system-bar>
 
         <v-card-text>
-          <div class="pa-3">
+          <div class="mt-4 pa-3">
             <v-row dense>
               <v-text-field
                 label="search"
@@ -49,26 +49,25 @@
               />
             </v-row>
             <v-data-table
+              v-model="selectedRows"
               show-select
-              single-select
-              item-key="configId"
+              select-strategy="single"
+              item-value="configId"
               :search="search"
               :headers="headers"
               :items="configs"
               :items-per-page="5"
-              :footer-props="{ 'items-per-page-options': [5] }"
-              @item-selected="itemSelected"
-              @click:row="(item, slot) => slot.select(item)"
+              :items-per-page-options="[5]"
+              @click:row="($event, row) => selectRow(row)"
             >
               <template v-slot:item.actions="{ item }">
                 <v-btn
                   class="mt-1"
+                  icon="mdi-delete"
+                  variant="text"
                   data-test="item-delete"
-                  icon
                   @click="deleteConfig(item)"
-                >
-                  <v-icon>mdi-delete</v-icon>
-                </v-btn>
+                />
               </template>
             </v-data-table>
             <v-row dense>
@@ -108,28 +107,36 @@ import { OpenC3Api } from '../../services/openc3-api.js'
 export default {
   props: {
     configKey: String,
-    value: Boolean, // value is the default prop when using v-model
+    modelValue: Boolean, // modelValue is the default prop when using v-model
   },
   data() {
     return {
       configs: [],
       headers: [
         {
-          text: 'Configuration',
+          title: 'Configuration',
           value: 'config',
         },
         {
-          text: 'Actions',
+          title: 'Actions',
           value: 'actions',
           align: 'end',
           sortable: false,
         },
       ],
       search: null,
-      selectedItem: null,
+      selectedRows: [],
     }
   },
   computed: {
+    selectedItem: function () {
+      if (this.selectedRows.length) {
+        return this.configs.find(
+          (config) => config.configId === this.selectedRows[0],
+        )
+      }
+      return null
+    },
     error: function () {
       if (this.selectedItem === '' || this.selectedItem === null) {
         return 'Must select a config'
@@ -138,10 +145,10 @@ export default {
     },
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value) // update is the default event when using v-model
       },
     },
   },
@@ -160,23 +167,20 @@ export default {
       })
   },
   methods: {
-    itemSelected: function (item) {
-      if (item.value) {
-        this.selectedItem = item.item
-      } else {
-        this.selectedItem = null
-      }
+    selectRow: function (row) {
+      this.selectedRows = [row.item.configId]
     },
     success: function () {
+      if (!this.selectedItem) return
       this.$emit('success', this.selectedItem.config)
       this.show = false
       this.search = null
-      this.selectedItem = null
+      this.selectedRows = []
     },
     cancel: function () {
       this.show = false
       this.search = null
-      this.selectedItem = null
+      this.selectedRows = []
     },
     deleteConfig: function (item) {
       this.$dialog
@@ -185,8 +189,8 @@ export default {
           cancelText: 'Cancel',
         })
         .then((dialog) => {
-          if (this.selectedItem.config === item.config) {
-            this.selectedItem = null
+          if (this.selectedItem?.config === item.config) {
+            this.selectedRows = []
           }
           this.configs.splice(this.configs.indexOf(item), 1)
           new OpenC3Api().delete_config(this.configKey, item.config)

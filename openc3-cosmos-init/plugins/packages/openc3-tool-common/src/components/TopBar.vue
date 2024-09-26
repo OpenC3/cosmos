@@ -22,10 +22,10 @@
 
 <template>
   <teleport to="#openc3-menu">
-    <v-row no-gutters
-      ><v-col align-self="end">
-        <span class="app-title mr-2">{{ title }}</span></v-col
-      >
+    <v-row no-gutters>
+      <v-col align-self="end">
+        <span class="app-title mr-2">{{ title }}</span>
+      </v-col>
     </v-row>
     <v-row dense class="flex-nowrap">
       <v-menu ref="topmenu" v-for="(menu, i) in menus" :key="i">
@@ -81,9 +81,9 @@
                     <v-list-item
                       v-for="(submenu, k) in option.subMenu"
                       :key="k"
+                      :prepend-icon="submenu.icon"
                       @click="subMenuClick(submenu)"
                     >
-                      <v-icon v-if="submenu.icon">{{ submenu.icon }}</v-icon>
                       <v-list-item-title>{{ submenu.label }}</v-list-item-title>
                     </v-list-item>
                   </v-list>
@@ -118,8 +118,9 @@
                   :style="
                     'cursor: pointer;' + (option.disabled ? 'opacity: 0.2' : '')
                   "
-                  >{{ option.label }}</v-list-item-title
                 >
+                  {{ option.label }}
+                </v-list-item-title>
               </v-list-item>
             </template>
           </v-radio-group>
@@ -183,11 +184,11 @@ span.v-btn__content span {
 .v-list :deep(.v-label) {
   margin-left: 5px;
 }
-.v-list-item__icon {
+.v-list-item-action {
   /* For some reason the default margin-right is huge */
   margin-right: 15px !important;
 }
-.v-list-item__title {
+.v-list-item-title {
   color: white;
 }
 </style>

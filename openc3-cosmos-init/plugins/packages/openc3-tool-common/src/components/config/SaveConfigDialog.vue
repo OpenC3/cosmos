@@ -31,7 +31,7 @@
         </v-system-bar>
 
         <v-card-text>
-          <div class="pa-3">
+          <div class="mt-4 pa-3">
             <v-row dense>
               <v-text-field
                 label="search"
@@ -48,26 +48,25 @@
               />
             </v-row>
             <v-data-table
+              v-model="selectedRows"
               show-select
-              single-select
-              item-key="configId"
+              select-strategy="single"
+              item-value="configId"
               :search="search"
               :headers="headers"
               :items="configs"
               :items-per-page="5"
-              :footer-props="{ 'items-per-page-options': [5] }"
-              @item-selected="itemSelected"
-              @click:row="(item, slot) => slot.select(item)"
+              :items-per-page-options="[5]"
+              @click:row="($event, row) => selectRow(row)"
             >
               <template v-slot:item.actions="{ item }">
                 <v-btn
-                  icon
                   class="mt-1"
+                  icon="mdi-delete"
+                  variant="text"
                   data-test="item-delete"
                   @click="deleteConfig(item)"
-                >
-                  <v-icon>mdi-delete</v-icon>
-                </v-btn>
+                />
               </template>
             </v-data-table>
             <v-row dense>
@@ -112,7 +111,7 @@ import { OpenC3Api } from '../../services/openc3-api.js'
 export default {
   props: {
     configKey: String,
-    value: Boolean, // value is the default prop when using v-model
+    modelValue: Boolean, // modelValue is the default prop when using v-model
   },
   data() {
     return {
@@ -120,33 +119,41 @@ export default {
       configs: [],
       headers: [
         {
-          text: 'Configuration',
+          title: 'Configuration',
           value: 'config',
         },
         {
-          text: 'Actions',
+          title: 'Actions',
           value: 'actions',
           align: 'end',
           sortable: false,
         },
       ],
       search: null,
-      selectedItem: null,
+      selectedRows: [],
     }
   },
   computed: {
+    selectedItem: function () {
+      if (this.selectedRows.length) {
+        return this.configs.find(
+          (config) => config.configId === this.selectedRows[0],
+        )
+      }
+      return null
+    },
     error: function () {
-      if (this.configName === '') {
+      if (!this.configName) {
         return 'Config must have a name'
       }
       return null
     },
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value) // update is the default event when using v-model
       },
     },
   },
@@ -165,26 +172,20 @@ export default {
       })
   },
   methods: {
-    itemSelected: function (item) {
-      if (item.value) {
-        this.selectedItem = item.item
-        this.configName = item.item.config
-      } else {
-        this.selectedItem = null
-        this.configName = ''
-      }
+    selectRow: function (row) {
+      this.selectedRows = [row.item.configId]
     },
     success: function () {
       this.$emit('success', this.configName)
       this.show = false
       this.search = null
-      this.selectedItem = null
+      this.selectedRows = []
       this.configName = ''
     },
     cancel: function () {
       this.show = false
       this.search = null
-      this.selectedItem = null
+      this.selectedRows = []
       this.configName = ''
     },
     deleteConfig: function (item) {
@@ -194,11 +195,11 @@ export default {
           cancelText: 'Cancel',
         })
         .then((dialog) => {
-          if (this.configName === item.config) {
-            this.selectedItem = null
+          if (this.selectedItem?.config === item.config) {
+            this.selectedRows = []
             this.configName = ''
           }
-          this.configs.splice(this.configs.indexOf(item.config), 1)
+          this.configs.splice(this.configs.indexOf(item), 1)
           new OpenC3Api().delete_config(this.configKey, item.config)
         })
         .catch((error) => {
@@ -209,6 +210,13 @@ export default {
             )
           }
         })
+    },
+  },
+  watch: {
+    selectedItem: function (val) {
+      if (val) {
+        this.configName = val.config
+      }
     },
   },
 }

@@ -37,7 +37,7 @@
     .v-btn--variant-outlined,
     .v-btn--icon,
     .v-btn--round,
-    .v-btn--text,
+    .v-btn--variant-text,
     .v-tab
   ) {
   background-color: var(--button-color-background-primary-default) !important;
@@ -243,7 +243,15 @@ input {
   z-index: initial !important;
 }
 
+.v-list-item__content {
+  display: flex;
+}
+.v-list-item-action {
+  margin-right: 15px !important;
+}
+
 // Fix the single spa debug panel so the text is readable
-.imo-modal-container form {
+.imo-modal-container form,
+.imo-modal-container input {
   color: black;
 }

@@ -50,7 +50,7 @@ export default {
             })
             if (callback) callback(JSON.parse(response))
             if (!routed) {
-              if (!this.$router.currentRoute.fullPath.includes(name)) {
+              if (!this.$route.fullPath.includes(name)) {
                 this.$router.push({
                   query: {
                     config: name,

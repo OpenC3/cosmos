@@ -13,18 +13,18 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 */
 
+import vuetify from '../vuetify'
 import Toast from './Toast.vue'
 
 class Notify {
-  constructor(Vue, options = {}) {
-    this.Vue = Vue
+  constructor(options = {}) {
     this.$store = options.store
     this.mounted = false
     this.$root = null
@@ -33,12 +33,12 @@ class Notify {
   mount = function () {
     if (this.mounted) return
 
-    const ToastConstructor = this.Vue.extend(Toast)
-    const toast = new ToastConstructor()
+    const app = window.Vue.createApp(Toast)
+    app.use(vuetify)
 
     const el = document.createElement('div')
     document.querySelector('#openc3-app-toolbar > div').appendChild(el)
-    this.$root = toast.$mount(el)
+    this.$root = app.mount(el)
 
     this.mounted = true
   }
@@ -219,19 +219,9 @@ class Notify {
 }
 
 export default {
-  install(Vue, options) {
-    const vueProto = Object.getPrototypeOf(Vue)
-    if (!vueProto.hasOwnProperty('$notify')) {
-      Vue.notify = new Notify(Vue, options)
-
-      Object.setPrototypeOf(Vue, {
-        ...vueProto,
-        $notify: {
-          get() {
-            return Vue.notify
-          },
-        },
-      })
+  install(app, options) {
+    if (!app.config.globalProperties.hasOwnProperty('$notify')) {
+      app.config.globalProperties.$notify = new Notify(options)
     }
   },
 }

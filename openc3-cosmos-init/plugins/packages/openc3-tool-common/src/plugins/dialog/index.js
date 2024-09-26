@@ -13,18 +13,18 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 */
 
+import vuetify from '../vuetify'
 import ConfirmDialog from './ConfirmDialog.vue'
 
 class Dialog {
-  constructor(Vue, options = {}) {
-    this.Vue = Vue
+  constructor() {
     this.mounted = false
     this.$root = null
   }
@@ -32,12 +32,12 @@ class Dialog {
   mount = function () {
     if (this.mounted) return
 
-    const DialogConstructor = this.Vue.extend(ConfirmDialog)
-    const dialog = new DialogConstructor()
+    const app = window.Vue.createApp(ConfirmDialog)
+    app.use(vuetify)
 
     const el = document.createElement('div')
     document.querySelector('#openc3-app-toolbar > div').appendChild(el)
-    this.$root = dialog.$mount(el)
+    this.$root = app.mount(el)
 
     this.mounted = true
   }
@@ -113,19 +113,9 @@ class Dialog {
 }
 
 export default {
-  install(Vue, options) {
-    const vueProto = Object.getPrototypeOf(Vue)
-    if (!vueProto.hasOwnProperty('$dialog')) {
-      Vue.dialog = new Dialog(Vue, options)
-
-      Object.setPrototypeOf(Vue, {
-        ...vueProto,
-        $dialog: {
-          get() {
-            return Vue.dialog
-          },
-        },
-      })
+  install(app, _) {
+    if (!app.config.globalProperties.hasOwnProperty('$dialog')) {
+      app.config.globalProperties.$dialog = new Dialog()
     }
   },
 }

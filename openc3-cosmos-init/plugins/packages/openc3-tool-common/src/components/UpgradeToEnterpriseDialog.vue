@@ -18,7 +18,7 @@
 
 <template>
   <v-dialog v-model="show" width="650px">
-    <v-system-bar>
+    <v-system-bar absolute>
       <v-spacer />
       <span> Upgrade to COSMOS Enterprise Edition </span>
       <v-spacer />
@@ -64,7 +64,7 @@ import logo from '../../public/img/logo.png'
 
 export default {
   props: {
-    modelValue: Boolean, // value is the default prop when using v-model
+    modelValue: Boolean, // modelValue is the default prop when using v-model
     reason: String,
   },
   emits: ['update:modelValue'],
@@ -85,16 +85,28 @@ export default {
   },
 }
 </script>
+
 <style scoped>
 .logo {
   float: right;
   margin: 15px;
 }
+
 .cosmos {
   text-align: center;
   font-size: 18pt;
 }
+
 .reason {
   font-weight: bold;
+}
+
+.v-system-bar {
+  /* Not sure why, but these are needed to make behavior consistent across where this dialog is opened from. We could
+     probably re-engineer how this dialog is opened, rather than being a child of things like ScopeSelector */
+  position: relative !important;
+  top: 24px !important;
+  width: unset !important;
+  left: unset !important;
 }
 </style>
