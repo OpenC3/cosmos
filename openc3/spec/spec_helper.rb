@@ -305,14 +305,6 @@ def kill_leftover_threads
   end
 end
 
-$system_exit_count = 0
-# Overload exit so we know when it is called
-alias old_exit exit
-def exit(*args)
-  $system_exit_count += 1
-  super(*args)
-end
-
 RSpec.configure do |config|
   # Enforce the new expect() syntax instead of the old should syntax
   config.expect_with :rspec do |c|
@@ -324,14 +316,6 @@ RSpec.configure do |config|
   config.before(:all) do
     $saved_stdout_global = $stdout
     $saved_stdout_const = Object.const_get(:STDOUT)
-  end
-
-  config.after(:all) do
-    OpenC3.disable_warnings do
-      def Object.exit(*args)
-        old_exit(*args)
-      end
-    end
   end
 
   # Before each test make sure $stdout and STDOUT are set. They might be messed

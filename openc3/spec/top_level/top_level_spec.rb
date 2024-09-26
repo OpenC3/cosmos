@@ -81,7 +81,7 @@ module OpenC3
 
   describe "self.marshal_dump, self.marshal_load" do
     it "dumps and load a Ruby object" do
-      capture_io do |stdout|
+      capture_io do |_stdout|
         array = [1, 2, 3, 4]
         OpenC3.marshal_dump('marshal_test', array)
         array_load = OpenC3.marshal_load('marshal_test')
@@ -93,9 +93,7 @@ module OpenC3
 
     it "rescues marshal dump errors" do
       capture_io do |stdout|
-        system_exit_count = $system_exit_count
-        OpenC3.marshal_dump('marshal_test', Proc.new { '' })
-        expect($system_exit_count).to be > system_exit_count
+        expect { OpenC3.marshal_dump('marshal_test', Proc.new { '' }) }.to raise_error(SystemExit)
         expect(stdout.string).to match("is defined for class Proc")
       end
       OpenC3.cleanup_exceptions()
@@ -103,12 +101,10 @@ module OpenC3
 
     it "rescues marshal dump errors in a Packet with a Mutex" do
       capture_io do |stdout|
-        system_exit_count = $system_exit_count
         pkt = Packet.new("TGT", "PKT")
         pkt.append_item("ITEM", 16, :UINT)
         pkt.read_all
-        OpenC3.marshal_dump('marshal_test', pkt)
-        expect($system_exit_count).to be > system_exit_count
+        expect { OpenC3.marshal_dump('marshal_test', pkt) }.to raise_error(SystemExit)
         expect(stdout.string).to match("Mutex exists in a packet")
       end
       OpenC3.cleanup_exceptions()
@@ -139,7 +135,7 @@ module OpenC3
   describe "run_process" do
     it "returns a Thread" do
       if Kernel.is_windows?
-        capture_io do |stdout|
+        capture_io do |_stdout|
           thread = OpenC3.run_process("ping 127.0.0.1 -n 2 -w 1000 > nul")
           sleep 0.1
           expect(thread).to be_a Thread
@@ -164,10 +160,10 @@ module OpenC3
   end
 
   describe "hash_files" do
-    xit "calculates a hashing sum across files in md5 mode" do
+    it "calculates a hashing sum across files in md5 mode" do
       File.open(File.join(OpenC3::PATH, 'test1.txt'), 'w') { |f| f.puts "test1" }
       File.open(File.join(OpenC3::PATH, 'test2.txt'), 'w') { |f| f.puts "test2" }
-      digest = OpenC3.hash_files(["test1.txt", "test2.txt"])
+      digest = OpenC3.hash_files(["test1.txt", "test2.txt"], nil, 'MD5')
       expect(digest.digest.length).to be 16
       expect(digest.hexdigest).to eql 'e51dfbea83de9c7e6b49560089d8a170'
       File.delete(File.join(OpenC3::PATH, 'test1.txt'))
@@ -207,7 +203,7 @@ module OpenC3
         # Move the defaults output dir out of the way for this test
         begin
           FileUtils.mv('outputs', 'outputs_bak')
-        rescue => err
+        rescue => e
           Dir.entries('outputs/logs').each do |entry|
             next if entry[0] == '.'
 
@@ -217,7 +213,7 @@ module OpenC3
               STDOUT.puts entry
             end
           end
-          raise err
+          raise e
         end
 
         # Create a logs directory as the first order backup
@@ -251,9 +247,7 @@ module OpenC3
   describe "handle_fatal_exception" do
     it "writes to the Logger and exit" do
       capture_io do |stdout|
-        system_exit_count = $system_exit_count
-        OpenC3.handle_fatal_exception(RuntimeError.new)
-        expect($system_exit_count).to eql(system_exit_count + 1)
+        expect { OpenC3.handle_fatal_exception(RuntimeError.new) }.to raise_error(SystemExit)
         expect(stdout.string).to match("Fatal Exception! Exiting...")
       end
       OpenC3.cleanup_exceptions()
@@ -263,9 +257,7 @@ module OpenC3
   describe "handle_critical_exception" do
     it "writes to the Logger" do
       capture_io do |stdout|
-        system_exit_count = $system_exit_count
         OpenC3.handle_critical_exception(RuntimeError.new)
-        expect($system_exit_count).to eql(system_exit_count)
         expect(stdout.string).to match("Critical Exception!")
       end
       OpenC3.cleanup_exceptions()
