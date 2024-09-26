@@ -27,6 +27,7 @@
       :settings="labelValueSettings"
     />
     <limitsbar-widget
+      class="pt-1"
       :parameters="parameters"
       :settings="[...settings]"
       :widget-index="2"

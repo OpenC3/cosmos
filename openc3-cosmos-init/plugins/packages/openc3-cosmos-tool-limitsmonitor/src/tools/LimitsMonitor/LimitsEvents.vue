@@ -45,7 +45,7 @@
       disable-pagination
       hide-default-footer
       multi-sort
-      dense
+      density="compact"
       :height="calcTableHeight()"
       data-test="limits-events"
     >
@@ -84,9 +84,9 @@ export default {
       cable: new Cable(),
       search: '',
       headers: [
-        { text: 'Time', value: 'time_nsec', width: 250 },
-        { text: 'Level', value: 'level', sortable: false },
-        { text: 'Message', value: 'message' },
+        { title: 'Time', value: 'time_nsec', width: 250 },
+        { title: 'Level', value: 'level', sortable: false },
+        { title: 'Message', value: 'message' },
       ],
     }
   },

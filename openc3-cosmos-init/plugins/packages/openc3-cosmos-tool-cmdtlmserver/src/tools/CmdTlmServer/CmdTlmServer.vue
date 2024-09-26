@@ -53,7 +53,7 @@
           <span>Options</span>
           <v-spacer />
         </v-system-bar>
-        <div class="pa-3">
+        <div class="mt-6 pa-3">
           <v-text-field
             min="0"
             max="10000"

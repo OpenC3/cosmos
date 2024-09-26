@@ -94,11 +94,10 @@ export default {
     },
     resetConfigBase: function () {
       localStorage.removeItem(`${this.configKey}__default`)
-      // fullPath includes the query options like: ?config=test
-      if (this.$router.currentRoute.fullPath !== '/') {
-        this.$router.replace(this.$router.currentRoute.path)
-        this.$router.go()
-      }
+
+      const query = Object.assign({}, this.$route.query)
+      delete query.config
+      this.$router.replace({ query })
     },
   },
 }

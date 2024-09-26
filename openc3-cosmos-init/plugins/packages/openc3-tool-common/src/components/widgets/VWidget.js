@@ -46,6 +46,7 @@ export default {
   },
   data() {
     return {
+      appliedTimeZone: 'local',
       curValue: null,
       prevValue: null,
       grayLevel: 80,
@@ -148,17 +149,17 @@ export default {
     valueClass: function () {
       return 'value shrink pa-1 ' + 'openc3-' + this.limitsColor
     },
-    astroIcon() {
+    astroStatus() {
       switch (this.limitsColor) {
         case 'green':
-          return '$vuetify.icons.astro-status-normal'
+          return 'normal'
         case 'yellow':
-          return '$vuetify.icons.astro-status-caution'
+          return 'caution'
         case 'red':
-          return '$vuetify.icons.astro-status-critical'
+          return 'critical'
         case 'blue':
           // This one is a little weird but it matches our color scheme
-          return '$vuetify.icons.astro-status-standby'
+          return 'standby'
         default:
           return null
       }
@@ -222,7 +223,9 @@ export default {
 
       if (this.screen) {
         this.screen.addItem(this.valueId)
-        this.timeZone = this.screen.timeZone
+        this.appliedTimeZone = this.screen.timeZone
+      } else {
+        this.appliedTimeZone = this.timeZone
       }
     }
   },
@@ -247,7 +250,7 @@ export default {
         (this.valueId.includes('PACKET_TIMEFORMATTED') ||
           this.valueId.includes('RECEIVED_TIMEFORMATTED'))
       ) {
-        return this.formatUtcToLocal(new Date(value), this.timeZone)
+        return this.formatUtcToLocal(new Date(value), this.appliedTimeZone)
       }
       // Convert json raw strings into the raw bytes
       // Only convert the first 32 bytes before adding an ellipse

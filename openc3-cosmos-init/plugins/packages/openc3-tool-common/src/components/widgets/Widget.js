@@ -48,6 +48,7 @@ export default {
   data() {
     return {
       screen: null,
+      appliedSettings: [],
       // We make style a data attribute so as we recurse through nested
       // widgets we can check to see if style attributes have been applied
       // at any level of the widget, i.e. if LABELVALUE applies a style
@@ -87,7 +88,7 @@ export default {
       }
     })
     // Figure out any subsettings that apply
-    this.settings = this.settings
+    this.appliedSettings = this.settings
       .map((setting) => {
         const index = parseInt(setting[0])
         // If the first value isn't a number or if there isn't a widgetIndex
@@ -171,7 +172,7 @@ export default {
             parser,
             `Not enough parameters for ${keyword}.`,
             usage,
-            'https://docs.openc3.com/docs/configuration'
+            'https://docs.openc3.com/docs/configuration',
           )
         }
       }
@@ -181,7 +182,7 @@ export default {
           parser,
           `Too many parameters for ${keyword}.`,
           usage,
-          'https://docs.openc3.com/docs/configuration'
+          'https://docs.openc3.com/docs/configuration',
         )
       }
     },
@@ -191,12 +192,14 @@ export default {
       // and passes an explicit width setting to use
       let foundSetting = null
       if (this.widgetIndex !== null) {
-        foundSetting = this.settings.find(
+        foundSetting = this.appliedSettings.find(
           (setting) =>
-            parseInt(setting[0]) === this.widgetIndex && setting[1] === 'WIDTH'
+            parseInt(setting[0]) === this.widgetIndex && setting[1] === 'WIDTH',
         )
       } else {
-        foundSetting = this.settings.find((setting) => setting[0] === 'WIDTH')
+        foundSetting = this.appliedSettings.find(
+          (setting) => setting[0] === 'WIDTH',
+        )
       }
       if (foundSetting) {
         return foundSetting['WIDTH']
@@ -207,14 +210,14 @@ export default {
           if (this.widgetIndex !== null) {
             setting.unshift(this.widgetIndex)
           }
-          this.settings.push(setting)
+          this.appliedSettings.push(setting)
           return parseInt(width)
         } else {
           let setting = ['WIDTH', `${defaultWidth}${units}`]
           if (this.widgetIndex !== null) {
             setting.unshift(this.widgetIndex)
           }
-          this.settings.push(setting)
+          this.appliedSettings.push(setting)
           return parseInt(defaultWidth)
         }
       }
@@ -223,12 +226,12 @@ export default {
       // Don't set the height if someone has already set it
       let foundSetting = null
       if (this.widgetIndex !== null) {
-        foundSetting = this.settings.find(
+        foundSetting = this.appliedSettings.find(
           (setting) =>
             parseInt(setting[0]) === this.widgetIndex && setting[1] === 'HEIGHT'
         )
       } else {
-        foundSetting = this.settings.find((setting) => setting[0] === 'HEIGHT')
+        foundSetting = this.appliedSettings.find((setting) => setting[0] === 'HEIGHT')
       }
       if (foundSetting) {
         return foundSetting['HEIGHT']
@@ -239,14 +242,14 @@ export default {
           if (this.widgetIndex !== null) {
             setting.unshift(this.widgetIndex)
           }
-          this.settings.push(setting)
+          this.appliedSettings.push(setting)
           return parseInt(height)
         } else {
           let setting = ['HEIGHT', `${defaultHeight}${units}`]
           if (this.widgetIndex !== null) {
             setting.unshift(this.widgetIndex)
           }
-          this.settings.push(setting)
+          this.appliedSettings.push(setting)
           return parseInt(defaultHeight)
         }
       }

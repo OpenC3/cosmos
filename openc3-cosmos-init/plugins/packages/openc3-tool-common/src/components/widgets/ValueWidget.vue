@@ -27,17 +27,19 @@
         <v-text-field
           variant="solo"
           density="compact"
+          flat
           readonly
-          single-line
-          hide-no-data
           hide-details
           :model-value="_value"
           :class="valueClass"
-          :prepend-inner-icon="astroIcon"
           data-test="value"
           @contextmenu="showContextMenu"
           v-bind="props"
-        />
+        >
+          <template v-slot:prepend-inner v-if="astroStatus">
+            <rux-status :status="astroStatus" />
+          </template>
+        </v-text-field>
       </template>
       <span>{{ fullName }}</span>
     </v-tooltip>
@@ -113,20 +115,26 @@ export default {
 .value-widget-container {
   min-height: 34px;
 }
-.value-widget-container :deep(.v-input__slot) {
+.value-widget-container :deep(.v-field) {
   background: rgba(var(--aging), var(--aging), var(--aging), 1) !important;
+  height: 26px;
+}
+.value-widget-container :deep(.v-field__loader) {
+  display: none !important;
 }
 .value-widget-container :deep(input) {
   text-align: var(--text-align) !important;
 }
 // If we're showing an icon then shrink the left padding
-:deep(.v-input__slot:has(.v-icon)) {
+:deep(.v-field:has(.v-icon)) {
   padding-left: 2px !important;
 }
+/*
 // Push some margin on top of the icon to center it in the text-field
 .value-widget-container :deep(.v-icon) {
   margin-top: 9px;
 }
+*/
 .value :deep(div) {
   min-height: 24px !important;
   display: flex !important;

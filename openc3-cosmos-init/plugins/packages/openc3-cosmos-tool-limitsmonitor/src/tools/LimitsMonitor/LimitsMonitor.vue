@@ -52,15 +52,15 @@
           <span>Change Limits Set</span>
           <v-spacer />
         </v-system-bar>
-        <v-card-text class="pt-1">
-          <span style="display: block"
-            >The Limits Set is a global option which changes the Limits Set
-            across all tools.</span
-          >
-          <span style="display: block"
-            >NOTE: Changing this option clears the current list and recalculates
-            based on the new set.</span
-          >
+        <v-card-text class="mt-6">
+          <span style="display: block">
+            The Limits Set is a global option which changes the Limits Set
+            across all tools.
+          </span>
+          <span style="display: block">
+            NOTE: Changing this option clears the current list and recalculates
+            based on the new set.
+          </span>
           <v-select
             label="Limits Set"
             :items="limitsSets"
@@ -69,7 +69,7 @@
             variant="outlined"
             data-test="limits-set"
             hide-details
-            class="pt-3"
+            class="mt-3"
             style="max-width: 200px"
           />
         </v-card-text>
