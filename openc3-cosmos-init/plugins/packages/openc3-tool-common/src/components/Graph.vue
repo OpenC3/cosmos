@@ -451,6 +451,10 @@
 
           <v-list-item-title> Edit </v-list-item-title>
         </v-list-item>
+        <v-list-item icon @click="clearData([selectedItem])">
+          <v-icon>mdi-eraser</v-icon>
+          <v-list-item-title> Clear </v-list-item-title>
+        </v-list-item>
         <v-list-item icon @click="removeItems([selectedItem])">
           <v-icon>mdi-delete</v-icon>
           <v-list-item-title> Delete </v-list-item-title>
@@ -1615,6 +1619,28 @@ export default {
             })
           },
         )
+      }
+    },
+    clearAllData: function () {
+      // Clear all data so delete the time data as well
+      this.data[0] = []
+      this.clearData(this.items)
+    },
+    clearData: function (itemArray) {
+      for (const key of itemArray.map(this.subscriptionKey)) {
+        let index = this.indexes[key]
+        this.data[index] = Array(this.data[0].length).fill(null)
+        this.graph.setData(this.data)
+        if (this.overview) {
+          this.overview.setData(this.data)
+        }
+      }
+      // data.length of 2 means we only have 1 item
+      // so delete all the time (data[0]) to start fresh
+      if (this.data.length === 2) {
+        this.data[0] = []
+        this.graph.setData(this.data)
+        this.overview.setData(this.data)
       }
     },
     removeItems: function (itemArray) {

@@ -96,14 +96,14 @@
                 :data-test="formatDT(`${title} ${menu.label} ${option.label}`)"
                 :key="j + '-list'"
               >
-                <v-list-item-action v-if="option.radio">
+                <v-list-item-action class="list-action" v-if="option.radio">
                   <v-radio
                     color="secondary"
                     :label="option.label"
                     :value="option.label"
                   />
                 </v-list-item-action>
-                <v-list-item-action v-if="option.checkbox">
+                <v-list-item-action class="list-action" v-if="option.checkbox">
                   <v-checkbox
                     v-model="option.checked"
                     color="secondary"
@@ -172,6 +172,10 @@ export default {
 }
 span.v-btn__content span {
   padding-right: 5px;
+}
+.list-action :deep(label) {
+  color: white;
+  padding-left: 10px;
 }
 .myicon {
   background-color: var(--color-background-surface-selected);

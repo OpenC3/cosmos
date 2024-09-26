@@ -574,6 +574,7 @@ Defines the class that is used too read raw values from the packet. Defaults to 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Accessor Class Name | The name of the accessor class | True |
+| Argument | Additional argument passed to the accessor class constructor | False |
 
 ### TEMPLATE
 <div class="right">(Since 5.0.10)</div>**Defines a template string used to initialize the command before default values are filled in**
@@ -631,6 +632,56 @@ Generally the template file is formatted in JSON or HTML and then values are fil
 
 Used for packet definitions that can be used as structures for items with a given packet.
 
+
+### VALIDATOR
+<div class="right">(Since 5.19.0)</div>**Defines a validator class for a command**
+
+Validator class is used to validate the command success or failure with both a pre_check and post_check method.
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Class Filename | The filename which contains the Ruby or Python class. The filename must be named after the class such that the class is a CamelCase version of the underscored filename. For example, 'command_validator.rb' should contain 'class CommandValidator'. | True |
+| Argument | Additional argument passed to the validator class constructor | False |
+
+Ruby Example:
+```ruby
+VALIDATOR custom_validator.rb
+
+Defined in custom_validator.rb:
+
+require 'openc3/packets/command_validator'
+class CustomValidator < OpenC3::CommandValidator
+  def pre_check(packet)
+    if tlm("TGT PKT ITEM") == 0
+      return [false, "TGT PKT ITEM is 0"]
+    end
+    @cmd_acpt_cnt = tlm("TGT PKT CMD_ACPT_CNT")
+    return [true, nil]
+  end
+  def post_check(packet)
+    wait_check("TGT PKT CMD_ACPT_CNT > #{@cmd_acpt_cnt}", 10)
+    return [true, nil]
+  end
+end
+```
+
+Python Example:
+```python
+VALIDATOR custom_validator.rb
+
+Defined in custom_validator.py:
+
+class CustomValidator(CommandValidator):
+    def pre_check(self, command):
+        if tlm("TGT PKT ITEM") == 0:
+            return [False, "TGT PKT ITEM is 0"]
+        self.cmd_acpt_cnt = tlm("INST HEALTH_STATUS CMD_ACPT_CNT")
+        return [True, None]
+
+    def post_check(self, command):
+        wait_check(f"INST HEALTH_STATUS CMD_ACPT_CNT > {self.cmd_acpt_cnt}", 10)
+        return [True, None]
+```
 
 ## SELECT_COMMAND
 **Selects an existing command packet for editing**

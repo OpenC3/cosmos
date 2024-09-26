@@ -505,6 +505,7 @@ export default {
       showDisconnect: false,
       files: {},
       breakpoints: {},
+      enableStackTraces: false,
       filename: NEW_FILENAME,
       readOnlyUser: false,
       executeUser: true,
@@ -633,8 +634,8 @@ export default {
               },
             },
             {
-              label: 'New Test Suite',
-              icon: 'mdi-file-plus',
+              label: 'New Suite',
+              icon: 'mdi-file-document-plus',
               disabled: this.scriptId || this.readOnlyUser,
               subMenu: [
                 {
@@ -726,6 +727,27 @@ export default {
               disabled: this.scriptId,
               command: () => {
                 this.editor.execCommand('replace')
+              },
+            },
+            {
+              label: 'Set Line Delay',
+              icon: 'mdi-invoice-text-clock',
+              disabled: this.scriptId,
+              command: () => {
+                this.$dialog.open({
+                  title: 'Info',
+                  text:
+                    'You can set the line delay in seconds using the api method set_line_delay().<br/><br/>' +
+                    'The default line delay is 0.1 seconds between lines. ' +
+                    'Adding set_line_delay(0) to the top of your script will execute the script at maximum speed. ' +
+                    'However, this can make it difficult to see and pause the script. ' +
+                    'Executing set_line_delay(1) will cause a 1 second delay between lines.',
+                  okText: 'OK',
+                  okClass: 'primary',
+                  validateText: null,
+                  cancelText: null,
+                  html: true,
+                })
               },
             },
           ],
@@ -821,6 +843,15 @@ export default {
               },
             },
             {
+              label: 'Enable Stack Traces',
+              checkbox: true,
+              checked: false,
+              disabled: this.scriptId,
+              command: (item) => {
+                this.enableStackTraces = item.checked
+              },
+            },
+            {
               divider: true,
             },
             {
@@ -902,6 +933,8 @@ export default {
       }
       if (role == 'admin' || role == 'operator') {
         this.readOnlyUser = false
+        this.executeUser = true
+      } else if (role == 'runner') {
         this.executeUser = true
       } else {
         await Api.get(`/openc3-api/roles/${role}`).then((response) => {
@@ -1314,10 +1347,17 @@ export default {
           breakpoints,
         },
       })
-        .then((response) => {
+        .then((_response) => {
+          let env = this.scriptEnvironment.env
+          if (this.enableStackTraces) {
+            env = env.concat({
+              key: 'OPENC3_FULL_BACKTRACE',
+              value: '1',
+            })
+          }
           return Api.post(`/script-api/scripts/${selectionTempFilename}/run`, {
             data: {
-              environment: this.scriptEnvironment.env,
+              environment: env,
             },
           })
         })
@@ -1534,8 +1574,15 @@ export default {
       if (this.showDisconnect) {
         url += '/disconnect'
       }
+      let env = this.scriptEnvironment.env
+      if (this.enableStackTraces) {
+        env = env.concat({
+          key: 'OPENC3_FULL_BACKTRACE',
+          value: '1',
+        })
+      }
       let data = {
-        environment: this.scriptEnvironment.env,
+        environment: env,
       }
       if (suiteRunner) {
         data['suiteRunner'] = event

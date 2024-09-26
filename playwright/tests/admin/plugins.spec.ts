@@ -41,6 +41,9 @@ test('shows and hides built-in tools', async ({ page, utils }) => {
       'openc3-cosmos-tool-calendar',
     )
     await expect(page.locator('id=openc3-tool')).not.toContainText(
+      'openc3-cosmos-tool-cmdhistory',
+    )
+    await expect(page.locator('id=openc3-tool')).not.toContainText(
       'openc3-cosmos-tool-grafana',
     )
   } else {
@@ -107,6 +110,9 @@ test('shows and hides built-in tools', async ({ page, utils }) => {
     )
     await expect(page.locator('id=openc3-tool')).toContainText(
       'openc3-cosmos-tool-calendar',
+    )
+    await expect(page.locator('id=openc3-tool')).toContainText(
+      'openc3-cosmos-tool-cmdhistory',
     )
     await expect(page.locator('id=openc3-tool')).toContainText(
       'openc3-cosmos-tool-grafana',

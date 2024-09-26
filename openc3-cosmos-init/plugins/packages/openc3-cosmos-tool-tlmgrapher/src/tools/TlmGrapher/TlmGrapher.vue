@@ -252,6 +252,13 @@ export default {
               divider: true,
             },
             {
+              label: 'Clear All Data',
+              icon: 'mdi-eraser',
+              command: () => {
+                this.clearAllData()
+              },
+            },
+            {
               label: 'Settings',
               icon: 'mdi-cog',
               command: () => {
@@ -451,6 +458,11 @@ export default {
         this.closeGraph(graph)
       }
       this.counter = 0
+    },
+    clearAllData: function () {
+      for (let graph of this.graphs) {
+        this.$refs[`graph${graph}`][0].clearAllData()
+      }
     },
     minMaxGraph: function (id) {
       this.selectedGraphId = id

@@ -269,10 +269,12 @@ export default {
       })
       let api = null
       let start = null
+      let uuid = null
       switch (item.type) {
         case 'activity':
           api = `timeline/${item.activity.name}/activity`
           start = item.activity.start
+          uuid = item.activity.uuid
           break
         case 'metadata':
           api = 'metadata'
@@ -294,7 +296,11 @@ export default {
         )
         .then((dialog) => {
           this.localEvents.splice(deleteIndex, 1)
-          return Api.delete(`/openc3-api/${api}/${start}`)
+          let url = `/openc3-api/${api}/${start}`
+          if (uuid) {
+            url += `/${uuid}`
+          }
+          return Api.delete(url)
         })
         .then((response) => {
           this.$emit('update')

@@ -246,10 +246,14 @@ export default {
     },
     formatValue(value) {
       if (
+        value &&
         this.valueId &&
         (this.valueId.includes('PACKET_TIMEFORMATTED') ||
           this.valueId.includes('RECEIVED_TIMEFORMATTED'))
       ) {
+        // Our dates have / rather than - which results in an invalid date on old browsers
+        // when they call new Date(value)
+        value = value.replaceAll('/', '-')
         return this.formatUtcToLocal(new Date(value), this.appliedTimeZone)
       }
       // Convert json raw strings into the raw bytes

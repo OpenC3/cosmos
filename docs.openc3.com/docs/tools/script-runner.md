@@ -85,7 +85,7 @@ If a script is structured as a Suite it automatically causes Script Runner to pa
 
 ![Suite Script](/img/script_runner/script_suite.png)
 
-To generate a new Suite use the File -> New Test Suite and then choose either Ruby or Python to create a Suite in that language.
+To generate a new Suite use the File -> New Suite and then choose either Ruby or Python to create a Suite in that language.
 
 ### Group
 

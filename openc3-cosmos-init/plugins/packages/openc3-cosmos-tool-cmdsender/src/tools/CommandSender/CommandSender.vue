@@ -696,16 +696,28 @@ export default {
 
             obs.then(
               (response) => {
-                this.processCmdResponse(cmd, response)
+                this.processCmdResponse(
+                  true,
+                  targetName,
+                  commandName,
+                  cmd,
+                  response,
+                )
               },
               (error) => {
-                this.processCmdResponse(false, error)
+                this.processCmdResponse(
+                  false,
+                  targetName,
+                  commandName,
+                  cmd,
+                  error,
+                )
               },
             )
           }
         },
         (error) => {
-          this.processCmdResponse(false, error)
+          this.processCmdResponse(false, targetName, commandName, cmd, error)
         },
       )
     },
@@ -760,10 +772,22 @@ export default {
 
       obs.then(
         (response) => {
-          this.processCmdResponse(cmd, response)
+          this.processCmdResponse(
+            true,
+            this.lastTargetName,
+            this.lastCommandName,
+            cmd,
+            response,
+          )
         },
         (error) => {
-          this.processCmdResponse(false, error)
+          this.processCmdResponse(
+            false,
+            this.lastTargetName,
+            this.lastCommandName,
+            cmd,
+            error,
+          )
         },
       )
     },
@@ -774,9 +798,13 @@ export default {
       this.sendDisabled = false
     },
 
-    processCmdResponse(cmd_sent, response) {
+    processCmdResponse(success, targetName, commandName, cmd_sent, response) {
+      // If it was sent from history it's all in targetName, see sendCmd for details
+      if (commandName === undefined) {
+        ;[targetName, commandName] = targetName.split(' ').slice(0, 2)
+      }
       var msg = ''
-      if (cmd_sent) {
+      if (success) {
         msg = `${cmd_sent}("${response[0]} ${response[1]}`
         var keys = Object.keys(response[2])
         if (keys.length > 0) {
@@ -820,7 +848,7 @@ export default {
         }
         this.status = msg
       } else {
-        var context = 'sending ' + this.targetName + ' ' + this.commandName
+        var context = 'sending ' + targetName + ' ' + commandName
         this.displayError(context, response, true)
       }
       // Make a copy of the history

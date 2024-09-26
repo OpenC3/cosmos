@@ -149,7 +149,7 @@ class InterfaceCmdHandlerThread:
                     InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
                 except RuntimeError as error:
                     self.logger.error(f"{self.interface.name}: interface_cmd: {repr(error)}")
-                    return error.message
+                    return repr(error)
                 return "SUCCESS"
             if msg_hash.get(b"protocol_cmd"):
                 params = json.loads(msg_hash[b"protocol_cmd"])
@@ -167,7 +167,7 @@ class InterfaceCmdHandlerThread:
                     InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
                 except RuntimeError as error:
                     self.logger.error(f"{self.interface.name}: protocol_cmd:{repr(error)}")
-                    return error.message
+                    return repr(error)
                 return "SUCCESS"
             if msg_hash.get(b"inject_tlm"):
                 handle_inject_tlm(msg_hash[b"inject_tlm"], self.scope)
@@ -208,28 +208,59 @@ class InterfaceCmdHandlerThread:
                 self.logger.error(f"{self.interface.name}: {repr(error)}")
                 return repr(error)
 
+            command.extra = command.extra or {}
+            command.extra["cmd_string"] = msg_hash[b"cmd_string"].decode()
+            command.extra["username"] = msg_hash[b"username"].decode()
             if hazardous_check:
                 hazardous, hazardous_description = System.commands.cmd_pkt_hazardous(command)
                 # Return back the error, description, and the formatted command
                 # This allows the error handler to simply re-send the command
                 if hazardous:
-                    return f"HazardousError\n{hazardous_description}\n{System.commands.format(command)}"
+                    return f"HazardousError\n{hazardous_description}\n{command.extra['cmd_string']}"
 
+            validate = ConfigParser.handle_true_false(msg_hash[b"validate"].decode())
             try:
                 if self.interface.connected():
+                    result = True
+                    reason = None
+                    if command.validator and validate:
+                        try:
+                            result, reason = command.validator.pre_check(command)
+                        except Exception as error:
+                            result = False
+                            reason = repr(error)
+                        if not result:
+                            message = f"pre_check returned false for {command.extra['cmd_string']} due to {reason}"
+                            raise WriteRejectError(message)
+
                     self.count += 1
                     if self.metric is not None:
                         self.metric.set(name="interface_cmd_total", value=self.count, type="counter")
-
                     self.interface.write(command)
-                    CommandTopic.write_packet(command, scope=self.scope)
+
+                    if command.validator and validate:
+                        try:
+                            result, reason = command.validator.post_check(command)
+                        except Exception as error:
+                            result = False
+                            reason = repr(error)
+                        command.extra["cmd_success"] = result
+                        if reason:
+                            command.extra["cmd_reason"] = reason
+
                     CommandDecomTopic.write_packet(command, scope=self.scope)
+                    CommandTopic.write_packet(command, scope=self.scope)
                     InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
+
+                    if not result:
+                        message = f"post_check returned false for {command.extra['cmd_string']} due to {reason}"
+                        raise WriteRejectError(message)
+
                     return "SUCCESS"
                 else:
                     return f"Interface not connected: {self.interface.name}"
             except WriteRejectError as error:
-                return error.message
+                return repr(error)
         except RuntimeError as error:
             self.logger.error(f"{self.interface.name}: {repr(error)}")
             return repr(error)
@@ -358,7 +389,7 @@ class RouterTlmHandlerThread:
                     return "SUCCESS"
                 except RuntimeError as error:
                     self.logger.error(f"{self.router.name}: {repr(error)}")
-                    return error.message
+                    return repr(error)
 
 
 class InterfaceMicroservice(Microservice):
@@ -465,9 +496,7 @@ class InterfaceMicroservice(Microservice):
             return self.interface  # Return the interface/router since we may have recreated it
         # Need to rescue Exception so we cover LoadError
         except RuntimeError as error:
-            self.logger.error(
-                f"Attempting connection #{self.interface.connection_string} failed due to {error.message}"
-            )
+            self.logger.error(f"Attempting connection #{self.interface.connection_string} failed due to {repr(error)}")
             # if SignalException === error:
             #   self.logger.info(f"{self.interface.name}: Closing from signal")
             #   self.cancel_thread = True
@@ -614,9 +643,7 @@ class InterfaceMicroservice(Microservice):
         # case Errno='ECONNREFUSED', Errno='ECONNRESET', Errno='ETIMEDOUT', Errno='ENOTSOCK', Errno='EHOSTUNREACH', IOError:
         #   # Do not write an exception file for these extremely common cases
         # else _:
-        if connect_error is RuntimeError and (
-            "canceled" in connect_error.message or "timeout" in connect_error.message
-        ):
+        if connect_error is RuntimeError and ("canceled" in connect_error.message or "timeout" in repr(connect_error)):
             pass  # Do not write an exception file for these extremely common cases
         else:
             self.logger.error(f"{self.interface.name}: {str(connect_error)}")

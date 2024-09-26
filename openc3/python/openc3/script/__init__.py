@@ -14,7 +14,6 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from openc3.api import WHITELIST
 from openc3.script.server_proxy import ApiServerProxy, ScriptServerProxy
 from openc3.utilities.extract import convert_to_value
 
@@ -141,6 +140,7 @@ from .metadata import *
 from .screen import *
 from .script_runner import *
 from .storage import *
+from openc3.api import WHITELIST
 
 # Define all the WHITELIST methods
 current_functions = dir()

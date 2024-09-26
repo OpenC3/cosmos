@@ -32,9 +32,7 @@
         <div class="pa-2">
           <v-card-text>
             <v-row>
-              <v-card-title style="white-space: pre-line">{{
-                title
-              }}</v-card-title>
+              <span class="title">{{ title }}</span>
             </v-row>
             <v-row v-if="message">
               <span
@@ -133,3 +131,11 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+.title {
+  font-size: 1.125rem;
+  font-weight: bold;
+  padding-bottom: 5px;
+}
+</style>

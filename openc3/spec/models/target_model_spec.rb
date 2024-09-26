@@ -187,10 +187,10 @@ module OpenC3
 
       it "can set packet" do
         pkts = TargetModel.packets("INST", type: :TLM, scope: "DEFAULT")
-        model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT")
-        expect {TargetModel.set_packet('INST', 'ADCS', pkts[0], type: :TLM, scope: "DEFAULT")}
-        .not_to raise_error(RuntimeError, /Unknown type TLM for INST ADCS/)
-        expect {TargetModel.set_packet('INST', 'ADCS', pkts[0], type: :NILTYPE, scope: "DEFAULT")}
+        TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT")
+        expect { TargetModel.set_packet('INST', 'ADCS', pkts[0], type: :TLM, scope: "DEFAULT") }
+        .not_to raise_error
+        expect { TargetModel.set_packet('INST', 'ADCS', pkts[0], type: :NILTYPE, scope: "DEFAULT") }
         .to raise_error(RuntimeError, /Unknown type NILTYPE for INST ADCS/)
       end
 

@@ -181,7 +181,7 @@ module OpenC3
           expect { @api.send(method, "INST", "ABORT", timeout: "YES") }.to raise_error("Invalid timeout parameter: YES. Must be numeric.")
           begin
             @process = false
-            expect { @api.send(method, "INST", "ABORT") }.to raise_error("Timeout of 5s waiting for cmd ack")
+            expect { @api.send(method, "INST", "ABORT") }.to raise_error("Timeout of 30s waiting for cmd ack")
             expect { @api.send(method, "INST", "ABORT", timeout: 1) }.to raise_error("Timeout of 1s waiting for cmd ack")
           ensure
             @process = true
