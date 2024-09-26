@@ -86,8 +86,8 @@ module OpenC3
       return _handle_response(response, 'Failed to get timeline activity')
     end
 
-    def delete_timeline_activity(name, start, scope: $openc3_scope, token: $openc3_token)
-      response = $api_server.request('delete', "/openc3-api/timeline/#{name}/activity/#{start}", scope: scope)
+    def delete_timeline_activity(name, start, uuid, scope: $openc3_scope, token: $openc3_token)
+      response = $api_server.request('delete', "/openc3-api/timeline/#{name}/activity/#{start}/#{uuid}", scope: scope)
       return _handle_response(response, 'Failed to delete timeline activity')
     end
 

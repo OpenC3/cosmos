@@ -43,7 +43,7 @@ rescue LoadError
         if $openc3_authorize
           raise AuthError.new("Token is required") unless token
           unless OpenC3::AuthModel.verify(token)
-            raise AuthError.new("Password is invalid for '#{permission}' permission")
+            raise AuthError.new("Password is invalid")
           end
         end
         return "anonymous"

@@ -19,6 +19,10 @@ class AuthError(RuntimeError):
     pass
 
 
+class ForbiddenError(RuntimeError):
+    pass
+
+
 # All the authorization is done by Ruby code in the Ruby API backend.
 # This code is basically a NOOP for now. If we ever want to build a whole
 # new API endpoint in Python we'll have to implement an Enterprise
