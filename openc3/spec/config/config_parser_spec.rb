@@ -34,6 +34,11 @@ module OpenC3
       ConfigParser.progress_callback = nil
     end
 
+    after(:each) do
+      ConfigParser.message_callback = nil
+      ConfigParser.progress_callback = nil
+    end
+
     describe "parse_file", no_ext: true do
       it "yields keyword, parameters to the block" do
         tf = Tempfile.new('unittest')

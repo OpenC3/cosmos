@@ -291,8 +291,14 @@ module OpenC3
       interface = im.instance_variable_get(:@interface)
       interface.reconnect_delay = 0.1 # Override the reconnect delay to be quick
 
+      # Mock this because it calls exit which breaks SimpleCov
+      allow(OpenC3).to receive(:handle_fatal_exception) do |exception, _message|
+        expect(exception.message).to eql "test-error"
+      end
+
       capture_io do |stdout|
         Thread.new { im.run }
+
         sleep 0.1 # Allow to start and immediately crash
         expect(stdout.string).to include("RuntimeError")
 
