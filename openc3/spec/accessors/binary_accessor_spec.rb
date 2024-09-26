@@ -234,10 +234,13 @@ module OpenC3
         expect(item1_length.bit_offset).to eq(0)
         expect(item1.bit_offset).to eq(32)
         expect(item2.bit_offset).to eq(0)
-        @packet.buffer = "\x00\x00\x00\x04\x00\x01\x02\x03"
+        @packet.buffer = "\x00\x00\x00\x06\x48\x45\x4C\x4C\x4F\x00"
         expect(item1_length.bit_offset).to eq(0)
         expect(item1.bit_offset).to eq(32)
         expect(item2.bit_offset).to eq(0)
+        expect(@packet.read("item1_length")).to eql 6
+        expect(@packet.read("item1")).to eql "HELLO"
+        expect(@packet.read("item2")).to eql "\x00\x00\x00\x06\x48\x45\x4C\x4C\x4F\x00"
       end
     end
 
