@@ -545,8 +545,10 @@ module OpenC3
         dt_now = DateTime.now
         start = (dt_now + (1.0 / 24.0)).strftime("%s").to_i
         stop = (dt_now + (25.0 / 24.0)).strftime("%s").to_i
+        ActivityModel.new(name: name, scope: scope, start: start, stop: stop, kind: "COMMAND", data: {})
         expect {
-          ActivityModel.new(name: name, scope: scope, start: start, stop: stop, kind: "COMMAND", data: {})
+          # Add an extra second to go over 24h
+          ActivityModel.new(name: name, scope: scope, start: start, stop: stop + 1, kind: "COMMAND", data: {})
         }.to raise_error(ActivityInputError)
       end
     end
