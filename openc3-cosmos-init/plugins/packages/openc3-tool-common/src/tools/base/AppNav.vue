@@ -146,6 +146,7 @@
             class="clock"
             v-if="!astro.hideClock"
             date-in=""
+            :timezone="astroTimeZone"
           ></rux-clock>
         </v-col>
         <v-col align-self="center">
@@ -189,6 +190,7 @@ export default {
   data() {
     return {
       api: new OpenC3Api(),
+      timeZone: 'local',
       subtitle: null,
       // Update AstroSettings.vue when changing this
       astro: {
@@ -223,6 +225,12 @@ export default {
       }
       return result
     },
+    astroTimeZone: function () {
+      if (this.timeZone === 'local') {
+        return Intl.DateTimeFormat().resolvedOptions().timeZone
+      }
+      return this.timeZone
+    },
   },
   created() {
     this.api
@@ -241,6 +249,16 @@ export default {
       .then((response) => {
         if (response) {
           this.subtitle = response
+        }
+      })
+      .catch((error) => {
+        // Do nothing
+      })
+    this.api
+      .get_setting('time_zone')
+      .then((response) => {
+        if (response) {
+          this.timeZone = response
         }
       })
       .catch((error) => {
