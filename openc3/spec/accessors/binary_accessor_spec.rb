@@ -225,6 +225,23 @@ module OpenC3
         expect(item2_length.bit_offset).to eq 152
         expect(item2.bit_offset).to eq 168
       end
+
+      it "can define multiple variable sized items with overlaps 1" do
+        item1_length = @packet.define_item("item1_length", 0, 32, :INT)
+        item1 = @packet.define_item("item1", 32, 0, :STRING)
+        item1.variable_bit_size = {'length_item_name' => 'item1_length', 'length_value_bit_offset' => 0, 'length_bits_per_count' => 8}
+        item2 = @packet.define_item("item2", 0, 0, :BLOCK)
+        expect(item1_length.bit_offset).to eq(0)
+        expect(item1.bit_offset).to eq(32)
+        expect(item2.bit_offset).to eq(0)
+        @packet.buffer = "\x00\x00\x00\x06\x48\x45\x4C\x4C\x4F\x00"
+        expect(item1_length.bit_offset).to eq(0)
+        expect(item1.bit_offset).to eq(32)
+        expect(item2.bit_offset).to eq(0)
+        expect(@packet.read("item1_length")).to eql 6
+        expect(@packet.read("item1")).to eql "HELLO"
+        expect(@packet.read("item2")).to eql "\x00\x00\x00\x06\x48\x45\x4C\x4C\x4F\x00"
+      end
     end
 
     describe "read only" do
