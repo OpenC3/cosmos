@@ -230,7 +230,7 @@ module OpenC3
       end
       if now_f >= start and kind != 'expire'
         raise ActivityInputError.new "activity must be in the future, current_time: #{now_f} vs #{start}"
-      elsif duration >= MAX_DURATION and kind != 'expire'
+      elsif duration > MAX_DURATION and kind != 'expire'
         raise ActivityInputError.new "activity can not be longer than #{MAX_DURATION} seconds"
       elsif duration <= 0
         raise ActivityInputError.new "start: #{start} must be before stop: #{stop}"
