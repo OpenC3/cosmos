@@ -40,31 +40,39 @@ class ScriptsController < ApplicationController
 
   def index
     return unless authorization('script_view')
-    render :json => Script.all(params[:scope])
+    scope = sanitize_params([:scope])
+    return unless scope
+    scope = scope[0]
+    render :json => Script.all(scope)
   end
 
   def delete_temp
     return unless authorization('script_edit')
-    render :json => Script.delete_temp(params[:scope])
+    scope = sanitize_params([:scope])
+    return unless scope
+    scope = scope[0]
+    render :json => Script.delete_temp(scope)
   end
 
   def body
     return unless authorization('script_view')
+    scope, name = sanitize_params([:scope, :name])
+    return unless scope
 
-    file = Script.body(params[:scope], params[:name])
+    file = Script.body(scope, name)
     if file
-      locked = Script.locked?(params[:scope], params[:name])
+      locked = Script.locked?(scope, name)
       unless locked
-        Script.lock(params[:scope], params[:name], username())
+        Script.lock(scope, name, username())
       end
-      breakpoints = Script.get_breakpoints(params[:scope], params[:name])
+      breakpoints = Script.get_breakpoints(scope, name)
       results = {
         contents: file,
         breakpoints: breakpoints,
         locked: locked
       }
-      if ((File.extname(params[:name]) == '.py') and (file =~ PYTHON_SUITE_REGEX)) or ((File.extname(params[:name]) != '.py') and (file =~ SUITE_REGEX))
-        results_suites, results_error, success = Script.process_suite(params[:name], file, username: username(), scope: params[:scope])
+      if ((File.extname(name) == '.py') and (file =~ PYTHON_SUITE_REGEX)) or ((File.extname(name) != '.py') and (file =~ SUITE_REGEX))
+        results_suites, results_error, success = Script.process_suite(name, file, username: username(), scope: scope)
         results['suites'] = results_suites
         results['error'] = results_error
         results['success'] = success
@@ -79,30 +87,37 @@ class ScriptsController < ApplicationController
 
   def create
     return unless authorization('script_edit')
-    Script.create(params.permit(:scope, :name, :text, breakpoints: []))
+    scope, name = sanitize_params([:scope, :name], :allow_forward_slash => true)
+    return unless scope
+    args = params.permit(:text, breakpoints: [])
+    args[:scope] = scope
+    args[:name] = name
+    Script.create(args)
     results = {}
-    if ((File.extname(params[:name]) == '.py') and (params[:text] =~ PYTHON_SUITE_REGEX)) or ((File.extname(params[:name]) != '.py') and (params[:text] =~ SUITE_REGEX))
-      results_suites, results_error, success = Script.process_suite(params[:name], params[:text], username: username(), scope: params[:scope])
+    if ((File.extname(name) == '.py') and (params[:text] =~ PYTHON_SUITE_REGEX)) or ((File.extname(name) != '.py') and (params[:text] =~ SUITE_REGEX))
+      results_suites, results_error, success = Script.process_suite(name, params[:text], username: username(), scope: scope)
       results['suites'] = results_suites
       results['error'] = results_error
       results['success'] = success
     end
-    OpenC3::Logger.info("Script created: #{params[:name]}", scope: params[:scope], user: username()) if success
+    OpenC3::Logger.info("Script created: #{name}", scope: scope, user: username()) if success
     render :json => results
   rescue => e
     render(json: { status: 'error', message: e.message }, status: 500)
   end
 
   def run
+    scope, name = sanitize_params([:scope, :name], :allow_forward_slash => true)
+    return unless scope
     # Extract the target that this script lives under
-    target_name = params[:name].split('/')[0]
+    target_name = name.split('/')[0]
     return unless authorization('script_run', target_name: target_name)
     suite_runner = params[:suiteRunner] ? params[:suiteRunner].as_json(:allow_nan => true) : nil
     disconnect = params[:disconnect] == 'disconnect'
     environment = params[:environment]
-    running_script_id = Script.run(params[:scope], params[:name], suite_runner, disconnect, environment, user_full_name(), username())
+    running_script_id = Script.run(scope, name, suite_runner, disconnect, environment, user_full_name(), username())
     if running_script_id
-      OpenC3::Logger.info("Script started: #{params[:name]}", scope: params[:scope], user: username())
+      OpenC3::Logger.info("Script started: #{name}", scope: scope, user: username())
       render :plain => running_script_id.to_s
     else
       head :not_found
@@ -111,21 +126,27 @@ class ScriptsController < ApplicationController
 
   def lock
     return unless authorization('script_edit')
-    Script.lock(params[:scope], params[:name], username())
+    scope, name = sanitize_params([:scope, :name])
+    return unless scope
+    Script.lock(scope, name, username())
     render status: 200
   end
 
   def unlock
     return unless authorization('script_edit')
-    locked_by = Script.locked?(params[:scope], params[:name])
-    Script.unlock(params[:scope], params[:name]) if username() == locked_by
+    scope, name = sanitize_params([:scope, :name])
+    return unless scope
+    locked_by = Script.locked?(scope, name)
+    Script.unlock(scope, name) if username() == locked_by
     render status: 200
   end
 
   def destroy
     return unless authorization('script_edit')
-    Script.destroy(*params.require([:scope, :name]))
-    OpenC3::Logger.info("Script destroyed: #{params[:name]}", scope: params[:scope], user: username())
+    scope, name = sanitize_params([:scope, :name])
+    return unless scope
+    Script.destroy(scope, name)
+    OpenC3::Logger.info("Script destroyed: #{name}", scope: scope, user: username())
     head :ok
   rescue => e
     render(json: { status: 'error', message: e.message }, status: 500)
@@ -133,9 +154,12 @@ class ScriptsController < ApplicationController
 
   def syntax
     # Extract the target that this script lives under
-    target_name = params[:name].split('/')[0]
+    name = sanitize_params([:name], :allow_forward_slash => true)
+    return unless name
+    name = name[0]
+    target_name = name.split('/')[0]
     return unless authorization('script_run', target_name: target_name)
-    script = Script.syntax(params[:name], request.body.read)
+    script = Script.syntax(name, request.body.read)
     if script
       render :json => script
     else
@@ -145,7 +169,10 @@ class ScriptsController < ApplicationController
 
   def instrumented
     return unless authorization('script_view')
-    script = Script.instrumented(params[:name], request.body.read)
+    name = sanitize_params([:name], :allow_forward_slash => true)
+    return unless name
+    name = name[0]
+    script = Script.instrumented(name, request.body.read)
     if script
       render :json => script
     else
@@ -155,7 +182,10 @@ class ScriptsController < ApplicationController
 
   def delete_all_breakpoints
     return unless authorization('script_edit')
-    OpenC3::Store.del("#{params[:scope]}__script-breakpoints")
+    scope = sanitize_params([:scope])
+    return unless scope
+    scope = scope[0]
+    OpenC3::Store.del("#{scope}__script-breakpoints")
     head :ok
   end
 end

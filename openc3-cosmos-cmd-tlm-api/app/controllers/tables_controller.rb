@@ -23,17 +23,20 @@
 require 'base64'
 
 class TablesController < ApplicationController
-  before_action :sanitize_scope
-
   def index
     return unless authorization('system')
-    render json: Table.all(params[:scope])
+    scope = sanitize_params([:scope])
+    return unless scope
+    scope = scope[0]
+    render json: Table.all(scope)
   end
 
   def binary
     return unless authorization('system')
+    scope, binary, definition, table = sanitize_params([:scope, :binary, :definition, :table], require_params: false, allow_forward_slash: true)
+    return unless scope
     begin
-      file = Table.binary(params[:scope], params[:binary], params[:definition], params[:table])
+      file = Table.binary(scope, binary, definition, table)
       results = { 'filename' => file.filename, 'contents' => Base64.encode64(file.contents) }
       render json: results
     rescue Table::NotFound => e
@@ -44,8 +47,10 @@ class TablesController < ApplicationController
 
   def definition
     return unless authorization('system')
+    scope, definition, table = sanitize_params([:scope, :definition, :table], require_params: false, allow_forward_slash: true)
+    return unless scope
     begin
-      file = Table.definition(params[:scope], params[:definition], params[:table])
+      file = Table.definition(scope, definition, table)
       render json: { 'filename' => file.filename, 'contents' => file.contents }
     rescue Table::NotFound => e
       render(json: { status: 'error', message: e.message }, status: 404) and
@@ -55,8 +60,10 @@ class TablesController < ApplicationController
 
   def report
     return unless authorization('system')
+    scope, binary, definition, table = sanitize_params([:scope, :binary, :definition, :table], require_params: false, allow_forward_slash: true)
+    return unless scope
     begin
-      file = Table.report(params[:scope], params[:binary], params[:definition], params[:table])
+      file = Table.report(scope, binary, definition, table)
       render json: { 'filename' => file.filename, 'contents' => file.contents }
     rescue Table::NotFound => e
       render(json: { status: 'error', message: e.message }, status: 404) and
@@ -66,17 +73,19 @@ class TablesController < ApplicationController
 
   def body
     return unless authorization('system')
+    scope, name = sanitize_params([:scope, :name], require_params: true, allow_forward_slash: true)
+    return unless scope
     # body doesn't raise if not found ... it returns nil
-    file = Table.body(params[:scope], params[:name])
+    file = Table.body(scope, name)
     if file
       results = {}
 
-      if File.extname(params[:name]) == '.txt'
+      if File.extname(name) == '.txt'
         results = { 'contents' => file }
       else
-        locked = Table.locked?(params[:scope], params[:name])
+        locked = Table.locked?(scope, name)
         unless locked
-          Table.lock(params[:scope], params[:name], username())
+          Table.lock(scope, name, username())
         end
         results = { 'contents' => Base64.encode64(file), 'locked' => locked }
       end
@@ -91,8 +100,10 @@ class TablesController < ApplicationController
 
   def load
     return unless authorization('system')
+    scope, binary, definition = sanitize_params([:scope, :binary, :definition], require_params: false, allow_forward_slash: true)
+    return unless scope
     begin
-      render json: Table.load(params[:scope], params[:binary], params[:definition])
+      render json: Table.load(scope, binary, definition)
     rescue Table::NotFound => e
       render(json: { status: 'error', message: e.message }, status: 404) and
         return
@@ -101,8 +112,10 @@ class TablesController < ApplicationController
 
   def save
     return unless authorization('system')
+    scope, binary, definition = sanitize_params([:scope, :binary, :definition], require_params: false, allow_forward_slash: true)
+    return unless scope
     begin
-      Table.save(params[:scope], params[:binary], params[:definition], params[:tables])
+      Table.save(scope, binary, definition, params[:tables])
       head :ok
     rescue Table::NotFound => e
       render(json: { status: 'error', message: e.message }, status: 404) and
@@ -112,8 +125,10 @@ class TablesController < ApplicationController
 
   def save_as
     return unless authorization('system')
+    scope, name, new_name = sanitize_params([:scope, :name, :new_name], require_params: true, allow_forward_slash: true)
+    return unless scope
     begin
-      Table.save_as(params[:scope], params[:name], params[:new_name])
+      Table.save_as(scope, name, new_name)
       head :ok
     rescue Table::NotFound => e
       render(json: { status: 'error', message: e.message }, status: 404) and
@@ -123,8 +138,10 @@ class TablesController < ApplicationController
 
   def generate
     return unless authorization('system')
+    scope, definition = sanitize_params([:scope, :definition], require_params: false, allow_forward_slash: true)
+    return unless scope
     begin
-      filename = Table.generate(params[:scope], params[:definition])
+      filename = Table.generate(scope, definition)
       render json: { 'filename' => filename }
     rescue Table::NotFound => e
       render(json: { status: 'error', message: e.message }, status: 404) and
@@ -134,40 +151,32 @@ class TablesController < ApplicationController
 
   def lock
     return unless authorization('system')
-    Table.lock(params[:scope], params[:name], username())
+    scope, name = sanitize_params([:scope, :name], require_params: true, allow_forward_slash: true)
+    return unless scope
+    Table.lock(scope, name, username())
     render status: 200
   end
 
   def unlock
     return unless authorization('system')
-    locked_by = Table.locked?(params[:scope], params[:name])
-    Table.unlock(params[:scope], params[:name]) if username() == locked_by
+    scope, name = sanitize_params([:scope, :name], require_params: true, allow_forward_slash: true)
+    return unless scope
+    locked_by = Table.locked?(scope, name)
+    Table.unlock(scope, name) if username() == locked_by
     render status: 200
   end
 
   def destroy
     return unless authorization('system')
+    scope, name = sanitize_params([:scope, :name], require_params: true, allow_forward_slash: true)
+    return unless scope
     # destroy returns no indication of success or failure so just assume it worked
-    Table.destroy(params[:scope], params[:name])
+    Table.destroy(scope, name)
     OpenC3::Logger.info(
-      "Table destroyed: #{params[:name]}",
-      scope: params[:scope],
+      "Table destroyed: #{name}",
+      scope: scope,
       user: username()
     )
     head :ok
-  end
-
-  private
-
-  def sanitize_scope
-    # scope is passed as a parameter and we use it to create paths in local_mode,
-    # thus we have to sanitize it or the code scanner detects:
-    # "Uncontrolled data used in path expression"
-    # This method is taken directly from the Rails source:
-    #   https://api.rubyonrails.org/v5.2/classes/ActiveStorage/Filename.html#method-i-sanitized
-    scope = params[:scope].encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: "�").strip.tr("\u{202E}%$|:;/\t\r\n\\", "-")
-    if scope != params[:scope]
-      render(json: { status: 'error', message: "Invalid scope: #{params[:scope]}" }, status: 400)
-    end
   end
 end
