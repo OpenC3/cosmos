@@ -145,7 +145,12 @@ export default {
       const redirect = new URLSearchParams(window.location.search).get(
         'redirect',
       )
-      window.location = decodeURI(redirect || '/')
+      if (redirect[0] === '/' && redirect[1] !== '/') {
+        // Valid relative redirect URL
+        window.location = decodeURI(redirect)
+      } else {
+        window.location = '/'
+      }
     },
     verifyPassword: function () {
       this.showAlert = false
