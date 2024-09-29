@@ -58,19 +58,12 @@ case $1 in
     # Source the .env file to setup environment variables
     set -a
     . "$(dirname -- "$0")/.env"
-    # Start (and remove when done --rm) the openc3-operator container with the current working directory
+    # Start (and remove when done --rm) the openc3-cosmos-cmd-tlm-api container with the current working directory
     # mapped as volume (-v) /openc3/local and container working directory (-w) also set to /openc3/local.
     # This allows tools running in the container to have a consistent path to the current working directory.
     # Run the command "ruby /openc3/bin/openc3cli" with all parameters starting at 2 since the first is 'openc3'
     args=`echo $@ | { read _ args; echo $args; }`
     ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" run -it --rm -v `pwd`:/openc3/local:z -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli $args
-    set +a
-    ;;
-  cliroot )
-    set -a
-    . "$(dirname -- "$0")/.env"
-    args=`echo $@ | { read _ args; echo $args; }`
-    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" run -it --rm --user=root -v `pwd`:/openc3/local:z -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli $args
     set +a
     ;;
   start )
