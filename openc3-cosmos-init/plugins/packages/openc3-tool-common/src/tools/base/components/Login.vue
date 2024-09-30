@@ -140,12 +140,12 @@ export default {
     showReset: function () {
       this.reset = true
     },
-    login: function () {
-      localStorage.openc3Token = this.password
+    login: function (response) {
+      localStorage.openc3Token = response.data
       const redirect = new URLSearchParams(window.location.search).get(
         'redirect',
       )
-      if (redirect[0] === '/' && redirect[1] !== '/') {
+      if (redirect.startsWith('/tools/')) {
         // Valid relative redirect URL
         window.location = decodeURI(redirect)
       } else {
@@ -161,7 +161,7 @@ export default {
         ...this.options,
       })
         .then((response) => {
-          this.login()
+          this.login(response)
         })
         .catch((error) => {
           this.alert = 'Incorrect password'
@@ -177,7 +177,9 @@ export default {
           token: this.password,
         },
         ...this.options,
-      }).then(this.login)
+      }).then((response) => {
+        this.login(response)
+      })
     },
   },
 }

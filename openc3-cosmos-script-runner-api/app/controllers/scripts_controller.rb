@@ -56,7 +56,7 @@ class ScriptsController < ApplicationController
 
   def body
     return unless authorization('script_view')
-    scope, name = sanitize_params([:scope, :name])
+    scope, name = sanitize_params([:scope, :name], :allow_forward_slash => true)
     return unless scope
 
     file = Script.body(scope, name)
@@ -126,7 +126,7 @@ class ScriptsController < ApplicationController
 
   def lock
     return unless authorization('script_edit')
-    scope, name = sanitize_params([:scope, :name])
+    scope, name = sanitize_params([:scope, :name], :allow_forward_slash => true)
     return unless scope
     Script.lock(scope, name, username())
     render status: 200
@@ -134,7 +134,7 @@ class ScriptsController < ApplicationController
 
   def unlock
     return unless authorization('script_edit')
-    scope, name = sanitize_params([:scope, :name])
+    scope, name = sanitize_params([:scope, :name], :allow_forward_slash => true)
     return unless scope
     locked_by = Script.locked?(scope, name)
     Script.unlock(scope, name) if username() == locked_by
@@ -143,7 +143,7 @@ class ScriptsController < ApplicationController
 
   def destroy
     return unless authorization('script_edit')
-    scope, name = sanitize_params([:scope, :name])
+    scope, name = sanitize_params([:scope, :name], :allow_forward_slash => true)
     return unless scope
     Script.destroy(scope, name)
     OpenC3::Logger.info("Script destroyed: #{name}", scope: scope, user: username())

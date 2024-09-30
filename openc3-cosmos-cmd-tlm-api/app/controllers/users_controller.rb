@@ -26,6 +26,7 @@ rescue LoadError
     end
 
     def logout()
+      OpenC3::AuthModel.logout
       head :ok
     end
   end
