@@ -337,6 +337,16 @@ export default {
   },
   created() {
     this.api = new OpenC3Api()
+    this.api
+      .get_setting('time_zone')
+      .then((response) => {
+        if (response) {
+          this.timeZone = response
+        }
+      })
+      .catch((error) => {
+        // Do nothing
+      })
   },
   mounted: function () {
     this.grid = new Muuri('.grid', {
