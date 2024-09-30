@@ -89,6 +89,7 @@ class PluginsController < ModelController
       )
       render :json => result.name
     rescue Exception => error
+      logger.error(error.formatted)
       render(:json => { :status => 'error', :message => error.message }, :status => 500) and return
     end
   end
@@ -96,11 +97,12 @@ class PluginsController < ModelController
   def destroy
     return unless authorization('admin')
     begin
-      id, scope = sanitize_params([:id, scope])
+      id, scope = sanitize_params([:id, :scope])
       return unless id and scope
       result = OpenC3::ProcessManager.instance.spawn(["ruby", "/openc3/bin/openc3cli", "unload", id, scope], "plugin_uninstall", id, Time.now + 1.hour, scope: scope)
       render :json => result.name
     rescue Exception => error
+      logger.error(error.formatted)
       render(:json => { :status => 'error', :message => error.message }, :status => 500) and return
     end
   end

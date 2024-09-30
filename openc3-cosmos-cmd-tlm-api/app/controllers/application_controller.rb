@@ -80,7 +80,7 @@ class ApplicationController < ActionController::API
           value = arg.encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: "�").strip.tr("\u{202E}%$|:;/\t\r\n\\", "-")
         end
         if value != arg
-          render(json: { status: 'error', message: "Invalid parameter #{param_list[index]}" }, status: 400)
+          render(json: { status: 'error', message: "Invalid #{param_list[index]}: #{arg}" }, status: 400)
           return false
         end
       end
