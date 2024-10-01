@@ -23,7 +23,7 @@
 <template>
   <div>
     <!-- Dialog for adding a new component to a tab -->
-    <!-- width choosen to fit target-packet-item-chooser at full width -->
+    <!-- width chosen to fit target-packet-item-chooser at full width -->
     <v-dialog v-model="show" width="1200">
       <v-card>
         <v-system-bar>
