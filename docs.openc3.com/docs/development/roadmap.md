@@ -38,8 +38,6 @@ Core Features:
 
 ## Near-term Planning
 
-Our near-term planning linking to specific tickets is a Github Project found at the link below.
-
-[Planning](https://github.com/orgs/openc3/projects/2/views/1)
+Our near-term planning linking to specific tickets is on our [Github Planning Project](https://github.com/orgs/openc3/projects/2/views/1).
 
 If you would like to commit feature ideas for COSMOS, please do so with normal Github issues at the main repo.
