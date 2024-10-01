@@ -89,7 +89,7 @@
           v-model="selectedArrayIndex"
         />
       </v-col>
-      <v-col v-if="buttonText" :cols="colSize" style="max-width: 0px">
+      <v-col v-if="buttonText" :cols="colSize" style="max-width: 150px">
         <v-btn
           :disabled="buttonDisabled"
           block
