@@ -72,12 +72,12 @@
       </v-col>
       <v-col
         v-if="itemIsArray()"
-        :cols="colSize"
+        cols="1"
         class="select"
         data-test="array-index"
       >
         <v-combobox
-          label="Array Index"
+          label="Index"
           hide-details
           dense
           outlined
@@ -89,7 +89,7 @@
           v-model="selectedArrayIndex"
         />
       </v-col>
-      <v-col v-if="buttonText" :cols="colSize" style="max-width: 0px">
+      <v-col v-if="buttonText" :cols="colSize" style="max-width: 150px">
         <v-btn
           :disabled="buttonDisabled"
           block

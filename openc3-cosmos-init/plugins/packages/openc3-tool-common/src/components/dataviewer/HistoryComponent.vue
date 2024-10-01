@@ -58,7 +58,6 @@
                and it causes issues with the scrollbar. Therefore we use rows
                and calculate the number of rows based on the displayText. -->
           <v-textarea
-            ref="textarea"
             :value="displayText"
             :rows="rows"
             no-resize
@@ -122,7 +121,7 @@
                     <v-col>
                       <v-radio-group
                         v-model="currentConfig.newestAtTop"
-                        label="Print newest packets to the"
+                        label="Print newest to the"
                       >
                         <v-radio
                           label="Top"
@@ -157,7 +156,7 @@
                       />
                       <v-text-field
                         v-model="currentConfig.packetsToShow"
-                        label="Packets to show"
+                        label="Entries to show"
                         type="number"
                         min="1"
                         :hint="`Maximum: ${currentConfig.history}`"
@@ -283,9 +282,6 @@ export default {
       ...defaultConfig, // In case anything isn't defined in this.currentConfig
       ...this.currentConfig,
     }
-  },
-  mounted: function () {
-    this.textarea = this.$refs.textarea.$el.querySelectorAll('textarea')[0]
   },
   methods: {
     rebuildDisplayText: function () {
