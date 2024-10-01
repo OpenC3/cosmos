@@ -13,7 +13,7 @@
     "single-spa": "5.9.5",
     "sortablejs": "1.15.3",
     "sprintf-js": "1.1.3",
-    "uplot": "1.6.30",
+    "uplot": "1.6.31",
     "vue": "2.7.16",
     "vuetify": "2.7.1",
     "vuex": "3.6.2"
