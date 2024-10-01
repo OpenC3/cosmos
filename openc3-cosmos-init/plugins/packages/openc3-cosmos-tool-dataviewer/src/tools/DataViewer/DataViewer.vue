@@ -294,7 +294,11 @@ export default {
           value: 'DumpComponent',
           items: false,
         },
-        { label: 'COSMOS Value Viewer', value: 'ValueComponent', items: true },
+        {
+          label: 'COSMOS Item Value',
+          value: 'ValueComponent',
+          items: true,
+        },
       ],
       counter: 0,
       panel: 0,
@@ -472,7 +476,11 @@ export default {
   },
   methods: {
     packetTitle: function (packet) {
-      return `${packet.targetName} ${packet.packetName} [ ${packet.mode} ]`
+      if (packet.itemName !== undefined) {
+        return `${packet.targetName} ${packet.packetName} ${packet.itemName}`
+      } else {
+        return `${packet.targetName} ${packet.packetName} [ ${packet.mode} ]`
+      }
     },
     resizeTabs: function () {
       if (this.$refs.tabs) this.$refs.tabs.onResize()
@@ -535,86 +543,94 @@ export default {
     },
     addToSubscription: function (packets) {
       packets = packets || this.allPackets
-      console.log(packets)
 
       let itemBased = []
       let packetBased = []
       packets.forEach((packet) => {
-        if (packet.hasOwnProperty('itemName')) {
+        if (packet.itemName !== undefined) {
           itemBased.push(packet)
         } else {
           packetBased.push(packet)
         }
       })
-      console.log(itemBased)
-      console.log(packetBased)
 
-      // Add the items to the subscription
-      OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(
-        (refreshed) => {
-          if (refreshed) {
-            OpenC3Auth.setTokens()
-          }
-          this.subscription.perform('add', {
-            scope: window.openc3Scope,
-            token: localStorage.openc3Token,
-            items: itemBased.map(this.itemSubscriptionKey),
-            ...this.startEndTime,
-          })
-        },
-      )
-
-      // Group by mode
-      const modeGroups = packetBased.reduce((groups, packet) => {
-        if (groups[packet.mode]) {
-          groups[packet.mode].push(packet)
-        } else {
-          groups[packet.mode] = [packet]
-        }
-        return groups
-      }, {})
-      Object.keys(modeGroups).forEach((mode) => {
-        // This eliminates duplicates by converted to Set and back to Array
-        modeGroups[mode] = [...new Set(modeGroups[mode])]
-      })
-      console.log(modeGroups)
-      OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(
-        (refreshed) => {
-          if (refreshed) {
-            OpenC3Auth.setTokens()
-          }
-          Object.keys(modeGroups).forEach((mode) => {
+      if (itemBased.length > 0) {
+        // Add the items to the subscription
+        OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(
+          (refreshed) => {
+            if (refreshed) {
+              OpenC3Auth.setTokens()
+            }
             this.subscription.perform('add', {
               scope: window.openc3Scope,
               token: localStorage.openc3Token,
-              packets: modeGroups[mode].map(this.subscriptionKey),
+              items: itemBased.map(this.itemSubscriptionKey),
               ...this.startEndTime,
             })
-          })
-        },
-      )
+          },
+        )
+      }
+
+      if (packetBased.length > 0) {
+        // Group by mode
+        const modeGroups = packetBased.reduce((groups, packet) => {
+          if (groups[packet.mode]) {
+            groups[packet.mode].push(packet)
+          } else {
+            groups[packet.mode] = [packet]
+          }
+          return groups
+        }, {})
+        Object.keys(modeGroups).forEach((mode) => {
+          // This eliminates duplicates by converted to Set and back to Array
+          modeGroups[mode] = [...new Set(modeGroups[mode])]
+        })
+        OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(
+          (refreshed) => {
+            if (refreshed) {
+              OpenC3Auth.setTokens()
+            }
+            Object.keys(modeGroups).forEach((mode) => {
+              this.subscription.perform('add', {
+                scope: window.openc3Scope,
+                token: localStorage.openc3Token,
+                packets: modeGroups[mode].map(this.subscriptionKey),
+                ...this.startEndTime,
+              })
+            })
+          },
+        )
+      }
     },
     removeFromSubscription: function (packets) {
       packets = packets || this.allPackets
-      if (packets.length > 0) {
+
+      let itemBased = []
+      let packetBased = []
+      packets.forEach((packet) => {
+        if (packet.itemName !== undefined) {
+          itemBased.push(packet)
+        } else {
+          packetBased.push(packet)
+        }
+      })
+
+      if (itemBased.length > 0) {
         this.subscription.perform('remove', {
           scope: window.openc3Scope,
           token: localStorage.openc3Token,
-          packets: packets.map(this.subscriptionKey),
+          items: itemBased.map(this.itemSubscriptionKey),
+        })
+      }
+      if (packetBased.length > 0) {
+        this.subscription.perform('remove', {
+          scope: window.openc3Scope,
+          token: localStorage.openc3Token,
+          packets: packetBased.map(this.subscriptionKey),
         })
       }
     },
-    // removeItemsFromSubscription: function (itemArray = this.items) {
-    //   if (this.itemSubscription) {
-    //     this.itemSubscription.perform('remove', {
-    //       scope: window.openc3Scope,
-    //       token: localStorage.openc3Token,
-    //       items: itemArray.map(this.itemSubscriptionKey),
-    //     })
-    //   }
-    // },
     received: function (parsed) {
-      console.log(parsed)
       this.cable.recordPing()
       if (parsed['error']) {
         this.errorText = parsed['error']
@@ -622,7 +638,6 @@ export default {
         return
       }
       if (!parsed.length) {
-        this.stop()
         return
       }
 
@@ -636,19 +651,31 @@ export default {
           // Skip tabs without items
           if (!tab.items) return
 
-          console.log(tab)
           let keys = tab.packets.map((itemConfig) => this.itemKey(itemConfig))
-          let filtered = parsed.map((item) => {
-            let newItem = {}
-            // These fields are always in the item subscription
-            newItem['__type'] = item['__type']
-            newItem['__time'] = item['__time']
-            keys.forEach((key) => {
-              newItem[key] = item[key]
+          let filtered = parsed
+            .map((item) => {
+              let newItem = {}
+              // These fields are always in the item subscription
+              newItem['__type'] = item['__type']
+              newItem['__time'] = item['__time']
+              let found = false
+              keys.forEach((key) => {
+                if (item[key]) {
+                  found = true
+                  newItem[key] = item[key]
+                }
+              })
+              if (found) {
+                return newItem
+              } else {
+                return
+              }
             })
-            return newItem
-          })
-          if (typeof this.$refs[tab.ref][0].receive === 'function') {
+            .filter(Boolean) // Remove undefined items
+          if (
+            filtered &&
+            typeof this.$refs[tab.ref][0].receive === 'function'
+          ) {
             this.$refs[tab.ref][0].receive(filtered)
           }
         })
@@ -664,7 +691,6 @@ export default {
         this.config.tabs.forEach((tab, i) => {
           // Skip tabs with items
           if (tab.items) return
-          console.log(tab)
           tab.packets.forEach((packetConfig) => {
             let packetName = this.packetKey(packetConfig)
             this.receivedPackets[packetName] = true
@@ -787,17 +813,12 @@ export default {
         component: component,
         items: event.component.items,
         config: { timeZone: this.timeZone },
-        ref: `component${this.counter}`,
+        ref: Date.now(),
       })
-      this.counter++
       this.curTab = this.config.tabs.length - 1
 
       if (this.running) {
-        // if (event.component.items) {
-        //   this.addItemsToSubscription(event.packets)
-        // } else {
         this.addToSubscription(event.packets)
-        // }
       }
       this.cancelAddComponent()
     },
@@ -805,19 +826,43 @@ export default {
       this.showAddComponentDialog = false
     },
     deleteComponent: function (tabIndex) {
-      // Get the list of packets the other tabs are using
-      let packetsInUse = []
-      this.config.tabs.forEach((tab, i) => {
-        if (i !== tabIndex) {
-          packetsInUse = packetsInUse.concat(tab.packets.map(this.packetKey))
+      // Check for item based components first
+      if (this.config.tabs[tabIndex].packets[0].itemName !== undefined) {
+        // Get the list of items the other tabs are using
+        let itemsInUse = []
+        this.config.tabs.forEach((tab, i) => {
+          // Skip tabs without items
+          if (!tab.items) return
+
+          if (i !== tabIndex) {
+            itemsInUse = itemsInUse.concat(tab.packets.map(this.itemKey))
+          }
+        })
+        // Filter out any items that are in use
+        let filtered = this.config.tabs[tabIndex].packets.filter(
+          (packet) => itemsInUse.indexOf(this.itemKey(packet)) === -1,
+        )
+        if (filtered.length > 0) {
+          this.removeFromSubscription(filtered)
         }
-      })
-      // Filter out any packets that are in use
-      let filtered = this.config.tabs[tabIndex].packets.filter(
-        (packet) => packetsInUse.indexOf(this.packetKey(packet)) === -1,
-      )
-      if (filtered.length > 0) {
-        this.removeFromSubscription(filtered)
+      } else {
+        // Get the list of packets the other tabs are using
+        let packetsInUse = []
+        this.config.tabs.forEach((tab, i) => {
+          // Skip tabs with items
+          if (tab.items) return
+
+          if (i !== tabIndex) {
+            packetsInUse = packetsInUse.concat(tab.packets.map(this.packetKey))
+          }
+        })
+        // Filter out any packets that are in use
+        let filtered = this.config.tabs[tabIndex].packets.filter(
+          (packet) => packetsInUse.indexOf(this.packetKey(packet)) === -1,
+        )
+        if (filtered.length > 0) {
+          this.removeFromSubscription(filtered)
+        }
       }
       this.config.tabs.splice(tabIndex, 1)
     },

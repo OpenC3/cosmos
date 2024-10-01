@@ -74,9 +74,9 @@ module OpenC3
       case keyword
       when 'WIDGET'
         parser.verify_num_parameters(1, 3, "WIDGET <Name> <Label> <Select Items (true/false)>")
-        # Label abd is optional and if it doesn't exist nil is fine
-        # items is optional and if it doesn't exist nil is fine
-        items =  ConfigParser.handle_true_false_nil(parameters[1])
+        # Label is optional and if it doesn't exist nil is fine
+        # Select Items is optional and if it doesn't exist nil is fine
+        items = ConfigParser.handle_true_false_nil(parameters[2])
         return self.new(name: parameters[0], plugin: plugin, label: parameters[1], items: items, needs_dependencies: needs_dependencies, scope: scope)
       else
         raise ConfigParser::Error.new(parser, "Unknown keyword and parameters for Widget: #{keyword} #{parameters.join(" ")}")

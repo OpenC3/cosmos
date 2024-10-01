@@ -41,14 +41,25 @@ export default {
       this.$refs['history'].receive(data)
     },
   },
+  created: function () {
+    const defaultConfig = {
+      history: 300, // 5min at 1Hz
+      showTimestamp: true,
+      packetsToShow: 10, // override the default of 1
+      newestAtTop: true,
+    }
+    this.currentConfig = {
+      ...defaultConfig, // In case anything isn't defined in this.currentConfig
+      ...this.currentConfig,
+    }
+  },
   methods: {
     calculatePacketText: function (packet) {
       let text = ''
       if (this.currentConfig.showTimestamp) {
         const milliseconds = packet.__time / 1000000
-        // const receivedSeconds = (milliseconds / 1000).toFixed(7)
         const receivedDate = new Date(milliseconds).toISOString()
-        text = `RxTime: ${receivedDate}  `
+        text = `Time: ${receivedDate}  `
       }
       text += Object.keys(packet)
         .map((item) => {

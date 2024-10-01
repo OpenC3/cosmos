@@ -121,7 +121,7 @@
                     <v-col>
                       <v-radio-group
                         v-model="currentConfig.newestAtTop"
-                        label="Print newest packets to the"
+                        label="Print newest to the"
                       >
                         <v-radio
                           label="Top"
@@ -156,7 +156,7 @@
                       />
                       <v-text-field
                         v-model="currentConfig.packetsToShow"
-                        label="Packets to show"
+                        label="Entries to show"
                         type="number"
                         min="1"
                         :hint="`Maximum: ${currentConfig.history}`"
