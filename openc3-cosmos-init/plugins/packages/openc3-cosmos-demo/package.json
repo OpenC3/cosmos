@@ -1,13 +1,13 @@
 {
   "name": "widgets_src",
-  "version": "5.19.0",
+  "version": "5.19.1-beta0",
   "private": true,
   "scripts": {
     "build": "vue-cli-service build --target lib --dest tools/widgets/HelloworldWidget --formats umd-min src/HelloworldWidget.vue --name HelloworldWidget && vue-cli-service build --target lib --dest tools/widgets/BigWidget --formats umd-min src/BigWidget.vue --name BigWidget && vue-cli-service build --target lib --dest tools/widgets/DataviewertimeWidget --formats umd-min src/DataviewertimeWidget.vue --name DataviewertimeWidget && vue-cli-service build --target lib --dest tools/widgets/DataviewerquaternionWidget --formats umd-min src/DataviewerquaternionWidget.vue --name DataviewerquaternionWidget"
   },
   "dependencies": {
     "@astrouxds/astro-web-components": "7.22.1",
-    "@openc3/tool-common": "5.19.0",
+    "@openc3/tool-common": "5.19.1-beta0",
     "vue": "2.7.16",
     "vuetify": "2.7.1"
   },
