@@ -14,6 +14,7 @@ on:
 
 env:
   OPENC3_API_PASSWORD: password
+  OPENC3_LANGUAGE: ruby
 
 jobs:
   openc3-cli:
