@@ -197,7 +197,7 @@ class Logger(metaclass=LoggerMeta):
                 other=other,
             )
 
-    def build_log_data(log_level, message, user=None, type=None, url=None, other=None):
+    def build_log_data(self, log_level, message, user=None, type=None, url=None, other=None):
         now_time = datetime.now(timezone.utc)
         data = {
             "time": int(now_time.timestamp() * 1000000000),
