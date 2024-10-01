@@ -261,6 +261,8 @@ test('auto refreshes to update files', async ({ page, utils, toolPath, context }
   const pageTwo = await context.newPage()
   pageTwo.goto(toolPath)
   await pageTwo.getByText('config').click()
+  await pageTwo.getByRole('cell', { name: 'DEFAULT' }).click();
+  await pageTwo.getByRole('cell', { name: 'targets_modified' }).click();
 
   // Set the refresh interval on the second tab to be really slow
   await pageTwo.locator('[data-test=bucket-explorer-file]').click()
@@ -276,6 +278,7 @@ test('auto refreshes to update files', async ({ page, utils, toolPath, context }
     await page.getByLabel('prepended action').click(),
   ])
   await fileChooser.setFiles('package.json')
+  await page.locator('[data-test="upload-file-path"]').fill('DEFAULT/targets_modified/package.json')
   await page.locator('[data-test="upload-file-submit-btn"]').click()
 
   // The second tab shouldn't have refreshed yet, so the file shouldn't be there
