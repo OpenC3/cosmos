@@ -52,36 +52,37 @@
               choose-item
               select-types
             />
-            <v-btn
-              v-show="state === 'pause'"
-              class="pulse control"
-              v-on:click="
-                () => {
-                  state = 'start'
-                }
-              "
-              color="primary"
-              fab
-              data-test="start-graph"
-            >
-              <v-icon large>mdi-play</v-icon>
-            </v-btn>
-            <v-btn
-              v-show="state === 'start'"
-              class="control"
-              v-on:click="
-                () => {
-                  state = 'pause'
-                }
-              "
-              color="primary"
-              fab
-              data-test="pause-graph"
-            >
-              <v-icon large>mdi-pause</v-icon>
-            </v-btn>
-            <div class="graph-info">
-              Click item name in Legend to toggle. Right click to edit.
+            <div class="grapher-info">
+              <v-btn
+                v-show="state === 'pause'"
+                class="pulse"
+                v-on:click="
+                  () => {
+                    state = 'start'
+                  }
+                "
+                color="primary"
+                fab
+                data-test="start-graph"
+              >
+                <v-icon large>mdi-play</v-icon>
+              </v-btn>
+              <v-btn
+                v-show="state === 'start'"
+                v-on:click="
+                  () => {
+                    state = 'pause'
+                  }
+                "
+                color="primary"
+                fab
+                data-test="pause-graph"
+              >
+                <v-icon large>mdi-pause</v-icon>
+              </v-btn>
+              <div class="grapher-info-text">
+                Click item name in Legend to toggle. Right click to edit.
+              </div>
             </div>
           </v-row>
         </v-expansion-panel-content>
@@ -579,13 +580,17 @@ i.v-icon.mdi-chevron-down {
 }
 </style>
 <style lang="scss" scoped>
-.control {
+.grapher-info {
+  position: relative;
   margin-top: 60px;
+  left: -120px;
+  height: 50px;
 }
-.graph-info {
+.grapher-info-text {
+  position: relative;
+  top: -55px;
+  left: 70px;
   width: 140px;
-  margin-left: 20px;
-  margin-top: 65px;
 }
 .v-expansion-panel-content {
   .container {
