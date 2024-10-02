@@ -56,14 +56,7 @@
             :headers="headers"
             :items="overrides"
             :search="search"
-            :footer-props="{
-              itemsPerPageOptions: [100],
-              showFirstLastPage: true,
-              firstIcon: 'mdi-page-first',
-              lastIcon: 'mdi-page-last',
-              prevIcon: 'mdi-chevron-left',
-              nextIcon: 'mdi-chevron-right',
-            }"
+            :items-per-page-options="[100]"
             calculate-widths
             multi-sort
             dense

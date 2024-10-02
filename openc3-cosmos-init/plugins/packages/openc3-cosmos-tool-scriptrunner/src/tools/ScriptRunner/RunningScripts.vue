@@ -55,10 +55,7 @@
           order: 'desc',
         }"
         data-test="running-scripts"
-        :footer-props="{
-          itemsPerPageOptions: [3],
-          showFirstLastPage: true,
-        }"
+        :items-per-page-options="[3]"
         max-height="400"
       >
         <template v-slot:item.connect="{ item }">
@@ -114,10 +111,7 @@
           order: 'desc',
         }"
         data-test="completed-scripts"
-        :footer-props="{
-          itemsPerPageOptions: [5],
-          showFirstLastPage: true,
-        }"
+        :items-per-page-options="[5]"
       >
         <template v-slot:item.download="{ item }">
           <v-btn

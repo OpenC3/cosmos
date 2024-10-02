@@ -285,9 +285,7 @@
                 :headers="lineHeaders"
                 :items="lines"
                 :items-per-page="5"
-                :footer-props="{
-                  itemsPerPageOptions: [5],
-                }"
+                :items-per-page-options="[5]"
               >
                 <template v-slot:item.yValue="props">
                   <v-edit-dialog :return-value.sync="props.item.yValue">
@@ -353,9 +351,7 @@
               :headers="itemHeaders"
               :items="editItems"
               :items-per-page="5"
-              :footer-props="{
-                'items-per-page-options': [5],
-              }"
+              :items-per-page-options="[5]"
             >
               <template v-slot:item.actions="{ item }">
                 <v-tooltip location="top">

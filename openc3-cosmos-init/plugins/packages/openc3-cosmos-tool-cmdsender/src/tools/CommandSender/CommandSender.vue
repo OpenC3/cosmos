@@ -23,8 +23,8 @@
 <template>
   <div>
     <top-bar :menus="menus" :title="title" />
-    <v-card
-      ><div style="padding: 10px">
+    <v-card>
+      <div style="padding: 10px">
         <target-packet-item-chooser
           :initial-target-name="this.$route.params.target"
           :initial-packet-name="this.$route.params.packet"
@@ -74,46 +74,39 @@
       <div class="pa-3">Status: {{ status }}</div>
     </v-card>
     <div style="height: 15px" />
-    <multipane
-      class="horizontal-panes"
-      layout="horizontal"
-      @paneResize="editor.resize()"
-    >
-      <v-row>
-        <v-col>
-          <v-card class="pb-2">
-            <v-card-subtitle>
-              Editable Command History: (Pressing Enter on the line re-executes
-              the command)
-              <v-tooltip location="top">
-                <template v-slot:activator="{ props }">
-                  <div v-bind="props" class="float-right">
-                    <v-btn icon data-test="clear-history" @click="clearHistory">
-                      <v-icon> mdi-delete </v-icon>
-                    </v-btn>
-                  </div>
-                </template>
-                <span> Clear History </span>
-              </v-tooltip>
-            </v-card-subtitle>
-            <v-row class="mt-2 mb-2">
-              <pre ref="editor" class="editor" data-test="sender-history"></pre>
-            </v-row>
-          </v-card>
-        </v-col>
-        <v-col v-if="screenDefinition" md="auto">
-          <openc3-screen
-            v-if="screenDefinition"
-            :target="screenTarget"
-            :screen="screenName"
-            :definition="screenDefinition"
-            :keywords="keywords"
-            :count="screenCount"
-            :showClose="false"
-          />
-        </v-col>
-      </v-row>
-    </multipane>
+    <v-row>
+      <v-col>
+        <v-card class="pb-2">
+          <v-card-subtitle>
+            Editable Command History: (Pressing Enter on the line re-executes
+            the command)
+            <v-tooltip location="top">
+              <template v-slot:activator="{ props }">
+                <div v-bind="props" class="float-right">
+                  <v-btn icon data-test="clear-history" @click="clearHistory">
+                    <v-icon> mdi-delete </v-icon>
+                  </v-btn>
+                </div>
+              </template>
+              <span> Clear History </span>
+            </v-tooltip>
+          </v-card-subtitle>
+          <v-row class="mt-2 mb-2">
+            <pre ref="editor" class="editor" data-test="sender-history"></pre>
+          </v-row>
+        </v-card>
+      </v-col>
+      <v-col v-if="screenDefinition" md="auto">
+        <openc3-screen
+          :target="screenTarget"
+          :screen="screenName"
+          :definition="screenDefinition"
+          :keywords="keywords"
+          :count="screenCount"
+          :showClose="false"
+        />
+      </v-col>
+    </v-row>
     <div style="height: 15px" />
 
     <v-menu v-model="contextMenuShown" :target="[x, y]">

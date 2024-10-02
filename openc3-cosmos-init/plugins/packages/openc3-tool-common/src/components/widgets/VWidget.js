@@ -75,7 +75,7 @@ export default {
                 this.parameters[1] +
                 '/' +
                 this.parameters[2],
-              '_blank'
+              '_blank',
             )
           },
         },

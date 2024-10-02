@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -33,7 +33,7 @@
       :widgets="widget.widgets"
       :name="widget.name"
       :line="widget.line"
-      :lineNumber="widget.lineNumber"
+      :line-number="widget.lineNumber"
     />
   </div>
 </template>

@@ -92,7 +92,6 @@
       <v-col v-if="buttonText" :cols="colSize" style="max-width: 0px">
         <v-btn
           :disabled="buttonDisabled"
-          block
           color="primary"
           data-test="select-send"
           @click="buttonPressed"

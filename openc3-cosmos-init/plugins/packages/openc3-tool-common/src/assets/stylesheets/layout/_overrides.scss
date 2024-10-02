@@ -47,18 +47,18 @@
     .v-btn--variant-outlined,
     .v-btn--icon,
     .v-btn--round,
-    .v-btn--text
+    .v-btn--variant-text
   ):hover {
   background-color: var(--button-color-background-primary-hover) !important;
 }
-.v-theme--cosmosDark.v-btn--variant-outlined:not(.v-btn--icon, .v-btn--round, .v-btn--text) {
+.v-theme--cosmosDark.v-btn--variant-outlined:not(.v-btn--icon, .v-btn--round, .v-btn--variant-text) {
   border-color: var(--button-color-border-primary-default) !important;
   color: var(--color-text-interactive-default) !important;
 }
 .v-theme--cosmosDark.v-btn--variant-outlined:not(
     .v-btn--icon,
     .v-btn--round,
-    .v-btn--text
+    .v-btn--variant-text
   ):hover {
   border-color: var(--button-color-border-primary-hover) !important;
 }

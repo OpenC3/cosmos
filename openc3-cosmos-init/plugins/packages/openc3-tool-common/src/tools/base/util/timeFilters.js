@@ -32,7 +32,7 @@ export default {
         // subtrack off the timezone offset to get it back to local time
         return format(
           subMinutes(date, date.getTimezoneOffset()),
-          dateTimeFormat
+          dateTimeFormat,
         )
       } else {
         return format(date, dateTimeFormat)
@@ -74,7 +74,7 @@ export default {
     formatNanoseconds(nanoSecs, timeZone) {
       return this.formatDateTime(
         new Date(parseInt(nanoSecs) / 1_000_000),
-        timeZone
+        timeZone,
       )
     },
   },

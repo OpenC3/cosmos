@@ -70,14 +70,7 @@
         :items="files"
         :search="search"
         :items-per-page="1000"
-        :footer-props="{
-          showFirstLastPage: true,
-          itemsPerPageOptions: [1000],
-          firstIcon: 'mdi-page-first',
-          lastIcon: 'mdi-page-last',
-          prevIcon: 'mdi-chevron-left',
-          nextIcon: 'mdi-chevron-right',
-        }"
+        :items-per-page-options="[1000]"
         :sort-by="{
           key: 'modified',
           order: 'desc',

@@ -52,14 +52,7 @@
         :search="search"
         :items-per-page="itemsPerPage"
         @update:items-per-page="itemsPerPage = $event"
-        :footer-props="{
-          itemsPerPageOptions: [10, 20, 50, 100, 500, 1000],
-          showFirstLastPage: true,
-          firstIcon: 'mdi-page-first',
-          lastIcon: 'mdi-page-last',
-          prevIcon: 'mdi-chevron-left',
-          nextIcon: 'mdi-chevron-right',
-        }"
+        :items-per-page-options="[10, 20, 50, 100, 500, 1000]"
         multi-sort
         dense
       >
