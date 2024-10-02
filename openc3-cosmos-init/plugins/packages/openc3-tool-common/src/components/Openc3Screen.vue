@@ -173,13 +173,13 @@
 import Api from '../services/api'
 import { ConfigParserService } from '../services/config-parser'
 import { OpenC3Api } from '../services/openc3-api'
-import upperFirst from 'lodash/upperFirst'
-import camelCase from 'lodash/camelCase'
 import EditScreenDialog from './EditScreenDialog'
+import DynamicWidgets from './widgets/DynamicWidgets'
 
 const MAX_ERRORS = 20
 
 export default {
+  mixins: [DynamicWidgets],
   components: {
     EditScreenDialog,
   },
@@ -335,37 +335,6 @@ export default {
     return false
   },
   created() {
-    // Globally register all XxxWidget.vue components
-    const requireComponent = require.context(
-      // The relative path of the components folder
-      '@openc3/tool-common/src/components/widgets',
-      // Whether or not to look in subfolders
-      false,
-      // The regular expression used to match base component filenames
-      /[A-Z][a-z]+Widget\.vue$/,
-    )
-
-    requireComponent.keys().forEach((filename) => {
-      // Get component config
-      const componentConfig = requireComponent(filename)
-      // Get PascalCase name of component
-      const componentName = upperFirst(
-        camelCase(
-          // Gets the filename regardless of folder depth
-          filename
-            .split('/')
-            .pop()
-            .replace(/\.\w+$/, ''),
-        ),
-      )
-      // Register component locally
-      this.$options.components[componentName] =
-        // Look for the component options on `.default`, which will
-        // exist if the component was exported with `export default`,
-        // otherwise fall back to module's root.
-        componentConfig.default || componentConfig
-    })
-
     this.api = new OpenC3Api()
     this.configParser = new ConfigParserService()
     this.parseDefinition()

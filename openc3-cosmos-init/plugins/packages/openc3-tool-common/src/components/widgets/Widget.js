@@ -21,8 +21,10 @@
 */
 
 import { ConfigParserError } from '@openc3/tool-common/src/services/config-parser'
+import DynamicWidgets from './DynamicWidgets'
 
 export default {
+  mixins: [DynamicWidgets],
   props: {
     widgetIndex: {
       type: Number,
