@@ -1,11 +1,13 @@
 #!/bin/sh
-
-pip install "$@"
+python3 -m venv $PYTHONUSERBASE
+source $PYTHONUSERBASE/bin/activate
+echo "pip3 install $@"
+pip3 install "$@"
 if [ $? -eq 0 ]; then
     echo "Command succeeded"
 else
     echo "Command failed - retrying with --no-index"
-    pip install --no-index "$@"
+    pip3 install --no-index "$@"
     if [ $? -eq 0 ]; then
         echo "ERROR: pip install failed"
     fi
