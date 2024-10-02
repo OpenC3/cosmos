@@ -29,7 +29,7 @@ const requireComponent = require.context(
   // The regular expression used to match base component filenames
   /[A-Z][a-z]+Widget\.vue$/,
 )
-const dynamicWidgets = {}
+const components = {}
 requireComponent.keys().map((filename) => {
   filename = filename.split('/').pop() // trims off the leading './'
   // Get PascalCase name of component
@@ -39,11 +39,11 @@ requireComponent.keys().map((filename) => {
     ),
   )
   // Register component locally
-  dynamicWidgets[componentName] = defineAsyncComponent(
+  components[componentName] = defineAsyncComponent(
     () => import(`@openc3/tool-common/src/components/widgets/${filename}`),
   )
 })
 
 export default {
-  components: dynamicWidgets,
+  components,
 }

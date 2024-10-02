@@ -31,12 +31,14 @@
       <v-window-item v-for="(tab, tabIndex) in widgets" :key="tabIndex">
         <component
           v-for="(widget, widgetIndex) in tab.widgets"
-          v-on="$listeners"
+          v-bind="$attrs"
           :key="`${tabIndex}-${widgetIndex}`"
           :is="widget.type"
           :target="widget.target"
           :parameters="widget.parameters"
           :settings="widget.settings"
+          :screenValues="screenValues"
+          :screenTimeZone="screenTimeZone"
           :widgets="widget.widgets"
           :name="widget.name"
           :line="widget.line"

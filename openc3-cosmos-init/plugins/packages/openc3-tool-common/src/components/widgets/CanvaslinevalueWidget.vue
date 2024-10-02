@@ -43,10 +43,8 @@ export default {
   computed: {
     calcStyle() {
       let color = 'black'
-      if (this.screen) {
-        if (this.screen.screenValues[this.valueId]) {
-          color = this.valueMap[this.screen.screenValues[this.valueId][0]]
-        }
+      if (this.screenValues[this.valueId]) {
+        color = this.valueMap[this.screenValues[this.valueId][0]]
       }
       let width = 1
       if (this.parameters[7]) {
@@ -68,14 +66,10 @@ export default {
       type = this.parameters[8]
     }
     this.valueId = `${this.parameters[0]}__${this.parameters[1]}__${this.parameters[2]}__${type}`
-    if (this.screen) {
-      this.screen.addItem(this.valueId)
-    }
+    this.$emit('addItem', this.valueId)
   },
   destroyed() {
-    if (this.screen) {
-      this.screen.deleteItem(this.valueId)
-    }
+    this.$emit('deleteItem', this.valueId)
   },
 }
 </script>

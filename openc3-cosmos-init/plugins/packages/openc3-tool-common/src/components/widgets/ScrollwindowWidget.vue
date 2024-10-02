@@ -22,7 +22,7 @@
 
 <template>
   <vertical-widget
-    v-on="$listeners"
+    v-bind="$attrs"
     :settings="settings"
     :parameters="parameters.slice(1)"
     :widgets="widgets"

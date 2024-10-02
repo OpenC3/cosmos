@@ -23,13 +23,18 @@
 <template>
   <div ref="container" class="d-flex flex-row" :style="computedStyle">
     <value-widget
+      v-bind="$attrs"
       :parameters="parameters"
       :settings="[...settings]"
+      :screenValues="screenValues"
+      :screenTimeZone="screenTimeZone"
       :widget-index="0"
     />
     <limitsbar-widget
+      v-bind="$attrs"
       :parameters="parameters"
       :settings="[...settings]"
+      :screenValues="screenValues"
       :widget-index="1"
     />
   </div>

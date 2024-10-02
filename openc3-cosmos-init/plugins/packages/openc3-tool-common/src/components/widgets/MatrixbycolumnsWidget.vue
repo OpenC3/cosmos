@@ -25,11 +25,13 @@
     <tr v-for="(chunk, rindex) in widgetChunks" :key="'r' + rindex">
       <td v-for="(widget, cindex) in chunk" :key="'c' + cindex">
         <component
-          v-on="$listeners"
+          v-bind="$attrs"
           :is="widget.type"
           :target="widget.target"
           :parameters="widget.parameters"
           :settings="widget.settings"
+          :screenValues="screenValues"
+          :screenTimeZone="screenTimeZone"
           :widgets="widget.widgets"
           :name="widget.name"
           :line="widget.line"

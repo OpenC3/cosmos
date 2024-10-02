@@ -29,13 +29,18 @@
       :widget-index="0"
     />
     <limitscolumn-widget
+      v-bind="$attrs"
       :parameters="parameters"
       :settings="[...settings]"
+      :screenValues="screenValues"
       :widget-index="2"
     />
     <value-widget
+      v-bind="$attrs"
       :parameters="parameters"
       :settings="[...settings]"
+      :screenValues="screenValues"
+      :screenTimeZone="screenTimeZone"
       :widget-index="1"
     />
   </div>

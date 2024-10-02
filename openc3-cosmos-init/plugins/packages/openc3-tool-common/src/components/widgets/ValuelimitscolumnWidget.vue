@@ -24,13 +24,18 @@
   <div ref="container" :style="computedStyle">
     <!-- The widget-index is the order in the widget name: VALUELIMITSCOLUMN -->
     <limitscolumn-widget
+      v-bind="$attrs"
       :parameters="parameters"
       :settings="[...settings]"
+      :screenValues="screenValues"
       :widget-index="1"
     />
     <value-widget
+      v-bind="$attrs"
       :parameters="parameters"
       :settings="[...settings]"
+      :screenValues="screenValues"
+      :screenTimeZone="screenTimeZone"
       :widget-index="0"
     />
   </div>

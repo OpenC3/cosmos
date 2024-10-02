@@ -79,7 +79,7 @@ export default {
   methods: {
     clickHandler() {
       if (this.screenTarget && this.screenName) {
-        this.screen.open(this.screenTarget, this.screenName)
+        this.$emit('open', this.screenTarget, this.screenName)
       }
     },
   },

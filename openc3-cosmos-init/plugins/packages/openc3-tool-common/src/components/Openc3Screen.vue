@@ -137,7 +137,9 @@
           <vertical-widget
             :key="screenKey"
             :widgets="layoutStack[0].widgets"
-            v-on="$listeners"
+            v-on:add-item="addItem"
+            v-on:delete-item="deleteItem"
+            v-on:open="open"
           />
         </div>
       </v-expand-transition>
@@ -174,12 +176,12 @@ import Api from '../services/api'
 import { ConfigParserService } from '../services/config-parser'
 import { OpenC3Api } from '../services/openc3-api'
 import EditScreenDialog from './EditScreenDialog'
-import DynamicWidgets from './widgets/DynamicWidgets'
+import WidgetComponents from './widgets/WidgetComponents'
 
 const MAX_ERRORS = 20
 
 export default {
-  mixins: [DynamicWidgets],
+  mixins: [WidgetComponents],
   components: {
     EditScreenDialog,
   },
@@ -672,13 +674,14 @@ export default {
       } else {
         // Give all the widgets a reference to this screen
         // Use settings so we don't break existing custom widgets
-        settings.push(['__SCREEN__', this])
         if (this.$options.components[componentName]) {
           this.currentLayout.widgets.push({
             type: componentName,
             target: this.target,
             parameters: parameters,
             settings: settings,
+            screenValues: this.screenValues,
+            screenTimeZone: this.timeZone,
             line: line,
             lineNumber: lineNumber,
           })
@@ -688,6 +691,8 @@ export default {
             target: this.target,
             parameters: parameters,
             settings: settings,
+            screenValues: this.screenValues,
+            screenTimeZone: this.timeZone,
             name: componentName,
             line: line,
             lineNumber: lineNumber,

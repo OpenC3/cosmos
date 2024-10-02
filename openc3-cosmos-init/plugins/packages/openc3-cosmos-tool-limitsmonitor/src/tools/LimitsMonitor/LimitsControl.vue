@@ -67,11 +67,19 @@
             v-if="item.limits"
             :parameters="item.parameters"
             :settings="widgetSettings"
+            :screenValues="screenValues"
+            :screenTimeZone="timeZone"
+            v-on:add-item="addItem"
+            v-on:delete-item="deleteItem"
           />
           <labelvalue-widget
             v-else
             :parameters="item.parameters"
             :settings="widgetSettings"
+            :screenValues="screenValues"
+            :screenTimeZone="timeZone"
+            v-on:add-item="addItem"
+            v-on:delete-item="deleteItem"
           />
           <v-tooltip location="bottom">
             <template v-slot:activator="{ props }">
@@ -205,7 +213,6 @@ export default {
         ['0', 'WIDTH', '200px'],
         ['1', 'WIDTH', '200px'],
         ['2', 'WIDTH', '180px'],
-        ['__SCREEN__', this],
       ],
     }
   },

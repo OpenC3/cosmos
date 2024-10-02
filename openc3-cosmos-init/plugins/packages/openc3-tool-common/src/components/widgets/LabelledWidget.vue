@@ -28,8 +28,10 @@
       :widget-index="0"
     />
     <led-widget
+      v-bind="$attrs"
       :parameters="parameters"
       :settings="[...settings]"
+      :screenValues="screenValues"
       :widget-index="1"
     />
   </div>

@@ -29,13 +29,15 @@
   >
     <component
       v-for="(widget, index) in widgets"
-      v-on="$listeners"
+      v-bind="$attrs"
       :value="index"
       :key="index"
       :is="widget.type"
       :target="widget.target"
       :parameters="widget.parameters"
       :settings="widget.settings"
+      :screenValues="screenValues"
+      :screenTimeZone="screenTimeZone"
       :name="widget.name"
     />
   </v-radio-group>

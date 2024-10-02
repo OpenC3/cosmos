@@ -30,8 +30,11 @@
       :widget-index="0"
     />
     <value-widget
+      v-bind="$attrs"
       :parameters="valueParameters"
       :settings="[...settings]"
+      :screenValues="screenValues"
+      :screenTimeZone="screenTimeZone"
       :line="line"
       :lineNumber="lineNumber"
       :widget-index="1"

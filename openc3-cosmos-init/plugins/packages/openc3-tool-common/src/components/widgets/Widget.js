@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -21,10 +21,10 @@
 */
 
 import { ConfigParserError } from '@openc3/tool-common/src/services/config-parser'
-import DynamicWidgets from './DynamicWidgets'
+import WidgetComponents from './WidgetComponents'
 
 export default {
-  mixins: [DynamicWidgets],
+  mixins: [WidgetComponents],
   props: {
     widgetIndex: {
       type: Number,
@@ -38,6 +38,14 @@ export default {
       type: Array,
       default: () => [],
     },
+    screenValues: {
+      type: Object,
+      default: () => {},
+    },
+    screenTimeZone: {
+      type: String,
+      default: 'local',
+    },
     line: {
       type: String,
       default: '',
@@ -49,7 +57,6 @@ export default {
   },
   data() {
     return {
-      screen: null,
       appliedSettings: [],
       // We make style a data attribute so as we recurse through nested
       // widgets we can check to see if style attributes have been applied
@@ -83,12 +90,6 @@ export default {
     },
   },
   created() {
-    // Look through the settings and get a reference to the screen
-    this.settings.forEach((setting) => {
-      if (setting[0] === '__SCREEN__') {
-        this.screen = setting[1]
-      }
-    })
     // Figure out any subsettings that apply
     this.appliedSettings = this.settings
       .map((setting) => {

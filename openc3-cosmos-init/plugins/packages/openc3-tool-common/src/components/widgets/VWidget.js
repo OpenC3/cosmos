@@ -44,6 +44,7 @@ export default {
       default: 'local',
     },
   },
+  emits: ['addItem', 'deleteItem', 'open'],
   data() {
     return {
       appliedTimeZone: 'local',
@@ -101,16 +102,16 @@ export default {
       this.curValue = this.value
       if (this.curValue === null) {
         // See store.js for how this is set
-        if (this.screen) {
-          if (this.screen.screenValues[this.valueId]) {
+        if (this.screenValues) {
+          if (this.screenValues[this.valueId]) {
             if (
               this.arrayIndex !== null &&
-              this.screen.screenValues[this.valueId][0]
+              this.screenValues[this.valueId][0]
             ) {
               this.curValue =
-                this.screen.screenValues[this.valueId][0][this.arrayIndex]
+                this.screenValues[this.valueId][0][this.arrayIndex]
             } else {
-              this.curValue = this.screen.screenValues[this.valueId][0]
+              this.curValue = this.screenValues[this.valueId][0]
             }
           }
         } else {
@@ -123,9 +124,9 @@ export default {
     _limitsState: function () {
       let limitsState = this.limitsState
       if (limitsState === null) {
-        if (this.screen) {
-          if (this.screen.screenValues[this.valueId]) {
-            limitsState = this.screen.screenValues[this.valueId][1]
+        if (this.screenValues) {
+          if (this.screenValues[this.valueId]) {
+            limitsState = this.screenValues[this.valueId][1]
           }
         } else {
           limitsState = null
@@ -136,9 +137,9 @@ export default {
     _counter: function () {
       let counter = this.counter
       if (counter === null) {
-        if (this.screen) {
-          if (this.screen.screenValues[this.valueId]) {
-            counter = this.screen.screenValues[this.valueId][2]
+        if (this.screenValues) {
+          if (this.screenValues[this.valueId]) {
+            counter = this.screenValues[this.valueId][2]
           }
         } else {
           counter = null
@@ -221,9 +222,9 @@ export default {
         this.parameters[2]
       }__${this.getType()}`
 
-      if (this.screen) {
-        this.screen.addItem(this.valueId)
-        this.appliedTimeZone = this.screen.timeZone
+      this.$emit('addItem', this.valueId)
+      if (this.screenTimeZone) {
+        this.appliedTimeZone = this.screenTimeZone
       } else {
         this.appliedTimeZone = this.timeZone
       }
@@ -231,9 +232,7 @@ export default {
   },
   destroyed() {
     if (this.value === null || this.limitsState === null) {
-      if (this.screen) {
-        this.screen.deleteItem(this.valueId)
-      }
+      this.$emit('deleteItem', this.valueId)
     }
   },
   methods: {

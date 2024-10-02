@@ -46,9 +46,7 @@ export default {
     },
     cssProps() {
       let value = null
-      if (this.screen) {
-        value = this.screen.screenValues[this.valueId][0]
-      }
+      value = this.screenValues[this.valueId][0]
       let color = this.colors[value]
       if (!color) {
         color = this.colors.ANY
@@ -78,14 +76,10 @@ export default {
       this.parameters[3] = 'CONVERTED'
     }
     this.valueId = `${this.parameters[0]}__${this.parameters[1]}__${this.parameters[2]}__${this.parameters[3]}`
-    if (this.screen) {
-      this.screen.addItem(this.valueId)
-    }
+    this.$emit('addItem', this.valueId)
   },
   destroyed() {
-    if (this.screen) {
-      this.screen.deleteItem(this.valueId)
-    }
+    this.$emit('deleteItem', this.valueId)
   },
 }
 </script>

@@ -62,10 +62,8 @@ export default {
   },
   computed: {
     selectedValue: function () {
-      if (this.screen) {
-        if (this.screen.screenValues[this.valueId]) {
-          return this.screen.screenValues[this.valueId][0]
-        }
+      if (this.screenValues[this.valueId]) {
+        return this.screenValues[this.valueId][0]
       }
       return null
     },
@@ -85,9 +83,7 @@ export default {
     this.valueId = `${this.parameters[0]}__${this.parameters[1]}__${
       this.parameters[2]
     }__${this.parameters[3] || 'RAW'}`
-    if (this.screen) {
-      this.screen.addItem(this.valueId)
-    }
+    this.$emit('addItem', this.valueId)
 
     // Set value images data
     const promises = this.settings
@@ -137,14 +133,12 @@ export default {
     }
   },
   destroyed: function () {
-    if (this.screen) {
-      this.screen.deleteItem(this.valueId)
-    }
+    this.$emit('deleteItem', this.valueId)
   },
   methods: {
     clickHandler() {
       if (this.screenTarget && this.screenName) {
-        this.screen.open(this.screenTarget, this.screenName)
+        this.$emit('open', this.screenTarget, this.screenName)
       }
     },
   },

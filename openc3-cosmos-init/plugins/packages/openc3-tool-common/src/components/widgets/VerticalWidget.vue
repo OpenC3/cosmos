@@ -23,13 +23,15 @@
 <template>
   <div ref="container" class="d-flex flex-column" :style="computedStyle">
     <component
-      v-on="$listeners"
+      v-bind="$attrs"
       v-for="(widget, index) in widgets"
       :key="index"
       :is="widget.type"
       :target="widget.target"
       :parameters="widget.parameters"
       :settings="widget.settings"
+      :screenValues="widget.screenValues"
+      :screenTimeZone="widget.screenTimeZone"
       :widgets="widget.widgets"
       :name="widget.name"
       :line="widget.line"

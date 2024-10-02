@@ -114,39 +114,37 @@ export default {
           break
       }
     })
-    if (this.screen) {
-      this.items = this.items.map((item) => {
-        let itemName = item.itemName
-        // Remove double bracket escaping. This means they actually have an item
-        // with a bracket in the name, not an array index.
-        if (item.itemName.includes('[[')) {
-          // Change the actual item and the the name we're passing to the screen
-          item.itemName = item.itemName.replace('[[', '[').replace(']]', ']')
-          itemName = item.itemName
-        } else if (item.itemName.includes('[')) {
-          // Brackets mean array indexes (normally, but see above)
-          let match = item.itemName.match(/\[(\d+)\]/)
-          this.arrayIndex = parseInt(match[1])
-          // Here we keep the original item name with the brackets but change
-          // the item we're passing to the screen to the non-bracket item
-          itemName = item.itemName.replace(match[0], '')
-        }
-        this.screen.addItem(
-          `${item.targetName}__${item.packetName}__${itemName}__${item.valueType}`,
-          true,
-        )
-        // Return the mapped values since we may have removed bracket escaping
-        return item
-      })
-    }
+    this.items = this.items.map((item) => {
+      let itemName = item.itemName
+      // Remove double bracket escaping. This means they actually have an item
+      // with a bracket in the name, not an array index.
+      if (item.itemName.includes('[[')) {
+        // Change the actual item and the the name we're passing to the screen
+        item.itemName = item.itemName.replace('[[', '[').replace(']]', ']')
+        itemName = item.itemName
+      } else if (item.itemName.includes('[')) {
+        // Brackets mean array indexes (normally, but see above)
+        let match = item.itemName.match(/\[(\d+)\]/)
+        this.arrayIndex = parseInt(match[1])
+        // Here we keep the original item name with the brackets but change
+        // the item we're passing to the screen to the non-bracket item
+        itemName = item.itemName.replace(match[0], '')
+      }
+      this.$emit(
+        'addItem',
+        `${item.targetName}__${item.packetName}__${itemName}__${item.valueType}`,
+        true,
+      )
+      // Return the mapped values since we may have removed bracket escaping
+      return item
+    })
   },
   destroyed() {
-    if (this.screen) {
-      this.items.map((item) =>
-        this.screen.deleteItem(
-          `${item.targetName}__${item.packetName}__${item.itemName}__${item.valueType}`,
-        ),
-      )
-    }
+    this.items.map((item) =>
+      this.$emit(
+        'deleteItem',
+        `${item.targetName}__${item.packetName}__${item.itemName}__${item.valueType}`,
+      ),
+    )
   },
 }

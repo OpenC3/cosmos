@@ -168,7 +168,7 @@ export default {
     listData: function () {
       if (!this.screens) return []
       let screenId = 0
-      return this.screen.map((screen) => {
+      return this.screens.map((screen) => {
         screenId += 1
         return {
           ...screen,

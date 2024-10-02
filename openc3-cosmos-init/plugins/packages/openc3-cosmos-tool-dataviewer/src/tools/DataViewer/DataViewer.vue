@@ -152,7 +152,7 @@
                 </v-tooltip>
               </v-card-title>
               <component
-                v-on="$listeners"
+                v-bind="$attrs"
                 :is="tab.type"
                 :name="tab.component"
                 :ref="tab.ref"

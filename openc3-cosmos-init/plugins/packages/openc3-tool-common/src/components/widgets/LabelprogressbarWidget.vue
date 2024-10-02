@@ -28,8 +28,10 @@
       :widget-index="0"
     />
     <progressbar-widget
+      v-bind="$attrs"
       :parameters="parameters"
       :settings="[...settings]"
+      :screenValues="screenValues"
       :style="computedStyle"
       :widget-index="1"
     />

@@ -59,7 +59,6 @@ export default {
   data() {
     return {
       api: null,
-      screen: null,
       displaySendHazardous: false,
       lastCmd: '',
     }
@@ -80,7 +79,8 @@ export default {
       const lines = this.eval.split(';;')
       // Create local references to variables so users don't need to use 'this'
       const self = this // needed for $emit
-      const screen = this.screen
+      const screenValues = this.screenValues
+      const screenTimeZone = this.screenTimeZone
       const api = this.api
       const run_script = this.runScript // TODO: deprecate this in favor of runScript?
       const runScript = this.runScript

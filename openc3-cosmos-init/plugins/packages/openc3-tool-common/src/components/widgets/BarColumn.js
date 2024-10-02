@@ -42,10 +42,7 @@ export default {
   },
   computed: {
     cssProps: function () {
-      let value = null
-      if (this.screen) {
-        value = this.screen.screenValues[this.valueId][0]
-      }
+      let value = this.screenValues[this.valueId][0]
       let limits = this.modifyLimits(
         this.limitsSettings[this.selectedLimitsSet],
       )
@@ -96,14 +93,10 @@ export default {
     // Always pass CONVERTED so we can calculate the value against the limits (in converted units)
     this.valueId = `${this.parameters[0]}__${this.parameters[1]}__${this.parameters[2]}__CONVERTED`
 
-    if (this.screen) {
-      this.screen.addItem(this.valueId)
-    }
+    this.$emit('addItem', this.valueId)
   },
   destroyed() {
-    if (this.screen) {
-      this.screen.deleteItem(this.valueId)
-    }
+    this.$emit('deleteItem', this.valueId)
     clearInterval(this.currentSetRefreshInterval)
   },
   methods: {
