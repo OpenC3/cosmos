@@ -79,6 +79,18 @@ At that point the currently executing line is marked with green. If an error is 
 
 This allows checks that depend on telemetry changing to potentially be retried as telemetry is being updated live in the background. You can also click Go to continue pass the error or Stop to end the script execution.
 
+### Right Click Script
+
+Right clicking a script brings up several options:
+
+![right-click](/img/script_runner/right_click.png)
+
+'Execute selection' causes the selected piece of code to be copied to a fresh Script Runner tab and executed independently of the current script. This is useful to run a selected section of code but be careful of references to other variables that are not selected. COSMOS will not be able to reference undefined variables!
+
+'Run from here' causes everything from the current location of the cursor to be copied to a fresh Script Runner tab and executed independently of the current script. This is useful to avoid executing earlier pieces of code but be careful of references to other variables that are not selected. COSMOS will not be able to reference undefined variables!
+
+'Clear all breakpoints' allows you to quickly clear breakpoints set by clicking on the editor line number.
+
 ## Running Script Suites
 
 If a script is structured as a Suite it automatically causes Script Runner to parse the file to populate the Suite, Group, and Script drop down menus.
