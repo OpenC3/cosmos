@@ -270,10 +270,14 @@ export default {
       if (this.allowAllTargets) {
         this.targetNames.unshift(this.ALL)
       }
+      // If the initial target name is not set, default to the first target
+      // which also updates packets and items as needed
       if (!this.selectedTargetName) {
         this.selectedTargetName = this.targetNames[0].value
-        // This also updates packets and items as needed
         this.targetNameChanged(this.selectedTargetName)
+      } else {
+        // Selected target name was set but we still have to update packets
+        this.updatePackets()
       }
       if (this.unknown) {
         this.targetNames.push(this.UNKNOWN)
