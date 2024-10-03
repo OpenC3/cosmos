@@ -137,6 +137,8 @@
           <vertical-widget
             :key="screenKey"
             :widgets="layoutStack[0].widgets"
+            :screenValues="screenValues"
+            :screenTimeZone="timeZone"
             v-on:add-item="addItem"
             v-on:delete-item="deleteItem"
             v-on:open="open"
@@ -666,6 +668,8 @@ export default {
           type: componentName,
           parameters: parameters,
           settings: settings,
+          screenValues: this.screenValues,
+          screenTimeZone: this.timeZone,
           widgets: [],
         }
         this.layoutStack.push(layout)

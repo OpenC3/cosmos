@@ -41,89 +41,93 @@
           </v-btn>
         </template>
         <v-list>
-          <!-- The radio-group is necessary in case the application wants radio buttons -->
+          <!-- TODO: menus need to be revamped to support radio buttons in Vuetify 3
           <v-radio-group
             :model-value="menu.radioGroup"
             hide-details
             density="compact"
             class="ma-0 pa-0"
           >
-            <template v-for="(option, j) in menu.items">
-              <v-divider v-if="option.divider" :key="j + '-divider'" />
-              <div
-                v-else-if="option.subMenu && option.subMenu.length > 0"
-                :key="j + '-submenu'"
+          -->
+          <template v-for="(option, j) in menu.items">
+            <v-divider v-if="option.divider" :key="j + '-divider'" />
+            <div
+              v-else-if="option.subMenu && option.subMenu.length > 0"
+              :key="j + '-submenu'"
+            >
+              <v-menu open-on-hover location="bottom" :key="k">
+                <template v-slot:activator="{ props }">
+                  <v-list-item
+                    :disabled="option.disabled"
+                    :key="j"
+                    v-bind="props"
+                  >
+                    <template v-slot:prepend v-if="option.icon">
+                      <v-icon :disabled="option.disabled">
+                        {{ option.icon }}
+                      </v-icon>
+                    </template>
+                    <v-list-item-title
+                      v-if="!option.radio && !option.checkbox"
+                      :style="
+                        'cursor: pointer;' +
+                        (option.disabled ? 'opacity: 0.2' : '')
+                      "
+                      >{{ option.label }}
+                    </v-list-item-title>
+                    <v-icon> mdi-chevron-right </v-icon>
+                  </v-list-item>
+                </template>
+                <v-list>
+                  <v-list-item
+                    v-for="(submenu, k) in option.subMenu"
+                    :key="k"
+                    :prepend-icon="submenu.icon"
+                    @click="subMenuClick(submenu)"
+                  >
+                    <v-list-item-title>{{ submenu.label }}</v-list-item-title>
+                  </v-list-item>
+                </v-list>
+              </v-menu>
+            </div>
+            <v-list-item
+              v-else
+              @click.stop="option.command(option)"
+              :disabled="option.disabled"
+              :data-test="formatDT(`${title} ${menu.label} ${option.label}`)"
+              :key="j + '-list'"
+            >
+              <v-list-item-action class="list-action" v-if="option.radio">
+                <v-radio
+                  color="secondary"
+                  :label="option.label"
+                  :value="option.label"
+                  density="compact"
+                  hide-details
+                />
+              </v-list-item-action>
+              <v-list-item-action class="list-action" v-if="option.checkbox">
+                <v-checkbox
+                  v-model="option.checked"
+                  color="secondary"
+                  :label="option.label"
+                  density="compact"
+                  hide-details
+                />
+              </v-list-item-action>
+              <v-list-item-action v-if="option.icon">
+                <v-icon :disabled="option.disabled">{{ option.icon }}</v-icon>
+              </v-list-item-action>
+              <v-list-item-title
+                v-if="!option.radio && !option.checkbox"
+                :style="
+                  'cursor: pointer;' + (option.disabled ? 'opacity: 0.2' : '')
+                "
               >
-                <v-menu open-on-hover location="bottom" :key="k">
-                  <template v-slot:activator="{ props }">
-                    <v-list-item
-                      :disabled="option.disabled"
-                      :key="j"
-                      v-bind="props"
-                    >
-                      <template v-slot:prepend v-if="option.icon">
-                        <v-icon :disabled="option.disabled">
-                          {{ option.icon }}
-                        </v-icon>
-                      </template>
-                      <v-list-item-title
-                        v-if="!option.radio && !option.checkbox"
-                        :style="
-                          'cursor: pointer;' +
-                          (option.disabled ? 'opacity: 0.2' : '')
-                        "
-                        >{{ option.label }}
-                      </v-list-item-title>
-                      <v-icon> mdi-chevron-right </v-icon>
-                    </v-list-item>
-                  </template>
-                  <v-list>
-                    <v-list-item
-                      v-for="(submenu, k) in option.subMenu"
-                      :key="k"
-                      :prepend-icon="submenu.icon"
-                      @click="subMenuClick(submenu)"
-                    >
-                      <v-list-item-title>{{ submenu.label }}</v-list-item-title>
-                    </v-list-item>
-                  </v-list>
-                </v-menu>
-              </div>
-              <v-list-item
-                v-else
-                @click="option.command(option)"
-                :disabled="option.disabled"
-                :data-test="formatDT(`${title} ${menu.label} ${option.label}`)"
-                :key="j + '-list'"
-              >
-                <v-list-item-action class="list-action" v-if="option.radio">
-                  <v-radio
-                    color="secondary"
-                    :label="option.label"
-                    :value="option.label"
-                  />
-                </v-list-item-action>
-                <v-list-item-action class="list-action" v-if="option.checkbox">
-                  <v-checkbox
-                    v-model="option.checked"
-                    color="secondary"
-                    :label="option.label"
-                  />
-                </v-list-item-action>
-                <v-list-item-action v-if="option.icon">
-                  <v-icon :disabled="option.disabled">{{ option.icon }}</v-icon>
-                </v-list-item-action>
-                <v-list-item-title
-                  v-if="!option.radio && !option.checkbox"
-                  :style="
-                    'cursor: pointer;' + (option.disabled ? 'opacity: 0.2' : '')
-                  "
-                >
-                  {{ option.label }}
-                </v-list-item-title>
-              </v-list-item>
-            </template>
-          </v-radio-group>
+                {{ option.label }}
+              </v-list-item-title>
+            </v-list-item>
+          </template>
         </v-list>
       </v-menu>
     </v-row>

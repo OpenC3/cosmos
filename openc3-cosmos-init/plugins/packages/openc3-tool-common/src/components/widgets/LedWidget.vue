@@ -45,8 +45,7 @@ export default {
       return this.parameters[5] ? parseInt(this.parameters[5]) : 20
     },
     cssProps() {
-      let value = null
-      value = this.screenValues[this.valueId][0]
+      let value = this.screenValues[this.valueId][0]
       let color = this.colors[value]
       if (!color) {
         color = this.colors.ANY

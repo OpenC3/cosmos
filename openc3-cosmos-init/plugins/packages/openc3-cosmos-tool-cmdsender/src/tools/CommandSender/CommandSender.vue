@@ -37,7 +37,7 @@
       </div>
 
       <v-card v-if="rows.length !== 0">
-        <v-card-title>
+        <v-card-title class="d-flex align-center justify-content-space-between">
           Parameters
           <v-spacer />
           <v-text-field
@@ -60,12 +60,13 @@
           disable-pagination
           hide-default-footer
           multi-sort
-          dense
+          density="compact"
           @contextmenu:row="showContextMenu"
         >
-          <template v-slot:item.val_and_states="{ item }">
+          <template v-slot:item.val="{ item }">
             <command-parameter-editor
-              v-model="item.val_and_states"
+              v-model="item.val"
+              :states="item.states"
               :states-in-hex="statesInHex"
             />
           </template>
@@ -78,18 +79,27 @@
       <v-col>
         <v-card class="pb-2">
           <v-card-subtitle>
-            Editable Command History: (Pressing Enter on the line re-executes
-            the command)
-            <v-tooltip location="top">
-              <template v-slot:activator="{ props }">
-                <div v-bind="props" class="float-right">
-                  <v-btn icon data-test="clear-history" @click="clearHistory">
-                    <v-icon> mdi-delete </v-icon>
-                  </v-btn>
-                </div>
-              </template>
-              <span> Clear History </span>
-            </v-tooltip>
+            <v-row>
+              <v-col class="pt-6">
+                Editable Command History: (Pressing Enter on the line
+                re-executes the command)
+              </v-col>
+              <v-col>
+                <v-tooltip location="top">
+                  <template v-slot:activator="{ props }">
+                    <div v-bind="props" class="float-right">
+                      <v-btn
+                        icon="mdi-delete"
+                        variant="text"
+                        data-test="clear-history"
+                        @click="clearHistory"
+                      />
+                    </div>
+                  </template>
+                  <span> Clear History </span>
+                </v-tooltip>
+              </v-col>
+            </v-row>
           </v-card-subtitle>
           <v-row class="mt-2 mb-2">
             <pre ref="editor" class="editor" data-test="sender-history"></pre>
@@ -159,29 +169,21 @@
 
     <v-dialog v-model="displaySendHazardous" max-width="600">
       <v-card>
-        <v-system-bar>
+        <v-system-bar absolute>
           <v-spacer />
           <span> Hazardous Warning </span>
           <v-spacer />
         </v-system-bar>
-        <v-card-text>
-          <div class="mx-1">
-            <v-row class="my-2">
-              <span>
-                Warning: Command {{ hazardousCommand }} is Hazardous. Send?
-              </span>
-            </v-row>
-            <v-row>
-              <v-spacer />
-              <v-btn @click="cancelHazardousCmd" variant="outlined">
-                Cancel
-              </v-btn>
-              <v-btn @click="sendHazardousCmd" class="bg-primary mx-1">
-                Send
-              </v-btn>
-            </v-row>
-          </div>
+        <v-card-text class="mt-6">
+          Warning: Command {{ hazardousCommand }} is Hazardous. Send?
         </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn @click="cancelHazardousCmd" variant="outlined"> Cancel </v-btn>
+          <v-btn @click="sendHazardousCmd" class="bg-primary mx-1">
+            Send
+          </v-btn>
+        </v-card-actions>
       </v-card>
     </v-dialog>
 
@@ -262,11 +264,11 @@ export default {
       title: 'Command Sender',
       search: '',
       headers: [
-        { text: 'Name', value: 'parameter_name' },
-        { text: 'Value or State', value: 'val_and_states' },
-        { text: 'Units', value: 'units' },
-        { text: 'Range', value: 'range' },
-        { text: 'Description', value: 'description' },
+        { title: 'Name', value: 'parameter_name' },
+        { title: 'Value or State', value: 'val' },
+        { title: 'Units', value: 'units' },
+        { title: 'Range', value: 'range' },
+        { title: 'Description', value: 'description' },
       ],
       editor: null,
       targetName: '',
@@ -312,7 +314,11 @@ export default {
       screenName: null,
       screenDefinition: null,
       screenCount: 0,
-      menus: [
+    }
+  },
+  computed: {
+    menus: function () {
+      return [
         // TODO: Implement send raw
         // {
         //   label: 'File',
@@ -321,9 +327,9 @@ export default {
         //       label: 'Send Raw',
         //       command: () => {
         //         this.setupRawCmd()
-        //       }
-        //     }
-        //   ]
+        //       },
+        //     },
+        //   ],
         // },
         {
           label: 'Mode',
@@ -331,6 +337,7 @@ export default {
             {
               label: 'Ignore Range Checks',
               checkbox: true,
+              checked: this.ignoreRangeChecks,
               command: () => {
                 this.ignoreRangeChecks = !this.ignoreRangeChecks
               },
@@ -338,6 +345,7 @@ export default {
             {
               label: 'Display State Values in Hex',
               checkbox: true,
+              checked: this.statesInHex,
               command: () => {
                 this.statesInHex = !this.statesInHex
               },
@@ -345,6 +353,7 @@ export default {
             {
               label: 'Show Ignored Parameters',
               checkbox: true,
+              checked: this.showIgnoredParams,
               command: () => {
                 this.showIgnoredParams = !this.showIgnoredParams
                 // TODO: Maybe we don't need to do this if the data-table
@@ -355,14 +364,15 @@ export default {
             {
               label: 'Disable Parameter Conversions',
               checkbox: true,
+              checked: this.cmdRaw,
               command: () => {
-                this.cmdRaw = !this.cmdRaw
+                this.cmdRaw = !this.cmdRaw.checked
               },
             },
           ],
         },
-      ],
-    }
+      ]
+    },
   },
   created() {
     Api.get(`/openc3-api/autocomplete/reserved-item-names`).then((response) => {
@@ -429,18 +439,16 @@ export default {
       })
     },
     convertToValue(param) {
-      if (
-        param.val_and_states.selected_state !== null &&
-        param.val_and_states.selected_state !== 'MANUALLY ENTERED' &&
-        this.cmdRaw === false
-      ) {
-        return param.val_and_states.selected_state_label
+      if (param.val !== undefined && param.states && !this.cmdRaw) {
+        return Object.keys(param.states).find(
+          (state) => param.states[state].value === param.val,
+        )
       }
-      if (typeof param.val_and_states.val !== 'string') {
-        return param.val_and_states.val
+      if (typeof param.val !== 'string') {
+        return param.val
       }
 
-      var str = param.val_and_states.val
+      var str = param.val
       var quotesRemoved = this.removeQuotes(str)
       if (str === quotesRemoved) {
         var upcaseStr = str.toUpperCase()
@@ -563,10 +571,8 @@ export default {
                 }
                 this.rows.push({
                   parameter_name: parameter.name,
-                  val_and_states: {
-                    val: val,
-                    states: parameter.states,
-                  },
+                  val: val,
+                  states: parameter.states,
                   description: parameter.description,
                   range: range,
                   units: parameter.units,
@@ -955,5 +961,9 @@ export default {
   width: 95%;
   position: relative;
   font-size: 16px;
+}
+
+.v-system-bar {
+  top: 0 !important;
 }
 </style>
