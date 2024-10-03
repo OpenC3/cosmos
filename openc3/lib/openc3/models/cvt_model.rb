@@ -156,7 +156,13 @@ module OpenC3
               item_result[1] = item_result[1].intern if item_result[1] # Convert to symbol
             end
           else
-            raise "Item '#{target_name} #{packet_name} #{value_keys[-1]}' does not exist" unless hash.key?(value_keys[-1])
+            # We didn't find a value but the packet hash contains the key so the item exists
+            # Thus set the result to nil so it comes back like a normal item
+            if hash.key?(value_keys[-1])
+              item_result[1] = nil
+            else
+              raise "Item '#{target_name} #{packet_name} #{value_keys[-1]}' does not exist"
+            end
           end
         end
         results << item_result

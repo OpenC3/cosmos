@@ -189,6 +189,18 @@ module OpenC3
         expect { CvtModel.get_tlm_values([["INST","HEALTH_STATUS","TEMP1","NOPE"]]) }.to raise_error("Unknown value type 'NOPE'")
       end
 
+      it "returns [nil, nil] from an unset item" do
+        json_hash = {}
+        json_hash["TEMP2"] = nil
+        CvtModel.set(json_hash, target_name: "INST", packet_name: "HEALTH_STATUS", scope: "DEFAULT")
+        values = [["INST","HEALTH_STATUS","TEMP2","RAW"]]
+        result = CvtModel.get_tlm_values(values)
+        expect(result.length).to eql 1
+        expect(result[0].length).to eql 2
+        expect(result[0][0]).to eql nil
+        expect(result[0][1]).to eql nil
+      end
+
       it "gets different value types from the CVT" do
         update_temp1()
         values = [["INST","HEALTH_STATUS","TEMP1","RAW"],["INST","HEALTH_STATUS","TEMP1","CONVERTED"], ["INST","HEALTH_STATUS","TEMP1","FORMATTED"], ["INST","HEALTH_STATUS","TEMP1","WITH_UNITS"]]
