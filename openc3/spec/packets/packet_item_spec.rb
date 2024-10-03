@@ -479,7 +479,7 @@ module OpenC3
         expect(hash["maximum"]).to eql 100
         expect(hash["required"]).to be true
         expect(hash["limits"]).to_not be_nil
-        expect(hash["limits"]["enabled"]).to be_nil # Missing if false
+        expect(hash["limits"]["enabled"]).to be false
         # State is actually stored in Redis so it doesn't make sense to return via PacketItemLimits
         expect(hash["limits"]["state"]).to be_nil
         expect(hash["limits"]["response"]).to match("LimitsResponse")

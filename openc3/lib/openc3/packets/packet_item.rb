@@ -491,7 +491,11 @@ module OpenC3
 
       if self.limits
         config['limits'] ||= {}
-        config['limits']['enabled'] = true if self.limits.enabled
+        if self.limits.enabled
+          config['limits']['enabled'] = true
+        else
+          config['limits']['enabled'] = false
+        end
         if self.limits.values
           config['limits'] ||= {}
           config['limits']['persistence_setting'] = self.limits.persistence_setting
