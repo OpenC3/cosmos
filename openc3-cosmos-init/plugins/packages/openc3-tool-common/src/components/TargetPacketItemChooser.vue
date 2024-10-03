@@ -71,7 +71,7 @@
         />
       </v-col>
       <v-col
-        v-if="itemIsArray()"
+        v-if="chooseItem && itemIsArray()"
         cols="1"
         class="select"
         data-test="array-index"
@@ -272,9 +272,9 @@ export default {
       }
       if (!this.selectedTargetName) {
         this.selectedTargetName = this.targetNames[0].value
+        // This also updates packets and items as needed
         this.targetNameChanged(this.selectedTargetName)
       }
-      this.updatePackets()
       if (this.unknown) {
         this.targetNames.push(this.UNKNOWN)
       }
@@ -320,7 +320,15 @@ export default {
     mode: function (newVal, oldVal) {
       this.selectedPacketName = null
       this.selectedItemName = null
-      this.updatePackets()
+      // This also updates packets and items as needed
+      this.targetNameChanged(this.selectedTargetName)
+    },
+    chooseItem: function (newVal, oldVal) {
+      if (newVal) {
+        this.updateItems()
+      } else {
+        this.itemNames = []
+      }
     },
   },
   methods: {
@@ -410,12 +418,12 @@ export default {
             reducedType: this.selectedReducedType,
           })
           this.internalDisabled = false
-        }
+        },
       )
     },
     itemIsArray: function () {
       let i = this.itemNames.findIndex(
-        (item) => item.value === this.selectedItemName
+        (item) => item.value === this.selectedItemName,
       )
       if (i === -1) {
         this.selectedArrayIndex = null
@@ -433,7 +441,7 @@ export default {
     },
     arrayIndexes: function () {
       let i = this.itemNames.findIndex(
-        (item) => item.value === this.selectedItemName
+        (item) => item.value === this.selectedItemName,
       )
       let indexes = [...Array(this.itemNames[i].array).keys()]
       if (this.allowAll) {
@@ -480,7 +488,7 @@ export default {
             (packet) => {
               this.description = packet.description
               this.hazardous = packet.hazardous
-            }
+            },
           )
         }
       }
@@ -569,7 +577,7 @@ export default {
                 reducedType: this.selectedReducedType,
               })
             })
-          }
+          },
         )
       })
     },
