@@ -55,7 +55,7 @@
             <div class="grapher-info">
               <v-btn
                 v-show="state === 'pause'"
-                class="pulse"
+                class="pulse control-button"
                 v-on:click="
                   () => {
                     state = 'start'
@@ -69,6 +69,7 @@
               </v-btn>
               <v-btn
                 v-show="state === 'start'"
+                class="control-button"
                 v-on:click="
                   () => {
                     state = 'pause'
@@ -586,10 +587,12 @@ i.v-icon.mdi-chevron-down {
   left: -120px;
   height: 50px;
 }
+.control-button {
+  margin-right: 10px;
+}
 .grapher-info-text {
-  position: relative;
-  top: -55px;
-  left: 70px;
+  float: right;
+  margin-left: 5px;
   width: 140px;
 }
 .v-expansion-panel-content {
