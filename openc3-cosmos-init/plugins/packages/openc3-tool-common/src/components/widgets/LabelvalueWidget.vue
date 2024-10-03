@@ -24,7 +24,7 @@
   <div ref="container" class="d-flex flex-row" :style="computedStyle">
     <label-widget
       :parameters="labelName"
-      :settings="[...settings]"
+      :settings="[...appliedSettings]"
       :line="line"
       :lineNumber="lineNumber"
       :widget-index="0"
@@ -32,7 +32,7 @@
     <value-widget
       v-bind="$attrs"
       :parameters="valueParameters"
-      :settings="[...settings]"
+      :settings="[...appliedSettings]"
       :screenValues="screenValues"
       :screenTimeZone="screenTimeZone"
       :line="line"

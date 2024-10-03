@@ -26,14 +26,14 @@
     <limitscolumn-widget
       v-bind="$attrs"
       :parameters="parameters"
-      :settings="[...settings]"
+      :settings="[...appliedSettings]"
       :screenValues="screenValues"
       :widget-index="1"
     />
     <value-widget
       v-bind="$attrs"
       :parameters="parameters"
-      :settings="[...settings]"
+      :settings="[...appliedSettings]"
       :screenValues="screenValues"
       :screenTimeZone="screenTimeZone"
       :widget-index="0"

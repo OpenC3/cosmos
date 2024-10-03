@@ -48,7 +48,7 @@ export default {
     }
   },
   created: function () {
-    this.settings.forEach((setting) => {
+    this.appliedSettings.forEach((setting) => {
       switch (setting[0]) {
         case 'ITEM':
           this.items.push({

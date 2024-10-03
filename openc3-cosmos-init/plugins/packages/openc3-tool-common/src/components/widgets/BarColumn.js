@@ -80,7 +80,7 @@ export default {
       60 * 1000,
     )
 
-    this.settings.forEach((setting) => {
+    this.appliedSettings.forEach((setting) => {
       if (setting[0] === 'MIN_VALUE') {
         this.minValue = parseInt(setting[1])
       }

@@ -55,7 +55,7 @@ export default {
   },
   created() {
     // Look through the settings for our color value mappings
-    this.settings.forEach((setting) => {
+    this.appliedSettings.forEach((setting) => {
       if (setting[0] === 'VALUE_EQ') {
         this.valueMap[setting[1]] = setting[2]
       }

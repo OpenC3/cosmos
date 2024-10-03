@@ -28,7 +28,7 @@
     <vertical-widget
       v-bind="$attrs"
       :parameters="parameters.slice(1)"
-      :settings="settings"
+      :settings="appliedSettings"
       :widgets="widgets"
     />
   </div>

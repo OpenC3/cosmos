@@ -73,7 +73,7 @@ export default {
   },
   created: function () {
     // Look through the settings and get a reference to the screen
-    this.settings.forEach((setting) => {
+    this.appliedSettings.forEach((setting) => {
       if (setting[0] === 'SCREEN') {
         this.screenTarget = setting[1]
         this.screenName = setting[2]
@@ -86,7 +86,7 @@ export default {
     this.$emit('addItem', this.valueId)
 
     // Set value images data
-    const promises = this.settings
+    const promises = this.appliedSettings
       .filter((setting) => setting[0] === 'IMAGE')
       .map(async (setting) => {
         let url = setting[2]

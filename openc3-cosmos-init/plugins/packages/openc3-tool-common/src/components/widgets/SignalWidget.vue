@@ -54,7 +54,7 @@ export default {
     },
   },
   created() {
-    this.settings.forEach((setting) => {
+    this.appliedSettings.forEach((setting) => {
       switch (setting[0].toUpperCase()) {
         // Create a link to an existing screen
         case 'SCREEN':

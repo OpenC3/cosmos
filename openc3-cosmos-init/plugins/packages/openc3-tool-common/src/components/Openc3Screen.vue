@@ -26,7 +26,7 @@
 <template>
   <div :style="computedStyle" ref="bar">
     <v-card :min-height="height" :min-width="width">
-      <v-system-bar>
+      <v-system-bar absolute>
         <div v-show="errors.length !== 0">
           <v-tooltip location="top">
             <template v-slot:activator="{ props }">
@@ -123,7 +123,7 @@
       </v-system-bar>
       <v-expand-transition v-if="!editDialog">
         <div
-          class="pa-1"
+          class="pa-1 pt-7"
           style="position: relative"
           ref="screen"
           v-show="expand"

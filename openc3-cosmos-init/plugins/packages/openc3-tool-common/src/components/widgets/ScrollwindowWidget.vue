@@ -23,7 +23,7 @@
 <template>
   <vertical-widget
     v-bind="$attrs"
-    :settings="settings"
+    :settings="appliedSettings"
     :parameters="parameters.slice(1)"
     :widgets="widgets"
     :style="computedStyle"

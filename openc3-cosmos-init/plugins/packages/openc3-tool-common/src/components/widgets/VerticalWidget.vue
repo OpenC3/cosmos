@@ -29,7 +29,7 @@
       :is="widget.type"
       :target="widget.target"
       :parameters="widget.parameters"
-      :settings="widget.settings"
+      :settings="widget.appliedSettings"
       :screenValues="widget.screenValues"
       :screenTimeZone="widget.screenTimeZone"
       :widgets="widget.widgets"

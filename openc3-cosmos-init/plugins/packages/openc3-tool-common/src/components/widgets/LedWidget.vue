@@ -65,7 +65,7 @@ export default {
   // the store mutation and return the array index.
   // What this means practically is that future lifecycle hooks may not have valueId set.
   created() {
-    this.settings.forEach((setting) => {
+    this.appliedSettings.forEach((setting) => {
       switch (setting[0]) {
         case 'LED_COLOR':
           this.colors[setting[1]] = setting[2]

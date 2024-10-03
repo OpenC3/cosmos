@@ -24,13 +24,13 @@
   <div ref="container" class="d-flex flex-row" :style="computedStyle">
     <label-widget
       :parameters="labelName"
-      :settings="[...settings]"
+      :settings="[...appliedSettings]"
       :widget-index="0"
     />
     <led-widget
       v-bind="$attrs"
       :parameters="parameters"
-      :settings="[...settings]"
+      :settings="[...appliedSettings]"
       :screenValues="screenValues"
       :widget-index="1"
     />
