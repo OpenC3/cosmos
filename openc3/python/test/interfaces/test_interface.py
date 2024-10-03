@@ -411,8 +411,6 @@ class WriteInterface(unittest.TestCase):
                 args=[self.packet],
             )
             thread.start()
-            threads.append(thread)
-        for threads in threads:
             thread.join()
         self.assertGreater(time.time() - start_time, 1)
         self.assertEqual(interface.write_count, 10)

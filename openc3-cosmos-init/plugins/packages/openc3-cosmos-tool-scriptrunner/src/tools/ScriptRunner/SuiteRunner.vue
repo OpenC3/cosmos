@@ -274,7 +274,9 @@
                 dense
                 outlined
                 @change="scriptChanged"
-                :items="scripts"
+                :items="scriptNames"
+                item-text="label"
+                item-value="value"
                 v-model="script"
                 data-test="select-script"
               />
@@ -385,6 +387,15 @@ export default {
       } else {
         return false
       }
+    },
+    scriptNames() {
+      return this.scripts.map((name) => {
+        return {
+          // strip script_ or test_ from the name
+          label: name.replace(/^(script_|test_)/, ''),
+          value: name,
+        }
+      })
     },
   },
   created() {

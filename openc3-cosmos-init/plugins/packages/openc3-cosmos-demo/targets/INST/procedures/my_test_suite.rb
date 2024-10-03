@@ -12,14 +12,14 @@ class ExampleTest < OpenC3::Test
     puts "continue past raise"
   end
 
-  def test_2
+  def test_req2
     puts "Running #{OpenC3::Test.current_test_suite}:#{OpenC3::Test.current_test}:#{OpenC3::Test.current_test_case}"
     OpenC3::Test.puts "This test verifies requirement 2"
     helper()
     wait(2)
   end
 
-  def test_3
+  def test_req3
     puts "Running #{OpenC3::Test.current_test_suite}:#{OpenC3::Test.current_test}:#{OpenC3::Test.current_test_case}"
     raise SkipTestCase
   end
