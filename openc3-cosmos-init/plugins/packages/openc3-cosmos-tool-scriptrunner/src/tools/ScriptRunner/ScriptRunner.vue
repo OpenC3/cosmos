@@ -137,7 +137,7 @@
             hide-details
           />
           <v-text-field
-            v-model="state"
+            v-model="stateTimer"
             label="Script State"
             data-test="state"
             class="shrink ml-2 script-state"
@@ -583,9 +583,17 @@ export default {
       idCounter: 0,
       updateCounter: 0,
       recent: [],
+      waitingInterval: null,
+      waitingTime: 0,
     }
   },
   computed: {
+    stateTimer: function () {
+      if (this.state === 'waiting' || this.state === 'paused') {
+        return `${this.state} ${this.waitingTime}s`
+      }
+      return this.state
+    },
     // This is the list of files shown in the select dropdown
     fileList: function () {
       // this.files is the list of all files seen while running
@@ -1621,6 +1629,25 @@ export default {
     step() {
       Api.post(`/script-api/running-script/${this.scriptId}/step`)
     },
+    // This is called by processLine no matter the current state
+    handleWaiting() {
+      // First check if we're not waiting and if so clear the interval
+      if (this.state !== 'waiting' && this.state !== 'paused') {
+        this.clearWaiting()
+      } else if (this.waitingInterval !== null) {
+        // If we're waiting and the interval is active then nothing to do
+        return
+      }
+      // Create an interval to count every second
+      this.waitingInterval = setInterval(() => {
+        this.waitingTime += 1
+      }, 1000)
+    },
+    clearWaiting() {
+      this.waitingTime = 0
+      clearInterval(this.waitingInterval)
+      this.waitingInterval = null
+    },
     processLine(data) {
       if (data.filename && data.filename !== this.currentFilename) {
         if (!this.files[data.filename]) {
@@ -1656,6 +1683,7 @@ export default {
       const markers = this.editor.session.getMarkers()
       switch (this.state) {
         case 'running':
+          this.handleWaiting()
           this.startOrGoDisabled = false
           this.pauseOrRetryDisabled = false
           this.stopDisabled = false
@@ -1679,6 +1707,7 @@ export default {
         case 'breakpoint':
         case 'waiting':
         case 'paused':
+          this.handleWaiting()
           if (this.state == 'fatal') {
             this.startOrGoDisabled = true
             this.pauseOrRetryDisabled = true

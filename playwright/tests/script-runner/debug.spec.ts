@@ -78,9 +78,9 @@ test('keeps a debug command history', async ({ page, utils }) => {
   expect(await page.inputValue('[data-test=debug-text]')).toMatch('')
   // Step
   await page.locator('[data-test=step-button]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('paused')
+  await expect(page.locator('[data-test=state]')).toHaveValue(/paused \d+s/)
   await page.locator('[data-test=step-button]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('paused')
+  await expect(page.locator('[data-test=state]')).toHaveValue(/paused \d+s/)
   // Go
   await page.locator('[data-test=go-button]').click()
   await expect(page.locator('[data-test=state]')).toHaveValue('stopped')
@@ -143,7 +143,7 @@ test('displays the call stack', async ({ page, utils }) => {
     timeout: 20000,
   })
   await page.locator('[data-test=pause-retry-button]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('paused')
+  await expect(page.locator('[data-test=state]')).toHaveValue(/paused \d+s/)
 
   await page.locator('[data-test=script-runner-script]').click()
   await page.locator('text=Call Stack').click()
