@@ -32,7 +32,7 @@ test.use({
   toolName: 'Data Viewer',
 })
 
-async function addComponent(page, utils, target, packet) {
+async function addComponent(page, utils, target: string, packet: string) {
   await page.locator('[data-test=new-tab]').click()
   await utils.selectTargetPacketItem(target, packet)
   await page.locator('[data-test=select-send]').click() // add the packet to the list
@@ -58,7 +58,7 @@ test('saves the configuration', async ({ page, utils }) => {
 
   // Add a new component with a different type
   await page.locator('[data-test=new-tab]').click()
-  await page.getByRole('button', { name: 'COSMOS Raw/Decom' }).click()
+  await page.getByRole('button', { name: 'COSMOS Packet Raw/Decom' }).click()
   await page.getByText('Current Time').click()
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
   await page.locator('[data-test=select-send]').click() // add the packet to the list
@@ -90,7 +90,7 @@ test('opens and resets the configuration', async ({ page, utils }) => {
 
   // Verify the config
   await page.getByRole('tab', { name: 'Test1' }).click()
-  await expect(page.getByText('COSMOS Raw/Decom')).toBeVisible()
+  await expect(page.getByText('COSMOS Packet Raw/Decom')).toBeVisible()
   // Verify display setting
   await page.locator('[data-test=history-component-open-settings]').click()
   await expect(page.locator('[data-test=display-settings-card]')).toBeVisible()
@@ -159,7 +159,7 @@ test('adds a decom packet to a new tab', async ({ page, utils }) => {
   ).not.toMatch('00000010:')
 })
 
-test('adds a custom component a new tab', async ({ page, utils }) => {
+test('adds a custom component to a new tab', async ({ page, utils }) => {
   await page.locator('[data-test=new-tab]').click()
   await page.locator('[data-test="select-component"]').click()
   await page.getByText('Quaternion').click()
@@ -423,13 +423,16 @@ test('works with UTC date / times', async ({ page, utils }) => {
   await addComponent(page, utils, 'INST', 'ADCS')
   await page.locator('[data-test=start-button]').click()
   localStartTime = addSeconds(localStartTime, 5)
-  expect(
-    await page.inputValue('[data-test=history-component-text-area]'),
-  ).toContain(
-    // Original string is like '2024-08-26T21:23:41.319Z'
-    // So we split on ':' to just get the year and hour
-    localStartTime.toISOString().split(':').slice(0, 1).join(':'),
-  )
+  // Poll since inputValue is immediate
+  await expect
+    .poll(async () => {
+      return await page.inputValue('[data-test=history-component-text-area]')
+    })
+    .toContain(
+      // Original string is like '2024-08-26T21:23:41.319Z'
+      // So we split on ':' to just get the year and hour
+      localStartTime.toISOString().split(':').slice(0, 1).join(':'),
+    )
 
   // Switch back to local time
   await page.goto('/tools/admin/settings')
@@ -438,3 +441,56 @@ test('works with UTC date / times', async ({ page, utils }) => {
   await page.getByRole('option', { name: 'local' }).click()
   await page.locator('[data-test="save-time-zone"]').click()
 })
+
+test('adds single packet item', async ({ page, utils }) => {
+  await page.locator('[data-test="data-viewer-file"]').click()
+  await page.getByText('Reset Configuration').click()
+
+  await page.locator('[data-test="new-tab"]').click()
+  await page.locator('[data-test="select-component"]').click()
+  await page.getByText('COSMOS Item Value').click()
+  await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS', 'TEMP1')
+  await page.locator('button:has-text("Add Item")').click()
+  await page.locator('[data-test=add-component]').click()
+  await page.locator('[data-test="start-button"]').click()
+
+  // Poll since inputValue is immediate
+  await expect
+    .poll(async () => {
+      return await page.inputValue('[data-test=history-component-text-area]')
+    })
+    // Create regular expression to match the line:
+    // Time: 2024-10-01T01:15:49.419Z  TEMP1: -1.119 C
+    .toMatch(
+      /Time: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\s+TEMP1: .*\.\d{3} C/,
+    )
+})
+
+test('adds multiple packet items', async ({ page, utils }) => {
+  await page.locator('[data-test="new-tab"]').click()
+  await page.locator('[data-test="select-component"]').click()
+  await page.getByText('COSMOS Item Value').click()
+  await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS', 'TEMP3')
+  await page.locator('button:has-text("Add Item")').click()
+  await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS', 'PACKET_TIME *')
+  await page.locator('button:has-text("Add Item")').click()
+  await page.locator('[data-test=add-component]').click()
+  await page.locator('[data-test="start-button"]').click()
+
+  // Poll since inputValue is immediate
+  await expect
+    .poll(async () => {
+      return await page.inputValue('[data-test=history-component-text-area]')
+    })
+    // Create regular expression to match the line:
+    // Time: 2024-10-01T02:12:42.419Z  TEMP3: -20.785 C  PACKET_TIME: 2024-10-01 02:12:42 +0000
+    .toMatch(
+      /Time: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\s+TEMP3: .*\.\d{3} C\s+PACKET_TIME: \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/,
+    )
+})
+
+// TODO: Additional testing to cover the following:
+// - Multiple tabs, packet vs items
+// - Multiple tabs with the same packet, then delete a tab and verify the other continues
+// - Multiple tabs with the same item, then delete a tab and verify the other continues
+// - Check code coverage

@@ -43,6 +43,7 @@ class ReactionController < ApplicationController
       end
       render :json => ret, :status => 200
     rescue StandardError => e
+      logger.error(e.formatted)
       render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
     end
   end
@@ -58,10 +59,13 @@ class ReactionController < ApplicationController
       model = @model_class.get(name: params[:name], scope: params[:scope])
       render :json => model.as_json(:allow_nan => true), :status => 200
     rescue OpenC3::ReactionInputError => e
+      logger.error(e.formatted)
       render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 404
     rescue OpenC3::ReactionError => e
+      logger.error(e.formatted)
       render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400
     rescue StandardError => e
+      logger.error(e.formatted)
       render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
     end
   end
@@ -109,10 +113,13 @@ class ReactionController < ApplicationController
       model.deploy()
       render :json => model.as_json(:allow_nan => true), :status => 201
     rescue OpenC3::ReactionInputError => e
+      logger.error(e.formatted)
       render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400
     rescue OpenC3::ReactionError => e
+      logger.error(e.formatted)
       render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 418
     rescue StandardError => e
+      logger.error(e.formatted)
       render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
     end
   end
@@ -154,10 +161,13 @@ class ReactionController < ApplicationController
       model.notify(kind: 'updated')
       render :json => model.as_json(:allow_nan => true), :status => 200
     rescue OpenC3::ReactionInputError => e
+      logger.error(e.formatted)
       render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400
     rescue OpenC3::ReactionError => e
+      logger.error(e.formatted)
       render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 418
     rescue StandardError => e
+      logger.error(e.formatted)
       render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
     end
   end
@@ -192,6 +202,7 @@ class ReactionController < ApplicationController
       model.notify_enable
       render :json => model.as_json(:allow_nan => true), :status => 200
     rescue StandardError => e
+      logger.error(e.formatted)
       render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
     end
   end
@@ -226,6 +237,7 @@ class ReactionController < ApplicationController
       model.notify_disable
       render :json => model.as_json(:allow_nan => true), :status => 200
     rescue StandardError => e
+      logger.error(e.formatted)
       render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
     end
   end
@@ -245,6 +257,7 @@ class ReactionController < ApplicationController
       model.notify_execute
       render :json => model.as_json(:allow_nan => true), :status => 200
     rescue StandardError => e
+      logger.error(e.formatted)
       render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
     end
   end
@@ -275,10 +288,13 @@ class ReactionController < ApplicationController
       model.notify(kind: 'deleted')
       render :json => model.as_json(:allow_nan => true), :status => 200
     rescue OpenC3::ReactionInputError => e
+      logger.error(e.formatted)
       render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 404
     rescue OpenC3::ReactionError => e
+      logger.error(e.formatted)
       render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400
     rescue StandardError => e
+      logger.error(e.formatted)
       render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
     end
   end

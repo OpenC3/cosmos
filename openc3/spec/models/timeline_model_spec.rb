@@ -129,7 +129,7 @@ module OpenC3
         activity.create()
         score = activity.start
         ActivityModel.destroy(name: name, scope: scope, score: score, uuid: activity.uuid)
-        # expect(ret).to eql(1) # TODO: mock_redis 0.44 not returning the correct value (Redis v4 vs v5 behavior)
+        # expect(ret).to eql(1) # TODO: mock_redis 0.45 not returning the correct value (Redis v4 vs v5 behavior)
         ret = TimelineModel.delete(name: name, scope: scope)
         expect(ret).to eql(name)
         all = TimelineModel.all

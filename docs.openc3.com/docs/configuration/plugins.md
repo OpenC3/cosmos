@@ -808,6 +808,7 @@ Defines a custom widget that can be used in Telemetry Viewer screens.
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Widget Name | The name of the widget will be used to build a path to the widget implementation. For example, `WIDGET HELLOWORLD` will find the as-built file tools/widgets/HelloworldWidget/HelloworldWidget.umd.min.js. See the [Custom Widgets](../guides/custom-widgets.md) guide for more details. | True |
+| Label | The label for the widget that will appear in the Data Viewer component drop down | False |
 
 Example Usage:
 ```ruby

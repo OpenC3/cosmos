@@ -258,6 +258,7 @@ import AddComponentDialog from '@/tools/DataViewer/AddComponentDialog'
 import DynamicComponent from '@/tools/DataViewer/DynamicComponent'
 // Import the built-in DataViewer components
 import DumpComponent from '@/tools/DataViewer/DumpComponent'
+import ValueComponent from '@/tools/DataViewer/ValueComponent'
 
 export default {
   components: {
@@ -266,6 +267,7 @@ export default {
     SaveConfigDialog,
     DynamicComponent,
     DumpComponent,
+    ValueComponent,
     TopBar,
   },
   mixins: [Config, TimeFilters],
@@ -276,7 +278,18 @@ export default {
       api: null,
       timeZone: 'local',
       // Initialize with all built-in components
-      components: [{ label: 'COSMOS Raw/Decom', value: 'DumpComponent' }],
+      components: [
+        {
+          label: 'COSMOS Packet Raw/Decom',
+          value: 'DumpComponent',
+          items: false,
+        },
+        {
+          label: 'COSMOS Item Value',
+          value: 'ValueComponent',
+          items: true,
+        },
+      ],
       counter: 0,
       panel: 0,
       componentType: null,
@@ -415,6 +428,7 @@ export default {
         if (found) {
           Api.get(`/openc3-api/widgets/${widget}`).then((response) => {
             let label = response.data.label
+            let items = response.data.items
             if (label === null) {
               label = response.data.name.slice(10)
               label = label.charAt(0) + label.slice(1).toLowerCase()
@@ -422,6 +436,7 @@ export default {
             this.components.push({
               label: label,
               value: found[0],
+              items: items,
             })
           })
         }
@@ -451,7 +466,11 @@ export default {
   },
   methods: {
     packetTitle: function (packet) {
-      return `${packet.targetName} ${packet.packetName} [ ${packet.mode} ]`
+      if (packet.itemName !== undefined) {
+        return `${packet.targetName} ${packet.packetName} ${packet.itemName}`
+      } else {
+        return `${packet.targetName} ${packet.packetName} [ ${packet.mode} ]`
+      }
     },
     resizeTabs: function () {
       if (this.$refs.tabs) this.$refs.tabs.onResize()
@@ -481,11 +500,11 @@ export default {
         this.warning = true
       }
       this.running = true
-      this.addPacketsToSubscription()
+      this.addToSubscription()
     },
     stop: function () {
       this.running = false
-      this.removePacketsFromSubscription()
+      this.removeFromSubscription()
     },
     subscribe: function () {
       this.cable
@@ -509,47 +528,95 @@ export default {
         })
         .then((subscription) => {
           this.subscription = subscription
-          if (this.running) this.addPacketsToSubscription()
+          if (this.running) this.addToSubscription()
         })
     },
-    addPacketsToSubscription: function (packets) {
+    addToSubscription: function (packets) {
       packets = packets || this.allPackets
-      // Group by mode
-      const modeGroups = packets.reduce((groups, packet) => {
-        if (groups[packet.mode]) {
-          groups[packet.mode].push(packet)
+
+      let itemBased = []
+      let packetBased = []
+      packets.forEach((packet) => {
+        if (packet.itemName !== undefined) {
+          itemBased.push(packet)
         } else {
-          groups[packet.mode] = [packet]
+          packetBased.push(packet)
         }
-        return groups
-      }, {})
-      Object.keys(modeGroups).forEach((mode) => {
-        // This eliminates duplicates by converted to Set and back to Array
-        modeGroups[mode] = [...new Set(modeGroups[mode])]
       })
-      OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(
-        (refreshed) => {
-          if (refreshed) {
-            OpenC3Auth.setTokens()
-          }
-          Object.keys(modeGroups).forEach((mode) => {
+
+      if (itemBased.length > 0) {
+        // Add the items to the subscription
+        OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(
+          (refreshed) => {
+            if (refreshed) {
+              OpenC3Auth.setTokens()
+            }
             this.subscription.perform('add', {
               scope: window.openc3Scope,
               token: localStorage.openc3Token,
-              packets: modeGroups[mode].map(this.subscriptionKey),
+              items: itemBased.map(this.itemSubscriptionKey),
               ...this.startEndTime,
             })
-          })
-        },
-      )
+          },
+        )
+      }
+
+      if (packetBased.length > 0) {
+        // Group by mode
+        const modeGroups = packetBased.reduce((groups, packet) => {
+          if (groups[packet.mode]) {
+            groups[packet.mode].push(packet)
+          } else {
+            groups[packet.mode] = [packet]
+          }
+          return groups
+        }, {})
+        Object.keys(modeGroups).forEach((mode) => {
+          // This eliminates duplicates by converted to Set and back to Array
+          modeGroups[mode] = [...new Set(modeGroups[mode])]
+        })
+        OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(
+          (refreshed) => {
+            if (refreshed) {
+              OpenC3Auth.setTokens()
+            }
+            Object.keys(modeGroups).forEach((mode) => {
+              this.subscription.perform('add', {
+                scope: window.openc3Scope,
+                token: localStorage.openc3Token,
+                packets: modeGroups[mode].map(this.subscriptionKey),
+                ...this.startEndTime,
+              })
+            })
+          },
+        )
+      }
     },
-    removePacketsFromSubscription: function (packets) {
+    removeFromSubscription: function (packets) {
       packets = packets || this.allPackets
-      if (packets.length > 0) {
+
+      let itemBased = []
+      let packetBased = []
+      packets.forEach((packet) => {
+        if (packet.itemName !== undefined) {
+          itemBased.push(packet)
+        } else {
+          packetBased.push(packet)
+        }
+      })
+
+      if (itemBased.length > 0) {
         this.subscription.perform('remove', {
           scope: window.openc3Scope,
           token: localStorage.openc3Token,
-          packets: packets.map(this.subscriptionKey),
+          items: itemBased.map(this.itemSubscriptionKey),
+        })
+      }
+      if (packetBased.length > 0) {
+        this.subscription.perform('remove', {
+          scope: window.openc3Scope,
+          token: localStorage.openc3Token,
+          packets: packetBased.map(this.subscriptionKey),
         })
       }
     },
@@ -561,27 +628,72 @@ export default {
         return
       }
       if (!parsed.length) {
-        this.stop()
         return
       }
-      const groupedPackets = parsed.reduce((groups, packet) => {
-        if (groups[packet.__packet]) {
-          groups[packet.__packet].push(packet)
-        } else {
-          groups[packet.__packet] = [packet]
-        }
-        return groups
-      }, {})
-      this.config.tabs.forEach((tab, i) => {
-        tab.packets.forEach((packetConfig) => {
-          let packetName = this.packetKey(packetConfig)
-          this.receivedPackets[packetName] = true
-          if (groupedPackets[packetName]) {
-            this.$refs[tab.ref][0].receive(groupedPackets[packetName])
+
+      // Iterate over the parsed data and send it to the appropriate component
+
+      // If the parsed data has a __type of ITEMS, we're dealing with an array
+      // of items with attributes named after the item. We need to filter
+      // the items per tab and send them to the appropriate component.
+      if (parsed[0].__type === 'ITEMS') {
+        this.config.tabs.forEach((tab, i) => {
+          // Skip tabs without items
+          if (!tab.items) return
+
+          let keys = tab.packets.map((itemConfig) => this.itemKey(itemConfig))
+          let filtered = parsed
+            .map((item) => {
+              let newItem = {}
+              // These fields are always in the item subscription
+              newItem['__type'] = item['__type']
+              newItem['__time'] = item['__time']
+              let found = false
+              keys.forEach((key) => {
+                if (item[key]) {
+                  found = true
+                  newItem[key] = item[key]
+                }
+              })
+              if (found) {
+                return newItem
+              } else {
+                return
+              }
+            })
+            .filter(Boolean) // Remove undefined items
+          if (
+            filtered &&
+            typeof this.$refs[tab.ref][0].receive === 'function'
+          ) {
+            this.$refs[tab.ref][0].receive(filtered)
           }
         })
-      })
-      this.receivedPackets = { ...this.receivedPackets }
+      } else {
+        const groupedPackets = parsed.reduce((groups, packet) => {
+          if (groups[packet.__packet]) {
+            groups[packet.__packet].push(packet)
+          } else {
+            groups[packet.__packet] = [packet]
+          }
+          return groups
+        }, {})
+        this.config.tabs.forEach((tab, i) => {
+          // Skip tabs with items
+          if (tab.items) return
+          tab.packets.forEach((packetConfig) => {
+            let packetName = this.packetKey(packetConfig)
+            this.receivedPackets[packetName] = true
+            if (
+              groupedPackets[packetName] &&
+              typeof this.$refs[tab.ref][0].receive === 'function'
+            ) {
+              this.$refs[tab.ref][0].receive(groupedPackets[packetName])
+            }
+          })
+        })
+        this.receivedPackets = { ...this.receivedPackets }
+      }
     },
     packetKey: function (packet) {
       let key = packet.mode + '__'
@@ -594,10 +706,26 @@ export default {
       if (packet.mode === 'DECOM') key += `__${packet.valueType}`
       return key
     },
+    itemKey: function (item) {
+      let key = item.mode + '__'
+      if (item.cmdOrTlm === 'TLM') {
+        key += 'TLM'
+      } else {
+        key += 'CMD'
+      }
+      key += `__${item.targetName}__${item.packetName}__${item.itemName}`
+      if (item.mode === 'DECOM') key += `__${item.valueType}`
+      return key
+    },
+    // Maybe combine subscriptionKey with itemSubscriptionKey
     subscriptionKey: function (packet) {
       const cmdOrTlm = packet.cmdOrTlm.toUpperCase()
       let key = `${packet.mode}__${cmdOrTlm}__${packet.targetName}__${packet.packetName}`
       if (packet.mode === 'DECOM') key += `__${packet.valueType}`
+      return key
+    },
+    itemSubscriptionKey: function (item) {
+      let key = `DECOM__TLM__${item.targetName}__${item.packetName}__${item.itemName}__${item.valueType}`
       return key
     },
     resetConfig: function () {
@@ -673,14 +801,14 @@ export default {
         packets: [...event.packets], // Make a copy
         type: type,
         component: component,
+        items: event.component.items,
         config: { timeZone: this.timeZone },
-        ref: `component${this.counter}`,
+        ref: Date.now(),
       })
-      this.counter++
       this.curTab = this.config.tabs.length - 1
 
       if (this.running) {
-        this.addPacketsToSubscription(event.packets)
+        this.addToSubscription(event.packets)
       }
       this.cancelAddComponent()
     },
@@ -688,19 +816,43 @@ export default {
       this.showAddComponentDialog = false
     },
     deleteComponent: function (tabIndex) {
-      // Get the list of packets the other tabs are using
-      let packetsInUse = []
-      this.config.tabs.forEach((tab, i) => {
-        if (i !== tabIndex) {
-          packetsInUse = packetsInUse.concat(tab.packets.map(this.packetKey))
+      // Check for item based components first
+      if (this.config.tabs[tabIndex].packets[0].itemName !== undefined) {
+        // Get the list of items the other tabs are using
+        let itemsInUse = []
+        this.config.tabs.forEach((tab, i) => {
+          // Skip tabs without items
+          if (!tab.items) return
+
+          if (i !== tabIndex) {
+            itemsInUse = itemsInUse.concat(tab.packets.map(this.itemKey))
+          }
+        })
+        // Filter out any items that are in use
+        let filtered = this.config.tabs[tabIndex].packets.filter(
+          (packet) => itemsInUse.indexOf(this.itemKey(packet)) === -1,
+        )
+        if (filtered.length > 0) {
+          this.removeFromSubscription(filtered)
         }
-      })
-      // Filter out any packets that are in use
-      let filtered = this.config.tabs[tabIndex].packets.filter(
-        (packet) => packetsInUse.indexOf(this.packetKey(packet)) === -1,
-      )
-      if (filtered.length > 0) {
-        this.removePacketsFromSubscription(filtered)
+      } else {
+        // Get the list of packets the other tabs are using
+        let packetsInUse = []
+        this.config.tabs.forEach((tab, i) => {
+          // Skip tabs with items
+          if (tab.items) return
+
+          if (i !== tabIndex) {
+            packetsInUse = packetsInUse.concat(tab.packets.map(this.packetKey))
+          }
+        })
+        // Filter out any packets that are in use
+        let filtered = this.config.tabs[tabIndex].packets.filter(
+          (packet) => packetsInUse.indexOf(this.packetKey(packet)) === -1,
+        )
+        if (filtered.length > 0) {
+          this.removeFromSubscription(filtered)
+        }
       }
       this.config.tabs.splice(tabIndex, 1)
     },

@@ -18,7 +18,7 @@
 
 <template>
   <div>
-    <top-bar :title="title" />
+    <top-bar :title="title" :menus="menus" />
     <v-card width="100%">
       <div style="padding-left: 5px; padding-top: 5px">
         <span class="ma-2 font-size">Buckets:</span>
@@ -180,6 +180,33 @@
         </v-card-text>
       </v-card>
     </v-dialog>
+    <v-dialog
+      v-model="optionsDialog"
+      @keydown.esc="optionsDialog = false"
+      max-width="300"
+    >
+      <v-card>
+        <v-system-bar>
+          <v-spacer />
+          <span>Options</span>
+          <v-spacer />
+        </v-system-bar>
+        <v-card-text>
+          <div class="pa-3">
+            <v-text-field
+              min="1"
+              max="3600"
+              step="100"
+              type="number"
+              label="Refresh Interval (s)"
+              :value="refreshInterval"
+              @change="refreshInterval = $event"
+              data-test="refresh-interval"
+            />
+          </div>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -201,6 +228,9 @@ export default {
       buckets: [],
       volumes: [],
       uploadPathDialog: false,
+      optionsDialog: false,
+      refreshInterval: 60,
+      updater: null,
       path: '',
       file: null,
       files: [],
@@ -209,6 +239,20 @@ export default {
         { text: 'Size', value: 'size' },
         { text: 'Modified Date', value: 'modified' },
         { text: 'Action', value: 'action' },
+      ],
+      menus: [
+        {
+          label: 'File',
+          items: [
+            {
+              label: 'Options',
+              icon: 'mdi-cog',
+              command: () => {
+                this.optionsDialog = true
+              },
+            },
+          ],
+        },
       ],
     }
   },
@@ -240,6 +284,10 @@ export default {
       }
       this.updateFiles()
     }
+    this.changeUpdater()
+  },
+  beforeDestroy() {
+    this.clearUpdater()
   },
   watch: {
     // This is the upload function that is activated when the file gets set
@@ -247,6 +295,9 @@ export default {
       if (this.file === null) return
       this.uploadFilePath = `${this.path}${this.file.name}`
       this.uploadPathDialog = true
+    },
+    refreshInterval() {
+      this.changeUpdater()
     },
   },
   methods: {
@@ -258,6 +309,21 @@ export default {
         },
       })
       this.updateFiles()
+    },
+    changeUpdater() {
+      this.clearUpdater()
+      this.updater = setInterval(() => {
+        // need to be in a bucket/volume otherwise updateFiles gets mad
+        if (this.root) {
+          this.updateFiles()
+        }
+      }, this.refreshInterval * 1000)
+    },
+    clearUpdater() {
+      if (this.updater != null) {
+        clearInterval(this.updater)
+        this.updater = null
+      }
     },
     selectBucket(bucket) {
       if (this.root === bucket) return

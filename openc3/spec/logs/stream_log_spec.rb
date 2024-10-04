@@ -102,7 +102,7 @@ module OpenC3
         expect(@files.keys.length).to eql 0 # hasn't cycled yet
         sleep 0.1
         @stream_log.write("\x00") # size 200001
-        sleep 0.1
+        sleep 1
         expect(@files.keys.length).to eql 1
         threads = @stream_log.stop
         threads.each do |thread|

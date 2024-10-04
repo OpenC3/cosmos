@@ -329,7 +329,7 @@ module OpenC3
       synchronize() do
         begin
           internal_buffer_equals(buffer)
-        rescue RuntimeError
+        rescue RuntimeError => e
           Logger.instance.error "#{@target_name} #{@packet_name} received with actual packet length of #{buffer.length} but defined length of #{@defined_length}"
         end
         @read_conversion_cache.clear if @read_conversion_cache

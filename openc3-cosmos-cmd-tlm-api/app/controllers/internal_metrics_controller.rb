@@ -40,7 +40,8 @@ class InternalMetricsController < ApplicationController
     OpenC3::Logger.debug("request for aggregator metrics")
     begin
       scopes = OpenC3::ScopeModel.names()
-    rescue RuntimeError
+    rescue RuntimeError => e
+      logger.error(e.formatted)
       OpenC3::Logger.error("failed to connect to redis to pull scopes")
       render plain: "failed to access datastore", :status => 500
     end
@@ -50,7 +51,8 @@ class InternalMetricsController < ApplicationController
       OpenC3::Logger.debug("search metrics for scope: #{scope}")
       begin
         scope_resp = OpenC3::MetricModel.all(scope: scope)
-      rescue RuntimeError
+      rescue RuntimeError => e
+        logger.error(e.formatted)
         OpenC3::Logger.error("failed to connect to redis to pull metrics")
         render plain: "failed to access datastore", :status => 500
       end
