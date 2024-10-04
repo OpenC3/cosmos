@@ -34,7 +34,7 @@ test('keeps a debug command history', async ({ page, utils }) => {
   puts "two"
   `)
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('waiting', {
+  await expect(page.locator('[data-test=state]')).toHaveValue(/waiting \d+s/, {
     timeout: 20000,
   })
   await page.locator('[data-test=script-runner-script]').click()
@@ -139,7 +139,7 @@ test('displays the call stack', async ({ page, utils }) => {
   one()
   `)
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('waiting', {
+  await expect(page.locator('[data-test=state]')).toHaveValue(/waiting \d+s/, {
     timeout: 20000,
   })
   await page.locator('[data-test=pause-retry-button]').click()
