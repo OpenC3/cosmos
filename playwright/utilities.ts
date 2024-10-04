@@ -75,4 +75,14 @@ export class Utilities {
       })
       .toMatch(regex)
   }
+
+  async dropdownSelectedValue(page, locator, regex) {
+    await expect
+      .poll(async () => {
+        return await page
+          .locator(locator + ' .v-autocomplete__selection-text')
+          .innerText()
+      })
+      .toMatch(regex)
+  }
 }
