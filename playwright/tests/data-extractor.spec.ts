@@ -374,9 +374,12 @@ test('outputs unique values only', async ({ page, utils }) => {
 test('works with UTC date / times', async ({ page, utils }) => {
   let now = new Date()
   // Verify the local date / time
+  let startDateString =
+    (await page.inputValue('[data-test=start-date]'))?.trim() || ''
+  let startDate = parse(startDateString, 'yyyy-MM-dd', now)
   let startTimeString =
     (await page.inputValue('[data-test=start-time]'))?.trim() || ''
-  let startTime = parse(startTimeString, 'HH:mm:ss.SSS', now)
+  let startTime = parse(startTimeString, 'HH:mm:ss.SSS', startDate)
   expect(
     isWithinInterval(startTime, {
       // Start time is automatically 1hr in the past
@@ -384,9 +387,12 @@ test('works with UTC date / times', async ({ page, utils }) => {
       end: subMinutes(now, 58),
     }),
   ).toBeTruthy()
+  let endDateString =
+    (await page.inputValue('[data-test=end-date]'))?.trim() || ''
+  let endDate = parse(endDateString, 'yyyy-MM-dd', now)
   let endTimeString =
     (await page.inputValue('[data-test=end-time]'))?.trim() || ''
-  let endTime = parse(endTimeString, 'HH:mm:ss.SSS', now)
+  let endTime = parse(endTimeString, 'HH:mm:ss.SSS', endDate)
   expect(
     isWithinInterval(endTime, {
       // end time is now
@@ -412,9 +418,12 @@ test('works with UTC date / times', async ({ page, utils }) => {
   now = new Date()
   // add the timezone offset to get it to UTC
   now = addMinutes(now, now.getTimezoneOffset())
+  startDateString =
+    (await page.inputValue('[data-test=start-date]'))?.trim() || ''
+  startDate = parse(startDateString, 'yyyy-MM-dd', now)
   startTimeString =
     (await page.inputValue('[data-test=start-time]'))?.trim() || ''
-  startTime = parse(startTimeString, 'HH:mm:ss.SSS', now)
+  startTime = parse(startTimeString, 'HH:mm:ss.SSS', startDate)
   expect(
     isWithinInterval(startTime, {
       // Start time is automatically 1hr in the past
@@ -422,8 +431,10 @@ test('works with UTC date / times', async ({ page, utils }) => {
       end: subMinutes(now, 58),
     }),
   ).toBeTruthy()
+  endDateString = (await page.inputValue('[data-test=end-date]'))?.trim() || ''
+  endDate = parse(endDateString, 'yyyy-MM-dd', now)
   endTimeString = (await page.inputValue('[data-test=end-time]'))?.trim() || ''
-  endTime = parse(endTimeString, 'HH:mm:ss.SSS', now)
+  endTime = parse(endTimeString, 'HH:mm:ss.SSS', endDate)
   expect(
     isWithinInterval(endTime, {
       // end time is now

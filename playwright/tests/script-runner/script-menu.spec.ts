@@ -38,7 +38,7 @@ test('show started scripts', async ({ page, utils }) => {
 
   // Start the script
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('waiting', {
+  await expect(page.locator('[data-test=state]')).toHaveValue(/waiting \d+s/, {
     timeout: 20000,
   })
   // Traverse up to get the name of the running script
