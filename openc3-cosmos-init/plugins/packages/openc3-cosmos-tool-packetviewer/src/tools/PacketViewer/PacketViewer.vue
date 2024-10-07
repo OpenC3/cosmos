@@ -68,6 +68,7 @@
         </template>
         <template v-slot:item.value="{ item }">
           <value-widget
+            :key="`${targetName}__${packetName}__${item.name}`"
             :value="item.value"
             :limits-state="item.limitsState"
             :counter="item.counter"
