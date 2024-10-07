@@ -425,18 +425,21 @@ export default {
               divider: true,
             },
             {
-              label: 'Comma Delimited',
-              radio: true,
-              command: () => {
-                this.delimiter = ','
+              radioGroup: true,
+              value: this.delimiter,
+              command: (value) => {
+                this.delimiter = value
               },
-            },
-            {
-              label: 'Tab Delimited',
-              radio: true,
-              command: () => {
-                this.delimiter = '\t'
-              },
+              choices: [
+                {
+                  label: 'Comma Delimited',
+                  value: ',',
+                },
+                {
+                  label: 'Tab Delimited',
+                  value: '\t',
+                },
+              ],
             },
           ],
         },
@@ -484,18 +487,21 @@ export default {
               divider: true,
             },
             {
-              label: 'Normal Columns',
-              radio: true,
-              command: () => {
-                this.columnMode = 'normal'
+              radioGroup: true,
+              value: this.columnMode,
+              command: (value) => {
+                this.columnMode = value
               },
-            },
-            {
-              label: 'Full Column Names',
-              radio: true,
-              command: () => {
-                this.columnMode = 'full'
-              },
+              choices: [
+                {
+                  label: 'Normal Columns',
+                  value: 'normal',
+                },
+                {
+                  label: 'Full Column Names',
+                  value: 'full',
+                },
+              ],
             },
           ],
         },

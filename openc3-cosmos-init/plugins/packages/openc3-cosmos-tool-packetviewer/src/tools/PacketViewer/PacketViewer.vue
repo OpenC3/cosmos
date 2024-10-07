@@ -239,32 +239,29 @@ export default {
               divider: true,
             },
             {
-              label: valueTypeToRadioGroup['WITH_UNITS'],
-              radio: true,
-              command: () => {
-                this.valueType = 'WITH_UNITS'
+              radioGroup: true,
+              value: this.valueType,
+              command: (value) => {
+                this.valueType = value
               },
-            },
-            {
-              label: valueTypeToRadioGroup['FORMATTED'],
-              radio: true,
-              command: () => {
-                this.valueType = 'FORMATTED'
-              },
-            },
-            {
-              label: valueTypeToRadioGroup['CONVERTED'],
-              radio: true,
-              command: () => {
-                this.valueType = 'CONVERTED'
-              },
-            },
-            {
-              label: valueTypeToRadioGroup['RAW'],
-              radio: true,
-              command: () => {
-                this.valueType = 'RAW'
-              },
+              choices: [
+                {
+                  label: valueTypeToRadioGroup['WITH_UNITS'],
+                  value: 'WITH_UNITS',
+                },
+                {
+                  label: valueTypeToRadioGroup['FORMATTED'],
+                  value: 'FORMATTED',
+                },
+                {
+                  label: valueTypeToRadioGroup['CONVERTED'],
+                  value: 'CONVERTED',
+                },
+                {
+                  label: valueTypeToRadioGroup['RAW'],
+                  value: 'RAW',
+                },
+              ],
             },
           ],
         },

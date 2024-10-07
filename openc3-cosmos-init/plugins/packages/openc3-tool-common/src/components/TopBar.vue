@@ -41,14 +41,6 @@
           </v-btn>
         </template>
         <v-list>
-          <!-- TODO: menus need to be revamped to support radio buttons in Vuetify 3
-          <v-radio-group
-            :model-value="menu.radioGroup"
-            hide-details
-            density="compact"
-            class="ma-0 pa-0"
-          >
-          -->
           <template v-for="(option, j) in menu.items">
             <v-divider v-if="option.divider" :key="j + '-divider'" />
             <div
@@ -90,22 +82,42 @@
                 </v-list>
               </v-menu>
             </div>
+            <v-radio-group
+              v-else-if="option.radioGroup"
+              :model-value="option.value"
+              @update:model-value="
+                (value) => {
+                  option.value = value
+                  option.command(value)
+                }
+              "
+              :key="j + '-radio-group'"
+              hide-details
+              density="compact"
+              class="ma-0 pa-0"
+            >
+              <v-list-item
+                v-for="(choice, k) in option.choices"
+                :key="k + '-choice'"
+              >
+                <v-list-item-action class="list-action">
+                  <v-radio
+                    color="secondary"
+                    :label="choice.label"
+                    :value="choice.value"
+                    density="compact"
+                    hide-details
+                  />
+                </v-list-item-action>
+              </v-list-item>
+            </v-radio-group>
             <v-list-item
               v-else
-              @click.stop="option.command(option)"
+              @click="option.command(option)"
               :disabled="option.disabled"
               :data-test="formatDT(`${title} ${menu.label} ${option.label}`)"
               :key="j + '-list'"
             >
-              <v-list-item-action class="list-action" v-if="option.radio">
-                <v-radio
-                  color="secondary"
-                  :label="option.label"
-                  :value="option.label"
-                  density="compact"
-                  hide-details
-                />
-              </v-list-item-action>
               <v-list-item-action class="list-action" v-if="option.checkbox">
                 <v-checkbox
                   v-model="option.checked"
