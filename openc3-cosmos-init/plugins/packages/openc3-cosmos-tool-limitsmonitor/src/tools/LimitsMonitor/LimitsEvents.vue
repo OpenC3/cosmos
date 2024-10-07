@@ -109,7 +109,7 @@ export default {
         this.limitsSubscription = limitsSubscription
       })
   },
-  destroyed() {
+  unmounted() {
     if (this.limitsSubscription) {
       this.limitsSubscription.unsubscribe()
     }

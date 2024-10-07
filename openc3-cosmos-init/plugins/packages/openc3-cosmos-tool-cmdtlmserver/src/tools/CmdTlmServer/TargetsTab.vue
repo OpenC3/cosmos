@@ -209,7 +209,7 @@ export default {
         })
     }
   },
-  destroyed() {
+  unmounted() {
     if (this.systemSubscription) {
       this.systemSubscription.unsubscribe()
     }

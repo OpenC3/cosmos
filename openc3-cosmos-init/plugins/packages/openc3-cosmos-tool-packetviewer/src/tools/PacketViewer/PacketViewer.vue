@@ -359,7 +359,7 @@ export default {
       this.changeUpdater(true)
     }
   },
-  beforeDestroy() {
+  beforeUnmount() {
     if (this.updater != null) {
       clearInterval(this.updater)
       this.updater = null

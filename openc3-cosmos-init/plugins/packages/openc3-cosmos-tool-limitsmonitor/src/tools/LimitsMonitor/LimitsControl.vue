@@ -297,7 +297,7 @@ export default {
       this.update()
     }, 1000)
   },
-  destroyed() {
+  unmounted() {
     if (this.updater != null) {
       clearInterval(this.updater)
       this.updater = null

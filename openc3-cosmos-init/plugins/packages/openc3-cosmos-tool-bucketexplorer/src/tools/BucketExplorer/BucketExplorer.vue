@@ -286,7 +286,7 @@ export default {
     }
     this.changeUpdater()
   },
-  beforeDestroy() {
+  beforeUnmount() {
     this.clearUpdater()
   },
   watch: {

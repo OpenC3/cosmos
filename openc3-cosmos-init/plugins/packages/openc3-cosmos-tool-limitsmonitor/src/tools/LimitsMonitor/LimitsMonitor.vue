@@ -198,7 +198,7 @@ export default {
       }
     }
   },
-  destroyed: function () {
+  unmounted: function () {
     clearInterval(this.currentSetRefreshInterval)
   },
   methods: {

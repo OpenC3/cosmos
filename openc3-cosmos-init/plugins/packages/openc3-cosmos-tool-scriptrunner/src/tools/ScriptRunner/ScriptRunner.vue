@@ -1077,11 +1077,11 @@ export default {
       this.processReceived()
     }, 100) // Every 100ms
   },
-  beforeDestroy() {
+  beforeUnmount() {
     this.editor.destroy()
     this.editor.container.remove()
   },
-  destroyed() {
+  unmounted() {
     this.unlockFile()
     if (this.updateInterval != null) {
       clearInterval(this.updateInterval)
