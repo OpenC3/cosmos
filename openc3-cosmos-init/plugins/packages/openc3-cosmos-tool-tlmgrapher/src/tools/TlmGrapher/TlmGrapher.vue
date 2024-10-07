@@ -81,9 +81,6 @@
               >
                 <v-icon large>mdi-pause</v-icon>
               </v-btn>
-              <div class="grapher-info-text">
-                Click item name in Legend to toggle. Right click to edit.
-              </div>
             </div>
           </v-row>
         </v-expansion-panel-content>
@@ -589,11 +586,6 @@ i.v-icon.mdi-chevron-down {
 }
 .control-button {
   margin-right: 10px;
-}
-.grapher-info-text {
-  float: right;
-  margin-left: 5px;
-  width: 140px;
 }
 .v-expansion-panel-content {
   .container {

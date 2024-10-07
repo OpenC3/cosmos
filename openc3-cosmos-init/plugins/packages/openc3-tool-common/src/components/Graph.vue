@@ -325,6 +325,20 @@
         </v-list-item>
       </v-list>
     </v-menu>
+
+    <tr class="u-series" ref="info">
+      <v-tooltip bottom>
+        <template v-slot:activator="{ on, attrs }">
+          <v-icon v-bind="attrs" v-on="on" class="info-tooltip">
+            mdi-information-variant-circle
+          </v-icon>
+        </template>
+        <span>
+          Click item to toggle<br />
+          Right click to edit
+        </span>
+      </v-tooltip>
+    </tr>
   </div>
 </template>
 
@@ -335,7 +349,6 @@ import uPlot from 'uplot'
 import bs from 'binary-search'
 import Cable from '../services/cable.js'
 import TimeFilters from '@openc3/tool-common/src/tools/base/util/timeFilters.js'
-import { subMinutes } from 'date-fns'
 
 require('uplot/dist/uPlot.min.css')
 
@@ -726,6 +739,8 @@ export default {
                   this.legendMenu = true
                 }
               })
+              // Append the info to the legend
+              legend.querySelector('tbody').appendChild(this.$refs.info)
             },
           ],
         },
