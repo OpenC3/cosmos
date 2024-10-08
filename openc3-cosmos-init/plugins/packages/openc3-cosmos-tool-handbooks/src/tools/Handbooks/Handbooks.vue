@@ -35,7 +35,6 @@
               variant="outlined"
               :items="targetNames"
               v-model="selectedTargetNames"
-              @update:model-value="targetSelect"
               multiple
             >
               <template v-slot:prepend-item>
@@ -78,8 +77,8 @@
       <target
         :target="target"
         :columns="columns"
-        :hideIgnored="hideIgnored"
-        :hideDerived="hideDerived"
+        :hide-ignored="hideIgnored"
+        :hide-derived="hideDerived"
       ></target>
     </div>
   </div>
@@ -104,12 +103,12 @@ export default {
       api: null,
       columns: 3,
       columnItems: [
-        { text: '1', value: 12 },
-        { text: '2', value: 6 },
-        { text: '3', value: 4 },
-        { text: '4', value: 3 },
-        { text: '6', value: 2 },
-        { text: '12', value: 1 },
+        { title: '1', value: 12 },
+        { title: '2', value: 6 },
+        { title: '3', value: 4 },
+        { title: '4', value: 3 },
+        { title: '6', value: 2 },
+        { title: '12', value: 1 },
       ],
       hideIgnored: false,
       hideDerived: false,

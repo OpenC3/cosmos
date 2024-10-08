@@ -34,7 +34,7 @@
                 :to="tab.url"
                 :text="tab.name"
                 base-color="var(--color-text-interactive-default)"
-                @click.native.stop
+                @click.stop
               />
             </v-tabs>
           </v-expansion-panel-title>

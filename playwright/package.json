@@ -17,6 +17,9 @@
     "nyc": "^17.1.0",
     "prettier": "^3.1.1"
   },
+  "devDependencies": {
+    "@types/node": "^22.7.5"
+  },
   "nyc": {
     "excludeAfterRemap": false,
     "all": true,
