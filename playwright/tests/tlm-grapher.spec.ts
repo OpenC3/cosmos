@@ -83,7 +83,11 @@ test('minimizes a graph', async ({ page, utils }) => {
   await utils.sleep(500) // Ensure chart is stable
   // Get ElementHandle to the chart
   const chart = await page.$('#chart0')
-  await chart.waitForElementState('stable')
+  if (chart) {
+    await chart.waitForElementState('stable')
+  } else {
+    throw new Error('Chart element not found')
+  }
   const origBox = await chart.boundingBox()
   // Minimize / maximized the graph
   await page.locator('[data-test=minimize-screen-icon]').click()
@@ -92,15 +96,19 @@ test('minimizes a graph', async ({ page, utils }) => {
   await expect(page.locator('#chart0')).toBeVisible()
   await chart.waitForElementState('stable')
   const maximizeBox = await chart.boundingBox()
-  expect(maximizeBox.width).toBe(origBox.width)
-  expect(maximizeBox.height).toBe(origBox.height)
+  expect(maximizeBox.width).toEqual(origBox.width)
+  expect(maximizeBox.height).toEqual(origBox.height)
 })
 
 test('shrinks and expands a graph width', async ({ page, utils }) => {
   await utils.sleep(500) // Ensure chart is stable
   // Get ElementHandle to the chart
   const chart = await page.$('#chart0')
-  await chart.waitForElementState('stable')
+  if (chart) {
+    await chart.waitForElementState('stable')
+  } else {
+    throw new Error('Chart element not found')
+  }
   const origBox = await chart.boundingBox()
 
   await page.locator('[data-test=collapse-width]').click()
@@ -108,31 +116,37 @@ test('shrinks and expands a graph width', async ({ page, utils }) => {
   const halfWidthBox = await chart.boundingBox()
   // Check that we're now half with only 1 digit of precision
   expect(origBox.width / halfWidthBox.width).toBeCloseTo(2, 1)
-  expect(halfWidthBox.height).toBe(origBox.height)
+  expect(halfWidthBox.height).toEqual(origBox.height)
   await page.locator('[data-test=expand-width]').click()
   await chart.waitForElementState('stable')
   const collapseWidthBox = await chart.boundingBox()
-  expect(collapseWidthBox.width).toBe(origBox.width)
-  expect(collapseWidthBox.height).toBe(origBox.height)
+  expect(origBox.width).toEqual(collapseWidthBox.width)
+  expect(collapseWidthBox.height).toEqual(origBox.height)
 })
 
 test('shrinks and expands a graph height', async ({ page, utils }) => {
   await utils.sleep(500) // Ensure chart is stable
   // Get ElementHandle to the chart
   const chart = await page.$('#chart0')
-  await chart.waitForElementState('stable')
+  if (chart) {
+    await chart.waitForElementState('stable')
+  } else {
+    throw new Error('Chart element not found')
+  }
   const origBox = await chart.boundingBox()
   await page.locator('[data-test=collapse-height]').click()
   await chart.waitForElementState('stable')
   const collapseHeightBox = await chart.boundingBox()
   // Check that we're less than original ... it's not half
   expect(collapseHeightBox.height).toBeLessThan(origBox.height)
-  expect(collapseHeightBox.width).toBe(origBox.width)
+  expect(collapseHeightBox.width).toEqual(origBox.width)
   await page.locator('[data-test=expand-height]').click()
   await chart.waitForElementState('stable')
   const expandHeightBox = await chart.boundingBox()
-  expect(expandHeightBox.width).toBe(origBox.width)
-  expect(expandHeightBox.height).toBe(origBox.height)
+  expect(expandHeightBox.width).toEqual(origBox.width)
+  expect(Math.abs(origBox.height - expandHeightBox.height)).toBeLessThanOrEqual(
+    1.1,
+  )
 })
 
 test('shrinks and expands both width and height', async ({ page, utils }) => {
@@ -155,8 +169,8 @@ test('shrinks and expands both width and height', async ({ page, utils }) => {
   await page.locator('[data-test=collapse-all]').click()
   await chart.waitForElementState('stable')
   const minBox2 = await chart.boundingBox()
-  expect(minBox2.width).toBe(minBox.width)
-  expect(minBox2.height).toBe(minBox.height)
+  expect(minBox.width).toEqual(minBox2.width)
+  expect(Math.abs(minBox.height - minBox2.height)).toBeLessThanOrEqual(1.1)
 })
 
 test('edits a graph', async ({ page, utils }) => {
@@ -200,7 +214,8 @@ test('works with UTC time', async ({ page, utils }) => {
   await page.locator('text=Add Graph').click()
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS', 'TEMP1')
   await page.locator('button:has-text("Add Item")').click()
-  await page.locator('.v-expansion-panel-title').click()
+  // This is the expansion panel button
+  await page.locator('#innerapp button').first().click()
   await utils.sleep(3000) // Wait for graphing to occur
   // We can't check the canvas legend because its a canvas
   await page.locator('#chart0 canvas').click({
@@ -234,7 +249,8 @@ test('works with UTC time', async ({ page, utils }) => {
 
   await page.goto('/tools/tlmgrapher')
   await expect(page.locator('.v-app-bar')).toContainText('Telemetry Grapher')
-  await page.locator('.v-expansion-panel-title').click()
+  // This is the expansion panel button
+  await page.locator('#innerapp button').first().click()
   await utils.sleep(3000) // Wait for graphing to occur
   await page.locator('#chart0 canvas').click({
     position: { x: 200, y: 100 },

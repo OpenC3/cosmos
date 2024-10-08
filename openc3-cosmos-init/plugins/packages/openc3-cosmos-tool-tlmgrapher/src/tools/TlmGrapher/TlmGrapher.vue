@@ -38,53 +38,53 @@
             </v-row>
           </div>
 
-          <v-row
-            v-show="this.selectedGraphId !== null"
-            class="ma-1"
-            style="flex-wrap: nowrap"
-          >
+          <v-container v-show="this.selectedGraphId !== null">
             <target-packet-item-chooser
               :initial-target-name="this.$route.params.target"
               :initial-packet-name="this.$route.params.packet"
               :initial-item-name="this.$route.params.item"
-              @click="addItem"
+              @addItem="addItem"
               button-text="Add Item"
               choose-item
               select-types
             />
-            <div class="grapher-info">
-              <v-btn
-                v-show="state === 'pause'"
-                class="pulse"
-                v-on:click="
-                  () => {
-                    state = 'start'
-                  }
-                "
-                color="primary"
-                fab
-                data-test="start-graph"
-              >
-                <v-icon large>mdi-play</v-icon>
-              </v-btn>
-              <v-btn
-                v-show="state === 'start'"
-                v-on:click="
-                  () => {
-                    state = 'pause'
-                  }
-                "
-                color="primary"
-                fab
-                data-test="pause-graph"
-              >
-                <v-icon large>mdi-pause</v-icon>
-              </v-btn>
-              <div class="grapher-info-text">
-                Click item name in Legend to toggle. Right click to edit.
-              </div>
-            </div>
-          </v-row>
+            <!-- All this row / col stuff is to setup a structure similar to the
+                 target-packet-item-chooser so it will layout the same -->
+            <v-row class="grapher-info">
+              <v-col style="max-width: 300px"></v-col>
+              <v-col style="max-width: 300px"></v-col>
+              <v-col style="max-width: 300px"></v-col>
+              <v-col style="max-width: 140px">
+                <v-btn
+                  v-show="state === 'pause'"
+                  class="pulse"
+                  v-on:click="
+                    () => {
+                      state = 'start'
+                    }
+                  "
+                  color="primary"
+                  data-test="start-graph"
+                  icon="mdi-play"
+                  size="large"
+                >
+                </v-btn>
+                <v-btn
+                  v-show="state === 'start'"
+                  v-on:click="
+                    () => {
+                      state = 'pause'
+                    }
+                  "
+                  color="primary"
+                  data-test="pause-graph"
+                  icon="mdi-pause"
+                  size="large"
+                ></v-btn
+                ><v-spacer />
+              </v-col>
+            </v-row>
+          </v-container>
         </v-expansion-panel-text>
       </v-expansion-panel>
     </v-expansion-panels>
@@ -138,7 +138,7 @@
     />
     <!-- Note we're using v-if here so it gets re-created each time and refreshes the list -->
     <settings-dialog
-      v-show="showSettingsDialog"
+      v-if="showSettingsDialog"
       v-model="showSettingsDialog"
       :settings="settings"
     />
@@ -157,7 +157,7 @@ import Muuri from 'muuri'
 
 import SettingsDialog from '@/tools/TlmGrapher/SettingsDialog'
 
-const MURRI_REFRESH_TIME = 250
+const MUURI_REFRESH_TIME = 250
 export default {
   components: {
     Graph,
@@ -299,6 +299,18 @@ export default {
         this.saveDefaultConfig(this.currentConfig)
       },
       deep: true,
+    },
+    panel: function () {
+      // Explicitly resize the graphs when the expansion panel is opened or closed
+      setTimeout(() => {
+        this.grid.getItems().map((item) => {
+          // Map the gridItem id to the graph id
+          const graphId = `graph${item.getElement().id.substring(8)}`
+          const vueGraph = this.$refs[graphId][0]
+          vueGraph.handleResize()
+        })
+        this.resize()
+      }, MUURI_REFRESH_TIME)
     },
   },
   computed: {
@@ -446,7 +458,7 @@ export default {
         }
         setTimeout(() => {
           this.grid.refreshItems().layout()
-        }, MURRI_REFRESH_TIME)
+        }, MUURI_REFRESH_TIME)
       })
       this.saveDefaultConfig(this.currentConfig)
     },
@@ -481,7 +493,7 @@ export default {
         () => {
           this.grid.refreshItems().layout()
         },
-        MURRI_REFRESH_TIME * 2, // Double the time since there is more animation
+        MUURI_REFRESH_TIME * 2, // Double the time since there is more animation
       )
       this.saveDefaultConfig(this.currentConfig)
     },
@@ -490,7 +502,7 @@ export default {
         () => {
           this.grid.refreshItems().layout()
         },
-        MURRI_REFRESH_TIME * 2, // Double the time since there is more animation
+        MUURI_REFRESH_TIME * 2, // Double the time since there is more animation
       )
     },
     graphStarted: function (time) {
@@ -580,17 +592,15 @@ i.v-icon.mdi-chevron-down {
 }
 </style>
 <style lang="scss" scoped>
+.v-container {
+  max-width: unset;
+  padding-top: 0px;
+  padding-bottom: 10px;
+}
 .grapher-info {
   position: relative;
-  margin-top: 60px;
-  left: -120px;
-  height: 50px;
-}
-.grapher-info-text {
-  position: relative;
-  top: -55px;
-  left: 70px;
-  width: 140px;
+  top: -115px;
+  height: 0px;
 }
 .v-expansion-panel-content {
   .container {

@@ -66,10 +66,10 @@
               :href="item.url"
               :onclick="() => navigateToUrl(item.url)"
             >
-              <v-icon> {{ item.icon }} </v-icon>
+              <v-icon class="mr-2"> {{ item.icon }} </v-icon>
             </a>
             <a v-else :href="item.url">
-              <v-icon> {{ item.icon }} </v-icon>
+              <v-icon class="mr-2"> {{ item.icon }} </v-icon>
             </a>
           </template>
         </template>
@@ -148,7 +148,7 @@
             <v-spacer />
             <scope-selector class="mr-6 mt-4" />
             <notifications class="mr-6" data-test="notifications" />
-            <user-menu class="mr-3" /> </v-row
+            <user-menu class="mr-6" /> </v-row
         ></v-col>
       </v-row>
     </v-app-bar>
