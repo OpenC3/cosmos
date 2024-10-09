@@ -18,11 +18,11 @@
 
 <template>
   <v-dialog v-model="show" width="650px">
-    <v-system-bar absolute>
+    <v-toolbar height="24">
       <v-spacer />
       <span> Upgrade to COSMOS Enterprise Edition </span>
       <v-spacer />
-    </v-system-bar>
+    </v-toolbar>
     <v-card>
       <v-card-text class="mt-4">
         <div class="logo">
@@ -91,22 +91,11 @@ export default {
   float: right;
   margin: 15px;
 }
-
 .cosmos {
   text-align: center;
   font-size: 18pt;
 }
-
 .reason {
   font-weight: bold;
-}
-
-.v-system-bar {
-  /* Not sure why, but these are needed to make behavior consistent across where this dialog is opened from. We could
-     probably re-engineer how this dialog is opened, rather than being a child of things like ScopeSelector */
-  position: relative !important;
-  top: 24px !important;
-  width: unset !important;
-  left: unset !important;
 }
 </style>

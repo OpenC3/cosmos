@@ -51,7 +51,11 @@
   ):hover {
   background-color: var(--button-color-background-primary-hover) !important;
 }
-.v-theme--cosmosDark.v-btn--variant-outlined:not(.v-btn--icon, .v-btn--round, .v-btn--variant-text) {
+.v-theme--cosmosDark.v-btn--variant-outlined:not(
+    .v-btn--icon,
+    .v-btn--round,
+    .v-btn--variant-text
+  ) {
   border-color: var(--button-color-border-primary-default) !important;
   color: var(--color-text-interactive-default) !important;
 }
@@ -63,12 +67,6 @@
   border-color: var(--button-color-border-primary-hover) !important;
 }
 
-.v-theme--cosmosDark.v-system-bar {
-  background-color: var(--color-background-surface-header) !important;
-}
-.v-theme--cosmosDark.v-system-bar.active {
-  background-color: var(--color-background-surface-selected) !important;
-}
 body,
 .v-theme--cosmosDark.v-application,
 .v-theme--cosmosDark.v-main,
@@ -113,6 +111,11 @@ body,
   min-height: unset !important;
 }
 
+// Make the expansion panel title the same height as the system bar
+.v-expansion-panel-title {
+  height: 24px !important;
+}
+
 .mdi-magnify {
   color: var(--color-text-interactive-default) !important;
 }
@@ -137,14 +140,16 @@ body,
   background-color: var(--color-background-base-selected) !important;
 }
 
-.v-theme--cosmosDark.v-overlay--active[role="dialog"] {
+.v-theme--cosmosDark.v-overlay--active[role='dialog'] {
   backdrop-filter: blur(2px) !important;
   --v-overlay-opacity: 0.1;
 }
 
 .v-theme--cosmosDark.v-list-item:hover,
 .v-theme--cosmosDark.v-treeview--hoverable .v-treeview-node__root:hover,
-.v-theme--cosmosDark.v-treeview .v-treeview-node--click > .v-treeview-node__root:hover,
+.v-theme--cosmosDark.v-treeview
+  .v-treeview-node--click
+  > .v-treeview-node__root:hover,
 .v-theme--cosmosDark.v-data-table
   > .v-data-table__wrapper
   > table
@@ -163,9 +168,18 @@ body,
 }
 
 // The next several styles effectively styles like an Astro select
+.v-theme--cosmosDark.v-autocomplete,
 .v-theme--cosmosDark.v-select {
-  background-color: var(--color-background-base-default);
+  border-color: var(--button-color-border-interactive-default) !important;
+  color: var(--color-text-interactive-default) !important;
+  background-color: var(--color-background-base-default) !important;
 }
+
+.v-theme--cosmosDark.v-autocomplete label,
+.v-theme--cosmosDark.v-select label {
+  color: whitesmoke !important;
+}
+
 .v-theme--cosmosDark.v-select fieldset {
   border: 1px solid var(--color-border-interactive-muted);
   background-color: var(--color-background-base-default);

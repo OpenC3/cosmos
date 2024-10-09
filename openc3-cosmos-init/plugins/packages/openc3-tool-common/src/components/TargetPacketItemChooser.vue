@@ -21,8 +21,7 @@
 -->
 
 <template>
-  <!-- tgt-pkt-item-chooser class used by Graph.vue to size the graph -->
-  <div class="pt-4 tgt-pkt-item-chooser">
+  <div class="pt-4 pb-4">
     <v-row>
       <v-col :cols="colSize" class="select" data-test="select-target">
         <v-autocomplete
@@ -30,7 +29,7 @@
           hide-details
           density="compact"
           variant="outlined"
-          @update:model-value="targetNameChanged"
+          @update:modelValue="targetNameChanged"
           :items="targetNames"
           item-title="label"
           item-value="value"
@@ -43,7 +42,7 @@
           hide-details
           density="compact"
           variant="outlined"
-          @update:model-value="packetNameChanged"
+          @update:modelValue="packetNameChanged"
           :disabled="packetsDisabled || autocompleteDisabled"
           :items="packetNames"
           item-title="label"
@@ -62,7 +61,7 @@
           hide-details
           density="compact"
           variant="outlined"
-          @update:model-value="itemNameChanged($event)"
+          @update:modelValue="itemNameChanged($event)"
           :disabled="itemsDisabled || autocompleteDisabled"
           :items="itemNames"
           item-title="label"
@@ -81,7 +80,7 @@
           hide-details
           density="compact"
           variant="outlined"
-          @update:model-value="indexChanged($event)"
+          @update:modelValue="indexChanged($event)"
           :disabled="itemsDisabled || autocompleteDisabled"
           :items="arrayIndexes()"
           item-title="label"
@@ -134,7 +133,7 @@
       </v-col>
       <v-col :cols="colSize" style="max-width: 140px"> </v-col>
     </v-row>
-    <v-row no-gutters class="pt-1">
+    <v-row no-gutters class="pt-3 pb-3">
       <v-col v-if="hazardous" :cols="colSize" class="openc3-yellow"
         >Description: {{ description }} (HAZARDOUS)</v-col
       >
@@ -216,10 +215,10 @@ export default {
       selectedValueType: 'CONVERTED',
       reductionModes: [
         // Map NONE to DECOM for clarity
-        { text: 'NONE', value: 'DECOM' },
-        { text: 'REDUCED_MINUTE', value: 'REDUCED_MINUTE' },
-        { text: 'REDUCED_HOUR', value: 'REDUCED_HOUR' },
-        { text: 'REDUCED_DAY', value: 'REDUCED_DAY' },
+        { title: 'NONE', value: 'DECOM' },
+        { title: 'REDUCED_MINUTE', value: 'REDUCED_MINUTE' },
+        { title: 'REDUCED_HOUR', value: 'REDUCED_HOUR' },
+        { title: 'REDUCED_DAY', value: 'REDUCED_DAY' },
       ],
       selectedArrayIndex: null,
       selectedReduced: 'DECOM',
@@ -442,6 +441,7 @@ export default {
     },
 
     targetNameChanged: function (value) {
+      console.log(value)
       this.selectedTargetName = value
       this.selectedPacketName = ''
       this.selectedItemName = ''
@@ -533,7 +533,7 @@ export default {
       } else if (this.selectedItemName === 'ALL') {
         this.allPacketItems()
       } else if (this.chooseItem) {
-        this.$emit('click', {
+        this.$emit('addItem', {
           targetName: this.selectedTargetName,
           packetName: this.selectedPacketName,
           itemName: this.selectedItemNameWIndex,
@@ -542,7 +542,7 @@ export default {
           reducedType: this.selectedReducedType,
         })
       } else {
-        this.$emit('click', {
+        this.$emit('addItem', {
           targetName: this.selectedTargetName,
           packetName: this.selectedPacketName,
           valueType: this.selectedValueType,
@@ -559,7 +559,7 @@ export default {
         this.api[cmd](this.selectedTargetName, packetName.value).then(
           (packet) => {
             packet.items.forEach((item) => {
-              this.$emit('click', {
+              this.$emit('addItem', {
                 targetName: this.selectedTargetName,
                 packetName: packetName.value,
                 itemName: item['name'],
@@ -576,7 +576,7 @@ export default {
     allPacketItems: function () {
       this.itemNames.forEach((item) => {
         if (item === this.ALL) return
-        this.$emit('click', {
+        this.$emit('addItem', {
           targetName: this.selectedTargetName,
           packetName: this.selectedPacketName,
           itemName: item.value,
@@ -595,8 +595,5 @@ export default {
 }
 .select {
   max-width: 300px;
-}
-.row + .row {
-  margin-top: 0px;
 }
 </style>
