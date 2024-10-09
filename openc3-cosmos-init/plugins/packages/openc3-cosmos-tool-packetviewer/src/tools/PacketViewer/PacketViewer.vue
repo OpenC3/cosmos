@@ -50,11 +50,11 @@
         :headers="headers"
         :items="rows"
         :search="search"
-        :items-per-page="itemsPerPage"
-        @update:items-per-page="itemsPerPage = $event"
+        v-model:items-per-page="itemsPerPage"
         :items-per-page-options="[10, 20, 50, 100, 500, 1000]"
         multi-sort
-        dense
+        hover
+        density="compact"
       >
         <template v-slot:item.name="{ item }">
           {{ item.name }}<span v-if="item.derived">&nbsp;*</span>

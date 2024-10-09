@@ -41,12 +41,12 @@
       :headers="headers"
       :items="data"
       :search="search"
-      calculate-widths
-      disable-pagination
+      :items-per-page="-1"
       hide-default-footer
       multi-sort
       density="compact"
       :height="calcTableHeight()"
+      hover
       data-test="limits-events"
     >
       <template v-slot:item.time_nsec="{ item }">

@@ -152,12 +152,10 @@
           :headers="headers"
           :items="items"
           :search="search"
-          :items-per-page="itemsPerPage"
-          @update:items-per-page="itemsPerPage = $event"
+          v-model:items-per-page="itemsPerPage"
           :items-per-page-options="[10, 20, 50, 100, 500, 1000]"
-          calculate-widths
           multi-sort
-          dense
+          density="compact"
         >
           <template v-slot:item.edit="{ item }">
             <v-tooltip location="bottom">

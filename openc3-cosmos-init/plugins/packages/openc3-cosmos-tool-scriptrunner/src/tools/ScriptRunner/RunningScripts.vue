@@ -47,8 +47,7 @@
         :headers="runningHeaders"
         :items="runningScripts"
         :search="runningSearch"
-        dense
-        calculate-widths
+        density="compact"
         multi-sort
         :sort-by="{
           key: 'start_time',
@@ -103,8 +102,7 @@
         :headers="completedHeaders"
         :items="completedScripts"
         :search="completedSearch"
-        dense
-        calculate-widths
+        density="compact"
         multi-sort
         :sort-by="{
           key: 'start',

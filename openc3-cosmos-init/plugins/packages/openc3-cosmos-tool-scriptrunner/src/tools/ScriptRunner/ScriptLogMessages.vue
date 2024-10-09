@@ -82,10 +82,9 @@
         :headers="headers"
         :items="messages"
         :search="search"
-        calculate-widths
-        disable-pagination
+        :items-per-page="-1"
         hide-default-footer
-        dense
+        density="compact"
         data-test="output-messages"
       />
     </v-card>
@@ -105,7 +104,7 @@ export default {
   data() {
     return {
       search: '',
-      headers: [{ text: 'Message', value: 'message', sortable: false }],
+      headers: [{ title: 'Message', value: 'message', sortable: false }],
       messageOrderOptions: ['Newest on Top', 'Newest on Bottom'],
       messageOrder: 'Newest on Top',
     }

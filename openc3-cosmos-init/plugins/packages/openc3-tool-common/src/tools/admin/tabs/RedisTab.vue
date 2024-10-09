@@ -72,10 +72,9 @@
         :items="commands"
         class="monospace"
         row-props="monospace"
-        calculate-widths
-        disable-pagination
+        :items-per-page="-1"
         hide-default-footer
-        dense
+        density="compact"
         height="45vh"
       >
       </v-data-table>

@@ -52,7 +52,6 @@
         },
       ]"
       @update:current-items="currentItems"
-      calculate-widths
       data-test="tlm-packets-table"
     >
       <template v-slot:item.view_raw="{ item }">

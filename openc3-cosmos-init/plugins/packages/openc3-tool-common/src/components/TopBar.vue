@@ -85,12 +85,7 @@
             <v-radio-group
               v-else-if="option.radioGroup"
               :model-value="option.value"
-              @update:model-value="
-                (value) => {
-                  option.value = value
-                  option.command(value)
-                }
-              "
+              @update:model-value="option.command"
               :key="j + '-radio-group'"
               hide-details
               density="compact"
@@ -120,7 +115,7 @@
             >
               <v-list-item-action class="list-action" v-if="option.checkbox">
                 <v-checkbox
-                  v-model="option.checked"
+                  :model-value="option.checked"
                   color="secondary"
                   :label="option.label"
                   density="compact"

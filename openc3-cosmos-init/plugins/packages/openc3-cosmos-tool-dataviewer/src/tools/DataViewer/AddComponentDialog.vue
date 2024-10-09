@@ -117,12 +117,10 @@
                   :headers="headers"
                   :items="packets"
                   :search="search"
-                  :items-per-page="itemsPerPage"
-                  @update:items-per-page="itemsPerPage = $event"
+                  v-model:items-per-page="itemsPerPage"
                   :items-per-page-options="[10, 100]"
-                  calculate-widths
                   multi-sort
-                  dense
+                  density="compact"
                 >
                   <template v-slot:item.delete="{ item }">
                     <v-tooltip location="bottom">

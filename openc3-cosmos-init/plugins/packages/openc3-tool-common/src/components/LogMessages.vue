@@ -99,12 +99,12 @@
       :headers="headers"
       :items="shownData"
       :search="search"
-      calculate-widths
-      disable-pagination
+      :items-per-page="-1"
       hide-default-footer
       multi-sort
       density="compact"
       height="70vh"
+      hover
       data-test="log-messages"
     >
       <template v-slot:item.timestamp="{ item }">

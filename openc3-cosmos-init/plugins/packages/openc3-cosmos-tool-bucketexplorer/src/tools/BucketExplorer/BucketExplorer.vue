@@ -76,9 +76,9 @@
         :items-per-page-options="[1000]"
         v-model:sort-by="sortBy"
         @click:row="fileClick"
-        calculate-widths
         multi-sort
         density="compact"
+        hover
       >
         <template v-slot:top>
           <v-row

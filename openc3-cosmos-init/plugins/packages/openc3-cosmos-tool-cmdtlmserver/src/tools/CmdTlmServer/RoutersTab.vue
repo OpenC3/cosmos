@@ -44,7 +44,6 @@
       :custom-sort="sortTable"
       :items-per-page="10"
       :items-per-page-options="[10, 20, -1]"
-      calculate-widths
       multi-sort
       data-test="routers-table"
     >

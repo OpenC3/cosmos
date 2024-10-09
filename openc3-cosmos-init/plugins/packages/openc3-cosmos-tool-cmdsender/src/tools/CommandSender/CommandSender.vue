@@ -29,7 +29,7 @@
           :initial-target-name="this.$route.params.target"
           :initial-packet-name="this.$route.params.packet"
           @on-set="commandChanged($event)"
-          @click.self="buildCmd($event)"
+          @addItem="buildCmd($event)"
           :disabled="sendDisabled"
           button-text="Send"
           mode="cmd"
@@ -56,8 +56,7 @@
           :headers="headers"
           :items="rows"
           :search="search"
-          calculate-widths
-          disable-pagination
+          :items-per-page="-1"
           hide-default-footer
           multi-sort
           density="compact"
