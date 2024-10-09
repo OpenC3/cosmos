@@ -21,8 +21,11 @@
 */
 
 import { createRouter, createWebHistory } from 'vue-router'
+import { navigateToUrl } from 'single-spa'
 
-export default createRouter({
+const DEFAULT_TOOL_PATH = '/tools/cmdtlmserver'
+
+const router = createRouter({
   history: createWebHistory(process.env.BASE_URL),
   routes: [
     {
@@ -42,3 +45,11 @@ export default createRouter({
     },
   ],
 })
+
+router.beforeEach((to) => {
+  if (to.path == '/' || to.path == '/tools' || to.path == '/tools/') {
+    navigateToUrl(DEFAULT_TOOL_PATH)
+  }
+})
+
+export default router

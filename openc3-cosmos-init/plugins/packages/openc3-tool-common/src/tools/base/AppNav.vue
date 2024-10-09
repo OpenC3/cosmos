@@ -39,7 +39,7 @@
           block
           size="small"
           :href="tool.url"
-          :onclick="() => navigateToUrl(tool.url)"
+          :onclick="() => tool.url && navigateToUrl(tool.url)"
           class="fixcenter"
           color="primary"
         >
@@ -49,22 +49,18 @@
       <v-divider />
       <v-treeview
         :items="items"
-        :open="initiallyOpen"
-        item-key="name"
-        dense
+        :opened="initiallyOpen"
+        item-value="name"
+        density="compact"
         open-on-click
-        expand-icon=""
       >
         <!-- Beginning Icon -->
-        <template v-slot:prepend="{ item, open }">
-          <v-icon v-if="!item.icon">
-            {{ open ? 'mdi-chevron-down' : 'mdi-chevron-right' }}
-          </v-icon>
-          <template v-else>
+        <template v-slot:prepend="{ item }">
+          <template v-if="item.icon">
             <a
               v-if="item.window === 'INLINE'"
               :href="item.url"
-              :onclick="() => navigateToUrl(item.url)"
+              :onclick="() => item.url && navigateToUrl(item.url)"
             >
               <v-icon> {{ item.icon }} </v-icon>
             </a>
@@ -80,7 +76,7 @@
           <a
             v-if="!item.icon"
             :href="item.url"
-            :onclick="() => navigateToUrl(item.url)"
+            :onclick="() => item.url && navigateToUrl(item.url)"
           >
             {{ item.name }}
           </a>
@@ -89,7 +85,7 @@
             <a
               v-if="item.window === 'INLINE'"
               :href="item.url"
-              :onclick="() => navigateToUrl(item.url)"
+              :onclick="() => item.url && navigateToUrl(item.url)"
             >
               {{ item.name }}
             </a>
@@ -272,7 +268,9 @@ export default {
               this.appNav[key].category !== 'Admin'
             ) {
               // TODO: Make this initiallyOpen configurable like with a CATEGORY parameter?
-              this.initiallyOpen.push(this.appNav[key].category)
+              if (!this.initiallyOpen.includes(this.appNav[key].category)) {
+                this.initiallyOpen.push(this.appNav[key].category)
+              }
               const result = this.items.filter(
                 (item) => item.name === this.appNav[key].category,
               )
@@ -339,20 +337,6 @@ export default {
           urlRerouteOnly: true,
         })
 
-        // Redirect some base paths to the first tool
-        if (
-          window.location.pathname == '/' ||
-          window.location.pathname == '/tools' ||
-          window.location.pathname == '/tools/'
-        ) {
-          for (var key of Object.keys(this.shownTools)) {
-            if (this.appNav[key].shown) {
-              history.replaceState(null, '', this.appNav[key].url)
-              break
-            }
-          }
-        }
-
         // Check every minute if we need to update our token
         setInterval(() => {
           OpenC3Auth.updateToken(120).then(function (refreshed) {
@@ -365,6 +349,7 @@ export default {
     )
   },
   methods: {
+    navigateToUrl,
     newTabUrl(tool) {
       let url = null
       if (tool.url[0] == '/' && tool.url[1] != '/') {
