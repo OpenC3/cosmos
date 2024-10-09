@@ -441,7 +441,6 @@ export default {
     },
 
     targetNameChanged: function (value) {
-      console.log(value)
       this.selectedTargetName = value
       this.selectedPacketName = ''
       this.selectedItemName = ''

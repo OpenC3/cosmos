@@ -23,11 +23,11 @@
 <template>
   <v-dialog v-model="show" width="600">
     <v-card>
-      <v-system-bar>
+      <v-toolbar :height="24">
         <v-spacer />
         <span> Details </span>
         <v-spacer />
-      </v-system-bar>
+      </v-toolbar>
 
       <v-card-title>
         {{ targetName }} {{ packetName }} {{ itemName }}
@@ -209,7 +209,7 @@ export default {
     targetName: String,
     packetName: String,
     itemName: String,
-    value: Boolean, // value is the default prop when using v-model
+    modelValue: Boolean,
   },
   data() {
     return {
@@ -224,17 +224,17 @@ export default {
   computed: {
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
   },
   created() {
     this.api = new OpenC3Api()
   },
-  beforeDestroy() {
+  beforeUnmount() {
     clearInterval(this.updater)
     this.updater = null
   },
@@ -242,7 +242,7 @@ export default {
     // Create a watcher on value which is the indicator to display the dialog
     // If value is true we request the details from the server
     // If this is a tlm dialog we setup an interval to get the telemetry values
-    value: function (newValue, oldValue) {
+    modelValue: function (newValue, oldValue) {
       if (newValue) {
         this.requestDetails()
         if (this.type === 'tlm') {

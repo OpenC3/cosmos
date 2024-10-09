@@ -43,10 +43,10 @@ test('displays INST HEALTH_STATUS and polls the api', async ({
   // Verify we can hit it using the route
   await page.goto('/tools/packetviewer/INST/HEALTH_STATUS')
   await expect(page.locator('.v-app-bar')).toContainText('Packet Viewer')
-  await utils.inputValue(page, '[data-test=select-target] input', 'INST')
-  await utils.inputValue(
+  await utils.dropdownSelectedValue(page, '[data-test=select-target]', 'INST')
+  await utils.dropdownSelectedValue(
     page,
-    '[data-test=select-packet] input',
+    '[data-test=select-packet]',
     'HEALTH_STATUS',
   )
   await expect(page.locator('id=openc3-tool')).toContainText(
@@ -64,8 +64,8 @@ test('displays INST HEALTH_STATUS and polls the api', async ({
 
 test('selects a target and packet to display', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'IMAGE')
-  await utils.inputValue(page, '[data-test=select-target] input', 'INST')
-  await utils.inputValue(page, '[data-test=select-packet] input', 'IMAGE')
+  await utils.dropdownSelectedValue(page, '[data-test=select-target]', 'INST')
+  await utils.dropdownSelectedValue(page, '[data-test=select-packet]', 'IMAGE')
   await expect(page.locator('id=openc3-tool')).toContainText(
     'Packet with image data',
   )
@@ -81,24 +81,24 @@ test('gets details with right click', async ({ page, utils }) => {
     .click({
       button: 'right',
     })
-  await page.getByRole('menuitem', { name: 'Details' }).click()
-  await expect(page.locator('.v-dialog--active')).toBeVisible()
-  await expect(page.locator('.v-dialog--active')).toContainText(
+  await page.getByText('Details').click()
+  await expect(page.locator('.v-overlay--active')).toBeVisible()
+  await expect(page.locator('.v-overlay--active')).toContainText(
     'INST HEALTH_STATUS TEMP1',
   )
   // Check that a few of the details are there ... that proves the API request
-  await expect(page.locator('.v-dialog--active')).toContainText('UINT')
-  await expect(page.locator('.v-dialog--active')).toContainText(
+  await expect(page.locator('.v-overlay--active')).toContainText('UINT')
+  await expect(page.locator('.v-overlay--active')).toContainText(
     'PolynomialConversion',
   )
-  await expect(page.locator('.v-dialog--active')).toContainText('CELSIUS')
-  await expect(page.locator('.v-dialog--active')).toContainText(
+  await expect(page.locator('.v-overlay--active')).toContainText('CELSIUS')
+  await expect(page.locator('.v-overlay--active')).toContainText(
     'ExampleLimitsResponse',
   )
 
   // Get out of the details dialog
   await page.locator('[data-test="notifications"]').click({ force: true })
-  await expect(page.locator('.v-dialog--active')).not.toBeVisible()
+  await expect(page.locator('.v-overlay--active')).not.toBeVisible()
 
   // Scroll to the top to allow better right click
   await page.mouse.wheel(0, 0)
@@ -109,14 +109,14 @@ test('gets details with right click', async ({ page, utils }) => {
     .click({
       button: 'right',
     })
-  await page.getByRole('menuitem', { name: 'Details' }).click()
-  await expect(page.locator('.v-dialog--active')).toBeVisible()
-  await expect(page.locator('.v-dialog--active')).toContainText(
+  await page.getByText('Details').click()
+  await expect(page.locator('.v-overlay--active')).toBeVisible()
+  await expect(page.locator('.v-overlay--active')).toContainText(
     'INST HEALTH_STATUS PACKET_TIMESECONDS',
   )
   // Check that a few of the details are there ... that proves the API request
-  await expect(page.locator('.v-dialog--active')).toContainText('DERIVED')
-  await expect(page.locator('.v-dialog--active')).toContainText(
+  await expect(page.locator('.v-overlay--active')).toContainText('DERIVED')
+  await expect(page.locator('.v-overlay--active')).toContainText(
     'PacketTimeSecondsConversion',
   )
 })
@@ -142,8 +142,8 @@ test('changes the polling rate', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
   await page.locator('[data-test=packet-viewer-file]').click()
   await page.locator('[data-test=packet-viewer-file-options]').click()
-  await page.locator('.v-dialog [data-test=refresh-interval]').fill('5000')
-  await page.locator('.v-dialog [data-test=refresh-interval]').press('Enter')
+  await page.locator('.v-dialog [data-test=refresh-interval] input').fill('5000')
+  await page.locator('.v-dialog [data-test=refresh-interval] input').press('Enter')
   await page.locator('.v-dialog').press('Escape')
   const received = await page.inputValue('tr:has-text("RECEIVED_COUNT") input')
   await utils.sleep(7000)
@@ -153,8 +153,8 @@ test('changes the polling rate', async ({ page, utils }) => {
   // Set it back
   await page.locator('[data-test=packet-viewer-file]').click()
   await page.locator('[data-test=packet-viewer-file-options]').click()
-  await page.locator('.v-dialog [data-test=refresh-interval]').fill('1000')
-  await page.locator('.v-dialog [data-test=refresh-interval]').press('Enter')
+  await page.locator('.v-dialog [data-test=refresh-interval] input').fill('1000')
+  await page.locator('.v-dialog [data-test=refresh-interval] input').press('Enter')
   await page.locator('.v-dialog').press('Escape')
 })
 
@@ -206,13 +206,15 @@ test('displays formatted items', async ({ page, utils }) => {
 
 test('shows ignored items', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
-  await expect(page.locator('text=CCSDSVER')).not.toBeVisible()
+  await page.locator('[data-test=packet-viewer-view]').click()
+  await page.locator('text=Display Derived').click()
+  await expect(page.getByRole('cell', { name: 'CCSDSVER' })).not.toBeVisible()
   await page.locator('[data-test=packet-viewer-view]').click()
   await page.locator('text=Show Ignored').click()
-  await expect(page.locator('text=CCSDSVER')).toBeVisible()
+  await expect(page.getByRole('cell', { name: 'CCSDSVER' })).toBeVisible()
   await page.locator('[data-test=packet-viewer-view]').click()
   await page.locator('text=Show Ignored').click()
-  await expect(page.locator('text=CCSDSVER')).not.toBeVisible()
+  await expect(page.getByRole('cell', { name: 'CCSDSVER' })).not.toBeVisible()
 })
 
 test('displays derived first', async ({ page, utils }) => {
@@ -234,7 +236,7 @@ test('displays local time and UTC time', async ({ page, utils }) => {
   await expect(page.locator('tbody')).toContainText('RECEIVED_TIMEFORMATTED')
 
   let dateTimeString =
-    (await (
+    ((
       await page.inputValue(`tr:has(td:text-is("PACKET_TIMEFORMATTED")) input`)
     ).trim()) || ''
   let dateTime = parse(dateTimeString, 'yyyy-MM-dd HH:mm:ss.SSS', now)
@@ -245,7 +247,7 @@ test('displays local time and UTC time', async ({ page, utils }) => {
     }),
   ).toBeTruthy()
   dateTimeString =
-    (await (
+    ((
       await page.inputValue(
         `tr:has(td:text-is("RECEIVED_TIMEFORMATTED")) input`,
       )
@@ -273,11 +275,11 @@ test('displays local time and UTC time', async ({ page, utils }) => {
   now = new Date()
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
   dateTimeString =
-    (await (
+    ((
       await page.inputValue(`tr:has(td:text-is("PACKET_TIMEFORMATTED")) input`)
     ).trim()) || ''
   dateTime = parse(dateTimeString, 'yyyy-MM-dd HH:mm:ss.SSS', now)
-  // dateTime is now in UTC so subtrack off the timezone offset to get it back to local time
+  // dateTime is now in UTC so subtract off the timezone offset to get it back to local time
   dateTime = subMinutes(dateTime, now.getTimezoneOffset())
   expect(
     isWithinInterval(dateTime, {
@@ -286,7 +288,7 @@ test('displays local time and UTC time', async ({ page, utils }) => {
     }),
   ).toBeTruthy()
   dateTimeString =
-    (await (
+    ((
       await page.inputValue(
         `tr:has(td:text-is("RECEIVED_TIMEFORMATTED")) input`,
       )

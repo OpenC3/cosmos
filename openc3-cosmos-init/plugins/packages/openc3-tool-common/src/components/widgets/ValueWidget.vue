@@ -43,7 +43,7 @@
       </template>
       <span>{{ fullName }}</span>
     </v-tooltip>
-    <v-menu v-model="contextMenuShown" :target="[x, y]" style="z-index: 10">
+    <v-menu v-model="contextMenuShown" :target="[x, y]" style="z-index: 3000">
       <v-list>
         <v-list-item
           v-for="(item, index) in contextMenuOptions"

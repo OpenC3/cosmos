@@ -31,7 +31,7 @@
           @on-set="packetChanged($event)"
         />
       </div>
-      <v-card-title>
+      <v-card-title class="d-flex align-center justify-content-space-between">
         Items
         <v-spacer />
         <v-text-field
@@ -66,28 +66,31 @@
             :counter="item.counter"
             :parameters="[targetName, packetName, item.name]"
             :settings="[['WIDTH', '100%']]"
-            :time-zone="timeZone"
+            :screen-time-zone="timeZone"
           />
         </template>
-        <template v-slot:footer.prepend
-          >* indicates a&nbsp;
-          <a href="/tools/staticdocs/docs/configuration/telemetry#derived-items"
-            >DERIVED</a
-          >&nbsp;item</template
-        >
+        <template v-slot:footer.prepend>
+          * indicates a&nbsp;
+          <a
+            href="/tools/staticdocs/docs/configuration/telemetry#derived-items"
+          >
+            DERIVED
+          </a>
+          &nbsp;item
+        </template>
       </v-data-table>
     </v-card>
     <v-dialog
       v-model="optionsDialog"
       @keydown.esc="optionsDialog = false"
-      max-width="300"
+      max-width="360px"
     >
       <v-card>
-        <v-system-bar>
+        <v-toolbar :height="24">
           <v-spacer />
           <span>Options</span>
           <v-spacer />
-        </v-system-bar>
+        </v-toolbar>
         <v-card-text>
           <div class="pa-3">
             <v-text-field
@@ -96,8 +99,7 @@
               step="100"
               type="number"
               label="Refresh Interval (ms)"
-              :model-value="refreshInterval"
-              @update:model-value="refreshInterval = $event"
+              v-model="refreshInterval"
               data-test="refresh-interval"
             />
           </div>
@@ -110,6 +112,7 @@
               label="Time at which to mark data Stale (seconds)"
               :model-value="staleLimit"
               @update:model-value="staleLimit = parseInt($event)"
+              min-width="280px"
               data-test="stale-limit"
             />
           </div>
@@ -169,15 +172,52 @@ export default {
       search: '',
       data: [],
       headers: [
-        { text: 'Name', value: 'name', align: 'end' },
-        { text: 'Value', value: 'value' },
+        { title: 'Name', value: 'name', align: 'end' },
+        { title: 'Value', value: 'value' },
       ],
       optionsDialog: false,
       showIgnored: false,
       derivedLast: false,
       ignoredItems: [],
       derivedItems: [],
-      menus: [
+      updater: null,
+      counter: 0,
+      targetName: '',
+      packetName: '',
+      valueType: 'WITH_UNITS',
+      refreshInterval: 1000,
+      staleLimit: 30,
+      rows: [],
+      menuItems: [],
+      itemsPerPage: 20,
+      api: null,
+    }
+  },
+  watch: {
+    showIgnored: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    derivedLast: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    valueType: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    // Create a watcher on refreshInterval so we can change the updater
+    refreshInterval: function () {
+      this.changeUpdater(false)
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    staleLimit: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    itemsPerPage: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+  },
+  computed: {
+    menus: function () {
+      return [
         {
           label: 'File',
           items: [
@@ -217,22 +257,21 @@ export default {
         },
         {
           label: 'View',
-          radioGroup: 'Formatted Items with Units', // Default radio selected
           items: [
             {
               label: 'Show Ignored Items',
               checkbox: true,
-              checked: false,
+              checked: this.showIgnored,
               command: (item) => {
-                this.showIgnored = item.checked
+                this.showIgnored = !this.showIgnored
               },
             },
             {
               label: 'Display DERIVED Last',
               checkbox: true,
-              checked: false,
+              checked: this.derivedLast,
               command: (item) => {
-                this.derivedLast = item.checked
+                this.derivedLast = !this.derivedLast
               },
             },
             {
@@ -265,43 +304,8 @@ export default {
             },
           ],
         },
-      ],
-      updater: null,
-      counter: 0,
-      targetName: '',
-      packetName: '',
-      valueType: 'WITH_UNITS',
-      refreshInterval: 1000,
-      staleLimit: 30,
-      rows: [],
-      menuItems: [],
-      itemsPerPage: 20,
-      api: null,
-    }
-  },
-  watch: {
-    showIgnored: function () {
-      this.saveDefaultConfig(this.currentConfig)
+      ]
     },
-    derivedLast: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    valueType: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    // Create a watcher on refreshInterval so we can change the updater
-    refreshInterval: function () {
-      this.changeUpdater(false)
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    staleLimit: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    itemsPerPage: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-  },
-  computed: {
     currentConfig: function () {
       return {
         target: this.targetName,
@@ -353,7 +357,6 @@ export default {
               packet: config.packet,
             },
           })
-          this.$router.go()
         }
       }
       this.changeUpdater(true)
@@ -496,7 +499,6 @@ export default {
               config: name,
             },
           })
-          this.$router.go()
         }
       })
     },
