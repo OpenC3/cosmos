@@ -23,7 +23,7 @@
 <template>
   <div>
     <top-bar :menus="menus" :title="title" />
-    <v-expansion-panels v-model="panel" style="margin-bottom: 5px">
+    <v-expansion-panels v-model="panel" class="expansion">
       <v-expansion-panel>
         <v-expansion-panel-header style="z-index: 1"></v-expansion-panel-header>
         <v-expansion-panel-content>
@@ -55,7 +55,7 @@
             <div class="grapher-info">
               <v-btn
                 v-show="state === 'pause'"
-                class="pulse"
+                class="pulse control-button"
                 v-on:click="
                   () => {
                     state = 'start'
@@ -69,6 +69,7 @@
               </v-btn>
               <v-btn
                 v-show="state === 'start'"
+                class="control-button"
                 v-on:click="
                   () => {
                     state = 'pause'
@@ -80,9 +81,6 @@
               >
                 <v-icon large>mdi-pause</v-icon>
               </v-btn>
-              <div class="grapher-info-text">
-                Click item name in Legend to toggle. Right click to edit.
-              </div>
             </div>
           </v-row>
         </v-expansion-panel-content>
@@ -154,10 +152,9 @@ import SaveConfigDialog from '@openc3/tool-common/src/components/config/SaveConf
 import TargetPacketItemChooser from '@openc3/tool-common/src/components/TargetPacketItemChooser'
 import TopBar from '@openc3/tool-common/src/components/TopBar'
 import Muuri from 'muuri'
-
 import SettingsDialog from '@/tools/TlmGrapher/SettingsDialog'
 
-const MURRI_REFRESH_TIME = 250
+const MUURI_REFRESH_TIME = 250
 export default {
   components: {
     Graph,
@@ -300,6 +297,9 @@ export default {
       },
       deep: true,
     },
+    panel: function () {
+      this.resizeAll()
+    },
   },
   computed: {
     currentConfig: function () {
@@ -388,6 +388,17 @@ export default {
     }
   },
   methods: {
+    resizeAll: function () {
+      setTimeout(() => {
+        this.grid.getItems().map((item) => {
+          // Map the gridItem id to the graph id
+          const graphId = `graph${item.getElement().id.substring(8)}`
+          const vueGraph = this.$refs[graphId][0]
+          vueGraph.resize()
+        })
+        this.resize()
+      }, MUURI_REFRESH_TIME)
+    },
     graphSelected: function (id) {
       this.selectedGraphId = id
     },
@@ -446,7 +457,7 @@ export default {
         }
         setTimeout(() => {
           this.grid.refreshItems().layout()
-        }, MURRI_REFRESH_TIME)
+        }, MUURI_REFRESH_TIME)
       })
       this.saveDefaultConfig(this.currentConfig)
     },
@@ -481,16 +492,33 @@ export default {
         () => {
           this.grid.refreshItems().layout()
         },
-        MURRI_REFRESH_TIME * 2, // Double the time since there is more animation
+        MUURI_REFRESH_TIME * 2, // Double the time since there is more animation
       )
       this.saveDefaultConfig(this.currentConfig)
     },
     resize: function () {
+      // Calculate the largest height of the legend elements and apply it to all
+      const elements = document.querySelectorAll('.u-legend')
+      let maxHeight = 0
+      elements.forEach((element) => {
+        element.style.height = ''
+        if (element.clientHeight > maxHeight) {
+          maxHeight = element.clientHeight
+        }
+      })
+      if (maxHeight !== 0) {
+        elements.forEach((element) => {
+          if (element.clientHeight !== maxHeight) {
+            element.style.height = `${maxHeight}px`
+          }
+        })
+      }
+
       setTimeout(
         () => {
           this.grid.refreshItems().layout()
         },
-        MURRI_REFRESH_TIME * 2, // Double the time since there is more animation
+        MUURI_REFRESH_TIME * 2, // Double the time since there is more animation
       )
     },
     graphStarted: function (time) {
@@ -580,17 +608,19 @@ i.v-icon.mdi-chevron-down {
 }
 </style>
 <style lang="scss" scoped>
+.expansion {
+  padding: 5px;
+  background-color: var(--color-background-base-default) !important;
+  padding-bottom: 10px;
+}
 .grapher-info {
   position: relative;
   margin-top: 60px;
   left: -120px;
   height: 50px;
 }
-.grapher-info-text {
-  position: relative;
-  top: -55px;
-  left: 70px;
-  width: 140px;
+.control-button {
+  margin-right: 10px;
 }
 .v-expansion-panel-content {
   .container {
