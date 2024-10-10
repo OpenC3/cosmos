@@ -49,6 +49,15 @@ class HazardousError < StandardError
   end
 end
 
+class CriticalCmdError < StandardError
+  attr_accessor :uuid
+  attr_accessor :username
+  attr_accessor :target_name
+  attr_accessor :cmd_name
+  attr_accessor :cmd_params
+  attr_accessor :cmd_string
+end
+
 # If a disabled command is sent through the {OpenC3::Api} this error is raised.
 class DisabledError < StandardError
   attr_accessor :target_name

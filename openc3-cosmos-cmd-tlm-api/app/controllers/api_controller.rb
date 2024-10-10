@@ -102,11 +102,12 @@ class ApiController < ApplicationController
     # see http://www.jsonrpc.org/historical/json-rpc-over-http.html#errors
     if error_code
       case error_code
-      when OpenC3::JsonRpcError::ErrorCode::INVALID_REQUEST  then status = 400 # Bad request
-      when OpenC3::JsonRpcError::ErrorCode::AUTH_ERROR       then status = 401 # Auth
-      when OpenC3::JsonRpcError::ErrorCode::FORBIDDEN_ERROR  then status = 403 # Forbidden
-      when OpenC3::JsonRpcError::ErrorCode::METHOD_NOT_FOUND then status = 404 # Not found
-      when OpenC3::JsonRpcError::ErrorCode::HAZARDOUS_ERROR  then status = 409 # Server conflict
+      when OpenC3::JsonRpcError::ErrorCode::INVALID_REQUEST    then status = 400 # Bad request
+      when OpenC3::JsonRpcError::ErrorCode::AUTH_ERROR         then status = 401 # Auth
+      when OpenC3::JsonRpcError::ErrorCode::FORBIDDEN_ERROR    then status = 403 # Forbidden
+      when OpenC3::JsonRpcError::ErrorCode::METHOD_NOT_FOUND   then status = 404 # Not found
+      when OpenC3::JsonRpcError::ErrorCode::HAZARDOUS_ERROR    then status = 409 # Server conflict
+      when OpenC3::JsonRpcError::ErrorCode::CRITICAL_CMD_ERROR then status = 428 # Precondition required
       else
         # Also includes the following errors:
         # OpenC3::JsonRpcError::ErrorCode::PARSE_ERROR

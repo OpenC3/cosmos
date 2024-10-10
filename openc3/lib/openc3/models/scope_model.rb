@@ -30,11 +30,18 @@ require 'openc3/topics/system_events_topic'
 
 begin
   require 'openc3-enterprise/models/cmd_authority_model'
+  require 'openc3-enterprise/models/critical_cmd_model'
 rescue LoadError
-  # Stub out the Enterprise CmdAuthorityModel to do nothing
-  class CmdAuthorityModel
-    def self.names(scope:)
-      []
+  module OpenC3
+    class CmdAuthorityModel
+      def self.names(scope:)
+        []
+      end
+    end
+    class CriticalCmdModel
+      def self.names(scope:)
+        []
+      end
     end
   end
 end
@@ -50,6 +57,7 @@ module OpenC3
     attr_accessor :tool_log_retain_time
     attr_accessor :cleanup_poll_time
     attr_accessor :command_authority
+    attr_accessor :critical_commanding
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -90,6 +98,7 @@ module OpenC3
       tool_log_retain_time: nil,
       cleanup_poll_time: 900,
       command_authority: false,
+      critical_commanding: "OFF",
       updated_at: nil
     )
       super(
@@ -106,6 +115,11 @@ module OpenC3
       @tool_log_retain_time = tool_log_retain_time
       @cleanup_poll_time = cleanup_poll_time
       @command_authority = command_authority
+      @critical_commanding = critical_commanding.to_s.upcase
+      @critical_commanding = "OFF" if @critical_commanding.length == 0
+      if not ["OFF", "NORMAL", "ALL"].include?(@critical_commanding)
+        raise "Invalid value for critical_commanding: #{@critical_commanding}"
+      end
       @children = []
     end
 
@@ -121,6 +135,15 @@ module OpenC3
       if update and @command_authority == false
         CmdAuthorityModel.names(scope: @name).each do |auth_name|
           model = CmdAuthorityModel.get_model(name: auth_name, scope: @name)
+          model.destroy if model
+        end
+      end
+
+      # If we're updating the scope and disabling critical_commanding
+      # then we clear out all the pending critical commands
+      if update and @critical_commanding == "OFF"
+        CriticalCmdModel.names(scope: @name).each do |name|
+          model = CriticalCmdModel.get_model(name: name, scope: @name)
           model.destroy if model
         end
       end
@@ -150,6 +173,7 @@ module OpenC3
         'tool_log_retain_time' => @tool_log_retain_time,
         'cleanup_poll_time' => @cleanup_poll_time,
         'command_authority' => @command_authority,
+        'critical_commanding' => @critical_commanding,
        }
     end
 
@@ -252,6 +276,21 @@ module OpenC3
       Logger.info "Configured microservice #{microservice_name}"
     end
 
+    def deploy_critical_cmd_microservice(gem_path, variables, parent)
+      microservice_name = "#{@scope}__CRITICALCMD__#{@scope}"
+      microservice = MicroserviceModel.new(
+        name: microservice_name,
+        cmd: ["ruby", "critical_cmd_microservice.rb", microservice_name],
+        work_dir: '/openc3/lib/openc3/microservices',
+        parent: parent,
+        scope: @scope
+      )
+      microservice.create
+      microservice.deploy(gem_path, variables)
+      @children << microservice_name if parent
+      Logger.info "Configured microservice #{microservice_name}"
+    end
+
     def deploy_scopemulti_microservice(gem_path, variables)
       microservice_name = "#{@scope}__SCOPEMULTI__#{@scope}"
       microservice = MicroserviceModel.new(
@@ -297,6 +336,9 @@ module OpenC3
 
       # Scope Cleanup Microservice
       deploy_scopecleanup_microservice(gem_path, variables, @parent)
+
+      # Critical Cmd Microservice
+      deploy_critical_cmd_microservice(gem_path, variables, @parent)
 
       # Multi Microservice to parent other scope microservices
       deploy_scopemulti_microservice(gem_path, variables)
