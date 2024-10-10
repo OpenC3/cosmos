@@ -1644,7 +1644,7 @@ export default {
 .u-legend.u-inline .u-series .u-value {
   width: 105px;
 }
-/* This value is large enought to support our date format: YYYY-MM-DD HH:MM:SS.sss */
+/* This value is large enough to support our date format: YYYY-MM-DD HH:MM:SS.sss */
 .u-legend.u-inline .u-series:first-child .u-value {
   width: 180px;
 }
