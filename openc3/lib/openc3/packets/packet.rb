@@ -110,6 +110,9 @@ module OpenC3
     # @return [Boolean] If this packet should be used for identification
     attr_reader :virtual
 
+    # @return [Boolean] If this packet is marked as restricted use
+    attr_accessor :restricted
+
     # Valid format types
     VALUE_TYPES = [:RAW, :CONVERTED, :FORMATTED, :WITH_UNITS]
 
@@ -151,6 +154,7 @@ module OpenC3
         @packet_time = nil
         @ignore_overlap = false
         @virtual = false
+        @restricted = false
         @validator = nil
       end
 
@@ -1085,6 +1089,9 @@ module OpenC3
       elsif @hidden
         config << "  HIDDEN\n"
       end
+      if @restricted
+        config << "  RESTRICTED\n"
+      end
 
       if @processors
         @processors.each do |_processor_name, processor|
@@ -1145,6 +1152,7 @@ module OpenC3
       config['disabled'] = true if @disabled
       config['hidden'] = true if @hidden
       config['virtual'] = true if @virtual
+      config['restricted'] = true if @restricted
       config['accessor'] = @accessor.class.to_s
       config['accessor_args'] = @accessor.args
       config['validator'] = @validator.class.to_s if @validator
@@ -1201,6 +1209,7 @@ module OpenC3
       packet.disabled = hash['disabled']
       packet.hidden = hash['hidden']
       packet.virtual = hash['virtual']
+      packet.restricted = hash['restricted']
       if hash['accessor']
         begin
           accessor = OpenC3::const_get(hash['accessor'])

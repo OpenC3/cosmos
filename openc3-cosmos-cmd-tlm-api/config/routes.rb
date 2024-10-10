@@ -218,5 +218,10 @@ Rails.application.routes.draw do
     post '/cmdauth/release', to: 'cmd_authority#release'
     post '/cmdauth/take-all', to: 'cmd_authority#take_all'
     post '/cmdauth/release-all', to: 'cmd_authority#release_all'
+
+    get '/criticalcmd/status/:id', to: 'critical_cmd#status'
+    post '/criticalcmd/approve/:id', to: 'critical_cmd#approve'
+    post '/criticalcmd/reject/:id', to: 'critical_cmd#reject'
+    get '/criticalcmd/canapprove/:id', to: 'critical_cmd#canapprove'
   end
 end

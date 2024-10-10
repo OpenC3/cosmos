@@ -480,6 +480,11 @@ module OpenC3
         @current_packet.disabled = true
         @current_packet.virtual = true
 
+      when 'RESTRICTED'
+        usage = "#{keyword}"
+        parser.verify_num_parameters(0, 0, usage)
+        @current_packet.restricted = true
+
       when 'ACCESSOR', 'VALIDATOR'
         usage = "#{keyword} <Class name> <Optional parameters> ..."
         parser.verify_num_parameters(1, nil, usage)

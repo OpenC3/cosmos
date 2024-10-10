@@ -120,17 +120,25 @@ module OpenC3
         _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope: scope)
       else
         begin
-          target_name, cmd_name, cmd_params = $api_server.method_missing(cmd, *args, timeout: timeout, log_message: log_message, validate: validate, scope: scope, token: token)
-          if log_message.nil? or log_message
-            _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
+          begin
+            target_name, cmd_name, cmd_params = $api_server.method_missing(cmd, *args, timeout: timeout, log_message: log_message, validate: validate, scope: scope, token: token)
+            if log_message.nil? or log_message
+              _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
+            end
+          rescue HazardousError => e
+            # This opens a prompt at which point they can cancel and stop the script
+            # or say Yes and send the command. Thus we don't care about the return value.
+            prompt_for_hazardous(e.target_name, e.cmd_name, e.hazardous_description)
+            target_name, cmd_name, cmd_params = $api_server.method_missing(cmd_no_hazardous, *args, timeout: timeout, log_message: log_message, validate: validate, scope: scope, token: token)
+            if log_message.nil? or log_message
+              _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
+            end
           end
-        rescue HazardousError => e
-          # This opens a prompt at which point they can cancel and stop the script
-          # or say Yes and send the command. Thus we don't care about the return value.
-          prompt_for_hazardous(e.target_name, e.cmd_name, e.hazardous_description)
-          target_name, cmd_name, cmd_params = $api_server.method_missing(cmd_no_hazardous, *args, timeout: timeout, log_message: log_message, validate: validate, scope: scope, token: token)
+        rescue CriticalCmdError => e
+          # This should not return until the critical command has been approved
+          prompt_for_critical_cmd(e.uuid, e.username, e.target_name, e.cmd_name, e.cmd_params, e.cmd_string)
           if log_message.nil? or log_message
-            _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
+            _log_cmd(e.target_name, e.cmd_name, e.cmd_params, raw, no_range, no_hazardous)
           end
         end
       end

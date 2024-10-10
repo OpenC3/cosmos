@@ -85,6 +85,7 @@ module OpenC3
                        tool_log_retain_time: 4,
                        cleanup_poll_time: 5,
                        command_authority: true,
+                       critical_commanding: "NORMAL",
                        updated_at: 6,
                       ).create()
         model = ScopeModel.get_model(name: "DEFAULT")
@@ -94,20 +95,24 @@ module OpenC3
         expect(model.tool_log_retain_time).to eql 4
         expect(model.cleanup_poll_time).to eql 5
         expect(model.command_authority).to eql true
+        expect(model.critical_commanding).to eql "NORMAL"
         # model.updated_at is going to be time now
       end
     end
 
     describe "update" do
       it "updates command_authority and works in open source" do
-        model = ScopeModel.new(name: "DEFAULT", command_authority: true, updated_at: 12345)
+        model = ScopeModel.new(name: "DEFAULT", command_authority: true, critical_commanding: "ALL", updated_at: 12345)
         model.create()
         json = model.as_json(:allow_nan => true)
         expect(json['command_authority']).to eql true
+        expect(json['critical_commanding']).to eql "ALL"
         model.command_authority = false
+        model.critical_commanding = "OFF"
         model.update()
         json = model.as_json(:allow_nan => true)
         expect(json['command_authority']).to eql false
+        expect(json['critical_commanding']).to eql "OFF"
       end
     end
 

@@ -523,11 +523,8 @@ module OpenC3
           end
         end
       end
-      cmd_string = _build_cmd_output_string(method_name, target_name, cmd_name, cmd_params, packet)
-      if log_message
-        Logger.info(cmd_string, scope: scope)
-      end
 
+      cmd_string = _build_cmd_output_string(method_name, target_name, cmd_name, cmd_params, packet)
       username = user && user['username'] ? user['username'] : 'anonymous'
       command = {
         'target_name' => target_name,
@@ -538,7 +535,9 @@ module OpenC3
         'raw' => raw.to_s,
         'cmd_string' => cmd_string,
         'username' => username,
-        'validate' => validate.to_s
+        'validate' => validate.to_s,
+        'manual' => manual.to_s,
+        'log_message' => log_message.to_s,
       }
       CommandTopic.send_command(command, timeout: timeout, scope: scope)
     end
