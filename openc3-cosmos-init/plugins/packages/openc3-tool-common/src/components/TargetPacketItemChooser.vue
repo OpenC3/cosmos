@@ -29,7 +29,7 @@
           hide-details
           density="compact"
           variant="outlined"
-          @update:modelValue="targetNameChanged"
+          @update:model-value="targetNameChanged"
           :items="targetNames"
           item-title="label"
           item-value="value"
@@ -42,7 +42,7 @@
           hide-details
           density="compact"
           variant="outlined"
-          @update:modelValue="packetNameChanged"
+          @update:model-value="packetNameChanged"
           :disabled="packetsDisabled || autocompleteDisabled"
           :items="packetNames"
           item-title="label"
@@ -61,7 +61,7 @@
           hide-details
           density="compact"
           variant="outlined"
-          @update:modelValue="itemNameChanged($event)"
+          @update:model-value="itemNameChanged($event)"
           :disabled="itemsDisabled || autocompleteDisabled"
           :items="itemNames"
           item-title="label"
@@ -80,7 +80,7 @@
           hide-details
           density="compact"
           variant="outlined"
-          @update:modelValue="indexChanged($event)"
+          @update:model-value="indexChanged($event)"
           :disabled="itemsDisabled || autocompleteDisabled"
           :items="arrayIndexes()"
           item-title="label"

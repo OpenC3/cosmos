@@ -181,16 +181,20 @@ test('edits a graph', async ({ page, utils }) => {
 
   await page.locator('[data-test=edit-graph-icon]').click()
   await expect(page.locator('.v-dialog')).toContainText('Edit Graph')
-  await page.locator('[data-test=edit-graph-title]').fill('Test Graph Title')
+  await page.getByLabel('Title').fill('Test Graph Title')
 
   const start = sub(new Date(), { minutes: 2 })
   await page.getByLabel('Start Date').fill(format(start, 'yyyy-MM-dd'))
   await page.getByLabel('Start Time').fill(format(start, 'HH:mm:ss'))
 
   await page.getByRole('tab', { name: 'Scale / Lines' }).click()
-  await page.locator('[data-test=edit-graph-min-y]').fill('-50')
-  await page.locator('[data-test=edit-graph-max-y]').fill('50')
-  await page.getByRole('button', { name: 'New Horizontal Line' }).click()
+  await page.getByLabel('Min Y Axis (Optional)').fill('-50')
+  await page.getByLabel('Max Y Axis (Optional)').fill('50')
+  await page.getByRole('button', { name: 'New Line' }).click()
+  await page.getByLabel('Y Value').fill('20')
+  await page.getByText('white').click()
+  await page.getByRole('option', { name: 'darkorange' }).click()
+  await page.getByRole('button', { name: 'Ok' }).click()
 
   await page.getByRole('tab', { name: 'Items' }).click()
   await expect(page.locator('[data-test=edit-graph-items]')).toContainText(
@@ -279,7 +283,6 @@ test('works with UTC time', async ({ page, utils }) => {
   // Verify we can stream in data using UTC time
   await page.locator('[data-test=edit-graph-icon]').click()
   await expect(page.locator('.v-dialog')).toContainText('Edit Graph')
-  await page.locator('[data-test=edit-graph-title]').fill('Test Graph Title')
   const start = sub(new Date(), { minutes: 2 })
   await page.getByLabel('Start Date').fill(format(start, 'yyyy-MM-dd'))
   await page.getByLabel('Start Time').fill(format(start, 'HH:mm:ss'))

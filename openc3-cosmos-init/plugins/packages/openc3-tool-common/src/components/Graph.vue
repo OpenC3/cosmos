@@ -22,7 +22,7 @@
 
 <template>
   <div>
-    <v-card @click.native="$emit('click')">
+    <v-card @click="$emit('click')">
       <v-toolbar
         height="24"
         class="pl-2 pr-2"
@@ -41,7 +41,12 @@
 
         <v-tooltip text="Edit" location="bottom">
           <template v-slot:activator="{ props }">
-            <v-icon v-bind="props" @click="editGraph = true">mdi-pencil</v-icon>
+            <v-icon
+              v-bind="props"
+              @click="editGraph = true"
+              data-test="edit-graph-icon"
+              >mdi-pencil</v-icon
+            >
           </template>
         </v-tooltip>
 
@@ -405,8 +410,8 @@ export default {
       data: [[]],
       dataChanged: false,
       timeout: null,
-      graphMinY: '',
-      graphMaxY: '',
+      graphMinY: null,
+      graphMaxY: null,
       graphStartDateTime: null,
       graphEndDateTime: null,
       indexes: {},
@@ -762,7 +767,7 @@ export default {
       this.startGraph()
     }
   },
-  beforeDestroy: function () {
+  beforeUnmount: function () {
     this.stopGraph()
     this.cable.disconnect()
     window.removeEventListener('resize', this.handleResize)
@@ -803,19 +808,27 @@ export default {
     graphStartDateTime: function (newVal, oldVal) {
       if (newVal && typeof newVal === 'string') {
         this.graphStartDateTime =
-          new Date(this.graphStartDateTime).getTime() * 1_000_000
+          this.parseDateTime(this.graphStartDateTime, this.timeZone) * 1_000_000
         if (this.graphStartDateTime !== oldVal) {
           this.needToUpdate = true
         }
+      } else if (newVal === null && oldVal) {
+        // If they clear the start date time we need to update
+        this.graphStartDateTime = null
+        this.needToUpdate = true
       }
     },
     graphEndDateTime: function (newVal, oldVal) {
       if (newVal && typeof newVal === 'string') {
         this.graphEndDateTime =
-          new Date(this.graphEndDateTime).getTime() * 1_000_000
+          this.parseDateTime(this.graphEndDateTime, this.timeZone) * 1_000_000
         if (this.graphEndDateTime !== oldVal) {
           this.needToUpdate = true
         }
+      } else if (newVal === null && oldVal) {
+        // If they clear the end date time we need to update
+        this.graphEndDateTime = null
+        this.needToUpdate = true
       }
     },
   },
@@ -946,7 +959,6 @@ export default {
       this.$emit('edit')
     },
     handleResize: function () {
-      console.log('handleResize')
       // TODO: Should this method be throttled?
       this.graph.setSize(this.getSize('chart'))
       if (this.overview) {
@@ -1373,9 +1385,12 @@ export default {
         this.indexes[this.subscriptionKey(item)] = index
       }
       // Figure out the last item's color and set the colorIndex past that
-      let index = this.colors.indexOf(itemArray[itemArray.length - 1].color)
-      if (index) {
-        this.colorIndex = index + 1
+      let item = itemArray[itemArray.length - 1]
+      if (item) {
+        let index = this.colors.indexOf(item.color)
+        if (index) {
+          this.colorIndex = index + 1
+        }
       }
       this.addItemsToSubscription(itemArray)
       this.$emit('edit')

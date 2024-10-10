@@ -51,9 +51,9 @@
             <!-- All this row / col stuff is to setup a structure similar to the
                  target-packet-item-chooser so it will layout the same -->
             <v-row class="grapher-info">
-              <v-col style="max-width: 300px"></v-col>
-              <v-col style="max-width: 300px"></v-col>
-              <v-col style="max-width: 300px"></v-col>
+              <v-col style="max-width: 300px; pointer-events: none"></v-col>
+              <v-col style="max-width: 300px; pointer-events: none"></v-col>
+              <v-col style="max-width: 300px; pointer-events: none"></v-col>
               <v-col style="max-width: 140px">
                 <v-btn
                   v-show="state === 'pause'"
@@ -186,6 +186,7 @@ export default {
       selectedGraphId: 0,
       counter: 1,
       applyingConfig: false,
+      observer: null,
       menus: [
         {
           label: 'File',
@@ -301,16 +302,7 @@ export default {
       deep: true,
     },
     panel: function () {
-      // Explicitly resize the graphs when the expansion panel is opened or closed
-      setTimeout(() => {
-        this.grid.getItems().map((item) => {
-          // Map the gridItem id to the graph id
-          const graphId = `graph${item.getElement().id.substring(8)}`
-          const vueGraph = this.$refs[graphId][0]
-          vueGraph.handleResize()
-        })
-        this.resize()
-      }, MUURI_REFRESH_TIME)
+      this.resizeAll()
     },
   },
   computed: {
@@ -398,8 +390,33 @@ export default {
         this.applyConfig(config)
       }
     }
+    // Setup the observer to resize the graphs when the nav drawer is opened or closed
+    this.observer = new MutationObserver(() => {
+      this.resizeAll()
+    })
+    const navDrawer = document.getElementById('openc3-nav-drawer')
+    this.observer.observe(navDrawer, {
+      attributes: true,
+      attributeOldValue: true,
+      attributeFilter: ['class'],
+    })
+  },
+  beforeUnmount() {
+    this.observer.disconnect()
   },
   methods: {
+    resizeAll: function () {
+      // Explicitly resize the graphs when the expansion panel is opened or closed
+      setTimeout(() => {
+        this.grid.getItems().map((item) => {
+          // Map the gridItem id to the graph id
+          const graphId = `graph${item.getElement().id.substring(8)}`
+          const vueGraph = this.$refs[graphId][0]
+          vueGraph.handleResize()
+        })
+        this.resize()
+      }, MUURI_REFRESH_TIME)
+    },
     graphSelected: function (id) {
       this.selectedGraphId = id
     },
