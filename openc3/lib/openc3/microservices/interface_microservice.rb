@@ -202,19 +202,20 @@ module OpenC3
               next "HazardousError\n#{hazardous_description}\n#{msg_hash['cmd_string']}" if hazardous
             end
 
-            validator = ConfigParser.handle_true_false(msg_hash['validator'])
+            validate = ConfigParser.handle_true_false(msg_hash['validate'])
             begin
               if @interface.connected?
                 result = true
                 reason = nil
-                if command.validator and validator
+                if command.validator and validate
                   begin
                     result, reason = command.validator.pre_check(command)
                   rescue => e
                     result = false
                     reason = e.message
                   end
-                  unless result
+                  # Explicitly check for false to allow nil to represent unknown
+                  if result == false
                     message = "pre_check returned false for #{msg_hash['cmd_string']} due to #{reason}"
                     raise WriteRejectError.new(message)
                   end
@@ -224,7 +225,7 @@ module OpenC3
                 @metric.set(name: 'interface_cmd_total', value: @count, type: 'counter') if @metric
                 @interface.write(command)
 
-                if command.validator and validator
+                if command.validator and validate
                   begin
                     result, reason = command.validator.post_check(command)
                   rescue => e
@@ -239,7 +240,8 @@ module OpenC3
                 CommandTopic.write_packet(command, scope: @scope)
                 InterfaceStatusModel.set(@interface.as_json(:allow_nan => true), queued: true, scope: @scope)
 
-                unless result
+                # Explicitly check for false to allow nil to represent unknown
+                if result == false
                   message = "post_check returned false for #{msg_hash['cmd_string']} due to #{reason}"
                   raise WriteRejectError.new(message)
                 end

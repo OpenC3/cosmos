@@ -73,9 +73,11 @@ module OpenC3
     def self.handle_config(parser, keyword, parameters, plugin: nil, needs_dependencies: false, scope:)
       case keyword
       when 'WIDGET'
-        parser.verify_num_parameters(1, 2, "WIDGET <Name> <Label>")
+        parser.verify_num_parameters(1, 3, "WIDGET <Name> <Label> <Select Items (true/false)>")
         # Label is optional and if it doesn't exist nil is fine
-        return self.new(name: parameters[0], plugin: plugin, label: parameters[1], needs_dependencies: needs_dependencies, scope: scope)
+        # Select Items is optional and if it doesn't exist nil is fine
+        items = ConfigParser.handle_true_false_nil(parameters[2])
+        return self.new(name: parameters[0], plugin: plugin, label: parameters[1], items: items, needs_dependencies: needs_dependencies, scope: scope)
       else
         raise ConfigParser::Error.new(parser, "Unknown keyword and parameters for Widget: #{keyword} #{parameters.join(" ")}")
       end
@@ -87,6 +89,7 @@ module OpenC3
       updated_at: nil,
       plugin: nil,
       label: nil,
+      items: false,
       needs_dependencies: false,
       disable_erb: nil,
       scope:
@@ -96,6 +99,8 @@ module OpenC3
       @filename = @full_name + '.umd.min.js'
       @bucket_key = 'widgets/' + @full_name + '/' + @filename
       @label = label
+      # Ensure items is a boolean because it could be nil
+      @items = items ? true : false
       @needs_dependencies = needs_dependencies
       @disable_erb = disable_erb
     end
@@ -106,8 +111,9 @@ module OpenC3
         'updated_at' => @updated_at,
         'plugin' => @plugin,
         'label' => @label,
+        'items' => @items,
         'needs_dependencies' => @needs_dependencies,
-        'disable_erb' => @disable_erb
+        'disable_erb' => @disable_erb,
       }
     end
 
@@ -155,8 +161,8 @@ module OpenC3
       bucket = Bucket.getClient()
       bucket.delete_object(bucket: ENV['OPENC3_TOOLS_BUCKET'], key: @bucket_key)
       bucket.delete_object(bucket: ENV['OPENC3_TOOLS_BUCKET'], key: @bucket_key + '.map')
-    rescue Exception => error
-      Logger.error("Error undeploying widget model #{@name} in scope #{@scope} due to #{error}")
+    rescue Exception => e
+      Logger.error("Error undeploying widget model #{@name} in scope #{@scope} due to #{e}")
     end
   end
 end

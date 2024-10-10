@@ -116,7 +116,8 @@ Rails.application.routes.draw do
     get TIMELINE_ACTIVITY_ID, to: 'activity#show', name: /[^\/]+/, id: /[^\/]+/
     post TIMELINE_ACTIVITY_ID, to: 'activity#event', name: /[^\/]+/, id: /[^\/]+/
     match TIMELINE_ACTIVITY_ID, to: 'activity#update', name: /[^\/]+/, id: /[^\/]+/, via: [:patch, :put]
-    delete TIMELINE_ACTIVITY_ID, to: 'activity#destroy', name: /[^\/]+/, id: /[^\/]+/
+    # NOTE: uuid is new as of 5.19.0
+    delete TIMELINE_ACTIVITY_ID + '(/:uuid)', to: 'activity#destroy', name: /[^\/]+/, id: /[^\/]+/, uuid: /[^\/]+/
 
     get AUTONOMIC_GROUP, to: 'trigger_group#index'
     post AUTONOMIC_GROUP, to: 'trigger_group#create'

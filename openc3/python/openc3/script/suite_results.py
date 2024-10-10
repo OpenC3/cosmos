@@ -81,20 +81,8 @@ class SuiteResults:
 
             if result.exceptions:
                 self._report.append("  Exceptions:")
-                for index, error in enumerate(result.exceptions):
-                    self._report.extend("".join(traceback.format_exception(error)))
-                    # for line in repr(error):
-                    #   next if /in run_text/.match?(line)
-                    #   next if /running_script.rb/.match?(line)
-                    #   next if line&.match?(openc3_lib)
-
-                    #   if /[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F-\xFF]/.match?(line)
-                    #     line.chomp!
-                    #     line = line.inspect.remove_quotes
-
-                    #   self._report += '    ' + line.rstrip()
-                    # if index != (result.exceptions.length - 1):
-                    #   self._report += ''
+                for _, error in enumerate(result.exceptions):
+                    self._report.append("".join(traceback.format_exception(error)))
 
     def complete(self):
         self.stop_time = time.time()

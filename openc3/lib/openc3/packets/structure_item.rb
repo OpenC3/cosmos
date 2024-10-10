@@ -95,6 +95,9 @@ module OpenC3
     # @return [Hash] Variable bit size information
     attr_reader :variable_bit_size
 
+    # @return [Integer] Incrementing value that shows relative order items are created
+    attr_reader :create_index
+
     # Create a StructureItem by setting all the attributes. It
     # calls all the setter routines to do the attribute verification and then
     # verifies the overall integrity.
@@ -238,73 +241,56 @@ module OpenC3
       verify_overall() if @structure_item_constructed
     end
 
-    def create_index
-      @create_index.to_i
-    end
-
     if RUBY_ENGINE != 'ruby' or ENV['OPENC3_NO_EXT']
-      # Comparison Operator based on bit_offset. This means that StructureItems
-      # with different names or bit sizes are equal if they have the same bit
-      # offset.
+      # Comparison Operator primarily based on bit_offset
       def <=>(other)
         return nil unless other.kind_of?(StructureItem)
 
-        other_bit_offset = other.bit_offset
-        other_bit_size = other.bit_size
+        other_original_bit_offset = other.original_bit_offset
 
-        # Handle same bit offset case
-        if (@bit_offset == 0) && (other_bit_offset == 0)
-          # Both bit_offsets are 0 so sort by bit_size
-          # This allows derived items with bit_size of 0 to be listed first
-          # Compare based on bit size then create index
-          if @bit_size == other_bit_size
-            if @create_index
-              if @create_index <= other.create_index
-                return -1
-              else
-                return 1
-              end
-            else
-              return 0
-            end
-          elsif @bit_size < other_bit_size
+        # Derived items should be first in the list with multiple derived sorted
+        # by create_index
+        if @data_type == :DERIVED
+          if other.data_type != :DERIVED
             return -1
           else
-            return 1
+            if @create_index <= other.create_index
+              return -1
+            else
+              return 1
+            end
           end
+        elsif other.data_type == :DERIVED
+          return 1
         end
 
-        # Handle different bit offsets
-        if ((@bit_offset >= 0) && (other_bit_offset >= 0)) || ((@bit_offset < 0) && (other_bit_offset < 0))
+        # Handle non-derived items
+        if ((@original_bit_offset >= 0) && (other_original_bit_offset >= 0)) || ((@original_bit_offset < 0) && (other_original_bit_offset < 0))
           # Both Have Same Sign
-          if @bit_offset == other_bit_offset
-            if @create_index
-              if @create_index <= other.create_index
+          if @original_bit_offset == other_original_bit_offset
+            # New Variable Bit Size items are before regular items
+            if @variable_bit_size
+              if not other.variable_bit_size
                 return -1
-              else
-                return 1
               end
-            else
-              return 0
+              # If both variable_bit_size use create index
+            elsif other.variable_bit_size
+              return 1
             end
-          elsif @bit_offset <= other_bit_offset
+
+            if @create_index <= other.create_index
+              return -1
+            else
+              return 1
+            end
+          elsif @original_bit_offset <= other_original_bit_offset
             return -1
           else
             return 1
           end
         else
           # Different Signs
-          if @bit_offset == other_bit_offset
-            if @create_index
-              if @create_index < other.create_index
-                return -1
-              else
-                return 1
-              end
-            else
-              return 0
-            end
-          elsif @bit_offset < other_bit_offset
+          if @original_bit_offset < other_original_bit_offset
             return 1
           else
             return -1

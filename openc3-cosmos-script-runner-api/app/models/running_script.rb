@@ -430,6 +430,7 @@ class RunningScript
 
     # Retrieve file
     @body = ::Script.body(@scope, name)
+    raise "Script not found: #{name}" if @body.nil?
     breakpoints = @@breakpoints[filename]&.filter { |_, present| present }&.map { |line_number, _| line_number - 1 } # -1 because frontend lines are 0-indexed
     breakpoints ||= []
     OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{@id}"].compact.join(":"),
@@ -1110,6 +1111,7 @@ class RunningScript
         unless close_on_complete
           output = "Starting script: #{File.basename(@filename)}"
           output += " in DISCONNECT mode" if $disconnect
+          output += ", line_delay = #{@@line_delay}"
           scriptrunner_puts(output)
         end
         handle_output_io()
@@ -1240,11 +1242,8 @@ class RunningScript
     else
       OpenC3::Logger.error(error.class.to_s.split('::')[-1] + ' : ' + error.message)
       if ENV['OPENC3_FULL_BACKTRACE']
-        relevent_lines = error.backtrace
-      else
-        relevent_lines = error.backtrace.select { |line| !line.include?("/src/app") && !line.include?("/openc3/lib") && !line.include?("/usr/lib/ruby") }
+        OpenC3::Logger.error(error.backtrace.join("\n\n"))
       end
-      OpenC3::Logger.error(relevent_lines.join("\n\n")) unless relevent_lines.empty?
     end
     handle_output_io(filename, line_number)
 
@@ -1273,6 +1272,7 @@ class RunningScript
       OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :file, filename: filename, text: @body.to_utf8, breakpoints: breakpoints }))
     else
       text = ::Script.body(@scope, filename)
+      raise "Script not found: #{filename}" if text.nil?
       @@file_cache[filename] = text
       @body = text
       OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :file, filename: filename, text: @body.to_utf8, breakpoints: breakpoints }))

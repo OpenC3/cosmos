@@ -20,8 +20,20 @@ function defaultSourceLookup(filePath) {
       '/openc3',
       // This assumes you've checked out playwright at the same level as the openc3 project
       process.cwd().split(path.sep).join(path.posix.sep) +
-        '/../cosmos/openc3-cosmos-init'
+        '/../openc3-cosmos-init',
     )
+    if (
+      filePath.includes('enterprise') ||
+      filePath.includes('openc3-cosmos-tool-autonomic') ||
+      filePath.includes('openc3-cosmos-tool-calendar') ||
+      filePath.includes('openc3-cosmos-tool-cmdhistory')
+    ) {
+      filePath = filePath.replace(
+        '../openc3-cosmos-init',
+        '../../cosmos-enterprise/openc3-cosmos-enterprise-init',
+      )
+    }
+
     // For some reason we get duplicate path portions like:
     // /openc3-init/plugins/openc3-tool-base/src/src/AppNav.vue
     // /openc3-init/plugins/openc3-tool-base/src/components/src/components/ClockFooter.vue
@@ -67,7 +79,7 @@ class Context {
     this.sourceFinder = opts.sourceFinder || defaultSourceLookup
     this._summarizerFactory = new SummarizerFactory(
       opts.coverageMap,
-      opts.defaultSummarizer
+      opts.defaultSummarizer,
     )
     this.data = {}
   }

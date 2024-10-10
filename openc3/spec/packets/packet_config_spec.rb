@@ -1093,7 +1093,7 @@ module OpenC3
           tf.puts "  ITEM item2 0 2 UINT"
           tf.close
           @pc.process_file(tf.path, "TGT1")
-          expect(@pc.warnings[0]).to eql "Bit definition overlap at bit offset 0 for packet TGT1 PKT1 items ITEM1 and ITEM2"
+          expect(@pc.warnings[0]).to eql "Bit definition overlap at bit offset 0 for packet TGT1 PKT1 items ITEM2 and ITEM1"
           tf.unlink
         end
       end

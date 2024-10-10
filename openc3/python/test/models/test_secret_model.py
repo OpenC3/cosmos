@@ -1,4 +1,3 @@
-
 # Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
@@ -24,24 +23,24 @@ from openc3.models.secret_model import SecretModel
 
 class TestSecretModel(unittest.TestCase):
     def setUp(self):
-      mock_redis(self)
+        mock_redis(self)
 
     def test_creates_new(self):
-        model = SecretModel(name= 'secret', value= 'tacit', scope= 'DEFAULT')
+        model = SecretModel(name="secret", value="tacit", scope="DEFAULT")
         self.assertIsInstance(model, SecretModel)
 
     def test_self_get(self):
-        name = SecretModel.get(name= 'secret', scope= 'DEFAULT')
-        self.assertIsNone(name) # eq('secret')
+        name = SecretModel.get(name="secret", scope="DEFAULT")
+        self.assertIsNone(name)  # eq('secret')
 
     def test_self_all(self):
-        all_secrets = SecretModel.all(scope= 'DEFAULT')
-        self.assertEqual(all_secrets, {}) # eq('secret')
+        all_secrets = SecretModel.all(scope="DEFAULT")
+        self.assertEqual(all_secrets, {})  # eq('secret')
 
     def test_self_names(self):
-        names = SecretModel.names(scope= 'DEFAULT')
-        self.assertEqual(names, []) # eq('secret')
+        names = SecretModel.names(scope="DEFAULT")
+        self.assertEqual(names, [])  # eq('secret')
 
     def test_as_json(self):
-        model = SecretModel(name= 'secreter', value= 'silent', scope= 'DEFAULT')
-        self.assertEqual(model.as_json()['name'], ('secreter'))
+        model = SecretModel(name="secreter", value="silent", scope="DEFAULT")
+        self.assertEqual(model.as_json()["name"], ("secreter"))

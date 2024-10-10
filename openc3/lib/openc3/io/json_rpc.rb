@@ -214,7 +214,7 @@ module OpenC3
 
   # Represents a JSON Remote Procedure Call Request
   class JsonRpcRequest < JsonRpc
-    DANGEROUS_METHODS = ['__send__', 'send', 'instance_eval', 'instance_exec']
+    DANGEROUS_METHODS = Set['__send__', 'send', 'instance_eval', 'instance_exec']
 
     # @param method_name [String] The name of the method to call
     # @param method_params [Array<String>] Array of strings which represent the

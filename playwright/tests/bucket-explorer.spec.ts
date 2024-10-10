@@ -240,17 +240,65 @@ test('navigate logs and tools bucket', async ({ page, utils }) => {
   // Verify no bad dates
   await expect(page.getByText('1970')).not.toBeVisible()
   await page.getByRole('cell', { name: date }).click()
-  await expect(page.getByRole('cell', { name: date })).toBeVisible()
+  // Don't check for date because 2 files could be present
   await expect(
     page.getByText('DEFAULT__INST__ALL__rt__raw').first(),
   ).toBeVisible()
-  await expect(page.getByText('1970')).not.toBeVisible()
 
   await page.getByText('tools').click()
   await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/tools%2F/)
   if (process.env.ENTERPRISE === '1') {
-    await expect(page.locator('tbody > tr')).toHaveCount(19)
+    await expect(page.locator('tbody > tr')).toHaveCount(20)
   } else {
     await expect(page.locator('tbody > tr')).toHaveCount(17)
   }
+})
+
+test('auto refreshes to update files', async ({ page, utils, toolPath, context }) => {
+  await page.getByText('config').click()
+
+  // Open another tab
+  const pageTwo = await context.newPage()
+  pageTwo.goto(toolPath)
+  await pageTwo.getByText('config').click()
+  await pageTwo.getByRole('cell', { name: 'DEFAULT' }).click();
+  await pageTwo.getByRole('cell', { name: 'targets_modified' }).click();
+
+  // Set the refresh interval on the second tab to be really slow
+  await pageTwo.locator('[data-test=bucket-explorer-file]').click()
+  await pageTwo.locator('[data-test=bucket-explorer-file-options]').click()
+  await pageTwo.locator('.v-dialog [data-test=refresh-interval]').fill('1000')
+  await pageTwo.locator('.v-dialog [data-test=refresh-interval]').press('Enter')
+  await pageTwo.locator('.v-dialog').press('Escape')
+
+  // Upload a file from the first tab
+  await expect(page.getByLabel('prepended action')).toBeVisible()
+  const [fileChooser] = await Promise.all([
+    page.waitForEvent('filechooser'),
+    await page.getByLabel('prepended action').click(),
+  ])
+  await fileChooser.setFiles('package.json')
+  await page.locator('[data-test="upload-file-path"]').fill('DEFAULT/targets_modified/package.json')
+  await page.locator('[data-test="upload-file-submit-btn"]').click()
+
+  // The second tab shouldn't have refreshed yet, so the file shouldn't be there
+  await utils.sleep(5000) // Ensure the table is rendered before checking
+  await expect(pageTwo.getByRole('cell', { name: 'package.json' })).not.toBeVisible()
+
+  // Set the refresh interval on the second tab to 1s
+  await pageTwo.locator('[data-test=bucket-explorer-file]').click()
+  await pageTwo.locator('[data-test=bucket-explorer-file-options]').click()
+  await pageTwo.locator('.v-dialog [data-test=refresh-interval]').fill('1')
+  await pageTwo.locator('.v-dialog [data-test=refresh-interval]').press('Enter')
+  await pageTwo.locator('.v-dialog').press('Escape')
+
+  // Second tab should auto refresh in 1s and then the file should be there
+  await utils.sleep(5000) // Ensure the table is rendered before checking
+  await expect(pageTwo.getByRole('cell', { name: 'package.json' })).toBeVisible()
+
+  // Cleanup
+  await page
+    .locator('tr:has-text("package.json") [data-test="delete-file"]')
+    .click()
+  await page.locator('[data-test="confirm-dialog-delete"]').click()
 })

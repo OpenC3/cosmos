@@ -617,9 +617,17 @@ module OpenC3
         # Anything with a negative bit offset should be left alone
         if item.original_bit_offset >= 0
           item.bit_offset = item.original_bit_offset + adjustment
-          if item.data_type != :DERIVED and (item.variable_bit_size or item.original_bit_size <= 0 or (item.original_array_size and item.original_array_size <= 0))
+
+          # May need to update adjustment with variable length items
+          # Note legacy variable length does not push anything
+          if item.data_type != :DERIVED and item.variable_bit_size # Not DERIVED and New Variable Length
+            # Calculate the actual current size of this variable length item
             new_bit_size = calculate_total_bit_size(item)
+
             if item.original_bit_size != new_bit_size
+              # Bit size has changed from original - so we need to adjust everything after this item
+              # This includes items that may have the same bit_offset as the variable length item because it
+              # started out at zero bit_size
               adjustment += (new_bit_size - item.original_bit_size)
             end
           end

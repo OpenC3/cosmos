@@ -20,20 +20,28 @@ require 'openc3/packets/command_validator'
 
 class InstCmdValidator < OpenC3::CommandValidator
   def pre_check(command)
+    # Record the current value of CMD_ACPT_CNT for comparison in post_check
     @cmd_acpt_cnt = tlm("<%= target_name %> HEALTH_STATUS CMD_ACPT_CNT")
     return [true, nil]
   end
 
   def post_check(command)
     if command.packet_name == 'TIME_OFFSET'
-      # This is just an example of how to return a failure with a message
+      # Return Failure with a message
       return [false, 'TIME_OFFSET failure description']
+    end
+    if command.packet_name == 'MEMLOAD'
+      # Return Unknown with a message
+      return [nil, 'MEMLOAD validation unknown']
     end
     if command.packet_name == 'CLEAR'
       wait_check("<%= target_name %> HEALTH_STATUS CMD_ACPT_CNT == 0", 10)
+      # Return Success with a message
+      return [true, "CMD_ACPT_CNT cleared"]
     else
       wait_check("<%= target_name %> HEALTH_STATUS CMD_ACPT_CNT > #{@cmd_acpt_cnt}", 10)
+      # Return Success without a message
+      return [true, nil]
     end
-    return [true, nil]
   end
 end

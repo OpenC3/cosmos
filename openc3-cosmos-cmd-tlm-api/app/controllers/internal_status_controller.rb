@@ -31,6 +31,7 @@ class InternalStatusController < ApplicationController
     begin
       render :json => { :status => OpenC3::PingModel.get() }, :status => 200
     rescue => e
+      logger.error(e.formatted)
       render :json => { :status => 'error', :message => e.message, :type => e.class }, :status => 500
     end
   end

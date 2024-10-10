@@ -40,13 +40,18 @@ module OpenC3
     # pull openc3-cosmos-script-runner-api url from environment variables
     def _generate_url(microservice_name:, prefix:, schema: 'http', hostname: nil, port:, scope: $openc3_scope)
       prefix = '/' + prefix unless prefix[0] == '/'
-      if ENV['KUBERNETES_SERVICE_HOST']
-        hostname = "#{scope}__USER__#{microservice_name}" unless hostname
-        hostname = hostname.downcase.gsub("__", "-").gsub("_", "-")
-        return "#{schema}://#{hostname}-service:#{port.to_i}#{prefix}"
-      else
-        hostname = 'openc3-operator' unless hostname
+      if ENV['OPENC3_OPERATOR_HOSTNAME']
+        hostname = ENV['OPENC3_OPERATOR_HOSTNAME'] unless hostname
         return "#{schema}://#{hostname}:#{port.to_i}#{prefix}"
+      else
+        if ENV['KUBERNETES_SERVICE_HOST']
+          hostname = "#{scope}__USER__#{microservice_name}" unless hostname
+          hostname = hostname.downcase.gsub("__", "-").gsub("_", "-")
+          return "#{schema}://#{hostname}-service:#{port.to_i}#{prefix}"
+        else
+          hostname = 'openc3-operator' unless hostname
+          return "#{schema}://#{hostname}:#{port.to_i}#{prefix}"
+        end
       end
     end
 
