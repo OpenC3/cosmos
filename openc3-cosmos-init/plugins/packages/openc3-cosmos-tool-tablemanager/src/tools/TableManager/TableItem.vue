@@ -24,32 +24,32 @@
   <td>
     <v-checkbox
       v-if="isCheckbox"
-      dense
+      density="compact"
       hide-details
       v-model="checkValue"
-      @change="checkboxChange"
+      @update:model-value="checkboxChange"
       :disabled="!dataItem.editable"
       data-test="table-item-checkbox"
     />
     <v-select
       v-else-if="dataItem.states"
-      dense
+      density="compact"
       hide-details
       v-model="stateValue"
-      @change="stateChange"
+      @update:model-value="stateChange"
       :items="itemStates"
       :disabled="!dataItem.editable"
       data-test="table-item-select"
     />
     <v-text-field
       v-else
-      solo
-      dense
+      variant="solo"
+      density="compact"
       single-line
       hide-no-data
       hide-details
-      @change="textChange"
-      :value="format(dataItem.value)"
+      @update:model-value="textChange"
+      :model-value="format(dataItem.value)"
       :disabled="!dataItem.editable"
       data-test="table-item-text-field"
     />

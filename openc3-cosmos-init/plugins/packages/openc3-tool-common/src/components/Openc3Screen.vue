@@ -26,11 +26,11 @@
 <template>
   <div :style="computedStyle" ref="bar">
     <v-card :min-height="height" :min-width="width">
-      <v-system-bar>
+      <v-system-bar absolute>
         <div v-show="errors.length !== 0">
-          <v-tooltip top>
-            <template v-slot:activator="{ on, attrs }">
-              <div v-on="on" v-bind="attrs">
+          <v-tooltip location="top">
+            <template v-slot:activator="{ props }">
+              <div v-bind="props">
                 <v-icon
                   data-test="error-graph-icon"
                   @click="errorDialog = true"
@@ -42,9 +42,9 @@
             <span> Errors </span>
           </v-tooltip>
         </div>
-        <v-tooltip top>
-          <template v-slot:activator="{ on, attrs }">
-            <div v-on="on" v-bind="attrs">
+        <v-tooltip location="top">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
               <v-icon data-test="edit-screen-icon" @click="openEdit">
                 mdi-pencil
               </v-icon>
@@ -52,9 +52,9 @@
           </template>
           <span> Edit Screen </span>
         </v-tooltip>
-        <v-tooltip top v-if="!fixFloated">
-          <template v-slot:activator="{ on, attrs }">
-            <div v-on="on" v-bind="attrs">
+        <v-tooltip location="top" v-if="!fixFloated">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
               <v-icon data-test="float-screen-icon" @click="floatScreen">
                 {{ floated ? 'mdi-balloon' : 'mdi-view-grid-outline' }}
               </v-icon>
@@ -62,9 +62,9 @@
           </template>
           <span> {{ floated ? 'Unfloat Screen' : 'Float Screen' }} </span>
         </v-tooltip>
-        <v-tooltip top v-if="floated">
-          <template v-slot:activator="{ on, attrs }">
-            <div v-on="on" v-bind="attrs">
+        <v-tooltip location="top" v-if="floated">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
               <v-icon data-test="up-screen-icon" @click="upScreen">
                 mdi-arrow-up
               </v-icon>
@@ -72,9 +72,9 @@
           </template>
           <span> Move Screen Up </span>
         </v-tooltip>
-        <v-tooltip top v-if="floated && zIndex > minZ">
-          <template v-slot:activator="{ on, attrs }">
-            <div v-on="on" v-bind="attrs">
+        <v-tooltip location="top" v-if="floated && zIndex > minZ">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
               <v-icon data-test="down-screen-icon" @click="downScreen">
                 mdi-arrow-down
               </v-icon>
@@ -85,9 +85,9 @@
         <v-spacer />
         <span>{{ target }} {{ screen }}</span>
         <v-spacer />
-        <v-tooltip top>
-          <template v-slot:activator="{ on, attrs }">
-            <div v-on="on" v-bind="attrs">
+        <v-tooltip location="top">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
               <v-icon
                 data-test="minimize-screen-icon"
                 @click="minMaxTransition"
@@ -107,9 +107,9 @@
           <span v-show="expand"> Minimize Screen </span>
           <span v-show="!expand"> Maximize Screen </span>
         </v-tooltip>
-        <v-tooltip v-if="showClose" top>
-          <template v-slot:activator="{ on, attrs }">
-            <div v-on="on" v-bind="attrs">
+        <v-tooltip v-if="showClose" location="top">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
               <v-icon
                 data-test="close-screen-icon"
                 @click="$emit('close-screen')"
@@ -123,21 +123,25 @@
       </v-system-bar>
       <v-expand-transition v-if="!editDialog">
         <div
-          class="pa-1"
+          class="pa-1 pt-7"
           style="position: relative"
           ref="screen"
           v-show="expand"
         >
           <v-overlay
             style="pointer-events: none"
-            :value="errors.length !== 0"
+            :model-value="errors.length !== 0"
             opacity="0.8"
             absolute
           />
           <vertical-widget
             :key="screenKey"
             :widgets="layoutStack[0].widgets"
-            v-on="$listeners"
+            :screenValues="screenValues"
+            :screenTimeZone="timeZone"
+            v-on:add-item="addItem"
+            v-on:delete-item="deleteItem"
+            v-on:open="open"
           />
         </div>
       </v-expand-transition>
@@ -163,7 +167,7 @@
         <v-spacer />
       </v-system-bar>
       <v-card>
-        <v-textarea class="errors" readonly rows="13" :value="error" />
+        <v-textarea class="errors" readonly rows="13" :model-value="error" />
       </v-card>
     </v-dialog>
   </div>
@@ -173,47 +177,13 @@
 import Api from '../services/api'
 import { ConfigParserService } from '../services/config-parser'
 import { OpenC3Api } from '../services/openc3-api'
-import Vue from 'vue'
-import upperFirst from 'lodash/upperFirst'
-import camelCase from 'lodash/camelCase'
 import EditScreenDialog from './EditScreenDialog'
+import WidgetComponents from './widgets/WidgetComponents'
 
 const MAX_ERRORS = 20
 
-// Globally register all XxxWidget.vue components
-const requireComponent = require.context(
-  // The relative path of the components folder
-  '@openc3/tool-common/src/components/widgets',
-  // Whether or not to look in subfolders
-  false,
-  // The regular expression used to match base component filenames
-  /[A-Z][a-z]+Widget\.vue$/,
-)
-
-requireComponent.keys().forEach((filename) => {
-  // Get component config
-  const componentConfig = requireComponent(filename)
-  // Get PascalCase name of component
-  const componentName = upperFirst(
-    camelCase(
-      // Gets the filename regardless of folder depth
-      filename
-        .split('/')
-        .pop()
-        .replace(/\.\w+$/, ''),
-    ),
-  )
-  // Register component globally
-  Vue.component(
-    componentName,
-    // Look for the component options on `.default`, which will
-    // exist if the component was exported with `export default`,
-    // otherwise fall back to module's root.
-    componentConfig.default || componentConfig,
-  )
-})
-
 export default {
+  mixins: [WidgetComponents],
   components: {
     EditScreenDialog,
   },
@@ -698,6 +668,8 @@ export default {
           type: componentName,
           parameters: parameters,
           settings: settings,
+          screenValues: this.screenValues,
+          screenTimeZone: this.timeZone,
           widgets: [],
         }
         this.layoutStack.push(layout)
@@ -706,13 +678,14 @@ export default {
       } else {
         // Give all the widgets a reference to this screen
         // Use settings so we don't break existing custom widgets
-        settings.push(['__SCREEN__', this])
-        if (Vue.options.components[componentName]) {
+        if (this.$options.components[componentName]) {
           this.currentLayout.widgets.push({
             type: componentName,
             target: this.target,
             parameters: parameters,
             settings: settings,
+            screenValues: this.screenValues,
+            screenTimeZone: this.timeZone,
             line: line,
             lineNumber: lineNumber,
           })
@@ -722,6 +695,8 @@ export default {
             target: this.target,
             parameters: parameters,
             settings: settings,
+            screenValues: this.screenValues,
+            screenTimeZone: this.timeZone,
             name: componentName,
             line: line,
             lineNumber: lineNumber,
@@ -784,12 +759,12 @@ export default {
       this.updateCounter += 1
       for (let i = 0; i < values.length; i++) {
         values[i].push(this.updateCounter)
-        Vue.set(this.screenValues, this.screenItems[i], values[i])
+        this.screenValues[this.screenItems[i]] = values[i]
       }
     },
     addItem: function (valueId) {
       this.screenItems.push(valueId)
-      Vue.set(this.screenValues, valueId, [null, null, 0])
+      this.screenValues[valueId] = [null, null, 0]
     },
     deleteItem: function (valueId) {
       let index = this.screenItems.indexOf(valueId)

@@ -28,9 +28,9 @@
         <span> {{ title }} </span>
         <v-spacer />
         <div class="mx-2">
-          <v-tooltip top>
-            <template v-slot:activator="{ on, attrs }">
-              <div v-on="on" v-bind="attrs">
+          <v-tooltip location="top">
+            <template v-slot:activator="{ props }">
+              <div v-bind="props">
                 <v-icon data-test="downloadIcon" @click="download">
                   mdi-download
                 </v-icon>

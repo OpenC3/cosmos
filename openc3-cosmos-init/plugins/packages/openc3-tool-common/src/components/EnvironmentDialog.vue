@@ -39,10 +39,9 @@
                 data-test="search"
                 prepend-inner-icon="mdi-magnify"
                 clearable
-                outlined
-                dense
+                variant="outlined"
+                density="compact"
                 clear-icon="mdi-close-circle-outline"
-                clearable
                 autofocus
                 single-line
                 hide-details
@@ -56,7 +55,7 @@
               :headers="headers"
               :items="environment"
               :items-per-page="5"
-              :footer-props="{ 'items-per-page-options': [5] }"
+              :items-per-page-options="[5]"
             >
               <template v-slot:item.actions="{ item }">
                 <v-btn

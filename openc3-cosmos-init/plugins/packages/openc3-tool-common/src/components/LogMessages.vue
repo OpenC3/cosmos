@@ -22,39 +22,44 @@
 
 <template>
   <v-card>
-    <v-card-title>
-      <v-tooltip top>
-        <template v-slot:activator="{ on, attrs }">
-          <div v-on="on" v-bind="attrs">
-            <v-btn
-              icon
-              class="mx-2"
-              data-test="download-log"
-              @click="downloadLog"
-            >
-              <v-icon> mdi-download </v-icon>
-            </v-btn>
-          </div>
-        </template>
-        <span> Download Log </span>
-      </v-tooltip>
-      <span> Log Messages </span>
-      <v-tooltip top>
-        <template v-slot:activator="{ on, attrs }">
-          <div v-on="on" v-bind="attrs">
-            <v-btn icon data-test="pause" @click="pause">
-              <v-icon> {{ buttonIcon }} </v-icon>
-            </v-btn>
-          </div>
-        </template>
-        <span> {{ buttonLabel }} </span>
-      </v-tooltip>
+    <v-card-title class="d-flex align-center justify-content-space-between">
+      <div class="d-flex align-baseline">
+        <v-tooltip location="top">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
+              <v-btn
+                icon="mdi-download"
+                variant="text"
+                size="small"
+                class="mr-2"
+                data-test="download-log"
+                @click="downloadLog"
+              />
+            </div>
+          </template>
+          <span> Download Log </span>
+        </v-tooltip>
+        <span> Log Messages </span>
+        <v-tooltip location="top">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
+              <v-btn
+                :icon="buttonIcon"
+                variant="text"
+                data-test="pause"
+                @click="pause"
+              />
+            </div>
+          </template>
+          <span> {{ buttonLabel }} </span>
+        </v-tooltip>
+      </div>
       <v-spacer />
       <v-select
         label="Filter by log level"
         hide-details
-        outlined
-        dense
+        variant="outlined"
+        density="compact"
         :items="logLevels"
         v-model="logLevel"
         class="mr-2"
@@ -67,20 +72,24 @@
         label="Search"
         prepend-inner-icon="mdi-magnify"
         clearable
-        outlined
-        dense
+        variant="outlined"
+        density="compact"
         single-line
         hide-details
         style="max-width: 300px"
         class="search"
         data-test="search-log-messages"
       />
-      <v-tooltip top>
-        <template v-slot:activator="{ on, attrs }">
-          <div v-on="on" v-bind="attrs">
-            <v-btn icon class="mx-2" data-test="clear-log" @click="clearLog">
-              <v-icon> mdi-delete </v-icon>
-            </v-btn>
+      <v-tooltip location="top">
+        <template v-slot:activator="{ props }">
+          <div v-bind="props">
+            <v-btn
+              icon="mdi-delete"
+              variant="text"
+              class="ml-2"
+              data-test="clear-log"
+              @click="clearLog"
+            />
           </div>
         </template>
         <span> Clear Log </span>
@@ -90,12 +99,12 @@
       :headers="headers"
       :items="shownData"
       :search="search"
-      calculate-widths
-      disable-pagination
+      :items-per-page="-1"
       hide-default-footer
       multi-sort
-      dense
+      density="compact"
       height="70vh"
+      hover
       data-test="log-messages"
     >
       <template v-slot:item.timestamp="{ item }">
@@ -146,10 +155,10 @@ export default {
       logLevel: 'INFO',
       search: '',
       headers: [
-        { text: 'Time', value: 'timestamp', width: 220 },
-        { text: 'Level', value: 'level' },
-        { text: 'Source', value: 'microservice_name' },
-        { text: 'Message', value: 'message' },
+        { title: 'Time', value: 'timestamp', width: 220 },
+        { title: 'Level', value: 'level' },
+        { title: 'Source', value: 'microservice_name' },
+        { title: 'Message', value: 'message' },
       ],
       cable: new Cable(),
       subscription: null,

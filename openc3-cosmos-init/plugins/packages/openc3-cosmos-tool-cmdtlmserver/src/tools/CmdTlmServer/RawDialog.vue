@@ -29,10 +29,10 @@
   >
     <v-card>
       <div ref="bar">
-        <v-system-bar>
-          <v-tooltip top>
-            <template v-slot:activator="{ on, attrs }">
-              <div v-on="on" v-bind="attrs">
+        <v-system-bar absolute>
+          <v-tooltip location="top">
+            <template v-slot:activator="{ props }">
+              <div v-bind="props">
                 <v-icon data-test="copy-icon" @click="copyRawData">
                   mdi-content-copy
                 </v-icon>
@@ -40,9 +40,9 @@
             </template>
             <span> Copy </span>
           </v-tooltip>
-          <v-tooltip top>
-            <template v-slot:activator="{ on, attrs }">
-              <div v-on="on" v-bind="attrs">
+          <v-tooltip location="top">
+            <template v-slot:activator="{ props }">
+              <div v-bind="props">
                 <v-icon data-test="download" @click="downloadRawData">
                   mdi-download
                 </v-icon>
@@ -53,9 +53,9 @@
           <v-spacer />
           <span> {{ type }} </span>
           <v-spacer />
-          <v-tooltip top>
-            <template v-slot:activator="{ on, attrs }">
-              <div v-on="on" v-bind="attrs">
+          <v-tooltip location="top">
+            <template v-slot:activator="{ props }">
+              <div v-bind="props">
                 <v-icon data-test="close" @click="$emit('close')">
                   mdi-close-box
                 </v-icon>
@@ -65,15 +65,18 @@
           </v-tooltip>
         </v-system-bar>
       </div>
-      <v-card-title>
+      <v-card-title class="d-flex align-center justify-content-space-between">
         <span> {{ header }} </span>
         <v-spacer />
-        <v-tooltip top>
-          <template v-slot:activator="{ on, attrs }">
-            <div v-on="on" v-bind="attrs">
-              <v-btn icon data-test="pause" @click="pause">
-                <v-icon> {{ buttonIcon }} </v-icon>
-              </v-btn>
+        <v-tooltip location="top">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
+              <v-btn
+                :icon="buttonIcon"
+                variant="text"
+                data-test="pause"
+                @click="pause"
+              />
             </div>
           </template>
           <span> {{ buttonLabel }} </span>
@@ -350,5 +353,9 @@ export default {
   margin-top: 10px;
   font-family: 'Courier New', Courier, monospace;
   overflow-y: scroll;
+}
+
+.v-system-bar {
+  position: relative !important;
 }
 </style>

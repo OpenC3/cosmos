@@ -49,9 +49,7 @@ export default {
     _value: function () {
       let value = this.value
       if (value === null) {
-        if (this.screen) {
-          value = this.screen.screenValues[this.valueId][0]
-        }
+        value = this.screenValues[this.valueId][0]
       }
       return parseInt(parseFloat(value) * this.scaleFactor)
     },
@@ -68,15 +66,11 @@ export default {
         type = this.parameters[5]
       }
       this.valueId = `${this.parameters[0]}__${this.parameters[1]}__${this.parameters[2]}__${type}`
-      if (this.screen) {
-        this.screen.addItem(this.valueId)
-      }
+      this.$emit('addItem', this.valueId)
     }
   },
   destroyed: function () {
-    if (this.screen) {
-      this.screen.deleteItem(this.valueId)
-    }
+    this.$emit('deleteItem', this.valueId)
   },
 }
 </script>

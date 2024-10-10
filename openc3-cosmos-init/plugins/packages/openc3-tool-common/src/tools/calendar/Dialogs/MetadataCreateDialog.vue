@@ -30,9 +30,9 @@
             <span v-if="metadata">Update Metadata</span>
             <span v-else>Create Metadata</span>
             <v-spacer />
-            <v-tooltip top>
-              <template v-slot:activator="{ on, attrs }">
-                <div v-on="on" v-bind="attrs">
+            <v-tooltip location="top">
+              <template v-slot:activator="{ props }">
+                <div v-bind="props">
                   <v-icon data-test="close-metadata-icon" @click="show = !show">
                     mdi-close-box
                   </v-icon>
@@ -89,13 +89,13 @@
                     <metadata-input-form v-model="metadataVals" />
                   </div>
                   <v-row v-show="typeError">
-                    <span class="ma-2 red--text" v-text="typeError" />
+                    <span class="ma-2 text-red" v-text="typeError" />
                   </v-row>
                   <v-row class="mt-2">
                     <v-spacer />
                     <v-btn
                       @click="show = !show"
-                      outlined
+                      variant="outlined"
                       class="mx-2"
                       data-test="metadata-cancel-btn"
                     >
@@ -164,7 +164,7 @@ export default {
         return 'Please enter a value in the metadata table.'
       }
       const emptyKeyValue = this.metadataVals.find(
-        (meta) => meta.key === '' || meta.value === ''
+        (meta) => meta.key === '' || meta.value === '',
       )
       if (emptyKeyValue) {
         return 'Missing or empty key, value in the metadata table.'
@@ -206,11 +206,11 @@ export default {
       const data = { color, metadata }
       if (this.timeZone === 'local') {
         data.start = new Date(
-          this.startDate + ' ' + this.startTime
+          this.startDate + ' ' + this.startTime,
         ).toISOString()
       } else {
         data.start = new Date(
-          this.startDate + ' ' + this.startTime + 'Z'
+          this.startDate + ' ' + this.startTime + 'Z',
         ).toISOString()
       }
       if (this.metadata) {

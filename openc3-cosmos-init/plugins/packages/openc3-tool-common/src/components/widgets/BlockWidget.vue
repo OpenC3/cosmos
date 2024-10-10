@@ -23,26 +23,19 @@
 <template>
   <div class="block-widget-container">
     <v-textarea
-      solo
-      dense
+      variant="solo"
+      density="compact"
       readonly
       no-resize
       hide-details
       :width="width"
-      :height="height"
-      :value="_value"
+      :model-value="_value"
       :class="valueClass"
       :style="[computedStyle, aging]"
       data-test="valueText"
       @contextmenu="showContextMenu"
     />
-    <v-menu
-      v-model="contextMenuShown"
-      :position-x="x"
-      :position-y="y"
-      absolute
-      offset-y
-    >
+    <v-menu v-model="contextMenuShown" :target="[x, y]">
       <v-list>
         <v-list-item
           v-for="(item, index) in contextMenuOptions"

@@ -23,7 +23,7 @@
 <template>
   <v-dialog v-model="show" width="600" scrollable @keydown.enter="success()">
     <v-card>
-      <v-overlay :value="loading">
+      <v-overlay :model-value="loading">
         <v-progress-circular
           indeterminate
           absolute
@@ -41,17 +41,16 @@
             <v-row>{{ helpText }} </v-row>
             <v-row dense class="mt-5">
               <v-text-field
-                @input="handleSearch"
+                @update:model-value="handleSearch"
                 v-model="search"
                 flat
                 autofocus
-                solo-inverted
+                variant="solo-inverted outlined"
                 hide-details
                 clearable
                 label="Search"
                 prepend-inner-icon="mdi-magnify"
-                outlined
-                dense
+                density="compact"
                 data-test="file-open-save-search"
               />
             </v-row>
@@ -97,7 +96,7 @@
             </v-row>
             <v-row dense>
               <div
-                class="my-2 red--text"
+                class="my-2 text-red"
                 style="white-space: pre-line"
                 v-show="error"
               >
@@ -108,7 +107,7 @@
               <v-spacer />
               <v-btn
                 @click="show = false"
-                outlined
+                variant="outlined"
                 class="mx-2"
                 data-test="file-open-save-cancel-btn"
                 :disabled="disableButtons"

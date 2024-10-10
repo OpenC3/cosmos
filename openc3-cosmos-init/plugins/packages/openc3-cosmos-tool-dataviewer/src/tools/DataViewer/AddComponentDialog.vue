@@ -38,10 +38,10 @@
               <v-col>
                 <v-select
                   hide-details
-                  dense
-                  outlined
+                  density="compact"
+                  variant="outlined"
                   :items="components"
-                  item-text="label"
+                  item-title="label"
                   item-value="value"
                   v-model="selectedComponent"
                   return-object
@@ -56,7 +56,7 @@
               <v-col class="my-2">
                 <v-radio-group
                   v-model="newPacketCmdOrTlm"
-                  row
+                  inline
                   hide-details
                   class="mt-0"
                 >
@@ -85,7 +85,7 @@
             </v-row>
             <v-row>
               <v-col>
-                <v-radio-group v-model="newPacketMode" row hide-details>
+                <v-radio-group v-model="newPacketMode" inline hide-details>
                   <v-radio
                     label="Raw"
                     value="RAW"
@@ -117,28 +117,15 @@
                   :headers="headers"
                   :items="packets"
                   :search="search"
-                  :items-per-page="itemsPerPage"
-                  @update:items-per-page="itemsPerPage = $event"
-                  :footer-props="{
-                    itemsPerPageOptions: [10, 100],
-                    showFirstLastPage: true,
-                    firstIcon: 'mdi-page-first',
-                    lastIcon: 'mdi-page-last',
-                    prevIcon: 'mdi-chevron-left',
-                    nextIcon: 'mdi-chevron-right',
-                  }"
-                  calculate-widths
+                  v-model:items-per-page="itemsPerPage"
+                  :items-per-page-options="[10, 100]"
                   multi-sort
-                  dense
+                  density="compact"
                 >
                   <template v-slot:item.delete="{ item }">
-                    <v-tooltip bottom>
-                      <template v-slot:activator="{ on, attrs }">
-                        <v-icon
-                          @click="deleteItem(item)"
-                          v-bind="attrs"
-                          v-on="on"
-                        >
+                    <v-tooltip location="bottom">
+                      <template v-slot:activator="{ props }">
+                        <v-icon @click="deleteItem(item)" v-bind="props">
                           mdi-delete
                         </v-icon>
                       </template>
@@ -153,7 +140,7 @@
         <v-card-actions>
           <v-spacer />
           <v-btn
-            outlined
+            variant="outlined"
             class="mx-2"
             data-test="cancel-component"
             @click="cancelAddComponent"

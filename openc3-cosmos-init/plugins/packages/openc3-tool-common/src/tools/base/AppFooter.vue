@@ -28,7 +28,7 @@
       {{ license }}</span
     >
     <v-spacer />
-    <a :href="sourceUrl" class="white--text text-decoration-underline">
+    <a :href="sourceUrl" class="text-white text-decoration-underline">
       Source
     </a>
     <v-spacer />

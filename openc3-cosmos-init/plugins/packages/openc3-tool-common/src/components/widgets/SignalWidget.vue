@@ -54,7 +54,7 @@ export default {
     },
   },
   created() {
-    this.settings.forEach((setting) => {
+    this.appliedSettings.forEach((setting) => {
       switch (setting[0].toUpperCase()) {
         // Create a link to an existing screen
         case 'SCREEN':
@@ -82,7 +82,7 @@ export default {
     },
     clickHandler() {
       if (this.screenTarget && this.screenName) {
-        this.screen.open(this.screenTarget, this.screenName)
+        this.$emit('open', this.screenTarget, this.screenName)
       }
     },
   },

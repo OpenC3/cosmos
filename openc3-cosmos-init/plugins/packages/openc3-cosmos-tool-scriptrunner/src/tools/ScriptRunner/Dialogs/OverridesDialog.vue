@@ -46,8 +46,8 @@
               label="Search"
               prepend-inner-icon="mdi-magnify"
               clearable
-              outlined
-              dense
+              variant="outlined"
+              density="compact"
               single-line
               hide-details
             />
@@ -56,26 +56,14 @@
             :headers="headers"
             :items="overrides"
             :search="search"
-            :footer-props="{
-              itemsPerPageOptions: [100],
-              showFirstLastPage: true,
-              firstIcon: 'mdi-page-first',
-              lastIcon: 'mdi-page-last',
-              prevIcon: 'mdi-chevron-left',
-              nextIcon: 'mdi-chevron-right',
-            }"
-            calculate-widths
+            :items-per-page-options="[100]"
             multi-sort
-            dense
+            density="compact"
           >
             <template v-slot:item.delete="{ item }">
-              <v-tooltip bottom>
-                <template v-slot:activator="{ on, attrs }">
-                  <v-icon
-                    @click="deleteOverride(item)"
-                    v-bind="attrs"
-                    v-on="on"
-                  >
+              <v-tooltip location="bottom">
+                <template v-slot:activator="{ props }">
+                  <v-icon @click="deleteOverride(item)" v-bind="props">
                     mdi-delete
                   </v-icon>
                 </template>

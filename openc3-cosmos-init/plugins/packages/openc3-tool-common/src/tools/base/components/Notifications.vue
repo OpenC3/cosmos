@@ -22,19 +22,16 @@
 
 <template>
   <div>
-    <v-overlay :value="showNotificationPane" class="overlay" />
+    <v-overlay :model-value="showNotificationPane" class="overlay" />
     <v-menu
       v-model="showNotificationPane"
       transition="slide-y-transition"
       :close-on-content-click="false"
-      :nudge-width="340"
-      offset-y
-      :nudge-bottom="20"
+      :offset="20"
     >
-      <template v-slot:activator="{ on, attrs }">
+      <template v-slot:activator="{ props }">
         <rux-monitoring-icon
-          v-bind="attrs"
-          v-on="on"
+          v-bind="props"
           class="rux-icon"
           :icon="notificationVsAlert"
           label="Notifications"
@@ -49,13 +46,12 @@
         <v-card-title>
           Notifications
           <v-spacer />
-          <v-tooltip top open-delay="350">
-            <template v-slot:activator="{ on, attrs }">
+          <v-tooltip location="top" open-delay="350">
+            <template v-slot:activator="{ props }">
               <v-btn
-                icon
-                v-bind="attrs"
-                v-on="on"
+                v-bind="props"
                 class="ml-1"
+                icon
                 @click="clearNotifications"
                 data-test="clear-notifications"
               >
@@ -70,7 +66,7 @@
             class="ml-1"
             data-test="notification-settings"
           >
-            <v-icon> $astro-settings </v-icon>
+            <v-icon> astro:settings </v-icon>
           </v-btn>
         </v-card-title>
         <v-card-text v-if="notifications.length === 0">
@@ -78,7 +74,7 @@
         </v-card-text>
         <v-list
           v-else
-          two-line
+          lines="two"
           width="420"
           max-height="80vh"
           class="overflow-y-auto"
@@ -87,9 +83,9 @@
           <template v-for="(notification, index) in notificationList">
             <template v-if="notification.header">
               <v-divider v-if="index !== 0" :key="index" class="mb-2" />
-              <v-subheader :key="notification.header">
+              <v-list-subheader :key="notification.header">
                 {{ notification.header }}
-              </v-subheader>
+              </v-list-subheader>
             </template>
 
             <v-list-item
@@ -98,8 +94,8 @@
               @click="openDialog(notification)"
               class="pl-2"
             >
-              <v-badge left inline color="transparent">
-                <v-list-item-content class="pt-0 pb-0">
+              <v-badge location="left" inline color="transparent">
+                <v-list-item-subtitle class="pt-0 pb-0">
                   <v-list-item-title
                     :class="{
                       'text--secondary': notification.read,
@@ -109,10 +105,10 @@
                     {{ notification.message }}
                   </v-list-item-title>
                   <v-list-item-subtitle>
-                    {{ notification.time | shortDateTime }}
+                    {{ formatShortDateTime(notification.time) }}
                   </v-list-item-subtitle>
                   <div style="height: 20px" />
-                </v-list-item-content>
+                </v-list-item-subtitle>
                 <template v-slot:badge>
                   <rux-status
                     :status="getStatus(notification.level)"
@@ -136,20 +132,24 @@
           />
         </v-card-title>
         <v-card-subtitle>
-          {{ selectedNotification.time | shortDateTime }}
+          {{ formatShortDateTime(selectedNotification.time) }}
         </v-card-subtitle>
         <v-divider />
         <v-card-actions>
           <v-btn
             v-if="selectedNotification.url"
             color="primary"
-            text
+            variant="text"
             @click="navigate(selectedNotification.url)"
           >
             Open
-            <v-icon right> mdi-open-in-new </v-icon>
+            <v-icon end> mdi-open-in-new </v-icon>
           </v-btn>
-          <v-btn color="primary" text @click="notificationDialog = false">
+          <v-btn
+            color="primary"
+            variant="text"
+            @click="notificationDialog = false"
+          >
             Close
           </v-btn>
         </v-card-actions>
@@ -165,7 +165,7 @@
         </v-card-text>
         <v-divider />
         <v-card-actions>
-          <v-btn color="primary" text @click="toggleSettingsDialog">
+          <v-btn color="primary" variant="text" @click="toggleSettingsDialog">
             Close
           </v-btn>
         </v-card-actions>
@@ -178,6 +178,7 @@
 import { formatDistanceToNow } from 'date-fns'
 import {
   AstroStatusColors,
+  AstroStatusIndicator,
   UnknownToAstroStatus,
 } from '../../../components/icons'
 import { highestLevel, orderByLevel, groupByLevel } from '../util/AstroStatus'
@@ -187,6 +188,9 @@ import Api from '../../../services/api'
 const NOTIFICATION_HISTORY_MAX_LENGTH = 1000
 
 export default {
+  components: {
+    AstroStatusIndicator,
+  },
   props: {
     size: {
       type: [String, Number],
@@ -252,7 +256,7 @@ export default {
             header: level.charAt(0).toUpperCase() + level.slice(1),
           }
           return [header, ...groups[level]]
-        }
+        },
       )
       if (this.readNotifications.length) {
         result = result.concat([{ header: 'Read' }, ...this.readNotifications])
@@ -349,7 +353,7 @@ export default {
               localStorage.notificationStreamOffset ||
               localStorage.lastReadNotification,
             types: ['notification', 'alert'],
-          }
+          },
         )
         .then((subscription) => {
           this.subscription = subscription
@@ -406,7 +410,7 @@ export default {
           0,
           this.notifications.length +
             parsed.length -
-            NOTIFICATION_HISTORY_MAX_LENGTH
+            NOTIFICATION_HISTORY_MAX_LENGTH,
         )
       }
       this.notifications = this.notifications.concat(parsed)
@@ -415,9 +419,7 @@ export default {
       this.cable.recordPing()
       this.numScripts = data['active_scripts']
     },
-  },
-  filters: {
-    shortDateTime: function (nsec) {
+    formatShortDateTime: function (nsec) {
       if (!nsec) return ''
       const date = new Date(nsec / 1_000_000)
       return formatDistanceToNow(date, { addSuffix: true })

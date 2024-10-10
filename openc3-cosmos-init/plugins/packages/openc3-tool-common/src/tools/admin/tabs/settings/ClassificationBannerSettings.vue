@@ -19,13 +19,13 @@
 <template>
   <v-card>
     <v-card-title>Classification Banner Settings</v-card-title>
-    <v-alert v-model="errorLoading" type="error" dismissible dense>
+    <v-alert v-model="errorLoading" type="error" closable density="compact">
       Error loading previous configuration due to {{ errorText }}
     </v-alert>
-    <v-alert v-model="errorSaving" type="error" dismissible dense>
+    <v-alert v-model="errorSaving" type="error" closable density="compact">
       Error saving due to {{ errorText }}
     </v-alert>
-    <v-alert v-model="successSaving" type="success" dismissible dense>
+    <v-alert v-model="successSaving" type="success" closable density="compact">
       Saved! (Refresh the page to see changes)
     </v-alert>
     <v-card-text class="pb-0">
@@ -163,7 +163,7 @@
         :disabled="!formValid"
         @click="save"
         color="success"
-        text
+        variant="text"
         data-test="save-classification-banner"
       >
         Save

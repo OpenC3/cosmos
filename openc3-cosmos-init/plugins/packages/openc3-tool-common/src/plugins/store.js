@@ -20,15 +20,12 @@
 # if purchased from OpenC3, Inc.
 */
 
-import Vue from 'vue'
-import Vuex from 'vuex'
-
-Vue.use(Vuex)
+import { createStore } from 'vuex'
 
 const NOTIFY_HISTORY_MAX_LENGTH = 100
 
 if (!window.hasOwnProperty('OpenC3Store')) {
-  window.OpenC3Store = new Vuex.Store({
+  window.OpenC3Store = createStore({
     state: {
       notifyHistory: [],
     },

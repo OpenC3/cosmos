@@ -44,7 +44,7 @@
       <div v-if="layout === 'combo'">
         <v-row class="ma-2">
           <v-select
-            @change="selectOkDisabled = false"
+            @update:model-value="selectOkDisabled = false"
             v-model="selectedItem"
             label="Select"
             color="secondary"
@@ -58,7 +58,7 @@
           <v-spacer />
           <v-btn
             @click="cancelHandler"
-            outlined
+            variant="outlined"
             data-test="prompt-cancel"
             class="ma-1"
           >
@@ -80,7 +80,7 @@
           <v-spacer />
           <v-btn
             @click="cancelHandler"
-            outlined
+            variant="outlined"
             data-test="prompt-cancel"
             class="ma-1"
           >

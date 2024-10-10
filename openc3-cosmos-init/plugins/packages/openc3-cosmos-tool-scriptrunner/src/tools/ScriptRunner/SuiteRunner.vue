@@ -27,9 +27,9 @@
         <v-col cols="4">
           <v-row no-gutters>
             <v-col cols="6">
-              <v-tooltip bottom>
-                <template v-slot:activator="{ on }">
-                  <div v-on="on">
+              <v-tooltip location="bottom">
+                <template v-slot:activator="{ props }">
+                  <div v-bind="props">
                     <v-checkbox
                       v-model="options"
                       label="Pause on Error"
@@ -46,9 +46,9 @@
               </v-tooltip>
             </v-col>
             <v-col cols="6">
-              <v-tooltip bottom>
-                <template v-slot:activator="{ on }">
-                  <div v-on="on">
+              <v-tooltip location="bottom">
+                <template v-slot:activator="{ props }">
+                  <div v-bind="props">
                     <v-checkbox
                       v-model="options"
                       label="Manual"
@@ -74,9 +74,9 @@
                 label="Suite:"
                 class="mb-2 mr-2"
                 hide-details
-                dense
-                outlined
-                @change="suiteChanged"
+                density="compact"
+                variant="outlined"
+                @update:model-value="suiteChanged"
                 :items="suites"
                 v-model="suite"
                 data-test="select-suite"
@@ -121,9 +121,9 @@
         <v-col cols="4">
           <v-row no-gutters>
             <v-col cols="6">
-              <v-tooltip bottom>
-                <template v-slot:activator="{ on }">
-                  <div v-on="on">
+              <v-tooltip location="bottom">
+                <template v-slot:activator="{ props }">
+                  <div v-bind="props">
                     <v-checkbox
                       v-model="options"
                       label="Continue after Error"
@@ -141,9 +141,9 @@
               </v-tooltip>
             </v-col>
             <v-col cols="6">
-              <v-tooltip bottom>
-                <template v-slot:activator="{ on }">
-                  <div v-on="on">
+              <v-tooltip location="bottom">
+                <template v-slot:activator="{ props }">
+                  <div v-bind="props">
                     <v-checkbox
                       v-model="options"
                       label="Loop"
@@ -168,9 +168,9 @@
                 label="Group:"
                 class="mb-2 mr-2"
                 hide-details
-                dense
-                outlined
-                @change="groupChanged"
+                density="compact"
+                variant="outlined"
+                @update:model-value="groupChanged"
                 :items="groups"
                 v-model="group"
                 data-test="select-group"
@@ -221,9 +221,9 @@
         <v-col cols="4">
           <v-row no-gutters>
             <v-col cols="6">
-              <v-tooltip bottom>
-                <template v-slot:activator="{ on }">
-                  <div v-on="on">
+              <v-tooltip location="bottom">
+                <template v-slot:activator="{ props }">
+                  <div v-bind="props">
                     <v-checkbox
                       v-model="options"
                       label="Abort after Error"
@@ -241,9 +241,9 @@
               </v-tooltip>
             </v-col>
             <v-col cols="6">
-              <v-tooltip bottom>
-                <template v-slot:activator="{ on }">
-                  <div v-on="on">
+              <v-tooltip location="bottom">
+                <template v-slot:activator="{ props }">
+                  <div v-bind="props">
                     <v-checkbox
                       :disabled="!options.includes('loop')"
                       v-model="options"
@@ -271,9 +271,9 @@
                 label="Script:"
                 class="mb-2 mr-2"
                 hide-details
-                dense
-                outlined
-                @change="scriptChanged"
+                density="compact"
+                variant="outlined"
+                @update:model-value="scriptChanged"
                 :items="scripts"
                 v-model="script"
                 data-test="select-script"

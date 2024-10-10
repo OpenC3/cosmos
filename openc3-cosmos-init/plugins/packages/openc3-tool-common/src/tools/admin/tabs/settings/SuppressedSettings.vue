@@ -37,7 +37,7 @@
           :label="warning.text"
           :value="warning.key"
           class="mt-0"
-          dense
+          density="compact"
         />
       </template>
       <template v-else> No warnings to reset </template>
@@ -47,7 +47,7 @@
         :disabled="!selectedSuppressedWarnings.length"
         @click="resetSuppressedWarnings"
         color="warning"
-        text
+        variant="text"
         class="ml-2"
         data-test="reset-suppressed-warnings"
       >

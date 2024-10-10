@@ -71,7 +71,7 @@
         </v-row>
         <v-row no-gutters>
           <v-col>
-            <v-radio-group v-model="cmdOrTlm" row hide-details class="mt-0">
+            <v-radio-group v-model="cmdOrTlm" inline hide-details class="mt-0">
               <v-radio label="Command" value="cmd" data-test="cmd-radio" />
               <v-radio label="Telemetry" value="tlm" data-test="tlm-radio" />
             </v-radio-group>
@@ -91,24 +91,23 @@
         </v-row>
       </v-container>
       <v-toolbar class="pl-3">
-        <v-progress-circular :value="progress" />
+        <v-progress-circular :model-value="progress" />
         &nbsp; Processed: {{ totalPacketsReceived }} packets,
         {{ totalItemsReceived }} items
         <v-spacer />
         <v-btn
-          class="primary"
+          class="bg-primary"
           @click="processItems"
           :disabled="items.length < 1"
           >{{ processButtonText }}</v-btn
         >
         <v-spacer />
-        <v-tooltip bottom>
-          <template v-slot:activator="{ on, attrs }">
+        <v-tooltip location="bottom">
+          <template v-slot:activator="{ props }">
             <v-btn
               icon
               @click="editAll = true"
-              v-bind="attrs"
-              v-on="on"
+              v-bind="props"
               :disabled="items.length < 1"
               data-test="editAll"
             >
@@ -117,13 +116,12 @@
           </template>
           <span>Edit All Items</span>
         </v-tooltip>
-        <v-tooltip bottom>
-          <template v-slot:activator="{ on, attrs }">
+        <v-tooltip location="bottom">
+          <template v-slot:activator="{ props }">
             <v-btn
               icon
               @click="deleteAll"
-              v-bind="attrs"
-              v-on="on"
+              v-bind="props"
               :disabled="items.length < 1"
               data-test="delete-all"
             >
@@ -143,8 +141,8 @@
             label="Search"
             prepend-inner-icon="mdi-magnify"
             clearable
-            outlined
-            dense
+            variant="outlined"
+            density="compact"
             single-line
             hide-details
             class="search"
@@ -154,24 +152,15 @@
           :headers="headers"
           :items="items"
           :search="search"
-          :items-per-page="itemsPerPage"
-          @update:items-per-page="itemsPerPage = $event"
-          :footer-props="{
-            itemsPerPageOptions: [10, 20, 50, 100, 500, 1000],
-            showFirstLastPage: true,
-            firstIcon: 'mdi-page-first',
-            lastIcon: 'mdi-page-last',
-            prevIcon: 'mdi-chevron-left',
-            nextIcon: 'mdi-chevron-right',
-          }"
-          calculate-widths
+          v-model:items-per-page="itemsPerPage"
+          :items-per-page-options="[10, 20, 50, 100, 500, 1000]"
           multi-sort
-          dense
+          density="compact"
         >
           <template v-slot:item.edit="{ item }">
-            <v-tooltip bottom>
-              <template v-slot:activator="{ on, attrs }">
-                <v-icon @click.stop="item.edit = true" v-bind="attrs" v-on="on">
+            <v-tooltip location="bottom">
+              <template v-slot:activator="{ props }">
+                <v-icon @click.stop="item.edit = true" v-bind="props">
                   mdi-pencil
                 </v-icon>
               </template>
@@ -200,7 +189,7 @@
                         hide-details
                         :items="modes"
                         label="Mode"
-                        outlined
+                        variant="outlined"
                         v-model="item.mode" /></v-col
                   ></v-row>
                   <v-row
@@ -209,7 +198,7 @@
                         hide-details
                         :items="valueTypes"
                         label="Value Type"
-                        outlined
+                        variant="outlined"
                         v-model="item.valueType" /></v-col
                   ></v-row>
                   <v-row
@@ -218,7 +207,7 @@
                         hide-details
                         :items="reducedTypes"
                         label="Reduced Type"
-                        outlined
+                        variant="outlined"
                         v-model="item.reducedType"
                       /> </v-col
                   ></v-row>
@@ -237,9 +226,9 @@
             </v-dialog>
           </template>
           <template v-slot:item.delete="{ item }">
-            <v-tooltip bottom>
-              <template v-slot:activator="{ on, attrs }">
-                <v-icon @click="deleteItem(item)" v-bind="attrs" v-on="on">
+            <v-tooltip location="bottom">
+              <template v-slot:activator="{ props }">
+                <v-icon @click="deleteItem(item)" v-bind="props">
                   mdi-delete
                 </v-icon>
               </template>
@@ -268,7 +257,7 @@
                 hide-details
                 :items="modes"
                 label="Mode"
-                outlined
+                variant="outlined"
                 v-model="allItemMode" /></v-col
           ></v-row>
           <v-row
@@ -277,7 +266,7 @@
                 hide-details
                 :items="valueTypes"
                 label="Value Type"
-                outlined
+                variant="outlined"
                 v-model="allItemValueType" /></v-col
           ></v-row>
           <v-row
@@ -286,14 +275,14 @@
                 hide-details
                 :items="reducedTypes"
                 label="Reduced Type"
-                outlined
+                variant="outlined"
                 v-model="allItemReducedType"
               /> </v-col
           ></v-row>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn outlined class="mx-2" @click="editAll = !editAll">
+          <v-btn variant="outlined" class="mx-2" @click="editAll = !editAll">
             Cancel
           </v-btn>
           <v-btn
@@ -434,18 +423,21 @@ export default {
               divider: true,
             },
             {
-              label: 'Comma Delimited',
-              radio: true,
-              command: () => {
-                this.delimiter = ','
+              radioGroup: true,
+              value: this.delimiter,
+              command: (value) => {
+                this.delimiter = value
               },
-            },
-            {
-              label: 'Tab Delimited',
-              radio: true,
-              command: () => {
-                this.delimiter = '\t'
-              },
+              choices: [
+                {
+                  label: 'Comma Delimited',
+                  value: ',',
+                },
+                {
+                  label: 'Tab Delimited',
+                  value: '\t',
+                },
+              ],
             },
           ],
         },
@@ -493,18 +485,21 @@ export default {
               divider: true,
             },
             {
-              label: 'Normal Columns',
-              radio: true,
-              command: () => {
-                this.columnMode = 'normal'
+              radioGroup: true,
+              value: this.columnMode,
+              command: (value) => {
+                this.columnMode = value
               },
-            },
-            {
-              label: 'Full Column Names',
-              radio: true,
-              command: () => {
-                this.columnMode = 'full'
-              },
+              choices: [
+                {
+                  label: 'Normal Columns',
+                  value: 'normal',
+                },
+                {
+                  label: 'Full Column Names',
+                  value: 'full',
+                },
+              ],
             },
           ],
         },
@@ -585,7 +580,7 @@ export default {
       }
     }
   },
-  destroyed: function () {
+  unmounted: function () {
     if (this.subscription) {
       this.subscription.unsubscribe()
     }

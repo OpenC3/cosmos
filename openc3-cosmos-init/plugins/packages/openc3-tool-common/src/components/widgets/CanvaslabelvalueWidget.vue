@@ -42,10 +42,7 @@ export default {
   },
   computed: {
     _value() {
-      if (this.screen) {
-        return this.screen.screenValues[this.valueId][0]
-      }
-      return null
+      return this.screenValues[this.valueId][0]
     },
     fontSize() {
       if (this.parameters[5]) {
@@ -66,14 +63,10 @@ export default {
       type = this.parameters[7]
     }
     this.valueId = `${this.parameters[0]}__${this.parameters[1]}__${this.parameters[2]}__${type}`
-    if (this.screen) {
-      this.screen.addItem(this.valueId)
-    }
+    this.$emit('addItem', this.valueId)
   },
   destroyed() {
-    if (this.screen) {
-      this.screen.deleteItem(this.valueId)
-    }
+    this.$emit('deleteItem', this.valueId)
   },
 }
 </script>

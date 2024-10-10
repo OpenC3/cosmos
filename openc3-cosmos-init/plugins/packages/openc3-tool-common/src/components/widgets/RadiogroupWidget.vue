@@ -23,19 +23,21 @@
 <template>
   <v-radio-group
     hide-details
-    dense
+    density="compact"
     v-model="selectedIndex"
     :style="computedStyle"
   >
     <component
       v-for="(widget, index) in widgets"
-      v-on="$listeners"
+      v-bind="$attrs"
       :value="index"
       :key="index"
       :is="widget.type"
       :target="widget.target"
       :parameters="widget.parameters"
-      :settings="widget.settings"
+      :settings="widget.appliedSettings"
+      :screenValues="screenValues"
+      :screenTimeZone="screenTimeZone"
       :name="widget.name"
     />
   </v-radio-group>
@@ -53,7 +55,7 @@ export default {
   },
   created() {
     // Look through the settings and see if we're a NAMED_WIDGET
-    this.settings.forEach((setting) => {
+    this.appliedSettings.forEach((setting) => {
       if (setting[0] === 'NAMED_WIDGET') {
         setting[2].setNamedWidget(setting[1], this)
       }

@@ -22,8 +22,8 @@
 
 <template>
   <vertical-widget
-    v-on="$listeners"
-    :settings="settings"
+    v-bind="$attrs"
+    :settings="appliedSettings"
     :parameters="parameters.slice(1)"
     :widgets="widgets"
     :style="computedStyle"

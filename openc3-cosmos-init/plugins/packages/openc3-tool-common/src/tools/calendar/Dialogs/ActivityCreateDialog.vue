@@ -30,9 +30,9 @@
             <span v-if="activity">Update Activity</span>
             <span v-else>Create Activity</span>
             <v-spacer />
-            <v-tooltip top>
-              <template v-slot:activator="{ on, attrs }">
-                <div v-on="on" v-bind="attrs">
+            <v-tooltip location="top">
+              <template v-slot:activator="{ props }">
+                <div v-bind="props">
                   <v-icon data-test="close-activity-icon" @click="show = !show">
                     mdi-close-box
                   </v-icon>
@@ -49,9 +49,9 @@
               <v-card-text>
                 <div class="pr-2">
                   <v-select
-                    dense
+                    density="compact"
                     hide-details
-                    outlined
+                    variant="outlined"
                     v-model="timeline"
                     :items="timelineNames"
                     label="Timeline"
@@ -64,9 +64,7 @@
                         v-bind="attrs"
                         :data-test="`activity-select-timeline-${item}`"
                       >
-                        <v-list-item-content>
-                          <v-list-item-title>{{ item }}</v-list-item-title>
-                        </v-list-item-content>
+                        <v-list-item-title>{{ item }}</v-list-item-title>
                       </v-list-item>
                     </template>
                   </v-select>
@@ -127,8 +125,8 @@
                       <v-text-field
                         v-model="frequency"
                         :disabled="!!activity"
-                        dense
-                        outlined
+                        density="compact"
+                        variant="outlined"
                         single-line
                         hide-details
                         data-test="recurring-frequency"
@@ -140,8 +138,8 @@
                         :items="timeSpans"
                         style="primary"
                         hide-details
-                        dense
-                        outlined
+                        density="compact"
+                        variant="outlined"
                         data-test="recurring-span"
                       />
                     </v-col>
@@ -172,7 +170,7 @@
                   </v-row>
                   <v-row>
                     <span
-                      class="ma-2 red--text"
+                      class="ma-2 text-red"
                       v-show="timeError"
                       v-text="timeError"
                     />
@@ -198,9 +196,9 @@
               <v-card-text>
                 <div class="pr-2">
                   <v-select
-                    dense
+                    density="compact"
                     hide-details
-                    outlined
+                    variant="outlined"
                     v-model="kind"
                     :items="types"
                     label="Activity Type"
@@ -213,9 +211,7 @@
                         v-bind="attrs"
                         :data-test="`activity-select-type-${item}`"
                       >
-                        <v-list-item-content>
-                          <v-list-item-title>{{ item }}</v-list-item-title>
-                        </v-list-item-content>
+                        <v-list-item-title>{{ item }}</v-list-item-title>
                       </v-list-item>
                     </template>
                   </v-select>
@@ -239,13 +235,13 @@
                     <span class="ma-2"> No required input </span>
                   </div>
                   <v-row v-show="typeError" class="mt-2">
-                    <span class="ma-2 red--text" v-text="typeError" />
+                    <span class="ma-2 text-red" v-text="typeError" />
                   </v-row>
                   <v-row class="mt-2">
                     <v-spacer />
                     <v-btn
                       @click="show = !show"
-                      outlined
+                      variant="outlined"
                       class="mx-2"
                       data-test="activity-cancel-btn"
                     >
@@ -409,17 +405,17 @@ export default {
         stop = new Date(this.endDate + ' ' + this.endTime).toISOString()
         if (this.recurring) {
           recurringEnd = new Date(
-            this.recurringEndDate + ' ' + this.recurringEndTime
+            this.recurringEndDate + ' ' + this.recurringEndTime,
           ).toISOString()
         }
       } else {
         start = new Date(
-          this.startDate + ' ' + this.startTime + 'Z'
+          this.startDate + ' ' + this.startTime + 'Z',
         ).toISOString()
         stop = new Date(this.endDate + ' ' + this.endTime + 'Z').toISOString()
         if (this.recurring) {
           recurringEnd = new Date(
-            this.recurringEndDate + ' ' + this.recurringEndTime + 'Z'
+            this.recurringEndDate + ' ' + this.recurringEndTime + 'Z',
           ).toISOString()
         }
       }
@@ -439,11 +435,11 @@ export default {
           `/openc3-api/timeline/${this.activity.name}/activity/${this.activity.start}`,
           {
             data: { start, stop, kind, data, recurring },
-          }
+          },
         )
           .then((response) => {
             const activityTime = this.formatSeconds(
-              new Date(response.data.start * 1000)
+              new Date(response.data.start * 1000),
             )
             this.$notify.normal({
               title: 'Updated Activity',
@@ -461,7 +457,7 @@ export default {
         })
           .then((response) => {
             const activityTime = this.formatSeconds(
-              new Date(response.data.start * 1000)
+              new Date(response.data.start * 1000),
             )
             this.$notify.normal({
               title: 'Created Activity',

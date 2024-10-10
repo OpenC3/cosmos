@@ -37,7 +37,7 @@
           :label="config.text"
           :value="config.key"
           class="mt-0"
-          dense
+          density="compact"
         />
       </template>
       <template v-else> No configs to clear </template>
@@ -47,7 +47,7 @@
         :disabled="!selectedLastConfigs.length"
         @click="clearLastConfigs"
         color="warning"
-        text
+        variant="text"
         class="ml-2"
         data-test="clear-default-configs"
       >

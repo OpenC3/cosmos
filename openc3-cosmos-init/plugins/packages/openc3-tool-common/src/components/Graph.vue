@@ -22,33 +22,32 @@
 
 <template>
   <div>
-    <v-card @click.native="$emit('click')">
-      <v-system-bar
-        :class="selectedGraphId === id ? 'active' : 'inactive'"
-        v-show="!hideSystemBar"
+    <v-card @click="$emit('click')">
+      <v-toolbar
+        height="24"
+        class="pl-2 pr-2"
+        :class="selectedGraphId === id ? 'active' : ''"
+        v-show="!hideToolbarData"
       >
         <div v-show="errors.length !== 0" class="mx-2">
-          <v-tooltip top>
-            <template v-slot:activator="{ on, attrs }">
-              <div v-on="on" v-bind="attrs">
-                <v-icon data-test="error-graph-icon" @click="errorDialog = true"
-                  >mdi-alert</v-icon
-                >
-              </div>
+          <v-tooltip text="Errors" location="bottom">
+            <template v-slot:activator="{ props }">
+              <v-icon v-bind="props" @click="errorDialog = true"
+                >mdi-alert</v-icon
+              >
             </template>
-            <span>Errors</span>
           </v-tooltip>
         </div>
 
-        <v-tooltip top>
-          <template v-slot:activator="{ on, attrs }">
-            <div v-on="on" v-bind="attrs">
-              <v-icon data-test="edit-graph-icon" @click="editGraph = true">
-                mdi-pencil
-              </v-icon>
-            </div>
+        <v-tooltip text="Edit" location="bottom">
+          <template v-slot:activator="{ props }">
+            <v-icon
+              v-bind="props"
+              @click="editGraph = true"
+              data-test="edit-graph-icon"
+              >mdi-pencil</v-icon
+            >
           </template>
-          <span> Edit </span>
         </v-tooltip>
 
         <v-spacer />
@@ -56,117 +55,103 @@
         <v-spacer />
 
         <div v-show="expand">
-          <v-tooltip top>
-            <template v-slot:activator="{ on, attrs }">
-              <div v-on="on" v-bind="attrs">
-                <v-icon
-                  data-test="collapse-all"
-                  v-show="calcFullSize"
-                  @click="collapseAll"
-                >
-                  mdi-arrow-collapse
-                </v-icon>
-                <v-icon
-                  data-test="expand-all"
-                  v-show="!calcFullSize"
-                  @click="expandAll"
-                >
-                  mdi-arrow-expand
-                </v-icon>
-              </div>
+          <v-tooltip v-if="calcFullSize" text="Collapse" location="bottom">
+            <template v-slot:activator="{ props }">
+              <v-icon
+                v-bind="props"
+                @click="collapseAll"
+                data-test="collapse-all"
+                >mdi-arrow-collapse</v-icon
+              >
             </template>
-            <span v-show="calcFullSize"> Collapse </span>
-            <span v-show="!calcFullSize"> Expand </span>
+          </v-tooltip>
+          <v-tooltip v-else text="Expand" location="bottom">
+            <template v-slot:activator="{ props }">
+              <v-icon v-bind="props" @click="expandAll" data-test="expand-all"
+                >mdi-arrow-expand</v-icon
+              >
+            </template>
           </v-tooltip>
         </div>
 
         <div v-show="expand">
-          <v-tooltip top>
-            <template v-slot:activator="{ on, attrs }">
-              <div v-on="on" v-bind="attrs">
-                <v-icon
-                  data-test="collapse-width"
-                  v-show="fullWidth"
-                  @click="collapseWidth"
-                >
-                  mdi-arrow-collapse-horizontal
-                </v-icon>
-                <v-icon
-                  data-test="expand-width"
-                  v-show="!fullWidth"
-                  @click="expandWidth"
-                >
-                  mdi-arrow-expand-horizontal
-                </v-icon>
-              </div>
+          <v-tooltip v-if="fullWidth" text="Collapse Width" location="bottom">
+            <template v-slot:activator="{ props }">
+              <v-icon
+                v-bind="props"
+                @click="collapseWidth"
+                data-test="collapse-width"
+                >mdi-arrow-collapse-horizontal</v-icon
+              >
             </template>
-            <span v-show="fullWidth"> Collapse Width </span>
-            <span v-show="!fullWidth"> Expand Width </span>
+          </v-tooltip>
+          <v-tooltip v-else text="Expand Width" location="bottom">
+            <template v-slot:activator="{ props }">
+              <v-icon
+                v-bind="props"
+                @click="expandWidth"
+                data-test="expand-width"
+                >mdi-arrow-expand-horizontal</v-icon
+              >
+            </template>
           </v-tooltip>
         </div>
 
         <div v-show="expand">
-          <v-tooltip top>
-            <template v-slot:activator="{ on, attrs }">
-              <div v-on="on" v-bind="attrs">
-                <v-icon
-                  data-test="collapse-height"
-                  v-show="fullHeight"
-                  @click="collapseHeight"
-                >
-                  mdi-arrow-collapse-vertical
-                </v-icon>
-                <v-icon
-                  data-test="expand-height"
-                  v-show="!fullHeight"
-                  @click="expandHeight"
-                >
-                  mdi-arrow-expand-vertical
-                </v-icon>
-              </div>
+          <v-tooltip v-if="fullHeight" text="Collapse Height" location="bottom">
+            <template v-slot:activator="{ props }">
+              <v-icon
+                v-bind="props"
+                @click="collapseHeight"
+                data-test="collapse-height"
+                >mdi-arrow-collapse-vertical</v-icon
+              >
             </template>
-            <span v-show="fullHeight"> Collapse Height </span>
-            <span v-show="!fullHeight"> Expand Height </span>
+          </v-tooltip>
+          <v-tooltip v-else text="Expand Height" location="bottom">
+            <template v-slot:activator="{ props }">
+              <v-icon
+                v-bind="props"
+                @click="expandHeight"
+                data-test="expand-height"
+                >mdi-arrow-expand-vertical</v-icon
+              >
+            </template>
           </v-tooltip>
         </div>
 
-        <v-tooltip top>
-          <template v-slot:activator="{ on, attrs }">
-            <div v-on="on" v-bind="attrs">
-              <v-icon
-                data-test="minimize-screen-icon"
-                @click="minMaxTransition"
-                v-show="expand"
-              >
-                mdi-window-minimize
-              </v-icon>
-              <v-icon
-                data-test="maximize-screen-icon"
-                @click="minMaxTransition"
-                v-show="!expand"
-              >
-                mdi-window-maximize
-              </v-icon>
-            </div>
+        <v-tooltip v-if="expand" text="Minimize" location="bottom">
+          <template v-slot:activator="{ props }">
+            <v-icon
+              v-bind="props"
+              @click="minMaxTransition"
+              data-test="minimize-screen-icon"
+              >mdi-window-minimize</v-icon
+            >
           </template>
-          <span v-show="expand"> Minimize </span>
-          <span v-show="!expand"> Maximize </span>
+        </v-tooltip>
+        <v-tooltip v-else text="Maximize" location="bottom">
+          <template v-slot:activator="{ props }">
+            <v-icon
+              v-bind="props"
+              @click="minMaxTransition"
+              data-test="maximize-screen-icon"
+              >mdi-window-maximize</v-icon
+            >
+          </template>
         </v-tooltip>
 
-        <v-tooltip top>
-          <template v-slot:activator="{ on, attrs }">
-            <div v-on="on" v-bind="attrs">
-              <v-icon
-                data-test="close-graph-icon"
-                @click="$emit('close-graph')"
-              >
-                mdi-close-box
-              </v-icon>
-            </div>
+        <v-tooltip text="Close" location="bottom">
+          <template v-slot:activator="{ props }">
+            <v-icon
+              v-bind="props"
+              @click="$emit('close-graph')"
+              data-test="close-graph-icon"
+              >mdi-close-box</v-icon
+            >
           </template>
-          <span> Close </span>
         </v-tooltip>
-      </v-system-bar>
+      </v-toolbar>
 
       <v-expand-transition>
         <div class="pa-1" id="chart" ref="chart" v-show="expand">
@@ -226,8 +211,7 @@
     <v-menu
       v-if="editGraphMenu"
       v-model="editGraphMenu"
-      :position-x="editGraphMenuX"
-      :position-y="editGraphMenuY"
+      :target="[editGraphMenuX, editGraphMenuY]"
       absolute
       offset-y
     >
@@ -255,40 +239,33 @@
     <v-menu
       v-if="itemMenu"
       v-model="itemMenu"
-      :position-x="itemMenuX"
-      :position-y="itemMenuY"
+      :target="[itemMenuX, itemMenuY]"
       absolute
       offset-y
     >
-      <v-list nav dense>
-        <v-subheader>
+      <v-list nav density="compact">
+        <v-list-subheader>
           {{ selectedItem.targetName }}
           {{ selectedItem.packetName }}
           {{ selectedItem.itemName }}
-        </v-subheader>
+        </v-list-subheader>
         <v-list-item @click="editItem = true">
-          <v-list-item-icon>
-            <v-icon>mdi-pencil</v-icon>
-          </v-list-item-icon>
-          <v-list-item-content>
-            <v-list-item-title> Edit </v-list-item-title>
-          </v-list-item-content>
+          <template v-slot:prepend>
+            <v-icon icon="mdi-pencil"></v-icon>
+          </template>
+          <v-list-item-title> Edit </v-list-item-title>
         </v-list-item>
         <v-list-item @click="clearData([selectedItem])">
-          <v-list-item-icon>
-            <v-icon>mdi-eraser</v-icon>
-          </v-list-item-icon>
-          <v-list-item-content>
-            <v-list-item-title> Clear </v-list-item-title>
-          </v-list-item-content>
+          <template v-slot:prepend>
+            <v-icon icon="mdi-eraser"></v-icon>
+          </template>
+          <v-list-item-title> Clear </v-list-item-title>
         </v-list-item>
         <v-list-item @click="removeItems([selectedItem])">
-          <v-list-item-icon>
-            <v-icon>mdi-delete</v-icon>
-          </v-list-item-icon>
-          <v-list-item-content>
-            <v-list-item-title> Delete </v-list-item-title>
-          </v-list-item-content>
+          <template v-slot:prepend>
+            <v-icon icon="mdi-delete"></v-icon>
+          </template>
+          <v-list-item-title> Delete </v-list-item-title>
         </v-list-item>
       </v-list>
     </v-menu>
@@ -297,8 +274,7 @@
     <v-menu
       v-if="legendMenu"
       v-model="legendMenu"
-      :position-x="legendMenuX"
-      :position-y="legendMenuY"
+      :target="[legendMenuX, legendMenuY]"
       absolute
       offset-y
     >
@@ -335,7 +311,6 @@ import uPlot from 'uplot'
 import bs from 'binary-search'
 import Cable from '../services/cable.js'
 import TimeFilters from '@openc3/tool-common/src/tools/base/util/timeFilters.js'
-import { subMinutes } from 'date-fns'
 
 require('uplot/dist/uPlot.min.css')
 
@@ -378,7 +353,7 @@ export default {
       type: Number,
       default: 200,
     },
-    hideSystemBar: {
+    hideToolbar: {
       type: Boolean,
       default: false,
     },
@@ -427,14 +402,16 @@ export default {
       legendMenuY: 0,
       legendPosition: 'bottom',
       selectedItem: null,
+      hideToolbarData: this.hideToolbar,
       showOverview: !this.hideOverview,
+      hideOverviewData: this.hideOverview,
       title: '',
       overview: null,
       data: [[]],
       dataChanged: false,
       timeout: null,
-      graphMinY: '',
-      graphMaxY: '',
+      graphMinY: null,
+      graphMaxY: null,
       graphStartDateTime: null,
       graphEndDateTime: null,
       indexes: {},
@@ -573,8 +550,8 @@ export default {
 
     let chartOpts = {}
     if (this.sparkline) {
-      this.hideSystemBar = true
-      this.hideOverview = true
+      this.hideToolbarData = true
+      this.hideOverviewData = true
       this.showOverview = false
       chartOpts = {
         width: this.width,
@@ -730,7 +707,6 @@ export default {
           ],
         },
       }
-
       this.graph = new uPlot(
         chartOpts,
         this.data,
@@ -791,7 +767,7 @@ export default {
       this.startGraph()
     }
   },
-  beforeDestroy: function () {
+  beforeUnmount: function () {
     this.stopGraph()
     this.cable.disconnect()
     window.removeEventListener('resize', this.handleResize)
@@ -832,19 +808,27 @@ export default {
     graphStartDateTime: function (newVal, oldVal) {
       if (newVal && typeof newVal === 'string') {
         this.graphStartDateTime =
-          new Date(this.graphStartDateTime).getTime() * 1_000_000
+          this.parseDateTime(this.graphStartDateTime, this.timeZone) * 1_000_000
         if (this.graphStartDateTime !== oldVal) {
           this.needToUpdate = true
         }
+      } else if (newVal === null && oldVal) {
+        // If they clear the start date time we need to update
+        this.graphStartDateTime = null
+        this.needToUpdate = true
       }
     },
     graphEndDateTime: function (newVal, oldVal) {
       if (newVal && typeof newVal === 'string') {
         this.graphEndDateTime =
-          new Date(this.graphEndDateTime).getTime() * 1_000_000
+          this.parseDateTime(this.graphEndDateTime, this.timeZone) * 1_000_000
         if (this.graphEndDateTime !== oldVal) {
           this.needToUpdate = true
         }
+      } else if (newVal === null && oldVal) {
+        // If they clear the end date time we need to update
+        this.graphEndDateTime = null
+        this.needToUpdate = true
       }
     },
   },
@@ -982,10 +966,7 @@ export default {
       }
     },
     resize: function () {
-      this.graph.setSize(this.getSize('chart'))
-      if (this.overview) {
-        this.overview.setSize(this.getSize('overview'))
-      }
+      this.handleResize()
       this.$emit('resize', this.id)
     },
     expandAll: function () {
@@ -1083,7 +1064,7 @@ export default {
       const navDrawer = document.getElementById('openc3-nav-drawer')
       if (navDrawer) {
         navDrawerWidth = navDrawer.classList.contains(
-          'v-navigation-drawer--open',
+          'v-navigation-drawer--active',
         )
           ? navDrawer.clientWidth
           : 0
@@ -1103,18 +1084,18 @@ export default {
         window.innerHeight || 0,
       )
 
-      const chooser = document.getElementsByClassName('tgt-pkt-item-chooser')[0]
+      const panel = document.getElementsByClassName('v-expansion-panel')[0]
       let height = 100
       if (type === 'overview') {
         // Show overview if we're full height and we're not explicitly hiding it
-        if (this.fullHeight && !this.hideOverview) {
+        if (this.fullHeight && !this.hideOverviewData) {
           this.showOverview = true
         } else {
           this.showOverview = false
         }
-      } else if (chooser) {
-        // Height of chart is viewportSize - chooser - overview - fudge factor (primarily padding)
-        height = viewHeight - chooser.clientHeight - height - 250
+      } else {
+        // Height of chart is viewportSize - expansion-panel - overview - fudge factor (primarily padding)
+        height = viewHeight - panel.clientHeight - height - 250
         if (!this.fullHeight) {
           height = height / 2.0 + 10 // 5px padding top and bottom
         }
@@ -1147,12 +1128,8 @@ export default {
       }
     },
     getAxes: function (type) {
-      let strokeColor = 'rgba(0, 0, 0, .1)'
-      let axisColor = 'black'
-      if (this.$vuetify.theme.dark) {
-        strokeColor = 'rgba(255, 255, 255, .1)'
-        axisColor = 'white'
-      }
+      let strokeColor = 'rgba(255, 255, 255, .1)'
+      let axisColor = 'white'
       return {
         axes: [
           {
@@ -1408,9 +1385,12 @@ export default {
         this.indexes[this.subscriptionKey(item)] = index
       }
       // Figure out the last item's color and set the colorIndex past that
-      let index = this.colors.indexOf(itemArray[itemArray.length - 1].color)
-      if (index) {
-        this.colorIndex = index + 1
+      let item = itemArray[itemArray.length - 1]
+      if (item) {
+        let index = this.colors.indexOf(item.color)
+        if (index) {
+          this.colorIndex = index + 1
+        }
       }
       this.addItemsToSubscription(itemArray)
       this.$emit('edit')
@@ -1629,18 +1609,12 @@ export default {
 .uplot.top-legend .u-legend {
   order: -1;
 }
-</style>
-
-<style scoped>
-/* TODO: Get this to work with white theme, values would be 0 in white */
-#chart :deep(.u-select) {
-  background-color: rgba(255, 255, 255, 0.07);
+.u-select {
+  color: rgba(255, 255, 255, 0.07);
 }
-/* This prevents the axis from responding to pointer-events.
-   Necessary if we set overview height to 0 which makes it hidden but still present.
-   However, we simply don't display the overview with v-show.
-   See https://github.com/leeoniya/uPlot/issues/689
-#chart :deep(.u-axis) {
-  pointer-events: none;
-} */
+</style>
+<style scoped>
+.active {
+  background-color: var(--color-background-surface-selected) !important;
+}
 </style>

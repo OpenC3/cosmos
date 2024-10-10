@@ -24,9 +24,9 @@
   <div>
     <v-card>
       <v-card-title>
-        <v-tooltip top>
-          <template v-slot:activator="{ on, attrs }">
-            <div v-on="on" v-bind="attrs">
+        <v-tooltip location="top">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
               <v-btn
                 icon
                 class="mx-2"
@@ -42,9 +42,9 @@
         Script Messages
         <v-spacer />
         <v-select
-          dense
+          density="compact"
           hide-details
-          outlined
+          variant="outlined"
           :items="messageOrderOptions"
           v-model="messageOrder"
           class="mr-2"
@@ -57,17 +57,17 @@
           label="Search"
           prepend-inner-icon="mdi-magnify"
           clearable
-          outlined
-          dense
+          variant="outlined"
+          density="compact"
           single-line
           hide-details
           class="search"
           data-test="search-messages"
         />
 
-        <v-tooltip top>
-          <template v-slot:activator="{ on, attrs }">
-            <div v-on="on" v-bind="attrs">
+        <v-tooltip location="top">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
               <v-btn icon class="mx-2" data-test="clear-log" @click="clearLog">
                 <v-icon> mdi-delete </v-icon>
               </v-btn>
@@ -82,10 +82,9 @@
         :headers="headers"
         :items="messages"
         :search="search"
-        calculate-widths
-        disable-pagination
+        :items-per-page="-1"
         hide-default-footer
-        dense
+        density="compact"
         data-test="output-messages"
       />
     </v-card>
@@ -105,7 +104,7 @@ export default {
   data() {
     return {
       search: '',
-      headers: [{ text: 'Message', value: 'message', sortable: false }],
+      headers: [{ title: 'Message', value: 'message', sortable: false }],
       messageOrderOptions: ['Newest on Top', 'Newest on Bottom'],
       messageOrder: 'Newest on Top',
     }

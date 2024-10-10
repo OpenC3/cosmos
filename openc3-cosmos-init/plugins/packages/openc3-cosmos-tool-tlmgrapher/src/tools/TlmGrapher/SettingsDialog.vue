@@ -41,7 +41,7 @@
           </v-row>
         </div>
         <v-row>
-          <span class="red--text">
+          <span class="text-red">
             Increasing these values may cause issues
           </span>
         </v-row>
@@ -51,29 +51,15 @@
 </template>
 
 <script>
-import Api from '@openc3/tool-common/src/services/api'
-
 export default {
   props: {
     settings: {
       type: Object,
       required: true,
     },
-    value: Boolean, // value is the default prop when using v-model
   },
   data() {
-    return {}
+    return { show: false }
   },
-  computed: {
-    show: {
-      get() {
-        return this.value
-      },
-      set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
-      },
-    },
-  },
-  methods: {},
 }
 </script>
