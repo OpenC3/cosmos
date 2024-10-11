@@ -17,7 +17,7 @@
 from datetime import datetime
 import openc3.script
 from openc3.environment import OPENC3_SCOPE
-from openc3.top_level import HazardousError
+from openc3.top_level import HazardousError, CriticalCmdError
 from openc3.utilities.extract import *
 from openc3.packets.packet import Packet
 
@@ -224,23 +224,40 @@ def _cmd(
         _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope=scope)
     else:
         try:
-            target_name, cmd_name, cmd_params = getattr(openc3.script.API_SERVER, cmd)(
-                *args, timeout=timeout, log_message=log_message, validate=validate, scope=scope
-            )
-            if log_message is None or log_message:
-                _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
-        except HazardousError as error:
-            # Need to reimport here to pick up changes from running_script
-            from openc3.script import prompt_for_hazardous
+            try:
+                target_name, cmd_name, cmd_params = getattr(openc3.script.API_SERVER, cmd)(
+                    *args, timeout=timeout, log_message=log_message, validate=validate, scope=scope
+                )
+                if log_message is None or log_message:
+                    _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
+            except HazardousError as error:
+                # Need to reimport here to pick up changes from running_script
+                from openc3.script import prompt_for_hazardous
 
-            ok_to_proceed = prompt_for_hazardous(
-                error.target_name,
-                error.cmd_name,
-                error.hazardous_description,
-            )
-            if ok_to_proceed:
+                # This opens a prompt at which point they can cancel and stop the script
+                # or say Yes and send the command. Thus we don't care about the return value.
+                prompt_for_hazardous(
+                    error.target_name,
+                    error.cmd_name,
+                    error.hazardous_description,
+                )
                 target_name, cmd_name, cmd_params = getattr(openc3.script.API_SERVER, cmd_no_hazardous)(
                     *args, timeout=timeout, log_message=log_message, validate=validate, scope=scope
                 )
                 if log_message is None or log_message:
                     _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
+        except CriticalCmdError as error:
+            # Need to reimport here to pick up changes from running_script
+            from openc3.script import prompt_for_critical_cmd
+
+            # This should not return until the critical command has been approved
+            prompt_for_critical_cmd(
+                error.uuid,
+                error.username,
+                error.target_name,
+                error.cmd_name,
+                error.cmd_params,
+                error.cmd_string,
+            )
+            if log_message is None or log_message:
+                _log_cmd(error.target_name, error.cmd_name, error.cmd_params, raw, no_range, no_hazardous)

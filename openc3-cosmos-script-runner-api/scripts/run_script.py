@@ -159,6 +159,7 @@ try:
                             | "combo_box"
                             | "prompt"
                             | "prompt_for_hazardous"
+                            | "prompt_for_critical_cmd"
                             | "metadata_input"
                             | "open_file_dialog"
                             | "open_files_dialog"

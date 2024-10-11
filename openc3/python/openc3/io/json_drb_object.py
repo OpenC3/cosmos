@@ -22,7 +22,7 @@ from .json_rpc import (
     JsonRpcSuccessResponse,
     JsonRpcErrorResponse,
 )
-from openc3.top_level import HazardousError, DisabledError  # noqa: F401
+from openc3.top_level import HazardousError, CriticalCmdError, DisabledError  # noqa: F401
 
 
 class JsonDrbUnknownError(Exception):

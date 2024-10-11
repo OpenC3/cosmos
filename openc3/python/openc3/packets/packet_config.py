@@ -455,6 +455,11 @@ class PacketConfig:
                 self.current_packet.disabled = True
                 self.current_packet.virtual = True
 
+            case "RESTRICTED":
+                usage = keyword
+                parser.verify_num_parameters(0, 0, usage)
+                self.current_packet.restricted = True
+
             case "ACCESSOR":
                 usage = f"{keyword} <Class name> <Optional parameters> ..."
                 parser.verify_num_parameters(1, None, usage)

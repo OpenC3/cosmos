@@ -376,6 +376,14 @@
       :text="suiteError"
       :width="1000"
     />
+    <critical-cmd-dialog
+      :uuid="criticalCmdUuid"
+      :cmdString="criticalCmdString"
+      :cmdUser="criticalCmdUser"
+      :persistent="true"
+      v-model="displayCriticalCmd"
+      @status="promptDialogCallback"
+    />
     <v-bottom-sheet v-model="showScripts">
       <v-sheet class="pb-11 pt-5 px-5">
         <running-scripts
@@ -408,6 +416,7 @@ import { Multipane, MultipaneResizer } from 'vue-multipane'
 import FileOpenSaveDialog from '@openc3/tool-common/src/components/FileOpenSaveDialog'
 import EnvironmentDialog from '@openc3/tool-common/src/components/EnvironmentDialog'
 import SimpleTextDialog from '@openc3/tool-common/src/components/SimpleTextDialog'
+import CriticalCmdDialog from '@openc3/tool-common/src/components/CriticalCmdDialog'
 import TopBar from '@openc3/tool-common/src/components/TopBar'
 import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 import { fileIcon } from '@openc3/tool-common/src/tools/base/util/fileIcon'
@@ -459,6 +468,7 @@ export default {
     SuiteRunner,
     RunningScripts,
     ScriptLogMessages,
+    CriticalCmdDialog,
   },
   data() {
     return {
@@ -583,6 +593,10 @@ export default {
       idCounter: 0,
       updateCounter: 0,
       recent: [],
+      criticalCmdUuid: null,
+      criticalCmdString: null,
+      criticalCmdUser: null,
+      displayCriticalCmd: false,
     }
   },
   computed: {
@@ -935,7 +949,10 @@ export default {
         this.executeUser = true
       } else {
         await Api.get(`/openc3-api/roles/${role}`).then((response) => {
-          if (response.data.permissions !== undefined) {
+          if (
+            response.data !== null &&
+            response.data.permissions !== undefined
+          ) {
             if (
               response.data.permissions.some(
                 (i) => i.permission == 'script_edit',
@@ -1913,6 +1930,12 @@ export default {
           this.prompt.buttons = [{ text: 'Send', value: 'Send' }]
           this.prompt.callback = this.promptDialogCallback
           this.prompt.show = true
+          break
+        case 'prompt_for_critical_cmd':
+          this.criticalCmdUuid = data.args[0]
+          this.criticalCmdString = data.args[5]
+          this.criticalCmdUser = data.args[1]
+          this.displayCriticalCmd = true
           break
         case 'prompt':
           if (data.kwargs && data.kwargs.informative) {

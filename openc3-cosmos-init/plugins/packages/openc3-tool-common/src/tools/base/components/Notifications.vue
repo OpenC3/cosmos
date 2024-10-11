@@ -252,7 +252,7 @@ export default {
             header: level.charAt(0).toUpperCase() + level.slice(1),
           }
           return [header, ...groups[level]]
-        }
+        },
       )
       if (this.readNotifications.length) {
         result = result.concat([{ header: 'Read' }, ...this.readNotifications])
@@ -348,8 +348,8 @@ export default {
             start_offset:
               localStorage.notificationStreamOffset ||
               localStorage.lastReadNotification,
-            types: ['notification', 'alert'],
-          }
+            types: ['notification', 'alert', 'ephemeral'],
+          },
         )
         .then((subscription) => {
           this.subscription = subscription
@@ -364,9 +364,25 @@ export default {
     },
     receiveMessage: function (parsed) {
       this.cable.recordPing()
+
+      // Cut down if we're being flooded
       if (parsed.length > NOTIFICATION_HISTORY_MAX_LENGTH) {
         parsed.splice(0, parsed.length - NOTIFICATION_HISTORY_MAX_LENGTH)
       }
+
+      // Filter out ephemeral
+      let ephemeral = parsed.filter(
+        (someobject) => someobject.type === 'ephemeral',
+      )
+      if (ephemeral && ephemeral.length > 0) {
+        // Remove ephemeral from parsed
+        parsed = parsed.filter((someobject) => someobject.type !== 'ephemeral')
+        // Emit the ephemeral
+        ephemeral.forEach((notification) => {
+          this.$emit('ephemeral', notification)
+        })
+      }
+
       let foundToast = false
       parsed.forEach((notification) => {
         notification.read =
@@ -406,7 +422,7 @@ export default {
           0,
           this.notifications.length +
             parsed.length -
-            NOTIFICATION_HISTORY_MAX_LENGTH
+            NOTIFICATION_HISTORY_MAX_LENGTH,
         )
       }
       this.notifications = this.notifications.concat(parsed)
