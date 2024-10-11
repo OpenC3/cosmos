@@ -893,6 +893,9 @@ export default {
         this.status += ': '
         this.status += error.message
       }
+      if (this.status.includes('CriticalCmdError')) {
+        this.status = `Critical Command Queued For Approval`
+      }
       if (showDialog) {
         if (error.message.includes('CriticalCmdError')) {
           this.criticalCmdUuid = error.object.data.instance_variables['@uuid']
