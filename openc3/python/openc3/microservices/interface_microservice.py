@@ -19,10 +19,12 @@ import sys
 import time
 import json
 import threading
+import uuid
 from datetime import datetime, timezone
 from openc3.microservices.microservice import Microservice
 from openc3.microservices.interface_decom_common import handle_inject_tlm
 from openc3.system.system import System
+from openc3.models.scope_model import ScopeModel
 from openc3.models.interface_model import InterfaceModel
 from openc3.models.interface_status_model import InterfaceStatusModel
 from openc3.models.router_model import RouterModel
@@ -43,12 +45,23 @@ from openc3.utilities.json import JsonDecoder
 from openc3.utilities.store_queued import StoreQueued, EphemeralStoreQueued
 from openc3.top_level import kill_thread
 
+try:
+    from openc3enterprise.models.critical_cmd_model import CriticalCmdModel
+except ModuleNotFoundError:
+    # Should never actually be used in Open Source
+    pass
+
 
 class InterfaceCmdHandlerThread:
     def __init__(self, interface, tlm, logger=None, metric=None, scope=None):
         self.interface = interface
         self.tlm = tlm
         self.scope = scope
+        scope_model = ScopeModel.get_model(name=scope)
+        if scope_model is not None:
+            self.critical_commanding = scope_model.critical_commanding
+        else:
+            self.critical_commanding = "OFF"
         self.logger = logger
         if not self.logger:
             self.logger = Logger()
@@ -81,6 +94,8 @@ class InterfaceCmdHandlerThread:
 
     def process_cmd(self, topic, msg_id, msg_hash, redis):
         # OpenC3.with_context(msg_hash) do
+        release_critical = False
+
         if msg_hash.get(b"shutdown"):
             return "Shutdown"
 
@@ -94,6 +109,13 @@ class InterfaceCmdHandlerThread:
                 unit="seconds",
                 help="Delta time between data written to stream and interface cmd start",
             )
+
+        if topic == "OPENC3__SYSTEM__EVENTS":
+            msg = json.loads(msg_hash[b"event"].decode())
+            if msg[b"type"].decode() == "scope":
+                if msg[b"name"].decode() == self.scope:
+                    self.critical_commanding = msg[b"critical_commanding"].decode()
+            return "SUCCESS"
 
         # Check for a raw write to the interface
         if "CMD}INTERFACE" in topic:
@@ -172,9 +194,18 @@ class InterfaceCmdHandlerThread:
             if msg_hash.get(b"inject_tlm"):
                 handle_inject_tlm(msg_hash[b"inject_tlm"], self.scope)
                 return "SUCCESS"
+            if msg_hash.get(b"release_critical"):
+                model = CriticalCmdModel.get_model(name = msg_hash[b"release_critical"].decode(), scope=self.scope)
+                if model is not None:
+                    msg_hash = model.cmd_hash
+                    release_critical = True
+                else:
+                    return f"Critical command {msg_hash[b"release_critical"].decode()} not found"
+
 
         target_name = msg_hash[b"target_name"].decode()
         cmd_name = msg_hash[b"cmd_name"].decode()
+        manual = ConfigParser.handle_true_false(msg_hash[b"manual"].decode())
         cmd_params = None
         cmd_buffer = None
         hazardous_check = None
@@ -211,12 +242,29 @@ class InterfaceCmdHandlerThread:
             command.extra = command.extra or {}
             command.extra["cmd_string"] = msg_hash[b"cmd_string"].decode()
             command.extra["username"] = msg_hash[b"username"].decode()
+            hazardous, hazardous_description = System.commands.cmd_pkt_hazardous(command)
+
             if hazardous_check:
-                hazardous, hazardous_description = System.commands.cmd_pkt_hazardous(command)
                 # Return back the error, description, and the formatted command
                 # This allows the error handler to simply re-send the command
                 if hazardous:
-                    return f"HazardousError\n{hazardous_description}\n{command.extra['cmd_string']}"
+                    if not release_critical:
+                        return f"HazardousError\n{hazardous_description}\n{command.extra['cmd_string']}"
+
+            if self.critical_commanding is not None and self.critical_commanding != 'OFF' and not release_critical:
+                restricted = command.restricted
+                if hazardous or restricted or (self.critical_commanding == 'ALL' and manual):
+                    type = None
+                    if hazardous:
+                        type = 'HAZARDOUS'
+                    elif restricted:
+                        type = 'RESTRICTED'
+                    else:
+                        type = 'NORMAL'
+                    model = CriticalCmdModel(name=str(uuid.uuid1()), type=type, interface_name=self.interface.name, username=msg_hash[b'username'].decode(), cmd_hash=msg_hash, scope=self.scope)
+                    model.create()
+                    self.logger.info(f"Critical Cmd Pending: {msg_hash[b'cmd_string'].decode()}", user=msg_hash[b"username"].decode(), scope=self.scope)
+                    return f"CriticalCmdError\n{model.name}"
 
             validate = ConfigParser.handle_true_false(msg_hash[b"validate"].decode())
             try:
@@ -236,6 +284,11 @@ class InterfaceCmdHandlerThread:
                     self.count += 1
                     if self.metric is not None:
                         self.metric.set(name="interface_cmd_total", value=self.count, type="counter")
+
+                    log_message = ConfigParser.handle_true_false(msg_hash[b"log_message"].decode())
+                    if log_message:
+                        self.logger.info(msg_hash[b'cmd_string'].decode(), user=msg_hash[b'username'].decode(), scope=self.scope)
+
                     self.interface.write(command)
 
                     if command.validator and validate:

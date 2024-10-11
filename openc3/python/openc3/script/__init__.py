@@ -16,6 +16,7 @@
 
 from openc3.script.server_proxy import ApiServerProxy, ScriptServerProxy
 from openc3.utilities.extract import convert_to_value
+import threading
 
 API_SERVER = ApiServerProxy()
 SCRIPT_RUNNER_API_SERVER = ScriptServerProxy()
@@ -140,7 +141,22 @@ from .metadata import *
 from .screen import *
 from .script_runner import *
 from .storage import *
+from .critical_cmd import *
 from openc3.api import WHITELIST
+
+
+def prompt_for_critical_cmd(uuid, _username, _target_name, _cmd_name, _cmd_params, cmd_string):
+    print("Waiting for critical command approval:")
+    print(f"  {cmd_string}")
+    print(f"  UUID: {uuid}")
+    while True:
+        status = critical_cmd_status(uuid)
+        if status == "APPROVED":
+            return
+        elif status == "REJECTED":
+            raise "Critical command rejected"
+        threading.sleep(0.1)
+
 
 # Define all the WHITELIST methods
 current_functions = dir()

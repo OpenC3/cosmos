@@ -363,6 +363,8 @@ module OpenC3
       model.destroy if model
       model = MicroserviceModel.get_model(name: "#{@scope}__TRIGGER_GROUP__DEFAULT", scope: @scope)
       model.destroy if model
+      model = MicroserviceModel.get_model(name: "#{@scope}__CRITICALCMD__#{@scope}", scope: @scope)
+      model.destroy if model
 
       # Delete the topics we created for the scope
       Topic.del("#{@scope}__COMMAND__{UNKNOWN}__UNKNOWN")

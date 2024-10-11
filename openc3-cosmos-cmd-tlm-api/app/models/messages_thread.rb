@@ -46,6 +46,7 @@ class MessagesThread < TopicsThread
     @topics = ["#{scope}__openc3_log_messages", "#{scope}__openc3_ephemeral_messages"]
 
     offsets = nil
+    # $ means only new messages for the ephemeral topic
     offsets = [start_offset, "$"] if start_offset
     super(@topics, channel, history_count, max_batch_size, offsets: offsets)
   end

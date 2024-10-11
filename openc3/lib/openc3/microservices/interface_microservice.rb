@@ -48,7 +48,12 @@ module OpenC3
       @interface = interface
       @tlm = tlm
       @scope = scope
-      @critical_commanding = ScopeModel.get_model(name: @scope).critical_commanding
+      scope_model = ScopeModel.get_model(name: @scope)
+      if scope_model
+        @critical_commanding = scope_model.critical_commanding
+      else
+        @critical_commanding = 'OFF'
+      end
       @logger = logger
       @logger = Logger unless @logger
       @metric = metric
@@ -245,7 +250,7 @@ module OpenC3
                 end
                 model = CriticalCmdModel.new(name: SecureRandom.uuid, type: type, interface_name: @interface.name, username: msg_hash['username'], cmd_hash: msg_hash, scope: @scope)
                 model.create
-                @logger.info("Critial Cmd Pending: #{msg_hash['cmd_string']}", user: msg_hash['username'], scope: @scope)
+                @logger.info("Critical Cmd Pending: #{msg_hash['cmd_string']}", user: msg_hash['username'], scope: @scope)
                 next "CriticalCmdError\n#{model.name}"
               end
             end
