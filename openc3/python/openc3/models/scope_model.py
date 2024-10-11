@@ -18,7 +18,7 @@ import json
 from openc3.models.model import Model
 
 
-class Scope(Model):
+class ScopeModel(Model):
     PRIMARY_KEY = "openc3_scopes"
 
     # NOTE: The following three class methods are used by the ModelController
