@@ -124,7 +124,10 @@ SCRIPT_METHODS = [
 def running_script_method(method, *args, **kwargs):
     while True:
         if RunningScript.instance:
-            RunningScript.instance.scriptrunner_puts(f"{method}({', '.join(args)})")
+            str_args = []
+            for value in args:
+                str_args.append(repr(value))
+            RunningScript.instance.scriptrunner_puts(f"{method}({', '.join(str_args)})")
             prompt_id = str(uuid.uuid1())
             RunningScript.instance.perform_wait(
                 {"method": method, "id": prompt_id, "args": args, "kwargs": kwargs}

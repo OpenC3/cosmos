@@ -112,9 +112,9 @@ class InterfaceCmdHandlerThread:
 
         if topic == "OPENC3__SYSTEM__EVENTS":
             msg = json.loads(msg_hash[b"event"].decode())
-            if msg[b"type"].decode() == "scope":
-                if msg[b"name"].decode() == self.scope:
-                    self.critical_commanding = msg[b"critical_commanding"].decode()
+            if msg["type"] == "scope":
+                if msg["name"] == self.scope:
+                    self.critical_commanding = msg["critical_commanding"]
             return "SUCCESS"
 
         # Check for a raw write to the interface
