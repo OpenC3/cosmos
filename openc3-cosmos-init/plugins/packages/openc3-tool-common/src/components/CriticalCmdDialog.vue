@@ -19,18 +19,23 @@
 <template>
   <v-dialog :persistent="persistent" v-model="show" width="600">
     <v-card>
-      <v-system-bar>
+      <v-toolbar height="24">
         <v-spacer />
         <span> Waiting for Critical Command Approval </span>
         <v-spacer />
-      </v-system-bar>
+      </v-toolbar>
 
-      <v-card-title> {{ cmdString }} </v-card-title>
-      <v-card-subtitle>
-        User: {{ cmdUser }} - UUID: {{ uuid }}
-      </v-card-subtitle>
       <v-card-text>
         <v-container fluid>
+          <v-alert type="error" v-model="error" dismissible>
+            {{ errorText }}
+          </v-alert>
+          <v-row class="pt-4" style="color: white"
+            >User {{ cmdUser }} is waiting for approval to execute:
+          </v-row>
+          <v-row class="pa-4" style="color: white">{{ cmdString }}</v-row>
+          <v-row class="text-subtitle-2">UUID: {{ uuid }}</v-row>
+
           <v-row v-if="!canApprove">
             <v-text-field
               v-model="username"
@@ -46,13 +51,14 @@
               data-test="password"
             />
           </v-row>
-          <v-row>
+          <v-row class="pt-2">
             <v-spacer />
             <v-btn
               type="submit"
               @click.prevent="reject"
               class="mx-2"
               color="secondary"
+              outlined
               :disabled="disableButtons"
               data-test="reject"
             >
@@ -96,6 +102,8 @@ export default {
       username: null,
       password: null,
       canApprove: false,
+      error: false,
+      errorText: '',
     }
   },
   computed: {
@@ -168,29 +176,40 @@ export default {
             if (response.status == 200) {
               this.$emit('status', 'APPROVED')
               this.show = false
+              this.error = false
             }
           },
         )
       } else {
         let token = await this.getKeycloakToken()
-        const response = await axios.post(
-          '/openc3-api/criticalcmd/approve/' + this.uuid,
-          {},
-          {
-            headers: {
-              Authorization: token,
-              'Content-Type': 'application/json',
+        axios
+          .post(
+            '/openc3-api/criticalcmd/approve/' + this.uuid,
+            {},
+            {
+              headers: {
+                Authorization: token,
+                'Content-Type': 'application/json',
+              },
+              params: {
+                scope: window.openc3Scope,
+              },
+              timeout: 5000,
             },
-            params: {
-              scope: window.openc3Scope,
-            },
-            timeout: 5000,
-          },
-        )
-        if (response.status == 200) {
-          this.$emit('status', 'APPROVED')
-          this.show = false
-        }
+          )
+          .then((_response) => {
+            this.$emit('status', 'APPROVED')
+            this.show = false
+            this.error = false
+          })
+          .catch((error) => {
+            this.error = true
+            if (error.response) {
+              this.errorText = error.response.data.message
+            } else {
+              this.errorText = error.message
+            }
+          })
       }
     },
     async reject() {
@@ -200,6 +219,7 @@ export default {
             if (response.status == 200) {
               this.$emit('status', 'REJECTED')
               this.show = false
+              this.error = false
             }
           },
         )
@@ -222,6 +242,7 @@ export default {
         if (response.status == 200) {
           this.$emit('status', 'REJECTED')
           this.show = false
+          this.error = false
         }
       }
     },
