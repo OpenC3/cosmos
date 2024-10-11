@@ -195,13 +195,12 @@ class InterfaceCmdHandlerThread:
                 handle_inject_tlm(msg_hash[b"inject_tlm"], self.scope)
                 return "SUCCESS"
             if msg_hash.get(b"release_critical"):
-                model = CriticalCmdModel.get_model(name = msg_hash[b"release_critical"].decode(), scope=self.scope)
+                model = CriticalCmdModel.get_model(name=msg_hash[b"release_critical"].decode(), scope=self.scope)
                 if model is not None:
                     msg_hash = model.cmd_hash
                     release_critical = True
                 else:
-                    return f"Critical command {msg_hash[b"release_critical"].decode()} not found"
-
+                    return f"Critical command {msg_hash[b'release_critical'].decode()} not found"
 
         target_name = msg_hash[b"target_name"].decode()
         cmd_name = msg_hash[b"cmd_name"].decode()
@@ -251,19 +250,30 @@ class InterfaceCmdHandlerThread:
                     if not release_critical:
                         return f"HazardousError\n{hazardous_description}\n{command.extra['cmd_string']}"
 
-            if self.critical_commanding is not None and self.critical_commanding != 'OFF' and not release_critical:
+            if self.critical_commanding is not None and self.critical_commanding != "OFF" and not release_critical:
                 restricted = command.restricted
-                if hazardous or restricted or (self.critical_commanding == 'ALL' and manual):
+                if hazardous or restricted or (self.critical_commanding == "ALL" and manual):
                     type = None
                     if hazardous:
-                        type = 'HAZARDOUS'
+                        type = "HAZARDOUS"
                     elif restricted:
-                        type = 'RESTRICTED'
+                        type = "RESTRICTED"
                     else:
-                        type = 'NORMAL'
-                    model = CriticalCmdModel(name=str(uuid.uuid1()), type=type, interface_name=self.interface.name, username=msg_hash[b'username'].decode(), cmd_hash=msg_hash, scope=self.scope)
+                        type = "NORMAL"
+                    model = CriticalCmdModel(
+                        name=str(uuid.uuid1()),
+                        type=type,
+                        interface_name=self.interface.name,
+                        username=msg_hash[b"username"].decode(),
+                        cmd_hash=msg_hash,
+                        scope=self.scope,
+                    )
                     model.create()
-                    self.logger.info(f"Critical Cmd Pending: {msg_hash[b'cmd_string'].decode()}", user=msg_hash[b"username"].decode(), scope=self.scope)
+                    self.logger.info(
+                        f"Critical Cmd Pending: {msg_hash[b'cmd_string'].decode()}",
+                        user=msg_hash[b"username"].decode(),
+                        scope=self.scope,
+                    )
                     return f"CriticalCmdError\n{model.name}"
 
             validate = ConfigParser.handle_true_false(msg_hash[b"validate"].decode())
@@ -287,7 +297,9 @@ class InterfaceCmdHandlerThread:
 
                     log_message = ConfigParser.handle_true_false(msg_hash[b"log_message"].decode())
                     if log_message:
-                        self.logger.info(msg_hash[b'cmd_string'].decode(), user=msg_hash[b'username'].decode(), scope=self.scope)
+                        self.logger.info(
+                            msg_hash[b"cmd_string"].decode(), user=msg_hash[b"username"].decode(), scope=self.scope
+                        )
 
                     self.interface.write(command)
 

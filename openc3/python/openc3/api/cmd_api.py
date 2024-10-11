@@ -21,7 +21,6 @@ from openc3.api.interface_api import get_interface
 from openc3.top_level import DisabledError
 from openc3.environment import OPENC3_SCOPE
 from openc3.utilities.authorization import authorize
-from openc3.utilities.logger import Logger
 from openc3.utilities.string import simple_formatted
 from openc3.models.target_model import TargetModel
 from openc3.utilities.extract import *

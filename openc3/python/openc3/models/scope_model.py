@@ -87,7 +87,7 @@ class Scope(Model):
         self.critical_commanding = str(critical_commanding).upper()
         if len(self.critical_commanding) == 0:
             self.critical_commanding = "OFF"
-        if not self.critical_commanding in ["OFF", "NORMAL", "ALL"]:
+        if self.critical_commanding not in ["OFF", "NORMAL", "ALL"]:
             raise RuntimeError(f"Invalid value for critical_commanding: {self.critical_commanding}")
         self.children = []
 

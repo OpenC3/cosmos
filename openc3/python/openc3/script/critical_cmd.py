@@ -25,11 +25,11 @@ def critical_cmd_status(uuid: str, scope: str = OPENC3_SCOPE):
         endpoint = f"/openc3-api/criticalcmd/status/{uuid}"
         response = openc3.script.API_SERVER.request("get", endpoint, scope=scope)
         if not response or response.status_code != 200:
-            raise Exception(f"Unexpected response to critical_cmd_status: {repr(response)}")
+            raise RuntimeError(f"Unexpected response to critical_cmd_status: {repr(response)}")
         result = json.loads(response.text)
         return result["status"]
     except Exception as error:
-        raise Exception(f"critical_cmd_status failed due to {repr(error)}") from error
+        raise RuntimeError(f"critical_cmd_status failed due to {repr(error)}") from error
 
 
 def critical_cmd_approve(uuid: str, scope: str = OPENC3_SCOPE):
@@ -39,12 +39,12 @@ def critical_cmd_approve(uuid: str, scope: str = OPENC3_SCOPE):
         if not response or response.status_code != 200:
             if response:
                 parsed = json.loads(response.text)
-                raise Exception(f"critical_cmd_approve error: {parsed['error']}")
+                raise RuntimeError(f"critical_cmd_approve error: {parsed['error']}")
             else:
-                raise Exception("critical_cmd_approve failed")
+                raise RuntimeError("critical_cmd_approve failed")
         return
     except Exception as error:
-        raise Exception(f"critical_cmd_approve failed due to {repr(error)}") from error
+        raise RuntimeError(f"critical_cmd_approve failed due to {repr(error)}") from error
 
 
 def critical_cmd_reject(uuid: str, scope: str = OPENC3_SCOPE):
@@ -54,24 +54,24 @@ def critical_cmd_reject(uuid: str, scope: str = OPENC3_SCOPE):
         if not response or response.status_code != 200:
             if response:
                 parsed = json.loads(response.text)
-                raise Exception(f"critical_cmd_reject error: {parsed['error']}")
+                raise RuntimeError(f"critical_cmd_reject error: {parsed['error']}")
             else:
-                raise Exception("critical_cmd_reject failed")
+                raise RuntimeError("critical_cmd_reject failed")
         return
     except Exception as error:
-        raise Exception(f"critical_cmd_reject failed due to {repr(error)}") from error
+        raise RuntimeError(f"critical_cmd_reject failed due to {repr(error)}") from error
 
 
-def critical_cmd_status(uuid: str, scope: str = OPENC3_SCOPE):
+def critical_cmd_can_approve(uuid: str, scope: str = OPENC3_SCOPE):
     try:
         endpoint = f"/openc3-api/criticalcmd/canapprove/{uuid}"
         response = openc3.script.API_SERVER.request("get", endpoint, scope=scope)
         if not response or response.status_code != 200:
-            raise Exception(f"Unexpected response to critical_cmd_can_approve: {repr(response)}")
+            raise RuntimeError(f"Unexpected response to critical_cmd_can_approve: {repr(response)}")
         result = json.loads(response.text)
         if result["status"] == "ok":
             return True
         else:
             return False
     except Exception as error:
-        raise Exception(f"critical_cmd_approve failed due to {repr(error)}") from error
+        raise RuntimeError(f"critical_cmd_approve failed due to {repr(error)}") from error

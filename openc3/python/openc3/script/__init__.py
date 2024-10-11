@@ -154,7 +154,7 @@ def prompt_for_critical_cmd(uuid, _username, _target_name, _cmd_name, _cmd_param
         if status == "APPROVED":
             return
         elif status == "REJECTED":
-            raise "Critical command rejected"
+            raise RuntimeError("Critical command rejected")
         threading.sleep(0.1)
 
 
