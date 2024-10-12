@@ -595,6 +595,7 @@ export default {
       recent: [],
       waitingInterval: null,
       waitingTime: 0,
+      waitingStart: 0,
       criticalCmdUuid: null,
       criticalCmdString: null,
       criticalCmdUser: null,
@@ -1655,9 +1656,10 @@ export default {
         // If we're waiting and the interval is active then nothing to do
         return
       }
+      this.waitingStart = Date.now()
       // Create an interval to count every second
       this.waitingInterval = setInterval(() => {
-        this.waitingTime += 1
+        this.waitingTime = Math.round((Date.now() - this.waitingStart) / 1000)
       }, 1000)
     },
     clearWaiting() {
