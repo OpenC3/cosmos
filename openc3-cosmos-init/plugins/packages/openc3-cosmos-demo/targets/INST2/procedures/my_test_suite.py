@@ -13,7 +13,7 @@ class ExampleTest(Test):
         raise RuntimeError("error")
         print("continue past raise")  # NOSONAR
 
-    def test_2(self):
+    def test_req2(self):
         print(
             f"Running {Test.current_test_suite()}:{Test.current_test()}:{Test.current_test_case()}"
         )
@@ -21,7 +21,7 @@ class ExampleTest(Test):
         self.helper()
         wait(2)
 
-    def test_3(self):
+    def test_req3(self):
         print(
             f"Running {Test.current_test_suite()}:{Test.current_test()}:{Test.current_test_case()}"
         )
