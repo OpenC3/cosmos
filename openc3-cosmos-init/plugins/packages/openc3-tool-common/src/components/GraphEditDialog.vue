@@ -434,7 +434,7 @@ export default {
       this.graph.lines.push({ yValue: 0, color: 'white' })
     },
     removeLine(dline) {
-      let i = this.lines.indexOf(dline)
+      let i = this.graph.lines.indexOf(dline)
       this.graph.lines.splice(i, 1)
     },
   },
