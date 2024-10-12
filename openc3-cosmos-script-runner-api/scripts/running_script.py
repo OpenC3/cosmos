@@ -114,6 +114,7 @@ SCRIPT_METHODS = [
     "combo_box",
     "prompt",
     "prompt_for_hazardous",
+    "prompt_for_critical_cmd",
     "metadata_input",
     "open_file_dialog",
     "open_files_dialog",
@@ -123,7 +124,10 @@ SCRIPT_METHODS = [
 def running_script_method(method, *args, **kwargs):
     while True:
         if RunningScript.instance:
-            RunningScript.instance.scriptrunner_puts(f"{method}({', '.join(args)})")
+            str_args = []
+            for value in args:
+                str_args.append(repr(value))
+            RunningScript.instance.scriptrunner_puts(f"{method}({', '.join(str_args)})")
             prompt_id = str(uuid.uuid1())
             RunningScript.instance.perform_wait(
                 {"method": method, "id": prompt_id, "args": args, "kwargs": kwargs}
@@ -150,6 +154,10 @@ def running_script_method(method, *args, **kwargs):
                     if method == "open_file_dialog":  # Simply return the only file
                         files = files[0]
                     return files
+                elif method == "prompt_for_critical_cmd":
+                    if input == "REJECTED":
+                        raise RuntimeError("Critical Cmd Rejected")
+                    return input
                 else:
                     return input
         else:

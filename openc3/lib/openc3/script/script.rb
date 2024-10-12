@@ -36,6 +36,7 @@ require 'openc3/script/storage'
 require 'openc3/script/web_socket_api'
 require 'openc3/script/packages'
 require 'openc3/script/plugins'
+require 'openc3/script/critical_cmd'
 require 'openc3/utilities/authentication'
 
 $api_server = nil
@@ -105,6 +106,22 @@ module OpenC3
         if answer.downcase == 'y'
           return true
         end
+      end
+    end
+
+    def prompt_for_critical_cmd(uuid, _username, _target_name, _cmd_name, _cmd_params, cmd_string)
+      puts "Waiting for critical command approval:"
+      puts "  #{cmd_string}"
+      puts "  UUID: #{uuid}"
+      loop do
+        status = critical_cmd_status(uuid)
+        if status == 'APPROVED'
+          return
+        elsif status == 'REJECTED'
+          raise "Critical command rejected"
+        end
+        # Else still waiting
+        wait(0.1)
       end
     end
 

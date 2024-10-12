@@ -101,6 +101,7 @@ class Logger(metaclass=LoggerMeta):
     LOG = "log"
     NOTIFICATION = "notification"
     ALERT = "alert"
+    EPHEMERAL = "ephemeral"
 
     # @param level [Integer] The initial logging level
     def __init__(self, level=INFO):

@@ -105,7 +105,7 @@ async function suiteTemplate(page, utils, type) {
   ).toBeEnabled()
   await expect(page.locator('role=button[name="Group: Power"]')).toBeEnabled()
   await expect(
-    page.locator('role=button[name="Script: script_power_on"]'),
+    page.locator('role=button[name="Script: power_on"]'),
   ).toBeEnabled()
   // Verify Suite Start buttons are enabled
   await expect(page.locator('[data-test=start-suite]')).toBeEnabled()
@@ -153,7 +153,7 @@ test('loads Suite controls when opening a suite', async ({ page, utils }) => {
     page.locator('role=button[name="Group: ExampleGroup"]'),
   ).toBeEnabled()
   await expect(
-    page.locator('role=button[name="Script: script_2"]'),
+    page.locator('role=button[name="Script: 2"]'),
   ).toBeEnabled()
   // // Verify Suite Start buttons are enabled
   await expect(page.locator('[data-test=start-suite]')).toBeEnabled()

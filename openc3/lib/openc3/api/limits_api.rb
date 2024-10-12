@@ -164,7 +164,7 @@ module OpenC3
       found_item = nil
       packet['items'].each do |item|
         if item['name'] == item_name
-          item['limits'].delete('enabled')
+          item['limits']['enabled'] = false
           found_item = item
           break
         end
@@ -224,7 +224,7 @@ module OpenC3
             if enabled
               item['limits']['enabled'] = true
             else
-              item['limits'].delete('enabled')
+              item['limits']['enabled'] = false
             end
             limits = {}
             limits['red_low'] = red_low
@@ -348,7 +348,7 @@ module OpenC3
               message = "Enabling Limits for '#{target_name} #{packet_name} #{item_name}'"
             elsif action == :disable
               enabled = false
-              item['limits'].delete('enabled')
+              item['limits']['enabled'] = false
               message = "Disabling Limits for '#{target_name} #{packet_name} #{item_name}'"
             end
             Logger.info(message, scope: scope)

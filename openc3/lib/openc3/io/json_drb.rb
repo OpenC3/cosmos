@@ -302,6 +302,11 @@ module OpenC3
                 response = JsonRpcErrorResponse.new(
                   JsonRpcError.new(error_code, e.message, e), request.id
                 )
+              elsif CriticalCmdError === e
+                error_code = JsonRpcError::ErrorCode::CRITICAL_CMD_ERROR
+                response = JsonRpcErrorResponse.new(
+                  JsonRpcError.new(error_code, e.message, e), request.id
+                )
               else
                 error_code = JsonRpcError::ErrorCode::OTHER_ERROR
                 response = JsonRpcErrorResponse.new(
