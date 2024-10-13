@@ -32,7 +32,7 @@ test('prompts for hazardous commands', async ({ page, utils }) => {
     timeout: 20000,
   })
   await page.getByRole('button', { name: 'Cancel' }).click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('paused')
+  await expect(page.locator('[data-test=state]')).toHaveValue(/paused \d+s/)
   await page.locator('[data-test=go-button]').click()
   await expect(page.locator('.v-dialog')).toContainText('Hazardous Command')
   await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click()
@@ -114,7 +114,7 @@ test('ask accepts default, password, and required', async ({ page, utils }) => {
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     'User input: Cancel',
   )
-  await expect(page.locator('[data-test=state]')).toHaveValue('paused')
+  await expect(page.locator('[data-test=state]')).toHaveValue(/paused \d+s/)
 
   // Clicking go re-launches the dialog
   await page.locator('[data-test=go-button]').click()
@@ -142,7 +142,7 @@ test('ask accepts default, password, and required', async ({ page, utils }) => {
   await page.locator('.v-dialog >> input').type('abc123!')
   await page.locator('.v-dialog >> button:has-text("Ok")').click()
 
-  await expect(page.locator('[data-test=state]')).toHaveValue('waiting')
+  await expect(page.locator('[data-test=state]')).toHaveValue(/waiting \d+s/)
   // Verify we're not outputting the secret password on input
   await expect(page.locator('[data-test=output-messages]')).not.toContainText(
     'abc123!',
@@ -204,7 +204,7 @@ test('opens a dialog with buttons for message_box, vertical_message_box', async 
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     'User input: Cancel',
   )
-  await expect(page.locator('[data-test=state]')).toHaveValue('paused')
+  await expect(page.locator('[data-test=state]')).toHaveValue(/paused \d+s/)
 
   // Clicking Go re-launches the dialog
   await page.locator('[data-test=go-button]').click()
@@ -230,12 +230,12 @@ test('opens a dialog with dropdowns for combo_box', async ({ page, utils }) => {
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     'User input: Cancel',
   )
-  await expect(page.locator('[data-test=state]')).toHaveValue('paused')
+  await expect(page.locator('[data-test=state]')).toHaveValue(/paused \d+s/)
 
   // Clicking go re-launches the dialog
   await page.locator('[data-test=go-button]').click()
   await page.getByRole('button', { name: /Select/ }).click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('waiting')
+  await expect(page.locator('[data-test=state]')).toHaveValue(/waiting \d+s/)
   await page.locator('div[role="listbox"] >> text=def456').click()
   await page.locator('.v-dialog >> button:has-text("Ok")').click()
   await expect(page.locator('[data-test=state]')).toHaveValue('stopped')
@@ -259,7 +259,7 @@ test('opens a dialog for prompt', async ({ page, utils }) => {
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     'User input: Cancel',
   )
-  await expect(page.locator('[data-test=state]')).toHaveValue('paused')
+  await expect(page.locator('[data-test=state]')).toHaveValue(/paused \d+s/)
 
   // Clicking Go re-executes the prompt
   await page.locator('[data-test=go-button]').click()
@@ -285,7 +285,7 @@ test.skip('opens a file dialog', async ({ page, utils }) => {
     'Choose something interesting',
   )
   await page.locator('.v-dialog >> button:has-text("Cancel")').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('paused')
+  await expect(page.locator('[data-test=state]')).toHaveValue(/paused \d+s/)
   // Clicking Go re-executes the prompt
   await page.locator('[data-test=go-button]').click()
   await expect(page.locator('.v-dialog')).toBeVisible()
