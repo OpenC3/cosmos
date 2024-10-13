@@ -23,7 +23,7 @@
 <template>
   <div>
     <top-bar :menus="menus" :title="title" />
-    <v-expansion-panels v-model="panel" style="margin-bottom: 5px">
+    <v-expansion-panels v-model="panel" class="expansion">
       <v-expansion-panel>
         <v-expansion-panel-title style="z-index: 1"></v-expansion-panel-title>
         <v-expansion-panel-text>
@@ -154,7 +154,6 @@ import SaveConfigDialog from '@openc3/tool-common/src/components/config/SaveConf
 import TargetPacketItemChooser from '@openc3/tool-common/src/components/TargetPacketItemChooser'
 import TopBar from '@openc3/tool-common/src/components/TopBar'
 import Muuri from 'muuri'
-
 import SettingsDialog from '@/tools/TlmGrapher/SettingsDialog'
 
 const MUURI_REFRESH_TIME = 250
@@ -406,6 +405,17 @@ export default {
   },
   methods: {
     resizeAll: function () {
+      setTimeout(() => {
+        this.grid.getItems().map((item) => {
+          // Map the gridItem id to the graph id
+          const graphId = `graph${item.getElement().id.substring(8)}`
+          const vueGraph = this.$refs[graphId][0]
+          vueGraph.resize()
+        })
+        this.resize()
+      }, MUURI_REFRESH_TIME)
+    },
+    resizeAll: function () {
       // Explicitly resize the graphs when the expansion panel is opened or closed
       setTimeout(() => {
         this.grid.getItems().map((item) => {
@@ -515,6 +525,23 @@ export default {
       this.saveDefaultConfig(this.currentConfig)
     },
     resize: function () {
+      // Calculate the largest height of the legend elements and apply it to all
+      const elements = document.querySelectorAll('.u-legend')
+      let maxHeight = 0
+      elements.forEach((element) => {
+        element.style.height = ''
+        if (element.clientHeight > maxHeight) {
+          maxHeight = element.clientHeight
+        }
+      })
+      if (maxHeight !== 0) {
+        elements.forEach((element) => {
+          if (element.clientHeight !== maxHeight) {
+            element.style.height = `${maxHeight}px`
+          }
+        })
+      }
+
       setTimeout(
         () => {
           this.grid.refreshItems().layout()
@@ -609,6 +636,11 @@ i.v-icon.mdi-chevron-down {
 }
 </style>
 <style lang="scss" scoped>
+.expansion {
+  padding: 5px;
+  background-color: var(--color-background-base-default) !important;
+  padding-bottom: 10px;
+}
 .v-container {
   max-width: unset;
   padding-top: 0px;

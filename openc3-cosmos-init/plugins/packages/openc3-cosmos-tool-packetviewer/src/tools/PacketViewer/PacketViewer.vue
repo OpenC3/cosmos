@@ -44,12 +44,15 @@
           single-line
           hide-details
           class="search"
+          data-test="search"
         />
       </v-card-title>
       <v-data-table
         :headers="headers"
         :items="rows"
         :search="search"
+        :custom-filter="filter"
+        :custom-sort="tableSort"
         v-model:items-per-page="itemsPerPage"
         :items-per-page-options="[10, 20, 50, 100, 500, 1000]"
         multi-sort
@@ -57,10 +60,29 @@
         density="compact"
       >
         <template v-slot:item.name="{ item }">
-          {{ item.name }}<span v-if="item.derived">&nbsp;*</span>
+          <div @contextmenu="(event) => showContextMenu(event, item)">
+            <v-tooltip bottom :key="`${item.name}-${isPinned(item.name)}`">
+              <template v-slot:activator="{ on, attrs }">
+                <v-icon
+                  v-if="isPinned(item.name)"
+                  v-bind="attrs"
+                  v-on="on"
+                  class="pin-item"
+                >
+                  mdi-pin
+                </v-icon>
+              </template>
+              <span
+                >Pinned items remain at the top.<br />Right click to
+                unpin.</span
+              >
+            </v-tooltip>
+            {{ item.name }}<span v-if="item.derived">&nbsp;*</span>
+          </div>
         </template>
         <template v-slot:item.value="{ item }">
           <value-widget
+            :key="item.name"
             :value="item.value"
             :limits-state="item.limitsState"
             :counter="item.counter"
@@ -70,13 +92,22 @@
           />
         </template>
         <template v-slot:footer.prepend>
-          * indicates a&nbsp;
-          <a
-            href="/tools/staticdocs/docs/configuration/telemetry#derived-items"
-          >
-            DERIVED
-          </a>
-          &nbsp;item
+          <v-tooltip bottom close-delay="2000">
+            <template v-slot:activator="{ on, attrs }">
+              <v-icon v-bind="attrs" v-on="on" class="info-tooltip">
+                mdi-information-variant-circle
+              </v-icon>
+            </template>
+            <span>
+              Name with * indicates
+              <a
+                href="/tools/staticdocs/docs/configuration/telemetry#derived-items"
+                >DERIVED</a
+              >&nbsp;item<br />
+              Right click name to pin item<br />
+              Right click value for details / graph
+            </span>
+          </v-tooltip>
         </template>
       </v-data-table>
     </v-card>
@@ -133,6 +164,23 @@
       :configKey="configKey"
       @success="saveConfiguration"
     />
+    <v-menu
+      v-model="contextMenuShown"
+      :position-x="x"
+      :position-y="y"
+      absolute
+      offset-y
+    >
+      <v-list>
+        <v-list-item
+          v-for="(item, index) in contextMenuOptions"
+          :key="index"
+          @click.stop="item.action"
+        >
+          <v-list-item-title>{{ item.title }}</v-list-item-title>
+        </v-list-item>
+      </v-list>
+    </v-menu>
   </div>
 </template>
 
@@ -304,8 +352,51 @@ export default {
             },
           ],
         },
-      ]
+      ],
+      updater: null,
+      counter: 0,
+      targetName: '',
+      packetName: '',
+      valueType: 'WITH_UNITS',
+      refreshInterval: 1000,
+      staleLimit: 30,
+      rows: [],
+      menuItems: [],
+      itemsPerPage: 20,
+      api: null,
+      pinnedItems: [],
+      contextMenuShown: false,
+      itemName: '',
+      x: 0,
+      y: 0,
+    }
+  },
+  watch: {
+    showIgnored: function () {
+      this.saveDefaultConfig(this.currentConfig)
     },
+    derivedLast: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    valueType: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    // Create a watcher on refreshInterval so we can change the updater
+    refreshInterval: function () {
+      this.changeUpdater(false)
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    staleLimit: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    itemsPerPage: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    pinnedItems: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+  },
+  computed: {
     currentConfig: function () {
       return {
         target: this.targetName,
@@ -316,7 +407,40 @@ export default {
         derivedLast: this.derivedLast,
         valueType: this.valueType,
         itemsPerPage: this.itemsPerPage,
+        pinnedItems: this.pinnedItems,
       }
+    },
+    contextMenuOptions: function () {
+      let options = []
+      if (this.isPinned(this.itemName)) {
+        options.push({
+          title: 'Unpin Item',
+          action: () => {
+            this.contextMenuShown = false
+            this.pinnedItems = this.pinnedItems.filter(
+              (item) =>
+                !(
+                  item.target === this.targetName &&
+                  item.packet === this.packetName &&
+                  item.item === this.itemName
+                ),
+            )
+          },
+        })
+      } else {
+        options.push({
+          title: 'Pin Item',
+          action: () => {
+            this.contextMenuShown = false
+            this.pinnedItems.push({
+              target: this.targetName,
+              packet: this.packetName,
+              item: this.itemName,
+            })
+          },
+        })
+      }
+      return options
     },
   },
   created() {
@@ -369,6 +493,66 @@ export default {
     }
   },
   methods: {
+    showContextMenu(e, item) {
+      e.preventDefault()
+      this.itemName = item.name
+      this.contextMenuShown = false
+      this.x = e.clientX
+      this.y = e.clientY
+      this.$nextTick(() => {
+        this.contextMenuShown = true
+      })
+    },
+    isPinned(name) {
+      return this.pinnedItems.find(
+        (item) =>
+          item.target === this.targetName &&
+          item.packet === this.packetName &&
+          item.item === name,
+      )
+    },
+    filter(value, search, _item) {
+      if (this.isPinned(value)) {
+        return true
+      } else {
+        return value.toString().indexOf(search.toUpperCase()) >= 0
+      }
+    },
+    tableSort(items, index, isDesc) {
+      // for each item in index, sort by that index
+      index.forEach((idx, i) => {
+        items.sort((a, b) => {
+          let aValue = a[idx]
+          let bValue = b[idx]
+
+          // For values just convert to float before sorting
+          // this will lead to a bunch of NaNs for non-numeric values
+          // but that's fine since they'll sort to the end
+          if (idx === 'value') {
+            aValue = parseFloat(aValue)
+            bValue = parseFloat(bValue)
+          }
+
+          if (aValue < bValue) {
+            return isDesc[i] ? 1 : -1
+          }
+          if (aValue > bValue) {
+            return isDesc[i] ? -1 : 1
+          }
+          return 0
+        })
+      })
+
+      // Finally sort the pinned values to the top
+      items.sort((a, b) => {
+        if (this.isPinned(a.name)) {
+          return -1
+        }
+        return 0
+      })
+
+      return items
+    },
     packetChanged(event) {
       this.api.get_target(event.targetName).then((target) => {
         this.ignoredItems = target.ignored_items
@@ -465,6 +649,7 @@ export default {
       this.derivedLast = false
       this.valueType = 'WITH_UNITS'
       this.itemsPerPage = 20
+      this.pinnedItems = []
     },
     applyConfig: function (config) {
       this.targetName = config.target
@@ -478,6 +663,7 @@ export default {
       this.valueType = config.valueType || 'WITH_UNITS'
       this.menus[1].radioGroup = valueTypeToRadioGroup[this.valueType]
       this.itemsPerPage = config.itemsPerPage || 20
+      this.pinnedItems = config.pinnedItems || []
     },
     openConfiguration: function (name, routed = false) {
       this.openConfigBase(name, routed, async (config) => {
@@ -508,3 +694,18 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+.v-tooltip__content {
+  pointer-events: initial;
+}
+a {
+  color: var(--button-color-background-primary-default);
+}
+.pin-item {
+  float: left;
+}
+.info-tooltip {
+  margin-left: 10px;
+}
+</style>

@@ -136,6 +136,12 @@
       :type="'cmd'"
       v-model="viewDetails"
     />
+    <critical-cmd-dialog
+      :uuid="criticalCmdUuid"
+      :cmdString="criticalCmdString"
+      :cmdUser="criticalCmdUser"
+      v-model="displayCriticalCmd"
+    />
 
     <v-dialog v-model="displayErrorDialog" max-width="600">
       <v-card>
@@ -245,6 +251,7 @@ import CommandParameterEditor from '@/tools/CommandSender/CommandParameterEditor
 import Utilities from '@/tools/CommandSender/utilities'
 import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 import DetailsDialog from '@openc3/tool-common/src/components/DetailsDialog'
+import CriticalCmdDialog from '@openc3/tool-common/src/components/CriticalCmdDialog'
 import TopBar from '@openc3/tool-common/src/components/TopBar'
 import Openc3Screen from '@openc3/tool-common/src/components/Openc3Screen'
 import 'sprintf-js'
@@ -253,6 +260,7 @@ export default {
   mixins: [Utilities],
   components: {
     DetailsDialog,
+    CriticalCmdDialog,
     TargetPacketItemChooser,
     CommandParameterEditor,
     TopBar,
@@ -291,6 +299,10 @@ export default {
       displaySendHazardous: false,
       displayErrorDialog: false,
       displaySendRaw: false,
+      displayCriticalCmd: false,
+      criticalTargetName: null,
+      criticalCmdName: null,
+      criticalUuid: null,
       sendDisabled: false,
       api: null,
       viewDetails: false,
@@ -665,13 +677,16 @@ export default {
                   targetName,
                   commandName,
                   paramList,
+                  {
+                    'Ignore-Errors': '428',
+                  },
                 )
               } else {
                 cmd = 'cmd_raw'
                 obs = this.api.cmd_raw(targetName, commandName, paramList, {
                   // This request could be denied due to out of range but since
                   // we're explicitly handling it we don't want the interceptor to fire
-                  'Ignore-Errors': '500',
+                  'Ignore-Errors': '428 500',
                 })
               }
             } else {
@@ -681,13 +696,16 @@ export default {
                   targetName,
                   commandName,
                   paramList,
+                  {
+                    'Ignore-Errors': '428',
+                  },
                 )
               } else {
                 cmd = 'cmd'
                 obs = this.api.cmd(targetName, commandName, paramList, {
                   // This request could be denied due to out of range but since
                   // we're explicitly handling it we don't want the interceptor to fire
-                  'Ignore-Errors': '500',
+                  'Ignore-Errors': '428 500',
                 })
               }
             }
@@ -731,6 +749,9 @@ export default {
             this.lastTargetName,
             this.lastCommandName,
             this.lastParamList,
+            {
+              'Ignore-Errors': '428',
+            },
           )
         } else {
           cmd = 'cmd_raw'
@@ -741,7 +762,7 @@ export default {
             {
               // This request could be denied due to out of range but since
               // we're explicitly handling it we don't want the interceptor to fire
-              'Ignore-Errors': '500',
+              'Ignore-Errors': '428 500',
             },
           )
         }
@@ -752,6 +773,9 @@ export default {
             this.lastTargetName,
             this.lastCommandName,
             this.lastParamList,
+            {
+              'Ignore-Errors': '428',
+            },
           )
         } else {
           cmd = 'cmd'
@@ -762,7 +786,7 @@ export default {
             {
               // This request could be denied due to out of range but since
               // we're explicitly handling it we don't want the interceptor to fire
-              'Ignore-Errors': '500',
+              'Ignore-Errors': '428 500',
             },
           )
         }
@@ -867,8 +891,20 @@ export default {
         this.status += ': '
         this.status += error.message
       }
+      if (this.status.includes('CriticalCmdError')) {
+        this.status = `Critical Command Queued For Approval`
+      }
       if (showDialog) {
-        this.displayErrorDialog = true
+        if (error.message.includes('CriticalCmdError')) {
+          this.criticalCmdUuid = error.object.data.instance_variables['@uuid']
+          this.criticalCmdString =
+            error.object.data.instance_variables['@cmd_string']
+          this.criticalCmdUser =
+            error.object.data.instance_variables['@username']
+          this.displayCriticalCmd = true
+        } else {
+          this.displayErrorDialog = true
+        }
       }
     },
 

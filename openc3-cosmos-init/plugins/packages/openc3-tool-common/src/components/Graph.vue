@@ -301,6 +301,20 @@
         </v-list-item>
       </v-list>
     </v-menu>
+
+    <tr class="u-series" ref="info">
+      <v-tooltip bottom>
+        <template v-slot:activator="{ on, attrs }">
+          <v-icon v-bind="attrs" v-on="on" class="info-tooltip">
+            mdi-information-variant-circle
+          </v-icon>
+        </template>
+        <span>
+          Click item to toggle<br />
+          Right click to edit
+        </span>
+      </v-tooltip>
+    </tr>
   </div>
 </template>
 
@@ -672,14 +686,6 @@ export default {
                 this.editGraphMenuY = e.clientY
                 this.editGraphMenu = true
               })
-              // Tell TlmGrapher that you might need to resize since on mouseenter
-              // we start showing value popups and the graph can expand
-              canvas.addEventListener('mouseenter', (e) => {
-                this.$emit('resize')
-              })
-              canvas.addEventListener('mouseleave', (e) => {
-                this.$emit('resize')
-              })
               let legend = u.root.querySelector('.u-legend')
               legend.addEventListener('contextmenu', (e) => {
                 e.preventDefault()
@@ -703,6 +709,8 @@ export default {
                   this.legendMenu = true
                 }
               })
+              // Append the info to the legend
+              legend.querySelector('tbody').appendChild(this.$refs.info)
             },
           ],
         },
@@ -760,7 +768,7 @@ export default {
       this.moveLegend(this.legendPosition)
 
       // Allow the charts to dynamically resize when the window resizes
-      window.addEventListener('resize', this.handleResize)
+      window.addEventListener('resize', this.resize)
     }
 
     if (this.state !== 'stop') {
@@ -770,7 +778,7 @@ export default {
   beforeUnmount: function () {
     this.stopGraph()
     this.cable.disconnect()
-    window.removeEventListener('resize', this.handleResize)
+    window.removeEventListener('resize', this.resize)
   },
   watch: {
     state: function (newState, oldState) {
@@ -958,13 +966,6 @@ export default {
       this.moveLegend(this.legendPosition)
       this.$emit('edit')
     },
-    handleResize: function () {
-      // TODO: Should this method be throttled?
-      this.graph.setSize(this.getSize('chart'))
-      if (this.overview) {
-        this.overview.setSize(this.getSize('overview'))
-      }
-    },
     resize: function () {
       this.handleResize()
       this.$emit('resize', this.id)
@@ -1100,7 +1101,7 @@ export default {
           height = height / 2.0 + 10 // 5px padding top and bottom
         }
       }
-      let width = viewWidth - 62 // 31px padding left and right
+      let width = viewWidth - 42 // padding left and right
       if (!this.fullWidth) {
         width = width / 2.0 - 10 // 5px padding left and right
       }
@@ -1357,7 +1358,7 @@ export default {
                 if (rawValue == null) {
                   return '--'
                 } else if (
-                  Math.abs(rawValue) < 0.01 ||
+                  (Math.abs(rawValue) < 0.01 && rawValue !== 0) ||
                   Math.abs(rawValue) >= 10_000_000
                 ) {
                   return rawValue.toExponential(6)
@@ -1393,6 +1394,7 @@ export default {
         }
       }
       this.addItemsToSubscription(itemArray)
+      this.$emit('resize')
       this.$emit('edit')
     },
     addItemsToSubscription: function (itemArray = this.items) {
@@ -1460,6 +1462,7 @@ export default {
         this.graph.setData(this.data)
         this.overview.setData(this.data)
       }
+      this.$emit('resize')
       this.$emit('edit')
     },
     removeItemsFromSubscription: function (itemArray = this.items) {
@@ -1608,6 +1611,15 @@ export default {
 }
 .uplot.top-legend .u-legend {
   order: -1;
+}
+/* This value is large enough to support negative scientific notation
+   that we use on the value with rawValue.toExponential(6) */
+.u-legend.u-inline .u-series .u-value {
+  width: 105px;
+}
+/* This value is large enough to support our date format: YYYY-MM-DD HH:MM:SS.sss */
+.u-legend.u-inline .u-series:first-child .u-value {
+  width: 180px;
 }
 .u-select {
   color: rgba(255, 255, 255, 0.07);

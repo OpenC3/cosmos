@@ -69,6 +69,7 @@ module OpenC3
     LOG = 'log'
     NOTIFICATION = 'notification'
     ALERT = 'alert'
+    EPHEMERAL = 'ephemeral'
 
     # @param level [Integer] The initial logging level
     def initialize(level = Logger::INFO)

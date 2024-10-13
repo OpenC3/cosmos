@@ -67,7 +67,7 @@ export default {
     this.width = this.setWidth(this.parameters[6], 'px', this.width)
     this.height = this.setHeight(this.parameters[7], 'px', this.height)
   },
-  destroyed() {
+  unmounted() {
     this.$emit('deleteItem', this.valueId)
   },
   methods: {

@@ -59,6 +59,8 @@ module OpenC3
             # Check for HazardousError which is a special case
             elsif msg_hash["result"].include?("HazardousError")
               raise_hazardous_error(msg_hash, command['target_name'], command['cmd_name'], cmd_params)
+            elsif msg_hash["result"].include?("CriticalCmdError")
+              raise_critical_cmd_error(msg_hash, command['username'], command['target_name'], command['cmd_name'], cmd_params, command['cmd_string'])
             else
               raise msg_hash["result"]
             end
@@ -84,6 +86,20 @@ module OpenC3
       error.formatted = formatted
 
       # No Logger.info because the error is already logged by the Logger.info "Ack Received ...
+      raise error
+    end
+
+    def self.raise_critical_cmd_error(msg_hash, username, target_name, cmd_name, cmd_params, cmd_string)
+      _, uuid = msg_hash["result"].split("\n")
+      # Create and populate a new CriticalCmdError and raise it up
+      # The _cmd method in script/commands.rb rescues this and calls prompt_for_critical_cmd
+      error = CriticalCmdError.new
+      error.uuid = uuid
+      error.username = username
+      error.target_name = target_name
+      error.cmd_name = cmd_name
+      error.cmd_params = cmd_params
+      error.cmd_string = cmd_string
       raise error
     end
   end

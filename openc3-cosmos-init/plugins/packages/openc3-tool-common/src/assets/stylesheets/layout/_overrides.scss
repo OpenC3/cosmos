@@ -59,6 +59,11 @@
   border-color: var(--button-color-border-primary-default) !important;
   color: var(--color-text-interactive-default) !important;
 }
+.theme--dark.v-btn--outlined.v-btn--disabled {
+  border-color: var(--button-color-border-primary-default) !important;
+  color: var(--color-text-interactive-default) !important;
+  opacity: 0.4 !important;
+}
 .v-theme--cosmosDark.v-btn--variant-outlined:not(
     .v-btn--icon,
     .v-btn--round,
