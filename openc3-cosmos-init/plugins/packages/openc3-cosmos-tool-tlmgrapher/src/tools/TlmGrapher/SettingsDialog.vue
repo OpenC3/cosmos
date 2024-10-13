@@ -22,11 +22,11 @@
 
 <template>
   <v-dialog v-model="show" width="600">
-    <v-system-bar>
+    <v-toolbar height="24">
       <v-spacer />
       <span>TlmGrapher Settings</span>
       <v-spacer />
-    </v-system-bar>
+    </v-toolbar>
     <v-card class="pa-3">
       <v-card-text>
         <div v-for="item in settings" :key="item.title">

@@ -25,7 +25,7 @@
     <v-dialog persistent v-model="show" width="600">
       <v-card>
         <form @submit.prevent="createMetadata">
-          <v-system-bar>
+          <v-toolbar height="24">
             <v-spacer />
             <span v-if="metadata">Update Metadata</span>
             <span v-else>Create Metadata</span>
@@ -40,7 +40,7 @@
               </template>
               <span>Close</span>
             </v-tooltip>
-          </v-system-bar>
+          </v-toolbar>
           <v-stepper v-model="dialogStep" vertical non-linear>
             <v-stepper-step editable step="1">
               Input start time
@@ -135,7 +135,7 @@ export default {
     MetadataInputForm,
   },
   props: {
-    value: Boolean, // value is the default prop when using v-model
+    modelValue: Boolean,
     metadata: {
       type: Object,
       default: null,
@@ -173,10 +173,10 @@ export default {
     },
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
   },

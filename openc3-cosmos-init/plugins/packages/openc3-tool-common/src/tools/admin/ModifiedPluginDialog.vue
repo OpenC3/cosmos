@@ -19,11 +19,11 @@
 <template>
   <v-dialog v-model="show" width="600">
     <v-card>
-      <v-system-bar>
+      <v-toolbar height="24">
         <v-spacer />
         <span> Modified Plugin </span>
         <v-spacer />
-      </v-system-bar>
+      </v-toolbar>
       <v-card-text class="pa-3">
         <div>
           Plugin {{ plugin }} was modified. Would you like to delete the
@@ -84,7 +84,7 @@ import Api from '../../services/api'
 
 export default {
   props: {
-    value: Boolean, // value is the default prop when using v-model
+    modelValue: Boolean,
     plugin: String,
     targets: Array,
     pluginDelete: Boolean,
@@ -98,10 +98,10 @@ export default {
   computed: {
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
   },

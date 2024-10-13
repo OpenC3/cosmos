@@ -96,7 +96,7 @@ import { format } from 'date-fns'
 
 export default {
   props: {
-    value: {
+    modelValue: {
       type: Array,
       required: true,
     },
@@ -117,10 +117,10 @@ export default {
   computed: {
     messages: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
   },

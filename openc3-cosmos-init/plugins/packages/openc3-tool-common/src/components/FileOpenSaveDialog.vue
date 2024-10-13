@@ -31,11 +31,11 @@
         ></v-progress-circular>
       </v-overlay>
       <form v-on:submit.prevent="success">
-        <v-system-bar>
+        <v-toolbar height="24">
           <v-spacer />
           <span> {{ title }} </span>
           <v-spacer />
-        </v-system-bar>
+        </v-toolbar>
         <v-card-text>
           <div class="pa-3">
             <v-row>{{ helpText }} </v-row>
@@ -149,7 +149,7 @@ export default {
     apiUrl: String, // Base API URL for use with scripts or cmd-tlm
     requireTargetParentDir: Boolean, // Require that the save filename be nested in a directory with the name of a target
     inputFilename: String, // passed if this is a 'save' dialog
-    value: Boolean, // value is the default prop when using v-model
+    modelValue: Boolean,
   },
   data() {
     return {
@@ -166,10 +166,10 @@ export default {
   computed: {
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
     title: function () {
@@ -403,7 +403,7 @@ export default {
         this.insertFile(
           root[root.length - 1].children, // Start from the node we just added
           level + 1,
-          parts.slice(1).join('/') // Strip the first part of the path
+          parts.slice(1).join('/'), // Strip the first part of the path
         )
       } else {
         // We already have something at this level so recursively
@@ -411,7 +411,7 @@ export default {
         this.insertFile(
           root[index].children,
           level + 1,
-          parts.slice(1).join('/')
+          parts.slice(1).join('/'),
         )
       }
     },

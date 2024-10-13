@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -45,7 +45,7 @@
 export default {
   components: {},
   props: {
-    value: {
+    modelValue: {
       type: String,
       required: true,
     },
@@ -56,10 +56,10 @@ export default {
   computed: {
     color: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
     swatches: function () {

@@ -183,11 +183,11 @@
 
     <!-- Error dialog -->
     <v-dialog v-model="errorDialog" max-width="600">
-      <v-system-bar>
+      <v-toolbar height="24">
         <v-spacer />
         <span>Errors</span>
         <v-spacer />
-      </v-system-bar>
+      </v-toolbar>
       <v-card class="pa-3">
         <v-row dense>
           <v-text-field

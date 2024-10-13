@@ -126,9 +126,9 @@ import 'ace-builds/src-min-noconflict/mode-ruby'
 import 'ace-builds/src-min-noconflict/theme-twilight'
 import 'ace-builds/src-min-noconflict/ext-language_tools'
 import 'ace-builds/src-min-noconflict/ext-searchbox'
-import AceDiff from '@openc3/ace-diff'
-import '@openc3/ace-diff/dist/ace-diff.min.css'
-import '@openc3/ace-diff/dist/ace-diff-dark.min.css'
+// import AceDiff from '@openc3/ace-diff'
+// import '@openc3/ace-diff/dist/ace-diff.min.css'
+// import '@openc3/ace-diff/dist/ace-diff-dark.min.css'
 
 export default {
   props: {
@@ -148,7 +148,7 @@ export default {
       type: String,
       required: false,
     },
-    value: Boolean, // value is the default prop when using v-model
+    modelValue: Boolean, // modelValue is the default prop when using v-model
   },
   data() {
     return {
@@ -194,7 +194,7 @@ export default {
       this.curDiff = -1 // so the first will be 0
     }
   },
-  beforeDestroy() {
+  beforeUnmount() {
     if (this.editor) {
       this.editor.destroy()
     }
@@ -205,10 +205,10 @@ export default {
   computed: {
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
   },

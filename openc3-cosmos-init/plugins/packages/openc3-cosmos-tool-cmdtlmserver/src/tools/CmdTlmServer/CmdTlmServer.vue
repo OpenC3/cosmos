@@ -48,11 +48,11 @@
     <log-messages :time-zone="timeZone" />
     <v-dialog v-model="optionsDialog" max-width="300">
       <v-card>
-        <v-system-bar>
+        <v-toolbar height="24">
           <v-spacer />
           <span>Options</span>
           <v-spacer />
-        </v-system-bar>
+        </v-toolbar>
         <div class="mt-6 pa-3">
           <v-text-field
             min="0"

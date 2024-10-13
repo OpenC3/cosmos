@@ -139,11 +139,11 @@
 
     <v-dialog v-model="displayErrorDialog" max-width="600">
       <v-card>
-        <v-system-bar>
+        <v-toolbar height="24">
           <v-spacer />
           <span> Error </span>
           <v-spacer />
-        </v-system-bar>
+        </v-toolbar>
         <v-card-text>
           <div class="mx-1">
             <v-row class="my-2">
@@ -168,11 +168,11 @@
 
     <v-dialog v-model="displaySendHazardous" max-width="600">
       <v-card>
-        <v-system-bar absolute>
+        <v-toolbar height="24">
           <v-spacer />
           <span> Hazardous Warning </span>
           <v-spacer />
-        </v-system-bar>
+        </v-toolbar>
         <v-card-text class="mt-6">
           Warning: Command {{ hazardousCommand }} is Hazardous. Send?
         </v-card-text>
@@ -188,11 +188,11 @@
 
     <v-dialog v-model="displaySendRaw" max-width="600">
       <v-card>
-        <v-system-bar>
+        <v-toolbar height="24">
           <v-spacer />
           <span> Send Raw </span>
           <v-spacer />
-        </v-system-bar>
+        </v-toolbar>
         <v-card-text>
           <div class="mx-1">
             <v-row class="my-2">
@@ -960,9 +960,5 @@ export default {
   width: 95%;
   position: relative;
   font-size: 16px;
-}
-
-.v-system-bar {
-  top: 0 !important;
 }
 </style>

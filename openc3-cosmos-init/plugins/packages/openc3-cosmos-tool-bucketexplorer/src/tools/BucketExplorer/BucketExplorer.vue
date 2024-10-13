@@ -144,11 +144,11 @@
     </v-card>
     <v-dialog v-model="uploadPathDialog" max-width="600">
       <v-card>
-        <v-system-bar>
+        <v-toolbar height="24">
           <v-spacer />
           <span> Upload Path </span>
           <v-spacer />
-        </v-system-bar>
+        </v-toolbar>
         <v-card-text>
           <div class="mx-1">
             <v-row class="my-2">
@@ -195,11 +195,11 @@
       max-width="300"
     >
       <v-card>
-        <v-system-bar>
+        <v-toolbar height="24">
           <v-spacer />
           <span>Options</span>
           <v-spacer />
-        </v-system-bar>
+        </v-toolbar>
         <v-card-text>
           <div class="pa-3">
             <v-text-field

@@ -262,9 +262,10 @@ input {
   z-index: initial !important;
 }
 
-.v-list-item__content {
-  display: flex;
-}
+// This breaks the normal list title / subtitle layout
+// .v-list-item__content {
+//   display: flex;
+// }
 .v-list-item-action {
   margin-right: 15px !important;
 }

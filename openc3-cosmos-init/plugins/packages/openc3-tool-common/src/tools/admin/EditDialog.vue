@@ -24,7 +24,7 @@
   <v-dialog :persistent="!readonly" v-model="show" width="80vw">
     <v-card>
       <form v-on:submit.prevent="submit">
-        <v-system-bar>
+        <v-toolbar height="24">
           <v-spacer />
           <span v-text="title" />
           <v-spacer />
@@ -40,7 +40,7 @@
               <span> Download </span>
             </v-tooltip>
           </div>
-        </v-system-bar>
+        </v-toolbar>
 
         <v-card-text>
           <div class="pa-3">
@@ -122,7 +122,7 @@ export default {
     },
     type: String,
     name: String,
-    value: Boolean, // value is the default prop when using v-model
+    modelValue: Boolean,
     readonly: Boolean,
   },
   data() {
@@ -154,10 +154,10 @@ export default {
   computed: {
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
     title: function () {

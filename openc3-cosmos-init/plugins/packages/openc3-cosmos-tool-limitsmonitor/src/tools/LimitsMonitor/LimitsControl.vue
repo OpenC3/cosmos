@@ -130,11 +130,11 @@
     </v-card>
     <v-dialog v-model="ignoredItemsDialog" max-width="600">
       <v-card>
-        <v-system-bar>
+        <v-toolbar height="24">
           <v-spacer />
           <span>Ignored Items</span>
           <v-spacer />
-        </v-system-bar>
+        </v-toolbar>
         <v-card-text class="mt-2">
           <div>
             <div v-for="(item, index) in ignoredFormatted" :key="index">

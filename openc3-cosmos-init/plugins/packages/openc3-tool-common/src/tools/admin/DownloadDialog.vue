@@ -16,18 +16,18 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
 <template>
   <v-dialog v-model="show" width="600">
     <v-card>
-      <v-system-bar>
+      <v-toolbar height="24">
         <v-spacer />
         <span> Download Gems </span>
         <v-spacer />
-      </v-system-bar>
+      </v-toolbar>
       <v-card-text>
         <div class="pa-3">
           <v-row class="my-2"> Select a download option </v-row>
@@ -111,7 +111,7 @@ import axios from 'axios'
 
 export default {
   props: {
-    value: Boolean, // value is the default prop when using v-model
+    modelValue: Boolean,
   },
   data() {
     return {
@@ -126,10 +126,10 @@ export default {
   computed: {
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
     listData: function () {

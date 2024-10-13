@@ -172,11 +172,11 @@
               max-width="600"
             >
               <v-card>
-                <v-system-bar>
+                <v-toolbar height="24">
                   <v-spacer />
                   <span> DataExtractor: Edit Item Mode </span>
                   <v-spacer />
-                </v-system-bar>
+                </v-toolbar>
                 <v-card-text>
                   <v-row class="mt-3 title-font">
                     <v-col>
@@ -240,11 +240,11 @@
     </v-card>
     <v-dialog v-model="editAll" @keydown.esc="cancelEditAll" max-width="600">
       <v-card>
-        <v-system-bar>
+        <v-toolbar height="24">
           <v-spacer />
           <span> DataExtractor: Edit All Items</span>
           <v-spacer />
-        </v-system-bar>
+        </v-toolbar>
         <v-card-text>
           <v-row class="mt-3">
             <v-col>

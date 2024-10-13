@@ -26,7 +26,7 @@
 <template>
   <div :style="computedStyle" ref="bar">
     <v-card :min-height="height" :min-width="width">
-      <v-system-bar absolute>
+      <v-toolbar height="24">
         <div v-show="errors.length !== 0">
           <v-tooltip location="top">
             <template v-slot:activator="{ props }">
@@ -120,7 +120,7 @@
           </template>
           <span> Close Screen </span>
         </v-tooltip>
-      </v-system-bar>
+      </v-toolbar>
       <v-expand-transition v-if="!editDialog">
         <div
           class="pa-1 pt-7"
@@ -161,11 +161,11 @@
 
     <!-- Error dialog -->
     <v-dialog v-model="errorDialog" max-width="600">
-      <v-system-bar>
+      <v-toolbar height="24">
         <v-spacer />
         <span> Screen: {{ target }} {{ screen }} Errors </span>
         <v-spacer />
-      </v-system-bar>
+      </v-toolbar>
       <v-card>
         <v-textarea class="errors" readonly rows="13" :model-value="error" />
       </v-card>
@@ -352,7 +352,7 @@ export default {
         'z-index: ' + this.zIndex
     }
   },
-  destroyed() {
+  unmounted() {
     if (this.updater != null) {
       clearInterval(this.updater)
       this.updater = null

@@ -169,29 +169,29 @@ test('shows and hides built-in tools', async ({ page, utils }) => {
 test('shows targets associated with plugins', async ({ page, utils }) => {
   // Check that the openc3-demo contains the following targets:
   await expect(
-    page.locator(
-      '[data-test=plugin-list] div[role=listitem]:has-text("openc3-cosmos-demo")',
-    ),
+    page
+      .locator('[data-test=plugin-list] div:has-text("openc3-cosmos-demo")')
+      .first(),
   ).toContainText('EXAMPLE')
   await expect(
-    page.locator(
-      '[data-test=plugin-list] div[role=listitem]:has-text("openc3-cosmos-demo")',
-    ),
+    page
+      .locator('[data-test=plugin-list] div:has-text("openc3-cosmos-demo")')
+      .first(),
   ).toContainText('INST')
   await expect(
-    page.locator(
-      '[data-test=plugin-list] div[role=listitem]:has-text("openc3-cosmos-demo")',
-    ),
+    page
+      .locator('[data-test=plugin-list] div:has-text("openc3-cosmos-demo")')
+      .first(),
   ).toContainText('INST2')
   await expect(
-    page.locator(
-      '[data-test=plugin-list] div[role=listitem]:has-text("openc3-cosmos-demo")',
-    ),
+    page
+      .locator('[data-test=plugin-list] div:has-text("openc3-cosmos-demo")')
+      .first(),
   ).toContainText('SYSTEM')
   await expect(
-    page.locator(
-      '[data-test=plugin-list] div[role=listitem]:has-text("openc3-cosmos-demo")',
-    ),
+    page
+      .locator('[data-test=plugin-list] div:has-text("openc3-cosmos-demo")')
+      .first(),
   ).toContainText('TEMPLATED')
 })
 
@@ -203,14 +203,18 @@ let plugin = 'openc3-cosmos-pw-test'
 let pluginGem = 'openc3-cosmos-pw-test-1.0.0.gem'
 let pluginGem1 = 'openc3-cosmos-pw-test-1.0.1.gem'
 
-test('installs a new plugin', async ({ page, utils }) => {
+test.only('installs a new plugin', async ({ page, utils }) => {
   // Note that Promise.all prevents a race condition
   // between clicking and waiting for the file chooser.
   const [fileChooser] = await Promise.all([
     // It is important to call waitForEvent before click to set up waiting.
     page.waitForEvent('filechooser'),
     // Opens the file chooser.
-    await page.locator('text=Click to install').click({ force: true }),
+    await page
+      .getByLabel('Click to install new plugin .gem (NOT upgrade)', {
+        exact: true,
+      })
+      .click(),
   ])
   await fileChooser.setFiles(`./${plugin}/${pluginGem}`)
   await expect(page.locator('.v-dialog:has-text("Variables")')).toBeVisible()
@@ -242,24 +246,20 @@ test('installs a new plugin', async ({ page, utils }) => {
   await expect(page.locator('[data-test=process-list]')).toContainText(regexp)
 
   await expect(
-    page.locator(
-      `[data-test=plugin-list] div[role=listitem]:has-text("${plugin}")`,
-    ),
+    page.locator(`[data-test=plugin-list] div:has-text("${plugin}")`).first(),
   ).toContainText('PW_TEST')
   // Show the process output
   await page
     .locator(
-      `[data-test=process-list] div[role=listitem]:has-text("${plugin}") >> [data-test=show-output]`,
+      `[data-test=process-list] div:has-text("${plugin}") >> [data-test=show-output]`,
     )
     .first()
     .click()
-  await expect(page.locator('.v-dialog--active')).toContainText(
-    'Process Output',
-  )
-  await expect(page.locator('.v-dialog--active')).toContainText(
+  await expect(page.getByRole('dialog')).toContainText('Process Output')
+  await expect(page.getByRole('dialog')).toContainText(
     `Loading new plugin: ${pluginGem}`,
   )
-  await page.locator('.v-dialog--active >> button:has-text("Ok")').click()
+  await page.getByRole('button', { name: 'Ok' }).click()
 })
 
 // Playwright requires a separate test.describe to then call test.use

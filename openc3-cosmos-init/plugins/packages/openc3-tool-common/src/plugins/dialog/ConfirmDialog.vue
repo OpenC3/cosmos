@@ -24,11 +24,11 @@
   <v-app>
     <v-dialog v-model="show" width="600">
       <v-card>
-        <v-system-bar>
+        <v-toolbar height="24">
           <v-spacer />
           <span> {{ params.title }} </span>
           <v-spacer />
-        </v-system-bar>
+        </v-toolbar>
         <v-card-text class="mt-4 pa-3">
           <v-icon v-if="params.validateText" class="mr-2"> mdi-alert </v-icon>
           <span v-if="params.html" v-html="params.text" class="pa-3"></span>

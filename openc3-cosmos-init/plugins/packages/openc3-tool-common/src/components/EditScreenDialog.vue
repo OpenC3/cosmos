@@ -20,7 +20,7 @@
   <!-- Edit dialog -->
   <v-dialog persistent v-model="show" width="75vw">
     <v-card>
-      <v-system-bar>
+      <v-toolbar height="24">
         <div class="mx-2">
           <v-tooltip location="top">
             <template v-slot:activator="{ props }">
@@ -51,7 +51,7 @@
             <span> Download Screen </span>
           </v-tooltip>
         </div>
-      </v-system-bar>
+      </v-toolbar>
       <v-card-text>
         <v-row class="mt-3"> Upload a screen file. </v-row>
         <v-row no-gutters align="center">
@@ -129,7 +129,7 @@ import { ScreenCompleter } from './autocomplete'
 
 export default {
   props: {
-    value: Boolean, // value is the default prop when using v-model
+    modelValue: Boolean,
     target: {
       type: String,
       default: '',
@@ -185,10 +185,10 @@ export default {
     },
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
   },

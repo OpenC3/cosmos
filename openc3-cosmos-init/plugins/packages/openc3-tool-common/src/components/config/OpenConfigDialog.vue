@@ -24,11 +24,11 @@
   <v-dialog v-model="show" @keydown.esc="cancel" width="600">
     <v-card>
       <form v-on:submit.prevent="success">
-        <v-system-bar>
+        <v-toolbar height="24">
           <v-spacer />
           <span>Open Configuration</span>
           <v-spacer />
-        </v-system-bar>
+        </v-toolbar>
 
         <v-card-text>
           <div class="mt-4 pa-3">
