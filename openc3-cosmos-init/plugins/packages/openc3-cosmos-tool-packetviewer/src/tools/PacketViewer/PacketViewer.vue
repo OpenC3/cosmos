@@ -52,7 +52,6 @@
         :items="rows"
         :search="search"
         :custom-filter="filter"
-        :custom-sort="tableSort"
         v-model:items-per-page="itemsPerPage"
         :items-per-page-options="[10, 20, 50, 100, 500, 1000]"
         multi-sort
@@ -164,13 +163,7 @@
       :configKey="configKey"
       @success="saveConfiguration"
     />
-    <v-menu
-      v-model="contextMenuShown"
-      :position-x="x"
-      :position-y="y"
-      absolute
-      offset-y
-    >
+    <v-menu v-model="contextMenuShown" :target="[x, y]" absolute offset-y>
       <v-list>
         <v-list-item
           v-for="(item, index) in contextMenuOptions"
@@ -224,6 +217,10 @@ export default {
           title: 'Name',
           key: 'name',
           align: 'end',
+          sortRaw(a, b) {
+            console.log(`sortRaw ${a} ${b}`)
+            return a > b ? 1 : -1
+          },
         },
         { title: 'Value', key: 'value' },
       ],
