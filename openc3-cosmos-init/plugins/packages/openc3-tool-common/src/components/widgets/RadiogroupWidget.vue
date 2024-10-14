@@ -35,9 +35,9 @@
       :is="widget.type"
       :target="widget.target"
       :parameters="widget.parameters"
-      :settings="widget.appliedSettings"
-      :screenValues="screenValues"
-      :screenTimeZone="screenTimeZone"
+      :settings="widget.settings"
+      :screen-values="screenValues"
+      :screen-time-zone="screenTimeZone"
       :name="widget.name"
     />
   </v-radio-group>
@@ -54,12 +54,6 @@ export default {
     }
   },
   created() {
-    // Look through the settings and see if we're a NAMED_WIDGET
-    this.appliedSettings.forEach((setting) => {
-      if (setting[0] === 'NAMED_WIDGET') {
-        setting[2].setNamedWidget(setting[1], this)
-      }
-    })
     if (this.parameters[0]) {
       this.selectedIndex = parseInt(this.parameters[0])
     }

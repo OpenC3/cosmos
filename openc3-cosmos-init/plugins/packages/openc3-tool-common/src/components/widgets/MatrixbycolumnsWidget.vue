@@ -29,13 +29,13 @@
           :is="widget.type"
           :target="widget.target"
           :parameters="widget.parameters"
-          :settings="widget.appliedSettings"
-          :screenValues="screenValues"
-          :screenTimeZone="screenTimeZone"
+          :settings="widget.settings"
+          :screen-values="screenValues"
+          :screen-time-zone="screenTimeZone"
           :widgets="widget.widgets"
           :name="widget.name"
           :line="widget.line"
-          :lineNumber="widget.lineNumber"
+          :line-number="widget.lineNumber"
         />
       </td>
     </tr>
@@ -59,14 +59,14 @@ export default {
     if (this.parameters[1]) {
       let margin = this.parameters[1]
       this.widgets.forEach((widget) => {
-        const found = widget.settings.find(
+        const found = widget.appliedSettings.find(
           (setting) =>
             setting[0] === 'MARGIN' ||
             (setting[0] === 'RAW' &&
               setting[1].toUpperCase().includes('MARGIN')),
         )
         if (found === undefined) {
-          widget.settings.push(['MARGIN', margin])
+          widget.appliedSettings.push(['MARGIN', margin])
         }
       })
     }

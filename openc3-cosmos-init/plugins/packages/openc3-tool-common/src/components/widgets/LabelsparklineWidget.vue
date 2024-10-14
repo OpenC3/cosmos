@@ -20,14 +20,14 @@
   <div ref="container" class="d-flex flex-row" :style="computedStyle">
     <label-widget
       :parameters="labelName"
-      :settings="[...appliedSettings]"
+      :settings="[...settings]"
       :line="line"
       :lineNumber="lineNumber"
       :widget-index="0"
     />
     <sparkline-widget
       :parameters="parameters"
-      :settings="[...appliedSettings]"
+      :settings="[...settings]"
       :style="computedStyle"
       :widget-index="1"
     />

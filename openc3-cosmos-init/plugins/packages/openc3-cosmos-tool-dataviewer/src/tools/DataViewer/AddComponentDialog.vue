@@ -26,11 +26,11 @@
     <!-- width chosen to fit target-packet-item-chooser at full width -->
     <v-dialog v-model="show" width="1200">
       <v-card>
-        <v-system-bar>
+        <v-toolbar :height="24">
           <v-spacer />
           <span> Configure Component </span>
           <v-spacer />
-        </v-system-bar>
+        </v-toolbar>
         <v-card-text>
           <v-container>
             <v-row align="center">

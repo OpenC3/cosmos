@@ -25,22 +25,22 @@
     <!-- The widget-index is the order in the widget name: LABELVALUELIMITSCOLUMN -->
     <label-widget
       :parameters="[parameters[2]]"
-      :settings="[...appliedSettings]"
+      :settings="[...settings]"
       :widget-index="0"
     />
     <limitscolumn-widget
       v-bind="$attrs"
       :parameters="parameters"
-      :settings="[...appliedSettings]"
-      :screenValues="screenValues"
+      :settings="[...settings]"
+      :screen-values="screenValues"
       :widget-index="2"
     />
     <value-widget
       v-bind="$attrs"
       :parameters="parameters"
-      :settings="[...appliedSettings]"
-      :screenValues="screenValues"
-      :screenTimeZone="screenTimeZone"
+      :settings="[...settings]"
+      :screen-values="screenValues"
+      :screen-time-zone="screenTimeZone"
       :widget-index="1"
     />
   </div>

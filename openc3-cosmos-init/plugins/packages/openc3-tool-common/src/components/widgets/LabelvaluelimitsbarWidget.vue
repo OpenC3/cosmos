@@ -26,15 +26,15 @@
       v-bind="$attrs"
       :parameters="parameters"
       :settings="labelValueSettings"
-      :screenValues="screenValues"
-      :screenTimeZone="screenTimeZone"
+      :screen-values="screenValues"
+      :screen-time-zone="screenTimeZone"
     />
     <limitsbar-widget
       class="pt-1"
       v-bind="$attrs"
       :parameters="parameters"
-      :settings="[...appliedSettings]"
-      :screenValues="screenValues"
+      :settings="[...settings]"
+      :screen-values="screenValues"
       :widget-index="2"
     />
   </div>
@@ -60,7 +60,7 @@ export default {
     labelValueSettings() {
       return [
         // Get all the setting that apply to labelvalue (0, 1 widgets)
-        ...this.appliedSettings.filter(
+        ...this.settings.filter(
           (x) => parseInt(x[0]) === 0 || parseInt(x[0]) === 1,
         ),
       ]

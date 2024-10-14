@@ -22,10 +22,14 @@
 
 <template>
   <div class="textbox-widget-container">
+    <!-- TODO: vuetify 3 made styling this correctly extremely difficult -->
     <v-textarea
       variant="solo"
       density="compact"
       readonly
+      no-resize
+      auto-grow
+      rows="2"
       hide-details
       :model-value="_value"
       :class="valueClass"
@@ -101,6 +105,9 @@ export default {
   min-height: 24px !important;
   display: flex !important;
   align-items: center !important;
+}
+.textbox-widget-container :deep(.v-field__loader) {
+  display: none !important;
 }
 .openc3-green :deep(input) {
   color: rgb(0, 200, 0);

@@ -24,14 +24,14 @@
   <div ref="container" class="d-flex flex-row" :style="computedStyle">
     <label-widget
       :parameters="labelName"
-      :settings="[...appliedSettings]"
+      :settings="[...settings]"
       :widget-index="0"
     />
     <progressbar-widget
       v-bind="$attrs"
       :parameters="parameters"
-      :settings="[...appliedSettings]"
-      :screenValues="screenValues"
+      :settings="[...settings]"
+      :screen-values="screenValues"
       :style="computedStyle"
       :widget-index="1"
     />

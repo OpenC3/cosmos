@@ -762,7 +762,7 @@ export default {
       this.startGraph()
     }
   },
-  beforeDestroy: function () {
+  beforeUnmount: function () {
     this.stopGraph()
     this.cable.disconnect()
     window.removeEventListener('resize', this.handleResize)
@@ -946,7 +946,6 @@ export default {
       this.$emit('edit')
     },
     handleResize: function () {
-      console.log('handleResize')
       // TODO: Should this method be throttled?
       this.graph.setSize(this.getSize('chart'))
       if (this.overview) {

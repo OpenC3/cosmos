@@ -19,7 +19,7 @@
 <template>
   <img
     :src="src"
-    :alt="itemFullName"
+    :alt="valueId"
     :width="parameters[4]"
     :height="parameters[5]"
     :style="computedStyle"
@@ -48,7 +48,7 @@ export default {
     this.valueId = `${this.parameters[0]}__${this.parameters[1]}__${this.parameters[2]}__CONVERTED`
     this.$emit('addItem', this.valueId)
   },
-  destroyed: function () {
+  unmounted: function () {
     this.$emit('deleteItem', this.valueId)
   },
 }

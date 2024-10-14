@@ -67,8 +67,8 @@
             v-if="item.limits"
             :parameters="item.parameters"
             :settings="widgetSettings"
-            :screenValues="screenValues"
-            :screenTimeZone="timeZone"
+            :screen-values="screenValues"
+            :screen-time-zone="timeZone"
             v-on:add-item="addItem"
             v-on:delete-item="deleteItem"
           />
@@ -76,8 +76,8 @@
             v-else
             :parameters="item.parameters"
             :settings="widgetSettings"
-            :screenValues="screenValues"
-            :screenTimeZone="timeZone"
+            :screen-values="screenValues"
+            :screen-time-zone="timeZone"
             v-on:add-item="addItem"
             v-on:delete-item="deleteItem"
           />

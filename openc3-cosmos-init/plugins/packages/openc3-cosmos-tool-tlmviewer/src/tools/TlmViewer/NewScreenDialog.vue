@@ -20,7 +20,7 @@
   <!-- Dialog for creating new screen -->
   <v-dialog v-model="show" width="600">
     <v-card>
-      <v-system-bar>
+      <v-toolbar :height="24">
         <v-spacer />
         <span>Create New Screen</span>
         <v-spacer />
@@ -32,9 +32,9 @@
               </v-icon>
             </div>
           </template>
-          <span>Close</span>
+          <span> Close </span>
         </v-tooltip>
-      </v-system-bar>
+      </v-toolbar>
       <v-card-text>
         <v-alert
           v-model="duplicateScreenAlert"
@@ -45,28 +45,30 @@
           Screen {{ newScreenName.toUpperCase() }} already exists!
         </v-alert>
         <v-row class="pt-3">
-          <v-col> Screens must belong to a target. Select a target:</v-col>
+          <v-col> Screens must belong to a target. Select a target: </v-col>
         </v-row>
-        <v-row dense
-          ><v-col>
+        <v-row dense>
+          <v-col>
             <v-select
               label="Select Target"
               :items="targets"
               item-title="label"
               item-value="value"
               v-model="selectedTarget"
-              @update:model-value="targetSelect" /></v-col
-        ></v-row>
+              @update:model-value="targetSelect"
+            />
+          </v-col>
+        </v-row>
 
         <v-row dense>
-          <v-col
-            >Screens can be auto-generated based on an existing Packet. This
+          <v-col>
+            Screens can be auto-generated based on an existing Packet. This
             creates a LABELVALUE line for every item in the packet. The screen
-            can then be edited and customized.</v-col
-          >
+            can then be edited and customized.
+          </v-col>
         </v-row>
         <v-row dense>
-          <v-col>Leave this blank to start with a blank screen.</v-col>
+          <v-col> Leave this blank to start with a blank screen. </v-col>
         </v-row>
         <v-row dense>
           <v-col>
@@ -80,7 +82,8 @@
               item-value="value"
               v-model="selectedPacketName"
               data-test="new-screen-packet"
-          /></v-col>
+            />
+          </v-col>
         </v-row>
         <v-row dense>
           <v-col>
@@ -92,10 +95,12 @@
               label="Screen Name (without .txt)"
               :rules="[rules.required]"
               data-test="new-screen-name"
-              @keyup="newScreenKeyup($event)" />
+              @keyup="newScreenKeyup($event)"
+            />
             <div class="pl-2" v-if="newScreenSaving">
-              <v-progress-circular indeterminate color="primary" /></div
-          ></v-col>
+              <v-progress-circular indeterminate color="primary" />
+            </div>
+          </v-col>
         </v-row>
       </v-card-text>
       <v-divider />

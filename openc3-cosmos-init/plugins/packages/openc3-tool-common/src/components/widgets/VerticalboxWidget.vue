@@ -22,14 +22,16 @@
 
 <template>
   <div>
-    <v-banner class="boxbanner" :style="computedStyle" single-line>{{
-      parameters[0]
-    }}</v-banner>
+    <v-banner class="boxbanner" :style="computedStyle" single-line>
+      {{ parameters[0] }}
+    </v-banner>
     <vertical-widget
       v-bind="$attrs"
       :parameters="parameters.slice(1)"
-      :settings="appliedSettings"
+      :settings="settings"
       :widgets="widgets"
+      :screen-values="screenValues"
+      :screen-time-zone="screenTimeZone"
     />
   </div>
 </template>

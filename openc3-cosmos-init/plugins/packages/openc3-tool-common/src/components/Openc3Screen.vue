@@ -26,7 +26,7 @@
 <template>
   <div :style="computedStyle" ref="bar">
     <v-card :min-height="height" :min-width="width">
-      <v-system-bar absolute>
+      <v-toolbar :height="24" class="px-1">
         <div v-show="errors.length !== 0">
           <v-tooltip location="top">
             <template v-slot:activator="{ props }">
@@ -83,7 +83,7 @@
           <span> Move Screen Down </span>
         </v-tooltip>
         <v-spacer />
-        <span>{{ target }} {{ screen }}</span>
+        <span> {{ target }} {{ screen }} </span>
         <v-spacer />
         <v-tooltip location="top">
           <template v-slot:activator="{ props }">
@@ -120,10 +120,10 @@
           </template>
           <span> Close Screen </span>
         </v-tooltip>
-      </v-system-bar>
+      </v-toolbar>
       <v-expand-transition v-if="!editDialog">
         <div
-          class="pa-1 pt-7"
+          class="pa-1"
           style="position: relative"
           ref="screen"
           v-show="expand"
@@ -137,11 +137,13 @@
           <vertical-widget
             :key="screenKey"
             :widgets="layoutStack[0].widgets"
-            :screenValues="screenValues"
-            :screenTimeZone="timeZone"
+            :screen-values="screenValues"
+            :screen-time-zone="timeZone"
             v-on:add-item="addItem"
             v-on:delete-item="deleteItem"
             v-on:open="open"
+            v-on:close="close"
+            v-on:close-all="closeAll"
           />
         </div>
       </v-expand-transition>
@@ -161,11 +163,11 @@
 
     <!-- Error dialog -->
     <v-dialog v-model="errorDialog" max-width="600">
-      <v-system-bar>
+      <v-toolbar :height="24">
         <v-spacer />
         <span> Screen: {{ target }} {{ screen }} Errors </span>
         <v-spacer />
-      </v-system-bar>
+      </v-toolbar>
       <v-card>
         <v-textarea class="errors" readonly rows="13" :model-value="error" />
       </v-card>
@@ -317,7 +319,9 @@ export default {
   // We need this because an error can occur from any of the children
   // in the widget stack and are typically thrown on create()
   errorCaptured(err, vm, info) {
+    console.log({ err, vm, info })
     if (this.errors.length < MAX_ERRORS) {
+      console.log({ errors: this.errors })
       if (err.usage) {
         this.errors.push({
           type: 'usage',
@@ -352,7 +356,7 @@ export default {
         'z-index: ' + this.zIndex
     }
   },
-  destroyed() {
+  unmounted() {
     if (this.updater != null) {
       clearInterval(this.updater)
       this.updater = null
@@ -475,18 +479,6 @@ export default {
       } else {
         this.applyGlobalSettings(this.layoutStack[0].widgets)
       }
-    },
-    // Called by button scripts to get named widgets
-    getNamedWidget: function (name) {
-      return this.namedWidgets[name]
-    },
-    // TODO: Deprecate underscores used to match OpenC3 API rather than Javascript convention?
-    get_named_widget: function (name) {
-      return this.namedWidgets[name]
-    },
-    // Called by named widgets to register with the screen
-    setNamedWidget: function (name, widget) {
-      this.namedWidgets[name] = widget
     },
     openEdit: function () {
       // Make a copy in case they edit and cancel
@@ -649,7 +641,7 @@ export default {
         // Push a reference to the screen so the layout can register when it is created
         // We do this because the widget isn't actually created until
         // the layout happens with <component :is='type'>
-        settings.push(['NAMED_WIDGET', widgetName, this])
+        settings.push(['NAMED_WIDGET', widgetName])
       }
       // If this is a layout widget we add it to the layoutStack and reset the currentLayout
       if (

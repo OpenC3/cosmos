@@ -29,13 +29,13 @@
       :is="widget.type"
       :target="widget.target"
       :parameters="widget.parameters"
-      :settings="widget.appliedSettings"
-      :screenValues="screenValues"
-      :screenTimeZone="screenTimeZone"
+      :settings="widget.settings"
+      :screen-values="screenValues"
+      :screen-time-zone="screenTimeZone"
       :widgets="widget.widgets"
       :name="widget.name"
       :line="widget.line"
-      :lineNumber="widget.lineNumber"
+      :line-number="widget.lineNumber"
     />
   </svg>
 </template>

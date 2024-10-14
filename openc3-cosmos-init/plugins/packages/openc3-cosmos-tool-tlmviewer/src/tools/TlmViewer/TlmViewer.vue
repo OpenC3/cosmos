@@ -28,9 +28,9 @@
         <v-expansion-panel-title></v-expansion-panel-title>
         <v-expansion-panel-text>
           <v-container>
-            <v-row class="pt-3">
+            <v-row class="pa-3">
               <v-select
-                class="pa-0 mr-4"
+                class="mr-4"
                 density="compact"
                 hide-details
                 variant="outlined"
@@ -39,11 +39,10 @@
                 item-title="label"
                 item-value="value"
                 v-model="selectedTarget"
-                @update:model-value="targetSelect"
                 style="max-width: 300px"
               />
               <v-select
-                class="pa-0 mr-4"
+                class="mr-4"
                 density="compact"
                 hide-details
                 variant="outlined"
@@ -88,10 +87,10 @@
             :screen="def.screen"
             :definition="def.definition"
             :keywords="keywords"
-            :initialFloated="def.floated"
-            :initialTop="def.top"
-            :initialLeft="def.left"
-            :initialZ="def.zIndex"
+            :initial-floated="def.floated"
+            :initial-top="def.top"
+            :initial-left="def.left"
+            :initial-z="def.zIndex"
             :time-zone="timeZone"
             @close-screen="closeScreen(def.id)"
             @min-max-screen="refreshLayout"
@@ -236,8 +235,7 @@ export default {
       response.data.forEach((filename) => {
         let parts = filename.split('/')
         if (this.screens[parts[0]] === undefined) {
-          // Must call this.$set to allow Vue to make the screen arrays reactive
-          this.$set(this.screens, parts[0], [])
+          this.screens[parts[0]] = []
         }
         this.screens[parts[0]].push(parts[2].split('.')[0].toUpperCase())
       })
@@ -307,8 +305,7 @@ export default {
       }).then((response) => {
         this.newScreenDialog = false
         if (this.screens[targetName] === undefined) {
-          // Must call this.$set to allow Vue to make the screen arrays reactive
-          this.$set(this.screens, targetName, [])
+          this.screens[targetName] = []
         }
         this.screens[targetName].push(screenName)
         this.screens[targetName].sort()

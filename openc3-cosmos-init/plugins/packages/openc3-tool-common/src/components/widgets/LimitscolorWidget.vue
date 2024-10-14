@@ -25,7 +25,7 @@
     <div class="led align-self-center" :style="cssProps"></div>
     <label-widget
       :parameters="labelName"
-      :settings="appliedSettings"
+      :settings="settings"
       :style="computedStyle"
       :widget-index="1"
     />

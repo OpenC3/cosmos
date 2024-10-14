@@ -46,6 +46,10 @@ export default {
       type: String,
       default: 'local',
     },
+    namedWidgets: {
+      type: Object,
+      default: {},
+    },
     line: {
       type: String,
       default: '',
@@ -63,35 +67,30 @@ export default {
       // at any level of the widget, i.e. if LABELVALUE applies a style
       // to the VALUE component then we don't want the VALUE widget to think
       // it doesn't have a style when it renders.
-      style: {},
+      appliedStyle: {},
+      widgetName: null,
     }
   },
   computed: {
     computedStyle() {
-      this.appliedSettings.forEach((setting) => {
-        const index = parseInt(setting[0])
-        if (this.widgetIndex !== null) {
-          if (this.widgetIndex === index) {
-            setting = setting.slice(1)
-          } else {
-            return
-          }
-        }
-        this.applySetting(this.style, setting)
-      })
+      const compStyle = { ...this.appliedStyle }
+
       // If nothing has yet defined a width then we add flex to the style
-      if (this.style['width'] === undefined) {
+      if (compStyle['width'] === undefined) {
         // This flex allows for alignment in our widgets
         // The value of '0 10 100%' was achieved through trial and error
         // The larger flex-shrink value was critical for success
-        this.style['flex'] = '0 10 100%' // flex-grow, flex-shrink, flex-basis
+        compStyle['flex'] = '0 10 100%' // flex-grow, flex-shrink, flex-basis
       }
-      return this.style
+      return compStyle
     },
   },
   created() {
+    const componentSettings = this.componentSettings || []
+    const stringifiedComponentSettings = componentSettings?.map(JSON.stringify)
+
     // Figure out any subsettings that apply
-    this.appliedSettings = this.settings
+    const newSettings = this.settings
       .map((setting) => {
         const index = parseInt(setting[0])
         // If the first value isn't a number or if there isn't a widgetIndex
@@ -106,55 +105,85 @@ export default {
           return setting.slice(1)
         }
       })
-      // Remove any settings that we filtered out with null
-      .filter((setting) => setting !== undefined)
+      // Remove any settings that we filtered out with null and anything to be overriden with componentSettings
+      .filter(
+        (setting) =>
+          setting !== undefined &&
+          !stringifiedComponentSettings.includes(JSON.stringify(setting)),
+      )
+
+    this.appliedSettings = [...componentSettings, ...newSettings]
+    this.appliedSettings.forEach((setting) => {
+      if (setting[0] === 'NAMED_WIDGET') {
+        this.widgetName = setting[1]
+        this.$store.commit('setNamedWidget', { [this.widgetName]: this })
+      } else {
+        const index = parseInt(setting[0])
+        if (this.widgetIndex !== null) {
+          if (this.widgetIndex === index) {
+            setting = setting.slice(1)
+          } else {
+            return
+          }
+        }
+        this.applyStyleSetting(setting)
+      }
+    })
+  },
+  beforeUnmount() {
+    if (this.widgetName) {
+      this.$store.commit('clearNamedWidget', this.widgetName)
+    }
   },
   methods: {
-    applySetting(style, setting) {
+    applyStyleSetting(setting) {
       switch (setting[0]) {
         case 'TEXTALIGN':
-          style['text-align'] = setting[1].toLowerCase() + ' !important'
-          style['--text-align'] = setting[1].toLowerCase()
+          this.appliedStyle['text-align'] =
+            setting[1].toLowerCase() + ' !important'
+          this.appliedStyle['--text-align'] = setting[1].toLowerCase()
           break
         case 'PADDING':
           if (!isNaN(Number(setting[1]))) {
             setting[1] += 'px'
           }
-          style['padding'] = setting[1] + ' !important'
+          this.appliedStyle['padding'] = setting[1] + ' !important'
           break
         case 'MARGIN':
           if (!isNaN(Number(setting[1]))) {
             setting[1] += 'px'
           }
-          style['margin'] = setting[1] + ' !important'
+          this.appliedStyle['margin'] = setting[1] + ' !important'
           break
         case 'BACKCOLOR':
-          style['background-color'] =
+          this.appliedStyle['background-color'] =
             this.getColor(setting.slice(1)) + ' !important'
           break
         case 'TEXTCOLOR':
-          style['color'] = this.getColor(setting.slice(1)) + ' !important'
+          this.appliedStyle['color'] =
+            this.getColor(setting.slice(1)) + ' !important'
           break
         case 'BORDERCOLOR':
-          style['border-width'] = '1px!important'
-          style['border-style'] = 'solid!important'
-          style['border-color'] =
+          this.appliedStyle['border-width'] = '1px!important'
+          this.appliedStyle['border-style'] = 'solid!important'
+          this.appliedStyle['border-color'] =
             this.getColor(setting.slice(1)) + ' !important'
           break
         case 'WIDTH':
           if (!isNaN(Number(setting[1]))) {
             setting[1] += 'px'
           }
-          style['width'] = setting[1] + ' !important'
+          this.appliedStyle['width'] = setting[1] + ' !important'
           break
         case 'HEIGHT':
           if (!isNaN(Number(setting[1]))) {
             setting[1] += 'px'
           }
-          style['height'] = setting[1] + ' !important'
+          this.appliedStyle['height'] = setting[1] + ' !important'
           break
         case 'RAW':
-          style[setting[1].toLowerCase()] = setting[2] + ' !important'
+          this.appliedStyle[setting[1].toLowerCase()] =
+            setting[2] + ' !important'
           break
       }
     },
@@ -231,10 +260,13 @@ export default {
       if (this.widgetIndex !== null) {
         foundSetting = this.appliedSettings.find(
           (setting) =>
-            parseInt(setting[0]) === this.widgetIndex && setting[1] === 'HEIGHT'
+            parseInt(setting[0]) === this.widgetIndex &&
+            setting[1] === 'HEIGHT',
         )
       } else {
-        foundSetting = this.appliedSettings.find((setting) => setting[0] === 'HEIGHT')
+        foundSetting = this.appliedSettings.find(
+          (setting) => setting[0] === 'HEIGHT',
+        )
       }
       if (foundSetting) {
         return foundSetting['HEIGHT']
@@ -245,14 +277,14 @@ export default {
           if (this.widgetIndex !== null) {
             setting.unshift(this.widgetIndex)
           }
-          this.appliedSettings.push(setting)
+          this.settings.push(setting)
           return parseInt(height)
         } else {
           let setting = ['HEIGHT', `${defaultHeight}${units}`]
           if (this.widgetIndex !== null) {
             setting.unshift(this.widgetIndex)
           }
-          this.appliedSettings.push(setting)
+          this.settings.push(setting)
           return parseInt(defaultHeight)
         }
       }

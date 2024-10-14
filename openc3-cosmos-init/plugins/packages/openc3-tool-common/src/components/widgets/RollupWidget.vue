@@ -18,8 +18,6 @@
 
 <template>
   <rux-monitoring-icon
-    v-bind="attrs"
-    v-on="on"
     class="rux-icon"
     :icon="icon"
     :status="status"

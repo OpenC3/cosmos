@@ -25,16 +25,16 @@
     <value-widget
       v-bind="$attrs"
       :parameters="parameters"
-      :settings="[...appliedSettings]"
-      :screenValues="screenValues"
-      :screenTimeZone="screenTimeZone"
+      :settings="[...settings]"
+      :screen-values="screenValues"
+      :screen-time-zone="screenTimeZone"
       :widget-index="0"
     />
     <limitsbar-widget
       v-bind="$attrs"
       :parameters="parameters"
-      :settings="[...appliedSettings]"
-      :screenValues="screenValues"
+      :settings="[...settings]"
+      :screen-values="screenValues"
       :widget-index="1"
     />
   </div>

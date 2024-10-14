@@ -31,6 +31,7 @@
           single-line
           hide-no-data
           hide-details
+          width="500"
           :model-value="_value"
           :class="valueClass"
           :style="computedStyle"
@@ -94,6 +95,9 @@ export default {
   max-height: none !important;
   line-height: 70px !important;
   font-size: 60px !important;
+}
+.value-widget-container :deep(.v-field__loader) {
+  display: none !important;
 }
 // TODO: These openc3 styles are also defined in assets/stylesheets/layout/_overrides.scss
 // Can they somehow be reused here? We need to force the style down into the input
