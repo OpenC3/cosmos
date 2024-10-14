@@ -218,7 +218,6 @@ export default {
           key: 'name',
           align: 'end',
           sortRaw(a, b) {
-            console.log(`sortRaw ${a} ${b}`)
             return a > b ? 1 : -1
           },
         },
