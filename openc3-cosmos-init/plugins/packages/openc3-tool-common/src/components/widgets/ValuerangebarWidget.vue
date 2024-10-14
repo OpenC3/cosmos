@@ -25,7 +25,7 @@
     <value-widget
       v-bind="$attrs"
       :parameters="valueParameters"
-      :settings="[...settings]"
+      :settings="[...appliedSettings]"
       :screen-values="screenValues"
       :screen-time-zone="screenTimeZone"
       :widget-index="0"
@@ -33,7 +33,7 @@
     <rangebar-widget
       v-bind="$attrs"
       :parameters="rangeBarParameters"
-      :settings="[...settings]"
+      :settings="[...appliedSettings]"
       :screen-values="screenValues"
       :widget-index="1"
     />

@@ -33,7 +33,7 @@
       class="pt-1"
       v-bind="$attrs"
       :parameters="parameters"
-      :settings="[...settings]"
+      :settings="[...appliedSettings]"
       :screen-values="screenValues"
       :widget-index="2"
     />

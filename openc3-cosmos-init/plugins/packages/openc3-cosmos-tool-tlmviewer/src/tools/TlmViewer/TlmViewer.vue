@@ -40,6 +40,7 @@
                 item-value="value"
                 v-model="selectedTarget"
                 style="max-width: 300px"
+                data-test="select-target"
               />
               <v-select
                 class="mr-4"
@@ -51,6 +52,7 @@
                 v-model="selectedScreen"
                 @update:model-value="screenSelect"
                 style="max-width: 300px"
+                data-test="select-screen"
               />
               <v-btn
                 class="bg-primary mr-2"
@@ -495,6 +497,10 @@ i.v-icon.mdi-chevron-down {
   100% {
     -webkit-box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
   }
+}
+.v-application {
+  /* fix for playwright scrolling I guess? */
+  margin-bottom: 120px;
 }
 </style>
 <style scoped>

@@ -69,10 +69,29 @@ export default {
       // it doesn't have a style when it renders.
       appliedStyle: {},
       widgetName: null,
+      screenId: 'NO_SCREEN', // only used for named widgets - hopefully overwritten by settings value in created()
     }
   },
   computed: {
-    computedStyle() {
+    computedStyle: function () {
+      this.appliedSettings.forEach((setting) => {
+        if (setting[0] === 'NAMED_WIDGET') {
+          this.widgetName = setting[1]
+          this.$store.commit('setNamedWidget', {
+            [this.toQualifiedWidgetName(this.widgetName)]: this,
+          })
+        } else {
+          const index = parseInt(setting[0])
+          if (this.widgetIndex !== null) {
+            if (this.widgetIndex === index) {
+              setting = setting.slice(1)
+            } else {
+              return
+            }
+          }
+          this.applyStyleSetting(setting)
+        }
+      })
       const compStyle = { ...this.appliedStyle }
 
       // If nothing has yet defined a width then we add flex to the style
@@ -84,8 +103,37 @@ export default {
       }
       return compStyle
     },
+    screen: function () {
+      // This exists for backwards compatibility of screen definitions since widgets no longer have a reference
+      // to the Openc3Screen component instance
+      const that = this
+      return {
+        getNamedWidget: function (widgetName) {
+          return that.$store.getters.namedWidget(
+            that.toQualifiedWidgetName(widgetName),
+          )
+        },
+        open: function (target, screen) {
+          that.$emit('open', target, screen)
+        },
+        close: function (target, screen) {
+          that.$emit('close', target, screen)
+        },
+        closeAll: function () {
+          that.$emit('closeAll')
+        },
+      }
+    },
   },
   created() {
+    // Look through the settings and get a reference to the screen
+    const screenIdSetting = this.settings.find(
+      (setting) => setting[0] === '__SCREEN_ID__',
+    )
+    if (screenIdSetting) {
+      this.screenId = screenIdSetting[1]
+    }
+
     const componentSettings = this.componentSettings || []
     const stringifiedComponentSettings = componentSettings?.map(JSON.stringify)
 
@@ -113,26 +161,13 @@ export default {
       )
 
     this.appliedSettings = [...componentSettings, ...newSettings]
-    this.appliedSettings.forEach((setting) => {
-      if (setting[0] === 'NAMED_WIDGET') {
-        this.widgetName = setting[1]
-        this.$store.commit('setNamedWidget', { [this.widgetName]: this })
-      } else {
-        const index = parseInt(setting[0])
-        if (this.widgetIndex !== null) {
-          if (this.widgetIndex === index) {
-            setting = setting.slice(1)
-          } else {
-            return
-          }
-        }
-        this.applyStyleSetting(setting)
-      }
-    })
   },
   beforeUnmount() {
     if (this.widgetName) {
-      this.$store.commit('clearNamedWidget', this.widgetName)
+      this.$store.commit(
+        'clearNamedWidget',
+        this.toQualifiedWidgetName(this.widgetName),
+      )
     }
   },
   methods: {
@@ -277,14 +312,14 @@ export default {
           if (this.widgetIndex !== null) {
             setting.unshift(this.widgetIndex)
           }
-          this.settings.push(setting)
+          this.appliedSettings.push(setting)
           return parseInt(height)
         } else {
           let setting = ['HEIGHT', `${defaultHeight}${units}`]
           if (this.widgetIndex !== null) {
             setting.unshift(this.widgetIndex)
           }
-          this.settings.push(setting)
+          this.appliedSettings.push(setting)
           return parseInt(defaultHeight)
         }
       }
@@ -297,6 +332,9 @@ export default {
         case 3:
           return `rgb(${setting[0]},${setting[1]},${setting[2]})`
       }
+    },
+    toQualifiedWidgetName(widgetName) {
+      return `${this.screenId}:${widgetName}`
     },
   },
 }

@@ -59,14 +59,14 @@ export default {
     if (this.parameters[1]) {
       let margin = this.parameters[1]
       this.widgets.forEach((widget) => {
-        const found = widget.appliedSettings.find(
+        const found = widget.settings.find(
           (setting) =>
             setting[0] === 'MARGIN' ||
             (setting[0] === 'RAW' &&
               setting[1].toUpperCase().includes('MARGIN')),
         )
         if (found === undefined) {
-          widget.appliedSettings.push(['MARGIN', margin])
+          widget.settings.push(['MARGIN', margin])
         }
       })
     }

@@ -176,6 +176,7 @@
 </template>
 
 <script>
+import { uniqueId } from 'lodash'
 import Api from '../services/api'
 import { ConfigParserService } from '../services/config-parser'
 import { OpenC3Api } from '../services/openc3-api'
@@ -278,6 +279,7 @@ export default {
       screenItems: [],
       screenValues: {},
       updateCounter: 0,
+      screenId: uniqueId('openc3-screen_'),
     }
   },
   watch: {
@@ -637,6 +639,9 @@ export default {
         keyword.slice(1).toLowerCase() +
         'Widget'
       let settings = []
+      // Give all the widgets a reference to this screen
+      // Use settings so we don't break existing custom widgets
+      settings.push(['__SCREEN_ID__', this.screenId])
       if (widgetName !== null) {
         // Push a reference to the screen so the layout can register when it is created
         // We do this because the widget isn't actually created until
@@ -668,8 +673,6 @@ export default {
         this.currentLayout.widgets.push(layout)
         this.currentLayout = layout
       } else {
-        // Give all the widgets a reference to this screen
-        // Use settings so we don't break existing custom widgets
         if (this.$options.components[componentName]) {
           this.currentLayout.widgets.push({
             type: componentName,

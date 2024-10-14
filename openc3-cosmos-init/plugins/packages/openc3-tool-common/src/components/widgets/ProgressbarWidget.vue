@@ -69,7 +69,7 @@ export default {
       this.$emit('addItem', this.valueId)
     }
   },
-  destroyed: function () {
+  unmounted: function () {
     this.$emit('deleteItem', this.valueId)
   },
 }

@@ -25,7 +25,7 @@
     <value-widget
       v-bind="$attrs"
       :parameters="getParameters"
-      :settings="settings"
+      :settings="appliedSettings"
       :screen-values="screenValues"
       :screen-time-zone="screenTimeZone"
       :format-string="parameters[3]"

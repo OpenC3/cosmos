@@ -28,10 +28,11 @@
     <horizontal-widget
       v-bind="$attrs"
       :parameters="parameters.slice(1)"
-      :settings="settings"
+      :settings="appliedSettings"
       :widgets="widgets"
       :screen-values="screenValues"
       :screen-time-zone="screenTimeZone"
+      :screen-id="screenId"
     />
   </div>
 </template>

@@ -49,14 +49,14 @@ export default {
       let margin = this.parameters[0]
       this.widgets.forEach((widget) => {
         // Don't push MARGIN on a widget that's already defined it
-        const found = widget.appliedSettings.find(
+        const found = widget.settings.find(
           (setting) =>
             setting[0] === 'MARGIN' ||
             (setting[0] === 'RAW' &&
               setting[1].toUpperCase().includes('MARGIN')),
         )
         if (found === undefined) {
-          widget.appliedSettings.push(['MARGIN', margin])
+          widget.settings.push(['MARGIN', margin])
         }
       })
     }

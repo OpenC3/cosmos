@@ -32,7 +32,7 @@
     <rangebar-widget
       v-bind="$attrs"
       :parameters="rangeBarParameters"
-      :settings="[...settings]"
+      :settings="[...appliedSettings]"
       :screen-values="screenValues"
       :widget-index="2"
     />

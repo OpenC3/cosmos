@@ -25,8 +25,8 @@ VERTICAL
     # The tlm() function returns a Promise which is resolved with then() at which point we send the command with the parameter
     # The plus '+' symbol indicates string concatenation with newlines.
     # NOTE: Both lines must use the same quote character: ' or "
-    BUTTON 'Start Collect' "var type=this.$store.getters.namedWidget('COLLECT_TYPE').text();" +
-      "var dur=this.$store.getters.namedWidget('DURATION').text();" +
+    BUTTON 'Start Collect' "var type=screen.getNamedWidget('COLLECT_TYPE').text();" +
+      "var dur=screen.getNamedWidget('DURATION').text();" +
       # You can have comments between string concatenations
       "api.cmd('<%= target_name %> COLLECT with TYPE '+type+', DURATION '+dur)"
   END
@@ -37,8 +37,8 @@ VERTICAL
       RADIOBUTTON 'Clear'
     END
     NAMED_WIDGET CHECK CHECKBUTTON 'Ignore Hazardous Checks' # No option is by default UNCHECKED
-    BUTTON 'Send' "this.$store.getters.namedWidget('GROUP').selected() === 0 ? " +
-      "api.cmd('<%= target_name %> ABORT') : (this.$store.getters.namedWidget('CHECK').checked() ? " +
+    BUTTON 'Send' "screen.getNamedWidget('GROUP').selected() === 0 ? " +
+      "api.cmd('<%= target_name %> ABORT') : (screen.getNamedWidget('CHECK').checked() ? " +
       "api.cmd_no_hazardous_check('<%= target_name %> CLEAR') : api.cmd('<%= target_name %> CLEAR'))"
   END
 
@@ -47,11 +47,11 @@ VERTICAL
     NAMED_WIDGET BG CHECKBUTTON 'Background'
     # The backslash '\' character indicates string concatenation without newlines.
     # NOTE: Both lines must use the same quote character: ' or "
-    BUTTON 'Run Script' "var script=this.$store.getters.namedWidget('SCRIPTNAME').text();" \
-      "var ctype=this.$store.getters.namedWidget('COLLECT_TYPE').text();" \
+    BUTTON 'Run Script' "var script=screen.getNamedWidget('SCRIPTNAME').text();" \
+      "var ctype=screen.getNamedWidget('COLLECT_TYPE').text();" \
       # Set some environment variables to be used by the script as ENV['TYPE']
       # See INST/procedures/checks.rb for an example of usage
       "var env = {}; env['TYPE'] = ctype;" \
-      "runScript('<%= target_name %>/procedures/'+script, !this.$store.getters.namedWidget('BG').checked(), env)"
+      "runScript('<%= target_name %>/procedures/'+script, !screen.getNamedWidget('BG').checked(), env)"
   END
 END
