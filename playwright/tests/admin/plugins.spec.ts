@@ -203,7 +203,7 @@ let plugin = 'openc3-cosmos-pw-test'
 let pluginGem = 'openc3-cosmos-pw-test-1.0.0.gem'
 let pluginGem1 = 'openc3-cosmos-pw-test-1.0.1.gem'
 
-test.only('installs a new plugin', async ({ page, utils }) => {
+test('installs a new plugin', async ({ page, utils }) => {
   // Note that Promise.all prevents a race condition
   // between clicking and waiting for the file chooser.
   const [fileChooser] = await Promise.all([
