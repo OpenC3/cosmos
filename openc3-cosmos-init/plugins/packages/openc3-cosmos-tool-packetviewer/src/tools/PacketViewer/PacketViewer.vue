@@ -62,11 +62,10 @@
         <template v-slot:item.name="{ item }">
           <div @contextmenu="(event) => showContextMenu(event, item)">
             <v-tooltip bottom :key="`${item.name}-${isPinned(item.name)}`">
-              <template v-slot:activator="{ on, attrs }">
+              <template v-slot:activator="{ props }">
                 <v-icon
                   v-if="isPinned(item.name)"
-                  v-bind="attrs"
-                  v-on="on"
+                  v-bind="props"
                   class="pin-item"
                 >
                   mdi-pin
@@ -92,9 +91,9 @@
           />
         </template>
         <template v-slot:footer.prepend>
-          <v-tooltip bottom close-delay="2000">
-            <template v-slot:activator="{ on, attrs }">
-              <v-icon v-bind="attrs" v-on="on" class="info-tooltip">
+          <v-tooltip right close-delay="2000">
+            <template v-slot:activator="{ props }">
+              <v-icon v-bind="props" class="info-tooltip">
                 mdi-information-variant-circle
               </v-icon>
             </template>
@@ -108,6 +107,7 @@
               Right click value for details / graph
             </span>
           </v-tooltip>
+          <v-spacer />
         </template>
       </v-data-table>
     </v-card>
@@ -220,8 +220,12 @@ export default {
       search: '',
       data: [],
       headers: [
-        { title: 'Name', value: 'name', align: 'end' },
-        { title: 'Value', value: 'value' },
+        {
+          title: 'Name',
+          key: 'name',
+          align: 'end',
+        },
+        { title: 'Value', key: 'value' },
       ],
       optionsDialog: false,
       showIgnored: false,
@@ -239,6 +243,11 @@ export default {
       menuItems: [],
       itemsPerPage: 20,
       api: null,
+      pinnedItems: [],
+      contextMenuShown: false,
+      itemName: '',
+      x: 0,
+      y: 0,
     }
   },
   watch: {
@@ -260,6 +269,31 @@ export default {
       this.saveDefaultConfig(this.currentConfig)
     },
     itemsPerPage: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+  },
+  watch: {
+    showIgnored: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    derivedLast: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    valueType: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    // Create a watcher on refreshInterval so we can change the updater
+    refreshInterval: function () {
+      this.changeUpdater(false)
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    staleLimit: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    itemsPerPage: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    pinnedItems: function () {
       this.saveDefaultConfig(this.currentConfig)
     },
   },
@@ -352,51 +386,8 @@ export default {
             },
           ],
         },
-      ],
-      updater: null,
-      counter: 0,
-      targetName: '',
-      packetName: '',
-      valueType: 'WITH_UNITS',
-      refreshInterval: 1000,
-      staleLimit: 30,
-      rows: [],
-      menuItems: [],
-      itemsPerPage: 20,
-      api: null,
-      pinnedItems: [],
-      contextMenuShown: false,
-      itemName: '',
-      x: 0,
-      y: 0,
-    }
-  },
-  watch: {
-    showIgnored: function () {
-      this.saveDefaultConfig(this.currentConfig)
+      ]
     },
-    derivedLast: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    valueType: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    // Create a watcher on refreshInterval so we can change the updater
-    refreshInterval: function () {
-      this.changeUpdater(false)
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    staleLimit: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    itemsPerPage: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    pinnedItems: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-  },
-  computed: {
     currentConfig: function () {
       return {
         target: this.targetName,
@@ -696,11 +687,8 @@ export default {
 </script>
 
 <style scoped>
-.v-tooltip__content {
-  pointer-events: initial;
-}
 a {
-  color: var(--button-color-background-primary-default);
+  color: blue;
 }
 .pin-item {
   float: left;

@@ -113,6 +113,12 @@
               :data-test="formatDT(`${title} ${menu.label} ${option.label}`)"
               :key="j + '-list'"
             >
+              <template v-slot:prepend v-if="option.icon">
+                <v-icon
+                  :icon="option.icon"
+                  :disabled="option.disabled"
+                ></v-icon>
+              </template>
               <v-list-item-action class="list-action" v-if="option.checkbox">
                 <v-checkbox
                   :model-value="option.checked"
@@ -121,9 +127,6 @@
                   density="compact"
                   hide-details
                 />
-              </v-list-item-action>
-              <v-list-item-action v-if="option.icon">
-                <v-icon :disabled="option.disabled">{{ option.icon }}</v-icon>
               </v-list-item-action>
               <v-list-item-title
                 v-if="!option.radio && !option.checkbox"

@@ -267,6 +267,11 @@ input {
   z-index: initial !important;
 }
 
+// Allow tooltips to be clickable (Packet Viewer uses this)
+.v-tooltip > .v-overlay__content {
+  pointer-events: auto !important;
+}
+
 // This breaks the normal list title / subtitle layout
 // .v-list-item__content {
 //   display: flex;

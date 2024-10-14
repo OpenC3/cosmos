@@ -415,18 +415,6 @@ export default {
         this.resize()
       }, MUURI_REFRESH_TIME)
     },
-    resizeAll: function () {
-      // Explicitly resize the graphs when the expansion panel is opened or closed
-      setTimeout(() => {
-        this.grid.getItems().map((item) => {
-          // Map the gridItem id to the graph id
-          const graphId = `graph${item.getElement().id.substring(8)}`
-          const vueGraph = this.$refs[graphId][0]
-          vueGraph.handleResize()
-        })
-        this.resize()
-      }, MUURI_REFRESH_TIME)
-    },
     graphSelected: function (id) {
       this.selectedGraphId = id
     },
@@ -685,7 +673,6 @@ i.v-icon.mdi-chevron-down {
   border-radius: 6px;
   margin: 5px;
 }
-
 .pulse {
   animation: pulse 1s infinite;
 }

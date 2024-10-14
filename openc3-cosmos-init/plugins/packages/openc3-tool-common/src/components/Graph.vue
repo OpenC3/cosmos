@@ -302,19 +302,16 @@
       </v-list>
     </v-menu>
 
-    <tr class="u-series" ref="info">
-      <v-tooltip bottom>
-        <template v-slot:activator="{ on, attrs }">
-          <v-icon v-bind="attrs" v-on="on" class="info-tooltip">
-            mdi-information-variant-circle
-          </v-icon>
+    <div class="u-series" ref="info">
+      <v-tooltip
+        text="Click item to toggle, Right click to edit"
+        location="bottom"
+      >
+        <template v-slot:activator="{ props }">
+          <v-icon v-bind="props">mdi-information-variant-circle</v-icon>
         </template>
-        <span>
-          Click item to toggle<br />
-          Right click to edit
-        </span>
       </v-tooltip>
-    </tr>
+    </div>
   </div>
 </template>
 
@@ -967,7 +964,10 @@ export default {
       this.$emit('edit')
     },
     resize: function () {
-      this.handleResize()
+      this.graph.setSize(this.getSize('chart'))
+      if (this.overview) {
+        this.overview.setSize(this.getSize('overview'))
+      }
       this.$emit('resize', this.id)
     },
     expandAll: function () {
@@ -1070,7 +1070,7 @@ export default {
           ? navDrawer.clientWidth
           : 0
       }
-
+      console.log(`navDrawerWidth: ${navDrawerWidth}`)
       let legendWidth = 0
       if (this.legendPosition === 'right' || this.legendPosition === 'left') {
         const legend = document.getElementsByClassName('u-legend')[0]
@@ -1080,6 +1080,7 @@ export default {
         Math.max(document.documentElement.clientWidth, window.innerWidth || 0) -
         navDrawerWidth -
         legendWidth
+      console.log(`viewWidth: ${viewWidth}`)
       const viewHeight = Math.max(
         document.documentElement.clientHeight,
         window.innerHeight || 0,
@@ -1101,7 +1102,7 @@ export default {
           height = height / 2.0 + 10 // 5px padding top and bottom
         }
       }
-      let width = viewWidth - 42 // padding left and right
+      let width = viewWidth - 50 // padding left and right
       if (!this.fullWidth) {
         width = width / 2.0 - 10 // 5px padding left and right
       }
