@@ -52,6 +52,8 @@
         :items="rows"
         :search="search"
         :custom-filter="filter"
+        :sort-by="sortBy"
+        @update:sortBy="tableSort"
         v-model:items-per-page="itemsPerPage"
         :items-per-page-options="[10, 20, 50, 100, 500, 1000]"
         multi-sort
@@ -244,6 +246,7 @@ export default {
       itemName: '',
       x: 0,
       y: 0,
+      sortBy: [],
     }
   },
   watch: {
@@ -505,6 +508,38 @@ export default {
         return value.toString().indexOf(search.toUpperCase()) >= 0
       }
     },
+    // customSorters() {
+    //   return {
+    //     name: (name1, name2) => {
+    //       return name1.toLowerCase().localeCompare(name2.toLowerCase())
+    //     },
+    //     value: (age1, age2) => {
+    //       /* TODO implement sorting for age column */
+    //     },
+    //   }
+    // },
+    // sortTable(evt) {
+    //   // Allows unsorting
+    //   if (!evt.length || evt.length < this.sortBy.length) {
+    //     this.sortBy = []
+    //     return
+    //   }
+    //   const key = evt[0].key
+    //   const order = evt[0].order
+    //   switch (key) {
+    //     case 'name':
+    //       this.sortBy = [
+    //         { key: 'name', order: order },
+    //         { key: 'age', order: 'asc' },
+    //       ]
+    //       break
+    //     case 'age':
+    //       this.sortBy = [{ key: 'age', order: order }] // TODO implement sorting for age column
+    //       break
+    //     default:
+    //       this.sortBy = []
+    //   }
+    // },
     tableSort(items, index, isDesc) {
       // for each item in index, sort by that index
       index.forEach((idx, i) => {

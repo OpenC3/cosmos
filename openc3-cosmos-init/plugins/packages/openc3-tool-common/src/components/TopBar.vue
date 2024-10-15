@@ -47,7 +47,7 @@
               v-else-if="option.subMenu && option.subMenu.length > 0"
               :key="j + '-submenu'"
             >
-              <v-menu open-on-hover location="bottom" :key="k">
+              <v-menu open-on-hover location="bottom" :key="j">
                 <template v-slot:activator="{ props }">
                   <v-list-item
                     :disabled="option.disabled"

@@ -230,71 +230,71 @@
     <!-- Create Multipane container to support resizing.
          NOTE: We listen to paneResize event and call editor.resize() to prevent weird sizing issues,
          The event must be paneResize and not pane-resize -->
-    <multipane layout="horizontal" @paneResize="doResize">
-      <div class="editorbox">
-        <v-snackbar
-          v-model="showSave"
-          absolute
-          location="top right"
-          :timeout="-1"
-          class="saving"
-        >
-          Saving...
-        </v-snackbar>
-        <pre
-          ref="editor"
-          class="editor"
-          @contextmenu.prevent="showExecuteSelectionMenu"
-        ></pre>
-        <v-menu v-model="executeSelectionMenu" :target="[menuX, menuY]">
-          <v-list>
-            <v-list-item
-              v-for="item in executeSelectionMenuItems"
-              link
-              :key="item.label"
-              :disabled="scriptId"
-            >
-              <v-list-item-title @click="item.command">
-                {{ item.label }}
-              </v-list-item-title>
-            </v-list-item>
-          </v-list>
-        </v-menu>
+    <!-- <multipane layout="horizontal" @paneResize="doResize"> -->
+    <div class="editorbox">
+      <v-snackbar
+        v-model="showSave"
+        absolute
+        location="top right"
+        :timeout="-1"
+        class="saving"
+      >
+        Saving...
+      </v-snackbar>
+      <pre
+        ref="editor"
+        class="editor"
+        @contextmenu.prevent="showExecuteSelectionMenu"
+      ></pre>
+      <v-menu v-model="executeSelectionMenu" :target="[menuX, menuY]">
+        <v-list>
+          <v-list-item
+            v-for="item in executeSelectionMenuItems"
+            link
+            :key="item.label"
+            :disabled="scriptId"
+          >
+            <v-list-item-title @click="item.command">
+              {{ item.label }}
+            </v-list-item-title>
+          </v-list-item>
+        </v-list>
+      </v-menu>
+    </div>
+    <!-- <multipane-resizer><hr /></multipane-resizer> -->
+    <div id="messages" class="mt-2" ref="messagesDiv">
+      <div id="debug" class="pa-0" v-if="showDebug">
+        <v-row no-gutters>
+          <v-btn
+            color="primary"
+            @click="step"
+            style="width: 100px"
+            class="mr-4"
+            :disabled="!scriptId"
+            data-test="step-button"
+          >
+            Step
+            <v-icon end> mdi-step-forward </v-icon>
+          </v-btn>
+          <v-text-field
+            class="mb-2"
+            variant="outlined"
+            density="compact"
+            hide-details
+            label="Debug"
+            v-model="debug"
+            @keydown="debugKeydown"
+            data-test="debug-text"
+          />
+        </v-row>
       </div>
-      <multipane-resizer><hr /></multipane-resizer>
-      <div id="messages" class="mt-2" ref="messagesDiv">
-        <div id="debug" class="pa-0" v-if="showDebug">
-          <v-row no-gutters>
-            <v-btn
-              color="primary"
-              @click="step"
-              style="width: 100px"
-              class="mr-4"
-              :disabled="!scriptId"
-              data-test="step-button"
-            >
-              Step
-              <v-icon end> mdi-step-forward </v-icon>
-            </v-btn>
-            <v-text-field
-              class="mb-2"
-              variant="outlined"
-              density="compact"
-              hide-details
-              label="Debug"
-              v-model="debug"
-              @keydown="debugKeydown"
-              data-test="debug-text"
-            />
-          </v-row>
-        </div>
-        <script-log-messages
-          id="log-messages"
-          v-model="messages"
-          @sort="messageSortOrder"
-        />
-      </div>
-    </multipane>
+      <script-log-messages
+        id="log-messages"
+        v-model="messages"
+        @sort="messageSortOrder"
+      />
+    </div>
+    <!-- </multipane> -->
     <!--- MENUS --->
     <file-open-save-dialog
       v-if="fileOpen"
@@ -415,7 +415,8 @@ import 'ace-builds/src-min-noconflict/theme-twilight'
 import 'ace-builds/src-min-noconflict/ext-language_tools'
 import 'ace-builds/src-min-noconflict/ext-searchbox'
 import { format } from 'date-fns'
-import { Multipane, MultipaneResizer } from 'vue-multipane'
+// TODO: This breaks everything
+// import { Multipane, MultipaneResizer } from 'vue-multipane'
 import FileOpenSaveDialog from '@openc3/tool-common/src/components/FileOpenSaveDialog'
 import EnvironmentDialog from '@openc3/tool-common/src/components/EnvironmentDialog'
 import SimpleTextDialog from '@openc3/tool-common/src/components/SimpleTextDialog'
@@ -456,8 +457,8 @@ export default {
     FileOpenSaveDialog,
     Openc3Screen,
     EnvironmentDialog,
-    Multipane,
-    MultipaneResizer,
+    // Multipane,
+    // MultipaneResizer,
     TopBar,
     AskDialog,
     FileDialog,

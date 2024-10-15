@@ -24,57 +24,64 @@
   <div>
     <v-card>
       <v-card-title>
-        <v-tooltip location="top">
-          <template v-slot:activator="{ props }">
-            <div v-bind="props">
-              <v-btn
-                icon
-                class="mx-2"
-                data-test="download-log"
-                @click="downloadLog"
-              >
-                <v-icon> mdi-download </v-icon>
-              </v-btn>
-            </div>
-          </template>
-          <span> Download Log </span>
-        </v-tooltip>
-        Script Messages
-        <v-spacer />
-        <v-select
-          density="compact"
-          hide-details
-          variant="outlined"
-          :items="messageOrderOptions"
-          v-model="messageOrder"
-          class="mr-2"
-          style="max-width: 170px"
-          data-test="message-order"
-        />
-        <v-spacer />
-        <v-text-field
-          v-model="search"
-          label="Search"
-          prepend-inner-icon="mdi-magnify"
-          clearable
-          variant="outlined"
-          density="compact"
-          single-line
-          hide-details
-          class="search"
-          data-test="search-messages"
-        />
+        <v-row class="pt-2">
+          <v-tooltip location="top">
+            <template v-slot:activator="{ props }">
+              <div v-bind="props">
+                <v-btn
+                  icon
+                  class="mx-2"
+                  data-test="download-log"
+                  @click="downloadLog"
+                >
+                  <v-icon> mdi-download </v-icon>
+                </v-btn>
+              </div>
+            </template>
+            <span> Download Log </span>
+          </v-tooltip>
+          Script Messages
+          <v-spacer />
+          <v-select
+            density="compact"
+            hide-details
+            variant="outlined"
+            :items="messageOrderOptions"
+            v-model="messageOrder"
+            class="mr-2"
+            style="max-width: 170px"
+            data-test="message-order"
+          />
+          <v-spacer />
+          <v-text-field
+            v-model="search"
+            label="Search"
+            prepend-inner-icon="mdi-magnify"
+            clearable
+            variant="outlined"
+            density="compact"
+            single-line
+            hide-details
+            class="search"
+            data-test="search-messages"
+          />
 
-        <v-tooltip location="top">
-          <template v-slot:activator="{ props }">
-            <div v-bind="props">
-              <v-btn icon class="mx-2" data-test="clear-log" @click="clearLog">
-                <v-icon> mdi-delete </v-icon>
-              </v-btn>
-            </div>
-          </template>
-          <span> Clear Log </span>
-        </v-tooltip>
+          <v-tooltip location="top">
+            <template v-slot:activator="{ props }">
+              <div v-bind="props">
+                <v-btn
+                  icon
+                  class="mx-2"
+                  data-test="clear-log"
+                  @click="clearLog"
+                >
+                  <v-icon> mdi-delete </v-icon>
+                </v-btn>
+              </div>
+            </template>
+            <span> Clear Log </span>
+          </v-tooltip></v-row
+        >
       </v-card-title>
       <v-data-table
         id="script-log-messages"

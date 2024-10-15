@@ -40,7 +40,7 @@
             <v-tab :key="1"> plugin.txt </v-tab>
           </v-tabs>
         </v-row>
-        <form v-on:submit.prevent="submit">
+        <form @submit.prevent="onSubmit">
           <v-window v-model="tab">
             <v-window-item :key="0" eager="true" class="tab">
               <div class="pa-3">
@@ -96,20 +96,10 @@
               <v-btn color="primary" @click="previousDiff">Previous Diff</v-btn>
             </div>
             <v-spacer />
-            <v-btn
-              @click.prevent="close"
-              variant="outlined"
-              class="mx-2"
-              data-test="edit-cancel"
-            >
+            <v-btn @click.prevent="close" class="mx-2" data-test="edit-cancel">
               Cancel
             </v-btn>
-            <v-btn
-              class="mx-2"
-              color="primary"
-              type="submit"
-              data-test="edit-submit"
-            >
+            <v-btn class="mx-2" @click="submit" data-test="edit-submit">
               Install
             </v-btn>
           </v-card-actions>
@@ -126,9 +116,10 @@ import 'ace-builds/src-min-noconflict/mode-ruby'
 import 'ace-builds/src-min-noconflict/theme-twilight'
 import 'ace-builds/src-min-noconflict/ext-language_tools'
 import 'ace-builds/src-min-noconflict/ext-searchbox'
-// import AceDiff from '@openc3/ace-diff'
-// import '@openc3/ace-diff/dist/ace-diff.min.css'
-// import '@openc3/ace-diff/dist/ace-diff-dark.min.css'
+import AceDiff from '@openc3/ace-diff'
+import '@openc3/ace-diff/dist/ace-diff.min.css'
+import '@openc3/ace-diff/dist/ace-diff-dark.min.css'
+import { toRaw } from 'vue'
 
 export default {
   props: {
@@ -326,10 +317,10 @@ export default {
     emitSubmit(lines) {
       let pluginHash = {
         name: this.pluginName,
-        variables: this.localVariables,
+        variables: toRaw(this.localVariables),
         plugin_txt_lines: lines,
       }
-      this.$emit('submit', pluginHash)
+      this.$emit('callback', pluginHash)
     },
     close: function () {
       this.show = !this.show

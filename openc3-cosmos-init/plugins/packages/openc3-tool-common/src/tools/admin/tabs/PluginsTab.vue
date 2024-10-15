@@ -212,7 +212,7 @@
       :variables="variables"
       :pluginTxt="pluginTxt"
       :existingPluginTxt="existingPluginTxt"
-      @submit="pluginCallback"
+      @callback="pluginCallback"
     />
     <modified-plugin-dialog
       v-if="showModifiedPluginDialog"
@@ -549,7 +549,7 @@ export default {
     upgradePlugin(plugin) {
       this.file = undefined
       this.currentPlugin = plugin
-      this.$refs.fileInput.$refs.input.click()
+      this.$refs.fileInput.click()
       this.progress = 0
     },
     fileMousedown() {

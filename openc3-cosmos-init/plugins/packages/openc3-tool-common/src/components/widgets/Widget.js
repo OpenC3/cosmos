@@ -231,10 +231,13 @@ export default {
       if (this.widgetIndex !== null) {
         foundSetting = this.appliedSettings.find(
           (setting) =>
-            parseInt(setting[0]) === this.widgetIndex && setting[1] === 'HEIGHT'
+            parseInt(setting[0]) === this.widgetIndex &&
+            setting[1] === 'HEIGHT',
         )
       } else {
-        foundSetting = this.appliedSettings.find((setting) => setting[0] === 'HEIGHT')
+        foundSetting = this.appliedSettings.find(
+          (setting) => setting[0] === 'HEIGHT',
+        )
       }
       if (foundSetting) {
         return foundSetting['HEIGHT']
