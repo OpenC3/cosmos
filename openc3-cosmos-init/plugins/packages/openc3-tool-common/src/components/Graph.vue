@@ -22,7 +22,7 @@
 
 <template>
   <div>
-    <v-card @click.native="$emit('click')">
+    <v-card @click="$emit('click')">
       <v-toolbar
         height="24"
         class="pl-2 pr-2"
@@ -41,7 +41,12 @@
 
         <v-tooltip text="Edit" location="bottom">
           <template v-slot:activator="{ props }">
-            <v-icon v-bind="props" @click="editGraph = true">mdi-pencil</v-icon>
+            <v-icon
+              v-bind="props"
+              @click="editGraph = true"
+              data-test="edit-graph-icon"
+              >mdi-pencil</v-icon
+            >
           </template>
         </v-tooltip>
 
@@ -178,11 +183,11 @@
 
     <!-- Error dialog -->
     <v-dialog v-model="errorDialog" max-width="600">
-      <v-system-bar>
+      <v-toolbar height="24">
         <v-spacer />
         <span>Errors</span>
         <v-spacer />
-      </v-system-bar>
+      </v-toolbar>
       <v-card class="pa-3">
         <v-row dense>
           <v-text-field
@@ -296,6 +301,17 @@
         </v-list-item>
       </v-list>
     </v-menu>
+
+    <div class="u-series" ref="info">
+      <v-tooltip
+        text="Click item to toggle, Right click to edit"
+        location="bottom"
+      >
+        <template v-slot:activator="{ props }">
+          <v-icon v-bind="props">mdi-information-variant-circle</v-icon>
+        </template>
+      </v-tooltip>
+    </div>
   </div>
 </template>
 
@@ -405,8 +421,8 @@ export default {
       data: [[]],
       dataChanged: false,
       timeout: null,
-      graphMinY: '',
-      graphMaxY: '',
+      graphMinY: null,
+      graphMaxY: null,
       graphStartDateTime: null,
       graphEndDateTime: null,
       indexes: {},
@@ -667,14 +683,6 @@ export default {
                 this.editGraphMenuY = e.clientY
                 this.editGraphMenu = true
               })
-              // Tell TlmGrapher that you might need to resize since on mouseenter
-              // we start showing value popups and the graph can expand
-              canvas.addEventListener('mouseenter', (e) => {
-                this.$emit('resize')
-              })
-              canvas.addEventListener('mouseleave', (e) => {
-                this.$emit('resize')
-              })
               let legend = u.root.querySelector('.u-legend')
               legend.addEventListener('contextmenu', (e) => {
                 e.preventDefault()
@@ -698,6 +706,8 @@ export default {
                   this.legendMenu = true
                 }
               })
+              // Append the info to the legend
+              legend.querySelector('tbody').appendChild(this.$refs.info)
             },
           ],
         },
@@ -755,7 +765,7 @@ export default {
       this.moveLegend(this.legendPosition)
 
       // Allow the charts to dynamically resize when the window resizes
-      window.addEventListener('resize', this.handleResize)
+      window.addEventListener('resize', this.resize)
     }
 
     if (this.state !== 'stop') {
@@ -765,7 +775,7 @@ export default {
   beforeUnmount: function () {
     this.stopGraph()
     this.cable.disconnect()
-    window.removeEventListener('resize', this.handleResize)
+    window.removeEventListener('resize', this.resize)
   },
   watch: {
     state: function (newState, oldState) {
@@ -803,19 +813,27 @@ export default {
     graphStartDateTime: function (newVal, oldVal) {
       if (newVal && typeof newVal === 'string') {
         this.graphStartDateTime =
-          new Date(this.graphStartDateTime).getTime() * 1_000_000
+          this.parseDateTime(this.graphStartDateTime, this.timeZone) * 1_000_000
         if (this.graphStartDateTime !== oldVal) {
           this.needToUpdate = true
         }
+      } else if (newVal === null && oldVal) {
+        // If they clear the start date time we need to update
+        this.graphStartDateTime = null
+        this.needToUpdate = true
       }
     },
     graphEndDateTime: function (newVal, oldVal) {
       if (newVal && typeof newVal === 'string') {
         this.graphEndDateTime =
-          new Date(this.graphEndDateTime).getTime() * 1_000_000
+          this.parseDateTime(this.graphEndDateTime, this.timeZone) * 1_000_000
         if (this.graphEndDateTime !== oldVal) {
           this.needToUpdate = true
         }
+      } else if (newVal === null && oldVal) {
+        // If they clear the end date time we need to update
+        this.graphEndDateTime = null
+        this.needToUpdate = true
       }
     },
   },
@@ -945,15 +963,11 @@ export default {
       this.moveLegend(this.legendPosition)
       this.$emit('edit')
     },
-    handleResize: function () {
-      // TODO: Should this method be throttled?
+    resize: function () {
       this.graph.setSize(this.getSize('chart'))
       if (this.overview) {
         this.overview.setSize(this.getSize('overview'))
       }
-    },
-    resize: function () {
-      this.handleResize()
       this.$emit('resize', this.id)
     },
     expandAll: function () {
@@ -1056,7 +1070,7 @@ export default {
           ? navDrawer.clientWidth
           : 0
       }
-
+      console.log(`navDrawerWidth: ${navDrawerWidth}`)
       let legendWidth = 0
       if (this.legendPosition === 'right' || this.legendPosition === 'left') {
         const legend = document.getElementsByClassName('u-legend')[0]
@@ -1066,6 +1080,7 @@ export default {
         Math.max(document.documentElement.clientWidth, window.innerWidth || 0) -
         navDrawerWidth -
         legendWidth
+      console.log(`viewWidth: ${viewWidth}`)
       const viewHeight = Math.max(
         document.documentElement.clientHeight,
         window.innerHeight || 0,
@@ -1087,7 +1102,7 @@ export default {
           height = height / 2.0 + 10 // 5px padding top and bottom
         }
       }
-      let width = viewWidth - 62 // 31px padding left and right
+      let width = viewWidth - 50 // padding left and right
       if (!this.fullWidth) {
         width = width / 2.0 - 10 // 5px padding left and right
       }
@@ -1344,7 +1359,7 @@ export default {
                 if (rawValue == null) {
                   return '--'
                 } else if (
-                  Math.abs(rawValue) < 0.01 ||
+                  (Math.abs(rawValue) < 0.01 && rawValue !== 0) ||
                   Math.abs(rawValue) >= 10_000_000
                 ) {
                   return rawValue.toExponential(6)
@@ -1372,11 +1387,15 @@ export default {
         this.indexes[this.subscriptionKey(item)] = index
       }
       // Figure out the last item's color and set the colorIndex past that
-      let index = this.colors.indexOf(itemArray[itemArray.length - 1].color)
-      if (index) {
-        this.colorIndex = index + 1
+      let item = itemArray[itemArray.length - 1]
+      if (item) {
+        let index = this.colors.indexOf(item.color)
+        if (index) {
+          this.colorIndex = index + 1
+        }
       }
       this.addItemsToSubscription(itemArray)
+      this.$emit('resize')
       this.$emit('edit')
     },
     addItemsToSubscription: function (itemArray = this.items) {
@@ -1444,6 +1463,7 @@ export default {
         this.graph.setData(this.data)
         this.overview.setData(this.data)
       }
+      this.$emit('resize')
       this.$emit('edit')
     },
     removeItemsFromSubscription: function (itemArray = this.items) {
@@ -1592,6 +1612,15 @@ export default {
 }
 .uplot.top-legend .u-legend {
   order: -1;
+}
+/* This value is large enough to support negative scientific notation
+   that we use on the value with rawValue.toExponential(6) */
+.u-legend.u-inline .u-series .u-value {
+  width: 105px;
+}
+/* This value is large enough to support our date format: YYYY-MM-DD HH:MM:SS.sss */
+.u-legend.u-inline .u-series:first-child .u-value {
+  width: 180px;
 }
 .u-select {
   color: rgba(255, 255, 255, 0.07);

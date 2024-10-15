@@ -289,7 +289,7 @@ export default {
       this.numScripts = response.data.length
     })
   },
-  destroyed: function () {
+  unmounted: function () {
     if (this.subscription) {
       this.subscription.unsubscribe()
     }
@@ -352,7 +352,7 @@ export default {
             start_offset:
               localStorage.notificationStreamOffset ||
               localStorage.lastReadNotification,
-            types: ['notification', 'alert'],
+            types: ['notification', 'alert', 'ephemeral'],
           },
         )
         .then((subscription) => {
@@ -368,9 +368,25 @@ export default {
     },
     receiveMessage: function (parsed) {
       this.cable.recordPing()
+
+      // Cut down if we're being flooded
       if (parsed.length > NOTIFICATION_HISTORY_MAX_LENGTH) {
         parsed.splice(0, parsed.length - NOTIFICATION_HISTORY_MAX_LENGTH)
       }
+
+      // Filter out ephemeral
+      let ephemeral = parsed.filter(
+        (someobject) => someobject.type === 'ephemeral',
+      )
+      if (ephemeral && ephemeral.length > 0) {
+        // Remove ephemeral from parsed
+        parsed = parsed.filter((someobject) => someobject.type !== 'ephemeral')
+        // Emit the ephemeral
+        ephemeral.forEach((notification) => {
+          this.$emit('ephemeral', notification)
+        })
+      }
+
       let foundToast = false
       parsed.forEach((notification) => {
         notification.read =

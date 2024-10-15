@@ -19,19 +19,19 @@
 <template>
   <!-- Edit Item dialog -->
   <v-dialog v-model="show" @keydown.esc="$emit('cancel')" max-width="700">
-    <v-system-bar>
+    <v-toolbar height="24">
       <v-spacer />
       <span>Edit Graph</span>
       <v-spacer />
-    </v-system-bar>
+    </v-toolbar>
     <v-card class="pa-3">
       <v-tabs v-model="tab" class="ml-3">
-        <v-tab :key="0"> Settings </v-tab>
-        <v-tab :key="1"> Scale / Lines </v-tab>
-        <v-tab :key="1"> Items </v-tab>
+        <v-tab value="0"> Settings </v-tab>
+        <v-tab value="1"> Scale / Lines </v-tab>
+        <v-tab value="2"> Items </v-tab>
       </v-tabs>
-      <v-tabs-items v-model="tab">
-        <v-tab-item :key="0" eager="true" class="tab">
+      <v-tabs-window v-model="tab">
+        <v-tabs-window-item value="0" eager>
           <div class="edit-box">
             <v-row
               ><v-col>
@@ -41,19 +41,15 @@
                     label="Title"
                     v-model="graph.title"
                     hide-details
-                    data-test="edit-graph-title"
                   />
                 </v-card-text>
               </v-col>
               <v-col>
                 <v-select
                   label="Legend Position"
-                  dense
-                  outlined
                   hide-details
                   :items="legendPositions"
                   v-model="graph.legendPosition"
-                  data-test="edit-legend-position"
                   style="max-width: 280px"
                 /> </v-col
             ></v-row>
@@ -64,25 +60,13 @@
             </v-card-text>
             <v-row>
               <v-col>
-                <v-menu
-                  close-on-content-click
-                  transition="scale-transition"
-                  offset-y
-                  max-width="290px"
-                  min-width="290px"
-                >
-                  <template v-slot:activator="{ on }">
-                    <!-- We set the :name attribute to be unique to avoid auto-completion -->
-                    <v-text-field
-                      label="Start Date"
-                      :name="`date${Date.now()}`"
-                      :rules="[rules.date]"
-                      v-model="startDate"
-                      v-on="on"
-                      type="date"
-                    />
-                  </template>
-                </v-menu>
+                <v-text-field
+                  label="Start Date"
+                  :name="`date${Date.now()}`"
+                  :rules="[rules.date]"
+                  v-model="startDate"
+                  type="date"
+                />
               </v-col>
               <v-col>
                 <!-- We set the :name attribute to be unique to avoid auto-completion -->
@@ -102,25 +86,13 @@
             </v-card-text>
             <v-row>
               <v-col>
-                <v-menu
-                  close-on-content-click
-                  transition="scale-transition"
-                  offset-y
-                  max-width="290px"
-                  min-width="290px"
-                >
-                  <template v-slot:activator="{ on }">
-                    <!-- We set the :name attribute to be unique to avoid auto-completion -->
-                    <v-text-field
-                      label="End Date"
-                      :name="`date${Date.now()}`"
-                      :rules="[rules.date]"
-                      v-model="endDate"
-                      v-on="on"
-                      type="date"
-                    />
-                  </template>
-                </v-menu>
+                <v-text-field
+                  label="End Date"
+                  :name="`date${Date.now()}`"
+                  :rules="[rules.date]"
+                  v-model="endDate"
+                  type="date"
+                />
               </v-col>
               <v-col>
                 <!-- We set the :name attribute to be unique to avoid auto-completion -->
@@ -135,8 +107,8 @@
               </v-col>
             </v-row>
           </div>
-        </v-tab-item>
-        <v-tab-item :key="1" eager="true" class="tab">
+        </v-tabs-window-item>
+        <v-tabs-window-item value="1" eager>
           <div class="edit-box">
             <v-card-text class="pa-0">
               Set a min or max Y value to override automatic scaling
@@ -148,7 +120,6 @@
                   label="Min Y Axis (Optional)"
                   v-model="graph.graphMinY"
                   type="number"
-                  data-test="edit-graph-min-y"
                 />
               </v-col>
               <v-col class="px-2">
@@ -157,82 +128,58 @@
                   label="Max Y Axis (Optional)"
                   v-model="graph.graphMaxY"
                   type="number"
-                  data-test="edit-graph-max-y"
                 />
               </v-col>
             </v-row>
           </div>
           <div class="edit-box">
-            <v-card-text class="pa-0"
-              >Add horizontal lines to the graph</v-card-text
-            >
-            <v-data-table
-              item-key="lineId"
-              data-test="edit-graph-lines"
-              :headers="lineHeaders"
-              :items="graph.lines"
-              :items-per-page="5"
-              :footer-props="{
-                itemsPerPageOptions: [5],
-              }"
-            >
-              <template v-slot:item.yValue="{ item }">
-                <v-edit-dialog :return-value.sync="item.yValue">
-                  {{ item.yValue }}
-                  <template v-slot:input>
+            <v-list density="compact">
+              <v-list-item>
+                <span style="padding-top: 5px"
+                  >Add horizontal lines to the graph</span
+                ><v-spacer /><v-btn @click="addLine()"
+                  >New Line</v-btn
+                ></v-list-item
+              >
+              <v-list-item
+                v-for="(item, i) in graph.lines"
+                :key="i"
+                :value="item"
+                color="primary"
+              >
+                <v-row>
+                  <v-col>
                     <v-text-field
+                      label="Y Value"
                       v-model="item.yValue"
-                      label="Edit"
-                      single-line
-                      counter
-                    ></v-text-field>
-                  </template>
-                </v-edit-dialog>
-              </template>
-              <template v-slot:item.color="{ item }">
-                <v-edit-dialog :return-value.sync="item.color">
-                  {{ item.color }}
-                  <template v-slot:input>
+                    ></v-text-field
+                  ></v-col>
+                  <v-col>
                     <v-select
-                      outlined
-                      hide-details
                       label="Color"
+                      hide-details
                       :items="colors"
                       v-model="item.color"
                     />
-                  </template>
-                </v-edit-dialog>
-              </template>
-              <template v-slot:footer.prepend>
-                <v-btn small style="margin-top: 3px" @click="addLine">
-                  New Horizontal Line
-                </v-btn>
-                &nbsp;&nbsp;Click to edit values, Enter to save
-                <v-spacer />
-              </template>
-              <template v-slot:item.actions="{ item }">
-                <v-tooltip top>
-                  <template v-slot:activator="{ on, attrs }">
-                    <div v-on="on" v-bind="attrs">
-                      <v-btn
-                        icon
-                        :data-test="`delete-line-icon${item.lineId}`"
-                        @click="() => removeLine(item)"
-                      >
-                        <v-icon>mdi-delete</v-icon>
-                      </v-btn>
-                    </div>
-                  </template>
-                  <span>Remove</span>
-                </v-tooltip>
-              </template>
-              <template v-slot:no-data>
-                <span>Currently no horizontal lines on this graph</span>
-              </template>
-            </v-data-table>
+                  </v-col>
+                  <v-col>
+                    <v-tooltip text="Remove" location="bottom">
+                      <template v-slot:activator="{ props }">
+                        <v-icon
+                          v-bind="props"
+                          style="padding: 30px"
+                          @click="removeLine(item)"
+                          >mdi-delete</v-icon
+                        >
+                      </template>
+                    </v-tooltip>
+                  </v-col>
+                </v-row>
+              </v-list-item>
+            </v-list>
           </div>
-        </v-tab-item>
-        <v-tab-item :key="2" eager="true" class="tab">
+        </v-tabs-window-item>
+        <v-tabs-window-item value="2" eager>
           <v-data-table
             item-key="itemId"
             class="elevation-1 my-2"
@@ -245,27 +192,20 @@
             }"
           >
             <template v-slot:item.actions="{ item }">
-              <v-tooltip top>
-                <template v-slot:activator="{ on, attrs }">
-                  <div v-on="on" v-bind="attrs">
-                    <v-btn
-                      icon
-                      :data-test="`delete-item-icon${item.itemId}`"
-                      @click="() => $emit('remove', item)"
-                    >
-                      <v-icon>mdi-delete</v-icon>
-                    </v-btn>
-                  </div>
+              <v-tooltip text="Remove" location="bottom">
+                <template v-slot:activator="{ props }">
+                  <v-icon v-bind="props" @click="$emit('remove', item)"
+                    >mdi-delete</v-icon
+                  >
                 </template>
-                <span>Remove</span>
               </v-tooltip>
             </template>
             <template v-slot:no-data>
               <span>Currently no items on this graph</span>
             </template>
           </v-data-table>
-        </v-tab-item>
-      </v-tabs-items>
+        </v-tabs-window-item>
+      </v-tabs-window>
       <v-card-actions>
         <v-spacer />
         <v-btn outlined class="mx-2" @click="$emit('cancel')"> Cancel </v-btn>
@@ -280,7 +220,7 @@ import TimeFilters from '@openc3/tool-common/src/tools/base/util/timeFilters.js'
 import { isValid, parse, toDate } from 'date-fns'
 export default {
   props: {
-    value: Boolean, // value is the default prop when using v-model
+    modelValue: Boolean, // modelValue is the default prop when using v-model
     title: {
       type: String,
       required: true,
@@ -295,11 +235,9 @@ export default {
     },
     graphMinY: {
       type: Number,
-      required: true,
     },
     graphMaxY: {
       type: Number,
-      required: true,
     },
     lines: {
       type: Array,
@@ -311,11 +249,9 @@ export default {
     },
     startDateTime: {
       type: Number,
-      required: true,
     },
     endDateTime: {
       type: Number,
-      required: true,
     },
     timeZone: {
       type: String,
@@ -333,15 +269,15 @@ export default {
       endDate: null,
       endTime: null,
       lineHeaders: [
-        { text: 'Y Value', value: 'yValue' },
-        { text: 'Color', value: 'color' },
-        { text: 'Actions', value: 'actions', sortable: false },
+        { title: 'Y Value', value: 'yValue' },
+        { title: 'Color', value: 'color' },
+        { title: 'Actions', value: 'actions', sortable: false },
       ],
       itemHeaders: [
-        { text: 'Target Name', value: 'targetName' },
-        { text: 'Packet Name', value: 'packetName' },
-        { text: 'Item Name', value: 'itemName' },
-        { text: 'Actions', value: 'actions', sortable: false },
+        { title: 'Target Name', value: 'targetName' },
+        { title: 'Packet Name', value: 'packetName' },
+        { title: 'Item Name', value: 'itemName' },
+        { title: 'Actions', value: 'actions', sortable: false },
       ],
       rules: {
         date: (value) => {
@@ -372,10 +308,10 @@ export default {
   computed: {
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value) // update is the default event when using v-model
       },
     },
     editItems: function () {
@@ -434,7 +370,7 @@ export default {
       this.graph.lines.push({ yValue: 0, color: 'white' })
     },
     removeLine(dline) {
-      let i = this.lines.indexOf(dline)
+      let i = this.graph.lines.indexOf(dline)
       this.graph.lines.splice(i, 1)
     },
   },

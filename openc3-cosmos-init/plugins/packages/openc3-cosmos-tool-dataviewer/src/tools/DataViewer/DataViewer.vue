@@ -188,7 +188,7 @@
     <!-- Dialog for renaming a new tab -->
     <v-dialog v-model="tabNameDialog" width="600">
       <v-card>
-        <v-toolbar :height="24">
+        <v-toolbar height="24">
           <v-spacer />
           <span> DataViewer: Rename Tab</span>
           <v-spacer />

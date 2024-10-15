@@ -84,8 +84,8 @@ export default {
       search: '',
       data: [],
       headers: [
-        { title: 'Metric', value: 'metric_name' },
-        { title: 'Value', value: 'value' },
+        { title: 'Metric', key: 'metric_name' },
+        { title: 'Value', key: 'value' },
       ],
     }
   },

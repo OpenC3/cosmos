@@ -20,7 +20,7 @@
   <!-- Dialog for creating new screen -->
   <v-dialog v-model="show" width="600">
     <v-card>
-      <v-toolbar :height="24">
+      <v-toolbar height="24">
         <v-spacer />
         <span>Create New Screen</span>
         <v-spacer />
@@ -122,7 +122,7 @@ import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 
 export default {
   props: {
-    value: Boolean, // value is the default prop when using v-model
+    modelValue: Boolean,
     target: {
       type: String,
     },
@@ -160,10 +160,10 @@ export default {
   computed: {
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
     existingScreens() {

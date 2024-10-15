@@ -46,6 +46,12 @@
         </v-card-text>
       </v-card>
     </v-dialog>
+    <critical-cmd-dialog
+      :uuid="criticalCmdUuid"
+      :cmdString="criticalCmdString"
+      :cmdUser="criticalCmdUser"
+      v-model="displayCriticalCmd"
+    />
   </div>
 </template>
 
@@ -53,14 +59,22 @@
 import { OpenC3Api } from '../../services/openc3-api'
 import Api from '../../services/api'
 import Widget from './Widget'
+import CriticalCmdDialog from '@openc3/tool-common/src/components/CriticalCmdDialog'
 
 export default {
   mixins: [Widget],
+  components: {
+    CriticalCmdDialog,
+  },
   data() {
     return {
       api: null,
       displaySendHazardous: false,
       lastCmd: '',
+      criticalCmdUuid: null,
+      criticalCmdString: null,
+      criticalCmdUser: null,
+      displayCriticalCmd: false,
     }
   },
   computed: {
@@ -86,30 +100,56 @@ export default {
       const run_script = this.runScript // TODO: deprecate this in favor of runScript?
       const runScript = this.runScript
       for (let i = 0; i < lines.length; i++) {
-        const result = eval(lines[i].trim())
-        if (result instanceof Promise) {
-          try {
+        try {
+          const result = eval(lines[i].trim())
+          if (result instanceof Promise) {
             await result
-          } catch (err) {
-            // This text is in top_level.rb HazardousError.to_s
-            if (err.message.includes('is Hazardous')) {
-              this.lastCmd = err.message.split('\n').pop()
-              this.displaySendHazardous = true
-              while (this.displaySendHazardous) {
-                await new Promise((resolve) => setTimeout(resolve, 500))
-              }
+          }
+        } catch (error) {
+          // This text is in top_level.rb HazardousError.to_s
+          if (error.message.includes('CriticalCmdError')) {
+            this.criticalCmdUuid = error.object.data.instance_variables['@uuid']
+            this.criticalCmdString =
+              error.object.data.instance_variables['@cmd_string']
+            this.criticalCmdUser =
+              error.object.data.instance_variables['@username']
+            this.displayCriticalCmd = true
+          }
+          if (error.message.includes('is Hazardous')) {
+            this.lastCmd = error.message.split('\n').pop()
+            this.displaySendHazardous = true
+            while (this.displaySendHazardous) {
+              await new Promise((resolve) => setTimeout(resolve, 500))
             }
           }
         }
       }
     },
-    sendHazardousCmd() {
+    async sendHazardousCmd() {
       // TODO: This only handles basic cmd() calls in buttons, do we need to handle other? cmd_raw()?
       this.lastCmd = this.lastCmd.replace(
         'cmd(',
         'this.api.cmd_no_hazardous_check(',
       )
-      eval(this.lastCmd)
+
+      try {
+        const result = eval(this.lastCmd)
+
+        if (result instanceof Promise) {
+          await result
+        }
+      } catch (error) {
+        // This text is in top_level.rb HazardousError.to_s
+        if (error.message.includes('CriticalCmdError')) {
+          this.criticalCmdUuid = error.object.data.instance_variables['@uuid']
+          this.criticalCmdString =
+            error.object.data.instance_variables['@cmd_string']
+          this.criticalCmdUser =
+            error.object.data.instance_variables['@username']
+          this.displayCriticalCmd = true
+        }
+      }
+
       this.displaySendHazardous = false
     },
     cancelHazardousCmd() {

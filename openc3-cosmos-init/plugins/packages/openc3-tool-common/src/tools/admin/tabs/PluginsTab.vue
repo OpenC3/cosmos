@@ -129,7 +129,11 @@
             >{{ plugin }}</v-list-item-title
           >
           <v-list-item-subtitle v-if="pluginTargets(plugin).length !== 0">
-            <span v-for="(target, index) in pluginTargets(plugin)" :key="index">
+            <span
+              v-for="(target, index) in pluginTargets(plugin)"
+              :key="index"
+              class="mr-2"
+            >
               <a
                 v-if="target.modified"
                 @click.prevent="downloadTarget(target.name)"
@@ -208,7 +212,7 @@
       :variables="variables"
       :pluginTxt="pluginTxt"
       :existingPluginTxt="existingPluginTxt"
-      @submit="pluginCallback"
+      @callback="pluginCallback"
     />
     <modified-plugin-dialog
       v-if="showModifiedPluginDialog"
@@ -545,7 +549,7 @@ export default {
     upgradePlugin(plugin) {
       this.file = undefined
       this.currentPlugin = plugin
-      this.$refs.fileInput.$refs.input.click()
+      this.$refs.fileInput.click()
       this.progress = 0
     },
     fileMousedown() {

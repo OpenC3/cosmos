@@ -24,11 +24,11 @@
   <v-dialog persistent v-model="show" width="600">
     <v-card>
       <v-form v-model="valid" v-on:submit.prevent="submitHandler">
-        <v-system-bar>
+        <v-toolbar height="24">
           <v-spacer />
           <span> File Dialog </span>
           <v-spacer />
-        </v-system-bar>
+        </v-toolbar>
         <div class="pa-2">
           <v-card-text>
             <v-row>
@@ -99,7 +99,7 @@ export default {
       type: Boolean,
       default: false,
     },
-    value: Boolean, // value is the default prop when using v-model
+    modelValue: Boolean,
   },
   data() {
     return {
@@ -109,10 +109,10 @@ export default {
   computed: {
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
   },

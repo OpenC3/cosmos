@@ -189,7 +189,7 @@ export default {
   created() {
     this.createSubscription()
   },
-  destroyed() {
+  unmounted() {
     if (this.subscription) {
       this.subscription.unsubscribe()
     }
@@ -257,7 +257,7 @@ export default {
               messages.map((message) => {
                 message.timestamp = this.formatTimestamp(
                   message['@timestamp'],
-                  this.timeZone
+                  this.timeZone,
                 )
                 if (
                   message.message.raw &&
@@ -291,7 +291,8 @@ export default {
           {
             // Channel parameter is history_count with underscore
             history_count: this.historyCount,
-          }
+            types: ['log', 'notification', 'alert'],
+          },
         )
         .then((subscription) => {
           this.subscription = subscription
@@ -308,7 +309,7 @@ export default {
         .map(
           (entry) =>
             // Other fields are available like container_name, msg_id ... probably not useful
-            `${entry.timestamp} | ${entry.level} | ${entry.microservice_name} | ${entry.message}`
+            `${entry.timestamp} | ${entry.level} | ${entry.microservice_name} | ${entry.message}`,
         )
         .join('\n')
       const blob = new Blob([output], {
@@ -319,7 +320,7 @@ export default {
       link.href = URL.createObjectURL(blob)
       link.setAttribute(
         'download',
-        format(Date.now(), 'yyyy_MM_dd_HH_mm_ss') + '_message_log.txt'
+        format(Date.now(), 'yyyy_MM_dd_HH_mm_ss') + '_message_log.txt',
       )
       link.click()
     },

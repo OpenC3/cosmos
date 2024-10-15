@@ -23,11 +23,11 @@
 <template>
   <v-dialog persistent v-model="show" width="600">
     <v-card>
-      <v-system-bar>
+      <v-toolbar height="24">
         <v-spacer />
         <span class="text" v-text="title" />
         <v-spacer />
-      </v-system-bar>
+      </v-toolbar>
       <div class="pa-2">
         <v-card-text class="text">
           <v-row v-if="subtitle">
@@ -134,7 +134,7 @@ export default {
       default: false,
       required: false,
     },
-    value: Boolean, // value is the default prop when using v-model
+    modelValue: Boolean,
   },
   data() {
     return {
@@ -145,10 +145,10 @@ export default {
   computed: {
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
     layoutClass() {

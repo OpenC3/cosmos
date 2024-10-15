@@ -24,7 +24,7 @@
   <div>
     <v-dialog persistent v-model="show" width="80vw">
       <v-card>
-        <v-system-bar>
+        <v-toolbar height="24">
           <v-spacer />
           <span v-if="newMetadata">Metadata</span><span v-else>Events</span>
           <v-spacer />
@@ -38,7 +38,7 @@
             </template>
             <span>Close</span>
           </v-tooltip>
-        </v-system-bar>
+        </v-toolbar>
         <v-card-title>
           <span v-if="newMetadata">Metadata</span><span v-else>Events</span>
           <v-spacer />
@@ -208,10 +208,10 @@ export default {
   computed: {
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
   },

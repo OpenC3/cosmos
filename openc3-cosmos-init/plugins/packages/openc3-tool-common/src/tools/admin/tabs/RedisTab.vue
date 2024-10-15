@@ -71,7 +71,6 @@
         :headers="headers"
         :items="commands"
         class="monospace"
-        row-props="monospace"
         :items-per-page="-1"
         hide-default-footer
         density="compact"

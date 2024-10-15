@@ -47,11 +47,11 @@
     />
     <v-dialog v-model="limitsSetDialog" max-width="650">
       <v-card>
-        <v-system-bar>
+        <v-toolbar height="24">
           <v-spacer />
           <span>Change Limits Set</span>
           <v-spacer />
-        </v-system-bar>
+        </v-toolbar>
         <v-card-text class="mt-6">
           <span style="display: block">
             The Limits Set is a global option which changes the Limits Set

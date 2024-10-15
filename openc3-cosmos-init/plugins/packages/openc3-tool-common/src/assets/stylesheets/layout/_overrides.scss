@@ -59,6 +59,11 @@
   border-color: var(--button-color-border-primary-default) !important;
   color: var(--color-text-interactive-default) !important;
 }
+.theme--dark.v-btn--outlined.v-btn--disabled {
+  border-color: var(--button-color-border-primary-default) !important;
+  color: var(--color-text-interactive-default) !important;
+  opacity: 0.4 !important;
+}
 .v-theme--cosmosDark.v-btn--variant-outlined:not(
     .v-btn--icon,
     .v-btn--round,
@@ -130,6 +135,7 @@ body,
 .v-theme--cosmosDark.v-time-picker-clock__container,
 .v-theme--cosmosDark.v-expansion-panel,
 .v-theme--cosmosDark.v-expansion-panels,
+.v-theme--cosmosDark.v-list,
 .v-theme--cosmosDark.p-menubar {
   background-color: var(--color-background-surface-default) !important;
 }
@@ -168,11 +174,15 @@ body,
 }
 
 // The next several styles effectively styles like an Astro select
-.v-theme--cosmosDark.v-autocomplete,
-.v-theme--cosmosDark.v-select {
+.v-theme--cosmosDark.v-autocomplete {
   border-color: var(--button-color-border-interactive-default) !important;
   color: var(--color-text-interactive-default) !important;
   background-color: var(--color-background-base-default) !important;
+}
+.v-theme--cosmosDark.v-select {
+  border-color: var(--button-color-border-interactive-default) !important;
+  color: var(--color-text-interactive-default) !important;
+  background-color: var(--color-background-surface-default) !important;
 }
 
 .v-theme--cosmosDark.v-autocomplete label,
@@ -180,7 +190,7 @@ body,
   color: whitesmoke !important;
 }
 
-.v-theme--cosmosDark.v-select fieldset {
+.v-theme--cosmosDark.v-select .v-field {
   border: 1px solid var(--color-border-interactive-muted);
   background-color: var(--color-background-base-default);
 }
@@ -257,9 +267,15 @@ input {
   z-index: initial !important;
 }
 
-.v-list-item__content {
-  display: flex;
+// Allow tooltips to be clickable (Packet Viewer uses this)
+.v-tooltip > .v-overlay__content {
+  pointer-events: auto !important;
 }
+
+// This breaks the normal list title / subtitle layout
+// .v-list-item__content {
+//   display: flex;
+// }
 .v-list-item-action {
   margin-right: 15px !important;
 }

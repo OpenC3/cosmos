@@ -97,6 +97,7 @@ class Packet(Structure):
         self.related_items = None
         self.ignore_overlap = False
         self.virtual = False
+        self.restricted = False
         self.validator = None
 
     @property
@@ -977,6 +978,8 @@ class Packet(Structure):
             config += "  DISABLED\n"
         elif self.hidden:
             config += "  HIDDEN\n"
+        if self.restricted:
+            config += "  RESTRICTED\n"
 
         if self.processors:
             for _, processor in self.processors:
@@ -1034,6 +1037,8 @@ class Packet(Structure):
             config["hidden"] = True
         if self.virtual:
             config["virtual"] = True
+        if self.restricted:
+            config["restricted"] = True
         config["accessor"] = self.accessor.__class__.__name__
         # config["accessor_args"] = self.accessor.args
         if self.validator:
@@ -1085,6 +1090,7 @@ class Packet(Structure):
         packet.disabled = hash.get("disabled")
         packet.hidden = hash.get("hidden")
         packet.virtual = hash.get("virtual")
+        packet.restricted = hash.get("restricted")
         if "accessor" in hash:
             try:
                 filename = class_name_to_filename(hash["accessor"])

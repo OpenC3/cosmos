@@ -31,21 +31,19 @@
         ></v-progress-circular>
       </v-overlay>
       <form v-on:submit.prevent="success">
-        <v-system-bar>
+        <v-toolbar height="24">
           <v-spacer />
           <span> {{ title }} </span>
           <v-spacer />
-        </v-system-bar>
+        </v-toolbar>
         <v-card-text>
           <div class="pa-3">
             <v-row>{{ helpText }} </v-row>
             <v-row dense class="mt-5">
               <v-text-field
-                @update:model-value="handleSearch"
                 v-model="search"
                 flat
                 autofocus
-                variant="solo-inverted outlined"
                 hide-details
                 clearable
                 label="Search"
@@ -55,28 +53,30 @@
               />
             </v-row>
             <v-row dense class="mt-2">
+              <!-- return-object doesn't work until vuetify 3.7.3 -->
               <v-treeview
                 v-model="tree"
-                @update:active="activeFile"
-                dense
+                @update:activated="activeFile"
+                density="compact"
                 activatable
-                return-object
                 ref="tree"
                 style="width: 100%; max-height: 60vh; overflow: auto"
+                item-value="id"
                 :items="items"
                 :search="search"
                 :open-on-click="type === 'open'"
+                :open-all="!!search"
               >
                 <template v-slot:prepend="{ item, open }">
                   <v-icon v-if="!item.file">
                     {{ open ? 'mdi-folder-open' : 'mdi-folder' }}
                   </v-icon>
-                  <v-icon v-else> {{ calcIcon(item.name) }} </v-icon>
+                  <v-icon v-else> {{ calcIcon(item.title) }} </v-icon>
                 </template>
                 <template v-slot:append="{ item }">
                   <!-- See ScriptRunner.vue const TEMP_FOLDER -->
                   <v-btn
-                    v-if="item.name === '__TEMP__'"
+                    v-if="item.title === '__TEMP__'"
                     icon
                     @click="deleteTemp"
                   >
@@ -149,7 +149,7 @@ export default {
     apiUrl: String, // Base API URL for use with scripts or cmd-tlm
     requireTargetParentDir: Boolean, // Require that the save filename be nested in a directory with the name of a target
     inputFilename: String, // passed if this is a 'save' dialog
-    value: Boolean, // value is the default prop when using v-model
+    modelValue: Boolean,
   },
   data() {
     return {
@@ -166,10 +166,10 @@ export default {
   computed: {
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
     title: function () {
@@ -266,19 +266,30 @@ export default {
       this.overwrite = false
       this.disableButtons = false
     },
-    handleSearch: function (input) {
-      if (input) {
-        this.$refs.tree.updateAll(true)
-      } else {
-        this.$refs.tree.updateAll(false)
-      }
-    },
     activeFile: function (file) {
       if (file.length === 0) {
         this.selectedFile = null
       } else {
-        this.selectedFile = file[0].path
+        // This works when return-object is enabled
+        // this.selectedFile = file[0].path
+
+        // Search through items to find the item with id
+        this.selectedFile = this.findItem(this.items, file[0])
       }
+    },
+    findItem: function (items, id) {
+      for (let item of items) {
+        if (item.id === id) {
+          return item.path
+        }
+        if (item.children) {
+          const found = this.findItem(item.children, id)
+          if (found) {
+            return found
+          }
+        }
+      }
+      return null
     },
     exists: function (root, name) {
       let found = false
@@ -382,7 +393,7 @@ export default {
       if (parts.length === 1) {
         root.push({
           id: this.id,
-          name: parts[0],
+          title: parts[0],
           file: 'ruby',
           path: this.filepath,
         })
@@ -390,12 +401,12 @@ export default {
         return
       }
       // Look for the first part of the path
-      const index = root.findIndex((item) => item.name === parts[0])
+      const index = root.findIndex((item) => item.title === parts[0])
       if (index === -1) {
         // Name not found so push the item and add a children array
         root.push({
           id: this.id,
-          name: parts[0],
+          title: parts[0],
           children: [],
           path: this.filepath.split('/').slice(0, level).join('/'),
         })
@@ -403,7 +414,7 @@ export default {
         this.insertFile(
           root[root.length - 1].children, // Start from the node we just added
           level + 1,
-          parts.slice(1).join('/') // Strip the first part of the path
+          parts.slice(1).join('/'), // Strip the first part of the path
         )
       } else {
         // We already have something at this level so recursively
@@ -411,7 +422,7 @@ export default {
         this.insertFile(
           root[index].children,
           level + 1,
-          parts.slice(1).join('/')
+          parts.slice(1).join('/'),
         )
       }
     },

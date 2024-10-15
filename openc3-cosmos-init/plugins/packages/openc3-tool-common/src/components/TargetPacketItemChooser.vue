@@ -29,7 +29,7 @@
           hide-details
           density="compact"
           variant="outlined"
-          @update:modelValue="targetNameChanged"
+          @update:model-value="targetNameChanged"
           :items="targetNames"
           item-title="label"
           item-value="value"
@@ -42,7 +42,7 @@
           hide-details
           density="compact"
           variant="outlined"
-          @update:modelValue="packetNameChanged"
+          @update:model-value="packetNameChanged"
           :disabled="packetsDisabled || autocompleteDisabled"
           :items="packetNames"
           item-title="label"
@@ -61,7 +61,7 @@
           hide-details
           density="compact"
           variant="outlined"
-          @update:modelValue="itemNameChanged($event)"
+          @update:model-value="itemNameChanged($event)"
           :disabled="itemsDisabled || autocompleteDisabled"
           :items="itemNames"
           item-title="label"
@@ -70,7 +70,7 @@
         />
       </v-col>
       <v-col
-        v-if="itemIsArray()"
+        v-if="chooseItem && itemIsArray()"
         cols="1"
         class="select"
         data-test="array-index"
@@ -80,7 +80,7 @@
           hide-details
           density="compact"
           variant="outlined"
-          @update:modelValue="indexChanged($event)"
+          @update:model-value="indexChanged($event)"
           :disabled="itemsDisabled || autocompleteDisabled"
           :items="arrayIndexes()"
           item-title="label"
@@ -268,11 +268,15 @@ export default {
       if (this.allowAllTargets) {
         this.targetNames.unshift(this.ALL)
       }
+      // If the initial target name is not set, default to the first target
+      // which also updates packets and items as needed
       if (!this.selectedTargetName) {
         this.selectedTargetName = this.targetNames[0].value
         this.targetNameChanged(this.selectedTargetName)
+      } else {
+        // Selected target name was set but we still have to update packets
+        this.updatePackets()
       }
-      this.updatePackets()
       if (this.unknown) {
         this.targetNames.push(this.UNKNOWN)
       }
@@ -318,7 +322,15 @@ export default {
     mode: function (newVal, oldVal) {
       this.selectedPacketName = null
       this.selectedItemName = null
-      this.updatePackets()
+      // This also updates packets and items as needed
+      this.targetNameChanged(this.selectedTargetName)
+    },
+    chooseItem: function (newVal, oldVal) {
+      if (newVal) {
+        this.updateItems()
+      } else {
+        this.itemNames = []
+      }
     },
   },
   methods: {

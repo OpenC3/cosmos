@@ -25,6 +25,15 @@ const timeFormatHMS = 'HH:mm:ss'
 const dateTimeFormat = `${dateFormat} ${timeFormat}`
 export default {
   methods: {
+    parseDateTime(dateString, timeZone) {
+      if (dateString.includes(' ')) {
+        dateString = dateString.replace(' ', 'T')
+      }
+      if (timeZone && timeZone === 'UTC') {
+        dateString += 'Z'
+      }
+      return Date.parse(dateString)
+    },
     // Convert a UTC stamp into a local time
     formatUtcToLocal(date, timeZone) {
       // Default to local time if the timezone isn't set

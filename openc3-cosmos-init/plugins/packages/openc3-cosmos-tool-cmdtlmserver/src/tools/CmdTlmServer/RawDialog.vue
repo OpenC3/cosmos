@@ -29,7 +29,7 @@
   >
     <v-card>
       <div ref="bar">
-        <v-system-bar absolute>
+        <v-toolbar height="24">
           <v-tooltip location="top">
             <template v-slot:activator="{ props }">
               <div v-bind="props">
@@ -63,7 +63,7 @@
             </template>
             <span> Close </span>
           </v-tooltip>
-        </v-system-bar>
+        </v-toolbar>
       </div>
       <v-card-title class="d-flex align-center justify-content-space-between">
         <span> {{ header }} </span>
@@ -353,9 +353,5 @@ export default {
   margin-top: 10px;
   font-family: 'Courier New', Courier, monospace;
   overflow-y: scroll;
-}
-
-.v-system-bar {
-  position: relative !important;
 }
 </style>

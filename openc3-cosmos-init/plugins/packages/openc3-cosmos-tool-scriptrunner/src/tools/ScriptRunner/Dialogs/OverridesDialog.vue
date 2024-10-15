@@ -23,11 +23,11 @@
 <template>
   <v-dialog v-model="show" width="700">
     <v-card>
-      <v-system-bar>
+      <v-toolbar height="24">
         <v-spacer />
         <span>Overrides</span>
         <v-spacer />
-      </v-system-bar>
+      </v-toolbar>
       <div class="pa-2">
         <v-card-text>
           <v-btn
@@ -93,7 +93,7 @@ import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 export default {
   components: {},
   props: {
-    value: {
+    modelValue: {
       type: Boolean,
       required: true,
     },
@@ -120,10 +120,10 @@ export default {
   computed: {
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
   },

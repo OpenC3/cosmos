@@ -26,7 +26,7 @@
 <template>
   <div :style="computedStyle" ref="bar">
     <v-card :min-height="height" :min-width="width">
-      <v-toolbar :height="24" class="px-1">
+      <v-toolbar height="24">
         <div v-show="errors.length !== 0">
           <v-tooltip location="top">
             <template v-slot:activator="{ props }">
@@ -163,7 +163,7 @@
 
     <!-- Error dialog -->
     <v-dialog v-model="errorDialog" max-width="600">
-      <v-toolbar :height="24">
+      <v-toolbar height="24">
         <v-spacer />
         <span> Screen: {{ target }} {{ screen }} Errors </span>
         <v-spacer />

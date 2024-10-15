@@ -65,7 +65,7 @@ export default {
     this.valueId = `${this.parameters[0]}__${this.parameters[1]}__${this.parameters[2]}__${type}`
     this.$emit('addItem', this.valueId)
   },
-  destroyed() {
+  unmounted() {
     this.$emit('deleteItem', this.valueId)
   },
 }
