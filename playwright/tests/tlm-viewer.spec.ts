@@ -214,8 +214,6 @@ test('displays INST WEB', async ({ page, utils }) => {
   await showScreen(page, utils, 'INST', 'WEB')
 })
 
-// Create the screen name as upcase because OpenC3 upcases the name
-let screen = 'SCREEN' + Math.floor(Math.random() * 10000)
 test('creates new blank screen', async ({ page, utils }) => {
   await page.locator('[data-test="new-screen"]').click()
   await expect(
@@ -223,19 +221,23 @@ test('creates new blank screen', async ({ page, utils }) => {
   ).toBeVisible()
   await page
     .getByRole('dialog')
-    .getByRole('button', { name: 'Select Target INST' })
+    .getByRole('combobox')
+    .filter({ hasText: 'Select Target' })
     .click()
-  await page.getByText('INST2').click()
+  await page.getByRole('option', { name: 'INST2' }).click()
   // Check trying to create an existing screen
-  await page.locator('[data-test="new-screen-name"]').fill('adcs')
+  await page.locator('[data-test="new-screen-name"] input').pressSequentially('adcs')
   await expect(page.locator('.v-dialog')).toContainText(
     'Screen ADCS already exists!',
   )
-  await page.locator('[data-test="new-screen-name"]').fill(screen)
+  // Create the screen name as upcase because OpenC3 upcases the name
+  const screen = 'SCREEN' + Math.floor(Math.random() * 10000)
+  await page.locator('[data-test="new-screen-name"] input').fill(screen)
   await page.getByRole('button', { name: 'Save' }).click()
   await expect(
     page.locator(`.v-toolbar:has-text("INST2 ${screen}")`),
   ).toBeVisible()
+  await deleteScreen(page, utils, 'INST2', screen)
 })
 
 test('creates new screen based on packet', async ({ page, utils }) => {
@@ -245,29 +247,24 @@ test('creates new screen based on packet', async ({ page, utils }) => {
   ).toBeVisible()
   await page.locator('[data-test="new-screen-packet"]').click()
   await page.getByRole('option', { name: 'HEALTH_STATUS' }).click()
-  expect(await page.inputValue('[data-test=new-screen-name]')).toMatch(
+  expect(await page.inputValue('[data-test=new-screen-name] input')).toMatch(
     'health_status',
   )
   await page.getByRole('button', { name: 'Save' }).click()
   await expect(
     page.locator(`.v-toolbar:has-text("INST HEALTH_STATUS")`),
   ).toBeVisible()
-})
-
-test('deletes new screens', async ({ page, utils }) => {
-  await deleteScreen(page, utils, 'INST2', screen)
   await deleteScreen(page, utils, 'INST', 'HEALTH_STATUS')
 })
 
 async function deleteScreen(page, utils, target, screen) {
-  await showScreen(page, utils, target, screen)
   await expect(
     page.locator(`.v-toolbar:has-text("${target} ${screen}")`),
   ).toBeVisible()
   await page.locator('[data-test=edit-screen-icon]').click()
   await page.locator('[data-test=delete-screen-icon]').click()
   await page.locator('button:has-text("Delete")').click()
-  await page.locator('div[role="button"]:has-text("Select Screen")').click()
+  await page.locator('[data-test="select-screen"]').click()
   await expect(
     page.locator(`.v-list-item__title:text-is("${screen}")`),
   ).not.toBeVisible()

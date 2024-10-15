@@ -76,7 +76,6 @@
               label="New screen packet"
               hide-details
               density="compact"
-              @update:model-value="packetNameChanged"
               :items="packetNames"
               item-title="label"
               item-value="value"
@@ -174,23 +173,8 @@ export default {
       }
     },
   },
-  methods: {
-    targetSelect(target) {
-      this.selectedTarget = target
-      this.api.get_all_tlm_names(this.selectedTarget).then((names) => {
-        this.packetNames = names.map((name) => {
-          return {
-            label: name,
-            value: name,
-          }
-        })
-        this.packetNames.unshift({
-          label: '[ BLANK ]',
-          value: 'BLANK',
-        })
-      })
-    },
-    packetNameChanged(value) {
+  watch: {
+    selectedPacketName: function (value) {
       if (value === 'BLANK') {
         this.newScreenName = ''
         this.duplicateScreenAlert = false
@@ -208,19 +192,36 @@ export default {
         }
       }
     },
-    newScreenKeyup(event) {
+    newScreenName: function (value) {
       if (
         this.screens[this.selectedTarget] &&
-        this.screens[this.selectedTarget].indexOf(
-          this.newScreenName.toUpperCase(),
-        ) !== -1
+        this.screens[this.selectedTarget].indexOf(value.toUpperCase()) !== -1
       ) {
         this.duplicateScreenAlert = true
       } else {
         this.duplicateScreenAlert = false
-        if (event.key === 'Enter') {
-          this.saveNewScreen()
-        }
+      }
+    },
+  },
+  methods: {
+    targetSelect(target) {
+      this.selectedTarget = target
+      this.api.get_all_tlm_names(this.selectedTarget).then((names) => {
+        this.packetNames = names.map((name) => {
+          return {
+            label: name,
+            value: name,
+          }
+        })
+        this.packetNames.unshift({
+          label: '[ BLANK ]',
+          value: 'BLANK',
+        })
+      })
+    },
+    newScreenKeyup(event) {
+      if (event.key === 'Enter') {
+        this.saveNewScreen()
       }
     },
     saveNewScreen() {
