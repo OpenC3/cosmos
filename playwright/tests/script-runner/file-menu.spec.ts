@@ -38,7 +38,7 @@ test('clears the editor on File->New', async ({ page, utils }) => {
 test('open a file', async ({ page, utils }) => {
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Open File').click()
-  await expect(page.locator('.v-dialog >> text=INST2')).toBeVisible()
+  await expect(page.getByText('INST2', { exact: true })).toBeVisible()
   await utils.sleep(100)
   await page.locator('[data-test=file-open-save-search]').type('dis')
   await utils.sleep(100)
@@ -61,7 +61,7 @@ test('open a file', async ({ page, utils }) => {
   )
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Open File').click()
-  await expect(page.locator('.v-dialog >> text=INST2')).toBeVisible()
+  await expect(page.getByText('INST2', { exact: true })).toBeVisible()
   await utils.sleep(100)
   await page.locator('[data-test=file-open-save-search]').type('meta')
   await utils.sleep(100)
@@ -79,13 +79,16 @@ test('open a file', async ({ page, utils }) => {
   await page.getByText('Open Recent').hover()
   await expect(page.locator('text=INST/procedures/disconnect.rb')).toBeVisible()
   await expect(
-    page.getByRole('menuitem', { name: 'INST/procedures/disconnect.rb' }),
+    page.locator(
+      '.v-list-item-title:has-text("INST/procedures/disconnect.rb")',
+    ),
   ).toBeVisible()
   await expect(
-    page.getByRole('menuitem', { name: 'INST2/procedures/metadata.py' }),
+    page.locator('.v-list-item-title:has-text("INST2/procedures/metadata.py")'),
   ).toBeVisible()
   await page
-    .getByRole('menuitem', { name: 'INST/procedures/disconnect.rb' })
+  page
+    .locator('.v-list-item-title:has-text("INST/procedures/disconnect.rb")')
     .click()
   expect(await page.locator('#sr-controls')).toContainText(
     `INST/procedures/disconnect.rb`,
@@ -112,16 +115,23 @@ test('handles File->Save new file', async ({ page, utils }) => {
   await page.locator('text=Save File').click()
   // New files automatically open File Save As
   await page.locator('text=File Save As')
-  await page.locator('[data-test=file-open-save-filename]').fill('save_new.rb')
+  await page
+    .locator('[data-test=file-open-save-filename] input')
+    .fill('save_new.rb')
   await page.locator('text=temp.rb is not a valid filename')
   await page
-    .locator(
-      '.v-dialog >> .v-treeview-node__root:has-text("INST") > button >> nth=0',
-    )
+    .locator('.v-list-group:has-text("INST")')
+    .first()
+    .getByRole('button')
     .click()
-  await page.getByText('procedures', { exact: true }).click()
+  await page
+    .locator('.v-list-group:has-text("INST")')
+    .first()
+    .locator('.v-list-item:has-text("procedures")')
+    .first() // because /tables/procedures
+    .click()
   await page.locator('[data-test=file-open-save-filename]').click()
-  await page.type('[data-test=file-open-save-filename]', '/save_new.rb')
+  await page.type('[data-test=file-open-save-filename] input', '/save_new.rb')
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   expect(await page.locator('#sr-controls')).toContainText(
     'INST/procedures/save_new.rb',
@@ -139,7 +149,7 @@ test('handles File Save overwrite', async ({ page, utils }) => {
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Save File').click()
   await page
-    .locator('[data-test=file-open-save-filename]')
+    .locator('[data-test=file-open-save-filename] input')
     .fill('INST/procedures/save_overwrite.rb')
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   expect(await page.locator('#sr-controls')).toContainText(
@@ -176,7 +186,10 @@ test('handles Download', async ({ page, utils }) => {
   await page.locator('textarea').fill('download this')
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Save File').click()
-  await page.fill('[data-test=file-open-save-filename]', 'INST/download.txt')
+  await page.fill(
+    '[data-test=file-open-save-filename] input',
+    'INST/download.txt',
+  )
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   expect(await page.locator('#sr-controls')).toContainText('INST/download.txt')
   // Download the file
@@ -212,10 +225,7 @@ test('can delete all temp files', async ({ page, utils }) => {
   await expect(page.locator('#sr-controls')).toContainText(
     /__TEMP__\/\d{4}_\d{2}_\d{2}_\d{2}_\d{2}_\d{2}_\d{3}_temp.rb/,
   )
-  // Weird selector but it's how vuetify works
-  let tempFile1 = await page
-    .locator('#sr-controls >> input[type=hidden]')
-    .inputValue()
+  let tempFile1 = await page.locator('[data-test=filename] input').inputValue()
   tempFile1 = tempFile1.split('/')[1]
 
   // New file
@@ -236,9 +246,7 @@ test('can delete all temp files', async ({ page, utils }) => {
   await expect(page.locator('#sr-controls')).toContainText(
     /__TEMP__\/\d{4}_\d{2}_\d{2}_\d{2}_\d{2}_\d{2}_\d{3}_temp.rb/,
   )
-  let tempFile2 = await page
-    .locator('#sr-controls >> input[type=hidden]')
-    .inputValue()
+  let tempFile2 = await page.locator('[data-test=filename] input').inputValue()
   tempFile2 = tempFile2.split('/')[1]
   expect(tempFile1).not.toEqual(tempFile2)
 
@@ -250,7 +258,9 @@ test('can delete all temp files', async ({ page, utils }) => {
   await expect(page.locator(`.v-dialog >> text=${tempFile2}`)).toBeVisible()
 
   await page
-    .locator('.v-dialog >> .v-treeview-node:has-text("__TEMP__") >> .v-btn')
+    .locator('.v-list-group:has-text("__TEMP__")')
+    .getByRole('button')
+    .last()
     .click()
   await page.locator('[data-test="confirm-dialog-delete"]').click()
   await expect(page.locator('.v-dialog >> text=__TEMP__')).not.toBeVisible()
@@ -260,7 +270,7 @@ test('can delete all temp files', async ({ page, utils }) => {
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Open File').click()
   await utils.sleep(1000)
-  await expect(page.locator('.v-dialog--active')).toContainText('INST')
-  await expect(page.locator('.v-dialog--active')).not.toContainText('__TEMP__')
+  await expect(page.locator('.v-dialog')).toContainText('INST')
+  await expect(page.locator('.v-dialog')).not.toContainText('__TEMP__')
   await page.locator('[data-test="file-open-save-cancel-btn"]').click()
 })

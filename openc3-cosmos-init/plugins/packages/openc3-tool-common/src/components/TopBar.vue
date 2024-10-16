@@ -47,7 +47,7 @@
               v-else-if="option.subMenu && option.subMenu.length > 0"
               :key="j + '-submenu'"
             >
-              <v-menu open-on-hover location="bottom" :key="j">
+              <v-menu open-on-hover location="right" :key="j">
                 <template v-slot:activator="{ props }">
                   <v-list-item
                     :disabled="option.disabled"
@@ -67,7 +67,9 @@
                       "
                       >{{ option.label }}
                     </v-list-item-title>
-                    <v-icon> mdi-chevron-right </v-icon>
+                    <template v-slot:append>
+                      <v-icon> mdi-chevron-right </v-icon>
+                    </template>
                   </v-list-item>
                 </template>
                 <v-list>
