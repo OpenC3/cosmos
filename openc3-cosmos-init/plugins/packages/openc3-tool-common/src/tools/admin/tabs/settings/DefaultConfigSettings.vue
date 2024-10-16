@@ -26,9 +26,8 @@
       <template v-if="lastConfigs.length">
         <v-checkbox
           v-model="selectAllLastConfigs"
-          label="Select all"
-          class="mt-0"
-          data-test="select-all-default-configs"
+          label="Select All Configs"
+          density="compact"
         />
         <v-checkbox
           v-for="config in lastConfigs"
@@ -36,7 +35,7 @@
           v-model="selectedLastConfigs"
           :label="config.text"
           :value="config.key"
-          class="mt-0"
+          hide-details
           density="compact"
         />
       </template>

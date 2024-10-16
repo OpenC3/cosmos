@@ -200,12 +200,18 @@ test('can delete all temp files', async ({ page, utils }) => {
   // Create new file which when run will become a TEMP file
   await page.locator('textarea').fill('puts "temp11111111"')
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('Connecting...', {
-    timeout: 5000,
-  })
-  await expect(page.locator('[data-test=state]')).toHaveValue('stopped', {
-    timeout: 20000,
-  })
+  await expect(page.locator('[data-test=state] >> input')).toHaveValue(
+    'Connecting...',
+    {
+      timeout: 5000,
+    },
+  )
+  await expect(page.locator('[data-test=state] >> input')).toHaveValue(
+    'stopped',
+    {
+      timeout: 20000,
+    },
+  )
   await expect(page.locator('#sr-controls')).toContainText(
     /__TEMP__\/\d{4}_\d{2}_\d{2}_\d{2}_\d{2}_\d{2}_\d{3}_temp.rb/,
   )
@@ -221,12 +227,18 @@ test('can delete all temp files', async ({ page, utils }) => {
   await expect(page.locator('#sr-controls')).toContainText('<Untitled>')
   await page.locator('textarea').fill('puts "temp22222222"')
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('Connecting...', {
-    timeout: 5000,
-  })
-  await expect(page.locator('[data-test=state]')).toHaveValue('stopped', {
-    timeout: 20000,
-  })
+  await expect(page.locator('[data-test=state] >> input')).toHaveValue(
+    'Connecting...',
+    {
+      timeout: 5000,
+    },
+  )
+  await expect(page.locator('[data-test=state] >> input')).toHaveValue(
+    'stopped',
+    {
+      timeout: 20000,
+    },
+  )
   await expect(page.locator('#sr-controls')).toContainText(
     /__TEMP__\/\d{4}_\d{2}_\d{2}_\d{2}_\d{2}_\d{2}_\d{3}_temp.rb/,
   )

@@ -88,9 +88,12 @@ test.skip('displays INST COMMANDING', async ({ page, utils }) => {
     const page1Promise = page.waitForEvent('popup')
     await page.getByRole('button', { name: 'Run Script' }).click()
     const page1 = await page1Promise
-    await expect(page1.locator('[data-test=state]')).toHaveValue('error', {
-      timeout: 30000,
-    })
+    await expect(page1.locator('[data-test=state] >> input')).toHaveValue(
+      'error',
+      {
+        timeout: 30000,
+      },
+    )
     await page1.locator('[data-test="stop-button"]').click()
     await page1.close()
   })

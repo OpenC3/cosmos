@@ -530,28 +530,28 @@ test('edits existing plugin', async ({ page, utils }) => {
 })
 
 // Playwright requires a separate test.describe to then call test.use
-// test.describe(() => {
-//   // Must be the operator to modify files
-//   test.use({ storageState: 'storageState.json' })
-//   test('creates new screen', async ({ page, utils }) => {
-//     // Create a new screen so we have modifications to delete
-//     await page.goto('/tools/tlmviewer')
-//     await expect(page.locator('.v-app-bar')).toContainText('Telemetry Viewer')
-//     await page.locator('rux-icon-apps').getByRole('img').click()
-//     await page.locator('div[role="button"]:has-text("Select Target")').click()
-//     await page.locator(`.v-list-item__title:text-is("NEW_TGT")`).click()
-//     await utils.sleep(500)
-//     await page.locator('[data-test=new-screen]').click()
-//     await expect(
-//       page.locator(`.v-system-bar:has-text("New Screen")`),
-//     ).toBeVisible()
-//     await page.locator('[data-test=new-screen-name]').fill('NEW_SCREEN')
-//     await page.getByRole('button', { name: 'Save' }).click()
-//     await expect(
-//       page.locator(`.v-system-bar:has-text("NEW_TGT NEW_SCREEN")`),
-//     ).toBeVisible()
-//   })
-// })
+test.describe(() => {
+  // Must be the operator to modify files
+  test.use({ storageState: 'storageState.json' })
+  test.skip('creates new screen', async ({ page, utils }) => {
+    // Create a new screen so we have modifications to delete
+    await page.goto('/tools/tlmviewer')
+    await expect(page.locator('.v-app-bar')).toContainText('Telemetry Viewer')
+    await page.locator('rux-icon-apps').getByRole('img').click()
+    await page.locator('div[role="button"]:has-text("Select Target")').click()
+    await page.locator(`.v-list-item__title:text-is("NEW_TGT")`).click()
+    await utils.sleep(500)
+    await page.locator('[data-test=new-screen]').click()
+    await expect(
+      page.locator(`.v-system-bar:has-text("New Screen")`),
+    ).toBeVisible()
+    await page.locator('[data-test=new-screen-name]').fill('NEW_SCREEN')
+    await page.getByRole('button', { name: 'Save' }).click()
+    await expect(
+      page.locator(`.v-system-bar:has-text("NEW_TGT NEW_SCREEN")`),
+    ).toBeVisible()
+  })
+})
 
 test('deletes a plugin', async ({ page, utils }) => {
   await page

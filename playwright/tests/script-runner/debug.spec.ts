@@ -34,9 +34,12 @@ test('keeps a debug command history', async ({ page, utils }) => {
   puts "two"
   `)
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue(/waiting \d+s/, {
-    timeout: 20000,
-  })
+  await expect(page.locator('[data-test=state] >> input')).toHaveValue(
+    /waiting \d+s/,
+    {
+      timeout: 20000,
+    },
+  )
   await page.locator('[data-test=script-runner-script]').click()
   await page.locator('text=Toggle Debug').click()
   await expect(page.locator('[data-test=debug-text]')).toBeVisible()
@@ -78,12 +81,18 @@ test('keeps a debug command history', async ({ page, utils }) => {
   expect(await page.inputValue('[data-test=debug-text]')).toMatch('')
   // Step
   await page.locator('[data-test=step-button]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue(/paused \d+s/)
+  await expect(page.locator('[data-test=state] >> input')).toHaveValue(
+    /paused \d+s/,
+  )
   await page.locator('[data-test=step-button]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue(/paused \d+s/)
+  await expect(page.locator('[data-test=state] >> input')).toHaveValue(
+    /paused \d+s/,
+  )
   // Go
   await page.locator('[data-test=go-button]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('stopped')
+  await expect(page.locator('[data-test=state] >> input')).toHaveValue(
+    'stopped',
+  )
   // Verify we were able to change the 'x' variable
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     'x:67890',
@@ -97,9 +106,12 @@ test('keeps a debug command history', async ({ page, utils }) => {
 test('retries failed checks', async ({ page, utils }) => {
   await page.locator('textarea').fill('check_expression("1 == 2")')
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('error', {
-    timeout: 20000,
-  })
+  await expect(page.locator('[data-test=state] >> input')).toHaveValue(
+    'error',
+    {
+      timeout: 20000,
+    },
+  )
   // Check for the initial check message
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     '1 == 2 is FALSE',
@@ -109,9 +121,11 @@ test('retries failed checks', async ({ page, utils }) => {
   await expect(
     page.locator('[data-test=output-messages] td:has-text("1 == 2 is FALSE")'),
   ).toHaveCount(2)
-  await expect(page.locator('[data-test=state]')).toHaveValue('error')
+  await expect(page.locator('[data-test=state] >> input')).toHaveValue('error')
   await page.locator('[data-test=go-button]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('stopped')
+  await expect(page.locator('[data-test=state] >> input')).toHaveValue(
+    'stopped',
+  )
 })
 
 test('displays the call stack', async ({ page, utils }) => {
@@ -139,18 +153,25 @@ test('displays the call stack', async ({ page, utils }) => {
   one()
   `)
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue(/waiting \d+s/, {
-    timeout: 20000,
-  })
+  await expect(page.locator('[data-test=state] >> input')).toHaveValue(
+    /waiting \d+s/,
+    {
+      timeout: 20000,
+    },
+  )
   await page.locator('[data-test=pause-retry-button]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue(/paused \d+s/)
+  await expect(page.locator('[data-test=state] >> input')).toHaveValue(
+    /paused \d+s/,
+  )
 
   await page.locator('[data-test=script-runner-script]').click()
   await page.locator('text=Call Stack').click()
   await expect(page.locator('.v-dialog')).toContainText('Call Stack')
   await page.locator('button:has-text("Ok")').click()
   await page.locator('[data-test=stop-button]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('stopped')
+  await expect(page.locator('[data-test=state] >> input')).toHaveValue(
+    'stopped',
+  )
 
   await page.locator('[data-test=script-runner-script]').click()
   await expect(
@@ -164,9 +185,12 @@ test('displays disconnect icon', async ({ page, utils }) => {
   cmd("INST SETPARAMS with VALUE1 0, VALUE2 1, VALUE3 2, VALUE4 1, VALUE5 0")
   `)
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('stopped', {
-    timeout: 20000,
-  })
+  await expect(page.locator('[data-test=state] >> input')).toHaveValue(
+    'stopped',
+    {
+      timeout: 20000,
+    },
+  )
 
   await page.locator('[data-test=script-runner-script]').click()
   await page.locator('text=Toggle Disconnect').click()
@@ -187,12 +211,18 @@ test('displays disconnect icon', async ({ page, utils }) => {
   `)
 
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('Connecting...', {
-    timeout: 5000,
-  })
-  await expect(page.locator('[data-test=state]')).toHaveValue('stopped', {
-    timeout: 20000,
-  })
+  await expect(page.locator('[data-test=state] >> input')).toHaveValue(
+    'Connecting...',
+    {
+      timeout: 5000,
+    },
+  )
+  await expect(page.locator('[data-test=state] >> input')).toHaveValue(
+    'stopped',
+    {
+      timeout: 20000,
+    },
+  )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     "CHECK: INST PARAMS VALUE1 == 'BAD' failed",
   )
@@ -216,24 +246,36 @@ puts "e"`)
   await page.locator('.ace_gutter-cell').nth(2).click({ force: true })
 
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('breakpoint', {
-    timeout: 20000,
-  })
+  await expect(page.locator('[data-test=state] >> input')).toHaveValue(
+    'breakpoint',
+    {
+      timeout: 20000,
+    },
+  )
   await page.locator('[data-test=go-button]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('stopped', {
-    timeout: 20000,
-  })
+  await expect(page.locator('[data-test=state] >> input')).toHaveValue(
+    'stopped',
+    {
+      timeout: 20000,
+    },
+  )
   await expect(page.locator('[data-test=start-button]')).toBeVisible()
 
   // Disable the breakpoint
   await page.locator('.ace_gutter-cell').nth(2).click({ force: true })
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('Connecting...', {
-    timeout: 5000,
-  })
-  await expect(page.locator('[data-test=state]')).toHaveValue('stopped', {
-    timeout: 20000,
-  })
+  await expect(page.locator('[data-test=state] >> input')).toHaveValue(
+    'Connecting...',
+    {
+      timeout: 5000,
+    },
+  )
+  await expect(page.locator('[data-test=state] >> input')).toHaveValue(
+    'stopped',
+    {
+      timeout: 20000,
+    },
+  )
 })
 
 test('remembers breakpoints and clears all', async ({ page, utils }) => {

@@ -48,11 +48,6 @@
         :items="runningScripts"
         :search="runningSearch"
         density="compact"
-        multi-sort
-        :sort-by="{
-          key: 'start_time',
-          order: 'desc',
-        }"
         data-test="running-scripts"
         :items-per-page-options="[3]"
         max-height="400"
@@ -103,11 +98,6 @@
         :items="completedScripts"
         :search="completedSearch"
         density="compact"
-        multi-sort
-        :sort-by="{
-          key: 'start',
-          order: 'desc',
-        }"
         data-test="completed-scripts"
         :items-per-page-options="[5]"
       >
@@ -149,24 +139,24 @@ export default {
       runningScripts: [],
       runningHeaders: [
         {
-          text: 'Connect',
-          value: 'connect',
+          title: 'Connect',
+          key: 'connect',
           sortable: false,
           filterable: false,
         },
-        { text: 'Id', value: 'id' },
-        { text: 'User', value: 'user' },
-        { text: 'Name', value: 'name' },
-        { text: 'Start Time', value: 'start_time' },
+        { title: 'Id', key: 'id' },
+        { title: 'User', key: 'user' },
+        { title: 'Name', key: 'name' },
+        { title: 'Start Time', key: 'start_time' },
         {
-          text: 'Stop',
-          value: 'stop',
+          title: 'Stop',
+          key: 'stop',
           sortable: false,
           filterable: false,
         },
         {
-          text: 'Force Quit',
-          value: 'delete',
+          title: 'Force Quit',
+          key: 'delete',
           sortable: false,
           filterable: false,
         },
@@ -174,12 +164,12 @@ export default {
       completedSearch: '',
       completedScripts: [],
       completedHeaders: [
-        { text: 'User', value: 'user' },
-        { text: 'Name', value: 'name' },
-        { text: 'Start Time', value: 'start' },
+        { title: 'User', key: 'user' },
+        { title: 'Name', key: 'name' },
+        { title: 'Start Time', key: 'start' },
         {
-          text: 'Download',
-          value: 'download',
+          title: 'Download',
+          key: 'download',
           sortable: false,
           filterable: false,
         },
@@ -297,3 +287,8 @@ export default {
   },
 }
 </script>
+<style>
+.v-sheet {
+  background-color: var(--color-background-base-default);
+}
+</style>

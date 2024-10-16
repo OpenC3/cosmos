@@ -29,11 +29,7 @@
       Saved! (Refresh the page to see changes)
     </v-alert>
     <v-card-text class="pb-0">
-      <v-switch
-        label="Hide Astro Clock"
-        v-model="hideClock"
-        data-test="hide-astro-clock"
-      />
+      <v-switch label="Hide Astro Clock" v-model="hideClock" color="primary" />
     </v-card-text>
     <v-card-actions>
       <v-btn
