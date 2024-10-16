@@ -277,6 +277,7 @@
             <v-icon end> mdi-step-forward </v-icon>
           </v-btn>
           <v-text-field
+            ref="debug"
             class="mb-2"
             variant="outlined"
             density="compact"
@@ -2565,6 +2566,11 @@ class TestSuite(Suite):
     },
     toggleDebug() {
       this.showDebug = !this.showDebug
+      if (this.showDebug) {
+        this.$nextTick(() => {
+          this.$refs.debug.focus()
+        })
+      }
     },
     toggleDisconnect() {
       this.showDisconnect = !this.showDisconnect

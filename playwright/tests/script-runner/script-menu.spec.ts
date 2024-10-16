@@ -38,7 +38,7 @@ test('show started scripts', async ({ page, utils }) => {
 
   // Start the script
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state] >> input')).toHaveValue(
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
     /waiting \d+s/,
     {
       timeout: 20000,
@@ -64,9 +64,7 @@ test('show started scripts', async ({ page, utils }) => {
     .locator('#openc3-menu >> text=Script Runner')
     .click({ force: true })
   await page.locator('[data-test=go-button]').click()
-  await expect(page.locator('[data-test=state] >> input')).toHaveValue(
-    'stopped',
-  )
+  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped')
   await page.locator('[data-test=script-runner-script]').click()
   await page.locator('text="Execution Status"').click()
   await utils.sleep(1000)
@@ -99,18 +97,15 @@ test('sets environment variables', async ({ page, utils }) => {
   await page.locator('[data-test="environment-dialog-save"]').click()
 
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state] >> input')).toHaveValue(
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
     'Connecting...',
     {
       timeout: 5000,
     },
   )
-  await expect(page.locator('[data-test=state] >> input')).toHaveValue(
-    'stopped',
-    {
-      timeout: 20000,
-    },
-  )
+  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
+    timeout: 20000,
+  })
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     '"KEY"=>"VALUE"',
   )
@@ -127,18 +122,15 @@ test('sets environment variables', async ({ page, utils }) => {
 
   // Re-run and verify the global is output
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state] >> input')).toHaveValue(
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
     'Connecting...',
     {
       timeout: 5000,
     },
   )
-  await expect(page.locator('[data-test=state] >> input')).toHaveValue(
-    'stopped',
-    {
-      timeout: 20000,
-    },
-  )
+  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
+    timeout: 20000,
+  })
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     '"KEY"=>"VALUE"',
   )
@@ -168,32 +160,26 @@ test('show overrides', async ({ page, utils }) => {
   override_tlm("INST", "HEALTH_STATUS", "DURATION", "10", type: :CONVERTED)
   `)
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state] >> input')).toHaveValue(
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
     'Connecting...',
     {
       timeout: 5000,
     },
   )
-  await expect(page.locator('[data-test=state] >> input')).toHaveValue(
-    'stopped',
-    {
-      timeout: 20000,
-    },
-  )
+  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
+    timeout: 20000,
+  })
   // Run twice to view the overrides in the output messages
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state] >> input')).toHaveValue(
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
     'Connecting...',
     {
       timeout: 5000,
     },
   )
-  await expect(page.locator('[data-test=state] >> input')).toHaveValue(
-    'stopped',
-    {
-      timeout: 20000,
-    },
-  )
+  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
+    timeout: 20000,
+  })
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     'The following overrides were present',
   )

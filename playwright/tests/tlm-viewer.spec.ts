@@ -32,7 +32,13 @@ test.beforeEach(async ({ page, utils }) => {
   })
 })
 
-async function showScreen(page, utils, target, screen, callback = async () => {}) {
+async function showScreen(
+  page,
+  utils,
+  target,
+  screen,
+  callback = async () => {},
+) {
   await page.locator('[data-test="select-target"]').click()
   await page.getByRole('option', { name: target, exact: true }).click()
   await page.locator('[data-test="select-screen"]').click()
@@ -52,10 +58,16 @@ async function showScreen(page, utils, target, screen, callback = async () => {}
 test('changes targets', async ({ page, utils }) => {
   await page.locator('[data-test="select-target"]').click()
   await page.getByText('SYSTEM').click()
-  await expect(page.locator('.v-select__content [role="listbox"]')).not.toBeVisible()
+  await expect(
+    page.locator('.v-select__content [role="listbox"]'),
+  ).not.toBeVisible()
   await page.locator('[data-test="select-screen"]').click()
-  await expect(page.locator('.v-select__content [role="listbox"]')).toHaveText('STATUS')
-  await expect(page.locator('.v-select__content [role="listbox"]')).not.toHaveText('ADCS')
+  await expect(page.locator('.v-select__content [role="listbox"]')).toHaveText(
+    'STATUS',
+  )
+  await expect(
+    page.locator('.v-select__content [role="listbox"]'),
+  ).not.toHaveText('ADCS')
 })
 
 test('displays INST ADCS', async ({ page, utils }) => {
@@ -88,7 +100,7 @@ test.skip('displays INST COMMANDING', async ({ page, utils }) => {
     const page1Promise = page.waitForEvent('popup')
     await page.getByRole('button', { name: 'Run Script' }).click()
     const page1 = await page1Promise
-    await expect(page1.locator('[data-test=state] >> input')).toHaveValue(
+    await expect(page1.locator('[data-test=state] input')).toHaveValue(
       'error',
       {
         timeout: 30000,
@@ -140,19 +152,13 @@ test('displays INST LAUNCHER', async ({ page, utils }) => {
     page.locator('.v-toolbar:has-text("INST COMMANDING")'),
   ).toBeVisible()
   await page.getByRole('button', { name: 'GROUND', exact: true }).click()
-  await expect(
-    page.locator('.v-toolbar:has-text("INST GROUND")'),
-  ).toBeVisible()
+  await expect(page.locator('.v-toolbar:has-text("INST GROUND")')).toBeVisible()
   await page.getByRole('button', { name: 'Close HS & CMD' }).click()
-  await expect(
-    page.locator('.v-toolbar:has-text("INST HS")'),
-  ).not.toBeVisible()
+  await expect(page.locator('.v-toolbar:has-text("INST HS")')).not.toBeVisible()
   await expect(
     page.locator('.v-toolbar:has-text("INST COMMANDING")'),
   ).not.toBeVisible()
-  await expect(
-    page.locator('.v-toolbar:has-text("INST GROUND")'),
-  ).toBeVisible()
+  await expect(page.locator('.v-toolbar:has-text("INST GROUND")')).toBeVisible()
   await page.getByRole('button', { name: 'Close All' }).click()
   await expect(
     page.locator('.v-toolbar:has-text("INST GROUND")'),
@@ -219,9 +225,7 @@ test('displays INST WEB', async ({ page, utils }) => {
 
 test('creates new blank screen', async ({ page, utils }) => {
   await page.locator('[data-test="new-screen"]').click()
-  await expect(
-    page.locator(`.v-toolbar:has-text("New Screen")`),
-  ).toBeVisible()
+  await expect(page.locator(`.v-toolbar:has-text("New Screen")`)).toBeVisible()
   await page
     .getByRole('dialog')
     .getByRole('combobox')
@@ -229,7 +233,9 @@ test('creates new blank screen', async ({ page, utils }) => {
     .click()
   await page.getByRole('option', { name: 'INST2' }).click()
   // Check trying to create an existing screen
-  await page.locator('[data-test="new-screen-name"] input').pressSequentially('adcs')
+  await page
+    .locator('[data-test="new-screen-name"] input')
+    .pressSequentially('adcs')
   await expect(page.locator('.v-dialog')).toContainText(
     'Screen ADCS already exists!',
   )
@@ -245,9 +251,7 @@ test('creates new blank screen', async ({ page, utils }) => {
 
 test('creates new screen based on packet', async ({ page, utils }) => {
   await page.locator('[data-test="new-screen"]').click()
-  await expect(
-    page.locator(`.v-toolbar:has-text("New Screen")`),
-  ).toBeVisible()
+  await expect(page.locator(`.v-toolbar:has-text("New Screen")`)).toBeVisible()
   await page.locator('[data-test="new-screen-packet"]').click()
   await page.getByRole('option', { name: 'HEALTH_STATUS' }).click()
   expect(await page.inputValue('[data-test=new-screen-name] input')).toMatch(

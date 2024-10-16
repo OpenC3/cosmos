@@ -153,7 +153,7 @@ export default {
           return setting.slice(1)
         }
       })
-      // Remove any settings that we filtered out with null and anything to be overriden with componentSettings
+      // Remove any settings that we filtered out with null and anything to be overridden with componentSettings
       .filter(
         (setting) =>
           setting !== undefined &&

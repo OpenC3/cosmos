@@ -197,7 +197,7 @@ test('disables all suite buttons when running', async ({ page, utils }) => {
   await saveAs(page, 'test_suite_buttons.rb')
 
   await page.locator('[data-test=start-script]').click()
-  await expect(page.locator('[data-test=state] >> input')).toHaveValue(
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
     /waiting \d+s/,
     {
       timeout: 20000,

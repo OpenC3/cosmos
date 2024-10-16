@@ -555,18 +555,15 @@ test.skip('disable parameter conversions', async ({ page, utils }) => {
     .locator('textarea')
     .fill('puts get_cmd_buffer("INST", "SETPARAMS")["buffer"].formatted')
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state] >> input')).toHaveValue(
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
     'Connecting...',
     {
       timeout: 5000,
     },
   )
-  await expect(page.locator('[data-test=state] >> input')).toHaveValue(
-    'stopped',
-    {
-      timeout: 20000,
-    },
-  )
+  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
+    timeout: 20000,
+  })
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     '00000010: 02 00',
   )
@@ -601,18 +598,15 @@ test.skip('disable parameter conversions', async ({ page, utils }) => {
   await expect(page.locator('.v-app-bar')).toContainText('Script Runner')
   // Should load the previous script so we can just click start
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state] >> input')).toHaveValue(
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
     'Connecting...',
     {
       timeout: 5000,
     },
   )
-  await expect(page.locator('[data-test=state] >> input')).toHaveValue(
-    'stopped',
-    {
-      timeout: 20000,
-    },
-  )
+  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
+    timeout: 20000,
+  })
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     '00000010: 01 00',
   )
