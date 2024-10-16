@@ -27,7 +27,6 @@
       density="compact"
       hide-details
       v-model="checkValue"
-      @update:model-value="checkboxChange"
       :disabled="!dataItem.editable"
       data-test="table-item-checkbox"
     />
@@ -36,7 +35,6 @@
       density="compact"
       hide-details
       v-model="stateValue"
-      @update:model-value="stateChange"
       :items="itemStates"
       :disabled="!dataItem.editable"
       data-test="table-item-select"
@@ -57,10 +55,10 @@
 </template>
 
 <script>
-import VWidget from '@openc3/tool-common/src/components/widgets/VWidget'
+import FormatValueBase from '@openc3/tool-common/src/components/widgets/FormatValueBase'
 
 export default {
-  mixins: [VWidget],
+  mixins: [FormatValueBase],
   props: {
     item: {
       type: Object,
@@ -99,26 +97,28 @@ export default {
     itemStates: function () {
       let result = []
       for (const [text, value] of Object.entries(this.dataItem.states)) {
-        result.push({ text: text, value: value })
+        result.push({ title: text, value: value })
       }
       return result
     },
   },
-  methods: {
-    checkboxChange: function () {
+  watch: {
+    checkValue: function () {
       if (this.checkValue) {
         this.$emit('change', 'CHECKED')
       } else {
         this.$emit('change', 'UNCHECKED')
       }
     },
-    stateChange: function () {
+    stateValue: function () {
       // Lookup the state key that corresponds to the value
       let state = Object.keys(this.dataItem.states).find(
         (key) => this.dataItem.states[key] === this.stateValue,
       )
       this.$emit('change', state)
     },
+  },
+  methods: {
     textChange: function (value) {
       // Set the value since we're not using v-model on the textfield
       this.dataItem.value = value
@@ -132,7 +132,7 @@ export default {
       ) {
         this.dataItem.editable = false
       }
-      return this.formatValue(value)
+      return this.formatValueBase(value)
     },
   },
 }

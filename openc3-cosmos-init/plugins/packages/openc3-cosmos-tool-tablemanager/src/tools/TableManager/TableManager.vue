@@ -23,37 +23,6 @@
 <template>
   <div>
     <top-bar :menus="menus" :title="title" />
-    <v-snackbar
-      v-model="showReadOnlyToast"
-      location="top"
-      :timeout="-1"
-      color="orange"
-    >
-      <v-icon> mdi-pencil-off </v-icon>
-      {{ lockedBy }} is editing this script. Editor is in read-only mode
-      <template v-slot:actions="{ attrs }">
-        <v-btn
-          variant="text"
-          v-bind="attrs"
-          color="danger"
-          @click="confirmLocalUnlock"
-          data-test="unlock-button"
-        >
-          Unlock
-        </v-btn>
-        <v-btn
-          variant="text"
-          v-bind="attrs"
-          @click="
-            () => {
-              showReadOnlyToast = false
-            }
-          "
-        >
-          dismiss
-        </v-btn>
-      </template>
-    </v-snackbar>
     <v-file-input
       show-size
       v-model="fileInput"
@@ -184,13 +153,13 @@
           class="search"
         />
       </v-card-title>
-      <v-tabs v-model="curTab">
+      <v-tabs v-model="curTab" :key="`v-tabs_${tables.length}`">
         <v-tab v-for="(table, index) in tables" :key="index">
           {{ table.name }}
         </v-tab>
       </v-tabs>
-      <v-window :model-value="curTab">
-        <v-window-item
+      <v-tabs-window v-model="curTab" :key="`v-tabs-window_${tables.length}`">
+        <v-tabs-window-item
           v-for="(table, index) in tables"
           :key="`${filename}${index}`"
         >
@@ -201,17 +170,17 @@
             :items-per-page="20"
             :items-per-page-options="[10, 20, 50, 100, -1]"
             multi-sort
-            dense
+            density="compact"
             :data-test="table.name"
           >
             <template v-slot:item="{ item }">
               <table-row
                 :items="item"
                 :key="item[0].name"
-                @change="onChange(item, $event)"
+                @change.self="onChange(item, $event)"
               />
             </template>
-            <template v-slot:footer v-if="tables.length > 1">
+            <template v-slot:tfoot v-if="tables.length > 1">
               <div style="position: absolute" class="ma-3">
                 <span class="text-body-1 mr-3">Table Download:</span>
                 <v-btn
@@ -249,8 +218,8 @@
               </div>
             </template>
           </v-data-table>
-        </v-window-item>
-      </v-window>
+        </v-tabs-window-item>
+      </v-tabs-window>
     </v-card>
     <file-open-save-dialog
       v-if="fileOpen"
@@ -301,7 +270,7 @@ export default {
       tables: [],
       api: null,
       definition: null,
-      fileInput: '',
+      fileInput: null,
       definitionFilename: '',
       fileNew: false,
       filename: '',
@@ -718,7 +687,7 @@ export default {
               // Build up the headers for proper searching
               headers: table.headers.map((text, i) => {
                 const header = {
-                  text,
+                  title: text,
                   filterable: text !== 'INDEX',
                 }
                 if (table.numColumns === 1) {
