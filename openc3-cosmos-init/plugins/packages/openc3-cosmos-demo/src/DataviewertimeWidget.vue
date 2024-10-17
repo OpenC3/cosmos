@@ -23,7 +23,7 @@
 <template>
   <v-container>
     <v-row dense>
-      <v-col>Current Time:</v-col>
+      <v-col> Current Time: </v-col>
       <v-col>
         <v-text-field
           variant="solo"
@@ -33,10 +33,12 @@
           hide-no-data
           hide-details
           placeholder="Time"
-          :model-value="date" /></v-col
-    ></v-row>
+          :model-value="date"
+        />
+      </v-col>
+    </v-row>
     <v-row dense>
-      <v-col>UTC Time:</v-col>
+      <v-col> UTC Time: </v-col>
       <v-col>
         <v-text-field
           variant="solo"
@@ -46,10 +48,12 @@
           hide-no-data
           hide-details
           placeholder="Time"
-          :model-value="utc" /></v-col
-    ></v-row>
+          :model-value="utc"
+        />
+      </v-col>
+    </v-row>
     <v-row dense>
-      <v-col>Stream Time (UTC):</v-col>
+      <v-col> Stream Time (UTC): </v-col>
       <v-col>
         <v-text-field
           variant="solo"
@@ -59,10 +63,12 @@
           hide-no-data
           hide-details
           placeholder="Time"
-          :model-value="streamTime" /></v-col
-    ></v-row>
+          :model-value="streamTime"
+        />
+      </v-col>
+    </v-row>
     <v-row dense v-if="hasDecom">
-      <v-col>Packet Time:</v-col>
+      <v-col> Packet Time: </v-col>
       <v-col>
         <v-text-field
           variant="solo"
@@ -72,10 +78,12 @@
           hide-no-data
           hide-details
           placeholder="Time"
-          :model-value="packetTime" /></v-col
-    ></v-row>
+          :model-value="packetTime"
+        />
+      </v-col>
+    </v-row>
     <v-row dense v-if="hasDecom">
-      <v-col>Received Time:</v-col>
+      <v-col> Received Time: </v-col>
       <v-col>
         <v-text-field
           variant="solo"
@@ -85,8 +93,10 @@
           hide-no-data
           hide-details
           placeholder="Time"
-          :model-value="receivedTime" /></v-col
-    ></v-row>
+          :model-value="receivedTime"
+        />
+      </v-col>
+    </v-row>
   </v-container>
 </template>
 
@@ -100,6 +110,7 @@ export default {
       packetTime: null,
       receivedTime: null,
       currentTime: null,
+      streamTime: null,
       date: new Date(),
     }
   },

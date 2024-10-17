@@ -76,7 +76,7 @@
             <v-row>
               <v-col>
                 <target-packet-item-chooser
-                  @click="addValue"
+                  @add-item="addValue"
                   :button-text="chooseItem ? 'Add Item' : 'Add Packet'"
                   :mode="newPacketCmdOrTlm"
                   :chooseItem="chooseItem"
@@ -116,7 +116,6 @@
                 <v-data-table
                   :headers="headers"
                   :items="packets"
-                  :search="search"
                   v-model:items-per-page="itemsPerPage"
                   :items-per-page-options="[10, 100]"
                   multi-sort
@@ -151,7 +150,7 @@
             color="primary"
             class="mx-2"
             data-test="add-component"
-            :disabled="notValid"
+            :disabled="!valid"
             @click="addComponent"
           >
             Create
@@ -184,25 +183,27 @@ export default {
       chooseItem: false,
       disableRadioOptions: false,
       headers: [
-        { text: 'Cmd/Tlm', value: 'cmdOrTlm' },
-        { text: 'Target', value: 'targetName' },
-        { text: 'Packet', value: 'packetName' },
-        { text: 'Item', value: 'itemName' },
-        { text: 'Mode', value: 'mode' },
-        { text: 'ValueType', value: 'valueType' },
-        { text: 'Delete', value: 'delete' },
+        { title: 'Cmd/Tlm', value: 'cmdOrTlm' },
+        { title: 'Target', value: 'targetName' },
+        { title: 'Packet', value: 'packetName' },
+        { title: 'Item', value: 'itemName' },
+        { title: 'Mode', value: 'mode' },
+        { title: 'ValueType', value: 'valueType' },
+        { title: 'Delete', value: 'delete' },
       ],
       itemsPerPage: 20,
       packets: [],
     }
   },
   computed: {
-    notValid: function () {
-      if (this.selectedComponent === null || this.packets.length === 0) {
-        return true
-      } else {
+    valid: function () {
+      if (this.selectedComponent === null) {
         return false
       }
+      if (this.packets.length === 0) {
+        return false
+      }
+      return true
     },
     show: {
       get() {
