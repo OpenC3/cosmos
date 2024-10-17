@@ -352,16 +352,5 @@ class TestCommands(unittest.TestCase):
         self.assertFalse(hazardous)
         self.assertIsNone(description)
 
-    def test_clears_the_received_counters_in_all_packets(self):
-        self.cmd.packet("TGT1", "PKT1").received_count = 1
-        self.cmd.packet("TGT1", "PKT2").received_count = 2
-        self.cmd.packet("TGT2", "PKT3").received_count = 3
-        self.cmd.packet("TGT2", "PKT4").received_count = 4
-        self.cmd.clear_counters()
-        self.assertEqual(self.cmd.packet("TGT1", "PKT1").received_count, 0)
-        self.assertEqual(self.cmd.packet("TGT1", "PKT2").received_count, 0)
-        self.assertEqual(self.cmd.packet("TGT2", "PKT3").received_count, 0)
-        self.assertEqual(self.cmd.packet("TGT2", "PKT4").received_count, 0)
-
     def test_returns_all_packets(self):
         self.assertEqual(list(self.cmd.all().keys()), ["UNKNOWN", "TGT1", "TGT2"])

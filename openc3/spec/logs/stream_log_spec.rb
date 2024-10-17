@@ -56,8 +56,10 @@ module OpenC3
       it "creates a raw write log" do
         @stream_log = StreamLog.new('MYINT', :WRITE)
         @stream_log.write("\x00\x01\x02\x03")
-        @stream_log.stop
-        wait 0.1
+        threads = @stream_log.stop
+        threads.each do |thread|
+          thread.join
+        end
         expect(@files.keys[0]).to match(/.*myint_stream_write.bin.gz/)
         io = StringIO.new(@files.values[0])
         gz = Zlib::GzipReader.new(io)
@@ -69,8 +71,10 @@ module OpenC3
       it "creates a raw read log" do
         @stream_log = StreamLog.new('MYINT', :READ)
         @stream_log.write("\x00\x01\x02\x03")
-        @stream_log.stop
-        wait 0.1
+        threads = @stream_log.stop
+        threads.each do |thread|
+          thread.join
+        end
         expect(@files.keys[0]).to match(/.*myint_stream_read.bin.gz/)
         io = StringIO.new(@files.values[0])
         gz = Zlib::GzipReader.new(io)
@@ -82,7 +86,10 @@ module OpenC3
     describe "write" do
       it "does not write data if logging is disabled" do
         @stream_log = StreamLog.new('MYINT', :WRITE)
-        @stream_log.stop
+        threads = @stream_log.stop
+        threads.each do |thread|
+          thread.join
+        end
         @stream_log.write("\x00\x01\x02\x03")
         expect(@stream_log.instance_variable_get(:@file_size)).to eql 0
         expect(@files).to be_empty
@@ -95,10 +102,12 @@ module OpenC3
         expect(@files.keys.length).to eql 0 # hasn't cycled yet
         sleep 0.1
         @stream_log.write("\x00") # size 200001
-        sleep 0.1
+        sleep 1
         expect(@files.keys.length).to eql 1
-        @stream_log.stop
-        sleep 0.1
+        threads = @stream_log.stop
+        threads.each do |thread|
+          thread.join
+        end
         expect(@files.keys.length).to eql 2
       end
 
@@ -107,7 +116,10 @@ module OpenC3
           allow(File).to receive(:new) { raise "Error" }
           @stream_log = StreamLog.new('MYINT', :WRITE)
           @stream_log.write("\x00\x01\x02\x03")
-          @stream_log.stop
+          threads = @stream_log.stop
+          threads.each do |thread|
+            thread.join
+          end
           expect(stdout.string).to match("Error starting new log file")
         end
       end
@@ -117,7 +129,10 @@ module OpenC3
           allow(BucketUtilities).to receive(:move_log_file_to_bucket) { raise "Error" }
           @stream_log = StreamLog.new('MYINT', :WRITE)
           @stream_log.write("\x00\x01\x02\x03")
-          @stream_log.stop
+          threads = @stream_log.stop
+          threads.each do |thread|
+            thread.join
+          end
           expect(stdout.string).to match("Error closing")
         end
       end
@@ -128,7 +143,10 @@ module OpenC3
           @stream_log.write("\x00\x01\x02\x03")
           allow(@stream_log.instance_variable_get(:@file)).to receive(:write) { raise "Error" }
           @stream_log.write("\x00\x01\x02\x03")
-          @stream_log.stop
+          threads = @stream_log.stop
+          threads.each do |thread|
+            thread.join
+          end
           expect(stdout.string).to match("Error writing")
         end
       end
@@ -139,15 +157,19 @@ module OpenC3
         @stream_log = StreamLog.new('MYINT', :WRITE)
         expect(@stream_log.logging_enabled).to be true
         @stream_log.write("\x00\x01\x02\x03")
-        @stream_log.stop
-        sleep 0.1
+        threads = @stream_log.stop
+        threads.each do |thread|
+          thread.join
+        end
         expect(@stream_log.logging_enabled).to be false
         expect(@files.keys.length).to eql 1
         @stream_log.start
         expect(@stream_log.logging_enabled).to be true
         @stream_log.write("\x00\x01\x02\x03")
-        @stream_log.stop
-        sleep 0.1
+        threads = @stream_log.stop
+        threads.each do |thread|
+          thread.join
+        end
         expect(@files.keys.length).to eql 2
       end
     end

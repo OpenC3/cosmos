@@ -214,7 +214,7 @@ module OpenC3
 
   # Represents a JSON Remote Procedure Call Request
   class JsonRpcRequest < JsonRpc
-    DANGEROUS_METHODS = ['__send__', 'send', 'instance_eval', 'instance_exec']
+    DANGEROUS_METHODS = Set['__send__', 'send', 'instance_eval', 'instance_exec']
 
     # @param method_name [String] The name of the method to call
     # @param method_params [Array<String>] Array of strings which represent the
@@ -379,16 +379,17 @@ module OpenC3
   class JsonRpcError < JsonRpc
     # Enumeration of JSON RPC error codes
     class ErrorCode
-      PARSE_ERROR      = -32700
-      INVALID_REQUEST  = -32600
-      METHOD_NOT_FOUND = -32601
-      INVALID_PARAMS   = -32602
-      INTERNAL_ERROR   = -32603
-      AUTH_ERROR       = -32500
-      FORBIDDEN_ERROR  = -32501
-      HAZARDOUS_ERROR  = -32502
+      PARSE_ERROR        = -32700
+      INVALID_REQUEST    = -32600
+      METHOD_NOT_FOUND   = -32601
+      INVALID_PARAMS     = -32602
+      INTERNAL_ERROR     = -32603
+      AUTH_ERROR         = -32500
+      FORBIDDEN_ERROR    = -32501
+      HAZARDOUS_ERROR    = -32502
+      CRITICAL_CMD_ERROR = -32503
       # Server error reserved: -32000 to -32099
-      OTHER_ERROR      = -1
+      OTHER_ERROR        = -1
     end
 
     # @param code [Integer] The error type that occurred

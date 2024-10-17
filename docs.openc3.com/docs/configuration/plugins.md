@@ -785,7 +785,7 @@ Whether or not the tool is shown in the Navigation menu. Should generally be tru
 ### POSITION
 <div class="right">(Since 5.0.8)</div>**Position of the tool in the nav bar**
 
-Position of the tool as an integer starting at 1. Tools without a position are appended to the end as they are installed.
+Position of the tool starting at 2 (1 is reserved for Admin Console). Tools without a position are appended to the end as they are installed. All COSMOS open source tools have consecutive integer values for position.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -808,6 +808,7 @@ Defines a custom widget that can be used in Telemetry Viewer screens.
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Widget Name | The name of the widget will be used to build a path to the widget implementation. For example, `WIDGET HELLOWORLD` will find the as-built file tools/widgets/HelloworldWidget/HelloworldWidget.umd.min.js. See the [Custom Widgets](../guides/custom-widgets.md) guide for more details. | True |
+| Label | The label for the widget that will appear in the Data Viewer component drop down | False |
 
 Example Usage:
 ```ruby

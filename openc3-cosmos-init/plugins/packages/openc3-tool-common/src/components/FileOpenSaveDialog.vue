@@ -38,7 +38,8 @@
         </v-system-bar>
         <v-card-text>
           <div class="pa-3">
-            <v-row dense>
+            <v-row>{{ helpText }} </v-row>
+            <v-row dense class="mt-5">
               <v-text-field
                 @input="handleSearch"
                 v-model="search"
@@ -49,7 +50,6 @@
                 clearable
                 label="Search"
                 prepend-inner-icon="mdi-magnify"
-                clearable
                 outlined
                 dense
                 data-test="file-open-save-search"
@@ -96,7 +96,13 @@
               />
             </v-row>
             <v-row dense>
-              <span class="my-2 red--text" v-show="error" v-text="error" />
+              <div
+                class="my-2 red--text"
+                style="white-space: pre-line"
+                v-show="error"
+              >
+                {{ error }}
+              </div>
             </v-row>
             <v-row class="mt-2">
               <v-spacer />
@@ -181,6 +187,13 @@ export default {
         return 'SAVE'
       }
     },
+    helpText: function () {
+      if (this.type === 'open') {
+        return 'Click on folders to open them and then click a file to select it before clicking Open. Use the search box to filter the results.'
+      } else {
+        return 'Click on the folder to save into. Then complete the filename path with the desired name. Use the search box to filter the results.'
+      }
+    },
     error: function () {
       if (this.selectedFile === '' || this.selectedFile === null) {
         return 'No file selected must select a file'
@@ -193,7 +206,9 @@ export default {
         if (this.requireTargetParentDir) {
           message += 'be in a target directory and '
         }
-        message += "only contain alphanumeric characters and / ! - _ . * ' ( )"
+        message +=
+          'only contain alphanumeric characters (including !-_.*) and a valid extension.\n\n' +
+          'For example: TGT1/procedures/test.py or TGT2/lib/inst.rb'
         return message
       }
       if (this.type === 'save' && this.selectedFile.match(/\*$/)) {
@@ -389,7 +404,7 @@ export default {
         this.insertFile(
           root[root.length - 1].children, // Start from the node we just added
           level + 1,
-          parts.slice(1).join('/'), // Strip the first part of the path
+          parts.slice(1).join('/') // Strip the first part of the path
         )
       } else {
         // We already have something at this level so recursively
@@ -397,7 +412,7 @@ export default {
         this.insertFile(
           root[index].children,
           level + 1,
-          parts.slice(1).join('/'),
+          parts.slice(1).join('/')
         )
       }
     },

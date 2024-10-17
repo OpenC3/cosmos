@@ -27,9 +27,13 @@ The Interfaces tab displays all the interfaces defined by your COSMOS installati
 
 ## Targets Tab
 
-The Targets tab displays all the targets and their mapped interfaces.
+The Targets tab displays all the targets and their mapped interfaces along with the Command Authority status (Enterprise Only).
 
 ![Targets](/img/cmd_tlm_server/targets.png)
+
+Command Authority is enabled in the Admin Console and is enabled scope wide. Once Command Authority is enabled, individual users can give and take Command Authority which enables exclusive command and script access to that target. Without Command Authority, users can not send a command or start a script under that target. Note, commands or scripts scheduled with Calendar or Autonomic are not affected by Command Authority.
+
+![Command Authority](/img/cmd_tlm_server/cmd_authority.png)
 
 ## Command Packets Tab
 

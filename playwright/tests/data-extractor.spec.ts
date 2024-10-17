@@ -147,12 +147,12 @@ test('cancels a process', async ({ page, utils }) => {
 
 test('adds an entire target', async ({ page, utils }) => {
   await utils.addTargetPacketItem('INST')
-  await expect(page.getByText('1-20 of 136')).toBeVisible()
+  await expect(page.getByText('1-20 of 154')).toBeVisible()
 })
 
 test('adds an entire packet', async ({ page, utils }) => {
   await utils.addTargetPacketItem('INST', 'HEALTH_STATUS')
-  await expect(page.getByText('1-20 of 38')).toBeVisible()
+  await expect(page.getByText('1-20 of 39')).toBeVisible()
 })
 
 test('add, edits, deletes items', async ({ page, utils }) => {
@@ -334,7 +334,6 @@ test('fills values', async ({ page, utils }) => {
         break
       } else if (lines[i].includes('HEALTH_STATUS')) {
         // Look for the second line containing HEALTH_STATUS
-        // console.log("Found first HEALTH_STATUS on line " + i);
         if (firstHS === -2) {
           firstHS = -1
         } else {
@@ -375,24 +374,30 @@ test('outputs unique values only', async ({ page, utils }) => {
 test('works with UTC date / times', async ({ page, utils }) => {
   let now = new Date()
   // Verify the local date / time
+  let startDateString =
+    (await page.inputValue('[data-test=start-date]'))?.trim() || ''
+  let startDate = parse(startDateString, 'yyyy-MM-dd', now)
   let startTimeString =
     (await page.inputValue('[data-test=start-time]'))?.trim() || ''
-  let startTime = parse(startTimeString, 'HH:mm:ss.SSS', now)
+  let startTime = parse(startTimeString, 'HH:mm:ss.SSS', startDate)
   expect(
     isWithinInterval(startTime, {
       // Start time is automatically 1hr in the past
-      start: subMinutes(now, 61),
-      end: subMinutes(now, 59),
+      start: subMinutes(now, 62),
+      end: subMinutes(now, 58),
     }),
   ).toBeTruthy()
+  let endDateString =
+    (await page.inputValue('[data-test=end-date]'))?.trim() || ''
+  let endDate = parse(endDateString, 'yyyy-MM-dd', now)
   let endTimeString =
     (await page.inputValue('[data-test=end-time]'))?.trim() || ''
-  let endTime = parse(endTimeString, 'HH:mm:ss.SSS', now)
+  let endTime = parse(endTimeString, 'HH:mm:ss.SSS', endDate)
   expect(
     isWithinInterval(endTime, {
       // end time is now
-      start: subMinutes(now, 1),
-      end: addMinutes(now, 1),
+      start: subMinutes(now, 2),
+      end: addMinutes(now, 2),
     }),
   ).toBeTruthy()
 
@@ -411,29 +416,30 @@ test('works with UTC date / times', async ({ page, utils }) => {
   await expect(page.locator('#openc3-nav-drawer')).toBeHidden()
 
   now = new Date()
-  // The date is now in UTC but we parse it like it is local time
+  // add the timezone offset to get it to UTC
+  now = addMinutes(now, now.getTimezoneOffset())
+  startDateString =
+    (await page.inputValue('[data-test=start-date]'))?.trim() || ''
+  startDate = parse(startDateString, 'yyyy-MM-dd', now)
   startTimeString =
     (await page.inputValue('[data-test=start-time]'))?.trim() || ''
-  startTime = parse(startTimeString, 'HH:mm:ss.SSS', now)
-  // so subtrack off the timezone offset to get it back to local time
-  let localStartTime = subMinutes(startTime, now.getTimezoneOffset())
+  startTime = parse(startTimeString, 'HH:mm:ss.SSS', startDate)
   expect(
-    isWithinInterval(localStartTime, {
+    isWithinInterval(startTime, {
       // Start time is automatically 1hr in the past
-      start: subMinutes(now, 61),
-      end: subMinutes(now, 59),
+      start: subMinutes(now, 62),
+      end: subMinutes(now, 58),
     }),
   ).toBeTruthy()
-  // The date is now in UTC but we parse it like it is local time
+  endDateString = (await page.inputValue('[data-test=end-date]'))?.trim() || ''
+  endDate = parse(endDateString, 'yyyy-MM-dd', now)
   endTimeString = (await page.inputValue('[data-test=end-time]'))?.trim() || ''
-  endTime = parse(endTimeString, 'HH:mm:ss.SSS', now)
-  // so subtrack off the timezone offset to get it back to local time
-  endTime = subMinutes(endTime, now.getTimezoneOffset())
+  endTime = parse(endTimeString, 'HH:mm:ss.SSS', endDate)
   expect(
     isWithinInterval(endTime, {
       // end time is now
-      start: subMinutes(now, 1),
-      end: addMinutes(now, 1),
+      start: subMinutes(now, 2),
+      end: addMinutes(now, 2),
     }),
   ).toBeTruthy()
 

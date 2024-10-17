@@ -71,13 +71,13 @@
         />
       </v-col>
       <v-col
-        v-if="itemIsArray()"
-        :cols="colSize"
+        v-if="chooseItem && itemIsArray()"
+        cols="1"
         class="select"
         data-test="array-index"
       >
         <v-combobox
-          label="Array Index"
+          label="Index"
           hide-details
           dense
           outlined
@@ -89,7 +89,7 @@
           v-model="selectedArrayIndex"
         />
       </v-col>
-      <v-col v-if="buttonText" :cols="colSize" style="max-width: 0px">
+      <v-col v-if="buttonText" :cols="colSize" style="max-width: 140px">
         <v-btn
           :disabled="buttonDisabled"
           block
@@ -133,7 +133,7 @@
           v-model="selectedReducedType"
         />
       </v-col>
-      <v-col :cols="colSize" style="max-width: 0px"> </v-col>
+      <v-col :cols="colSize" style="max-width: 140px"> </v-col>
     </v-row>
     <v-row no-gutters class="pt-1">
       <v-col v-if="hazardous" :cols="colSize" class="openc3-yellow"
@@ -197,6 +197,10 @@ export default {
       default: false,
     },
     vertical: {
+      type: Boolean,
+      default: false,
+    },
+    hidden: {
       type: Boolean,
       default: false,
     },
@@ -266,11 +270,15 @@ export default {
       if (this.allowAllTargets) {
         this.targetNames.unshift(this.ALL)
       }
+      // If the initial target name is not set, default to the first target
+      // which also updates packets and items as needed
       if (!this.selectedTargetName) {
         this.selectedTargetName = this.targetNames[0].value
         this.targetNameChanged(this.selectedTargetName)
+      } else {
+        // Selected target name was set but we still have to update packets
+        this.updatePackets()
       }
-      this.updatePackets()
       if (this.unknown) {
         this.targetNames.push(this.UNKNOWN)
       }
@@ -316,7 +324,15 @@ export default {
     mode: function (newVal, oldVal) {
       this.selectedPacketName = null
       this.selectedItemName = null
-      this.updatePackets()
+      // This also updates packets and items as needed
+      this.targetNameChanged(this.selectedTargetName)
+    },
+    chooseItem: function (newVal, oldVal) {
+      if (newVal) {
+        this.updateItems()
+      } else {
+        this.itemNames = []
+      }
     },
   },
   methods: {
@@ -338,7 +354,7 @@ export default {
       this.internalDisabled = true
       const cmd =
         this.mode === 'tlm' ? 'get_all_tlm_names' : 'get_all_cmd_names'
-      this.api[cmd](this.selectedTargetName).then((names) => {
+      this.api[cmd](this.selectedTargetName, this.hidden).then((names) => {
         this.packetNames = names.map((name) => {
           return {
             label: name,
@@ -406,12 +422,12 @@ export default {
             reducedType: this.selectedReducedType,
           })
           this.internalDisabled = false
-        }
+        },
       )
     },
     itemIsArray: function () {
       let i = this.itemNames.findIndex(
-        (item) => item.value === this.selectedItemName
+        (item) => item.value === this.selectedItemName,
       )
       if (i === -1) {
         this.selectedArrayIndex = null
@@ -429,7 +445,7 @@ export default {
     },
     arrayIndexes: function () {
       let i = this.itemNames.findIndex(
-        (item) => item.value === this.selectedItemName
+        (item) => item.value === this.selectedItemName,
       )
       let indexes = [...Array(this.itemNames[i].array).keys()]
       if (this.allowAll) {
@@ -476,7 +492,7 @@ export default {
             (packet) => {
               this.description = packet.description
               this.hazardous = packet.hazardous
-            }
+            },
           )
         }
       }
@@ -565,7 +581,7 @@ export default {
                 reducedType: this.selectedReducedType,
               })
             })
-          }
+          },
         )
       })
     },

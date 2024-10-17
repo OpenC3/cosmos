@@ -45,3 +45,6 @@ Lint/UnusedMethodArgument:
 # This rule doesn't allow for value.to_s(16)
 Lint/RedundantStringCoercion:
   Enabled: false
+# This rule interferes with a lot of unit tests as well as json_accessor.rb
+Lint/ConstantDefinitionInBlock:
+  Enabled: false

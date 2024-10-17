@@ -31,6 +31,7 @@ class InterfaceTopic(Topic):
         topics.append(f"{{{scope}__CMD}}INTERFACE__{interface.name}")
         for target_name in interface.cmd_target_names:
             topics.append(f"{{{scope}__CMD}}TARGET__{target_name}")
+        topics.append("OPENC3__SYSTEM__EVENTS")  # Add System Events
         return topics
 
     @classmethod
@@ -47,6 +48,7 @@ class InterfaceTopic(Topic):
     @classmethod
     def write_raw(cls, interface_name, data, scope):
         Topic.write_topic(f"{{{scope}__CMD}}INTERFACE__{interface_name}", {"raw": data}, "*", 100)
+        # TODO: This should wait for the ack
 
     @classmethod
     def connect_interface(cls, interface_name, *interface_params, scope=OPENC3_SCOPE):

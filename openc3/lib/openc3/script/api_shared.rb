@@ -14,13 +14,14 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/script/extract'
+require 'openc3/script/exceptions'
 
 module OpenC3
   module ApiShared
@@ -460,8 +461,9 @@ module OpenC3
     end
 
     def set_line_delay(delay)
-      if defined? RunningScript
-        RunningScript.line_delay = delay if delay >= 0.0
+      if defined? RunningScript and delay >= 0.0
+        RunningScript.line_delay = delay
+        puts "set_line_delay(#{delay})"
       end
     end
 

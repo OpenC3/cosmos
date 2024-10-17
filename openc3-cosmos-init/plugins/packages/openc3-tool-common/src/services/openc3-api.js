@@ -32,11 +32,11 @@ export class OpenC3Api {
     params,
     kwparams = {},
     headerOptions = {},
-    timeout = 60000
+    timeout = 60000,
   ) {
     try {
       let refreshed = await OpenC3Auth.updateToken(
-        OpenC3Auth.defaultMinValidity
+        OpenC3Auth.defaultMinValidity,
       )
       if (refreshed) {
         OpenC3Auth.setTokens()
@@ -67,7 +67,7 @@ export class OpenC3Api {
             ...headerOptions,
           },
           timeout: timeout,
-        }
+        },
       )
       // let data = response.data
       // if (data.error) {
@@ -85,6 +85,7 @@ export class OpenC3Api {
         // status code that falls out of the range of 2xx
         err.name = error.response.data.error.data.class
         err.message = error.response.data.error.data.message
+        err.object = error.response.data.error
       } else if (error.request) {
         // The request was made but no response was received, `error.request`
         // is an instance of XMLHttpRequest in the browser and an instance
@@ -265,8 +266,8 @@ export class OpenC3Api {
     return this.exec('get_all_telemetry', [target_name])
   }
 
-  get_all_tlm_names(target_name) {
-    return this.exec('get_all_tlm_names', [target_name])
+  get_all_tlm_names(target_name, hidden = false) {
+    return this.exec('get_all_tlm_names', [target_name], { hidden: hidden })
   }
   // DEPRECATED
   get_all_telemetry_names(target_name) {
@@ -312,7 +313,7 @@ export class OpenC3Api {
       [items],
       kw_args,
       {},
-      10000 // 10s timeout ... should never be this long
+      10000, // 10s timeout ... should never be this long
     )
     let len = data[0].length
     let converted = null
@@ -362,14 +363,14 @@ export class OpenC3Api {
     target_name,
     packet_name,
     item_hash = null,
-    value_type = 'CONVERTED'
+    value_type = 'CONVERTED',
   ) {
     data = await this.exec(
       'inject_tlm',
       [target_name, packet_name, item_hash],
       {
         type: value_type,
-      }
+      },
     )
   }
 
@@ -403,8 +404,8 @@ export class OpenC3Api {
     return this.exec('get_all_commands', [target_name])
   }
 
-  get_all_cmd_names(target_name) {
-    return this.exec('get_all_cmd_names', [target_name])
+  get_all_cmd_names(target_name, hidden = false) {
+    return this.exec('get_all_cmd_names', [target_name], { hidden: hidden })
   }
   // DEPRECATED for get_all_cmd_names
   get_all_command_names(target_name) {
@@ -427,7 +428,7 @@ export class OpenC3Api {
     target_name,
     packet_name,
     parameter_name,
-    value_type = 'CONVERTED'
+    value_type = 'CONVERTED',
   ) {
     return this.exec('get_cmd_value', [
       target_name,
@@ -456,19 +457,20 @@ export class OpenC3Api {
       method,
       [target_name, command_name, param_list],
       {},
-      headerOptions
+      headerOptions,
     )
   }
 
-  get_cmd_hazardous(target_name, command_name, param_list) {
+  get_cmd_hazardous(target_name, command_name, param_list, headerOptions = {}) {
     if (command_name === undefined) {
-      return this.exec('get_cmd_hazardous', target_name)
+      return this.exec('get_cmd_hazardous', target_name, {}, headerOptions)
     } else {
       return this._cmd(
         'get_cmd_hazardous',
         target_name,
         command_name,
-        param_list
+        param_list,
+        headerOptions,
       )
     }
   }
@@ -482,88 +484,130 @@ export class OpenC3Api {
         target_name,
         command_name,
         param_list,
-        headerOptions
+        headerOptions,
       )
     }
   }
 
-  cmd_no_range_check(target_name, command_name, param_list) {
+  cmd_no_range_check(
+    target_name,
+    command_name,
+    param_list,
+    headerOptions = {},
+  ) {
     if (command_name === undefined) {
-      return this.exec('cmd_no_range_check', target_name)
+      return this.exec('cmd_no_range_check', target_name, {}, headerOptions)
     } else {
       return this._cmd(
         'cmd_no_range_check',
         target_name,
         command_name,
-        param_list
+        param_list,
+        headerOptions,
       )
     }
   }
 
-  cmd_raw(target_name, command_name, param_list) {
+  cmd_raw(target_name, command_name, param_list, headerOptions = {}) {
     if (command_name === undefined) {
-      return this.exec('cmd_raw', target_name)
+      return this.exec('cmd_raw', target_name, {}, headerOptions)
     } else {
-      return this._cmd('cmd_raw', target_name, command_name, param_list)
+      return this._cmd(
+        'cmd_raw',
+        target_name,
+        command_name,
+        param_list,
+        headerOptions,
+      )
     }
   }
 
-  cmd_raw_no_range_check(target_name, command_name, param_list) {
+  cmd_raw_no_range_check(
+    target_name,
+    command_name,
+    param_list,
+    headerOptions = {},
+  ) {
     if (command_name === undefined) {
-      return this.exec('cmd_raw_no_range_check', target_name)
+      return this.exec('cmd_raw_no_range_check', target_name, {}, headerOptions)
     } else {
       return this._cmd(
         'cmd_raw_no_range_check',
         target_name,
         command_name,
-        param_list
+        param_list,
+        headerOptions,
       )
     }
   }
 
-  cmd_no_hazardous_check(target_name, command_name, param_list) {
+  cmd_no_hazardous_check(
+    target_name,
+    command_name,
+    param_list,
+    headerOptions = {},
+  ) {
     if (command_name === undefined) {
-      return this.exec('cmd_no_hazardous_check', target_name)
+      return this.exec('cmd_no_hazardous_check', target_name, {}, headerOptions)
     } else {
       return this._cmd(
         'cmd_no_hazardous_check',
         target_name,
         command_name,
-        param_list
+        param_list,
+        headerOptions,
       )
     }
   }
 
-  cmd_no_checks(target_name, command_name, param_list) {
+  cmd_no_checks(target_name, command_name, param_list, headerOptions = {}) {
     if (command_name === undefined) {
-      return this.exec('cmd_no_checks', target_name)
+      return this.exec('cmd_no_checks', target_name, {}, headerOptions)
     } else {
-      return this._cmd('cmd_no_checks', target_name, command_name, param_list)
+      return this._cmd(
+        'cmd_no_checks',
+        target_name,
+        command_name,
+        param_list,
+        headerOptions,
+      )
     }
   }
 
-  cmd_raw_no_hazardous_check(target_name, command_name, param_list) {
+  cmd_raw_no_hazardous_check(
+    target_name,
+    command_name,
+    param_list,
+    headerOptions = {},
+  ) {
     if (command_name === undefined) {
-      return this.exec('cmd_raw_no_hazardous_check', target_name)
+      return this.exec(
+        'cmd_raw_no_hazardous_check',
+        target_name,
+        {},
+        headerOptions,
+      )
     } else {
       return this._cmd(
         'cmd_raw_no_hazardous_check',
         target_name,
         command_name,
-        param_list
+        param_list,
+        headerOptions,
       )
     }
   }
 
-  cmd_raw_no_checks(target_name, command_name, param_list) {
+  cmd_raw_no_checks(target_name, command_name, param_list, headerOptions = {}) {
     if (command_name === undefined) {
-      return this.exec('cmd_raw_no_checks', target_name)
+      return this.exec('cmd_raw_no_checks', target_name, {}, headerOptions)
     } else {
       return this._cmd(
         'cmd_raw_no_checks',
         target_name,
         command_name,
-        param_list
+        param_list,
+        headerOptions,
       )
     }
   }
@@ -662,7 +706,7 @@ export class OpenC3Api {
       // The resulting hash is stored in an array buffer
       const hashAsArrayBuffer = await crypto.subtle.digest(
         'SHA-256',
-        arrayBuffer
+        arrayBuffer,
       )
       // To create a string we will get the hexadecimal value of each byte of the array buffer
       // This gets us an array where each byte of the array buffer becomes one item in the array

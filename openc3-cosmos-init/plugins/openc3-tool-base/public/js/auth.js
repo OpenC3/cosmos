@@ -35,9 +35,14 @@ class Auth {
     delete localStorage.openc3Token
   }
   login(redirect) {
+    let url = new URL(redirect)
+    let result = url.pathname
+    if (url.search) {
+      result = result + url.search
+    }
     // redirect to login if we're not already there
     if (!/^\/login/.test(location.pathname))
-      location = `/login?redirect=${encodeURI(redirect)}`
+      location = `/login?redirect=${encodeURI(result)}`
   }
   logout() {
     this.clearTokens()

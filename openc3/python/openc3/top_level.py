@@ -44,6 +44,17 @@ class HazardousError(Exception):
         return string
 
 
+class CriticalCmdError(Exception):
+    def __init__(self):
+        self.uuid = ""
+        self.username = ""
+        self.target_name = ""
+        self.cmd_name = ""
+        self.cmd_params = {}
+        self.cmd_string = ""
+        super().__init__()
+
+
 class DisabledError(Exception):
     def __init__(self):
         self.target_name = ""

@@ -280,7 +280,9 @@ export default {
             },
           },
           {
-            historyCount: this.historyCount,
+            // Channel parameter is history_count with underscore
+            history_count: this.historyCount,
+            types: ['log', 'notification', 'alert'],
           },
         )
         .then((subscription) => {

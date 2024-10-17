@@ -97,6 +97,8 @@ class Packet(Structure):
         self.related_items = None
         self.ignore_overlap = False
         self.virtual = False
+        self.restricted = False
+        self.validator = None
 
     @property
     def target_name(self):
@@ -960,6 +962,10 @@ class Packet(Structure):
             config += f'TELEMETRY {quote_if_necessary(self.target_name)} {quote_if_necessary(self.packet_name)} {self.default_endianness} "{self.description}"\n'
         else:
             config += f'COMMAND {quote_if_necessary(self.target_name)} {quote_if_necessary(self.packet_name)} {self.default_endianness} "{self.description}"\n'
+        if self.accessor.__class__.__name__ != "BinaryAccessor":
+            config += f"  ACCESSOR {self.accessor.__class__.__name__}\n"
+        if self.validator:
+            config += f"  VALIDATOR {self.validator.__class__.__name__}\n"
         if self.short_buffer_allowed:
             config += "  ALLOW_SHORT\n"
         if self.hazardous:
@@ -972,6 +978,8 @@ class Packet(Structure):
             config += "  DISABLED\n"
         elif self.hidden:
             config += "  HIDDEN\n"
+        if self.restricted:
+            config += "  RESTRICTED\n"
 
         if self.processors:
             for _, processor in self.processors:
@@ -1005,7 +1013,7 @@ class Packet(Structure):
                 config += f"  RELATED_ITEM {quote_if_necessary(related_item[0])} {quote_if_necessary(related_item[1])} {quote_if_necessary(related_item[2])}\n"
 
         if self.ignore_overlap:
-            config += "  IGNORE_OVERLAP"
+            config += "  IGNORE_OVERLAP\n"
 
         return config
 
@@ -1029,8 +1037,12 @@ class Packet(Structure):
             config["hidden"] = True
         if self.virtual:
             config["virtual"] = True
+        if self.restricted:
+            config["restricted"] = True
         config["accessor"] = self.accessor.__class__.__name__
         # config["accessor_args"] = self.accessor.args
+        if self.validator:
+            config["validator"] = self.validator.__class__.__name__
         if self.template:
             config["template"] = base64.b64encode(self.template)
 
@@ -1078,17 +1090,27 @@ class Packet(Structure):
         packet.disabled = hash.get("disabled")
         packet.hidden = hash.get("hidden")
         packet.virtual = hash.get("virtual")
+        packet.restricted = hash.get("restricted")
         if "accessor" in hash:
             try:
                 filename = class_name_to_filename(hash["accessor"])
                 accessor = get_class_from_module(f"openc3.accessors.{filename}", hash["accessor"])
                 if hash.get("accessor_args") and len(hash["accessor_args"]) > 0:
-                    packet.accessor = accessor(*hash["accessor_args"])
+                    packet.accessor = accessor(packet, *hash["accessor_args"])
                 else:
-                    packet.accessor = accessor()
+                    packet.accessor = accessor(packet)
             except RuntimeError as error:
                 Logger.error(
                     f"{packet.target_name} {packet.packet_name} accessor of {hash['accessor']} could not be found due to {repr(error)}"
+                )
+        if "validator" in hash:
+            try:
+                filename = class_name_to_filename(hash["validator"])
+                validator = get_class_from_module(filename, hash["validator"])
+                packet.validator = validator(packet)
+            except RuntimeError as error:
+                Logger.error(
+                    f"{packet.target_name} {packet.packet_name} validator of {hash['validator']} could not be found due to {repr(error)}"
                 )
         if "template" in hash:
             packet.template = base64.b64decode(hash["template"])

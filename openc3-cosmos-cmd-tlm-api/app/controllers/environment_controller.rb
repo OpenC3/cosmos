@@ -77,10 +77,13 @@ class EnvironmentController < ApplicationController
       OpenC3::Logger.info("Environment variable created: #{name} #{params['key']} #{params['value']}", scope: params[:scope], user: username())
       render :json => model.as_json(:allow_nan => true), :status => 201
     rescue RuntimeError, JSON::ParserError => e
+      logger.error(e.formatted)
       render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400
-    rescue TypeError
+    rescue TypeError => e
+      logger.error(e.formatted)
       render :json => { :status => 'error', :message => 'Invalid json object', 'type' => e.class }, :status => 400
     rescue OpenC3::EnvironmentError => e
+      logger.error(e.formatted)
       render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 409
     end
   end
@@ -105,6 +108,7 @@ class EnvironmentController < ApplicationController
       OpenC3::Logger.info("Environment variable destroyed: #{params[:name]}", scope: params[:scope], user: username())
       render :json => { 'name' => params[:name] }, :status => 204
     rescue OpenC3::EnvironmentError => e
+      logger.error(e.formatted)
       render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400
     end
   end

@@ -98,7 +98,8 @@ Rails.application.routes.draw do
     get '/timeline/:name/activity/:id', to: 'activity#show', name: /[^\/]+/, id: /[^\/]+/
     post '/timeline/:name/activity/:id', to: 'activity#event', name: /[^\/]+/, id: /[^\/]+/
     match '/timeline/:name/activity/:id', to: 'activity#update', name: /[^\/]+/, id: /[^\/]+/, via: [:patch, :put]
-    delete '/timeline/:name/activity/:id', to: 'activity#destroy', name: /[^\/]+/, id: /[^\/]+/
+    # NOTE: uuid is new as of 5.19.0
+    delete '/timeline/:name/activity/:id(/:uuid)', to: 'activity#destroy', name: /[^\/]+/, id: /[^\/]+/, uuid: /[^\/]+/
 
     get '/autonomic/group', to: 'trigger_group#index'
     post '/autonomic/group', to: 'trigger_group#create'
@@ -217,5 +218,10 @@ Rails.application.routes.draw do
     post '/cmdauth/release', to: 'cmd_authority#release'
     post '/cmdauth/take-all', to: 'cmd_authority#take_all'
     post '/cmdauth/release-all', to: 'cmd_authority#release_all'
+
+    get '/criticalcmd/status/:id', to: 'critical_cmd#status'
+    post '/criticalcmd/approve/:id', to: 'critical_cmd#approve'
+    post '/criticalcmd/reject/:id', to: 'critical_cmd#reject'
+    get '/criticalcmd/canapprove/:id', to: 'critical_cmd#canapprove'
   end
 end

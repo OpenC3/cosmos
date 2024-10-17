@@ -31,7 +31,7 @@ async function matchItem(page, item, regex) {
   // Poll since inputValue is immediate
   await expect
     .poll(async () => {
-      return await page.inputValue(`tr:has(td:text-is("${item}")) input`)
+      return await page.inputValue(`tr:has(td div:text-is("${item}")) input`)
     })
     .toMatch(regex)
 }
@@ -72,11 +72,23 @@ test('selects a target and packet to display', async ({ page, utils }) => {
   await expect(page.locator('id=openc3-tool')).toContainText('BYTES')
 })
 
+test('gets help info', async ({ page, utils }) => {
+  await utils.selectTargetPacketItem('INST', 'IMAGE')
+  await page.locator('.v-data-footer > i').hover()
+  await expect(page.getByText('Name with * indicates DERIVED')).toBeVisible()
+  await expect(page.getByText('Right click name to pin item')).toBeVisible()
+  await expect(
+    page.getByText('Right click value for details / graph'),
+  ).toBeVisible()
+  await page.getByRole('link', { name: 'DERIVED' }).click()
+  await page.waitForURL('**/docs/configuration/telemetry#derived-items')
+})
+
 test('gets details with right click', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
-  // await page.getByRole('row', { name: 'TEMP2 Value' }).locator('[data-test="value"]').click({
   await page
-    .getByRole('row', { name: 'TEMP2' })
+    .getByRole('cell', { name: 'TEMP1', exact: true })
+    .locator('xpath=..') // parent row
     .locator('[data-test="value"]')
     .click({
       button: 'right',
@@ -84,14 +96,17 @@ test('gets details with right click', async ({ page, utils }) => {
   await page.getByRole('menuitem', { name: 'Details' }).click()
   await expect(page.locator('.v-dialog--active')).toBeVisible()
   await expect(page.locator('.v-dialog--active')).toContainText(
-    'INST HEALTH_STATUS TEMP2',
+    'INST HEALTH_STATUS TEMP1',
   )
   // Check that a few of the details are there ... that proves the API request
-  await expect(page.locator('.v-dialog--active')).toContainText('FLOAT')
+  await expect(page.locator('.v-dialog--active')).toContainText('UINT')
   await expect(page.locator('.v-dialog--active')).toContainText(
     'PolynomialConversion',
   )
   await expect(page.locator('.v-dialog--active')).toContainText('CELSIUS')
+  await expect(page.locator('.v-dialog--active')).toContainText(
+    'ExampleLimitsResponse',
+  )
 
   // Get out of the details dialog
   await page.locator('[data-test="notifications"]').click({ force: true })
@@ -100,7 +115,6 @@ test('gets details with right click', async ({ page, utils }) => {
   // Scroll to the top to allow better right click
   await page.mouse.wheel(0, 0)
   await utils.sleep(100)
-  // await page.getByRole('row', { name: 'PACKET_TIMESECONDS * Value' }).locator('[data-test="value"]').click({
   await page
     .getByRole('row', { name: 'PACKET_TIMESECONDS' })
     .locator('[data-test="value"]')
@@ -170,6 +184,7 @@ test('displays formatted items with units by default', async ({
 
 test('displays formatted items with units', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
+  await page.locator('[data-test="search"]').fill('TEMP1')
   await page.locator('[data-test=packet-viewer-view]').click()
   await page.locator('text=Formatted Items with Units').click()
   // Check for exactly 3 decimal points followed by units
@@ -178,6 +193,7 @@ test('displays formatted items with units', async ({ page, utils }) => {
 
 test('displays raw items', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
+  await page.locator('[data-test="search"]').fill('TEMP1')
   await page.locator('[data-test=packet-viewer-view]').click()
   await page.locator('text=Raw').click()
   // // Check for a raw number 1 to 99999
@@ -186,6 +202,7 @@ test('displays raw items', async ({ page, utils }) => {
 
 test('displays converted items', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
+  await page.locator('[data-test="search"]').fill('TEMP1')
   await page.locator('[data-test=packet-viewer-view]').click()
   await page.locator('text=Converted').click()
   // Check for unformatted decimal points (4+)
@@ -194,6 +211,7 @@ test('displays converted items', async ({ page, utils }) => {
 
 test('displays formatted items', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
+  await page.locator('[data-test="search"]').fill('TEMP1')
   await page.locator('[data-test=packet-viewer-view]').click()
   // Use text-is because we have to match exactly since there is
   // also a 'Formatted Items with Units' option
@@ -225,15 +243,63 @@ test('displays derived first', async ({ page, utils }) => {
   await expect(page.locator('tr').nth(2)).toContainText('TIMEUS')
 })
 
+test('pins items to the top of the list', async ({ page, utils }) => {
+  await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
+  // Default sort order
+  await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIMESECONDS *')
+
+  await page.getByText('PACKET_TIME *').click({
+    button: 'right',
+  })
+  await page.getByText('Pin Item').click()
+  await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIME *')
+  // Verify pin is not affected by sorting
+  await page.getByText('Name').click()
+  await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIME *')
+  await page.getByText('Name').click()
+  await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIME *')
+  await page.getByText('Name').click()
+  await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIME *')
+  await page.getByText('Value').click()
+  await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIME *')
+  await page.getByText('Value').click()
+  await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIME *')
+  await page.getByText('Value').click()
+  await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIME *')
+
+  await page.locator('[data-test="search"]').fill('GROUND')
+  await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIME *')
+  await page.getByText('GROUND1STATUS').click({
+    button: 'right',
+  })
+  await page.getByText('Pin Item').click()
+  await page.locator('[data-test="search"]').fill('')
+  await expect(page.locator('tr').nth(1)).toContainText('GROUND1STATUS')
+  await expect(page.locator('tr').nth(2)).toContainText('PACKET_TIME *')
+
+  await page.getByText('GROUND1STATUS').click({
+    button: 'right',
+  })
+  await page.getByText('Unpin Item').click()
+  await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIME *')
+
+  await page.locator('[data-test="packet-viewer-file"]').click()
+  await page.getByText('Reset Configuration').click()
+  // Return to default sort order
+  await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIMESECONDS *')
+})
+
 test('displays local time and UTC time', async ({ page, utils }) => {
-  let now = new Date()
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
   await expect(page.locator('tbody')).toContainText('PACKET_TIMEFORMATTED')
   await expect(page.locator('tbody')).toContainText('RECEIVED_TIMEFORMATTED')
 
+  let now = new Date()
   let dateTimeString =
     (await (
-      await page.inputValue(`tr:has(td:text-is("PACKET_TIMEFORMATTED")) input`)
+      await page.inputValue(
+        `tr:has(td div:text-is("PACKET_TIMEFORMATTED")) input`,
+      )
     ).trim()) || ''
   let dateTime = parse(dateTimeString, 'yyyy-MM-dd HH:mm:ss.SSS', now)
   expect(
@@ -245,7 +311,7 @@ test('displays local time and UTC time', async ({ page, utils }) => {
   dateTimeString =
     (await (
       await page.inputValue(
-        `tr:has(td:text-is("RECEIVED_TIMEFORMATTED")) input`,
+        `tr:has(td div:text-is("RECEIVED_TIMEFORMATTED")) input`,
       )
     ).trim()) || ''
   dateTime = parse(dateTimeString, 'yyyy-MM-dd HH:mm:ss.SSS', now)
@@ -268,11 +334,13 @@ test('displays local time and UTC time', async ({ page, utils }) => {
   await expect(page.locator('tbody')).toContainText('PACKET_TIMEFORMATTED')
   await expect(page.locator('tbody')).toContainText('RECEIVED_TIMEFORMATTED')
 
-  now = new Date()
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
+  now = new Date()
   dateTimeString =
     (await (
-      await page.inputValue(`tr:has(td:text-is("PACKET_TIMEFORMATTED")) input`)
+      await page.inputValue(
+        `tr:has(td div:text-is("PACKET_TIMEFORMATTED")) input`,
+      )
     ).trim()) || ''
   dateTime = parse(dateTimeString, 'yyyy-MM-dd HH:mm:ss.SSS', now)
   // dateTime is now in UTC so subtrack off the timezone offset to get it back to local time
@@ -286,7 +354,7 @@ test('displays local time and UTC time', async ({ page, utils }) => {
   dateTimeString =
     (await (
       await page.inputValue(
-        `tr:has(td:text-is("RECEIVED_TIMEFORMATTED")) input`,
+        `tr:has(td div:text-is("RECEIVED_TIMEFORMATTED")) input`,
       )
     ).trim()) || ''
   dateTime = parse(dateTimeString, 'yyyy-MM-dd HH:mm:ss.SSS', now)

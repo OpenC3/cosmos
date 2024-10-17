@@ -68,7 +68,7 @@ ENV['OPENC3_LOGS_BUCKET'] = 'logs'
 ENV['OPENC3_TOOLS_BUCKET'] = 'tools'
 ENV['OPENC3_CONFIG_BUCKET'] = 'config'
 # Set some usernames / passwords
-ENV['OPENC3_API_PASSWORD'] = 'openc3'
+ENV['OPENC3_API_PASSWORD'] = 'password'
 ENV['OPENC3_SERVICE_PASSWORD'] = 'openc3service'
 ENV['OPENC3_REDIS_USERNAME'] = 'openc3'
 ENV['OPENC3_REDIS_PASSWORD'] = 'openc3password'
@@ -305,13 +305,6 @@ def kill_leftover_threads
   end
 end
 
-$system_exit_count = 0
-# Overload exit so we know when it is called
-alias old_exit exit
-def exit(*args)
-  $system_exit_count += 1
-end
-
 RSpec.configure do |config|
   # Enforce the new expect() syntax instead of the old should syntax
   config.expect_with :rspec do |c|
@@ -323,14 +316,6 @@ RSpec.configure do |config|
   config.before(:all) do
     $saved_stdout_global = $stdout
     $saved_stdout_const = Object.const_get(:STDOUT)
-  end
-
-  config.after(:all) do
-    OpenC3.disable_warnings do
-      def Object.exit(*args)
-        old_exit(*args)
-      end
-    end
   end
 
   # Before each test make sure $stdout and STDOUT are set. They might be messed

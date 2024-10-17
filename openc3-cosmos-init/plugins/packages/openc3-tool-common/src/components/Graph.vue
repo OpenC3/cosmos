@@ -177,214 +177,24 @@
       </v-expand-transition>
     </v-card>
 
-    <!-- Edit dialog, TODO: This should be a separate component -->
-    <v-dialog
+    <!-- Edit graph dialog -->
+    <graph-edit-dialog
+      v-if="editGraph"
       v-model="editGraph"
-      @keydown.esc="$emit('input')"
-      @input="editGraphClose()"
-      max-width="700"
-    >
-      <v-system-bar>
-        <v-spacer />
-        <span>Edit Graph</span>
-        <v-spacer />
-      </v-system-bar>
-      <v-card class="pa-3">
-        <v-tabs v-model="tab" class="ml-3">
-          <v-tab :key="0"> Settings </v-tab>
-          <v-tab :key="1"> Scale / Lines </v-tab>
-          <v-tab :key="1"> Items </v-tab>
-        </v-tabs>
-        <v-tabs-items v-model="tab">
-          <v-tab-item :key="0" eager="true" class="tab">
-            <div class="edit-box">
-              <v-row
-                ><v-col>
-                  <v-card-text class="pa-0">
-                    <v-text-field
-                      class="pb-2"
-                      label="Title"
-                      v-model="title"
-                      hide-details
-                      data-test="edit-graph-title"
-                    />
-                  </v-card-text>
-                </v-col>
-                <v-col>
-                  <v-select
-                    label="Legend Position"
-                    dense
-                    outlined
-                    hide-details
-                    :items="legendPositions"
-                    v-model="legendPosition"
-                    data-test="edit-legend-position"
-                    style="max-width: 280px"
-                  /> </v-col
-              ></v-row>
-            </div>
-            <div class="edit-box">
-              <v-card-text class="pa-0">
-                Select a start date/time for the graph. Leave blank for start
-                now.
-              </v-card-text>
-              <date-time-chooser
-                :required="false"
-                date-label="Start Date"
-                time-label="Start Time"
-                :date-time="graphStartDateTime"
-                @date-time="graphStartDateTime = $event"
-                :time-zone="timeZone"
-              />
-              <v-card-text class="pa-0">
-                Select a end date/time for the graph. Leave blank for continuous
-                real-time graphing.
-              </v-card-text>
-              <date-time-chooser
-                date-label="End Date"
-                time-label="End Time"
-                :date-time="graphEndDateTime"
-                @date-time="graphEndDateTime = $event"
-                :time-zone="timeZone"
-              />
-            </div>
-          </v-tab-item>
-          <v-tab-item :key="1" eager="true" class="tab">
-            <div class="edit-box">
-              <v-card-text class="pa-0">
-                Set a min or max Y value to override automatic scaling
-              </v-card-text>
-              <v-row dense>
-                <v-col class="px-2">
-                  <v-text-field
-                    hide-details
-                    label="Min Y Axis (Optional)"
-                    v-model="graphMinY"
-                    type="number"
-                    data-test="edit-graph-min-y"
-                  />
-                </v-col>
-                <v-col class="px-2">
-                  <v-text-field
-                    hide-details
-                    label="Max Y Axis (Optional)"
-                    v-model="graphMaxY"
-                    type="number"
-                    data-test="edit-graph-max-y"
-                  />
-                </v-col>
-              </v-row>
-            </div>
-            <div class="edit-box">
-              <v-card-text class="pa-0"
-                >Add horizontal lines to the graph</v-card-text
-              >
-              <v-data-table
-                item-key="lineId"
-                data-test="edit-graph-lines"
-                :headers="lineHeaders"
-                :items="lines"
-                :items-per-page="5"
-                :footer-props="{
-                  itemsPerPageOptions: [5],
-                }"
-              >
-                <template v-slot:item.yValue="props">
-                  <v-edit-dialog :return-value.sync="props.item.yValue">
-                    {{ props.item.yValue }}
-                    <template v-slot:input>
-                      <v-text-field
-                        v-model="props.item.yValue"
-                        label="Edit"
-                        single-line
-                        counter
-                      ></v-text-field>
-                    </template>
-                  </v-edit-dialog>
-                </template>
-                <template v-slot:item.color="props">
-                  <v-edit-dialog :return-value.sync="props.item.color">
-                    {{ props.item.color }}
-                    <template v-slot:input>
-                      <v-select
-                        outlined
-                        hide-details
-                        label="Color"
-                        :items="colors"
-                        v-model="props.item.color"
-                      />
-                    </template>
-                  </v-edit-dialog>
-                </template>
-                <template v-slot:footer.prepend>
-                  <v-btn small style="margin-top: 3px" @click="addLine">
-                    New Horizontal Line
-                  </v-btn>
-                  &nbsp;&nbsp;Click to edit values, Enter to save
-                  <v-spacer />
-                </template>
-                <template v-slot:item.actions="{ item }">
-                  <v-tooltip top>
-                    <template v-slot:activator="{ on, attrs }">
-                      <div v-on="on" v-bind="attrs">
-                        <v-btn
-                          icon
-                          :data-test="`delete-line-icon${item.lineId}`"
-                          @click="() => removeLine(item)"
-                        >
-                          <v-icon>mdi-delete</v-icon>
-                        </v-btn>
-                      </div>
-                    </template>
-                    <span>Remove</span>
-                  </v-tooltip>
-                </template>
-                <template v-slot:no-data>
-                  <span>Currently no horizontal lines on this graph</span>
-                </template>
-              </v-data-table>
-            </div>
-          </v-tab-item>
-          <v-tab-item :key="2" eager="true" class="tab">
-            <v-data-table
-              item-key="itemId"
-              class="elevation-1 my-2"
-              data-test="edit-graph-items"
-              :headers="itemHeaders"
-              :items="editItems"
-              :items-per-page="5"
-              :footer-props="{
-                'items-per-page-options': [5],
-              }"
-            >
-              <template v-slot:item.actions="{ item }">
-                <v-tooltip top>
-                  <template v-slot:activator="{ on, attrs }">
-                    <div v-on="on" v-bind="attrs">
-                      <v-btn
-                        icon
-                        :data-test="`delete-item-icon${item.itemId}`"
-                        @click="() => removeItems([item])"
-                      >
-                        <v-icon>mdi-delete</v-icon>
-                      </v-btn>
-                    </div>
-                  </template>
-                  <span>Remove</span>
-                </v-tooltip>
-              </template>
-              <template v-slot:no-data>
-                <span>Currently no items on this graph</span>
-              </template>
-            </v-data-table>
-          </v-tab-item>
-        </v-tabs-items>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn color="primary" @click="editGraphClose"> Ok </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+      :title="title"
+      :legend-position="legendPosition"
+      :items="items"
+      :graph-min-y="graphMinY"
+      :graph-max-y="graphMaxY"
+      :lines="lines"
+      :colors="colors"
+      :start-date-time="graphStartDateTime"
+      :end-date-time="graphEndDateTime"
+      :time-zone="timeZone"
+      @remove="removeItems([$event])"
+      @ok="editGraphClose"
+      @cancel="editGraph = false"
+    />
 
     <!-- Error dialog -->
     <v-dialog v-model="errorDialog" max-width="600">
@@ -464,6 +274,14 @@
             <v-list-item-title> Edit </v-list-item-title>
           </v-list-item-content>
         </v-list-item>
+        <v-list-item @click="clearData([selectedItem])">
+          <v-list-item-icon>
+            <v-icon>mdi-eraser</v-icon>
+          </v-list-item-icon>
+          <v-list-item-content>
+            <v-list-item-title> Clear </v-list-item-title>
+          </v-list-item-content>
+        </v-list-item>
         <v-list-item @click="removeItems([selectedItem])">
           <v-list-item-icon>
             <v-icon>mdi-delete</v-icon>
@@ -507,23 +325,36 @@
         </v-list-item>
       </v-list>
     </v-menu>
+
+    <tr class="u-series" ref="info">
+      <v-tooltip bottom>
+        <template v-slot:activator="{ on, attrs }">
+          <v-icon v-bind="attrs" v-on="on" class="info-tooltip">
+            mdi-information-variant-circle
+          </v-icon>
+        </template>
+        <span>
+          Click item to toggle<br />
+          Right click to edit
+        </span>
+      </v-tooltip>
+    </tr>
   </div>
 </template>
 
 <script>
-import DateTimeChooser from './DateTimeChooser'
+import GraphEditDialog from './GraphEditDialog'
 import GraphEditItemDialog from './GraphEditItemDialog'
 import uPlot from 'uplot'
 import bs from 'binary-search'
 import Cable from '../services/cable.js'
 import TimeFilters from '@openc3/tool-common/src/tools/base/util/timeFilters.js'
-import { subMinutes } from 'date-fns'
 
 require('uplot/dist/uPlot.min.css')
 
 export default {
   components: {
-    DateTimeChooser,
+    GraphEditDialog,
     GraphEditItemDialog,
   },
   props: {
@@ -590,19 +421,7 @@ export default {
   mixins: [TimeFilters],
   data() {
     return {
-      tab: 0,
-      itemHeaders: [
-        { text: 'Target Name', value: 'targetName' },
-        { text: 'Packet Name', value: 'packetName' },
-        { text: 'Item Name', value: 'itemName' },
-        { text: 'Actions', value: 'actions', sortable: false },
-      ],
       lines: [],
-      lineHeaders: [
-        { text: 'Y Value', value: 'yValue' },
-        { text: 'Color', value: 'color' },
-        { text: 'Actions', value: 'actions', sortable: false },
-      ],
       active: true,
       expand: true,
       fullWidth: true,
@@ -620,7 +439,6 @@ export default {
       legendMenuX: 0,
       legendMenuY: 0,
       legendPosition: 'bottom',
-      legendPositions: ['top', 'bottom', 'left', 'right'],
       selectedItem: null,
       showOverview: !this.hideOverview,
       title: '',
@@ -672,14 +490,6 @@ export default {
   computed: {
     calcFullSize: function () {
       return this.fullWidth || this.fullHeight
-    },
-    editItems: function () {
-      if (!this.items) return []
-      let itemId = 0
-      return this.items.map((item) => {
-        itemId += 1
-        return { ...item, itemId }
-      })
     },
     error: function () {
       if (this.errorDialog && this.errors.length > 0) {
@@ -771,7 +581,7 @@ export default {
         })
         return seriesObj
       },
-      { chartSeries: [], overviewSeries: [] }
+      { chartSeries: [], overviewSeries: [] },
     )
 
     let chartOpts = {}
@@ -815,7 +625,7 @@ export default {
       this.graph = new uPlot(
         chartOpts,
         this.data,
-        document.getElementById(`chart${this.id}`)
+        document.getElementById(`chart${this.id}`),
       )
     } else {
       // Uplot wants the real timezone name ('local' doesn't work)
@@ -869,10 +679,10 @@ export default {
               if (key === 'x' && !this.zoomOverview && this.overview) {
                 this.zoomChart = true
                 let left = Math.round(
-                  this.overview.valToPos(chart.scales.x.min, 'x')
+                  this.overview.valToPos(chart.scales.x.min, 'x'),
                 )
                 let right = Math.round(
-                  this.overview.valToPos(chart.scales.x.max, 'x')
+                  this.overview.valToPos(chart.scales.x.max, 'x'),
                 )
                 this.overview.setSelect({ left, width: right - left })
                 this.zoomChart = false
@@ -898,14 +708,6 @@ export default {
                 this.editGraphMenuY = e.clientY
                 this.editGraphMenu = true
               })
-              // Tell TlmGrapher that you might need to resize since on mouseenter
-              // we start showing value popups and the graph can expand
-              canvas.addEventListener('mouseenter', (e) => {
-                this.$emit('resize')
-              })
-              canvas.addEventListener('mouseleave', (e) => {
-                this.$emit('resize')
-              })
               let legend = u.root.querySelector('.u-legend')
               legend.addEventListener('contextmenu', (e) => {
                 e.preventDefault()
@@ -929,6 +731,8 @@ export default {
                   this.legendMenu = true
                 }
               })
+              // Append the info to the legend
+              legend.querySelector('tbody').appendChild(this.$refs.info)
             },
           ],
         },
@@ -937,7 +741,7 @@ export default {
       this.graph = new uPlot(
         chartOpts,
         this.data,
-        document.getElementById(`chart${this.id}`)
+        document.getElementById(`chart${this.id}`),
       )
 
       const overviewOpts = {
@@ -970,7 +774,7 @@ export default {
                 let min = chart.posToVal(chart.select.left, 'x')
                 let max = chart.posToVal(
                   chart.select.left + chart.select.width,
-                  'x'
+                  'x',
                 )
                 this.graph.setScale('x', { min, max })
                 this.zoomOverview = false
@@ -982,13 +786,12 @@ export default {
       this.overview = new uPlot(
         overviewOpts,
         this.data,
-        document.getElementById(`overview${this.id}`)
+        document.getElementById(`overview${this.id}`),
       )
-      //console.timeEnd('chart')
       this.moveLegend(this.legendPosition)
 
       // Allow the charts to dynamically resize when the window resizes
-      window.addEventListener('resize', this.handleResize)
+      window.addEventListener('resize', this.resize)
     }
 
     if (this.state !== 'stop') {
@@ -998,7 +801,7 @@ export default {
   beforeDestroy: function () {
     this.stopGraph()
     this.cable.disconnect()
-    window.removeEventListener('resize', this.handleResize)
+    window.removeEventListener('resize', this.resize)
   },
   watch: {
     state: function (newState, oldState) {
@@ -1034,21 +837,29 @@ export default {
       this.setGraphRange()
     },
     graphStartDateTime: function (newVal, oldVal) {
-      this.needToUpdate = true
       if (newVal && typeof newVal === 'string') {
-        this.graphStartDateTime = new Date(this.graphStartDateTime)
-        this.graphStartDateTime = subMinutes(
-          this.graphStartDateTime,
-          new Date().getTimezoneOffset()
-        )
-        this.graphStartDateTime = this.graphStartDateTime.getTime() * 1_000_000
+        this.graphStartDateTime =
+          this.parseDateTime(this.graphStartDateTime, this.timeZone) * 1_000_000
+        if (this.graphStartDateTime !== oldVal) {
+          this.needToUpdate = true
+        }
+      } else if (newVal === null && oldVal) {
+        // If they clear the start date time we need to update
+        this.graphStartDateTime = null
+        this.needToUpdate = true
       }
     },
     graphEndDateTime: function (newVal, oldVal) {
-      this.needToUpdate = true
       if (newVal && typeof newVal === 'string') {
         this.graphEndDateTime =
-          new Date(this.graphEndDateTime).getTime() * 1_000_000
+          this.parseDateTime(this.graphEndDateTime, this.timeZone) * 1_000_000
+        if (this.graphEndDateTime !== oldVal) {
+          this.needToUpdate = true
+        }
+      } else if (newVal === null && oldVal) {
+        // If they clear the end date time we need to update
+        this.graphEndDateTime = null
+        this.needToUpdate = true
       }
     },
   },
@@ -1095,13 +906,6 @@ export default {
       }
       this.graph.setScale('x', { min, max })
       this.dataChanged = false
-    },
-    addLine() {
-      this.lines.push({ yValue: 0, color: 'white' })
-    },
-    removeLine(dline) {
-      let i = this.lines.indexOf(dline)
-      this.lines.splice(i, 1)
     },
     formatLabel(item) {
       if (item.valueType === 'CONVERTED' && item.reduced === 'DECOM') {
@@ -1152,34 +956,38 @@ export default {
     clearErrors: function () {
       this.errors = []
     },
-    editGraphClose: function () {
+    editGraphClose: function (graph) {
       this.editGraph = false
-      if (this.needToUpdate) {
-        if (this.subscription == null) {
-          this.startGraph()
-        } else {
-          // NOTE: removing and adding back to back broke the streaming_api
-          // because the messages got out of order (add before remove)
-          // Code in openc3-cosmos-cmd-tlm-api/app/channels/application_cable/channel.rb
-          // fixed the issue to enforce ordering.
-          // Clone the items first because removeItems modifies this.items
-          let clonedItems = JSON.parse(JSON.stringify(this.items))
-          this.removeItems(clonedItems)
-          setTimeout(() => {
-            this.addItems(clonedItems)
-          }, 0)
+      this.title = graph.title
+      // Don't need to copy items because we don't modify them
+      this.legendPosition = graph.legendPosition
+      this.graphMinY = graph.graphMinY
+      this.graphMaxY = graph.graphMaxY
+      this.lines = [...graph.lines]
+      this.graphStartDateTime = graph.startDateTime
+      this.graphEndDateTime = graph.endDateTime
+      // Allow the watch to update needToUpdate
+      this.$nextTick(() => {
+        if (this.needToUpdate) {
+          if (this.subscription == null) {
+            this.startGraph()
+          } else {
+            // NOTE: removing and adding back to back broke the streaming_api
+            // because the messages got out of order (add before remove)
+            // Code in openc3-cosmos-cmd-tlm-api/app/channels/application_cable/channel.rb
+            // fixed the issue to enforce ordering.
+            // Clone the items first because removeItems modifies this.items
+            let clonedItems = JSON.parse(JSON.stringify(this.items))
+            this.removeItems(clonedItems)
+            setTimeout(() => {
+              this.addItems(clonedItems)
+            }, 0)
+          }
+          this.needToUpdate = false
         }
-        this.needToUpdate = false
-      }
+      })
       this.moveLegend(this.legendPosition)
       this.$emit('edit')
-    },
-    handleResize: function () {
-      // TODO: Should this method be throttled?
-      this.graph.setSize(this.getSize('chart'))
-      if (this.overview) {
-        this.overview.setSize(this.getSize('overview'))
-      }
     },
     resize: function () {
       this.graph.setSize(this.getSize('chart'))
@@ -1283,7 +1091,7 @@ export default {
       const navDrawer = document.getElementById('openc3-nav-drawer')
       if (navDrawer) {
         navDrawerWidth = navDrawer.classList.contains(
-          'v-navigation-drawer--open'
+          'v-navigation-drawer--open',
         )
           ? navDrawer.clientWidth
           : 0
@@ -1300,10 +1108,10 @@ export default {
         legendWidth
       const viewHeight = Math.max(
         document.documentElement.clientHeight,
-        window.innerHeight || 0
+        window.innerHeight || 0,
       )
 
-      const chooser = document.getElementsByClassName('tgt-pkt-item-chooser')[0]
+      const chooser = document.getElementsByClassName('expansion')[0]
       let height = 100
       if (type === 'overview') {
         // Show overview if we're full height and we're not explicitly hiding it
@@ -1319,7 +1127,7 @@ export default {
           height = height / 2.0 + 10 // 5px padding top and bottom
         }
       }
-      let width = viewWidth - 62 // 31px padding left and right
+      let width = viewWidth - 42 // padding left and right
       if (!this.fullWidth) {
         width = width / 2.0 - 10 // 5px padding left and right
       }
@@ -1447,7 +1255,7 @@ export default {
                 ctx.moveTo(bbox.left, u.valToPos(line.yValue, 'y', true))
                 ctx.lineTo(
                   bbox.left + bbox.width,
-                  u.valToPos(line.yValue, 'y', true)
+                  u.valToPos(line.yValue, 'y', true),
                 )
                 ctx.stroke()
                 ctx.restore()
@@ -1580,7 +1388,7 @@ export default {
                 if (rawValue == null) {
                   return '--'
                 } else if (
-                  Math.abs(rawValue) < 0.01 ||
+                  (Math.abs(rawValue) < 0.01 && rawValue !== 0) ||
                   Math.abs(rawValue) >= 10_000_000
                 ) {
                   return rawValue.toExponential(6)
@@ -1590,7 +1398,7 @@ export default {
               }
             },
           },
-          index
+          index,
         )
         if (this.overview) {
           this.overview.addSeries(
@@ -1600,7 +1408,7 @@ export default {
                 return this.items[seriesIdx - 1].color
               },
             },
-            index
+            index,
           )
         }
         let newData = Array(this.data[0].length)
@@ -1613,6 +1421,7 @@ export default {
         this.colorIndex = index + 1
       }
       this.addItemsToSubscription(itemArray)
+      this.$emit('resize')
       this.$emit('edit')
     },
     addItemsToSubscription: function (itemArray = this.items) {
@@ -1633,8 +1442,30 @@ export default {
               start_time: theStartTime,
               end_time: this.graphEndDateTime,
             })
-          }
+          },
         )
+      }
+    },
+    clearAllData: function () {
+      // Clear all data so delete the time data as well
+      this.data[0] = []
+      this.clearData(this.items)
+    },
+    clearData: function (itemArray) {
+      for (const key of itemArray.map(this.subscriptionKey)) {
+        let index = this.indexes[key]
+        this.data[index] = Array(this.data[0].length).fill(null)
+        this.graph.setData(this.data)
+        if (this.overview) {
+          this.overview.setData(this.data)
+        }
+      }
+      // data.length of 2 means we only have 1 item
+      // so delete all the time (data[0]) to start fresh
+      if (this.data.length === 2) {
+        this.data[0] = []
+        this.graph.setData(this.data)
+        this.overview.setData(this.data)
       }
     },
     removeItems: function (itemArray) {
@@ -1658,6 +1489,7 @@ export default {
         this.graph.setData(this.data)
         this.overview.setData(this.data)
       }
+      this.$emit('resize')
       this.$emit('edit')
     },
     removeItemsFromSubscription: function (itemArray = this.items) {
@@ -1776,17 +1608,6 @@ export default {
 .v-window-item {
   background-color: var(--color-background-surface-default);
 }
-.edit-box {
-  color: hsla(0, 0%, 100%, 0.7);
-  background-color: var(--color-background-surface-default);
-  padding: 10px;
-  margin-top: 10px;
-}
-/* For the Y Axis item editor within the Edit Dialog */
-.v-small-dialog__content {
-  background-color: var(--color-background-surface-selected);
-  padding: 5px 5px;
-}
 /* left right stacked legend */
 .uplot.side-legend {
   display: flex;
@@ -1817,6 +1638,15 @@ export default {
 }
 .uplot.top-legend .u-legend {
   order: -1;
+}
+/* This value is large enough to support negative scientific notation
+   that we use on the value with rawValue.toExponential(6) */
+.u-legend.u-inline .u-series .u-value {
+  width: 105px;
+}
+/* This value is large enough to support our date format: YYYY-MM-DD HH:MM:SS.sss */
+.u-legend.u-inline .u-series:first-child .u-value {
+  width: 180px;
 }
 </style>
 

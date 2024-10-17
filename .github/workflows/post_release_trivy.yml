@@ -14,6 +14,11 @@ on:
         required: true
         type: string
 
+# Workaround for https://github.com/aquasecurity/trivy-action/issues/389
+env:
+  TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2
+  TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db:1
+
 jobs:
   openc3-scan:
     runs-on: ubuntu-latest

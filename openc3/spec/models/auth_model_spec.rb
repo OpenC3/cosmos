@@ -33,7 +33,7 @@ module OpenC3
       end
 
       it "self.set" do
-        expect{ AuthModel.set('token1', 'token2', 'OPENC3__TOKEN') }.to \
+        expect{ AuthModel.set('token1token1', 'token2token2', 'OPENC3__TOKEN') }.to \
           raise_error(/old_token incorrect/)
       end
 

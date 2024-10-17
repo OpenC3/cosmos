@@ -209,6 +209,7 @@ class PacketConfig:
                         | "DISABLED"
                         | "VIRTUAL"
                         | "ACCESSOR"
+                        | "VALIDATOR"
                         | "TEMPLATE"
                         | "TEMPLATE_FILE"
                         | "RESPONSE"
@@ -454,8 +455,13 @@ class PacketConfig:
                 self.current_packet.disabled = True
                 self.current_packet.virtual = True
 
+            case "RESTRICTED":
+                usage = keyword
+                parser.verify_num_parameters(0, 0, usage)
+                self.current_packet.restricted = True
+
             case "ACCESSOR":
-                usage = f"{keyword} <Accessor class name>"
+                usage = f"{keyword} <Class name> <Optional parameters> ..."
                 parser.verify_num_parameters(1, None, usage)
                 try:
                     filename = class_name_to_filename(params[0])
@@ -464,6 +470,21 @@ class PacketConfig:
                         self.current_packet.accessor = klass(self.current_packet, *params[1:])
                     else:
                         self.current_packet.accessor = klass(self.current_packet)
+                except ModuleNotFoundError as error:
+                    raise parser.error(error)
+
+            case "VALIDATOR":
+                usage = f"{keyword} <Class name> <Optional parameters> ..."
+                parser.verify_num_parameters(1, None, usage)
+                try:
+                    klass = get_class_from_module(
+                        filename_to_module(params[0]),
+                        filename_to_class_name(params[0]),
+                    )
+                    if len(params) > 1:
+                        self.current_packet.validator = klass(self.current_packet, *params[1:])
+                    else:
+                        self.current_packet.validator = klass(self.current_packet)
                 except ModuleNotFoundError as error:
                     raise parser.error(error)
 

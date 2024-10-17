@@ -42,7 +42,7 @@ module OpenC3
     # Define all the user input methods used in scripting which we need to broadcast to the frontend
     # Note: This list matches the list in run_script.rb:116
     SCRIPT_METHODS = %i[ask ask_string message_box vertical_message_box combo_box prompt prompt_for_hazardous
-      metadata_input open_file_dialog open_files_dialog]
+      prompt_for_critical_cmd metadata_input open_file_dialog open_files_dialog]
     SCRIPT_METHODS.each do |method|
       define_method(method) do |*args, **kwargs|
         while true
@@ -65,6 +65,11 @@ module OpenC3
                 end
                 files = files[0] if method.to_s == 'open_file_dialog' # Simply return the only file
                 return files
+              elsif method.to_s == 'prompt_for_critical_cmd'
+                if input == 'REJECTED'
+                  raise "Critical Cmd Rejected"
+                end
+                return input
               else
                 return input
               end
@@ -427,6 +432,7 @@ class RunningScript
 
     # Retrieve file
     @body = ::Script.body(@scope, name)
+    raise "Script not found: #{name}" if @body.nil?
     breakpoints = @@breakpoints[filename]&.filter { |_, present| present }&.map { |line_number, _| line_number - 1 } # -1 because frontend lines are 0-indexed
     breakpoints ||= []
     OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"),
@@ -1107,6 +1113,7 @@ class RunningScript
         unless close_on_complete
           output = "Starting script: #{File.basename(@filename)}"
           output += " in DISCONNECT mode" if $disconnect
+          output += ", line_delay = #{@@line_delay}"
           scriptrunner_puts(output)
         end
         handle_output_io()
@@ -1237,11 +1244,8 @@ class RunningScript
     else
       OpenC3::Logger.error(error.class.to_s.split('::')[-1] + ' : ' + error.message)
       if ENV['OPENC3_FULL_BACKTRACE']
-        relevent_lines = error.backtrace
-      else
-        relevent_lines = error.backtrace.select { |line| !line.include?("/src/app") && !line.include?("/openc3/lib") && !line.include?("/usr/lib/ruby") }
+        OpenC3::Logger.error(error.backtrace.join("\n\n"))
       end
-      OpenC3::Logger.error(relevent_lines.join("\n\n")) unless relevent_lines.empty?
     end
     handle_output_io(filename, line_number)
 
@@ -1270,6 +1274,7 @@ class RunningScript
       OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :file, filename: filename, text: @body.to_utf8, breakpoints: breakpoints }))
     else
       text = ::Script.body(@scope, filename)
+      raise "Script not found: #{filename}" if text.nil?
       @@file_cache[filename] = text
       @body = text
       OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :file, filename: filename, text: @body.to_utf8, breakpoints: breakpoints }))

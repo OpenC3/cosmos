@@ -20,10 +20,6 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-networks:
-  default:
-    name: openc3-cosmos-network
-
 services:
   openc3-minio:
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"

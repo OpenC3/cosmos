@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -71,7 +71,7 @@ class DecomMicroservice(Microservice):
                         self.metric.set(name="decom_total", value=self.count, type="counter")
                     self.count += 1
                 LimitsEventTopic.sync_system_thread_body(scope=self.scope)
-            except RuntimeError as error:
+            except Exception as error:
                 self.error_count += 1
                 self.metric.set(name="decom_error_total", value=self.error_count, type="counter")
                 self.error = error
@@ -102,11 +102,21 @@ class DecomMicroservice(Microservice):
         if extra is not None:
             packet.extra = json.loads(extra)
         packet.buffer = msg_hash[b"buffer"]
-        packet.process()  # Run processors
-        packet.check_limits(
-            System.limits_set()
-        )  # Process all the limits and call the limits_change_callback (as necessary)
+        # Processors are user code points which must be rescued
+        # so the TelemetryDecomTopic can write the packet
+        try:
+            packet.process()  # Run processors
+        except Exception as error:
+            self.error_count += 1
+            self.metric.set(name="decom_error_total", value=self.error_count, type="counter")
+            self.error = error
+            self.logger.error(repr(error))
+        # Process all the limits and call the limits_change_callback (as necessary)
+        # check_limits also can call user code in the limits response
+        # but that is rescued separately in the limits_change_callback
+        packet.check_limits(System.limits_set())
 
+        # This is what updates the CVT
         TelemetryDecomTopic.write_packet(packet, scope=self.scope)
         diff = time.time() - start  # seconds as a float
         self.metric.set(name="decom_duration_seconds", value=diff, type="gauge", unit="seconds")
@@ -160,8 +170,10 @@ class DecomMicroservice(Microservice):
 
         if item.limits.response is not None:
             try:
+                # TODO: The limits response is user code and should be run as a separate thread / process
+                # If this code blocks it will delay TelemetryDecomTopic.write_packet
                 item.limits.response.call(packet, item, old_limits_state)
-            except RuntimeError as error:
+            except Exception as error:
                 self.error = error
                 self.logger.error(f"{packet.target_name} {packet.packet_name} {item.name} Limits Response Exception!")
                 self.logger.error(f"Called with old_state = {old_limits_state}, new_state = {item.limits.state}")
