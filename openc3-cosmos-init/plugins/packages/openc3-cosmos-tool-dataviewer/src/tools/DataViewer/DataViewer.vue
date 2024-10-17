@@ -122,22 +122,27 @@
         <v-tooltip location="bottom">
           <template v-slot:activator="{ props }">
             <v-btn
-              icon
+              icon="mdi-tab-plus"
               class="ml-2"
               variant="text"
               @click="addTab"
               v-bind="props"
               :class="config.tabs.length === 0 ? 'pulse-button' : ''"
               data-test="new-tab"
-            >
-              <v-icon>mdi-tab-plus</v-icon>
-            </v-btn>
+            />
           </template>
           <span>Add Component</span>
         </v-tooltip>
       </v-tabs>
-      <v-tabs-window :model-value="curTab" :key="`v-tabs-window_${config.tabs.length}`">
-        <v-tabs-window-item v-for="(tab, index) in config.tabs" :key="tab.ref" eager>
+      <v-tabs-window
+        :model-value="curTab"
+        :key="`v-tabs-window_${config.tabs.length}`"
+      >
+        <v-tabs-window-item
+          v-for="(tab, index) in config.tabs"
+          :key="tab.ref"
+          eager
+        >
           <keep-alive>
             <v-card flat>
               <v-divider />
@@ -147,15 +152,14 @@
                 <v-tooltip location="bottom">
                   <template v-slot:activator="{ props }">
                     <v-btn
-                      icon
+                      variant="text"
+                      icon="mdi-delete"
                       @click="() => deleteComponent(index)"
                       v-bind="props"
                       data-test="delete-component"
-                    >
-                      <v-icon>mdi-delete</v-icon>
-                    </v-btn>
+                    />
                   </template>
-                  <span>Remove Component</span>
+                  <span> Remove Component </span>
                 </v-tooltip>
               </v-card-title>
               <component
@@ -170,8 +174,8 @@
               <v-card-text v-if="receivedPackets.length === 0">
                 No data! Make sure to hit the START button!
               </v-card-text>
-            </v-card></keep-alive
-          >
+            </v-card>
+          </keep-alive>
         </v-tabs-window-item>
       </v-tabs-window>
       <v-card v-if="!config.tabs.length">

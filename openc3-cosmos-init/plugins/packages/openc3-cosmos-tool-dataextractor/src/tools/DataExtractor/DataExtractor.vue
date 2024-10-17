@@ -80,7 +80,7 @@
         <v-row>
           <v-col>
             <target-packet-item-chooser
-              @click="addItem($event)"
+              @add-item="addItem($event)"
               button-text="Add Item"
               :mode="cmdOrTlm"
               :hidden="true"
@@ -99,34 +99,33 @@
           class="bg-primary"
           @click="processItems"
           :disabled="items.length < 1"
-          >{{ processButtonText }}</v-btn
         >
+          {{ processButtonText }}
+        </v-btn>
         <v-spacer />
         <v-tooltip location="bottom">
           <template v-slot:activator="{ props }">
             <v-btn
-              icon
+              icon="mdi-pencil"
+              variant="text"
               @click="editAll = true"
               v-bind="props"
               :disabled="items.length < 1"
               data-test="editAll"
-            >
-              <v-icon> mdi-pencil </v-icon>
-            </v-btn>
+            />
           </template>
-          <span>Edit All Items</span>
+          <span> Edit All Items </span>
         </v-tooltip>
         <v-tooltip location="bottom">
           <template v-slot:activator="{ props }">
             <v-btn
-              icon
+              icon="mdi-delete"
+              variant="text"
               @click="deleteAll"
               v-bind="props"
               :disabled="items.length < 1"
               data-test="delete-all"
-            >
-              <v-icon>mdi-delete</v-icon>
-            </v-btn>
+            />
           </template>
           <span>Delete All Items</span>
         </v-tooltip>
@@ -160,7 +159,11 @@
           <template v-slot:item.edit="{ item }">
             <v-tooltip location="bottom">
               <template v-slot:activator="{ props }">
-                <v-icon @click.stop="item.edit = true" v-bind="props">
+                <v-icon
+                  @click.stop="item.edit = true"
+                  v-bind="props"
+                  data-test="edit-row"
+                >
                   mdi-pencil
                 </v-icon>
               </template>
@@ -181,8 +184,8 @@
                   <v-row class="mt-3 title-font">
                     <v-col>
                       {{ getItemLabel(item) }}
-                    </v-col></v-row
-                  >
+                    </v-col>
+                  </v-row>
                   <v-row>
                     <v-col>
                       <v-select
@@ -190,27 +193,32 @@
                         :items="modes"
                         label="Mode"
                         variant="outlined"
-                        v-model="item.mode" /></v-col
-                  ></v-row>
-                  <v-row
-                    ><v-col>
+                        v-model="item.mode"
+                      />
+                    </v-col>
+                  </v-row>
+                  <v-row>
+                    <v-col>
                       <v-select
                         hide-details
                         :items="valueTypes"
                         label="Value Type"
                         variant="outlined"
-                        v-model="item.valueType" /></v-col
-                  ></v-row>
-                  <v-row
-                    ><v-col>
+                        v-model="item.valueType"
+                      />
+                    </v-col>
+                  </v-row>
+                  <v-row>
+                    <v-col>
                       <v-select
                         hide-details
                         :items="reducedTypes"
                         label="Reduced Type"
                         variant="outlined"
                         v-model="item.reducedType"
-                      /> </v-col
-                  ></v-row>
+                      />
+                    </v-col>
+                  </v-row>
                 </v-card-text>
                 <v-card-actions>
                   <v-spacer />
@@ -228,17 +236,25 @@
           <template v-slot:item.delete="{ item }">
             <v-tooltip location="bottom">
               <template v-slot:activator="{ props }">
-                <v-icon @click="deleteItem(item)" v-bind="props">
+                <v-icon
+                  @click="deleteItem(item)"
+                  v-bind="props"
+                  data-test="delete-row"
+                >
                   mdi-delete
                 </v-icon>
               </template>
-              <span>Delete Item</span>
+              <span> Delete Item </span>
             </v-tooltip>
           </template>
         </v-data-table>
       </v-card>
     </v-card>
-    <v-dialog v-model="editAll" @keydown.esc="cancelEditAll" max-width="600">
+    <v-dialog
+      v-model="editAll"
+      @keydown.esc="editAll = !editAll"
+      max-width="600"
+    >
       <v-card>
         <v-toolbar height="24">
           <v-spacer />
@@ -249,36 +265,41 @@
           <v-row class="mt-3">
             <v-col>
               This will change all items to the following data type!
-            </v-col></v-row
-          >
-          <v-row
-            ><v-col>
+            </v-col>
+          </v-row>
+          <v-row>
+            <v-col>
               <v-select
                 hide-details
                 :items="modes"
                 label="Mode"
                 variant="outlined"
-                v-model="allItemMode" /></v-col
-          ></v-row>
-          <v-row
-            ><v-col>
+                v-model="allItemMode"
+              />
+            </v-col>
+          </v-row>
+          <v-row>
+            <v-col>
               <v-select
                 hide-details
                 :items="valueTypes"
                 label="Value Type"
                 variant="outlined"
-                v-model="allItemValueType" /></v-col
-          ></v-row>
-          <v-row
-            ><v-col>
+                v-model="allItemValueType"
+              />
+            </v-col>
+          </v-row>
+          <v-row>
+            <v-col>
               <v-select
                 hide-details
                 :items="reducedTypes"
                 label="Reduced Type"
                 variant="outlined"
                 v-model="allItemReducedType"
-              /> </v-col
-          ></v-row>
+              />
+            </v-col>
+          </v-row>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
@@ -363,14 +384,14 @@ export default {
       items: [],
       search: '',
       headers: [
-        { text: 'Target', value: 'targetName' },
-        { text: 'Packet', value: 'packetName' },
-        { text: 'Item', value: 'itemName' },
-        { text: 'Mode', value: 'mode' },
-        { text: 'ValueType', value: 'valueType' },
-        { text: 'ReducedType', value: 'reducedType' },
-        { text: 'Edit', value: 'edit' },
-        { text: 'Delete', value: 'delete' },
+        { title: 'Target', value: 'targetName' },
+        { title: 'Packet', value: 'packetName' },
+        { title: 'Item', value: 'itemName' },
+        { title: 'Mode', value: 'mode' },
+        { title: 'ValueType', value: 'valueType' },
+        { title: 'ReducedType', value: 'reducedType' },
+        { title: 'Edit', value: 'edit' },
+        { title: 'Delete', value: 'delete' },
       ],
       itemsPerPage: 20,
       columnMap: {},
@@ -392,10 +413,42 @@ export default {
       // uniqueIgnoreOptions: ['NO', 'YES'],
       cable: new Cable(),
       subscription: null,
-      menus: [
+    }
+  },
+  watch: {
+    delimiter: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    fillDown: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    matlabHeader: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    uniqueOnly: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    columnNode: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    cmdOrTlm: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    items: {
+      handler: function () {
+        this.saveDefaultConfig(this.currentConfig)
+      },
+      deep: true,
+    },
+    itemsPerPage: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+  },
+  computed: {
+    menus: function () {
+      return [
         {
           label: 'File',
-          radioGroup: 'Comma Delimited', // Default radio selected
           items: [
             {
               label: 'Open Configuration',
@@ -443,7 +496,7 @@ export default {
         },
         {
           label: 'Mode',
-          radioGroup: 'Normal Columns', // Default radio selected
+          // radioGroup: 'Normal Columns', // Default radio selected
           items: [
             // TODO: Currently unimplemented
             // {
@@ -460,25 +513,25 @@ export default {
             {
               label: 'Fill Down',
               checkbox: true,
-              checked: false,
-              command: (item) => {
-                this.fillDown = item.checked
+              checked: this.fillDown,
+              command: () => {
+                this.fillDown = !this.fillDown
               },
             },
             {
               label: 'Matlab Header',
               checkbox: true,
-              checked: false,
+              checked: this.matlabHeader,
               command: (item) => {
-                this.matlabHeader = item.checked
+                this.matlabHeader = !this.matlabHeader
               },
             },
             {
               label: 'Unique Only',
               checkbox: true,
-              checked: false,
+              checked: this.uniqueOnly,
               command: (item) => {
-                this.uniqueOnly = item.checked
+                this.uniqueOnly = !this.uniqueOnly
               },
             },
             {
@@ -503,39 +556,8 @@ export default {
             },
           ],
         },
-      ],
-    }
-  },
-  watch: {
-    delimiter: function () {
-      this.saveDefaultConfig(this.currentConfig)
+      ]
     },
-    fillDown: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    matlabHeader: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    uniqueOnly: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    columnNode: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    cmdOrTlm: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    items: {
-      handler: function () {
-        this.saveDefaultConfig(this.currentConfig)
-      },
-      deep: true,
-    },
-    itemsPerPage: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-  },
-  computed: {
     currentConfig: function () {
       return {
         delimiter: this.delimiter,
