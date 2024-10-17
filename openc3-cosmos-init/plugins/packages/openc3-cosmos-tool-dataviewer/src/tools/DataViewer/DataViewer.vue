@@ -28,68 +28,74 @@
         <v-expansion-panel>
           <v-expansion-panel-title style="z-index: 1"></v-expansion-panel-title>
           <v-expansion-panel-text>
-            <v-row dense>
-              <v-col>
-                <v-text-field
-                  v-model="startDate"
-                  label="Start Date"
-                  type="date"
-                  :rules="[rules.required]"
-                  data-test="start-date"
-                />
-              </v-col>
-              <v-col>
-                <v-text-field
-                  v-model="startTime"
-                  label="Start Time"
-                  type="time"
-                  step="1"
-                  :rules="[rules.required]"
-                  data-test="start-time"
-                />
-              </v-col>
-              <v-col>
-                <v-text-field
-                  v-model="endDate"
-                  label="End Date"
-                  type="date"
-                  :rules="endTime ? [rules.required] : []"
-                  data-test="end-date"
-                />
-              </v-col>
-              <v-col>
-                <v-text-field
-                  v-model="endTime"
-                  label="End Time"
-                  type="time"
-                  step="1"
-                  :rules="endDate ? [rules.required] : []"
-                  data-test="end-time"
-                />
-              </v-col>
-              <v-col cols="auto" class="pt-4">
-                <v-btn
-                  v-if="running"
-                  color="primary"
-                  width="100"
-                  data-test="stop-button"
-                  @click="stop"
-                >
-                  Stop
-                </v-btn>
-                <v-btn
-                  v-else
-                  :disabled="!canStart"
-                  color="primary"
-                  width="100"
-                  class="pulse-button"
-                  data-test="start-button"
-                  @click="start"
-                >
-                  Start
-                </v-btn>
-              </v-col>
-            </v-row>
+            <v-container>
+              <v-row dense>
+                <v-col>
+                  <v-text-field
+                    v-model="startDate"
+                    label="Start Date"
+                    type="date"
+                    :rules="[rules.required]"
+                    variant="underlined"
+                    data-test="start-date"
+                  />
+                </v-col>
+                <v-col>
+                  <v-text-field
+                    v-model="startTime"
+                    label="Start Time"
+                    type="time"
+                    step="1"
+                    :rules="[rules.required]"
+                    variant="underlined"
+                    data-test="start-time"
+                  />
+                </v-col>
+                <v-col>
+                  <v-text-field
+                    v-model="endDate"
+                    label="End Date"
+                    type="date"
+                    :rules="endTime ? [rules.required] : []"
+                    variant="underlined"
+                    data-test="end-date"
+                  />
+                </v-col>
+                <v-col>
+                  <v-text-field
+                    v-model="endTime"
+                    label="End Time"
+                    type="time"
+                    step="1"
+                    :rules="endDate ? [rules.required] : []"
+                    variant="underlined"
+                    data-test="end-time"
+                  />
+                </v-col>
+                <v-col cols="auto" class="pt-4">
+                  <v-btn
+                    v-if="running"
+                    color="primary"
+                    width="100"
+                    data-test="stop-button"
+                    @click="stop"
+                  >
+                    Stop
+                  </v-btn>
+                  <v-btn
+                    v-else
+                    :disabled="!canStart"
+                    color="primary"
+                    width="100"
+                    class="pulse-button"
+                    data-test="start-button"
+                    @click="start"
+                  >
+                    Start
+                  </v-btn>
+                </v-col>
+              </v-row>
+            </v-container>
           </v-expansion-panel-text>
         </v-expansion-panel>
       </v-expansion-panels>
@@ -104,7 +110,7 @@
           OpenC3 backend connection failed.
         </v-alert>
       </div>
-      <v-tabs ref="tabs" v-model="curTab">
+      <v-tabs ref="tabs" v-model="curTab" :key="`v-tabs_${config.tabs.length}`">
         <v-tab
           v-for="(tab, index) in config.tabs"
           :key="index"
@@ -117,7 +123,8 @@
           <template v-slot:activator="{ props }">
             <v-btn
               icon
-              class="mt-2 ml-2"
+              class="ml-2"
+              variant="text"
               @click="addTab"
               v-bind="props"
               :class="config.tabs.length === 0 ? 'pulse-button' : ''"
@@ -129,8 +136,8 @@
           <span>Add Component</span>
         </v-tooltip>
       </v-tabs>
-      <v-window :model-value="curTab">
-        <v-window-item v-for="(tab, index) in config.tabs" :key="tab.ref" eager>
+      <v-tabs-window :model-value="curTab" :key="`v-tabs-window_${config.tabs.length}`">
+        <v-tabs-window-item v-for="(tab, index) in config.tabs" :key="tab.ref" eager>
           <keep-alive>
             <v-card flat>
               <v-divider />
@@ -165,8 +172,8 @@
               </v-card-text>
             </v-card></keep-alive
           >
-        </v-window-item>
-      </v-window>
+        </v-tabs-window-item>
+      </v-tabs-window>
       <v-card v-if="!config.tabs.length">
         <v-card-title>You're not viewing any packets</v-card-title>
         <v-card-text>Click the new tab icon to start.</v-card-text>
@@ -386,9 +393,6 @@ export default {
     },
   },
   watch: {
-    'config.tabs.length': function () {
-      this.resizeTabs()
-    },
     // canStart is set by the subscription when it connects.
     // We set autoStart to true during mounted() when loading from
     // a route or a previous saved configuration.
@@ -471,9 +475,6 @@ export default {
       } else {
         return `${packet.targetName} ${packet.packetName} [ ${packet.mode} ]`
       }
-    },
-    resizeTabs: function () {
-      if (this.$refs.tabs) this.$refs.tabs.onResize()
     },
     start: function () {
       this.autoStart = false
