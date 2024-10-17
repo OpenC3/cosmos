@@ -33,6 +33,7 @@ class UnixTimeConversion(Conversion):
         self.microseconds_item_name = microseconds_item_name
         self.converted_type = "RUBY_TIME"
         self.converted_bit_size = 0
+        self.params = [seconds_item_name, microseconds_item_name]
 
     # @param (see Conversion#call)
     # @return [Float] Packet time in seconds since UNIX epoch
@@ -50,8 +51,3 @@ class UnixTimeConversion(Conversion):
     # @return [String] Config fragment for this conversion
     def to_config(self, read_or_write):
         return f"    {read_or_write}_CONVERSION {self.__class__.__name__} {self.seconds_item_name} {self.microseconds_item_name}\n"
-
-    def as_json(self):
-        result = super().as_json()
-        result["params"] = [self.seconds_item_name, self.microseconds_item_name]
-        return result

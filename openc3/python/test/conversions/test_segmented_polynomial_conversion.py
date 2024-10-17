@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -56,7 +56,7 @@ class TestSegmentedPolynomialConversion(unittest.TestCase):
         spc.add_segment(15, 3, 2)
         json = spc.as_json()
         self.assertEqual(json["class"], "SegmentedPolynomialConversion")
-        new_spc = SegmentedPolynomialConversion(*json["params"])
+        new_spc = SegmentedPolynomialConversion(json["params"])
         for index, segment in enumerate(spc.segments):
             self.assertEqual(segment, new_spc.segments[index])
         self.assertEqual(spc.converted_type, (new_spc.converted_type))

@@ -48,6 +48,7 @@ class GenericConversion(Conversion):
             self.converted_bit_size = int(converted_bit_size)
         if ConfigParser.handle_none(converted_array_size):
             self.converted_array_size = int(converted_array_size)
+        self.params = [code_to_eval, converted_type, converted_bit_size, converted_array_size]
 
     def call(self, value, packet, buffer):
         myself = packet  # For backwards compatibility
@@ -72,13 +73,3 @@ class GenericConversion(Conversion):
         config << self.code_to_eval
         config += f"    GENERIC_{read_or_write}_CONVERSION_END\n"
         return config
-
-    def as_json(self):
-        result = super().as_json()
-        result["params"] = [
-            self.code_to_eval,
-            self.converted_type,
-            self.converted_bit_size,
-            self.converted_array_size,
-        ]
-        return result

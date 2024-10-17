@@ -90,9 +90,16 @@ module OpenC3
         expect(json['class']).to eql "OpenC3::ObjectReadConversion"
         expect(json['converted_type']).to eql :OBJECT
         expect(json['converted_bit_size']).to eql 0
-        expect(json['cmd_or_tlm']).to eql :TLM
-        expect(json['target_name']).to eql "INST"
-        expect(json['packet_name']).to eql "PARAMS"
+        expect(json['params']).to eql ["TLM", "INST", "PARAMS"]
+        new_orc = OpenC3::const_get(json['class']).new(*json['params'])
+        expect(orc.converted_type).to eql(new_orc.converted_type)
+        expect(orc.converted_bit_size).to eql(new_orc.converted_bit_size)
+        expect(orc.converted_array_size).to eql(new_orc.converted_array_size)
+        pkt = System.telemetry.packet("INST", "PARAMS")
+        pkt.write("VALUE0", 1)
+        pkt.write("VALUE2", 1)
+        pkt.write("VALUE4", 1)
+        expect(orc.call(pkt.buffer, pkt, pkt.buffer)).to eql new_orc.call(pkt.buffer, pkt, pkt.buffer)
       end
     end
   end
