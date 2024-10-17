@@ -219,7 +219,7 @@ module OpenC3
               'PARAMETER', 'ID_ITEM', 'ID_PARAMETER', 'ARRAY_ITEM', 'ARRAY_PARAMETER', 'APPEND_ITEM',\
               'APPEND_PARAMETER', 'APPEND_ID_ITEM', 'APPEND_ID_PARAMETER', 'APPEND_ARRAY_ITEM',\
               'APPEND_ARRAY_PARAMETER', 'ALLOW_SHORT', 'HAZARDOUS', 'PROCESSOR', 'META',\
-              'DISABLE_MESSAGES', 'HIDDEN', 'DISABLED', 'VIRTUAL', 'ACCESSOR', 'TEMPLATE', 'TEMPLATE_FILE',\
+              'DISABLE_MESSAGES', 'HIDDEN', 'DISABLED', 'VIRTUAL', 'RESTRICTED', 'ACCESSOR', 'TEMPLATE', 'TEMPLATE_FILE',\
               'RESPONSE', 'ERROR_RESPONSE', 'SCREEN', 'RELATED_ITEM', 'IGNORE_OVERLAP', 'VALIDATOR'
             raise parser.error("No current packet for #{keyword}") unless @current_packet
 
@@ -479,6 +479,11 @@ module OpenC3
         @current_packet.hidden = true
         @current_packet.disabled = true
         @current_packet.virtual = true
+
+      when 'RESTRICTED'
+        usage = "#{keyword}"
+        parser.verify_num_parameters(0, 0, usage)
+        @current_packet.restricted = true
 
       when 'ACCESSOR', 'VALIDATOR'
         usage = "#{keyword} <Class name> <Optional parameters> ..."

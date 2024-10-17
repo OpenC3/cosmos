@@ -137,7 +137,7 @@
             hide-details
           />
           <v-text-field
-            v-model="state"
+            v-model="stateTimer"
             label="Script State"
             data-test="state"
             class="shrink ml-2 script-state"
@@ -376,6 +376,14 @@
       :text="suiteError"
       :width="1000"
     />
+    <critical-cmd-dialog
+      :uuid="criticalCmdUuid"
+      :cmdString="criticalCmdString"
+      :cmdUser="criticalCmdUser"
+      :persistent="true"
+      v-model="displayCriticalCmd"
+      @status="promptDialogCallback"
+    />
     <v-bottom-sheet v-model="showScripts">
       <v-sheet class="pb-11 pt-5 px-5">
         <running-scripts
@@ -408,6 +416,7 @@ import { Multipane, MultipaneResizer } from 'vue-multipane'
 import FileOpenSaveDialog from '@openc3/tool-common/src/components/FileOpenSaveDialog'
 import EnvironmentDialog from '@openc3/tool-common/src/components/EnvironmentDialog'
 import SimpleTextDialog from '@openc3/tool-common/src/components/SimpleTextDialog'
+import CriticalCmdDialog from '@openc3/tool-common/src/components/CriticalCmdDialog'
 import TopBar from '@openc3/tool-common/src/components/TopBar'
 import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 import { fileIcon } from '@openc3/tool-common/src/tools/base/util/fileIcon'
@@ -459,6 +468,7 @@ export default {
     SuiteRunner,
     RunningScripts,
     ScriptLogMessages,
+    CriticalCmdDialog,
   },
   data() {
     return {
@@ -583,9 +593,22 @@ export default {
       idCounter: 0,
       updateCounter: 0,
       recent: [],
+      waitingInterval: null,
+      waitingTime: 0,
+      waitingStart: 0,
+      criticalCmdUuid: null,
+      criticalCmdString: null,
+      criticalCmdUser: null,
+      displayCriticalCmd: false,
     }
   },
   computed: {
+    stateTimer: function () {
+      if (this.state === 'waiting' || this.state === 'paused') {
+        return `${this.state} ${this.waitingTime}s`
+      }
+      return this.state
+    },
     // This is the list of files shown in the select dropdown
     fileList: function () {
       // this.files is the list of all files seen while running
@@ -935,7 +958,10 @@ export default {
         this.executeUser = true
       } else {
         await Api.get(`/openc3-api/roles/${role}`).then((response) => {
-          if (response.data.permissions !== undefined) {
+          if (
+            response.data !== null &&
+            response.data.permissions !== undefined
+          ) {
             if (
               response.data.permissions.some(
                 (i) => i.permission == 'script_edit',
@@ -1621,6 +1647,26 @@ export default {
     step() {
       Api.post(`/script-api/running-script/${this.scriptId}/step`)
     },
+    // This is called by processLine no matter the current state
+    handleWaiting() {
+      // First check if we're not waiting and if so clear the interval
+      if (this.state !== 'waiting' && this.state !== 'paused') {
+        this.clearWaiting()
+      } else if (this.waitingInterval !== null) {
+        // If we're waiting and the interval is active then nothing to do
+        return
+      }
+      this.waitingStart = Date.now()
+      // Create an interval to count every second
+      this.waitingInterval = setInterval(() => {
+        this.waitingTime = Math.round((Date.now() - this.waitingStart) / 1000)
+      }, 1000)
+    },
+    clearWaiting() {
+      this.waitingTime = 0
+      clearInterval(this.waitingInterval)
+      this.waitingInterval = null
+    },
     processLine(data) {
       if (data.filename && data.filename !== this.currentFilename) {
         if (!this.files[data.filename]) {
@@ -1656,6 +1702,7 @@ export default {
       const markers = this.editor.session.getMarkers()
       switch (this.state) {
         case 'running':
+          this.handleWaiting()
           this.startOrGoDisabled = false
           this.pauseOrRetryDisabled = false
           this.stopDisabled = false
@@ -1679,6 +1726,7 @@ export default {
         case 'breakpoint':
         case 'waiting':
         case 'paused':
+          this.handleWaiting()
           if (this.state == 'fatal') {
             this.startOrGoDisabled = true
             this.pauseOrRetryDisabled = true
@@ -1913,6 +1961,12 @@ export default {
           this.prompt.buttons = [{ text: 'Send', value: 'Send' }]
           this.prompt.callback = this.promptDialogCallback
           this.prompt.show = true
+          break
+        case 'prompt_for_critical_cmd':
+          this.criticalCmdUuid = data.args[0]
+          this.criticalCmdString = data.args[5]
+          this.criticalCmdUser = data.args[1]
+          this.displayCriticalCmd = true
           break
         case 'prompt':
           if (data.kwargs && data.kwargs.informative) {

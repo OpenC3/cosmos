@@ -43,10 +43,11 @@ class MessagesThread < TopicsThread
     @redis_offset = nil # Redis offset to transition from files
     @scope = scope
     @thread_mode = :SETUP
-    @topics = ["#{scope}__openc3_log_messages"]
+    @topics = ["#{scope}__openc3_log_messages", "#{scope}__openc3_ephemeral_messages"]
 
     offsets = nil
-    offsets = [start_offset] if start_offset
+    # $ means only new messages for the ephemeral topic
+    offsets = [start_offset, "$"] if start_offset
     super(@topics, channel, history_count, max_batch_size, offsets: offsets)
   end
 
@@ -89,6 +90,7 @@ class MessagesThread < TopicsThread
             offset = ((@start_time + delta) / 1_000_000).to_s + "-0"
             # OpenC3::Logger.debug "stream from Redis offset:#{offset} redis_time:#{redis_time} delta:#{delta}"
             @offsets[@offset_index_by_topic[@topics[0]]] = offset
+            @offsets[@offset_index_by_topic[@topics[1]]] = "$" # Only new ephemeral messages
             @thread_mode = :STREAM
           end
         end
@@ -99,6 +101,7 @@ class MessagesThread < TopicsThread
     else
       unless @offsets
         thread_setup() # From TopicsThread
+        @offsets[@offset_index_by_topic[@topics[1]]] = "$" # Only new ephemeral messages
       end
       @thread_mode = :STREAM
     end
@@ -145,6 +148,7 @@ class MessagesThread < TopicsThread
     else
       @offsets[@offset_index_by_topic[@topics[0]]] = "0-0"
     end
+    @offsets[@offset_index_by_topic[@topics[1]]] = "$" # Only new ephemeral messages
     @thread_mode = :STREAM
   end
 

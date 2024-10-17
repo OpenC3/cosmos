@@ -18,7 +18,7 @@ import time
 import json
 from openc3.topics.topic import Topic
 from openc3.utilities.store_queued import EphemeralStoreQueued
-from openc3.top_level import HazardousError
+from openc3.top_level import HazardousError, CriticalCmdError
 from openc3.utilities.time import to_nsec_from_epoch
 from openc3.utilities.json import JsonEncoder
 
@@ -70,6 +70,15 @@ class CommandTopic(Topic):
                             command["cmd_name"],
                             cmd_params,
                         )
+                    elif "CriticalCmdError" in result:
+                        cls.raise_critical_cmd_error(
+                            msg_hash,
+                            command["username"],
+                            command["target_name"],
+                            command["cmd_name"],
+                            cmd_params,
+                            command["cmd_string"],
+                        )
                     else:
                         raise RuntimeError(result)
         raise RuntimeError(f"Timeout of {timeout}s waiting for cmd ack")
@@ -89,6 +98,22 @@ class CommandTopic(Topic):
         error.cmd_params = cmd_params
         error.hazardous_description = description
         error.formatted = formatted
+
+        # No Logger.info because the error is already logged by the Logger.info "Ack Received ...
+        raise error
+
+    @classmethod
+    def raise_critical_cmd_error(cls, msg_hash, username, target_name, cmd_name, cmd_params, cmd_string):
+        _, uuid = msg_hash[b"result"].decode().split("\n")
+        # Create and populate a new CriticalCmdError and raise it up
+        # The _cmd method in script/commands.rb rescues this and calls prompt_for_critical_cmd
+        error = CriticalCmdError()
+        error.uuid = uuid
+        error.username = username
+        error.target_name = target_name
+        error.cmd_name = cmd_name
+        error.cmd_params = cmd_params
+        error.cmd_string = cmd_string
 
         # No Logger.info because the error is already logged by the Logger.info "Ack Received ...
         raise error

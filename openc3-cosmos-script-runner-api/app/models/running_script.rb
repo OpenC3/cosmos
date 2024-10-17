@@ -44,7 +44,7 @@ module OpenC3
     # Define all the user input methods used in scripting which we need to broadcast to the frontend
     # Note: This list matches the list in run_script.rb:116
     SCRIPT_METHODS = %i[ask ask_string message_box vertical_message_box combo_box prompt prompt_for_hazardous
-      metadata_input open_file_dialog open_files_dialog]
+      prompt_for_critical_cmd metadata_input open_file_dialog open_files_dialog]
     SCRIPT_METHODS.each do |method|
       define_method(method) do |*args, **kwargs|
         while true
@@ -67,6 +67,11 @@ module OpenC3
                 end
                 files = files[0] if method.to_s == 'open_file_dialog' # Simply return the only file
                 return files
+              elsif method.to_s == 'prompt_for_critical_cmd'
+                if input == 'REJECTED'
+                  raise "Critical Cmd Rejected"
+                end
+                return input
               else
                 return input
               end

@@ -252,6 +252,10 @@ VIRTUAL:
   summary: Marks this packet as virtual and not participating in identification
   description: Used for packet definitions that can be used as structures for items with a given packet.
   since: 5.18.0
+RESTRICTED:
+  summary: Marks this packet as restricted and will require approval if critical commanding is enabled
+  description: Used as one of the two types of critical commands (HAZARDOUS and RESTRICTED)
+  since: 5.20.0
 VALIDATOR:
   summary: Defines a validator class for a command
   description: Validator class is used to validate the command success or failure with both a pre_check and post_check method.
