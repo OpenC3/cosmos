@@ -71,6 +71,12 @@
   ):hover {
   border-color: var(--button-color-border-primary-hover) !important;
 }
+// TODO: This doesn't appear to be working ... the background is still black
+// Icon buttons shouldn't have backgrounds or box-shadows
+.v-theme--cosmosdark.v-btn--icon {
+  background-color: unset !important;
+  box-shadow: unset !important;
+}
 
 body,
 .v-theme--cosmosDark.v-application,
@@ -125,6 +131,7 @@ body,
   color: var(--color-text-interactive-default) !important;
 }
 
+table,
 .v-stepper,
 .v-expansion-panel-text,
 .v-theme--cosmosDark.v-data-table,
@@ -142,8 +149,8 @@ body,
 .v-theme--cosmosDark.v-list {
   background-color: var(--color-background-base-default);
 }
-.v-theme--cosmosDark.v-list div:nth-child(odd) .v-list-item {
-  background-color: var(--color-background-base-selected) !important;
+.v-list {
+  color: white !important;
 }
 
 .v-theme--cosmosDark.v-overlay--active[role='dialog'] {

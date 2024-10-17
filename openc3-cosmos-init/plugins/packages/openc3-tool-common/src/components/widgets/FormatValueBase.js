@@ -1,3 +1,5 @@
+import sprintf from 'sprintf-js'
+
 /*
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
@@ -23,49 +25,47 @@
 export default {
   methods: {
     formatValueBase(value, formatString) {
-      // Convert json raw strings into the raw bytes
-      // Only convert the first 32 bytes before adding an ellipse
-      // TODO: Handle units on a BLOCK item
-      // TODO: Render data in a BLOCK item as bytes (instead of ASCII)
-      if (
-        value &&
-        value['json_class'] === 'String' &&
-        value['raw'] !== undefined
-      ) {
-        let result = Array.from(value['raw'].slice(0, 32), function (byte) {
-          return ('0' + (byte & 0xff).toString(16)).slice(-2)
-        })
-          .join(' ')
-          .toUpperCase()
-        if (value['raw'].length > 32) {
-          result += '...'
-        }
-        return result
+      if (this.isJsonString(value)) {
+        return this.formatJsonString(value)
       }
-      if (Object.prototype.toString.call(value).slice(8, -1) === 'Array') {
-        let result = '['
-        for (let i = 0; i < value.length; i++) {
-          if (
-            Object.prototype.toString.call(value[i]).slice(8, -1) === 'String'
-          ) {
-            result += '"' + value[i] + '"'
-          } else {
-            result += value[i]
-          }
-          if (i != value.length - 1) {
-            result += ', '
-          }
-        }
-        result += ']'
-        return result
+      if (Array.isArray(value)) {
+        return this.formatArray(value)
       }
-      if (Object.prototype.toString.call(value).slice(8, -1) === 'Object') {
+      if (this.isObject(value)) {
         return ''
       }
       if (formatString && value) {
         return sprintf(formatString, value)
       }
-      return '' + value
+      return String(value)
+    },
+    isJsonString(value) {
+      return (
+        value && value['json_class'] === 'String' && value['raw'] !== undefined
+      )
+    },
+    formatJsonString(value) {
+      let result = Array.from(value['raw'].slice(0, 32), (byte) =>
+        ('0' + (byte & 0xff).toString(16)).slice(-2),
+      )
+        .join(' ')
+        .toUpperCase()
+      if (value['raw'].length > 32) {
+        result += '...'
+      }
+      return result
+    },
+    formatArray(value) {
+      return (
+        '[' +
+        value
+          .map((item) => (typeof item === 'string' ? `"${item}"` : item))
+          .join(', ') +
+        ']'
+      )
+    },
+    isObject(value) {
+      return Object.prototype.toString.call(value).slice(8, -1) === 'Object'
     },
   },
 }

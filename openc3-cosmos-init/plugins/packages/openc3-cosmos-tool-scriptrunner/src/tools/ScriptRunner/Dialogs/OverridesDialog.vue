@@ -21,7 +21,7 @@
 -->
 
 <template>
-  <v-dialog v-model="show" width="700">
+  <v-dialog v-model="show" width="1000">
     <v-card>
       <v-toolbar height="24">
         <v-spacer />
@@ -30,16 +30,14 @@
       </v-toolbar>
       <div class="pa-2">
         <v-card-text>
-          <v-btn
-            @click="clearOverrides"
-            color="primary"
-            data-test="overrides-dialog-clear-all"
-          >
-            Clear All Overrides
-          </v-btn>
-
-          <v-card-title>
-            Overrides
+          <v-row class="ma-1">
+            <v-btn
+              @click="clearOverrides"
+              color="primary"
+              data-test="overrides-dialog-clear-all"
+            >
+              Clear All Overrides
+            </v-btn>
             <v-spacer />
             <v-text-field
               v-model="search"
@@ -51,7 +49,7 @@
               single-line
               hide-details
             />
-          </v-card-title>
+          </v-row>
           <v-data-table
             :headers="headers"
             :items="overrides"

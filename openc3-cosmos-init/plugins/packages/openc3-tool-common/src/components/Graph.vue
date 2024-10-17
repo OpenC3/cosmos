@@ -1070,7 +1070,6 @@ export default {
           ? navDrawer.clientWidth
           : 0
       }
-      console.log(`navDrawerWidth: ${navDrawerWidth}`)
       let legendWidth = 0
       if (this.legendPosition === 'right' || this.legendPosition === 'left') {
         const legend = document.getElementsByClassName('u-legend')[0]
@@ -1080,7 +1079,6 @@ export default {
         Math.max(document.documentElement.clientWidth, window.innerWidth || 0) -
         navDrawerWidth -
         legendWidth
-      console.log(`viewWidth: ${viewWidth}`)
       const viewHeight = Math.max(
         document.documentElement.clientHeight,
         window.innerHeight || 0,
@@ -1322,81 +1320,71 @@ export default {
       }, 0)
     },
     addItems: function (itemArray, type = 'CONVERTED') {
-      for (const item of itemArray) {
+      itemArray.forEach((item) => {
         item.valueType ||= type // set the default type
-        if (item.color === undefined) {
-          item.color = this.colors[this.colorIndex]
+        item.color ||= this.colors[this.colorIndex]
+        item.limits ||= []
+
+        if (item.limits.length > 0) {
+          this.limitsValues = item.limits
         }
-        if (item.limits === undefined) {
-          // [] matches 'NONE' in GraphEditItemDialog
-          item.limits = []
-        } else {
-          if (item.limits.length > 0) {
-            // If somehow we have more than one limits
-            // the last one wins which is fine
-            this.limitsValues = item.limits
-          }
-        }
-        this.colorIndex++
-        if (this.colorIndex === this.colors.length) {
-          this.colorIndex = 0
-        }
+
+        this.colorIndex = (this.colorIndex + 1) % this.colors.length
         this.items.push(item)
+
         const index = this.data.length
-        this.graph.addSeries(
-          {
-            spanGaps: true,
-            item: item,
-            label: this.formatLabel(item),
-            stroke: (u, seriesIdx) => {
-              return this.items[seriesIdx - 1].color
-            },
-            width: 2,
-            value: (self, rawValue) => {
-              if (typeof rawValue === 'string' || isNaN(rawValue)) {
-                return 'NaN'
-              } else {
-                if (rawValue == null) {
-                  return '--'
-                } else if (
-                  (Math.abs(rawValue) < 0.01 && rawValue !== 0) ||
-                  Math.abs(rawValue) >= 10_000_000
-                ) {
-                  return rawValue.toExponential(6)
-                } else {
-                  return rawValue.toFixed(6)
-                }
-              }
-            },
-          },
-          index,
-        )
+        this.graph.addSeries(this.createSeriesConfig(item), index)
+
         if (this.overview) {
-          this.overview.addSeries(
-            {
-              spanGaps: true,
-              stroke: (u, seriesIdx) => {
-                return this.items[seriesIdx - 1].color
-              },
-            },
-            index,
-          )
+          this.overview.addSeries(this.createOverviewSeriesConfig(), index)
         }
-        let newData = Array(this.data[0].length)
-        this.data.splice(index, 0, newData)
+
+        this.data.splice(index, 0, Array(this.data[0].length))
         this.indexes[this.subscriptionKey(item)] = index
-      }
-      // Figure out the last item's color and set the colorIndex past that
-      let item = itemArray[itemArray.length - 1]
-      if (item) {
-        let index = this.colors.indexOf(item.color)
-        if (index) {
-          this.colorIndex = index + 1
-        }
-      }
+      })
+
+      this.updateColorIndex(itemArray)
       this.addItemsToSubscription(itemArray)
       this.$emit('resize')
       this.$emit('edit')
+    },
+    createSeriesConfig: function (item) {
+      return {
+        spanGaps: true,
+        item: item,
+        label: this.formatLabel(item),
+        stroke: (u, seriesIdx) => this.items[seriesIdx - 1].color,
+        width: 2,
+        value: (self, rawValue) => {
+          if (typeof rawValue === 'string' || isNaN(rawValue)) {
+            return 'NaN'
+          } else if (rawValue == null) {
+            return '--'
+          } else if (
+            (Math.abs(rawValue) < 0.01 && rawValue !== 0) ||
+            Math.abs(rawValue) >= 10_000_000
+          ) {
+            return rawValue.toExponential(6)
+          } else {
+            return rawValue.toFixed(6)
+          }
+        },
+      }
+    },
+    createOverviewSeriesConfig: function () {
+      return {
+        spanGaps: true,
+        stroke: (u, seriesIdx) => this.items[seriesIdx - 1].color,
+      }
+    },
+    updateColorIndex: function (itemArray) {
+      const lastItem = itemArray[itemArray.length - 1]
+      if (lastItem) {
+        const index = this.colors.indexOf(lastItem.color)
+        if (index !== -1) {
+          this.colorIndex = (index + 1) % this.colors.length
+        }
+      }
     },
     addItemsToSubscription: function (itemArray = this.items) {
       let theStartTime = this.startTime

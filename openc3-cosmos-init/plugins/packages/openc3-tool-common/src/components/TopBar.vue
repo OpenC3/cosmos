@@ -191,7 +191,7 @@ span.v-btn__content span {
 }
 .list-action :deep(label) {
   color: white;
-  padding-left: 10px;
+  padding-left: 20px;
 }
 .myicon {
   background-color: var(--color-background-surface-selected);

@@ -44,11 +44,8 @@ test('show started scripts', async ({ page, utils }) => {
       timeout: 20000,
     },
   )
-  // Traverse up to get the name of the running script
-  const filename = await page
-    .locator('[data-test=filename]')
-    .locator('xpath=../div')
-    .textContent()
+  // Get the name of the running script
+  let filename = await page.locator('[data-test=filename] input').inputValue()
 
   await page.locator('[data-test=script-runner-script]').click()
   await page.locator('text="Execution Status"').click()
@@ -82,18 +79,18 @@ test('sets environment variables', async ({ page, utils }) => {
   await page.locator('textarea').fill(`puts ENV.inspect`)
   await page.locator('[data-test=script-runner-script]').click()
   await page.locator('text=Global Environment').click()
-  await page.locator('[data-test=env-key]').fill('KEY')
-  await page.locator('[data-test=env-value]').fill('VALUE')
+  await page.locator('[data-test=env-key] input').fill('KEY')
+  await page.locator('[data-test=env-value] input').fill('VALUE')
   await page.locator('[data-test=add-env]').click()
-  await page.locator('[data-test=env-key]').fill('USER')
-  await page.locator('[data-test=env-value]').fill('RYAN')
+  await page.locator('[data-test=env-key] input').fill('USER')
+  await page.locator('[data-test=env-value] input').fill('RYAN')
   await page.locator('[data-test=add-env]').click()
   await page.locator('.v-dialog').press('Escape')
 
   await page.locator('[data-test="env-button"]').click()
   await page.locator('[data-test="new-metadata-icon"]').click()
-  await page.locator('[data-test="key-0"]').fill('USER')
-  await page.locator('[data-test="value-0"]').fill('JASON')
+  await page.locator('[data-test="key-0"] input').fill('USER')
+  await page.locator('[data-test="value-0"] input').fill('JASON')
   await page.locator('[data-test="environment-dialog-save"]').click()
 
   await page.locator('[data-test=start-button]').click()
@@ -217,11 +214,14 @@ test('show overrides', async ({ page, utils }) => {
   await expect(page.locator('.v-dialog >> tbody > tr').nth(4)).toContainText(
     'INSTHEALTH_STATUSDURATIONCONVERTED10',
   )
-  // Click the delete button on the first item
-  await page.locator('.v-dialog >> tbody > tr >> nth=0 >> button').click()
+  await page
+    .locator('.v-dialog >> tbody > tr')
+    .nth(0)
+    .getByRole('button')
+    .click()
   await expect(page.locator('.v-dialog >> tbody > tr')).toHaveCount(4)
   // Clear all overrides
-  await page.locator('[data-test=overrides-dialog-clear-all]').click()
+  await page.locator('[data-test="overrides-dialog-clear-all"]').click()
   await expect(
     page.getByRole('cell', { name: 'No data available' }),
   ).toBeVisible()

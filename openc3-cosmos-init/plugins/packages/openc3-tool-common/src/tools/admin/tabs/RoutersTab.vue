@@ -94,4 +94,7 @@ export default {
 .list {
   background-color: var(--color-background-surface-default) !important;
 }
+.v-theme--cosmosDark.v-list div:nth-child(odd) .v-list-item {
+  background-color: var(--color-background-base-selected) !important;
+}
 </style>

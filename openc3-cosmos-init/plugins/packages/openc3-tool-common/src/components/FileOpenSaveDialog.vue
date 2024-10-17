@@ -116,6 +116,7 @@
               </v-btn>
               <v-btn
                 @click.prevent="success"
+                ref="submitBtn"
                 type="submit"
                 color="primary"
                 class="mx-2"
@@ -275,6 +276,10 @@ export default {
 
         // Search through items to find the item with id
         this.selectedFile = this.findItem(this.items, file[0])
+        // Select the Submit button so return opens the file
+        setTimeout(() => {
+          this.$refs.submitBtn.$el.focus()
+        }, 100)
       }
     },
     findItem: function (items, id) {

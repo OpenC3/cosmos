@@ -143,7 +143,9 @@ test('ask accepts default, password, and required', async ({ page, utils }) => {
     'blank:true',
   )
   // Verify the default value
-  expect(await page.inputValue('[data-test=ask-value-input]')).toMatch('67890')
+  expect(await page.inputValue('[data-test=ask-value-input] input')).toMatch(
+    '67890',
+  )
   await page.locator('.v-dialog >> button:has-text("Ok")').click()
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     '67890',

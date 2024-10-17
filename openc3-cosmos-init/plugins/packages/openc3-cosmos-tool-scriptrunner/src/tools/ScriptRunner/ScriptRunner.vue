@@ -141,7 +141,7 @@
             label="Script ID"
             data-test="id"
             class="shrink ml-2 script-state"
-            style="width: 100px"
+            style="max-width: 100px"
             density="compact"
             variant="outlined"
             readonly
@@ -152,7 +152,7 @@
             label="Script State"
             data-test="state"
             class="shrink ml-2 script-state"
-            style="width: 120px"
+            style="max-width: 120px"
             density="compact"
             variant="outlined"
             readonly
@@ -227,75 +227,71 @@
         </v-row>
       </div>
     </v-card>
-    <!-- Create Multipane container to support resizing.
-         NOTE: We listen to paneResize event and call editor.resize() to prevent weird sizing issues,
-         The event must be paneResize and not pane-resize -->
-    <!-- <multipane layout="horizontal" @paneResize="doResize"> -->
-    <div class="editorbox">
-      <v-snackbar
-        v-model="showSave"
-        absolute
-        location="top right"
-        :timeout="-1"
-        class="saving"
-      >
-        Saving...
-      </v-snackbar>
-      <pre
-        ref="editor"
-        class="editor"
-        @contextmenu.prevent="showExecuteSelectionMenu"
-      ></pre>
-      <v-menu v-model="executeSelectionMenu" :target="[menuX, menuY]">
-        <v-list>
-          <v-list-item
-            v-for="item in executeSelectionMenuItems"
-            link
-            :key="item.label"
-            :disabled="scriptId"
-          >
-            <v-list-item-title @click="item.command">
-              {{ item.label }}
-            </v-list-item-title>
-          </v-list-item>
-        </v-list>
-      </v-menu>
-    </div>
-    <!-- <multipane-resizer><hr /></multipane-resizer> -->
-    <div id="messages" class="mt-2" ref="messagesDiv">
-      <div id="debug" class="pa-0" v-if="showDebug">
-        <v-row no-gutters>
-          <v-btn
-            color="primary"
-            @click="step"
-            style="width: 100px"
-            class="mr-4"
-            :disabled="!scriptId"
-            data-test="step-button"
-          >
-            Step
-            <v-icon end> mdi-step-forward </v-icon>
-          </v-btn>
-          <v-text-field
-            ref="debug"
-            class="mb-2"
-            variant="outlined"
-            density="compact"
-            hide-details
-            label="Debug"
-            v-model="debug"
-            @keydown="debugKeydown"
-            data-test="debug-text"
-          />
-        </v-row>
-      </div>
-      <script-log-messages
-        id="log-messages"
-        v-model="messages"
-        @sort="messageSortOrder"
-      />
-    </div>
-    <!-- </multipane> -->
+    <splitpanes horizontal @resize="calcHeight">
+      <pane class="editorbox" size="50">
+        <v-snackbar
+          v-model="showSave"
+          absolute
+          location="top right"
+          :timeout="-1"
+          class="saving"
+        >
+          Saving...
+        </v-snackbar>
+        <pre
+          ref="editor"
+          class="editor"
+          @contextmenu.prevent="showExecuteSelectionMenu"
+        ></pre>
+        <v-menu v-model="executeSelectionMenu" :target="[menuX, menuY]">
+          <v-list>
+            <v-list-item
+              v-for="item in executeSelectionMenuItems"
+              link
+              :key="item.label"
+              :disabled="scriptId"
+            >
+              <v-list-item-title @click="item.command">
+                {{ item.label }}
+              </v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-menu>
+      </pane>
+      <pane id="messages" class="mt-2" ref="messagesDiv" size="50">
+        <div id="debug" class="pa-0" v-if="showDebug">
+          <v-row no-gutters>
+            <v-btn
+              color="primary"
+              @click="step"
+              style="width: 100px"
+              class="mr-4"
+              :disabled="!scriptId"
+              data-test="step-button"
+            >
+              Step
+              <v-icon end> mdi-step-forward </v-icon>
+            </v-btn>
+            <v-text-field
+              ref="debug"
+              class="mb-2"
+              variant="outlined"
+              density="compact"
+              hide-details
+              label="Debug"
+              v-model="debug"
+              @keydown="debugKeydown"
+              data-test="debug-text"
+            />
+          </v-row>
+        </div>
+        <script-log-messages
+          id="log-messages"
+          v-model="messages"
+          @sort="messageSortOrder"
+        />
+      </pane>
+    </splitpanes>
     <!--- MENUS --->
     <file-open-save-dialog
       v-if="fileOpen"
@@ -417,8 +413,8 @@ import 'ace-builds/src-min-noconflict/theme-twilight'
 import 'ace-builds/src-min-noconflict/ext-language_tools'
 import 'ace-builds/src-min-noconflict/ext-searchbox'
 import { format } from 'date-fns'
-// TODO: This breaks everything
-// import { Multipane, MultipaneResizer } from 'vue-multipane'
+import { Splitpanes, Pane } from 'splitpanes'
+import 'splitpanes/dist/splitpanes.css'
 import FileOpenSaveDialog from '@openc3/tool-common/src/components/FileOpenSaveDialog'
 import EnvironmentDialog from '@openc3/tool-common/src/components/EnvironmentDialog'
 import SimpleTextDialog from '@openc3/tool-common/src/components/SimpleTextDialog'
@@ -445,7 +441,6 @@ import {
 } from '@/tools/ScriptRunner/autocomplete'
 import { SleepAnnotator } from '@/tools/ScriptRunner/annotations'
 import RunningScripts from './RunningScripts.vue'
-import { info } from 'sass'
 
 // Matches target_file.rb TEMP_FOLDER
 const TEMP_FOLDER = '__TEMP__'
@@ -460,8 +455,8 @@ export default {
     FileOpenSaveDialog,
     Openc3Screen,
     EnvironmentDialog,
-    // Multipane,
-    // MultipaneResizer,
+    Splitpanes,
+    Pane,
     TopBar,
     AskDialog,
     FileDialog,
@@ -1066,7 +1061,10 @@ export default {
     this.editor.container.addEventListener('resize', this.doResize)
     this.editor.container.addEventListener('keydown', this.keydown)
 
-    this.doResize()
+    // Allow the charts to dynamically resize when the window resizes
+    window.addEventListener('resize', this.calcHeight)
+    this.calcHeight()
+
     this.cable = new Cable('/script-api/cable')
 
     if (localStorage['script_runner__recent']) {
@@ -1140,6 +1138,15 @@ export default {
       })
     },
     calcHeight() {
+      const viewHeight = Math.max(
+        document.documentElement.clientHeight,
+        window.innerHeight || 0,
+      )
+      var splitpanes = document.getElementsByClassName('splitpanes')[0]
+      if (splitpanes) {
+        splitpanes.style.height = `${viewHeight}px`
+      }
+
       var editor = document.getElementsByClassName('editorbox')[0]
       var h = Math.max(
         document.documentElement.offsetHeight,
@@ -1156,8 +1163,8 @@ export default {
       }
       var logMessages = document.getElementById('script-log-messages')
       if (logMessages) {
-        // 295 is magic and was determined by experimentation
-        logMessages.style.height = `${h - editorHeight - suitesHeight - 292}px`
+        // 290 is magic and was determined by experimentation
+        logMessages.style.height = `${h - editorHeight - suitesHeight - 290}px`
       }
     },
     scriptDisconnect() {
@@ -2000,7 +2007,7 @@ export default {
           }
           this.prompt.message = data.args[0]
           data.args.slice(1).forEach((v) => {
-            this.prompt.buttons.push({ text: v, value: v })
+            this.prompt.buttons.push({ title: v, value: v })
           })
           this.prompt.layout = 'combo'
           this.prompt.callback = this.promptDialogCallback
@@ -2660,32 +2667,29 @@ class TestSuite(Suite):
 #sr-controls {
   padding: 0px;
 }
-.editorbox {
-  height: 40vh;
-}
 .editor {
   height: 100%;
   width: 100%;
   position: relative;
   font-size: 16px;
 }
-hr {
-  pointer-events: none;
-  position: relative;
-  top: 7px;
-  background-color: grey;
-  height: 3px;
-  width: 5%;
-  margin: auto;
-}
-/* .script-state {
+.script-state :deep(.v-field) {
   background-color: var(--color-background-base-default);
-} */
+}
 .script-state :deep(input) {
   text-transform: capitalize;
 }
 </style>
 <style>
+.splitpanes--horizontal > .splitpanes__splitter {
+  min-height: 4px;
+  position: relative;
+  top: 4px;
+  background-color: grey;
+  width: 5%;
+  margin: auto;
+  cursor: row-resize;
+}
 .runningMarker {
   position: absolute;
   background: rgba(0, 255, 0, 0.5);
