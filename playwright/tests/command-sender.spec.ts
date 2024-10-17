@@ -79,7 +79,11 @@ test('displays INST COLLECT using the route', async ({ page, utils }) => {
   await page.goto('/tools/cmdsender/INST/COLLECT')
   await expect(page.locator('.v-app-bar')).toContainText('Command Sender')
   await utils.dropdownSelectedValue(page, '[data-test="select-target"]', 'INST')
-  await utils.dropdownSelectedValue(page, '[data-test="select-packet"]', 'COLLECT')
+  await utils.dropdownSelectedValue(
+    page,
+    '[data-test="select-packet"]',
+    'COLLECT',
+  )
   await expect(page.locator('main')).toContainText('Starts a collect')
   await expect(page.locator('main')).toContainText('Parameters')
   await expect(page.locator('main')).toContainText('DURATION')
@@ -551,10 +555,13 @@ test.skip('disable parameter conversions', async ({ page, utils }) => {
     .locator('textarea')
     .fill('puts get_cmd_buffer("INST", "SETPARAMS")["buffer"].formatted')
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('Connecting...', {
-    timeout: 5000,
-  })
-  await expect(page.locator('[data-test=state]')).toHaveValue('stopped', {
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'Connecting...',
+    {
+      timeout: 5000,
+    },
+  )
+  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
     timeout: 20000,
   })
   await expect(page.locator('[data-test=output-messages]')).toContainText(
@@ -591,10 +598,13 @@ test.skip('disable parameter conversions', async ({ page, utils }) => {
   await expect(page.locator('.v-app-bar')).toContainText('Script Runner')
   // Should load the previous script so we can just click start
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('Connecting...', {
-    timeout: 5000,
-  })
-  await expect(page.locator('[data-test=state]')).toHaveValue('stopped', {
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'Connecting...',
+    {
+      timeout: 5000,
+    },
+  )
+  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
     timeout: 20000,
   })
   await expect(page.locator('[data-test=output-messages]')).toContainText(

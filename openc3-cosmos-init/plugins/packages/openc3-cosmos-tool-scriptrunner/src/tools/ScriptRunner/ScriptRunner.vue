@@ -277,6 +277,7 @@
             <v-icon end> mdi-step-forward </v-icon>
           </v-btn>
           <v-text-field
+            ref="debug"
             class="mb-2"
             variant="outlined"
             density="compact"
@@ -340,6 +341,7 @@
       v-model="information.show"
       :title="information.title"
       :text="information.text"
+      :width="information.width"
     />
     <event-list-dialog
       v-if="inputMetadata.show"
@@ -443,6 +445,7 @@ import {
 } from '@/tools/ScriptRunner/autocomplete'
 import { SleepAnnotator } from '@/tools/ScriptRunner/annotations'
 import RunningScripts from './RunningScripts.vue'
+import { info } from 'sass'
 
 // Matches target_file.rb TEMP_FOLDER
 const TEMP_FOLDER = '__TEMP__'
@@ -567,6 +570,7 @@ export default {
         show: false,
         title: '',
         text: [],
+        width: '600',
       },
       inputMetadata: {
         show: false,
@@ -2024,6 +2028,7 @@ export default {
           this.information.title = 'Call Stack'
           this.information.text = data.args
           this.information.show = true
+          this.information.width = '600'
           break
         case 'metadata_input':
           this.inputMetadata.callback = (value) => {
@@ -2539,6 +2544,7 @@ class TestSuite(Suite):
         this.information.title = response.data.title
         this.information.text = JSON.parse(response.data.description)
         this.information.show = true
+        this.information.width = '600'
       })
     },
     showInstrumented() {
@@ -2552,6 +2558,7 @@ class TestSuite(Suite):
         this.information.title = response.data.title
         this.information.text = JSON.parse(response.data.description)
         this.information.show = true
+        this.information.width = '90vw'
       })
     },
     showCallStack() {
@@ -2559,6 +2566,11 @@ class TestSuite(Suite):
     },
     toggleDebug() {
       this.showDebug = !this.showDebug
+      if (this.showDebug) {
+        this.$nextTick(() => {
+          this.$refs.debug.focus()
+        })
+      }
     },
     toggleDisconnect() {
       this.showDisconnect = !this.showDisconnect
@@ -2666,9 +2678,9 @@ hr {
   width: 5%;
   margin: auto;
 }
-.script-state {
+/* .script-state {
   background-color: var(--color-background-base-default);
-}
+} */
 .script-state :deep(input) {
   text-transform: capitalize;
 }

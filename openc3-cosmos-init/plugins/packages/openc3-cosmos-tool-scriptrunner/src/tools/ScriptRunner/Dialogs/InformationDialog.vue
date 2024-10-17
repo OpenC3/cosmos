@@ -22,7 +22,7 @@
 
 <template>
   <!-- INFO -->
-  <v-dialog v-model="show" width="600">
+  <v-dialog v-model="show" :width="width">
     <v-card>
       <v-toolbar height="24">
         <v-spacer />
@@ -38,7 +38,9 @@
       </div>
       <v-card-actions>
         <v-spacer />
-        <v-btn color="primary" @click="show = !show"> Ok </v-btn>
+        <v-btn variant="elevated" color="primary" @click="show = !show">
+          Ok
+        </v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -56,6 +58,10 @@ export default {
       required: true,
     },
     text: {
+      type: String,
+      required: true,
+    },
+    width: {
       type: String,
       required: true,
     },

@@ -23,20 +23,49 @@ test.use({
 })
 
 test('displays tool names', async ({ page, utils }) => {
-  expect(await page.getByRole('list')).toContainText('CmdTlmServer')
-  expect(await page.getByRole('list')).toContainText('Limits Monitor')
-  expect(await page.getByRole('list')).toContainText('Command Sender')
-  expect(await page.getByRole('list')).toContainText('Script Runner')
-  expect(await page.getByRole('list')).toContainText('Packet Viewer')
-  expect(await page.getByRole('list')).toContainText('Telemetry Viewer')
-  expect(await page.getByRole('list')).toContainText('Telemetry Grapher')
-  expect(await page.getByRole('list')).toContainText('Data Extractor')
-  expect(await page.getByRole('list')).toContainText('Data Viewer')
-  expect(await page.getByRole('list')).toContainText('Handbooks')
-  expect(await page.getByRole('list')).toContainText('Table Manager')
+  await expect(page.locator('[data-test="toolList"]')).toContainText(
+    'CmdTlmServer',
+  )
+  await expect(page.locator('[data-test="toolList"]')).toContainText(
+    'CmdTlmServer',
+  )
+  await expect(page.locator('[data-test="toolList"]')).toContainText(
+    'Limits Monitor',
+  )
+  await expect(page.locator('[data-test="toolList"]')).toContainText(
+    'Command Sender',
+  )
+  await expect(page.locator('[data-test="toolList"]')).toContainText(
+    'Script Runner',
+  )
+  await expect(page.locator('[data-test="toolList"]')).toContainText(
+    'Packet Viewer',
+  )
+  await expect(page.locator('[data-test="toolList"]')).toContainText(
+    'Telemetry Viewer',
+  )
+  await expect(page.locator('[data-test="toolList"]')).toContainText(
+    'Telemetry Grapher',
+  )
+  await expect(page.locator('[data-test="toolList"]')).toContainText(
+    'Data Extractor',
+  )
+  await expect(page.locator('[data-test="toolList"]')).toContainText(
+    'Data Viewer',
+  )
+  await expect(page.locator('[data-test="toolList"]')).toContainText(
+    'Handbooks',
+  )
+  await expect(page.locator('[data-test="toolList"]')).toContainText(
+    'Table Manager',
+  )
   if (process.env.ENTERPRISE === '1') {
-    expect(await page.getByRole('list')).toContainText('Calendar')
-    expect(await page.getByRole('list')).toContainText('Autonomic')
+    await expect(page.locator('[data-test="toolList"]')).toContainText(
+      'Calendar',
+    )
+    await expect(page.locator('[data-test="toolList"]')).toContainText(
+      'Autonomic',
+    )
   }
 })
 

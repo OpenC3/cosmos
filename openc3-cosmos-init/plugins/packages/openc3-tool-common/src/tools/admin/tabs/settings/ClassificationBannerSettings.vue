@@ -43,21 +43,21 @@
           <v-select
             label="Background color"
             :items="colors"
+            item-title="text"
             v-model="selectedBackgroundColor"
             data-test="classification-banner-background-color"
           >
             <template v-slot:prepend-inner v-if="selectedBackgroundColor">
               <v-icon :color="selectedBackgroundColor"> mdi-square </v-icon>
             </template>
-            <template v-slot:item="data">
-              <v-icon
-                :color="data.item.value"
-                v-if="data.item.value"
-                class="pr-1"
-              >
-                mdi-square
-              </v-icon>
-              {{ data.item.text }}
+            <template v-slot:item="{ props, item }">
+              <v-list-item v-bind="props" :value="item.text">
+                <template v-slot:prepend>
+                  <v-icon :color="item.value" v-if="item.value">
+                    mdi-square
+                  </v-icon>
+                </template>
+              </v-list-item>
             </template>
           </v-select>
         </v-col>
@@ -84,6 +84,7 @@
           <v-select
             label="Font color"
             :items="colors"
+            item-title="text"
             v-model="selectedFontColor"
             data-test="classification-banner-font-color"
           >
@@ -92,15 +93,14 @@
                 mdi-square
               </v-icon>
             </template>
-            <template slot="item" slot-scope="data">
-              <v-icon
-                v-if="data.item.value"
-                :color="data.item.value"
-                class="pr-1"
-              >
-                mdi-square
-              </v-icon>
-              {{ data.item.text }}
+            <template v-slot:item="{ props, item }">
+              <v-list-item v-bind="props" :value="item.text">
+                <template v-slot:prepend>
+                  <v-icon :color="item.value" v-if="item.value">
+                    mdi-square
+                  </v-icon>
+                </template>
+              </v-list-item>
             </template>
           </v-select>
         </v-col>
@@ -126,6 +126,7 @@
           <v-switch
             label="Display top banner"
             v-model="displayTopBanner"
+            color="primary"
             data-test="display-top-banner"
           />
         </v-col>
@@ -143,6 +144,7 @@
           <v-switch
             label="Display bottom banner"
             v-model="displayBottomBanner"
+            color="primary"
             data-test="display-bottom-banner"
           />
         </v-col>

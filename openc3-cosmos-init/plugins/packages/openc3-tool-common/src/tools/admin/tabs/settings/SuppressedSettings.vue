@@ -26,9 +26,8 @@
       <template v-if="suppressedWarnings.length">
         <v-checkbox
           v-model="selectAllSuppressedWarnings"
-          label="Select all"
-          class="mt-0"
-          data-test="select-all-suppressed-warnings"
+          label="Select All Warnings"
+          desity="compact"
         />
         <v-checkbox
           v-for="warning in suppressedWarnings"
@@ -36,8 +35,8 @@
           v-model="selectedSuppressedWarnings"
           :label="warning.text"
           :value="warning.key"
-          class="mt-0"
           density="compact"
+          hide-details
         />
       </template>
       <template v-else> No warnings to reset </template>

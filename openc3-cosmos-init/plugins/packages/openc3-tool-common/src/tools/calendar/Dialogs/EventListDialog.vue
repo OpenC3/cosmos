@@ -40,27 +40,24 @@
           </v-tooltip>
         </v-toolbar>
         <v-card-title>
-          <span v-if="newMetadata">Metadata</span><span v-else>Events</span>
-          <v-spacer />
-          <v-text-field
-            v-model="search"
-            label="Search"
-            prepend-inner-icon="mdi-magnify"
-            clearable
-            variant="outlined"
-            density="compact"
-            single-line
-            hide-details
-          />
+          <v-row class="pa-3">
+            <span v-if="newMetadata">Metadata</span><span v-else>Events</span>
+            <v-spacer />
+            <v-text-field
+              v-model="search"
+              label="Search"
+              prepend-inner-icon="mdi-magnify"
+              clearable
+              variant="outlined"
+              density="compact"
+              single-line
+              hide-details
+          /></v-row>
         </v-card-title>
         <v-data-table
           :headers="eventHeaders"
           :items="localEvents"
           :search="search"
-          :sort-by="{
-            key: 'start',
-            order: 'desc',
-          }"
         >
           <template v-slot:no-data>
             <span> No events </span>
@@ -107,6 +104,7 @@
           </v-btn>
           <v-btn
             v-if="newMetadata"
+            variant="elevated"
             color="primary"
             data-test="new-event"
             @click="showMetadataCreate = true"
@@ -168,7 +166,7 @@ export default {
       type: Array,
       required: true,
     },
-    value: {
+    modelValue: {
       type: Boolean,
       required: true,
     },
@@ -189,11 +187,11 @@ export default {
       search: '',
       localEvents: [...this.events],
       eventHeaders: [
-        { text: 'Start', value: 'start', width: 215 },
-        { text: 'Stop', value: 'end', width: 215 },
-        { text: 'Type', value: 'type' },
-        { text: 'Data', value: 'data' },
-        { text: 'Actions', value: 'actions', sortable: false },
+        { title: 'Start', key: 'start', width: 215 },
+        { title: 'Stop', key: 'end', width: 215 },
+        { title: 'Type', key: 'type' },
+        { title: 'Data', key: 'data' },
+        { title: 'Actions', key: 'actions', sortable: false },
       ],
       editActivity: { start: new Date(), end: new Date() },
       editMetadata: { start: new Date(), end: new Date() },
@@ -216,12 +214,13 @@ export default {
     },
   },
   created: function () {
-    this.$on('delete', (item) => {
-      let index = this.localEvents.findIndex((element) => {
-        return element.type === item.type && element.start === item.start
-      })
-      this.localEvents.splice(index, 1)
-    })
+    // TODO: Switch to vue3 syntax
+    // this.$on('delete', (item) => {
+    //   let index = this.localEvents.findIndex((element) => {
+    //     return element.type === item.type && element.start === item.start
+    //   })
+    //   this.localEvents.splice(index, 1)
+    // })
   },
   methods: {
     close() {
