@@ -459,21 +459,21 @@ export default {
         return param.val
       }
 
-      var str = param.val
-      var quotesRemoved = this.removeQuotes(str)
+      let str = param.val
+      let quotesRemoved = this.removeQuotes(str)
       if (str === quotesRemoved) {
-        var upcaseStr = str.toUpperCase()
+        let upcaseStr = str.toUpperCase()
         if (
           (param.type === 'STRING' || param.type === 'BLOCK') &&
           upcaseStr.startsWith('0X')
         ) {
-          var hexStr = upcaseStr.slice(2)
+          let hexStr = upcaseStr.slice(2)
           if (hexStr.length % 2 !== 0) {
             hexStr = '0' + hexStr
           }
-          var jstr = { json_class: 'String', raw: [] }
-          for (var i = 0; i < hexStr.length; i += 2) {
-            var nibble = hexStr.charAt(i) + hexStr.charAt(i + 1)
+          let jstr = { json_class: 'String', raw: [] }
+          for (let i = 0; i < hexStr.length; i += 2) {
+            let nibble = hexStr.charAt(i) + hexStr.charAt(i + 1)
             jstr.raw.push(parseInt(nibble, 16))
           }
           return jstr
@@ -605,7 +605,7 @@ export default {
                 this.screenTarget = 'LOCAL'
                 this.screenName = 'CMDSENDER'
                 let screenDefinition = 'SCREEN AUTO AUTO 1.0\n'
-                for (var i = 0; i < command.related_items.length; i++) {
+                for (let i = 0; i < command.related_items.length; i++) {
                   screenDefinition += `LABELVALUE '${command.related_items[i][0]}' '${command.related_items[i][1]}' '${command.related_items[i][2]}' WITH_UNITS 20\n`
                 }
                 this.screenDefinition = screenDefinition
@@ -628,7 +628,7 @@ export default {
 
     createParamList() {
       let paramList = {}
-      for (var i = 0; i < this.rows.length; i++) {
+      for (let i = 0; i < this.rows.length; i++) {
         paramList[this.rows[i].parameter_name] = this.convertToValue(
           this.rows[i],
         )
@@ -825,15 +825,15 @@ export default {
       if (commandName === undefined) {
         ;[targetName, commandName] = targetName.split(' ').slice(0, 2)
       }
-      var msg = ''
+      let msg = ''
       if (success) {
         msg = `${cmd_sent}("${response[0]} ${response[1]}`
-        var keys = Object.keys(response[2])
+        let keys = Object.keys(response[2])
         if (keys.length > 0) {
           msg += ' with '
-          for (var i = 0; i < keys.length; i++) {
-            var key = keys[i]
-            var value = this.convertToString(response[2][key])
+          for (let i = 0; i < keys.length; i++) {
+            let key = keys[i]
+            let value = this.convertToString(response[2][key])
             // If the response has unquoted string data we add quotes
             if (
               typeof response[2][key] === 'string' &&
@@ -870,7 +870,7 @@ export default {
         }
         this.status = msg
       } else {
-        var context = 'sending ' + targetName + ' ' + commandName
+        let context = 'sending ' + targetName + ' ' + commandName
         this.displayError(context, response, true)
       }
       // Make a copy of the history
@@ -919,8 +919,8 @@ export default {
     // setupRawCmd() {
     //   this.api.get_interface_names().then(
     //     (response) => {
-    //       var interfaces = []
-    //       for (var i = 0; i < response.length; i++) {
+    //       let interfaces = []
+    //       for (let i = 0; i < response.length; i++) {
     //         interfaces.push({ label: response[i], value: response[i] })
     //       }
     //       this.interfaces = interfaces
@@ -939,9 +939,9 @@ export default {
     // },
 
     // onLoad(event) {
-    //   var bufView = new Uint8Array(event.target.result)
-    //   var jstr = { json_class: 'String', raw: [] }
-    //   for (var i = 0; i < bufView.length; i++) {
+    //   let bufView = new Uint8Array(event.target.result)
+    //   let jstr = { json_class: 'String', raw: [] }
+    //   for (let i = 0; i < bufView.length; i++) {
     //     jstr.raw.push(bufView[i])
     //   }
 
@@ -962,14 +962,14 @@ export default {
     // },
 
     // sendRawCmd() {
-    //   var self = this
-    //   var reader = new FileReader()
+    //   let self = this
+    //   let reader = new FileReader()
     //   reader.onload = function (e) {
     //     self.onLoad(e)
     //   }
     //   reader.onerror = function (e) {
     //     self.displaySendRaw = false
-    //     var target = e.target
+    //     let target = e.target
     //     self.displayError('sending raw data', target.error, true)
     //   }
     //   // TBD - use the other event handlers to implement a progress bar for the

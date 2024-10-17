@@ -217,10 +217,10 @@ export default {
       this.menuX = event.pageX
       this.menuY = event.pageY
 
-      var position = this.editor.getCursorPosition()
-      var token = this.editor.session.getTokenAt(position.row, position.column)
+      let position = this.editor.getCursorPosition()
+      let token = this.editor.session.getTokenAt(position.row, position.column)
       if (token) {
-        var value = token.value.trim()
+        let value = token.value.trim()
         if (value.includes(' ')) {
           this.docsKeyword = value.split(' ')[0]
         } else {
@@ -238,13 +238,13 @@ export default {
       )
     },
     buildScreenMode() {
-      var oop = ace.require('ace/lib/oop')
-      var TextHighlightRules = ace.require(
+      let oop = ace.require('ace/lib/oop')
+      let TextHighlightRules = ace.require(
         'ace/mode/text_highlight_rules',
       ).TextHighlightRules
 
       let list = this.keywords.join('|')
-      var OpenC3HighlightRules = function () {
+      let OpenC3HighlightRules = function () {
         this.$rules = {
           start: [
             {
@@ -272,10 +272,10 @@ export default {
         this.normalizeRules()
       }
       oop.inherits(OpenC3HighlightRules, TextHighlightRules)
-      var Mode = function () {
+      let Mode = function () {
         this.HighlightRules = OpenC3HighlightRules
       }
-      var TextMode = ace.require('ace/mode/text').Mode
+      let TextMode = ace.require('ace/mode/text').Mode
       oop.inherits(Mode, TextMode)
       ;(function () {
         this.$id = 'ace/mode/openc3'

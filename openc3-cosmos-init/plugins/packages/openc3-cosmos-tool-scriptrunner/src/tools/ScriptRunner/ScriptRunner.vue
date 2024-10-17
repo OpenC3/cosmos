@@ -1142,26 +1142,26 @@ export default {
         document.documentElement.clientHeight,
         window.innerHeight || 0,
       )
-      var splitpanes = document.getElementsByClassName('splitpanes')[0]
+      let splitpanes = document.getElementsByClassName('splitpanes')[0]
       if (splitpanes) {
         splitpanes.style.height = `${viewHeight}px`
       }
 
-      var editor = document.getElementsByClassName('editorbox')[0]
-      var h = Math.max(
+      const editor = document.getElementsByClassName('editorbox')[0]
+      const h = Math.max(
         document.documentElement.offsetHeight,
         window.innerHeight || 0,
       )
-      var editorHeight = 0
+      let editorHeight = 0
       if (editor) {
         editorHeight = editor.offsetHeight
       }
-      var suitesHeight = 0
-      var suites = document.getElementsByClassName('suite-runner')[0]
+      let suitesHeight = 0
+      const suites = document.getElementsByClassName('suite-runner')[0]
       if (suites) {
         suitesHeight = suites.offsetHeight
       }
-      var logMessages = document.getElementById('script-log-messages')
+      let logMessages = document.getElementById('script-log-messages')
       if (logMessages) {
         // 290 is magic and was determined by experimentation
         logMessages.style.height = `${h - editorHeight - suitesHeight - 290}px`
@@ -1192,8 +1192,8 @@ export default {
       })
     },
     buildOpenC3RubyMode(api_shared) {
-      var oop = ace.require('ace/lib/oop')
-      var RubyHighlightRules = ace.require(
+      let oop = ace.require('ace/lib/oop')
+      let RubyHighlightRules = ace.require(
         'ace/mode/ruby_highlight_rules',
       ).RubyHighlightRules
 
@@ -1202,10 +1202,10 @@ export default {
         .filter((a) => a !== 'exec')
         .concat(api_shared)
       let regex = new RegExp(`(\\b${apis.join('\\b|\\b')}\\b)`)
-      var OpenC3HighlightRules = function () {
+      let OpenC3HighlightRules = function () {
         RubyHighlightRules.call(this)
         // add openc3 rules to the ruby rules
-        for (var rule in this.$rules) {
+        for (let rule in this.$rules) {
           this.$rules[rule].unshift({
             regex: regex,
             token: 'support.function',
@@ -1214,21 +1214,21 @@ export default {
       }
       oop.inherits(OpenC3HighlightRules, RubyHighlightRules)
 
-      var MatchingBraceOutdent = ace.require(
+      let MatchingBraceOutdent = ace.require(
         'ace/mode/matching_brace_outdent',
       ).MatchingBraceOutdent
-      var CstyleBehaviour = ace.require(
+      let CstyleBehaviour = ace.require(
         'ace/mode/behaviour/cstyle',
       ).CstyleBehaviour
-      var FoldMode = ace.require('ace/mode/folding/ruby').FoldMode
-      var Mode = function () {
+      let FoldMode = ace.require('ace/mode/folding/ruby').FoldMode
+      let Mode = function () {
         this.HighlightRules = OpenC3HighlightRules
         this.$outdent = new MatchingBraceOutdent()
         this.$behaviour = new CstyleBehaviour()
         this.foldingRules = new FoldMode()
         this.indentKeywords = this.foldingRules.indentKeywords
       }
-      var RubyMode = ace.require('ace/mode/ruby').Mode
+      let RubyMode = ace.require('ace/mode/ruby').Mode
       oop.inherits(Mode, RubyMode)
       ;(function () {
         this.$id = 'ace/mode/openc3'
@@ -1236,8 +1236,8 @@ export default {
       return Mode
     },
     buildOpenC3PythonMode(api_shared) {
-      var oop = ace.require('ace/lib/oop')
-      var PythonHighlightRules = ace.require(
+      let oop = ace.require('ace/lib/oop')
+      let PythonHighlightRules = ace.require(
         'ace/mode/python_highlight_rules',
       ).PythonHighlightRules
 
@@ -1246,10 +1246,10 @@ export default {
         .filter((a) => a !== 'exec')
         .concat(api_shared)
       let regex = new RegExp(`(\\b${apis.join('\\b|\\b')}\\b)`)
-      var OpenC3HighlightRules = function () {
+      let OpenC3HighlightRules = function () {
         PythonHighlightRules.call(this)
         // add openc3 rules to the python rules
-        for (var rule in this.$rules) {
+        for (let rule in this.$rules) {
           this.$rules[rule].unshift({
             regex: regex,
             token: 'support.function',
@@ -1258,21 +1258,21 @@ export default {
       }
       oop.inherits(OpenC3HighlightRules, PythonHighlightRules)
 
-      var MatchingBraceOutdent = ace.require(
+      let MatchingBraceOutdent = ace.require(
         'ace/mode/matching_brace_outdent',
       ).MatchingBraceOutdent
-      var CstyleBehaviour = ace.require(
+      let CstyleBehaviour = ace.require(
         'ace/mode/behaviour/cstyle',
       ).CstyleBehaviour
-      var FoldMode = ace.require('ace/mode/folding/pythonic').FoldMode
-      var Mode = function () {
+      let FoldMode = ace.require('ace/mode/folding/pythonic').FoldMode
+      let Mode = function () {
         this.HighlightRules = OpenC3HighlightRules
         this.$outdent = new MatchingBraceOutdent()
         this.$behaviour = new CstyleBehaviour()
         this.foldingRules = new FoldMode()
         this.indentKeywords = this.foldingRules.indentKeywords
       }
-      var PythonMode = ace.require('ace/mode/python').Mode
+      let PythonMode = ace.require('ace/mode/python').Mode
       oop.inherits(Mode, PythonMode)
       ;(function () {
         this.$id = 'ace/mode/openc3'

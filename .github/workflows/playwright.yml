@@ -61,7 +61,7 @@ jobs:
         working-directory: playwright
       - name: Run Playwright tests
         # Run separately to allow for parallelism
-        run: ./playwright.sh run-chromium --grep-invert='(enterprise|data-extractor)'
+        run: ./playwright.sh run-chromium --grep-invert='(enterprise|data-extractor|data-viewer)'
         working-directory: playwright
       - name: Generate coverage
         run: yarn fixlinux; yarn cobertura

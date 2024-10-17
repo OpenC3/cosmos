@@ -386,7 +386,7 @@ export default {
           // initial root click
           this.root = item.name
         } else {
-          this.path += `${item.name}\/`
+          this.path += `${item.name}/`
         }
         this.update()
       }

@@ -282,9 +282,9 @@ export default {
     },
     // TODO: Perhaps move this to a utility library
     formatBuffer: function (buffer) {
-      var string = ''
-      var index = 0
-      var ascii = ''
+      let string = ''
+      let index = 0
+      let ascii = ''
       buffer.forEach((byte) => {
         if (index % 16 === 0) {
           string += this.numHex(index, 8) + ': '
@@ -312,16 +312,16 @@ export default {
       // middle of a line. If so we have to print out the final ASCII if
       // requested.
       if (index % 16 != 0) {
-        var existing_length = (index % 16) - 1 + (index % 16) * 2
+        let existing_length = (index % 16) - 1 + (index % 16) * 2
         // 47 is (16 * 2) + 15 separator spaces
-        var filler = ' '.repeat(47 - existing_length)
-        var ascii_filler = ' '.repeat(16 - ascii.length)
+        let filler = ' '.repeat(47 - existing_length)
+        let ascii_filler = ' '.repeat(16 - ascii.length)
         string += filler + '  ' + ascii + ascii_filler
       }
       return string
     },
     numHex(num, width = 2) {
-      var hex = num.toString(16)
+      let hex = num.toString(16)
       return '0'.repeat(width - hex.length) + hex
     },
   },

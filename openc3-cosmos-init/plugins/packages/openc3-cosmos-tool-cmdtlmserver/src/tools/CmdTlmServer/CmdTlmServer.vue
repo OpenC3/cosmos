@@ -153,7 +153,7 @@ export default {
   methods: {
     clearCounters() {
       this.api.get_interface_names().then((response) => {
-        for (var i = 0; i < response.length; i++) {
+        for (let i = 0; i < response.length; i++) {
           this.api.interface_cmd(response[i], 'clear_counters')
         }
       })

@@ -48,7 +48,7 @@ export default {
       return this.parameters[0]
     },
     cssProps() {
-      var size = null
+      let size = null
       if (this.fontSize) {
         size = this.fontSize + 'px'
       }

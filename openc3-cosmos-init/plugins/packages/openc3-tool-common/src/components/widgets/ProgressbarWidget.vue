@@ -61,7 +61,7 @@ export default {
     this.width = this.setWidth(this.parameters[4], 'px', this.width)
     // If they're not passing us the value we have to register
     if (this.value === null) {
-      var type = 'CONVERTED'
+      let type = 'CONVERTED'
       if (this.parameters[5]) {
         type = this.parameters[5]
       }

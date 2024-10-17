@@ -336,7 +336,7 @@
 
 <script>
 // Putting large data into Vue data section causes lots of overhead
-var dataExtractorRawData = []
+let dataExtractorRawData = []
 
 import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 import Config from '@openc3/tool-common/src/components/config/Config'
@@ -686,7 +686,7 @@ export default {
       this.items.push(item)
     },
     deleteItem: function (item) {
-      var index = this.items.indexOf(item)
+      let index = this.items.indexOf(item)
       this.items.splice(index, 1)
     },
     deleteAll: function () {
@@ -812,7 +812,7 @@ export default {
     },
     onConnected: function () {
       this.resetAllVars()
-      var items = []
+      let items = []
       this.items.forEach((item, index) => {
         let key = `${item.mode}__${item.cmdOrTlm}__${item.targetName}__${item.packetName}__${item.itemName}__${item.valueType}`
         if (item.reducedType !== 'SAMPLE') {
@@ -851,7 +851,7 @@ export default {
       if (data.length > 0) {
         // Get all the items present in the data to pass to buildHeaders
         let keys = new Set()
-        for (var packet of data) {
+        for (let packet of data) {
           let packetKeys = Object.keys(packet)
           packetKeys.forEach(keys.add, keys)
           this.itemsReceived += packetKeys.length - 2 // Don't count __type and __time
@@ -932,13 +932,13 @@ export default {
       rawData.sort((a, b) => a.__time - b.__time)
       await this.yieldToMain()
 
-      var currentValues = []
-      var row = []
-      var previousRow = null
-      var count = 0
-      for (var packet of rawData) {
+      let currentValues = []
+      let row = []
+      let previousRow = null
+      let count = 0
+      for (let packet of rawData) {
         // Flag tracks if anything has changed for uniqueOnly mode
-        var changed = false
+        let changed = false
 
         // Start a new row with either the previous row data (fillDown) or a blank row
         if (this.fillDown && previousRow) {

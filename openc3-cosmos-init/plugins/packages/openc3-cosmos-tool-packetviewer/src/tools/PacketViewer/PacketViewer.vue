@@ -270,28 +270,6 @@ export default {
     itemsPerPage: function () {
       this.saveDefaultConfig(this.currentConfig)
     },
-  },
-  watch: {
-    showIgnored: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    derivedLast: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    valueType: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    // Create a watcher on refreshInterval so we can change the updater
-    refreshInterval: function () {
-      this.changeUpdater(false)
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    staleLimit: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    itemsPerPage: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
     pinnedItems: function () {
       this.saveDefaultConfig(this.currentConfig)
     },

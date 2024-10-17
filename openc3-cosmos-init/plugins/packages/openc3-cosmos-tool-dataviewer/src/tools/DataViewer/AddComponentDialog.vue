@@ -197,13 +197,11 @@ export default {
   },
   computed: {
     valid: function () {
-      if (this.selectedComponent === null) {
+      if (this.selectedComponent === null || this.packets.length === 0) {
         return false
+      } else {
+        return true
       }
-      if (this.packets.length === 0) {
-        return false
-      }
-      return true
     },
     show: {
       get() {
@@ -259,7 +257,7 @@ export default {
       })
     },
     deleteItem: function (item) {
-      var index = this.packets.indexOf(item)
+      let index = this.packets.indexOf(item)
       this.packets.splice(index, 1)
     },
     cancelAddComponent: function () {
