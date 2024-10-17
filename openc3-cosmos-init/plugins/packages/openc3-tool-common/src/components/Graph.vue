@@ -1049,7 +1049,7 @@ export default {
         })
     },
     // throttle(cb, limit) {
-    //   var wait = false
+    //   let wait = false
     //   return () => {
     //     if (!wait) {
     //       requestAnimationFrame(cb)
@@ -1466,7 +1466,7 @@ export default {
     reorderIndexes: function (key) {
       let index = this.indexes[key]
       delete this.indexes[key]
-      for (var i in this.indexes) {
+      for (let i in this.indexes) {
         if (this.indexes[i] > index) {
           this.indexes[i] -= 1
         }

@@ -129,12 +129,6 @@ export default {
 :deep(.v-field:has(.v-icon)) {
   padding-left: 2px !important;
 }
-/*
-// Push some margin on top of the icon to center it in the text-field
-.value-widget-container :deep(.v-icon) {
-  margin-top: 9px;
-}
-*/
 .value :deep(div) {
   min-height: 24px !important;
   display: flex !important;

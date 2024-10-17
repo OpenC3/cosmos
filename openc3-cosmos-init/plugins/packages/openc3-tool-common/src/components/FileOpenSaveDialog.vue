@@ -393,7 +393,7 @@ export default {
       }
     },
     insertFile: function (root, level, path) {
-      var parts = path.split('/')
+      let parts = path.split('/')
       // When there is only 1 part we're at the root so push the filename
       if (parts.length === 1) {
         root.push({

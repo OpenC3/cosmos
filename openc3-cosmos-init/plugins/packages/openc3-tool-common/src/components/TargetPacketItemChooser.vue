@@ -256,7 +256,7 @@ export default {
       // TODO: This is a nice enhancement but results in logs of API calls for many targets
       // See if we can reduce this to a single API call
       // Filter out any targets without packets
-      // for (var i = this.targetNames.length - 1; i >= 0; i--) {
+      // for (let i = this.targetNames.length - 1; i >= 0; i--) {
       //   const cmd =
       //     this.mode === 'tlm' ? 'get_all_tlm_names' : 'get_all_cmd_names'
       //   await this.api[cmd](this.targetNames[i].value).then((names) => {

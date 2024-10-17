@@ -245,18 +245,18 @@ export default {
       this.differ.getEditors().right.scrollToLine(rrow)
     },
     buildPluginMode() {
-      var oop = ace.require('ace/lib/oop')
-      var RubyHighlightRules = ace.require(
+      let oop = ace.require('ace/lib/oop')
+      let RubyHighlightRules = ace.require(
         'ace/mode/ruby_highlight_rules',
       ).RubyHighlightRules
 
       // TODO: Grab from code
       let keywords = ['VARIABLE']
       let regex = new RegExp(`(\\b${keywords.join('\\b|\\b')}\\b)`)
-      var PluginHighlightRules = function () {
+      let PluginHighlightRules = function () {
         RubyHighlightRules.call(this)
         // add openc3 rules to the ruby rules
-        for (var rule in this.$rules) {
+        for (let rule in this.$rules) {
           this.$rules[rule].unshift({
             regex: regex,
             token: 'support.function',
@@ -265,21 +265,21 @@ export default {
       }
       oop.inherits(PluginHighlightRules, RubyHighlightRules)
 
-      var MatchingBraceOutdent = ace.require(
+      let MatchingBraceOutdent = ace.require(
         'ace/mode/matching_brace_outdent',
       ).MatchingBraceOutdent
-      var CstyleBehaviour = ace.require(
+      let CstyleBehaviour = ace.require(
         'ace/mode/behaviour/cstyle',
       ).CstyleBehaviour
-      var FoldMode = ace.require('ace/mode/folding/ruby').FoldMode
-      var Mode = function () {
+      let FoldMode = ace.require('ace/mode/folding/ruby').FoldMode
+      let Mode = function () {
         this.HighlightRules = PluginHighlightRules
         this.$outdent = new MatchingBraceOutdent()
         this.$behaviour = new CstyleBehaviour()
         this.foldingRules = new FoldMode()
         this.indentKeywords = this.foldingRules.indentKeywords
       }
-      var RubyMode = ace.require('ace/mode/ruby').Mode
+      let RubyMode = ace.require('ace/mode/ruby').Mode
       oop.inherits(Mode, RubyMode)
       ;(function () {
         this.$id = 'ace/mode/openc3'

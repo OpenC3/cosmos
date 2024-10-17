@@ -95,17 +95,17 @@ export default {
   },
   methods: {
     getType: function () {
-      var type = 'CONVERTED'
+      let type = 'CONVERTED'
       if (this.parameters[7]) {
         type = this.parameters[7]
       }
       return type
     },
     formatValue: function (data) {
-      var text = ''
-      var space = ' '
-      var newLine = '\n'
-      var count = 0
+      let text = ''
+      let space = ' '
+      let newLine = '\n'
+      let count = 0
 
       if (Array.isArray(data)) {
         for (const value of data) {

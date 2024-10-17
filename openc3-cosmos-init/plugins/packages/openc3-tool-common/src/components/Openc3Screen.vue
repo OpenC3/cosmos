@@ -623,7 +623,7 @@ export default {
       this.$emit('min-max-screen')
     },
     processWidget: function (keyword, parameters, line, lineNumber) {
-      var widgetName = null
+      let widgetName = null
       if (keyword === 'NAMED_WIDGET') {
         this.configParser.verify_num_parameters(
           2,

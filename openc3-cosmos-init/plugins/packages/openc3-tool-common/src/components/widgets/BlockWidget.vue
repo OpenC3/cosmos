@@ -106,20 +106,20 @@ export default {
   },
   methods: {
     getType: function () {
-      var type = 'RAW'
+      let type = 'RAW'
       if (this.parameters[9]) {
         type = this.parameters[9]
       }
       return type
     },
     formatValue: function (data) {
-      var text = ''
+      let text = ''
       if (data && data.raw) {
-        var space = ' '
-        var newLine = '\n'
+        let space = ' '
+        let newLine = '\n'
 
-        var byteCount = 0
-        var addr = 0
+        let byteCount = 0
+        let addr = 0
         const bytesPerRow = this.bytesPerWord * this.wordsPerRow
 
         for (const value of data.raw) {

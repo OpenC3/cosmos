@@ -163,7 +163,7 @@ export default {
           item.value_type,
         )
         .then((result) => {
-          var index = this.overrides.indexOf(item)
+          let index = this.overrides.indexOf(item)
           this.overrides.splice(index, 1)
         })
     },

@@ -458,8 +458,8 @@ test('edits existing plugin', async ({ page, utils }) => {
     .locator('.v-list-item')
     .filter({ hasText: plugin })
     .locator('[data-test=edit-plugin]')
-    .click(),
-    await expect(page.locator('.v-dialog:has-text("Variables")')).toBeVisible()
+    .click()
+  await expect(page.locator('.v-dialog:has-text("Variables")')).toBeVisible()
   await page.locator('data-test=edit-cancel').click()
   await expect(
     page.locator('.v-dialog:has-text("Variables")'),
@@ -469,8 +469,8 @@ test('edits existing plugin', async ({ page, utils }) => {
     .locator('.v-list-item')
     .filter({ hasText: plugin })
     .locator('[data-test=edit-plugin]')
-    .click(),
-    await expect(page.locator('.v-dialog:has-text("Variables")')).toBeVisible()
+    .click()
+  await expect(page.locator('.v-dialog:has-text("Variables")')).toBeVisible()
   await page
     .locator(
       '.v-dialog:has-text("Variables") .v-input:has-text("pw_test_target_name") >> input',
@@ -522,8 +522,8 @@ test('edits existing plugin', async ({ page, utils }) => {
     .filter({ hasText: plugin })
     .locator('[data-test=show-output]')
     .first()
-    .click(),
-    await expect(page.locator('.v-dialog')).toContainText('Process Output')
+    .click()
+  await expect(page.locator('.v-dialog')).toContainText('Process Output')
   // TODO: Should this be Loading new or Updating existing?
   // await expect(page.locator('.v-dialog--active')).toContainText('Updating existing plugin')
   await page.locator('.v-dialog>> button:has-text("Ok")').click()

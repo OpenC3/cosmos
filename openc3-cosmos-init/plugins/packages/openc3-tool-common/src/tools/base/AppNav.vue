@@ -199,7 +199,7 @@ export default {
     // a computed getter
     shownTools: function () {
       let result = {}
-      for (var key of Object.keys(this.appNav)) {
+      for (let key of Object.keys(this.appNav)) {
         if (this.appNav[key].shown && this.appNav[key].category !== 'Admin') {
           result[key] = this.appNav[key]
         }
@@ -208,7 +208,7 @@ export default {
     },
     adminTools: function () {
       let result = {}
-      for (var key of Object.keys(this.appNav)) {
+      for (let key of Object.keys(this.appNav)) {
         if (this.appNav[key].shown && this.appNav[key].category === 'Admin') {
           result[key] = this.appNav[key]
         }
@@ -261,7 +261,7 @@ export default {
 
         let id = 1
         // Register apps and start single-spa
-        for (var key of Object.keys(this.appNav)) {
+        for (let key of Object.keys(this.appNav)) {
           if (this.appNav[key].shown) {
             if (
               this.appNav[key].category &&

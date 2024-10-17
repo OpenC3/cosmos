@@ -266,7 +266,7 @@ export default {
                   // This is binary data, display in hex.
                   let result = '0x'
                   for (let i = 0; i < message.message.raw.length; i++) {
-                    var nibble = message.message.raw[i]
+                    let nibble = message.message.raw[i]
                       .toString(16)
                       .toUpperCase()
                     if (nibble.length < 2) {

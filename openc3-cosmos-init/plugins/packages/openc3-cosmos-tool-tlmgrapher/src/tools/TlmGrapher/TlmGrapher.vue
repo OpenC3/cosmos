@@ -459,7 +459,7 @@ export default {
       this.graphs.push(id)
       this.counter += 1
       this.$nextTick(function () {
-        var items = this.grid.add(this.$refs[`gridItem${id}`], {
+        let items = this.grid.add(this.$refs[`gridItem${id}`], {
           active: false,
         })
         this.grid.show(items)
@@ -478,7 +478,7 @@ export default {
       this.saveDefaultConfig(this.currentConfig)
     },
     closeGraph: function (id) {
-      var items = this.grid.getItems([document.getElementById(`gridItem${id}`)])
+      let items = this.grid.getItems([document.getElementById(`gridItem${id}`)])
       this.grid.remove(items)
       this.graphs.splice(this.graphs.indexOf(id), 1)
       // Clear out the startTime if we close all the graphs ... we're starting over

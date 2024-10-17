@@ -255,7 +255,7 @@ export default {
                 `${this.targetName}__${this.packetName}__${this.itemName}__WITH_UNITS`,
               ])
               .then((values) => {
-                for (var i = 0; i < values.length; i++) {
+                for (let i = 0; i < values.length; i++) {
                   let rawString = null
                   // Check for raw encoded strings (non-ascii)
                   if (

@@ -87,7 +87,7 @@ export default {
   },
   methods: {
     getType: function () {
-      var type = 'CONVERTED'
+      let type = 'CONVERTED'
       if (this.parameters[5]) {
         type = this.parameters[5]
       }

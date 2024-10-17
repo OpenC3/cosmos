@@ -112,7 +112,7 @@ export default {
   },
   mounted() {
     this.update()
-    var el = document.getElementById('toollist')
+    let el = document.getElementById('toollist')
     Sortable.create(el, {
       filter: '.filter', // 'filter' class is not draggable
       onUpdate: this.sortChanged,

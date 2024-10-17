@@ -346,7 +346,7 @@ export default {
       this.definitions.push(definition)
       this.$nextTick(function () {
         if (!definition.floated) {
-          var items = this.grid.add(
+          let items = this.grid.add(
             this.$refs.gridItem[this.$refs.gridItem.length - 1],
             {
               active: false,
@@ -371,7 +371,7 @@ export default {
       }
     },
     closeScreen(id) {
-      var items = this.grid.getItems([
+      let items = this.grid.getItems([
         document.getElementById(this.screenId(id)),
       ])
       this.grid.remove(items)
@@ -382,7 +382,7 @@ export default {
     },
     deleteScreen(def) {
       this.closeScreen(def.id)
-      var index = this.screens[def.target].indexOf(def.screen)
+      let index = this.screens[def.target].indexOf(def.screen)
       if (index !== -1) {
         this.screens[def.target].splice(index, 1)
         if (this.screens[def.target].length === 0) {
@@ -396,7 +396,7 @@ export default {
       definition.top = top
       definition.left = left
       definition.zIndex = zIndex
-      var items = this.grid.getItems([
+      let items = this.grid.getItems([
         document.getElementById(this.screenId(definition.id)),
       ])
       this.grid.remove(items)
@@ -407,7 +407,7 @@ export default {
       definition.top = top
       definition.left = left
       definition.zIndex = zIndex
-      var items = [document.getElementById(this.screenId(definition.id))]
+      let items = [document.getElementById(this.screenId(definition.id))]
       this.grid.add(items)
       this.grid.refreshItems().layout()
     },

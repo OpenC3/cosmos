@@ -74,7 +74,7 @@ export default {
   methods: {
     // Override VWidget base method to set CONVERTED by default
     getType() {
-      var type = 'CONVERTED'
+      let type = 'CONVERTED'
       if (this.parameters[3] == 'RAW') {
         type = 'RAW'
       }
