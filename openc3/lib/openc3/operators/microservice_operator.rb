@@ -65,10 +65,9 @@ module OpenC3
         secrets.each do |type, secret_name, env_name_or_path, secret_store|
           secret_value = @secrets.get(secret_name, secret_store: secret_store, scope: scope)
           if secret_value
-            if ('ENV' == type)
+            if type == 'ENV'
               env[env_name_or_path] = secret_value
-            end
-            if ('FILE' == type)
+            elsif type == 'FILE'
               FileUtils.mkdir_p(File.dirname(env_name_or_path))
               File.open(env_name_or_path, 'wb') do |file|
                 file.write(secret_value)

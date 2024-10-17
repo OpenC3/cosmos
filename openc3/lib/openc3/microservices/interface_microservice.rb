@@ -440,7 +440,7 @@ module OpenC3
 
       @queued = false
       @interface.options.each do |option_name, option_values|
-        if ('OPTIMIZE_THROUGHPUT' == option_name.upcase)
+        if option_name.upcase == 'OPTIMIZE_THROUGHPUT'
           @queued = true
           update_interval = option_values[0].to_f
           EphemeralStoreQueued.instance.set_update_interval(update_interval)

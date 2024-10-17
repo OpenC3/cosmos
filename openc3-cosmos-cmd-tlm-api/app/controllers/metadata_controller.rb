@@ -24,6 +24,8 @@ require 'openc3/models/metadata_model'
 require 'time'
 
 class MetadataController < ApplicationController
+  NOT_FOUND = 'not found'
+
   def initialize
     @model_class = OpenC3::MetadataModel
   end
@@ -280,7 +282,4 @@ class MetadataController < ApplicationController
              status: 400
     end
   end
-
-  private
-  NOT_FOUND = 'not found'
 end

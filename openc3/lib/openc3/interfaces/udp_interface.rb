@@ -27,6 +27,8 @@ require 'openc3/config/config_parser'
 module OpenC3
   # Base class for interfaces that send and receive messages over UDP
   class UdpInterface < Interface
+    HOST_127_0_0_1 = '127.0.0.1'
+
     # @param hostname [String] Machine to connect to
     # @param write_dest_port [Integer] Port to write commands to
     # @param read_port [Integer] Port to read telemetry from
@@ -40,7 +42,6 @@ module OpenC3
     # @param read_timeout [Float|nil] Seconds to wait before aborting reads.
     #   Pass nil to block until the read is complete.
     # @param bind_address [String] Address to bind UDP ports to
-    HOST_127_0_0_1 = '127.0.0.1'
     def initialize(
       hostname,
       write_dest_port,

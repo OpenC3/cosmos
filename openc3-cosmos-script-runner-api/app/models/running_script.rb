@@ -35,9 +35,8 @@ require 'openc3/models/environment_model'
 require 'openc3/utilities/bucket_require'
 
 RAILS_ROOT = File.expand_path(File.join(__dir__, '..', '..'))
-
 SCRIPT_API = 'script-api'
-RUNNING_SCRIPTS = RUNNING_SCRIPTS
+RUNNING_SCRIPTS = 'running-scripts'
 
 module OpenC3
   module Script

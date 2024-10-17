@@ -21,7 +21,6 @@
 # if purchased from OpenC3, Inc.
 
 module OpenC3
-  LINC_INTERFACE = 'openc3/interfaces/linc_interface.rb'
   autoload(:Interface, 'openc3/interfaces/interface.rb')
   autoload(:HttpClientInterface, 'openc3/interfaces/http_client_interface.rb')
   autoload(:HttpServerInterface, 'openc3/interfaces/http_server_interface.rb')
@@ -32,9 +31,9 @@ module OpenC3
   autoload(:TcpipClientInterface, 'openc3/interfaces/tcpip_client_interface.rb')
   autoload(:TcpipServerInterface, 'openc3/interfaces/tcpip_server_interface.rb')
   autoload(:UdpInterface, 'openc3/interfaces/udp_interface.rb')
-  autoload(:LincInterface, LINC_INTERFACE)
-  autoload(:LincHandshakeCommand, LINC_INTERFACE)
-  autoload(:LincHandshake, LINC_INTERFACE)
+  autoload(:LincInterface, 'openc3/interfaces/linc_interface.rb')
+  autoload(:LincHandshakeCommand, 'openc3/interfaces/linc_interface.rb')
+  autoload(:LincHandshake, 'openc3/interfaces/linc_interface.rb')
 
   autoload(:Protocol, 'openc3/interfaces/protocols/protocol.rb')
   autoload(:BurstProtocol, 'openc3/interfaces/protocols/burst_protocol.rb')

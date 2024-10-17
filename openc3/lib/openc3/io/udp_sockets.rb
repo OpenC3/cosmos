@@ -31,6 +31,7 @@ Socket::IP_MULTICAST_TTL = 10 unless Socket.const_defined?('IP_MULTICAST_TTL')
 module OpenC3
   class UdpReadWriteSocket
     HOST_0_0_0_0 = '0.0.0.0'
+
     # @param bind_port [Integer[ Port to write data out from and receive data on (0 = randomly assigned)
     # @param bind_address [String] Local address to bind to (0.0.0.0 = All local addresses)
     # @param external_port [Integer] External port to write to

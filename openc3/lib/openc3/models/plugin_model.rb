@@ -114,7 +114,7 @@ module OpenC3
                           false,
                           true,
                           false) do |keyword, params|
-          if ('VARIABLE' == keyword)
+          if keyword == 'VARIABLE'
             usage = "#{keyword} <Variable Name> <Default Value>"
             parser.verify_num_parameters(2, nil, usage)
             variable_name = params[0]

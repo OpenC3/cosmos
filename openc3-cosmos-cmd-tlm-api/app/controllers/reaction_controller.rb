@@ -24,6 +24,8 @@ require 'openc3/models/reaction_model'
 require 'openc3/topics/autonomic_topic'
 
 class ReactionController < ApplicationController
+  NOT_FOUND = 'not found'
+
   def initialize
     super()
     @model_class = OpenC3::ReactionModel
@@ -298,7 +300,4 @@ class ReactionController < ApplicationController
       render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
     end
   end
-
-  private
-  NOT_FOUND = 'not found'
 end

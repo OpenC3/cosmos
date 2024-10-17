@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -26,6 +26,9 @@ require 'openc3/ccsds/ccsds_packet'
 module OpenC3
   # Unsegments CCSDS packets and perform other CCSDS processing tasks.
   class CcsdsParser
+    # Class to indicate errors that occur during the unsegmenting process
+    class CcsdsSegmentationError < StandardError; end
+
     # @return [Symbol] Indicates if the parser is :READY to start a new series
     #   of packets or is :IN_PROGRESS
     attr_reader :state
@@ -71,7 +74,8 @@ module OpenC3
       @sequence_count = @ccsds_packet.read('CcsdsSeqcnt')
 
       # Handle each segment
-      case @ccsds_packet.read('CcsdsSeqflags')
+      seq_flags = @ccsds_packet.read('CcsdsSeqflags')
+      case seq_flags
       when CcsdsPacket::CONTINUATION
         #####################################################
         # Continuation packet - only process if in progress
@@ -141,13 +145,11 @@ module OpenC3
           reset()
           return @unsegmented_data
         end
+
       else
         reset()
-        return @unsegmented_data
-      end # case raw_sequence_flags
+        raise CcsdsSegmentationError, "Unknown sequence flags #{seq_flags}"
+      end
     end
-
-    # Class to indicate errors that occur during the unsegmenting process
-    class CcsdsSegmentationError < StandardError; end
-  end # end class CcsdsParser
+  end
 end

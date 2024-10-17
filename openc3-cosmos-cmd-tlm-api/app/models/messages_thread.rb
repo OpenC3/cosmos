@@ -202,14 +202,10 @@ class MessagesThread < TopicsThread
         return nil if @level == "ERROR" or @level == "FATAL"
       when "ERROR"
         return nil if @level == "FATAL"
-      when 'FATAL'
-        return log_entry
-      else
+      else # 'FATAL'
         return log_entry
       end
     end
-
-    return log_entry
   end
 
   def thread_teardown

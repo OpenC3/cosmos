@@ -24,6 +24,8 @@ require 'openc3/models/trigger_model'
 require 'openc3/topics/autonomic_topic'
 
 class TriggerController < ApplicationController
+  NOT_FOUND = 'not found'
+
   def initialize
     @model_class = OpenC3::TriggerModel
   end
@@ -286,7 +288,4 @@ class TriggerController < ApplicationController
       render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
     end
   end
-
-  private
-  NOT_FOUND = 'not found'
 end

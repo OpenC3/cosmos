@@ -24,6 +24,8 @@ require 'openc3/models/note_model'
 require 'time'
 
 class NotesController < ApplicationController
+  NOT_FOUND = 'not found'
+
   def initialize
     super()
     @model_class = OpenC3::NoteModel
@@ -248,7 +250,4 @@ class NotesController < ApplicationController
              status: 400
     end
   end
-
-  private
-  NOT_FOUND = 'not found'
 end
