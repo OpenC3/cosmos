@@ -35,8 +35,10 @@
             </v-row>
             <v-row>
               <v-spacer />
-              <v-btn @click="cancelHazardousCmd" outlined> Cancel </v-btn>
-              <v-btn @click="sendHazardousCmd" class="primary mx-1">
+              <v-btn @click="cancelHazardousCmd" variant="outlined">
+                Cancel
+              </v-btn>
+              <v-btn @click="sendHazardousCmd" class="bg-primary mx-1">
                 Send
               </v-btn>
             </v-row>
@@ -67,7 +69,6 @@ export default {
   data() {
     return {
       api: null,
-      screen: null,
       displaySendHazardous: false,
       lastCmd: '',
       criticalCmdUuid: null,
@@ -93,6 +94,8 @@ export default {
       // Create local references to variables so users don't need to use 'this'
       const self = this // needed for $emit
       const screen = this.screen
+      const screenValues = this.screenValues
+      const screenTimeZone = this.screenTimeZone
       const api = this.api
       const run_script = this.runScript // TODO: deprecate this in favor of runScript?
       const runScript = this.runScript

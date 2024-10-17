@@ -22,27 +22,24 @@
 
 <template>
   <div class="block-widget-container">
+    <!-- TODO: vuetify 3 made styling this correctly extremely difficult -->
     <v-textarea
-      solo
-      dense
+      variant="solo"
+      density="compact"
       readonly
       no-resize
       hide-details
+      rows="2"
+      auto-grow
+      max-rows="12"
       :width="width"
-      :height="height"
-      :value="_value"
+      :model-value="_value"
       :class="valueClass"
       :style="[computedStyle, aging]"
       data-test="valueText"
       @contextmenu="showContextMenu"
     />
-    <v-menu
-      v-model="contextMenuShown"
-      :position-x="x"
-      :position-y="y"
-      absolute
-      offset-y
-    >
+    <v-menu v-model="contextMenuShown" :target="[x, y]">
       <v-list>
         <v-list-item
           v-for="(item, index) in contextMenuOptions"
@@ -109,20 +106,20 @@ export default {
   },
   methods: {
     getType: function () {
-      var type = 'RAW'
+      let type = 'RAW'
       if (this.parameters[9]) {
         type = this.parameters[9]
       }
       return type
     },
     formatValue: function (data) {
-      var text = ''
+      let text = ''
       if (data && data.raw) {
-        var space = ' '
-        var newLine = '\n'
+        let space = ' '
+        let newLine = '\n'
 
-        var byteCount = 0
-        var addr = 0
+        let byteCount = 0
+        let addr = 0
         const bytesPerRow = this.bytesPerWord * this.wordsPerRow
 
         for (const value of data.raw) {
@@ -159,6 +156,13 @@ export default {
   min-height: 24px !important;
   display: flex !important;
   align-items: center !important;
+}
+.block-widget-container :deep(.v-field__loader) {
+  display: none !important;
+}
+.block-widget-container :deep(textarea) {
+  padding-right: 0 !important;
+  padding-left: 12px !important;
 }
 .openc3-green :deep(input) {
   color: rgb(0, 200, 0);

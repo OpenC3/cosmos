@@ -36,6 +36,9 @@ module.exports = {
       .tap((options) => {
         return {
           prettify: false,
+          compilerOptions: {
+            isCustomElement: (tag) => tag.startsWith('rux-'),
+          },
         }
       })
     config.externals(['vue', 'vuetify', 'vuex', 'vue-router'])

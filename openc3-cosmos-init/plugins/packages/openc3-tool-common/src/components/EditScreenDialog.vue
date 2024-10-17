@@ -20,11 +20,11 @@
   <!-- Edit dialog -->
   <v-dialog persistent v-model="show" width="75vw">
     <v-card>
-      <v-system-bar>
+      <v-toolbar height="24">
         <div class="mx-2">
-          <v-tooltip top>
-            <template v-slot:activator="{ on, attrs }">
-              <div v-on="on" v-bind="attrs">
+          <v-tooltip location="top">
+            <template v-slot:activator="{ props }">
+              <div v-bind="props">
                 <v-icon data-test="delete-screen-icon" @click="deleteScreen">
                   mdi-delete
                 </v-icon>
@@ -37,9 +37,9 @@
         <span> Edit Screen: {{ target }} {{ screen }} </span>
         <v-spacer />
         <div class="mx-2">
-          <v-tooltip top>
-            <template v-slot:activator="{ on, attrs }">
-              <div v-on="on" v-bind="attrs">
+          <v-tooltip location="top">
+            <template v-slot:activator="{ props }">
+              <div v-bind="props">
                 <v-icon
                   data-test="download-screen-icon"
                   @click="downloadScreen"
@@ -51,7 +51,7 @@
             <span> Download Screen </span>
           </v-tooltip>
         </div>
-      </v-system-bar>
+      </v-toolbar>
       <v-card-text>
         <v-row class="mt-3"> Upload a screen file. </v-row>
         <v-row no-gutters align="center">
@@ -78,13 +78,7 @@
             class="editor"
             @contextmenu.prevent="showContextMenu"
           ></pre>
-          <v-menu
-            v-model="contextMenu"
-            :position-x="menuX"
-            :position-y="menuY"
-            absolute
-            offset-y
-          >
+          <v-menu v-model="contextMenu" :target="[menuX, menuY]">
             <v-list>
               <v-list-item link>
                 <v-list-item-title @click="openDocumentation">
@@ -95,7 +89,7 @@
           </v-menu>
         </v-row>
         <v-row v-for="(error, index) in editErrors" :key="index" class="my-3">
-          <span class="red--text" v-text="error"></span>
+          <span class="text-red" v-text="error"></span>
         </v-row>
         <v-row>
           <span
@@ -106,7 +100,7 @@
           <v-btn
             @click="$emit('cancel')"
             class="mx-2"
-            outlined
+            variant="outlined"
             data-test="edit-screen-cancel"
           >
             Cancel
@@ -135,7 +129,7 @@ import { ScreenCompleter } from './autocomplete'
 
 export default {
   props: {
-    value: Boolean, // value is the default prop when using v-model
+    modelValue: Boolean,
     target: {
       type: String,
       default: '',
@@ -191,10 +185,10 @@ export default {
     },
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
   },
@@ -223,10 +217,10 @@ export default {
       this.menuX = event.pageX
       this.menuY = event.pageY
 
-      var position = this.editor.getCursorPosition()
-      var token = this.editor.session.getTokenAt(position.row, position.column)
+      let position = this.editor.getCursorPosition()
+      let token = this.editor.session.getTokenAt(position.row, position.column)
       if (token) {
-        var value = token.value.trim()
+        let value = token.value.trim()
         if (value.includes(' ')) {
           this.docsKeyword = value.split(' ')[0]
         } else {
@@ -240,17 +234,17 @@ export default {
         `${
           window.location.origin
         }/tools/staticdocs/docs/configuration/telemetry-screens#${this.docsKeyword.toLowerCase()}`,
-        '_blank'
+        '_blank',
       )
     },
     buildScreenMode() {
-      var oop = ace.require('ace/lib/oop')
-      var TextHighlightRules = ace.require(
-        'ace/mode/text_highlight_rules'
+      let oop = ace.require('ace/lib/oop')
+      let TextHighlightRules = ace.require(
+        'ace/mode/text_highlight_rules',
       ).TextHighlightRules
 
       let list = this.keywords.join('|')
-      var OpenC3HighlightRules = function () {
+      let OpenC3HighlightRules = function () {
         this.$rules = {
           start: [
             {
@@ -278,10 +272,10 @@ export default {
         this.normalizeRules()
       }
       oop.inherits(OpenC3HighlightRules, TextHighlightRules)
-      var Mode = function () {
+      let Mode = function () {
         this.HighlightRules = OpenC3HighlightRules
       }
-      var TextMode = ace.require('ace/mode/text').Mode
+      let TextMode = ace.require('ace/mode/text').Mode
       oop.inherits(Mode, TextMode)
       ;(function () {
         this.$id = 'ace/mode/openc3'

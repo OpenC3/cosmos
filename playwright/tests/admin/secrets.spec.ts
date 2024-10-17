@@ -28,13 +28,15 @@ test('creates a secret', async ({ page, utils }) => {
   await page.locator('[data-test="secretUpload"]').click()
   await expect(page.locator('[data-test="secretList"]')).toContainText('HIDDEN')
   await page
-    .locator('div[role="listitem"]:has-text("HIDDEN")')
+    .locator('[data-test="secretList"]')
+    .filter({ hasText: 'HIDDEN' })
     .getByRole('button')
     .click()
   await page.locator('[data-test="confirm-dialog-cancel"]').click()
   await expect(page.locator('[data-test="secretList"]')).toContainText('HIDDEN')
   await page
-    .locator('div[role="listitem"]:has-text("HIDDEN")')
+    .locator('[data-test="secretList"]')
+    .filter({ hasText: 'HIDDEN' })
     .getByRole('button')
     .click()
   await page.locator('[data-test="confirm-dialog-delete"]').click()

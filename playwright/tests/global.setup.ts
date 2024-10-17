@@ -57,11 +57,11 @@ setup('global setup', async ({ page }) => {
       }
     }
     if (await page.getByText('Enter the password').isVisible()) {
-      await page.fill('data-test=new-password', 'password')
+      await page.getByLabel('Password').fill('password')
       await page.locator('button:has-text("Login")').click()
     } else {
-      await page.fill('data-test=new-password', 'password')
-      await page.fill('data-test=confirm-password', 'password')
+      await page.getByLabel('New Password').fill('password')
+      await page.getByLabel('Confirm Password').fill('password')
       await page.click('data-test=set-password')
     }
     await new Promise((resolve) => setTimeout(resolve, 500))

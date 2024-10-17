@@ -31,7 +31,7 @@
           @on-set="packetChanged($event)"
         />
       </div>
-      <v-card-title>
+      <v-card-title class="d-flex align-center justify-content-space-between">
         Items
         <v-spacer />
         <v-text-field
@@ -39,8 +39,8 @@
           label="Search"
           prepend-inner-icon="mdi-magnify"
           clearable
-          outlined
-          dense
+          variant="outlined"
+          density="compact"
           single-line
           hide-details
           class="search"
@@ -52,28 +52,21 @@
         :items="rows"
         :search="search"
         :custom-filter="filter"
-        :custom-sort="tableSort"
-        :items-per-page="itemsPerPage"
-        @update:items-per-page="itemsPerPage = $event"
-        :footer-props="{
-          itemsPerPageOptions: [10, 20, 50, 100, 500, 1000],
-          showFirstLastPage: true,
-          firstIcon: 'mdi-page-first',
-          lastIcon: 'mdi-page-last',
-          prevIcon: 'mdi-chevron-left',
-          nextIcon: 'mdi-chevron-right',
-        }"
+        :sort-by="sortBy"
+        @update:sortBy="tableSort"
+        v-model:items-per-page="itemsPerPage"
+        :items-per-page-options="[10, 20, 50, 100, 500, 1000]"
         multi-sort
-        dense
+        hover
+        density="compact"
       >
         <template v-slot:item.name="{ item }">
           <div @contextmenu="(event) => showContextMenu(event, item)">
             <v-tooltip bottom :key="`${item.name}-${isPinned(item.name)}`">
-              <template v-slot:activator="{ on, attrs }">
+              <template v-slot:activator="{ props }">
                 <v-icon
                   v-if="isPinned(item.name)"
-                  v-bind="attrs"
-                  v-on="on"
+                  v-bind="props"
                   class="pin-item"
                 >
                   mdi-pin
@@ -95,13 +88,13 @@
             :counter="item.counter"
             :parameters="[targetName, packetName, item.name]"
             :settings="[['WIDTH', '100%']]"
-            :time-zone="timeZone"
+            :screen-time-zone="timeZone"
           />
         </template>
         <template v-slot:footer.prepend>
-          <v-tooltip bottom close-delay="2000">
-            <template v-slot:activator="{ on, attrs }">
-              <v-icon v-bind="attrs" v-on="on" class="info-tooltip">
+          <v-tooltip right close-delay="2000">
+            <template v-slot:activator="{ props }">
+              <v-icon v-bind="props" class="info-tooltip">
                 mdi-information-variant-circle
               </v-icon>
             </template>
@@ -115,20 +108,21 @@
               Right click value for details / graph
             </span>
           </v-tooltip>
+          <v-spacer />
         </template>
       </v-data-table>
     </v-card>
     <v-dialog
       v-model="optionsDialog"
       @keydown.esc="optionsDialog = false"
-      max-width="300"
+      max-width="360px"
     >
       <v-card>
-        <v-system-bar>
+        <v-toolbar :height="24">
           <v-spacer />
           <span>Options</span>
           <v-spacer />
-        </v-system-bar>
+        </v-toolbar>
         <v-card-text>
           <div class="pa-3">
             <v-text-field
@@ -137,8 +131,7 @@
               step="100"
               type="number"
               label="Refresh Interval (ms)"
-              :value="refreshInterval"
-              @change="refreshInterval = $event"
+              v-model="refreshInterval"
               data-test="refresh-interval"
             />
           </div>
@@ -149,8 +142,9 @@
               step="1"
               type="number"
               label="Time at which to mark data Stale (seconds)"
-              :value="staleLimit"
-              @change="staleLimit = parseInt($event)"
+              :model-value="staleLimit"
+              @update:model-value="staleLimit = parseInt($event)"
+              min-width="280px"
               data-test="stale-limit"
             />
           </div>
@@ -171,13 +165,7 @@
       :configKey="configKey"
       @success="saveConfiguration"
     />
-    <v-menu
-      v-model="contextMenuShown"
-      :position-x="x"
-      :position-y="y"
-      absolute
-      offset-y
-    >
+    <v-menu v-model="contextMenuShown" :target="[x, y]" absolute offset-y>
       <v-list>
         <v-list-item
           v-for="(item, index) in contextMenuOptions"
@@ -227,15 +215,68 @@ export default {
       search: '',
       data: [],
       headers: [
-        { text: 'Name', value: 'name', align: 'end' },
-        { text: 'Value', value: 'value' },
+        {
+          title: 'Name',
+          key: 'name',
+          align: 'end',
+          sortRaw(a, b) {
+            return a > b ? 1 : -1
+          },
+        },
+        { title: 'Value', key: 'value' },
       ],
       optionsDialog: false,
       showIgnored: false,
       derivedLast: false,
       ignoredItems: [],
       derivedItems: [],
-      menus: [
+      updater: null,
+      counter: 0,
+      targetName: '',
+      packetName: '',
+      valueType: 'WITH_UNITS',
+      refreshInterval: 1000,
+      staleLimit: 30,
+      rows: [],
+      menuItems: [],
+      itemsPerPage: 20,
+      api: null,
+      pinnedItems: [],
+      contextMenuShown: false,
+      itemName: '',
+      x: 0,
+      y: 0,
+      sortBy: [],
+    }
+  },
+  watch: {
+    showIgnored: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    derivedLast: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    valueType: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    // Create a watcher on refreshInterval so we can change the updater
+    refreshInterval: function () {
+      this.changeUpdater(false)
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    staleLimit: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    itemsPerPage: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    pinnedItems: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+  },
+  computed: {
+    menus: function () {
+      return [
         {
           label: 'File',
           items: [
@@ -275,102 +316,55 @@ export default {
         },
         {
           label: 'View',
-          radioGroup: 'Formatted Items with Units', // Default radio selected
           items: [
             {
               label: 'Show Ignored Items',
               checkbox: true,
-              checked: false,
+              checked: this.showIgnored,
               command: (item) => {
-                this.showIgnored = item.checked
+                this.showIgnored = !this.showIgnored
               },
             },
             {
               label: 'Display DERIVED Last',
               checkbox: true,
-              checked: false,
+              checked: this.derivedLast,
               command: (item) => {
-                this.derivedLast = item.checked
+                this.derivedLast = !this.derivedLast
               },
             },
             {
               divider: true,
             },
             {
-              label: valueTypeToRadioGroup['WITH_UNITS'],
-              radio: true,
-              command: () => {
-                this.valueType = 'WITH_UNITS'
+              radioGroup: true,
+              value: this.valueType,
+              command: (value) => {
+                this.valueType = value
               },
-            },
-            {
-              label: valueTypeToRadioGroup['FORMATTED'],
-              radio: true,
-              command: () => {
-                this.valueType = 'FORMATTED'
-              },
-            },
-            {
-              label: valueTypeToRadioGroup['CONVERTED'],
-              radio: true,
-              command: () => {
-                this.valueType = 'CONVERTED'
-              },
-            },
-            {
-              label: valueTypeToRadioGroup['RAW'],
-              radio: true,
-              command: () => {
-                this.valueType = 'RAW'
-              },
+              choices: [
+                {
+                  label: valueTypeToRadioGroup['WITH_UNITS'],
+                  value: 'WITH_UNITS',
+                },
+                {
+                  label: valueTypeToRadioGroup['FORMATTED'],
+                  value: 'FORMATTED',
+                },
+                {
+                  label: valueTypeToRadioGroup['CONVERTED'],
+                  value: 'CONVERTED',
+                },
+                {
+                  label: valueTypeToRadioGroup['RAW'],
+                  value: 'RAW',
+                },
+              ],
             },
           ],
         },
-      ],
-      updater: null,
-      counter: 0,
-      targetName: '',
-      packetName: '',
-      valueType: 'WITH_UNITS',
-      refreshInterval: 1000,
-      staleLimit: 30,
-      rows: [],
-      menuItems: [],
-      itemsPerPage: 20,
-      api: null,
-      pinnedItems: [],
-      contextMenuShown: false,
-      itemName: '',
-      x: 0,
-      y: 0,
-    }
-  },
-  watch: {
-    showIgnored: function () {
-      this.saveDefaultConfig(this.currentConfig)
+      ]
     },
-    derivedLast: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    valueType: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    // Create a watcher on refreshInterval so we can change the updater
-    refreshInterval: function () {
-      this.changeUpdater(false)
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    staleLimit: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    itemsPerPage: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    pinnedItems: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-  },
-  computed: {
     currentConfig: function () {
       return {
         target: this.targetName,
@@ -455,13 +449,12 @@ export default {
               packet: config.packet,
             },
           })
-          this.$router.go()
         }
       }
       this.changeUpdater(true)
     }
   },
-  beforeDestroy() {
+  beforeUnmount() {
     if (this.updater != null) {
       clearInterval(this.updater)
       this.updater = null
@@ -493,6 +486,38 @@ export default {
         return value.toString().indexOf(search.toUpperCase()) >= 0
       }
     },
+    // customSorters() {
+    //   return {
+    //     name: (name1, name2) => {
+    //       return name1.toLowerCase().localeCompare(name2.toLowerCase())
+    //     },
+    //     value: (age1, age2) => {
+    //       /* TODO implement sorting for age column */
+    //     },
+    //   }
+    // },
+    // sortTable(evt) {
+    //   // Allows unsorting
+    //   if (!evt.length || evt.length < this.sortBy.length) {
+    //     this.sortBy = []
+    //     return
+    //   }
+    //   const key = evt[0].key
+    //   const order = evt[0].order
+    //   switch (key) {
+    //     case 'name':
+    //       this.sortBy = [
+    //         { key: 'name', order: order },
+    //         { key: 'age', order: 'asc' },
+    //       ]
+    //       break
+    //     case 'age':
+    //       this.sortBy = [{ key: 'age', order: order }] // TODO implement sorting for age column
+    //       break
+    //     default:
+    //       this.sortBy = []
+    //   }
+    // },
     tableSort(items, index, isDesc) {
       // for each item in index, sort by that index
       index.forEach((idx, i) => {
@@ -660,7 +685,6 @@ export default {
               config: name,
             },
           })
-          this.$router.go()
         }
       })
     },
@@ -672,11 +696,8 @@ export default {
 </script>
 
 <style scoped>
-.v-tooltip__content {
-  pointer-events: initial;
-}
 a {
-  color: var(--button-color-background-primary-default);
+  color: blue;
 }
 .pin-item {
   float: left;

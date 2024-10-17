@@ -20,14 +20,10 @@
 # if purchased from OpenC3, Inc.
 */
 
-import Vue from 'vue'
-import Router from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router'
 
-Vue.use(Router)
-
-export default new Router({
-  mode: 'history',
-  base: process.env.BASE_URL,
+export default createRouter({
+  history: createWebHistory(process.env.BASE_URL),
   routes: [
     {
       path: '/:target?/:packet?/:item?',
@@ -35,7 +31,7 @@ export default new Router({
       component: () => import('./tools/TlmGrapher/TlmGrapher.vue'),
     },
     {
-      path: '*',
+      path: '/:pathMatch(.*)*',
       name: 'NotFound',
       component: () => import('@openc3/tool-common/src/components/NotFound'),
     },

@@ -37,10 +37,10 @@
           <packet
             :packet="packet"
             :columns="columns"
-            :hideIgnored="hideIgnored"
-            :hideDerived="hideDerived"
+            :hide-ignored="hideIgnored"
+            :hide-derived="hideDerived"
             :ignored="ignoredParams"
-          ></packet>
+          />
         </v-col>
       </v-row>
       <v-row>
@@ -56,10 +56,10 @@
           <packet
             :packet="packet"
             :columns="columns"
-            :hideIgnored="hideIgnored"
-            :hideDerived="hideDerived"
+            :hide-ignored="hideIgnored"
+            :hide-derived="hideDerived"
             :ignored="ignoredItems"
-          ></packet>
+          />
         </v-col>
       </v-row>
     </v-container>

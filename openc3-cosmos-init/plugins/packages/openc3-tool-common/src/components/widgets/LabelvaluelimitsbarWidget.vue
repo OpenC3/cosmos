@@ -23,12 +23,18 @@
 <template>
   <div ref="container" class="d-flex flex-row" :style="computedStyle">
     <labelvalue-widget
+      v-bind="$attrs"
       :parameters="parameters"
       :settings="labelValueSettings"
+      :screen-values="screenValues"
+      :screen-time-zone="screenTimeZone"
     />
     <limitsbar-widget
+      class="pt-1"
+      v-bind="$attrs"
       :parameters="parameters"
-      :settings="[...settings]"
+      :settings="[...appliedSettings]"
+      :screen-values="screenValues"
       :widget-index="2"
     />
   </div>
@@ -53,8 +59,6 @@ export default {
     // passed down to LABELVALUE and be set there as well.
     labelValueSettings() {
       return [
-        // Get the screen setting
-        ...this.settings.filter((x) => x[0] === '__SCREEN__'),
         // Get all the setting that apply to labelvalue (0, 1 widgets)
         ...this.settings.filter(
           (x) => parseInt(x[0]) === 0 || parseInt(x[0]) === 1,

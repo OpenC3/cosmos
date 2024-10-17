@@ -21,9 +21,6 @@
 */
 
 import axios from 'axios'
-import Vue from 'vue'
-
-const vueInstance = new Vue()
 
 const axiosInstance = axios.create({
   baseURL: location.origin,
@@ -79,8 +76,9 @@ axiosInstance.interceptors.response.use(
       } else {
         body += `${error.response?.data}`
       }
-      if (vueInstance.$notify) {
-        vueInstance.$notify.serious({
+      // TODO idk if this works
+      if (Vue.$notify) {
+        Vue.$notify.serious({
           title: 'Network error',
           body,
         })

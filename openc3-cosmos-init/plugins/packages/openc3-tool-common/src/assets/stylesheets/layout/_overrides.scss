@@ -33,24 +33,29 @@
 // .v-application .primary {
 //   background-color: var(--color-background-interactive-default) !important;
 // }
-.theme--dark.v-btn:not(
-    .v-btn--outlined,
+.v-theme--cosmosDark.v-btn:not(
+    .v-btn--variant-outlined,
     .v-btn--icon,
     .v-btn--round,
-    .v-btn--text
+    .v-btn--variant-text,
+    .v-tab
   ) {
   background-color: var(--button-color-background-primary-default) !important;
   color: var(--color-text-inverse) !important;
 }
-.theme--dark.v-btn:not(
-    .v-btn--outlined,
+.v-theme--cosmosDark.v-btn:not(
+    .v-btn--variant-outlined,
     .v-btn--icon,
     .v-btn--round,
-    .v-btn--text
+    .v-btn--variant-text
   ):hover {
   background-color: var(--button-color-background-primary-hover) !important;
 }
-.theme--dark.v-btn--outlined:not(.v-btn--icon, .v-btn--round, .v-btn--text) {
+.v-theme--cosmosDark.v-btn--variant-outlined:not(
+    .v-btn--icon,
+    .v-btn--round,
+    .v-btn--variant-text
+  ) {
   border-color: var(--button-color-border-primary-default) !important;
   color: var(--color-text-interactive-default) !important;
 }
@@ -59,79 +64,106 @@
   color: var(--color-text-interactive-default) !important;
   opacity: 0.4 !important;
 }
-.theme--dark.v-btn--outlined:not(
+.v-theme--cosmosDark.v-btn--variant-outlined:not(
     .v-btn--icon,
     .v-btn--round,
-    .v-btn--text
+    .v-btn--variant-text
   ):hover {
   border-color: var(--button-color-border-primary-hover) !important;
 }
+// TODO: This doesn't appear to be working ... the background is still black
+// Icon buttons shouldn't have backgrounds or box-shadows
+.v-theme--cosmosdark.v-btn--icon {
+  background-color: unset !important;
+  box-shadow: unset !important;
+}
 
-.theme--dark.v-system-bar {
-  background-color: var(--color-background-surface-header) !important;
-}
-.theme--dark.v-system-bar.active {
-  background-color: var(--color-background-surface-selected) !important;
-}
 body,
-.theme--dark.v-application,
-.theme--dark.v-main,
-.theme--dark.v-content {
-  background-color: var(--color-background-base-default) !important;
+.v-theme--cosmosDark.v-application,
+.v-theme--cosmosDark.v-main,
+.v-theme--cosmosDark.v-content {
+  background-color: var(--color-background-base-default);
 }
 
-.theme--dark.v-tabs > .v-tabs-bar .v-tab--disabled,
-.theme--dark.v-tabs > .v-tabs-bar .v-tab:not(.v-tab--active),
-.theme--dark.v-tabs > .v-tabs-bar .v-tab:not(.v-tab--active) > .v-btn,
-.theme--dark.v-tabs > .v-tabs-bar .v-tab:not(.v-tab--active) > .v-icon {
+/*
+// This worked in vuetify 2 to set the tab text color to blue, but it isn't working in vuetify 3. I set the colors with
+// the `base-color` prop on <v-tab> instead, which uses a style tag to force the text color.
+// If we could get <v-tab> to use .v-btn--variant-block instead of .v-btn--variant-text that would also work, but that
+// is currently not exposed through their api.
+.v-theme--cosmosDark.v-tabs > .v-slide-group__container .v-tab--disabled,
+.v-theme--cosmosDark.v-tabs > .v-slide-group__container .v-tab:not(.v-tab--active),
+.v-theme--cosmosDark.v-tabs > .v-slide-group__container .v-tab:not(.v-tab--active) > .v-btn,
+.v-theme--cosmosDark.v-tabs > .v-slide-group__container .v-tab:not(.v-tab--active) > .v-icon {
   color: var(--color-text-interactive-default) !important;
 }
-.v-tab--active {
+*/
+.v-tab--selected {
   background-color: var(--color-background-surface-selected) !important;
-  color: white !important;
+  color: var(--color-text-interactive-default) !important;
 }
-.theme--dark.v-tabs .v-tab:hover {
+.v-theme--cosmosDark.v-tabs .v-tab:hover {
   background-color: var(--color-background-surface-hover) !important;
 }
 
-.v-card__title,
-.v-card__subtitle,
-.theme--dark.v-tab,
-.theme--dark.v-tabs-bar,
-.v-expansion-panel-header,
+.v-card-title,
+.v-card-subtitle,
+.v-theme--cosmosDark.v-tab,
+.v-theme--cosmosDark.v-tabs-bar,
+.v-expansion-panel-title,
 .v-navigation-drawer,
-.theme--dark.v-toolbar,
-.theme--dark.v-date-picker-header {
+.v-theme--cosmosDark.v-toolbar,
+.v-theme--cosmosDark.v-date-picker-header {
   background-color: var(--color-background-surface-header) !important;
+}
+
+.v-expansion-panel-title,
+.v-expansion-panel-text__wrapper {
+  padding: 0 !important;
+  min-height: unset !important;
+}
+
+// Make the expansion panel title the same height as the system bar
+.v-expansion-panel-title {
+  height: 24px !important;
 }
 
 .mdi-magnify {
   color: var(--color-text-interactive-default) !important;
 }
 
+table,
 .v-stepper,
-.v-expansion-panel-content,
-.theme--dark.v-data-table,
-.theme--dark.v-dialog,
-.theme--dark.v-card,
-.theme--dark.v-date-picker-table,
-.theme--dark.v-time-picker-clock__container,
-.theme--dark.v-expansion-panel,
-.theme--dark.v-expansion-panels,
-.theme--dark.p-menubar {
+.v-expansion-panel-text,
+.v-theme--cosmosDark.v-data-table,
+.v-theme--cosmosDark.v-dialog:not(.v-overlay),
+.v-theme--cosmosDark.v-overlay__content,
+.v-theme--cosmosDark.v-card,
+.v-theme--cosmosDark.v-date-picker-table,
+.v-theme--cosmosDark.v-time-picker-clock__container,
+.v-theme--cosmosDark.v-expansion-panel,
+.v-theme--cosmosDark.v-expansion-panels,
+.v-theme--cosmosDark.v-list,
+.v-theme--cosmosDark.p-menubar {
   background-color: var(--color-background-surface-default) !important;
 }
-.theme--dark.v-list {
-  background-color: var(--color-background-base-default) !important;
+.v-theme--cosmosDark.v-list {
+  background-color: var(--color-background-base-default);
 }
-.theme--dark.v-list div:nth-child(odd) .v-list-item {
-  background-color: var(--color-background-base-selected) !important;
+.v-list {
+  color: white !important;
 }
 
-.theme--dark.v-list-item:hover,
-.theme--dark.v-treeview--hoverable .v-treeview-node__root:hover,
-.theme--dark.v-treeview .v-treeview-node--click > .v-treeview-node__root:hover,
-.theme--dark.v-data-table
+.v-theme--cosmosDark.v-overlay--active[role='dialog'] {
+  backdrop-filter: blur(2px) !important;
+  --v-overlay-opacity: 0.1;
+}
+
+.v-theme--cosmosDark.v-list-item:hover,
+.v-theme--cosmosDark.v-treeview--hoverable .v-treeview-node__root:hover,
+.v-theme--cosmosDark.v-treeview
+  .v-treeview-node--click
+  > .v-treeview-node__root:hover,
+.v-theme--cosmosDark.v-data-table
   > .v-data-table__wrapper
   > table
   > tbody
@@ -149,17 +181,33 @@ body,
 }
 
 // The next several styles effectively styles like an Astro select
-.theme--dark.v-select fieldset {
+.v-theme--cosmosDark.v-autocomplete {
+  border-color: var(--button-color-border-interactive-default) !important;
+  color: var(--color-text-interactive-default) !important;
+  background-color: var(--color-background-base-default) !important;
+}
+.v-theme--cosmosDark.v-select {
+  border-color: var(--button-color-border-interactive-default) !important;
+  color: var(--color-text-interactive-default) !important;
+  background-color: var(--color-background-surface-default) !important;
+}
+
+.v-theme--cosmosDark.v-autocomplete label,
+.v-theme--cosmosDark.v-select label {
+  color: whitesmoke !important;
+}
+
+.v-theme--cosmosDark.v-select .v-field {
   border: 1px solid var(--color-border-interactive-muted);
   background-color: var(--color-background-base-default);
 }
-.theme--dark.v-select input {
+.v-theme--cosmosDark.v-select input {
   color: var(--color-background-interactive-default) !important;
 }
-.theme--dark.v-select input:disabled {
+.v-theme--cosmosDark.v-select input:disabled {
   color: var(--color-background-interactive-muted) !important;
 }
-.theme--dark.v-select .v-select__selections {
+.v-theme--cosmosDark.v-select .v-select__selection-text {
   color: var(--color-text-interactive-default) !important;
 }
 
@@ -182,7 +230,8 @@ body,
 .v-main {
   padding-top: 96px !important;
 }
-.v-app-bar {
+.v-app-bar,
+.v-app-bar > .v-toolbar__content {
   height: 96px !important;
 }
 
@@ -198,17 +247,17 @@ body a:hover {
   font-size: 1rem;
 }
 // Astro recommends their Heading 5 for card titles
-.v-card__title {
+.v-card-title {
   font-size: 1.125rem;
 }
-// Astro recommends 1rem for text abd table items
-.v-card__text,
-.v-data-table > .v-data-table__wrapper > table > tbody > tr > th,
-.v-data-table > .v-data-table__wrapper > table > tfoot > tr > th,
-.v-data-table > .v-data-table__wrapper > table > thead > tr > th,
-.v-data-table > .v-data-table__wrapper > table > tbody > tr > td,
-.v-data-table > .v-data-table__wrapper > table > tfoot > tr > td,
-.v-data-table > .v-data-table__wrapper > table > thead > tr > td {
+// Astro recommends 1rem for text and table items
+.v-card__text, // TODO: v-card__text no longer exists in vuetify 3
+.v-data-table > .v-table__wrapper > table > tbody > tr > th,
+.v-data-table > .v-table__wrapper > table > tfoot > tr > th,
+.v-data-table > .v-table__wrapper > table > thead > tr > th,
+.v-data-table > .v-table__wrapper > table > tbody > tr > td,
+.v-data-table > .v-table__wrapper > table > tfoot > tr > td,
+.v-data-table > .v-table__wrapper > table > thead > tr > td {
   font-size: 1rem;
 }
 
@@ -219,7 +268,23 @@ input {
   caret-color: auto;
 }
 
+// Revert card behavior to Vuetify2 to allow components such as RawDialog to float correctly
+.v-card {
+  overflow: initial !important;
+  z-index: initial !important;
+}
+
+// Allow tooltips to be clickable (Packet Viewer uses this)
+.v-tooltip > .v-overlay__content {
+  pointer-events: auto !important;
+}
+
+.v-list-item-action {
+  margin-right: 15px !important;
+}
+
 // Fix the single spa debug panel so the text is readable
+.imo-modal-container form,
 .imo-modal-container input {
   color: black;
 }
