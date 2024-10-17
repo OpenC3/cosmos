@@ -13,7 +13,7 @@ module OpenC3
       # Use 0 for :STRING or :BLOCK where the size can be variable
       @converted_bit_size = 0
       # return the arguments used
-      @args = []
+      @params = nil
     end
 
     # @param value [Object] Value based on the item definition. This could be
