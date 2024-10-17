@@ -8,9 +8,13 @@
     },
     {
       "path": "../cosmos-enterprise"
+    },
+    {
+      "path": "../cosmos-enterprise-project"
     }
   ],
   "settings": {
+    "rubyLsp.bundleGemfile": "openc3/Gemfile",
     "vetur.validation.template": false,
     "eslint.validate": [
       "vue",
