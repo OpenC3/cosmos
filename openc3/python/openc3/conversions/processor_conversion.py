@@ -45,6 +45,7 @@ class ProcessorConversion(Conversion):
             self.converted_bit_size = int(converted_bit_size)
         if ConfigParser.handle_none(converted_array_size):
             self.converted_array_size = int(converted_array_size)
+        self.params = [self.processor_name, self.result_name]
 
     # @param (see Conversion#call)
     # @return [Varies] The result of the associated processor
@@ -71,14 +72,3 @@ class ProcessorConversion(Conversion):
             config += f" {self.converted_array_size}"
         config += "\n"
         return config
-
-    def as_json(self):
-        result = super().as_json()
-        result["params"] = [
-            self.processor_name,
-            self.result_name,
-            self.converted_type,
-            self.converted_bit_size,
-            self.converted_array_size,
-        ]
-        return result

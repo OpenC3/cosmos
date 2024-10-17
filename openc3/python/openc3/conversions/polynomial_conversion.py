@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -29,6 +29,7 @@ class PolynomialConversion(Conversion):
         self.coeffs = [float(coeff) for coeff in coeffs]
         self.converted_type = "FLOAT"
         self.converted_bit_size = 64
+        self.params = coeffs
 
     # @param (see Conversion#call)
     # @return [Float] The value with the polynomial applied
@@ -61,8 +62,3 @@ class PolynomialConversion(Conversion):
     # @return [String] Config fragment for this conversion
     def to_config(self, read_or_write):
         return f"    POLY_{read_or_write}_CONVERSION {' '.join(self.coeffs)}\n"
-
-    def as_json(self):
-        result = super().as_json()
-        result["params"] = self.coeffs
-        return result

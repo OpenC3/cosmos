@@ -32,7 +32,7 @@ class Conversion:
         self.converted_type = None
         self.converted_bit_size = None
         self.converted_array_size = None
-        self.args = None
+        self.params = None
 
     # Perform the conversion on the value.
     #
@@ -63,6 +63,6 @@ class Conversion:
             result["converted_bit_size"] = self.converted_bit_size
         if self.converted_array_size is not None:
             result["converted_array_size"] = self.converted_array_size
-        if self.args is not None:
-            result["args"] = json.dumps(self.args)
+        if self.params is not None:
+            result["params"] = self.params
         return result

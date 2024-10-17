@@ -14,10 +14,10 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -28,56 +28,74 @@ module OpenC3
   describe UnixTimeSecondsConversion do
     describe "initialize" do
       it "initializes converted_type and converted_bit_size" do
-        gc = UnixTimeSecondsConversion.new('TIME')
-        expect(gc.converted_type).to eql :FLOAT
-        expect(gc.converted_bit_size).to eql 64
+        utsc = UnixTimeSecondsConversion.new('TIME')
+        expect(utsc.converted_type).to eql :FLOAT
+        expect(utsc.converted_bit_size).to eql 64
       end
     end
 
     describe "call" do
       it "returns the formatted packet time based on seconds" do
-        gc = UnixTimeSecondsConversion.new('TIME')
+        utsc = UnixTimeSecondsConversion.new('TIME')
         packet = Packet.new("TGT", "PKT")
         packet.append_item("TIME", 32, :UINT)
         time = Time.new(2020, 1, 31, 12, 15, 30).to_f
         packet.write("TIME", time)
-        expect(gc.call(nil, packet, packet.buffer)).to eql time
+        expect(utsc.call(nil, packet, packet.buffer)).to eql time
       end
 
       it "returns the formatted packet time based on seconds and microseconds" do
-        gc = UnixTimeSecondsConversion.new('TIME', 'TIME_US')
+        utsc = UnixTimeSecondsConversion.new('TIME', 'TIME_US')
         packet = Packet.new("TGT", "PKT")
         packet.append_item("TIME", 32, :UINT)
         time = Time.new(2020, 1, 31, 12, 15, 30).to_f
         packet.write("TIME", time)
         packet.append_item("TIME_US", 32, :UINT)
         packet.write("TIME_US", 500000)
-        expect(gc.call(nil, packet, packet.buffer)).to eql time + 0.5
+        expect(utsc.call(nil, packet, packet.buffer)).to eql time + 0.5
       end
 
       it "complains if the seconds item doesn't exist" do
-        gc = UnixTimeSecondsConversion.new('TIME')
+        utsc = UnixTimeSecondsConversion.new('TIME')
         packet = Packet.new("TGT", "PKT")
-        expect { gc.call(nil, packet, packet.buffer) }.to raise_error("Packet item 'TGT PKT TIME' does not exist")
+        expect { utsc.call(nil, packet, packet.buffer) }.to raise_error("Packet item 'TGT PKT TIME' does not exist")
       end
 
       it "complains if the microseconds item doesn't exist" do
-        gc = UnixTimeSecondsConversion.new('TIME', 'TIME_US')
+        utsc = UnixTimeSecondsConversion.new('TIME', 'TIME_US')
         packet = Packet.new("TGT", "PKT")
         packet.append_item("TIME", 32, :UINT)
-        expect { gc.call(nil, packet, packet.buffer) }.to raise_error("Packet item 'TGT PKT TIME_US' does not exist")
+        expect { utsc.call(nil, packet, packet.buffer) }.to raise_error("Packet item 'TGT PKT TIME_US' does not exist")
       end
     end
 
     describe "to_s" do
       it "returns the seconds conversion" do
-        gc = UnixTimeSecondsConversion.new('TIME')
-        expect(gc.to_s).to eql "Time.at(packet.read('TIME', :RAW, buffer), 0).sys.to_f"
+        utsc = UnixTimeSecondsConversion.new('TIME')
+        expect(utsc.to_s).to eql "Time.at(packet.read('TIME', :RAW, buffer), 0).sys.to_f"
       end
 
       it "returns the microseconds conversion" do
-        gc = UnixTimeSecondsConversion.new('TIME', 'TIME_US')
-        expect(gc.to_s).to eql "Time.at(packet.read('TIME', :RAW, buffer), packet.read('TIME_US', :RAW, buffer)).sys.to_f"
+        utsc = UnixTimeSecondsConversion.new('TIME', 'TIME_US')
+        expect(utsc.to_s).to eql "Time.at(packet.read('TIME', :RAW, buffer), packet.read('TIME_US', :RAW, buffer)).sys.to_f"
+      end
+    end
+
+    describe "to_json" do
+      it "creates a reproducible format" do
+        utsc = UnixTimeSecondsConversion.new('TIME', 'TIME_US')
+        json = utsc.as_json(:allow_nan => true)
+        expect(json['class']).to eql "OpenC3::UnixTimeSecondsConversion"
+        expect(json['converted_type']).to eql :FLOAT
+        expect(json['converted_bit_size']).to eql 64
+        packet = Packet.new("TGT", "PKT")
+        packet.append_item("TIME", 32, :UINT)
+        time = Time.new(2020, 1, 31, 12, 15, 30).to_f
+        packet.write("TIME", time)
+        packet.append_item("TIME_US", 32, :UINT)
+        packet.write("TIME_US", 500000)
+        new_utsc = OpenC3.const_get(json['class']).new(*json['params'])
+        expect(utsc.call(nil, packet, packet.buffer)).to eql new_utsc.call(nil, packet, packet.buffer)
       end
     end
   end
