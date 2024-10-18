@@ -249,7 +249,6 @@
               v-for="item in executeSelectionMenuItems"
               link
               :key="item.label"
-              :disabled="scriptId"
             >
               <v-list-item-title @click="item.command">
                 {{ item.label }}
@@ -887,20 +886,34 @@ export default {
       ]
     },
     executeSelectionMenuItems: function () {
-      return [
-        {
-          label: 'Execute selection',
-          command: this.executeSelection,
-        },
-        {
-          label: 'Run from here',
-          command: this.runFromCursor,
-        },
-        {
-          label: 'Clear local breakpoints',
-          command: this.clearBreakpoints,
-        },
-      ]
+      if (this.scriptId) {
+        return [
+          {
+            label: 'Execute selection',
+            command: this.executeSelection,
+          },
+          {
+            label: 'Run from here',
+            command: this.runFromCursor,
+          },
+          // Can't clear local breakpoints in a running script
+        ]
+      } else {
+        return [
+          {
+            label: 'Execute selection',
+            command: this.executeSelection,
+          },
+          {
+            label: 'Run from here',
+            command: this.runFromCursor,
+          },
+          {
+            label: 'Clear local breakpoints',
+            command: this.clearBreakpoints,
+          },
+        ]
+      }
     },
   },
   watch: {
