@@ -49,10 +49,10 @@ export default {
 </script>
 
 <style scoped>
-.boxbanner >>> .v-banner__wrapper {
+.boxbanner :deep(.v-banner__wrapper) {
   padding: 4px !important;
 }
-.boxbanner >>> .v-banner__text {
+.boxbanner :deep(.v-banner__text) {
   font-weight: 600;
   font-size: 16px;
 }

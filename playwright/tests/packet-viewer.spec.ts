@@ -74,7 +74,7 @@ test('selects a target and packet to display', async ({ page, utils }) => {
 
 test('gets help info', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'IMAGE')
-  await page.locator('.v-data-footer > i').hover()
+  await page.locator('.v-data-table-footer > i').hover()
   await expect(page.getByText('Name with * indicates DERIVED')).toBeVisible()
   await expect(page.getByText('Right click name to pin item')).toBeVisible()
   await expect(
@@ -93,7 +93,7 @@ test('gets details with right click', async ({ page, utils }) => {
     .click({
       button: 'right',
     })
-  await page.getByText('Details').click()
+  await page.getByText('Details', { exact: true }).click()
   await expect(page.locator('.v-overlay--active')).toBeVisible()
   await expect(page.locator('.v-overlay--active')).toContainText(
     'INST HEALTH_STATUS TEMP1',
@@ -121,7 +121,7 @@ test('gets details with right click', async ({ page, utils }) => {
     .click({
       button: 'right',
     })
-  await page.getByText('Details').click()
+  await page.getByText('Details', { exact: true }).click()
   await expect(page.locator('.v-overlay--active')).toBeVisible()
   await expect(page.locator('.v-overlay--active')).toContainText(
     'INST HEALTH_STATUS PACKET_TIMESECONDS',
