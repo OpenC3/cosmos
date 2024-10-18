@@ -21,7 +21,7 @@
 -->
 
 <template>
-  <v-app :style="classificationStyles">
+  <v-app id="app" :style="classificationStyles">
     <app-nav class="d-print-none" />
 
     <!-- Sizes your content based upon application components -->

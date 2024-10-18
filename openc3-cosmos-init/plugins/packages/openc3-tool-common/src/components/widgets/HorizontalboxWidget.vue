@@ -26,10 +26,13 @@
       parameters[0]
     }}</v-banner>
     <horizontal-widget
-      v-on="$listeners"
+      v-bind="listeners"
       :parameters="parameters.slice(1)"
-      :settings="settings"
+      :settings="appliedSettings"
       :widgets="widgets"
+      :screen-values="screenValues"
+      :screen-time-zone="screenTimeZone"
+      :screen-id="screenId"
     />
   </div>
 </template>
@@ -46,10 +49,10 @@ export default {
 </script>
 
 <style scoped>
-.boxbanner >>> .v-banner__wrapper {
+.boxbanner :deep(.v-banner__wrapper) {
   padding: 4px !important;
 }
-.boxbanner >>> .v-banner__text {
+.boxbanner :deep(.v-banner__text) {
   font-weight: 600;
   font-size: 16px;
 }

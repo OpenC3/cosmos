@@ -22,7 +22,7 @@
 
 <template>
   <v-card>
-    <v-card-title>
+    <v-card-title class="d-flex align-center justify-content-space-between">
       {{ data.length }} Command Packets
       <v-spacer />
       <v-text-field
@@ -30,8 +30,8 @@
         label="Search"
         prepend-inner-icon="mdi-magnify"
         clearable
-        outlined
-        dense
+        variant="outlined"
+        density="compact"
         single-line
         hide-details
         class="search"
@@ -42,14 +42,16 @@
       :items="data"
       :search="search"
       :items-per-page="10"
-      :footer-props="{
-        itemsPerPageOptions: [10, 20, 50, 100],
-        showFirstLastPage: true,
-      }"
-      sort-by="target_name"
-      @current-items="currentItems"
-      calculate-widths
-      multi-sort
+      :items-per-page-options="[10, 20, 50, 100]"
+      :sort-by="[
+        {
+          key: 'target_name',
+        },
+        {
+          key: 'packet_name',
+        },
+      ]"
+      @update:current-items="currentItems"
       data-test="cmd-packets-table"
     >
       <template v-slot:item.view_raw="{ item }">
@@ -71,7 +73,7 @@
           @click="openCmdSender(item.target_name, item.packet_name)"
         >
           View In Command Sender
-          <v-icon right> mdi-open-in-new </v-icon>
+          <v-icon end> mdi-open-in-new </v-icon>
         </v-btn>
       </template>
     </v-data-table>
@@ -107,11 +109,11 @@ export default {
       search: '',
       data: [],
       headers: [
-        { text: 'Target Name', value: 'target_name' },
-        { text: 'Packet Name', value: 'packet_name' },
-        { text: 'Packet Count', value: 'count' },
-        { text: 'View Raw', value: 'view_raw' },
-        { text: 'View In Command Sender', value: 'view_in_cmd_sender' },
+        { title: 'Target Name', key: 'target_name' },
+        { title: 'Packet Name', key: 'packet_name' },
+        { title: 'Packet Count', key: 'count' },
+        { title: 'View Raw', key: 'view_raw' },
+        { title: 'View In Command Sender', key: 'view_in_cmd_sender' },
       ],
       rawDialogs: [],
       visible: null,
@@ -153,23 +155,16 @@ export default {
       this.rawDialogs.splice(i, 1)
     },
     openCmdSender(target_name, packet_name) {
-      let routeData = this.$router.resolve({
-        name: 'CommandSender',
-        params: {
-          target: target_name,
-          packet: packet_name,
-        },
-      })
       window.open(`/tools/cmdsender/${target_name}/${packet_name}`, '_blank')
     },
     currentItems(event) {
       this.visible = event.map((i) => {
-        return [i.target_name, i.packet_name]
+        return [i.columns.target_name, i.columns.packet_name]
       })
     },
     update() {
       if (this.tabId != this.curTab) return
-      if (this.currentItems === null) return
+      if (this.visible === null) return
       this.api.get_cmd_cnts(this.visible).then((counts) => {
         for (let i = 0; i < counts.length; i++) {
           let index = this.data.findIndex(

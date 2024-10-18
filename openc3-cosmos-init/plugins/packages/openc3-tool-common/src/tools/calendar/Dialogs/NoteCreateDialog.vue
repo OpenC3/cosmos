@@ -25,14 +25,14 @@
     <v-dialog persistent v-model="show" width="600">
       <v-card>
         <form @submit.prevent="createNote">
-          <v-system-bar>
+          <v-toolbar height="24">
             <v-spacer />
             <span v-if="note">Update Note</span>
             <span v-else>Create Note</span>
             <v-spacer />
-            <v-tooltip top>
-              <template v-slot:activator="{ on, attrs }">
-                <div v-on="on" v-bind="attrs">
+            <v-tooltip location="top">
+              <template v-slot:activator="{ props }">
+                <div v-bind="props">
                   <v-icon data-test="close-note-icon" @click="show = !show">
                     mdi-close-box
                   </v-icon>
@@ -40,7 +40,7 @@
               </template>
               <span> Close </span>
             </v-tooltip>
-          </v-system-bar>
+          </v-toolbar>
           <v-stepper v-model="dialogStep" vertical non-linear>
             <v-stepper-step editable step="1">
               Input start time, end time
@@ -88,7 +88,7 @@
                   </v-row>
                   <v-row>
                     <span
-                      class="ma-2 red--text"
+                      class="ma-2 text-red"
                       v-show="timeError"
                       v-text="timeError"
                     />
@@ -125,13 +125,13 @@
                     />
                   </div>
                   <v-row v-show="typeError">
-                    <span class="ma-2 red--text" v-text="typeError" />
+                    <span class="ma-2 text-red" v-text="typeError" />
                   </v-row>
                   <v-row class="mt-2">
                     <v-spacer />
                     <v-btn
                       @click="show = !show"
-                      outlined
+                      variant="outlined"
                       class="mx-2"
                       data-test="note-cancel-btn"
                     >
@@ -169,7 +169,7 @@ export default {
     ColorSelectForm,
   },
   props: {
-    value: Boolean, // value is the default prop when using v-model
+    modelValue: Boolean,
     note: {
       type: Object,
     },
@@ -218,10 +218,10 @@ export default {
     },
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
   },
@@ -251,7 +251,7 @@ export default {
         stop = new Date(this.endDate + ' ' + this.endTime).toISOString()
       } else {
         start = new Date(
-          this.startDate + ' ' + this.startTime + 'Z'
+          this.startDate + ' ' + this.startTime + 'Z',
         ).toISOString()
         stop = new Date(this.endDate + ' ' + this.endTime + 'Z').toISOString()
       }

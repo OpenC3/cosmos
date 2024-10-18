@@ -47,35 +47,39 @@
     />
     <v-dialog v-model="limitsSetDialog" max-width="650">
       <v-card>
-        <v-system-bar>
+        <v-toolbar height="24">
           <v-spacer />
           <span>Change Limits Set</span>
           <v-spacer />
-        </v-system-bar>
-        <v-card-text class="pt-1">
-          <span style="display: block"
-            >The Limits Set is a global option which changes the Limits Set
-            across all tools.</span
-          >
-          <span style="display: block"
-            >NOTE: Changing this option clears the current list and recalculates
-            based on the new set.</span
-          >
+        </v-toolbar>
+        <v-card-text class="mt-6">
+          <span style="display: block">
+            The Limits Set is a global option which changes the Limits Set
+            across all tools.
+          </span>
+          <span style="display: block">
+            NOTE: Changing this option clears the current list and recalculates
+            based on the new set.
+          </span>
           <v-select
             label="Limits Set"
             :items="limitsSets"
             v-model="currentLimitsSet"
-            dense
-            outlined
+            density="compact"
+            variant="outlined"
             data-test="limits-set"
             hide-details
-            class="pt-3"
+            class="mt-3"
             style="max-width: 200px"
           />
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn @click="limitsSetDialog = false" outlined class="mx-2">
+          <v-btn
+            @click="limitsSetDialog = false"
+            variant="outlined"
+            class="mx-2"
+          >
             Cancel
           </v-btn>
           <v-btn @click="setLimitsSet" color="primary"> Ok </v-btn>
@@ -194,7 +198,7 @@ export default {
       }
     }
   },
-  destroyed: function () {
+  unmounted: function () {
     clearInterval(this.currentSetRefreshInterval)
   },
   methods: {

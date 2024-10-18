@@ -23,11 +23,11 @@ test.use({
 })
 
 test('displays gem names', async ({ page, utils }) => {
-  expect(await page.getByRole('list')).toContainText(
-    /openc3-cosmos-demo-\d{1,2}\.\d{1,2}\.\d{1,2}.*\.gem/
+  expect(await page.locator('[data-test=packageList]')).toContainText(
+    /openc3-cosmos-demo-\d{1,2}\.\d{1,2}\.\d{1,2}.*\.gem/,
   )
-  expect(await page.getByRole('list')).toContainText(
-    /openc3-cosmos-tool-cmdsender-\d{1,2}\.\d{1,2}\.\d{1,2}.*\.gem/
+  expect(await page.locator('[data-test=packageList]')).toContainText(
+    /openc3-cosmos-tool-cmdsender-\d{1,2}\.\d{1,2}\.\d{1,2}.*\.gem/,
   )
 })
 

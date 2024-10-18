@@ -25,7 +25,7 @@
     <div class="led align-self-center" :style="cssProps"></div>
     <label-widget
       :parameters="labelName"
-      :settings="settings"
+      :settings="appliedSettings"
       :style="computedStyle"
       :widget-index="1"
     />
@@ -67,10 +67,6 @@ export default {
       }
     },
     cssProps() {
-      let value = null
-      if (this.screen) {
-        value = this.screen.screenValues[this.valueId][0]
-      }
       return {
         '--height': this.radius + 'px',
         '--width': this.radius + 'px',
@@ -80,7 +76,7 @@ export default {
   },
   methods: {
     getType() {
-      var type = 'CONVERTED'
+      let type = 'CONVERTED'
       if (this.parameters[3]) {
         type = this.parameters[3]
       }

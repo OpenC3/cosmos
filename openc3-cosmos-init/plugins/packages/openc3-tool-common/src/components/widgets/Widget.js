@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -21,8 +21,10 @@
 */
 
 import { ConfigParserError } from '@openc3/tool-common/src/services/config-parser'
+import WidgetComponents from './WidgetComponents'
 
 export default {
+  mixins: [WidgetComponents],
   props: {
     widgetIndex: {
       type: Number,
@@ -36,6 +38,18 @@ export default {
       type: Array,
       default: () => [],
     },
+    screenValues: {
+      type: Object,
+      default: () => {},
+    },
+    screenTimeZone: {
+      type: String,
+      default: 'local',
+    },
+    namedWidgets: {
+      type: Object,
+      default: {},
+    },
     line: {
       type: String,
       default: '',
@@ -47,18 +61,20 @@ export default {
   },
   data() {
     return {
-      screen: null,
+      appliedSettings: [],
       // We make style a data attribute so as we recurse through nested
       // widgets we can check to see if style attributes have been applied
       // at any level of the widget, i.e. if LABELVALUE applies a style
       // to the VALUE component then we don't want the VALUE widget to think
       // it doesn't have a style when it renders.
-      style: {},
+      appliedStyle: {},
+      widgetName: null,
+      screenId: 'NO_SCREEN', // only used for named widgets - hopefully overwritten by settings value in created()
     }
   },
   computed: {
-    computedStyle() {
-      this.settings.forEach((setting) => {
+    computedStyle: function () {
+      this.appliedSettings.forEach((setting) => {
         const index = parseInt(setting[0])
         if (this.widgetIndex !== null) {
           if (this.widgetIndex === index) {
@@ -67,27 +83,83 @@ export default {
             return
           }
         }
-        this.applySetting(this.style, setting)
+        this.applyStyleSetting(setting)
       })
+      const compStyle = { ...this.appliedStyle }
+
       // If nothing has yet defined a width then we add flex to the style
-      if (this.style['width'] === undefined) {
+      if (compStyle['width'] === undefined) {
         // This flex allows for alignment in our widgets
         // The value of '0 10 100%' was achieved through trial and error
         // The larger flex-shrink value was critical for success
-        this.style['flex'] = '0 10 100%' // flex-grow, flex-shrink, flex-basis
+        compStyle['flex'] = '0 10 100%' // flex-grow, flex-shrink, flex-basis
       }
-      return this.style
+      return compStyle
+    },
+    screen: function () {
+      // This exists for backwards compatibility of screen definitions since widgets no longer have a reference
+      // to the Openc3Screen component instance
+      const that = this
+      return {
+        getNamedWidget: function (widgetName) {
+          return that.$store.getters.namedWidget(
+            that.toQualifiedWidgetName(widgetName),
+          )
+        },
+        open: function (target, screen) {
+          that.$emit('open', target, screen)
+        },
+        close: function (target, screen) {
+          that.$emit('close', target, screen)
+        },
+        closeAll: function () {
+          that.$emit('closeAll')
+        },
+      }
+    },
+    listeners: function () {
+      // Vue 3 deprecated $listeners, which was used to bubble up events to the Openc3Screen component. The new way is
+      // to use v-bind="$attrs", but that also passes the `style` DOM attribute to children, which makes widgets
+      // inherit styles from the layout like height and flex.
+      // This is a workaround to let us v-bind to just the event listeners (which were previously in the $listeners
+      // object in Vue 2).
+      return Object.entries(this.$attrs).reduce((listeners, entry) => {
+        if (entry[0].startsWith('on')) {
+          return {
+            ...listeners,
+            [entry[0]]: entry[1],
+          }
+        }
+        return listeners
+      }, {})
+    },
+  },
+  watch: {
+    widgetName: function (newName, oldName) {
+      this.$store.commit(
+        'clearNamedWidget',
+        this.toQualifiedWidgetName(oldName),
+      )
+      this.$store.commit('setNamedWidget', {
+        [this.toQualifiedWidgetName(newName)]: this,
+      })
     },
   },
   created() {
     // Look through the settings and get a reference to the screen
-    this.settings.forEach((setting) => {
-      if (setting[0] === '__SCREEN__') {
-        this.screen = setting[1]
-      }
-    })
+    this.screenId = this.settings
+      .find((setting) => setting[0] === '__SCREEN_ID__')
+      ?.at(1)
+
+    this.widgetName = this.settings
+      .find((setting) => setting[0] === 'NAMED_WIDGET')
+      ?.at(1)
+
+    const componentSettings = this.componentSettings || []
+    const stringifiedComponentSettings = componentSettings?.map(JSON.stringify)
+
     // Figure out any subsettings that apply
-    this.settings = this.settings
+    const newSettings = this.settings
       .map((setting) => {
         const index = parseInt(setting[0])
         // If the first value isn't a number or if there isn't a widgetIndex
@@ -102,55 +174,72 @@ export default {
           return setting.slice(1)
         }
       })
-      // Remove any settings that we filtered out with null
-      .filter((setting) => setting !== undefined)
+      // Remove any settings that we filtered out with null and anything to be overridden with componentSettings
+      .filter(
+        (setting) =>
+          setting !== undefined &&
+          !stringifiedComponentSettings.includes(JSON.stringify(setting)),
+      )
+
+    this.appliedSettings = [...componentSettings, ...newSettings]
+  },
+  beforeUnmount() {
+    if (this.widgetName) {
+      this.$store.commit(
+        'clearNamedWidget',
+        this.toQualifiedWidgetName(this.widgetName),
+      )
+    }
   },
   methods: {
-    applySetting(style, setting) {
+    applyStyleSetting(setting) {
       switch (setting[0]) {
         case 'TEXTALIGN':
-          style['text-align'] = setting[1].toLowerCase() + ' !important'
-          style['--text-align'] = setting[1].toLowerCase()
+          this.appliedStyle['text-align'] =
+            setting[1].toLowerCase() + ' !important'
+          this.appliedStyle['--text-align'] = setting[1].toLowerCase()
           break
         case 'PADDING':
           if (!isNaN(Number(setting[1]))) {
             setting[1] += 'px'
           }
-          style['padding'] = setting[1] + ' !important'
+          this.appliedStyle['padding'] = setting[1] + ' !important'
           break
         case 'MARGIN':
           if (!isNaN(Number(setting[1]))) {
             setting[1] += 'px'
           }
-          style['margin'] = setting[1] + ' !important'
+          this.appliedStyle['margin'] = setting[1] + ' !important'
           break
         case 'BACKCOLOR':
-          style['background-color'] =
+          this.appliedStyle['background-color'] =
             this.getColor(setting.slice(1)) + ' !important'
           break
         case 'TEXTCOLOR':
-          style['color'] = this.getColor(setting.slice(1)) + ' !important'
+          this.appliedStyle['color'] =
+            this.getColor(setting.slice(1)) + ' !important'
           break
         case 'BORDERCOLOR':
-          style['border-width'] = '1px!important'
-          style['border-style'] = 'solid!important'
-          style['border-color'] =
+          this.appliedStyle['border-width'] = '1px!important'
+          this.appliedStyle['border-style'] = 'solid!important'
+          this.appliedStyle['border-color'] =
             this.getColor(setting.slice(1)) + ' !important'
           break
         case 'WIDTH':
           if (!isNaN(Number(setting[1]))) {
             setting[1] += 'px'
           }
-          style['width'] = setting[1] + ' !important'
+          this.appliedStyle['width'] = setting[1] + ' !important'
           break
         case 'HEIGHT':
           if (!isNaN(Number(setting[1]))) {
             setting[1] += 'px'
           }
-          style['height'] = setting[1] + ' !important'
+          this.appliedStyle['height'] = setting[1] + ' !important'
           break
         case 'RAW':
-          style[setting[1].toLowerCase()] = setting[2] + ' !important'
+          this.appliedStyle[setting[1].toLowerCase()] =
+            setting[2] + ' !important'
           break
       }
     },
@@ -171,7 +260,7 @@ export default {
             parser,
             `Not enough parameters for ${keyword}.`,
             usage,
-            'https://docs.openc3.com/docs/configuration'
+            'https://docs.openc3.com/docs/configuration',
           )
         }
       }
@@ -181,7 +270,7 @@ export default {
           parser,
           `Too many parameters for ${keyword}.`,
           usage,
-          'https://docs.openc3.com/docs/configuration'
+          'https://docs.openc3.com/docs/configuration',
         )
       }
     },
@@ -191,12 +280,14 @@ export default {
       // and passes an explicit width setting to use
       let foundSetting = null
       if (this.widgetIndex !== null) {
-        foundSetting = this.settings.find(
+        foundSetting = this.appliedSettings.find(
           (setting) =>
-            parseInt(setting[0]) === this.widgetIndex && setting[1] === 'WIDTH'
+            parseInt(setting[0]) === this.widgetIndex && setting[1] === 'WIDTH',
         )
       } else {
-        foundSetting = this.settings.find((setting) => setting[0] === 'WIDTH')
+        foundSetting = this.appliedSettings.find(
+          (setting) => setting[0] === 'WIDTH',
+        )
       }
       if (foundSetting) {
         return foundSetting['WIDTH']
@@ -207,14 +298,14 @@ export default {
           if (this.widgetIndex !== null) {
             setting.unshift(this.widgetIndex)
           }
-          this.settings.push(setting)
+          this.appliedSettings.push(setting)
           return parseInt(width)
         } else {
           let setting = ['WIDTH', `${defaultWidth}${units}`]
           if (this.widgetIndex !== null) {
             setting.unshift(this.widgetIndex)
           }
-          this.settings.push(setting)
+          this.appliedSettings.push(setting)
           return parseInt(defaultWidth)
         }
       }
@@ -223,12 +314,15 @@ export default {
       // Don't set the height if someone has already set it
       let foundSetting = null
       if (this.widgetIndex !== null) {
-        foundSetting = this.settings.find(
+        foundSetting = this.appliedSettings.find(
           (setting) =>
-            parseInt(setting[0]) === this.widgetIndex && setting[1] === 'HEIGHT'
+            parseInt(setting[0]) === this.widgetIndex &&
+            setting[1] === 'HEIGHT',
         )
       } else {
-        foundSetting = this.settings.find((setting) => setting[0] === 'HEIGHT')
+        foundSetting = this.appliedSettings.find(
+          (setting) => setting[0] === 'HEIGHT',
+        )
       }
       if (foundSetting) {
         return foundSetting['HEIGHT']
@@ -239,14 +333,14 @@ export default {
           if (this.widgetIndex !== null) {
             setting.unshift(this.widgetIndex)
           }
-          this.settings.push(setting)
+          this.appliedSettings.push(setting)
           return parseInt(height)
         } else {
           let setting = ['HEIGHT', `${defaultHeight}${units}`]
           if (this.widgetIndex !== null) {
             setting.unshift(this.widgetIndex)
           }
-          this.settings.push(setting)
+          this.appliedSettings.push(setting)
           return parseInt(defaultHeight)
         }
       }
@@ -259,6 +353,9 @@ export default {
         case 3:
           return `rgb(${setting[0]},${setting[1]},${setting[2]})`
       }
+    },
+    toQualifiedWidgetName(widgetName) {
+      return `${this.screenId}:${widgetName}`
     },
   },
 }

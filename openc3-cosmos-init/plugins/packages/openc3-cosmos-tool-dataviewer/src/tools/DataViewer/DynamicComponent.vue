@@ -46,7 +46,9 @@ export default {
   },
   watch: {
     latestData: function (data) {
-      this.$refs['dynamic'].receive(data)
+      if (typeof this.$refs['dynamic'].receive === 'function') {
+        this.$refs['dynamic'].receive(data)
+      }
     },
   },
   async mounted() {

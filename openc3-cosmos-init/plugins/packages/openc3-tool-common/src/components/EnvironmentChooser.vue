@@ -22,16 +22,16 @@
 
 <template>
   <div>
-    <v-simple-table dense>
+    <v-table dense>
       <span> Add environment variables (optional)</span>
       <tbody>
         <tr>
           <th scope="col" class="text-left">Key</th>
           <th scope="col" class="text-left">Value</th>
           <th scope="col" class="text-right">
-            <v-tooltip top>
-              <template v-slot:activator="{ on, attrs }">
-                <div v-on="on" v-bind="attrs">
+            <v-tooltip location="top">
+              <template v-slot:activator="{ props }">
+                <div v-bind="props">
                   <v-icon data-test="new-metadata-icon" @click="addEnvVar">
                     mdi-plus
                   </v-icon>
@@ -41,52 +41,50 @@
             </v-tooltip>
           </th>
         </tr>
-        <template v-for="(env, i) in selected">
-          <tr :key="`tr-${i}`">
-            <td>
-              <v-text-field
-                v-model="env.key"
-                dense
-                type="text"
-                :readonly="env.readonly"
-                :data-test="`key-${i}`"
-              />
-            </td>
-            <td>
-              <v-text-field
-                v-model="env.value"
-                dense
-                type="text"
-                :readonly="env.readonly"
-                :data-test="`value-${i}`"
-              />
-            </td>
-            <td>
-              <v-tooltip top>
-                <template v-slot:activator="{ on, attrs }">
-                  <div v-on="on" v-bind="attrs">
-                    <v-icon
-                      :data-test="`remove-env-icon-${i}`"
-                      @click="delEnvVar(i)"
-                    >
-                      mdi-delete
-                    </v-icon>
-                  </div>
-                </template>
-                <span> Delete Environment </span>
-              </v-tooltip>
-            </td>
-          </tr>
-        </template>
+        <tr v-for="(env, i) in selected" :key="`tr-${i}`">
+          <td>
+            <v-text-field
+              v-model="env.key"
+              density="compact"
+              type="text"
+              :readonly="env.readonly"
+              :data-test="`key-${i}`"
+            />
+          </td>
+          <td>
+            <v-text-field
+              v-model="env.value"
+              density="compact"
+              type="text"
+              :readonly="env.readonly"
+              :data-test="`value-${i}`"
+            />
+          </td>
+          <td>
+            <v-tooltip location="top">
+              <template v-slot:activator="{ props }">
+                <div v-bind="props">
+                  <v-icon
+                    :data-test="`remove-env-icon-${i}`"
+                    @click="delEnvVar(i)"
+                  >
+                    mdi-delete
+                  </v-icon>
+                </div>
+              </template>
+              <span> Delete Environment </span>
+            </v-tooltip>
+          </td>
+        </tr>
       </tbody>
-    </v-simple-table>
+    </v-table>
   </div>
 </template>
 
 <script>
 export default {
   props: {
-    value: {
+    modelValue: {
       type: Array,
       required: true,
     },
@@ -94,10 +92,10 @@ export default {
   computed: {
     selected: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
   },

@@ -27,7 +27,7 @@
       <v-card-title class="mb-2">Edit Item</v-card-title>
       <v-card-text>
         <v-select
-          outlined
+          variant="outlined"
           hide-details
           label="Value Type"
           :items="valueTypes"
@@ -35,7 +35,7 @@
           class="mb-2"
         />
         <v-select
-          outlined
+          variant="outlined"
           hide-details
           label="Reduction"
           :items="reduction"
@@ -43,7 +43,7 @@
           class="mb-2"
         />
         <v-select
-          outlined
+          variant="outlined"
           hide-details
           label="Reduced Type"
           :items="reducedTypes"
@@ -52,29 +52,31 @@
           class="mb-2"
         />
         <v-select
-          outlined
+          variant="outlined"
           hide-details
           label="Color"
           :items="colors"
           v-model="editItem.color"
-          @change="$emit('changeColor', $event)"
+          @update:model-value="$emit('changeColor', $event)"
           class="mb-2"
         />
         <div v-if="limitsNames.length > 1">
           <v-select
-            outlined
+            variant="outlined"
             hide-details
             label="Display Limits"
             :items="limitsNames"
             v-model="limitsName"
-            @change="$emit('changeLimits', limits[limitsName])"
+            @update:model-value="$emit('changeLimits', limits[limitsName])"
           />
           <div class="pa-3">{{ limitsName }}: {{ limits[limitsName] }}</div>
         </div>
       </v-card-text>
       <v-card-actions>
         <v-spacer />
-        <v-btn outlined class="mx-2" @click="$emit('cancel')"> Cancel </v-btn>
+        <v-btn variant="outlined" class="mx-2" @click="$emit('cancel')">
+          Cancel
+        </v-btn>
         <v-btn color="primary" class="mx-2" @click="$emit('close', editItem)">
           Ok
         </v-btn>
@@ -87,7 +89,7 @@
 import { OpenC3Api } from '../services/openc3-api.js'
 export default {
   props: {
-    value: Boolean, // value is the default prop when using v-model
+    modelValue: Boolean,
     item: {
       type: Object,
       required: true,
@@ -117,10 +119,10 @@ export default {
   computed: {
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
     limitsNames() {

@@ -28,7 +28,7 @@
       v-for="(item, index) in dataItems"
       :key="item.name"
       :item="item"
-      @change="onChange(item, index, $event)"
+      @change.self="onChange(item, index, $event)"
     />
   </tr>
 </template>
@@ -62,7 +62,7 @@ export default {
   },
   methods: {
     onChange: function (item, index, event) {
-      this.$emit('change', { index: index, event: event })
+      this.$emit('change', { index, event })
     },
   },
 }

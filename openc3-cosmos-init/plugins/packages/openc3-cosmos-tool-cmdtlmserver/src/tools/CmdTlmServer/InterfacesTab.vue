@@ -22,7 +22,7 @@
 
 <template>
   <v-card>
-    <v-card-title>
+    <v-card-title class="d-flex align-center justify-content-space-between">
       {{ data.length }} Interfaces
       <v-spacer />
       <v-text-field
@@ -30,8 +30,8 @@
         label="Search"
         prepend-inner-icon="mdi-magnify"
         clearable
-        outlined
-        dense
+        variant="outlined"
+        density="compact"
         single-line
         hide-details
         class="search"
@@ -43,8 +43,7 @@
       :search="search"
       :custom-sort="sortTable"
       :items-per-page="10"
-      :footer-props="{ itemsPerPageOptions: [10, 20, -1] }"
-      calculate-widths
+      :items-per-page-options="[10, 20, -1]"
       multi-sort
       data-test="interfaces-table"
     >
@@ -82,21 +81,21 @@ export default {
       data: [],
       buttonsDisabled: false,
       headers: [
-        { text: 'Name', value: 'name' },
+        { title: 'Name', key: 'name' },
         {
-          text: 'Action',
-          value: 'connect',
+          title: 'Action',
+          key: 'connect',
           sortable: false,
           filterable: false,
         },
-        { text: 'Connected', value: 'connected' },
-        { text: 'Clients', value: 'clients' },
-        { text: 'Tx Q', value: 'tx_q_size' },
-        { text: 'Rx Q', value: 'rx_q_size' },
-        { text: 'Tx bytes', value: 'tx_bytes' },
-        { text: 'Rx bytes', value: 'rx_bytes' },
-        { text: 'Cmd pkts', value: 'cmd_pkts' },
-        { text: 'Tlm pkts', value: 'tlm_pkts' },
+        { title: 'Connected', key: 'connected' },
+        { title: 'Clients', key: 'clients' },
+        { title: 'Tx Q', key: 'tx_q_size' },
+        { title: 'Rx Q', key: 'rx_q_size' },
+        { title: 'Tx bytes', key: 'tx_bytes' },
+        { title: 'Rx bytes', key: 'rx_bytes' },
+        { title: 'Cmd pkts', key: 'cmd_pkts' },
+        { title: 'Tlm pkts', key: 'tlm_pkts' },
       ],
     }
   },
