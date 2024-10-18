@@ -139,19 +139,18 @@ test('direct URLs', async ({ page }) => {
 })
 
 // Create a new screen so we have modifications to browse
-// TODO: unskip once tlmviewer works again
-test.skip('creates new screen', async ({ page, utils }) => {
+test('creates new screen', async ({ page, utils }) => {
   await page.goto('/tools/tlmviewer')
   await expect(page.locator('.v-app-bar')).toContainText('Telemetry Viewer')
   await expect(page.getByText('INST')).toBeVisible()
   await page.locator('[data-test=new-screen]').click()
   await expect(
-    page.locator(`.v-system-bar:has-text("New Screen")`),
+    page.locator(`.v-toolbar:has-text("New Screen")`),
   ).toBeVisible()
-  await page.locator('[data-test=new-screen-name]').fill('NEW_SCREEN')
+  await page.locator('[data-test=new-screen-name] input').fill('NEW_SCREEN')
   await page.getByRole('button', { name: 'Save' }).click()
   await expect(
-    page.locator(`.v-system-bar:has-text("NEW_SCREEN")`),
+    page.locator(`.v-toolbar:has-text("NEW_SCREEN")`),
   ).toBeVisible()
 })
 

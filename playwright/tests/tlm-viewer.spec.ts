@@ -82,8 +82,7 @@ test('displays INST BLOCK', async ({ page, utils }) => {
   await showScreen(page, utils, 'INST', 'BLOCK')
 })
 
-// TODO: unskip once script runner loads
-test.skip('displays INST COMMANDING', async ({ page, utils }) => {
+test('displays INST COMMANDING', async ({ page, utils }) => {
   await showScreen(page, utils, 'INST', 'COMMANDING', async function () {
     await page.getByRole('combobox').filter({ hasText: 'NORMAL' }).click()
     await page.getByRole('option', { name: 'NORMAL' }).click()

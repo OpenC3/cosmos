@@ -542,8 +542,7 @@ test('shows ignored parameters', async ({ page, utils }) => {
 // Thus we send the INST SET PARAMS command which has a parameter conversion,
 // check the raw buffer, then send it with parameter conversions disabled,
 // and re-check the raw buffer for a change.
-// TODO: un-skip this once script runner is working again
-test.skip('disable parameter conversions', async ({ page, utils }) => {
+test('disable parameter conversions', async ({ page, utils }) => {
   await page.locator('[data-test="clear-history"]').click()
   await utils.selectTargetPacketItem('INST', 'SETPARAMS')
   await page.locator('[data-test="select-send"]').click()
