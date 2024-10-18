@@ -23,7 +23,6 @@
 import TimeFilters from '../../tools/base/util/timeFilters.js'
 import Widget from './Widget'
 import FormatValueBase from './FormatValueBase'
-import 'sprintf-js'
 export default {
   mixins: [Widget, TimeFilters, FormatValueBase],
   // ValueWidget can either get it's value and limitsState directly through props

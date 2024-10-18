@@ -23,7 +23,7 @@
 <template>
   <div ref="container" class="d-flex flex-column" :style="computedStyle">
     <component
-      v-bind="$attrs"
+      v-bind="listeners"
       v-for="(widget, index) in widgets"
       :key="index"
       :is="widget.type"

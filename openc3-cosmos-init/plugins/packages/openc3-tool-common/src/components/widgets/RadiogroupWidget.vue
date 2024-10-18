@@ -29,7 +29,7 @@
   >
     <component
       v-for="(widget, index) in widgets"
-      v-bind="$attrs"
+      v-bind="listeners"
       :value="index"
       :key="index"
       :is="widget.type"

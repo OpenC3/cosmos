@@ -25,7 +25,7 @@
     <tr v-for="(chunk, rindex) in widgetChunks" :key="'r' + rindex">
       <td v-for="(widget, cindex) in chunk" :key="'c' + cindex">
         <component
-          v-bind="$attrs"
+          v-bind="listeners"
           :is="widget.type"
           :target="widget.target"
           :parameters="widget.parameters"

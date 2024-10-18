@@ -75,22 +75,15 @@ export default {
   computed: {
     computedStyle: function () {
       this.appliedSettings.forEach((setting) => {
-        if (setting[0] === 'NAMED_WIDGET') {
-          this.widgetName = setting[1]
-          this.$store.commit('setNamedWidget', {
-            [this.toQualifiedWidgetName(this.widgetName)]: this,
-          })
-        } else {
-          const index = parseInt(setting[0])
-          if (this.widgetIndex !== null) {
-            if (this.widgetIndex === index) {
-              setting = setting.slice(1)
-            } else {
-              return
-            }
+        const index = parseInt(setting[0])
+        if (this.widgetIndex !== null) {
+          if (this.widgetIndex === index) {
+            setting = setting.slice(1)
+          } else {
+            return
           }
-          this.applyStyleSetting(setting)
         }
+        this.applyStyleSetting(setting)
       })
       const compStyle = { ...this.appliedStyle }
 
@@ -124,15 +117,43 @@ export default {
         },
       }
     },
+    listeners: function () {
+      // Vue 3 deprecated $listeners, which was used to bubble up events to the Openc3Screen component. The new way is
+      // to use v-bind="$attrs", but that also passes the `style` DOM attribute to children, which makes widgets
+      // inherit styles from the layout like height and flex.
+      // This is a workaround to let us v-bind to just the event listeners (which were previously in the $listeners
+      // object in Vue 2).
+      return Object.entries(this.$attrs).reduce((listeners, entry) => {
+        if (entry[0].startsWith('on')) {
+          return {
+            ...listeners,
+            [entry[0]]: entry[1],
+          }
+        }
+        return listeners
+      }, {})
+    },
+  },
+  watch: {
+    widgetName: function (newName, oldName) {
+      this.$store.commit(
+        'clearNamedWidget',
+        this.toQualifiedWidgetName(oldName),
+      )
+      this.$store.commit('setNamedWidget', {
+        [this.toQualifiedWidgetName(newName)]: this,
+      })
+    },
   },
   created() {
     // Look through the settings and get a reference to the screen
-    const screenIdSetting = this.settings.find(
-      (setting) => setting[0] === '__SCREEN_ID__',
-    )
-    if (screenIdSetting) {
-      this.screenId = screenIdSetting[1]
-    }
+    this.screenId = this.settings
+      .find((setting) => setting[0] === '__SCREEN_ID__')
+      ?.at(1)
+
+    this.widgetName = this.settings
+      .find((setting) => setting[0] === 'NAMED_WIDGET')
+      ?.at(1)
 
     const componentSettings = this.componentSettings || []
     const stringifiedComponentSettings = componentSettings?.map(JSON.stringify)

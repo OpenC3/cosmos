@@ -24,7 +24,7 @@
   <div ref="container" class="d-flex flex-row" :style="computedStyle">
     <component
       v-for="(widget, index) in widgets"
-      v-bind="$attrs"
+      v-bind="listeners"
       :key="index"
       :is="widget.type"
       :target="widget.target"

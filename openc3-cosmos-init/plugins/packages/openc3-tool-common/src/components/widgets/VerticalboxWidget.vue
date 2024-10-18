@@ -26,7 +26,7 @@
       {{ parameters[0] }}
     </v-banner>
     <vertical-widget
-      v-bind="$attrs"
+      v-bind="listeners"
       :parameters="parameters.slice(1)"
       :settings="settings"
       :widgets="widgets"

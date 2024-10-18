@@ -1,5 +1,3 @@
-import sprintf from 'sprintf-js'
-
 /*
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
@@ -22,6 +20,7 @@ import sprintf from 'sprintf-js'
 # if purchased from OpenC3, Inc.
 */
 
+import 'sprintf-js'
 export default {
   methods: {
     formatValueBase(value, formatString) {

@@ -24,7 +24,7 @@
   <svg id="canvas" :width="width" :height="height">
     <component
       v-for="(widget, index) in widgets"
-      v-bind="$attrs"
+      v-bind="listeners"
       :key="index"
       :is="widget.type"
       :target="widget.target"

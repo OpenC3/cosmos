@@ -31,7 +31,7 @@
       <v-window-item v-for="(tab, tabIndex) in widgets" :key="tabIndex">
         <component
           v-for="(widget, widgetIndex) in tab.widgets"
-          v-bind="$attrs"
+          v-bind="listeners"
           :key="`${tabIndex}-${widgetIndex}`"
           :is="widget.type"
           :target="widget.target"
