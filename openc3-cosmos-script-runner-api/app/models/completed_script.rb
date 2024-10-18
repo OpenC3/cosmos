@@ -35,7 +35,9 @@ class CompletedScript
       year, month, day, hour, minute, second, _ = File.basename(log_name).split('_').map { |num| num.to_i }
       obj = bucket.get_object(bucket: ENV['OPENC3_LOGS_BUCKET'], key: object.key)
       {
-        'user' => obj.metadata['user'],
+        # These are set by running_script.rb/.py in stop_message_log and mark_stopped
+        'id'    => obj.metadata['id'],
+        'user'  => obj.metadata['user'],
         'name'  => obj.metadata['scriptname'],
         'log'   => log_name,
         'start' => Time.new(year, month, day, hour, minute, second).to_s
