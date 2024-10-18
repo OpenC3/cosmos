@@ -300,7 +300,6 @@ export default {
       displayErrorDialog: false,
       displaySendRaw: false,
       displayCriticalCmd: false,
-      criticalTargetName: null,
       criticalCmdUuid: null,
       criticalCmdString: null,
       criticalCmdUser: null,
@@ -851,7 +850,7 @@ export default {
         }
         msg += '")'
         if (!this.history.includes(msg)) {
-          value = msg
+          let value = msg
           if (this.history.length !== 0) {
             value += `\n${this.history}`
           }
