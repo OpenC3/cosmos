@@ -29,9 +29,7 @@
       readonly
       no-resize
       hide-details
-      rows="2"
-      auto-grow
-      max-rows="12"
+      :rows="rows"
       :width="width"
       :model-value="_value"
       :class="valueClass"
@@ -85,6 +83,13 @@ export default {
       return {
         '--aging': this.grayLevel,
       }
+    },
+    rows: function () {
+      // hack to set height since vuetify 3 removed the ability to set the
+      // <textarea>'s height by px and I can't get styling the element to work, either
+      const paddingHeight = 16 // px
+      const rowHeight = 24 // px
+      return (this.height - paddingHeight) / rowHeight
     },
   },
   created: function () {
