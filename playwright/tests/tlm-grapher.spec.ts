@@ -194,7 +194,6 @@ test('edits a graph', async ({ page, utils }) => {
   await page.getByLabel('Y Value').fill('20')
   await page.getByText('white').click()
   await page.getByRole('option', { name: 'darkorange' }).click()
-  await page.getByRole('button', { name: 'Ok' }).click()
 
   await page.getByRole('tab', { name: 'Items' }).click()
   await expect(page.locator('[data-test=edit-graph-items]')).toContainText(

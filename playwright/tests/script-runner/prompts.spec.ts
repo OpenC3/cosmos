@@ -252,7 +252,7 @@ test('opens a dialog with dropdowns for combo_box', async ({ page, utils }) => {
 
   // Clicking go re-launches the dialog
   await page.locator('[data-test=go-button]').click()
-  await page.getByRole('button', { name: /Select/ }).click()
+  await page.getByRole('combobox').filter({ hasText: 'Select' }).click()
   await expect(page.locator('[data-test=state] input')).toHaveValue(
     /waiting \d+s/,
   )
