@@ -1358,6 +1358,12 @@ export default {
     },
     async executeText(text, breakpoints = []) {
       let extension = this.fullFilename.split('.').pop()
+      if (extension.includes(' *')) {
+        extension = extension.split(' *')[0]
+      }
+      if (extension !== 'rb' && extension !== 'py') {
+        extension = 'rb' // Still default to Ruby if we can't determine
+      }
       // Create a new temp script and open in new tab
       const selectionTempFilename =
         TEMP_FOLDER +
