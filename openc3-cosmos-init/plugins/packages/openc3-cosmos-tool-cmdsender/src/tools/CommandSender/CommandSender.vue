@@ -307,8 +307,6 @@ export default {
       displaySendRaw: false,
       displayCriticalCmd: false,
       criticalTargetName: null,
-      criticalCmdName: null,
-      criticalUuid: null,
       sendDisabled: false,
       api: null,
       viewDetails: false,

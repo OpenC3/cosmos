@@ -47,8 +47,6 @@ module OpenC3
     VALID_TYPES = %i(CMD TLM)
     ERB_EXTENSIONS = %w(.txt .rb .py .json .yaml .yml)
     ITEM_MAP_CACHE_TIMEOUT = 10.0
-    LOG_MICROSERVICE = 'log_microservice.rb'
-    WORKDIR_MICROSERVICES = '/openc3/lib/openc3/microservices'
     @@item_map_cache = {}
 
     attr_accessor :folder_name
@@ -911,8 +909,8 @@ module OpenC3
       microservice = MicroserviceModel.new(
         name: microservice_name,
         folder_name: @folder_name,
-        cmd: ["ruby", LOG_MICROSERVICE, microservice_name],
-        work_dir: WORKDIR_MICROSERVICES,
+        cmd: ["ruby", "log_microservice.rb", microservice_name],
+        work_dir: '/openc3/lib/openc3/microservices',
         options: [
           ["RAW_OR_DECOM", "RAW"],
           ["CMD_OR_TLM", "CMD"],
@@ -937,8 +935,8 @@ module OpenC3
       microservice = MicroserviceModel.new(
         name: microservice_name,
         folder_name: @folder_name,
-        cmd: ["ruby", LOG_MICROSERVICE, microservice_name],
-        work_dir: WORKDIR_MICROSERVICES,
+        cmd: ["ruby", "log_microservice.rb", microservice_name],
+        work_dir: '/openc3/lib/openc3/microservices',
         options: [
           ["RAW_OR_DECOM", "DECOM"],
           ["CMD_OR_TLM", "CMD"],
@@ -963,8 +961,8 @@ module OpenC3
       microservice = MicroserviceModel.new(
         name: microservice_name,
         folder_name: @folder_name,
-        cmd: ["ruby", LOG_MICROSERVICE, microservice_name],
-        work_dir: WORKDIR_MICROSERVICES,
+        cmd: ["ruby", "log_microservice.rb", microservice_name],
+        work_dir: '/openc3/lib/openc3/microservices',
         options: [
           ["RAW_OR_DECOM", "RAW"],
           ["CMD_OR_TLM", "TLM"],
@@ -989,8 +987,8 @@ module OpenC3
       microservice = MicroserviceModel.new(
         name: microservice_name,
         folder_name: @folder_name,
-        cmd: ["ruby", LOG_MICROSERVICE, microservice_name],
-        work_dir: WORKDIR_MICROSERVICES,
+        cmd: ["ruby", "log_microservice.rb", microservice_name],
+        work_dir: '/openc3/lib/openc3/microservices',
         options: [
           ["RAW_OR_DECOM", "DECOM"],
           ["CMD_OR_TLM", "TLM"],
@@ -1014,7 +1012,7 @@ module OpenC3
       microservice_name = "#{@scope}__DECOM#{instance}__#{@name}"
       # Assume Ruby initially
       filename = 'decom_microservice.rb'
-      work_dir = WORKDIR_MICROSERVICES
+      work_dir = '/openc3/lib/openc3/microservices'
       if target.language == 'python'
         filename = 'decom_microservice.py'
         work_dir.sub!('openc3/lib', 'openc3/python')
@@ -1044,7 +1042,7 @@ module OpenC3
         name: microservice_name,
         folder_name: @folder_name,
         cmd: ["ruby", "reducer_microservice.rb", microservice_name],
-        work_dir: WORKDIR_MICROSERVICES,
+        work_dir: '/openc3/lib/openc3/microservices',
         options: [
           ["MAX_CPU_UTILIZATION", @reducer_max_cpu_utilization],
           ["BUFFER_DEPTH", @tlm_buffer_depth]
