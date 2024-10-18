@@ -280,6 +280,8 @@ module OpenC3
         case value.upcase
         when '', 'NIL', 'NULL', 'NONE'
           return nil
+        else
+          return value
         end
       end
       return value
@@ -297,6 +299,8 @@ module OpenC3
           return true
         when 'FALSE'
           return false
+        else
+          return value
         end
       end
       return value
