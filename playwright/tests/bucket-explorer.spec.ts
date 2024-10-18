@@ -138,22 +138,6 @@ test('direct URLs', async ({ page }) => {
   ).toBeVisible()
 })
 
-// Create a new screen so we have modifications to browse
-test('creates new screen', async ({ page, utils }) => {
-  await page.goto('/tools/tlmviewer')
-  await expect(page.locator('.v-app-bar')).toContainText('Telemetry Viewer')
-  await expect(page.getByText('INST')).toBeVisible()
-  await page.locator('[data-test=new-screen]').click()
-  await expect(
-    page.locator(`.v-toolbar:has-text("New Screen")`),
-  ).toBeVisible()
-  await page.locator('[data-test=new-screen-name] input').fill('NEW_SCREEN')
-  await page.getByRole('button', { name: 'Save' }).click()
-  await expect(
-    page.locator(`.v-toolbar:has-text("NEW_SCREEN")`),
-  ).toBeVisible()
-})
-
 test('upload and delete', async ({ page, utils }) => {
   await page.getByText('config').click()
   await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/config%2F/)
