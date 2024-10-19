@@ -27,7 +27,7 @@
     <!-- Sizes your content based upon application components -->
     <v-main :style="mainStyle">
       <v-container fluid>
-        <div id="openc3-tool"></div>
+        <div id="openc3-tool" style="overflow: auto"></div>
         <div><router-view /></div>
       </v-container>
     </v-main>
