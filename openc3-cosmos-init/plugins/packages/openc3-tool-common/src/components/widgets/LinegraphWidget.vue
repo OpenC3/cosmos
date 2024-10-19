@@ -36,7 +36,7 @@
     :style="computedStyle"
     @pause="() => (state = 'pause')"
     @start="() => (state = 'start')"
-    hide-system-bar
+    hide-toolbar
     hide-overview
   />
 </template>

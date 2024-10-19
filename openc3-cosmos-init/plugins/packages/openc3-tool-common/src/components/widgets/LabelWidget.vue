@@ -48,7 +48,7 @@ export default {
       return this.parameters[0]
     },
     cssProps() {
-      var size = null
+      let size = null
       if (this.fontSize) {
         size = this.fontSize + 'px'
       }
@@ -65,7 +65,7 @@ export default {
       'LABEL',
       1,
       5,
-      'LABEL <Text> <Font Family> <Font Size> <Font Weight> <Font Style>'
+      'LABEL <Text> <Font Family> <Font Size> <Font Weight> <Font Style>',
     )
     if (this.parameters[1]) {
       this.fontFamily = this.parameters[1]

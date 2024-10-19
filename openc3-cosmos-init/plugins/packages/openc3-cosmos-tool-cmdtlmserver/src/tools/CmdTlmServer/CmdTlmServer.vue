@@ -26,21 +26,21 @@
     <v-card>
       <v-expansion-panels v-model="panel">
         <v-expansion-panel>
-          <v-expansion-panel-header>
+          <v-expansion-panel-title>
             <v-tabs v-model="curTab" fixed-tabs>
               <v-tab
                 v-for="(tab, index) in tabs"
                 :key="index"
                 :to="tab.url"
-                @click.native.stop
-              >
-                {{ tab.name }}
-              </v-tab>
+                :text="tab.name"
+                base-color="var(--color-text-interactive-default)"
+                @click.stop
+              />
             </v-tabs>
-          </v-expansion-panel-header>
-          <v-expansion-panel-content>
+          </v-expansion-panel-title>
+          <v-expansion-panel-text>
             <router-view :refresh-interval="refreshInterval" />
-          </v-expansion-panel-content>
+          </v-expansion-panel-text>
         </v-expansion-panel>
       </v-expansion-panels>
     </v-card>
@@ -48,20 +48,20 @@
     <log-messages :time-zone="timeZone" />
     <v-dialog v-model="optionsDialog" max-width="300">
       <v-card>
-        <v-system-bar>
+        <v-toolbar height="24">
           <v-spacer />
           <span>Options</span>
           <v-spacer />
-        </v-system-bar>
-        <div class="pa-3">
+        </v-toolbar>
+        <div class="mt-6 pa-3">
           <v-text-field
             min="0"
             max="10000"
             step="100"
             type="number"
             label="Refresh Interval (ms)"
-            :value="refreshInterval"
-            @change="refreshInterval = $event"
+            :model-value="refreshInterval"
+            @update:model-value="refreshInterval = $event"
           />
         </div>
       </v-card>
@@ -153,7 +153,7 @@ export default {
   methods: {
     clearCounters() {
       this.api.get_interface_names().then((response) => {
-        for (var i = 0; i < response.length; i++) {
+        for (let i = 0; i < response.length; i++) {
           this.api.interface_cmd(response[i], 'clear_counters')
         }
       })

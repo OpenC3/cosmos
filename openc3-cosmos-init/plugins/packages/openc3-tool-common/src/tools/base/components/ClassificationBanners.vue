@@ -74,6 +74,7 @@ export default {
 <style>
 /* push things up and down to make room for the classification banners */
 #app,
+header,
 #openc3-nav-drawer {
   margin-top: var(--classification-height-top);
 }
@@ -86,6 +87,7 @@ export default {
       var(--classification-height-bottom)
   );
 }
+#openc3-nav-drawer,
 #footer {
   margin-bottom: var(--classification-height-bottom);
 }
@@ -93,7 +95,7 @@ export default {
 /* make the classification banners */
 #app::before,
 #app::after {
-  z-index: 99;
+  z-index: 9999;
   position: fixed;
   left: 0;
   right: 0;

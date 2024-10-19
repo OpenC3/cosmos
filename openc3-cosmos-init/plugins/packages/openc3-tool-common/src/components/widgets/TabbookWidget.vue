@@ -27,23 +27,25 @@
         {{ tab.parameters[0] }}
       </v-tab>
     </v-tabs>
-    <v-tabs-items v-model="curTab">
-      <v-tab-item v-for="(tab, tabIndex) in widgets" :key="tabIndex">
+    <v-window v-model="curTab">
+      <v-window-item v-for="(tab, tabIndex) in widgets" :key="tabIndex">
         <component
           v-for="(widget, widgetIndex) in tab.widgets"
-          v-on="$listeners"
+          v-bind="listeners"
           :key="`${tabIndex}-${widgetIndex}`"
           :is="widget.type"
           :target="widget.target"
           :parameters="widget.parameters"
           :settings="widget.settings"
+          :screen-values="screenValues"
+          :screen-time-zone="screenTimeZone"
           :widgets="widget.widgets"
           :name="widget.name"
           :line="widget.line"
-          :lineNumber="widget.lineNumber"
+          :line-number="widget.lineNumber"
         />
-      </v-tab-item>
-    </v-tabs-items>
+      </v-window-item>
+    </v-window>
   </div>
 </template>
 

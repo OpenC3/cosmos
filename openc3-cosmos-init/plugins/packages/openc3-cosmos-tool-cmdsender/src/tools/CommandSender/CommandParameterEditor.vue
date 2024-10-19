@@ -23,41 +23,38 @@
 <template>
   <div>
     <v-text-field
-      v-if="states === null"
-      :value="textfieldValue"
+      v-if="!states"
+      :model-value="textFieldValue"
+      @update:model-value="handleChange"
       hide-details
-      dense
-      @change="handleChange"
+      density="compact"
+      variant="underlined"
       data-test="cmd-param-value"
     />
-    <v-container v-else>
-      <v-row no-gutters>
-        <v-col>
-          <v-select
-            :items="states"
-            v-model="value.selected_state"
-            @change="handleStateChange"
-            item-text="label"
-            item-value="value"
-            style="primary"
-            :class="stateClass()"
-            hide-details
-            dense
-            outlined
-            data-test="cmd-param-select"
-          />
-        </v-col>
-        <v-col>
-          <v-text-field
-            :value="stateValue"
-            @change="handleChange"
-            hide-details
-            dense
-            data-test="cmd-param-value"
-          />
-        </v-col>
-      </v-row>
-    </v-container>
+    <div v-else class="d-flex align-center">
+      <v-select
+        :items="stateOptions"
+        :model-value="selectValue"
+        @update:model-value="handleChange"
+        item-title="label"
+        :class="stateClass"
+        hide-details
+        density="compact"
+        variant="outlined"
+        placeholder="Select..."
+        min-width="120px"
+        data-test="cmd-param-select"
+      />
+      <v-text-field
+        :model-value="stateValue"
+        disabled
+        hide-details
+        density="compact"
+        variant="underlined"
+        min-width="60px"
+        data-test="cmd-param-value"
+      />
+    </div>
   </div>
 </template>
 
@@ -66,141 +63,60 @@ import Utilities from '@/tools/CommandSender/utilities'
 
 export default {
   mixins: [Utilities],
-  model: {
-    prop: 'initialValue',
-    event: 'input',
-  },
   props: {
+    modelValue: {
+      type: [String, Number],
+      default: undefined,
+    },
+    states: {
+      type: Object,
+      default: () => null,
+    },
     statesInHex: {
       type: Boolean,
       default: false,
     },
-    initialValue: {
-      type: Object,
-      default: () => ({
-        val: '',
-        states: null,
-        selected_state: null,
-        selected_state_label: '',
-        manual_value: null,
-        hazardous: false,
-      }),
-    },
-  },
-  data() {
-    return {
-      value: this.initialValue,
-    }
-  },
-  created() {
-    this.handleChange(this.value.val)
   },
   computed: {
-    textfieldValue() {
-      return this.convertToString(this.value.val)
+    textFieldValue() {
+      return this.convertToString(this.modelValue)
     },
     stateValue() {
       if (this.statesInHex) {
-        return '0x' + this.value.val.toString(16)
+        return '0x' + this.modelValue.toString(16)
       } else {
-        return this.value.val
+        return this.modelValue
       }
     },
-    states() {
-      // check using != because compare with null
-      if (this.value.states != null) {
-        var calcStates = []
-        for (var key in this.value.states) {
-          if (Object.prototype.hasOwnProperty.call(this.value.states, key)) {
-            calcStates.push({
-              label: key,
-              value: this.value.states[key].value,
-              // states which are not hazardous don't have this property set so they are undefined
-              hazardous: this.value.states[key].hazardous,
-            })
-          }
-        }
-        calcStates.push({
-          label: 'MANUALLY ENTERED',
-          value: 'MANUALLY ENTERED',
-          hazardous: undefined, // see above
-        })
-
-        // TBD pick default better (use actual default instead of just first item in list)
-        return calcStates
-      } else {
+    selectValue() {
+      // this makes the placeholder prop work
+      return this.modelValue === '' ? null : this.modelValue
+    },
+    stateOptions() {
+      if (!this.states) {
         return null
       }
+      return Object.keys(this.states).map((label) => {
+        return {
+          label,
+          ...this.states[label],
+        }
+      })
+    },
+    hazardous() {
+      return (
+        Object.entries(this.states)
+          .find(([label, state]) => state.value === this.modelValue)
+          ?.at(1)?.hazardous !== undefined
+      )
+    },
+    stateClass() {
+      return this.hazardous ? 'hazardous mr-4' : 'mr-4'
     },
   },
   methods: {
-    stateClass() {
-      return this.value.hazardous ? 'hazardous mr-4' : 'mr-4'
-    },
     handleChange(value) {
-      this.value.val = value
-      this.value.manual_value = value
-      if (this.value.states) {
-        var selected_state = 'MANUALLY ENTERED'
-        var selected_state_label = 'MANUALLY_ENTERED'
-        for (const state of this.states) {
-          if (state.value === parseInt(value)) {
-            selected_state = parseInt(value)
-            selected_state_label = state.label
-            if (state.hazardous === undefined) {
-              this.value.hazardous = false
-            } else {
-              this.value.hazardous = true
-            }
-            break
-            // If they have ascii states the value might match the state value
-          } else if (state.value === value) {
-            selected_state = value
-            selected_state_label = state.label
-            if (state.hazardous === undefined) {
-              this.value.hazardous = false
-            } else {
-              this.value.hazardous = true
-            }
-            break
-          } else {
-            this.value.hazardous = false
-          }
-        }
-        this.value.selected_state = selected_state
-        this.value.selected_state_label = selected_state_label
-      } else {
-        this.value.selected_state = null
-      }
-      this.$emit('input', this.value)
-    },
-
-    handleStateChange(value) {
-      var selected_state_label = null
-      var selected_state = null
-      for (var index = 0; index < this.states.length; index++) {
-        if (value === this.states[index].value) {
-          if (this.states[index].hazardous === undefined) {
-            this.value.hazardous = false
-          } else {
-            this.value.hazardous = true
-          }
-          selected_state_label = this.states[index].label
-          selected_state = value
-          break
-        }
-      }
-      this.value.selected_state_label = selected_state_label
-      if (selected_state_label === 'MANUALLY ENTERED') {
-        this.value.hazardous = false
-        this.value.val = this.value.manual_value
-        // Stop propagation of the click event so the editor stays active
-        // to let the operator enter a manual value.
-        // event.originalEvent.stopPropagation()
-      } else {
-        this.value.val = selected_state
-        this.$emit('input', this.value)
-      }
+      this.$emit('update:modelValue', value)
     },
   },
 }
@@ -216,7 +132,7 @@ export default {
 .container {
   padding: 0px;
 }
-.hazardous :deep(.v-select__selection) {
-  color: rgb(255, 220, 0);
+.hazardous :deep(.v-select__selection-text) {
+  color: rgb(255, 220, 0) !important;
 }
 </style>
