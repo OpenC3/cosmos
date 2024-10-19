@@ -305,10 +305,11 @@ test('displays local time and UTC time', async ({ page, utils }) => {
   await expect(page.locator('tbody')).toContainText('RECEIVED_TIMEFORMATTED')
 
   let now = new Date()
-  let dateTimeString =
-    (
-      await page.inputValue(`tr:has(td:text-is("PACKET_TIMEFORMATTED")) input`)
-    ).trim() || ''
+  let dateTimeString = await page
+    .getByRole('cell', { name: 'PACKET_TIMEFORMATTED *' })
+    .locator('..')
+    .locator('input')
+    .inputValue()
   let dateTime = parse(dateTimeString, 'yyyy-MM-dd HH:mm:ss.SSS', now)
   expect(
     isWithinInterval(dateTime, {
@@ -316,12 +317,11 @@ test('displays local time and UTC time', async ({ page, utils }) => {
       end: addMinutes(now, 1),
     }),
   ).toBeTruthy()
-  dateTimeString =
-    (
-      await page.inputValue(
-        `tr:has(td div:text-is("RECEIVED_TIMEFORMATTED")) input`,
-      )
-    ).trim() || ''
+  dateTimeString = await page
+    .getByRole('cell', { name: 'RECEIVED_TIMEFORMATTED *' })
+    .locator('..')
+    .locator('input')
+    .inputValue()
   dateTime = parse(dateTimeString, 'yyyy-MM-dd HH:mm:ss.SSS', now)
   expect(
     isWithinInterval(dateTime, {
@@ -344,10 +344,11 @@ test('displays local time and UTC time', async ({ page, utils }) => {
 
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
   now = new Date()
-  dateTimeString =
-    (
-      await page.inputValue(`tr:has(td:text-is("PACKET_TIMEFORMATTED")) input`)
-    ).trim() || ''
+  dateTimeString = await page
+    .getByRole('cell', { name: 'PACKET_TIMEFORMATTED *' })
+    .locator('..')
+    .locator('input')
+    .inputValue()
   dateTime = parse(dateTimeString, 'yyyy-MM-dd HH:mm:ss.SSS', now)
   // dateTime is now in UTC so subtract off the timezone offset to get it back to local time
   dateTime = subMinutes(dateTime, now.getTimezoneOffset())
@@ -357,12 +358,11 @@ test('displays local time and UTC time', async ({ page, utils }) => {
       end: addMinutes(now, 1),
     }),
   ).toBeTruthy()
-  dateTimeString =
-    (
-      await page.inputValue(
-        `tr:has(td div:text-is("RECEIVED_TIMEFORMATTED")) input`,
-      )
-    ).trim() || ''
+  dateTimeString = await page
+    .getByRole('cell', { name: 'RECEIVED_TIMEFORMATTED *' })
+    .locator('..')
+    .locator('input')
+    .inputValue()
   dateTime = parse(dateTimeString, 'yyyy-MM-dd HH:mm:ss.SSS', now)
   // dateTime is now in UTC so subtrack off the timezone offset to get it back to local time
   dateTime = subMinutes(dateTime, now.getTimezoneOffset())
