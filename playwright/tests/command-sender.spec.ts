@@ -472,6 +472,7 @@ test('ignores normal range checks', async ({ page, utils }) => {
   await page.locator('[data-test=command-sender-mode]').click()
   await page.getByText('Ignore Range Checks').click()
   await page.locator('[data-test=command-sender-mode]').click()
+  await utils.sleep(500) // menu closes
 
   await utils.selectTargetPacketItem('EXAMPLE', 'START')
   await page.locator('[data-test=sender-history]').click()

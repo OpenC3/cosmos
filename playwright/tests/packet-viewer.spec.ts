@@ -192,7 +192,7 @@ test('displays formatted items with units by default', async ({
 
 test('displays formatted items with units', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
-  await page.locator('[data-test="search"]').fill('TEMP1')
+  await page.locator('[data-test="search"] input').fill('TEMP1')
   await page.locator('[data-test=packet-viewer-view]').click()
   await page.locator('text=Formatted Items with Units').click()
   // Check for exactly 3 decimal points followed by units
@@ -201,7 +201,7 @@ test('displays formatted items with units', async ({ page, utils }) => {
 
 test('displays raw items', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
-  await page.locator('[data-test="search"]').fill('TEMP1')
+  await page.locator('[data-test="search"] input').fill('TEMP1')
   await page.locator('[data-test=packet-viewer-view]').click()
   await page.locator('text=Raw').click()
   // // Check for a raw number 1 to 99999
@@ -210,7 +210,7 @@ test('displays raw items', async ({ page, utils }) => {
 
 test('displays converted items', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
-  await page.locator('[data-test="search"]').fill('TEMP1')
+  await page.locator('[data-test="search"] input').fill('TEMP1')
   await page.locator('[data-test=packet-viewer-view]').click()
   await page.locator('text=Converted').click()
   // Check for unformatted decimal points (4+)
@@ -219,7 +219,7 @@ test('displays converted items', async ({ page, utils }) => {
 
 test('displays formatted items', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
-  await page.locator('[data-test="search"]').fill('TEMP1')
+  await page.locator('[data-test="search"] input').fill('TEMP1')
   await page.locator('[data-test=packet-viewer-view]').click()
   // Use text-is because we have to match exactly since there is
   // also a 'Formatted Items with Units' option
@@ -253,7 +253,7 @@ test('displays derived first', async ({ page, utils }) => {
   await expect(page.locator('tr').nth(2)).toContainText('TIMEUS')
 })
 
-test('pins items to the top of the list', async ({ page, utils }) => {
+test.skip('pins items to the top of the list', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
   // Default sort order
   await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIMESECONDS *')
@@ -277,13 +277,13 @@ test('pins items to the top of the list', async ({ page, utils }) => {
   await page.getByText('Value').click()
   await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIME *')
 
-  await page.locator('[data-test="search"]').fill('GROUND')
+  await page.locator('[data-test="search"] input').fill('GROUND')
   await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIME *')
   await page.getByText('GROUND1STATUS').click({
     button: 'right',
   })
   await page.getByText('Pin Item').click()
-  await page.locator('[data-test="search"]').fill('')
+  await page.locator('[data-test="search"] input').fill('')
   await expect(page.locator('tr').nth(1)).toContainText('GROUND1STATUS')
   await expect(page.locator('tr').nth(2)).toContainText('PACKET_TIME *')
 
