@@ -33,6 +33,8 @@ from openc3.microservices.interface_decom_common import (
 
 
 class DecomMicroservice(Microservice):
+    LIMITS_STATE_INDEX = { "RED_LOW": 0, "YELLOW_LOW": 1, "YELLOW_HIGH": 2, "RED_HIGH": 3, "GREEN_LOW": 4, "GREEN_HIGH": 5 }
+
     def __init__(self, *args):
         super().__init__(*args)
         # Should only be one target, but there might be multiple decom microservices for a given target
@@ -135,10 +137,20 @@ class DecomMicroservice(Microservice):
         packet_time = packet.packet_time
         if value:
             message = f"{packet.target_name} {packet.packet_name} {item.name} = {value} is {item.limits.state}"
+            if item.limits.values:
+                values = item.limits.values[System.limits_set()]
+                # Check if the state is RED_LOW, YELLOW_LOW, YELLOW_HIGH, RED_HIGH, GREEN_LOW, GREEN_HIGH
+                if DecomMicroservice.LIMITS_STATE_INDEX.get(item.limits.state):
+                    # Directly index into the values and return the value
+                    message += f" ({values[DecomMicroservice.LIMITS_STATE_INDEX[item.limits.state]]})"
+                elif item.limits.state == "GREEN":
+                    # If we're green we display the green range (YELLOW_LOW - YELLOW_HIGH)
+                    message += f" ({values[1]} to {values[2]})"
+                elif item.limits.state == "BLUE":
+                    # If we're blue we display the blue range (GREEN_LOW - GREEN_HIGH)
+                    message += f" ({values[4]} to {values[5]})"
         else:
             message = f"{packet.target_name} {packet.packet_name} {item.name} is disabled"
-        if packet_time:
-            message += f" ({formatted(packet.packet_time)})"
 
         if packet_time:
             time_nsec = to_nsec_from_epoch(packet_time)
