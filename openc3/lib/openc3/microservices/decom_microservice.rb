@@ -28,6 +28,7 @@ require 'openc3/topics/limits_event_topic'
 module OpenC3
   class DecomMicroservice < Microservice
     include InterfaceDecomCommon
+    LIMITS_STATE_INDEX = { RED_LOW: 0, YELLOW_LOW: 1, YELLOW_HIGH: 2, RED_HIGH: 3, GREEN_LOW: 4, GREEN_HIGH: 5 }
 
     def initialize(*args)
       super(*args)
@@ -137,10 +138,23 @@ module OpenC3
       packet_time = packet.packet_time
       if value
         message = "#{packet.target_name} #{packet.packet_name} #{item.name} = #{value} is #{item.limits.state}"
+        if item.limits.values
+          values = item.limits.values[System.limits_set]
+          # Check if the state is RED_LOW, YELLOW_LOW, YELLOW_HIGH, RED_HIGH, GREEN_LOW, GREEN_HIGH
+          if LIMITS_STATE_INDEX[item.limits.state]
+            # Directly index into the values and return the value
+            message += " (#{values[LIMITS_STATE_INDEX[item.limits.state]]})"
+          elsif item.limits.state == :GREEN
+            # If we're green we display the green range (YELLOW_LOW - YELLOW_HIGH)
+            message += " (#{values[1]} to #{values[2]})"
+          elsif item.limits.state == :BLUE
+            # If we're blue we display the blue range (GREEN_LOW - GREEN_HIGH)
+            message += " (#{values[4]} to #{values[5]})"
+          end
+        end
       else
         message = "#{packet.target_name} #{packet.packet_name} #{item.name} is disabled"
       end
-      message << " (#{packet.packet_time.sys.formatted})" if packet_time
 
       time_nsec = packet_time ? packet_time.to_nsec_from_epoch : Time.now.to_nsec_from_epoch
       if log_change
