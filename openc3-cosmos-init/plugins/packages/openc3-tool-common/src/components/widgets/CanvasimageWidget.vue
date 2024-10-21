@@ -28,6 +28,7 @@
     :y="parameters[2]"
     :width="width"
     :height="height"
+    :style="pointerStyle"
     @click="clickHandler"
   />
 </template>
@@ -57,6 +58,17 @@ export default {
         return `${this.parameters[4]}px`
       }
       return '100%'
+    },
+    pointerStyle() {
+      if (this.screenTarget && this.screenName) {
+        return {
+          cursor: 'pointer',
+        }
+      } else {
+        return {
+          cursor: 'default',
+        }
+      }
     },
   },
   created: function () {

@@ -11,7 +11,7 @@ HORIZONTAL
     SETTING SCREEN <%= target_name %> LIMITS
     SETTING TLM <%= target_name %> HEALTH_STATUS TEMP1
   ROLLUP equipment "Processor" "CPU"
-    SETTING SCREEN <%= target_name %> ADCS
+    # No SCREEN should display without pointer cursor
     SETTING TLM <%= target_name %> HEALTH_STATUS TEMP4
   ROLLUP satellite-transmit "Satellite" "all temps"
     SETTING SCREEN <%= target_name %> HS
