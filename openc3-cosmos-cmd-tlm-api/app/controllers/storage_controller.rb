@@ -111,10 +111,23 @@ class StorageController < ApplicationController
 
   def download_file
     return unless authorization('system')
-    volume = ENV[params[:volume]] # Get the actual volume name
-    raise "Unknown volume #{params[:volume]}" unless volume
-    filename = "/#{volume}/#{params[:object_id]}"
-    filename = sanitize_path(filename)
+    if params[:volume]
+      volume = ENV[params[:volume]] # Get the actual volume name
+      raise "Unknown volume #{params[:volume]}" unless volume
+      filename = "/#{volume}/#{params[:object_id]}"
+      filename = sanitize_path(filename)
+    elsif params[:bucket]
+      tmp_dir = Dir.mktmpdir
+      bucket_name = ENV[params[:bucket]] # Get the actual bucket name
+      raise "Unknown bucket #{params[:bucket]}" unless bucket_name
+      remote_path = sanitize_path(params[:object_id])
+      filename = File.join(tmp_dir, params[:object_id])
+      # Ensure dir structure exists, get_object fails if not
+      FileUtils.mkdir_p(File.dirname(filename))
+      OpenC3::Bucket.getClient().get_object(bucket: bucket_name, key: remote_path, path: filename)
+    else
+      raise "No volume or bucket given"
+    end
     file = File.read(filename, mode: 'rb')
     render :json => { filename: params[:object_id], contents: Base64.encode64(file) }
   rescue Exception => e

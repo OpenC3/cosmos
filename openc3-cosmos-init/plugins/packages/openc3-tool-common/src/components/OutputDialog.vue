@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -21,87 +21,32 @@
 -->
 
 <template>
-  <v-dialog :persistent="!readonly" v-model="show" width="80vw">
+  <v-dialog v-model="show" width="85vw">
     <v-card>
-      <form v-on:submit.prevent="submit">
-        <v-system-bar>
-          <v-spacer />
-          <span v-text="title" />
-          <v-spacer />
-          <div class="mx-2">
-            <v-tooltip top>
-              <template v-slot:activator="{ on, attrs }">
-                <div v-on="on" v-bind="attrs">
-                  <v-icon data-test="downloadIcon" @click="download">
-                    mdi-download
-                  </v-icon>
-                </div>
-              </template>
-              <span> Download </span>
-            </v-tooltip>
-          </div>
-        </v-system-bar>
-
-        <v-card-text>
-          <div class="pa-3">
-            <div v-if="!readonly">
-              <v-row class="mt-3"> Upload a file. </v-row>
-              <v-row no-gutters align="center">
-                <v-col cols="3">
-                  <v-btn
-                    block
-                    color="success"
-                    @click="loadFile"
-                    :disabled="!file || loadingFile || readonly"
-                    :loading="loadingFile"
-                    data-test="editScreenLoadBtn"
-                  >
-                    Load
-                    <template v-slot:loader>
-                      <span>Loading...</span>
-                    </template>
-                  </v-btn>
-                </v-col>
-                <v-col cols="9">
-                  <v-file-input
-                    v-model="file"
-                    accept=".json"
-                    label="Click to select .json file."
-                    :disabled="readonly"
-                  />
-                </v-col>
-              </v-row>
-            </div>
-            <v-row no-gutters>
-              <pre class="editor" ref="editor"></pre>
-            </v-row>
-            <v-row class="my-3">
-              <span class="red--text" v-show="error" v-text="error" />
-            </v-row>
-            <v-row>
-              <v-spacer />
-              <v-btn
-                @click.prevent="close"
-                outlined
-                class="mx-2"
-                data-test="editCancelBtn"
-              >
-                Cancel
-              </v-btn>
-              <v-btn
-                v-if="!readonly"
-                class="mx-2"
-                color="primary"
-                type="submit"
-                data-test="editSubmitBtn"
-                :disabled="!!error || readonly"
-              >
-                Save
-              </v-btn>
-            </v-row>
-          </div>
-        </v-card-text>
-      </form>
+      <v-system-bar>
+        <v-spacer />
+        <span v-text="title" />
+        <v-spacer />
+        <div class="mx-2">
+          <v-tooltip top>
+            <template v-slot:activator="{ on, attrs }">
+              <div v-on="on" v-bind="attrs">
+                <v-icon data-test="downloadIcon" @click="download">
+                  mdi-download
+                </v-icon>
+              </div>
+            </template>
+            <span> Download </span>
+          </v-tooltip>
+        </div>
+      </v-system-bar>
+      <v-card-text>
+        <pre class="editor" ref="editor"></pre>
+      </v-card-text>
+      <v-card-actions>
+        <v-spacer />
+        <v-btn color="primary" @click="close"> Ok </v-btn>
+      </v-card-actions>
     </v-card>
   </v-dialog>
 </template>
@@ -123,7 +68,10 @@ export default {
     type: String,
     name: String,
     value: Boolean, // value is the default prop when using v-model
-    readonly: Boolean,
+    filename: {
+      type: String,
+      required: false,
+    },
   },
   data() {
     return {
@@ -142,9 +90,7 @@ export default {
     this.editor.setValue(this.content)
     this.editor.clearSelection()
     this.editor.focus()
-    if (this.readonly) {
-      this.editor.setReadOnly(true)
-    }
+    this.editor.setReadOnly(true)
   },
   beforeDestroy() {
     if (this.editor) {
@@ -163,18 +109,8 @@ export default {
     title: function () {
       return `${this.type}: ${this.name}`
     },
-    error: function () {
-      if (this.editor && this.editor.getValue() === '' && !this.file) {
-        return 'Input can not be blank.'
-      }
-      return null
-    },
   },
   methods: {
-    submit: function () {
-      this.$emit('submit', this.editor.getValue())
-      this.show = !this.show
-    },
     close: function () {
       this.show = !this.show
     },
@@ -183,12 +119,13 @@ export default {
         type: 'text/plain',
       })
       // Make a link and then 'click' on it to start the download
+      let filename = `${this.type.toLowerCase()}_${this.name.toLowerCase()}.json`
+      if (this.filename) {
+        filename = this.filename
+      }
       const link = document.createElement('a')
       link.href = URL.createObjectURL(blob)
-      link.setAttribute(
-        'download',
-        `${this.type.toLowerCase()}_${this.name.toLowerCase()}.json`,
-      )
+      link.setAttribute('download', filename)
       link.click()
     },
     buildPluginMode() {
@@ -224,8 +161,8 @@ export default {
 
 <style scoped>
 .editor {
-  height: 50vh;
-  width: 75vw;
+  height: 75vh;
+  width: 80vw;
   position: relative;
   font-size: 16px;
 }
