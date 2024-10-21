@@ -17,20 +17,30 @@
 -->
 
 <template>
-  <div class="limitsbar" :style="[cssProps, computedStyle]">
-    <div class="limitsbar__container">
-      <div class="limitsbar__redlow" />
-      <div class="limitsbar__redhigh" />
-      <div class="limitsbar__yellowlow" />
-      <div class="limitsbar__yellowhigh" />
-      <div class="limitsbar__greenlow" />
-      <div class="limitsbar__greenhigh" />
-      <div class="limitsbar__blue" />
+  <v-tooltip bottom>
+    <template v-slot:activator="{ on, attrs }">
+      <div
+        class="limitsbar"
+        :style="[cssProps, computedStyle]"
+        v-bind="attrs"
+        v-on="on"
+      >
+        <div class="limitsbar__container">
+          <div class="limitsbar__redlow" />
+          <div class="limitsbar__redhigh" />
+          <div class="limitsbar__yellowlow" />
+          <div class="limitsbar__yellowhigh" />
+          <div class="limitsbar__greenlow" />
+          <div class="limitsbar__greenhigh" />
+          <div class="limitsbar__blue" />
 
-      <div class="limitsbar__line" />
-      <div class="limitsbar__arrow" />
-    </div>
-  </div>
+          <div class="limitsbar__line" />
+          <div class="limitsbar__arrow" />
+        </div>
+      </div>
+    </template>
+    <span>{{ limitsRange }}</span>
+  </v-tooltip>
 </template>
 
 <script>
@@ -43,6 +53,11 @@ export default {
       width: 160, // px
       height: 22, // px
     }
+  },
+  computed: {
+    limitsRange() {
+      return this.limitsSettings[this.selectedLimitsSet]
+    },
   },
 }
 </script>
