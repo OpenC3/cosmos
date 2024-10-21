@@ -30,7 +30,7 @@
           <template v-slot:append>
             <v-tooltip location="bottom">
               <template v-slot:activator="{ props }">
-                <v-icon @click="showRouter(router)" v-bind="props">
+                <v-icon v-bind="props" @click="showRouter(router)">
                   mdi-eye
                 </v-icon>
               </template>

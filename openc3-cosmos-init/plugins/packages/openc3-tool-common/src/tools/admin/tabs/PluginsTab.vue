@@ -106,8 +106,8 @@
             <v-tooltip v-else location="bottom">
               <template v-slot:activator="{ props }">
                 <v-icon
-                  @click="showOutput(process)"
                   v-bind="props"
+                  @click="showOutput(process)"
                   data-test="show-output"
                 >
                   mdi-eye
@@ -148,8 +148,8 @@
               <v-tooltip location="bottom">
                 <template v-slot:activator="{ props }">
                   <v-icon
-                    @click="downloadPlugin(plugin)"
                     v-bind="props"
+                    @click="downloadPlugin(plugin)"
                     data-test="download-plugin"
                   >
                     mdi-download
@@ -162,8 +162,8 @@
               <v-tooltip location="bottom">
                 <template v-slot:activator="{ props }">
                   <v-icon
-                    @click="editPlugin(plugin)"
                     v-bind="props"
+                    @click="editPlugin(plugin)"
                     data-test="edit-plugin"
                   >
                     mdi-pencil
@@ -176,8 +176,8 @@
               <v-tooltip location="bottom">
                 <template v-slot:activator="{ props }">
                   <v-icon
-                    @click="upgradePlugin(plugin)"
                     v-bind="props"
+                    @click="upgradePlugin(plugin)"
                     data-test="upgrade-plugin"
                   >
                     mdi-update
@@ -190,8 +190,8 @@
               <v-tooltip location="bottom">
                 <template v-slot:activator="{ props }">
                   <v-icon
-                    @click="deletePrompt(plugin)"
                     v-bind="props"
+                    @click="deletePrompt(plugin)"
                     data-test="delete-plugin"
                   >
                     mdi-delete

@@ -267,8 +267,8 @@ export default {
   mounted() {
     this.grid = new Muuri('.grid', {
       dragEnabled: true,
-      // Only allow drags starting from the v-system-bar title
-      dragHandle: '.v-system-bar',
+      // Only allow drags starting from the v-toolbar title
+      dragHandle: '.v-toolbar',
     })
     this.grid.on('dragEnd', this.refreshLayout)
   },

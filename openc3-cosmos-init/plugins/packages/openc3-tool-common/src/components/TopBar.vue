@@ -31,8 +31,8 @@
       <v-menu ref="topmenu" v-for="(menu, i) in menus" :key="i">
         <template v-slot:activator="{ props }">
           <v-btn
-            variant="outlined"
             v-bind="props"
+            variant="outlined"
             class="mx-1 menu-button"
             :data-test="formatDT(`${title} ${menu.label}`)"
           >
@@ -50,9 +50,9 @@
               <v-menu open-on-hover location="right" :key="j">
                 <template v-slot:activator="{ props }">
                   <v-list-item
+                    v-bind="props"
                     :disabled="option.disabled"
                     :key="j"
-                    v-bind="props"
                   >
                     <template v-slot:prepend v-if="option.icon">
                       <v-icon :disabled="option.disabled">

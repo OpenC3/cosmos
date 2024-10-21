@@ -305,12 +305,12 @@ test.describe(() => {
     // await utils.sleep(500)
     // await page.locator('[data-test=new-screen]').click()
     // await expect(
-    //   page.locator(`.v-system-bar:has-text("New Screen")`),
+    //   page.locator(`.v-toolbar:has-text("New Screen")`),
     // ).toBeVisible()
     // await page.locator('[data-test=new-screen-name]').fill('NEW_SCREEN')
     // await page.locator('button:has-text("Save")').click()
     // await expect(
-    //   page.locator(`.v-system-bar:has-text("PW_TEST NEW_SCREEN")`),
+    //   page.locator(`.v-toolbar:has-text("PW_TEST NEW_SCREEN")`),
     // ).toBeVisible()
 
     // Download the changes
@@ -543,12 +543,12 @@ test.describe(() => {
     await utils.sleep(500)
     await page.locator('[data-test=new-screen]').click()
     await expect(
-      page.locator(`.v-system-bar:has-text("New Screen")`),
+      page.locator(`.v-toolbar:has-text("New Screen")`),
     ).toBeVisible()
     await page.locator('[data-test=new-screen-name]').fill('NEW_SCREEN')
     await page.getByRole('button', { name: 'Save' }).click()
     await expect(
-      page.locator(`.v-system-bar:has-text("NEW_TGT NEW_SCREEN")`),
+      page.locator(`.v-toolbar:has-text("NEW_TGT NEW_SCREEN")`),
     ).toBeVisible()
   })
 })

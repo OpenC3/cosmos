@@ -84,8 +84,8 @@
                     <v-tooltip location="bottom">
                       <template v-slot:activator="{ props }">
                         <v-icon
-                          @click="downloadGem(data)"
                           v-bind="props"
+                          @click="downloadGem(data)"
                           :disabled="activeDownload"
                         >
                           mdi-cloud-download

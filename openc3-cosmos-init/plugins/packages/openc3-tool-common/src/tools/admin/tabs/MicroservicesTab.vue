@@ -39,8 +39,8 @@
                 <v-tooltip location="bottom">
                   <template v-slot:activator="{ props }">
                     <v-icon
-                      @click="showMicroserviceError(microservice)"
                       v-bind="props"
+                      @click="showMicroserviceError(microservice)"
                     >
                       mdi-alert
                     </v-icon>
@@ -51,7 +51,7 @@
             </div>
             <v-tooltip location="bottom">
               <template v-slot:activator="{ props }">
-                <v-icon @click="showMicroservice(microservice)" v-bind="props">
+                <v-icon v-bind="props" @click="showMicroservice(microservice)">
                   mdi-eye
                 </v-icon>
               </template>

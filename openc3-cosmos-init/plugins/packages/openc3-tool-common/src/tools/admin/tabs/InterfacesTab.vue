@@ -30,7 +30,7 @@
           <template v-slot:append>
             <v-tooltip location="bottom">
               <template v-slot:activator="{ props }">
-                <v-icon @click="showInterface(openc3_interface)" v-bind="props">
+                <v-icon v-bind="props" @click="showInterface(openc3_interface)">
                   mdi-eye
                 </v-icon>
               </template>

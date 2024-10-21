@@ -84,7 +84,7 @@
           <template v-slot:append v-if="process.state !== 'Running'">
             <v-tooltip location="bottom">
               <template v-slot:activator="{ props }">
-                <v-icon @click="showOutput(process)" v-bind="props">
+                <v-icon v-bind="props" @click="showOutput(process)">
                   mdi-eye
                 </v-icon>
               </template>
@@ -104,7 +104,7 @@
           <template v-slot:append>
             <v-tooltip location="bottom">
               <template v-slot:activator="{ props }">
-                <v-icon @click="deletePackage(gem)" v-bind="props">
+                <v-icon v-bind="props" @click="deletePackage(gem)">
                   mdi-delete
                 </v-icon>
               </template>
@@ -122,7 +122,7 @@
           <template v-slot:append>
             <v-tooltip location="bottom">
               <template v-slot:activator="{ props }">
-                <v-icon @click="deletePackage(pkg)" v-bind="props">
+                <v-icon v-bind="props" @click="deletePackage(pkg)">
                   mdi-delete
                 </v-icon>
               </template>

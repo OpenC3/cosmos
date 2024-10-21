@@ -61,7 +61,7 @@
           <template v-slot:append>
             <v-tooltip location="bottom">
               <template v-slot:activator="{ props }">
-                <v-icon @click="editTool(tool)" v-bind="props">
+                <v-icon v-bind="props" @click="editTool(tool)">
                   mdi-pencil
                 </v-icon>
               </template>
@@ -69,7 +69,7 @@
             </v-tooltip>
             <v-tooltip location="bottom">
               <template v-slot:activator="{ props }">
-                <v-icon @click="deleteTool(tool)" v-bind="props">
+                <v-icon v-bind="props" @click="deleteTool(tool)">
                   mdi-delete
                 </v-icon>
               </template>

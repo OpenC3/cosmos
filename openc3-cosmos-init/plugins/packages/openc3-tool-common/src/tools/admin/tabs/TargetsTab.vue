@@ -34,7 +34,7 @@
             <div class="mx-3" v-if="target.modified">
               <v-tooltip location="bottom">
                 <template v-slot:activator="{ props }">
-                  <v-icon @click="downloadTarget(target.name)" v-bind="props">
+                  <v-icon v-bind="props" @click="downloadTarget(target.name)">
                     mdi-download
                   </v-icon>
                 </template>
@@ -43,7 +43,7 @@
             </div>
             <v-tooltip location="bottom">
               <template v-slot:activator="{ props }">
-                <v-icon @click="showTarget(target.name)" v-bind="props">
+                <v-icon v-bind="props" @click="showTarget(target.name)">
                   mdi-eye
                 </v-icon>
               </template>

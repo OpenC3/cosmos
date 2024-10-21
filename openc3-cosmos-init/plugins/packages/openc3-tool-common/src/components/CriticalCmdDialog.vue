@@ -94,7 +94,7 @@ export default {
       type: Boolean,
       default: false,
     },
-    value: Boolean, // value is the default prop when using v-model
+    modelValue: Boolean, // modelValue is the default prop when using v-model
   },
   data() {
     return {
@@ -109,10 +109,10 @@ export default {
   computed: {
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value) // update:modelValue is the default event when using v-model
       },
     },
     formValid: function () {
@@ -133,7 +133,7 @@ export default {
     // Create a watcher on value which is the indicator to display the dialog
     // If value is true we request the details from the server
     // If this is a tlm dialog we setup an interval to get the telemetry values
-    value: function (newValue, oldValue) {
+    modelValue: function (newValue, oldValue) {
       if (newValue) {
         // Check if we can approve without username/password
         Api.get('/openc3-api/criticalcmd/canapprove/' + this.uuid).then(

@@ -356,8 +356,8 @@ export default {
     this.grid = new Muuri('.grid', {
       dragEnabled: true,
       layoutOnResize: true,
-      // Only allow drags starting from the v-system-bar title
-      dragHandle: '.v-system-bar',
+      // Only allow drags starting from the v-toolbar title
+      dragHandle: '.v-toolbar',
     })
     // Sometimes when we move graphs, other graphs become non-interactive
     // This seems to fix that issue

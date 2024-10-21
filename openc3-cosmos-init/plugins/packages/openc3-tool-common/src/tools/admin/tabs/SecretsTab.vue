@@ -71,7 +71,7 @@
           <template v-slot:append>
             <v-tooltip location="bottom">
               <template v-slot:activator="{ props }">
-                <v-icon @click="deleteSecret(secret)" v-bind="props">
+                <v-icon v-bind="props" @click="deleteSecret(secret)">
                   mdi-delete
                 </v-icon>
               </template>
