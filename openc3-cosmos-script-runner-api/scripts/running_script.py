@@ -674,6 +674,8 @@ class RunningScript:
                         time_formatted = json_hash["@timestamp"]
                     if "log" in json_hash:
                         out_line = json_hash["log"]
+                    if "message" in json_hash:
+                        out_line = json_hash["message"]
                 except:
                     # Regular output
                     pass

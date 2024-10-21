@@ -943,7 +943,11 @@ class RunningScript
         begin
           json = JSON.parse(out_line, :allow_nan => true, :create_additions => true)
           time_formatted = Time.parse(json["@timestamp"]).sys.formatted if json["@timestamp"]
-          out_line = json["log"] if json["log"]
+          if json["log"]
+            out_line = json["log"]
+          elsif json["message"]
+            out_line = json["message"]
+          end
         rescue
           # Regular output
         end
