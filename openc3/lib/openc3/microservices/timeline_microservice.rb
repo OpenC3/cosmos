@@ -165,15 +165,16 @@ module OpenC3
       @name = name
       @activities_mutex = Mutex.new
       @activities = []
+      # This can stay relatively small since it's only the currently queued
+      # activities. Once a worker thread processes it we no longer care.
       @size = 20
       @queue = Array.new(@size)
       @index = 0
     end
 
-    def not_queued?(start)
-      return false if @queue.index(start)
-
-      @queue[@index] = start
+    def not_queued?(activity)
+      return false if @queue.index(activity.uuid)
+      @queue[@index] = activity.uuid
       @index = @index + 1 >= @size ? 0 : @index + 1
       return true
     end
@@ -190,17 +191,17 @@ module OpenC3
       end
     end
 
-    def add_activity(input_activity)
+    def add_activity(activity)
       @activities_mutex.synchronize do
-        if @activities.find { |x| x.start == input_activity.start }.nil?
-          @activities << input_activity
-        end
+        @activities << activity
       end
     end
 
-    def remove_activity(input_activity)
+    def remove_activity(data)
       @activities_mutex.synchronize do
-        @activities.delete_if { |h| h.start == input_activity.start }
+        @activities.delete_if do |a|
+          a.start == data['start'] && a.uuid == data['uuid']
+        end
       end
     end
   end
@@ -237,14 +238,14 @@ module OpenC3
         start = Time.now.to_f
         @schedule.activities.each do |activity|
           start_difference = activity.start - start
-          if start_difference <= 0 && @schedule.not_queued?(activity.start)
+          if start_difference <= 0 && @schedule.not_queued?(activity)
             @logger.debug "#{@timeline_name} #{@scope} current start: #{start}, vs #{activity.start}, #{start_difference}"
             activity.add_event(status: 'queued')
             @queue << activity
           end
         end
         if start >= @expire
-          add_expire_activity()
+          @queue << add_expire_activity()
           request_update(start: start)
         end
         break if @cancel_thread
@@ -267,7 +268,6 @@ module OpenC3
         kind: 'expire',
         data: {}
       )
-      @queue << activity
       return activity
     end
 
@@ -381,9 +381,7 @@ module OpenC3
     def remove_activity_from_event(data)
       diff = data['start'] - Time.now.to_f
       return if diff < 0 or diff > 3600
-
-      activity = ActivityModel.from_json(data, name: @timeline_name, scope: @scope)
-      @schedule.remove_activity(activity)
+      @schedule.remove_activity(data)
     end
 
     def shutdown

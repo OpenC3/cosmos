@@ -121,7 +121,7 @@ module OpenC3
 
       notification = {
         # start / stop to match SortedModel
-        'data' => JSON.generate({'start' => score}),
+        'data' => JSON.generate({'start' => score, 'uuid' => uuid}),
         'kind' => 'deleted',
         'type' => 'activity',
         'timeline' => name
