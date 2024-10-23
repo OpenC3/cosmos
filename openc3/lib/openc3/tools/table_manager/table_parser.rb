@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -57,10 +57,10 @@ module OpenC3
       end
       type = params[2].to_s.upcase.to_sym
       case type
-      when :KEY_VALUE, :ONE_DIMENSIONAL # :ONE_DIMENSIONAL is deprecated
+      when :KEY_VALUE
         @parser.verify_num_parameters(3, 4, @usage)
         description = params[3].to_s
-      when :ROW_COLUMN, :TWO_DIMENSIONAL # :TWO_DIMENSIONAL is deprecated
+      when :ROW_COLUMN
         @parser.verify_num_parameters(4, 5, @usage)
         num_rows = params[3].to_i
         description = params[4].to_s

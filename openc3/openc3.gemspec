@@ -94,8 +94,6 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'rubyzip',   '~> 2.3'
   s.add_runtime_dependency 'uuidtools', '~> 2.2'
   s.add_runtime_dependency 'yard',      '~> 0.9'
-  # NOTE: httpclient is now deprecated ... remove in future release
-  s.add_runtime_dependency 'httpclient', '~> 2.8'
   # faraday includes faraday-net_http as the default adapter
   s.add_runtime_dependency 'aws-sdk-s3', '< 2'
   s.add_runtime_dependency 'cbor', '~> 0.5.9.6'
