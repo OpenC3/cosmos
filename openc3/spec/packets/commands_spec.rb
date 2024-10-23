@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -276,6 +276,10 @@ module OpenC3
 
       it "complains about out of range item values" do
         expect { @cmd.build_cmd("tgt1", "pkt1", { "item2" => 1000 }) }.to raise_error(RuntimeError, "Command parameter 'TGT1 PKT1 ITEM2' = 1000 not in valid range of 0 to 254")
+      end
+
+      it "complains about out of range item states" do
+        expect { @cmd.build_cmd("tgt1", "pkt2", { "item2" => "OTHER" }) }.to raise_error(RuntimeError, "Command parameter 'TGT1 PKT2 ITEM2' = OTHER not one of BAD1, BAD2, GOOD")
       end
 
       it "ignores out of range item values if requested" do
