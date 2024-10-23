@@ -210,6 +210,7 @@ class MessagesThread < TopicsThread
         return log_entry
       end
     end
+    return log_entry
   end
 
   def thread_teardown
