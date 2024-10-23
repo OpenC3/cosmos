@@ -41,5 +41,5 @@ test('displays interface details', async ({ page, utils }) => {
   await utils.download(page, '[data-test="downloadIcon"]', function (contents) {
     expect(contents).toContain('"name": "INST_INT"')
   })
-  await page.locator('[data-test="editCancelBtn"]').click()
+  await page.getByRole('button', { name: 'Ok' }).click()
 })
