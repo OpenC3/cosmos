@@ -633,6 +633,12 @@ Generally the template file is formatted in JSON or HTML and then values are fil
 Used for packet definitions that can be used as structures for items with a given packet.
 
 
+### RESTRICTED
+<div class="right">(Since 5.20.0)</div>**Marks this packet as restricted and will require approval if critical commanding is enabled**
+
+Used as one of the two types of critical commands (HAZARDOUS and RESTRICTED)
+
+
 ### VALIDATOR
 <div class="right">(Since 5.19.0)</div>**Defines a validator class for a command**
 
