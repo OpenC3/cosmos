@@ -47,7 +47,7 @@ const router = createRouter({
 })
 
 router.beforeEach((to) => {
-  if (to.path == '/' || to.path == '/tools' || to.path == '/tools/') {
+  if (['/', '/tools', '/tools/'].includes(to.path)) {
     navigateToUrl(DEFAULT_TOOL_PATH)
   }
 })

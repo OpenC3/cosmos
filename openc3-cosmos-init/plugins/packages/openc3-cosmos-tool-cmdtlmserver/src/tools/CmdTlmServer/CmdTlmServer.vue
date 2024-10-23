@@ -27,13 +27,12 @@
       <v-expansion-panels v-model="panel">
         <v-expansion-panel>
           <v-expansion-panel-title>
-            <v-tabs v-model="curTab" fixed-tabs>
+            <v-tabs v-model="curTab" fixed-tabs grow align-tabs="start">
               <v-tab
                 v-for="(tab, index) in tabs"
                 :key="index"
                 :to="tab.url"
                 :text="tab.name"
-                base-color="var(--color-text-interactive-default)"
                 @click.stop
               />
             </v-tabs>
@@ -163,7 +162,7 @@ export default {
 </script>
 
 <style scoped>
-.v-expansion-panel-content :deep(.v-expansion-panel-content__wrap) {
+.v-expansion-panel-text :deep(.v-expansion-panel-text__wrapper) {
   padding: 0px;
 }
 .v-list :deep(.v-label) {
@@ -176,7 +175,7 @@ export default {
 .v-list-item__title {
   color: white;
 }
-.v-expansion-panel-header {
+.v-expansion-panel-title {
   min-height: initial;
   padding: 0px;
 }

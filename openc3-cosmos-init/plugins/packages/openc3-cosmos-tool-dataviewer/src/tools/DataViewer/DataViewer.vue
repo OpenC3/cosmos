@@ -866,12 +866,12 @@ export default {
 </script>
 
 <style scoped>
-.v-expansion-panel-content {
+.v-expansion-panel-text {
   .container {
     margin: 0px;
   }
 }
-.v-expansion-panel-header {
+.v-expansion-panel-title {
   min-height: 10px;
   padding: 5px;
 }

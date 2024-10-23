@@ -71,12 +71,6 @@
   ):hover {
   border-color: var(--button-color-border-primary-hover) !important;
 }
-// TODO: This doesn't appear to be working ... the background is still black
-// Icon buttons shouldn't have backgrounds or box-shadows
-.v-theme--cosmosdark.v-btn--icon {
-  background-color: unset !important;
-  box-shadow: unset !important;
-}
 
 body,
 .v-theme--cosmosDark.v-application,
@@ -85,18 +79,12 @@ body,
   background-color: var(--color-background-base-default);
 }
 
-/*
-// This worked in vuetify 2 to set the tab text color to blue, but it isn't working in vuetify 3. I set the colors with
-// the `base-color` prop on <v-tab> instead, which uses a style tag to force the text color.
-// If we could get <v-tab> to use .v-btn--variant-block instead of .v-btn--variant-text that would also work, but that
-// is currently not exposed through their api.
-.v-theme--cosmosDark.v-tabs > .v-slide-group__container .v-tab--disabled,
-.v-theme--cosmosDark.v-tabs > .v-slide-group__container .v-tab:not(.v-tab--active),
-.v-theme--cosmosDark.v-tabs > .v-slide-group__container .v-tab:not(.v-tab--active) > .v-btn,
-.v-theme--cosmosDark.v-tabs > .v-slide-group__container .v-tab:not(.v-tab--active) > .v-icon {
+.v-theme--cosmosDark .v-tabs > .v-slide-group__container .v-tab--disabled,
+.v-theme--cosmosDark .v-tabs > .v-slide-group__container .v-tab:not(.v-tab--selected),
+.v-theme--cosmosDark .v-tabs > .v-slide-group__container .v-tab:not(.v-tab--selected).v-btn,
+.v-theme--cosmosDark .v-tabs > .v-slide-group__container .v-tab:not(.v-tab--selected).v-icon {
   color: var(--color-text-interactive-default) !important;
 }
-*/
 .v-tab--selected {
   background-color: var(--color-background-surface-selected) !important;
   color: var(--color-text-interactive-default) !important;
@@ -122,12 +110,7 @@ body,
   min-height: unset !important;
 }
 
-// Make the expansion panel title the same height as the system bar
-.v-expansion-panel-title {
-  height: 24px !important;
-}
-
-.mdi-magnify {
+.v-field__prepend-inner .mdi-magnify {
   color: var(--color-text-interactive-default) !important;
 }
 
@@ -135,14 +118,12 @@ table,
 .v-stepper,
 .v-expansion-panel-text,
 .v-theme--cosmosDark.v-data-table,
-.v-theme--cosmosDark.v-dialog:not(.v-overlay),
-.v-theme--cosmosDark.v-overlay__content,
+.v-theme--cosmosDark.v-dialog,
 .v-theme--cosmosDark.v-card,
 .v-theme--cosmosDark.v-date-picker-table,
 .v-theme--cosmosDark.v-time-picker-clock__container,
 .v-theme--cosmosDark.v-expansion-panel,
 .v-theme--cosmosDark.v-expansion-panels,
-.v-theme--cosmosDark.v-list,
 .v-theme--cosmosDark.p-menubar {
   background-color: var(--color-background-surface-default) !important;
 }
@@ -151,6 +132,10 @@ table,
 }
 .v-list {
   color: white !important;
+}
+
+.v-menu > .v-overlay__content > .v-theme--cosmosDark.v-list {
+  background-color: var(--color-background-surface-default);
 }
 
 .v-theme--cosmosDark.v-overlay--active[role='dialog'] {
@@ -189,7 +174,7 @@ table,
 .v-theme--cosmosDark.v-select {
   border-color: var(--button-color-border-interactive-default) !important;
   color: var(--color-text-interactive-default) !important;
-  background-color: var(--color-background-surface-default) !important;
+  background-color: var(--color-background-base-default) !important;
 }
 
 .v-theme--cosmosDark.v-autocomplete label,
@@ -197,7 +182,7 @@ table,
   color: whitesmoke !important;
 }
 
-.v-theme--cosmosDark.v-select .v-field {
+.v-theme--cosmosDark.v-select fieldset {
   border: 1px solid var(--color-border-interactive-muted);
   background-color: var(--color-background-base-default);
 }
@@ -251,7 +236,7 @@ body a:hover {
   font-size: 1.125rem;
 }
 // Astro recommends 1rem for text and table items
-.v-card__text, // TODO: v-card__text no longer exists in vuetify 3
+.v-card,
 .v-data-table > .v-table__wrapper > table > tbody > tr > th,
 .v-data-table > .v-table__wrapper > table > tfoot > tr > th,
 .v-data-table > .v-table__wrapper > table > thead > tr > th,
