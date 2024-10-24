@@ -775,6 +775,7 @@ class Packet(Structure):
                 continue
             if item.default is not None:
                 if not (skip_item_names and item.name in upcase_skip_item_names):
+                    print(item.name)
                     self.write_item(item, item.default, "CONVERTED", buffer)
 
     # Define the reserved items on the current telemetry packet
