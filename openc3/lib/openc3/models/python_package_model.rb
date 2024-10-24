@@ -92,7 +92,7 @@ module OpenC3
         end
       end
       Logger.info "Installing python package: #{name_or_path}"
-      result = OpenC3::ProcessManager.instance.spawn(["/openc3/bin/pipinstall", "--user", "--no-warn-script-location", "-i", pypi_url, package_file_path], "package_install", package_filename, Time.now + 3600.0, scope: scope)
+      result = OpenC3::ProcessManager.instance.spawn(["/openc3/bin/pipinstall", "--no-warn-script-location", "-i", pypi_url, package_file_path], "package_install", package_filename, Time.now + 3600.0, scope: scope)
       return result.name
     end
 

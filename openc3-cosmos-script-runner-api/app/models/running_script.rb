@@ -585,6 +585,7 @@ class RunningScript
 
   def stop_message_log
     metadata = {
+      "id" => @id,
       "user" => @details['user'],
       "scriptname" => unique_filename()
     }
@@ -945,7 +946,11 @@ class RunningScript
         begin
           json = JSON.parse(out_line, :allow_nan => true, :create_additions => true)
           time_formatted = Time.parse(json["@timestamp"]).sys.formatted if json["@timestamp"]
-          out_line = json["log"] if json["log"]
+          if json["log"]
+            out_line = json["log"]
+          elsif json["message"]
+            out_line = json["message"]
+          end
         rescue
           # Regular output
         end
@@ -1078,6 +1083,7 @@ class RunningScript
       bucket_key = File.join("#{@scope}/tool_logs/sr/", File.basename(filename)[0..9].gsub("_", ""), File.basename(filename))
       metadata = {
         # Note: The chars '(' and ')' are used by RunningScripts.vue to differentiate between script logs
+        "id" => @id,
         "user" => @details['user'],
         "scriptname" => "#{@current_filename} (#{OpenC3::SuiteRunner.suite_results.context.strip})"
       }

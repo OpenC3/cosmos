@@ -76,6 +76,8 @@ RUN apk update \
   && gem cleanup \
   && bundle config build.nokogiri --use-system-libraries \
   && bundle config git.allow_insecure true \
+  && python3 -m venv /openc3/venv \
+  && source /openc3/venv/bin/activate \
   && pip3 config --global set global.index $PYPI_URL/pypi \
   && pip3 config --global set global.index-url $PYPI_URL/simple
 
@@ -84,6 +86,9 @@ ENV IMAGE_USER=openc3
 ENV IMAGE_GROUP=openc3
 ENV USER_ID=1001
 ENV GROUP_ID=1001
+# The build time venv is at /openc3/venv and the runtime venv is at /gems/python_packages
+# NOTE: This is declared as PYTHONUSERBASE: "/gems/python_packages" in compose.yaml
+ENV PYTHONPATH=/openc3/venv/lib/python3.11/site-packages/:/gems/python_packages/lib/python3.11/site-packages/
 RUN addgroup -g ${GROUP_ID} -S ${IMAGE_GROUP}
 RUN adduser -u ${USER_ID} -G ${IMAGE_GROUP} -s /bin/ash -S ${IMAGE_USER}
 

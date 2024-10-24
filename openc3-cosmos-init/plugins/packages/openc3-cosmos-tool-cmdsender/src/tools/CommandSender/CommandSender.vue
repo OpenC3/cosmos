@@ -306,7 +306,6 @@ export default {
       displayErrorDialog: false,
       displaySendRaw: false,
       displayCriticalCmd: false,
-      criticalTargetName: null,
       sendDisabled: false,
       api: null,
       viewDetails: false,
