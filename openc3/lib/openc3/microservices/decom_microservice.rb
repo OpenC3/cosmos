@@ -20,6 +20,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+require 'time'
 require 'openc3/microservices/microservice'
 require 'openc3/microservices/interface_decom_common'
 require 'openc3/topics/telemetry_decom_topic'
@@ -156,23 +157,24 @@ module OpenC3
         message = "#{packet.target_name} #{packet.packet_name} #{item.name} is disabled"
       end
 
-      time_nsec = packet_time ? packet_time.to_nsec_from_epoch : Time.now.to_nsec_from_epoch
+      # Include the packet_time in the log json but not the log message
+      time = { packet_time: packet_time.utc.iso8601(6) }
       if log_change
         case item.limits.state
         when :BLUE, :GREEN, :GREEN_LOW, :GREEN_HIGH
           # Only print INFO messages if we're changing ... not on initialization
-          @logger.info message if old_limits_state
+          @logger.info(message, other: time) if old_limits_state
         when :YELLOW, :YELLOW_LOW, :YELLOW_HIGH
-          @logger.warn(message, type: Logger::NOTIFICATION)
+          @logger.warn(message, other: time, type: Logger::NOTIFICATION)
         when :RED, :RED_LOW, :RED_HIGH
-          @logger.error(message, type: Logger::ALERT)
+          @logger.error(message, other: time, type: Logger::ALERT)
         end
       end
 
       # The openc3_limits_events topic can be listened to for all limits events, it is a continuous stream
       event = { type: :LIMITS_CHANGE, target_name: packet.target_name, packet_name: packet.packet_name,
                 item_name: item.name, old_limits_state: old_limits_state.to_s, new_limits_state: item.limits.state.to_s,
-                time_nsec: time_nsec, message: message.to_s }
+                time_nsec: packet_time.to_nsec_from_epoch, message: message.to_s }
       LimitsEventTopic.write(event, scope: @scope)
 
       if item.limits.response

@@ -152,20 +152,19 @@ class DecomMicroservice(Microservice):
         else:
             message = f"{packet.target_name} {packet.packet_name} {item.name} is disabled"
 
-        if packet_time:
-            time_nsec = to_nsec_from_epoch(packet_time)
-        else:
-            time_nsec = to_nsec_from_epoch(datetime.now(timezone.utc))
+        # Include the packet_time in the log json but not the log message
+        # Can't use isoformat because it appends "+00:00" instead of "Z"
+        time = { 'packet_time': packet_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ") }
         if log_change:
             match item.limits.state:
                 case "BLUE" | "GREEN" | "GREEN_LOW" | "GREEN_HIGH":
                     # Only print INFO messages if we're changing ... not on initialization
                     if old_limits_state:
-                        self.logger.info(message)
+                        self.logger.info(message, other=time)
                 case "YELLOW" | "YELLOW_LOW" | "YELLOW_HIGH":
-                    self.logger.warn(message, type=self.logger.NOTIFICATION)
+                    self.logger.warn(message, other=time, type=self.logger.NOTIFICATION)
                 case "RED" | "RED_LOW" | "RED_HIGH":
-                    self.logger.error(message, type=self.logger.ALERT)
+                    self.logger.error(message, other=time, type=self.logger.ALERT)
 
         # The openc3_limits_events topic can be listened to for all limits events, it is a continuous stream
         event = {
@@ -175,7 +174,7 @@ class DecomMicroservice(Microservice):
             "item_name": item.name,
             "old_limits_state": str(old_limits_state),
             "new_limits_state": str(item.limits.state),
-            "time_nsec": time_nsec,
+            "time_nsec": to_nsec_from_epoch(packet_time),
             "message": str(message),
         }
         LimitsEventTopic.write(event, scope=self.scope)
