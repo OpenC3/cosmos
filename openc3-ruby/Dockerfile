@@ -36,39 +36,41 @@ ENV NODE_EXTRA_CA_CERTS=/devel/cacert.pem
 
 ENV NOKOGIRI_USE_SYSTEM_LIBRARIES=1
 
-ADD .gemrc /root/.gemrc
+COPY .gemrc /root/.gemrc
 RUN sed -i "s|RUBYGEMS_URL|${RUBYGEMS_URL}|g" /root/.gemrc
 RUN cp /root/.gemrc /etc/gemrc
 ENV GEMRC=/etc/gemrc
 
 RUN apk update \
   && apk upgrade \
-  && apk add --no-cache ruby \
+  && apk add --no-cache \
   build-base \
-  ruby-dev \
+  ca-certificates \
+  curl \
+  git \
+  htop \
+  less \
+  libc6-compat \
+  # Ruby 3.2 no longer bundles libffi so explicitly include
+  libffi-dev \
+  libxml2-dev \
+  libxslt-dev \
   openblas-dev \
   openssl \
   openssl-dev \
-  ruby-etc \
-  ruby-bigdecimal \
-  ruby-io-console \
-  ruby-irb \
-  rbspy \
+  py3-pip \
   python3 \
   python3-dev \
-  py3-pip \
-  ca-certificates \
-  curl \
-  libc6-compat \
-  less \
+  rbspy \
+  ruby \
+  ruby-bigdecimal \
+  ruby-dev \
+  ruby-etc \
+  ruby-io-console \
+  ruby-irb \
   tini \
-  git \
-  htop \
-  libxml2-dev \
-  libxslt-dev \
-  # Ruby 3.2 no longer bundles libyaml, libffi so explicitly include them
+  # Ruby 3.2 no longer bundles libyaml so explicitly include
   yaml-dev \
-  libffi-dev \
   && gem update --system 3.3.14 \
   && gem install rake \
   && gem cleanup \
