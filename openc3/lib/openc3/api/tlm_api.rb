@@ -473,8 +473,9 @@ module OpenC3
         return 'F'
       when :WITH_UNITS
         return 'U'
+      else
+        return nil
       end
-      return nil
     end
 
     def _tlm_process_args(args, method_name, cache_timeout: nil, scope: $openc3_scope, token: $openc3_token)

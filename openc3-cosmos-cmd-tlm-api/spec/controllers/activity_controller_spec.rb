@@ -277,7 +277,7 @@ RSpec.describe ActivityController, :type => :controller do
       delete :destroy, params: {'scope'=>'DEFAULT', 'name'=>'test', "id"=>"200", "uuid"=>"123456"}
       ret = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
       expect(ret['status']).to eql('error')
-      expect(ret['message']).to eql("Activity not found")
+      expect(ret['message']).to eql("not found")
       expect(response).to have_http_status(:not_found)
     end
   end
