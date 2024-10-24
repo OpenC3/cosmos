@@ -28,7 +28,8 @@ RUN mkdir -p lib/openc3/ext \
 
 WORKDIR /openc3/python
 
-RUN pip3 install -r requirements.txt && pip3 install --pre .
+RUN . /openc3/venv/bin/activate \
+  && pip3 install -r requirements.txt && pip3 install --pre .
 
 WORKDIR /openc3/
 

@@ -191,6 +191,7 @@ export default {
       completedSearch: '',
       completedScripts: [],
       completedHeaders: [
+        { text: 'Id', value: 'id' },
         { text: 'User', value: 'user' },
         { text: 'Name', value: 'name' },
         { text: 'Start Time', value: 'start' },

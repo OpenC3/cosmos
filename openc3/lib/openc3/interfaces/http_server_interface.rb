@@ -37,8 +37,7 @@ module OpenC3
     # (see Interface#set_option)
     def set_option(option_name, option_values)
       super(option_name, option_values)
-      case option_name.upcase
-      when 'LISTEN_ADDRESS'
+      if option_name.upcase == 'LISTEN_ADDRESS'
         @listen_address = option_values[0]
       end
     end
