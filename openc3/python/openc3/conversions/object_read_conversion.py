@@ -34,6 +34,7 @@ class ObjectReadConversion(Conversion):
         self.packet_name = str(packet_name).upper()
         self.converted_type = "OBJECT"
         self.converted_bit_size = 0
+        self.params = [self.cmd_or_tlm, self.target_name, self.packet_name]
 
     def lookup_packet(self):
         if self.cmd_or_tlm:
@@ -62,10 +63,3 @@ class ObjectReadConversion(Conversion):
     # @return [String] Config fragment for this conversion
     def to_config(self, read_or_write):
         return f"{read_or_write}_CONVERSION openc3/conversions/object_read_conversion.py {self.cmd_or_tlm if self.cmd_or_tlm else 'None'} {self.target_name} {self.packet_name}\n"
-
-    def as_json(self, *a):
-        result = super().as_json(*a)
-        result["cmd_or_tlm"] = self.cmd_or_tlm
-        result["target_name"] = self.target_name
-        result["packet_name"] = self.packet_name
-        return result

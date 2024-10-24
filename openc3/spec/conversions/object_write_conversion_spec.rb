@@ -100,9 +100,7 @@ module OpenC3
         expect(json['class']).to eql "OpenC3::ObjectWriteConversion"
         expect(json['converted_type']).to eql :OBJECT
         expect(json['converted_bit_size']).to eql 0
-        expect(json['cmd_or_tlm']).to eql :TLM
-        expect(json['target_name']).to eql "INST"
-        expect(json['packet_name']).to eql "PARAMS"
+        expect(json['params']).to eql ["TLM", "INST", "PARAMS"]
       end
     end
   end

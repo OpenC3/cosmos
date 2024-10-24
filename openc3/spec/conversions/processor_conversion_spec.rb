@@ -14,10 +14,10 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -49,6 +49,23 @@ module OpenC3
     describe "to_s" do
       it "returns the equation" do
         expect(ProcessorConversion.new('TEST1', 'TEST2', 'FLOAT', '64', '128').to_s).to eql "ProcessorConversion TEST1 TEST2"
+      end
+    end
+
+    describe "as_json" do
+      it "creates a reproducible format" do
+        pc = ProcessorConversion.new('TEST1', 'TEST2', 'FLOAT', '64', '128')
+        json = pc.as_json
+        expect(json['class']).to eql "OpenC3::ProcessorConversion"
+        expect(json['converted_type']).to eql :FLOAT
+        expect(json['converted_bit_size']).to eql 64
+        expect(json['converted_array_size']).to eql 128
+        expect(json['params']).to eql ['TEST1', 'TEST2']
+        new_pc = OpenC3::const_get(json['class']).new(*json['params'])
+        packet = Packet.new("tgt", "pkt")
+        packet.append_item('ITEM1', 64, :FLOAT)
+        packet.processors['TEST1'] = double("processor", :results => { :TEST2 => 6.0 })
+        expect(pc.call(1, packet, nil)).to eql new_pc.call(1, packet, nil)
       end
     end
   end

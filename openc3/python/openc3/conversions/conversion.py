@@ -19,18 +19,20 @@ class Conversion:
     """Performs a general conversion via the implementation of the call method"""
 
     # self.return [Symbol] The converted data type. Must be one of
-    #   {OpenC3:'S'tructureItem#data_type}
+    #   {OpenC3::StructureItem#data_type}
     # attr_reader :converted_type
     # # self.return [Integer] The size in bits of the converted value
     # attr_reader :converted_bit_size
     # # self.return [Integer] The size in bits of the converted array value
     # attr_reader :converted_array_size
+    # attr_reader :params
 
     # Create a new conversion
     def __init__(self):
         self.converted_type = None
         self.converted_bit_size = None
         self.converted_array_size = None
+        self.params = None
 
     # Perform the conversion on the value.
     #
@@ -61,4 +63,6 @@ class Conversion:
             result["converted_bit_size"] = self.converted_bit_size
         if self.converted_array_size is not None:
             result["converted_array_size"] = self.converted_array_size
+        if self.params is not None:
+            result["params"] = self.params
         return result
