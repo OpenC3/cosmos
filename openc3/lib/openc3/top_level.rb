@@ -465,11 +465,6 @@ module OpenC3
     raise $!, msg, $!.backtrace
   end
 
-  # @param filename [String] Name of the file to open in the web browser
-  def self.open_in_web_browser(_filename)
-    puts "open_in_web_browser is DEPRECATED"
-  end
-
   # Temporarily set the working directory during a block
   # Working directory is global, so this can make other threads wait
   # Ruby Dir.chdir with block always throws an error if multiple threads

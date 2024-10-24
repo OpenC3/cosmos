@@ -173,14 +173,6 @@ Decoration Widgets:
         LABEL Over
         HORIZONTALLINE
         LABEL Under
-    SECTIONHEADER:
-      summary: DEPRECATED - Displays a label that is underlined with a horizontal line
-      description: Use a VERTICALBOX or HORIZONTALBOX with title parameter instead of SECTIONHEADER
-      parameters:
-        - name: Text
-          required: true
-          description: Text to display
-          values: .*
     TITLE:
       summary: Displays a large centered title on the screen
       parameters:

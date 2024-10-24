@@ -204,8 +204,10 @@ class Commands:
         if cmd_params is None or len(cmd_params) == 0:
             output_string += '")'
         else:
-            # TODO: Try except around this?
-            command_items = self.packet(target_name, cmd_name).items
+            try:
+                command_items = self.packet(target_name, cmd_name).items
+            except RuntimeError:
+                command_items = {}
 
             params = []
             for key, value in cmd_params:

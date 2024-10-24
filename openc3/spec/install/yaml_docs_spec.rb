@@ -60,9 +60,6 @@ module OpenC3
       @src_keywords = []
       path = File.expand_path(File.join(File.dirname(__FILE__), "../../lib/**/*.rb"))
       Dir[path].each do |filename|
-        # There is no longer a system.txt in OpenC3 5 so ignore system_config.rb
-        next if File.basename(filename) == 'system_config.rb'
-
         data = File.read(filename)
         part = nil
         if data.include?('parser.parse_file')

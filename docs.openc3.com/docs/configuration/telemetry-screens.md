@@ -490,15 +490,6 @@ HORIZONTALLINE
 LABEL Under
 ```
 
-### SECTIONHEADER
-**DEPRECATED - Displays a label that is underlined with a horizontal line**
-
-Use a VERTICALBOX or HORIZONTALBOX with title parameter instead of SECTIONHEADER
-
-| Parameter | Description | Required |
-|-----------|-------------|----------|
-| Text | Text to display | True |
-
 ### TITLE
 **Displays a large centered title on the screen**
 

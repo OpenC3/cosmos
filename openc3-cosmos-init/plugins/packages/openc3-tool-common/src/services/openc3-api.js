@@ -32,11 +32,11 @@ export class OpenC3Api {
     params,
     kwparams = {},
     headerOptions = {},
-    timeout = 60000,
+    timeout = 60000
   ) {
     try {
       let refreshed = await OpenC3Auth.updateToken(
-        OpenC3Auth.defaultMinValidity,
+        OpenC3Auth.defaultMinValidity
       )
       if (refreshed) {
         OpenC3Auth.setTokens()
@@ -67,7 +67,7 @@ export class OpenC3Api {
             ...headerOptions,
           },
           timeout: timeout,
-        },
+        }
       )
       // let data = response.data
       // if (data.error) {
@@ -201,11 +201,6 @@ export class OpenC3Api {
     return this.exec('get_target_interfaces', [])
   }
 
-  // DEPRECATED
-  get_all_target_info() {
-    return this.exec('get_all_target_info', [])
-  }
-
   get_tlm_cnts(target_commands) {
     return this.exec('get_tlm_cnts', [target_commands])
   }
@@ -219,7 +214,7 @@ export class OpenC3Api {
   }
   // DEPRECATED for get_param
   get_parameter(target, packet, item) {
-    return this.exec('get_parameter', [target, packet, item])
+    return this.exec('get_param', [target, packet, item])
   }
 
   get_limits_sets() {
@@ -245,33 +240,33 @@ export class OpenC3Api {
   get_target_names() {
     return this.exec('get_target_names', [])
   }
-  // DEPRECATED
+  // DEPRECATED for get_target_names
   get_target_list() {
-    return this.exec('get_target_list', [])
+    return this.exec('get_target_names', [])
   }
 
   get_tlm(target_name, packet_name) {
     return this.exec('get_tlm', [target_name, packet_name])
   }
-  // DEPRECATED
+  // DEPRECATED for get_tlm
   get_telemetry(target_name, packet_name) {
-    return this.exec('get_telemetry', [target_name, packet_name])
+    return this.exec('get_tlm', [target_name, packet_name])
   }
 
   get_all_tlm(target_name) {
     return this.exec('get_all_tlm', [target_name])
   }
-  // DEPRECATED
+  // DEPRECATED for get_all_tlm
   get_all_telemetry(target_name) {
-    return this.exec('get_all_telemetry', [target_name])
+    return this.exec('get_all_tlm', [target_name])
   }
 
   get_all_tlm_names(target_name, hidden = false) {
     return this.exec('get_all_tlm_names', [target_name], { hidden: hidden })
   }
-  // DEPRECATED
+  // DEPRECATED for get_all_tlm_names
   get_all_telemetry_names(target_name) {
-    return this.exec('get_all_telemetry_names', [target_name])
+    return this.exec('get_all_tlm_names', [target_name])
   }
 
   async get_tlm_packet(target_name, packet_name, value_type, stale_time = 30) {
@@ -313,7 +308,7 @@ export class OpenC3Api {
       [items],
       kw_args,
       {},
-      10000, // 10s timeout ... should never be this long
+      10000 // 10s timeout ... should never be this long
     )
     let len = data[0].length
     let converted = null
@@ -363,14 +358,14 @@ export class OpenC3Api {
     target_name,
     packet_name,
     item_hash = null,
-    value_type = 'CONVERTED',
+    value_type = 'CONVERTED'
   ) {
     data = await this.exec(
       'inject_tlm',
       [target_name, packet_name, item_hash],
       {
         type: value_type,
-      },
+      }
     )
   }
 
@@ -401,7 +396,7 @@ export class OpenC3Api {
   }
   // DEPRECATED for get_all_cmds
   get_all_commands(target_name) {
-    return this.exec('get_all_commands', [target_name])
+    return this.exec('get_all_cmds', [target_name])
   }
 
   get_all_cmd_names(target_name, hidden = false) {
@@ -409,7 +404,7 @@ export class OpenC3Api {
   }
   // DEPRECATED for get_all_cmd_names
   get_all_command_names(target_name) {
-    return this.exec('get_all_command_names', [target_name])
+    return this.exec('get_all_cmd_names', [target_name])
   }
 
   get_cmd(target_name, command_name) {
@@ -417,7 +412,7 @@ export class OpenC3Api {
   }
   // DEPRECATED for get_cmd
   get_command(target_name, command_name) {
-    return this.exec('get_command', [target_name, command_name])
+    return this.exec('get_cmd', [target_name, command_name])
   }
 
   get_cmd_cnts(target_commands) {
@@ -428,7 +423,7 @@ export class OpenC3Api {
     target_name,
     packet_name,
     parameter_name,
-    value_type = 'CONVERTED',
+    value_type = 'CONVERTED'
   ) {
     return this.exec('get_cmd_value', [
       target_name,
@@ -457,7 +452,7 @@ export class OpenC3Api {
       method,
       [target_name, command_name, param_list],
       {},
-      headerOptions,
+      headerOptions
     )
   }
 
@@ -470,7 +465,7 @@ export class OpenC3Api {
         target_name,
         command_name,
         param_list,
-        headerOptions,
+        headerOptions
       )
     }
   }
@@ -484,7 +479,7 @@ export class OpenC3Api {
         target_name,
         command_name,
         param_list,
-        headerOptions,
+        headerOptions
       )
     }
   }
@@ -493,7 +488,7 @@ export class OpenC3Api {
     target_name,
     command_name,
     param_list,
-    headerOptions = {},
+    headerOptions = {}
   ) {
     if (command_name === undefined) {
       return this.exec('cmd_no_range_check', target_name, {}, headerOptions)
@@ -503,7 +498,7 @@ export class OpenC3Api {
         target_name,
         command_name,
         param_list,
-        headerOptions,
+        headerOptions
       )
     }
   }
@@ -517,7 +512,7 @@ export class OpenC3Api {
         target_name,
         command_name,
         param_list,
-        headerOptions,
+        headerOptions
       )
     }
   }
@@ -526,7 +521,7 @@ export class OpenC3Api {
     target_name,
     command_name,
     param_list,
-    headerOptions = {},
+    headerOptions = {}
   ) {
     if (command_name === undefined) {
       return this.exec('cmd_raw_no_range_check', target_name, {}, headerOptions)
@@ -536,7 +531,7 @@ export class OpenC3Api {
         target_name,
         command_name,
         param_list,
-        headerOptions,
+        headerOptions
       )
     }
   }
@@ -545,7 +540,7 @@ export class OpenC3Api {
     target_name,
     command_name,
     param_list,
-    headerOptions = {},
+    headerOptions = {}
   ) {
     if (command_name === undefined) {
       return this.exec('cmd_no_hazardous_check', target_name, {}, headerOptions)
@@ -555,7 +550,7 @@ export class OpenC3Api {
         target_name,
         command_name,
         param_list,
-        headerOptions,
+        headerOptions
       )
     }
   }
@@ -569,7 +564,7 @@ export class OpenC3Api {
         target_name,
         command_name,
         param_list,
-        headerOptions,
+        headerOptions
       )
     }
   }
@@ -578,14 +573,14 @@ export class OpenC3Api {
     target_name,
     command_name,
     param_list,
-    headerOptions = {},
+    headerOptions = {}
   ) {
     if (command_name === undefined) {
       return this.exec(
         'cmd_raw_no_hazardous_check',
         target_name,
         {},
-        headerOptions,
+        headerOptions
       )
     } else {
       return this._cmd(
@@ -593,7 +588,7 @@ export class OpenC3Api {
         target_name,
         command_name,
         param_list,
-        headerOptions,
+        headerOptions
       )
     }
   }
@@ -607,7 +602,7 @@ export class OpenC3Api {
         target_name,
         command_name,
         param_list,
-        headerOptions,
+        headerOptions
       )
     }
   }
@@ -622,9 +617,9 @@ export class OpenC3Api {
   // DEPRECATED for build_cmd
   build_command(target_name, command_name, param_list) {
     if (command_name === undefined) {
-      return this.exec('build_command', target_name)
+      return this.exec('build_cmd', target_name)
     } else {
-      return this._cmd('build_command', target_name, command_name, param_list)
+      return this._cmd('build_cmd', target_name, command_name, param_list)
     }
   }
 
@@ -688,9 +683,9 @@ export class OpenC3Api {
     return this.exec('set_setting', [name, data])
   }
 
-  // DEPRECATED
+  // DEPRECATED for set_setting
   save_setting(name, data) {
-    return this.exec('save_setting', [name, data])
+    return this.exec('set_setting', [name, data])
   }
 
   get_metrics() {
@@ -706,7 +701,7 @@ export class OpenC3Api {
       // The resulting hash is stored in an array buffer
       const hashAsArrayBuffer = await crypto.subtle.digest(
         'SHA-256',
-        arrayBuffer,
+        arrayBuffer
       )
       // To create a string we will get the hexadecimal value of each byte of the array buffer
       // This gets us an array where each byte of the array buffer becomes one item in the array

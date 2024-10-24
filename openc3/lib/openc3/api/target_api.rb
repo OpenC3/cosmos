@@ -30,7 +30,6 @@ module OpenC3
       'get_target_list', # DEPRECATED
       'get_target',
       'get_target_interfaces',
-      'get_all_target_info', # DEPRECATED
     ])
 
     # Returns the list of all target names
@@ -68,35 +67,6 @@ module OpenC3
           end
         end
         info << [target_name, interface_names.join(",")]
-      end
-      info
-    end
-
-    # DEPRECATED: Get information about all targets
-    # Warning this call can take a long time with many defined packets
-    #
-    # @return [Array<Array<String, String, Numeric, Numeric>] Array of Arrays \[name, interface, cmd_cnt, tlm_cnt]
-    def get_all_target_info(manual: false, scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'system', manual: manual, scope: scope, token: token)
-      info = []
-      get_target_names(scope: scope, token: token).each do |target_name|
-        cmd_cnt = 0
-        packets = TargetModel.packets(target_name, type: :CMD, scope: scope)
-        packets.each do |packet|
-          cmd_cnt += Topic.get_cnt("#{scope}__COMMAND__{#{target_name}}__#{packet['packet_name']}")
-        end
-        tlm_cnt = 0
-        packets = TargetModel.packets(target_name, type: :TLM, scope: scope)
-        packets.each do |packet|
-          tlm_cnt += Topic.get_cnt("#{scope}__TELEMETRY__{#{target_name}}__#{packet['packet_name']}")
-        end
-        interface_names = []
-        InterfaceModel.all(scope: scope).each do |_name, interface|
-          if interface['target_names'].include? target_name
-            interface_names << interface['name']
-          end
-        end
-        info << [target_name, interface_names.join(","), cmd_cnt, tlm_cnt]
       end
       info
     end

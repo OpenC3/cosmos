@@ -34,7 +34,7 @@ class TestJsonRpcError(unittest.TestCase):
         Test json request
         """
         json_request_example = {"message": "foobar", "data": {}}
-        with self.assertRaises(KeyError) as context:
+        with self.assertRaises(KeyError):
             JsonRpcError.from_hash(json_request_example)
 
 
