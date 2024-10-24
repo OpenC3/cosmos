@@ -16,14 +16,8 @@
   "settings": {
     "rubyLsp.bundleGemfile": "openc3/Gemfile",
     "vetur.validation.template": false,
-    "eslint.validate": [
-      "vue",
-      "html",
-      "javascript"
-    ],
-    "eslint.workingDirectories": [
-      "./openc3-cosmos-init/plugins"
-    ],
+    "eslint.validate": ["vue", "html", "javascript"],
+    "eslint.workingDirectories": ["./openc3-cosmos-init/plugins"],
     "eslint.packageManager": "yarn",
     "editor.formatOnSave": true,
     "editor.codeActionsOnSave": {
