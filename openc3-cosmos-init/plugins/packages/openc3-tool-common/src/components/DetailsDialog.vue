@@ -23,11 +23,11 @@
 <template>
   <v-dialog v-model="show" width="600">
     <v-card>
-      <v-system-bar>
+      <v-toolbar :height="24">
         <v-spacer />
         <span> Details </span>
         <v-spacer />
-      </v-system-bar>
+      </v-toolbar>
 
       <v-card-title>
         {{ targetName }} {{ packetName }} {{ itemName }}
@@ -158,8 +158,8 @@
                 <v-switch
                   v-if="key === 'enabled'"
                   v-model="details.limits.enabled"
-                  @change="changeLimitsEnabled"
-                  dense
+                  @update:model-value="changeLimitsEnabled"
+                  density="compact"
                   hide-details
                 ></v-switch>
                 <v-col v-if="key !== 'enabled'" cols="4" class="label">{{
@@ -209,7 +209,7 @@ export default {
     targetName: String,
     packetName: String,
     itemName: String,
-    value: Boolean, // value is the default prop when using v-model
+    modelValue: Boolean,
   },
   data() {
     return {
@@ -224,17 +224,17 @@ export default {
   computed: {
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
   },
   created() {
     this.api = new OpenC3Api()
   },
-  beforeDestroy() {
+  beforeUnmount() {
     clearInterval(this.updater)
     this.updater = null
   },
@@ -242,7 +242,7 @@ export default {
     // Create a watcher on value which is the indicator to display the dialog
     // If value is true we request the details from the server
     // If this is a tlm dialog we setup an interval to get the telemetry values
-    value: function (newValue, oldValue) {
+    modelValue: function (newValue, oldValue) {
       if (newValue) {
         this.requestDetails()
         if (this.type === 'tlm') {
@@ -255,7 +255,7 @@ export default {
                 `${this.targetName}__${this.packetName}__${this.itemName}__WITH_UNITS`,
               ])
               .then((values) => {
-                for (var i = 0; i < values.length; i++) {
+                for (let i = 0; i < values.length; i++) {
                   let rawString = null
                   // Check for raw encoded strings (non-ascii)
                   if (
@@ -272,7 +272,7 @@ export default {
                     // e.g. UNITS of 'B' becomes 20 42 (space, B)
                     rawString = rawString.slice(
                       0,
-                      parseInt(this.details.bit_size) / 8
+                      parseInt(this.details.bit_size) / 8,
                     )
                     // Only display the first 64 bytes at which point ...
                     let ellipse = false
@@ -288,7 +288,7 @@ export default {
                         } else {
                           return ('0' + (byte & 0xff).toString(16)).slice(-2)
                         }
-                      }
+                      },
                     )
                       .join(' ')
                       .toUpperCase()
@@ -354,13 +354,13 @@ export default {
         await this.api.enable_limits(
           this.targetName,
           this.packetName,
-          this.itemName
+          this.itemName,
         )
       } else {
         await this.api.disable_limits(
           this.targetName,
           this.packetName,
-          this.itemName
+          this.itemName,
         )
       }
     },

@@ -67,8 +67,7 @@
     <v-divider />
     <!-- TODO This alert shows both success and failure. Make consistent with rest of OpenC3. -->
     <v-alert
-      dismissible
-      transition="scale-transition"
+      closable
       :type="alertType"
       v-model="showAlert"
       data-test="plugin-alert"
@@ -88,29 +87,27 @@
       </v-row>
       <div v-for="process in processes" :key="process.name">
         <v-list-item>
-          <v-list-item-content>
-            <v-list-item-title>
-              <span
-                :class="process.state.toLowerCase()"
-                v-text="
-                  `Processing ${process.process_type}: ${process.detail} - ${process.state}`
-                "
-              />
-            </v-list-item-title>
-            <v-list-item-subtitle>
-              <span v-text="' Updated At: ' + formatDate(process.updated_at)"
-            /></v-list-item-subtitle>
-          </v-list-item-content>
-          <v-list-item-icon>
+          <v-list-item-title>
+            <span
+              :class="process.state.toLowerCase()"
+              v-text="
+                `Processing ${process.process_type}: ${process.detail} - ${process.state}`
+              "
+            />
+          </v-list-item-title>
+          <v-list-item-subtitle>
+            <span v-text="' Updated At: ' + formatDate(process.updated_at)"
+          /></v-list-item-subtitle>
+
+          <template v-slot:append>
             <div v-if="process.state === 'Running'">
               <v-progress-circular indeterminate color="primary" />
             </div>
-            <v-tooltip v-else bottom>
-              <template v-slot:activator="{ on, attrs }">
+            <v-tooltip v-else location="bottom">
+              <template v-slot:activator="{ props }">
                 <v-icon
+                  v-bind="props"
                   @click="showOutput(process)"
-                  v-bind="attrs"
-                  v-on="on"
                   data-test="show-output"
                 >
                   mdi-eye
@@ -118,7 +115,7 @@
               </template>
               <span>Show Output</span>
             </v-tooltip>
-          </v-list-item-icon>
+          </template>
         </v-list-item>
         <v-divider />
       </div>
@@ -127,33 +124,32 @@
       <v-row class="px-4"><v-col class="text-h6">Plugin List</v-col></v-row>
       <div v-for="(plugin, index) in shownPlugins" :key="index">
         <v-list-item>
-          <v-list-item-content>
-            <v-list-item-title
-              ><span v-if="isModified(plugin)">* </span
-              >{{ plugin }}</v-list-item-title
+          <v-list-item-title
+            ><span v-if="isModified(plugin)">* </span
+            >{{ plugin }}</v-list-item-title
+          >
+          <v-list-item-subtitle v-if="pluginTargets(plugin).length !== 0">
+            <span
+              v-for="(target, index) in pluginTargets(plugin)"
+              :key="index"
+              class="mr-2"
             >
-            <v-list-item-subtitle v-if="pluginTargets(plugin).length !== 0">
-              <span
-                v-for="(target, index) in pluginTargets(plugin)"
-                :key="index"
-              >
-                <a
-                  v-if="target.modified"
-                  @click.prevent="downloadTarget(target.name)"
-                  >{{ target.name }}
-                </a>
-                <span v-else>{{ target.name }} </span>
-              </span>
-            </v-list-item-subtitle>
-          </v-list-item-content>
-          <v-list-item-icon>
+              <a
+                v-if="target.modified"
+                @click.prevent="downloadTarget(target.name)"
+                >{{ target.name }}
+              </a>
+              <span v-else>{{ target.name }} </span>
+            </span>
+          </v-list-item-subtitle>
+
+          <template v-slot:append>
             <div class="mx-3">
-              <v-tooltip bottom>
-                <template v-slot:activator="{ on, attrs }">
+              <v-tooltip location="bottom">
+                <template v-slot:activator="{ props }">
                   <v-icon
+                    v-bind="props"
                     @click="downloadPlugin(plugin)"
-                    v-bind="attrs"
-                    v-on="on"
                     data-test="download-plugin"
                   >
                     mdi-download
@@ -163,12 +159,11 @@
               </v-tooltip>
             </div>
             <div class="mx-3">
-              <v-tooltip bottom>
-                <template v-slot:activator="{ on, attrs }">
+              <v-tooltip location="bottom">
+                <template v-slot:activator="{ props }">
                   <v-icon
+                    v-bind="props"
                     @click="editPlugin(plugin)"
-                    v-bind="attrs"
-                    v-on="on"
                     data-test="edit-plugin"
                   >
                     mdi-pencil
@@ -178,12 +173,11 @@
               </v-tooltip>
             </div>
             <div class="mx-3">
-              <v-tooltip bottom>
-                <template v-slot:activator="{ on, attrs }">
+              <v-tooltip location="bottom">
+                <template v-slot:activator="{ props }">
                   <v-icon
+                    v-bind="props"
                     @click="upgradePlugin(plugin)"
-                    v-bind="attrs"
-                    v-on="on"
                     data-test="upgrade-plugin"
                   >
                     mdi-update
@@ -193,12 +187,11 @@
               </v-tooltip>
             </div>
             <div class="mx-3">
-              <v-tooltip bottom>
-                <template v-slot:activator="{ on, attrs }">
+              <v-tooltip location="bottom">
+                <template v-slot:activator="{ props }">
                   <v-icon
+                    v-bind="props"
                     @click="deletePrompt(plugin)"
-                    v-bind="attrs"
-                    v-on="on"
                     data-test="delete-plugin"
                   >
                     mdi-delete
@@ -207,7 +200,7 @@
                 <span>Delete Plugin</span>
               </v-tooltip>
             </div>
-          </v-list-item-icon>
+          </template>
         </v-list-item>
         <v-divider v-if="index < plugins.length - 1" :key="index" />
       </div>
@@ -219,7 +212,7 @@
       :variables="variables"
       :pluginTxt="pluginTxt"
       :existingPluginTxt="existingPluginTxt"
-      @submit="pluginCallback"
+      @callback="pluginCallback"
     />
     <modified-plugin-dialog
       v-if="showModifiedPluginDialog"
@@ -374,13 +367,13 @@ export default {
               this.update()
             }, 5000)
           }
-        }
+        },
       )
     },
     formatDate(nanoSecs) {
       return format(
         toDate(parseInt(nanoSecs) / 1_000_000),
-        'yyyy-MM-dd HH:mm:ss.SSS'
+        'yyyy-MM-dd HH:mm:ss.SSS',
       )
     },
     upload: function (existing = null) {
@@ -395,8 +388,8 @@ export default {
         data: formData,
         headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: function (progressEvent) {
-          var percentCompleted = Math.round(
-            (progressEvent.loaded * 100) / progressEvent.total
+          let percentCompleted = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total,
           )
           self.progress = percentCompleted
         },
@@ -556,7 +549,7 @@ export default {
     upgradePlugin(plugin) {
       this.file = undefined
       this.currentPlugin = plugin
-      this.$refs.fileInput.$refs.input.click()
+      this.$refs.fileInput.click()
       this.progress = 0
     },
     fileMousedown() {
@@ -576,7 +569,7 @@ export default {
                 {
                   okText: 'Ok',
                   cancelText: 'Cancel',
-                }
+                },
               )
               .then(() => {
                 this.upload(this.currentPlugin)
@@ -603,7 +596,7 @@ export default {
                   {
                     okText: 'Ok',
                     cancelText: 'Cancel',
-                  }
+                  },
                 )
                 .then(() => {
                   this.upload(this.currentPlugin)
@@ -627,5 +620,8 @@ export default {
 }
 .list {
   background-color: var(--color-background-surface-default) !important;
+}
+.v-theme--cosmosDark.v-list div:nth-child(odd) .v-list-item {
+  background-color: var(--color-background-base-selected) !important;
 }
 </style>

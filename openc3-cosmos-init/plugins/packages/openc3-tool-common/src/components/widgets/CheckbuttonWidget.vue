@@ -16,14 +16,14 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
 <template>
   <v-checkbox
     hide-details
-    dense
+    density="compact"
     :label="label"
     v-model="value"
     :style="computedStyle"
@@ -44,12 +44,6 @@ export default {
     }
   },
   created() {
-    // Look through the settings and see if we're a NAMED_WIDGET
-    this.settings.forEach((setting) => {
-      if (setting[0] === 'NAMED_WIDGET') {
-        setting[2].setNamedWidget(setting[1], this)
-      }
-    })
     this.label = this.parameters[0]
   },
   methods: {

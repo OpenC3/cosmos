@@ -37,7 +37,7 @@
     :time-zone="this.screen.timeZone"
     @pause="() => (state = 'pause')"
     @start="() => (state = 'start')"
-    hide-system-bar
+    hide-toolbar
     hide-overview
   />
 </template>

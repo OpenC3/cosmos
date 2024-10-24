@@ -16,26 +16,22 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
 <template>
   <div>
-    <v-select v-model="color" :items="swatches" label="Color">
-      <template v-slot:selection="{ item }">
-        <div>
-          <v-badge inline :color="item">
-            <span v-text="item" />
-          </v-badge>
-        </div>
+    <v-select label="Color" :items="swatches" v-model="selectedColor">
+      <template v-slot:prepend-inner v-if="selectedColor">
+        <v-icon :color="selectedColor"> mdi-square </v-icon>
       </template>
-      <template v-slot:item="{ item }">
-        <div>
-          <v-badge inline :color="item">
-            <span v-text="item" />
-          </v-badge>
-        </div>
+      <template v-slot:item="{ props, item }">
+        <v-list-item v-bind="props" :value="item">
+          <template v-slot:prepend>
+            <v-icon :color="item"> mdi-square </v-icon>
+          </template>
+        </v-list-item>
       </template>
     </v-select>
   </div>
@@ -45,21 +41,23 @@
 export default {
   components: {},
   props: {
-    value: {
+    modelValue: {
       type: String,
       required: true,
     },
   },
   data() {
-    return {}
+    return {
+      selectedColor: '',
+    }
   },
   computed: {
     color: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
     swatches: function () {

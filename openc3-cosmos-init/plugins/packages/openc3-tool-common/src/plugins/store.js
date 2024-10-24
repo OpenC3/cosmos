@@ -20,32 +20,36 @@
 # if purchased from OpenC3, Inc.
 */
 
-import Vue from 'vue'
-import Vuex from 'vuex'
-
-Vue.use(Vuex)
+import { createStore } from 'vuex'
 
 const NOTIFY_HISTORY_MAX_LENGTH = 100
 
-if (!window.hasOwnProperty('OpenC3Store')) {
-  window.OpenC3Store = new Vuex.Store({
-    state: {
-      notifyHistory: [],
+export default createStore({
+  state: {
+    notifyHistory: [],
+    namedWidgets: {},
+  },
+  getters: {
+    namedWidget: (state) => (widgetName) => {
+      return state.namedWidgets[widgetName]
     },
-    getters: {},
-    mutations: {
-      notifyAddHistory: function (state, notification) {
-        if (state.notifyHistory.length >= NOTIFY_HISTORY_MAX_LENGTH) {
-          state.notifyHistory.length = NOTIFY_HISTORY_MAX_LENGTH - 1
-        }
-        state.notifyHistory.unshift(notification)
-      },
-      notifyClearHistory: function (state) {
-        state.notifyHistory = []
-      },
+  },
+  mutations: {
+    notifyAddHistory: (state, notification) => {
+      if (state.notifyHistory.length >= NOTIFY_HISTORY_MAX_LENGTH) {
+        state.notifyHistory.length = NOTIFY_HISTORY_MAX_LENGTH - 1
+      }
+      state.notifyHistory.unshift(notification)
     },
-    modules: {},
-  })
-}
-
-export default window.OpenC3Store
+    notifyClearHistory: (state) => {
+      state.notifyHistory = []
+    },
+    setNamedWidget: (state, namedWidget) => {
+      Object.assign(state.namedWidgets, namedWidget)
+    },
+    clearNamedWidget: (state, widgetName) => {
+      delete state.namedWidgets[widgetName]
+    },
+  },
+  modules: {},
+})

@@ -22,10 +22,12 @@
 
 <template>
   <vertical-widget
-    v-on="$listeners"
+    v-bind="listeners"
     :settings="settings"
     :parameters="parameters.slice(1)"
     :widgets="widgets"
+    :screen-values="screenValues"
+    :screen-time-zone="screenTimeZone"
     :style="computedStyle"
     class="overflow-y-auto"
   />

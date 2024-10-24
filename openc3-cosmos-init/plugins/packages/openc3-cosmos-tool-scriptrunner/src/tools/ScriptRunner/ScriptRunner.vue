@@ -23,19 +23,31 @@
 <template>
   <div>
     <top-bar :menus="menus" :title="title" />
-    <v-snackbar v-model="showAlert" top :color="alertType" :timeout="3000">
+    <v-snackbar
+      v-model="showAlert"
+      location="top"
+      :color="alertType"
+      :timeout="3000"
+    >
       <v-icon> mdi-{{ alertType }} </v-icon>
       {{ alertText }}
-      <template v-slot:action="{ attrs }">
-        <v-btn text v-bind="attrs" @click="showAlert = false"> Close </v-btn>
+      <template v-slot:actions="{ attrs }">
+        <v-btn variant="text" v-bind="attrs" @click="showAlert = false">
+          Close
+        </v-btn>
       </template>
     </v-snackbar>
-    <v-snackbar v-model="showEditingToast" top :timeout="-1" color="orange">
+    <v-snackbar
+      v-model="showEditingToast"
+      location="top"
+      :timeout="-1"
+      color="orange"
+    >
       <v-icon> mdi-pencil-off </v-icon>
       {{ lockedBy }} is editing this script. Editor is in read-only mode
-      <template v-slot:action="{ attrs }">
+      <template v-slot:actions="{ attrs }">
         <v-btn
-          text
+          variant="text"
           v-bind="attrs"
           color="danger"
           @click="confirmLocalUnlock"
@@ -44,7 +56,7 @@
           Unlock
         </v-btn>
         <v-btn
-          text
+          variant="text"
           v-bind="attrs"
           @click="
             () => {
@@ -98,11 +110,10 @@
           <v-icon v-if="showDisconnect" class="mr-2" color="red">
             mdi-connection
           </v-icon>
-          <v-tooltip bottom>
-            <template v-slot:activator="{ on, attrs }">
+          <v-tooltip location="bottom">
+            <template v-slot:activator="{ props }">
               <v-btn
-                v-on="on"
-                v-bind="attrs"
+                v-bind="props"
                 icon
                 @click="reloadFile"
                 :disabled="filename === NEW_FILENAME"
@@ -114,15 +125,15 @@
           </v-tooltip>
           <v-select
             v-model="filenameSelect"
-            @change="fileNameChanged"
+            @update:model-value="fileNameChanged"
             :items="fileList"
             :disabled="fileList.length <= 1"
             label="Filename"
             id="filename"
             data-test="filename"
             style="width: 300px"
-            dense
-            outlined
+            density="compact"
+            variant="outlined"
             hide-details
           />
           <v-text-field
@@ -130,9 +141,9 @@
             label="Script ID"
             data-test="id"
             class="shrink ml-2 script-state"
-            style="width: 100px"
-            dense
-            outlined
+            style="max-width: 100px"
+            density="compact"
+            variant="outlined"
             readonly
             hide-details
           />
@@ -141,9 +152,9 @@
             label="Script State"
             data-test="state"
             class="shrink ml-2 script-state"
-            style="width: 120px"
-            dense
-            outlined
+            style="max-width: 120px"
+            density="compact"
+            variant="outlined"
             readonly
             hide-details
           />
@@ -168,11 +179,10 @@
             >
               <span> Start </span>
             </v-btn>
-            <v-tooltip bottom>
-              <template v-slot:activator="{ on, attrs }">
+            <v-tooltip location="bottom">
+              <template v-slot:activator="{ props }">
                 <v-btn
-                  v-on="on"
-                  v-bind="attrs"
+                  v-bind="props"
                   @click="scriptEnvironment.show = !scriptEnvironment.show"
                   class="mx-1"
                   data-test="env-button"
@@ -217,16 +227,12 @@
         </v-row>
       </div>
     </v-card>
-    <!-- Create Multipane container to support resizing.
-         NOTE: We listen to paneResize event and call editor.resize() to prevent weird sizing issues,
-         The event must be paneResize and not pane-resize -->
-    <multipane layout="horizontal" @paneResize="doResize">
-      <div class="editorbox">
+    <splitpanes horizontal @resize="calcHeight">
+      <pane class="editorbox" size="50">
         <v-snackbar
           v-model="showSave"
           absolute
-          top
-          right
+          location="top right"
           :timeout="-1"
           class="saving"
         >
@@ -237,13 +243,7 @@
           class="editor"
           @contextmenu.prevent="showExecuteSelectionMenu"
         ></pre>
-        <v-menu
-          v-model="executeSelectionMenu"
-          :position-x="menuX"
-          :position-y="menuY"
-          absolute
-          offset-y
-        >
+        <v-menu v-model="executeSelectionMenu" :target="[menuX, menuY]">
           <v-list>
             <v-list-item
               v-for="item in executeSelectionMenuItems"
@@ -257,9 +257,8 @@
             </v-list-item>
           </v-list>
         </v-menu>
-      </div>
-      <multipane-resizer><hr /></multipane-resizer>
-      <div id="messages" class="mt-2" ref="messagesDiv">
+      </pane>
+      <pane id="messages" class="mt-2" ref="messagesDiv" size="50">
         <div id="debug" class="pa-0" v-if="showDebug">
           <v-row no-gutters>
             <v-btn
@@ -271,12 +270,13 @@
               data-test="step-button"
             >
               Step
-              <v-icon right> mdi-step-forward </v-icon>
+              <v-icon end> mdi-step-forward </v-icon>
             </v-btn>
             <v-text-field
+              ref="debug"
               class="mb-2"
-              outlined
-              dense
+              variant="outlined"
+              density="compact"
               hide-details
               label="Debug"
               v-model="debug"
@@ -290,8 +290,8 @@
           v-model="messages"
           @sort="messageSortOrder"
         />
-      </div>
-    </multipane>
+      </pane>
+    </splitpanes>
     <!--- MENUS --->
     <file-open-save-dialog
       v-if="fileOpen"
@@ -337,6 +337,7 @@
       v-model="information.show"
       :title="information.title"
       :text="information.text"
+      :width="information.width"
     />
     <event-list-dialog
       v-if="inputMetadata.show"
@@ -412,7 +413,8 @@ import 'ace-builds/src-min-noconflict/theme-twilight'
 import 'ace-builds/src-min-noconflict/ext-language_tools'
 import 'ace-builds/src-min-noconflict/ext-searchbox'
 import { format } from 'date-fns'
-import { Multipane, MultipaneResizer } from 'vue-multipane'
+import { Splitpanes, Pane } from 'splitpanes'
+import 'splitpanes/dist/splitpanes.css'
 import FileOpenSaveDialog from '@openc3/tool-common/src/components/FileOpenSaveDialog'
 import EnvironmentDialog from '@openc3/tool-common/src/components/EnvironmentDialog'
 import SimpleTextDialog from '@openc3/tool-common/src/components/SimpleTextDialog'
@@ -453,8 +455,8 @@ export default {
     FileOpenSaveDialog,
     Openc3Screen,
     EnvironmentDialog,
-    Multipane,
-    MultipaneResizer,
+    Splitpanes,
+    Pane,
     TopBar,
     AskDialog,
     FileDialog,
@@ -563,6 +565,7 @@ export default {
         show: false,
         title: '',
         text: [],
+        width: '600',
       },
       inputMetadata: {
         show: false,
@@ -1058,7 +1061,10 @@ export default {
     this.editor.container.addEventListener('resize', this.doResize)
     this.editor.container.addEventListener('keydown', this.keydown)
 
-    this.doResize()
+    // Allow the charts to dynamically resize when the window resizes
+    window.addEventListener('resize', this.calcHeight)
+    this.calcHeight()
+
     this.cable = new Cable('/script-api/cable')
 
     if (localStorage['script_runner__recent']) {
@@ -1100,11 +1106,11 @@ export default {
       this.processReceived()
     }, 100) // Every 100ms
   },
-  beforeDestroy() {
+  beforeUnmount() {
     this.editor.destroy()
     this.editor.container.remove()
   },
-  destroyed() {
+  unmounted() {
     this.unlockFile()
     if (this.updateInterval != null) {
       clearInterval(this.updateInterval)
@@ -1132,24 +1138,33 @@ export default {
       })
     },
     calcHeight() {
-      var editor = document.getElementsByClassName('editorbox')[0]
-      var h = Math.max(
+      const viewHeight = Math.max(
+        document.documentElement.clientHeight,
+        window.innerHeight || 0,
+      )
+      let splitpanes = document.getElementsByClassName('splitpanes')[0]
+      if (splitpanes) {
+        splitpanes.style.height = `${viewHeight}px`
+      }
+
+      const editor = document.getElementsByClassName('editorbox')[0]
+      const h = Math.max(
         document.documentElement.offsetHeight,
         window.innerHeight || 0,
       )
-      var editorHeight = 0
+      let editorHeight = 0
       if (editor) {
         editorHeight = editor.offsetHeight
       }
-      var suitesHeight = 0
-      var suites = document.getElementsByClassName('suite-runner')[0]
+      let suitesHeight = 0
+      const suites = document.getElementsByClassName('suite-runner')[0]
       if (suites) {
         suitesHeight = suites.offsetHeight
       }
-      var logMessages = document.getElementById('script-log-messages')
+      let logMessages = document.getElementById('script-log-messages')
       if (logMessages) {
-        // 295 is magic and was determined by experimentation
-        logMessages.style.height = `${h - editorHeight - suitesHeight - 292}px`
+        // 290 is magic and was determined by experimentation
+        logMessages.style.height = `${h - editorHeight - suitesHeight - 290}px`
       }
     },
     scriptDisconnect() {
@@ -1177,8 +1192,8 @@ export default {
       })
     },
     buildOpenC3RubyMode(api_shared) {
-      var oop = ace.require('ace/lib/oop')
-      var RubyHighlightRules = ace.require(
+      let oop = ace.require('ace/lib/oop')
+      let RubyHighlightRules = ace.require(
         'ace/mode/ruby_highlight_rules',
       ).RubyHighlightRules
 
@@ -1187,10 +1202,10 @@ export default {
         .filter((a) => a !== 'exec')
         .concat(api_shared)
       let regex = new RegExp(`(\\b${apis.join('\\b|\\b')}\\b)`)
-      var OpenC3HighlightRules = function () {
+      let OpenC3HighlightRules = function () {
         RubyHighlightRules.call(this)
         // add openc3 rules to the ruby rules
-        for (var rule in this.$rules) {
+        for (let rule in this.$rules) {
           this.$rules[rule].unshift({
             regex: regex,
             token: 'support.function',
@@ -1199,21 +1214,21 @@ export default {
       }
       oop.inherits(OpenC3HighlightRules, RubyHighlightRules)
 
-      var MatchingBraceOutdent = ace.require(
+      let MatchingBraceOutdent = ace.require(
         'ace/mode/matching_brace_outdent',
       ).MatchingBraceOutdent
-      var CstyleBehaviour = ace.require(
+      let CstyleBehaviour = ace.require(
         'ace/mode/behaviour/cstyle',
       ).CstyleBehaviour
-      var FoldMode = ace.require('ace/mode/folding/ruby').FoldMode
-      var Mode = function () {
+      let FoldMode = ace.require('ace/mode/folding/ruby').FoldMode
+      let Mode = function () {
         this.HighlightRules = OpenC3HighlightRules
         this.$outdent = new MatchingBraceOutdent()
         this.$behaviour = new CstyleBehaviour()
         this.foldingRules = new FoldMode()
         this.indentKeywords = this.foldingRules.indentKeywords
       }
-      var RubyMode = ace.require('ace/mode/ruby').Mode
+      let RubyMode = ace.require('ace/mode/ruby').Mode
       oop.inherits(Mode, RubyMode)
       ;(function () {
         this.$id = 'ace/mode/openc3'
@@ -1221,8 +1236,8 @@ export default {
       return Mode
     },
     buildOpenC3PythonMode(api_shared) {
-      var oop = ace.require('ace/lib/oop')
-      var PythonHighlightRules = ace.require(
+      let oop = ace.require('ace/lib/oop')
+      let PythonHighlightRules = ace.require(
         'ace/mode/python_highlight_rules',
       ).PythonHighlightRules
 
@@ -1231,10 +1246,10 @@ export default {
         .filter((a) => a !== 'exec')
         .concat(api_shared)
       let regex = new RegExp(`(\\b${apis.join('\\b|\\b')}\\b)`)
-      var OpenC3HighlightRules = function () {
+      let OpenC3HighlightRules = function () {
         PythonHighlightRules.call(this)
         // add openc3 rules to the python rules
-        for (var rule in this.$rules) {
+        for (let rule in this.$rules) {
           this.$rules[rule].unshift({
             regex: regex,
             token: 'support.function',
@@ -1243,21 +1258,21 @@ export default {
       }
       oop.inherits(OpenC3HighlightRules, PythonHighlightRules)
 
-      var MatchingBraceOutdent = ace.require(
+      let MatchingBraceOutdent = ace.require(
         'ace/mode/matching_brace_outdent',
       ).MatchingBraceOutdent
-      var CstyleBehaviour = ace.require(
+      let CstyleBehaviour = ace.require(
         'ace/mode/behaviour/cstyle',
       ).CstyleBehaviour
-      var FoldMode = ace.require('ace/mode/folding/pythonic').FoldMode
-      var Mode = function () {
+      let FoldMode = ace.require('ace/mode/folding/pythonic').FoldMode
+      let Mode = function () {
         this.HighlightRules = OpenC3HighlightRules
         this.$outdent = new MatchingBraceOutdent()
         this.$behaviour = new CstyleBehaviour()
         this.foldingRules = new FoldMode()
         this.indentKeywords = this.foldingRules.indentKeywords
       }
-      var PythonMode = ace.require('ace/mode/python').Mode
+      let PythonMode = ace.require('ace/mode/python').Mode
       oop.inherits(Mode, PythonMode)
       ;(function () {
         this.$id = 'ace/mode/openc3'
@@ -1992,7 +2007,7 @@ export default {
           }
           this.prompt.message = data.args[0]
           data.args.slice(1).forEach((v) => {
-            this.prompt.buttons.push({ text: v, value: v })
+            this.prompt.buttons.push({ title: v, value: v })
           })
           this.prompt.layout = 'combo'
           this.prompt.callback = this.promptDialogCallback
@@ -2020,6 +2035,7 @@ export default {
           this.information.title = 'Call Stack'
           this.information.text = data.args
           this.information.show = true
+          this.information.width = '600'
           break
         case 'metadata_input':
           this.inputMetadata.callback = (value) => {
@@ -2535,6 +2551,7 @@ class TestSuite(Suite):
         this.information.title = response.data.title
         this.information.text = JSON.parse(response.data.description)
         this.information.show = true
+        this.information.width = '600'
       })
     },
     showInstrumented() {
@@ -2548,6 +2565,7 @@ class TestSuite(Suite):
         this.information.title = response.data.title
         this.information.text = JSON.parse(response.data.description)
         this.information.show = true
+        this.information.width = '90vw'
       })
     },
     showCallStack() {
@@ -2555,6 +2573,11 @@ class TestSuite(Suite):
     },
     toggleDebug() {
       this.showDebug = !this.showDebug
+      if (this.showDebug) {
+        this.$nextTick(() => {
+          this.$refs.debug.focus()
+        })
+      }
     },
     toggleDisconnect() {
       this.showDisconnect = !this.showDisconnect
@@ -2644,25 +2667,13 @@ class TestSuite(Suite):
 #sr-controls {
   padding: 0px;
 }
-.editorbox {
-  height: 40vh;
-}
 .editor {
   height: 100%;
   width: 100%;
   position: relative;
   font-size: 16px;
 }
-hr {
-  pointer-events: none;
-  position: relative;
-  top: 7px;
-  background-color: grey;
-  height: 3px;
-  width: 5%;
-  margin: auto;
-}
-.script-state {
+.script-state :deep(.v-field) {
   background-color: var(--color-background-base-default);
 }
 .script-state :deep(input) {
@@ -2670,6 +2681,15 @@ hr {
 }
 </style>
 <style>
+.splitpanes--horizontal > .splitpanes__splitter {
+  min-height: 4px;
+  position: relative;
+  top: 4px;
+  background-color: grey;
+  width: 5%;
+  margin: auto;
+  cursor: row-resize;
+}
 .runningMarker {
   position: absolute;
   background: rgba(0, 255, 0, 0.5);
