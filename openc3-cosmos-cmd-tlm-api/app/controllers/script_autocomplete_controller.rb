@@ -42,6 +42,8 @@ class ScriptAutocompleteController < ApplicationController
       TLM_KEYWORDS
     when 'SCREEN'
       screen_keywords()
+    else
+      []
     end
     render :json => keywords, :status => 200
   end

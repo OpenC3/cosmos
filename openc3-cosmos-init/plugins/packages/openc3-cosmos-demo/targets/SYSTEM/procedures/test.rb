@@ -17,12 +17,6 @@ cmd("INST CLEAR")
   puts index
 end
 
-if false
-  puts false
-else
-  puts true
-end
-
 wait_expression('false', 10)
 wait(10)
 

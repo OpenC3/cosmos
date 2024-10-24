@@ -25,7 +25,7 @@
 
 <template>
   <div :style="computedStyle" ref="bar">
-    <v-card :min-height="height" :min-width="width">
+    <v-card :min-height="height" :min-width="width" style="cursor: default">
       <v-system-bar>
         <div v-show="errors.length !== 0">
           <v-tooltip top>

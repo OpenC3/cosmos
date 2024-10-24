@@ -33,7 +33,7 @@ WHITELIST.extend(
 #
 # @return [Array<String>] All target names
 def get_target_names(scope=OPENC3_SCOPE):
-    authorize(permission="tlm", scope=scope)
+    authorize(permission="system", scope=scope)
     return TargetModel.names(scope=scope)
 
 

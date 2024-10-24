@@ -434,7 +434,7 @@ class RunningScript:
             return "Untitled" + str(RunningScript.id)
 
     def stop_message_log(self):
-        metadata = {"user": self.details["user"], "scriptname": self.unique_filename()}
+        metadata = {"id": self.id, "user": self.details["user"], "scriptname": self.unique_filename()}
         if RunningScript.my_message_log:
             RunningScript.my_message_log.stop(True, metadata=metadata)
         RunningScript.my_message_log = None
@@ -674,6 +674,8 @@ class RunningScript:
                         time_formatted = json_hash["@timestamp"]
                     if "log" in json_hash:
                         out_line = json_hash["log"]
+                    if "message" in json_hash:
+                        out_line = json_hash["message"]
                 except:
                     # Regular output
                     pass
@@ -916,6 +918,7 @@ class RunningScript:
             )
             metadata = {
                 # Note: The chars '(' and ')' are used by RunningScripts.vue to differentiate between script logs
+                "id": self.id,
                 "user": self.details["user"],
                 "scriptname": f"{self.current_filename} ({SuiteRunner.suite_results.context.strip()})",
             }
