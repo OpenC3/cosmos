@@ -1,12 +1,12 @@
 SCREEN AUTO AUTO 0.5
 
-VERTICAL
-  TITLE "<%= target_name %> Commanding Examples"
+TITLE "<%= target_name %> Commanding Examples"
 
-  LABELVALUE <%= target_name %> HEALTH_STATUS COLLECTS
-  LABELVALUE <%= target_name %> HEALTH_STATUS COLLECT_TYPE
-  LABELVALUE <%= target_name %> HEALTH_STATUS DURATION
+LABELVALUE <%= target_name %> HEALTH_STATUS COLLECTS
+LABELVALUE <%= target_name %> HEALTH_STATUS COLLECT_TYPE
+LABELVALUE <%= target_name %> HEALTH_STATUS DURATION
 
+MATRIXBYCOLUMNS 2
   VERTICALBOX "Send Collect Command:"
     HORIZONTAL
       LABEL "Type: "
@@ -32,11 +32,13 @@ VERTICAL
   END
 
   VERTICALBOX "Parameter-less Commands:"
-    NAMED_WIDGET GROUP RADIOGROUP 1 # Select 'Clear' initially, 0-based index
-      RADIOBUTTON 'Abort'
-      RADIOBUTTON 'Clear'
+    HORIZONTAL
+      NAMED_WIDGET GROUP RADIOGROUP 1 # Select 'Clear' initially, 0-based index
+        RADIOBUTTON 'Abort'
+        RADIOBUTTON 'Clear'
+      END
+      NAMED_WIDGET CHECK CHECKBUTTON 'Ignore Hazardous Checks' # No option is by default UNCHECKED
     END
-    NAMED_WIDGET CHECK CHECKBUTTON 'Ignore Hazardous Checks' # No option is by default UNCHECKED
     BUTTON 'Send' "screen.getNamedWidget('GROUP').selected() === 0 ? " +
       "api.cmd('<%= target_name %> ABORT') : (screen.getNamedWidget('CHECK').checked() ? " +
       "api.cmd_no_hazardous_check('<%= target_name %> CLEAR') : api.cmd('<%= target_name %> CLEAR'))"
@@ -50,8 +52,20 @@ VERTICAL
     BUTTON 'Run Script' "var script=screen.getNamedWidget('SCRIPTNAME').text();" \
       "var ctype=screen.getNamedWidget('COLLECT_TYPE').text();" \
       # Set some environment variables to be used by the script as ENV['TYPE']
-      # See INST2/procedures/checks.rb for an example of usage
+      # See INST2/procedures/checks.py for an example of usage
       "var env = {}; env['TYPE'] = ctype;" \
       "runScript('<%= target_name %>/procedures/'+script, !screen.getNamedWidget('BG').checked(), env)"
+  END
+
+  VERTICALBOX "Date / Time Chooser"
+    HORIZONTAL 5
+      NAMED_WIDGET DATE Date "Input Date"
+      NAMED_WIDGET TIME Time
+    END
+
+    BUTTON 'Alert' "var date=screen.getNamedWidget('DATE').text();" +
+      "var time=screen.getNamedWidget('TIME').text();" +
+      # You can have comments between string concatenations
+      "alert('DATE:'+date+' TIME:'+time)"
   END
 END
