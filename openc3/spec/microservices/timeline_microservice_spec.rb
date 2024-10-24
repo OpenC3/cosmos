@@ -40,7 +40,8 @@ module OpenC3
         start: now + start,
         stop: now + start + 120,
         kind: kind,
-        data: { kind => "INST ABORT" }
+        data: { kind => "INST ABORT" },
+        uuid: SecureRandom.uuid
       )
       activity.create()
       return activity
@@ -54,7 +55,8 @@ module OpenC3
         start: now + 500,
         stop: now + 500 + 120,
         kind: "command",
-        data: { "command" => "INST ABORT" }
+        data: { "command" => "INST ABORT" },
+        uuid: SecureRandom.uuid
       )
       return JSON.generate(activity.as_json(:allow_nan => true))
     end
@@ -145,6 +147,7 @@ module OpenC3
         Thread.new { tm.run }
         sleep 0.1
 
+        # Create 2 activities at the exact same time to verify they both execute
         now = Time.now.to_f
         activity = ActivityModel.new(
           name: "TEST",
@@ -152,13 +155,25 @@ module OpenC3
           start: now + 2,
           stop: now + 2.1,
           kind: 'command',
-          data: { "command" => "INST CLEAR" }
+          data: { "command" => "INST CLEAR" },
+          uuid: SecureRandom.uuid
+        )
+        activity.create()
+        activity = ActivityModel.new(
+          name: "TEST",
+          scope: "DEFAULT",
+          start: now + 2,
+          stop: now + 2.1,
+          kind: 'command',
+          data: { "command" => "INST ABORT" },
+          uuid: SecureRandom.uuid
         )
         activity.create()
 
         sleep 3.1
-        expect(@command).to eql ['cmd_no_hazardous_check', 'INST CLEAR']
-        expect(tm.logger).to have_received(:info).with(/TEST run_command/).once
+        expect(tm.logger).to have_received(:info).with(/TEST run_command/).twice
+        expect(tm.logger).to have_received(:info).with(/INST ABORT/).once
+        expect(tm.logger).to have_received(:info).with(/INST CLEAR/).once
 
         # Check the activity and primarily the events
         all = ActivityModel.all(name: 'TEST', scope: 'DEFAULT')
@@ -171,6 +186,15 @@ module OpenC3
         expect(all[0]['events'][0]['event']).to eql('created')
         expect(all[0]['events'][1]['event']).to eql('queued')
         expect(all[0]['events'][2]['event']).to eql('completed')
+        expect(all[1]['name']).to eql('TEST')
+        expect(all[1]['fulfillment']).to be true
+        expect(all[1]['start']).to eql(now + 2)
+        expect(all[1]['stop']).to eql(now + 2.1)
+        expect(all[1]['kind']).to eql('command')
+        expect(all[1]['data']).to eql({ "command" => "INST ABORT" })
+        expect(all[1]['events'][0]['event']).to eql('created')
+        expect(all[1]['events'][1]['event']).to eql('queued')
+        expect(all[1]['events'][2]['event']).to eql('completed')
 
         tm.shutdown()
         shutdown_script()
@@ -208,7 +232,8 @@ module OpenC3
           start: now + 2,
           stop: now + 2.1,
           kind: 'command',
-          data: { "command" => "INST CLEAR" }
+          data: { "command" => "INST CLEAR" },
+          uuid: SecureRandom.uuid
         )
         activity.create()
 
@@ -254,7 +279,8 @@ module OpenC3
           start: now + 2,
           stop: now + 2.1,
           kind: 'command',
-          data: { "command" => "INST CLEAR" }
+          data: { "command" => "INST CLEAR" },
+          uuid: SecureRandom.uuid
         )
         activity.create()
 
@@ -317,7 +343,8 @@ module OpenC3
               start: now + 2,
               stop: now + 2.1,
               kind: 'script',
-              data: { "script" => "collect.rb" }
+              data: { "script" => "collect.rb" },
+              uuid: SecureRandom.uuid
             )
             activity.create()
 
@@ -352,144 +379,90 @@ module OpenC3
         end
       end
 
-      # it "run the timeline manager and add an expire." do
-      #   name = "TEST"
-      #   scope = "DEFAULT"
-      #   array = ActivityModel.all(name: name, scope: scope, limit: 10)
-      #   expect(array.empty?).to eql(false)
-      #   expect(array.length).to eql(1)
-      #   timeline_schedule = Schedule.new(name)
-      #   timeline_manager = TimelineManager.new(name: name, scope: scope, schedule: timeline_schedule)
-      #   activity = timeline_manager.add_expire_activity()
-      #   Thread.new { timeline_manager.run }
-      #   sleep 5
-      #   timeline_manager.shutdown
-      #   sleep 5
-      #   expect(activity.events.empty?).to eql(false)
-      #   expect(activity.events.length).to eql(1)
-      #   expect(valid_events?(activity.events, "completed")).to eql(true)
-      # end
+      it "adds an expire activity" do
+        tm = TimelineMicroservice.new("DEFAULT__TIMELINE__TEST")
+        # Setup the spy so we can expect to get output
+        allow(tm.logger).to receive(:info).and_call_original
 
-      # it "run the timeline manager and request update" do
-      #   name = "TEST"
-      #   scope = "DEFAULT"
-      #   array = ActivityModel.all(name: name, scope: scope, limit: 10)
-      #   expect(array.empty?).to eql(false)
-      #   expect(array.length).to eql(1)
-      #   timeline_schedule = Schedule.new(name)
-      #   timeline_manager = TimelineManager.new(name: name, scope: scope, schedule: timeline_schedule)
-      #   start = Time.now.to_i
-      #   timeline_manager.request_update(start: start)
-      #   sleep 5
-      #   timeline_manager.shutdown
-      #   sleep 5
-      # end
+        start = Time.now.to_f - (86_400 * 8) # 8 days ago
+        past_activity = {
+          'name' => 'TEST',
+          'updated_at' => Time.now.to_nsec_from_epoch,
+          'start' => start,
+          'stop' => start + 60,
+          'kind' => 'command',
+          'scope' => 'DEFAULT',
+          'uuid' => SecureRandom.uuid,
+        }
+        Store.zadd('DEFAULT__openc3_timelines__TEST', start, JSON.generate(past_activity))
+        activities = ActivityModel.all(name: "TEST", scope: "DEFAULT")
+        expect(activities.length).to eql(1)
 
-      # it "add a cmd while microservice is running" do
-      #   allow_any_instance_of(Object).to receive(:cmd_no_hazardous_check) { sleep 2 }
-      #   timeline_microservice = TimelineMicroservice.new("DEFAULT__TIMELINE__TEST")
-      #   Thread.new { timeline_microservice.run }
-      #   model = generate_activity(15, "command") # should be 15 seconds in the future
-      #   score = model.start
-      #   array = ActivityModel.all(name: "TEST", scope: "DEFAULT", limit: 10)
-      #   expect(array.empty?).to eql(false)
-      #   expect(array.length).to eql(2)
-      #   sleep 20
-      #   timeline_microservice.shutdown
-      #   sleep 10
-      #   activity = ActivityModel.score(name: "TEST", scope: "DEFAULT", score: score)
-      #   expect(activity).not_to be_nil
-      #   expect(activity.fulfillment).to eql(true)
-      #   expect(activity.events.empty?).to eql(false)
-      #   expect(activity.events.length).to eql(3)
-      #   expect(valid_events?(activity.events, "completed")).to eql(true)
-      # end
+        Thread.new { tm.run }
+        sleep 1
+        expect(tm.logger).to have_received(:info).with(/TEST clear_expired removed 1 items/).once
+        tm.shutdown
+        sleep 0.1
+        activities = ActivityModel.all(name: "TEST", scope: "DEFAULT")
+        expect(activities.length).to eql(0)
+      end
 
-      # it "add a cmd activity to run and complete" do
-      #   allow_any_instance_of(Object).to receive(:cmd_no_hazardous_check) { sleep 2 }
-      #   model = generate_activity(15, "command") # should be 15 seconds in the future
-      #   score = model.start
-      #   array = ActivityModel.all(name: "TEST", scope: "DEFAULT", limit: 10)
-      #   expect(array.empty?).to eql(false)
-      #   expect(array.length).to eql(2)
-      #   timeline_microservice = TimelineMicroservice.new("DEFAULT__TIMELINE__TEST")
-      #   Thread.new { timeline_microservice.run }
-      #   sleep 20
-      #   timeline_microservice.shutdown
-      #   sleep 10
-      #   activity = ActivityModel.score(name: "TEST", scope: "DEFAULT", score: score)
-      #   expect(activity).not_to be_nil
-      #   expect(activity.fulfillment).to eql(true)
-      #   expect(activity.events.empty?).to eql(false)
-      #   expect(activity.events.length).to eql(3)
-      #   expect(valid_events?(activity.events, "completed")).to eql(true)
-      # end
+      it "adds a cmd while microservice is running" do
+        allow_any_instance_of(Object).to receive(:cmd_no_hazardous_check)
 
-      # it "add a script activity to run and complete" do
-      #   allow_any_instance_of(Net::HTTP).to receive(:request).with(
-      #     an_instance_of(Net::HTTP::Post)
-      #   ).and_return(Net::HTTPResponse)
-      #   allow(Net::HTTPResponse).to receive(:body).and_return("test")
-      #   allow(Net::HTTPResponse).to receive(:code).and_return(200)
-      #   model = generate_activity(15, "script") # should be 15 seconds in the future
-      #   score = model.start
-      #   array = ActivityModel.all(name: "TEST", scope: "DEFAULT", limit: 10)
-      #   expect(array.empty?).to eql(false)
-      #   expect(array.length).to eql(2)
-      #   timeline_microservice = TimelineMicroservice.new("DEFAULT__TIMELINE__TEST")
-      #   Thread.new { timeline_microservice.run }
-      #   sleep 20
-      #   timeline_microservice.shutdown
-      #   sleep 10
-      #   activity = ActivityModel.score(name: "TEST", scope: "DEFAULT", score: score)
-      #   expect(activity).not_to be_nil
-      #   expect(activity.fulfillment).to eql(true)
-      #   expect(activity.events.empty?).to eql(false)
-      #   expect(activity.events.length).to eql(3)
-      #   expect(valid_events?(activity.events, "completed")).to eql(true)
-      # end
+        tm = TimelineMicroservice.new("DEFAULT__TIMELINE__TEST")
+        # This is normally configured via passing topics to the MicroserviceModel (see timeline_model.rb)
+        tm.instance_variable_set(:@topics, ["DEFAULT__openc3_timelines"])
+        # Setup the spy so we can expect to get output
+        allow(tm.logger).to receive(:info).and_call_original
 
-      # it "add a cmd activity to run and fail" do
-      #   allow_any_instance_of(Object).to receive(:cmd_no_hazardous_check).and_raise("ERROR")
-      #   model = generate_activity(15, "command") # should be 15 seconds in the future
-      #   score = model.start
-      #   array = ActivityModel.all(name: "TEST", scope: "DEFAULT", limit: 10)
-      #   expect(array.empty?).to eql(false)
-      #   expect(array.length).to eql(2)
-      #   timeline_microservice = TimelineMicroservice.new("DEFAULT__TIMELINE__TEST")
-      #   Thread.new { timeline_microservice.run }
-      #   sleep 20
-      #   timeline_microservice.shutdown
-      #   sleep 10
-      #   activity = ActivityModel.score(name: "TEST", scope: "DEFAULT", score: score)
-      #   expect(activity).not_to be_nil
-      #   expect(activity.fulfillment).to eql(false)
-      #   expect(activity.events.empty?).to eql(false)
-      #   expect(activity.events.length).to eql(3)
-      #   expect(valid_events?(activity.events, "failed")).to eql(true)
-      # end
+        Thread.new { tm.run }
+        sleep 0.1
+        generate_activity(1.5, "command") # should be 1.5 seconds in the future
+        array = ActivityModel.all(name: "TEST", scope: "DEFAULT")
+        expect(array.length).to eql(1)
+        sleep 3
+        tm.shutdown
+        sleep 0.1
+        # Check the activity and primarily the events
+        all = ActivityModel.all(name: 'TEST', scope: 'DEFAULT')
+        pp all
+        expect(all[0]['name']).to eql('TEST')
+        expect(all[0]['fulfillment']).to be true
+        expect(all[0]['kind']).to eql('command')
+        expect(all[0]['data']).to eql({ "command" => "INST ABORT" })
+        expect(all[0]['events'][0]['event']).to eql('created')
+        expect(all[0]['events'][1]['event']).to eql('queued')
+        expect(all[0]['events'][2]['event']).to eql('completed')
+      end
 
-      # it "add a script activity to run and fail" do
-      #   allow_any_instance_of(Net::HTTP).to receive(:request).with(
-      #     an_instance_of(Net::HTTP::Post)
-      #   ).and_raise("ERROR")
-      #   model = generate_activity(15, "script") # should be 15 seconds in the future
-      #   score = model.start
-      #   array = ActivityModel.all(name: "TEST", scope: "DEFAULT", limit: 10)
-      #   expect(array.empty?).to eql(false)
-      #   expect(array.length).to eql(2)
-      #   timeline_microservice = TimelineMicroservice.new("DEFAULT__TIMELINE__TEST")
-      #   Thread.new { timeline_microservice.run }
-      #   sleep 20
-      #   timeline_microservice.shutdown
-      #   sleep 10
-      #   activity = ActivityModel.score(name: "TEST", scope: "DEFAULT", score: score)
-      #   expect(activity).not_to be_nil
-      #   expect(activity.fulfillment).to eql(false)
-      #   expect(activity.events.empty?).to eql(false)
-      #   expect(activity.events.length).to eql(3)
-      #   expect(valid_events?(activity.events, "failed")).to eql(true)
-      # end
+      it "removes a cmd while microservice is running" do
+        allow_any_instance_of(Object).to receive(:cmd_no_hazardous_check)
+
+        tm = TimelineMicroservice.new("DEFAULT__TIMELINE__TEST")
+        # This is normally configured via passing topics to the MicroserviceModel (see timeline_model.rb)
+        tm.instance_variable_set(:@topics, ["DEFAULT__openc3_timelines"])
+        # Setup the spy so we can expect to get output
+        allow(tm.logger).to receive(:info).and_call_original
+
+        generate_activity(2, "command")
+        activities = ActivityModel.all(name: "TEST", scope: "DEFAULT")
+        pp activities
+        expect(activities.length).to eql(1)
+
+        Thread.new { tm.run }
+        sleep 1
+        ActivityModel.destroy(name: "TEST", scope: "DEFAULT", score: activities[0]['start'], uuid: activities[0]['uuid'])
+        sleep 2
+        tm.shutdown
+        sleep 0.1
+
+        expect(tm.logger).to_not have_received(:info).with(/TEST run_command/)
+
+        # Check the activity and primarily the events
+        all = ActivityModel.all(name: 'TEST', scope: 'DEFAULT')
+        expect(all.length).to eql(0)
+      end
     end
   end
 end

@@ -41,6 +41,8 @@ OpenC3::EphemeralStore.instance
 ENV['OPENC3_REDIS_USERNAME'] = nil
 ENV['OPENC3_REDIS_PASSWORD'] = nil
 
+SCRIPT_API = 'script-api'
+
 id = ARGV[0]
 script = JSON.parse(OpenC3::Store.get("running-script:#{id}"), :allow_nan => true, :create_additions => true)
 scope = script['scope']
@@ -52,7 +54,7 @@ path = File.join(ENV['OPENC3_CONFIG_BUCKET'], scope, 'targets', name)
 def run_script_log(id, message, color = 'BLACK', message_log = true)
   line_to_write = Time.now.sys.formatted + " (SCRIPTRUNNER): " + message
   RunningScript.message_log.write(line_to_write + "\n", true) if message_log
-  OpenC3::Store.publish(["script-api", "running-script-channel:#{id}"].compact.join(":"), JSON.generate({ type: :output, line: line_to_write, color: color }))
+  OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{id}"].compact.join(":"), JSON.generate({ type: :output, line: line_to_write, color: color }))
 end
 
 begin
@@ -90,7 +92,7 @@ begin
   # scenes in ActionCable. Throughout the rest of the code we use ActionCable to broadcast
   #   e.g. ActionCable.server.broadcast("running-script-channel:#{@id}", ...)
   redis = OpenC3::Store.instance.build_redis
-  redis.subscribe(["script-api", "cmd-running-script-channel:#{id}"].compact.join(":")) do |on|
+  redis.subscribe([SCRIPT_API, "cmd-running-script-channel:#{id}"].compact.join(":")) do |on|
     on.message do |_channel, msg|
       parsed_cmd = JSON.parse(msg, :allow_nan => true, :create_additions => true)
       run_script_log(id, "Script #{path} received command: #{msg}") unless parsed_cmd == "shutdown" or parsed_cmd["method"]
@@ -139,7 +141,7 @@ begin
               run_script_log(id, "INFO: Unexpectedly received answer for unknown prompt #{parsed_cmd["prompt_id"]}.")
             end
           when "backtrace"
-            OpenC3::Store.publish(["script-api", "running-script-channel:#{id}"].compact.join(":"), JSON.generate({ type: :script, method: :backtrace, args: running_script.current_backtrace }))
+            OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{id}"].compact.join(":"), JSON.generate({ type: :script, method: :backtrace, args: running_script.current_backtrace }))
           when "debug"
             run_script_log(id, "DEBUG: #{parsed_cmd["args"]}") # Log what we were passed
             running_script.debug(parsed_cmd["args"]) # debug() logs the output of the command
@@ -171,8 +173,8 @@ ensure
     end
     sleep 0.2 # Allow the message queue to be emptied before signaling complete
 
-    OpenC3::Store.publish(["script-api", "running-script-channel:#{id}"].compact.join(":"), JSON.generate({ type: :complete }))
-    OpenC3::Store.publish(["script-api", "all-scripts-channel"].compact.join(":"), JSON.generate({ type: :complete, active_scripts: active_scripts }))
+    OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{id}"].compact.join(":"), JSON.generate({ type: :complete }))
+    OpenC3::Store.publish([SCRIPT_API, "all-scripts-channel"].compact.join(":"), JSON.generate({ type: :complete, active_scripts: active_scripts }))
   ensure
     running_script.stop_message_log if running_script
   end

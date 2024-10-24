@@ -156,7 +156,7 @@
           />
           <div v-else style="width: 40px; height: 40px" class="ml-2 mr-2"></div>
 
-          <!-- Disable the Start button when Suite Runner controls are showing -->
+          <!-- Hide the Start button when Suite Runner controls are showing -->
           <v-spacer />
           <div v-if="startOrGoButton === 'Start'">
             <v-btn
@@ -165,6 +165,7 @@
               color="primary"
               data-test="start-button"
               :disabled="startOrGoDisabled || !executeUser"
+              :hidden="suiteRunner"
             >
               <span> Start </span>
             </v-btn>
@@ -1358,6 +1359,12 @@ export default {
     },
     async executeText(text, breakpoints = []) {
       let extension = this.fullFilename.split('.').pop()
+      if (extension.includes(' *')) {
+        extension = extension.split(' *')[0]
+      }
+      if (extension !== 'rb' && extension !== 'py') {
+        extension = 'rb' // Still default to Ruby if we can't determine
+      }
       // Create a new temp script and open in new tab
       const selectionTempFilename =
         TEMP_FOLDER +

@@ -34,6 +34,7 @@
     :height="size.height"
     :width="size.width"
     :style="computedStyle"
+    :time-zone="this.screen.timeZone"
     @pause="() => (state = 'pause')"
     @start="() => (state = 'start')"
     hide-system-bar

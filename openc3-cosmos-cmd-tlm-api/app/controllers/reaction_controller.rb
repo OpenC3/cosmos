@@ -24,6 +24,8 @@ require 'openc3/models/reaction_model'
 require 'openc3/topics/autonomic_topic'
 
 class ReactionController < ApplicationController
+  NOT_FOUND = 'not found'
+
   def initialize
     super()
     @model_class = OpenC3::ReactionModel
@@ -147,7 +149,7 @@ class ReactionController < ApplicationController
     begin
       model = @model_class.get(name: params[:name], scope: params[:scope])
       if model.nil?
-        render :json => { :status => 'error', :message => 'not found' }, :status => 404
+        render :json => { :status => 'error', :message => NOT_FOUND }, :status => 404
         return
       end
       hash = params.to_unsafe_h.slice(:snooze, :triggers, :triggerLevel, :actions).to_h
@@ -193,7 +195,7 @@ class ReactionController < ApplicationController
     begin
       model = @model_class.get(name: params[:name], scope: params[:scope])
       if model.nil?
-        render :json => { :status => 'error', :message => 'not found' }, :status => 404
+        render :json => { :status => 'error', :message => NOT_FOUND }, :status => 404
         return
       end
       # Notify the ReactionMicroservice to enable the ReactionModel
@@ -228,7 +230,7 @@ class ReactionController < ApplicationController
     begin
       model = @model_class.get(name: params[:name], scope: params[:scope])
       if model.nil?
-        render :json => { :status => 'error', :message => 'not found' }, :status => 404
+        render :json => { :status => 'error', :message => NOT_FOUND }, :status => 404
         return
       end
       # Notify the ReactionMicroservice to disable the ReactionModel
@@ -248,7 +250,7 @@ class ReactionController < ApplicationController
     begin
       model = @model_class.get(name: params[:name], scope: params[:scope])
       if model.nil?
-        render :json => { :status => 'error', :message => 'not found' }, :status => 404
+        render :json => { :status => 'error', :message => NOT_FOUND }, :status => 404
         return
       end
       # Notify the ReactionMicroservice to execute the ReactionModel
@@ -279,7 +281,7 @@ class ReactionController < ApplicationController
     begin
       model = @model_class.get(name: params[:name], scope: params[:scope])
       if model.nil?
-        render :json => { :status => 'error', :message => 'not found' }, :status => 404
+        render :json => { :status => 'error', :message => NOT_FOUND }, :status => 404
         return
       end
       # Notify the ReactionMicroservice to delete the ReactionModel

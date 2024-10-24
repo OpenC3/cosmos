@@ -121,7 +121,7 @@ module OpenC3
 
       notification = {
         # start / stop to match SortedModel
-        'data' => JSON.generate({'start' => score}),
+        'data' => JSON.generate({'start' => score, 'uuid' => uuid}),
         'kind' => 'deleted',
         'type' => 'activity',
         'timeline' => name
@@ -361,7 +361,7 @@ module OpenC3
           end
         end
       end
-      notify(kind: 'updated', extra: old_start)
+      notify(kind: 'updated', extra: {old_start: old_start, old_uuid: old_uuid})
       return @start
     end
 
@@ -409,7 +409,11 @@ module OpenC3
         'type' => 'activity',
         'timeline' => @name
       }
-      notification['extra'] = extra unless extra.nil?
+      if extra
+        extra.each do |key, value|
+          notification[key.to_s] = value
+        end
+      end
       begin
         TimelineTopic.write_activity(notification, scope: @scope)
       rescue StandardError => e
