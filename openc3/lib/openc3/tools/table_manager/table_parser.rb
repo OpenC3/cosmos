@@ -57,10 +57,10 @@ module OpenC3
       end
       type = params[2].to_s.upcase.to_sym
       case type
-      when :KEY_VALUE
+      when :KEY_VALUE, :ONE_DIMENSIONAL # :ONE_DIMENSIONAL is deprecated
         @parser.verify_num_parameters(3, 4, @usage)
         description = params[3].to_s
-      when :ROW_COLUMN
+      when :ROW_COLUMN, :TWO_DIMENSIONAL # :TWO_DIMENSIONAL is deprecated
         @parser.verify_num_parameters(4, 5, @usage)
         num_rows = params[3].to_i
         description = params[4].to_s

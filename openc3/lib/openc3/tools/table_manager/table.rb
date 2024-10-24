@@ -44,6 +44,9 @@ module OpenC3
     # Constructor for a TableDefinition
     def initialize(name, endianness, type, description, filename)
       super(TARGET, name, endianness, description, '', TableItem)
+      # ONE_DIMENSIONAL and TWO_DIMENSIONAL are deprecated so translate
+      type = :KEY_VALUE if type == :ONE_DIMENSIONAL
+      type = :ROW_COLUMN if type == :TWO_DIMENSIONAL
       if type != :KEY_VALUE && type != :ROW_COLUMN
         raise ArgumentError,
               "Invalid type '#{type}' for table '#{name}'. Must be KEY_VALUE or ROW_COLUMN"

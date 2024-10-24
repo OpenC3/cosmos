@@ -189,7 +189,6 @@ class TargetModel(Model):
                 item_map[item_name].append(packet["packet_name"])
         return item_map
 
-    # TODO: Not nearly complete ... see target_model.rb
     def __init__(
         self,
         name: str,
