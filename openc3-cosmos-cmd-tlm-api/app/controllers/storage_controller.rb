@@ -111,6 +111,7 @@ class StorageController < ApplicationController
 
   def download_file
     return unless authorization('system')
+    tmp_dir = nil
     if params[:volume]
       volume = ENV[params[:volume]] # Get the actual volume name
       raise "Unknown volume #{params[:volume]}" unless volume
@@ -129,6 +130,7 @@ class StorageController < ApplicationController
       raise "No volume or bucket given"
     end
     file = File.read(filename, mode: 'rb')
+    FileUtils.rm_rf(tmp_dir) if tmp_dir
     render :json => { filename: params[:object_id], contents: Base64.encode64(file) }
   rescue Exception => e
     logger.error(e.formatted)
