@@ -115,30 +115,42 @@
           showFirstLastPage: true,
         }"
       >
-        <template v-slot:item.download="{ item }">
-          <v-btn
-            color="primary"
-            :disabled="downloadScript"
-            :loading="downloadScript && downloadScript.name === item.name"
-            @click="downloadScriptLog(item)"
-          >
+        <template v-slot:item.view="{ item }">
+          <v-btn color="primary" @click="viewScriptLog(item)">
             <span v-if="item.name.includes('(') && item.name.includes(')')"
               >Script Report</span
             >
             <span v-else>Script Log</span>
-            <v-icon right> mdi-file-download-outline </v-icon>
-            <template v-slot:loader>
-              <span>Loading...</span>
-            </template>
+            <v-icon right> mdi-eye </v-icon>
+          </v-btn>
+        </template>
+        <template v-slot:item.download="{ item }">
+          <v-btn
+            icon
+            :disabled="downloadScript"
+            :loading="downloadScript && downloadScript.name === item.name"
+            @click="downloadScriptLog(item)"
+          >
+            <v-icon>mdi-file-download-outline</v-icon>
           </v-btn>
         </template>
       </v-data-table>
     </v-card>
+    <output-dialog
+      :content="dialogContent"
+      type="Script"
+      :name="dialogName"
+      :filename="dialogFilename"
+      v-model="showDialog"
+      v-if="showDialog"
+      @submit="showDialog = false"
+    />
   </div>
 </template>
 
 <script>
 import Api from '@openc3/tool-common/src/services/api'
+import OutputDialog from '@openc3/tool-common/src/components/OutputDialog'
 
 export default {
   props: {
@@ -146,6 +158,7 @@ export default {
     curTab: Number,
     connectInNewTab: Boolean,
   },
+  components: { OutputDialog },
   data() {
     return {
       downloadScript: null,
@@ -183,12 +196,22 @@ export default {
         { text: 'Name', value: 'name' },
         { text: 'Start Time', value: 'start' },
         {
+          text: 'View',
+          value: 'view',
+          sortable: false,
+          filterable: false,
+        },
+        {
           text: 'Download',
           value: 'download',
           sortable: false,
           filterable: false,
         },
       ],
+      showDialog: false,
+      dialogName: '',
+      dialogContent: '',
+      dialogFilename: '',
     }
   },
   created() {
@@ -274,6 +297,24 @@ export default {
             })
           }
         })
+    },
+    viewScriptLog: function (script) {
+      if (script.name.includes('(') && script.name.includes(')')) {
+        this.dialogName = 'Report'
+      } else {
+        this.dialogName = 'Log'
+      }
+      Api.get(
+        `/openc3-api/storage/download_file/${encodeURIComponent(
+          script.log,
+        )}?bucket=OPENC3_LOGS_BUCKET`,
+      ).then((response) => {
+        const filenameParts = script.log.split('/')
+        this.dialogFilename = filenameParts[filenameParts.length - 1]
+        // Decode Base64 string
+        this.dialogContent = window.atob(response.data.contents)
+        this.showDialog = true
+      })
     },
     downloadScriptLog: function (script) {
       this.downloadScript = script

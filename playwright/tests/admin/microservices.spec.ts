@@ -26,19 +26,19 @@ test('displays microservice names', async ({ page, utils }) => {
   // There are 9 microservices per target so look for the INST2 list
   expect(await page.getByRole('list')).toContainText('DEFAULT__CLEANUP__INST2')
   expect(await page.getByRole('list')).toContainText(
-    'DEFAULT__COMMANDLOG__INST2'
+    'DEFAULT__COMMANDLOG__INST2',
   )
   expect(await page.getByRole('list')).toContainText(
-    'DEFAULT__DECOMCMDLOG__INST2'
+    'DEFAULT__DECOMCMDLOG__INST2',
   )
   expect(await page.getByRole('list')).toContainText('DEFAULT__DECOMLOG__INST2')
   expect(await page.getByRole('list')).toContainText('DEFAULT__DECOM__INST2')
   expect(await page.getByRole('list')).toContainText(
-    'DEFAULT__INTERFACE__INST2_INT'
+    'DEFAULT__INTERFACE__INST2_INT',
   )
   expect(await page.getByRole('list')).toContainText('DEFAULT__MULTI__INST2')
   expect(await page.getByRole('list')).toContainText(
-    'DEFAULT__PACKETLOG__INST2'
+    'DEFAULT__PACKETLOG__INST2',
   )
   expect(await page.getByRole('list')).toContainText('DEFAULT__REDUCER__INST2')
 })
@@ -50,10 +50,10 @@ test('displays microservice details', async ({ page, utils }) => {
     .getByRole('button')
     .click()
   expect(await page.locator('.editor')).toContainText(
-    '"name": "DEFAULT__CLEANUP__INST2"'
+    '"name": "DEFAULT__CLEANUP__INST2"',
   )
   await utils.download(page, '[data-test="downloadIcon"]', function (contents) {
     expect(contents).toContain('"name": "DEFAULT__CLEANUP__INST2"')
   })
-  await page.locator('[data-test="editCancelBtn"]').click()
+  await page.getByRole('button', { name: 'Ok' }).click()
 })
