@@ -21,6 +21,7 @@
     v-bind="attrs"
     v-on="on"
     class="rux-icon"
+    :style="pointerStyle"
     :icon="icon"
     :status="status"
     :label="label"
@@ -75,6 +76,17 @@ export default {
         state = 'off'
       }
       return state
+    },
+    pointerStyle() {
+      if (this.screenTarget && this.screenName) {
+        return {
+          cursor: 'pointer',
+        }
+      } else {
+        return {
+          cursor: 'default',
+        }
+      }
     },
   },
   created: function () {

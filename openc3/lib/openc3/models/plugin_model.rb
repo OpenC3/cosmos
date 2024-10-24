@@ -49,6 +49,7 @@ module OpenC3
     PRIMARY_KEY = 'openc3_plugins'
     # Reserved VARIABLE names. See local_mode.rb: update_local_plugin()
     RESERVED_VARIABLE_NAMES = ['target_name', 'microservice_name', 'scope']
+    PLUGIN_TXT = 'plugin.txt'
 
     attr_accessor :variables
     attr_accessor :plugin_txt_lines
@@ -90,14 +91,14 @@ module OpenC3
           # This is only used in openc3cli load when everything is known
           plugin_txt_lines = existing_plugin_txt_lines
           file_data = existing_plugin_txt_lines.join("\n")
-          tf = Tempfile.new("plugin.txt")
+          tf = Tempfile.new(PLUGIN_TXT)
           tf.write(file_data)
           tf.close
           plugin_txt_path = tf.path
         else
           # Otherwise we always process the new and return both
           pkg.extract_files(temp_dir)
-          plugin_txt_path = File.join(temp_dir, 'plugin.txt')
+          plugin_txt_path = File.join(temp_dir, PLUGIN_TXT)
           plugin_text = File.read(plugin_txt_path)
           plugin_txt_lines = []
           plugin_text.each_line do |line|
@@ -113,8 +114,7 @@ module OpenC3
                           false,
                           true,
                           false) do |keyword, params|
-          case keyword
-          when 'VARIABLE'
+          if keyword == 'VARIABLE'
             usage = "#{keyword} <Variable Name> <Default Value>"
             parser.verify_num_parameters(2, nil, usage)
             variable_name = params[0]
@@ -200,7 +200,7 @@ module OpenC3
           end
           unless validate_only
             Logger.info "Installing python packages from requirements.txt with pypi_url=#{pypi_url}"
-            puts `/openc3/bin/pipinstall --user --no-warn-script-location -i #{pypi_url} -r #{File.join(gem_path, 'requirements.txt')}`
+            puts `/openc3/bin/pipinstall --no-warn-script-location -i #{pypi_url} -r #{File.join(gem_path, 'requirements.txt')}`
           end
           needs_dependencies = true
         end
@@ -229,7 +229,7 @@ module OpenC3
 
           # Process plugin.txt file
           file_data = plugin_hash['plugin_txt_lines'].join("\n")
-          tf = Tempfile.new("plugin.txt")
+          tf = Tempfile.new(PLUGIN_TXT)
           tf.write(file_data)
           tf.close
           plugin_txt_path = tf.path

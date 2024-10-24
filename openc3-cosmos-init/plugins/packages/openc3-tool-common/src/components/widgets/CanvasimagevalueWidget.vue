@@ -31,6 +31,7 @@
       :y="image.y"
       :width="image.width"
       :height="image.height"
+      :style="pointerStyle"
       @click="clickHandler"
     />
     <image
@@ -41,6 +42,7 @@
       :y="defaultImage.y"
       :width="defaultImage.width"
       :height="defaultImage.height"
+      :style="pointerStyle"
       @click="clickHandler"
     />
   </g>
@@ -71,6 +73,17 @@ export default {
     },
     showDefault: function () {
       return !this.images.some((image) => image.value == this.selectedValue)
+    },
+    pointerStyle() {
+      if (this.screenTarget && this.screenName) {
+        return {
+          cursor: 'pointer',
+        }
+      } else {
+        return {
+          cursor: 'default',
+        }
+      }
     },
   },
   created: function () {

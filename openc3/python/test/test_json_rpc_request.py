@@ -74,7 +74,7 @@ class TestJsonRpc(unittest.TestCase):
         )
         with self.assertRaises(RequestError) as context:
             JsonRpcRequest.from_json(json_request_example, {})
-            self.assertTrue("jsonrpc" in context.exception)
+        self.assertTrue("invalid json-rpc 2.0 request" in context.exception.__str__())
 
 
 if __name__ == "__main__":
