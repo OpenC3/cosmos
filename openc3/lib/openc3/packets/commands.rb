@@ -313,12 +313,14 @@ module OpenC3
             if item.states[value.to_s.upcase]
               range_check_value = item.states[value.to_s.upcase]
             else
-              if command.raw
-                unless item.states.values.include?(value)
+              unless item.states.values.include?(value)
+                if command.raw
+                  # Raw commands report missing value maps
                   raise "Command parameter '#{command.target_name} #{command.packet_name} #{item_upcase}' = #{value.to_s.upcase} not one of #{item.states.values.join(', ')}"
+                else
+                  # Normal commands report missing state maps
+                  raise "Command parameter '#{command.target_name} #{command.packet_name} #{item_upcase}' = #{value.to_s.upcase} not one of #{item.states.keys.join(', ')}"
                 end
-              else
-                raise "Command parameter '#{command.target_name} #{command.packet_name} #{item_upcase}' = #{value.to_s.upcase} not one of #{item.states.keys.join(', ')}"
               end
             end
           end

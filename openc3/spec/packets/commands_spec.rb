@@ -43,15 +43,25 @@ module OpenC3
       tf.puts '#'
       tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "TGT1 PKT1 Description"'
       tf.puts '  APPEND_ID_PARAMETER item1 8 UINT 1 1 1 "Item1"'
-      tf.puts '  APPEND_PARAMETER item2 8 UINT 0 254 2 "Item2"'
-      tf.puts '  APPEND_PARAMETER item3 8 UINT 0 254 3 "Item3"'
-      tf.puts '  APPEND_PARAMETER item4 8 UINT 0 254 4 "Item4"'
+      tf.puts '  APPEND_PARAMETER item2 8 UINT 0 200 2 "Item2"'
+      tf.puts '  APPEND_PARAMETER item3 8 UINT 0 200 3 "Item3"'
+      tf.puts '  APPEND_PARAMETER item4 8 UINT 0 200 4 "Item4"'
       tf.puts 'COMMAND tgt1 pkt2 LITTLE_ENDIAN "TGT1 PKT2 Description"'
       tf.puts '  APPEND_ID_PARAMETER item1 8 UINT 2 2 2 "Item1"'
       tf.puts '  APPEND_PARAMETER item2 8 UINT 0 255 2 "Item2"'
       tf.puts '    STATE BAD1 0 HAZARDOUS "Hazardous"'
       tf.puts '    STATE BAD2 1 HAZARDOUS'
       tf.puts '    STATE GOOD 2 DISABLE_MESSAGES'
+      tf.puts '  APPEND_PARAMETER item3 32 FLOAT 0 1 0 "Item3"'
+      tf.puts '    STATE S1 0.0'
+      tf.puts '    STATE S2 0.25'
+      tf.puts '    STATE S3 0.5'
+      tf.puts '    STATE S4 0.75'
+      tf.puts '    STATE S5 1.0'
+      tf.puts '  APPEND_PARAMETER item4 40 STRING "HELLO"'
+      tf.puts '    STATE HI HELLO'
+      tf.puts '    STATE WO WORLD'
+      tf.puts '    STATE JA JASON'
       tf.puts 'COMMAND tgt2 pkt3 LITTLE_ENDIAN "TGT2 PKT3 Description"'
       tf.puts '  HAZARDOUS "Hazardous"'
       tf.puts '  APPEND_ID_PARAMETER item1 8 UINT 3 3 3 "Item1"'
@@ -65,10 +75,10 @@ module OpenC3
       tf.puts '  APPEND_ID_PARAMETER item1 8 UINT 5 5 5 "Item1"'
       tf.puts '  APPEND_PARAMETER item2 8 UINT 0 100 0 "Item2"'
       tf.puts '    POLY_WRITE_CONVERSION 0 2'
-      tf.puts 'COMMAND tgt2 pkt6 BIG_ENDIAN "TGT2 PKT5 Description"'
+      tf.puts 'COMMAND tgt2 pkt6 BIG_ENDIAN "TGT2 PKT6 Description"'
       tf.puts '  APPEND_ID_PARAMETER item1 16 UINT 6 6 6 "Item1"'
       tf.puts '  APPEND_PARAMETER item2 16 UINT MIN MAX 0 "Item2" LITTLE_ENDIAN'
-      tf.puts '  APPEND_PARAMETER item3 16 UINT MIN MAX 0 "Item2"'
+      tf.puts '  APPEND_PARAMETER item3 16 UINT MIN MAX 0 "Item3"'
       tf.close
 
       pc = PacketConfig.new
@@ -253,96 +263,142 @@ module OpenC3
     end
 
     describe "build_cmd" do
-      it "complains about non-existent targets" do
-        expect { @cmd.build_cmd("tgtX", "pkt1") }.to raise_error(RuntimeError, "Command target 'TGTX' does not exist")
-      end
+      # Test all the combinations of range_checking and raw
+      [true, false].each do |range_checking|
+        [true, false].each do |raw|
+          it "complains about non-existent targets" do
+            expect { @cmd.build_cmd("tgtX", "pkt1", range_checking, raw) }.to raise_error(RuntimeError, "Command target 'TGTX' does not exist")
+          end
 
-      it "complains about non-existent packets" do
-        expect { @cmd.build_cmd("tgt1", "pktX") }.to raise_error(RuntimeError, "Command packet 'TGT1 PKTX' does not exist")
-      end
+          it "complains about non-existent packets" do
+            expect { @cmd.build_cmd("tgt1", "pktX", range_checking, raw) }.to raise_error(RuntimeError, "Command packet 'TGT1 PKTX' does not exist")
+          end
 
-      it "complains about non-existent items" do
-        expect { @cmd.build_cmd("tgt1", "pkt1", { "itemX" => 1 }) }.to raise_error(RuntimeError, "Packet item 'TGT1 PKT1 ITEMX' does not exist")
-      end
+          it "complains about non-existent items" do
+            expect { @cmd.build_cmd("tgt1", "pkt1", { "itemX" => 1 }, range_checking, raw) }.to raise_error(RuntimeError, "Packet item 'TGT1 PKT1 ITEMX' does not exist")
+          end
 
-      it "creates a populated command packet with default values" do
-        cmd = @cmd.build_cmd("TGT1", "PKT1")
-        cmd.enable_method_missing
-        expect(cmd.item1).to eql 1
-        expect(cmd.item2).to eql 2
-        expect(cmd.item3).to eql 3
-        expect(cmd.item4).to eql 4
-      end
+          it "complains about missing required parameters" do
+            expect { @cmd.build_cmd("tgt2", "pkt3", {}, range_checking, raw) }.to raise_error(RuntimeError, "Required command parameter 'TGT2 PKT3 ITEM2' not given")
+          end
 
-      it "complains about out of range item values" do
-        expect { @cmd.build_cmd("tgt1", "pkt1", { "item2" => 1000 }) }.to raise_error(RuntimeError, "Command parameter 'TGT1 PKT1 ITEM2' = 1000 not in valid range of 0 to 254")
-      end
+          it "creates a command packet with mixed endianness" do
+            items = { "ITEM2" => 0xABCD, "ITEM3" => 0x6789 }
+            cmd = @cmd.build_cmd("TGT2", "PKT6", items, range_checking, raw)
+            cmd.enable_method_missing
+            expect(cmd.item1).to eql 6
+            expect(cmd.item2).to eql 0xABCD
+            expect(cmd.item3).to eql 0x6789
+            expect(cmd.buffer).to eql "\x00\x06\xCD\xAB\x67\x89"
+          end
 
-      it "complains about out of range item states" do
-        expect { @cmd.build_cmd("tgt1", "pkt2", { "item2" => "OTHER" }) }.to raise_error(RuntimeError, "Command parameter 'TGT1 PKT2 ITEM2' = OTHER not one of BAD1, BAD2, GOOD")
-      end
+          it "resets the buffer size" do
+            packet = @cmd.packet('TGT1', 'PKT1')
+            packet.buffer = "\x00" * (packet.defined_length + 1)
+            expect(packet.length).to eql 5
+            items = { "ITEM2" => 10 }
+            cmd = @cmd.build_cmd("TGT1", "PKT1", items, range_checking, raw)
+            expect(cmd.read("ITEM2")).to eql 10
+            expect(cmd.length).to eql 4
+          end
 
-      it "ignores out of range item values if requested" do
-        cmd = @cmd.build_cmd("tgt1", "pkt1", { "item2" => 255 }, false)
-        cmd.enable_method_missing
-        expect(cmd.item1).to eql 1
-        expect(cmd.item2).to eql 255
-        expect(cmd.item3).to eql 3
-        expect(cmd.item4).to eql 4
-      end
+          it "creates a populated command packet with default values" do
+            cmd = @cmd.build_cmd("TGT1", "PKT1", {}, range_checking, raw)
+            cmd.enable_method_missing
+            expect(cmd.raw).to eql raw
+            expect(cmd.item1).to eql 1
+            expect(cmd.item2).to eql 2
+            expect(cmd.item3).to eql 3
+            expect(cmd.item4).to eql 4
+          end
 
-      it "creates a command packet with override item values" do
-        items = { "ITEM2" => 10, "ITEM4" => 11 }
-        cmd = @cmd.build_cmd("TGT1", "PKT1", items)
-        cmd.enable_method_missing
-        expect(cmd.item1).to eql 1
-        expect(cmd.item2).to eql 10
-        expect(cmd.item3).to eql 3
-        expect(cmd.item4).to eql 11
-      end
+          it "creates a command packet with override item values" do
+            items = { "ITEM2" => 10, "ITEM4" => 11 }
+            cmd = @cmd.build_cmd("TGT1", "PKT1", items, range_checking, raw)
+            cmd.enable_method_missing
+            expect(cmd.raw).to eql raw
+            expect(cmd.item1).to eql 1
+            expect(cmd.item2).to eql 10
+            expect(cmd.item3).to eql 3
+            expect(cmd.item4).to eql 11
+          end
 
-      it "creates a command packet with override item value states" do
-        items = { "ITEM2" => "GOOD" }
-        cmd = @cmd.build_cmd("TGT1", "PKT2", items)
-        cmd.enable_method_missing
-        expect(cmd.item1).to eql 2
-        expect(cmd.item2).to eql "GOOD"
-        expect(cmd.read("ITEM2", :RAW)).to eql 2
-      end
+          it "creates a command packet with override item value states" do
+            if raw
+              items = { "ITEM2" => 2, "ITEM3" => 0.5, "ITEM4" => "WORLD" }
+            else
+              # Converted (not raw) can take either states or values
+              items = { "ITEM2" => 2, "ITEM3" => "S3", "ITEM4" => "WO" }
+            end
+            cmd = @cmd.build_cmd("TGT1", "PKT2", items, range_checking, raw)
+            cmd.enable_method_missing
+            expect(cmd.item1).to eql 2
+            expect(cmd.item2).to eql "GOOD"
+            expect(cmd.read("ITEM2", :RAW)).to eql 2
+            expect(cmd.item3).to eql "S3"
+            expect(cmd.read("ITEM3", :RAW)).to eql 0.5
+            expect(cmd.item4).to eql "WO"
+            expect(cmd.read("ITEM4", :RAW)).to eql 'WORLD'
+          end
 
-      it "creates a command packet with mixed endianness" do
-        items = { "ITEM2" => 0xABCD, "ITEM3" => 0x6789 }
-        cmd = @cmd.build_cmd("TGT2", "PKT6", items)
-        cmd.enable_method_missing
-        expect(cmd.item1).to eql 6
-        expect(cmd.item2).to eql 0xABCD
-        expect(cmd.item3).to eql 0x6789
-        expect(cmd.buffer).to eql "\x00\x06\xCD\xAB\x67\x89"
-      end
+          if range_checking
+            it "complains about out of range item values" do
+              expect { @cmd.build_cmd("tgt1", "pkt1", { "item2" => 255 }, range_checking, raw) }.to raise_error(RuntimeError, "Command parameter 'TGT1 PKT1 ITEM2' = 255 not in valid range of 0 to 200")
+            end
 
-      it "complains about missing required parameters" do
-        expect { @cmd.build_cmd("tgt2", "pkt3") }.to raise_error(RuntimeError, "Required command parameter 'TGT2 PKT3 ITEM2' not given")
-      end
+            it "complains about out of range item states" do
+              items = { "ITEM2" => 3, "ITEM3" => 0.0, "ITEM4" => "WORLD" }
+              if raw
+                expect { @cmd.build_cmd("tgt1", "pkt2", items, range_checking, raw) }.to raise_error(RuntimeError, "Command parameter 'TGT1 PKT2 ITEM2' = 3 not one of 0, 1, 2")
+              else
+                expect { @cmd.build_cmd("tgt1", "pkt2", items, range_checking, raw) }.to raise_error(RuntimeError, "Command parameter 'TGT1 PKT2 ITEM2' = 3 not one of BAD1, BAD2, GOOD")
+              end
 
-      it "supports building raw commands" do
-        items = { "ITEM2" => 10 }
-        cmd = @cmd.build_cmd("TGT2", "PKT5", items, false, false)
-        expect(cmd.raw).to eql false
-        expect(cmd.read("ITEM2")).to eql 20
-        items = { "ITEM2" => 10 }
-        cmd = @cmd.build_cmd("TGT1", "PKT1", items, false, true)
-        expect(cmd.raw).to eql true
-        expect(cmd.read("ITEM2")).to eql 10
-      end
+              items = { "ITEM2" => 0, "ITEM3" => 2.0, "ITEM4" => "WORLD" }
+              if raw
+                expect { @cmd.build_cmd("tgt1", "pkt2", items, range_checking, raw) }.to raise_error(RuntimeError, "Command parameter 'TGT1 PKT2 ITEM3' = 2.0 not one of 0.0, 0.25, 0.5, 0.75, 1.0")
+              else
+                expect { @cmd.build_cmd("tgt1", "pkt2", items, range_checking, raw) }.to raise_error(RuntimeError, "Command parameter 'TGT1 PKT2 ITEM3' = 2.0 not one of S1, S2, S3, S4, S5")
+              end
 
-      it "resets the buffer size" do
-        packet = @cmd.packet('TGT1', 'PKT1')
-        packet.buffer = "\x00" * (packet.defined_length + 1)
-        expect(packet.length).to eql 5
-        items = { "ITEM2" => 10 }
-        cmd = @cmd.build_cmd("TGT1", "PKT1", items)
-        expect(cmd.read("ITEM2")).to eql 10
-        expect(cmd.length).to eql 4
+              items = { "ITEM2" => 0, "ITEM3" => 0.0, "ITEM4" => "TESTY" }
+              if raw
+                expect { @cmd.build_cmd("tgt1", "pkt2", items, range_checking, raw) }.to raise_error(RuntimeError, "Command parameter 'TGT1 PKT2 ITEM4' = TESTY not one of HELLO, WORLD, JASON")
+              else
+                expect { @cmd.build_cmd("tgt1", "pkt2", items, range_checking, raw) }.to raise_error(RuntimeError, "Command parameter 'TGT1 PKT2 ITEM4' = TESTY not one of HI, WO, JA")
+              end
+            end
+          else
+            it "ignores out of range item values if requested" do
+              cmd = @cmd.build_cmd("tgt1", "pkt1", { "item2" => 255 }, range_checking, raw)
+              cmd.enable_method_missing
+              expect(cmd.item1).to eql 1
+              expect(cmd.item2).to eql 255
+              expect(cmd.item3).to eql 3
+              expect(cmd.item4).to eql 4
+            end
+
+            it "ignores out of range item states if requested" do
+              items = { "ITEM2" => 3, "ITEM3" => 0.0, "ITEM4" => "WORLD" }
+              cmd = @cmd.build_cmd("tgt1", "pkt2", items, range_checking, raw)
+              expect(cmd.read("ITEM2", :RAW)).to eql 3
+              expect(cmd.read("ITEM3", :RAW)).to eql 0.0
+              expect(cmd.read("ITEM4", :RAW)).to eql 'WORLD'
+
+              items = { "ITEM2" => 0, "ITEM3" => 2.0, "ITEM4" => "WORLD" }
+              cmd = @cmd.build_cmd("tgt1", "pkt2", items, range_checking, raw)
+              expect(cmd.read("ITEM2", :RAW)).to eql 0
+              expect(cmd.read("ITEM3", :RAW)).to eql 2.0
+              expect(cmd.read("ITEM4", :RAW)).to eql 'WORLD'
+
+              items = { "ITEM2" => 0, "ITEM3" => 0.0, "ITEM4" => "TESTY" }
+              cmd = @cmd.build_cmd("tgt1", "pkt2", items, range_checking, raw)
+              expect(cmd.read("ITEM2", :RAW)).to eql 0
+              expect(cmd.read("ITEM3", :RAW)).to eql 0.0
+              expect(cmd.read("ITEM4", :RAW)).to eql 'TESTY'
+            end
+          end
+        end
       end
     end
 
