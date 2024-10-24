@@ -72,6 +72,10 @@
   border-color: var(--button-color-border-primary-hover) !important;
 }
 
+.v-btn {
+  text-transform: inherit !important;
+}
+
 body,
 .v-theme--cosmosDark.v-application,
 .v-theme--cosmosDark.v-main,
@@ -102,6 +106,10 @@ body,
 .v-theme--cosmosDark.v-toolbar,
 .v-theme--cosmosDark.v-date-picker-header {
   background-color: var(--color-background-surface-header) !important;
+}
+
+.v-navigation-drawer .v-treeview-item {
+  font-size: 1rem;
 }
 
 .v-expansion-panel-title,
@@ -135,12 +143,15 @@ table,
 }
 
 .v-menu > .v-overlay__content > .v-theme--cosmosDark.v-list {
-  background-color: var(--color-background-surface-default);
+  background-color: var(--color-background-surface-selected);
+}
+.v-menu > .v-overlay__content > .v-theme--cosmosDark.v-list .v-list-item:hover {
+  background-color: var(--color-background-interactive-muted) !important;
 }
 
-.v-theme--cosmosDark.v-overlay--active[role='dialog'] {
+.v-theme--cosmosDark.v-overlay--active:not([role=tooltip]):not(:has([role=listbox])) {
   backdrop-filter: blur(2px) !important;
-  --v-overlay-opacity: 0.1;
+  --v-overlay-opacity: 0.1 !important;
 }
 
 .v-theme--cosmosDark.v-list-item:hover,
@@ -171,7 +182,7 @@ table,
   color: var(--color-text-interactive-default) !important;
   background-color: var(--color-background-base-default) !important;
 }
-.v-theme--cosmosDark.v-select {
+.v-theme--cosmosDark.v-select [role=combobox] {
   border-color: var(--button-color-border-interactive-default) !important;
   color: var(--color-text-interactive-default) !important;
   background-color: var(--color-background-base-default) !important;

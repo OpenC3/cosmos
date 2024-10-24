@@ -29,13 +29,12 @@
             <template v-slot:activator="{ props }">
               <div v-bind="props">
                 <v-btn
-                  icon
+                  icon="mdi-download"
+                  variant="text"
                   class="mx-2"
                   data-test="download-log"
                   @click="downloadLog"
-                >
-                  <v-icon> mdi-download </v-icon>
-                </v-btn>
+                />
               </div>
             </template>
             <span> Download Log </span>
@@ -49,7 +48,7 @@
             :items="messageOrderOptions"
             v-model="messageOrder"
             class="mr-2"
-            style="max-width: 170px"
+            style="max-width: 200px"
             data-test="message-order"
           />
           <v-spacer />
@@ -70,13 +69,12 @@
             <template v-slot:activator="{ props }">
               <div v-bind="props">
                 <v-btn
-                  icon
+                  icon="mdi-delete"
+                  variant="text"
                   class="mx-2"
                   data-test="clear-log"
                   @click="clearLog"
-                >
-                  <v-icon> mdi-delete </v-icon>
-                </v-btn>
+                />
               </div>
             </template>
             <span> Clear Log </span>

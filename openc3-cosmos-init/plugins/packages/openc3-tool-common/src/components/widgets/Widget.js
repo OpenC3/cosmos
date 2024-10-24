@@ -74,7 +74,7 @@ export default {
   },
   computed: {
     computedStyle: function () {
-      this.appliedSettings.forEach((setting) => {
+      this.settings.forEach((setting) => {
         const index = parseInt(setting[0])
         if (this.widgetIndex !== null) {
           if (this.widgetIndex === index) {

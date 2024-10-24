@@ -54,7 +54,6 @@ export default {
   justify-content: center;
   align-items: center;
   padding: 5px;
-  padding-top: 15px;
   width: var(--width);
 }
 .limitsbar__container {

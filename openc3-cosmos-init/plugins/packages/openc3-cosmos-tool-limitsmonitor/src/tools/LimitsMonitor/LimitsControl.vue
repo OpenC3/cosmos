@@ -52,15 +52,15 @@
       </v-row>
 
       <v-row data-test="limits-row" class="my-0 ml-1 mr-1">
-        <div class="pa-1 mt-1 mr-2 label" style="width: 170px">Timestamp</div>
+        <div class="pa-1 mt-1 mr-2 label" style="width: 200px">Timestamp</div>
         <div class="pa-1 mt-1 mr-2 label" style="width: 200px">Item Name</div>
         <div class="pa-1 mt-1 mr-2 label" style="width: 200px">Value</div>
         <div class="pa-1 mt-1 mr-2 label" style="width: 180px">Limits Bar</div>
         <div class="pa-1 mt-1 mr-2 label">Controls</div>
       </v-row>
       <div v-for="(item, index) in items" :key="item.key">
-        <v-row data-test="limits-row" class="my-0 ml-1 mr-1">
-          <div class="pa-1 mt-1 mr-2 label" style="width: 170px">
+        <v-row data-test="limits-row" class="align-center my-0 mx-1">
+          <div class="pa-1 mt-1 mr-2 label" style="width: 200px">
             {{ item.timestamp }}
           </div>
           <labelvaluelimitsbar-widget

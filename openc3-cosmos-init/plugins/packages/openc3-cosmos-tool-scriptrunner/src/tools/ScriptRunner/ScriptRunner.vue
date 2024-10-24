@@ -114,12 +114,11 @@
             <template v-slot:activator="{ props }">
               <v-btn
                 v-bind="props"
-                icon
+                icon="mdi-cached"
+                variant="text"
                 @click="reloadFile"
                 :disabled="filename === NEW_FILENAME"
-              >
-                <v-icon>mdi-cached</v-icon>
-              </v-btn>
+              />
             </template>
             <span> Reload File </span>
           </v-tooltip>

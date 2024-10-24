@@ -27,7 +27,7 @@
       v-model="showNotificationPane"
       transition="slide-y-transition"
       :close-on-content-click="false"
-      :offset="20"
+      :offset="[12, 102]"
     >
       <template v-slot:activator="{ props }">
         <rux-monitoring-icon
@@ -43,31 +43,29 @@
 
       <!-- Notifications list -->
       <v-card>
-        <v-card-title>
-          Notifications
+        <v-card-title class="d-flex align-center justify-content-space-between">
+          <span> Notifications </span>
           <v-spacer />
           <v-tooltip location="top" open-delay="350">
             <template v-slot:activator="{ props }">
               <v-btn
                 v-bind="props"
                 class="ml-1"
-                icon
+                icon="mdi-close-box-multiple "
+                variant="text"
                 @click="clearNotifications"
                 data-test="clear-notifications"
-              >
-                <v-icon> mdi-close-box-multiple </v-icon>
-              </v-btn>
+              />
             </template>
-            <span>Clear all</span>
+            <span> Clear all </span>
           </v-tooltip>
           <v-btn
-            icon
+            icon="astro:settings"
+            variant="text"
             @click="toggleSettingsDialog"
             class="ml-1"
             data-test="notification-settings"
-          >
-            <v-icon> astro:settings </v-icon>
-          </v-btn>
+          />
         </v-card-title>
         <v-card-text v-if="notifications.length === 0">
           No notifications
@@ -94,27 +92,23 @@
               @click="openDialog(notification)"
               class="pl-2"
             >
-              <v-badge location="left" inline color="transparent">
-                <v-list-item-subtitle class="pt-0 pb-0">
-                  <v-list-item-title
-                    :class="{
-                      'text--secondary': notification.read,
-                      'text-wrap': true,
-                    }"
-                  >
-                    {{ notification.message }}
-                  </v-list-item-title>
-                  <v-list-item-subtitle>
-                    {{ formatShortDateTime(notification.time) }}
-                  </v-list-item-subtitle>
-                  <div style="height: 20px" />
-                </v-list-item-subtitle>
-                <template v-slot:badge>
-                  <rux-status
-                    :status="getStatus(notification.level)"
-                  ></rux-status>
-                </template>
-              </v-badge>
+              <template v-slot:prepend>
+                <rux-status
+                  class="px-2"
+                  :status="getStatus(notification.level)"
+                />
+              </template>
+              <v-list-item-title
+                :class="{
+                  'text--secondary': notification.read,
+                  'text-wrap': true,
+                }"
+              >
+                {{ notification.message }}
+              </v-list-item-title>
+              <v-list-item-subtitle>
+                {{ formatShortDateTime(notification.time) }}
+              </v-list-item-subtitle>
             </v-list-item>
           </template>
         </v-list>

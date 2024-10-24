@@ -131,15 +131,16 @@
             <span id="openc3-menu" />
           </v-row>
         </v-col>
-        <v-col style="margin: auto">
-          <rux-clock
-            class="clock"
-            v-if="!astro.hideClock"
-            date-in=""
-            :timezone="astroTimeZone"
-          ></rux-clock>
+        <v-col>
+          <v-row class="clock flex-nowrap mt-0">
+            <rux-clock
+              v-if="!astro.hideClock"
+              date-in=""
+              :timezone="astroTimeZone"
+            />
+          </v-row>
         </v-col>
-        <v-col align-self="center">
+        <v-col align-self="center" class="mt-2">
           <v-row class="flex-nowrap">
             <v-spacer />
             <scope-selector class="mr-6 mt-4" />
@@ -381,7 +382,6 @@ export default {
 }
 div a {
   color: white;
-  font-size: 16px;
   display: block;
   height: 100%;
   width: 100%;

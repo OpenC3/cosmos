@@ -58,6 +58,8 @@ export default {
     // passed down to LABELVALUE and be set there as well.
     labelValueSettings() {
       return [
+        // Get the screen setting
+        ...this.settings.filter((x) => x[0] === '__SCREEN_ID__'),
         // Get all the setting that apply to labelvalue (0, 1 widgets)
         ...this.settings.filter(
           (x) => parseInt(x[0]) === 0 || parseInt(x[0]) === 1,
