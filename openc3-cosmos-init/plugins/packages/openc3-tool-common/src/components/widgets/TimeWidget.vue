@@ -28,9 +28,10 @@
 
 <script>
 import Widget from './Widget'
+import TimeFilters from '@openc3/tool-common/src/tools/base/util/timeFilters.js'
 
 export default {
-  mixins: [Widget],
+  mixins: [Widget, TimeFilters],
   data() {
     return {
       label: 'Time',
@@ -47,6 +48,7 @@ export default {
     if (this.parameters[0]) {
       this.label = this.parameters[0]
     }
+    this.timeValue = this.formatTime(new Date(), this.screen.timeZone)
   },
   methods: {
     text() {
