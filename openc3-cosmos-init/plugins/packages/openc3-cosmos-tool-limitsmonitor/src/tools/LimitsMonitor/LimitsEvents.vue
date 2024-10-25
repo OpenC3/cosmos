@@ -22,7 +22,7 @@
 
 <template>
   <v-card class="card-height">
-    <v-card-title>
+    <v-card-title class="d-flex align-center">
       Limits Events
       <v-spacer />
       <v-text-field

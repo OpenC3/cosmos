@@ -103,7 +103,7 @@
       hide-default-footer
       multi-sort
       density="compact"
-      height="70vh"
+      sticky
       hover
       data-test="log-messages"
     >
@@ -341,3 +341,20 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+.v-card {
+  /* take up any remaining vertical space
+     (e.g. whatever is left after the tabs in cmdtlmserver)
+   */
+  flex-grow: 1;
+
+  /* flex so the table can grow without making the card itself scroll */
+  display: flex;
+  flex-direction: column;
+}
+.v-data-table {
+  height: 25vh; /* give it at least a bit of height to start with */
+  flex-grow: 1; /* and then grow to fill all the space it can */
+}
+</style>

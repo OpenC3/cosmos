@@ -36,7 +36,6 @@
                     label="Start Date"
                     type="date"
                     :rules="[rules.required]"
-                    variant="underlined"
                     data-test="start-date"
                   />
                 </v-col>
@@ -47,7 +46,6 @@
                     type="time"
                     step="1"
                     :rules="[rules.required]"
-                    variant="underlined"
                     data-test="start-time"
                   />
                 </v-col>
@@ -57,7 +55,6 @@
                     label="End Date"
                     type="date"
                     :rules="endTime ? [rules.required] : []"
-                    variant="underlined"
                     data-test="end-date"
                   />
                 </v-col>
@@ -68,7 +65,6 @@
                     type="time"
                     step="1"
                     :rules="endDate ? [rules.required] : []"
-                    variant="underlined"
                     data-test="end-time"
                   />
                 </v-col>
@@ -146,7 +142,7 @@
           <keep-alive>
             <v-card flat>
               <v-divider />
-              <v-card-title class="pa-3">
+              <v-card-title class="pa-3 d-flex align-center">
                 <span v-text="tab.name" />
                 <v-spacer />
                 <v-tooltip location="bottom">

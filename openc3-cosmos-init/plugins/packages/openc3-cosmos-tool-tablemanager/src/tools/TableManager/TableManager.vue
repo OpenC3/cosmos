@@ -138,7 +138,7 @@
           </v-col>
         </v-row>
       </v-card-text>
-      <v-card-title style="padding-top: 0px">
+      <v-card-title class="d-flex align-center">
         Items
         <v-spacer />
         <v-text-field

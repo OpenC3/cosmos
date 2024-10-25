@@ -82,6 +82,12 @@ body,
 .v-theme--cosmosDark.v-content {
   background-color: var(--color-background-base-default);
 }
+.single-spa-container {
+  height: 100%;
+}
+.v-application__wrap {
+  min-height: 0 !important; // Vuetify's `:full-height="false"` prop seems to not be working
+}
 
 .v-theme--cosmosDark .v-tabs > .v-slide-group__container .v-tab--disabled,
 .v-theme--cosmosDark .v-tabs > .v-slide-group__container .v-tab:not(.v-tab--selected),
@@ -167,6 +173,9 @@ table,
     .v-data-table__empty-wrapper
   ) {
   background-color: var(--color-background-surface-hover) !important;
+}
+.v-data-table__th {
+  background-color: var(--color-background-surface-default) !important;
 }
 
 // Most tables have a search box

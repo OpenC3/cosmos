@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license 
@@ -21,9 +21,7 @@
 -->
 
 <template>
-  <div>
-    <v-app id="innerapp">
-      <router-view></router-view>
-    </v-app>
-  </div>
+  <v-app id="innerapp">
+    <router-view></router-view>
+  </v-app>
 </template>
