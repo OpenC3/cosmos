@@ -18,7 +18,6 @@ import os
 import sys
 import time
 import json
-from datetime import datetime, timezone
 from openc3.microservices.microservice import Microservice
 from openc3.system.system import System
 from openc3.topics.topic import Topic
