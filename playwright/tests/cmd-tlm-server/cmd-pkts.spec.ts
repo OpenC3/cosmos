@@ -27,10 +27,18 @@ test.use({
 
 test('displays the list of command', async ({ page, utils }) => {
   // When we ask for just text there are no spaces
-  await expect(page.locator('text=INSTABORT')).toBeVisible()
-  await expect(page.locator('text=INSTCLEAR')).toBeVisible()
-  await expect(page.locator('text=INSTCOLLECT')).toBeVisible()
-  await expect(page.locator('text=EXAMPLESTART')).toBeVisible()
+  await expect(
+    page.locator('[data-test=cmd-packets-table]').locator('text=INSTABORT'),
+  ).toBeVisible()
+  await expect(
+    page.locator('[data-test=cmd-packets-table]').locator('text=INSTCLEAR'),
+  ).toBeVisible()
+  await expect(
+    page.locator('[data-test=cmd-packets-table]').locator('text=INSTCOLLECT'),
+  ).toBeVisible()
+  await expect(
+    page.locator('[data-test=cmd-packets-table]').locator('text=EXAMPLESTART'),
+  ).toBeVisible()
 })
 
 test('displays the command count', async ({ page, utils }) => {

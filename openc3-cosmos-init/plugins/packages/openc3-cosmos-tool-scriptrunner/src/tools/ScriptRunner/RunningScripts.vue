@@ -164,9 +164,10 @@ export default {
       completedSearch: '',
       completedScripts: [],
       completedHeaders: [
-        { title: 'User', key: 'user' },
-        { title: 'Name', key: 'name' },
-        { title: 'Start Time', key: 'start' },
+        { title: 'Id', value: 'id' },
+        { title: 'User', value: 'user' },
+        { title: 'Name', value: 'name' },
+        { title: 'Start Time', value: 'start' },
         {
           title: 'Download',
           key: 'download',

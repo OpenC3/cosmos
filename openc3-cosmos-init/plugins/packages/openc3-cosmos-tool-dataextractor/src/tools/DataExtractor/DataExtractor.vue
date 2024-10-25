@@ -967,7 +967,11 @@ export default {
             } else {
               let rawVal = packet[key]['raw']
               if (Array.isArray(rawVal)) {
-                row[columnIndex] = 'BINARY'
+                let hexString = ''
+                rawVal.forEach((val) => {
+                  hexString += val.toString(16)
+                })
+                row[columnIndex] = hexString
               } else {
                 row[columnIndex] = "'" + rawVal + "'"
               }

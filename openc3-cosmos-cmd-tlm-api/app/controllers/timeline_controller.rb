@@ -169,7 +169,6 @@ class TimelineController < ApplicationController
         model.undeploy()
         model.notify(kind: 'deleted')
         OpenC3::Logger.info("Timeline destroyed: #{params[:name]}", scope: params[:scope], user: username())
-        puts "Render:#{{ 'name' => params[:name]}}"
         render :json => { 'name' => params[:name]}, :status => 204
       rescue OpenC3::TimelineError => e
         logger.error(e.formatted)

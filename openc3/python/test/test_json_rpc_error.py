@@ -36,7 +36,6 @@ class TestJsonRpcError(unittest.TestCase):
         json_request_example = {"message": "foobar", "data": {}}
         with self.assertRaises(KeyError) as context:
             JsonRpcError.from_hash(json_request_example)
-            self.assertTrue("Invalid" in context.exception)
 
 
 if __name__ == "__main__":

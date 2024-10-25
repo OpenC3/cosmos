@@ -21,7 +21,12 @@
 -->
 
 <template>
-  <div class="led mt-1" :style="cssProps"></div>
+  <v-tooltip bottom>
+    <template v-slot:activator="{ on, attrs }">
+      <div class="led mt-1" :style="cssProps" v-bind="attrs" v-on="on"></div>
+    </template>
+    <span>{{ fullName }}</span>
+  </v-tooltip>
 </template>
 
 <script>
@@ -58,6 +63,11 @@ export default {
         '--width': this.width + 'px',
         '--color': color,
       }
+    },
+    fullName() {
+      return (
+        this.parameters[0] + ' ' + this.parameters[1] + ' ' + this.parameters[2]
+      )
     },
   },
   // Note Vuejs still treats this synchronously, but this allows us to dispatch

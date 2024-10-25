@@ -91,7 +91,11 @@
         hide-default-footer
         density="compact"
         data-test="output-messages"
-      />
+      >
+        <template v-slot:item.message="{ item }">
+          <div :class="messageClass(item.message)">{{ item.message }}</div>
+        </template>
+      </v-data-table>
     </v-card>
   </div>
 </template>
@@ -130,6 +134,15 @@ export default {
     },
   },
   methods: {
+    messageClass(message) {
+      if (message.match(/CHECK:.*success with value.*after waiting/)) {
+        return 'openc3-green'
+      } else if (message.match(/CHECK:.*failed with value.*after waiting/)) {
+        return 'openc3-red'
+      } else {
+        return ''
+      }
+    },
     downloadLog() {
       const output = this.messages.map((message) => message.message).join('\n')
       const blob = new Blob([output], {

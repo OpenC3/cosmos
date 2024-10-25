@@ -179,9 +179,15 @@ export default {
           token: this.password,
         },
         ...this.options,
-      }).then((response) => {
-        this.login(response)
       })
+        .then((response) => {
+          this.login(response)
+        })
+        .catch((error) => {
+          this.alert = `Invalid password: ${error.response.data.message}`
+          this.alertType = 'warning'
+          this.showAlert = true
+        })
     },
   },
 }

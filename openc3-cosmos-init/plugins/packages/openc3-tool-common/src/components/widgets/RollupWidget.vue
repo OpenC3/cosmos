@@ -19,6 +19,7 @@
 <template>
   <rux-monitoring-icon
     class="rux-icon"
+    :style="pointerStyle"
     :icon="icon"
     :status="status"
     :label="label"
@@ -69,6 +70,17 @@ export default {
         }
       }
       return state
+    },
+    pointerStyle() {
+      if (this.screenTarget && this.screenName) {
+        return {
+          cursor: 'pointer',
+        }
+      } else {
+        return {
+          cursor: 'default',
+        }
+      }
     },
   },
   created: function () {

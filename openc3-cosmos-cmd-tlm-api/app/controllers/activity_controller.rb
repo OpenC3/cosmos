@@ -24,6 +24,8 @@ require 'openc3/models/activity_model'
 require 'openc3/topics/timeline_topic'
 
 class ActivityController < ApplicationController
+  NOT_FOUND = 'not found'
+
   def initialize
     super()
     @model_class = OpenC3::ActivityModel
@@ -160,7 +162,7 @@ class ActivityController < ApplicationController
     begin
       model = @model_class.score(name: params[:name], score: params[:id].to_i, scope: params[:scope])
       if model.nil?
-        render :json => { :status => 'error', :message => 'not found' }, :status => 404
+        render :json => { :status => 'error', :message => NOT_FOUND }, :status => 404
       else
         render :json => model.as_json(:allow_nan => true), :status => 200
       end
@@ -195,7 +197,7 @@ class ActivityController < ApplicationController
     return unless authorization('script_run')
     model = @model_class.score(name: params[:name], score: params[:id].to_i, scope: params[:scope])
     if model.nil?
-      render :json => { :status => 'error', :message => 'not found' }, :status => 404
+      render :json => { :status => 'error', :message => NOT_FOUND }, :status => 404
       return
     end
     begin
@@ -243,7 +245,7 @@ class ActivityController < ApplicationController
     return unless authorization('script_run')
     model = @model_class.score(name: params[:name], score: params[:id].to_i, scope: params[:scope])
     if model.nil?
-      render :json => { :status => 'error', :message => 'not found' }, :status => 404
+      render :json => { :status => 'error', :message => NOT_FOUND }, :status => 404
       return
     end
     begin
@@ -292,7 +294,7 @@ class ActivityController < ApplicationController
     begin
       ret = @model_class.destroy(name: params[:name], scope: params[:scope], score: params[:id].to_i, uuid: params[:uuid], recurring: params[:recurring])
       if ret == 0
-        render :json => { :status => 'error', :message => "Activity not found" }, :status => 404
+        render :json => { :status => 'error', :message => NOT_FOUND }, :status => 404
       else
         OpenC3::Logger.info(
           "Activity destroyed name: #{params[:name]} id:#{params[:id]} recurring:#{params[:recurring]}",
