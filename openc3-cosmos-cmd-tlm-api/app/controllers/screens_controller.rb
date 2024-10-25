@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -22,7 +22,7 @@ class ScreensController < ApplicationController
     scope = sanitize_params([:scope])
     return unless scope
     scope = scope[0]
-    render :json => Screen.all(scope)
+    render json: Screen.all(scope)
   end
 
   def show
@@ -31,7 +31,7 @@ class ScreensController < ApplicationController
     return unless result
     screen = Screen.find(*result)
     if screen
-      render :json => screen
+      render json: screen
     else
       head :not_found
     end
@@ -45,10 +45,10 @@ class ScreensController < ApplicationController
     result << text
     screen = Screen.create(*result)
     OpenC3::Logger.info("Screen saved: #{params[:target]} #{params[:screen]}", scope: params[:scope], user: username())
-    render :json => screen
+    render json: screen
   rescue => e
     logger.error(e.formatted)
-    render(json: { status: 'error', message: e.message }, status: 500)
+    render json: { status: 'error', message: e.message }, status: 500
   end
 
   def destroy
@@ -60,6 +60,6 @@ class ScreensController < ApplicationController
     head :ok
   rescue => e
     logger.error(e.formatted)
-    render(json: { status: 'error', message: e.message }, status: 500)
+    render json: { status: 'error', message: e.message }, status: 500
   end
 end

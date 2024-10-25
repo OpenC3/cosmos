@@ -41,7 +41,7 @@ OpenC3::EphemeralStore.instance
 ENV['OPENC3_REDIS_USERNAME'] = nil
 ENV['OPENC3_REDIS_PASSWORD'] = nil
 
-SCRIPT_API = 'script-api'
+# Note: SCRIPT_API = 'script-api' in running_script.rb
 
 id = ARGV[0]
 script = JSON.parse(OpenC3::Store.get("running-script:#{id}"), :allow_nan => true, :create_additions => true)

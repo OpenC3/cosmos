@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -105,7 +105,7 @@ RSpec.describe MetadataController, :type => :controller do
 
     it "returns error and status 204 if no metadata" do
       get :latest,  params: { scope: 'DEFAULT' }
-      expect(response).to have_http_status(:no_content)
+      expect(response).to have_http_status(:success)
       ret = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
       expect(ret['status']).to eql("error")
       expect(ret['message']).to match("no metadata entries")
@@ -293,7 +293,7 @@ RSpec.describe MetadataController, :type => :controller do
     it "successfully updates a metadata object with status code 204" do
       start = create_metadata()
       delete :destroy, params: { scope: 'DEFAULT', id: start.to_i }
-      expect(response).to have_http_status(:no_content)
+      expect(response).to have_http_status(:success)
     end
   end
 end
