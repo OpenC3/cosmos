@@ -289,7 +289,6 @@ class TestPacketConfig(unittest.TestCase):
                 case _:
                     tf.write(f"{keyword} extra\n")
             tf.seek(0)
-            print(keyword)
             with self.assertRaisesRegex(ConfigParser.Error, f"Too many parameters for {keyword}"):
                 self.pc.process_file(tf.name, "TGT1")
             tf.close()
