@@ -756,7 +756,7 @@ module OpenC3
           super(item, value, :RAW, buffer)
         rescue ArgumentError => e
           if item.states and String === value and e.message =~ /invalid value for/
-            raise "Unknown state #{value} for #{item.name}, must be one of #{item.states.keys.join(', ')}"
+            raise "Unknown state #{value} for #{item.name}"
           else
             raise e
           end

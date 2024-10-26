@@ -281,22 +281,11 @@ class Commands:
             item = command.get_item(item_upcase)
             range_check_value = value
 
-            if range_checking:
-                if item.states:
-                    if item.states.get(str(value).upper()) is not None:
-                        range_check_value = item.states[str(value).upper()]
-                    else:
-                        if value not in item.states.values():
-                            if command.raw:
-                                # Raw commands report missing value maps
-                                raise RuntimeError(
-                                    f"Command parameter '{command.target_name} {command.packet_name} {item_upcase}' = {value} not one of {', '.join(map(str, item.states.values()))}"
-                                )
-                            else:
-                                # Normal commands report missing state maps
-                                raise RuntimeError(
-                                    f"Command parameter '{command.target_name} {command.packet_name} {item_upcase}' = {value} not one of {', '.join(item.states.keys())}")
+            # Convert from state to value if possible
+            if item.states is not None and item.states.get(str(value).upper()) is not None:
+                range_check_value = item.states[value.upper()]
 
+            if range_checking:
                 minimum = item.minimum
                 maximum = item.maximum
                 if minimum is not None and maximum is not None:

@@ -47,9 +47,6 @@ module OpenC3
       mock_redis()
       setup_system()
       local_s3()
-    end
-
-    after(:all) do
       local_s3_unset()
     end
 

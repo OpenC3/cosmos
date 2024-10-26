@@ -293,14 +293,6 @@ module OpenC3
     end
 
     describe "self.undeploy" do
-      before(:each) do
-        local_s3()
-      end
-
-      after(:each) do
-        local_s3_unset()
-      end
-
       it "destroys all models associated with the plugin" do
         tool = ToolModel.new(name: "TOOL", folder_name: "TOOL", scope: "DEFAULT", plugin: "PLUG")
         tool.create
