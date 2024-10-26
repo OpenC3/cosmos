@@ -342,6 +342,19 @@ class PacketConfig:
             self.current_packet = None
             self.current_item = None
 
+    # This method provides way to quickly test packet configs
+    #
+    # from openc3.packets.packet_config import PacketConfig
+    #
+    # config = """
+    #   ...
+    # """
+    #
+    # pc = PacketConfig.from_config(config, "MYTARGET")
+    # c = pc.commands['CMDADCS']['SET_POINTING_CMD']
+    # c.restore_defaults()
+    # c.write("MYITEM", 5)
+    # print(c.buffer)
     @classmethod
     def from_config(cls, config, process_target_name):
         pc = cls()

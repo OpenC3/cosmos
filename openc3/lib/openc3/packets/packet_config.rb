@@ -369,6 +369,19 @@ module OpenC3
       end
     end
 
+    # This method provides way to quickly test packet configs
+    #
+    # require 'openc3/packets/packet_config'
+    #
+    # config = <<END
+    #   ...
+    # END
+    #
+    # pc = PacketConfig.from_config(config, "MYTARGET")
+    # c = pc.commands['CMDADCS']['SET_POINTING_CMD']
+    # c.restore_defaults()
+    # c.write("MYITEM", 5)
+    # puts c.buffer.formatted
     def self.from_config(config, process_target_name, language = 'ruby')
       pc = self.new
       tf = Tempfile.new("pc.txt")
