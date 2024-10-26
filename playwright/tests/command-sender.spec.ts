@@ -104,6 +104,33 @@ test('displays parameter units, ranges and description', async ({
   await expect(row.locator('td >> nth=4')).toContainText('Collect temperature')
 })
 
+test('supports manually entered state values', async ({ page, utils }) => {
+  await page.locator('[data-test="clear-history"]').click()
+  await utils.selectTargetPacketItem('INST', 'COLLECT')
+  await setValue(page, 'TYPE', '3')
+  // Typing in the state value should automatically switch the state
+  await expect(page.locator('tr:has-text("TYPE")')).toContainText(
+    'MANUALLY ENTERED',
+  )
+
+  // Manually typing in an existing state value should change the state drop down
+  await setValue(page, 'TYPE', '0x0')
+  await expect(page.locator('tr:has-text("TYPE")')).toContainText('NORMAL')
+  await setValue(page, 'TYPE', '1')
+  await expect(page.locator('tr:has-text("TYPE")')).toContainText('SPECIAL')
+  // Switch back to MANUALLY ENTERED
+  await selectValue(page, 'TYPE', 'MANUALLY ENTERED')
+  await setValue(page, 'TYPE', '3')
+  await page.locator('[data-test="select-send"]').click()
+  await expect(page.locator('main')).toContainText(
+    'cmd("INST COLLECT with TYPE 3, DURATION 1, OPCODE 171, TEMP 0") sent',
+  )
+  await checkHistory(
+    page,
+    'cmd("INST COLLECT with TYPE 3, DURATION 1, OPCODE 171, TEMP 0")',
+  )
+})
+
 test('warns for hazardous commands', async ({ page, utils }) => {
   await page.locator('[data-test="clear-history"]').click()
   await utils.selectTargetPacketItem('INST', 'CLEAR')
@@ -154,9 +181,7 @@ test('warns for required parameters', async ({ page, utils }) => {
   // Break apart the checks so we have output flexibility in the future
   await expect(page.locator('.v-dialog')).toContainText('Error sending')
   await expect(page.locator('.v-dialog')).toContainText('INST COLLECT TYPE')
-  await expect(page.locator('.v-dialog')).toContainText(
-    'not one of NORMAL, SPECIAL',
-  )
+  await expect(page.locator('.v-dialog')).toContainText('not in valid range')
   await page.locator('button:has-text("Ok")').click()
 })
 
@@ -268,13 +293,23 @@ test('handles string values', async ({ page, utils }) => {
   await expect(page.locator('main')).toContainText(
     "cmd(\"INST ASCIICMD with STRING 'ARM LASER', BINARY 0xDEADBEEF, ASCII '0xDEADBEEF'\")",
   )
+  // Enter a custom string
+  await setValue(page, 'STRING', 'MY VAL')
   // Enter a custom binary value
-  await selectValue(page, 'STRING', 'NOOP')
   await setValue(page, 'BINARY', '0xBA5EBA11')
+  // Typing in the state value should automatically switch the state
+  await expect(page.locator('tr:has-text("STRING")').first()).toContainText(
+    'MANUALLY ENTERED',
+  )
   await page.locator('[data-test="select-send"]').click()
   await expect(page.locator('main')).toContainText(
-    "cmd(\"INST ASCIICMD with STRING 'NOOP', BINARY 0xBA5EBA11, ASCII '0xDEADBEEF'\")",
+    "cmd(\"INST ASCIICMD with STRING 'MY VAL', BINARY 0xBA5EBA11, ASCII '0xDEADBEEF'\")",
   )
+  // Manually typing in an existing state value should change the state drop down
+  await setValue(page, 'STRING', 'FIRE LASER')
+  await expect(
+    page.locator('div[role=button]:has-text("FIRE LASER")'),
+  ).toBeVisible()
 })
 
 test('gets details with right click', async ({ page, utils }) => {

@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -308,23 +308,12 @@ module OpenC3
         item = command.get_item(item_upcase)
         range_check_value = value
 
-        if range_checking
-          if item.states
-            if item.states[value.to_s.upcase]
-              range_check_value = item.states[value.to_s.upcase]
-            else
-              unless item.states.values.include?(value)
-                if command.raw
-                  # Raw commands report missing value maps
-                  raise "Command parameter '#{command.target_name} #{command.packet_name} #{item_upcase}' = #{value.to_s.upcase} not one of #{item.states.values.join(', ')}"
-                else
-                  # Normal commands report missing state maps
-                  raise "Command parameter '#{command.target_name} #{command.packet_name} #{item_upcase}' = #{value.to_s.upcase} not one of #{item.states.keys.join(', ')}"
-                end
-              end
-            end
-          end
+        # Convert from state to value if possible
+        if item.states and item.states[value.to_s.upcase]
+          range_check_value = item.states[value.to_s.upcase]
+        end
 
+        if range_checking
           range = item.range
           if range
             # Perform Range Check on command parameter

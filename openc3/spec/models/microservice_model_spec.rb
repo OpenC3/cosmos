@@ -27,11 +27,6 @@ module OpenC3
   describe MicroserviceModel do
     before(:each) do
       mock_redis()
-      local_s3()
-    end
-
-    after(:each) do
-      local_s3_unset()
     end
 
     describe "self.get" do
