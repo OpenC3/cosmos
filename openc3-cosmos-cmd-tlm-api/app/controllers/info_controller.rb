@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -22,7 +22,7 @@ begin
 rescue LoadError
   class InfoController < ApplicationController
     def info
-      render :json => { :version => OPENC3_VERSION, :license => 'AGPLv3', :enterprise => false }, :status => 200
+      render json: { version: OPENC3_VERSION, license: 'AGPLv3', enterprise: false }
     end
   end
 end

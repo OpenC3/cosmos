@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -25,7 +25,7 @@ require 'openc3/models/gem_model'
 class ModelController < ApplicationController
   def index
     return unless authorization('system')
-    render :json => @model_class.names(scope: params[:scope])
+    render json: @model_class.names(scope: params[:scope])
   end
 
   def create(update_model = false)
@@ -44,9 +44,9 @@ class ModelController < ApplicationController
   def show
     return unless authorization('system')
     if params[:id].downcase == 'all'
-      render :json => @model_class.all(scope: params[:scope])
+      render json: @model_class.all(scope: params[:scope])
     else
-      render :json => @model_class.get(name: params[:id], scope: params[:scope])
+      render json: @model_class.get(name: params[:id], scope: params[:scope])
     end
   end
 

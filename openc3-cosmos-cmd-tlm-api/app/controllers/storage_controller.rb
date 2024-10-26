@@ -32,7 +32,7 @@ class StorageController < ApplicationController
     # MatchData [0] is the full text, [1] is the captured group
     # downcase to make it look nicer, BucketExplorer.vue calls toUpperCase on the API requests
     buckets = matches.map { |match| match[1].downcase }.sort
-    render :json => buckets, :status => 200
+    render json: buckets
   end
 
   def volumes
@@ -45,7 +45,7 @@ class StorageController < ApplicationController
     volumes = matches.map { |match| match[1].downcase }.sort
     # Add a slash prefix to identify volumes separately from buckets
     volumes.map! {|volume| "/#{volume}" }
-    render :json => volumes, :status => 200
+    render json: volumes
   end
 
   def files
@@ -78,14 +78,14 @@ class StorageController < ApplicationController
     else
       raise "Unknown root #{params[:root]}"
     end
-    render :json => results, :status => 200
+    render json: results
   rescue OpenC3::Bucket::NotFound => e
     logger.error(e.formatted)
-    render :json => { :status => 'error', :message => e.message }, :status => 404
+    render json: { status: 'error', message: e.message }, status: 404
   rescue Exception => e
     logger.error(e.formatted)
     OpenC3::Logger.error("File listing failed: #{e.message}", user: username())
-    render :json => { status: 'error', message: e.message }, status: 500
+    render json: { status: 'error', message: e.message }, status: 500
   end
 
   def exists
@@ -99,14 +99,14 @@ class StorageController < ApplicationController
                                  key: path,
                                  retries: false)
     if result
-      render :json => result, :status => 200
+      render json: result
     else
-      render :json => result, :status => 404
+      render json: result, status: 404
     end
   rescue Exception => e
     logger.error(e.formatted)
     OpenC3::Logger.error("File exists request failed: #{e.message}", user: username())
-    render :json => { status: 'error', message: e.message }, status: 500
+    render json: { status: 'error', message: e.message }, status: 500
   end
 
   def download_file
@@ -116,11 +116,11 @@ class StorageController < ApplicationController
     filename = "/#{volume}/#{params[:object_id]}"
     filename = sanitize_path(filename)
     file = File.read(filename, mode: 'rb')
-    render :json => { filename: params[:object_id], contents: Base64.encode64(file) }
+    render json: { filename: params[:object_id], contents: Base64.encode64(file) }
   rescue Exception => e
     logger.error(e.formatted)
     OpenC3::Logger.error("Download failed: #{e.message}", user: username())
-    render :json => { status: 'error', message: e.message }, status: 500
+    render json: { status: 'error', message: e.message }, status: 500
   end
 
   def get_download_presigned_request
@@ -133,11 +133,11 @@ class StorageController < ApplicationController
                                       key: path,
                                       method: :get_object,
                                       internal: params[:internal])
-    render :json => result, :status => 201
+    render json: result, status: 201
   rescue Exception => e
     logger.error(e.formatted)
     OpenC3::Logger.error("Download request failed: #{e.message}", user: username())
-    render :json => { status: 'error', message: e.message }, status: 500
+    render json: { status: 'error', message: e.message }, status: 500
   end
 
   def get_upload_presigned_request
@@ -158,11 +158,11 @@ class StorageController < ApplicationController
                                       internal: params[:internal])
     OpenC3::Logger.info("S3 upload presigned request generated: #{bucket_name}/#{path}",
         scope: params[:scope], user: username())
-    render :json => result, :status => 201
+    render json: result, status: 201
   rescue Exception => e
     logger.error(e.formatted)
     OpenC3::Logger.error("Upload request failed: #{e.message}", user: username())
-    render :json => { status: 'error', message: e.message }, status: 500
+    render json: { status: 'error', message: e.message }, status: 500
   end
 
   def delete
@@ -178,7 +178,7 @@ class StorageController < ApplicationController
   rescue Exception => e
     logger.error(e.formatted)
     OpenC3::Logger.error("Delete failed: #{e.message}", user: username())
-    render :json => { status: 'error', message: e.message }, status: 500
+    render json: { status: 'error', message: e.message }, status: 500
   end
 
   private

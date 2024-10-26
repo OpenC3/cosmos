@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -43,7 +43,7 @@ class ScriptsController < ApplicationController
     scope = sanitize_params([:scope])
     return unless scope
     scope = scope[0]
-    render :json => Script.all(scope)
+    render json: Script.all(scope)
   end
 
   def delete_temp
@@ -51,7 +51,7 @@ class ScriptsController < ApplicationController
     scope = sanitize_params([:scope])
     return unless scope
     scope = scope[0]
-    render :json => Script.delete_temp(scope)
+    render json: Script.delete_temp(scope)
   end
 
   def body
@@ -77,7 +77,7 @@ class ScriptsController < ApplicationController
         results['error'] = results_error
         results['success'] = success
       end
-      # Using 'render :json => results' results in a raw json string like:
+      # Using 'render json: results' results in a raw json string like:
       # {"contents":"{\"json_class\":\"String\",\"raw\":[35,226,128...]}","breakpoints":[],"locked":false}
       render plain: JSON.generate(results)
     else
@@ -101,10 +101,10 @@ class ScriptsController < ApplicationController
       results['success'] = success
     end
     OpenC3::Logger.info("Script created: #{name}", scope: scope, user: username()) if success
-    render :json => results
+    render json: results
   rescue => e
     logger.error(e.formatted)
-    render(json: { status: 'error', message: e.message }, status: 500)
+    render json: { status: 'error', message: e.message }, status: 500
   end
 
   def run
@@ -119,7 +119,7 @@ class ScriptsController < ApplicationController
     running_script_id = Script.run(scope, name, suite_runner, disconnect, environment, user_full_name(), username())
     if running_script_id
       OpenC3::Logger.info("Script started: #{name}", scope: scope, user: username())
-      render :plain => running_script_id.to_s
+      render plain: running_script_id.to_s
     else
       head :not_found
     end
@@ -151,7 +151,7 @@ class ScriptsController < ApplicationController
     head :ok
   rescue => e
     logger.error(e.formatted)
-    render(json: { status: 'error', message: e.message }, status: 500)
+    render json: { status: 'error', message: e.message }, status: 500
   end
 
   def syntax
@@ -163,7 +163,7 @@ class ScriptsController < ApplicationController
     return unless authorization('script_run', target_name: target_name)
     script = Script.syntax(name, request.body.read)
     if script
-      render :json => script
+      render json: script
     else
       head :error
     end
@@ -176,7 +176,7 @@ class ScriptsController < ApplicationController
     name = name[0]
     script = Script.instrumented(name, request.body.read)
     if script
-      render :json => script
+      render json: script
     else
       head :error
     end
