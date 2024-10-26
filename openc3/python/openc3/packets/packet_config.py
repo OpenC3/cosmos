@@ -15,6 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 import os
+import tempfile
 from openc3.config.config_parser import ConfigParser
 from openc3.packets.packet import Packet
 from openc3.packets.parsers.packet_parser import PacketParser
@@ -340,6 +341,28 @@ class PacketConfig:
 
             self.current_packet = None
             self.current_item = None
+
+    # This method provides way to quickly test packet configs
+    #
+    # from openc3.packets.packet_config import PacketConfig
+    #
+    # config = """
+    #   ...
+    # """
+    #
+    # pc = PacketConfig.from_config(config, "MYTARGET")
+    # c = pc.commands['CMDADCS']['SET_POINTING_CMD']
+    # c.restore_defaults()
+    # c.write("MYITEM", 5)
+    # print(c.buffer)
+    @classmethod
+    def from_config(cls, config, process_target_name):
+        pc = cls()
+        with tempfile.NamedTemporaryFile(mode="w+t", suffix=".txt") as tf:
+            tf.write(config)
+            tf.seek(0)
+            pc.process_file(tf.name, process_target_name)
+        return pc
 
     def update_id_value_hash(self, hash):
         if self.current_packet.id_items and len(self.current_packet.id_items) > 0:

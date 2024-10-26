@@ -34,9 +34,11 @@ require 'openc3/packets/parsers/xtce_converter'
 require 'openc3/utilities/python_proxy'
 require 'openc3/conversions'
 require 'openc3/processors'
+require 'openc3/accessors'
 require 'nokogiri'
 require 'ostruct'
 require 'fileutils'
+require 'tempfile'
 
 module OpenC3
   # Reads a command or telemetry configuration file and builds a hash of packets.
@@ -365,6 +367,32 @@ module OpenC3
           update_id_value_hash(packet, hash)
         end
       end
+    end
+
+    # This method provides way to quickly test packet configs
+    #
+    # require 'openc3/packets/packet_config'
+    #
+    # config = <<END
+    #   ...
+    # END
+    #
+    # pc = PacketConfig.from_config(config, "MYTARGET")
+    # c = pc.commands['CMDADCS']['SET_POINTING_CMD']
+    # c.restore_defaults()
+    # c.write("MYITEM", 5)
+    # puts c.buffer.formatted
+    def self.from_config(config, process_target_name, language = 'ruby')
+      pc = self.new
+      tf = Tempfile.new("pc.txt")
+      tf.write(config)
+      tf.close
+      begin
+        pc.process_file(tf.path, process_target_name, language)
+      ensure
+        tf.unlink
+      end
+      return pc
     end
 
     protected
