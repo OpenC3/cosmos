@@ -122,7 +122,7 @@ class StorageController < ApplicationController
       bucket_name = ENV[params[:bucket]] # Get the actual bucket name
       raise "Unknown bucket #{params[:bucket]}" unless bucket_name
       remote_path = sanitize_path(params[:object_id])
-      filename = File.join(tmp_dir, params[:object_id])
+      filename = File.join(tmp_dir, remote_path)
       # Ensure dir structure exists, get_object fails if not
       FileUtils.mkdir_p(File.dirname(filename))
       OpenC3::Bucket.getClient().get_object(bucket: bucket_name, key: remote_path, path: filename)
