@@ -24,6 +24,7 @@ class BitReverseConversion(Conversion):
         self.converted_bit_size = int(converted_bit_size)
         if self.converted_type == "FLOAT":
             raise RuntimeError("Float Bit Reverse Not Yet Supported")
+        self.params = [self.converted_type, self.converted_bit_size]
 
     # Perform the conversion on the value.
     #

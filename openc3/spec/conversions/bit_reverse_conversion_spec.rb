@@ -67,7 +67,7 @@ module OpenC3
         expect(json['converted_type']).to eql :UINT
         expect(json['converted_bit_size']).to eql 8
         expect(json['converted_array_size']).to eql nil
-        new_brc = OpenC3::const_get(json['class']).new(json['converted_type'], json['converted_bit_size'])
+        new_brc = OpenC3::const_get(json['class']).new(*json['params'])
         expect(brc.converted_type).to eql(new_brc.converted_type)
         expect(brc.converted_bit_size).to eql(new_brc.converted_bit_size)
         expect(brc.converted_array_size).to eql(new_brc.converted_array_size)

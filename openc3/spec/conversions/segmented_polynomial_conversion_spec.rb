@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -65,7 +65,7 @@ module OpenC3
         spc.add_segment(15, 3, 2)
         json = spc.as_json(:allow_nan => true)
         expect(json['class']).to eql "OpenC3::SegmentedPolynomialConversion"
-        new_spc = OpenC3::const_get(json['class']).new(*json['params'])
+        new_spc = OpenC3::const_get(json['class']).new(json['params'])
         spc.segments.each_with_index do |segment, index|
           expect(segment).to be == new_spc.segments[index]
         end
