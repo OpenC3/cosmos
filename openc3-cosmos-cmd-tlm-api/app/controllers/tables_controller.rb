@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -37,12 +37,11 @@ class TablesController < ApplicationController
     return unless scope
     begin
       file = Table.binary(scope, binary, definition, table)
-      results = { 'filename' => file.filename, 'contents' => Base64.encode64(file.contents) }
+      results = { filename: file.filename, contents: Base64.encode64(file.contents) }
       render json: results
     rescue Table::NotFound => e
       logger.error(e.formatted)
-      render(json: { status: 'error', message: e.message }, status: 404) and
-        return
+      render json: { status: 'error', message: e.message }, status: 404
     end
   end
 
@@ -52,11 +51,10 @@ class TablesController < ApplicationController
     return unless scope
     begin
       file = Table.definition(scope, definition, table)
-      render json: { 'filename' => file.filename, 'contents' => file.contents }
+      render json: { filename: file.filename, contents: file.contents }
     rescue Table::NotFound => e
       logger.error(e.formatted)
-      render(json: { status: 'error', message: e.message }, status: 404) and
-        return
+      render json: { status: 'error', message: e.message }, status: 404
     end
   end
 
@@ -66,11 +64,10 @@ class TablesController < ApplicationController
     return unless scope
     begin
       file = Table.report(scope, binary, definition, table)
-      render json: { 'filename' => file.filename, 'contents' => file.contents }
+      render json: { filename: file.filename, contents: file.contents }
     rescue Table::NotFound => e
       logger.error(e.formatted)
-      render(json: { status: 'error', message: e.message }, status: 404) and
-        return
+      render json: { status: 'error', message: e.message }, status: 404
     end
   end
 
@@ -84,13 +81,13 @@ class TablesController < ApplicationController
       results = {}
 
       if File.extname(name) == '.txt'
-        results = { 'contents' => file }
+        results = { contents: file }
       else
         locked = Table.locked?(scope, name)
         unless locked
           Table.lock(scope, name, username())
         end
-        results = { 'contents' => Base64.encode64(file), 'locked' => locked }
+        results = { contents: Base64.encode64(file), locked: locked }
       end
       render json: results
     else
@@ -109,8 +106,7 @@ class TablesController < ApplicationController
       render json: Table.load(scope, binary, definition)
     rescue Table::NotFound => e
       logger.error(e.formatted)
-      render(json: { status: 'error', message: e.message }, status: 404) and
-        return
+      render json: { status: 'error', message: e.message }, status: 404
     end
   end
 
@@ -123,8 +119,7 @@ class TablesController < ApplicationController
       head :ok
     rescue Table::NotFound => e
       logger.error(e.formatted)
-      render(json: { status: 'error', message: e.message }, status: 404) and
-        return
+      render json: { status: 'error', message: e.message }, status: 404
     end
   end
 
@@ -137,8 +132,7 @@ class TablesController < ApplicationController
       head :ok
     rescue Table::NotFound => e
       logger.error(e.formatted)
-      render(json: { status: 'error', message: e.message }, status: 404) and
-        return
+      render json: { status: 'error', message: e.message }, status: 404
     end
   end
 
@@ -148,11 +142,10 @@ class TablesController < ApplicationController
     return unless scope
     begin
       filename = Table.generate(scope, definition)
-      render json: { 'filename' => filename }
+      render json: { filename: filename }
     rescue Table::NotFound => e
       logger.error(e.formatted)
-      render(json: { status: 'error', message: e.message }, status: 404) and
-        return
+      render json: { status: 'error', message: e.message }, status: 404
     end
   end
 

@@ -14,51 +14,63 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'rails_helper'
+require 'openc3/models/trigger_model'
+require 'openc3/models/trigger_group_model'
 
 RSpec.describe ReactionController, :type => :controller do
-  # TARGET = 'INST'.freeze
+  GROUP = 'DEFAULT'.freeze
 
   before(:each) do
     mock_redis()
-    # OpenC3::TargetModel.new(TARGET)
-    # allow_any_instance_of(OpenC3::MicroserviceModel).to receive(:create).and_return(nil)
+    model = OpenC3::TriggerGroupModel.new(name: GROUP, scope: 'DEFAULT')
+    model.create()
+    model = OpenC3::TriggerGroupModel.new(name: 'TEST', scope: 'TEST')
+    model.create()
   end
 
   def generate_trigger(
-    name: 'foobar',
-    left: {'type' => 'value', 'value' => '9000'},
+    scope: 'DEFAULT',
+    name: 'TRIG1',
+    group: GROUP,
+    left: {
+      "type" => "item",
+      "target" => "INST",
+      "packet" => "ADCS",
+      "item" => "POSX",
+      "valueType" => "RAW",
+    },
     operator: '>',
-    right: {'type' => 'value', 'value' => '42'}
-  )
-    TriggerModel.new(
+    right: {
+      'type' => 'float',
+      'float' => 10.0,
+    })
+    OpenC3::TriggerModel.new(
       name: name,
-      scope: SCOPE,
-      target: 'INST',
-      packet: 'ADCS',
+      scope: scope,
+      group: group,
       left: left,
       operator: operator,
       right: right,
-      dependents: []
     ).create()
   end
 
   def generate_reaction_hash(
     description: 'another test',
-    triggers: ['foobar'],
-    reactions: [{'type' => 'command', 'data' => 'TEST'}]
+    triggers: [{'name': 'TRIG1', 'group': GROUP}],
+    actions: [{'type' => 'command', 'value' => 'INST ABORT'}]
   )
     return {
-      'description' => description,
       'snooze' => 300,
       'triggers' => triggers,
-      'reactions' => reactions
+      'triggerLevel' => 'EDGE',
+      'actions' => actions
     }
   end
 
@@ -71,17 +83,18 @@ RSpec.describe ReactionController, :type => :controller do
     end
   end
 
-  xdescribe 'POST then GET index with Triggers' do
+  describe 'POST then GET index with Triggers' do
     it 'returns an array and status code 200' do
+      generate_trigger()
       hash = generate_reaction_hash()
       post :create, params: hash.merge({'scope'=>'DEFAULT'})
       expect(response).to have_http_status(:created)
       trigger = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
       expect(trigger['name']).not_to be_nil
-      get :get, params: {'scope'=>'DEFAULT', 'name'=>trigger['name']}
+      get :show, params: { scope: 'DEFAULT', name: trigger['name'] }
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
-      get :index, params: {'scope'=>'DEFAULT'}
+      get :index, params: { scope: 'DEFAULT' }
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
       expect(json.empty?).to eql(false)
@@ -90,27 +103,19 @@ RSpec.describe ReactionController, :type => :controller do
     end
   end
 
-  xdescribe 'POST create' do
-    it 'returns a json hash of name and status code 201' do
-      hash = generate_reaction_hash()
-      post :create, params: hash.merge({'scope'=>'DEFAULT'})
-      expect(response).to have_http_status(:created)
-      json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
-      expect(json['name']).not_to be_nil
-    end
-  end
-
-  xdescribe 'POST two reactions on different scopes then GET index' do
+  describe 'POST two reactions on different scopes then GET index' do
     it 'returns an array of one and status code 200' do
+      generate_trigger()
       hash = generate_reaction_hash()
       post :create, params: hash.merge({'scope'=>'DEFAULT'})
       expect(response).to have_http_status(:created)
       default_json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
-      post :create, params: hash.merge({'scope'=>'TEST'})
+      generate_trigger(scope: 'TEST', group: 'TEST')
+      hash['triggers'][0][:group] = 'TEST'
+      post :create, params: hash.merge({scope: 'TEST'})
       expect(response).to have_http_status(:created)
       test_json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
-      # name should not match
-      expect(default_json['name']).not_to eql(test_json['name'])
+      expect(default_json['name']).to eql(test_json['name'])
       # check the value on the index
       get :index, params: {'scope'=>'DEFAULT'}
       expect(response).to have_http_status(:ok)
@@ -138,20 +143,10 @@ RSpec.describe ReactionController, :type => :controller do
   #   end
   # end
 
-  xdescribe 'POST error' do
-    it 'returns a hash and status code 400' do
-      post :create, params: {'scope'=>'DEFAULT'}
-      json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
-      expect(json['status']).to eql('error')
-      expect(json['message']).not_to be_nil
-      expect(response).to have_http_status(400)
-    end
-  end
-
-  xdescribe 'POST error bad trigger' do
+  describe 'POST error bad trigger' do
     it 'returns a hash and status code 400' do
       hash = generate_reaction_hash()
-      hash['triggers'] = ['problem']
+      hash['triggers'][0]['name'] = 'BAD'
       post :create, params: hash.merge({'scope'=>'DEFAULT'})
       json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
       expect(json['status']).to eql('error')
@@ -169,16 +164,16 @@ RSpec.describe ReactionController, :type => :controller do
       expect(json['message']).not_to be_nil
     end
 
-    xit 'returns a json hash of name and status code 204 if found' do
-      allow_any_instance_of(OpenC3::MicroserviceModel).to receive(:undeploy).and_return(nil)
+    it 'returns a json hash of name and status code 200 if found' do
+      generate_trigger()
       hash = generate_reaction_hash()
       post :create, params: hash.merge({'scope'=>'DEFAULT'})
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
       delete :destroy, params: {'scope'=>'DEFAULT', 'name'=>json['name']}
-      expect(response).to have_http_status(:no_content)
+      expect(response).to have_http_status(:success)
       json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
-      expect(json['name']).to eql('test')
+      expect(json['name']).to eql('REACT1')
     end
   end
 end

@@ -31,7 +31,7 @@ class ScriptAutocompleteController < ApplicationController
                     check check_tolerance wait wait_tolerance wait_check wait_check_tolerance)
 
   def reserved_item_names
-    render :json => OpenC3::Packet::RESERVED_ITEM_NAMES, :status => 200
+    render json: OpenC3::Packet::RESERVED_ITEM_NAMES
   end
 
   def keywords
@@ -45,14 +45,14 @@ class ScriptAutocompleteController < ApplicationController
     else
       []
     end
-    render :json => keywords, :status => 200
+    render json: keywords
   end
 
   def ace_autocomplete_data
     return unless authorization('system')
     autocomplete_data = build_autocomplete_data(params[:type], params[:scope])
     response.headers['Cache-Control'] = 'must-revalidate' # TODO: Browser is ignoring this and not caching anything for some reason. Future enhancement
-    render :json => autocomplete_data, :status => 200
+    render json: autocomplete_data
   end
 
   # private
