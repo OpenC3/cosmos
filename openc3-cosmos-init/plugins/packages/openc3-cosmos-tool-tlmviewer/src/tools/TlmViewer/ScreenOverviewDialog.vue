@@ -62,7 +62,7 @@
               show-expand
               item-key="name"
               class="elevation-1"
-              :expanded.sync="expanded"
+              v-model:expanded="expanded"
               :headers="screenHeaders"
               :items="screens"
               :search="search"

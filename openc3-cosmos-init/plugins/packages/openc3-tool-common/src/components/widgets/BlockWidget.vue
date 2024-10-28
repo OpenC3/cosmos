@@ -22,7 +22,6 @@
 
 <template>
   <div class="block-widget-container">
-    <!-- TODO: vuetify 3 made styling this correctly extremely difficult -->
     <v-textarea
       variant="solo"
       density="compact"

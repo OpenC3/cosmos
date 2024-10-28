@@ -33,7 +33,7 @@
         label="Select script"
         :loading="loading"
         :items="items"
-        :search.sync="search"
+        v-model:search="search"
         data-test="select-script"
       />
     </v-row>
@@ -48,13 +48,13 @@ export default {
   // this was previously handled by Vuetify and the `cache-items` prop on `v-autocomplete`, but that feature was
   // dropped in Vuetify 3
   props: {
-    value: String, // value is the default prop when using v-model
+    modelValue: String, // modelValue is the default prop when using v-model
   },
   data() {
     return {
       loading: false,
       search: '',
-      selected: this.value,
+      selected: this.modelValue,
       scripts: [],
       items: [],
     }
@@ -75,7 +75,7 @@ export default {
           error: error,
         })
       })
-    this.selected = this.value ? this.value : null
+    this.selected = this.modelValue ? this.modelValue : null
     this.loading = false
   },
   watch: {
