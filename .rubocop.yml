@@ -21,7 +21,7 @@ Style:
 # Style/GlobalVars:
 #   Enabled: false # We need globals in several places
 # Style/MissingRespondToMissing:
-#   Enabled: false # TODO: We don't implement respond_to_missing? Should we?
+#   Enabled: false # We don't implement respond_to_missing?
 # Style/TrailingUnderscoreVariable:
 #   Enabled: false # I prefer "result, _ = method()" to result, = method()"
 

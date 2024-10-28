@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -49,7 +49,7 @@ class MetadataController < ApplicationController
       else
         json = @model_class.all(limit: limit, scope: params[:scope])
       end
-      render json: json, status: 200
+      render json: json
     end
   end
 
@@ -110,7 +110,7 @@ class MetadataController < ApplicationController
     action do
       model_hash = @model_class.get(start: params[:id].to_i, scope: params[:scope])
       if model_hash
-        render json: model_hash, status: 200
+        render json: model_hash
       else
         render json: { status: 'error', message: NOT_FOUND }, status: 404
       end
@@ -160,7 +160,7 @@ class MetadataController < ApplicationController
         scope: params[:scope],
         user: username()
       )
-      render json: model.as_json(:allow_nan => true), status: 200
+      render json: model.as_json(:allow_nan => true)
     end
   end
 
@@ -168,7 +168,7 @@ class MetadataController < ApplicationController
   #
   # scope [String] the scope of the timeline, `TEST`
   # id [String] the score or id of the activity, `1620248449`
-  # @return [String] object/hash converted into json format but with a 204 no-content status code
+  # @return [Integer] number of items deleted
   # Request Headers
   # ```json
   #  {
@@ -189,7 +189,7 @@ class MetadataController < ApplicationController
         scope: params[:scope],
         user: username()
       )
-      render json: { 'status' => count }, status: 204
+      render json: { status: count }
     end
   end
 
@@ -202,14 +202,10 @@ class MetadataController < ApplicationController
     action do
       json = @model_class.get_current_value(scope: params[:scope])
       if json.nil?
-        render json: {
-                 status: 'error',
-                 message: 'no metadata entries',
-               },
-               status: 204
+        render json: { status: 'error', message: 'no metadata entries'}
         return
       end
-      render json: json, status: 200
+      render json: json
     end
   end
 
@@ -237,7 +233,7 @@ class MetadataController < ApplicationController
   #     key, value = [hash['key'], hash['value']]
   #     raise OpenC3::SortedInputError "Must include key, value in metadata search" if key.nil? || value.nil?
   #     selected_array = json_array.select { | json_model | json_model['metadata'][key] == value }
-  #     render :json => selected_array, :status => 200
+  #     render json: selected_array
   #   end
   # end
 
@@ -253,24 +249,21 @@ class MetadataController < ApplicationController
                status: 'error',
                message: "Invalid input: #{e.message}",
                type: e.class,
-             },
-             status: 400
+             }, status: 400
     rescue OpenC3::SortedOverlapError => e
       logger.error(e.formatted)
       render json: {
                 status: 'error',
                 message: e.message,
                 type: e.class,
-              },
-              status: 409 # Conflict
+              }, status: 409 # Conflict
     rescue OpenC3::SortedError => e
       logger.error(e.formatted)
       render json: {
                status: 'error',
                message: e.message,
                type: e.class,
-             },
-             status: 400
+             }, status: 400
     rescue StandardError => e
       logger.error(e.formatted)
       render json: {
@@ -278,8 +271,7 @@ class MetadataController < ApplicationController
                message: e.message,
                type: e.class,
                backtrace: e.backtrace,
-             },
-             status: 400
+             }, status: 400
     end
   end
 end

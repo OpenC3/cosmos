@@ -14,17 +14,15 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'rails_helper'
 
 RSpec.describe TriggerGroupController, :type => :controller do
-  NAME = 'systemGroup'.freeze
-
   before(:each) do
     mock_redis()
     allow_any_instance_of(OpenC3::MicroserviceModel).to receive(:create).and_return(nil)
@@ -32,7 +30,7 @@ RSpec.describe TriggerGroupController, :type => :controller do
 
   def generate_trigger_group_hash
     return {
-      'name': NAME,
+      'name': 'SystemGroup',
       'color': '#ff0000'
     }
   end
@@ -72,7 +70,7 @@ RSpec.describe TriggerGroupController, :type => :controller do
     end
   end
 
-  xdescribe 'POST two triggers with the same name on different scopes then GET index' do
+  describe 'POST two triggers with the same name on different scopes then GET index' do
     it 'returns an array of one and status code 200' do
       hash = generate_trigger_group_hash()
       post :create, params: hash.merge({'scope'=>'DEFAULT'})
@@ -81,8 +79,7 @@ RSpec.describe TriggerGroupController, :type => :controller do
       post :create, params: hash.merge({'scope'=>'TEST'})
       expect(response).to have_http_status(:created)
       test_json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
-      # name should not match
-      expect(default_json['name']).not_to eql(test_json['name'])
+      expect(default_json['name']).to eql(test_json['name'])
       # check the value on the index
       get :index, params: {'scope'=>'DEFAULT'}
       expect(response).to have_http_status(:ok)
@@ -110,7 +107,7 @@ RSpec.describe TriggerGroupController, :type => :controller do
   #   end
   # end
 
-  xdescribe 'POST' do
+  describe 'POST' do
     it 'returns a hash and status code 400 on error' do
       post :create, params: {'scope'=>'DEFAULT'}
       json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
@@ -128,25 +125,25 @@ RSpec.describe TriggerGroupController, :type => :controller do
     end
   end
 
-  xdescribe 'DELETE' do
+  describe 'DELETE' do
     it 'returns a json hash of name and status code 404 when not found' do
-      delete :destroy, params: {'scope'=>'DEFAULT', 'name'=>'test'}
+      delete :destroy, params: { scope: 'DEFAULT', group: 'test'}
       expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
       expect(json['status']).to eql('error')
       expect(json['message']).not_to be_nil
     end
 
-    it 'returns a json hash of name and status code 204' do
+    it 'returns a json hash of name and status code 200' do
       allow_any_instance_of(OpenC3::MicroserviceModel).to receive(:undeploy).and_return(nil)
       hash = generate_trigger_group_hash()
       post :create, params: hash.merge({'scope'=>'DEFAULT'})
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
-      delete :destroy, params: {'scope'=>'DEFAULT', 'name'=>json['name']}
-      expect(response).to have_http_status(:no_content)
+      delete :destroy, params: { scope: 'DEFAULT', group: json['name'] }
+      expect(response).to have_http_status(:success)
       json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
-      expect(json['name']).to eql('test')
+      expect(json['group']).to eql('SystemGroup')
     end
   end
 end

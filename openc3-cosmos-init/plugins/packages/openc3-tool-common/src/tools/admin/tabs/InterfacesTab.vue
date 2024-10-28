@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -41,11 +41,10 @@
         <v-divider />
       </div>
     </v-list>
-    <edit-dialog
+    <output-dialog
       :content="jsonContent"
       type="Interface"
       :name="dialogTitle"
-      readonly
       v-model="showDialog"
       v-if="showDialog"
       @submit="dialogCallback"
@@ -55,9 +54,9 @@
 
 <script>
 import Api from '../../../services/api'
-import EditDialog from '../EditDialog'
+import OutputDialog from '../../../components/OutputDialog'
 export default {
-  components: { EditDialog },
+  components: { OutputDialog },
   data() {
     return {
       interfaces: [],

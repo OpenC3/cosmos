@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -47,16 +47,16 @@ class PluginsController < ModelController
         else
           result = OpenC3::PluginModel.install_phase1(gem_file_path, scope: scope)
         end
-        render :json => result
+        render json: result
       rescue Exception => error
-        render(:json => { :status => 'error', :message => error.message }, :status => 500)
+        render json: { status: 'error', message: error.message }, status: 500
         logger.error(error.formatted)
       ensure
         FileUtils.remove_entry(temp_dir) if temp_dir and File.exist?(temp_dir)
       end
     else
       logger.error("No file received")
-      render(:json => { :status => 'error', :message => "No file received" }, :status => 500)
+      render json: { status: 'error', message: "No file received" }, status: 500
     end
   end
 
@@ -87,10 +87,10 @@ class PluginsController < ModelController
         ["ruby", "/openc3/bin/openc3cli", "load", gem_name, scope, plugin_hash_file_path, "force"], # force install
         "plugin_install", params[:id], Time.now + 1.hour, temp_dir: temp_dir, scope: scope
       )
-      render :json => result.name
+      render json: result.name
     rescue Exception => error
       logger.error(error.formatted)
-      render(:json => { :status => 'error', :message => error.message }, :status => 500) and return
+      render json: { status: 'error', message: error.message }, status: 500
     end
   end
 
@@ -100,10 +100,10 @@ class PluginsController < ModelController
       id, scope = sanitize_params([:id, :scope])
       return unless id and scope
       result = OpenC3::ProcessManager.instance.spawn(["ruby", "/openc3/bin/openc3cli", "unload", id, scope], "plugin_uninstall", id, Time.now + 1.hour, scope: scope)
-      render :json => result.name
+      render json: result.name
     rescue Exception => error
       logger.error(error.formatted)
-      render(:json => { :status => 'error', :message => error.message }, :status => 500) and return
+      render json: { status: 'error', message: error.message }, status: 500
     end
   end
 end

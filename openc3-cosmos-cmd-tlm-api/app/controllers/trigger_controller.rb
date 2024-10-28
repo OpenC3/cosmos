@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -43,10 +43,10 @@ class TriggerController < ApplicationController
       triggers.each do |_, trigger|
         ret << trigger
       end
-      render :json => ret, :status => 200
+      render json: ret
     rescue StandardError => e
       logger.error(e.formatted)
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
+      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
     end
   end
 
@@ -61,16 +61,16 @@ class TriggerController < ApplicationController
     begin
       model = @model_class.get(name: params[:name], group: params[:group], scope: params[:scope])
       if model.nil?
-        render :json => { :status => 'error', :message => NOT_FOUND }, :status => 404
+        render json: { status: 'error', message: NOT_FOUND }, status: 404
         return
       end
-      render :json => model.as_json(:allow_nan => true), :status => 200
+      render json: model.as_json(:allow_nan => true)
     rescue OpenC3::TriggerInputError => e
       logger.error(e.formatted)
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400
+      render json: { status: 'error', message: e.message, type: e.class }, status: 400
     rescue StandardError => e
       logger.error(e.formatted)
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
+      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
     end
   end
 
@@ -111,16 +111,16 @@ class TriggerController < ApplicationController
       name = @model_class.create_unique_name(group: hash['group'], scope: params[:scope])
       model = @model_class.from_json(hash.symbolize_keys, name: name, scope: params[:scope])
       model.create() # Create sends a notification
-      render :json => model.as_json(:allow_nan => true), :status => 201
+      render json: model.as_json(:allow_nan => true), status: 201
     rescue OpenC3::TriggerInputError => e
       logger.error(e.formatted)
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400
+      render json: { status: 'error', message: e.message, type: e.class }, status: 400
     rescue OpenC3::TriggerError => e
       logger.error(e.formatted)
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 418
+      render json: { status: 'error', message: e.message, type: e.class }, status: 418
     rescue StandardError => e
       logger.error(e.formatted)
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
+      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
     end
   end
 
@@ -170,16 +170,16 @@ class TriggerController < ApplicationController
       # We don't update directly here to avoid a race condition between the microservice
       # updating state and an asynchronous user updating the trigger
       model.notify(kind: 'updated')
-      render :json => model.as_json(:allow_nan => true), :status => 200
+      render json: model.as_json(:allow_nan => true)
     rescue OpenC3::TriggerInputError => e
       logger.error(e.formatted)
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400
+      render json: { status: 'error', message: e.message, type: e.class }, status: 400
     rescue OpenC3::TriggerError => e
       logger.error(e.formatted)
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 418
+      render json: { status: 'error', message: e.message, type: e.class }, status: 418
     rescue StandardError => e
       logger.error(e.formatted)
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
+      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
     end
   end
 
@@ -205,17 +205,17 @@ class TriggerController < ApplicationController
     begin
       model = @model_class.get(name: params[:name], group: params[:group], scope: params[:scope])
       if model.nil?
-        render :json => { :status => 'error', :message => NOT_FOUND }, :status => 404
+        render json: { status: 'error', message: NOT_FOUND }, status: 404
         return
       end
       # Notify the TriggerGroupMicroservice to enable the TriggerModel
       # We don't update directly here to avoid a race condition between the microservice
       # updating state and an asynchronous user enabling the trigger
       model.notify_enable()
-      render :json => model.as_json(:allow_nan => true), :status => 200
+      render json: model.as_json(:allow_nan => true)
     rescue StandardError => e
       logger.error(e.formatted)
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
+      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
     end
   end
 
@@ -241,24 +241,24 @@ class TriggerController < ApplicationController
     begin
       model = @model_class.get(name: params[:name], group: params[:group], scope: params[:scope])
       if model.nil?
-        render :json => { :status => 'error', :message => NOT_FOUND }, :status => 404
+        render json: { status: 'error', message: NOT_FOUND }, status: 404
         return
       end
       # Notify the TriggerGroupMicroservice to disable the TriggerModel
       # We don't update directly here to avoid a race condition between the microservice
       # updating state and an asynchronous user disabling the trigger
       model.notify_disable()
-      render :json => model.as_json(:allow_nan => true), :status => 200
+      render json: model.as_json(:allow_nan => true)
     rescue StandardError => e
       logger.error(e.formatted)
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
+      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
     end
   end
 
   # group [String] the group name, `DEFAULT`
   # name [String] the trigger name, `TRIG0`
   # scope [String] the scope of the trigger, `DEFAULT`
-  # @return [String] object/hash converted into json format but with a 204 no-content status code
+  # @return [String] object/hash converted into json format but with a 200 status code
   # Request Headers
   #```json
   #  {
@@ -271,21 +271,21 @@ class TriggerController < ApplicationController
     begin
       model = @model_class.get(name: params[:name], group: params[:group], scope: params[:scope])
       if model.nil?
-        render :json => { :status => 'error', :message => NOT_FOUND }, :status => 404
+        render json: { status: 'error', message: NOT_FOUND }, status: 404
         return
       end
       unless model.dependents.empty?
-        render :json => { :status => 'error', :message => "#{model.group}:#{model.name} has dependents: #{model.dependents}", 'type' => 'TriggerError' }, :status => 404
+        render json: { status: 'error', message: "#{model.group}:#{model.name} has dependents: #{model.dependents}", type: 'TriggerError' }, status: 404
         return
       end
       # Notify the TriggerGroupMicroservice to delete the TriggerModel
       # We don't update directly here to avoid a race condition between the microservice
       # updating state and an asynchronous user deleting the trigger
       model.notify(kind: 'deleted')
-      render :json => model.as_json(:allow_nan => true), :status => 200
+      render json: model.as_json(:allow_nan => true)
     rescue StandardError => e
       logger.error(e.formatted)
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
+      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
     end
   end
 end

@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -80,7 +80,7 @@
         <v-divider v-if="index < tools.length - 1" :key="index" />
       </div>
     </v-list>
-    <edit-dialog
+    <output-dialog
       v-model="showDialog"
       v-if="showDialog"
       :content="jsonContent"
@@ -93,11 +93,11 @@
 
 <script>
 import Api from '../../../services/api'
-import EditDialog from '../EditDialog'
+import OutputDialog from '../../../components/OutputDialog'
 import Sortable from 'sortablejs'
 
 export default {
-  components: { EditDialog },
+  components: { OutputDialog },
   data() {
     return {
       name: null,

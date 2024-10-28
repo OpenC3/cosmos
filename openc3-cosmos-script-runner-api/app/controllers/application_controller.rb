@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -59,13 +59,13 @@ class ApplicationController < ActionController::API
         token: request.headers['HTTP_AUTHORIZATION'],
       )
     rescue OpenC3::AuthError => e
-      render(json: { status: 'error', message: e.message }, status: 401) and
-        return false
+      render json: { status: 'error', message: e.message }, status: 401
+      return false
     rescue OpenC3::ForbiddenError => e
-      render(json: { status: 'error', message: e.message }, status: 403) and
-        return false
+      render json: { status: 'error', message: e.message }, status: 403
+      return false
     end
-    true
+    return true
   end
 
   def sanitize_params(param_list, require_params: true, allow_forward_slash: false)
@@ -90,7 +90,7 @@ class ApplicationController < ActionController::API
           value = arg.encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: "�").strip.tr("\u{202E}%$|:;/\t\r\n\\", "-")
         end
         if value != arg
-          render(json: { status: 'error', message: "Invalid #{param_list[index]}: #{arg}" }, status: 400)
+          render json: { status: 'error', message: "Invalid #{param_list[index]}: #{arg}" }, status: 400
           return false
         end
       end

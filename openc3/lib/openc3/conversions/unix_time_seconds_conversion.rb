@@ -14,10 +14,10 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/conversions/unix_time_conversion'
@@ -33,6 +33,7 @@ module OpenC3
     # @param microseconds_item_name [String] The telemetry item in the packet
     #   which represents microseconds
     def initialize(seconds_item_name, microseconds_item_name = nil)
+      # @params is set by the parent class in super()
       super(seconds_item_name, microseconds_item_name)
       @converted_type = :FLOAT
       @converted_bit_size = 64
@@ -48,5 +49,5 @@ module OpenC3
     def to_s
       super << ".to_f"
     end
-  end # class UnixTimeSecondsConversion
+  end
 end

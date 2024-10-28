@@ -85,6 +85,4 @@ class TestObjectWriteConversion(unittest.TestCase):
         self.assertEqual(json["class"], "ObjectWriteConversion")
         self.assertEqual(json["converted_type"], "OBJECT")
         self.assertEqual(json["converted_bit_size"], 0)
-        self.assertEqual(json["cmd_or_tlm"], "TLM")
-        self.assertEqual(json["target_name"], "INST")
-        self.assertEqual(json["packet_name"], "PARAMS")
+        self.assertEqual(json["params"], ["TLM", "INST", "PARAMS"])

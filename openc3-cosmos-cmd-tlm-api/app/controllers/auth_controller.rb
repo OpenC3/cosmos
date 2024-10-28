@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -26,7 +26,7 @@ require 'openc3/models/auth_model'
 class AuthController < ApplicationController
   def token_exists
     result = OpenC3::AuthModel.set?
-    render :json => {
+    render json: {
       result: result
     }
   end
@@ -40,7 +40,7 @@ class AuthController < ApplicationController
       end
     rescue StandardError => e
       logger.error(e.formatted)
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 500
+      render json: { status: 'error', message: e.message, type: e.class }, status: 500
     end
   end
 
@@ -52,7 +52,7 @@ class AuthController < ApplicationController
       render :plain => OpenC3::AuthModel.generate_session()
     rescue StandardError => e
       logger.error(e.formatted)
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 500
+      render json: { status: 'error', message: e.message, type: e.class }, status: 500
     end
   end
 end

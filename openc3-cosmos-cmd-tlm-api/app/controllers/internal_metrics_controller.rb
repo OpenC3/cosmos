@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -43,7 +43,7 @@ class InternalMetricsController < ApplicationController
     rescue RuntimeError => e
       logger.error(e.formatted)
       OpenC3::Logger.error("failed to connect to redis to pull scopes")
-      render plain: "failed to access datastore", :status => 500
+      render plain: "failed to access datastore", status: 500
     end
     OpenC3::Logger.debug("ScopeModels: #{scopes}")
     data_hash = {}
@@ -54,7 +54,7 @@ class InternalMetricsController < ApplicationController
       rescue RuntimeError => e
         logger.error(e.formatted)
         OpenC3::Logger.error("failed to connect to redis to pull metrics")
-        render plain: "failed to access datastore", :status => 500
+        render plain: "failed to access datastore", status: 500
       end
       OpenC3::Logger.debug("metrics search for scope: #{scope}, returned: #{scope_resp}")
       scope_resp.each do |_key, label_json|

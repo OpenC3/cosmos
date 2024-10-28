@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -23,14 +23,14 @@
 class RunningScriptController < ApplicationController
   def index
     return unless authorization('script_view')
-    render :json => RunningScript.all
+    render json: RunningScript.all
   end
 
   def show
     return unless authorization('script_view')
     running_script = RunningScript.find(params[:id].to_i)
     if running_script
-      render :json => running_script
+      render json: running_script
     else
       head :not_found
     end
