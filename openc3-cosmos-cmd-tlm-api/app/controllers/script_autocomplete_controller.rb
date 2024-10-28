@@ -213,7 +213,14 @@ class ScriptAutocompleteController < ApplicationController
     end
     if filtered_items.any?
       params = filtered_items.each_with_index.map do |item, index|
-        default = item['default'] || 0
+        if item['data_type'] == 'BLOCK'
+          # Unpack binary data to uppercase hex string
+          default = "0x#{item['default'].unpack('H*').first.upcase}"
+        elsif item['data_type'] == 'STRING'
+          default = "'#{item['default']}'" || ''
+        else
+          default = item['default'] || 0
+        end
         if item.key? 'states'
           default_state = item['states'].find { |_key, val| val['value'] == default }
           default = default_state[0] if default_state
