@@ -136,7 +136,8 @@ module OpenC3
     # @param log_change [Boolean] Whether to log this limits change event
     def limits_change_callback(packet, item, old_limits_state, value, log_change)
       return if @cancel_thread
-      packet_time = packet.packet_time
+      # Make a copy because packet_time is frozen
+      packet_time = packet.packet_time.dup
       if value
         message = "#{packet.target_name} #{packet.packet_name} #{item.name} = #{value} is #{item.limits.state}"
         if item.limits.values
