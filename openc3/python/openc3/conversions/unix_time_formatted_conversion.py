@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -29,6 +29,7 @@ class UnixTimeFormattedConversion(UnixTimeConversion):
     # @param microseconds_item_name [String] The telemetry item in the packet
     #   which represents microseconds
     def __init__(self, seconds_item_name, microseconds_item_name=None):
+        # self.params is set by the parent class in super()
         super().__init__(seconds_item_name, microseconds_item_name)
         self.converted_type = "STRING"
         self.converted_bit_size = 0

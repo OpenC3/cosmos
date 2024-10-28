@@ -60,7 +60,7 @@ module OpenC3
         expect(json['converted_type']).to eql :FLOAT
         expect(json['converted_bit_size']).to eql 64
         expect(json['converted_array_size']).to eql 128
-        expect(json['params']).to eql ['TEST1', 'TEST2']
+        expect(json['params']).to eql ['TEST1', 'TEST2', "FLOAT", 64, 128]
         new_pc = OpenC3::const_get(json['class']).new(*json['params'])
         packet = Packet.new("tgt", "pkt")
         packet.append_item('ITEM1', 64, :FLOAT)

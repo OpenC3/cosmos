@@ -34,13 +34,20 @@ module OpenC3
       super()
       @processor_name = processor_name.to_s.upcase
       @result_name = result_name.to_s.upcase.intern
+      @params = [@processor_name, @result_name]
       if ConfigParser.handle_nil(converted_type)
         @converted_type = converted_type.to_s.upcase.intern
         raise ArgumentError, "Unknown converted type: #{converted_type}" if !BinaryAccessor::DATA_TYPES.include?(@converted_type)
+        @params << @converted_type
       end
-      @converted_bit_size = Integer(converted_bit_size) if ConfigParser.handle_nil(converted_bit_size)
-      @converted_array_size = Integer(converted_array_size) if ConfigParser.handle_nil(converted_array_size)
-      @params = [@processor_name, @result_name]
+      if ConfigParser.handle_nil(converted_bit_size)
+        @converted_bit_size = Integer(converted_bit_size)
+        @params << @converted_bit_size
+      end
+      if ConfigParser.handle_nil(converted_array_size)
+        @converted_array_size = Integer(converted_array_size)
+        @params << @converted_array_size
+      end
     end
 
     # @param (see Conversion#call)
