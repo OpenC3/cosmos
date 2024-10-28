@@ -90,9 +90,18 @@ body,
 }
 
 .v-theme--cosmosDark .v-tabs > .v-slide-group__container .v-tab--disabled,
-.v-theme--cosmosDark .v-tabs > .v-slide-group__container .v-tab:not(.v-tab--selected),
-.v-theme--cosmosDark .v-tabs > .v-slide-group__container .v-tab:not(.v-tab--selected).v-btn,
-.v-theme--cosmosDark .v-tabs > .v-slide-group__container .v-tab:not(.v-tab--selected).v-icon {
+.v-theme--cosmosDark
+  .v-tabs
+  > .v-slide-group__container
+  .v-tab:not(.v-tab--selected),
+.v-theme--cosmosDark
+  .v-tabs
+  > .v-slide-group__container
+  .v-tab:not(.v-tab--selected).v-btn,
+.v-theme--cosmosDark
+  .v-tabs
+  > .v-slide-group__container
+  .v-tab:not(.v-tab--selected).v-icon {
   color: var(--color-text-interactive-default) !important;
 }
 .v-tab--selected {
@@ -116,6 +125,29 @@ body,
 
 .v-navigation-drawer .v-treeview-item {
   font-size: 1rem;
+}
+
+.v-calendar-header {
+  background-color: var(--color-background-base-default) !important;
+}
+.v-calendar,
+// Lighten the background color of numbered days
+.v-calendar-weekly__day-label,
+.v-calendar-weekly__day-label button:not(.v-calendar-weekly__day-label__today) {
+  background-color: #303030 !important;
+}
+// Style the calendar day header: S M T W T F S
+.v-calendar-weekly__head-weekday {
+  border-left: 1px solid #9e9e9e !important;
+  border-right: 1px solid #9e9e9e !important;
+  border-top: 1px solid #9e9e9e !important;
+}
+// If the mini calendar isn't a day then darken the background
+.v-calendar-month__day {
+  background-color: #202020 !important;
+  border-left: 1px solid #9e9e9e !important;
+  border-right: 1px solid #9e9e9e !important;
+  border-bottom: 1px solid #9e9e9e !important;
 }
 
 .v-expansion-panel-title,
@@ -154,6 +186,13 @@ table,
   background-color: var(--color-background-interactive-muted) !important;
 }
 
+.v-theme--cosmosDark.v-overlay--active:not([role='tooltip']):not(
+    :has([role='listbox'])
+  ) {
+  backdrop-filter: blur(2px) !important;
+  --v-overlay-opacity: 0.1 !important;
+}
+
 .v-theme--cosmosDark.v-list-item:hover,
 .v-theme--cosmosDark.v-treeview--hoverable .v-treeview-node__root:hover,
 .v-theme--cosmosDark.v-treeview
@@ -185,7 +224,7 @@ table,
   color: var(--color-text-interactive-default) !important;
   background-color: var(--color-background-base-default) !important;
 }
-.v-theme--cosmosDark.v-select [role=combobox] {
+.v-theme--cosmosDark.v-select [role='combobox'] {
   border-color: var(--button-color-border-interactive-default) !important;
   color: var(--color-text-interactive-default) !important;
   background-color: var(--color-background-base-default) !important;

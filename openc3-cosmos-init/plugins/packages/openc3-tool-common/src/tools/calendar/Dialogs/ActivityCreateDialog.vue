@@ -41,8 +41,8 @@
               <span> Close </span>
             </v-tooltip>
           </v-toolbar>
-          <v-stepper v-model="dialogStep" vertical non-linear>
-            <v-stepper-step editable step="1">
+          <v-stepper v-model="dialogStep" vertical non-linear class="pt-3">
+            <v-stepper-step editable step="1" class="pl-5">
               Input start time, stop time
             </v-stepper-step>
             <v-stepper-content step="1">
@@ -106,18 +106,15 @@
                       data-test="activity-end-time"
                     />
                   </v-row>
-                  <v-row style="margin-top: 0px">
-                    <v-col>
-                      <v-checkbox
-                        style="padding-top: 0px; margin-top: 0px"
-                        v-model="recurring"
-                        :disabled="!!activity"
-                        label="Recurring"
-                        hide-details
-                        data-test="recurring"
-                      >
-                      </v-checkbox>
-                    </v-col>
+                  <v-row class="pl-3">
+                    <v-checkbox
+                      v-model="recurring"
+                      :disabled="!!activity"
+                      label="Recurring"
+                      hide-details
+                      data-test="recurring"
+                    >
+                    </v-checkbox>
                   </v-row>
                   <v-row v-if="recurring">
                     <v-col><div class="repeat">Repeat every</div></v-col>
@@ -175,7 +172,7 @@
                       v-text="timeError"
                     />
                   </v-row>
-                  <v-row class="mt-2">
+                  <v-row class="pr-3">
                     <v-spacer />
                     <v-btn
                       @click="dialogStep = 2"
@@ -189,7 +186,7 @@
                 </div>
               </v-card-text>
             </v-stepper-content>
-            <v-stepper-step editable step="2">
+            <v-stepper-step editable step="2" class="pl-5">
               Activity type Input
             </v-stepper-step>
             <v-stepper-content step="2">
@@ -237,7 +234,7 @@
                   <v-row v-show="typeError" class="mt-2">
                     <span class="ma-2 text-red" v-text="typeError" />
                   </v-row>
-                  <v-row class="mt-2">
+                  <v-row class="ma-1">
                     <v-spacer />
                     <v-btn
                       @click="show = !show"
