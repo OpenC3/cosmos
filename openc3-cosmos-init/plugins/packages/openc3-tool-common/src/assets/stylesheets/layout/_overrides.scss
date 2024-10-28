@@ -132,7 +132,6 @@ table,
 .v-stepper,
 .v-expansion-panel-text,
 .v-theme--cosmosDark.v-data-table,
-.v-theme--cosmosDark.v-dialog,
 .v-theme--cosmosDark.v-card,
 .v-theme--cosmosDark.v-date-picker-table,
 .v-theme--cosmosDark.v-time-picker-clock__container,
@@ -153,11 +152,6 @@ table,
 }
 .v-menu > .v-overlay__content > .v-theme--cosmosDark.v-list .v-list-item:hover {
   background-color: var(--color-background-interactive-muted) !important;
-}
-
-.v-theme--cosmosDark.v-overlay--active:not([role=tooltip]):not(:has([role=listbox])) {
-  backdrop-filter: blur(2px) !important;
-  --v-overlay-opacity: 0.1 !important;
 }
 
 .v-theme--cosmosDark.v-list-item:hover,
@@ -292,4 +286,7 @@ input {
 .imo-modal-container form,
 .imo-modal-container input {
   color: black;
+}
+.imo-module-dialog tr {
+  background-color: white;
 }
