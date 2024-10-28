@@ -404,7 +404,6 @@ class WriteInterface(unittest.TestCase):
 
         interface = MyInterface()
         start_time = time.time()
-        threads = []
         for x in range(10):
             thread = threading.Thread(
                 target=interface.write,
