@@ -126,7 +126,7 @@ module OpenC3
     # Connect to the websocket with authorization in query params
     def connect
       disconnect()
-      final_url = @url + "?scope=#{@scope}&authorization=#{@authentication.token}"
+      final_url = @url + "?scope=#{@scope}&authorization=#{@authentication.token(include_bearer: false)}"
       @stream = WebSocketClientStream.new(final_url, @write_timeout, @read_timeout, @connect_timeout)
       @stream.headers = {
         'Sec-WebSocket-Protocol' => 'actioncable-v1-json, actioncable-unsupported',
@@ -355,7 +355,7 @@ module OpenC3
       data_hash['items'] = items if items
       data_hash['packets'] = packets if packets
       data_hash['scope'] = scope
-      data_hash['token'] = @authentication.token
+      data_hash['token'] = @authentication.token(include_bearer: false)
       write_action(data_hash)
     end
 
@@ -384,7 +384,7 @@ module OpenC3
       data_hash['items'] = items if items
       data_hash['packets'] = packets if packets
       data_hash['scope'] = scope
-      data_hash['token'] = @authentication.token
+      data_hash['token'] = @authentication.token(include_bearer: false)
       write_action(data_hash)
     end
 
