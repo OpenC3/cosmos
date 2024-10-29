@@ -40,7 +40,6 @@
               density="compact"
               single-line
               v-model="validationText"
-              :label="Confirm"
               :rules="[rules.required, rules.match]"
               data-test="confirm-dialog-validate"
             />
