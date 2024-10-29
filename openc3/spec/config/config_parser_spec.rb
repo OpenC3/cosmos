@@ -418,7 +418,7 @@ module OpenC3
     describe "verify_parameter_naming" do
       it "verifies parameters do not have bad characters" do
         tf = Tempfile.new('unittest')
-        line = "KEYWORD BAD1_ BAD__2 'BAD 3' }BAD_4 BAD[[5]]"
+        line = "KEYWORD BAD1_ BAD__2 'BAD 3' }BAD_4 BAD[[5]] BAD.6"
         tf.puts line
         tf.close
 
@@ -428,6 +428,7 @@ module OpenC3
           expect { @cp.verify_parameter_naming(3) }.to raise_error(ConfigParser::Error, /cannot contain a space/)
           expect { @cp.verify_parameter_naming(4) }.to raise_error(ConfigParser::Error, /cannot start with a close bracket/)
           expect { @cp.verify_parameter_naming(5) }.to raise_error(ConfigParser::Error, /cannot contain double brackets/)
+          expect { @cp.verify_parameter_naming(6) }.to raise_error(ConfigParser::Error, /cannot contain a period/)
         end
         tf.unlink
       end
