@@ -27,8 +27,8 @@
     <!-- Sizes your content based upon application components -->
     <v-main :style="mainStyle" min-height="100vh">
       <v-container fluid height="100%">
-        <div id="openc3-tool"></div>
         <div><router-view /></div>
+        <div id="openc3-tool"></div>
       </v-container>
     </v-main>
     <app-footer app class="d-print-none" />
