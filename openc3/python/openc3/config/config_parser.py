@@ -138,7 +138,7 @@ class ConfigParser:
 
     # Verifies the indicated parameter in the config doesn't start or end
     # with an underscore, doesn't contain a double underscore or double bracket,
-    # doesn't contain spaces or periods and doesn't start with a close bracket.
+    # doesn't contain spaces, periods, quotes or brackets.
     #
     # self.param [Integer] index The index of the parameter to check
     def verify_parameter_naming(self, index, usage=""):
@@ -183,10 +183,18 @@ class ConfigParser:
                 self.url,
             )
 
-        if param[0] == "}":
+        if "'" in param or '"' in param:
             raise ConfigParser.Error(
                 self,
-                f"Parameter {index} ({param}) for {self.keyword} cannot start with a close bracket ('}}').",
+                f"Parameter {index} ({param}) for {self.keyword} cannot contain a quote (' or \").",
+                usage,
+                self.url,
+            )
+
+        if "{" in param or "}" in param:
+            raise ConfigParser.Error(
+                self,
+                f"Parameter {index} ({param}) for {self.keyword} cannot contain a bracket ('{{' or '}}').",
                 usage,
                 self.url,
             )

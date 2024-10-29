@@ -374,7 +374,7 @@ class TestConfigParser(unittest.TestCase):
 
     def test_verifies_parameters_do_not_have_bad_characters(self):
         tf = tempfile.NamedTemporaryFile(mode="w+t")
-        line = "KEYWORD BAD1_ BAD__2 'BAD 3' }BAD_4 BAD[[5]] BAD.6"
+        line = "KEYWORD BAD1_ BAD__2 'BAD 3' BAD{4 BAD}4 BAD[[6]] BAD.7 BAD'8 BAD\"9"
         tf.writelines(line)
         tf.seek(0)
 
@@ -399,21 +399,39 @@ class TestConfigParser(unittest.TestCase):
             )
             self.assertRaisesRegex(
                 ConfigParser.Error,
-                "cannot start with a close bracket",
+                "cannot contain a bracket",
                 self.cp.verify_parameter_naming,
                 4,
             )
             self.assertRaisesRegex(
                 ConfigParser.Error,
-                "cannot contain double brackets",
+                "cannot contain a bracket",
                 self.cp.verify_parameter_naming,
                 5,
             )
             self.assertRaisesRegex(
                 ConfigParser.Error,
-                "cannot contain a period",
+                "cannot contain double brackets",
                 self.cp.verify_parameter_naming,
                 6,
+            )
+            self.assertRaisesRegex(
+                ConfigParser.Error,
+                "cannot contain a period",
+                self.cp.verify_parameter_naming,
+                7,
+            )
+            self.assertRaisesRegex(
+                ConfigParser.Error,
+                "cannot contain a quote",
+                self.cp.verify_parameter_naming,
+                8,
+            )
+            self.assertRaisesRegex(
+                ConfigParser.Error,
+                "cannot contain a quote",
+                self.cp.verify_parameter_naming,
+                9,
             )
         tf.close()
 
