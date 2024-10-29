@@ -1,4 +1,6 @@
 ---
+core:
+  defaultRuleSyntax: v2
 entrypoints:
   web:
     address: ":2900"
