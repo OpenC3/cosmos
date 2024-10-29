@@ -1,6 +1,4 @@
 ---
-core:
-  defaultRuleSyntax: v2
 tls:
   stores:
     default:

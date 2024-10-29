@@ -1,6 +1,4 @@
 ---
-core:
-  defaultRuleSyntax: v2
 # Listen for everything coming in on the standard HTTP port
 entrypoints:
   web:
