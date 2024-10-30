@@ -5,7 +5,7 @@ module OpenC3
   class ScopeCriticalCmd < Migration
     def self.run
       ScopeModel.names.each do |scope|
-        existing_model = MicroserviceModel.get_model(name: "#{scope}__CRITICALCMD__#{scope}")
+        existing_model = MicroserviceModel.get_model(name: "#{scope}__CRITICALCMD__#{scope}", scope: scope)
         if not existing_model
           scope_model = ScopeModel.get_model(name: scope)
           parent = "#{scope}__SCOPEMULTI__#{scope}"
