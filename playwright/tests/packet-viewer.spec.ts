@@ -19,7 +19,6 @@
 
 // @ts-check
 import { test, expect } from './fixture'
-import { parse, addMinutes, subMinutes, isWithinInterval } from 'date-fns'
 
 test.use({
   toolPath: '/tools/packetviewer',

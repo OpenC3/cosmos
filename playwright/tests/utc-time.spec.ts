@@ -17,7 +17,6 @@
 import { test, expect } from './fixture'
 import {
   format,
-  add,
   sub,
   parse,
   addSeconds,

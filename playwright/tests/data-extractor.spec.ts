@@ -19,15 +19,7 @@
 
 // @ts-check
 import { test, expect } from './fixture'
-import {
-  format,
-  add,
-  sub,
-  parse,
-  addMinutes,
-  subMinutes,
-  isWithinInterval,
-} from 'date-fns'
+import { format, add, sub } from 'date-fns'
 
 test.use({
   toolPath: '/tools/dataextractor',
