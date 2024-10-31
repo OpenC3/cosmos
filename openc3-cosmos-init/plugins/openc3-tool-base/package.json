@@ -16,7 +16,7 @@
     "regenerator-runtime": "0.14.1",
     "single-spa": "5.9.5",
     "systemjs": "6.15.1",
-    "vue": "2.7.16",
+    "vue": "3.0.0",
     "vue-router": "3.5.4",
     "vuetify": "2.7.1",
     "vuex": "3.6.2"
