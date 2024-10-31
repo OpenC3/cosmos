@@ -1,6 +1,6 @@
 {
   "name": "<%= tool_name %>",
-  "version": "5.20.0",
+  "version": "5.21.0-beta0",
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
@@ -11,7 +11,7 @@
     "test:components": "vue-cli-service test:components"
   },
   "dependencies": {
-    "@openc3/tool-common": "5.20.0",
+    "@openc3/tool-common": "5.21.0-beta0",
     "@astrouxds/astro-web-components": "7.24.0",
     "axios": "1.7.7",
     "date-fns": "4.1.0",
