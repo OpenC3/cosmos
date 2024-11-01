@@ -119,7 +119,7 @@ class TestCmdResponseProtocol(unittest.TestCase):
         packet = Packet("TGT", "CMD")
         packet.template = b"GO"
         packet.response = ["TGT", "DATA"]
-        packet.restore_defaults
+        packet.restore_defaults()
         self.interface.connect
         start = time.time()
         with self.assertRaisesRegex(RuntimeError, "Timeout waiting for response"):
@@ -132,7 +132,7 @@ class TestCmdResponseProtocol(unittest.TestCase):
         self.interface.target_names = ["TGT"]
         packet = Packet("TGT", "CMD")
         packet.template = b"GO"
-        packet.restore_defaults
+        packet.restore_defaults()
         self.interface.connect
         self.interface.write(packet)
 
