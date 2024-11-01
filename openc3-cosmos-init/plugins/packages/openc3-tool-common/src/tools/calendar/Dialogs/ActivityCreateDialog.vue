@@ -368,9 +368,9 @@ export default {
         const sDate = new Date(this.activity.start * 1000)
         const eDate = new Date(this.activity.stop * 1000)
         this.startDate = this.formatDate(sDate, this.timeZone)
-        this.startTime = this.formatTime(sDate, this.timeZone)
+        this.startTime = this.formatTimeHMS(sDate, this.timeZone)
         this.endDate = this.formatDate(eDate, this.timeZone)
-        this.endTime = this.formatTime(eDate, this.timeZone)
+        this.endTime = this.formatTimeHMS(eDate, this.timeZone)
         this.kind = this.activity.kind.toUpperCase()
         this.activityData = this.activity.data[this.activity.kind]
         this.activityEnvironment = this.activity.data.environment
@@ -378,7 +378,7 @@ export default {
           this.recurring = true
           const rDate = new Date(this.activity.recurring.end * 1000)
           this.recurringEndDate = this.formatDate(rDate, this.timeZone)
-          this.recurringEndTime = this.formatTime(rDate, this.timeZone)
+          this.recurringEndTime = this.formatTimeHMS(rDate, this.timeZone)
           this.frequency = this.activity.recurring.frequency
           this.timeSpan = this.activity.recurring.span
         }

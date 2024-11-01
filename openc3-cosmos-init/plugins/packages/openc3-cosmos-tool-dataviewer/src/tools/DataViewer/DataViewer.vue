@@ -422,7 +422,7 @@ export default {
       })
     let now = new Date()
     this.startDate = this.formatDate(now, this.timeZone)
-    this.startTime = this.formatTime(now, this.timeZone)
+    this.startTime = this.formatTimeHMS(now, this.timeZone)
 
     // Determine if there are any user added widgets
     Api.get('/openc3-api/widgets').then((response) => {

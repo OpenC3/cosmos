@@ -186,7 +186,7 @@ export default {
       if (this.metadata) {
         const sDate = new Date(this.metadata.start * 1000)
         this.startDate = this.formatDate(sDate, this.timeZone)
-        this.startTime = this.formatTime(sDate, this.timeZone)
+        this.startTime = this.formatTimeHMS(sDate, this.timeZone)
         this.color = this.metadata.color
         this.metadataVals = Object.keys(this.metadata.metadata).map((k) => {
           return { key: k, value: this.metadata.metadata[k] }

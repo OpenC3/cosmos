@@ -1608,7 +1608,7 @@ export default {
 }
 /* This value is large enough to support our date format: YYYY-MM-DD HH:MM:SS.sss */
 .u-legend.u-inline .u-series:first-child .u-value {
-  width: 180px;
+  width: 185px;
 }
 .u-select {
   color: rgba(255, 255, 255, 0.07);

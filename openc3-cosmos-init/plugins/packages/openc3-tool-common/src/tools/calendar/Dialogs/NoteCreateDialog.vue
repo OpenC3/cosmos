@@ -231,10 +231,10 @@ export default {
       if (this.note) {
         const sDate = new Date(this.note.start * 1000)
         this.startDate = this.formatDate(sDate, this.timeZone)
-        this.startTime = this.formatTime(sDate, this.timeZone)
+        this.startTime = this.formatTimeHMS(sDate, this.timeZone)
         const eDate = new Date(this.note.stop * 1000)
         this.endDate = this.formatDate(eDate, this.timeZone)
-        this.endTime = this.formatTime(eDate, this.timeZone)
+        this.endTime = this.formatTimeHMS(eDate, this.timeZone)
         this.color = this.note.color
         this.description = this.note.description
       } else {
