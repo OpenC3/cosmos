@@ -533,7 +533,7 @@ test('edits existing plugin', async ({ page, utils }) => {
 test.describe(() => {
   // Must be the operator to modify files
   test.use({ storageState: 'storageState.json' })
-  test.skip('creates new screen', async ({ page, utils }) => {
+  test('creates new screen', async ({ page, utils }) => {
     // Create a new screen so we have modifications to delete
     await page.goto('/tools/tlmviewer')
     await expect(page.locator('.v-app-bar')).toContainText('Telemetry Viewer')

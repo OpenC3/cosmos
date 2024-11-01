@@ -253,7 +253,7 @@ test('displays derived first', async ({ page, utils }) => {
   await expect(page.locator('tr').nth(2)).toContainText('TIMEUS')
 })
 
-test.skip('pins items to the top of the list', async ({ page, utils }) => {
+test('pins items to the top of the list', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
   // Default sort order
   await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIMESECONDS *')

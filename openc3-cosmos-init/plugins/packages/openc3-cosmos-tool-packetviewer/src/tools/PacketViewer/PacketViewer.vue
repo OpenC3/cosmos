@@ -48,16 +48,14 @@
         />
       </v-card-title>
       <v-data-table
+        :search="search"
         :headers="headers"
         :items="rows"
-        :search="search"
         :custom-filter="filter"
         :sort-by="sortBy"
-        @update:sortBy="tableSort"
+        multi-sort
         v-model:items-per-page="itemsPerPage"
         :items-per-page-options="[10, 20, 50, 100, 500, 1000]"
-        multi-sort
-        hover
         density="compact"
       >
         <template v-slot:item.name="{ item }">
@@ -219,12 +217,10 @@ export default {
           title: 'Name',
           key: 'name',
           align: 'end',
-          sortRaw(a, b) {
-            return a > b ? 1 : -1
-          },
         },
         { title: 'Value', key: 'value' },
       ],
+      sortBy: [{ key: 'pinned', order: 'desc' }],
       optionsDialog: false,
       showIgnored: false,
       derivedLast: false,
@@ -246,7 +242,6 @@ export default {
       itemName: '',
       x: 0,
       y: 0,
-      sortBy: [],
     }
   },
   watch: {
@@ -405,6 +400,12 @@ export default {
               packet: this.packetName,
               item: this.itemName,
             })
+            this.rows = this.rows.map((row) => {
+              if (row.name === this.itemName) {
+                row.pinned = true
+              }
+              return row
+            })
           },
         })
       }
@@ -486,73 +487,6 @@ export default {
         return value.toString().indexOf(search.toUpperCase()) >= 0
       }
     },
-    // customSorters() {
-    //   return {
-    //     name: (name1, name2) => {
-    //       return name1.toLowerCase().localeCompare(name2.toLowerCase())
-    //     },
-    //     value: (age1, age2) => {
-    //       /* TODO implement sorting for age column */
-    //     },
-    //   }
-    // },
-    // sortTable(evt) {
-    //   // Allows unsorting
-    //   if (!evt.length || evt.length < this.sortBy.length) {
-    //     this.sortBy = []
-    //     return
-    //   }
-    //   const key = evt[0].key
-    //   const order = evt[0].order
-    //   switch (key) {
-    //     case 'name':
-    //       this.sortBy = [
-    //         { key: 'name', order: order },
-    //         { key: 'age', order: 'asc' },
-    //       ]
-    //       break
-    //     case 'age':
-    //       this.sortBy = [{ key: 'age', order: order }] // TODO implement sorting for age column
-    //       break
-    //     default:
-    //       this.sortBy = []
-    //   }
-    // },
-    tableSort(items, index, isDesc) {
-      // for each item in index, sort by that index
-      index.forEach((idx, i) => {
-        items.sort((a, b) => {
-          let aValue = a[idx]
-          let bValue = b[idx]
-
-          // For values just convert to float before sorting
-          // this will lead to a bunch of NaNs for non-numeric values
-          // but that's fine since they'll sort to the end
-          if (idx === 'value') {
-            aValue = parseFloat(aValue)
-            bValue = parseFloat(bValue)
-          }
-
-          if (aValue < bValue) {
-            return isDesc[i] ? 1 : -1
-          }
-          if (aValue > bValue) {
-            return isDesc[i] ? -1 : 1
-          }
-          return 0
-        })
-      })
-
-      // Finally sort the pinned values to the top
-      items.sort((a, b) => {
-        if (this.isPinned(a.name)) {
-          return -1
-        }
-        return 0
-      })
-
-      return items
-    },
     packetChanged(event) {
       this.api.get_target(event.targetName).then((target) => {
         this.ignoredItems = target.ignored_items
@@ -613,6 +547,7 @@ export default {
                     limitsState: value[2],
                     derived: true,
                     counter: this.counter,
+                    pinned: this.isPinned(value[0]),
                   })
                 } else {
                   other.push({
@@ -621,6 +556,7 @@ export default {
                     limitsState: value[2],
                     derived: false,
                     counter: this.counter,
+                    pinned: this.isPinned(value[0]),
                   })
                 }
               })
