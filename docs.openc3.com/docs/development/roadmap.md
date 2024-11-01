@@ -15,6 +15,7 @@ Core Features:
 
 :white_check_mark:&nbsp;&nbsp;Python Support<br/>
 :white_large_square:&nbsp;&nbsp;Upgrade Tools to Vue 3 / Vuetify 3 ([In Progress](https://github.com/OpenC3/cosmos/pull/1539))<br/>
+:white_large_square:&nbsp;&nbsp;Traefik v3<br/>
 :white_large_square:&nbsp;&nbsp;Plugin App Store<br/>
 
 Functionality For 6.1+:
