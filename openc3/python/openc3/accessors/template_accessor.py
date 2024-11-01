@@ -47,7 +47,7 @@ class TemplateAccessor(Accessor):
             # If they're using parens we have to escape them
             # since we're working with the already escaped template
             if self.left_char == "(":
-                item = f"\{item}"
+                item = f"\({item[1:]}"
             if self.right_char == ")":
                 item = f"{item[0:-1]}\)"
             escaped_read_template = escaped_read_template.replace(item, "(.*)")
