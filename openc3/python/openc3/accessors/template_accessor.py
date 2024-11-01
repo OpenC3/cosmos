@@ -37,9 +37,9 @@ class TemplateAccessor(Accessor):
             escaped_right_char = f"\\{self.right_char}"
 
         # Convert the template into a Regexp for reading each item
-        template = self.packet.template[:]
-        template_items = re.compile(f"{escaped_left_char}.*?{escaped_right_char}", re.X).findall(template.decode())
-        escaped_read_template = re.escape(template.decode())
+        template = self.packet.template[:].decode()
+        template_items = re.compile(f"{escaped_left_char}.*?{escaped_right_char}", re.X).findall(template)
+        escaped_read_template = re.escape(template)
 
         self.item_keys = []
         for item in template_items:
@@ -68,7 +68,7 @@ class TemplateAccessor(Accessor):
             if values is not None:
                 num_items = len(values)
             raise RuntimeError(
-                f"Unexpected number of items found in buffer= {num_items}, Expected= {len(self.item_keys)}"
+                f"Unexpected number of items found in buffer: {num_items}, Expected: {len(self.item_keys)}"
             )
         else:
             for i, value in enumerate(values):
@@ -91,7 +91,7 @@ class TemplateAccessor(Accessor):
             if values is not None:
                 num_items = len(values)
             raise RuntimeError(
-                f"Unexpected number of items found in buffer= {num_items}, Expected= {len(self.item_keys)}"
+                f"Unexpected number of items found in buffer: {num_items}, Expected: {len(self.item_keys)}"
             )
         else:
             for item in items:
