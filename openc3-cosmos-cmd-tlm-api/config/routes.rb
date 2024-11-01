@@ -84,45 +84,9 @@ Rails.application.routes.draw do
     resources :environment, only: [:index, :create]
     delete '/environment/:name', to: 'environment#destroy', name: /[^\/]+/
 
-    resources :timeline, only: [:index, :create]
-    get '/timeline/:name', to: 'timeline#show', name: /[^\/]+/
-    post '/timeline/:name/color', to: 'timeline#color', name: /[^\/]+/
-    delete '/timeline/:name', to: 'timeline#destroy', name: /[^\/]+/
-
-    post '/timeline/activities/create', to: 'activity#multi_create'
-    post '/timeline/activities/delete', to: 'activity#multi_destroy'
-
-    get '/timeline/:name/count', to: 'activity#count', name: /[^\/]+/
-    get '/timeline/:name/activities', to: 'activity#index', name: /[^\/]+/
-    post '/timeline/:name/activities', to: 'activity#create', name: /[^\/]+/
-    get '/timeline/:name/activity/:id', to: 'activity#show', name: /[^\/]+/, id: /[^\/]+/
-    post '/timeline/:name/activity/:id', to: 'activity#event', name: /[^\/]+/, id: /[^\/]+/
-    match '/timeline/:name/activity/:id', to: 'activity#update', name: /[^\/]+/, id: /[^\/]+/, via: [:patch, :put]
-    # NOTE: uuid is new as of 5.19.0
-    delete '/timeline/:name/activity/:id(/:uuid)', to: 'activity#destroy', name: /[^\/]+/, id: /[^\/]+/, uuid: /[^\/]+/
-
-    get '/autonomic/group', to: 'trigger_group#index'
-    post '/autonomic/group', to: 'trigger_group#create'
-    get '/autonomic/group/:group', to: 'trigger_group#show', group: /[^\/]+/
-    delete '/autonomic/group/:group', to: 'trigger_group#destroy', group: /[^\/]+/
-
-    get '/autonomic/:group/trigger', to: 'trigger#index', group: /[^\/]+/
-    post '/autonomic/:group/trigger', to: 'trigger#create', group: /[^\/]+/
-    get '/autonomic/:group/trigger/:name', to: 'trigger#show', group: /[^\/]+/, name: /[^\/]+/
-    post '/autonomic/:group/trigger/:name/enable', to: 'trigger#enable', group: /[^\/]+/, name: /[^\/]+/
-    post '/autonomic/:group/trigger/:name/disable', to: 'trigger#disable', group: /[^\/]+/, name: /[^\/]+/
-    match '/autonomic/:group/trigger/:name', to: 'trigger#update', group: /[^\/]+/, name: /[^\/]+/, via: [:patch, :put]
-    delete '/autonomic/:group/trigger/:name', to: 'trigger#destroy', group: /[^\/]+/, name: /[^\/]+/
-
-    get '/autonomic/reaction', to: 'reaction#index'
-    post '/autonomic/reaction', to: 'reaction#create'
-    get '/autonomic/reaction/:name', to: 'reaction#show', name: /[^\/]+/
-    # match '/autonomic/reaction/:name, to: 'reaction#update', name: /[^\/]+/, via: [:patch, :put]
-    post '/autonomic/reaction/:name/enable', to: 'reaction#enable', name: /[^\/]+/
-    post '/autonomic/reaction/:name/disable', to: 'reaction#disable', name: /[^\/]+/
-    post '/autonomic/reaction/:name/execute', to: 'reaction#execute', name: /[^\/]+/
-    match '/autonomic/reaction/:name', to: 'reaction#update', name: /[^\/]+/, via: [:patch, :put]
-    delete '/autonomic/reaction/:name', to: 'reaction#destroy', name: /[^\/]+/
+    get '/autocomplete/reserved-item-names', to: 'script_autocomplete#reserved_item_names'
+    get '/autocomplete/keywords/:type', to: 'script_autocomplete#keywords', type: /[^\/]+/
+    get '/autocomplete/data/:type', to: 'script_autocomplete#ace_autocomplete_data', type: /[^\/]+/
 
     get '/metadata', to: 'metadata#index'
     post '/metadata', to: 'metadata#create'
@@ -131,17 +95,6 @@ Rails.application.routes.draw do
     get '/metadata/:id', to: 'metadata#show', id: /[^\/]+/
     match '/metadata/:id', to: 'metadata#update', id: /[^\/]+/, via: [:patch, :put]
     delete '/metadata/:id', to: 'metadata#destroy', id: /[^\/]+/
-
-    get '/notes', to: 'notes#index'
-    post '/notes', to: 'notes#create'
-    # get '/note/_search', to: 'note#search'
-    get '/notes/:id', to: 'notes#show', id: /[^\/]+/
-    match '/notes/:id', to: 'notes#update', id: /[^\/]+/, via: [:patch, :put]
-    delete '/notes/:id', to: 'notes#destroy', id: /[^\/]+/
-
-    get '/autocomplete/reserved-item-names', to: 'script_autocomplete#reserved_item_names'
-    get '/autocomplete/keywords/:type', to: 'script_autocomplete#keywords', type: /[^\/]+/
-    get '/autocomplete/data/:type', to: 'script_autocomplete#ace_autocomplete_data', type: /[^\/]+/
 
     # format: false to ensure the full path is used and not interpreted as a format (.xxx)
     scope format: false do
@@ -202,7 +155,9 @@ Rails.application.routes.draw do
 
     post "/redis/exec" => "redis#execute_raw"
 
-    # The remaining routes are Enterprise only
+    ##########################
+    # COSMOS Enterprise Routes
+    ##########################
     get "/users/active" => "users#active"
     match "/users/logout/:user", to: "users#logout", id: /[^\/]+/, via: [:patch, :put]
 
@@ -212,6 +167,53 @@ Rails.application.routes.draw do
     get '/roles/:id', to: 'roles#show', id: /[^\/]+/
     match '/roles/:id', to: 'roles#update', id: /[^\/]+/, via: [:patch, :put]
     delete '/roles/:id', to: 'roles#destroy', id: /[^\/]+/
+
+    resources :timeline, only: [:index, :create]
+    get '/timeline/:name', to: 'timeline#show', name: /[^\/]+/
+    post '/timeline/:name/color', to: 'timeline#color', name: /[^\/]+/
+    delete '/timeline/:name', to: 'timeline#destroy', name: /[^\/]+/
+
+    post '/timeline/activities/create', to: 'activity#multi_create'
+    post '/timeline/activities/delete', to: 'activity#multi_destroy'
+
+    get '/timeline/:name/count', to: 'activity#count', name: /[^\/]+/
+    get '/timeline/:name/activities', to: 'activity#index', name: /[^\/]+/
+    post '/timeline/:name/activities', to: 'activity#create', name: /[^\/]+/
+    get '/timeline/:name/activity/:id', to: 'activity#show', name: /[^\/]+/, id: /[^\/]+/
+    post '/timeline/:name/activity/:id', to: 'activity#event', name: /[^\/]+/, id: /[^\/]+/
+    match '/timeline/:name/activity/:id', to: 'activity#update', name: /[^\/]+/, id: /[^\/]+/, via: [:patch, :put]
+    # NOTE: uuid is new as of 5.19.0
+    delete '/timeline/:name/activity/:id(/:uuid)', to: 'activity#destroy', name: /[^\/]+/, id: /[^\/]+/, uuid: /[^\/]+/
+
+    get '/autonomic/group', to: 'trigger_group#index'
+    post '/autonomic/group', to: 'trigger_group#create'
+    get '/autonomic/group/:group', to: 'trigger_group#show', group: /[^\/]+/
+    delete '/autonomic/group/:group', to: 'trigger_group#destroy', group: /[^\/]+/
+
+    get '/autonomic/:group/trigger', to: 'trigger#index', group: /[^\/]+/
+    post '/autonomic/:group/trigger', to: 'trigger#create', group: /[^\/]+/
+    get '/autonomic/:group/trigger/:name', to: 'trigger#show', group: /[^\/]+/, name: /[^\/]+/
+    post '/autonomic/:group/trigger/:name/enable', to: 'trigger#enable', group: /[^\/]+/, name: /[^\/]+/
+    post '/autonomic/:group/trigger/:name/disable', to: 'trigger#disable', group: /[^\/]+/, name: /[^\/]+/
+    match '/autonomic/:group/trigger/:name', to: 'trigger#update', group: /[^\/]+/, name: /[^\/]+/, via: [:patch, :put]
+    delete '/autonomic/:group/trigger/:name', to: 'trigger#destroy', group: /[^\/]+/, name: /[^\/]+/
+
+    get '/autonomic/reaction', to: 'reaction#index'
+    post '/autonomic/reaction', to: 'reaction#create'
+    get '/autonomic/reaction/:name', to: 'reaction#show', name: /[^\/]+/
+    # match '/autonomic/reaction/:name, to: 'reaction#update', name: /[^\/]+/, via: [:patch, :put]
+    post '/autonomic/reaction/:name/enable', to: 'reaction#enable', name: /[^\/]+/
+    post '/autonomic/reaction/:name/disable', to: 'reaction#disable', name: /[^\/]+/
+    post '/autonomic/reaction/:name/execute', to: 'reaction#execute', name: /[^\/]+/
+    match '/autonomic/reaction/:name', to: 'reaction#update', name: /[^\/]+/, via: [:patch, :put]
+    delete '/autonomic/reaction/:name', to: 'reaction#destroy', name: /[^\/]+/
+
+    get '/notes', to: 'notes#index'
+    post '/notes', to: 'notes#create'
+    # get '/note/_search', to: 'note#search'
+    get '/notes/:id', to: 'notes#show', id: /[^\/]+/
+    match '/notes/:id', to: 'notes#update', id: /[^\/]+/, via: [:patch, :put]
+    delete '/notes/:id', to: 'notes#destroy', id: /[^\/]+/
 
     get '/cmdauth', to: 'cmd_authority#index'
     post '/cmdauth/take', to: 'cmd_authority#take'

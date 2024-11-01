@@ -316,7 +316,7 @@ class MessagesWebSocketApi(CmdTlmWebSocketApi):
         )
 
 
-# Autonomic Events WebSocket
+# Autonomic Events WebSocket (Enterprise Only)
 class AutonomicEventsWebSocketApi(CmdTlmWebSocketApi):
     def __init__(
         self,
@@ -342,7 +342,7 @@ class AutonomicEventsWebSocketApi(CmdTlmWebSocketApi):
         )
 
 
-# Calendar Events WebSocket
+# Calendar Events WebSocket (Enterprise Only)
 class CalendarEventsWebSocketApi(CmdTlmWebSocketApi):
     def __init__(
         self,

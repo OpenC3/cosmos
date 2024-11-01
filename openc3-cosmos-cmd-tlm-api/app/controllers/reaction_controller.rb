@@ -20,8 +20,15 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-require 'openc3/models/reaction_model'
-require 'openc3/topics/autonomic_topic'
+begin
+  require 'openc3-enterprise/models/reaction_model'
+rescue LoadError
+  require 'openc3/models/model'
+  module OpenC3
+    class ReactionModel < Model
+    end
+  end
+end
 
 class ReactionController < ApplicationController
   NOT_FOUND = 'not found'
