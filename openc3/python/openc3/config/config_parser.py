@@ -186,7 +186,7 @@ class ConfigParser:
         if "{" in param or "}" in param:
             raise ConfigParser.Error(
                 self,
-                f"Parameter {index} ({param}) for {self.keyword} cannot contain a bracket ('{{' or '}}').",
+                f"Parameter {index} ({param}) for {self.keyword} cannot contain a curly bracket ('{{' or '}}').",
                 usage,
                 self.url,
             )

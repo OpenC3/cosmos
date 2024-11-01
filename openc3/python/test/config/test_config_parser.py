@@ -409,13 +409,13 @@ class TestConfigParser(unittest.TestCase):
             )
             self.assertRaisesRegex(
                 ConfigParser.Error,
-                "cannot contain a bracket",
+                "cannot contain a curly bracket",
                 self.cp.verify_parameter_naming,
                 4,
             )
             self.assertRaisesRegex(
                 ConfigParser.Error,
-                "cannot contain a bracket",
+                "cannot contain a curly bracket",
                 self.cp.verify_parameter_naming,
                 5,
             )

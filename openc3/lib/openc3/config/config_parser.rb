@@ -269,7 +269,7 @@ module OpenC3
         raise Error.new(self, "Parameter #{index} (#{param}) for #{@keyword} cannot contain a quote (' or \").", usage, @url)
       end
       if param.include?('{') or param.include?('}')
-        raise Error.new(self, "Parameter #{index} (#{param}) for #{@keyword} cannot contain a bracket ('{' or '}').", usage, @url)
+        raise Error.new(self, "Parameter #{index} (#{param}) for #{@keyword} cannot contain a curly bracket ('{' or '}').", usage, @url)
       end
     end
 
