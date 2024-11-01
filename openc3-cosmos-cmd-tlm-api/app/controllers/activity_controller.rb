@@ -21,15 +21,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/topics/timeline_topic'
-begin
-  require 'openc3-enterprise/models/activity_model'
-rescue LoadError
-  require 'openc3/models/model'
-  module OpenC3
-    class ActivityModel < Model
-    end
-  end
-end
+require 'openc3/models/activity_model'
 
 class ActivityController < ApplicationController
   NOT_FOUND = 'not found'

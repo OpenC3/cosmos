@@ -150,8 +150,8 @@ export default {
   methods: {
     clearCounters() {
       this.api.get_interface_names().then((response) => {
-        for (let i = 0; i < response.length; i++) {
-          this.api.interface_cmd(response[i], 'clear_counters')
+        for (const name of response) {
+          this.api.interface_cmd(name, 'clear_counters')
         }
       })
     },

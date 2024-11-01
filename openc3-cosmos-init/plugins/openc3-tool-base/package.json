@@ -25,16 +25,10 @@
   "devDependencies": {
     "@babel/core": "7.26.0",
     "@babel/plugin-proposal-class-properties": "7.18.6",
-<<<<<<< HEAD
-    "@babel/plugin-transform-runtime": "7.24.7",
-    "@vue/compiler-sfc": "3.5.4",
-    "@babel/preset-env": "7.25.4",
-    "@babel/runtime": "7.25.6",
-=======
     "@babel/plugin-transform-runtime": "7.25.9",
     "@babel/preset-env": "7.26.0",
     "@babel/runtime": "7.26.0",
->>>>>>> main
+    "@vue/compiler-sfc": "3.5.4",
     "@types/systemjs": "6.15.1",
     "babel-plugin-istanbul": "7.0.0",
     "copy-webpack-plugin": "12.0.2",
@@ -43,14 +37,9 @@
     "prettier": "3.3.3",
     "sass": "1.80.4",
     "sass-loader": "16.0.2",
-<<<<<<< HEAD
-    "serve": "14.2.3",
-    "vue-loader": "17.4.2",
-=======
     "serve": "14.2.4",
-    "vue-loader": "15.9.8",
+    "vue-loader": "17.4.2",
     "vue-template-compiler": "2.7.16",
->>>>>>> main
     "webpack": "5.95.0",
     "webpack-cli": "5.1.4",
     "webpack-config-single-spa": "5.3.1",

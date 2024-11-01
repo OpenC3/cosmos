@@ -1179,20 +1179,16 @@ export default {
         this.inputMetadata.show = true
       })
     },
-    buildOpenC3RubyMode(api_shared) {
+    buildLanguageMode(HighlightRules, FoldMode) {
       let oop = ace.require('ace/lib/oop')
-      let RubyHighlightRules = ace.require(
-        'ace/mode/ruby_highlight_rules',
-      ).RubyHighlightRules
-
       let apis = Object.getOwnPropertyNames(OpenC3Api.prototype)
         .filter((a) => a !== 'constructor')
         .filter((a) => a !== 'exec')
         .concat(api_shared)
       let regex = new RegExp(`(\\b${apis.join('\\b|\\b')}\\b)`)
       let OpenC3HighlightRules = function () {
-        RubyHighlightRules.call(this)
-        // add openc3 rules to the ruby rules
+        HighlightRules.call(this)
+        // add openc3 rules to the rules
         for (let rule in this.$rules) {
           this.$rules[rule].unshift({
             regex: regex,
@@ -1200,7 +1196,7 @@ export default {
           })
         }
       }
-      oop.inherits(OpenC3HighlightRules, RubyHighlightRules)
+      oop.inherits(OpenC3HighlightRules, HighlightRules)
 
       let MatchingBraceOutdent = ace.require(
         'ace/mode/matching_brace_outdent',
@@ -1208,7 +1204,6 @@ export default {
       let CstyleBehaviour = ace.require(
         'ace/mode/behaviour/cstyle',
       ).CstyleBehaviour
-      let FoldMode = ace.require('ace/mode/folding/ruby').FoldMode
       let Mode = function () {
         this.HighlightRules = OpenC3HighlightRules
         this.$outdent = new MatchingBraceOutdent()
@@ -1216,6 +1211,13 @@ export default {
         this.foldingRules = new FoldMode()
         this.indentKeywords = this.foldingRules.indentKeywords
       }
+      return Mode
+    },
+    buildOpenC3RubyMode(api_shared) {
+      let Mode = this.buildLanguageMode(
+        ace.require('ace/mode/ruby_highlight_rules').RubyHighlightRules,
+        ace.require('ace/mode/folding/ruby').FoldMode,
+      )
       let RubyMode = ace.require('ace/mode/ruby').Mode
       oop.inherits(Mode, RubyMode)
       ;(function () {
@@ -1224,42 +1226,10 @@ export default {
       return Mode
     },
     buildOpenC3PythonMode(api_shared) {
-      let oop = ace.require('ace/lib/oop')
-      let PythonHighlightRules = ace.require(
-        'ace/mode/python_highlight_rules',
-      ).PythonHighlightRules
-
-      let apis = Object.getOwnPropertyNames(OpenC3Api.prototype)
-        .filter((a) => a !== 'constructor')
-        .filter((a) => a !== 'exec')
-        .concat(api_shared)
-      let regex = new RegExp(`(\\b${apis.join('\\b|\\b')}\\b)`)
-      let OpenC3HighlightRules = function () {
-        PythonHighlightRules.call(this)
-        // add openc3 rules to the python rules
-        for (let rule in this.$rules) {
-          this.$rules[rule].unshift({
-            regex: regex,
-            token: 'support.function',
-          })
-        }
-      }
-      oop.inherits(OpenC3HighlightRules, PythonHighlightRules)
-
-      let MatchingBraceOutdent = ace.require(
-        'ace/mode/matching_brace_outdent',
-      ).MatchingBraceOutdent
-      let CstyleBehaviour = ace.require(
-        'ace/mode/behaviour/cstyle',
-      ).CstyleBehaviour
-      let FoldMode = ace.require('ace/mode/folding/pythonic').FoldMode
-      let Mode = function () {
-        this.HighlightRules = OpenC3HighlightRules
-        this.$outdent = new MatchingBraceOutdent()
-        this.$behaviour = new CstyleBehaviour()
-        this.foldingRules = new FoldMode()
-        this.indentKeywords = this.foldingRules.indentKeywords
-      }
+      let Mode = this.buildLanguageMode(
+        ace.require('ace/mode/python_highlight_rules').PythonHighlightRules,
+        ace.require('ace/mode/folding/pythonic').FoldMode,
+      )
       let PythonMode = ace.require('ace/mode/python').Mode
       oop.inherits(Mode, PythonMode)
       ;(function () {

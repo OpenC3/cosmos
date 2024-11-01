@@ -672,33 +672,31 @@ export default {
         this.layoutStack.push(layout)
         this.currentLayout.widgets.push(layout)
         this.currentLayout = layout
+      } else if (this.$options.components[componentName]) {
+        this.currentLayout.widgets.push({
+          type: componentName,
+          target: this.target,
+          parameters: parameters,
+          settings: settings,
+          screenValues: this.screenValues,
+          screenTimeZone: this.timeZone,
+          line: line,
+          lineNumber: lineNumber,
+        })
       } else {
-        if (this.$options.components[componentName]) {
-          this.currentLayout.widgets.push({
-            type: componentName,
-            target: this.target,
-            parameters: parameters,
-            settings: settings,
-            screenValues: this.screenValues,
-            screenTimeZone: this.timeZone,
-            line: line,
-            lineNumber: lineNumber,
-          })
-        } else {
-          let widget = {
-            type: 'DynamicWidget',
-            target: this.target,
-            parameters: parameters,
-            settings: settings,
-            screenValues: this.screenValues,
-            screenTimeZone: this.timeZone,
-            name: componentName,
-            line: line,
-            lineNumber: lineNumber,
-          }
-          this.currentLayout.widgets.push(widget)
-          this.dynamicWidgets.push(widget)
+        let widget = {
+          type: 'DynamicWidget',
+          target: this.target,
+          parameters: parameters,
+          settings: settings,
+          screenValues: this.screenValues,
+          screenTimeZone: this.timeZone,
+          name: componentName,
+          line: line,
+          lineNumber: lineNumber,
         }
+        this.currentLayout.widgets.push(widget)
+        this.dynamicWidgets.push(widget)
       }
     },
     applyGlobalSettings: function (widgets) {

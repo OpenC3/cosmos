@@ -21,15 +21,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/topics/autonomic_topic'
-begin
-  require 'openc3-enterprise/models/trigger_model'
-rescue LoadError
-  require 'openc3/models/model'
-  module OpenC3
-    class TriggerModel < Model
-    end
-  end
-end
+require 'openc3/models/trigger_model'
 
 class TriggerController < ApplicationController
   NOT_FOUND = 'not found'

@@ -95,7 +95,7 @@ export default {
     resetConfigBase: function () {
       localStorage.removeItem(`${this.configKey}__default`)
 
-      const query = Object.assign({}, this.$route.query)
+      const query = { ...this.$route.query }
       delete query.config
       this.$router.replace({ query })
     },

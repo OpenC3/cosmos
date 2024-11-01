@@ -155,7 +155,7 @@ module OpenC3
         model.deploy(dir, {})
 
         topics = EphemeralStore.scan_each(match: "#{scope}*", type: 'hash', count: 100).to_a.uniq.sort
-        expect(topics).to eql(['TEST__TRIGGER__GROUP', 'TEST__openc3_targets'])
+        expect(topics).to eql(['TEST__openc3_targets'])
         topics = EphemeralStore.scan_each(match: "#{scope}*", type: 'stream', count: 100).to_a.uniq.sort
         expect(topics).to eql(['TEST__openc3_autonomic'])
         model.destroy
