@@ -138,7 +138,7 @@ class ConfigParser:
 
     # Verifies the indicated parameter in the config doesn't start or end
     # with an underscore, doesn't contain a double underscore or double bracket,
-    # doesn't contain spaces, periods, quotes or brackets.
+    # doesn't contain spaces, quotes or brackets.
     #
     # self.param [Integer] index The index of the parameter to check
     def verify_parameter_naming(self, index, usage=""):
@@ -171,14 +171,6 @@ class ConfigParser:
             raise ConfigParser.Error(
                 self,
                 f"Parameter {index} ({param}) for {self.keyword} cannot contain a space (' ').",
-                usage,
-                self.url,
-            )
-
-        if "." in param:
-            raise ConfigParser.Error(
-                self,
-                f"Parameter {index} ({param}) for {self.keyword} cannot contain a periods ('.').",
                 usage,
                 self.url,
             )

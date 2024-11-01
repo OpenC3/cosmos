@@ -153,7 +153,10 @@ export default {
       this.rawDialogs.splice(i, 1)
     },
     openPktViewer(target_name, packet_name) {
-      window.open(`/tools/packetviewer/${target_name}/${packet_name}`, '_blank')
+      window.open(
+        `/tools/packetviewer/${encodeURIComponent(target_name)}/${encodeURIComponent(packet_name)}`,
+        '_blank',
+      )
     },
     currentItems(event) {
       this.visible = event.map((i) => {

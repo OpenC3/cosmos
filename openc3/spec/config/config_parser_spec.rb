@@ -416,9 +416,22 @@ module OpenC3
     end
 
     describe "verify_parameter_naming" do
+      it "allows most characters in parameters" do
+        tf = Tempfile.new('unittest')
+        line = "KEYWORD P[1] P_2.2,2 P-3+3=3 P4!@#$%^&*? P</5|> P(:6;)"
+        tf.puts line
+        tf.close
+
+        @cp.parse_file(tf.path) do |keyword, params|
+          expect(keyword).to eql "KEYWORD"
+          expect(params).to eql ["P[1]", "P_2.2,2", "P-3+3=3", "P4!@#$%^&*?", "P</5|>", "P(:6;)"]
+        end
+        tf.unlink
+      end
+
       it "verifies parameters do not have bad characters" do
         tf = Tempfile.new('unittest')
-        line = "KEYWORD BAD1_ BAD__2 'BAD 3' BAD{4 BAD}4 BAD[[6]] BAD.7 BAD'8 BAD\"9"
+        line = "KEYWORD BAD1_ BAD__2 'BAD 3' BAD{4 BAD}4 BAD[[6]] BAD'7 BAD\"8"
         tf.puts line
         tf.close
 
@@ -429,9 +442,8 @@ module OpenC3
           expect { @cp.verify_parameter_naming(4) }.to raise_error(ConfigParser::Error, /cannot contain a bracket/)
           expect { @cp.verify_parameter_naming(5) }.to raise_error(ConfigParser::Error, /cannot contain a bracket/)
           expect { @cp.verify_parameter_naming(6) }.to raise_error(ConfigParser::Error, /cannot contain double brackets/)
-          expect { @cp.verify_parameter_naming(7) }.to raise_error(ConfigParser::Error, /cannot contain a period/)
+          expect { @cp.verify_parameter_naming(7) }.to raise_error(ConfigParser::Error, /cannot contain a quote/)
           expect { @cp.verify_parameter_naming(8) }.to raise_error(ConfigParser::Error, /cannot contain a quote/)
-          expect { @cp.verify_parameter_naming(9) }.to raise_error(ConfigParser::Error, /cannot contain a quote/)
         end
         tf.unlink
       end

@@ -248,7 +248,7 @@ module OpenC3
 
     # Verifies the indicated parameter in the config doesn't start or end
     # with an underscore, doesn't contain a double underscore or double bracket,
-    # doesn't contain spaces, periods, quotes or brackets.
+    # doesn't contain spaces, quotes or brackets.
     #
     # @param [Integer] index The index of the parameter to check
     def verify_parameter_naming(index, usage = "")
@@ -264,9 +264,6 @@ module OpenC3
       end
       if param.include? ' '
         raise Error.new(self, "Parameter #{index} (#{param}) for #{@keyword} cannot contain a space (' ').", usage, @url)
-      end
-      if param.include? '.'
-        raise Error.new(self, "Parameter #{index} (#{param}) for #{@keyword} cannot contain a period ('.').", usage, @url)
       end
       if param.include?('"') or param.include?("'")
         raise Error.new(self, "Parameter #{index} (#{param}) for #{@keyword} cannot contain a quote (' or \").", usage, @url)

@@ -69,11 +69,11 @@ export default {
           action: () => {
             window.open(
               '/tools/tlmgrapher/' +
-                this.parameters[0] +
+                encodeURIComponent(this.parameters[0]) +
                 '/' +
-                this.parameters[1] +
+                encodeURIComponent(this.parameters[1]) +
                 '/' +
-                this.parameters[2],
+                encodeURIComponent(this.parameters[2]),
               '_blank'
             )
           },
