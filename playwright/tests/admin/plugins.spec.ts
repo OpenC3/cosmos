@@ -538,14 +538,14 @@ test.describe(() => {
     await page.goto('/tools/tlmviewer')
     await expect(page.locator('.v-app-bar')).toContainText('Telemetry Viewer')
     await page.locator('rux-icon-apps').getByRole('img').click()
-    await page.locator('div[role="button"]:has-text("Select Target")').click()
-    await page.locator(`.v-list-item__title:text-is("NEW_TGT")`).click()
+    await page.locator('[data-test=select-target] i').click()
+    await page.getByRole('option', { name: 'NEW_TGT', exact: true }).click()
     await utils.sleep(500)
     await page.locator('[data-test=new-screen]').click()
     await expect(
       page.locator(`.v-toolbar:has-text("New Screen")`),
     ).toBeVisible()
-    await page.locator('[data-test=new-screen-name]').fill('NEW_SCREEN')
+    await page.locator('[data-test=new-screen-name] input').fill('NEW_SCREEN')
     await page.getByRole('button', { name: 'Save' }).click()
     await expect(
       page.locator(`.v-toolbar:has-text("NEW_TGT NEW_SCREEN")`),

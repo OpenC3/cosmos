@@ -23,12 +23,16 @@ test.use({
 })
 
 test('displays target names and associated plugin', async ({ page, utils }) => {
-  expect(await page.getByRole('list')).toContainText('INST')
-  expect(await page.getByRole('list')).toContainText('INST2')
-  expect(await page.getByRole('list')).toContainText('SYSTEM')
-  expect(await page.getByRole('list')).toContainText('EXAMPLE')
-  expect(await page.getByRole('list')).toContainText('TEMPLATED')
-  expect(await page.getByRole('list')).toContainText(
+  await expect(page.locator('[data-test="targetList"]')).toContainText('INST')
+  await expect(page.locator('[data-test="targetList"]')).toContainText('INST2')
+  await expect(page.locator('[data-test="targetList"]')).toContainText('SYSTEM')
+  await expect(page.locator('[data-test="targetList"]')).toContainText(
+    'EXAMPLE',
+  )
+  await expect(page.locator('[data-test="targetList"]')).toContainText(
+    'TEMPLATED',
+  )
+  await expect(page.locator('[data-test="targetList"]')).toContainText(
     /Plugin: openc3-cosmos-demo-\d{1,2}\.\d{1,2}\.\d{1,2}/,
   )
 })

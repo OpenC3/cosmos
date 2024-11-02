@@ -603,7 +603,7 @@ export default {
                 this.screenName = 'CMDSENDER'
                 let screenDefinition = 'SCREEN AUTO AUTO 1.0\n'
                 for (const item of command.related_items) {
-                  screenDefinition += `LABELVALUE '${command.related_items[i][0]}' '${command.related_items[i][1]}' '${command.related_items[i][2]}' WITH_UNITS 20\n`
+                  screenDefinition += `LABELVALUE '${item[0]}' '${item[1]}' '${item[2]}' WITH_UNITS 20\n`
                 }
                 this.screenDefinition = screenDefinition
               } else {

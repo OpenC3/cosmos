@@ -1,5 +1,5 @@
 /*
-# Copyright 2023 OpenC3, Inc
+# Copyright 2024 OpenC3, Inc
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -24,23 +24,33 @@ test.use({
 
 test('displays microservice names', async ({ page, utils }) => {
   // There are 9 microservices per target so look for the INST2 list
-  expect(await page.getByRole('list')).toContainText('DEFAULT__CLEANUP__INST2')
-  expect(await page.getByRole('list')).toContainText(
+  await expect(page.locator('[data-test="microserviceList"]')).toContainText(
+    'DEFAULT__CLEANUP__INST2',
+  )
+  await expect(page.locator('[data-test="microserviceList"]')).toContainText(
     'DEFAULT__COMMANDLOG__INST2',
   )
-  expect(await page.getByRole('list')).toContainText(
+  await expect(page.locator('[data-test="microserviceList"]')).toContainText(
     'DEFAULT__DECOMCMDLOG__INST2',
   )
-  expect(await page.getByRole('list')).toContainText('DEFAULT__DECOMLOG__INST2')
-  expect(await page.getByRole('list')).toContainText('DEFAULT__DECOM__INST2')
-  expect(await page.getByRole('list')).toContainText(
+  await expect(page.locator('[data-test="microserviceList"]')).toContainText(
+    'DEFAULT__DECOMLOG__INST2',
+  )
+  await expect(page.locator('[data-test="microserviceList"]')).toContainText(
+    'DEFAULT__DECOM__INST2',
+  )
+  await expect(page.locator('[data-test="microserviceList"]')).toContainText(
     'DEFAULT__INTERFACE__INST2_INT',
   )
-  expect(await page.getByRole('list')).toContainText('DEFAULT__MULTI__INST2')
-  expect(await page.getByRole('list')).toContainText(
+  await expect(page.locator('[data-test="microserviceList"]')).toContainText(
+    'DEFAULT__MULTI__INST2',
+  )
+  await expect(page.locator('[data-test="microserviceList"]')).toContainText(
     'DEFAULT__PACKETLOG__INST2',
   )
-  expect(await page.getByRole('list')).toContainText('DEFAULT__REDUCER__INST2')
+  await expect(page.locator('[data-test="microserviceList"]')).toContainText(
+    'DEFAULT__REDUCER__INST2',
+  )
 })
 
 test('displays microservice details', async ({ page, utils }) => {

@@ -1004,31 +1004,8 @@ export default {
   mounted: async function () {
     this.editor = ace.edit(this.$refs.editor)
     this.editor.setTheme('ace/theme/twilight')
-    // Public apis in api_shared but not in OpenC3Api
-    const api_shared = [
-      'check',
-      'check_raw',
-      'check_formatted',
-      'check_with_units',
-      'check_exception',
-      'check_tolerance',
-      'check_expression',
-      'wait',
-      'wait_tolerance',
-      'wait_expression',
-      'wait_check',
-      'wait_check_tolerance',
-      'wait_check_expression',
-      'wait_packet',
-      'wait_check_packet',
-      'disable_instrumentation',
-      'set_line_delay',
-      'get_line_delay',
-      'set_max_output',
-      'get_max_output',
-    ]
-    const openC3RubyMode = this.buildOpenC3RubyMode(api_shared)
-    const openC3PythonMode = this.buildOpenC3PythonMode(api_shared)
+    const openC3RubyMode = this.buildOpenC3RubyMode()
+    const openC3PythonMode = this.buildOpenC3PythonMode()
     this.openC3RubyMode = new openC3RubyMode()
     this.openC3PythonMode = new openC3PythonMode()
     this.editor.session.setMode(this.openC3RubyMode)
@@ -1184,7 +1161,29 @@ export default {
       let apis = Object.getOwnPropertyNames(OpenC3Api.prototype)
         .filter((a) => a !== 'constructor')
         .filter((a) => a !== 'exec')
-        .concat(api_shared)
+        // Add the Public apis in api_shared but not in OpenC3Api
+        .concat([
+          'check',
+          'check_raw',
+          'check_formatted',
+          'check_with_units',
+          'check_exception',
+          'check_tolerance',
+          'check_expression',
+          'wait',
+          'wait_tolerance',
+          'wait_expression',
+          'wait_check',
+          'wait_check_tolerance',
+          'wait_check_expression',
+          'wait_packet',
+          'wait_check_packet',
+          'disable_instrumentation',
+          'set_line_delay',
+          'get_line_delay',
+          'set_max_output',
+          'get_max_output',
+        ])
       let regex = new RegExp(`(\\b${apis.join('\\b|\\b')}\\b)`)
       let OpenC3HighlightRules = function () {
         HighlightRules.call(this)
@@ -1211,10 +1210,10 @@ export default {
         this.foldingRules = new FoldMode()
         this.indentKeywords = this.foldingRules.indentKeywords
       }
-      return Mode
+      return [oop, Mode]
     },
-    buildOpenC3RubyMode(api_shared) {
-      let Mode = this.buildLanguageMode(
+    buildOpenC3RubyMode() {
+      const [oop, Mode] = this.buildLanguageMode(
         ace.require('ace/mode/ruby_highlight_rules').RubyHighlightRules,
         ace.require('ace/mode/folding/ruby').FoldMode,
       )
@@ -1225,8 +1224,8 @@ export default {
       }).call(Mode.prototype)
       return Mode
     },
-    buildOpenC3PythonMode(api_shared) {
-      let Mode = this.buildLanguageMode(
+    buildOpenC3PythonMode() {
+      const [oop, Mode] = this.buildLanguageMode(
         ace.require('ace/mode/python_highlight_rules').PythonHighlightRules,
         ace.require('ace/mode/folding/pythonic').FoldMode,
       )
