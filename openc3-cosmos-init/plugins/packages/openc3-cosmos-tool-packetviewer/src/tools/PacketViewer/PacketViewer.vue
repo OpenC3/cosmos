@@ -265,8 +265,11 @@ export default {
     itemsPerPage: function () {
       this.saveDefaultConfig(this.currentConfig)
     },
-    pinnedItems: function () {
-      this.saveDefaultConfig(this.currentConfig)
+    pinnedItems: {
+      handler(_newVal, _oldVal) {
+        this.saveDefaultConfig(this.currentConfig)
+      },
+      deep: true, // Because pinnedItems is an array
     },
   },
   computed: {
@@ -399,12 +402,6 @@ export default {
               target: this.targetName,
               packet: this.packetName,
               item: this.itemName,
-            })
-            this.rows = this.rows.map((row) => {
-              if (row.name === this.itemName) {
-                row.pinned = true
-              }
-              return row
             })
           },
         })
@@ -577,8 +574,6 @@ export default {
       }, this.refreshInterval)
     },
     resetConfig: function () {
-      this.targetName = ''
-      this.packetName = ''
       this.refreshInterval = 1000
       this.staleLimit = 30
       this.showIgnored = false

@@ -458,7 +458,6 @@ test('ignores normal range checks', async ({ page, utils }) => {
   // Disable range checks
   await page.locator('[data-test=command-sender-mode]').click()
   await page.getByText('Ignore Range Checks').click()
-  await page.locator('[data-test=command-sender-mode]').click()
   await page.locator('[data-test="select-send"]').click()
   await expect(page.locator('main')).toContainText(
     'cmd_no_range_check("INST COLLECT with TYPE \'NORMAL\', DURATION 1, OPCODE 171, TEMP 100") sent',
@@ -471,9 +470,6 @@ test('ignores normal range checks', async ({ page, utils }) => {
   // Enable range checks
   await page.locator('[data-test=command-sender-mode]').click()
   await page.getByText('Ignore Range Checks').click()
-  await page.locator('[data-test=command-sender-mode]').click()
-  await utils.sleep(500) // menu closes
-
   await utils.selectTargetPacketItem('EXAMPLE', 'START')
   await page.locator('[data-test=sender-history]').click()
   await utils.sleep(500) // Allow focus to change

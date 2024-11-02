@@ -379,7 +379,7 @@ test.describe('Telemetry Grapher UTC', () => {
     await page.locator('text=Add Graph').click()
     await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS', 'TEMP1')
     await page.locator('button:has-text("Add Item")').click()
-    await page.locator('.v-expansion-panel-header').click()
+    await page.locator('#innerapp button').first().click()
     await utils.sleep(3000) // Wait for graphing to occur
     // We can't check the canvas legend because its a canvas
     await page.locator('#chart0 canvas').click({

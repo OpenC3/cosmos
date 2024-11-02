@@ -260,10 +260,13 @@ test('test python metadata apis', async ({ page, utils }) => {
 test('test python numpy import', async ({ page, utils }) => {
   await openFile(page, utils, 'numpy.py')
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('Connecting...', {
-    timeout: 5000,
-  })
-  await expect(page.locator('[data-test=state]')).toHaveValue('stopped', {
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'Connecting...',
+    {
+      timeout: 5000,
+    },
+  )
+  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
     timeout: 20000,
   })
 })

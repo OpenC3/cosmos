@@ -562,10 +562,10 @@ test('deletes a plugin', async ({ page, utils }) => {
     .click()
   await expect(page.locator('.v-dialog')).toContainText('Confirm')
   await page.locator('[data-test=confirm-dialog-delete]').click()
-  // await expect(page.locator('.v-dialog:has-text("Modified")')).toBeVisible()
-  // // Check the delete box
-  // await page.locator('text=DELETE MODIFIED').click()
-  // await page.locator('data-test=modified-plugin-submit').click()
+  await expect(page.locator('.v-dialog:has-text("Modified")')).toBeVisible()
+  // Check the delete box
+  await page.locator('text=DELETE MODIFIED').click()
+  await page.locator('data-test=modified-plugin-submit').click()
 
   await expect(page.locator('[data-test=plugin-alert]')).toContainText(
     'Removing plugin',

@@ -260,33 +260,33 @@ test('pins items to the top of the list', async ({ page, utils }) => {
   await page.getByText('PACKET_TIME *').click({
     button: 'right',
   })
-  await page.getByText('Pin Item').click()
+  await page.getByText('Pin Item', { exact: true }).click()
   await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIME *')
   // Verify pin is not affected by sorting
-  await page.getByText('Name').click()
+  await page.getByText('Name', { exact: true }).click()
   await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIME *')
-  await page.getByText('Name').click()
+  await page.getByText('Name', { exact: true }).click()
   await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIME *')
-  await page.getByText('Name').click()
+  await page.getByText('Name', { exact: true }).click()
   await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIME *')
-  await page.getByText('Value').click()
+  await page.getByText('Value', { exact: true }).click()
   await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIME *')
-  await page.getByText('Value').click()
+  await page.getByText('Value', { exact: true }).click()
   await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIME *')
-  await page.getByText('Value').click()
+  await page.getByText('Value', { exact: true }).click()
   await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIME *')
 
   await page.locator('[data-test="search"] input').fill('GROUND')
   await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIME *')
-  await page.getByText('GROUND1STATUS').click({
+  await page.getByText('GROUND1STATUS', { exact: true }).click({
     button: 'right',
   })
-  await page.getByText('Pin Item').click()
+  await page.getByText('Pin Item', { exact: true }).click()
   await page.locator('[data-test="search"] input').fill('')
   await expect(page.locator('tr').nth(1)).toContainText('GROUND1STATUS')
   await expect(page.locator('tr').nth(2)).toContainText('PACKET_TIME *')
 
-  await page.getByText('GROUND1STATUS').click({
+  await page.getByText('GROUND1STATUS', { exact: true }).click({
     button: 'right',
   })
   await page.getByText('Unpin Item').click()
