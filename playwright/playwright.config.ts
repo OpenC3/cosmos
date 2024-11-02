@@ -15,7 +15,7 @@ export const ADMIN_STORAGE_STATE = path.join(
 export default defineConfig({
   testDir: './tests',
   /* Maximum time one test can run for. */
-  timeout: 5 * 60 * 1000, // 5 minutes
+  timeout: 60 * 1000, // 5 minutes
   expect: {
     /**
      * Maximum time expect() should wait for the condition to be met.
@@ -30,7 +30,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   /* Retry once on CI */
   retries: process.env.CI ? 1 : 0,
-  workers: 1,
+  workers: 10,
   /* See if explicit WORKERS count was given, otherwise allow parallelism on CI/CD */
   // workers: process.env.WORKERS
   //   ? parseInt(process.env.WORKERS)
@@ -48,7 +48,7 @@ export default defineConfig({
     /* Maximum time each action such as `click()` can take. Defaults to 0 (no limit). */
     actionTimeout: 0,
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: 'http://localhost:2900',
+    baseURL: 'http://localhost:3900',
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: process.env.CI ? 'on-first-retry' : 'on',
     screenshot: 'only-on-failure',
