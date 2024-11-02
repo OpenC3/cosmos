@@ -231,9 +231,11 @@ test('shows ignored items', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
   await page.locator('[data-test=packet-viewer-view]').click()
   await page.locator('text=Display Derived').click()
+  await expect(page.locator('text=Display Derived')).not.toBeVisible()
   await expect(page.getByRole('cell', { name: 'CCSDSVER' })).not.toBeVisible()
   await page.locator('[data-test=packet-viewer-view]').click()
   await page.locator('text=Show Ignored').click()
+  await expect(page.locator('text=Show Ignored')).not.toBeVisible()
   await expect(page.getByRole('cell', { name: 'CCSDSVER' })).toBeVisible()
   await page.locator('[data-test=packet-viewer-view]').click()
   await page.locator('text=Show Ignored').click()
@@ -246,6 +248,7 @@ test('displays derived first', async ({ page, utils }) => {
   await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIMESECONDS')
   await page.locator('[data-test=packet-viewer-view]').click()
   await page.locator('text=Display Derived').click()
+  await expect(page.locator('text=Display Derived')).not.toBeVisible()
   await expect(page.locator('tr').nth(1)).toContainText('TIMESEC')
   // Check 2 because TIMESEC is included in PACKET_<TIMESEC>ONDS
   // so the first check could result in a false positive
@@ -283,14 +286,16 @@ test('pins items to the top of the list', async ({ page, utils }) => {
   })
   await page.getByText('Pin Item', { exact: true }).click()
   await page.locator('[data-test="search"] input').fill('')
-  await expect(page.locator('tr').nth(1)).toContainText('GROUND1STATUS')
-  await expect(page.locator('tr').nth(2)).toContainText('PACKET_TIME *')
+  // Default sort order is packet order so PACKET_TIME is first
+  await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIME *')
+  await expect(page.locator('tr').nth(2)).toContainText('GROUND1STATUS')
 
   await page.getByText('GROUND1STATUS', { exact: true }).click({
     button: 'right',
   })
   await page.getByText('Unpin Item').click()
   await expect(page.locator('tr').nth(1)).toContainText('PACKET_TIME *')
+  await expect(page.locator('tr').nth(2)).not.toContainText('GROUND1STATUS')
 
   await page.locator('[data-test="packet-viewer-file"]').click()
   await page.getByText('Reset Configuration').click()

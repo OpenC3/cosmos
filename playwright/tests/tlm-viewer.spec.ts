@@ -84,6 +84,9 @@ test('displays INST BLOCK', async ({ page, utils }) => {
 
 test('displays INST COMMANDING', async ({ page, utils }) => {
   await showScreen(page, utils, 'INST', 'COMMANDING', async function () {
+    // This is the expansion panel button
+    await page.locator('#innerapp button').first().click()
+
     await page.getByRole('combobox').filter({ hasText: 'NORMAL' }).click()
     await page.getByRole('option', { name: 'NORMAL' }).click()
     await page.getByRole('button', { name: 'Start Collect' }).click()
