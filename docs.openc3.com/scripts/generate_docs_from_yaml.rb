@@ -109,6 +109,12 @@ class CosmosMetaTag
         page << "```ruby\n"
         page << "#{data['example'].strip}\n"
         page << "```\n"
+        # If this is a screen, check to see if there is an image for the widget
+        if File.basename(@yaml_file) == 'screen.yaml'
+          if File.exist?("../static/img/telemetry_viewer/widgets/#{keyword.downcase}.png")
+            page << "![#{keyword}](/img/telemetry_viewer/widgets/#{keyword.downcase}.png)\n"
+          end
+        end
       end
       if data['ruby_example']
         page << "\nRuby Example:\n"

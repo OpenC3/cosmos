@@ -25,13 +25,10 @@ import Widget from './Widget'
 
 export default {
   mixins: [Widget],
-  data() {
-    return {
-      componentSettings: [
-        ['WIDTH', this.parameters[0]],
-        ['HEIGHT', this.parameters[1]],
-      ],
-    }
+  created() {
+    // Populate the settings as if they were applied in the screen
+    this.settings.push(['WIDTH', this.parameters[0]])
+    this.settings.push(['HEIGHT', this.parameters[1]])
   },
 }
 </script>

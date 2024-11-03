@@ -74,7 +74,7 @@ export default {
   },
   computed: {
     computedStyle: function () {
-      this.settings.forEach((setting) => {
+      this.appliedSettings.forEach((setting) => {
         const index = parseInt(setting[0])
         if (this.widgetIndex !== null) {
           if (this.widgetIndex === index) {
@@ -155,11 +155,8 @@ export default {
       .find((setting) => setting[0] === 'NAMED_WIDGET')
       ?.at(1)
 
-    const componentSettings = this.componentSettings || []
-    const stringifiedComponentSettings = componentSettings?.map(JSON.stringify)
-
     // Figure out any subsettings that apply
-    const newSettings = this.settings
+    this.appliedSettings = this.settings
       .map((setting) => {
         const index = parseInt(setting[0])
         // If the first value isn't a number or if there isn't a widgetIndex
@@ -174,14 +171,8 @@ export default {
           return setting.slice(1)
         }
       })
-      // Remove any settings that we filtered out with null and anything to be overridden with componentSettings
-      .filter(
-        (setting) =>
-          setting !== undefined &&
-          !stringifiedComponentSettings.includes(JSON.stringify(setting)),
-      )
-
-    this.appliedSettings = [...componentSettings, ...newSettings]
+      // Remove any settings that we filtered out with null
+      .filter((setting) => setting !== undefined)
   },
   beforeUnmount() {
     if (this.widgetName) {
