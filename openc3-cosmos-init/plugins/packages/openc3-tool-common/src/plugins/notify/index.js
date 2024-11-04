@@ -20,26 +20,38 @@
 # if purchased from OpenC3, Inc.
 */
 
+import { createApp } from 'vue'
 import vuetify from '../vuetify'
 import Toast from './Toast.vue'
 
 class Notify {
+  /*
+   * This gets called by the `install()` function below
+   */
   constructor(options = {}) {
     this.$store = options.store
-    this.mounted = false
     this.$root = null
+    if (!!window.$cosmosNotify) {
+      this.mounted = true
+    } else {
+      this.mounted = false
+      window.$cosmosNotify = this
+    }
   }
 
+  /*
+   * This gets called each time `open()` is invoked by an app in COSMOS.
+   * It puts the element into the DOM that allows toasts to be shown.
+   */
   mount = function () {
     if (this.mounted) return
 
-    const app = window.Vue.createApp(Toast)
+    const app = createApp(Toast)
     app.use(vuetify)
 
     const el = document.createElement('div')
     document.querySelector('#openc3-app-toolbar > div').appendChild(el)
     this.$root = app.mount(el)
-
     this.mounted = true
   }
 
@@ -219,9 +231,14 @@ class Notify {
 }
 
 export default {
+  /*
+   * This gets called by the Vue runtime when you have `app.use(Notify)` in that app's main .js file.
+   */
   install(app, options) {
+    const notify = new Notify(options)
+    app.provide('notify', notify) // Allows for injection
     if (!app.config.globalProperties.hasOwnProperty('$notify')) {
-      app.config.globalProperties.$notify = new Notify(options)
+      app.config.globalProperties.$notify = notify // Allows for `this.$notify`
     }
   },
 }

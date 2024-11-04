@@ -76,9 +76,9 @@ axiosInstance.interceptors.response.use(
       } else {
         body += `${error.response?.data}`
       }
-      // TODO idk if this works
-      if (Vue.$notify) {
-        Vue.$notify.serious({
+      const { $cosmosNotify } = window
+      if ($cosmosNotify) {
+        $cosmosNotify.serious({
           title: 'Network error',
           body,
         })

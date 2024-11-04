@@ -114,8 +114,10 @@ class Dialog {
 
 export default {
   install(app, _) {
+    const dialog = new Dialog()
+    app.provide('dialog', dialog)
     if (!app.config.globalProperties.hasOwnProperty('$dialog')) {
-      app.config.globalProperties.$dialog = new Dialog()
+      app.config.globalProperties.$dialog = dialog
     }
   },
 }
