@@ -309,6 +309,7 @@ export default {
     },
     selectedItemNameWIndex: function () {
       if (
+        this.itemIsArray() &&
         this.selectedArrayIndex !== null &&
         this.selectedArrayIndex !== this.ALL.label
       ) {

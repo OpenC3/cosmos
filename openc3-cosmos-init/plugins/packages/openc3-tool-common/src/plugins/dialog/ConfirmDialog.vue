@@ -53,15 +53,17 @@
             variant="outlined"
             :data-test="dataTestCancel"
             @click="cancel"
-            >{{ params.cancelText }}</v-btn
           >
+            {{ params.cancelText }}
+          </v-btn>
           <v-btn
             class="mx-2"
             :color="params.okClass"
             :data-test="dataTestOk"
             @click="ok"
-            >{{ params.okText }}</v-btn
           >
+            {{ params.okText }}
+          </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
