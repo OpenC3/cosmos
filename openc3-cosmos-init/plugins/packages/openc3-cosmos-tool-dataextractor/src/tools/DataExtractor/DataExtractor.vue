@@ -220,13 +220,9 @@
                     </v-col>
                   </v-row>
                 </v-card-text>
-                <v-card-actions>
+                <v-card-actions class="px-2">
                   <v-spacer />
-                  <v-btn
-                    color="primary"
-                    class="mx-2"
-                    @click="item.edit = false"
-                  >
+                  <v-btn variant="flat" @click="item.edit = false">
                     Close
                   </v-btn>
                 </v-card-actions>
@@ -301,15 +297,12 @@
             </v-col>
           </v-row>
         </v-card-text>
-        <v-card-actions>
+        <v-card-actions class="px-2">
           <v-spacer />
-          <v-btn variant="outlined" class="mx-2" @click="editAll = !editAll">
-            Cancel
-          </v-btn>
+          <v-btn variant="outlined" @click="editAll = !editAll"> Cancel </v-btn>
           <v-btn
+            variant="flat"
             :disabled="!allItemValueType"
-            color="primary"
-            class="mx-2"
             @click="editAllItems()"
           >
             Ok

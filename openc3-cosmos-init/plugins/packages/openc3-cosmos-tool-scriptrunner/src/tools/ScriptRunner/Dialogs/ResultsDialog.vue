@@ -39,19 +39,10 @@
           />
         </v-card-text>
       </div>
-      <v-card-actions>
+      <v-card-actions class="px-2">
         <v-spacer />
-        <v-btn class="mx-2" variant="outlined" @click="downloadResults">
-          Download
-        </v-btn>
-        <v-btn
-          class="mx-2"
-          color="primary"
-          @click="show = !show"
-          ref="okButton"
-        >
-          Ok
-        </v-btn>
+        <v-btn variant="outlined" @click="downloadResults"> Download </v-btn>
+        <v-btn variant="flat" @click="show = !show" ref="okButton"> Ok </v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>

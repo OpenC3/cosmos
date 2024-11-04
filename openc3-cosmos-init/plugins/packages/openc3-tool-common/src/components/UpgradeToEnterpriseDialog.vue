@@ -43,17 +43,17 @@
         with common protocols and hardware, commercial licensing, and much
         more!<br /><br />
         Learn more at
-        <a href="https://openc3.com/enterprise"
-          >https://openc3.com/enterprise</a
-        >
+        <a href="https://openc3.com/enterprise">
+          https://openc3.com/enterprise
+        </a>
         and help support COSMOS Open Source by supporting our business. Contact
         us at <a href="mailto:support@openc3.com">support@openc3.com</a> for
         more information about Enterprise Edition, COSMOS training, COSMOS
         support, and custom COSMOS development.
       </v-card-text>
-      <v-card-actions>
+      <v-card-actions class="px-2">
         <v-spacer />
-        <v-btn class="mx-2" color="primary" @click="show = !show"> Ok </v-btn>
+        <v-btn variant="flat" @click="show = !show"> Ok </v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>

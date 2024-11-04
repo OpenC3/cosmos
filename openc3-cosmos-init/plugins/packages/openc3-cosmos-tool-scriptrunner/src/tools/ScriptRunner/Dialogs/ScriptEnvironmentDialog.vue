@@ -33,11 +33,10 @@
           <environment-chooser v-model="selected" />
         </v-card-text>
       </div>
-      <v-card-actions>
+      <v-card-actions class="px-2">
         <v-spacer />
         <v-btn
           @click="cancel"
-          class="mx-2"
           variant="outlined"
           data-test="environment-dialog-cancel"
         >
@@ -45,8 +44,7 @@
         </v-btn>
         <v-btn
           @click="updateEnvironment"
-          class="mx-2"
-          color="primary"
+          variant="flat"
           data-test="environment-dialog-save"
           :disabled="!!inputError"
         >

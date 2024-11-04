@@ -73,13 +73,9 @@
             style="max-width: 200px"
           />
         </v-card-text>
-        <v-card-actions>
+        <v-card-actions class="px-2">
           <v-spacer />
-          <v-btn
-            @click="limitsSetDialog = false"
-            variant="outlined"
-            class="mx-2"
-          >
+          <v-btn variant="outlined" @click="limitsSetDialog = false">
             Cancel
           </v-btn>
           <v-btn @click="setLimitsSet" color="primary"> Ok </v-btn>

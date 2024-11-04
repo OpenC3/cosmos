@@ -50,9 +50,9 @@
           />
         </v-card-text>
       </div>
-      <v-card-actions>
+      <v-card-actions class="px-2">
         <v-spacer />
-        <v-btn class="mx-2" color="primary" @click="show = !show"> Ok </v-btn>
+        <v-btn variant="flat" @click="show = !show"> Ok </v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>

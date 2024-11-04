@@ -75,21 +75,19 @@
             </v-row>
           </div>
         </v-card-text>
-        <v-card-actions>
+        <v-card-actions class="px-2">
           <v-spacer />
           <v-btn
             variant="outlined"
-            class="mx-2"
             @click="cancel"
             data-test="open-config-cancel-btn"
           >
             Cancel
           </v-btn>
           <v-btn
+            variant="flat"
             @click.prevent="success"
             type="submit"
-            color="primary"
-            class="mx-2"
             data-test="open-config-submit-btn"
             :disabled="!!error"
           >

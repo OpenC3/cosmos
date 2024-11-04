@@ -103,14 +103,10 @@
         </v-row>
       </v-card-text>
       <v-divider />
-      <v-card-actions>
+      <v-card-actions class="px-2">
         <v-spacer />
-        <v-btn variant="outlined" class="mx-2" @click="show = false">
-          Cancel
-        </v-btn>
-        <v-btn color="primary" class="mx-2" @click="saveNewScreen">
-          Save
-        </v-btn>
+        <v-btn variant="outlined" @click="show = false"> Cancel </v-btn>
+        <v-btn variant="flat" @click="saveNewScreen"> Save </v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>

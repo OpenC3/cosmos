@@ -43,9 +43,9 @@
       <v-card-text>
         <pre class="editor" ref="editor"></pre>
       </v-card-text>
-      <v-card-actions>
+      <v-card-actions class="px-2">
         <v-spacer />
-        <v-btn color="primary" @click="close"> Ok </v-btn>
+        <v-btn variant="flat" @click="close"> Ok </v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>

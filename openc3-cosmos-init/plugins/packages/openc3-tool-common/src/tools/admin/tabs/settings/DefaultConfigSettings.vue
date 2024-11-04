@@ -41,13 +41,12 @@
       </template>
       <template v-else> No configs to clear </template>
     </v-card-text>
-    <v-card-actions>
+    <v-card-actions class="px-2">
       <v-btn
         :disabled="!selectedLastConfigs.length"
         @click="clearLastConfigs"
         color="warning"
         variant="text"
-        class="ml-2"
         data-test="clear-default-configs"
       >
         Clear

@@ -84,16 +84,13 @@
             </v-row>
           </div>
         </v-card-text>
-        <v-card-actions>
+        <v-card-actions class="px-2">
           <v-spacer />
-          <v-btn variant="outlined" class="mx-2" @click="cancel">
-            Cancel
-          </v-btn>
+          <v-btn variant="outlined" @click="cancel"> Cancel </v-btn>
           <v-btn
+            variant="flat"
             @click.prevent="success"
             type="submit"
-            color="primary"
-            class="mx-2"
             data-test="save-config-submit-btn"
             :disabled="!!error"
           >

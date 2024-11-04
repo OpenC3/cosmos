@@ -92,20 +92,14 @@
             </v-icon>
           </template>
         </v-data-table>
-        <v-card-actions>
+        <v-card-actions class="px-2">
           <v-spacer />
-          <v-btn
-            variant="outlined"
-            class="mx-2"
-            data-test="close-event-list"
-            @click="close"
-          >
+          <v-btn variant="outlined" data-test="close-event-list" @click="close">
             Close
           </v-btn>
           <v-btn
             v-if="newMetadata"
-            variant="elevated"
-            color="primary"
+            variant="flat"
             data-test="new-event"
             @click="showMetadataCreate = true"
           >

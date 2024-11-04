@@ -72,14 +72,10 @@
           <div class="pa-3">{{ limitsName }}: {{ limits[limitsName] }}</div>
         </div>
       </v-card-text>
-      <v-card-actions>
+      <v-card-actions class="px-2">
         <v-spacer />
-        <v-btn variant="outlined" class="mx-2" @click="$emit('cancel')">
-          Cancel
-        </v-btn>
-        <v-btn color="primary" class="mx-2" @click="$emit('close', editItem)">
-          Ok
-        </v-btn>
+        <v-btn variant="outlined" @click="$emit('cancel')"> Cancel </v-btn>
+        <v-btn variant="flat" @click="$emit('close', editItem)"> Ok </v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>

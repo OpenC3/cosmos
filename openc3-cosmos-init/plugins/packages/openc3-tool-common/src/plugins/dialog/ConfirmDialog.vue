@@ -45,11 +45,10 @@
             />
           </div>
         </v-card-text>
-        <v-card-actions>
+        <v-card-actions class="px-2">
           <v-spacer />
           <v-btn
             v-if="params.cancelText"
-            class="mx-2"
             variant="outlined"
             :data-test="dataTestCancel"
             @click="cancel"
@@ -57,7 +56,7 @@
             {{ params.cancelText }}
           </v-btn>
           <v-btn
-            class="mx-2"
+            variant="flat"
             :color="params.okClass"
             :data-test="dataTestOk"
             @click="ok"

@@ -54,20 +54,18 @@
             :multiple="multiple === true"
           />
         </v-row>
-        <v-card-actions>
+        <v-card-actions class="px-2">
           <v-spacer />
           <v-btn
             @click="cancelHandler"
             variant="outlined"
             data-test="prompt-cancel"
-            class="ma-1"
           >
             Cancel
           </v-btn>
           <v-btn
+            variant="flat"
             @click="submitHandler"
-            class="ma-1"
-            color="primary"
             data-test="prompt-ok"
             :disabled="selectOkDisabled"
           >
@@ -82,16 +80,14 @@
             @click="cancelHandler"
             variant="outlined"
             data-test="prompt-cancel"
-            class="ma-1"
           >
             Cancel
           </v-btn>
           <div v-for="(button, index) in buttons" :key="index">
             <v-btn
+              variant="flat"
               @click="submitWrapper(button.value)"
-              class="ma-1"
               :data-test="`prompt-${button.text}`"
-              :color="button.value ? 'primary' : ''"
             >
               {{ button.text }}
             </v-btn>
@@ -152,7 +148,7 @@ export default {
       },
     },
     layoutClass() {
-      let layout = 'd-flex align-start'
+      let layout = 'px-2 d-flex align-start'
       if (this.layout === 'vertical') {
         return `${layout} flex-column`
       } else {

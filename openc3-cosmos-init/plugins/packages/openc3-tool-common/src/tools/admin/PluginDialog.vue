@@ -26,7 +26,7 @@
       <v-card-text>
         <v-card-title>{{ pluginName }} </v-card-title>
         <v-row v-if="existingPluginTxt !== null" class="notice d-flex flex-row">
-          <v-icon size="x-large" start color="yellow">mdi-alert-box</v-icon>
+          <v-icon size="x-large" start color="yellow"> mdi-alert-box </v-icon>
           <div style="flex: 1">
             The existing plugin.txt is different from the {{ pluginName }}'s
             plugin.txt. Navigate the diffs making whatever edits you want before
@@ -64,9 +64,9 @@
               eager="true"
               class="tab"
             >
-              <v-row class="pa-3"
-                ><v-col>This can be edited before installation.</v-col></v-row
-              >
+              <v-row class="pa-3">
+                <v-col> This can be edited before installation. </v-col>
+              </v-row>
               <pre ref="editor" class="editor"></pre>
             </v-window-item>
             <v-window-item
@@ -75,35 +75,37 @@
               eager="true"
               class="tab"
             >
-              <v-row class="pa-3"
-                ><v-col
-                  >Existing plugin.txt. This can be edited before
-                  installation.</v-col
-                ><v-col class="ml-6"
-                  >Uneditable plugin.txt from the new plugin.</v-col
-                ></v-row
-              >
+              <v-row class="pa-3">
+                <v-col>
+                  Existing plugin.txt. This can be edited before installation.
+                </v-col>
+                <v-col class="ml-6">
+                  Uneditable plugin.txt from the new plugin.
+                </v-col>
+              </v-row>
               <pre ref="editor" class="editor"></pre>
             </v-window-item>
           </v-window>
 
-          <!-- <v-row class="pt-5"> -->
-          <v-card-actions class="mt-2">
+          <v-card-actions class="px-2 mt-2">
             <div v-if="existingPluginTxt !== null">
-              <v-btn color="primary" @click="nextDiff" class="mr-2"
-                >Next Diff</v-btn
-              >
-              <v-btn color="primary" @click="previousDiff">Previous Diff</v-btn>
+              <v-btn variant="text" @click="nextDiff"> Next Diff </v-btn>
+              <v-btn variant="text" @click="previousDiff">
+                Previous Diff
+              </v-btn>
             </div>
             <v-spacer />
-            <v-btn @click.prevent="close" class="mx-2" data-test="edit-cancel">
+            <v-btn
+              variant="outlined"
+              @click.prevent="close"
+              data-test="edit-cancel"
+            >
               Cancel
             </v-btn>
-            <v-btn class="mx-2" @click="submit" data-test="edit-submit">
+            <v-btn variant="flat" @click="submit" data-test="edit-submit">
               Install
             </v-btn>
           </v-card-actions>
-          <!-- </v-row> -->
         </form>
       </v-card-text>
     </v-card>

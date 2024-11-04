@@ -21,7 +21,7 @@
   <v-dialog v-model="show" @keydown.esc="$emit('cancel')" max-width="700">
     <v-toolbar height="24">
       <v-spacer />
-      <span>Edit Graph</span>
+      <span> Edit Graph </span>
       <v-spacer />
     </v-toolbar>
     <v-card class="pa-3">
@@ -33,8 +33,8 @@
       <v-tabs-window v-model="tab">
         <v-tabs-window-item value="0" eager>
           <div class="edit-box">
-            <v-row
-              ><v-col>
+            <v-row>
+              <v-col>
                 <v-card-text class="pa-0">
                   <v-text-field
                     class="pb-2"
@@ -51,8 +51,9 @@
                   :items="legendPositions"
                   v-model="graph.legendPosition"
                   style="max-width: 280px"
-                /> </v-col
-            ></v-row>
+                />
+              </v-col>
+            </v-row>
           </div>
           <div class="edit-box">
             <v-card-text class="pa-0">
@@ -135,12 +136,12 @@
           <div class="edit-box">
             <v-list density="compact">
               <v-list-item>
-                <span style="padding-top: 5px"
-                  >Add horizontal lines to the graph</span
-                ><v-spacer /><v-btn @click="addLine()"
-                  >New Line</v-btn
-                ></v-list-item
-              >
+                <span style="padding-top: 5px">
+                  Add horizontal lines to the graph
+                </span>
+                <v-spacer />
+                <v-btn @click="addLine()"> New Line </v-btn>
+              </v-list-item>
               <v-list-item
                 v-for="(item, i) in graph.lines"
                 :key="i"
@@ -149,11 +150,8 @@
               >
                 <v-row>
                   <v-col>
-                    <v-text-field
-                      label="Y Value"
-                      v-model="item.yValue"
-                    ></v-text-field
-                  ></v-col>
+                    <v-text-field label="Y Value" v-model="item.yValue" />
+                  </v-col>
                   <v-col>
                     <v-select
                       label="Color"
@@ -194,22 +192,22 @@
             <template v-slot:item.actions="{ item }">
               <v-tooltip text="Remove" location="bottom">
                 <template v-slot:activator="{ props }">
-                  <v-icon v-bind="props" @click="$emit('remove', item)"
-                    >mdi-delete</v-icon
-                  >
+                  <v-icon v-bind="props" @click="$emit('remove', item)">
+                    mdi-delete
+                  </v-icon>
                 </template>
               </v-tooltip>
             </template>
             <template v-slot:no-data>
-              <span>Currently no items on this graph</span>
+              <span> Currently no items on this graph </span>
             </template>
           </v-data-table>
         </v-tabs-window-item>
       </v-tabs-window>
-      <v-card-actions>
+      <v-card-actions class="px-2">
         <v-spacer />
-        <v-btn outlined class="mx-2" @click="$emit('cancel')"> Cancel </v-btn>
-        <v-btn color="primary" class="mx-2" @click="closeOk"> Ok </v-btn>
+        <v-btn variant="outlined" @click="$emit('cancel')"> Cancel </v-btn>
+        <v-btn variant="flat" @click="closeOk"> Ok </v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>

@@ -71,11 +71,11 @@
           </v-data-table>
         </v-card-text>
       </div>
-      <v-card-actions>
+      <v-card-actions class="px-2">
         <v-spacer />
         <v-btn
+          variant="flat"
           @click="show = !show"
-          color="primary"
           data-test="overrides-dialog-ok"
         >
           Ok

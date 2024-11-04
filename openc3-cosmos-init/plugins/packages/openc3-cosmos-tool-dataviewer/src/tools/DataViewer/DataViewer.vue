@@ -207,19 +207,17 @@
             data-test="rename-tab-input"
           />
         </v-card-text>
-        <v-card-actions>
+        <v-card-actions class="px-2">
           <v-spacer />
           <v-btn
             variant="outlined"
-            class="mx-2"
             data-test="cancel-rename"
             @click="cancelTabRename"
           >
             Cancel
           </v-btn>
           <v-btn
-            color="primary"
-            class="mx-2"
+            variant="flat"
             data-test="rename"
             :disabled="!newTabName"
             @click="renameTab"

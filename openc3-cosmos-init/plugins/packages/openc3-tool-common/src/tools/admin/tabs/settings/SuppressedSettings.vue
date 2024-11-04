@@ -41,13 +41,12 @@
       </template>
       <template v-else> No warnings to reset </template>
     </v-card-text>
-    <v-card-actions>
+    <v-card-actions class="px-2">
       <v-btn
         :disabled="!selectedSuppressedWarnings.length"
         @click="resetSuppressedWarnings"
         color="warning"
         variant="text"
-        class="ml-2"
         data-test="reset-suppressed-warnings"
       >
         Reset

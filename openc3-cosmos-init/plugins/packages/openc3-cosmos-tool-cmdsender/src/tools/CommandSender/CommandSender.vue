@@ -182,12 +182,10 @@
         <v-card-text class="mt-6">
           Warning: Command {{ hazardousCommand }} is Hazardous. Send?
         </v-card-text>
-        <v-card-actions>
+        <v-card-actions class="px-2">
           <v-spacer />
           <v-btn @click="cancelHazardousCmd" variant="outlined"> Cancel </v-btn>
-          <v-btn @click="sendHazardousCmd" class="bg-primary mx-1">
-            Send
-          </v-btn>
+          <v-btn @click="sendHazardousCmd" variant="flat"> Send </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>

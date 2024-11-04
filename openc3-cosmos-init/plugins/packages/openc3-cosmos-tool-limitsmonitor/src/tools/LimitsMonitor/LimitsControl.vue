@@ -156,16 +156,10 @@
             </div>
           </div>
         </v-card-text>
-        <v-card-actions>
+        <v-card-actions class="px-2">
           <v-btn variant="outlined" @click="clearAll"> Clear All </v-btn>
           <v-spacer />
-          <v-btn
-            @click="ignoredItemsDialog = false"
-            class="mx-2"
-            color="primary"
-          >
-            Ok
-          </v-btn>
+          <v-btn variant="flat" @click="ignoredItemsDialog = false"> Ok </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>

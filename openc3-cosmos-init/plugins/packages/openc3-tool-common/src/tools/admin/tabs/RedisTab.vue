@@ -43,13 +43,12 @@
           Response: {{ redisResponse }}
         </span>
       </v-card-text>
-      <v-card-actions>
+      <v-card-actions class="px-2">
         <v-btn
           :disabled="!redisCommandText.length"
           @click="executeRaw"
           color="success"
           variant="text"
-          class="ml-2 mr-3"
         >
           Execute
         </v-btn>

@@ -48,10 +48,9 @@
           data-test="modified-plugin-delete-checkbox"
         />
       </v-card-text>
-      <v-card-actions>
+      <v-card-actions class="px-2">
         <v-spacer />
         <v-btn
-          class="mx-2"
           variant="outlined"
           data-test="modified-plugin-cancel"
           @click="
@@ -60,11 +59,11 @@
               $emit('cancel')
             }
           "
-          >Cancel</v-btn
         >
+          Cancel
+        </v-btn>
         <v-btn
-          class="mx-2"
-          color="primary"
+          variant="flat"
           data-test="modified-plugin-submit"
           @click="
             () => {
@@ -72,7 +71,8 @@
               $emit('submit', deleteModified)
             }
           "
-          >Confirm
+        >
+          Confirm
         </v-btn>
       </v-card-actions>
     </v-card>
