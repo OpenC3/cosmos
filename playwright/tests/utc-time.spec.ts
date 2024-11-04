@@ -107,13 +107,13 @@ test.describe('CmdTlmServer', () => {
   })
 })
 
-test.describe('data extractor', () => {
+test.describe('Data Extractor', () => {
   test.use({
     toolPath: '/tools/dataextractor',
     toolName: 'Data Extractor',
   })
 
-  test('works with UTC date / times', async ({ page, utils }) => {
+  test('displays in local or UTC time', async ({ page, utils }) => {
     let now = new Date()
     // Verify the local date / time
     let startDateString =
@@ -206,13 +206,13 @@ test.describe('data extractor', () => {
   })
 })
 
-test.describe('Data Viewer UTC', () => {
+test.describe('Data Viewer', () => {
   test.use({
     toolPath: '/tools/dataviewer',
     toolName: 'Data Viewer',
   })
 
-  test('works with UTC date / times', async ({ page, utils }) => {
+  test('displays in local or UTC time', async ({ page, utils }) => {
     let now = new Date()
     // Verify the local date / time
     let startTimeString =
@@ -281,13 +281,13 @@ test.describe('Data Viewer UTC', () => {
   })
 })
 
-test.describe('Packet Viewer UTC', () => {
+test.describe('Packet Viewer', () => {
   test.use({
     toolPath: '/tools/packetviewer',
     toolName: 'Packet Viewer',
   })
 
-  test('displays local time and UTC time', async ({ page, utils }) => {
+  test('displays in local or UTC time', async ({ page, utils }) => {
     await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
     await expect(page.locator('tbody')).toContainText('PACKET_TIMEFORMATTED')
     await expect(page.locator('tbody')).toContainText('RECEIVED_TIMEFORMATTED')
@@ -363,13 +363,13 @@ test.describe('Packet Viewer UTC', () => {
   })
 })
 
-test.describe('Telemetry Grapher UTC', () => {
+test.describe('Telemetry Grapher', () => {
   test.use({
     toolPath: '/tools/tlmgrapher',
     toolName: 'Telemetry Grapher',
   })
 
-  test('works with UTC time', async ({ page, utils }) => {
+  test('displays in local or UTC time', async ({ page, utils }) => {
     await page.locator('[data-test="telemetry-grapher-file"]').click()
     await page
       .locator('[data-test="telemetry-grapher-file-reset-configuration"]')

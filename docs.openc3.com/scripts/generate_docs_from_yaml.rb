@@ -112,7 +112,7 @@ class CosmosMetaTag
         # If this is a screen, check to see if there is an image for the widget
         if File.basename(@yaml_file) == 'screen.yaml'
           if File.exist?("../static/img/telemetry_viewer/widgets/#{keyword.downcase}.png")
-            page << "![#{keyword}](/img/telemetry_viewer/widgets/#{keyword.downcase}.png)\n"
+            page << "![#{keyword}](/img/telemetry_viewer/widgets/#{keyword.downcase}.png)\n\n"
           end
         end
       end
