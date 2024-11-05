@@ -153,13 +153,6 @@ export default {
       this.rawDialogs.splice(i, 1)
     },
     openCmdSender(target_name, packet_name) {
-      let routeData = this.$router.resolve({
-        name: 'CommandSender',
-        params: {
-          target: target_name,
-          packet: packet_name,
-        },
-      })
       window.open(
         `/tools/cmdsender/${encodeURIComponent(target_name)}/${encodeURIComponent(packet_name)}`,
         '_blank',

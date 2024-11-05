@@ -405,7 +405,7 @@ export default {
       this.startTime = this.formatTimeHMS(date, this.timeZone)
     } else {
       // Create a new date 1 hr in the past as a default
-      let date = new Date() - 3600000 // last hr data
+      let date = new Date() - 3600000
       this.startDate = this.formatDate(date, this.timeZone)
       this.startTime = this.formatTimeHMS(date, this.timeZone)
     }
