@@ -30,11 +30,12 @@ class Notify {
    */
   constructor(options = {}) {
     this.$store = options.store
+    this.mounted = false
     this.$root = null
-    if (!!window.$cosmosNotify) {
+    if (window.$cosmosNotify?.$root) {
       this.mounted = true
+      this.$root = window.$cosmosNotify.$root
     } else {
-      this.mounted = false
       window.$cosmosNotify = this
     }
   }
