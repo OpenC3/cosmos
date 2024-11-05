@@ -55,7 +55,7 @@ export default {
   mixins: [Settings],
   data() {
     return {
-      rubygemsUrl: 'https://rubygems.org',
+      rubygemsUrl: process.env.RUBYGEMS_URL,
     }
   },
   created() {
