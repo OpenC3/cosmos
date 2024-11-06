@@ -106,6 +106,7 @@ export default {
   padding: 5px;
   padding-top: 15px;
   width: var(--width);
+  margin-bottom: 5px;
 }
 .rangebar__container {
   position: relative;

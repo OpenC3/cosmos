@@ -74,6 +74,7 @@ export default {
   display: flex;
   justify-content: center;
   align-items: center;
+  margin-top: 6px;
   padding: 5px;
   width: var(--width);
 }

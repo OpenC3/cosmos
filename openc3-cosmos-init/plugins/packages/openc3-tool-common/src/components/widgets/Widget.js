@@ -61,6 +61,8 @@ export default {
   },
   data() {
     return {
+      // The settings that apply to the current widget based on widgetIndex
+      // Calculated in created, updated in setWidth & setHeight and used in computedStyle
       appliedSettings: [],
       // We make style a data attribute so as we recurse through nested
       // widgets we can check to see if style attributes have been applied
@@ -74,27 +76,19 @@ export default {
   },
   computed: {
     computedStyle: function () {
+      // Take all the COSMOS settings and create appliedStyle with actual css values
       this.appliedSettings.forEach((setting) => {
-        const index = parseInt(setting[0])
-        if (this.widgetIndex !== null) {
-          if (this.widgetIndex === index) {
-            setting = setting.slice(1)
-          } else {
-            return
-          }
-        }
         this.applyStyleSetting(setting)
       })
-      const compStyle = { ...this.appliedStyle }
 
       // If nothing has yet defined a width then we add flex to the style
-      if (compStyle['width'] === undefined) {
+      if (this.appliedStyle['width'] === undefined) {
         // This flex allows for alignment in our widgets
         // The value of '0 10 100%' was achieved through trial and error
         // The larger flex-shrink value was critical for success
-        compStyle['flex'] = '0 10 100%' // flex-grow, flex-shrink, flex-basis
+        this.appliedStyle['flex'] = '0 10 100%' // flex-grow, flex-shrink, flex-basis
       }
-      return compStyle
+      return this.appliedStyle
     },
     screen: function () {
       // This exists for backwards compatibility of screen definitions since widgets no longer have a reference
@@ -165,7 +159,7 @@ export default {
           return setting
         }
         // This is our setting so slice off the index and return
-        // this effectively promotes'the subsetting to a setting
+        // this effectively promotes the subsetting to a setting
         // on the current widget
         if (this.widgetIndex === index) {
           return setting.slice(1)
@@ -269,34 +263,17 @@ export default {
       // Don't set the width if someone has already set it
       // This is important in PacketViewer which uses the value-widget
       // and passes an explicit width setting to use
-      let foundSetting = null
-      if (this.widgetIndex !== null) {
-        foundSetting = this.appliedSettings.find(
-          (setting) =>
-            parseInt(setting[0]) === this.widgetIndex && setting[1] === 'WIDTH',
-        )
-      } else {
-        foundSetting = this.appliedSettings.find(
-          (setting) => setting[0] === 'WIDTH',
-        )
-      }
+      let foundSetting = this.appliedSettings.find(
+        (setting) => setting[0] === 'WIDTH',
+      )
       if (foundSetting) {
         return foundSetting['WIDTH']
       } else {
         if (width) {
-          let setting = ['WIDTH', `${width}${units}`]
-          // If we have a widgetIndex apply that so we apply the width to ourselves
-          if (this.widgetIndex !== null) {
-            setting.unshift(this.widgetIndex)
-          }
-          this.appliedSettings.push(setting)
+          this.appliedSettings.push(['WIDTH', `${width}${units}`])
           return parseInt(width)
         } else {
-          let setting = ['WIDTH', `${defaultWidth}${units}`]
-          if (this.widgetIndex !== null) {
-            setting.unshift(this.widgetIndex)
-          }
-          this.appliedSettings.push(setting)
+          this.appliedSettings.push(['WIDTH', `${defaultWidth}${units}`])
           return parseInt(defaultWidth)
         }
       }
@@ -304,34 +281,17 @@ export default {
     setHeight(height, units = 'px', defaultHeight = '20') {
       // Don't set the height if someone has already set it
       let foundSetting = null
-      if (this.widgetIndex !== null) {
-        foundSetting = this.appliedSettings.find(
-          (setting) =>
-            parseInt(setting[0]) === this.widgetIndex &&
-            setting[1] === 'HEIGHT',
-        )
-      } else {
-        foundSetting = this.appliedSettings.find(
-          (setting) => setting[0] === 'HEIGHT',
-        )
-      }
+      foundSetting = this.appliedSettings.find(
+        (setting) => setting[0] === 'HEIGHT',
+      )
       if (foundSetting) {
         return foundSetting['HEIGHT']
       } else {
         if (height) {
-          let setting = ['HEIGHT', `${height}${units}`]
-          // If we have a widgetIndex apply that so we apply the height to ourselves
-          if (this.widgetIndex !== null) {
-            setting.unshift(this.widgetIndex)
-          }
-          this.appliedSettings.push(setting)
+          this.appliedSettings.push(['HEIGHT', `${height}${units}`])
           return parseInt(height)
         } else {
-          let setting = ['HEIGHT', `${defaultHeight}${units}`]
-          if (this.widgetIndex !== null) {
-            setting.unshift(this.widgetIndex)
-          }
-          this.appliedSettings.push(setting)
+          this.appliedSettings.push(['HEIGHT', `${defaultHeight}${units}`])
           return parseInt(defaultHeight)
         }
       }

@@ -32,7 +32,7 @@
     />
     <limitsbar-widget
       v-bind="$attrs"
-      :parameters="parameters"
+      :parameters="parameters.slice(0, 3)"
       :settings="[...appliedSettings]"
       :screen-values="screenValues"
       :widget-index="1"

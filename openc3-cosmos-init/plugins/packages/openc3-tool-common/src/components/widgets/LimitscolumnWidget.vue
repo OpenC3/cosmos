@@ -80,6 +80,7 @@ export default {
   align-items: center;
   padding: 5px;
   height: var(--height);
+  margin-right: 5px;
 }
 .limitsbar__container {
   position: relative;

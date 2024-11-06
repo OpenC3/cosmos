@@ -27,8 +27,8 @@ export default {
   mixins: [Widget],
   created() {
     // Populate the applied settings as if they were in the screen definition
-    this.appliedSettings.push(['WIDTH', this.parameters[0]])
-    this.appliedSettings.push(['HEIGHT', this.parameters[1]])
+    this.settings.push(['WIDTH', this.parameters[0]])
+    this.settings.push(['HEIGHT', this.parameters[1]])
   },
 }
 </script>

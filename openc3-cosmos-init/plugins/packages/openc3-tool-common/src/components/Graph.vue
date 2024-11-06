@@ -302,7 +302,7 @@
       </v-list>
     </v-menu>
 
-    <div class="u-series" ref="info">
+    <div v-if="!sparkline" class="u-series" ref="info">
       <v-tooltip
         text="Click item to toggle, Right click to edit"
         location="bottom"
