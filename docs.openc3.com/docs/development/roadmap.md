@@ -1,5 +1,8 @@
 ---
 title: Roadmap
+description: COSMOS roadmap now and into the future
+sidebar_custom_props:
+  myEmoji: 🗺️
 ---
 
 ## Key Features Still to Come in OpenC3 COSMOS 5.x:

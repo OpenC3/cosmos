@@ -1,5 +1,8 @@
 ---
 title: Command History (Enterprise)
+description: See all the commands sent, by whom, and if successful
+sidebar_custom_props:
+  myEmoji: 🛠️
 ---
 
 ## Introduction

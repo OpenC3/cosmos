@@ -1,6 +1,9 @@
 ---
 sidebar_position: 5
 title: Key Concepts
+description: Projects, Containerization, Frontend, Backend
+sidebar_custom_props:
+  myEmoji: 💡
 ---
 
 # OpenC3 COSMOS Key Concepts
@@ -59,7 +62,7 @@ COSMOS Enterprise also provides [Terraform](https://www.terraform.io/) scripts t
 
 ### Vue.js
 
-The COSMOS frontend is fully browser native and is implemented in the Vue.js framework. Per [Vue.js](https://vuejs.org/guide/introduction.html), "Vue is a JavaScript framework for building user interfaces. It builds on top of standard HTML, CSS, and JavaScript and provides a declarative and component-based programming model that helps you efficiently develop user interfaces, be they simple or complex." COSMOS utilizes Vue.js and the [Vuetify](https://vuetifyjs.com/en/) Component Framework UI library to build all the COSMOS tools which run in the browser of your choice.
+The COSMOS frontend is fully browser native and is implemented in the Vue.js framework. Per [Vue.js](https://vuejs.org/guide/introduction.html), "Vue is a JavaScript framework for building user interfaces. It builds on top of standard HTML, CSS, and JavaScript and provides a declarative and component-based programming model that helps you efficiently develop user interfaces, be they simple or complex." COSMOS utilizes Vue.js and the [Vuetify](https://vuetifyjs.com/en/) Component Framework UI library to build all the COSMOS tools which run in the browser of your choice. COSMOS 5 utilized Vue.js 2.x and Vuetify 2.x while COSMOS 6 utilizes Vue.js 3.x and Vuetify 3.x.
 
 ### Single-Spa
 

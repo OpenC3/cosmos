@@ -1,6 +1,9 @@
 ---
 sidebar_position: 1
 title: Installation
+description: Installing OpenC3 COSMOS
+sidebar_custom_props:
+  myEmoji: 💾
 ---
 
 ## Installing OpenC3 COSMOS
@@ -11,7 +14,7 @@ The following sections describe how to get OpenC3 COSMOS installed on various op
 
 ### PREREQUISITES
 
-Install [Docker](https://docs.docker.com/get-docker/) and install [Docker Compose](https://docs.docker.com/compose/install/).
+If you're on linux (recommended for production), we recommend installing Docker using your native package manager. Note: Red Hat users should read the [Podman](podman) documentation. If you're on Windows or Mac, install [Docker Desktop](https://docs.docker.com/get-docker/). All platforms also need to install [Docker Compose](https://docs.docker.com/compose/install/).
 
 - Minimum Resources allocated to Docker: 8GB RAM, 1 CPU, 80GB Disk
 - Recommended Resources allocated to Docker: 16GB RAM, 2+ CPUs, 100GB Disk
@@ -32,7 +35,7 @@ Docker by default will break idle (no data) connections after a period of 5 minu
 
 ### CLONE PROJECT
 
-Since the COSMOS 5.0.9 release we recommend using the project template to get started.
+We recommend using the COSMOS [project template](key_concepts#projects) to get started.
 
 ```bash
 git clone https://github.com/OpenC3/cosmos-project.git
@@ -87,7 +90,7 @@ Running `docker ps` can help show the running containers.
 
 `openc3.*` takes multiple arguments. Run with no arguments for help. An example run of openc3.sh with no arguments will show a usage guide.
 
-```
+```bash
 ./openc3.sh
 Usage: ./openc3.sh [cli, cliroot, start, stop, cleanup, run, util]
 *  cli: run a cli command as the default user ('cli help' for more info)
@@ -105,7 +108,7 @@ Connect a web browser to http://localhost:2900. Set the password to whatever you
 
 ### NEXT STEPS
 
-Continue to [Getting Started](gettingstarted.md).
+Continue to [Getting Started](gettingstarted).
 
 ---
 

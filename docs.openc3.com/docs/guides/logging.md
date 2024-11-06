@@ -1,5 +1,8 @@
 ---
 title: Logging
+description: The log files in COSMOS
+sidebar_custom_props:
+  myEmoji: 🪵
 ---
 
 The COSMOS [Bucket Explorer](../tools/bucket-explorer.md) tool provides a way to browse the COSMOS bucket storage backend whether you are running locally or in a cloud environment. Browse to http://localhost:2900/tools/bucketexplorer and you should see the list of buckets at the top:

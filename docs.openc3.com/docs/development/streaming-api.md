@@ -1,5 +1,8 @@
 ---
 title: Streaming API
+description: Using the websocket streaming API to retreive data
+sidebar_custom_props:
+  myEmoji: 📝
 ---
 
 :::note This documentation is for COSMOS Developers

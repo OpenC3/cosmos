@@ -1,5 +1,8 @@
 ---
 title: Log Structure
+description: Structure of the COSMOS log file
+sidebar_custom_props:
+  myEmoji: 🪵
 ---
 
 Updated: 8-21-2023 to the format as of OpenC3 COSMOS 5.11.0

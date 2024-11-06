@@ -1,5 +1,8 @@
 ---
 title: Packet Viewer
+description: Displays all packets with their items
+sidebar_custom_props:
+  myEmoji: 🛠️
 ---
 
 ## Introduction

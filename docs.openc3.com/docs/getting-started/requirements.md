@@ -1,6 +1,9 @@
 ---
 sidebar_position: 6
 title: Requirements and Design
+description: COSMOS Requirements and Design
+sidebar_custom_props:
+  myEmoji: 📑
 ---
 
 OpenC3 COSMOS is a command and control system providing commanding, scripting, and data visualization capabilities for embedded systems and systems of systems. COSMOS is intended for use during all phases of testing (board, box, integrated system) and during operations.
