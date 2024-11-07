@@ -379,9 +379,9 @@ module OpenC3
       setting = SettingModel.get(name: 'source_url')
       SettingModel.set({ name: 'source_url', data: 'https://github.com/OpenC3/cosmos' }, scope: @scope) unless setting
       setting = SettingModel.get(name: 'rubygems_url')
-      SettingModel.set({ name: 'rubygems_url', data: ENV['RUBYGEMS_URL'] }, scope: @scope) unless setting
+      SettingModel.set({ name: 'rubygems_url', data: ENV['RUBYGEMS_URL'] || 'https://rubygems.org' }, scope: @scope) unless setting
       setting = SettingModel.get(name: 'pypi_url')
-      SettingModel.set({ name: 'pypi_url', data: ENV['PYPI_URL'] }, scope: @scope) unless setting
+      SettingModel.set({ name: 'pypi_url', data: ENV['PYPI_URL'] || 'https://pypi.org' }, scope: @scope) unless setting
     end
   end
 end

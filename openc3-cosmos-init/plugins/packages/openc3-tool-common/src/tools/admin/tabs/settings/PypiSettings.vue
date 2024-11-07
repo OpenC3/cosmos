@@ -51,7 +51,7 @@ export default {
   mixins: [Settings],
   data() {
     return {
-      pypiUrl: process.env.PYPI_URL,
+      pypiUrl: 'https://pypi.org',
     }
   },
   created() {
