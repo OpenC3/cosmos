@@ -1,6 +1,6 @@
 ---
 title: Streaming API
-description: Using the websocket streaming API to retreive data
+description: Using the websocket streaming API to retrieve data
 sidebar_custom_props:
   myEmoji: 📝
 ---
