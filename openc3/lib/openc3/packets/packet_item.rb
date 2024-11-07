@@ -112,8 +112,6 @@ module OpenC3
       @messages_disabled = nil
       @state_colors = nil
       @limits = PacketItemLimits.new
-      @persistence_setting = 1
-      @persistence_count = 0
       @meta = nil
     end
 
@@ -486,36 +484,33 @@ module OpenC3
       config['read_conversion'] = self.read_conversion.as_json(*a) if self.read_conversion
       config['write_conversion'] = self.write_conversion.as_json(*a) if self.write_conversion
 
-      # All PacketItems have a PacketItemLimits limits attribute
-      # but it doesn't matter unless the values are set or we have state colors
-      if self.limits.values or self.state_colors
-        config['limits'] ||= {}
-        if self.limits.enabled
-          config['limits']['enabled'] = true
-        else
-          config['limits']['enabled'] = false
-        end
+      config['limits'] ||= {}
+      if self.limits.enabled
+        config['limits']['enabled'] = true
+      elsif self.limits.values or self.state_colors
+        # Only set to false if there are limits or state colors
+        # to avoid items without limits acting like they can be enabled
+        config['limits']['enabled'] = false
+      end
+      if self.limits.values
+        # Only set these if there are limits.values because persistence_setting has a default
+        # and we don't want keys on the 'limits' hash if there aren't any limits
         config['limits']['persistence_setting'] = self.limits.persistence_setting if self.limits.persistence_setting
         config['limits']['response'] = self.limits.response.to_s if self.limits.response
-        if self.limits.values
-          self.limits.values.each do |limits_set, limits_values|
-            limits = {}
-            limits['red_low'] =  limits_values[0]
-            limits['yellow_low'] = limits_values[1]
-            limits['yellow_high'] = limits_values[2]
-            limits['red_high'] = limits_values[3]
-            limits['green_low'] = limits_values[4] if limits_values[4]
-            limits['green_high'] = limits_values[5] if limits_values[5]
-            config['limits'][limits_set] = limits
-          end
+        self.limits.values.each do |limits_set, limits_values|
+          limits = {}
+          limits['red_low'] =  limits_values[0]
+          limits['yellow_low'] = limits_values[1]
+          limits['yellow_high'] = limits_values[2]
+          limits['red_high'] = limits_values[3]
+          limits['green_low'] = limits_values[4] if limits_values[4]
+          limits['green_high'] = limits_values[5] if limits_values[5]
+          config['limits'][limits_set] = limits
         end
-        config['limits_response'] = self.limits.response.as_json(*a) if self.limits.response
       end
 
       config['meta'] = @meta if @meta
-      if @variable_bit_size
-        config['variable_bit_size'] = @variable_bit_size
-      end
+      config['variable_bit_size'] = @variable_bit_size if @variable_bit_size
       config
     end
 
@@ -538,12 +533,14 @@ module OpenC3
         item.states = {}
         item.hazardous = {}
         item.messages_disabled = {}
-        item.state_colors = {}
         hash['states'].each do |state_name, state|
           item.states[state_name] = state['value']
           item.hazardous[state_name] = state['hazardous']
           item.messages_disabled[state_name] = state['messages_disabled']
-          item.state_colors[state_name] = state['color'].to_sym if state['color']
+          if state['color']
+            item.state_colors ||= {}
+            item.state_colors[state_name] = state['color'].to_sym
+          end
         end
       end
       # Recreate OpenC3 built-in conversions

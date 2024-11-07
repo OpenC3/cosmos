@@ -79,8 +79,12 @@ test('gets help info', async ({ page, utils }) => {
   await expect(
     page.getByText('Right click value for details / graph'),
   ).toBeVisible()
-  await page.getByRole('link', { name: 'DERIVED' }).click()
-  await page.waitForURL('**/docs/configuration/telemetry#derived-items')
+
+  const [newPage] = await Promise.all([
+    page.context().waitForEvent('page'),
+    await page.getByRole('link', { name: 'DERIVED' }).click(),
+  ])
+  await newPage.waitForURL('**/docs/configuration/telemetry#derived-items')
 })
 
 test('gets details with right click', async ({ page, utils }) => {

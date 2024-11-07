@@ -330,14 +330,6 @@ export default {
             // to make the check in the template easier
             if (!details.limits || Object.keys(details.limits).length === 0) {
               this.details.limits = null
-            } else {
-              let enabled = false
-              if (details.limits.enabled) {
-                enabled = true
-                delete details.limits.enabled
-              }
-              // Do this to assign enabled first since it's missing when it's false
-              this.details.limits = { enabled: enabled, ...details.limits }
             }
           })
       } else {
