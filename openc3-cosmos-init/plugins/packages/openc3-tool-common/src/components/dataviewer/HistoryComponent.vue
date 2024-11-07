@@ -92,6 +92,7 @@
                         v-model="currentConfig.showTimestamp"
                         label="Show timestamp"
                         density="compact"
+                        color="primary"
                         hide-details
                         data-test="history-component-settings-show-timestamp"
                       />
@@ -100,6 +101,7 @@
                         v-model="currentConfig.showAscii"
                         label="Show ASCII"
                         density="compact"
+                        color="primary"
                         hide-details
                         data-test="history-component-settings-show-ascii"
                       />
@@ -108,6 +110,7 @@
                         v-model="currentConfig.showLineAddress"
                         label="Show line address"
                         density="compact"
+                        color="primary"
                         hide-details
                         data-test="history-component-settings-show-address"
                       />

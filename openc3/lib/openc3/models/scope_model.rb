@@ -281,7 +281,7 @@ module OpenC3
       microservice = MicroserviceModel.new(
         name: microservice_name,
         cmd: ["ruby", "critical_cmd_microservice.rb", microservice_name],
-        work_dir: '/openc3/lib/openc3/microservices',
+        work_dir: '/openc3-enterprise/lib/openc3-enterprise/microservices',
         parent: parent,
         scope: @scope
       )

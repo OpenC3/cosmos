@@ -25,6 +25,7 @@
         <v-chip
           v-for="(bucket, index) in buckets"
           :key="index"
+          variant="elevated"
           color="primary"
           class="ma-2"
           @click.stop="selectBucket(bucket)"
@@ -40,6 +41,7 @@
         <v-chip
           v-for="(volume, index) in volumes"
           :key="index"
+          variant="elevated"
           color="primary"
           class="ma-2"
           @click.stop="selectVolume(volume)"
@@ -72,8 +74,8 @@
         :headers="headers"
         :items="files"
         :search="search"
-        :items-per-page="1000"
-        :items-per-page-options="[1000]"
+        :items-per-page="-1"
+        :items-per-page-options="[10, 20, 50, 100, -1]"
         v-model:sort-by="sortBy"
         @click:row="fileClick"
         multi-sort
@@ -355,14 +357,12 @@ export default {
       }
     },
     selectBucket(bucket) {
-      if (this.root === bucket) return
       this.mode = 'bucket'
       this.root = bucket
       this.path = ''
       this.update()
     },
     selectVolume(volume) {
-      if (this.root === volume) return
       this.mode = 'volume'
       this.root = volume
       this.path = ''

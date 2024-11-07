@@ -155,7 +155,7 @@
       <v-card>
         <v-card-title> Notification settings </v-card-title>
         <v-card-text>
-          <v-switch v-model="showToast" label="Show toasts" />
+          <v-switch v-model="showToast" label="Show toasts" color="primary" />
         </v-card-text>
         <v-divider />
         <v-card-actions>

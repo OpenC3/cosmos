@@ -123,9 +123,9 @@
               </template>
               <v-list-item-action class="list-action" v-if="option.checkbox">
                 <v-checkbox
-                  :model-value="option.checked"
-                  color="secondary"
+                  v-model="option.checked"
                   :label="option.label"
+                  color="secondary"
                   density="compact"
                   hide-details
                 />

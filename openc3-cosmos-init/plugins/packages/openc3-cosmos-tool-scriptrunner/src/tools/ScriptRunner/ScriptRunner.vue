@@ -106,7 +106,7 @@
     />
     <div id="sr-controls">
       <v-row no-gutters justify="space-between">
-        <v-icon v-if="showDisconnect" class="mr-2" color="red">
+        <v-icon v-if="showDisconnect" class="mt-2" color="red">
           mdi-connection
         </v-icon>
         <v-tooltip location="bottom">
@@ -866,10 +866,12 @@ export default {
             {
               label: 'Enable Stack Traces',
               checkbox: true,
-              checked: false,
+              checked: this.enableStackTraces,
               disabled: this.scriptId,
-              command: (item) => {
-                this.enableStackTraces = item.checked
+              command: () => {
+                // Toggling the checkbox closes the menu so no need
+                // to check state, just toggle existing value
+                this.enableStackTraces = !this.enableStackTraces
               },
             },
             {

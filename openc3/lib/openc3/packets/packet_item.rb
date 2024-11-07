@@ -168,7 +168,6 @@ module OpenC3
         end
 
         @states = upcase_states
-        @state_colors ||= {}
       else
         @states = nil
       end
@@ -426,15 +425,13 @@ module OpenC3
       config << self.read_conversion.to_config(:READ) if self.read_conversion
       config << self.write_conversion.to_config(:WRITE) if self.write_conversion
 
-      if self.limits
-        if self.limits.values
-          self.limits.values.each do |limits_set, limits_values|
-            config << "    LIMITS #{limits_set} #{self.limits.persistence_setting} #{self.limits.enabled ? 'ENABLED' : 'DISABLED'} #{limits_values[0]} #{limits_values[1]} #{limits_values[2]} #{limits_values[3]}"
-            if limits_values[4] && limits_values[5]
-              config << " #{limits_values[4]} #{limits_values[5]}\n"
-            else
-              config << "\n"
-            end
+      if self.limits.values
+        self.limits.values.each do |limits_set, limits_values|
+          config << "    LIMITS #{limits_set} #{self.limits.persistence_setting} #{self.limits.enabled ? 'ENABLED' : 'DISABLED'} #{limits_values[0]} #{limits_values[1]} #{limits_values[2]} #{limits_values[3]}"
+          if limits_values[4] && limits_values[5]
+            config << " #{limits_values[4]} #{limits_values[5]}\n"
+          else
+            config << "\n"
           end
         end
         config << self.limits.response.to_config if self.limits.response
@@ -489,17 +486,18 @@ module OpenC3
       config['read_conversion'] = self.read_conversion.as_json(*a) if self.read_conversion
       config['write_conversion'] = self.write_conversion.as_json(*a) if self.write_conversion
 
-      if self.limits
+      # All PacketItems have a PacketItemLimits limits attribute
+      # but it doesn't matter unless the values are set or we have state colors
+      if self.limits.values or self.state_colors
         config['limits'] ||= {}
         if self.limits.enabled
           config['limits']['enabled'] = true
         else
           config['limits']['enabled'] = false
         end
+        config['limits']['persistence_setting'] = self.limits.persistence_setting if self.limits.persistence_setting
+        config['limits']['response'] = self.limits.response.to_s if self.limits.response
         if self.limits.values
-          config['limits'] ||= {}
-          config['limits']['persistence_setting'] = self.limits.persistence_setting
-          config['limits']['response'] = self.limits.response.to_s if self.limits.response
           self.limits.values.each do |limits_set, limits_values|
             limits = {}
             limits['red_low'] =  limits_values[0]

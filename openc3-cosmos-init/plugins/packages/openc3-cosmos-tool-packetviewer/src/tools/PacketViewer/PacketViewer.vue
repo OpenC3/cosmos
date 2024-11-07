@@ -55,7 +55,7 @@
         :sort-by="sortBy"
         multi-sort
         v-model:items-per-page="itemsPerPage"
-        :items-per-page-options="[10, 20, 50, 100, 500, 1000]"
+        :items-per-page-options="[10, 20, 50, 100, -1]"
         density="compact"
       >
         <template v-slot:item.name="{ item }">
@@ -100,6 +100,7 @@
               Name with * indicates
               <a
                 href="/tools/staticdocs/docs/configuration/telemetry#derived-items"
+                target="_blank"
                 >DERIVED</a
               >&nbsp;item<br />
               Right click name to pin item<br />

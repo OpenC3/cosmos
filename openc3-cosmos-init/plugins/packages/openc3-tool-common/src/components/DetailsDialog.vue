@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -21,7 +21,7 @@
 -->
 
 <template>
-  <v-dialog v-model="show" width="600">
+  <v-dialog v-model="show" width="700">
     <v-card>
       <v-toolbar :height="24">
         <v-spacer />
@@ -36,61 +36,63 @@
       <v-card-text>
         <v-container fluid>
           <v-row no-gutters v-if="type === 'tlm'">
-            <v-col cols="3" class="label">Item Values</v-col>
+            <v-col cols="5" class="label">Item Values</v-col>
             <v-col />
-            <v-container fluid class="ml-5 pa-0">
-              <v-row no-gutters>
-                <v-col cols="4" class="label">Raw Value</v-col>
-                <v-col>{{ rawValue }}</v-col>
-              </v-row>
-              <v-row no-gutters>
-                <v-col cols="4" class="label">Converted Value</v-col>
-                <v-col>{{ convertedValue }}</v-col>
-              </v-row>
-              <v-row no-gutters>
-                <v-col cols="4" class="label">Formatted Value</v-col>
-                <v-col>{{ formattedValue }}</v-col>
-              </v-row>
-              <v-row no-gutters>
-                <v-col cols="4" class="label">With Units Value</v-col>
-                <v-col>{{ unitsValue }}</v-col>
-              </v-row>
-            </v-container>
           </v-row>
           <v-row no-gutters>
-            <v-col cols="3" class="label">Bit Offset</v-col>
+            <v-col cols="1"></v-col>
+            <v-col cols="4" class="label">Raw Value</v-col>
+            <v-col>{{ rawValue }}</v-col>
+          </v-row>
+          <v-row no-gutters>
+            <v-col cols="1"></v-col>
+            <v-col cols="4" class="label">Converted Value</v-col>
+            <v-col>{{ convertedValue }}</v-col>
+          </v-row>
+          <v-row no-gutters>
+            <v-col cols="1"></v-col>
+            <v-col cols="4" class="label">Formatted Value</v-col>
+            <v-col>{{ formattedValue }}</v-col>
+          </v-row>
+          <v-row no-gutters>
+            <v-col cols="1"></v-col>
+            <v-col cols="4" class="label">With Units Value</v-col>
+            <v-col>{{ unitsValue }}</v-col>
+          </v-row>
+          <v-row no-gutters>
+            <v-col cols="5" class="label">Bit Offset</v-col>
             <v-col>{{ details.bit_offset }}</v-col>
           </v-row>
           <v-row no-gutters>
-            <v-col cols="3" class="label">Bit Size</v-col>
+            <v-col cols="5" class="label">Bit Size</v-col>
             <v-col>{{ details.bit_size }}</v-col>
           </v-row>
           <v-row v-if="details.array_size" no-gutters>
-            <v-col cols="3" class="label">Array Size</v-col>
+            <v-col cols="5" class="label">Array Size</v-col>
             <v-col>{{ details.array_size }}</v-col>
           </v-row>
           <v-row no-gutters>
-            <v-col cols="3" class="label">Data Type</v-col>
+            <v-col cols="5" class="label">Data Type</v-col>
             <v-col>{{ details.data_type }}</v-col>
           </v-row>
           <v-row no-gutters v-if="type === 'cmd'">
-            <v-col cols="3" class="label">Minimum</v-col>
+            <v-col cols="5" class="label">Minimum</v-col>
             <v-col>{{ details.minimum }}</v-col>
           </v-row>
           <v-row no-gutters v-if="type === 'cmd'">
-            <v-col cols="3" class="label">Maximum</v-col>
+            <v-col cols="5" class="label">Maximum</v-col>
             <v-col>{{ details.maximum }}</v-col>
           </v-row>
           <v-row no-gutters v-if="type === 'cmd'">
-            <v-col cols="3" class="label">Default</v-col>
+            <v-col cols="5" class="label">Default</v-col>
             <v-col>{{ details.default }}</v-col>
           </v-row>
           <v-row no-gutters>
-            <v-col cols="3" class="label">Format String</v-col>
+            <v-col cols="5" class="label">Format String</v-col>
             <v-col>{{ details.format_string }}</v-col>
           </v-row>
           <v-row no-gutters>
-            <v-col cols="3" class="label">Read Conversion</v-col>
+            <v-col cols="5" class="label">Read Conversion</v-col>
             <v-col v-if="details.read_conversion">
               Class: {{ details.read_conversion.class }}
               <br />
@@ -100,7 +102,7 @@
             <v-col v-else></v-col>
           </v-row>
           <v-row no-gutters>
-            <v-col cols="3" class="label">Write Conversion</v-col>
+            <v-col cols="5" class="label">Write Conversion</v-col>
             <v-col v-if="details.write_conversion">
               Class: {{ details.write_conversion.class }}
               <br />
@@ -110,82 +112,79 @@
             <v-col v-else></v-col>
           </v-row>
           <v-row no-gutters>
-            <v-col cols="3" class="label">Id Value</v-col>
+            <v-col cols="5" class="label">Id Value</v-col>
             <v-col>{{ details.id_value }}</v-col>
           </v-row>
           <v-row no-gutters>
-            <v-col cols="3" class="label">Units Full</v-col>
+            <v-col cols="5" class="label">Units Full</v-col>
             <v-col>{{ details.units_full }}</v-col>
           </v-row>
           <v-row no-gutters>
-            <v-col cols="3" class="label">Units Abbr</v-col>
+            <v-col cols="5" class="label">Units Abbr</v-col>
             <v-col>{{ details.units }}</v-col>
           </v-row>
           <v-row no-gutters>
-            <v-col cols="3" class="label">Endianness</v-col>
+            <v-col cols="5" class="label">Endianness</v-col>
             <v-col>{{ details.endianness }}</v-col>
           </v-row>
-          <v-row no-gutters v-if="details.states">
-            <v-col cols="3" class="label">States</v-col>
-            <v-col />
-            <v-container fluid class="ml-5 pa-0">
-              <v-row
-                no-gutters
-                v-for="(state, key) in details.states"
-                :key="key"
-              >
-                <v-col cols="4" class="label">{{ key }}</v-col>
-                <v-col>{{ state.value }}</v-col>
-              </v-row>
-            </v-container>
-          </v-row>
+          <div v-if="details.states">
+            <v-row no-gutters>
+              <v-col cols="5" class="label">States</v-col>
+              <v-col />
+            </v-row>
+            <v-row no-gutters v-for="(state, key) in details.states" :key="key">
+              <v-col cols="1"></v-col>
+              <v-col cols="4" class="label">{{ key }}</v-col>
+              <v-col>{{ state.value }}</v-col>
+            </v-row>
+          </div>
           <v-row no-gutters v-else>
-            <v-col cols="3" class="label">States</v-col>
+            <v-col cols="5" class="label">States</v-col>
             <v-col>None</v-col>
           </v-row>
-          <v-row no-gutters v-if="details.limits">
-            <v-col cols="3" class="label">Limits</v-col>
-            <v-col></v-col>
-            <v-container fluid class="ml-5 pa-0">
-              <v-row
-                no-gutters
-                v-for="(limit, key) in details.limits"
-                :key="key"
+          <div v-if="details.limits">
+            <v-row no-gutters>
+              <v-col cols="5" class="label">Limits</v-col>
+              <v-col></v-col>
+            </v-row>
+            <v-row no-gutters v-for="(limit, key) in details.limits" :key="key">
+              <v-col cols="1"></v-col>
+              <v-col v-if="key === 'enabled'" cols="4" class="label"
+                >Enabled</v-col
               >
-                <v-col v-if="key === 'enabled'" cols="4" class="label"
-                  >Enabled</v-col
-                >
-                <v-switch
-                  v-if="key === 'enabled'"
-                  v-model="details.limits.enabled"
-                  @update:model-value="changeLimitsEnabled"
-                  density="compact"
-                  hide-details
-                ></v-switch>
-                <v-col v-if="key !== 'enabled'" cols="4" class="label">{{
-                  key
-                }}</v-col>
-                <div v-if="key !== 'enabled'">{{ formatLimit(limit) }}</div>
-                <v-col></v-col>
-              </v-row>
-            </v-container>
-          </v-row>
+              <v-switch
+                v-if="key === 'enabled'"
+                v-model="details.limits.enabled"
+                @update:model-value="changeLimitsEnabled"
+                density="compact"
+                color="primary"
+                class="compact-switch"
+                hide-details
+              ></v-switch>
+              <v-col v-if="key !== 'enabled'" cols="4" class="label">{{
+                key
+              }}</v-col>
+              <div v-if="key !== 'enabled'">{{ formatLimit(limit) }}</div>
+              <v-col></v-col>
+            </v-row>
+          </div>
           <v-row no-gutters v-else>
-            <v-col cols="3" class="label">Limits</v-col>
+            <v-col cols="5" class="label">Limits</v-col>
             <v-col>None</v-col>
           </v-row>
-          <v-row no-gutters v-if="details.meta">
-            <v-col cols="3" class="label">Meta</v-col>
-            <v-col></v-col>
-            <v-container fluid class="ml-5 pa-0">
-              <v-row no-gutters v-for="(value, key) in details.meta" :key="key">
-                <v-col cols="4" class="label">{{ key }}</v-col>
-                <v-col>{{ value }}</v-col>
-              </v-row>
-            </v-container>
-          </v-row>
+          <div v-if="details.meta">
+            <v-row no-gutters>
+              <v-col cols="5" class="label">Meta</v-col>
+              <v-col></v-col>
+            </v-row>
+            <v-row no-gutters v-for="(value, key) in details.meta" :key="key">
+              <v-col cols="1"></v-col>
+              <v-col cols="4" class="label">{{ key }}</v-col>
+              <v-col>{{ value.join(', ') }}</v-col>
+            </v-row>
+          </div>
           <v-row v-else no-gutters>
-            <v-col cols="3" class="label">Meta</v-col>
+            <v-col cols="5" class="label">Meta</v-col>
             <v-col>None</v-col>
           </v-row>
         </v-container>
@@ -329,7 +328,7 @@ export default {
             this.details = details
             // If the limits object is empty explicitly null it
             // to make the check in the template easier
-            if (Object.keys(details.limits).length === 0) {
+            if (!details.limits || Object.keys(details.limits).length === 0) {
               this.details.limits = null
             } else {
               let enabled = false
@@ -407,5 +406,8 @@ export default {
 :deep(.v-input--selection-controls) {
   padding: 0px;
   margin: 0px;
+}
+:deep(.v-switch .v-selection-control) {
+  min-height: 28px;
 }
 </style>

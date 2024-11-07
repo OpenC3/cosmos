@@ -78,7 +78,7 @@
           <v-btn variant="outlined" @click="limitsSetDialog = false">
             Cancel
           </v-btn>
-          <v-btn @click="setLimitsSet" color="primary"> Ok </v-btn>
+          <v-btn variant="flat" @click="setLimitsSet"> Ok </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>

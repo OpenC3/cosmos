@@ -31,7 +31,7 @@
         </v-toolbar>
         <v-card-text class="mt-4 pa-3">
           <v-icon v-if="params.validateText" class="mr-2"> mdi-alert </v-icon>
-          <span v-if="params.html" v-html="params.text" class="pa-3"></span>
+          <span v-if="params.html" v-html="params.text"></span>
           <span v-else>{{ params.text }}</span>
           <div v-if="params.validateText" class="validate mt-4">
             Enter {{ params.validateText }} to confirm!
