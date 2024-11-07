@@ -17,19 +17,23 @@
 */
 
 import { createRouter, createWebHistory } from 'vue-router'
+import { prependBasePath } from '@openc3/tool-common/src/utils/routeUtils.js'
+
+const routes = [
+  {
+    path: '/',
+    name: 'Iframe',
+    component: () => import('./tools/Iframe/Iframe.vue'),
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    component: () => import('@openc3/tool-common/src/components/NotFound'),
+  },
+]
+routes.forEach(prependBasePath)
 
 export default createRouter({
-  history: createWebHistory(process.env.BASE_URL),
-  routes: [
-    {
-      path: '/',
-      name: 'Iframe',
-      component: () => import('./tools/Iframe/Iframe.vue'),
-    },
-    {
-      path: '/:pathMatch(.*)*',
-      name: 'NotFound',
-      component: () => import('@openc3/tool-common/src/components/NotFound'),
-    },
-  ],
+  history: createWebHistory(),
+  routes,
 })

@@ -26,7 +26,7 @@ import { navigateToUrl } from 'single-spa'
 const DEFAULT_TOOL_PATH = '/tools/cmdtlmserver'
 
 const router = createRouter({
-  history: createWebHistory(process.env.BASE_URL),
+  history: createWebHistory(),
   routes: [
     {
       path: '/login',
@@ -46,8 +46,8 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach((to) => {
-  if (['/', '/tools', '/tools/'].includes(to.path)) {
+router.beforeEach(({ path }) => {
+  if (['/', '/tools', '/tools/'].includes(path)) {
     navigateToUrl(DEFAULT_TOOL_PATH)
   }
 })

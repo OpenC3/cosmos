@@ -39,7 +39,7 @@
           block
           size="small"
           :href="tool.url"
-          :onclick="() => tool.url && navigateToUrl(tool.url)"
+          @click.prevent="() => navigateToUrl(tool.url)"
           class="fixcenter"
           color="primary"
         >
@@ -60,7 +60,7 @@
             <a
               v-if="item.window === 'INLINE'"
               :href="item.url"
-              :onclick="() => item.url && navigateToUrl(item.url)"
+              @click.prevent="() => navigateToUrl(item.url)"
             >
               <v-icon class="mr-2"> {{ item.icon }} </v-icon>
             </a>
@@ -76,7 +76,7 @@
           <a
             v-if="!item.icon"
             :href="item.url"
-            :onclick="() => item.url && navigateToUrl(item.url)"
+            @click.prevent="() => navigateToUrl(item.url)"
           >
             {{ item.name }}
           </a>
@@ -85,7 +85,7 @@
             <a
               v-if="item.window === 'INLINE'"
               :href="item.url"
-              :onclick="() => item.url && navigateToUrl(item.url)"
+              @click.prevent="() => navigateToUrl(item.url)"
             >
               {{ item.name }}
             </a>

@@ -21,49 +21,60 @@
 */
 
 import { createRouter, createWebHistory } from 'vue-router'
+import { prependBasePath } from '@openc3/tool-common/src/utils/routeUtils.js'
+
+const routes = [
+  {
+    path: '',
+    component: () => import('./tools/CmdTlmServer/CmdTlmServer.vue'),
+    children: [
+      {
+        component: () => import('./tools/CmdTlmServer/InterfacesTab'),
+        path: '',
+      },
+      {
+        component: () => import('./tools/CmdTlmServer/InterfacesTab'),
+        name: 'InterfacesTab',
+        path: 'interfaces',
+      },
+      {
+        component: () => import('./tools/CmdTlmServer/TargetsTab'),
+        name: 'TargetsTab',
+        path: 'targets',
+      },
+      {
+        component: () => import('./tools/CmdTlmServer/CmdPacketsTab'),
+        name: 'CmdPacketsTab',
+        path: 'cmd-packets',
+      },
+      {
+        component: () => import('./tools/CmdTlmServer/TlmPacketsTab'),
+        name: 'TlmPacketsTab',
+        path: 'tlm-packets',
+      },
+      {
+        component: () => import('./tools/CmdTlmServer/RoutersTab'),
+        name: 'RoutersTab',
+        path: 'routers',
+      },
+      {
+        component: () => import('./tools/CmdTlmServer/StatusTab'),
+        name: 'StatusTab',
+        props: { refreshInterval: 5000 },
+        path: 'status',
+      },
+    ],
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    component: () => import('@openc3/tool-common/src/components/NotFound'),
+  },
+]
+
+routes.forEach(prependBasePath)
 
 export default createRouter({
-  history: createWebHistory(process.env.BASE_URL),
-  routes: [
-    {
-      path: '/',
-      component: () => import('./tools/CmdTlmServer/CmdTlmServer.vue'),
-      children: [
-        {
-          component: () => import('./tools/CmdTlmServer/InterfacesTab'),
-          path: '',
-        },
-        {
-          component: () => import('./tools/CmdTlmServer/InterfacesTab'),
-          path: 'interfaces',
-        },
-        {
-          component: () => import('./tools/CmdTlmServer/TargetsTab'),
-          path: 'targets',
-        },
-        {
-          component: () => import('./tools/CmdTlmServer/CmdPacketsTab'),
-          path: 'cmd-packets',
-        },
-        {
-          component: () => import('./tools/CmdTlmServer/TlmPacketsTab'),
-          path: 'tlm-packets',
-        },
-        {
-          component: () => import('./tools/CmdTlmServer/RoutersTab'),
-          path: 'routers',
-        },
-        {
-          component: () => import('./tools/CmdTlmServer/StatusTab'),
-          props: { refreshInterval: 5000 },
-          path: 'status',
-        },
-      ],
-    },
-    {
-      path: '/:pathMatch(.*)*',
-      name: 'NotFound',
-      component: () => import('@openc3/tool-common/src/components/NotFound'),
-    },
-  ],
+  history: createWebHistory(),
+  routes,
 })

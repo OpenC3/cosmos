@@ -30,7 +30,7 @@
             <v-tab
               v-for="(tab, index) in tabs"
               :key="index"
-              :to="tab.url"
+              :to="tab.path"
               :text="tab.name"
               @click.stop
             />
@@ -85,27 +85,27 @@ export default {
       tabs: [
         {
           name: 'Interfaces',
-          url: '/interfaces',
+          path: { name: 'InterfacesTab' },
         },
         {
           name: 'Targets',
-          url: '/targets',
+          path: { name: 'TargetsTab' },
         },
         {
           name: 'Cmd packets',
-          url: '/cmd-packets',
+          path: { name: 'CmdPacketsTab' },
         },
         {
           name: 'Tlm packets',
-          url: '/tlm-packets',
+          path: { name: 'TlmPacketsTab' },
         },
         {
           name: 'Routers',
-          url: '/routers',
+          path: { name: 'RoutersTab' },
         },
         {
           name: 'Status',
-          url: '/status',
+          path: { name: 'StatusTab' },
         },
       ],
       updater: null,

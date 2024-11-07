@@ -21,28 +21,31 @@
 */
 
 import { createRouter, createWebHistory } from 'vue-router'
+import { prependBasePath } from '@openc3/tool-common/src/utils/routeUtils.js'
 import { TabsList } from '@openc3/tool-common/src/tools/admin/tabs'
 
+const routes = [
+  {
+    path: '/',
+    component: () => import('@openc3/tool-common/src/tools/admin/OpenC3Admin'),
+    children: [
+      {
+        component: () =>
+          import('@openc3/tool-common/src/tools/admin/tabs/PluginsTab'),
+        path: '',
+      },
+      ...TabsList,
+    ],
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    component: () => import('@openc3/tool-common/src/components/NotFound'),
+  },
+]
+routes.forEach(prependBasePath)
+
 export default createRouter({
-  history: createWebHistory(process.env.BASE_URL),
-  routes: [
-    {
-      path: '/',
-      component: () =>
-        import('@openc3/tool-common/src/tools/admin/OpenC3Admin'),
-      children: [
-        {
-          component: () =>
-            import('@openc3/tool-common/src/tools/admin/tabs/PluginsTab'),
-          path: '',
-        },
-        ...TabsList,
-      ],
-    },
-    {
-      path: '/:pathMatch(.*)*',
-      name: 'NotFound',
-      component: () => import('@openc3/tool-common/src/components/NotFound'),
-    },
-  ],
+  history: createWebHistory(),
+  routes,
 })
