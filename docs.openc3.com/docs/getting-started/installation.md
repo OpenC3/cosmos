@@ -14,7 +14,7 @@ The following sections describe how to get OpenC3 COSMOS installed on various op
 
 ### PREREQUISITES
 
-If you're on linux (recommended for production), we recommend installing Docker using your native package manager. Note: Red Hat users should read the [Podman](podman) documentation. If you're on Windows or Mac, install [Docker Desktop](https://docs.docker.com/get-docker/). All platforms also need to install [Docker Compose](https://docs.docker.com/compose/install/).
+If you're on Linux (recommended for production), we recommend installing Docker using the [Install Docker Engine](https://docs.docker.com/engine/install/) instructions (do not use Docker Desktop on Linux). Note: Red Hat users should read the [Podman](podman) documentation. If you're on Windows or Mac, install [Docker Desktop](https://docs.docker.com/get-docker/). All platforms also need to install [Docker Compose](https://docs.docker.com/compose/install/).
 
 - Minimum Resources allocated to Docker: 8GB RAM, 1 CPU, 80GB Disk
 - Recommended Resources allocated to Docker: 16GB RAM, 2+ CPUs, 100GB Disk
