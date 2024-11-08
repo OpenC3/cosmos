@@ -40,7 +40,7 @@ setup('global setup', async ({ page }) => {
     await page.getByLabel('Username or email').fill('admin')
     await page.getByLabel('Password', { exact: true }).fill('admin')
     await page.getByRole('button', { name: 'Sign In' }).click()
-    await page.waitForURL('**/tools/cmdtlmserver/')
+    await page.waitForURL('**/tools/cmdtlmserver')
     await expect(page.locator('nav:has-text("CmdTlmServer")')).toBeVisible()
     // Save signed-in state to 'adminStorageState.json'.
     await page.context().storageState({ path: ADMIN_STORAGE_STATE })
