@@ -627,6 +627,8 @@ def run_migrations(folder)
       entries.concat(Dir.entries(folder).map { |entry| File.join(folder, entry) })
     end
     entries = entries.sort() # run in alphabetical order
+  else
+    entries = Dir.entries(folder).sort
   end
   migrations = OpenC3::MigrationModel.all
   entries.each do |entry|

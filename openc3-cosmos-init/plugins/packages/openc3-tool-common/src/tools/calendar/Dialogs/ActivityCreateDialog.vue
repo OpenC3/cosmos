@@ -24,242 +24,199 @@
   <div>
     <v-dialog persistent v-model="show" width="600">
       <v-card>
-        <form @submit.prevent="createActivity">
-          <v-toolbar height="24">
-            <v-spacer />
-            <span v-if="activity">Update Activity</span>
-            <span v-else>Create Activity</span>
-            <v-spacer />
-            <v-tooltip location="top">
-              <template v-slot:activator="{ props }">
-                <div v-bind="props">
-                  <v-icon data-test="close-activity-icon" @click="show = !show">
-                    mdi-close-box
-                  </v-icon>
-                </div>
-              </template>
-              <span> Close </span>
-            </v-tooltip>
-          </v-toolbar>
-          <v-stepper v-model="dialogStep" vertical non-linear class="pt-3">
-            <v-stepper-step editable step="1" class="pl-5">
-              Input start time, stop time
-            </v-stepper-step>
-            <v-stepper-content step="1">
-              <v-card-text>
-                <div class="pr-2">
-                  <v-select
-                    density="compact"
+        <v-stepper
+          v-model="dialogStep"
+          editable
+          :items="['Activity Times', 'Activity Type']"
+        >
+          <template v-if="dialogStep === 2" v-slot:actions>
+            <v-row class="ma-0 px-6 pb-4">
+              <v-btn @click="() => (dialogStep -= 1)" variant="text">
+                Previous
+              </v-btn>
+              <v-spacer />
+              <v-btn
+                @click="clearHandler"
+                variant="outlined"
+                class="mr-4"
+                data-test="trigger-create-cancel-btn"
+              >
+                Cancel
+              </v-btn>
+              <v-btn
+                @click.prevent="submitHandler"
+                type="submit"
+                color="primary"
+                data-test="trigger-create-submit-btn"
+                :disabled="!!error"
+              >
+                Ok
+              </v-btn>
+            </v-row>
+          </template>
+
+          <template v-slot:item.1>
+            <v-card-text>
+              <div class="pr-2">
+                <v-select
+                  density="compact"
+                  hide-details
+                  variant="outlined"
+                  v-model="timeline"
+                  :items="timelineNames"
+                  label="Timeline"
+                  data-test="activity-select-timeline"
+                  class="pb-2"
+                >
+                </v-select>
+                <v-row dense>
+                  <v-text-field
+                    v-model="startDate"
+                    type="date"
+                    label="Start Date"
+                    class="mx-1"
+                    :rules="[rules.required]"
+                    data-test="activity-start-date"
+                  />
+                  <v-text-field
+                    v-model="startTime"
+                    type="time"
+                    step="1"
+                    label="Start Time"
+                    class="mx-1"
+                    :rules="[rules.required]"
+                    data-test="activity-start-time"
+                  />
+                </v-row>
+                <v-row dense>
+                  <v-text-field
+                    v-model="endDate"
+                    type="date"
+                    label="End Date"
+                    class="mx-1"
+                    :rules="[rules.required]"
+                    data-test="activity-end-date"
+                  />
+                  <v-text-field
+                    v-model="endTime"
+                    type="time"
+                    step="1"
+                    label="End Time"
+                    class="mx-1"
+                    :rules="[rules.required]"
+                    data-test="activity-end-time"
+                  />
+                </v-row>
+                <v-row class="pl-3">
+                  <v-checkbox
+                    v-model="recurring"
+                    :disabled="!!activity"
+                    label="Recurring"
                     hide-details
-                    variant="outlined"
-                    v-model="timeline"
-                    :items="timelineNames"
-                    label="Timeline"
-                    data-test="activity-select-timeline"
-                    class="pb-2"
+                    data-test="recurring"
                   >
-                    <template v-slot:item="{ item, attrs, on }">
-                      <v-list-item
-                        v-on="on"
-                        v-bind="attrs"
-                        :data-test="`activity-select-timeline-${item}`"
-                      >
-                        <v-list-item-title>{{ item }}</v-list-item-title>
-                      </v-list-item>
-                    </template>
-                  </v-select>
-                  <v-row dense>
+                  </v-checkbox>
+                </v-row>
+                <v-row v-if="recurring">
+                  <v-col><div class="repeat">Repeat every</div></v-col>
+                  <v-col>
                     <v-text-field
-                      v-model="startDate"
-                      type="date"
-                      label="Start Date"
-                      class="mx-1"
-                      :rules="[rules.required]"
-                      data-test="activity-start-date"
+                      v-model="frequency"
+                      :disabled="!!activity"
+                      density="compact"
+                      variant="outlined"
+                      single-line
+                      hide-details
+                      data-test="recurring-frequency"
+                  /></v-col>
+                  <v-col>
+                    <v-select
+                      v-model="timeSpan"
+                      :disabled="!!activity"
+                      :items="timeSpans"
+                      style="primary"
+                      hide-details
+                      density="compact"
+                      variant="outlined"
+                      data-test="recurring-span"
                     />
+                  </v-col>
+                </v-row>
+                <v-row v-if="recurring" style="padding-bottom: 10px">
+                  <v-col><div class="repeat">Ending</div></v-col>
+                  <v-col>
                     <v-text-field
-                      v-model="startTime"
-                      type="time"
-                      step="1"
-                      label="Start Time"
-                      class="mx-1"
-                      :rules="[rules.required]"
-                      data-test="activity-start-time"
-                    />
-                  </v-row>
-                  <v-row dense>
-                    <v-text-field
-                      v-model="endDate"
+                      v-model="recurringEndDate"
                       type="date"
                       label="End Date"
                       class="mx-1"
                       :rules="[rules.required]"
-                      data-test="activity-end-date"
-                    />
+                      :disabled="!!activity"
+                      data-test="recurring-end-date"
+                  /></v-col>
+                  <v-col>
                     <v-text-field
-                      v-model="endTime"
+                      v-model="recurringEndTime"
                       type="time"
                       step="1"
                       label="End Time"
                       class="mx-1"
                       :rules="[rules.required]"
-                      data-test="activity-end-time"
-                    />
-                  </v-row>
-                  <v-row class="pl-3">
-                    <v-checkbox
-                      v-model="recurring"
                       :disabled="!!activity"
-                      label="Recurring"
-                      hide-details
-                      data-test="recurring"
-                    >
-                    </v-checkbox>
-                  </v-row>
-                  <v-row v-if="recurring">
-                    <v-col><div class="repeat">Repeat every</div></v-col>
-                    <v-col>
-                      <v-text-field
-                        v-model="frequency"
-                        :disabled="!!activity"
-                        density="compact"
-                        variant="outlined"
-                        single-line
-                        hide-details
-                        data-test="recurring-frequency"
-                    /></v-col>
-                    <v-col>
-                      <v-select
-                        v-model="timeSpan"
-                        :disabled="!!activity"
-                        :items="timeSpans"
-                        style="primary"
-                        hide-details
-                        density="compact"
-                        variant="outlined"
-                        data-test="recurring-span"
-                      />
-                    </v-col>
-                  </v-row>
-                  <v-row v-if="recurring" style="padding-bottom: 10px">
-                    <v-col><div class="repeat">Ending</div></v-col>
-                    <v-col>
-                      <v-text-field
-                        v-model="recurringEndDate"
-                        type="date"
-                        label="End Date"
-                        class="mx-1"
-                        :rules="[rules.required]"
-                        :disabled="!!activity"
-                        data-test="recurring-end-date"
-                    /></v-col>
-                    <v-col>
-                      <v-text-field
-                        v-model="recurringEndTime"
-                        type="time"
-                        step="1"
-                        label="End Time"
-                        class="mx-1"
-                        :rules="[rules.required]"
-                        :disabled="!!activity"
-                        data-test="recurring-end-time"
-                    /></v-col>
-                  </v-row>
-                  <v-row>
-                    <span
-                      class="ma-2 text-red"
-                      v-show="timeError"
-                      v-text="timeError"
-                    />
-                  </v-row>
-                  <v-row class="pr-3">
-                    <v-spacer />
-                    <v-btn
-                      @click="dialogStep = 2"
-                      data-test="activity-step-two-btn"
-                      color="success"
-                      :disabled="!!timeError"
-                    >
-                      Continue
-                    </v-btn>
-                  </v-row>
+                      data-test="recurring-end-time"
+                  /></v-col>
+                </v-row>
+                <v-row>
+                  <span
+                    class="ma-2 text-red"
+                    v-show="timeError"
+                    v-text="timeError"
+                  />
+                </v-row>
+              </div>
+            </v-card-text>
+          </template>
+
+          <template v-slot:item.2>
+            <v-card-text>
+              <div class="pr-2">
+                <v-select
+                  density="compact"
+                  hide-details
+                  variant="outlined"
+                  v-model="kind"
+                  :items="types"
+                  label="Activity Type"
+                  data-test="activity-select-type"
+                  class="pb-2"
+                >
+                </v-select>
+                <div v-if="kind === 'COMMAND'">
+                  <v-text-field
+                    v-model="activityData"
+                    type="text"
+                    label="Command Input"
+                    placeholder="INST COLLECT with TYPE 0, DURATION 1, OPCODE 171, TEMP 0"
+                    prefix="cmd('"
+                    suffix="')"
+                    hint="Timeline runs commands with cmd_no_hazardous_check"
+                    data-test="activity-cmd"
+                  />
                 </div>
-              </v-card-text>
-            </v-stepper-content>
-            <v-stepper-step editable step="2" class="pl-5">
-              Activity type Input
-            </v-stepper-step>
-            <v-stepper-content step="2">
-              <v-card-text>
-                <div class="pr-2">
-                  <v-select
-                    density="compact"
-                    hide-details
-                    variant="outlined"
-                    v-model="kind"
-                    :items="types"
-                    label="Activity Type"
-                    data-test="activity-select-type"
-                    class="pb-2"
-                  >
-                    <template v-slot:item="{ item, attrs, on }">
-                      <v-list-item
-                        v-on="on"
-                        v-bind="attrs"
-                        :data-test="`activity-select-type-${item}`"
-                      >
-                        <v-list-item-title>{{ item }}</v-list-item-title>
-                      </v-list-item>
-                    </template>
-                  </v-select>
-                  <div v-if="kind === 'COMMAND'">
-                    <v-text-field
-                      v-model="activityData"
-                      type="text"
-                      label="Command Input"
-                      placeholder="INST COLLECT with TYPE 0, DURATION 1, OPCODE 171, TEMP 0"
-                      prefix="cmd('"
-                      suffix="')"
-                      hint="Timeline runs commands with cmd_no_hazardous_check"
-                      data-test="activity-cmd"
-                    />
-                  </div>
-                  <div class="ma-3" v-else-if="kind === 'SCRIPT'">
-                    <script-chooser @file="fileHandler" />
-                    <environment-chooser v-model="activityEnvironment" />
-                  </div>
-                  <div v-else>
-                    <span class="ma-2"> No required input </span>
-                  </div>
-                  <v-row v-show="typeError" class="mt-2">
-                    <span class="ma-2 text-red" v-text="typeError" />
-                  </v-row>
-                  <v-row class="ma-1">
-                    <v-spacer />
-                    <v-btn
-                      @click="show = !show"
-                      variant="outlined"
-                      class="mx-2"
-                      data-test="activity-cancel-btn"
-                    >
-                      Cancel
-                    </v-btn>
-                    <v-btn
-                      @click.prevent="createActivity"
-                      class="mx-2"
-                      color="primary"
-                      type="submit"
-                      data-test="activity-submit-btn"
-                      :disabled="!!timeError || !!typeError"
-                    >
-                      Ok
-                    </v-btn>
-                  </v-row>
+                <div class="ma-3" v-else-if="kind === 'SCRIPT'">
+                  <script-chooser @file="fileHandler" />
+                  <environment-chooser v-model="activityEnvironment" />
                 </div>
-              </v-card-text>
-            </v-stepper-content>
-          </v-stepper>
-        </form>
+                <div v-else>
+                  <span class="ma-2"> No required input </span>
+                </div>
+                <v-row v-show="typeError" class="mt-2">
+                  <span class="ma-2 text-red" v-text="typeError" />
+                </v-row>
+              </div>
+            </v-card-text>
+          </template>
+        </v-stepper>
       </v-card>
     </v-dialog>
   </div>
@@ -392,7 +349,10 @@ export default {
         this.timeline = this.timelineNames[0]
       }
     },
-    createActivity: function () {
+    clearHandler: function () {
+      this.show = !this.show
+    },
+    submitHandler(event) {
       // Call the api to create a new activity to add to the activities array
       let start = null
       let stop = null // API takes stop instead of end
@@ -468,6 +428,7 @@ export default {
           })
       }
       // We don't do the $emit or set show here because it has to be in the callback
+      this.clearHandler()
     },
   },
 }

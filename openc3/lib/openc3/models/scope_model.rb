@@ -25,12 +25,12 @@ require 'openc3/models/model'
 require 'openc3/models/plugin_model'
 require 'openc3/models/microservice_model'
 require 'openc3/models/setting_model'
+require 'openc3/models/trigger_group_model'
 require 'openc3/topics/system_events_topic'
 
 begin
   require 'openc3-enterprise/models/cmd_authority_model'
   require 'openc3-enterprise/models/critical_cmd_model'
-  require 'openc3-enterprise/models/trigger_group_model'
   module OpenC3
     class ScopeModel < Model
       ENTERPRISE = true

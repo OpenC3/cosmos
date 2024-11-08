@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 OpenC3 Inc.
+# Copyright 2024 OpenC3 Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -36,8 +36,8 @@ module OpenC3
             end
           end
           raise "Could not determine class filename from '#{cmd_line}'" unless filename
-          OpenC3.set_working_dir(@work_dir) do
-            require_relative filename
+          OpenC3.set_working_dir(microservice_model.work_dir) do
+            require File.join(microservice_model.work_dir, filename)
           end
           klass = filename.filename_to_class_name.to_class
           klass.run(microservice_model.name)

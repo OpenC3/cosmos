@@ -320,15 +320,33 @@ export default {
     },
   },
   methods: {
+    // This check is necessary because COSMOS 5.20 was setting limits.enabled to false
+    // even if the item did not have limits. While the backend changed we still need to
+    // support the old results. Thus we check if the item has limits by checking if the
+    // limits.DEFAULT key exists or if any of the states have a color.
+    hasLimits(details) {
+      let result = false
+      if (details.limits.DEFAULT) {
+        result = true
+      }
+      if (details.states) {
+        Object.getOwnPropertyNames(details.states).forEach((state) => {
+          if (details.states[state].color) {
+            result = true
+          }
+        })
+      }
+      return result
+    },
     async requestDetails() {
       if (this.type === 'tlm') {
         await this.api
           .get_item(this.targetName, this.packetName, this.itemName)
           .then((details) => {
             this.details = details
-            // If the limits object is empty explicitly null it
+            // If the item does not have limits explicitly null it
             // to make the check in the template easier
-            if (!details.limits || Object.keys(details.limits).length === 0) {
+            if (!this.hasLimits(details)) {
               this.details.limits = null
             }
           })

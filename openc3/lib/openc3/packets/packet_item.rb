@@ -166,6 +166,7 @@ module OpenC3
         end
 
         @states = upcase_states
+        @state_colors ||= {}
       else
         @states = nil
       end
@@ -487,7 +488,7 @@ module OpenC3
       config['limits'] ||= {}
       if self.limits.enabled
         config['limits']['enabled'] = true
-      elsif self.limits.values or self.state_colors
+      elsif self.limits.values || (self.state_colors && self.state_colors.length > 0)
         # Only set to false if there are limits or state colors
         # to avoid items without limits acting like they can be enabled
         config['limits']['enabled'] = false
@@ -533,14 +534,12 @@ module OpenC3
         item.states = {}
         item.hazardous = {}
         item.messages_disabled = {}
+        item.state_colors = {}
         hash['states'].each do |state_name, state|
           item.states[state_name] = state['value']
           item.hazardous[state_name] = state['hazardous']
           item.messages_disabled[state_name] = state['messages_disabled']
-          if state['color']
-            item.state_colors ||= {}
-            item.state_colors[state_name] = state['color'].to_sym
-          end
+          item.state_colors[state_name] = state['color'].to_sym if state['color']
         end
       end
       # Recreate OpenC3 built-in conversions
