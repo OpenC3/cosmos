@@ -1,6 +1,9 @@
 ---
 sidebar_position: 9
 title: Screens
+description: Telemetry Viewer screen definition and widget documentation
+sidebar_custom_props:
+  myEmoji: 🖥️
 ---
 
 <!-- Be sure to edit _telemetry_screens.md because telemetry_screens.md is a generated file -->
@@ -1307,6 +1310,22 @@ BUTTON 'Start Collect' 'var type = screen.getNamedWidget("COLLECT_TYPE").text();
 NAMED_WIDGET COLLECT_TYPE COMBOBOX NORMAL SPECIAL
 ```
 
+### DATE
+**Displays a date picker**
+
+Note this is of limited use by itself and is primarily used in conjunction with NAMED_WIDGET.
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Date label | Text to label the data selection ('Date' by default) | False |
+
+Example Usage:
+```ruby
+BUTTON 'Alert Date' 'var date = screen.getNamedWidget("DATE").text();' +
+  'alert("Date:"+date)'
+NAMED_WIDGET DATE DATE
+```
+
 ### RADIOGROUP
 **Creates a group of RADIOBUTTONs**
 
@@ -1348,6 +1367,22 @@ Example Usage:
 NAMED_WIDGET DURATION TEXTFIELD 12 "10.0"
 BUTTON 'Start Collect' 'var dur = screen.getNamedWidget("DURATION").text();' +
       'api.cmd("INST COLLECT with TYPE NORMAL, DURATION "+dur+"")'
+```
+
+### TIME
+**Displays a time picker**
+
+Note this is of limited use by itself and is primarily used in conjunction with NAMED_WIDGET.
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Time label | Text to label the time selection ('Time' by default) | False |
+
+Example Usage:
+```ruby
+BUTTON 'Alert Time' 'var time = screen.getNamedWidget("TIME").text();' +
+  'alert("Time:"+time)'
+NAMED_WIDGET TIME TIME
 ```
 
 ## Canvas Widgets

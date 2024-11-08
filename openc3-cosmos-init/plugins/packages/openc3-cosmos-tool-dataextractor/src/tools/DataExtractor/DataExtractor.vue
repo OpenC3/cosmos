@@ -569,8 +569,8 @@ export default {
     let now = new Date()
     this.todaysDate = this.formatDate(now, this.timeZone)
     this.startDate = this.formatDate(now, this.timeZone)
-    this.startTime = this.formatTime(now - 3600000, this.timeZone) // last hr data
-    this.endTime = this.formatTime(now, this.timeZone)
+    this.startTime = this.formatTimeHMS(now - 3600000, this.timeZone) // last hr data
+    this.endTime = this.formatTimeHMS(now, this.timeZone)
     this.endDate = this.formatDate(now, this.timeZone)
   },
   mounted: function () {
@@ -600,8 +600,8 @@ export default {
       this.columnMode = 'normal'
       let now = new Date()
       this.startDate = this.formatDate(now, this.timeZone)
-      this.startTime = this.formatTime(now - 3600000, this.timeZone) // last hr data
-      this.endTime = this.formatTime(now, this.timeZone)
+      this.startTime = this.formatTimeHMS(now - 3600000, this.timeZone) // last hr data
+      this.endTime = this.formatTimeHMS(now, this.timeZone)
       this.endDate = this.formatDate(now, this.timeZone)
       this.cmdOrTlm = 'tlm'
       this.items = []

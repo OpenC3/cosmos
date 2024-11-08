@@ -35,6 +35,7 @@ module OpenC3
       @packet_name = packet_name.to_s.upcase
       @converted_type = :OBJECT
       @converted_bit_size = 0
+      @params = [@cmd_or_tlm, @target_name, @packet_name]
     end
 
     def lookup_packet
@@ -75,14 +76,6 @@ module OpenC3
     # @return [String] Config fragment for this conversion
     def to_config(read_or_write)
       "    #{read_or_write}_CONVERSION #{self.class.name.class_name_to_filename} #{@cmd_or_tlm ? @cmd_or_tlm : "nil"} #{@target_name} #{@packet_name}\n"
-    end
-
-    def as_json(*a)
-      result = super(*a)
-      result['cmd_or_tlm'] = @cmd_or_tlm
-      result['target_name'] = @target_name
-      result['packet_name'] = @packet_name
-      return result
     end
   end
 end

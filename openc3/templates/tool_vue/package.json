@@ -1,6 +1,6 @@
 {
   "name": "<%= tool_name %>",
-  "version": "5.19.1-beta0",
+  "version": "5.21.0-beta0",
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
@@ -11,8 +11,8 @@
     "test:components": "vue-cli-service test:components"
   },
   "dependencies": {
-    "@astrouxds/astro-web-components": "7.22.1",
-    "@openc3/tool-common": "5.19.1-beta0",
+    "@openc3/tool-common": "5.21.0-beta0",
+    "@astrouxds/astro-web-components": "7.24.0",
     "axios": "1.7.7",
     "date-fns": "4.1.0",
     "portal-vue": "2.1.7",
@@ -25,7 +25,7 @@
     "vuex": "3.6.2"
   },
   "devDependencies": {
-    "@babel/eslint-parser": "7.25.1",
+    "@babel/eslint-parser": "7.25.9",
     "@vue/babel-preset-app": "5.0.8",
     "@vue/cli": "5.0.8",
     "@vue/cli-plugin-babel": "5.0.8",
@@ -40,10 +40,10 @@
     "eslint": "8.56.0",
     "eslint-config-prettier": "9.1.0",
     "eslint-plugin-prettier": "5.2.1",
-    "eslint-plugin-vue": "9.28.0",
+    "eslint-plugin-vue": "9.30.0",
     "html-webpack-plugin": "^5.6.0",
     "prettier": "3.3.3",
-    "sass": "1.79.3",
+    "sass": "1.80.4",
     "sass-loader": "16.0.2",
     "vue-cli-plugin-single-spa": "3.3.0",
     "vue-cli-plugin-vuetify": "2.5.8",

@@ -1,5 +1,8 @@
 ---
 title: Monitoring
+description: Various ways to monitor COSMOS internals
+sidebar_custom_props:
+  myEmoji: 🖥️
 ---
 
 ### Monitoring and observability

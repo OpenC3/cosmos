@@ -149,11 +149,10 @@ def _cmd_string(target_name, cmd_name, cmd_params, raw):
             if key in Packet.RESERVED_ITEM_NAMES:
                 continue
             if isinstance(value, str):
-                value = convert_to_value(value)
-                if len(value) > 256:
-                    value = value[:255] + "...'"
                 if not value.isascii():
                     value = "BINARY"
+                elif len(value) > 256:
+                    value = value[:255] + "...'"
                 value = value.replace('"', "'")
             elif isinstance(value, list):
                 value = str(value)

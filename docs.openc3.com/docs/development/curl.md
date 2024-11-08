@@ -1,5 +1,8 @@
 ---
 title: Testing with Curl
+description: How to use Curl to hit the COSMOS APIs
+sidebar_custom_props:
+  myEmoji: 🌊
 ---
 
 :::note This documentation is for COSMOS Developers
@@ -95,6 +98,7 @@ It can be very useful to run the a suite or script remotely from a continuous te
 ![Network Traffic in browser developer tools](https://github.com/OpenC3/cosmos/assets/55999897/df642d42-43e0-47f9-9b52-d42746d9746b)
 
 You can see that there are 5 transactions total. To investigate just right-click on the network transaction and click "copy as `curl`" (depends on the browser). Here is an example of the second one:
+
 ```bash
 curl 'http://localhost:2900/script-api/scripts/TARGET/procedures/cmd_tlm_test.rb/lock?scope=DEFAULT' \
   -X 'POST' \
@@ -108,14 +112,16 @@ curl 'http://localhost:2900/script-api/scripts/TARGET/procedures/cmd_tlm_test.rb
   -H 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0' \
   --insecure
 ```
+
 Many of the browser-specific headers are not required. The important thing to notice here is the URL and the request (in this case `POST`). If we inspect all of these we'll find out what each one does:
+
 1. Set the script contents
-   * this updates any local changes)
-   * Note that this is a different request to `GET` the script contents. This is done on the page load.
-3. Lock the script (so other users can't edit it during execution)
-4. Run script (this takes a JSON with options)
-5. Open Websocket for logs
-6. Request Result (this URL is a little different because the results are saved in redis)
+   - this updates any local changes)
+   - Note that this is a different request to `GET` the script contents. This is done on the page load.
+2. Lock the script (so other users can't edit it during execution)
+3. Run script (this takes a JSON with options)
+4. Open Websocket for logs
+5. Request Result (this URL is a little different because the results are saved in redis)
 
 Below is a bash script which does all the above given some options. It requires `curl` for the web requests and `jq` for JSON parsing and formatting. It locks and runs the script, continually checks its status, then requests the result.
 
@@ -128,13 +134,13 @@ SUITE=${3:-'TestSuite'}
 COSMOS_HOST='http://localhost:2900'
 SCRIPT_API="$COSMOS_HOST/script-api"
 SCRIPT_PATH="scripts/$TARGET/$SCRIPT"
-CURL_ARGS=( 
-	-H 'Accept: application/json' 
-	-H 'Authorization: password' 
-	-H 'Accept-Language: en-US,en;q=0.9' 
-	-H 'Connection: keep-alive' 
-	-H 'Content-Type: application/json' 
-	--insecure 
+CURL_ARGS=(
+	-H 'Accept: application/json'
+	-H 'Authorization: password'
+	-H 'Accept-Language: en-US,en;q=0.9'
+	-H 'Connection: keep-alive'
+	-H 'Content-Type: application/json'
+	--insecure
 	--silent )
 
 # Lock script #
@@ -176,4 +182,3 @@ URL="$(curl "$COSMOS_HOST/openc3-api/storage/download/$BUCKET_FILE_URI?bucket=OP
 
 curl "$COSMOS_HOST$URL" "${CURL_ARGS[@]}"
 ```
-

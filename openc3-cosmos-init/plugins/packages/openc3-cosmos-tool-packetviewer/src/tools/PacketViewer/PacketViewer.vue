@@ -99,7 +99,7 @@
           />
         </template>
         <template v-slot:footer.prepend>
-          <v-tooltip bottom close-delay="2000">
+          <v-tooltip top close-delay="2000">
             <template v-slot:activator="{ on, attrs }">
               <v-icon v-bind="attrs" v-on="on" class="info-tooltip">
                 mdi-information-variant-circle

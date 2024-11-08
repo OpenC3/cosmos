@@ -1,5 +1,8 @@
 ---
 title: COSMOS and NASA cFS
+description: Tutorial for integrating with NASA cFS
+sidebar_custom_props:
+  myEmoji: 🚀
 ---
 
 ## Working configuration

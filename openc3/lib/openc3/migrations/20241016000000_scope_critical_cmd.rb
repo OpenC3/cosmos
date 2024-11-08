@@ -5,12 +5,15 @@ module OpenC3
   class ScopeCriticalCmd < Migration
     def self.run
       ScopeModel.names.each do |scope|
-        scope_model = ScopeModel.get_model(name: scope)
-        parent = "#{scope}__SCOPEMULTI__#{scope}"
-        scope_model.deploy_critical_cmd_microservice("/notexist", {}, parent)
-        microservice_model = MicroserviceModel.get_model(name: parent, scope: scope)
-        microservice_model.cmd << "#{scope}__CRITICALCMD__#{scope}"
-        microservice_model.update
+        existing_model = MicroserviceModel.get_model(name: "#{scope}__CRITICALCMD__#{scope}", scope: scope)
+        if not existing_model
+          scope_model = ScopeModel.get_model(name: scope)
+          parent = "#{scope}__SCOPEMULTI__#{scope}"
+          scope_model.deploy_critical_cmd_microservice("/notexist", {}, parent)
+          microservice_model = MicroserviceModel.get_model(name: parent, scope: scope)
+          microservice_model.cmd << "#{scope}__CRITICALCMD__#{scope}"
+          microservice_model.update
+        end
       end
     end
   end

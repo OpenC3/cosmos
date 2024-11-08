@@ -1,6 +1,9 @@
 ---
 sidebar_position: 6
 title: Interfaces
+description: Built-in COSMOS interfaces including how to create one
+sidebar_custom_props:
+  myEmoji: 💡
 ---
 
 Interfaces are the connection to the external embedded systems called targets. Interfaces are defined by the top level [INTERFACE](plugins.md#interface-1) keyword in the plugin.txt file.

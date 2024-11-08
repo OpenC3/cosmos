@@ -1,10 +1,13 @@
 ---
 title: Data Viewer
+description: View packet or item data
+sidebar_custom_props:
+  myEmoji: 🛠️
 ---
 
 ## Introduction
 
-Data Viewer allows you to view packet data in both the past and in real time.
+Data Viewer allows you to view packet data or individual item data in both the past and in real time.
 
 ![Data Viewer](/img/data_viewer/data_viewer.png)
 

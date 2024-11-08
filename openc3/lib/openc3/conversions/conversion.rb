@@ -30,12 +30,15 @@ module OpenC3
     attr_reader :converted_bit_size
     # @return [Integer] The size in bits of the converted array value
     attr_reader :converted_array_size
+    # @return [Array] The arguments passed to the conversion
+    attr_reader :params
 
     # Create a new conversion
     def initialize
       @converted_type = nil
       @converted_bit_size = nil
       @converted_array_size = nil
+      @params = nil
     end
 
     # Perform the conversion on the value.
@@ -61,12 +64,13 @@ module OpenC3
       "    #{read_or_write}_CONVERSION #{self.class.name.class_name_to_filename}\n"
     end
 
-    def as_json(*_a)
+    def as_json(*a)
       result = {}
       result['class'] = self.class.name.to_s
       result['converted_type'] = @converted_type if @converted_type
       result['converted_bit_size'] = @converted_bit_size if @converted_bit_size
       result['converted_array_size'] = @converted_array_size if @converted_array_size
+      result['params'] = @params.as_json(*a) if @params
       result
     end
   end

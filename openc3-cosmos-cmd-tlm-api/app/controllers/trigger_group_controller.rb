@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -42,10 +42,10 @@ class TriggerGroupController < ApplicationController
       trigger_groups.each do |_, trigger_group|
         ret << trigger_group
       end
-      render :json => ret, :status => 200
+      render json: ret
     rescue StandardError => e
       logger.error(e.formatted)
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
+      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
     end
   end
 
@@ -59,16 +59,16 @@ class TriggerGroupController < ApplicationController
     begin
       model = @model_class.get(name: params[:name], scope: params[:scope])
       if model.nil?
-        render :json => { :status => 'error', :message => 'not found' }, :status => 404
+        render json: { status: 'error', message: 'not found' }, status: 404
         return
       end
-      render :json => model.as_json(:allow_nan => true), :status => 200
+      render json: model.as_json(:allow_nan => true)
     rescue OpenC3::TriggerGroupInputError => e
       logger.error(e.formatted)
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400
+      render json: { status: 'error', message: e.message, type: e.class }, status: 400
     rescue StandardError => e
       logger.error(e.formatted)
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
+      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
     end
   end
 
@@ -96,16 +96,16 @@ class TriggerGroupController < ApplicationController
       model = @model_class.new(name: params[:name], scope: params[:scope])
       model.create()
       model.deploy()
-      render :json => model.as_json(:allow_nan => true), :status => 201
+      render json: model.as_json(:allow_nan => true), status: 201
     rescue OpenC3::TriggerGroupInputError => e
       logger.error(e.formatted)
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400
+      render json: { status: 'error', message: e.message, type: e.class }, status: 400
     rescue OpenC3::TriggerGroupError => e
       logger.error(e.formatted)
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 418
+      render json: { status: 'error', message: e.message, type: e.class }, status: 418
     rescue StandardError => e
       logger.error(e.formatted)
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
+      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
     end
   end
 
@@ -114,7 +114,7 @@ class TriggerGroupController < ApplicationController
   # group [String] the trigger group name, `systemGroup`
   # scope [String] the scope of the trigger, `TEST`
   # id [String] the score or id of the trigger, `1620248449`
-  # @return [String] object/hash converted into json format but with a 204 no-content status code
+  # @return [String] object/hash converted into json format but with a 200 status code
   # Request Headers
   #```json
   #  {
@@ -126,16 +126,16 @@ class TriggerGroupController < ApplicationController
     return unless authorization('script_run')
     begin
       @model_class.delete(name: params[:group], scope: params[:scope])
-      render :json => { :delete => true, :group => params[:group] }, :status => 204
+      render json: { delete: true, group: params[:group] }
     rescue OpenC3::TriggerGroupInputError => e
       logger.error(e.formatted)
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 404
+      render json: { status: 'error', message: e.message, type: e.class }, status: 404
     rescue OpenC3::TriggerGroupError => e
       logger.error(e.formatted)
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400
+      render json: { status: 'error', message: e.message, type: e.class }, status: 400
     rescue StandardError => e
       logger.error(e.formatted)
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
+      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
     end
   end
 end

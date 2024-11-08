@@ -11,10 +11,3 @@ gem 'bootsnap', '>= 1.9.3', require: false
 gem 'rack-cors', '~> 2.0'
 gem 'rails', '~> 7.1.0'
 gem 'tzinfo-data'
-
-group :test, :development do
-  gem 'mock_redis', '0.45'
-  gem 'rspec-rails', '~> 7.0'
-  gem 'simplecov', '~> 0.20'
-  gem 'simplecov-cobertura', '~> 2.1'
-end

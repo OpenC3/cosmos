@@ -14,10 +14,10 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/conversions/conversion'
@@ -38,6 +38,7 @@ module OpenC3
       @coeffs = coeffs.map { |coeff| coeff.to_f }
       @converted_type = :FLOAT
       @converted_bit_size = 64
+      @params = @coeffs
     end
 
     if RUBY_ENGINE != 'ruby' or ENV['OPENC3_NO_EXT']
@@ -79,12 +80,6 @@ module OpenC3
     # @return [String] Config fragment for this conversion
     def to_config(read_or_write)
       "    POLY_#{read_or_write}_CONVERSION #{@coeffs.join(' ')}\n"
-    end
-
-    def as_json(*a)
-      result = super(*a)
-      result['params'] = @coeffs
-      result
     end
   end
 end

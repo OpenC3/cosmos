@@ -164,7 +164,7 @@ export default {
         return 'Please enter a value in the metadata table.'
       }
       const emptyKeyValue = this.metadataVals.find(
-        (meta) => meta.key === '' || meta.value === ''
+        (meta) => meta.key === '' || meta.value === '',
       )
       if (emptyKeyValue) {
         return 'Missing or empty key, value in the metadata table.'
@@ -186,7 +186,7 @@ export default {
       if (this.metadata) {
         const sDate = new Date(this.metadata.start * 1000)
         this.startDate = this.formatDate(sDate, this.timeZone)
-        this.startTime = this.formatTime(sDate, this.timeZone)
+        this.startTime = this.formatTimeHMS(sDate, this.timeZone)
         this.color = this.metadata.color
         this.metadataVals = Object.keys(this.metadata.metadata).map((k) => {
           return { key: k, value: this.metadata.metadata[k] }
@@ -206,11 +206,11 @@ export default {
       const data = { color, metadata }
       if (this.timeZone === 'local') {
         data.start = new Date(
-          this.startDate + ' ' + this.startTime
+          this.startDate + ' ' + this.startTime,
         ).toISOString()
       } else {
         data.start = new Date(
-          this.startDate + ' ' + this.startTime + 'Z'
+          this.startDate + ' ' + this.startTime + 'Z',
         ).toISOString()
       }
       if (this.metadata) {

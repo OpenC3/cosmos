@@ -51,7 +51,7 @@ class TestBitReverseConversion(unittest.TestCase):
         self.assertEqual(json["class"], "BitReverseConversion")
         self.assertEqual(json["converted_type"], "UINT")
         self.assertEqual(json["converted_bit_size"], 8)
-        new_brc = BitReverseConversion(json["converted_type"], json["converted_bit_size"])
+        new_brc = BitReverseConversion(*json["params"])
         self.assertEqual(brc.converted_type, (new_brc.converted_type))
         self.assertEqual(brc.converted_bit_size, (new_brc.converted_bit_size))
         self.assertEqual(brc.call(0x11, None, None), 0x88)

@@ -83,6 +83,9 @@ RSpec.describe ScriptAutocompleteController, :type => :controller do
       # Sorted so first should be INST ABORT
       expect(ret[0]).to include({"caption" => "INST ABORT"})
       # Spot check
+      expect(ret).to include({"caption"=>"INST ASCIICMD",
+        "snippet"=>"INST ASCIICMD with STRING ${1:'NOOP'}, BINARY ${2:0xDEADBEEF}, ASCII ${3:'0xDEADBEEF'}",
+        "meta"=>"command"})
       expect(ret).to include({"caption"=>"INST COLLECT",
         "snippet"=>"INST COLLECT with TYPE ${1:NORMAL}, DURATION ${2:1.0}, OPCODE ${3:171}, TEMP ${4:0.0}",
         "meta"=>"command"})

@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -35,7 +35,7 @@ class EnvironmentController < ApplicationController
   def index
     return unless authorization('system')
     values = @model_class.all(scope: params[:scope]).values
-    render :json => values, :status => 200
+    render json: values
   end
 
   # Create a new environment returns object/hash of the environment in json.
@@ -60,10 +60,10 @@ class EnvironmentController < ApplicationController
   def create
     return unless authorization('script_run')
     if params['key'].nil? || params['value'].nil?
-      render :json => {
-        'status' => 'error',
-        'message' => "Parameter '#{params['key'].nil? ? 'key' : 'value'}' is required",
-      }, :status => 400
+      render json: {
+        status: 'error',
+        message: "Parameter '#{params['key'].nil? ? 'key' : 'value'}' is required",
+      }, status: 400
       return
     end
     begin
@@ -75,41 +75,41 @@ class EnvironmentController < ApplicationController
       model = @model_class.new(name: name, key: params['key'], value: params['value'], scope: params[:scope])
       model.create()
       OpenC3::Logger.info("Environment variable created: #{name} #{params['key']} #{params['value']}", scope: params[:scope], user: username())
-      render :json => model.as_json(:allow_nan => true), :status => 201
+      render json: model.as_json(:allow_nan => true), status: 201
     rescue RuntimeError, JSON::ParserError => e
       logger.error(e.formatted)
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400
+      render json: { status: 'error', message: e.message, type: e.class }, status: 400
     rescue TypeError => e
       logger.error(e.formatted)
-      render :json => { :status => 'error', :message => 'Invalid json object', 'type' => e.class }, :status => 400
+      render json: { status: 'error', message: 'Invalid json object', type: e.class }, status: 400
     rescue OpenC3::EnvironmentError => e
       logger.error(e.formatted)
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 409
+      render json: { status: 'error', message: e.message, type: e.class }, status: 409
     end
   end
 
-  # Returns hash/object of environment name in json with a 204 no-content status code.
+  # Returns hash/object of environment name in json with a 200 status code.
   #
   # name [String] the environment name, `bffcdb71ce38b7604db3c53000adef1ed851606d`
   # scope [String] the scope of the environment, `TEST`
-  # @return [String] hash/object of environment name in json with a 204 no-content status code
+  # @return [String] hash/object of environment name in json with a 200 status code
   def destroy
     return unless authorization('script_run')
     model = @model_class.get(name: params[:name], scope: params[:scope])
     if model.nil?
-      render :json => {
-        'status' => 'error',
-        'message' => "failed to find environment: #{params[:name]}",
-      }, :status => 404
+      render json: {
+        status: 'error',
+        message: "failed to find environment: #{params[:name]}",
+      }, status: 404
       return
     end
     begin
       ret = @model_class.destroy(name: params[:name], scope: params[:scope])
       OpenC3::Logger.info("Environment variable destroyed: #{params[:name]}", scope: params[:scope], user: username())
-      render :json => { 'name' => params[:name] }, :status => 204
+      render json: { name: params[:name] }
     rescue OpenC3::EnvironmentError => e
       logger.error(e.formatted)
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400
+      render json: { status: 'error', message: e.message, type: e.class }, status: 400
     end
   end
 end

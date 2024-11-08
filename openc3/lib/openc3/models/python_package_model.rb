@@ -92,7 +92,12 @@ module OpenC3
         end
       end
       Logger.info "Installing python package: #{name_or_path}"
-      result = OpenC3::ProcessManager.instance.spawn(["/openc3/bin/pipinstall", "--no-warn-script-location", "-i", pypi_url, package_file_path], "package_install", package_filename, Time.now + 3600.0, scope: scope)
+      if ENV['PIP_ENABLE_TRUSTED_HOST'].nil?
+        pip_args = ["--no-warn-script-location", "-i", pypi_url, package_file_path]
+      else
+        pip_args = ["--no-warn-script-location", "-i", pypi_url, "--trusted-host", URI.parse(pypi_url).host, package_file_path]
+      end
+      result = OpenC3::ProcessManager.instance.spawn(["/openc3/bin/pipinstall"] + pip_args, "package_install", package_filename, Time.now + 3600.0, scope: scope)
       return result.name
     end
 

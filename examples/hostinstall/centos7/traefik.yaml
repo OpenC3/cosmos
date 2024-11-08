@@ -37,7 +37,7 @@ http:
     # Matches any path with a file extension which is assumed to be
     # a static file
     tools-router:
-      rule: Path(`/tools/{id:.*/.*[.].*}`)
+      rule: PathRegexp(`/tools/.*/.*[.].*`)
       service: service-minio
       priority: 5
     # Route to minio user interface
@@ -57,7 +57,7 @@ http:
     # Matches any path with a file extension which is assumed to be
     # a static file
     base-router:
-      rule: Path(`/{id:.*[.].*}`)
+      rule: PathRegexp(`/.*[.].*`)
       middlewares:
         # add /tools/base to the beginning
         - "addToolsBase"
@@ -66,7 +66,7 @@ http:
     # This is the default route for everything that doesn't match a more specific route
     # It gets us to the base openc3 application
     web-router:
-      rule: HostRegexp(`{name:.*}`)
+      rule: HostRegexp(`.*`)
       middlewares:
         # Serve /tools/base/index.html from minio
         - "gotoToolsBaseIndex"

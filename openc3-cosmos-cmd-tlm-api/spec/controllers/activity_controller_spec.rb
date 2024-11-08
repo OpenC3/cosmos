@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -249,14 +249,14 @@ RSpec.describe ActivityController, :type => :controller do
   end
 
   describe "DELETE destroy" do
-    it "returns a status code 204" do
+    it "returns a status code 200" do
       hash = generate_activity_hash(1.0)
       post :create, params: hash.merge({ 'scope'=>'DEFAULT', 'name'=>'test' })
       expect(response).to have_http_status(:created)
       created = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
       expect(created['start']).not_to be_nil
       delete :destroy, params: {'scope'=>'DEFAULT', 'name'=>'test', 'id'=>created['start'], 'uuid'=>created['uuid']}
-      expect(response).to have_http_status(:no_content)
+      expect(response).to have_http_status(:success)
     end
 
     it "deletes items without uuids if uuid is not given" do
@@ -270,7 +270,7 @@ RSpec.describe ActivityController, :type => :controller do
       # Now add it back to the store and write over the existing activity
       OpenC3::Store.zadd('DEFAULT__openc3_timelines__test', created['start'], JSON.generate(created))
       delete :destroy, params: {'scope'=>'DEFAULT', 'name'=>'test', 'id'=>created['start']}
-      expect(response).to have_http_status(:no_content)
+      expect(response).to have_http_status(:success)
     end
 
     it "returns a status code 404" do

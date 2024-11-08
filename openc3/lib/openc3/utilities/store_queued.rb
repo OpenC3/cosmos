@@ -17,6 +17,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/utilities/store'
+require 'openc3/utilities/sleeper'
 
 module OpenC3
   class StoreQueued

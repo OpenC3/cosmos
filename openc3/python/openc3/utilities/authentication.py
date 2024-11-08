@@ -37,7 +37,7 @@ class OpenC3Authentication:
         if not self._token:
             raise OpenC3AuthenticationError("Authentication requires environment variable OPENC3_API_PASSWORD")
 
-    def token(self):
+    def token(self, include_bearer=True):
         return self._token
 
 
@@ -69,7 +69,7 @@ class OpenC3KeycloakAuthentication(OpenC3Authentication):
         self.http = Session()
 
     # Load the token from the environment
-    def token(self):
+    def token(self, include_bearer=True):
         with self.auth_mutex:
             self.log = [None, None]
             current_time = time.time()
@@ -79,7 +79,10 @@ class OpenC3KeycloakAuthentication(OpenC3Authentication):
                 self._make_token(current_time)
             elif self.expires_at < current_time:
                 self._refresh_token(current_time)
-        return f"Bearer {self._token}"
+        if include_bearer:
+            return f"Bearer {self._token}"
+        else:
+            return self._token
 
     def get_token_from_refresh_token(self, refresh_token):
         current_time = time.time()

@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -33,7 +33,7 @@ class TargetsController < ModelController
     scope = sanitize_params([:scope], require_params: true)
     return unless scope
     scope = scope[0]
-    render :json => @model_class.all_modified(scope: scope)
+    render json: @model_class.all_modified(scope: scope)
   end
 
   def modified_files
@@ -41,7 +41,7 @@ class TargetsController < ModelController
     scope, id = sanitize_params([:scope, :id], require_params: true)
     return unless scope
     begin
-      render :json => @model_class.modified_files(id, scope: scope)
+      render json: @model_class.modified_files(id, scope: scope)
     rescue Exception => e
       logger.error(e.formatted)
       OpenC3::Logger.info("Target '#{id} modified_files failed: #{e.message}", user: username())
@@ -70,7 +70,7 @@ class TargetsController < ModelController
     begin
       file = @model_class.download(id, scope: scope)
       if file
-        results = { 'filename' => file.filename, 'contents' => Base64.encode64(file.contents) }
+        results = { filename: file.filename, contents: Base64.encode64(file.contents) }
         render json: results
       else
         head :not_found
@@ -78,7 +78,7 @@ class TargetsController < ModelController
     rescue Exception => e
       logger.error(e.formatted)
       OpenC3::Logger.info("Target '#{id} download failed: #{e.message}", user: username())
-      render(json: { status: 'error', message: e.message }, status: 500) and return
+      render json: { status: 'error', message: e.message }, status: 500
     end
   end
 end

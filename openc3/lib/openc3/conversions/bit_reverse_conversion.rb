@@ -27,6 +27,7 @@ module OpenC3
       if @converted_type == :FLOAT
         raise "Float Bit Reverse Not Yet Supported"
       end
+      @params = [@converted_type, @converted_bit_size]
     end
 
     # Perform the conversion on the value.
