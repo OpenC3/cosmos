@@ -1,5 +1,7 @@
 ---
 title: Host Install
+sidebar_custom_props:
+  myEmoji: 🖥️
 ---
 
 ## Installing COSMOS Directly onto a Host (No Containers)

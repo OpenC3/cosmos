@@ -227,7 +227,7 @@ end
 docs.each do |partial, yaml_file|
   tag = CosmosMetaTag.new(yaml_file)
   content = tag.render
-  partial_contents = File.read(partial)
+  partial_contents = File.open(partial, "r:UTF-8", &:read)
   partial_contents.gsub!("COSMOS_META", content)
   dirname = File.dirname(partial)
   basename = File.basename(partial)

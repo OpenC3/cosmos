@@ -1,6 +1,9 @@
 ---
 sidebar_position: 7
 title: Protocols
+description: Built-in COSMOS protocols including how to create one
+sidebar_custom_props:
+  myEmoji: 💡
 ---
 
 Protocols process data on behalf of an Interface. They can modify the data being written, data being read, or both. Protocols can also mark a packet as stored instead of real-time which means COSMOS will not update the current value table with the packet data. Protocols can be layered and will be processed in order. For example, if you have a low-level encryption layer that must be first removed before processing a higher level buffer length protocol.

@@ -1,40 +1,45 @@
 ---
 title: Roadmap
+description: COSMOS roadmap now and into the future
+sidebar_custom_props:
+  myEmoji: 🗺️
 ---
 
 ## Key Features Still to Come in OpenC3 COSMOS 5.x:
 
-- [x] Command Authority (Enterprise)
-- [x] Standardized Mission Planning Interface (aka Command Load Generator (CLG))
-- [x] Protocol buffer support
-- [ ] Critical Commanding (Two Operators - Enterprise)
-- [ ] Log Message Extractor Tool (Enterprise)
-- [ ] System Health Tool (Enterprise)
+:white_check_mark:&nbsp;&nbsp;Python Support<br/>
+:white_check_mark:&nbsp;&nbsp;Standardized Mission Planning Interface (aka Command Load Generator (CLG))<br/>
+:white_check_mark:&nbsp;&nbsp;Protocol buffer support<br/>
+:white_check_mark:&nbsp;&nbsp;Command Authority (Enterprise)<br/>
+:white_check_mark:&nbsp;&nbsp;Critical Commanding (Two Operators - Enterprise)<br/>
 
 ## OpenC3 COSMOS 6.0 (Late 2024)
 
 Core Features:
 
-- [x] Python Support
-- [ ] Upgrade Tools to Vue 3 / Vuetify 3
-- [ ] Plugin App Store
+:white_check_mark:&nbsp;&nbsp;Upgrade Tools to Vue 3 / Vuetify 3<br/>
+:white_check_mark:&nbsp;&nbsp;Traefik v3<br/>
+:white_large_square:&nbsp;&nbsp;Python / Ruby parity (interfaces, protocols, etc)<br/>
 
 Functionality For 6.1+:
 
-- [ ] Telemetry Viewer screen playback of historical data
-- [ ] libCSP Interface (Cubesat Space Protocol)
-- [ ] Standardized Interfaces for common message buses (ZeroMQ, ActiveMQ, etc)
-- [ ] COSMOS Notebooks (similar to Jupyter Notebooks)
-- [ ] COSMOS Dashboards (configurable iFrames for Common Operating Picture)
-- [ ] Integration with ground networks (Atlas, RBC Signals)
-- [ ] Integration with mission planning (Orbit Logic, Cognitive Space)
-- [ ] Integration with flight dynamics (Kayhan, SEE, Exotrail)
+:white_large_square:&nbsp;&nbsp;Plugin App Store<br/>
+:white_large_square:&nbsp;&nbsp;System Health Tool (Enterprise)<br/>
+:white_large_square:&nbsp;&nbsp;Log Message Extractor Tool (Enterprise)<br/>
+:white_large_square:&nbsp;&nbsp;Telemetry Viewer screen playback of historical data<br/>
+:white_large_square:&nbsp;&nbsp;libCSP Interface (Cubesat Space Protocol)<br/>
+:white_large_square:&nbsp;&nbsp;Standardized Interfaces for common message buses (ZeroMQ, ActiveMQ, etc)<br/>
+:white_large_square:&nbsp;&nbsp;COSMOS Notebooks (similar to Jupyter Notebooks)<br/>
+:white_large_square:&nbsp;&nbsp;COSMOS Dashboards (configurable iFrames for Common Operating Picture)<br/>
+:white_large_square:&nbsp;&nbsp;Integration with ground networks (Atlas, RBC Signals)<br/>
+:white_large_square:&nbsp;&nbsp;Integration with mission planning (Orbit Logic, Cognitive Space)<br/>
+:white_large_square:&nbsp;&nbsp;Integration with flight dynamics (Kayhan, SEE, Exotrail)<br/>
 
 ## OpenC3 COSMOS 7.0
 
 Core Features:
 
-- [ ] Super Bridge - This will enable SaaS COSMOS and provide a secure method to communicate from a cloud server to an intranet for hardware control
+:white_large_square:&nbsp;&nbsp;Super Bridge - This will enable SaaS COSMOS and provide a secure method to communicate from a cloud server to an intranet for hardware control
 
 ## Near-term Planning
 
