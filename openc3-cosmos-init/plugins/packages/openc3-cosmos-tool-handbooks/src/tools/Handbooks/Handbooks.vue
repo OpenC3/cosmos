@@ -39,13 +39,11 @@
             >
               <template v-slot:prepend-item>
                 <v-list-item ripple @mousedown.prevent @click="toggleTargets">
-                  <v-list-item-action>
-                    <v-icon>
-                      {{ icon }}
-                    </v-icon>
-                  </v-list-item-action>
-
-                  <v-list-item-title> Select All </v-list-item-title>
+                  <v-list-item-title>
+                    <v-list-item-action end>
+                      <v-icon class="mr-2"> {{ icon }} </v-icon>Select All
+                    </v-list-item-action>
+                  </v-list-item-title>
                 </v-list-item>
                 <v-divider class="mt-2"></v-divider>
               </template>

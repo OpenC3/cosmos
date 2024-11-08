@@ -1,5 +1,8 @@
 ---
 title: Script Writing Guide
+description: Key concepts and best practices for script writing
+sidebar_custom_props:
+  myEmoji: 🏃‍➡️
 ---
 
 ## Introduction

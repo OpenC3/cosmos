@@ -1,5 +1,8 @@
 ---
-title: Understanding Licenses
+title: Licenses
+description: COSMOS licenses including the AGPLv3 vs Commercial
+sidebar_custom_props:
+  myEmoji: 🕵️
 ---
 
 OpenC3 COSMOS is offered under a tri-licensing model allowing users to choose between the following three options:
@@ -71,7 +74,7 @@ These licenses are sold as yearly subscriptions, or as a non-expiring perpetual 
 
 Of course with our commercial license, you also get all the extra functionality of our Enterprise product.
 
-## Why you should buy a Commercial License
+### Why you should buy a Commercial License
 
 1. You want to save years and tens of millions of dollars developing the same functionality yourself.
 
@@ -95,3 +98,25 @@ Of course with our commercial license, you also get all the extra functionality 
 4. You want to support the continued development and innovation of the COSMOS product
 
 **_We appreciate all of our commercial customers. You make OpenC3 possible. Thank you._**
+
+## FAQs
+
+1. I see both Ball Aerospace & Technologies Corp as well as OpenC3, Inc in the copyright headers. What does this mean?
+
+   OpenC3, Inc has an intellectual property agreement with BAE (formerly Ball Aerospace & Technologies Corp) which gives us the rights to commercialize the original work that we built at Ball Aerospace. Customers only need to purchase a commercial license from OpenC3.
+
+1. What are the limits of the COSMOS Enterprise Edition? How many users can we have? How many times can it be installed?
+
+   The COSMOS Enterprise Edition license has no user or installation limits.
+
+1. How is the COSMOS Enterprise Edition license enforced?
+
+   The COSMOS Enterprise Edition license is enforced through contract only without license managers or additional software controls.
+
+1. How is the COSMOS Enterprise Edition license applied? Per company? Per program?
+
+   COSMOS Enterprise Edition is typically licensed to a named mission or group. We also have site licenses, company licenses, and mission ops center licenses. Please contact us at sales@openc3.com for more information.
+
+1. Do you license to foreign companies? How do you handle ITAR or the EAR?
+
+   We have several international customers and are not subject to ITAR export controls. We are export controlled under the EAR via ECCN 5D002c1. We have a detailed writeup explaining this justification as well as a commodity classification document from the Department of Commerce. Please contact us at sales@openc3.com for more information.

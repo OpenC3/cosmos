@@ -1,6 +1,9 @@
 ---
 sidebar_position: 5
 title: Telemetry
+description: Telemetry definition file format and keywords
+sidebar_custom_props:
+  myEmoji: 📡
 ---
 
 <!-- Be sure to edit _telemetry.md because telemetry.md is a generated file -->

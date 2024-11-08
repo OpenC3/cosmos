@@ -158,7 +158,9 @@ test('warns for required parameters', async ({ page, utils }) => {
   // Break apart the checks so we have output flexibility in the future
   await expect(page.locator('.v-dialog')).toContainText('Error sending')
   await expect(page.locator('.v-dialog')).toContainText('INST COLLECT TYPE')
-  await expect(page.locator('.v-dialog')).toContainText('not given')
+  await expect(page.locator('.v-dialog')).toContainText(
+    'not one of NORMAL, SPECIAL',
+  )
   await page.locator('button:has-text("Ok")').click()
 })
 

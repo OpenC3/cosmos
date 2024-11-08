@@ -24,6 +24,22 @@
   <div>
     <v-dialog persistent v-model="show" width="600">
       <v-card>
+        <v-toolbar height="24">
+          <v-spacer />
+          <span v-if="activity">Edit Activity</span>
+          <span v-else>Create Activity</span>
+          <v-spacer />
+          <v-tooltip location="top">
+            <template v-slot:activator="{ props }">
+              <div v-bind="props">
+                <v-icon data-test="close-note-icon" @click="clearHandler">
+                  mdi-close-box
+                </v-icon>
+              </div>
+            </template>
+            <span> Close </span>
+          </v-tooltip>
+        </v-toolbar>
         <v-stepper
           v-model="dialogStep"
           editable
@@ -352,7 +368,7 @@ export default {
     clearHandler: function () {
       this.show = !this.show
     },
-    submitHandler(event) {
+    submitHandler() {
       // Call the api to create a new activity to add to the activities array
       let start = null
       let stop = null // API takes stop instead of end

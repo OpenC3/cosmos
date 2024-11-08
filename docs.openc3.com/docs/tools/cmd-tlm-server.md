@@ -1,5 +1,8 @@
 ---
 title: Command and Telemetry Server
+description: Status about interfaces, targets and log messages
+sidebar_custom_props:
+  myEmoji: 🛠️
 ---
 
 ## Introduction
@@ -34,6 +37,8 @@ The Targets tab displays all the targets and their mapped interfaces along with 
 Command Authority is enabled in the Admin Console and is enabled scope wide. Once Command Authority is enabled, individual users can give and take Command Authority which enables exclusive command and script access to that target. Without Command Authority, users can not send a command or start a script under that target. Note, commands or scripts scheduled with Calendar or Autonomic are not affected by Command Authority.
 
 ![Command Authority](/img/cmd_tlm_server/cmd_authority.png)
+
+The other option shown in the Scope List is the Critical Command Mode. Critical commanding requires a different user to approve each command. It can either be enabled on just HAZARDOUS and RESTRICTED commands or on all manual commanding.
 
 ## Command Packets Tab
 

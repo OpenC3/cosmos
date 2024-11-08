@@ -1,5 +1,8 @@
 ---
 title: Data Extractor
+description: Extract command or telemetry data into files
+sidebar_custom_props:
+  myEmoji: 🛠️
 ---
 
 ## Introduction

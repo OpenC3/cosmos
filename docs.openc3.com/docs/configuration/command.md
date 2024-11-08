@@ -1,6 +1,9 @@
 ---
 sidebar_position: 4
 title: Commands
+description: Command definition file format and keywords
+sidebar_custom_props:
+  myEmoji: 📡
 ---
 
 <!-- Be sure to edit _command.md because command.md is a generated file -->
@@ -631,6 +634,12 @@ Generally the template file is formatted in JSON or HTML and then values are fil
 <div class="right">(Since 5.18.0)</div>**Marks this packet as virtual and not participating in identification**
 
 Used for packet definitions that can be used as structures for items with a given packet.
+
+
+### RESTRICTED
+<div class="right">(Since 5.20.0)</div>**Marks this packet as restricted and will require approval if critical commanding is enabled**
+
+Used as one of the two types of critical commands (HAZARDOUS and RESTRICTED)
 
 
 ### VALIDATOR
