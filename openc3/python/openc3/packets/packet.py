@@ -653,7 +653,7 @@ class Packet(Structure):
                     super().write_item(item, value, "RAW", buffer)
                 except ValueError as error:
                     if item.states and isinstance(value, str) and "invalid literal for" in repr(error):
-                        raise ValueError(f"Unknown state {value} for {item.name}") from error
+                        raise ValueError(f"Unknown state {value} for {item.name}, must be one of f{', '.join(item.states.keys())}") from error
                     else:
                         raise error
             case "FORMATTED" | "WITH_UNITS":
