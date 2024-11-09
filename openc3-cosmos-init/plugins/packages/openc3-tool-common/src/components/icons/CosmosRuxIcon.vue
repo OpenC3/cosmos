@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -21,22 +21,11 @@
 -->
 
 <template>
-  <span id="cosmos-rux-icon" :title="label" :style="style" :size="size">
-    <!-- Camel case props because svg -->
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 128 128"
-      preserveAspectRatio="xMidYMid meet"
-      focusable="false"
-    >
-      <use :href="getIcon(this.library, this.icon)" />
-    </svg>
-  </span>
+  <rux-icon :size="size" :icon="icon" :style="colorStyle" />
 </template>
 
 <script>
-// This component is a rewrite of the Astro UXDS RuxIcon into Vue
-// Prevents multiple customElement problem with single-spa
+// This component is a Vue wrapper around Astro RuxIcon so that it works as a Vuetify icon set
 export default {
   props: {
     icon: {
@@ -44,29 +33,25 @@ export default {
     },
     size: {
       type: String,
-      default: 'extra-small',
+      default: 'small',
     },
     color: {
       type: String,
-    },
-    library: {
-      type: String,
-      default: '/icons/astro.svg',
-    },
-    label: {
-      type: String,
-      default: 'icon',
+      default: 'white',
     },
   },
   computed: {
-    style: function () {
-      return '--iconColor=' + this.propscolor
-    },
-  },
-  methods: {
-    getIcon() {
-      return this.library + '#' + this.icon
+    colorStyle: function () {
+      return {
+        '--iconColor': this.color,
+      }
     },
   },
 }
 </script>
+
+<style scoped>
+rux-icon {
+  color: var(--iconColor);
+}
+</style>

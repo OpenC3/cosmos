@@ -45,20 +45,16 @@
         :disabled="files.length < 1"
         :loading="loadingPackage"
       >
-        <v-icon left dark>mdi-cloud-upload</v-icon>
+        <v-icon start theme="dark">mdi-cloud-upload</v-icon>
         <span> Upload </span>
         <template v-slot:loader>
           <span>Loading...</span>
         </template>
       </v-btn>
     </v-row>
-    <v-alert
-      v-model="showAlert"
-      dismissible
-      transition="scale-transition"
-      :type="alertType"
-      >{{ alert }}</v-alert
-    >
+    <v-alert v-model="showAlert" closable :type="alertType">{{
+      alert
+    }}</v-alert>
     <v-list
       v-if="Object.keys(processes).length > 0"
       class="list"
@@ -73,29 +69,28 @@
       </v-row>
       <div v-for="process in processes" :key="process.name">
         <v-list-item>
-          <v-list-item-content>
-            <v-list-item-title>
-              <span
-                :class="process.state.toLowerCase()"
-                v-text="
-                  `Processing ${process.process_type}: ${process.detail} - ${process.state}`
-                "
-              />
-            </v-list-item-title>
-            <v-list-item-subtitle>
-              <span v-text="' Updated At: ' + formatDate(process.updated_at)" />
-            </v-list-item-subtitle>
-          </v-list-item-content>
-          <v-list-item-icon v-if="process.state !== 'Running'">
-            <v-tooltip bottom>
-              <template v-slot:activator="{ on, attrs }">
-                <v-icon @click="showOutput(process)" v-bind="attrs" v-on="on">
+          <v-list-item-title>
+            <span
+              :class="process.state.toLowerCase()"
+              v-text="
+                `Processing ${process.process_type}: ${process.detail} - ${process.state}`
+              "
+            />
+          </v-list-item-title>
+          <v-list-item-subtitle>
+            <span v-text="' Updated At: ' + formatDate(process.updated_at)" />
+          </v-list-item-subtitle>
+
+          <template v-slot:append v-if="process.state !== 'Running'">
+            <v-tooltip location="bottom">
+              <template v-slot:activator="{ props }">
+                <v-icon v-bind="props" @click="showOutput(process)">
                   mdi-eye
                 </v-icon>
               </template>
               <span>Show Output</span>
             </v-tooltip>
-          </v-list-item-icon>
+          </template>
         </v-list-item>
         <v-divider />
       </div>
@@ -104,38 +99,36 @@
       <v-row class="px-4"><v-col class="text-h6">Ruby Gems</v-col></v-row>
       <div v-for="(gem, index) in gems" :key="index">
         <v-list-item>
-          <v-list-item-content>
-            <v-list-item-title>{{ gem }}</v-list-item-title>
-          </v-list-item-content>
-          <v-list-item-icon>
-            <v-tooltip bottom>
-              <template v-slot:activator="{ on, attrs }">
-                <v-icon @click="deletePackage(gem)" v-bind="attrs" v-on="on">
+          <v-list-item-title>{{ gem }}</v-list-item-title>
+
+          <template v-slot:append>
+            <v-tooltip location="bottom">
+              <template v-slot:activator="{ props }">
+                <v-icon v-bind="props" @click="deletePackage(gem)">
                   mdi-delete
                 </v-icon>
               </template>
               <span>Delete Package</span>
             </v-tooltip>
-          </v-list-item-icon>
+          </template>
         </v-list-item>
         <v-divider />
       </div>
       <v-row class="px-4"><v-col class="text-h6">Python Packages</v-col></v-row>
       <div v-for="(pkg, index) in python" :key="index">
         <v-list-item>
-          <v-list-item-content>
-            <v-list-item-title>{{ pkg }}</v-list-item-title>
-          </v-list-item-content>
-          <v-list-item-icon>
-            <v-tooltip bottom>
-              <template v-slot:activator="{ on, attrs }">
-                <v-icon @click="deletePackage(pkg)" v-bind="attrs" v-on="on">
+          <v-list-item-title>{{ pkg }}</v-list-item-title>
+
+          <template v-slot:append>
+            <v-tooltip location="bottom">
+              <template v-slot:activator="{ props }">
+                <v-icon v-bind="props" @click="deletePackage(pkg)">
                   mdi-delete
                 </v-icon>
               </template>
               <span>Delete Package</span>
             </v-tooltip>
-          </v-list-item-icon>
+          </template>
         </v-list-item>
         <v-divider />
       </div>
@@ -201,13 +194,13 @@ export default {
               this.update()
             }, 10000)
           }
-        }
+        },
       )
     },
     formatDate(nanoSecs) {
       return format(
         toDate(parseInt(nanoSecs) / 1_000_000),
-        'yyyy-MM-dd HH:mm:ss.SSS'
+        'yyyy-MM-dd HH:mm:ss.SSS',
       )
     },
     upload: function () {
@@ -221,8 +214,8 @@ export default {
           data: formData,
           headers: { 'Content-Type': 'multipart/form-data' },
           onUploadProgress: function (progressEvent) {
-            var percentCompleted = Math.round(
-              (progressEvent.loaded * 100) / progressEvent.total
+            let percentCompleted = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total,
             )
             self.progress = percentCompleted
           },
@@ -277,5 +270,8 @@ export default {
 }
 .list {
   background-color: var(--color-background-surface-default) !important;
+}
+.v-theme--cosmosDark.v-list div:nth-child(odd) .v-list-item {
+  background-color: var(--color-background-base-selected) !important;
 }
 </style>

@@ -26,11 +26,11 @@
     <!-- width chosen to fit target-packet-item-chooser at full width -->
     <v-dialog v-model="show" width="1200">
       <v-card>
-        <v-system-bar>
+        <v-toolbar height="24">
           <v-spacer />
           <span> Configure Component </span>
           <v-spacer />
-        </v-system-bar>
+        </v-toolbar>
         <v-card-text>
           <v-container>
             <v-row align="center">
@@ -38,10 +38,10 @@
               <v-col>
                 <v-select
                   hide-details
-                  dense
-                  outlined
+                  density="compact"
+                  variant="outlined"
                   :items="components"
-                  item-text="label"
+                  item-title="label"
                   item-value="value"
                   v-model="selectedComponent"
                   return-object
@@ -56,7 +56,7 @@
               <v-col class="my-2">
                 <v-radio-group
                   v-model="newPacketCmdOrTlm"
-                  row
+                  inline
                   hide-details
                   class="mt-0"
                 >
@@ -76,7 +76,7 @@
             <v-row>
               <v-col>
                 <target-packet-item-chooser
-                  @click="addValue"
+                  @add-item="addValue"
                   :button-text="chooseItem ? 'Add Item' : 'Add Packet'"
                   :mode="newPacketCmdOrTlm"
                   :chooseItem="chooseItem"
@@ -85,7 +85,7 @@
             </v-row>
             <v-row>
               <v-col>
-                <v-radio-group v-model="newPacketMode" row hide-details>
+                <v-radio-group v-model="newPacketMode" inline hide-details>
                   <v-radio
                     label="Raw"
                     value="RAW"
@@ -116,29 +116,15 @@
                 <v-data-table
                   :headers="headers"
                   :items="packets"
-                  :search="search"
-                  :items-per-page="itemsPerPage"
-                  @update:items-per-page="itemsPerPage = $event"
-                  :footer-props="{
-                    itemsPerPageOptions: [10, 100],
-                    showFirstLastPage: true,
-                    firstIcon: 'mdi-page-first',
-                    lastIcon: 'mdi-page-last',
-                    prevIcon: 'mdi-chevron-left',
-                    nextIcon: 'mdi-chevron-right',
-                  }"
-                  calculate-widths
+                  v-model:items-per-page="itemsPerPage"
+                  :items-per-page-options="[10, 100]"
                   multi-sort
-                  dense
+                  density="compact"
                 >
                   <template v-slot:item.delete="{ item }">
-                    <v-tooltip bottom>
-                      <template v-slot:activator="{ on, attrs }">
-                        <v-icon
-                          @click="deleteItem(item)"
-                          v-bind="attrs"
-                          v-on="on"
-                        >
+                    <v-tooltip location="bottom">
+                      <template v-slot:activator="{ props }">
+                        <v-icon @click="deleteItem(item)" v-bind="props">
                           mdi-delete
                         </v-icon>
                       </template>
@@ -150,21 +136,19 @@
             >
           </v-container>
         </v-card-text>
-        <v-card-actions>
+        <v-card-actions class="px-2">
           <v-spacer />
           <v-btn
-            outlined
-            class="mx-2"
+            variant="outlined"
             data-test="cancel-component"
             @click="cancelAddComponent"
           >
             Cancel
           </v-btn>
           <v-btn
-            color="primary"
-            class="mx-2"
+            variant="flat"
             data-test="add-component"
-            :disabled="notValid"
+            :disabled="!valid"
             @click="addComponent"
           >
             Create
@@ -183,7 +167,7 @@ export default {
     TargetPacketItemChooser,
   },
   props: {
-    value: Boolean, // value is the default prop when using v-model
+    modelValue: Boolean,
     components: Object,
   },
   data() {
@@ -197,32 +181,32 @@ export default {
       chooseItem: false,
       disableRadioOptions: false,
       headers: [
-        { text: 'Cmd/Tlm', value: 'cmdOrTlm' },
-        { text: 'Target', value: 'targetName' },
-        { text: 'Packet', value: 'packetName' },
-        { text: 'Item', value: 'itemName' },
-        { text: 'Mode', value: 'mode' },
-        { text: 'ValueType', value: 'valueType' },
-        { text: 'Delete', value: 'delete' },
+        { title: 'Cmd/Tlm', value: 'cmdOrTlm' },
+        { title: 'Target', value: 'targetName' },
+        { title: 'Packet', value: 'packetName' },
+        { title: 'Item', value: 'itemName' },
+        { title: 'Mode', value: 'mode' },
+        { title: 'ValueType', value: 'valueType' },
+        { title: 'Delete', value: 'delete' },
       ],
       itemsPerPage: 20,
       packets: [],
     }
   },
   computed: {
-    notValid: function () {
+    valid: function () {
       if (this.selectedComponent === null || this.packets.length === 0) {
-        return true
-      } else {
         return false
+      } else {
+        return true
       }
     },
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
   },
@@ -271,7 +255,7 @@ export default {
       })
     },
     deleteItem: function (item) {
-      var index = this.packets.indexOf(item)
+      let index = this.packets.indexOf(item)
       this.packets.splice(index, 1)
     },
     cancelAddComponent: function () {

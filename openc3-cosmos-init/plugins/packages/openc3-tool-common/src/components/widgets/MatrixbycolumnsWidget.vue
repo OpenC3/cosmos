@@ -25,15 +25,17 @@
     <tr v-for="(chunk, rindex) in widgetChunks" :key="'r' + rindex">
       <td v-for="(widget, cindex) in chunk" :key="'c' + cindex">
         <component
-          v-on="$listeners"
+          v-bind="listeners"
           :is="widget.type"
           :target="widget.target"
           :parameters="widget.parameters"
           :settings="widget.settings"
+          :screen-values="screenValues"
+          :screen-time-zone="screenTimeZone"
           :widgets="widget.widgets"
           :name="widget.name"
           :line="widget.line"
-          :lineNumber="widget.lineNumber"
+          :line-number="widget.lineNumber"
         />
       </td>
     </tr>
@@ -61,7 +63,7 @@ export default {
           (setting) =>
             setting[0] === 'MARGIN' ||
             (setting[0] === 'RAW' &&
-              setting[1].toUpperCase().includes('MARGIN'))
+              setting[1].toUpperCase().includes('MARGIN')),
         )
         if (found === undefined) {
           widget.settings.push(['MARGIN', margin])

@@ -29,10 +29,10 @@
   >
     <v-card>
       <div ref="bar">
-        <v-system-bar>
-          <v-tooltip top>
-            <template v-slot:activator="{ on, attrs }">
-              <div v-on="on" v-bind="attrs">
+        <v-toolbar height="24">
+          <v-tooltip location="top">
+            <template v-slot:activator="{ props }">
+              <div v-bind="props">
                 <v-icon data-test="copy-icon" @click="copyRawData">
                   mdi-content-copy
                 </v-icon>
@@ -40,9 +40,9 @@
             </template>
             <span> Copy </span>
           </v-tooltip>
-          <v-tooltip top>
-            <template v-slot:activator="{ on, attrs }">
-              <div v-on="on" v-bind="attrs">
+          <v-tooltip location="top">
+            <template v-slot:activator="{ props }">
+              <div v-bind="props">
                 <v-icon data-test="download" @click="downloadRawData">
                   mdi-download
                 </v-icon>
@@ -53,9 +53,9 @@
           <v-spacer />
           <span> {{ type }} </span>
           <v-spacer />
-          <v-tooltip top>
-            <template v-slot:activator="{ on, attrs }">
-              <div v-on="on" v-bind="attrs">
+          <v-tooltip location="top">
+            <template v-slot:activator="{ props }">
+              <div v-bind="props">
                 <v-icon data-test="close" @click="$emit('close')">
                   mdi-close-box
                 </v-icon>
@@ -63,17 +63,20 @@
             </template>
             <span> Close </span>
           </v-tooltip>
-        </v-system-bar>
+        </v-toolbar>
       </div>
-      <v-card-title>
+      <v-card-title class="d-flex align-center justify-content-space-between">
         <span> {{ header }} </span>
         <v-spacer />
-        <v-tooltip top>
-          <template v-slot:activator="{ on, attrs }">
-            <div v-on="on" v-bind="attrs">
-              <v-btn icon data-test="pause" @click="pause">
-                <v-icon> {{ buttonIcon }} </v-icon>
-              </v-btn>
+        <v-tooltip location="top">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
+              <v-btn
+                :icon="buttonIcon"
+                variant="text"
+                data-test="pause"
+                @click="pause"
+              />
             </div>
           </template>
           <span> {{ buttonLabel }} </span>
@@ -279,9 +282,9 @@ export default {
     },
     // TODO: Perhaps move this to a utility library
     formatBuffer: function (buffer) {
-      var string = ''
-      var index = 0
-      var ascii = ''
+      let string = ''
+      let index = 0
+      let ascii = ''
       buffer.forEach((byte) => {
         if (index % 16 === 0) {
           string += this.numHex(index, 8) + ': '
@@ -309,16 +312,16 @@ export default {
       // middle of a line. If so we have to print out the final ASCII if
       // requested.
       if (index % 16 != 0) {
-        var existing_length = (index % 16) - 1 + (index % 16) * 2
+        let existing_length = (index % 16) - 1 + (index % 16) * 2
         // 47 is (16 * 2) + 15 separator spaces
-        var filler = ' '.repeat(47 - existing_length)
-        var ascii_filler = ' '.repeat(16 - ascii.length)
+        let filler = ' '.repeat(47 - existing_length)
+        let ascii_filler = ' '.repeat(16 - ascii.length)
         string += filler + '  ' + ascii + ascii_filler
       }
       return string
     },
     numHex(num, width = 2) {
-      var hex = num.toString(16)
+      let hex = num.toString(16)
       return '0'.repeat(width - hex.length) + hex
     },
   },

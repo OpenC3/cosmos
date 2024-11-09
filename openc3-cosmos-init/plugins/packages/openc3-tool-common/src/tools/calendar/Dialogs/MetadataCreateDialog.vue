@@ -24,99 +24,93 @@
   <div>
     <v-dialog persistent v-model="show" width="600">
       <v-card>
-        <form @submit.prevent="createMetadata">
-          <v-system-bar>
-            <v-spacer />
-            <span v-if="metadata">Update Metadata</span>
-            <span v-else>Create Metadata</span>
-            <v-spacer />
-            <v-tooltip top>
-              <template v-slot:activator="{ on, attrs }">
-                <div v-on="on" v-bind="attrs">
-                  <v-icon data-test="close-metadata-icon" @click="show = !show">
-                    mdi-close-box
-                  </v-icon>
+        <v-toolbar height="24">
+          <v-spacer />
+          <span v-if="metadata">Update Metadata</span>
+          <span v-else>Create Metadata</span>
+          <v-spacer />
+          <v-tooltip location="top">
+            <template v-slot:activator="{ props }">
+              <div v-bind="props">
+                <v-icon data-test="close-metadata-icon" @click="clearHandler">
+                  mdi-close-box
+                </v-icon>
+              </div>
+            </template>
+            <span>Close</span>
+          </v-tooltip>
+        </v-toolbar>
+        <v-stepper
+          v-model="dialogStep"
+          editable
+          :items="['Metadata Times', 'Metadata Input']"
+        >
+          <template v-if="dialogStep === 2" v-slot:actions>
+            <v-row class="ma-0 px-6 pb-4">
+              <v-btn @click="() => (dialogStep -= 1)" variant="text">
+                Previous
+              </v-btn>
+              <v-spacer />
+              <v-btn
+                @click="clearHandler"
+                variant="outlined"
+                class="mr-4"
+                data-test="trigger-create-cancel-btn"
+              >
+                Cancel
+              </v-btn>
+              <v-btn
+                @click.prevent="submitHandler"
+                type="submit"
+                color="primary"
+                data-test="trigger-create-submit-btn"
+                :disabled="!!error"
+              >
+                Ok
+              </v-btn>
+            </v-row>
+          </template>
+
+          <template v-slot:item.1>
+            <v-card-text>
+              <div class="pa-2">
+                <color-select-form v-model="color" />
+                <v-row dense>
+                  <v-text-field
+                    v-model="startDate"
+                    type="date"
+                    label="Start Date"
+                    class="mx-1"
+                    :rules="[rules.required]"
+                    data-test="metadata-start-date"
+                  />
+                  <v-text-field
+                    v-model="startTime"
+                    type="time"
+                    step="1"
+                    label="Start Time"
+                    class="mx-1"
+                    :rules="[rules.required]"
+                    data-test="metadata-start-time"
+                  />
+                </v-row>
+              </div>
+            </v-card-text>
+          </template>
+
+          <template v-slot:item.2>
+            <v-card-text>
+              <div class="pa-2">
+                <div style="min-height: 200px">
+                  <metadata-input-form v-model="metadataVals" />
                 </div>
-              </template>
-              <span>Close</span>
-            </v-tooltip>
-          </v-system-bar>
-          <v-stepper v-model="dialogStep" vertical non-linear>
-            <v-stepper-step editable step="1">
-              Input start time
-            </v-stepper-step>
-            <v-stepper-content step="1">
-              <v-card-text>
-                <div class="pa-2">
-                  <color-select-form v-model="color" />
-                  <v-row dense>
-                    <v-text-field
-                      v-model="startDate"
-                      type="date"
-                      label="Start Date"
-                      class="mx-1"
-                      :rules="[rules.required]"
-                      data-test="metadata-start-date"
-                    />
-                    <v-text-field
-                      v-model="startTime"
-                      type="time"
-                      step="1"
-                      label="Start Time"
-                      class="mx-1"
-                      :rules="[rules.required]"
-                      data-test="metadata-start-time"
-                    />
-                  </v-row>
-                  <v-row class="mt-2">
-                    <v-spacer />
-                    <v-btn
-                      @click="dialogStep = 2"
-                      data-test="metadata-step-two-btn"
-                      color="success"
-                    >
-                      Continue
-                    </v-btn>
-                  </v-row>
-                </div>
-              </v-card-text>
-            </v-stepper-content>
-            <v-stepper-step editable step="2">Metadata Input</v-stepper-step>
-            <v-stepper-content step="2">
-              <v-card-text>
-                <div class="pa-2">
-                  <div style="min-height: 200px">
-                    <metadata-input-form v-model="metadataVals" />
-                  </div>
-                  <v-row v-show="typeError">
-                    <span class="ma-2 red--text" v-text="typeError" />
-                  </v-row>
-                  <v-row class="mt-2">
-                    <v-spacer />
-                    <v-btn
-                      @click="show = !show"
-                      outlined
-                      class="mx-2"
-                      data-test="metadata-cancel-btn"
-                    >
-                      Cancel
-                    </v-btn>
-                    <v-btn
-                      @click.prevent="createMetadata"
-                      class="mx-2"
-                      color="primary"
-                      type="submit"
-                      data-test="metadata-submit-btn"
-                      :disabled="!!typeError"
-                    >
-                      Ok
-                    </v-btn>
-                  </v-row>
-                </div>
-              </v-card-text>
-            </v-stepper-content>
-          </v-stepper>
-        </form>
+                <v-row v-show="typeError">
+                  <span class="ma-2 text-red" v-text="typeError" />
+                </v-row>
+              </div>
+            </v-card-text>
+          </template>
+        </v-stepper>
       </v-card>
     </v-dialog>
   </div>
@@ -135,7 +129,7 @@ export default {
     MetadataInputForm,
   },
   props: {
-    value: Boolean, // value is the default prop when using v-model
+    modelValue: Boolean,
     metadata: {
       type: Object,
       default: null,
@@ -173,10 +167,10 @@ export default {
     },
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
   },
@@ -197,7 +191,10 @@ export default {
         this.metadataVals = []
       }
     },
-    createMetadata: function () {
+    clearHandler: function () {
+      this.show = !this.show
+    },
+    submitHandler() {
       const color = this.color
       const metadata = this.metadataVals.reduce((result, element) => {
         result[element.key] = element.value

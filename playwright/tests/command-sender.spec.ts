@@ -28,19 +28,19 @@ test.use({
 // Helper function to select a parameter dropdown
 async function selectValue(page, param, value) {
   let row = page.locator(`tr:has-text("${param}")`)
-  await row.getByRole('button').click()
+  await row.getByRole('combobox').click()
   await page.getByRole('option', { name: value }).click()
 }
 
 // Helper function to set parameter value
 async function setValue(page, param, value) {
   await page
-    .locator(`tr:has-text("${param}") [data-test=cmd-param-value]`)
+    .locator(`tr:has-text("${param}") [data-test=cmd-param-value] input`)
     .first()
     .fill(value)
   // Trigger the update handler that sets the drop down by pressing Enter
   await page
-    .locator(`tr:has-text("${param}") [data-test=cmd-param-value]`)
+    .locator(`tr:has-text("${param}") [data-test=cmd-param-value] input`)
     .first()
     .press('Enter')
   await checkValue(page, param, value)
@@ -50,7 +50,7 @@ async function setValue(page, param, value) {
 async function checkValue(page, param, value) {
   expect(
     await page.inputValue(
-      `tr:has-text("${param}") [data-test=cmd-param-value]`,
+      `tr:has-text("${param}") [data-test=cmd-param-value] input`,
     ),
   ).toMatch(value)
 }
@@ -78,8 +78,12 @@ test('selects a target and packet', async ({ page, utils }) => {
 test('displays INST COLLECT using the route', async ({ page, utils }) => {
   await page.goto('/tools/cmdsender/INST/COLLECT')
   await expect(page.locator('.v-app-bar')).toContainText('Command Sender')
-  await utils.inputValue(page, '[data-test=select-target] input', 'INST')
-  await utils.inputValue(page, '[data-test=select-packet] input', 'COLLECT')
+  await utils.dropdownSelectedValue(page, '[data-test="select-target"]', 'INST')
+  await utils.dropdownSelectedValue(
+    page,
+    '[data-test="select-packet"]',
+    'COLLECT',
+  )
   await expect(page.locator('main')).toContainText('Starts a collect')
   await expect(page.locator('main')).toContainText('Parameters')
   await expect(page.locator('main')).toContainText('DURATION')
@@ -155,7 +159,7 @@ test('warns for required parameters', async ({ page, utils }) => {
   await expect(page.locator('.v-dialog')).toContainText('Error sending')
   await expect(page.locator('.v-dialog')).toContainText('INST COLLECT TYPE')
   await expect(page.locator('.v-dialog')).toContainText(
-    'not one of NORMAL, SPECIAL',
+    "Required command parameter 'INST COLLECT TYPE' not given",
   )
   await page.locator('button:has-text("Ok")').click()
 })
@@ -254,7 +258,7 @@ test('handles string values', async ({ page, utils }) => {
   await expect(page.locator('main')).toContainText('ASCII command')
   // The default text 'NOOP' should be selected
   let row = page.locator(`tr:has-text("STRING")`)
-  await expect(row.getByRole('button')).toContainText('NOOP')
+  await expect(row.getByRole('combobox')).toContainText('NOOP')
   await checkValue(page, 'STRING', 'NOOP')
   await page.locator('[data-test="select-send"]').click()
   await expect(page.locator('main')).toContainText(
@@ -455,7 +459,7 @@ test('ignores normal range checks', async ({ page, utils }) => {
   await page.locator('button:has-text("Ok")').click()
   // Disable range checks
   await page.locator('[data-test=command-sender-mode]').click()
-  await page.locator('text=Ignore Range Checks').click()
+  await page.getByText('Ignore Range Checks').click()
   await page.locator('[data-test="select-send"]').click()
   await expect(page.locator('main')).toContainText(
     'cmd_no_range_check("INST COLLECT with TYPE \'NORMAL\', DURATION 1, OPCODE 171, TEMP 100") sent',
@@ -467,8 +471,7 @@ test('ignores normal range checks', async ({ page, utils }) => {
 
   // Enable range checks
   await page.locator('[data-test=command-sender-mode]').click()
-  await page.locator('text=Ignore Range Checks').click()
-
+  await page.getByText('Ignore Range Checks').click()
   await utils.selectTargetPacketItem('EXAMPLE', 'START')
   await page.locator('[data-test=sender-history]').click()
   await utils.sleep(500) // Allow focus to change
@@ -519,7 +522,8 @@ test('displays state values in hex', async ({ page, utils }) => {
   await selectValue(page, 'TYPE', 'NORMAL') // Ensure TYPE is set since its required
   await checkValue(page, 'TYPE', '0')
   await page.locator('[data-test=command-sender-mode]').click()
-  await page.locator('text=Display State').click()
+  await page.getByText('Display State Values in Hex').click()
+  await page.locator('[data-test=command-sender-mode]').click()
   await checkValue(page, 'TYPE', '0x0')
 })
 
@@ -541,7 +545,7 @@ test('disable parameter conversions', async ({ page, utils }) => {
   await page.locator('[data-test="clear-history"]').click()
   await utils.selectTargetPacketItem('INST', 'SETPARAMS')
   await page.locator('[data-test="select-send"]').click()
-  await page.locator('rux-icon-apps path').click()
+  await page.locator('rux-icon-apps').getByRole('img').click()
 
   await page.locator('text=Script Runner').click()
   await expect(page.locator('.v-app-bar')).toContainText('Script Runner')
@@ -549,10 +553,13 @@ test('disable parameter conversions', async ({ page, utils }) => {
     .locator('textarea')
     .fill('puts get_cmd_buffer("INST", "SETPARAMS")["buffer"].formatted')
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('Connecting...', {
-    timeout: 5000,
-  })
-  await expect(page.locator('[data-test=state]')).toHaveValue('stopped', {
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'Connecting...',
+    {
+      timeout: 5000,
+    },
+  )
+  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
     timeout: 20000,
   })
   await expect(page.locator('[data-test=output-messages]')).toContainText(
@@ -589,10 +596,13 @@ test('disable parameter conversions', async ({ page, utils }) => {
   await expect(page.locator('.v-app-bar')).toContainText('Script Runner')
   // Should load the previous script so we can just click start
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('Connecting...', {
-    timeout: 5000,
-  })
-  await expect(page.locator('[data-test=state]')).toHaveValue('stopped', {
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'Connecting...',
+    {
+      timeout: 5000,
+    },
+  )
+  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
     timeout: 20000,
   })
   await expect(page.locator('[data-test=output-messages]')).toContainText(

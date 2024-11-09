@@ -24,16 +24,18 @@
   <svg id="canvas" :width="width" :height="height">
     <component
       v-for="(widget, index) in widgets"
-      v-on="$listeners"
+      v-bind="listeners"
       :key="index"
       :is="widget.type"
       :target="widget.target"
       :parameters="widget.parameters"
       :settings="widget.settings"
+      :screen-values="screenValues"
+      :screen-time-zone="screenTimeZone"
       :widgets="widget.widgets"
       :name="widget.name"
       :line="widget.line"
-      :lineNumber="widget.lineNumber"
+      :line-number="widget.lineNumber"
     />
   </svg>
 </template>

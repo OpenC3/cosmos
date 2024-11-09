@@ -46,9 +46,17 @@ export default {
     return {
       title: 'Administrator Console',
       curTab: null,
-      tabs: TabsList,
     }
   },
-  methods: {},
+  computed: {
+    tabs: function () {
+      return TabsList.map((tab) => {
+        return {
+          displayName: tab.displayName,
+          path: { name: tab.name },
+        }
+      })
+    },
+  },
 }
 </script>

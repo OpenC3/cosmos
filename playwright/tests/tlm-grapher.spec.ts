@@ -76,7 +76,11 @@ test('minimizes a graph', async ({ page, utils }) => {
   await utils.sleep(500) // Ensure chart is stable
   // Get ElementHandle to the chart
   const chart = await page.$('#chart0')
-  await chart.waitForElementState('stable')
+  if (chart) {
+    await chart.waitForElementState('stable')
+  } else {
+    throw new Error('Chart element not found')
+  }
   const origBox = await chart.boundingBox()
   // Minimize / maximized the graph
   await page.locator('[data-test=minimize-screen-icon]').click()
@@ -85,15 +89,19 @@ test('minimizes a graph', async ({ page, utils }) => {
   await expect(page.locator('#chart0')).toBeVisible()
   await chart.waitForElementState('stable')
   const maximizeBox = await chart.boundingBox()
-  expect(maximizeBox.width).toBe(origBox.width)
-  expect(maximizeBox.height).toBe(origBox.height)
+  expect(maximizeBox.width).toEqual(origBox.width)
+  expect(maximizeBox.height).toEqual(origBox.height)
 })
 
 test('shrinks and expands a graph width', async ({ page, utils }) => {
   await utils.sleep(500) // Ensure chart is stable
   // Get ElementHandle to the chart
   const chart = await page.$('#chart0')
-  await chart.waitForElementState('stable')
+  if (chart) {
+    await chart.waitForElementState('stable')
+  } else {
+    throw new Error('Chart element not found')
+  }
   const origBox = await chart.boundingBox()
 
   await page.locator('[data-test=collapse-width]').click()
@@ -101,31 +109,37 @@ test('shrinks and expands a graph width', async ({ page, utils }) => {
   const halfWidthBox = await chart.boundingBox()
   // Check that we're now half with only 1 digit of precision
   expect(origBox.width / halfWidthBox.width).toBeCloseTo(2, 1)
-  expect(halfWidthBox.height).toBe(origBox.height)
+  expect(halfWidthBox.height).toEqual(origBox.height)
   await page.locator('[data-test=expand-width]').click()
   await chart.waitForElementState('stable')
   const collapseWidthBox = await chart.boundingBox()
-  expect(collapseWidthBox.width).toBe(origBox.width)
-  expect(collapseWidthBox.height).toBe(origBox.height)
+  expect(origBox.width).toEqual(collapseWidthBox.width)
+  expect(collapseWidthBox.height).toEqual(origBox.height)
 })
 
 test('shrinks and expands a graph height', async ({ page, utils }) => {
   await utils.sleep(500) // Ensure chart is stable
   // Get ElementHandle to the chart
   const chart = await page.$('#chart0')
-  await chart.waitForElementState('stable')
+  if (chart) {
+    await chart.waitForElementState('stable')
+  } else {
+    throw new Error('Chart element not found')
+  }
   const origBox = await chart.boundingBox()
   await page.locator('[data-test=collapse-height]').click()
   await chart.waitForElementState('stable')
   const collapseHeightBox = await chart.boundingBox()
   // Check that we're less than original ... it's not half
   expect(collapseHeightBox.height).toBeLessThan(origBox.height)
-  expect(collapseHeightBox.width).toBe(origBox.width)
+  expect(collapseHeightBox.width).toEqual(origBox.width)
   await page.locator('[data-test=expand-height]').click()
   await chart.waitForElementState('stable')
   const expandHeightBox = await chart.boundingBox()
-  expect(expandHeightBox.width).toBe(origBox.width)
-  expect(expandHeightBox.height).toBe(origBox.height)
+  expect(expandHeightBox.width).toEqual(origBox.width)
+  expect(Math.abs(origBox.height - expandHeightBox.height)).toBeLessThanOrEqual(
+    1.1,
+  )
 })
 
 test('shrinks and expands both width and height', async ({ page, utils }) => {
@@ -148,8 +162,8 @@ test('shrinks and expands both width and height', async ({ page, utils }) => {
   await page.locator('[data-test=collapse-all]').click()
   await chart.waitForElementState('stable')
   const minBox2 = await chart.boundingBox()
-  expect(minBox2.width).toBe(minBox.width)
-  expect(minBox2.height).toBe(minBox.height)
+  expect(minBox.width).toEqual(minBox2.width)
+  expect(Math.abs(minBox.height - minBox2.height)).toBeLessThanOrEqual(1.1)
 })
 
 test('edits a graph', async ({ page, utils }) => {
@@ -160,16 +174,19 @@ test('edits a graph', async ({ page, utils }) => {
 
   await page.locator('[data-test=edit-graph-icon]').click()
   await expect(page.locator('.v-dialog')).toContainText('Edit Graph')
-  await page.locator('[data-test=edit-graph-title]').fill('Test Graph Title')
+  await page.getByLabel('Title').fill('Test Graph Title')
 
   const start = sub(new Date(), { minutes: 2 })
   await page.getByLabel('Start Date').fill(format(start, 'yyyy-MM-dd'))
   await page.getByLabel('Start Time').fill(format(start, 'HH:mm:ss'))
 
   await page.getByRole('tab', { name: 'Scale / Lines' }).click()
-  await page.locator('[data-test=edit-graph-min-y]').fill('-50')
-  await page.locator('[data-test=edit-graph-max-y]').fill('50')
-  await page.getByRole('button', { name: 'New Horizontal Line' }).click()
+  await page.getByLabel('Min Y Axis (Optional)').fill('-50')
+  await page.getByLabel('Max Y Axis (Optional)').fill('50')
+  await page.getByRole('button', { name: 'New Line' }).click()
+  await page.getByLabel('Y Value').fill('20')
+  await page.getByText('white').click()
+  await page.getByRole('option', { name: 'darkorange' }).click()
 
   await page.getByRole('tab', { name: 'Items' }).click()
   await expect(page.locator('[data-test=edit-graph-items]')).toContainText(

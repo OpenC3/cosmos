@@ -619,9 +619,18 @@ def run_migrations(folder)
   end
 
   # Run each newly discovered migration unless brand_new
-  folder = "/openc3/lib/openc3/migrations" unless folder
+  if !folder
+    folder = "/openc3/lib/openc3/migrations"
+    entries = Dir.entries(folder).map { |entry| File.join(folder, entry) }
+    folder = "/openc3-enterprise/lib/openc3/migrations"
+    if File.exist?(folder)
+      entries.concat(Dir.entries(folder).map { |entry| File.join(folder, entry) })
+    end
+    entries = entries.sort() # run in alphabetical order
+  else
+    entries = Dir.entries(folder).sort
+  end
   migrations = OpenC3::MigrationModel.all
-  entries = Dir.entries(folder).sort # run in alphabetical order
   entries.each do |entry|
     name = File.basename(entry)
     extension = File.extname(name)

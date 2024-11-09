@@ -37,8 +37,8 @@
             label="Search"
             prepend-inner-icon="mdi-magnify"
             clearable
-            outlined
-            dense
+            variant="outlined"
+            density="compact"
             single-line
             hide-details
             data-test="running-search" /></v-row
@@ -47,34 +47,27 @@
         :headers="runningHeaders"
         :items="runningScripts"
         :search="runningSearch"
-        dense
-        calculate-widths
-        multi-sort
-        sort-by="start_time"
-        sort-desc
+        density="compact"
         data-test="running-scripts"
-        :footer-props="{
-          itemsPerPageOptions: [3],
-          showFirstLastPage: true,
-        }"
+        :items-per-page-options="[3]"
         max-height="400"
       >
         <template v-slot:item.connect="{ item }">
           <v-btn color="primary" @click="connectScript(item)">
             <span>Connect</span>
-            <v-icon right v-show="connectInNewTab"> mdi-open-in-new </v-icon>
+            <v-icon end v-show="connectInNewTab"> mdi-open-in-new </v-icon>
           </v-btn>
         </template>
         <template v-slot:item.stop="{ item }">
           <v-btn color="primary" @click="stopScript(item)">
             <span>Stop</span>
-            <v-icon right> mdi-close-circle-outline </v-icon>
+            <v-icon end> mdi-close-circle-outline </v-icon>
           </v-btn>
         </template>
         <template v-slot:item.delete="{ item }">
           <v-btn color="primary" @click="deleteScript(item)">
             <span>Delete</span>
-            <v-icon right> mdi-alert-octagon-outline </v-icon>
+            <v-icon end> mdi-alert-octagon-outline </v-icon>
           </v-btn>
         </template>
       </v-data-table>
@@ -92,8 +85,8 @@
             label="Search"
             prepend-inner-icon="mdi-magnify"
             clearable
-            outlined
-            dense
+            variant="outlined"
+            density="compact"
             single-line
             hide-details
           />
@@ -104,16 +97,9 @@
         :headers="completedHeaders"
         :items="completedScripts"
         :search="completedSearch"
-        dense
-        calculate-widths
-        multi-sort
-        sort-by="start"
-        sort-desc
+        density="compact"
         data-test="completed-scripts"
-        :footer-props="{
-          itemsPerPageOptions: [5],
-          showFirstLastPage: true,
-        }"
+        :items-per-page-options="[5]"
       >
         <template v-slot:item.view="{ item }">
           <v-btn color="primary" @click="viewScriptLog(item)">
@@ -131,7 +117,14 @@
             :loading="downloadScript && downloadScript.name === item.name"
             @click="downloadScriptLog(item)"
           >
-            <v-icon>mdi-file-download-outline</v-icon>
+            <span v-if="item.name.includes('(') && item.name.includes(')')"
+              >Script Report</span
+            >
+            <span v-else>Script Log</span>
+            <v-icon end> mdi-file-download-outline </v-icon>
+            <template v-slot:loader>
+              <span>Loading...</span>
+            </template>
           </v-btn>
         </template>
       </v-data-table>
@@ -166,24 +159,24 @@ export default {
       runningScripts: [],
       runningHeaders: [
         {
-          text: 'Connect',
-          value: 'connect',
+          title: 'Connect',
+          key: 'connect',
           sortable: false,
           filterable: false,
         },
-        { text: 'Id', value: 'id' },
-        { text: 'User', value: 'user' },
-        { text: 'Name', value: 'name' },
-        { text: 'Start Time', value: 'start_time' },
+        { title: 'Id', key: 'id' },
+        { title: 'User', key: 'user' },
+        { title: 'Name', key: 'name' },
+        { title: 'Start Time', key: 'start_time' },
         {
-          text: 'Stop',
-          value: 'stop',
+          title: 'Stop',
+          key: 'stop',
           sortable: false,
           filterable: false,
         },
         {
-          text: 'Force Quit',
-          value: 'delete',
+          title: 'Force Quit',
+          key: 'delete',
           sortable: false,
           filterable: false,
         },
@@ -191,19 +184,19 @@ export default {
       completedSearch: '',
       completedScripts: [],
       completedHeaders: [
-        { text: 'Id', value: 'id' },
-        { text: 'User', value: 'user' },
-        { text: 'Name', value: 'name' },
-        { text: 'Start Time', value: 'start' },
+        { title: 'Id', value: 'id' },
+        { title: 'User', value: 'user' },
+        { title: 'Name', value: 'name' },
+        { title: 'Start Time', value: 'start' },
         {
-          text: 'View',
+          title: 'View',
           value: 'view',
           sortable: false,
           filterable: false,
         },
         {
-          text: 'Download',
-          value: 'download',
+          title: 'Download',
+          key: 'download',
           sortable: false,
           filterable: false,
         },
@@ -343,3 +336,8 @@ export default {
   },
 }
 </script>
+<style>
+.v-sheet {
+  background-color: var(--color-background-base-default);
+}
+</style>

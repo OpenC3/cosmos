@@ -50,10 +50,7 @@ export default {
       return this.parameters[5] ? parseInt(this.parameters[5]) : 20
     },
     cssProps() {
-      let value = null
-      if (this.screen) {
-        value = this.screen.screenValues[this.valueId][0]
-      }
+      let value = this.screenValues[this.valueId][0]
       let color = this.colors[value]
       if (!color) {
         color = this.colors.ANY
@@ -77,7 +74,7 @@ export default {
   // the store mutation and return the array index.
   // What this means practically is that future lifecycle hooks may not have valueId set.
   created() {
-    this.settings.forEach((setting) => {
+    this.appliedSettings.forEach((setting) => {
       switch (setting[0]) {
         case 'LED_COLOR':
           this.colors[setting[1]] = setting[2]
@@ -88,14 +85,10 @@ export default {
       this.parameters[3] = 'CONVERTED'
     }
     this.valueId = `${this.parameters[0]}__${this.parameters[1]}__${this.parameters[2]}__${this.parameters[3]}`
-    if (this.screen) {
-      this.screen.addItem(this.valueId)
-    }
+    this.$emit('addItem', this.valueId)
   },
-  destroyed() {
-    if (this.screen) {
-      this.screen.deleteItem(this.valueId)
-    }
+  unmounted() {
+    this.$emit('deleteItem', this.valueId)
   },
 }
 </script>

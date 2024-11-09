@@ -24,135 +24,126 @@
   <div>
     <v-dialog persistent v-model="show" width="600">
       <v-card>
-        <form @submit.prevent="createNote">
-          <v-system-bar>
-            <v-spacer />
-            <span v-if="note">Update Note</span>
-            <span v-else>Create Note</span>
-            <v-spacer />
-            <v-tooltip top>
-              <template v-slot:activator="{ on, attrs }">
-                <div v-on="on" v-bind="attrs">
-                  <v-icon data-test="close-note-icon" @click="show = !show">
-                    mdi-close-box
-                  </v-icon>
+        <v-toolbar height="24">
+          <v-spacer />
+          <span v-if="note">Update Note</span>
+          <span v-else>Create Note</span>
+          <v-spacer />
+          <v-tooltip location="top">
+            <template v-slot:activator="{ props }">
+              <div v-bind="props">
+                <v-icon data-test="close-note-icon" @click="clearHandler">
+                  mdi-close-box
+                </v-icon>
+              </div>
+            </template>
+            <span> Close </span>
+          </v-tooltip>
+        </v-toolbar>
+        <v-stepper
+          v-model="dialogStep"
+          editable
+          :items="['Note Times', 'Note Input']"
+        >
+          <template v-if="dialogStep === 2" v-slot:actions>
+            <v-row class="ma-0 px-6 pb-4">
+              <v-btn @click="() => (dialogStep -= 1)" variant="text">
+                Previous
+              </v-btn>
+              <v-spacer />
+              <v-btn
+                @click="clearHandler"
+                variant="outlined"
+                class="mr-4"
+                data-test="trigger-create-cancel-btn"
+              >
+                Cancel
+              </v-btn>
+              <v-btn
+                @click.prevent="submitHandler"
+                type="submit"
+                color="primary"
+                data-test="trigger-create-submit-btn"
+                :disabled="!!error"
+              >
+                Ok
+              </v-btn>
+            </v-row>
+          </template>
+
+          <template v-slot:item.1>
+            <v-card-text>
+              <div class="pa-2">
+                <v-row dense>
+                  <v-text-field
+                    v-model="startDate"
+                    type="date"
+                    label="Start Date"
+                    class="mx-1"
+                    :rules="[rules.required]"
+                    data-test="note-start-date"
+                  />
+                  <v-text-field
+                    v-model="startTime"
+                    type="time"
+                    step="1"
+                    label="Start Time"
+                    class="mx-1"
+                    :rules="[rules.required]"
+                    data-test="note-start-time"
+                  />
+                </v-row>
+                <v-row dense>
+                  <v-text-field
+                    v-model="endDate"
+                    type="date"
+                    label="End Date"
+                    class="mx-1"
+                    :rules="[rules.required]"
+                    data-test="note-end-date"
+                  />
+                  <v-text-field
+                    v-model="endTime"
+                    type="time"
+                    step="1"
+                    label="End Time"
+                    class="mx-1"
+                    :rules="[rules.required]"
+                    data-test="note-end-time"
+                  />
+                </v-row>
+                <v-row>
+                  <span
+                    class="ma-2 text-red"
+                    v-show="timeError"
+                    v-text="timeError"
+                  />
+                </v-row>
+              </div>
+            </v-card-text>
+          </template>
+
+          <template v-slot:item.2>
+            <v-card-text>
+              <div class="pa-2">
+                <div>
+                  <color-select-form v-model="color" />
                 </div>
-              </template>
-              <span> Close </span>
-            </v-tooltip>
-          </v-system-bar>
-          <v-stepper v-model="dialogStep" vertical non-linear>
-            <v-stepper-step editable step="1">
-              Input start time, end time
-            </v-stepper-step>
-            <v-stepper-content step="1">
-              <v-card-text>
-                <div class="pa-2">
-                  <v-row dense>
-                    <v-text-field
-                      v-model="startDate"
-                      type="date"
-                      label="Start Date"
-                      class="mx-1"
-                      :rules="[rules.required]"
-                      data-test="note-start-date"
-                    />
-                    <v-text-field
-                      v-model="startTime"
-                      type="time"
-                      step="1"
-                      label="Start Time"
-                      class="mx-1"
-                      :rules="[rules.required]"
-                      data-test="note-start-time"
-                    />
-                  </v-row>
-                  <v-row dense>
-                    <v-text-field
-                      v-model="endDate"
-                      type="date"
-                      label="End Date"
-                      class="mx-1"
-                      :rules="[rules.required]"
-                      data-test="note-end-date"
-                    />
-                    <v-text-field
-                      v-model="endTime"
-                      type="time"
-                      step="1"
-                      label="End Time"
-                      class="mx-1"
-                      :rules="[rules.required]"
-                      data-test="note-end-time"
-                    />
-                  </v-row>
-                  <v-row>
-                    <span
-                      class="ma-2 red--text"
-                      v-show="timeError"
-                      v-text="timeError"
-                    />
-                  </v-row>
-                  <v-row class="mt-2">
-                    <v-spacer />
-                    <v-btn
-                      @click="dialogStep = 2"
-                      data-test="note-step-two-btn"
-                      color="success"
-                      :disabled="!!timeError"
-                    >
-                      Continue
-                    </v-btn>
-                  </v-row>
+                <div>
+                  <v-text-field
+                    v-model="description"
+                    type="text"
+                    label="Note Description"
+                    data-test="note-description"
+                  />
                 </div>
-              </v-card-text>
-            </v-stepper-content>
-            <v-stepper-step editable step="2">
-              Input Description
-            </v-stepper-step>
-            <v-stepper-content step="2">
-              <v-card-text>
-                <div class="pa-2">
-                  <div>
-                    <color-select-form v-model="color" />
-                  </div>
-                  <div>
-                    <v-text-field
-                      v-model="description"
-                      type="text"
-                      label="Note Description"
-                      data-test="note-description"
-                    />
-                  </div>
-                  <v-row v-show="typeError">
-                    <span class="ma-2 red--text" v-text="typeError" />
-                  </v-row>
-                  <v-row class="mt-2">
-                    <v-spacer />
-                    <v-btn
-                      @click="show = !show"
-                      outlined
-                      class="mx-2"
-                      data-test="note-cancel-btn"
-                    >
-                      Cancel
-                    </v-btn>
-                    <v-btn
-                      @click.prevent="createNote"
-                      class="mx-2"
-                      color="primary"
-                      type="submit"
-                      data-test="note-submit-btn"
-                      :disabled="!!timeError || !!typeError"
-                    >
-                      Ok
-                    </v-btn>
-                  </v-row>
-                </div>
-              </v-card-text>
-            </v-stepper-content>
-          </v-stepper>
-        </form>
+                <v-row v-show="typeError">
+                  <span class="ma-2 text-red" v-text="typeError" />
+                </v-row>
+              </div>
+            </v-card-text>
+          </template>
+        </v-stepper>
       </v-card>
     </v-dialog>
   </div>
@@ -169,7 +160,7 @@ export default {
     ColorSelectForm,
   },
   props: {
-    value: Boolean, // value is the default prop when using v-model
+    modelValue: Boolean,
     note: {
       type: Object,
     },
@@ -218,10 +209,10 @@ export default {
     },
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
   },
@@ -243,7 +234,10 @@ export default {
         this.description = ''
       }
     },
-    createNote: function () {
+    clearHandler: function () {
+      this.show = !this.show
+    },
+    submitHandler() {
       let start
       let stop // API takes stop rather than end
       if (this.timeZone === 'local') {

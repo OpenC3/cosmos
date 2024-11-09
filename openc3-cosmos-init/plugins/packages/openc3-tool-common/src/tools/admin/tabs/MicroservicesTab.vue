@@ -25,47 +25,39 @@
     <v-list class="list" data-test="microserviceList">
       <div v-for="microservice in microservices" :key="microservice">
         <v-list-item>
-          <v-list-item-content>
-            <v-list-item-title>{{ microservice }}</v-list-item-title>
-            <v-list-item-subtitle v-if="microservice_status[microservice]">
-              Updated:
-              {{ formatDate(microservice_status[microservice].updated_at) }},
-              State: {{ microservice_status[microservice].state }}, Count:
-              {{ microservice_status[microservice].count }}
-            </v-list-item-subtitle>
-          </v-list-item-content>
-          <div v-if="microservice_status[microservice]">
-            <div v-show="!!microservice_status[microservice].error">
-              <v-list-item-icon>
-                <v-tooltip bottom>
-                  <template v-slot:activator="{ on, attrs }">
+          <v-list-item-title>{{ microservice }}</v-list-item-title>
+          <v-list-item-subtitle v-if="microservice_status[microservice]">
+            Updated:
+            {{ formatDate(microservice_status[microservice].updated_at) }},
+            State: {{ microservice_status[microservice].state }}, Count:
+            {{ microservice_status[microservice].count }}
+          </v-list-item-subtitle>
+
+          <template v-slot:append>
+            <div v-if="microservice_status[microservice]">
+              <div v-show="!!microservice_status[microservice].error">
+                <v-tooltip location="bottom">
+                  <template v-slot:activator="{ props }">
                     <v-icon
+                      v-bind="props"
                       @click="showMicroserviceError(microservice)"
-                      v-bind="attrs"
-                      v-on="on"
                     >
                       mdi-alert
                     </v-icon>
                   </template>
                   <span>View Error</span>
                 </v-tooltip>
-              </v-list-item-icon>
+              </div>
             </div>
-          </div>
-          <v-list-item-icon>
-            <v-tooltip bottom>
-              <template v-slot:activator="{ on, attrs }">
-                <v-icon
-                  @click="showMicroservice(microservice)"
-                  v-bind="attrs"
-                  v-on="on"
-                >
+            <v-tooltip location="bottom">
+              <template v-slot:activator="{ props }">
+                <v-icon v-bind="props" @click="showMicroservice(microservice)">
                   mdi-eye
                 </v-icon>
               </template>
               <span>View Microservice</span>
             </v-tooltip>
-          </v-list-item-icon>
+          </template>
         </v-list-item>
         <v-divider />
       </div>
@@ -174,5 +166,8 @@ export default {
 <style scoped>
 .list {
   background-color: var(--color-background-surface-default) !important;
+}
+.v-theme--cosmosDark.v-list div:nth-child(odd) .v-list-item {
+  background-color: var(--color-background-base-selected) !important;
 }
 </style>

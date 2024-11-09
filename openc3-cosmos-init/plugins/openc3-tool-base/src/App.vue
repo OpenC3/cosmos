@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -21,14 +21,14 @@
 -->
 
 <template>
-  <v-app :style="classificationStyles">
+  <v-app id="app" :style="classificationStyles">
     <app-nav class="d-print-none" />
 
     <!-- Sizes your content based upon application components -->
-    <v-main :style="mainStyle">
-      <v-container fluid>
-        <div id="openc3-tool" style="overflow: auto"></div>
+    <v-main :style="mainStyle" min-height="100vh">
+      <v-container fluid height="100%">
         <div><router-view /></div>
+        <div id="openc3-tool"></div>
       </v-container>
     </v-main>
     <app-footer app class="d-print-none" />
@@ -60,3 +60,9 @@ export default {
   },
 }
 </script>
+
+<style>
+#openc3-tool {
+  height: 100%;
+}
+</style>

@@ -48,10 +48,7 @@ export default {
     // TODO: Not sure why we have to reimplement this from BarColumn
     // strangely enough LimitsbarWidget.vue works fine without it
     cssProps: function () {
-      let value = null
-      if (this.screen) {
-        value = this.screen.screenValues[this.valueId][0]
-      }
+      let value = this.screenValues[this.valueId][0]
       let limits = this.modifyLimits(
         this.limitsSettings[this.selectedLimitsSet],
       )
@@ -83,6 +80,7 @@ export default {
   align-items: center;
   padding: 5px;
   height: var(--height);
+  margin-right: 5px;
 }
 .limitsbar__container {
   position: relative;
