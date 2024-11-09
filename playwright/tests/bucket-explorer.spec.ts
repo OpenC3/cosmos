@@ -142,6 +142,24 @@ test('direct URLs', async ({ page }) => {
   ).toBeVisible()
 })
 
+test('view file', async ({ page, utils }) => {
+  await page.getByText('config').click()
+  await page.getByRole('cell', { name: 'DEFAULT' }).click()
+  await page.getByRole('cell', { name: 'targets' }).click()
+  await page.getByRole('cell', { name: 'INST', exact: true }).click()
+  await page.getByRole('cell', { name: 'procedures' }).click()
+  await page.locator('[data-test="search-input"] input').fill('calendar')
+  await page.locator('[data-test="view-file"]').first().click()
+  await expect(page.locator('pre')).toContainText('create_timeline')
+  await page.getByRole('button', { name: 'Ok' }).click()
+  await page.locator('[data-test="search-input"] input').fill('')
+  await page.getByText('/ INST').click()
+  await utils.sleep(500) // Allow the page to render
+  await page.locator('[data-test="view-file"]').first().click()
+  await expect(page.locator('pre')).toContainText('LANGUAGE ruby')
+  await page.getByRole('button', { name: 'Ok' }).click()
+})
+
 test('upload and delete', async ({ page, utils }) => {
   await page.getByText('config').click()
   await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/config%2F/)
