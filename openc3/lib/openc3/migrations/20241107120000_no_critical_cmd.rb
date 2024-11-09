@@ -17,6 +17,7 @@ module OpenC3
         ScopeModel.get_all_models(scope: nil).each do |scope, scope_model|
           model = MicroserviceModel.get_model(name: "#{scope}__CRITICALCMD__#{scope}", scope: scope)
           model.destroy if model
+        end
       end
     end
   end

@@ -210,7 +210,7 @@ async function testMetadataApis(page, utils, filename) {
     timeout: 20000,
   })
   await page.locator('[data-test="new-event"]').click()
-  await page.locator('[data-test="metadata-step-two-btn"]').click()
+  await page.getByRole('button', { name: 'Next', exact: true }).click()
   await page.locator('[data-test="new-metadata-icon"]').click()
   await page.locator('[data-test="key-0"]').locator('input').fill('inputkey')
   await page

@@ -159,7 +159,7 @@ test('warns for required parameters', async ({ page, utils }) => {
   await expect(page.locator('.v-dialog')).toContainText('Error sending')
   await expect(page.locator('.v-dialog')).toContainText('INST COLLECT TYPE')
   await expect(page.locator('.v-dialog')).toContainText(
-    'not one of NORMAL, SPECIAL',
+    "Required command parameter 'INST COLLECT TYPE' not given",
   )
   await page.locator('button:has-text("Ok")').click()
 })

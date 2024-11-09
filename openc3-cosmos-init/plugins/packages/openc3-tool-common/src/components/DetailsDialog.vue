@@ -254,16 +254,16 @@ export default {
                 `${this.targetName}__${this.packetName}__${this.itemName}__WITH_UNITS`,
               ])
               .then((values) => {
-                for (let i = 0; i < values.length; i++) {
+                for (let value of values) {
                   let rawString = null
                   // Check for raw encoded strings (non-ascii)
                   if (
-                    values[i][0]['json_class'] === 'String' &&
-                    values[i][0]['raw'] !== undefined
+                    value[0]['json_class'] === 'String' &&
+                    value[0]['raw'] !== undefined
                   ) {
-                    rawString = values[i][0]['raw']
+                    rawString = value[0]['raw']
                   } else if (this.details.data_type === 'BLOCK') {
-                    rawString = values[i][0]
+                    rawString = value[0]
                   }
                   if (rawString !== null) {
                     // Slice the number of bytes in case they added UNITS
@@ -278,7 +278,7 @@ export default {
                     if (rawString.length > 64) {
                       ellipse = true
                     }
-                    values[i][0] = Array.from(
+                    value[0] = Array.from(
                       rawString.slice(0, 64),
                       function (byte) {
                         // Can't really display spaces so change to 20 (hex)
@@ -292,7 +292,7 @@ export default {
                       .join(' ')
                       .toUpperCase()
                     if (ellipse) {
-                      values[i][0] += '...'
+                      value[0] += '...'
                     }
                   }
                 }
