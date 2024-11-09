@@ -36,9 +36,246 @@ img {
   height: auto;
 }
 
-img[alt="LABEL"] {
+img[alt="WIDTH"] {
+  width: 260px;
+}
+
+img[alt="HEIGHT"] {
   width: 200px;
 }
+
+img[alt="MARGIN"] {
+  width: 180px;
+}
+
+img[alt="PADDING"] {
+  width: 200px;
+}
+
+img[alt="BACKCOLOR"] {
+  width: 200px;
+}
+
+img[alt="TEXTCOLOR"] {
+  width: 200px;
+}
+
+img[alt="BORDERCOLOR"] {
+  width: 200px;
+}
+
+img[alt="RAW"] {
+  width: 180px;
+}
+
+img[alt="SUBSETTING"] {
+  width: 300px;
+}
+
+img[alt="NAMED_WIDGET"] {
+  width: 200px;
+}
+
+img[alt="VERTICAL"] {
+  width: 200px;
+}
+
+img[alt="VERTICALBOX"] {
+  width: 200px;
+}
+
+img[alt="HORIZONTAL"] {
+  width: 500px;
+}
+
+img[alt="HORIZONTALBOX"] {
+  width: 200px;
+}
+
+img[alt="MATRIXBYCOLUMNS"] {
+  width: 220px;
+}
+
+img[alt="SCROLLWINDOW"] {
+  width: 180px;
+}
+
+img[alt="TABITEM"] {
+  width: 200px;
+}
+
+img[alt="IFRAME"] {
+  width: 800px;
+}
+
+img[alt="LABEL"] {
+  width: 220px;
+}
+
+img[alt="HORIZONTALLINE"] {
+  width: 180px;
+}
+
+img[alt="TITLE"] {
+  width: 180px;
+}
+
 img[alt="SPACER"] {
+  width: 180px;
+}
+
+img[alt="ARRAY"] {
+  width: 220px;
+}
+
+img[alt="BLOCK"] {
+  width: 500px;
+}
+
+img[alt="FORMATVALUE"] {
+  width: 200px;
+}
+
+img[alt="LABELLED"] {
+  width: 180px;
+}
+
+img[alt="LABELPROGRESSBAR"] {
+  width: 320px;
+}
+
+img[alt="LABELVALUE"] {
+  width: 300px;
+}
+
+img[alt="LABELVALUEDESC"] {
+  width: 300px;
+}
+
+img[alt="LABELVALUELIMITSCOLUMN"] {
+  width: 180px;
+}
+
+img[alt="LABELVALUERANGEBAR"] {
+  width: 500px;
+}
+
+img[alt="LED"] {
+  width: 200px;
+}
+
+img[alt="LIMITSBAR"] {
+  width: 200px;
+}
+
+img[alt="LIMITSCOLUMN"] {
+  width: 200px;
+}
+
+img[alt="LIMITSCOLOR"] {
+  width: 220px;
+}
+
+img[alt="VALUELIMITSCOLUMN"] {
+  width: 180px;
+}
+
+img[alt="VALUERANGEBAR"] {
+  width: 220px;
+}
+
+img[alt="LINEGRAPH"] {
+  width: 400px;
+}
+
+img[alt="SPARKLINE"] {
+  width: 400px;
+}
+
+img[alt="LABELSPARKLINE"] {
+  width: 200px;
+}
+
+img[alt="IMAGEVIEWER"] {
+  width: 200px;
+}
+
+img[alt="PROGRESSBAR"] {
+  width: 200px;
+}
+
+img[alt="RANGEBAR"] {
+  width: 200px;
+}
+
+img[alt="ROLLUP"] {
+  width: 200px;
+}
+
+img[alt="SIGNAL"] {
+  width: 200px;
+}
+
+img[alt="TEXTBOX"] {
+  width: 200px;
+}
+
+img[alt="VALUE"] {
+  width: 200px;
+}
+
+img[alt="BUTTON"] {
+  width: 200px;
+}
+
+img[alt="CHECKBUTTON"] {
+  width: 200px;
+}
+
+img[alt="COMBOBOX"] {
+  width: 200px;
+}
+
+img[alt="DATE"] {
+  width: 200px;
+}
+
+img[alt="RADIOBUTTON"] {
+  width: 200px;
+}
+
+img[alt="TEXTFIELD"] {
+  width: 200px;
+}
+
+img[alt="TIME"] {
+  width: 200px;
+}
+
+img[alt="CANVASLABEL"] {
+  width: 200px;
+}
+
+img[alt="CANVASLABELVALUE"] {
+  width: 220px;
+}
+
+img[alt="CANVASIMAGE"] {
+  width: 220px;
+}
+
+img[alt="CANVASIMAGEVALUE"] {
+  width: 220px;
+}
+
+img[alt="CANVASLINE"] {
+  width: 200px;
+}
+
+img[alt="CANVASLINEVALUE"] {
+  width: 200px;
+}
+
+img[alt="CANVASDOT"] {
   width: 200px;
 }
