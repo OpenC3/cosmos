@@ -73,7 +73,7 @@ export default {
   },
   created: function () {
     // Look through the settings and get a reference to the screen
-    this.settings.forEach((setting) => {
+    this.appliedSettings.forEach((setting) => {
       if (setting[0] === 'SCREEN') {
         this.screenTarget = setting[1]
         this.screenName = setting[2]
@@ -91,7 +91,7 @@ export default {
   methods: {
     clickHandler() {
       if (this.screenTarget && this.screenName) {
-        this.screen.open(this.screenTarget, this.screenName)
+        this.$emit('open', this.screenTarget, this.screenName)
       }
     },
   },

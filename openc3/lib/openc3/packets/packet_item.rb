@@ -112,8 +112,6 @@ module OpenC3
       @messages_disabled = nil
       @state_colors = nil
       @limits = PacketItemLimits.new
-      @persistence_setting = 1
-      @persistence_count = 0
       @meta = nil
     end
 
@@ -426,15 +424,13 @@ module OpenC3
       config << self.read_conversion.to_config(:READ) if self.read_conversion
       config << self.write_conversion.to_config(:WRITE) if self.write_conversion
 
-      if self.limits
-        if self.limits.values
-          self.limits.values.each do |limits_set, limits_values|
-            config << "    LIMITS #{limits_set} #{self.limits.persistence_setting} #{self.limits.enabled ? 'ENABLED' : 'DISABLED'} #{limits_values[0]} #{limits_values[1]} #{limits_values[2]} #{limits_values[3]}"
-            if limits_values[4] && limits_values[5]
-              config << " #{limits_values[4]} #{limits_values[5]}\n"
-            else
-              config << "\n"
-            end
+      if self.limits.values
+        self.limits.values.each do |limits_set, limits_values|
+          config << "    LIMITS #{limits_set} #{self.limits.persistence_setting} #{self.limits.enabled ? 'ENABLED' : 'DISABLED'} #{limits_values[0]} #{limits_values[1]} #{limits_values[2]} #{limits_values[3]}"
+          if limits_values[4] && limits_values[5]
+            config << " #{limits_values[4]} #{limits_values[5]}\n"
+          else
+            config << "\n"
           end
         end
         config << self.limits.response.to_config if self.limits.response
@@ -489,35 +485,33 @@ module OpenC3
       config['read_conversion'] = self.read_conversion.as_json(*a) if self.read_conversion
       config['write_conversion'] = self.write_conversion.as_json(*a) if self.write_conversion
 
-      if self.limits
-        config['limits'] ||= {}
-        if self.limits.enabled
-          config['limits']['enabled'] = true
-        else
-          config['limits']['enabled'] = false
+      config['limits'] ||= {}
+      if self.limits.enabled
+        config['limits']['enabled'] = true
+      elsif self.limits.values || (self.state_colors && self.state_colors.length > 0)
+        # Only set to false if there are limits or state colors
+        # to avoid items without limits acting like they can be enabled
+        config['limits']['enabled'] = false
+      end
+      if self.limits.values
+        # Only set these if there are limits.values because persistence_setting has a default
+        # and we don't want keys on the 'limits' hash if there aren't any limits
+        config['limits']['persistence_setting'] = self.limits.persistence_setting if self.limits.persistence_setting
+        config['limits']['response'] = self.limits.response.to_s if self.limits.response
+        self.limits.values.each do |limits_set, limits_values|
+          limits = {}
+          limits['red_low'] =  limits_values[0]
+          limits['yellow_low'] = limits_values[1]
+          limits['yellow_high'] = limits_values[2]
+          limits['red_high'] = limits_values[3]
+          limits['green_low'] = limits_values[4] if limits_values[4]
+          limits['green_high'] = limits_values[5] if limits_values[5]
+          config['limits'][limits_set] = limits
         end
-        if self.limits.values
-          config['limits'] ||= {}
-          config['limits']['persistence_setting'] = self.limits.persistence_setting
-          config['limits']['response'] = self.limits.response.to_s if self.limits.response
-          self.limits.values.each do |limits_set, limits_values|
-            limits = {}
-            limits['red_low'] =  limits_values[0]
-            limits['yellow_low'] = limits_values[1]
-            limits['yellow_high'] = limits_values[2]
-            limits['red_high'] = limits_values[3]
-            limits['green_low'] = limits_values[4] if limits_values[4]
-            limits['green_high'] = limits_values[5] if limits_values[5]
-            config['limits'][limits_set] = limits
-          end
-        end
-        config['limits_response'] = self.limits.response.as_json(*a) if self.limits.response
       end
 
       config['meta'] = @meta if @meta
-      if @variable_bit_size
-        config['variable_bit_size'] = @variable_bit_size
-      end
+      config['variable_bit_size'] = @variable_bit_size if @variable_bit_size
       config
     end
 

@@ -38,20 +38,23 @@ test('saves the configuration', async ({ page, utils }) => {
     button: 'right',
   })
   await page.locator('[data-test="context-menu-rename"]').click()
-  await page.locator('[data-test="rename-tab-input"]').fill('Test1')
+  await page.locator('[data-test="rename-tab-input"] input').fill('Test1')
   await page.locator('[data-test="rename"]').click()
   await expect(page.getByRole('tab', { name: 'Test1' })).toBeVisible()
   // Change a display setting
   await page.locator('[data-test=history-component-open-settings]').click()
   await expect(page.locator('[data-test=display-settings-card]')).toBeVisible()
   await page
-    .locator('[data-test=history-component-settings-history]')
+    .locator('[data-test=history-component-settings-history] input')
     .fill('200')
   await page.locator('#openc3-menu >> text=Data Viewer').click({ force: true })
 
   // Add a new component with a different type
   await page.locator('[data-test=new-tab]').click()
-  await page.getByRole('button', { name: 'COSMOS Packet Raw/Decom' }).click()
+  await page
+    .getByRole('combobox')
+    .filter({ hasText: 'COSMOS Packet Raw/Decom' })
+    .click()
   await page.getByText('Current Time').click()
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
   await page.locator('[data-test=select-send]').click() // add the packet to the list
@@ -60,14 +63,14 @@ test('saves the configuration', async ({ page, utils }) => {
     button: 'right',
   })
   await page.locator('[data-test="context-menu-rename"]').click()
-  await page.locator('[data-test="rename-tab-input"]').fill('Test2')
+  await page.locator('[data-test="rename-tab-input"] input').fill('Test2')
   await page.locator('[data-test="rename"]').click()
   await expect(page.getByRole('tab', { name: 'Test2' })).toBeVisible()
 
   await page.locator('[data-test="data-viewer-file"]').click()
   await page.locator('text=Save Configuration').click()
   await page
-    .locator('[data-test="name-input-save-config-dialog"]')
+    .locator('[data-test="name-input-save-config-dialog"] input')
     .fill('playwright')
   await page.locator('button:has-text("Ok")').click()
   await expect(page.getByText(`Saved configuration: playwright`)).toBeVisible()
@@ -88,13 +91,16 @@ test('opens and resets the configuration', async ({ page, utils }) => {
   await page.locator('[data-test=history-component-open-settings]').click()
   await expect(page.locator('[data-test=display-settings-card]')).toBeVisible()
   expect(
-    await page.inputValue('[data-test=history-component-settings-history]'),
+    await page.inputValue(
+      '[data-test=history-component-settings-history] input',
+    ),
   ).toMatch('200')
   await page.locator('#openc3-menu >> text=Data Viewer').click({ force: true })
   await expect(
     page.locator('[data-test=display-settings-card]'),
   ).not.toBeVisible()
   await page.getByRole('tab', { name: 'Test2' }).click()
+  await utils.sleep(500)
   await expect(page.getByText('Current Time:')).toBeVisible()
 
   // Reset this test configuration
@@ -118,13 +124,22 @@ test('adds a raw packet to a new tab', async ({ page, utils }) => {
   await page.locator('[data-test=start-button]').click()
   await utils.sleep(500)
   expect(
-    await page.inputValue('[data-test=history-component-text-area]'),
+    await page
+      .locator('[data-test=history-component-text-area]')
+      .getByLabel('')
+      .inputValue(),
   ).toMatch('Received seconds:')
   expect(
-    await page.inputValue('[data-test=history-component-text-area]'),
+    await page
+      .locator('[data-test=history-component-text-area]')
+      .getByLabel('')
+      .inputValue(),
   ).toMatch('00000010:')
   expect(
-    await page.inputValue('[data-test=history-component-text-area]'),
+    await page
+      .locator('[data-test=history-component-text-area]')
+      .getByLabel('')
+      .inputValue(),
   ).toMatch('00000020:')
 })
 
@@ -139,16 +154,28 @@ test('adds a decom packet to a new tab', async ({ page, utils }) => {
   await page.locator('[data-test=start-button]').click()
   await utils.sleep(500)
   expect(
-    await page.inputValue('[data-test=history-component-text-area]'),
+    await page
+      .locator('[data-test=history-component-text-area]')
+      .getByLabel('')
+      .inputValue(),
   ).toMatch('POSX:')
   expect(
-    await page.inputValue('[data-test=history-component-text-area]'),
+    await page
+      .locator('[data-test=history-component-text-area]')
+      .getByLabel('')
+      .inputValue(),
   ).toMatch('POSY:')
   expect(
-    await page.inputValue('[data-test=history-component-text-area]'),
+    await page
+      .locator('[data-test=history-component-text-area]')
+      .getByLabel('')
+      .inputValue(),
   ).toMatch('POSZ:')
   expect(
-    await page.inputValue('[data-test=history-component-text-area]'),
+    await page
+      .locator('[data-test=history-component-text-area]')
+      .getByLabel('')
+      .inputValue(),
   ).not.toMatch('00000010:')
 })
 
@@ -164,13 +191,21 @@ test('adds a custom component to a new tab', async ({ page, utils }) => {
   await page.locator('[data-test=start-button]').click()
   await utils.sleep(500)
   expect(
-    await page.inputValue('[data-test=history-component-text-area]'),
+    await page
+      .locator('[data-test=history-component-text-area]')
+      .getByLabel('')
+      .inputValue(),
   ).toMatch(/(.*\n)+Magnitude:.*/)
-  await page.locator('[data-test=history-component-search]').fill('Magnitude:')
+  await page
+    .locator('[data-test=history-component-search] input')
+    .fill('Magnitude:')
   // Poll since inputValue is immediate
   await expect
     .poll(async () => {
-      return await page.inputValue('[data-test=history-component-text-area]')
+      return await page
+        .locator('[data-test=history-component-text-area]')
+        .getByLabel('')
+        .inputValue()
     })
     .toMatch(/^Magnitude:.*$/)
 })
@@ -179,12 +214,14 @@ test('renames a tab', async ({ page, utils }) => {
   await addComponent(page, utils, 'INST', 'ADCS')
   await page.locator('[data-test=tab]').click({ button: 'right' })
   await page.locator('[data-test=context-menu-rename] > div').click()
-  await page.locator('[data-test=rename-tab-input]').fill('Testing tab name')
+  await page
+    .locator('[data-test=rename-tab-input] input')
+    .fill('Testing tab name')
   await page.locator('[data-test=rename]').click()
   await expect(page.locator('.v-tab')).toHaveText('Testing tab name')
   await page.locator('[data-test=tab]').click({ button: 'right' })
   await page.locator('[data-test=context-menu-rename] > div').click()
-  await page.locator('[data-test=rename-tab-input]').fill('Cancel this')
+  await page.locator('[data-test=rename-tab-input] input').fill('Cancel this')
   await page.locator('[data-test=cancel-rename]').click()
   await expect(page.locator('.v-tab')).toHaveText('Testing tab name')
 })
@@ -195,7 +232,7 @@ test('deletes a component and tab', async ({ page, utils }) => {
     page.getByRole('tab', { name: 'INST ADCS [ RAW ]' }),
   ).toBeVisible()
   await page.locator('[data-test=delete-component]').click()
-  await expect(page.locator('.v-card > .v-card__title').first()).toHaveText(
+  await expect(page.locator('.v-card > .v-card-title').first()).toHaveText(
     "You're not viewing any packets",
   )
 })
@@ -206,30 +243,46 @@ test('controls playback', async ({ page, utils }) => {
   await utils.sleep(1000) // Allow a few packets to come in
   await page.locator('[data-test=history-component-play-pause]').click()
   await utils.sleep(500) // Ensure it's stopped and draws the last packet contents
-  let content: string = await page.inputValue(
-    '[data-test=history-component-text-area]',
-  )
+  let content: string = await page
+    .locator('[data-test=history-component-text-area]')
+    .getByLabel('')
+    .inputValue()
   // Step back and forth
   await page.getByLabel('prepended action').click()
   expect(content).not.toEqual(
-    await page.inputValue('[data-test=history-component-text-area]'),
+    await page
+      .locator('[data-test=history-component-text-area]')
+      .getByLabel('')
+      .inputValue(),
   )
   await page.getByLabel('appended action').click()
   expect(content).toEqual(
-    await page.inputValue('[data-test=history-component-text-area]'),
+    await page
+      .locator('[data-test=history-component-text-area]')
+      .getByLabel('')
+      .inputValue(),
   )
   // Resume
   await page.locator('[data-test=history-component-play-pause]').click()
   expect(content).not.toEqual(
-    await page.inputValue('[data-test=history-component-text-area]'),
+    await page
+      .locator('[data-test=history-component-text-area]')
+      .getByLabel('')
+      .inputValue(),
   )
   // Stop
   await page.locator('[data-test="stop-button"]').click()
   await utils.sleep(500) // Ensure it's stopped and draws the last packet contents
-  content = await page.inputValue('[data-test=history-component-text-area]')
+  content = await page
+    .locator('[data-test=history-component-text-area]')
+    .getByLabel('')
+    .inputValue()
   await utils.sleep(500) // Wait for potential changes
   expect(content).toEqual(
-    await page.inputValue('[data-test=history-component-text-area]'),
+    await page
+      .locator('[data-test=history-component-text-area]')
+      .getByLabel('')
+      .inputValue(),
   )
 })
 
@@ -241,50 +294,77 @@ test('changes display settings', async ({ page, utils }) => {
   await expect(page.locator('[data-test=display-settings-card]')).toBeVisible()
   await page.getByText('Show timestamp').click()
   expect(
-    await page.inputValue('[data-test=history-component-text-area]'),
+    await page
+      .locator('[data-test=history-component-text-area]')
+      .getByLabel('')
+      .inputValue(),
   ).not.toMatch('Received seconds:')
   await page.getByText('Show timestamp').click()
   expect(
-    await page.inputValue('[data-test=history-component-text-area]'),
+    await page
+      .locator('[data-test=history-component-text-area]')
+      .getByLabel('')
+      .inputValue(),
   ).toMatch('Received seconds:')
   await page.getByText('Show ASCII').click()
   expect(
-    await page.inputValue('[data-test=history-component-text-area]'),
+    await page
+      .locator('[data-test=history-component-text-area]')
+      .getByLabel('')
+      .inputValue(),
   ).toMatch(
     /(\s\w\w){16}\s?(?!\s)/, // per https://regex101.com/
   )
   await page.getByText('Show ASCII').click()
   expect(
-    await page.inputValue('[data-test=history-component-text-area]'),
+    await page
+      .locator('[data-test=history-component-text-area]')
+      .getByLabel('')
+      .inputValue(),
   ).toMatch(
     /(\s\w\w){16}\s{4}\S*/, // per https://regex101.com/
   )
   await page.getByText('Show line address').click()
   expect(
-    await page.inputValue('[data-test=history-component-text-area]'),
+    await page
+      .locator('[data-test=history-component-text-area]')
+      .getByLabel('')
+      .inputValue(),
   ).not.toMatch(/00000000:/)
   await page.getByText('Show line address').click()
   expect(
-    await page.inputValue('[data-test=history-component-text-area]'),
+    await page
+      .locator('[data-test=history-component-text-area]')
+      .getByLabel('')
+      .inputValue(),
   ).toMatch(/00000000:/)
   await page
-    .locator('[data-test=history-component-settings-num-bytes]')
+    .locator('[data-test=history-component-settings-num-bytes] input')
     .fill('8')
   expect(
-    await page.inputValue('[data-test=history-component-text-area]'),
+    await page
+      .locator('[data-test=history-component-text-area]')
+      .getByLabel('')
+      .inputValue(),
   ).toMatch(
     /(\s\w\w){8}\s{4}\S*/, // per https://regex101.com/
   )
 
   expect(
-    await page.inputValue('[data-test=history-component-text-area]'),
+    await page
+      .locator('[data-test=history-component-text-area]')
+      .getByLabel('')
+      .inputValue(),
   ).not.toMatch(/Received seconds:(.*\n)+.*Received seconds:/)
   await page
-    .locator('[data-test=history-component-settings-num-packets]')
+    .locator('[data-test=history-component-settings-num-packets] input')
     .fill('2')
   await utils.sleep(100)
   expect(
-    await page.inputValue('[data-test=history-component-text-area]'),
+    await page
+      .locator('[data-test=history-component-text-area]')
+      .getByLabel('')
+      .inputValue(),
   ).toMatch(
     /Received seconds:(.*\n)+.*Received seconds:/, // per https://regex101.com/
   )
@@ -296,9 +376,10 @@ test('downloads a file', async ({ page, utils }) => {
   await utils.sleep(1000) // Allow a few packets to come in
   await page.locator('[data-test=history-component-play-pause]').click()
 
-  const textarea = await page.inputValue(
-    '[data-test=history-component-text-area]',
-  )
+  const textarea = await page
+    .locator('[data-test=history-component-text-area]')
+    .getByLabel('')
+    .inputValue()
   await utils.download(
     page,
     '[data-test=history-component-download]',
@@ -310,58 +391,58 @@ test('downloads a file', async ({ page, utils }) => {
 
 test('validates start and end time inputs', async ({ page, utils }) => {
   // validate start date
-  await page.locator('[data-test=start-date]').fill('')
+  await page.locator('[data-test=start-date] input').fill('')
   await expect(page.getByText('Required')).toBeVisible()
   // Even though the format is mm/dd/yyyy we enter the date like yyyy-mm-dd
-  await page.locator('[data-test=start-date]').fill('2020-01-01')
+  await page.locator('[data-test=start-date] input').fill('2020-01-01')
   await expect(page.getByText('Required')).not.toBeVisible()
   await expect(page.getByText('Invalid')).not.toBeVisible()
   // validate start time
-  await page.locator('[data-test=start-time]').fill('')
+  await page.locator('[data-test=start-time] input').fill('')
   await expect(page.getByText('Required')).toBeVisible()
-  await page.locator('[data-test=start-time]').fill('12:15:15')
+  await page.locator('[data-test=start-time] input').fill('12:15:15')
   await expect(page.getByText('Required')).not.toBeVisible()
   await expect(page.getByText('Invalid')).not.toBeVisible()
 
   // validate end date
-  await page.locator('[data-test=end-date]').fill('')
+  await page.locator('[data-test=end-date] input').fill('')
   // end date is optional so no Required message
   await expect(page.getByText('Required')).not.toBeVisible()
   // Even though the format is mm/dd/yyyy we enter the date like yyyy-mm-dd
-  await page.locator('[data-test=end-date]').fill('2020-01-01')
+  await page.locator('[data-test=end-date] input').fill('2020-01-01')
   await expect(page.getByText('Invalid')).not.toBeVisible()
   // validate end time
-  await page.locator('[data-test=end-time]').fill('12:15:16')
+  await page.locator('[data-test=end-time] input').fill('12:15:16')
   await expect(page.getByText('Required')).not.toBeVisible()
   await expect(page.getByText('Invalid')).not.toBeVisible()
 })
 
 test('validates start and end time values', async ({ page, utils }) => {
   // validate future start date
-  await page.locator('[data-test=start-date]').fill('4000-01-01')
-  await page.locator('[data-test=start-time]').fill('12:15:15')
+  await page.locator('[data-test=start-date] input').fill('4000-01-01')
+  await page.locator('[data-test=start-time] input').fill('12:15:15')
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('.warning')).toContainText(
+  await expect(page.locator('.v-alert.bg-warning')).toContainText(
     'Start date/time is in the future!',
   )
 
   // validate start/end time equal to each other
-  await page.locator('[data-test=start-date]').fill('2020-01-01')
-  await page.locator('[data-test=start-time]').fill('12:15:15')
-  await page.locator('[data-test=end-date]').fill('2020-01-01')
-  await page.locator('[data-test=end-time]').fill('12:15:15')
+  await page.locator('[data-test=start-date] input').fill('2020-01-01')
+  await page.locator('[data-test=start-time] input').fill('12:15:15')
+  await page.locator('[data-test=end-date] input').fill('2020-01-01')
+  await page.locator('[data-test=end-time] input').fill('12:15:15')
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('.warning')).toContainText(
+  await expect(page.locator('.v-alert.bg-warning')).toContainText(
     'Start date/time is equal to end date/time!',
   )
 
   // validate future end date
-  await page.locator('[data-test=start-date]').fill('2020-01-01')
-  await page.locator('[data-test=start-time]').fill('12:15:15')
-  await page.locator('[data-test=end-date]').fill('4000-01-01')
-  await page.locator('[data-test=end-time]').fill('12:15:15')
+  await page.locator('[data-test=start-date] input').fill('2020-01-01')
+  await page.locator('[data-test=start-time] input').fill('12:15:15')
+  await page.locator('[data-test=end-date] input').fill('4000-01-01')
+  await page.locator('[data-test=end-time] input').fill('12:15:15')
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('.warning')).toContainText(
+  await expect(page.locator('.v-alert.bg-warning')).toContainText(
     'Note: End date/time is greater than current date/time. Data will continue to stream in real-time until 4000-01-01 12:15:15 is reached.',
   )
 })
@@ -381,7 +462,10 @@ test('adds single packet item', async ({ page, utils }) => {
   // Poll since inputValue is immediate
   await expect
     .poll(async () => {
-      return await page.inputValue('[data-test=history-component-text-area]')
+      return await page
+        .locator('[data-test=history-component-text-area]')
+        .getByLabel('')
+        .inputValue()
     })
     // Create regular expression to match the line:
     // Time: 2024-10-01T01:15:49.419Z  TEMP1: -1.119 C
@@ -404,7 +488,10 @@ test('adds multiple packet items', async ({ page, utils }) => {
   // Poll since inputValue is immediate
   await expect
     .poll(async () => {
-      return await page.inputValue('[data-test=history-component-text-area]')
+      return await page
+        .locator('[data-test=history-component-text-area]')
+        .getByLabel('')
+        .inputValue()
     })
     // Create regular expression to match the line:
     // Time: 2024-10-01T02:12:42.419Z  TEMP3: -20.785 C  PACKET_TIME: 2024-10-01 02:12:42 +0000

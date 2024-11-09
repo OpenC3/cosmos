@@ -95,8 +95,8 @@ export const test = base.extend<{
     await expect(page.locator('.v-app-bar')).toContainText(toolName, {
       timeout: 20000,
     })
-    await page.locator('rux-icon-apps path').click()
-    await expect(page.locator('#openc3-nav-drawer')).toBeHidden()
+    await page.locator('rux-icon-apps').getByRole('img').click()
+    await expect(page.locator('#openc3-nav-drawer')).not.toBeInViewport()
 
     // Copyright (c) 2021 Anish Karandikar
     await context.addInitScript(() =>

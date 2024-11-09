@@ -74,8 +74,8 @@ export default {
   display: flex;
   justify-content: center;
   align-items: center;
+  margin-top: 6px;
   padding: 5px;
-  padding-top: 15px;
   width: var(--width);
 }
 .limitsbar__container {

@@ -22,7 +22,7 @@
 
 <template>
   <v-card class="card-height">
-    <v-card-title>
+    <v-card-title class="d-flex align-center">
       Limits Events
       <v-spacer />
       <v-text-field
@@ -30,8 +30,8 @@
         label="Search"
         prepend-inner-icon="mdi-magnify"
         clearable
-        outlined
-        dense
+        variant="outlined"
+        density="compact"
         single-line
         hide-details
         class="search"
@@ -41,12 +41,12 @@
       :headers="headers"
       :items="data"
       :search="search"
-      calculate-widths
-      disable-pagination
+      :items-per-page="-1"
       hide-default-footer
       multi-sort
-      dense
+      density="compact"
       :height="calcTableHeight()"
+      hover
       data-test="limits-events"
     >
       <template v-slot:item.time_nsec="{ item }">
@@ -84,9 +84,9 @@ export default {
       cable: new Cable(),
       search: '',
       headers: [
-        { text: 'Time', value: 'time_nsec', width: 250 },
-        { text: 'Level', value: 'level', sortable: false },
-        { text: 'Message', value: 'message' },
+        { title: 'Time', value: 'time_nsec', width: 250 },
+        { title: 'Level', value: 'level', sortable: false },
+        { title: 'Message', value: 'message' },
       ],
     }
   },
@@ -109,7 +109,7 @@ export default {
         this.limitsSubscription = limitsSubscription
       })
   },
-  destroyed() {
+  unmounted() {
     if (this.limitsSubscription) {
       this.limitsSubscription.unsubscribe()
     }

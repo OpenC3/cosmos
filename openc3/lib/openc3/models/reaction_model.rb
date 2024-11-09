@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -290,7 +290,7 @@ module OpenC3
         name: @microservice_name,
         folder_name: nil,
         cmd: ['ruby', 'reaction_microservice.rb', @microservice_name],
-        work_dir: '/openc3/lib/openc3/microservices',
+        work_dir: '/openc3-enterprise/lib/openc3-enterprise/microservices',
         options: [],
         topics: topics,
         target_names: [],

@@ -21,61 +21,47 @@
 -->
 
 <template>
-  <v-dialog v-model="show" width="700">
+  <v-dialog v-model="show" width="1000">
     <v-card>
-      <v-system-bar>
+      <v-toolbar height="24">
         <v-spacer />
         <span>Overrides</span>
         <v-spacer />
-      </v-system-bar>
+      </v-toolbar>
       <div class="pa-2">
         <v-card-text>
-          <v-btn
-            @click="clearOverrides"
-            color="primary"
-            data-test="overrides-dialog-clear-all"
-          >
-            Clear All Overrides
-          </v-btn>
-
-          <v-card-title>
-            Overrides
+          <v-row class="ma-1">
+            <v-btn
+              @click="clearOverrides"
+              color="primary"
+              data-test="overrides-dialog-clear-all"
+            >
+              Clear All Overrides
+            </v-btn>
             <v-spacer />
             <v-text-field
               v-model="search"
               label="Search"
               prepend-inner-icon="mdi-magnify"
               clearable
-              outlined
-              dense
+              variant="outlined"
+              density="compact"
               single-line
               hide-details
             />
-          </v-card-title>
+          </v-row>
           <v-data-table
             :headers="headers"
             :items="overrides"
             :search="search"
-            :footer-props="{
-              itemsPerPageOptions: [100],
-              showFirstLastPage: true,
-              firstIcon: 'mdi-page-first',
-              lastIcon: 'mdi-page-last',
-              prevIcon: 'mdi-chevron-left',
-              nextIcon: 'mdi-chevron-right',
-            }"
-            calculate-widths
+            :items-per-page-options="[100]"
             multi-sort
-            dense
+            density="compact"
           >
             <template v-slot:item.delete="{ item }">
-              <v-tooltip bottom>
-                <template v-slot:activator="{ on, attrs }">
-                  <v-icon
-                    @click="deleteOverride(item)"
-                    v-bind="attrs"
-                    v-on="on"
-                  >
+              <v-tooltip location="bottom">
+                <template v-slot:activator="{ props }">
+                  <v-icon @click="deleteOverride(item)" v-bind="props">
                     mdi-delete
                   </v-icon>
                 </template>
@@ -85,11 +71,11 @@
           </v-data-table>
         </v-card-text>
       </div>
-      <v-card-actions>
+      <v-card-actions class="px-2">
         <v-spacer />
         <v-btn
+          variant="flat"
           @click="show = !show"
-          color="primary"
           data-test="overrides-dialog-ok"
         >
           Ok
@@ -105,7 +91,7 @@ import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 export default {
   components: {},
   props: {
-    value: {
+    modelValue: {
       type: Boolean,
       required: true,
     },
@@ -132,10 +118,10 @@ export default {
   computed: {
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
   },
@@ -177,7 +163,7 @@ export default {
           item.value_type,
         )
         .then((result) => {
-          var index = this.overrides.indexOf(item)
+          let index = this.overrides.indexOf(item)
           this.overrides.splice(index, 1)
         })
     },

@@ -31,7 +31,7 @@
           @on-set="packetChanged($event)"
         />
       </div>
-      <v-card-title>
+      <v-card-title class="d-flex align-center justify-content-space-between">
         Items
         <v-spacer />
         <v-text-field
@@ -39,8 +39,8 @@
           label="Search"
           prepend-inner-icon="mdi-magnify"
           clearable
-          outlined
-          dense
+          variant="outlined"
+          density="compact"
           single-line
           hide-details
           class="search"
@@ -48,32 +48,23 @@
         />
       </v-card-title>
       <v-data-table
+        :search="search"
         :headers="headers"
         :items="rows"
-        :search="search"
         :custom-filter="filter"
-        :custom-sort="tableSort"
-        :items-per-page="itemsPerPage"
-        @update:items-per-page="itemsPerPage = $event"
-        :footer-props="{
-          itemsPerPageOptions: [10, 20, 50, 100, 500, 1000],
-          showFirstLastPage: true,
-          firstIcon: 'mdi-page-first',
-          lastIcon: 'mdi-page-last',
-          prevIcon: 'mdi-chevron-left',
-          nextIcon: 'mdi-chevron-right',
-        }"
+        :sort-by="sortBy"
         multi-sort
-        dense
+        v-model:items-per-page="itemsPerPage"
+        :items-per-page-options="[10, 20, 50, 100, -1]"
+        density="compact"
       >
         <template v-slot:item.name="{ item }">
           <div @contextmenu="(event) => showContextMenu(event, item)">
             <v-tooltip bottom :key="`${item.name}-${isPinned(item.name)}`">
-              <template v-slot:activator="{ on, attrs }">
+              <template v-slot:activator="{ props }">
                 <v-icon
                   v-if="isPinned(item.name)"
-                  v-bind="attrs"
-                  v-on="on"
+                  v-bind="props"
                   class="pin-item"
                 >
                   mdi-pin
@@ -95,13 +86,13 @@
             :counter="item.counter"
             :parameters="[targetName, packetName, item.name]"
             :settings="[['WIDTH', '100%']]"
-            :time-zone="timeZone"
+            :screen-time-zone="timeZone"
           />
         </template>
         <template v-slot:footer.prepend>
-          <v-tooltip top close-delay="2000">
-            <template v-slot:activator="{ on, attrs }">
-              <v-icon v-bind="attrs" v-on="on" class="info-tooltip">
+          <v-tooltip right close-delay="2000">
+            <template v-slot:activator="{ props }">
+              <v-icon v-bind="props" class="info-tooltip">
                 mdi-information-variant-circle
               </v-icon>
             </template>
@@ -109,26 +100,28 @@
               Name with * indicates
               <a
                 href="/tools/staticdocs/docs/configuration/telemetry#derived-items"
+                target="_blank"
                 >DERIVED</a
               >&nbsp;item<br />
               Right click name to pin item<br />
               Right click value for details / graph
             </span>
           </v-tooltip>
+          <v-spacer />
         </template>
       </v-data-table>
     </v-card>
     <v-dialog
       v-model="optionsDialog"
       @keydown.esc="optionsDialog = false"
-      max-width="300"
+      max-width="360px"
     >
       <v-card>
-        <v-system-bar>
+        <v-toolbar :height="24">
           <v-spacer />
           <span>Options</span>
           <v-spacer />
-        </v-system-bar>
+        </v-toolbar>
         <v-card-text>
           <div class="pa-3">
             <v-text-field
@@ -137,8 +130,7 @@
               step="100"
               type="number"
               label="Refresh Interval (ms)"
-              :value="refreshInterval"
-              @change="refreshInterval = $event"
+              v-model="refreshInterval"
               data-test="refresh-interval"
             />
           </div>
@@ -149,8 +141,9 @@
               step="1"
               type="number"
               label="Time at which to mark data Stale (seconds)"
-              :value="staleLimit"
-              @change="staleLimit = parseInt($event)"
+              :model-value="staleLimit"
+              @update:model-value="staleLimit = parseInt($event)"
+              min-width="280px"
               data-test="stale-limit"
             />
           </div>
@@ -171,13 +164,7 @@
       :configKey="configKey"
       @success="saveConfiguration"
     />
-    <v-menu
-      v-model="contextMenuShown"
-      :position-x="x"
-      :position-y="y"
-      absolute
-      offset-y
-    >
+    <v-menu v-model="contextMenuShown" :target="[x, y]" absolute offset-y>
       <v-list>
         <v-list-item
           v-for="(item, index) in contextMenuOptions"
@@ -227,106 +214,19 @@ export default {
       search: '',
       data: [],
       headers: [
-        { text: 'Name', value: 'name', align: 'end' },
-        { text: 'Value', value: 'value' },
+        {
+          title: 'Name',
+          key: 'name',
+          align: 'end',
+        },
+        { title: 'Value', key: 'value' },
       ],
+      sortBy: [{ key: 'pinned', order: 'desc' }],
       optionsDialog: false,
       showIgnored: false,
       derivedLast: false,
       ignoredItems: [],
       derivedItems: [],
-      menus: [
-        {
-          label: 'File',
-          items: [
-            {
-              label: 'Options',
-              icon: 'mdi-cog',
-              command: () => {
-                this.optionsDialog = true
-              },
-            },
-            {
-              divider: true,
-            },
-            {
-              label: 'Open Configuration',
-              icon: 'mdi-folder-open',
-              command: () => {
-                this.showOpenConfig = true
-              },
-            },
-            {
-              label: 'Save Configuration',
-              icon: 'mdi-content-save',
-              command: () => {
-                this.showSaveConfig = true
-              },
-            },
-            {
-              label: 'Reset Configuration',
-              icon: 'mdi-monitor-shimmer',
-              command: () => {
-                this.resetConfig()
-                this.resetConfigBase()
-              },
-            },
-          ],
-        },
-        {
-          label: 'View',
-          radioGroup: 'Formatted Items with Units', // Default radio selected
-          items: [
-            {
-              label: 'Show Ignored Items',
-              checkbox: true,
-              checked: false,
-              command: (item) => {
-                this.showIgnored = item.checked
-              },
-            },
-            {
-              label: 'Display DERIVED Last',
-              checkbox: true,
-              checked: false,
-              command: (item) => {
-                this.derivedLast = item.checked
-              },
-            },
-            {
-              divider: true,
-            },
-            {
-              label: valueTypeToRadioGroup['WITH_UNITS'],
-              radio: true,
-              command: () => {
-                this.valueType = 'WITH_UNITS'
-              },
-            },
-            {
-              label: valueTypeToRadioGroup['FORMATTED'],
-              radio: true,
-              command: () => {
-                this.valueType = 'FORMATTED'
-              },
-            },
-            {
-              label: valueTypeToRadioGroup['CONVERTED'],
-              radio: true,
-              command: () => {
-                this.valueType = 'CONVERTED'
-              },
-            },
-            {
-              label: valueTypeToRadioGroup['RAW'],
-              radio: true,
-              command: () => {
-                this.valueType = 'RAW'
-              },
-            },
-          ],
-        },
-      ],
       updater: null,
       counter: 0,
       targetName: '',
@@ -366,11 +266,104 @@ export default {
     itemsPerPage: function () {
       this.saveDefaultConfig(this.currentConfig)
     },
-    pinnedItems: function () {
-      this.saveDefaultConfig(this.currentConfig)
+    pinnedItems: {
+      handler(_newVal, _oldVal) {
+        this.saveDefaultConfig(this.currentConfig)
+      },
+      deep: true, // Because pinnedItems is an array
     },
   },
   computed: {
+    menus: function () {
+      return [
+        {
+          label: 'File',
+          items: [
+            {
+              label: 'Options',
+              icon: 'mdi-cog',
+              command: () => {
+                this.optionsDialog = true
+              },
+            },
+            {
+              divider: true,
+            },
+            {
+              label: 'Open Configuration',
+              icon: 'mdi-folder-open',
+              command: () => {
+                this.showOpenConfig = true
+              },
+            },
+            {
+              label: 'Save Configuration',
+              icon: 'mdi-content-save',
+              command: () => {
+                this.showSaveConfig = true
+              },
+            },
+            {
+              label: 'Reset Configuration',
+              icon: 'mdi-monitor-shimmer',
+              command: () => {
+                this.resetConfig()
+                this.resetConfigBase()
+              },
+            },
+          ],
+        },
+        {
+          label: 'View',
+          items: [
+            {
+              label: 'Show Ignored Items',
+              checkbox: true,
+              checked: this.showIgnored,
+              command: (item) => {
+                this.showIgnored = !this.showIgnored
+              },
+            },
+            {
+              label: 'Display DERIVED Last',
+              checkbox: true,
+              checked: this.derivedLast,
+              command: (item) => {
+                this.derivedLast = !this.derivedLast
+              },
+            },
+            {
+              divider: true,
+            },
+            {
+              radioGroup: true,
+              value: this.valueType,
+              command: (value) => {
+                this.valueType = value
+              },
+              choices: [
+                {
+                  label: valueTypeToRadioGroup['WITH_UNITS'],
+                  value: 'WITH_UNITS',
+                },
+                {
+                  label: valueTypeToRadioGroup['FORMATTED'],
+                  value: 'FORMATTED',
+                },
+                {
+                  label: valueTypeToRadioGroup['CONVERTED'],
+                  value: 'CONVERTED',
+                },
+                {
+                  label: valueTypeToRadioGroup['RAW'],
+                  value: 'RAW',
+                },
+              ],
+            },
+          ],
+        },
+      ]
+    },
     currentConfig: function () {
       return {
         target: this.targetName,
@@ -455,13 +448,12 @@ export default {
               packet: config.packet,
             },
           })
-          this.$router.go()
         }
       }
       this.changeUpdater(true)
     }
   },
-  beforeDestroy() {
+  beforeUnmount() {
     if (this.updater != null) {
       clearInterval(this.updater)
       this.updater = null
@@ -492,41 +484,6 @@ export default {
       } else {
         return value.toString().indexOf(search.toUpperCase()) >= 0
       }
-    },
-    tableSort(items, index, isDesc) {
-      // for each item in index, sort by that index
-      index.forEach((idx, i) => {
-        items.sort((a, b) => {
-          let aValue = a[idx]
-          let bValue = b[idx]
-
-          // For values just convert to float before sorting
-          // this will lead to a bunch of NaNs for non-numeric values
-          // but that's fine since they'll sort to the end
-          if (idx === 'value') {
-            aValue = parseFloat(aValue)
-            bValue = parseFloat(bValue)
-          }
-
-          if (aValue < bValue) {
-            return isDesc[i] ? 1 : -1
-          }
-          if (aValue > bValue) {
-            return isDesc[i] ? -1 : 1
-          }
-          return 0
-        })
-      })
-
-      // Finally sort the pinned values to the top
-      items.sort((a, b) => {
-        if (this.isPinned(a.name)) {
-          return -1
-        }
-        return 0
-      })
-
-      return items
     },
     packetChanged(event) {
       this.api.get_target(event.targetName).then((target) => {
@@ -588,6 +545,7 @@ export default {
                     limitsState: value[2],
                     derived: true,
                     counter: this.counter,
+                    pinned: this.isPinned(value[0]),
                   })
                 } else {
                   other.push({
@@ -596,6 +554,7 @@ export default {
                     limitsState: value[2],
                     derived: false,
                     counter: this.counter,
+                    pinned: this.isPinned(value[0]),
                   })
                 }
               })
@@ -616,8 +575,6 @@ export default {
       }, this.refreshInterval)
     },
     resetConfig: function () {
-      this.targetName = ''
-      this.packetName = ''
       this.refreshInterval = 1000
       this.staleLimit = 30
       this.showIgnored = false
@@ -660,7 +617,6 @@ export default {
               config: name,
             },
           })
-          this.$router.go()
         }
       })
     },
@@ -672,11 +628,8 @@ export default {
 </script>
 
 <style scoped>
-.v-tooltip__content {
-  pointer-events: initial;
-}
 a {
-  color: var(--button-color-background-primary-default);
+  color: blue;
 }
 .pin-item {
   float: left;

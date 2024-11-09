@@ -50,7 +50,7 @@ export default {
             })
             if (callback) callback(JSON.parse(response))
             if (!routed) {
-              if (!this.$router.currentRoute.fullPath.includes(name)) {
+              if (!this.$route.fullPath.includes(name)) {
                 this.$router.push({
                   query: {
                     config: name,
@@ -94,11 +94,10 @@ export default {
     },
     resetConfigBase: function () {
       localStorage.removeItem(`${this.configKey}__default`)
-      // fullPath includes the query options like: ?config=test
-      if (this.$router.currentRoute.fullPath !== '/') {
-        this.$router.replace(this.$router.currentRoute.path)
-        this.$router.go()
-      }
+
+      const query = { ...this.$route.query }
+      delete query.config
+      this.$router.replace({ query })
     },
   },
 }

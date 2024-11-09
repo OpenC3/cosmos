@@ -16,21 +16,21 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
 <template>
   <v-dialog v-model="show" width="600">
     <v-card>
-      <v-system-bar>
+      <v-toolbar height="24">
         <v-spacer />
         <span> {{ title }} </span>
         <v-spacer />
         <div class="mx-2">
-          <v-tooltip top>
-            <template v-slot:activator="{ on, attrs }">
-              <div v-on="on" v-bind="attrs">
+          <v-tooltip location="top">
+            <template v-slot:activator="{ props }">
+              <div v-bind="props">
                 <v-icon data-test="downloadIcon" @click="download">
                   mdi-download
                 </v-icon>
@@ -39,7 +39,7 @@
             <span> Download </span>
           </v-tooltip>
         </div>
-      </v-system-bar>
+      </v-toolbar>
       <div class="pa-2">
         <v-card-text>
           <v-textarea
@@ -50,9 +50,9 @@
           />
         </v-card-text>
       </div>
-      <v-card-actions>
+      <v-card-actions class="px-2">
         <v-spacer />
-        <v-btn class="mx-2" color="primary" @click="show = !show"> Ok </v-btn>
+        <v-btn variant="flat" @click="show = !show"> Ok </v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -61,7 +61,7 @@
 <script>
 export default {
   props: {
-    value: Boolean, // value is the default prop when using v-model
+    modelValue: Boolean,
     text: String,
     title: String,
   },
@@ -71,10 +71,10 @@ export default {
     },
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
   },

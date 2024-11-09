@@ -26,9 +26,8 @@
       <template v-if="lastConfigs.length">
         <v-checkbox
           v-model="selectAllLastConfigs"
-          label="Select all"
-          class="mt-0"
-          data-test="select-all-default-configs"
+          label="Select All Configs"
+          density="compact"
         />
         <v-checkbox
           v-for="config in lastConfigs"
@@ -36,19 +35,18 @@
           v-model="selectedLastConfigs"
           :label="config.text"
           :value="config.key"
-          class="mt-0"
-          dense
+          hide-details
+          density="compact"
         />
       </template>
       <template v-else> No configs to clear </template>
     </v-card-text>
-    <v-card-actions>
+    <v-card-actions class="px-2">
       <v-btn
         :disabled="!selectedLastConfigs.length"
         @click="clearLastConfigs"
         color="warning"
-        text
-        class="ml-2"
+        variant="text"
         data-test="clear-default-configs"
       >
         Clear

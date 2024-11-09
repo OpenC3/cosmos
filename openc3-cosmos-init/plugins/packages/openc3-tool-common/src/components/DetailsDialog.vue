@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -21,13 +21,13 @@
 -->
 
 <template>
-  <v-dialog v-model="show" width="600">
+  <v-dialog v-model="show" width="700">
     <v-card>
-      <v-system-bar>
+      <v-toolbar :height="24">
         <v-spacer />
         <span> Details </span>
         <v-spacer />
-      </v-system-bar>
+      </v-toolbar>
 
       <v-card-title>
         {{ targetName }} {{ packetName }} {{ itemName }}
@@ -36,61 +36,63 @@
       <v-card-text>
         <v-container fluid>
           <v-row no-gutters v-if="type === 'tlm'">
-            <v-col cols="3" class="label">Item Values</v-col>
+            <v-col cols="5" class="label">Item Values</v-col>
             <v-col />
-            <v-container fluid class="ml-5 pa-0">
-              <v-row no-gutters>
-                <v-col cols="4" class="label">Raw Value</v-col>
-                <v-col>{{ rawValue }}</v-col>
-              </v-row>
-              <v-row no-gutters>
-                <v-col cols="4" class="label">Converted Value</v-col>
-                <v-col>{{ convertedValue }}</v-col>
-              </v-row>
-              <v-row no-gutters>
-                <v-col cols="4" class="label">Formatted Value</v-col>
-                <v-col>{{ formattedValue }}</v-col>
-              </v-row>
-              <v-row no-gutters>
-                <v-col cols="4" class="label">With Units Value</v-col>
-                <v-col>{{ unitsValue }}</v-col>
-              </v-row>
-            </v-container>
           </v-row>
           <v-row no-gutters>
-            <v-col cols="3" class="label">Bit Offset</v-col>
+            <v-col cols="1"></v-col>
+            <v-col cols="4" class="label">Raw Value</v-col>
+            <v-col>{{ rawValue }}</v-col>
+          </v-row>
+          <v-row no-gutters>
+            <v-col cols="1"></v-col>
+            <v-col cols="4" class="label">Converted Value</v-col>
+            <v-col>{{ convertedValue }}</v-col>
+          </v-row>
+          <v-row no-gutters>
+            <v-col cols="1"></v-col>
+            <v-col cols="4" class="label">Formatted Value</v-col>
+            <v-col>{{ formattedValue }}</v-col>
+          </v-row>
+          <v-row no-gutters>
+            <v-col cols="1"></v-col>
+            <v-col cols="4" class="label">With Units Value</v-col>
+            <v-col>{{ unitsValue }}</v-col>
+          </v-row>
+          <v-row no-gutters>
+            <v-col cols="5" class="label">Bit Offset</v-col>
             <v-col>{{ details.bit_offset }}</v-col>
           </v-row>
           <v-row no-gutters>
-            <v-col cols="3" class="label">Bit Size</v-col>
+            <v-col cols="5" class="label">Bit Size</v-col>
             <v-col>{{ details.bit_size }}</v-col>
           </v-row>
           <v-row v-if="details.array_size" no-gutters>
-            <v-col cols="3" class="label">Array Size</v-col>
+            <v-col cols="5" class="label">Array Size</v-col>
             <v-col>{{ details.array_size }}</v-col>
           </v-row>
           <v-row no-gutters>
-            <v-col cols="3" class="label">Data Type</v-col>
+            <v-col cols="5" class="label">Data Type</v-col>
             <v-col>{{ details.data_type }}</v-col>
           </v-row>
           <v-row no-gutters v-if="type === 'cmd'">
-            <v-col cols="3" class="label">Minimum</v-col>
+            <v-col cols="5" class="label">Minimum</v-col>
             <v-col>{{ details.minimum }}</v-col>
           </v-row>
           <v-row no-gutters v-if="type === 'cmd'">
-            <v-col cols="3" class="label">Maximum</v-col>
+            <v-col cols="5" class="label">Maximum</v-col>
             <v-col>{{ details.maximum }}</v-col>
           </v-row>
           <v-row no-gutters v-if="type === 'cmd'">
-            <v-col cols="3" class="label">Default</v-col>
+            <v-col cols="5" class="label">Default</v-col>
             <v-col>{{ details.default }}</v-col>
           </v-row>
           <v-row no-gutters>
-            <v-col cols="3" class="label">Format String</v-col>
+            <v-col cols="5" class="label">Format String</v-col>
             <v-col>{{ details.format_string }}</v-col>
           </v-row>
           <v-row no-gutters>
-            <v-col cols="3" class="label">Read Conversion</v-col>
+            <v-col cols="5" class="label">Read Conversion</v-col>
             <v-col v-if="details.read_conversion">
               Class: {{ details.read_conversion.class }}
               <br />
@@ -100,7 +102,7 @@
             <v-col v-else></v-col>
           </v-row>
           <v-row no-gutters>
-            <v-col cols="3" class="label">Write Conversion</v-col>
+            <v-col cols="5" class="label">Write Conversion</v-col>
             <v-col v-if="details.write_conversion">
               Class: {{ details.write_conversion.class }}
               <br />
@@ -110,82 +112,79 @@
             <v-col v-else></v-col>
           </v-row>
           <v-row no-gutters>
-            <v-col cols="3" class="label">Id Value</v-col>
+            <v-col cols="5" class="label">Id Value</v-col>
             <v-col>{{ details.id_value }}</v-col>
           </v-row>
           <v-row no-gutters>
-            <v-col cols="3" class="label">Units Full</v-col>
+            <v-col cols="5" class="label">Units Full</v-col>
             <v-col>{{ details.units_full }}</v-col>
           </v-row>
           <v-row no-gutters>
-            <v-col cols="3" class="label">Units Abbr</v-col>
+            <v-col cols="5" class="label">Units Abbr</v-col>
             <v-col>{{ details.units }}</v-col>
           </v-row>
           <v-row no-gutters>
-            <v-col cols="3" class="label">Endianness</v-col>
+            <v-col cols="5" class="label">Endianness</v-col>
             <v-col>{{ details.endianness }}</v-col>
           </v-row>
-          <v-row no-gutters v-if="details.states">
-            <v-col cols="3" class="label">States</v-col>
-            <v-col />
-            <v-container fluid class="ml-5 pa-0">
-              <v-row
-                no-gutters
-                v-for="(state, key) in details.states"
-                :key="key"
-              >
-                <v-col cols="4" class="label">{{ key }}</v-col>
-                <v-col>{{ state.value }}</v-col>
-              </v-row>
-            </v-container>
-          </v-row>
+          <div v-if="details.states">
+            <v-row no-gutters>
+              <v-col cols="5" class="label">States</v-col>
+              <v-col />
+            </v-row>
+            <v-row no-gutters v-for="(state, key) in details.states" :key="key">
+              <v-col cols="1"></v-col>
+              <v-col cols="4" class="label">{{ key }}</v-col>
+              <v-col>{{ state.value }}</v-col>
+            </v-row>
+          </div>
           <v-row no-gutters v-else>
-            <v-col cols="3" class="label">States</v-col>
+            <v-col cols="5" class="label">States</v-col>
             <v-col>None</v-col>
           </v-row>
-          <v-row no-gutters v-if="details.limits">
-            <v-col cols="3" class="label">Limits</v-col>
-            <v-col></v-col>
-            <v-container fluid class="ml-5 pa-0">
-              <v-row
-                no-gutters
-                v-for="(limit, key) in details.limits"
-                :key="key"
+          <div v-if="details.limits">
+            <v-row no-gutters>
+              <v-col cols="5" class="label">Limits</v-col>
+              <v-col></v-col>
+            </v-row>
+            <v-row no-gutters v-for="(limit, key) in details.limits" :key="key">
+              <v-col cols="1"></v-col>
+              <v-col v-if="key === 'enabled'" cols="4" class="label"
+                >Enabled</v-col
               >
-                <v-col v-if="key === 'enabled'" cols="4" class="label"
-                  >Enabled</v-col
-                >
-                <v-switch
-                  v-if="key === 'enabled'"
-                  v-model="details.limits.enabled"
-                  @change="changeLimitsEnabled"
-                  dense
-                  hide-details
-                ></v-switch>
-                <v-col v-if="key !== 'enabled'" cols="4" class="label">{{
-                  key
-                }}</v-col>
-                <div v-if="key !== 'enabled'">{{ formatLimit(limit) }}</div>
-                <v-col></v-col>
-              </v-row>
-            </v-container>
-          </v-row>
+              <v-switch
+                v-if="key === 'enabled'"
+                v-model="details.limits.enabled"
+                @update:model-value="changeLimitsEnabled"
+                density="compact"
+                color="primary"
+                class="compact-switch"
+                hide-details
+              ></v-switch>
+              <v-col v-if="key !== 'enabled'" cols="4" class="label">{{
+                key
+              }}</v-col>
+              <div v-if="key !== 'enabled'">{{ formatLimit(limit) }}</div>
+              <v-col></v-col>
+            </v-row>
+          </div>
           <v-row no-gutters v-else>
-            <v-col cols="3" class="label">Limits</v-col>
+            <v-col cols="5" class="label">Limits</v-col>
             <v-col>None</v-col>
           </v-row>
-          <v-row no-gutters v-if="details.meta">
-            <v-col cols="3" class="label">Meta</v-col>
-            <v-col></v-col>
-            <v-container fluid class="ml-5 pa-0">
-              <v-row no-gutters v-for="(value, key) in details.meta" :key="key">
-                <v-col cols="4" class="label">{{ key }}</v-col>
-                <v-col>{{ value }}</v-col>
-              </v-row>
-            </v-container>
-          </v-row>
+          <div v-if="details.meta">
+            <v-row no-gutters>
+              <v-col cols="5" class="label">Meta</v-col>
+              <v-col></v-col>
+            </v-row>
+            <v-row no-gutters v-for="(value, key) in details.meta" :key="key">
+              <v-col cols="1"></v-col>
+              <v-col cols="4" class="label">{{ key }}</v-col>
+              <v-col>{{ value.join(', ') }}</v-col>
+            </v-row>
+          </div>
           <v-row v-else no-gutters>
-            <v-col cols="3" class="label">Meta</v-col>
+            <v-col cols="5" class="label">Meta</v-col>
             <v-col>None</v-col>
           </v-row>
         </v-container>
@@ -209,7 +208,7 @@ export default {
     targetName: String,
     packetName: String,
     itemName: String,
-    value: Boolean, // value is the default prop when using v-model
+    modelValue: Boolean,
   },
   data() {
     return {
@@ -224,17 +223,17 @@ export default {
   computed: {
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
   },
   created() {
     this.api = new OpenC3Api()
   },
-  beforeDestroy() {
+  beforeUnmount() {
     clearInterval(this.updater)
     this.updater = null
   },
@@ -242,7 +241,7 @@ export default {
     // Create a watcher on value which is the indicator to display the dialog
     // If value is true we request the details from the server
     // If this is a tlm dialog we setup an interval to get the telemetry values
-    value: function (newValue, oldValue) {
+    modelValue: function (newValue, oldValue) {
       if (newValue) {
         this.requestDetails()
         if (this.type === 'tlm') {
@@ -255,16 +254,16 @@ export default {
                 `${this.targetName}__${this.packetName}__${this.itemName}__WITH_UNITS`,
               ])
               .then((values) => {
-                for (var i = 0; i < values.length; i++) {
+                for (let value of values) {
                   let rawString = null
                   // Check for raw encoded strings (non-ascii)
                   if (
-                    values[i][0]['json_class'] === 'String' &&
-                    values[i][0]['raw'] !== undefined
+                    value[0]['json_class'] === 'String' &&
+                    value[0]['raw'] !== undefined
                   ) {
-                    rawString = values[i][0]['raw']
+                    rawString = value[0]['raw']
                   } else if (this.details.data_type === 'BLOCK') {
-                    rawString = values[i][0]
+                    rawString = value[0]
                   }
                   if (rawString !== null) {
                     // Slice the number of bytes in case they added UNITS
@@ -272,14 +271,14 @@ export default {
                     // e.g. UNITS of 'B' becomes 20 42 (space, B)
                     rawString = rawString.slice(
                       0,
-                      parseInt(this.details.bit_size) / 8
+                      parseInt(this.details.bit_size) / 8,
                     )
                     // Only display the first 64 bytes at which point ...
                     let ellipse = false
                     if (rawString.length > 64) {
                       ellipse = true
                     }
-                    values[i][0] = Array.from(
+                    value[0] = Array.from(
                       rawString.slice(0, 64),
                       function (byte) {
                         // Can't really display spaces so change to 20 (hex)
@@ -288,12 +287,12 @@ export default {
                         } else {
                           return ('0' + (byte & 0xff).toString(16)).slice(-2)
                         }
-                      }
+                      },
                     )
                       .join(' ')
                       .toUpperCase()
                     if (ellipse) {
-                      values[i][0] += '...'
+                      value[0] += '...'
                     }
                   }
                 }
@@ -321,24 +320,34 @@ export default {
     },
   },
   methods: {
+    // This check is necessary because COSMOS 5.20 was setting limits.enabled to false
+    // even if the item did not have limits. While the backend changed we still need to
+    // support the old results. Thus we check if the item has limits by checking if the
+    // limits.DEFAULT key exists or if any of the states have a color.
+    hasLimits(details) {
+      let result = false
+      if (details.limits.DEFAULT) {
+        result = true
+      }
+      if (details.states) {
+        Object.getOwnPropertyNames(details.states).forEach((state) => {
+          if (details.states[state].color) {
+            result = true
+          }
+        })
+      }
+      return result
+    },
     async requestDetails() {
       if (this.type === 'tlm') {
         await this.api
           .get_item(this.targetName, this.packetName, this.itemName)
           .then((details) => {
             this.details = details
-            // If the limits object is empty explicitly null it
+            // If the item does not have limits explicitly null it
             // to make the check in the template easier
-            if (Object.keys(details.limits).length === 0) {
+            if (!this.hasLimits(details)) {
               this.details.limits = null
-            } else {
-              let enabled = false
-              if (details.limits.enabled) {
-                enabled = true
-                delete details.limits.enabled
-              }
-              // Do this to assign enabled first since it's missing when it's false
-              this.details.limits = { enabled: enabled, ...details.limits }
             }
           })
       } else {
@@ -354,13 +363,13 @@ export default {
         await this.api.enable_limits(
           this.targetName,
           this.packetName,
-          this.itemName
+          this.itemName,
         )
       } else {
         await this.api.disable_limits(
           this.targetName,
           this.packetName,
-          this.itemName
+          this.itemName,
         )
       }
     },
@@ -407,5 +416,8 @@ export default {
 :deep(.v-input--selection-controls) {
   padding: 0px;
   margin: 0px;
+}
+:deep(.v-switch .v-selection-control) {
+  min-height: 28px;
 }
 </style>

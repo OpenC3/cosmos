@@ -24,13 +24,13 @@
   <div>
     <v-dialog persistent v-model="show" width="80vw">
       <v-card>
-        <v-system-bar>
+        <v-toolbar height="24">
           <v-spacer />
           <span v-if="newMetadata">Metadata</span><span v-else>Events</span>
           <v-spacer />
-          <v-tooltip top>
-            <template v-slot:activator="{ on, attrs }">
-              <div v-on="on" v-bind="attrs">
+          <v-tooltip location="top">
+            <template v-slot:activator="{ props }">
+              <div v-bind="props">
                 <v-icon data-test="close-metadata-icon" @click="close">
                   mdi-close-box
                 </v-icon>
@@ -38,27 +38,26 @@
             </template>
             <span>Close</span>
           </v-tooltip>
-        </v-system-bar>
+        </v-toolbar>
         <v-card-title>
-          <span v-if="newMetadata">Metadata</span><span v-else>Events</span>
-          <v-spacer />
-          <v-text-field
-            v-model="search"
-            label="Search"
-            prepend-inner-icon="mdi-magnify"
-            clearable
-            outlined
-            dense
-            single-line
-            hide-details
-          />
+          <v-row class="pa-3">
+            <span v-if="newMetadata">Metadata</span><span v-else>Events</span>
+            <v-spacer />
+            <v-text-field
+              v-model="search"
+              label="Search"
+              prepend-inner-icon="mdi-magnify"
+              clearable
+              variant="outlined"
+              density="compact"
+              single-line
+              hide-details
+          /></v-row>
         </v-card-title>
         <v-data-table
           :headers="eventHeaders"
           :items="localEvents"
           :search="search"
-          sort-by="start"
-          sort-desc
         >
           <template v-slot:no-data>
             <span> No events </span>
@@ -77,31 +76,30 @@
           </template>
           <template v-slot:item.actions="{ item }">
             <v-icon
-              small
+              size="small"
               class="mr-2"
               @click="editAction(item)"
               data-test="edit-event"
             >
               mdi-pencil
             </v-icon>
-            <v-icon small @click="deleteAction(item)" data-test="delete-event">
+            <v-icon
+              size="small"
+              @click="deleteAction(item)"
+              data-test="delete-event"
+            >
               mdi-delete
             </v-icon>
           </template>
         </v-data-table>
-        <v-card-actions>
+        <v-card-actions class="px-2">
           <v-spacer />
-          <v-btn
-            outlined
-            class="mx-2"
-            data-test="close-event-list"
-            @click="close"
-          >
+          <v-btn variant="outlined" data-test="close-event-list" @click="close">
             Close
           </v-btn>
           <v-btn
             v-if="newMetadata"
-            color="primary"
+            variant="flat"
             data-test="new-event"
             @click="showMetadataCreate = true"
           >
@@ -162,7 +160,7 @@ export default {
       type: Array,
       required: true,
     },
-    value: {
+    modelValue: {
       type: Boolean,
       required: true,
     },
@@ -183,11 +181,11 @@ export default {
       search: '',
       localEvents: [...this.events],
       eventHeaders: [
-        { text: 'Start', value: 'start', width: 215 },
-        { text: 'Stop', value: 'end', width: 215 },
-        { text: 'Type', value: 'type' },
-        { text: 'Data', value: 'data' },
-        { text: 'Actions', value: 'actions', sortable: false },
+        { title: 'Start', key: 'start', width: 215 },
+        { title: 'Stop', key: 'end', width: 215 },
+        { title: 'Type', key: 'type' },
+        { title: 'Data', key: 'data' },
+        { title: 'Actions', key: 'actions', sortable: false },
       ],
       editActivity: { start: new Date(), end: new Date() },
       editMetadata: { start: new Date(), end: new Date() },
@@ -202,20 +200,21 @@ export default {
   computed: {
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
   },
   created: function () {
-    this.$on('delete', (item) => {
-      let index = this.localEvents.findIndex((element) => {
-        return element.type === item.type && element.start === item.start
-      })
-      this.localEvents.splice(index, 1)
-    })
+    // TODO: Switch to vue3 syntax
+    // this.$on('delete', (item) => {
+    //   let index = this.localEvents.findIndex((element) => {
+    //     return element.type === item.type && element.start === item.start
+    //   })
+    //   this.localEvents.splice(index, 1)
+    // })
   },
   methods: {
     close() {
@@ -231,7 +230,7 @@ export default {
         case 'metadata':
           let rows = []
           Object.entries(event.metadata.metadata).forEach(([key, value]) =>
-            rows.push(`${key}: ${value}`)
+            rows.push(`${key}: ${value}`),
           )
           data = rows.join(', ')
           break
@@ -286,7 +285,7 @@ export default {
           {
             okText: 'Delete',
             cancelText: 'Cancel',
-          }
+          },
         )
         .then((dialog) => {
           this.localEvents.splice(deleteIndex, 1)

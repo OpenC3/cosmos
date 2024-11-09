@@ -35,8 +35,10 @@
             </v-row>
             <v-row>
               <v-spacer />
-              <v-btn @click="cancelHazardousCmd" outlined> Cancel </v-btn>
-              <v-btn @click="sendHazardousCmd" class="primary mx-1">
+              <v-btn @click="cancelHazardousCmd" variant="outlined">
+                Cancel
+              </v-btn>
+              <v-btn @click="sendHazardousCmd" class="bg-primary mx-1">
                 Send
               </v-btn>
             </v-row>
@@ -67,7 +69,6 @@ export default {
   data() {
     return {
       api: null,
-      screen: null,
       displaySendHazardous: false,
       lastCmd: '',
       criticalCmdUuid: null,
@@ -91,11 +92,13 @@ export default {
     async onClick() {
       const lines = this.eval.split(';;')
       // Create local references to variables so users don't need to use 'this'
-      const self = this // needed for $emit
-      const screen = this.screen
-      const api = this.api
-      const run_script = this.runScript // TODO: deprecate this in favor of runScript?
-      const runScript = this.runScript
+      // Tell SonarCloud to ignore these as user code may need them
+      const self = this // NOSONAR needed for $emit
+      const screen = this.screen //NOSONAR
+      const screenValues = this.screenValues //NOSONAR
+      const screenTimeZone = this.screenTimeZone //NOSONAR
+      const api = this.api //NOSONAR
+      const runScript = this.runScript //NOSONAR
       for (let i = 0; i < lines.length; i++) {
         try {
           const result = eval(lines[i].trim())

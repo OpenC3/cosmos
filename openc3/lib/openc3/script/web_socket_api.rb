@@ -240,7 +240,7 @@ module OpenC3
     end
   end
 
-  # Autonomic Events WebSocket
+  # Autonomic Events WebSocket (Enterprise Only)
   class AutonomicEventsWebSocketApi < CmdTlmWebSocketApi
     def initialize(history_count: 0, url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
       @identifier = {
@@ -251,7 +251,7 @@ module OpenC3
     end
   end
 
-  # Calendar Events WebSocket
+  # Calendar Events WebSocket (Enterprise Only)
   class CalendarEventsWebSocketApi < CmdTlmWebSocketApi
     def initialize(history_count: 0, url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
       @identifier = {

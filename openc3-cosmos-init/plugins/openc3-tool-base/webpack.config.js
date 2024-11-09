@@ -64,6 +64,11 @@ module.exports = (webpackConfigEnv, argv) => {
         {
           test: /\.vue$/,
           loader: 'vue-loader',
+          options: {
+            compilerOptions: {
+              isCustomElement: (tag) => tag.startsWith('rux-'),
+            },
+          },
         },
         {
           test: /\.html$/i,
@@ -93,12 +98,7 @@ module.exports = (webpackConfigEnv, argv) => {
         '@': resolve('src'),
       },
     },
-    externals: [
-      'vue',
-      'vuetify',
-      'vuex',
-      'vue-router',
-    ],
+    externals: ['vue', 'vuetify', 'vuex', 'vue-router'],
   })
 }
 

@@ -26,11 +26,11 @@
 <template>
   <div :style="computedStyle" ref="bar">
     <v-card :min-height="height" :min-width="width" style="cursor: default">
-      <v-system-bar>
+      <v-toolbar height="24">
         <div v-show="errors.length !== 0">
-          <v-tooltip top>
-            <template v-slot:activator="{ on, attrs }">
-              <div v-on="on" v-bind="attrs">
+          <v-tooltip location="top">
+            <template v-slot:activator="{ props }">
+              <div v-bind="props">
                 <v-icon
                   data-test="error-graph-icon"
                   @click="errorDialog = true"
@@ -42,9 +42,9 @@
             <span> Errors </span>
           </v-tooltip>
         </div>
-        <v-tooltip top>
-          <template v-slot:activator="{ on, attrs }">
-            <div v-on="on" v-bind="attrs">
+        <v-tooltip location="top">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
               <v-icon data-test="edit-screen-icon" @click="openEdit">
                 mdi-pencil
               </v-icon>
@@ -52,9 +52,9 @@
           </template>
           <span> Edit Screen </span>
         </v-tooltip>
-        <v-tooltip top v-if="!fixFloated">
-          <template v-slot:activator="{ on, attrs }">
-            <div v-on="on" v-bind="attrs">
+        <v-tooltip location="top" v-if="!fixFloated">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
               <v-icon data-test="float-screen-icon" @click="floatScreen">
                 {{ floated ? 'mdi-balloon' : 'mdi-view-grid-outline' }}
               </v-icon>
@@ -62,9 +62,9 @@
           </template>
           <span> {{ floated ? 'Unfloat Screen' : 'Float Screen' }} </span>
         </v-tooltip>
-        <v-tooltip top v-if="floated">
-          <template v-slot:activator="{ on, attrs }">
-            <div v-on="on" v-bind="attrs">
+        <v-tooltip location="top" v-if="floated">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
               <v-icon data-test="up-screen-icon" @click="upScreen">
                 mdi-arrow-up
               </v-icon>
@@ -72,9 +72,9 @@
           </template>
           <span> Move Screen Up </span>
         </v-tooltip>
-        <v-tooltip top v-if="floated && zIndex > minZ">
-          <template v-slot:activator="{ on, attrs }">
-            <div v-on="on" v-bind="attrs">
+        <v-tooltip location="top" v-if="floated && zIndex > minZ">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
               <v-icon data-test="down-screen-icon" @click="downScreen">
                 mdi-arrow-down
               </v-icon>
@@ -83,11 +83,11 @@
           <span> Move Screen Down </span>
         </v-tooltip>
         <v-spacer />
-        <span>{{ target }} {{ screen }}</span>
+        <span> {{ target }} {{ screen }} </span>
         <v-spacer />
-        <v-tooltip top>
-          <template v-slot:activator="{ on, attrs }">
-            <div v-on="on" v-bind="attrs">
+        <v-tooltip location="top">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
               <v-icon
                 data-test="minimize-screen-icon"
                 @click="minMaxTransition"
@@ -107,9 +107,9 @@
           <span v-show="expand"> Minimize Screen </span>
           <span v-show="!expand"> Maximize Screen </span>
         </v-tooltip>
-        <v-tooltip v-if="showClose" top>
-          <template v-slot:activator="{ on, attrs }">
-            <div v-on="on" v-bind="attrs">
+        <v-tooltip v-if="showClose" location="top">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
               <v-icon
                 data-test="close-screen-icon"
                 @click="$emit('close-screen')"
@@ -120,7 +120,7 @@
           </template>
           <span> Close Screen </span>
         </v-tooltip>
-      </v-system-bar>
+      </v-toolbar>
       <v-expand-transition v-if="!editDialog">
         <div
           class="pa-1"
@@ -130,14 +130,20 @@
         >
           <v-overlay
             style="pointer-events: none"
-            :value="errors.length !== 0"
+            :model-value="errors.length !== 0"
             opacity="0.8"
             absolute
           />
           <vertical-widget
             :key="screenKey"
             :widgets="layoutStack[0].widgets"
-            v-on="$listeners"
+            :screen-values="screenValues"
+            :screen-time-zone="timeZone"
+            v-on:add-item="addItem"
+            v-on:delete-item="deleteItem"
+            v-on:open="open"
+            v-on:close="close"
+            v-on:close-all="closeAll"
           />
         </div>
       </v-expand-transition>
@@ -157,63 +163,30 @@
 
     <!-- Error dialog -->
     <v-dialog v-model="errorDialog" max-width="600">
-      <v-system-bar>
+      <v-toolbar height="24">
         <v-spacer />
         <span> Screen: {{ target }} {{ screen }} Errors </span>
         <v-spacer />
-      </v-system-bar>
+      </v-toolbar>
       <v-card>
-        <v-textarea class="errors" readonly rows="13" :value="error" />
+        <v-textarea class="errors" readonly rows="13" :model-value="error" />
       </v-card>
     </v-dialog>
   </div>
 </template>
 
 <script>
+import { uniqueId } from 'lodash'
 import Api from '../services/api'
 import { ConfigParserService } from '../services/config-parser'
 import { OpenC3Api } from '../services/openc3-api'
-import Vue from 'vue'
-import upperFirst from 'lodash/upperFirst'
-import camelCase from 'lodash/camelCase'
 import EditScreenDialog from './EditScreenDialog'
+import WidgetComponents from './widgets/WidgetComponents'
 
 const MAX_ERRORS = 20
 
-// Globally register all XxxWidget.vue components
-const requireComponent = require.context(
-  // The relative path of the components folder
-  '@openc3/tool-common/src/components/widgets',
-  // Whether or not to look in subfolders
-  false,
-  // The regular expression used to match base component filenames
-  /[A-Z][a-z]+Widget\.vue$/,
-)
-
-requireComponent.keys().forEach((filename) => {
-  // Get component config
-  const componentConfig = requireComponent(filename)
-  // Get PascalCase name of component
-  const componentName = upperFirst(
-    camelCase(
-      // Gets the filename regardless of folder depth
-      filename
-        .split('/')
-        .pop()
-        .replace(/\.\w+$/, ''),
-    ),
-  )
-  // Register component globally
-  Vue.component(
-    componentName,
-    // Look for the component options on `.default`, which will
-    // exist if the component was exported with `export default`,
-    // otherwise fall back to module's root.
-    componentConfig.default || componentConfig,
-  )
-})
-
 export default {
+  mixins: [WidgetComponents],
   components: {
     EditScreenDialog,
   },
@@ -306,6 +279,7 @@ export default {
       screenItems: [],
       screenValues: {},
       updateCounter: 0,
+      screenId: uniqueId('openc3-screen_'),
     }
   },
   watch: {
@@ -347,7 +321,9 @@ export default {
   // We need this because an error can occur from any of the children
   // in the widget stack and are typically thrown on create()
   errorCaptured(err, vm, info) {
+    console.log({ err, vm, info })
     if (this.errors.length < MAX_ERRORS) {
+      console.log({ errors: this.errors })
       if (err.usage) {
         this.errors.push({
           type: 'usage',
@@ -382,7 +358,7 @@ export default {
         'z-index: ' + this.zIndex
     }
   },
-  destroyed() {
+  unmounted() {
     if (this.updater != null) {
       clearInterval(this.updater)
       this.updater = null
@@ -505,18 +481,6 @@ export default {
       } else {
         this.applyGlobalSettings(this.layoutStack[0].widgets)
       }
-    },
-    // Called by button scripts to get named widgets
-    getNamedWidget: function (name) {
-      return this.namedWidgets[name]
-    },
-    // TODO: Deprecate underscores used to match OpenC3 API rather than Javascript convention?
-    get_named_widget: function (name) {
-      return this.namedWidgets[name]
-    },
-    // Called by named widgets to register with the screen
-    setNamedWidget: function (name, widget) {
-      this.namedWidgets[name] = widget
     },
     openEdit: function () {
       // Make a copy in case they edit and cancel
@@ -659,7 +623,7 @@ export default {
       this.$emit('min-max-screen')
     },
     processWidget: function (keyword, parameters, line, lineNumber) {
-      var widgetName = null
+      let widgetName = null
       if (keyword === 'NAMED_WIDGET') {
         this.configParser.verify_num_parameters(
           2,
@@ -675,11 +639,14 @@ export default {
         keyword.slice(1).toLowerCase() +
         'Widget'
       let settings = []
+      // Give all the widgets a reference to this screen
+      // Use settings so we don't break existing custom widgets
+      settings.push(['__SCREEN_ID__', this.screenId])
       if (widgetName !== null) {
         // Push a reference to the screen so the layout can register when it is created
         // We do this because the widget isn't actually created until
         // the layout happens with <component :is='type'>
-        settings.push(['NAMED_WIDGET', widgetName, this])
+        settings.push(['NAMED_WIDGET', widgetName])
       }
       // If this is a layout widget we add it to the layoutStack and reset the currentLayout
       if (
@@ -698,37 +665,38 @@ export default {
           type: componentName,
           parameters: parameters,
           settings: settings,
+          screenValues: this.screenValues,
+          screenTimeZone: this.timeZone,
           widgets: [],
         }
         this.layoutStack.push(layout)
         this.currentLayout.widgets.push(layout)
         this.currentLayout = layout
+      } else if (this.$options.components[componentName]) {
+        this.currentLayout.widgets.push({
+          type: componentName,
+          target: this.target,
+          parameters: parameters,
+          settings: settings,
+          screenValues: this.screenValues,
+          screenTimeZone: this.timeZone,
+          line: line,
+          lineNumber: lineNumber,
+        })
       } else {
-        // Give all the widgets a reference to this screen
-        // Use settings so we don't break existing custom widgets
-        settings.push(['__SCREEN__', this])
-        if (Vue.options.components[componentName]) {
-          this.currentLayout.widgets.push({
-            type: componentName,
-            target: this.target,
-            parameters: parameters,
-            settings: settings,
-            line: line,
-            lineNumber: lineNumber,
-          })
-        } else {
-          let widget = {
-            type: 'DynamicWidget',
-            target: this.target,
-            parameters: parameters,
-            settings: settings,
-            name: componentName,
-            line: line,
-            lineNumber: lineNumber,
-          }
-          this.currentLayout.widgets.push(widget)
-          this.dynamicWidgets.push(widget)
+        let widget = {
+          type: 'DynamicWidget',
+          target: this.target,
+          parameters: parameters,
+          settings: settings,
+          screenValues: this.screenValues,
+          screenTimeZone: this.timeZone,
+          name: componentName,
+          line: line,
+          lineNumber: lineNumber,
         }
+        this.currentLayout.widgets.push(widget)
+        this.dynamicWidgets.push(widget)
       }
     },
     applyGlobalSettings: function (widgets) {
@@ -784,12 +752,12 @@ export default {
       this.updateCounter += 1
       for (let i = 0; i < values.length; i++) {
         values[i].push(this.updateCounter)
-        Vue.set(this.screenValues, this.screenItems[i], values[i])
+        this.screenValues[this.screenItems[i]] = values[i]
       }
     },
     addItem: function (valueId) {
       this.screenItems.push(valueId)
-      Vue.set(this.screenValues, valueId, [null, null, 0])
+      this.screenValues[valueId] = [null, null, 0]
     },
     deleteItem: function (valueId) {
       let index = this.screenItems.indexOf(valueId)

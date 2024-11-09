@@ -13,33 +13,46 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 */
 
+import { createApp } from 'vue'
+import vuetify from '../vuetify'
 import Toast from './Toast.vue'
 
 class Notify {
-  constructor(Vue, options = {}) {
-    this.Vue = Vue
+  /*
+   * This gets called by the `install()` function below
+   */
+  constructor(options = {}) {
     this.$store = options.store
     this.mounted = false
     this.$root = null
+    if (window.$cosmosNotify?.$root) {
+      this.mounted = true
+      this.$root = window.$cosmosNotify.$root
+    } else {
+      window.$cosmosNotify = this
+    }
   }
 
+  /*
+   * This gets called each time `open()` is invoked by an app in COSMOS.
+   * It puts the element into the DOM that allows toasts to be shown.
+   */
   mount = function () {
     if (this.mounted) return
 
-    const ToastConstructor = this.Vue.extend(Toast)
-    const toast = new ToastConstructor()
+    const app = createApp(Toast)
+    app.use(vuetify)
 
     const el = document.createElement('div')
     document.querySelector('#openc3-app-toolbar > div').appendChild(el)
-    this.$root = toast.$mount(el)
-
+    this.$root = app.mount(el)
     this.mounted = true
   }
 
@@ -219,17 +232,14 @@ class Notify {
 }
 
 export default {
-  install(Vue, options) {
-    if (!Vue.prototype.hasOwnProperty('$notify')) {
-      Vue.notify = new Notify(Vue, options)
-
-      Object.defineProperties(Vue.prototype, {
-        $notify: {
-          get() {
-            return Vue.notify
-          },
-        },
-      })
+  /*
+   * This gets called by the Vue runtime when you have `app.use(Notify)` in that app's main .js file.
+   */
+  install(app, options) {
+    const notify = new Notify(options)
+    app.provide('notify', notify) // Allows for injection
+    if (!app.config.globalProperties.hasOwnProperty('$notify')) {
+      app.config.globalProperties.$notify = notify // Allows for `this.$notify`
     }
   },
 }

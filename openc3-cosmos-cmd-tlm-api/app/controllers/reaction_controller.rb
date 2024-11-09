@@ -21,7 +21,6 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/reaction_model'
-require 'openc3/topics/autonomic_topic'
 
 class ReactionController < ApplicationController
   NOT_FOUND = 'not found'

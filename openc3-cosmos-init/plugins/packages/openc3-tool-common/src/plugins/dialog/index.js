@@ -13,18 +13,18 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 */
 
+import vuetify from '../vuetify'
 import ConfirmDialog from './ConfirmDialog.vue'
 
 class Dialog {
-  constructor(Vue, options = {}) {
-    this.Vue = Vue
+  constructor() {
     this.mounted = false
     this.$root = null
   }
@@ -32,12 +32,12 @@ class Dialog {
   mount = function () {
     if (this.mounted) return
 
-    const DialogConstructor = this.Vue.extend(ConfirmDialog)
-    const dialog = new DialogConstructor()
+    const app = window.Vue.createApp(ConfirmDialog)
+    app.use(vuetify)
 
     const el = document.createElement('div')
     document.querySelector('#openc3-app-toolbar > div').appendChild(el)
-    this.$root = dialog.$mount(el)
+    this.$root = app.mount(el)
 
     this.mounted = true
   }
@@ -58,14 +58,14 @@ class Dialog {
       this.$root.dialog(
         { title, text, okText, okClass, validateText, cancelText, html },
         resolve,
-        reject
+        reject,
       )
     })
   }
 
   confirm = function (
     text,
-    { okText = 'Ok', cancelText = 'Cancel', okClass = 'primary' }
+    { okText = 'Ok', cancelText = 'Cancel', okClass = 'primary' },
   ) {
     return this.open({
       title: 'Confirm',
@@ -79,7 +79,7 @@ class Dialog {
   }
   alert = function (
     text,
-    { okText = 'Ok', html = false, okClass = 'primary' }
+    { okText = 'Ok', html = false, okClass = 'primary' },
   ) {
     return this.open({
       title: 'Alert',
@@ -98,7 +98,7 @@ class Dialog {
       validateText = 'CONFIRM',
       cancelText = 'Cancel',
       okClass = 'primary',
-    }
+    },
   ) {
     return this.open({
       title: 'Confirm',
@@ -113,17 +113,11 @@ class Dialog {
 }
 
 export default {
-  install(Vue, options) {
-    if (!Vue.prototype.hasOwnProperty('$dialog')) {
-      Vue.dialog = new Dialog(Vue, options)
-
-      Object.defineProperties(Vue.prototype, {
-        $dialog: {
-          get() {
-            return Vue.dialog
-          },
-        },
-      })
+  install(app, _) {
+    const dialog = new Dialog()
+    app.provide('dialog', dialog)
+    if (!app.config.globalProperties.hasOwnProperty('$dialog')) {
+      app.config.globalProperties.$dialog = dialog
     }
   },
 }
