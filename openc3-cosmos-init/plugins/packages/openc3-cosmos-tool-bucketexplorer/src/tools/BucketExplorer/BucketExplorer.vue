@@ -77,7 +77,7 @@
         :items-per-page="-1"
         :items-per-page-options="[10, 20, 50, 100, -1]"
         v-model:sort-by="sortBy"
-        @click:row="fileClick"
+        @click:row.stop="fileClick"
         multi-sort
         density="compact"
         hover
@@ -92,11 +92,17 @@
               variant="text"
               density="compact"
               class="mt-1"
-              @click="backArrow"
+              @click.stop="backArrow"
               data-test="be-nav-back"
             />
             <span class=".text-body-1 ma-2 font-size" data-test="file-path">
-              /{{ path }}
+              <span
+                v-for="(part, index) in breadcrumbPath"
+                :key="index"
+                @click.stop="gotoPath(part.path)"
+                style="cursor: pointer"
+                >/&nbsp;{{ part.name }}&nbsp;
+              </span>
             </span>
             <v-spacer />
             <div class="pa-1 font-size">
@@ -127,9 +133,17 @@
         </template>
         <template v-slot:item.action="{ item }">
           <v-icon
+            v-if="item.icon === 'mdi-file' && !isBinary(item.name)"
+            @click="viewFile(item.name)"
             class="mr-3"
+            data-test="view-file"
+          >
+            mdi-eye
+          </v-icon>
+          <v-icon
             v-if="item.icon === 'mdi-file'"
             @click="downloadFile(item.name)"
+            class="mr-3"
             data-test="download-file"
           >
             mdi-download-box
@@ -217,17 +231,28 @@
         </v-card-text>
       </v-card>
     </v-dialog>
+    <output-dialog
+      type="File"
+      :content="dialogContent"
+      :name="dialogName"
+      :filename="dialogFilename"
+      v-model="showDialog"
+      v-if="showDialog"
+      @submit="showDialog = false"
+    />
   </div>
 </template>
 
 <script>
 import TopBar from '@openc3/tool-common/src/components/TopBar'
+import OutputDialog from '@openc3/tool-common/src/components/OutputDialog'
 import Api from '@openc3/tool-common/src/services/api'
 import axios from 'axios'
 
 export default {
   components: {
     TopBar,
+    OutputDialog,
   },
   data() {
     return {
@@ -244,6 +269,10 @@ export default {
       path: '',
       file: null,
       files: [],
+      showDialog: false,
+      dialogName: '',
+      dialogContent: '',
+      dialogFilename: '',
       sortBy: [
         {
           key: 'modified',
@@ -293,6 +322,13 @@ export default {
         .reduce((a, b) => a + (b.size ? b.size : 0), 0)
         .toLocaleString()
     },
+    breadcrumbPath() {
+      const parts = this.path.split('/')
+      return parts.map((part, index) => ({
+        name: part,
+        path: parts.slice(0, index + 1).join('/') + '/',
+      }))
+    },
   },
   created() {
     Api.get('/openc3-api/storage/buckets').then((response) => {
@@ -332,6 +368,14 @@ export default {
     },
   },
   methods: {
+    isBinary(filename) {
+      let ext = filename.split('.').pop()
+      return ['gz', 'bin', 'gem', 'zip'].includes(ext)
+    },
+    gotoPath(path) {
+      this.path = path
+      this.update()
+    },
     update() {
       this.$router.push({
         name: 'Bucket Explorer',
@@ -390,6 +434,23 @@ export default {
         }
         this.update()
       }
+    },
+    viewFile(filename) {
+      let root = this.root.toUpperCase()
+      if (this.mode === 'volume') {
+        root = root.slice(1)
+      }
+      Api.get(
+        `/openc3-api/storage/download_file/${encodeURIComponent(
+          this.path,
+        )}${filename}?${this.mode}=OPENC3_${root}_${this.mode.toUpperCase()}`,
+      ).then((response) => {
+        this.dialogName = filename
+        this.dialogFilename = filename
+        // Decode Base64 string
+        this.dialogContent = window.atob(response.data.contents)
+        this.showDialog = true
+      })
     },
     downloadFile(filename) {
       let root = this.root.toUpperCase()

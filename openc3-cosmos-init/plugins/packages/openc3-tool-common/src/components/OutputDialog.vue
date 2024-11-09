@@ -23,14 +23,14 @@
 <template>
   <v-dialog v-model="show" width="85vw">
     <v-card>
-      <v-system-bar>
+      <v-toolbar height="24">
         <v-spacer />
         <span v-text="title" />
         <v-spacer />
         <div class="mx-2">
-          <v-tooltip top>
-            <template v-slot:activator="{ on, attrs }">
-              <div v-on="on" v-bind="attrs">
+          <v-tooltip location="top">
+            <template v-slot:activator="{ props }">
+              <div v-bind="props">
                 <v-icon data-test="downloadIcon" @click="download">
                   mdi-download
                 </v-icon>
@@ -39,25 +39,20 @@
             <span> Download </span>
           </v-tooltip>
         </div>
-      </v-system-bar>
+      </v-toolbar>
       <v-card-text>
         <pre class="editor" ref="editor"></pre>
       </v-card-text>
-      <v-card-actions class="px-2">
+      <v-card-actions class="pr-6 pb-4 pt-0">
         <v-spacer />
-        <v-btn variant="flat" @click="close"> Ok </v-btn>
+        <v-btn variant="flat" @click="show = !show"> Ok </v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
 </template>
 
 <script>
-import * as ace from 'ace-builds'
-import 'ace-builds/src-min-noconflict/mode-ruby'
-import 'ace-builds/src-min-noconflict/mode-json'
-import 'ace-builds/src-min-noconflict/theme-twilight'
-import 'ace-builds/src-min-noconflict/ext-language_tools'
-import 'ace-builds/src-min-noconflict/ext-searchbox'
+import EditorModes from './ace/EditorModes'
 
 export default {
   props: {
@@ -67,23 +62,46 @@ export default {
     },
     type: String,
     name: String,
-    value: Boolean, // value is the default prop when using v-model
+    modelValue: Boolean,
     filename: {
       type: String,
       required: false,
     },
   },
+  mixins: [EditorModes],
   data() {
     return {
       editor: null,
+      mode: null,
     }
   },
   mounted() {
-    const openPluginMode = this.buildPluginMode()
     this.editor = ace.edit(this.$refs.editor)
     this.editor.setTheme('ace/theme/twilight')
-    this.editor.session.setMode(new openPluginMode())
-    this.editor.session.setTabSize(2)
+    let languageMode = null
+    const fileExtension = this.filename ? this.filename.split('.').pop() : 'txt'
+    switch (fileExtension) {
+      case 'txt':
+      case 'rb':
+        const RubyMode = this.buildRubyMode()
+        languageMode = new RubyMode()
+        break
+      case 'py':
+        const PythonMode = this.buildPythonMode()
+        languageMode = new PythonMode()
+        break
+      case 'md':
+        const MarkdownMode = this.buildMarkdownMode()
+        languageMode = new MarkdownMode()
+        break
+      default:
+        const JsonMode = this.buildJsonMode()
+        languageMode = new JsonMode()
+        this.editor.setOptions({
+          useWorker: false,
+        })
+    }
+    this.editor.session.setMode(languageMode)
     this.editor.session.setUseWrapMode(true)
     this.editor.$blockScrolling = Infinity
     this.editor.setHighlightActiveLine(false)
@@ -92,7 +110,7 @@ export default {
     this.editor.focus()
     this.editor.setReadOnly(true)
   },
-  beforeDestroy() {
+  beforeUnmount() {
     if (this.editor) {
       this.editor.destroy()
     }
@@ -100,10 +118,10 @@ export default {
   computed: {
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
     title: function () {
@@ -128,33 +146,6 @@ export default {
       link.setAttribute('download', filename)
       link.click()
     },
-    buildPluginMode() {
-      let oop = ace.require('ace/lib/oop')
-      let JsonHighlightRules = ace.require(
-        'ace/mode/json_highlight_rules'
-      ).JsonHighlightRules
-
-      let MatchingBraceOutdent = ace.require(
-        'ace/mode/matching_brace_outdent'
-      ).MatchingBraceOutdent
-      let CstyleBehaviour = ace.require(
-        'ace/mode/behaviour/cstyle'
-      ).CstyleBehaviour
-      let FoldMode = ace.require('ace/mode/folding/ruby').FoldMode
-      let Mode = function () {
-        this.HighlightRules = JsonHighlightRules
-        this.$outdent = new MatchingBraceOutdent()
-        this.$behaviour = new CstyleBehaviour()
-        this.foldingRules = new FoldMode()
-        this.indentKeywords = this.foldingRules.indentKeywords
-      }
-      let RubyMode = ace.require('ace/mode/ruby').Mode
-      oop.inherits(Mode, RubyMode)
-      ;(function () {
-        this.$id = 'ace/mode/openc3'
-      }).call(Mode.prototype)
-      return Mode
-    },
   },
 }
 </script>
@@ -162,7 +153,6 @@ export default {
 <style scoped>
 .editor {
   height: 75vh;
-  width: 80vw;
   position: relative;
   font-size: 16px;
 }
