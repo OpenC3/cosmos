@@ -127,7 +127,7 @@ module OpenC3
 
       # Require an additional ruby file
       def load_utility(procedure_name)
-        # Ensure require_utility works like require where you don't need the .rb extension
+        # Ensure load_utility works like require where you don't need the .rb extension
         if File.extname(procedure_name) != '.rb'
           procedure_name += '.rb'
         end

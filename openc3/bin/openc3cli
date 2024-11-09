@@ -47,15 +47,6 @@ require 'irb/completion'
 
 $redis_url = "redis://#{ENV['OPENC3_REDIS_HOSTNAME']}:#{ENV['OPENC3_REDIS_PORT']}"
 
-# Build the OpenStruct and OptionParser here as constants so we can use in methods
-MIGRATE_OPTIONS = OpenStruct.new
-MIGRATE_OPTIONS.all = false
-MIGRATE_PARSER = OptionParser.new do |opts|
-  opts.banner = "cli migrate PLUGIN [TGT1...]      # Create a OpenC3 plugin from existing COSMOS 4 targets"
-  opts.on("-a", "--all", " Move all COSMOS 4 targets into a single OpenC3 plugin") do
-    MIGRATE_OPTIONS.all = true
-  end
-end
 ERROR_CODE = 1
 
 CLI_SCRIPT_ACTIONS = %w(help list run spawn)
@@ -82,7 +73,6 @@ def print_usage
   puts "  cli list <SCOPE>                  # Lists installed plugins, SCOPE is DEFAULT if not given"
   puts "  cli generate TYPE OPTIONS         # Generate various COSMOS entities"
   puts "    OPTIONS: --ruby or --python is required to specify the language in the generated code unless OPENC3_LANGUAGE is set"
-  puts "  #{MIGRATE_PARSER}"
   puts "  cli bridge CONFIG_FILENAME        # Run COSMOS host bridge"
   puts "  cli bridgegem gem_name variable1=value1 variable2=value2 # Runs bridge using gem bridge.txt"
   puts "  cli bridgesetup CONFIG_FILENAME   # Create a default config file"
@@ -114,110 +104,6 @@ def check_environment
     abort "OPENC3_API_PORT environment variable is required" unless ENV['OPENC3_API_PORT']
     abort "OPENC3_API_PASSWORD environment variable is required" unless ENV['OPENC3_API_PASSWORD']
   end
-end
-
-def migrate(args)
-  MIGRATE_PARSER.parse!(args)
-  abort(MIGRATE_PARSER.to_s) if args.length == 0
-  if MIGRATE_OPTIONS.all and args.length > 1
-    puts "Only specify the plugin name when using --all"
-    abort(MIGRATE_PARSER.to_s)
-  end
-  if !MIGRATE_OPTIONS.all and args.length < 2
-    puts "Specify the individual target names when not using --all"
-    abort(MIGRATE_PARSER.to_s)
-  end
-  if Dir.glob("config/targets/**/*").empty?
-    puts "No targets found in config/targets/*"
-    puts "Migrate must be run within an existing COSMOS configuration"
-    abort(MIGRATE_PARSER.to_s)
-  end
-
-  ###############################################################
-  # Create the framework for the plugin
-  # NOTE: generate does a chdir to be inside the plugin directory
-  ###############################################################
-  plugin = args.shift
-  OpenC3::CliGenerator.generate(['plugin', plugin])
-
-  if MIGRATE_OPTIONS.all
-    # Grab all target directories to match the command line input
-    args = Dir.glob("../config/targets/*").map { |path| File.basename(path) }
-  else
-    # Ensure targets passed in on command line actually exist
-    args.each do |target|
-      path = File.join('..', 'config', 'targets', target)
-      unless File.exist?(path)
-        puts "Target #{path} does not exist!"
-        abort(MIGRATE_PARSER.to_s)
-      end
-    end
-  end
-
-  # Overwrite plugin.txt with specified targets
-  plugin = File.open('plugin.txt', 'w')
-  FileUtils.mkdir 'targets'
-  args.each do |target|
-    puts "Migrating target #{target}"
-    FileUtils.cp_r "../config/targets/#{target}", 'targets'
-    plugin.puts "TARGET #{target} #{target}"
-  end
-  plugin.puts ""
-
-  files = Dir.glob('../lib/*')
-  files.concat(Dir.glob('../procedures/*'))
-  unless files.empty?
-    puts "Migrating /lib & /procedures to PROCEDURES target"
-    FileUtils.cp_r '../lib', "targets/PROCEDURES"
-    FileUtils.cp_r '../procedures', "targets/PROCEDURES"
-  end
-
-  # Migrate cmd_tlm_server.txt info to plugin.txt
-  Dir.glob('targets/**/cmd_tlm_server*.txt') do |cmd_tlm_server_file|
-    File.open(cmd_tlm_server_file) do |file|
-      file.each do |line|
-        next if line =~ /^\s*#/ # Ignore comments
-        next if line.strip.empty? # Ignore empty lines
-
-        # Convert TARGET to MAP_TARGET
-        line.gsub!(/TARGET (\S+)/, 'MAP_TARGET \1')
-        plugin.puts line
-      end
-    end
-    plugin.puts ''
-  end
-
-  # Migrate target.txt
-  Dir.glob('targets/**/target.txt') do |filename|
-    file = File.read(filename)
-    file.gsub!('LOG_RAW', 'LOG_STREAM')
-    file.gsub!('AUTO_SCREEN_SUBSTITUTE', '')
-    File.write(filename, file)
-  end
-
-  # Migrate some of the screens api
-  Dir.glob('targets/**/screens/*') do |file|
-    screen = File.read(file)
-    screen.gsub!('cmd(', 'api.cmd(')
-    screen.gsub!('cmd_no_checks(', 'api.cmd_no_checks(')
-    screen.gsub!('cmd_no_range_check(', 'api.cmd_no_range_check(')
-    screen.gsub!('cmd_no_hazardous_check(', 'api.cmd_no_hazardous_check(')
-    screen.gsub!('get_named_widget(', 'screen.getNamedWidget(')
-    lines = screen.split("\n")
-    lines.map! do |line|
-      if line.include?('Qt.')
-        "# FIXME (no Qt): #{line.sub("<%", "< %").sub("%>", "% >")}"
-      elsif line.include?('Cosmos::')
-        "# FIXME (no Cosmos::): #{line.sub("<%", "< %").sub("%>", "% >")}"
-      else
-        line
-      end
-    end
-    File.write(file, lines.join("\n"))
-  end
-
-  plugin.close
-  puts "Plugin complete: #{File.expand_path('.')}" # Remember we're inside the plugin dir
 end
 
 def xtce_converter(args)
@@ -877,9 +763,6 @@ if not ARGV[0].nil? # argument(s) given
 
   when 'generate'
     OpenC3::CliGenerator.generate(ARGV[1..-1])
-
-  when 'migrate'
-    migrate(ARGV[1..-1])
 
   when 'rubysloc'
     puts `ruby /openc3/bin/rubysloc #{ARGV[1..-1].join(' ')}`
