@@ -7,7 +7,7 @@
   },
   "dependencies": {
     "@astrouxds/astro-web-components": "7.24.0",
-    "vue": "3.5.4",
+    "vue": "3.5.12",
     "vuetify": "3.7.1"
   },
   "devDependencies": {
