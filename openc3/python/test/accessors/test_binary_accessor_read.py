@@ -25,28 +25,15 @@ class TestBinaryAccessorRead(unittest.TestCase):
         self.data = b"\x80\x81\x82\x83\x84\x85\x86\x87\x00\x09\x0A\x0B\x0C\x0D\x0E\x0F"
 
     def test_complains_about_unknown_data_types(self):
-        self.assertRaisesRegex(
-            TypeError,
-            "data_type BLOB is not recognized",
-            BinaryAccessor.read,
-            0,
-            32,
-            "BLOB",
-            self.data,
-            "BIG_ENDIAN",
-        )
+        with self.assertRaisesRegex(TypeError, "data_type BLOB is not recognized"):
+            BinaryAccessor.read(0, 32, "BLOB", self.data, "BIG_ENDIAN")
 
     def test_complains_about_bit_offsets_before_the_beginning_of_the_buffer(self):
-        self.assertRaisesRegex(
+        with self.assertRaisesRegex(
             ValueError,
             f"{len(self.data)} byte buffer insufficient to read STRING at bit_offset {-((len(self.data) * 8) + 8)} with bit_size 32",
-            BinaryAccessor.read,
-            -(len(self.data) * 8 + 8),
-            32,
-            "STRING",
-            self.data,
-            "BIG_ENDIAN",
-        )
+        ):
+            BinaryAccessor.read(-(len(self.data) * 8 + 8), 32, "STRING", self.data, "BIG_ENDIAN")
 
     def test_complains_about_a_negative_bit_offset_and_zero_bit_size(self):
         self.assertRaisesRegex(
@@ -61,16 +48,10 @@ class TestBinaryAccessorRead(unittest.TestCase):
         )
 
     def test_complains_about_a_negative_bit_offset_and_negative_bit_size(self):
-        self.assertRaisesRegex(
-            ValueError,
-            r"negative or zero bit_sizes \(-8\) cannot be given with negative bit_offsets \(-8\)",
-            BinaryAccessor.read,
-            -8,
-            -8,
-            "STRING",
-            self.data,
-            "BIG_ENDIAN",
-        )
+        with self.assertRaisesRegex(
+            ValueError, r"negative or zero bit_sizes \(-8\) cannot be given with negative bit_offsets \(-8\)"
+        ):
+            BinaryAccessor.read(-8, -8, "STRING", self.data, "BIG_ENDIAN")
 
     def test_complains_about_negative_bit_sizes_larger_than_the_size_of_the_buffer(
         self,
@@ -79,50 +60,24 @@ class TestBinaryAccessorRead(unittest.TestCase):
             ValueError,
             # TODO: WHat's up with this not matching
             f"{len(self.data)} byte buffer insufficient to read STRING at bit_offset 0 with bit_size {-((len(self.data) * 8) + 8)}",
-            BinaryAccessor.read,
-            0,
-            -((len(self.data) * 8) + 8),
-            "STRING",
-            self.data,
-            "BIG_ENDIAN",
-        )
+        ):
+            BinaryAccessor.read(0, -((len(self.data) * 8) + 8), "STRING", self.data, "BIG_ENDIAN")
 
     def test_complains_about_negative_or_zero_bit_sizes_with_data_types_other_than_string_and_block(
         self,
     ):
-        self.assertRaisesRegex(
-            ValueError,
-            # TODO: WHat's up with this not matching
-            "bit_size -8 must be positive for data types other than 'STRING' and 'BLOCK'",
-            BinaryAccessor.read,
-            0,
-            -8,
-            "INT",
-            self.data,
-            "BIG_ENDIAN",
-        )
-        self.assertRaisesRegex(
-            ValueError,
-            # TODO: WHat's up with this not matching
-            "bit_size -8 must be positive for data types other than 'STRING' and 'BLOCK'",
-            BinaryAccessor.read,
-            0,
-            -8,
-            "UINT",
-            self.data,
-            "BIG_ENDIAN",
-        )
-        self.assertRaisesRegex(
-            ValueError,
-            # TODO: WHat's up with this not matching
-            "bit_size -8 must be positive for data types other than 'STRING' and 'BLOCK'",
-            BinaryAccessor.read,
-            0,
-            -8,
-            "FLOAT",
-            self.data,
-            "BIG_ENDIAN",
-        )
+        with self.assertRaisesRegex(
+            ValueError, "bit_size -8 must be positive for data types other than 'STRING' and 'BLOCK'"
+        ):
+            BinaryAccessor.read(0, -8, "INT", self.data, "BIG_ENDIAN")
+        with self.assertRaisesRegex(
+            ValueError, "bit_size -8 must be positive for data types other than 'STRING' and 'BLOCK'"
+        ):
+            BinaryAccessor.read(0, -8, "UINT", self.data, "BIG_ENDIAN")
+        with self.assertRaisesRegex(
+            ValueError, "bit_size -8 must be positive for data types other than 'STRING' and 'BLOCK'"
+        ):
+            BinaryAccessor.read(0, -8, "FLOAT", self.data, "BIG_ENDIAN")
 
     def test_reads_ascii_strings(self):
         self.data = "DEADBEEF".encode()
@@ -196,16 +151,8 @@ class TestBinaryAccessorRead(unittest.TestCase):
         )
 
     def test_complains_about_unaligned_strings(self):
-        self.assertRaisesRegex(
-            ValueError,
-            "bit_offset 1 is not byte aligned for data_type STRING",
-            BinaryAccessor.read,
-            1,
-            32,
-            "STRING",
-            self.data,
-            "BIG_ENDIAN",
-        )
+        with self.assertRaisesRegex(ValueError, "bit_offset 1 is not byte aligned for data_type STRING"):
+            BinaryAccessor.read(1, 32, "STRING", self.data, "BIG_ENDIAN")
 
     def test_reads_aligned_blocks(self):
         for bit_offset in range(0, (len(self.data) - 1) * 8, 8):
@@ -826,9 +773,7 @@ class TestBinaryAccessorReadLittleEndian(unittest.TestCase):
             if value >= 2 ** (bit_size - 1):
                 expected[index] = value - 2**bit_size
                 self.assertEqual(
-                    BinaryAccessor.read(
-                        120, bit_size, "INT", self.data, "LITTLE_ENDIAN"
-                    ),
+                    BinaryAccessor.read(120, bit_size, "INT", self.data, "LITTLE_ENDIAN"),
                     expected[0],
                 )
 
@@ -922,9 +867,7 @@ class TestBinaryAccessorReadArrayLE(unittest.TestCase):
     def test_reads_the_total_buffer_given_array_size_eql_buffer_size(self):
         data = [(x & ~(1 << 7)) - (x & (1 << 7)) for x in self.data]
         self.assertEqual(
-            BinaryAccessor.read_array(
-                0, 8, "INT", len(self.data) * 8, self.data, "LITTLE_ENDIAN"
-            ),
+            BinaryAccessor.read_array(0, 8, "INT", len(self.data) * 8, self.data, "LITTLE_ENDIAN"),
             data,
         )
 
@@ -948,9 +891,7 @@ class TestBinaryAccessorReadArrayLE(unittest.TestCase):
 
     def test_returns_an_empty_array_if_the_offset_equals_the_negative_array_size(self):
         self.assertEqual(
-            BinaryAccessor.read_array(
-                len(self.data) * 8 - 32, 8, "UINT", -32, self.data, "LITTLE_ENDIAN"
-            ),
+            BinaryAccessor.read_array(len(self.data) * 8 - 32, 8, "UINT", -32, self.data, "LITTLE_ENDIAN"),
             [],
         )
 
@@ -960,9 +901,7 @@ class TestBinaryAccessorReadArrayLE(unittest.TestCase):
             ValueError,
             f"16 byte buffer insufficient to read UINT at bit_offset {offset} with bit_size 8",
         ):
-            BinaryAccessor.read_array(
-                offset, 8, "UINT", -32, self.data, "LITTLE_ENDIAN"
-            )
+            BinaryAccessor.read_array(offset, 8, "UINT", -32, self.data, "LITTLE_ENDIAN")
 
     def test_reads_an_array_of_aligned_8_bit_unsigned_integers(self):
         self.assertEqual(
@@ -1019,9 +958,7 @@ class TestBinaryAccessorReadArrayLE(unittest.TestCase):
             BinaryAccessor.read_array(0, 256, "STRING", 256, self.data, "LITTLE_ENDIAN")
 
     def test_returns_an_empty_array_when_passed_a_zero_length_buffer(self):
-        self.assertEqual(
-            BinaryAccessor.read_array(0, 8, "UINT", 32, b"", "LITTLE_ENDIAN"), []
-        )
+        self.assertEqual(BinaryAccessor.read_array(0, 8, "UINT", 32, b"", "LITTLE_ENDIAN"), [])
 
     def test_complains_about_unaligned_strings(self):
         with self.assertRaisesRegex(
@@ -1076,9 +1013,7 @@ class TestBinaryAccessorReadArrayLE(unittest.TestCase):
     def test_reads_16_bit_int_items(self):
         data = [0x8180, 0x8382, 0x8584, 0x8786, 0x0900, 0x0B0A, 0x0D0C, 0x0F0E]
         data = [(x & ~(1 << 15)) - (x & (1 << 15)) for x in data]
-        self.assertEqual(
-            BinaryAccessor.read_array(0, 16, "INT", 0, self.data, "LITTLE_ENDIAN"), data
-        )
+        self.assertEqual(BinaryAccessor.read_array(0, 16, "INT", 0, self.data, "LITTLE_ENDIAN"), data)
 
     def test_reads_32_bit_uint_items(self):
         data = [0x83828180, 0x87868584, 0x0B0A0900, 0x0F0E0D0C]
@@ -1090,9 +1025,7 @@ class TestBinaryAccessorReadArrayLE(unittest.TestCase):
     def test_reads_32_bit_int_items(self):
         data = [0x83828180, 0x87868584, 0x0B0A0900, 0x0F0E0D0C]
         data = [(x & ~(1 << 31)) - (x & (1 << 31)) for x in data]
-        self.assertEqual(
-            BinaryAccessor.read_array(0, 32, "INT", 0, self.data, "LITTLE_ENDIAN"), data
-        )
+        self.assertEqual(BinaryAccessor.read_array(0, 32, "INT", 0, self.data, "LITTLE_ENDIAN"), data)
 
     def test_reads_64_bit_uint_items(self):
         data = [0x8786858483828180, 0x0F0E0D0C0B0A0900]
@@ -1104,23 +1037,17 @@ class TestBinaryAccessorReadArrayLE(unittest.TestCase):
     def test_reads_64_bit_int_items(self):
         data = [0x8786858483828180, 0x0F0E0D0C0B0A0900]
         data = [(x & ~(1 << 63)) - (x & (1 << 63)) for x in data]
-        self.assertEqual(
-            BinaryAccessor.read_array(0, 64, "INT", 0, self.data, "LITTLE_ENDIAN"), data
-        )
+        self.assertEqual(BinaryAccessor.read_array(0, 64, "INT", 0, self.data, "LITTLE_ENDIAN"), data)
 
     def test_reads_aligned_32_bit_floats(self):
         expected_array = [-7.670445e-037, -2.024055e-034, 2.658460e-032, 7.003653e-030]
-        actual = BinaryAccessor.read_array(
-            0, 32, "FLOAT", 0, self.data, "LITTLE_ENDIAN"
-        )
+        actual = BinaryAccessor.read_array(0, 32, "FLOAT", 0, self.data, "LITTLE_ENDIAN")
         for index, val in enumerate(actual):
             self.assertAlmostEqual(val, expected_array[index])
 
     def test_reads_aligned_64_bit_floats(self):
         expected_array = [-2.081577e-272, 3.691916e-236]
-        actual = BinaryAccessor.read_array(
-            0, 64, "FLOAT", 0, self.data, "LITTLE_ENDIAN"
-        )
+        actual = BinaryAccessor.read_array(0, 64, "FLOAT", 0, self.data, "LITTLE_ENDIAN")
         for index, val in enumerate(actual):
             self.assertAlmostEqual(val, expected_array[index])
 
@@ -1157,35 +1084,25 @@ class TestBinaryAccessorReadArrayBE(unittest.TestCase):
     def test_reads_16_bit_int_items(self):
         data = [0x8081, 0x8283, 0x8485, 0x8687, 0x0009, 0x0A0B, 0x0C0D, 0x0E0F]
         data = [(x & ~(1 << 15)) - (x & (1 << 15)) for x in data]
-        self.assertEqual(
-            BinaryAccessor.read_array(0, 16, "INT", 0, self.data, "BIG_ENDIAN"), data
-        )
+        self.assertEqual(BinaryAccessor.read_array(0, 16, "INT", 0, self.data, "BIG_ENDIAN"), data)
 
     def test_reads_32_bit_uint_items(self):
         data = [0x80818283, 0x84858687, 0x00090A0B, 0x0C0D0E0F]
-        self.assertEqual(
-            BinaryAccessor.read_array(0, 32, "UINT", 0, self.data, "BIG_ENDIAN"), data
-        )
+        self.assertEqual(BinaryAccessor.read_array(0, 32, "UINT", 0, self.data, "BIG_ENDIAN"), data)
 
     def test_reads_32_bit_int_items(self):
         data = [0x80818283, 0x84858687, 0x00090A0B, 0x0C0D0E0F]
         data = [(x & ~(1 << 31)) - (x & (1 << 31)) for x in data]
-        self.assertEqual(
-            BinaryAccessor.read_array(0, 32, "INT", 0, self.data, "BIG_ENDIAN"), data
-        )
+        self.assertEqual(BinaryAccessor.read_array(0, 32, "INT", 0, self.data, "BIG_ENDIAN"), data)
 
     def test_reads_64_bit_uint_items(self):
         data = [0x8081828384858687, 0x00090A0B0C0D0E0F]
-        self.assertEqual(
-            BinaryAccessor.read_array(0, 64, "UINT", 0, self.data, "BIG_ENDIAN"), data
-        )
+        self.assertEqual(BinaryAccessor.read_array(0, 64, "UINT", 0, self.data, "BIG_ENDIAN"), data)
 
     def test_reads_64_bit_int_items(self):
         data = [0x8081828384858687, 0x00090A0B0C0D0E0F]
         data = [(x & ~(1 << 63)) - (x & (1 << 63)) for x in data]
-        self.assertEqual(
-            BinaryAccessor.read_array(0, 64, "INT", 0, self.data, "BIG_ENDIAN"), data
-        )
+        self.assertEqual(BinaryAccessor.read_array(0, 64, "INT", 0, self.data, "BIG_ENDIAN"), data)
 
     def test_reads_aligned_32_bit_floats(self):
         expected_array = [-1.189360e-038, -3.139169e-036, 8.301067e-040, 1.086646e-031]

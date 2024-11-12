@@ -77,7 +77,6 @@ class Limits:
             else:
                 limits_set = self.system.limits_set()
             limits_for_set = limits.values.get(limits_set)
-            print('limits_for_set:', limits_for_set)
             if limits_for_set is not None:
                 gl = None
                 gh = None
