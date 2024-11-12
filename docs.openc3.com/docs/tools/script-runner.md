@@ -149,7 +149,7 @@ In Python:
 from openc3.script.suite import Suite, Group
 class MySuite(Suite):
     def __init__(self):
-        self.add_group('ExampleGroup')
+        self.add_group(ExampleGroup)
     def setup(self):
         print("Suite setup")
     def teardown(self):
