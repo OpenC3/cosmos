@@ -299,7 +299,7 @@ Telemetry Widgets:
           description: The type of the value to display. Default is CONVERTED.
           values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
       example: |
-        BLOCK INST IMAGE IMAGE 400 130 "%02X" 4 4 "0x%08X:"
+        BLOCK INST IMAGE IMAGE 620 200 "%02X" 4 4 "0x%08X:"
     # FORMATFONTVALUE:
     #   summary: Displays a box with a value printed inside
     #     that is formatted by the specified string rather than by a format string given
@@ -377,6 +377,7 @@ Telemetry Widgets:
           values: .*
       example: |
         FORMATVALUE INST LATEST TIMESEC %012u CONVERTED 20
+        FORMATVALUE INST LATEST TEMP1 %.2f CONVERTED 20
     LABELLED:
       summary: Displays a LABEL followed by a LED
       parameters:
@@ -978,12 +979,6 @@ Telemetry Widgets:
       example: |
         LINEGRAPH INST HEALTH_STATUS TEMP1
           SETTING ITEM INST ADCS Q1 # Add additional item to graph
-        LINEGRAPH INST HEALTH_STATUS TEMP2 RAW
-        LINEGRAPH INST HEALTH_STATUS TEMP3 CONVERTED REDUCED_MINUTE MIN
-          SETTING SIZE 600 500 # width height
-          SETTING HISTORY 1h # load 1 hour of data into graph
-        LINEGRAPH INST HEALTH_STATUS TEMP4
-          SETTING HISTORY 30m # load 30 minutes of data into graph
       settings:
         # Inject the graph settings
         <%= MetaConfigParser.load('graph_settings.yaml').to_meta_config_yaml(8) %>
@@ -1232,7 +1227,6 @@ Telemetry Widgets:
           values: .*
       example: |
         TEXTBOX INST HEALTH_STATUS PACKET_TIMEFORMATTED 150 70
-        TEXTBOX INST HEALTH_STATUS PACKET_TIMEFORMATTED
     # TRENDBAR:
     #   summary: Provides the same functionality as the LIMITSBAR
     #     widget except that it also keeps a history of the telemetry item and
