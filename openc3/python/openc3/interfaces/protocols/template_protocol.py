@@ -207,7 +207,7 @@ class TemplateProtocol(TerminatedProtocol):
                 self.response_template = None
                 self.response_packet = None
                 self.response_target_name = None
-        except:
+        except Exception:
             # If there is no response template we set to nil
             self.response_template = None
             self.response_packet = None

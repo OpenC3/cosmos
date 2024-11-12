@@ -225,7 +225,8 @@ class Packet(Structure):
         for item in self.id_items:
             try:
                 value = self.read_item(item, "RAW", buffer)
-            except:
+            # If the item is not found in the buffer, return None
+            except Exception:
                 value = None
             if item.id_value != value:
                 return False
@@ -246,7 +247,8 @@ class Packet(Structure):
         for item in self.id_items:
             try:
                 values.append(self.read_item(item, "RAW", buffer))
-            except:
+            # If the item is not found in the buffer, append None
+            except Exception:
                 values.append(None)
         return values
 
@@ -275,7 +277,7 @@ class Packet(Structure):
         with self.synchronize():
             try:
                 self.internal_buffer_equals(buffer)
-            except:
+            except Exception:
                 Logger.error(
                     f"{self.target_name} {self.packet_name} buffer ({type(buffer)}) received with actual packet length of {len(buffer)} but defined length of {self.defined_length}"
                 )
@@ -500,8 +502,8 @@ class Packet(Structure):
     def get_item(self, name):
         try:
             return super().get_item(name)
-        except:
-            raise RuntimeError(f"Packet item '{self.target_name} {self.packet_name} {name.upper()}' does not exist")
+        except ValueError as error:
+            raise RuntimeError(f"Packet item '{self.target_name} {self.packet_name} {name.upper()}' does not exist") from error
 
     # Read an item in the packet
     #

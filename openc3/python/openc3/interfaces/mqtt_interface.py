@@ -59,7 +59,7 @@ class MqttInterface(Interface):
                         self.read_packets_by_topic[topic] = packet
 
     def connection_string(self):
-        return f"{self.hostname}:{self.port} (ssl= {self.ssl})"
+        return f"{self.hostname}:{self.port} (ssl: {self.ssl})"
 
     # Connects the interface to its target(s)
     def connect(self):
@@ -77,12 +77,10 @@ class MqttInterface(Interface):
             self.client.tls_set_context(context)
         if self.username and self.password:
             self.client.username_pw_set(self.username, self.password)
-        # if self.cert:
-        #     self.client.cert = self.cert
-        # if self.key:
-        #     self.client.key = self.key
+        if self.cert and self.key:
+            self.client.tls_set(certfile = self.cert, keyfile = self.key)
         if self.ca_file:
-            self.client.tls_set(certfile = self.ca_file.path)
+            self.client.tls_set(ca_certs = self.ca_file.path)
         self.client.loop_start()
         # Connect doesn't fully establish the connection, it just sends the CONNECT packet
         # When the client loop receives an ONNACK packet from the broker in response to the CONNECT packet
@@ -140,7 +138,7 @@ class MqttInterface(Interface):
                 self.write_topics.append(topic)
                 super().write(packet)
         else:
-            raise f"Command packet {packet.target_name} {packet.packet_name} requires a META TOPIC or TOPICS"
+            raise RuntimeError(f"Command packet {packet.target_name} {packet.packet_name} requires a META TOPIC or TOPICS")
         self.write_mutex.release()
 
     def on_message(self, client, userdata, message):
@@ -162,7 +160,7 @@ class MqttInterface(Interface):
         try:
             topic = self.write_topics.pop(0)
         except IndexError:
-            raise f"write_interface called with no topics: {self.write_topics}"
+            raise RuntimeError(f"write_interface called with no topics: {self.write_topics}")
         self.client.publish(topic, data)
 
     # Supported Options

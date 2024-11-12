@@ -56,9 +56,8 @@ class TestBinaryAccessorRead(unittest.TestCase):
     def test_complains_about_negative_bit_sizes_larger_than_the_size_of_the_buffer(
         self,
     ):
-        self.assertRaisesRegex(
+        with self.assertRaisesRegex(
             ValueError,
-            # TODO: WHat's up with this not matching
             f"{len(self.data)} byte buffer insufficient to read STRING at bit_offset 0 with bit_size {-((len(self.data) * 8) + 8)}",
         ):
             BinaryAccessor.read(0, -((len(self.data) * 8) + 8), "STRING", self.data, "BIG_ENDIAN")
