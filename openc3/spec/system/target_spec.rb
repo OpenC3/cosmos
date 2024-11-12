@@ -28,35 +28,29 @@ require 'pathname'
 require 'fileutils'
 
 module OpenC3
-  xdescribe Target do
+  describe Target do
     after(:all) do
       FileUtils.rm_rf File.join(OpenC3::USERPATH, 'target_spec_temp')
     end
 
     describe "initialize" do
       it "creates a target with the given name" do
-        expect(Target.new("TGT").name).to eql "TGT"
+        expect(Target.new("TGT", 'path').name).to eql "TGT"
       end
 
-      it "creates a target with the given substitute name" do
-        tgt = Target.new("TGT", "TGT2")
-        expect(tgt.name).to eql "TGT"
-        expect(tgt.original_name).to eql "TGT2"
+      it "creates a target with the specified dir" do
+        expect(Target.new("TGT", '/path').dir).to eql File.join('/path', 'TGT')
       end
 
-      it "creates a target with the default dir" do
-        expect(Target.new("TGT").dir).to eql File.join('.', 'TGT')
-      end
-
-      it "creates a target with an override path" do
+      it "creates a target with a gem path" do
         saved = File.join(OpenC3::USERPATH, 'saved')
-        expect(Target.new("TGT", nil, saved).dir).to eql File.join(saved, 'TGT')
+        expect(Target.new("TGT", '/path', saved).dir).to eql saved
       end
 
       it "records all the command and telemetry files in the target directory" do
-        tgt_path = File.join(OpenC3::USERPATH, 'target_spec_temp')
         tgt_name = "TEST"
-        cmd_tlm = File.join(tgt_path, tgt_name, 'cmd_tlm')
+        tgt_path = File.join(OpenC3::USERPATH, 'target_spec_temp', tgt_name)
+        cmd_tlm = File.join(tgt_path, 'cmd_tlm')
         FileUtils.mkdir_p(cmd_tlm)
         File.open(File.join(cmd_tlm, 'cmd1.txt'), 'w') {}
         File.open(File.join(cmd_tlm, 'cmd2.txt'), 'w') {}
@@ -69,7 +63,7 @@ module OpenC3
         File.open(File.join(cmd_tlm, 'tlm3.xtce.bak'), 'w') {}
 
         tgt = Target.new(tgt_name, nil, tgt_path)
-        expect(tgt.dir).to eql File.join(tgt_path, tgt_name)
+        expect(tgt.dir).to eql tgt_path
         files = Dir[File.join(cmd_tlm, '*.txt')]
         files.concat(Dir[File.join(cmd_tlm, '*.xtce')])
         expect(files).not_to be_empty
@@ -80,33 +74,16 @@ module OpenC3
       end
 
       it "processes a target.txt in the target directory" do
-        tgt_path = File.join(OpenC3::USERPATH, 'target_spec_temp')
         tgt_name = "TEST"
-        tgt_dir = File.join(tgt_path, tgt_name)
-        FileUtils.mkdir_p(tgt_dir)
-        File.open(File.join(tgt_dir, 'target.txt'), 'w') do |file|
+        tgt_path = File.join(OpenC3::USERPATH, 'target_spec_temp', tgt_name)
+        FileUtils.mkdir_p(tgt_path)
+        File.open(File.join(tgt_path, 'target.txt'), 'w') do |file|
           file.puts("IGNORE_PARAMETER TEST")
         end
 
         tgt = Target.new(tgt_name, nil, tgt_path)
-        expect(tgt.dir).to eql tgt_dir
+        expect(tgt.dir).to eql tgt_path
         expect(tgt.ignored_parameters).to eql ["TEST"]
-
-        FileUtils.rm_r(tgt_path)
-      end
-
-      it "processes an alternative target.txt in the target directory" do
-        tgt_path = File.join(OpenC3::USERPATH, 'target_spec_temp')
-        tgt_name = "TEST"
-        tgt_dir = File.join(tgt_path, tgt_name)
-        FileUtils.mkdir_p(tgt_dir)
-        File.open(File.join(tgt_dir, 'target_other.txt'), 'w') do |file|
-          file.puts("IGNORE_PARAMETER BOB")
-        end
-
-        tgt = Target.new(tgt_name, nil, tgt_path, 'target_other.txt')
-        expect(tgt.dir).to eql tgt_dir
-        expect(tgt.ignored_parameters).to eql ["BOB"]
 
         FileUtils.rm_r(tgt_path)
       end
@@ -117,22 +94,24 @@ module OpenC3
         tf = Tempfile.new('unittest')
         tf.puts("BLAH")
         tf.close
-        expect { Target.new("TGT").process_file(tf.path) }.to raise_error(ConfigParser::Error, /Unknown keyword 'BLAH'/)
+        expect { Target.new("TGT", '/path').process_file(tf.path) }.to raise_error(ConfigParser::Error, /Unknown keyword 'BLAH'/)
         tf.unlink
       end
 
       context "with REQUIRE" do
-        it "takes 1 parameters" do
+        it "complains with 0 parameters" do
           tf = Tempfile.new('unittest')
           tf.puts("REQUIRE")
           tf.close
-          expect { Target.new("INST").process_file(tf.path) }.to raise_error(ConfigParser::Error, /Not enough parameters for REQUIRE./)
+          expect { Target.new("INST", '/path').process_file(tf.path) }.to raise_error(ConfigParser::Error, /Not enough parameters for REQUIRE./)
           tf.unlink
+        end
 
+        it "complains with more than 1 parameter" do
           tf = Tempfile.new('unittest')
           tf.puts("REQUIRE my_file.rb TRUE")
           tf.close
-          expect { Target.new("INST").process_file(tf.path) }.to raise_error(ConfigParser::Error, /Too many parameters for REQUIRE./)
+          expect { Target.new("INST", '/path').process_file(tf.path) }.to raise_error(ConfigParser::Error, /Too many parameters for REQUIRE./)
           tf.unlink
         end
 
@@ -140,53 +119,7 @@ module OpenC3
           tf = Tempfile.new('unittest')
           tf.puts("REQUIRE my_file.rb")
           tf.close
-          expect { Target.new("INST").process_file(tf.path) }.to raise_error(ConfigParser::Error, /Unable to require my_file.rb/)
-          tf.unlink
-        end
-
-        xit "requires the file in the target lib directory over system lib" do
-          filename1 = File.join(OpenC3::USERPATH, 'config', 'targets', 'INST', 'lib', 'tgt_file.rb')
-          FileUtils.mkdir_p(File.dirname(filename1))
-          File.open(filename1, 'w') do |file|
-            file.puts "class TgtLibFile"
-            file.puts "end"
-          end
-          filename2 = File.join(OpenC3::USERPATH, 'lib', 'tgt_file.rb')
-          FileUtils.mkdir_p(File.dirname(filename2))
-          File.open(filename2, 'w') do |file|
-            file.puts "class SystemLibFile"
-            file.puts "end"
-          end
-
-          tf = Tempfile.new('unittest')
-          tf.puts("REQUIRE tgt_file.rb")
-          tf.close
-          Target.new("INST").process_file(tf.path)
-          expect { TgtLibFile.new }.to_not raise_error
-          expect(Object.const_defined?('TgtLibFile')).to be true
-          expect(Object.const_defined?('SystemLibFile')).to be false
-          FileUtils.rm_rf filename1
-          FileUtils.rm_rf filename2
-          tf.unlink
-        end
-
-        xit "requires the file in the system lib directory" do
-          filename = File.join(OpenC3::USERPATH, 'lib', 'system_file.rb')
-          File.open(filename, 'w') do |file|
-            file.puts "class SystemFile"
-            file.puts "end"
-          end
-          tf = Tempfile.new('unittest')
-          tf.puts("REQUIRE system_file.rb")
-          tf.close
-
-          # Initial require in target lib shouldn't be reported as error
-          expect(Logger).to_not receive(:error)
-          target = Target.new("INST")
-          target.process_file(tf.path)
-          expect { SystemFile.new }.to_not raise_error
-          expect(Pathname.new(target.requires[0]).absolute?).to be true
-          File.delete filename
+          expect { Target.new("INST", '/path').process_file(tf.path) }.to raise_error(ConfigParser::Error, /Unable to require my_file.rb/)
           tf.unlink
         end
 
@@ -202,7 +135,7 @@ module OpenC3
 
           # Initial require in target lib shouldn't be reported as error
           expect(Logger).to_not receive(:error)
-          Target.new("INST").process_file(tf.path)
+          Target.new("INST", '/path').process_file(tf.path)
           expect { AbsPath.new }.to_not raise_error
           File.delete filename
           tf.unlink
@@ -214,13 +147,13 @@ module OpenC3
           tf = Tempfile.new('unittest')
           tf.puts("IGNORE_PARAMETER")
           tf.close
-          expect { Target.new("TGT").process_file(tf.path) }.to raise_error(ConfigParser::Error, /Not enough parameters for IGNORE_PARAMETER./)
+          expect { Target.new("TGT", 'path').process_file(tf.path) }.to raise_error(ConfigParser::Error, /Not enough parameters for IGNORE_PARAMETER./)
           tf.unlink
 
           tf = Tempfile.new('unittest')
           tf.puts("IGNORE_PARAMETER my_file.rb TRUE")
           tf.close
-          expect { Target.new("TGT").process_file(tf.path) }.to raise_error(ConfigParser::Error, /Too many parameters for IGNORE_PARAMETER./)
+          expect { Target.new("TGT", 'path').process_file(tf.path) }.to raise_error(ConfigParser::Error, /Too many parameters for IGNORE_PARAMETER./)
           tf.unlink
         end
 
@@ -228,7 +161,7 @@ module OpenC3
           tf = Tempfile.new('unittest')
           tf.puts("IGNORE_PARAMETER TEST")
           tf.close
-          tgt = Target.new("TGT")
+          tgt = Target.new("TGT", 'path')
           tgt.process_file(tf.path)
           expect(tgt.ignored_parameters).to eql ["TEST"]
           tf.unlink
@@ -240,7 +173,7 @@ module OpenC3
           tf = Tempfile.new('unittest')
           tf.puts("")
           tf.close
-          tgt = Target.new("TGT")
+          tgt = Target.new("TGT", 'path')
           tgt.process_file(tf.path)
           expect(tgt.tlm_unique_id_mode).to eql false
           tf.unlink
@@ -248,7 +181,7 @@ module OpenC3
           tf = Tempfile.new('unittest')
           tf.puts("TLM_UNIQUE_ID_MODE")
           tf.close
-          tgt = Target.new("TGT")
+          tgt = Target.new("TGT", 'path')
           tgt.process_file(tf.path)
           expect(tgt.tlm_unique_id_mode).to eql true
           tf.unlink
@@ -260,7 +193,7 @@ module OpenC3
           tf = Tempfile.new('unittest')
           tf.puts("")
           tf.close
-          tgt = Target.new("TGT")
+          tgt = Target.new("TGT", 'path')
           tgt.process_file(tf.path)
           expect(tgt.cmd_unique_id_mode).to eql false
           tf.unlink
@@ -268,7 +201,7 @@ module OpenC3
           tf = Tempfile.new('unittest')
           tf.puts("CMD_UNIQUE_ID_MODE")
           tf.close
-          tgt = Target.new("TGT")
+          tgt = Target.new("TGT", 'path')
           tgt.process_file(tf.path)
           expect(tgt.cmd_unique_id_mode).to eql true
           tf.unlink
@@ -280,25 +213,25 @@ module OpenC3
           tf = Tempfile.new('unittest')
           tf.puts("COMMANDS")
           tf.close
-          expect { Target.new("TGT").process_file(tf.path) }.to raise_error(ConfigParser::Error, /Not enough parameters for COMMANDS./)
+          expect { Target.new("TGT", 'path').process_file(tf.path) }.to raise_error(ConfigParser::Error, /Not enough parameters for COMMANDS./)
           tf.unlink
 
           tf = Tempfile.new('unittest')
           tf.puts("COMMANDS tgt_cmds.txt TRUE")
           tf.close
-          expect { Target.new("TGT").process_file(tf.path) }.to raise_error(ConfigParser::Error, /Too many parameters for COMMANDS./)
+          expect { Target.new("TGT", 'path').process_file(tf.path) }.to raise_error(ConfigParser::Error, /Too many parameters for COMMANDS./)
           tf.unlink
 
           tf = Tempfile.new('unittest')
           tf.puts("TELEMETRY")
           tf.close
-          expect { Target.new("TGT").process_file(tf.path) }.to raise_error(ConfigParser::Error, /Not enough parameters for TELEMETRY./)
+          expect { Target.new("TGT", 'path').process_file(tf.path) }.to raise_error(ConfigParser::Error, /Not enough parameters for TELEMETRY./)
           tf.unlink
 
           tf = Tempfile.new('unittest')
           tf.puts("TELEMETRY tgt_tlm.txt TRUE")
           tf.close
-          expect { Target.new("TGT").process_file(tf.path) }.to raise_error(ConfigParser::Error, /Too many parameters for TELEMETRY./)
+          expect { Target.new("TGT", 'path').process_file(tf.path) }.to raise_error(ConfigParser::Error, /Too many parameters for TELEMETRY./)
           tf.unlink
         end
 
@@ -319,7 +252,7 @@ module OpenC3
             file.puts("TELEMETRY tgt_tlm3.txt")
           end
 
-          tgt = Target.new(tgt_name, nil, tgt_path)
+          tgt = Target.new(tgt_name, nil, tgt_dir)
           expect(tgt.dir).to eql tgt_dir
           expect(tgt.cmd_tlm_files.length).to eql 2
           expect(tgt.cmd_tlm_files).to eql [tgt_dir + '/cmd_tlm/tgt_cmds2.txt', tgt_dir + '/cmd_tlm/tgt_tlm3.txt']
@@ -344,7 +277,7 @@ module OpenC3
             file.puts("TELEMETRY tgt_tlm4.txt")
           end
 
-          expect { Target.new(tgt_name, nil, tgt_path) }.to raise_error(ConfigParser::Error, /#{tgt_dir + '/cmd_tlm/tgt_cmds4.txt'} not found/)
+          expect { Target.new(tgt_name, nil, tgt_dir) }.to raise_error(ConfigParser::Error, /#{tgt_dir + '/cmd_tlm/tgt_cmds4.txt'} not found/)
 
           FileUtils.rm_r(tgt_dir)
         end
@@ -368,7 +301,7 @@ module OpenC3
             file.puts("TELEMETRY tgt_tlm.txt")
           end
 
-          tgt = Target.new(tgt_name, nil, tgt_path)
+          tgt = Target.new(tgt_name, nil, tgt_dir)
           expect(tgt.dir).to eql tgt_dir
           expect(tgt.cmd_tlm_files.length).to eql 4
           expect(tgt.cmd_tlm_files).to eql [tgt_dir + '/cmd_tlm/tgt_cmds3.txt', tgt_dir + '/cmd_tlm/tgt_cmds2.txt', tgt_dir + '/cmd_tlm/tgt_tlm3.txt', tgt_dir + '/cmd_tlm/tgt_tlm.txt']
