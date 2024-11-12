@@ -507,6 +507,13 @@ class TestBinaryAccessorWrite(unittest.TestCase):
             "ERROR",
         )
 
+    def test_writes_a_string_to_a_block(self):
+        preserve = struct.pack(">I", 0xBEEF0123)
+        buffer = bytearray(b"\x00\x01") + bytearray(preserve[:])  # Should preserve this
+        print(buffer)
+        BinaryAccessor.write("HELLOWORLD", 0, 0, "BLOCK", buffer, "BIG_ENDIAN", "ERROR")
+        self.assertEqual(buffer, b"HELLOWORLD")
+
     def test_writes_a_block_to_a_small_buffer_preserving_the_end(self):
         data = bytearray()
         for index in range(512):

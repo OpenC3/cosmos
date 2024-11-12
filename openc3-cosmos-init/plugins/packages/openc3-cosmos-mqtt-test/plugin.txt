@@ -17,7 +17,8 @@ VARIABLE mqtt_ca_file_secret ""
 <% include_mqtt_ca_file_secret = (mqtt_ca_file_secret.to_s.strip.length > 0) %>
 
 TARGET MQTT <%= mqtt_target_name %>
-INTERFACE MQTT_INT mqtt_interface.rb <%= mqtt_host %> <%= mqtt_port %> <%= mqtt_ssl %>
+# INTERFACE MQTT_INT mqtt_interface.rb <%= mqtt_host %> <%= mqtt_port %> <%= mqtt_ssl %>
+INTERFACE MQTT_INT openc3/interfaces/mqtt_interface.py <%= mqtt_host %> <%= mqtt_port %> <%= mqtt_ssl %>
   MAP_TARGET <%= mqtt_target_name %>
   <% if include_mqtt_username_secret %>
   SECRET ENV <%= mqtt_username_secret %> "<%= mqtt_target_name %>_MQTT_USERNAME" USERNAME

@@ -500,7 +500,7 @@ class BinaryAccessor(Accessor):
             #######################################
 
             if cls.byte_aligned(bit_offset):
-                if data_type == "STRING" and isinstance(value, str):
+                if isinstance(value, str):
                     temp = value.encode(encoding="utf-8")
                 else:
                     temp = value

@@ -146,9 +146,7 @@ module OpenC3
       super()
     end
 
-    # @return [Boolean] Whether the active ports (read and/or write) have
-    #   created sockets. Since UDP is connectionless, creation of the sockets
-    #   is used to determine connection.
+    # @return [Boolean] Whether the MQTT client is connected
     def connected?
       if @client
         return @client.connected?
@@ -193,7 +191,7 @@ module OpenC3
       end
     end
 
-    # Reads from the socket if the read_port is defined
+    # Reads from the client
     def read_interface
       topic, data = @client.get
       if data.nil? or data.length <= 0
@@ -209,7 +207,7 @@ module OpenC3
       return nil
     end
 
-    # Writes to the socket
+    # Writes to the client
     # @param data [String] Raw packet data
     def write_interface(data, extra = nil)
       write_interface_base(data, extra)
