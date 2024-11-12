@@ -546,7 +546,7 @@ class TestConfigParser(unittest.TestCase):
         self.assertEqual(ConfigParser.handle_defined_constants("POS_INFINITY"), float("inf"))
         self.assertEqual(ConfigParser.handle_defined_constants("NEG_INFINITY"), float("-inf"))
         self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "Invalid bit size 16 for FLOAT type.",
             ConfigParser.handle_defined_constants,
             "MIN",
@@ -556,13 +556,13 @@ class TestConfigParser(unittest.TestCase):
 
     def test_complains_about_undefined_strings(self):
         self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "Could not convert constant: TRUE",
             ConfigParser.handle_defined_constants,
             "TRUE",
         )
         self.assertRaisesRegex(
-            AttributeError,
+            TypeError,
             "Invalid data type BLAH when calculating range.",
             ConfigParser.handle_defined_constants,
             "MIN",

@@ -215,7 +215,7 @@ class TestBurstProtocol(unittest.TestCase):
             BurstProtocol, [0, "0x12345678", True], "READ_WRITE"
         )
         # 2 bytes are not enough to hold the 4 byte sync
-        with self.assertRaisesRegex(AttributeError, "buffer insufficient"):
+        with self.assertRaisesRegex(ValueError, "buffer insufficient"):
             self.interface.write(data)
 
     def test_fills_the_sync_pattern_in_the_data(self):

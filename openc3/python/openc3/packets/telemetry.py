@@ -117,14 +117,14 @@ class Telemetry:
     #     items = []
 
     #     # Verify item_array is a nested array
-    #     raise AttributeError(f"item_array must be a nested array consisting of [[tgt,pkt,item],[tgt,pkt,item],...]") if not Array === item_array[0]
+    #     raise ValueError(f"item_array must be a nested array consisting of [[tgt,pkt,item],[tgt,pkt,item],...]") if not Array === item_array[0]
 
     #     states = []
     #     settings = []
     #     limits_set = System.limits_set()
 
     #     if (Array === value_types) and len(item_array) != len(value_types):
-    #         raise AttributeError(f"Passed {len(item_array)} items but only {len(value_types)} value types")
+    #         raise ValueError(f"Passed {len(item_array)} items but only {len(value_types)} value types")
 
     #     value_type = value_types if not Array === value_types
     #     len(item_array).times do |index|

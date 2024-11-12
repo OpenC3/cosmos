@@ -26,7 +26,7 @@ class TestStructureItem(unittest.TestCase):
 
     def test_name_complains_about_non_string_names(self):
         self.assertRaisesRegex(
-            AttributeError,
+            TypeError,
             "name must be a String but is a NoneType",
             StructureItem,
             None,
@@ -37,7 +37,7 @@ class TestStructureItem(unittest.TestCase):
             None,
         )
         self.assertRaisesRegex(
-            AttributeError,
+            TypeError,
             "name must be a String but is a float",
             StructureItem,
             5.1,
@@ -50,7 +50,7 @@ class TestStructureItem(unittest.TestCase):
 
     def test_complains_about_blank_names(self):
         self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "name must contain at least one character",
             StructureItem,
             "",
@@ -73,7 +73,7 @@ class TestStructureItem(unittest.TestCase):
 
     def test_complains_about_bad_endianness(self):
         self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "TEST: unknown endianness: BLAH - Must be 'BIG_ENDIAN' or 'LITTLE_ENDIAN'",
             StructureItem,
             "TEST",
@@ -95,7 +95,7 @@ class TestStructureItem(unittest.TestCase):
 
     def test_complains_about_bad_data_type(self):
         self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "TEST: unknown data_type: UNKNOWN - Must be 'INT', 'UINT', 'FLOAT', 'STRING', 'BLOCK', or 'DERIVED'",
             StructureItem,
             "TEST",
@@ -115,7 +115,7 @@ class TestStructureItem(unittest.TestCase):
 
     def test_complains_about_bad_overflow_types(self):
         self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "TEST: unknown overflow type: UNKNOWN - Must be 'ERROR', 'ERROR_ALLOW_HEX', 'TRUNCATE', or 'SATURATE'",
             StructureItem,
             "TEST",
@@ -129,7 +129,7 @@ class TestStructureItem(unittest.TestCase):
 
     def test_complains_about_bad_bit_offsets_types(self):
         self.assertRaisesRegex(
-            AttributeError,
+            TypeError,
             "TEST: bit_offset must be an Integer",
             StructureItem,
             "TEST",
@@ -143,7 +143,7 @@ class TestStructureItem(unittest.TestCase):
     def test_complains_about_unaligned_bit_offsets(self):
         for type in ["FLOAT", "STRING", "BLOCK"]:
             self.assertRaisesRegex(
-                AttributeError,
+                ValueError,
                 "TEST: bit_offset for 'FLOAT', 'STRING', and 'BLOCK' items must be byte aligned",
                 StructureItem,
                 "TEST",
@@ -156,7 +156,7 @@ class TestStructureItem(unittest.TestCase):
 
     def test_complains_about_non_zero_derived_bit_offsets(self):
         self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "TEST: DERIVED items must have bit_offset of zero",
             StructureItem,
             "TEST",
@@ -169,7 +169,7 @@ class TestStructureItem(unittest.TestCase):
 
     def test_complains_about_bad_bit_sizes_types(self):
         self.assertRaisesRegex(
-            AttributeError,
+            TypeError,
             "TEST: bit_size must be an Integer",
             StructureItem,
             "TEST",
@@ -182,7 +182,7 @@ class TestStructureItem(unittest.TestCase):
 
     def test_complains_about_0_size_floats(self):
         self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "TEST: bit_size cannot be negative or zero for 'FLOAT' items: 0",
             StructureItem,
             "TEST",
@@ -195,7 +195,7 @@ class TestStructureItem(unittest.TestCase):
 
     def test_complains_about_bad_float_bit_sizes(self):
         self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "TEST: bit_size for FLOAT items must be 32 or 64. Given: 8",
             StructureItem,
             "TEST",
@@ -212,7 +212,7 @@ class TestStructureItem(unittest.TestCase):
 
     def test_complains_about_non_zero_derived_bit_sizes(self):
         self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "TEST: DERIVED items must have bit_size of zero",
             StructureItem,
             "TEST",
@@ -225,7 +225,7 @@ class TestStructureItem(unittest.TestCase):
 
     def test_complains_about_bad_array_size_types(self):
         self.assertRaisesRegex(
-            AttributeError,
+            TypeError,
             "TEST: array_size must be an Integer",
             StructureItem,
             "TEST",
@@ -238,7 +238,7 @@ class TestStructureItem(unittest.TestCase):
 
     def test_complains_about_array_size_not_multiple_of_bit_size(self):
         self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "TEST: array_size must be a multiple of bit_size",
             StructureItem,
             "TEST",

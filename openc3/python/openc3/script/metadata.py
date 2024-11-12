@@ -74,7 +74,7 @@ def metadata_set(
         The json result of the method call
     """
     if not isinstance(metadata, dict):
-        raise RuntimeError(f"metadata must be a dict: {metadata} is a {metadata.__class__.__name__}")
+        raise TypeError(f"metadata must be a dict: {metadata} is a {metadata.__class__.__name__}")
 
     data = {"color": color if color else "#003784", "metadata": metadata}
     if start:
@@ -104,7 +104,7 @@ def metadata_update(
         The json result of the method call
     """
     if not isinstance(metadata, dict):
-        raise RuntimeError(f"metadata must be a Hash: {metadata} is a {metadata.__class__.__name__}")
+        raise TypeError(f"metadata must be a Hash: {metadata} is a {metadata.__class__.__name__}")
 
     if start is None:  # No start so grab latest
         existing = metadata_get()

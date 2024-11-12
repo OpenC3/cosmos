@@ -269,7 +269,7 @@ class TestCvtModel(unittest.TestCase):
 
     def test_gettlm_raises_on_invalid_types(self):
         self.update_temp1()
-        with self.assertRaisesRegex(RuntimeError, "Unknown value type 'NOPE'"):
+        with self.assertRaisesRegex(ValueError, "Unknown value type 'NOPE'"):
             CvtModel.get_tlm_values([["INST", "HEALTH_STATUS", "TEMP1", "NOPE"]])
 
     def test_gets_different_value_types_from_the_cvt(self):

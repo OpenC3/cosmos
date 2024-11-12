@@ -110,7 +110,7 @@ class Packet(Structure):
         will have target name set to None."""
         if target_name is not None:
             if not isinstance(target_name, str):
-                raise AttributeError(f"target_name must be a str but is a {target_name.__class__.__name__}")
+                raise TypeError(f"target_name must be a str but is a {target_name.__class__.__name__}")
 
             self.__target_name = target_name.upper()
         else:
@@ -125,7 +125,7 @@ class Packet(Structure):
         """Sets the packet name. Unidentified packets will have packet name set to None"""
         if packet_name is not None:
             if not isinstance(packet_name, str):
-                raise AttributeError(f"packet_name must be a str but is a {packet_name.__class__.__name__}")
+                raise TypeError(f"packet_name must be a str but is a {packet_name.__class__.__name__}")
 
             self.__packet_name = packet_name.upper()
         else:
@@ -140,7 +140,7 @@ class Packet(Structure):
         """Sets the packet description"""
         if description is not None:
             if not isinstance(description, str):
-                raise AttributeError(f"description must be a str but is a {description.__class__.__name__}")
+                raise TypeError(f"description must be a str but is a {description.__class__.__name__}")
 
             self.__description = description
         else:
@@ -172,7 +172,7 @@ class Packet(Structure):
         """Sets the received time of the packet"""
         if received_time is not None:
             if not isinstance(received_time, datetime.datetime):
-                raise AttributeError(f"received_time must be a datetime but is a {received_time.__class__.__name__}")
+                raise TypeError(f"received_time must be a datetime but is a {received_time.__class__.__name__}")
             self.__received_time = received_time
             self.read_conversion_cache = {}
         else:
@@ -186,7 +186,7 @@ class Packet(Structure):
     def received_count(self, received_count):
         """Sets the packet name. Unidentified packets will have packet name set to None"""
         if not isinstance(received_count, int):
-            raise AttributeError(f"received_count must be an int but is a {received_count.__class__.__name__}")
+            raise TypeError(f"received_count must be an int but is a {received_count.__class__.__name__}")
 
         self.__received_count = received_count
         self.read_conversion_cache = {}
@@ -225,7 +225,7 @@ class Packet(Structure):
         for item in self.id_items:
             try:
                 value = self.read_item(item, "RAW", buffer)
-            except AttributeError:
+            except:
                 value = None
             if item.id_value != value:
                 return False
@@ -246,7 +246,7 @@ class Packet(Structure):
         for item in self.id_items:
             try:
                 values.append(self.read_item(item, "RAW", buffer))
-            except AttributeError:
+            except:
                 values.append(None)
         return values
 
@@ -275,7 +275,7 @@ class Packet(Structure):
         with self.synchronize():
             try:
                 self.internal_buffer_equals(buffer)
-            except AttributeError:
+            except:
                 Logger.error(
                     f"{self.target_name} {self.packet_name} buffer ({type(buffer)}) received with actual packet length of {len(buffer)} but defined length of {self.defined_length}"
                 )
@@ -298,7 +298,7 @@ class Packet(Structure):
         """Sets the packet hazardous_description"""
         if hazardous_description is not None:
             if not isinstance(hazardous_description, str):
-                raise AttributeError(
+                raise TypeError(
                     f"hazardous_description must be a str but is a {hazardous_description.__class__.__name__}"
                 )
 
@@ -315,7 +315,7 @@ class Packet(Structure):
         """Sets the packet given_values"""
         if given_values is not None:
             if not isinstance(given_values, dict):
-                raise AttributeError(f"given_values must be a dict but is a {given_values.__class__.__name__}")
+                raise TypeError(f"given_values must be a dict but is a {given_values.__class__.__name__}")
 
             self.__given_values = given_values
         else:
@@ -338,7 +338,7 @@ class Packet(Structure):
         """Sets the packet template"""
         if template is not None:
             if not isinstance(template, (bytes, bytearray)):
-                raise AttributeError(f"template must be bytes but is a {template.__class__.__name__}")
+                raise TypeError(f"template must be bytes but is a {template.__class__.__name__}")
 
             self.__template = template
         else:
@@ -500,8 +500,8 @@ class Packet(Structure):
     def get_item(self, name):
         try:
             return super().get_item(name)
-        except AttributeError:
-            raise AttributeError(f"Packet item '{self.target_name} {self.packet_name} {name.upper()}' does not exist")
+        except:
+            raise RuntimeError(f"Packet item '{self.target_name} {self.packet_name} {name.upper()}' does not exist")
 
     # Read an item in the packet
     #
@@ -598,7 +598,7 @@ class Packet(Structure):
                     if not value_type.isascii():
                         value_type = simple_formatted(value_type)
                     value_type += "..."
-                raise AttributeError(
+                raise ValueError(
                     f"Unknown value type '{value_type}', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'"
                 )
         return value
@@ -657,7 +657,7 @@ class Packet(Structure):
                     else:
                         raise error
             case "FORMATTED" | "WITH_UNITS":
-                raise AttributeError(f"Invalid value type on write= {value_type}")
+                raise ValueError(f"Invalid value type on write: {value_type}")
             case _:
                 # Trim potentially long string (like if they accidentally pass buffer as value_type):
                 if len(str(value_type)) > 10:
@@ -666,7 +666,7 @@ class Packet(Structure):
                     if not value_type.isascii():
                         value_type = simple_formatted(value_type)
                     value_type += "..."
-                raise AttributeError(
+                raise ValueError(
                     f"Unknown value type '{value_type}', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'"
                 )
         with self.synchronize():

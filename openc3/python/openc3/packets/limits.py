@@ -77,7 +77,13 @@ class Limits:
             else:
                 limits_set = self.system.limits_set()
             limits_for_set = limits.values.get(limits_set)
+            print('limits_for_set:', limits_for_set)
             if limits_for_set is not None:
+                gl = None
+                gh = None
+                if len(limits_for_set) > 4:
+                    gl = limits_for_set[4]
+                    gh = limits_for_set[5]
                 return [
                     limits_set,
                     limits.persistence_setting,
@@ -86,8 +92,7 @@ class Limits:
                     limits_for_set[1],
                     limits_for_set[2],
                     limits_for_set[3],
-                    limits_for_set[4],
-                    limits_for_set[5],
+                    gl, gh,
                 ]
             else:
                 return [None, None, None, None, None, None, None, None, None]

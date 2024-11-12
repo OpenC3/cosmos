@@ -34,7 +34,7 @@ class TestObjectWriteConversion(unittest.TestCase):
         self.assertEqual(owc.converted_bit_size, 0)
 
     def test_complains_about_invalid_cmd_tlm(self):
-        with self.assertRaisesRegex(AttributeError, "Unknown type:OTHER"):
+        with self.assertRaisesRegex(TypeError, "Unknown type: OTHER"):
             ObjectWriteConversion("OTHER", "TGT", "PKT")
 
     def test_writes_the_cmd_packet_and_returns_a_raw_block(self):

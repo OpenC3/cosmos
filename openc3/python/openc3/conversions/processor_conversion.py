@@ -41,7 +41,7 @@ class ProcessorConversion(Conversion):
         if ConfigParser.handle_none(converted_type):
             self.converted_type = str(converted_type).upper()
             if self.converted_type not in BinaryAccessor.DATA_TYPES:
-                raise AttributeError(f"Unknown converted type: {converted_type}")
+                raise TypeError(f"Unknown converted type: {converted_type}")
             self.params.append(self.converted_type)
         if ConfigParser.handle_none(converted_bit_size):
             self.converted_bit_size = int(converted_bit_size)

@@ -284,7 +284,7 @@ class ConfigParser:
                 case "NEG_INFINITY":
                     return float("-inf")
                 case _:
-                    raise AttributeError(f"Could not convert constant: {value}")
+                    raise ValueError(f"Could not convert constant: {value}")
 
         return value
 
@@ -315,10 +315,10 @@ class ConfigParser:
                         if type == "MIN":
                             value *= -1
                     case _:
-                        raise AttributeError(f"Invalid bit size {bit_size} for FLOAT type.")
+                        raise ValueError(f"Invalid bit size {bit_size} for FLOAT type.")
 
             case _:
-                raise AttributeError(f"Invalid data type {data_type} when calculating range.")
+                raise TypeError(f"Invalid data type {data_type} when calculating range.")
 
         return value
 

@@ -240,7 +240,7 @@ class TestLengthProtocol(unittest.TestCase):
         )
         TestLengthProtocol.buffer = b"\x00\x01\x00\x00\x03\x04\x05\x06\x07\x08\x09"
         with self.assertRaisesRegex(
-            AttributeError, "Calculated packet length of 0 bits"
+            ValueError, "Calculated packet length of 0 bits"
         ):
             self.interface.read()
 
@@ -261,7 +261,7 @@ class TestLengthProtocol(unittest.TestCase):
         )
         TestLengthProtocol.buffer = b"\x00\x01\x00\x00\x03\x04\x05\x06\x07\x08\x09"
         with self.assertRaisesRegex(
-            AttributeError, "Calculated packet length of 24 bits"
+            ValueError, "Calculated packet length of 24 bits"
         ):
             self.interface.read()
 
@@ -302,7 +302,7 @@ class TestLengthProtocol(unittest.TestCase):
         )  # max_length
         TestLengthProtocol.buffer = b"\x00\x01\xFF\xFF\x03\x04"
         with self.assertRaisesRegex(
-            AttributeError, "Length value received larger than max_length= 65535 > 50"
+            ValueError, "Length value received larger than max_length= 65535 > 50"
         ):
             self.interface.read()
 
@@ -428,7 +428,7 @@ class TestLengthProtocol(unittest.TestCase):
         packet = Packet(None, None)
         packet.buffer = b"\x01\x02\x03\x04"
         # 4 bytes are not enough since we expect the length field at offset 32
-        with self.assertRaisesRegex(AttributeError, "buffer insufficient"):
+        with self.assertRaisesRegex(ValueError, "buffer insufficient"):
             self.interface.write(packet)
 
     def test_write_adjusts_length_by_offset(self):
@@ -523,7 +523,7 @@ class TestLengthProtocol(unittest.TestCase):
         packet = Packet(None, None)
         packet.buffer = b"\x01\x02\x03\x04\x05\x06"
         with self.assertRaisesRegex(
-            AttributeError, "Calculated length 6 larger than max_length 4"
+            ValueError, "Calculated length 6 larger than max_length 4"
         ):
             packet = self.interface.write(packet)
 
@@ -548,7 +548,7 @@ class TestLengthProtocol(unittest.TestCase):
         packet = Packet(None, None)
         packet.buffer = b"\x01\x02\x03\x04\x05\x06"
         with self.assertRaisesRegex(
-            AttributeError, "Calculated length 8 larger than max_length 4"
+            ValueError, "Calculated length 8 larger than max_length 4"
         ):
             packet = self.interface.write(packet)
 
