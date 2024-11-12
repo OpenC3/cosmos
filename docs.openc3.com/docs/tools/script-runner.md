@@ -117,7 +117,7 @@ class ExampleGroup(Group):
         print("setup")
     def script_1(self):
         print("script 1")
-    def teardown(self)
+    def teardown(self):
         print("teardown")
 ```
 
