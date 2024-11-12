@@ -54,17 +54,6 @@ module OpenC3
         expect(tc.table_names).to eql %w(TABLE1 TABLE2 TABLE3)
         tf.unlink
       end
-
-      it "supports deprecated ONE_DIMENSIONAL & TWO_DIMENSIONAL" do
-        tf = Tempfile.new('unittest')
-        tf.puts("TABLE table1 BIG_ENDIAN ONE_DIMENSIONAL")
-        tf.puts("TABLE table2 BIG_ENDIAN TWO_DIMENSIONAL 2")
-        tf.puts("TABLE table3 BIG_ENDIAN ONE_DIMENSIONAL")
-        tf.close
-        tc.process_file(tf.path)
-        expect(tc.table_names).to eql %w(TABLE1 TABLE2 TABLE3)
-        tf.unlink
-      end
     end
 
     describe "table" do
