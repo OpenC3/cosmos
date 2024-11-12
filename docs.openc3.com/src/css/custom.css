@@ -176,6 +176,10 @@ img[alt="LIMITSCOLOR"] {
   width: 220px;
 }
 
+img[alt="VALUELIMITSBAR"] {
+  width: 300px;
+}
+
 img[alt="VALUELIMITSCOLUMN"] {
   width: 180px;
 }

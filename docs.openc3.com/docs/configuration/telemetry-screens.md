@@ -900,6 +900,8 @@ Example Usage:
 VALUELIMITSBAR INST HEALTH_STATUS TEMP1 CONVERTED 18
 VALUELIMITSBAR INST HEALTH_STATUS TEMP1
 ```
+![VALUELIMITSBAR](/img/telemetry_viewer/widgets/valuelimitsbar.png)
+
 
 ### VALUELIMITSCOLUMN
 **Displays an item VALUE followed by LIMITSCOLUMN**
