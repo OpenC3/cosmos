@@ -335,7 +335,6 @@ export default {
     },
   },
   created() {
-    this.updating = true
     Api.get('/openc3-api/storage/buckets').then((response) => {
       this.buckets = response.data
     })
@@ -343,6 +342,7 @@ export default {
       this.volumes = response.data
     })
     if (this.$route.params.path?.length) {
+      this.updating = true
       let parts = this.$route.params.path[0].split('/')
       if (parts[0] === '') {
         this.mode = 'volume'
