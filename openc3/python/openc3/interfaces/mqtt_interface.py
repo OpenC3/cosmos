@@ -16,27 +16,26 @@
 
 # You can quickly setup an unauthenticated MQTT server in Docker with
 # docker run -it -p 1883:1883 eclipse-mosquitto:2.0.15 mosquitto -c /mosquitto-no-auth.conf
+# You can also test against encrypted and authenticated servers at https://test.mosquitto.org/
 
 from time import sleep
-import ssl
 import queue
 import tempfile
 from openc3.interfaces.interface import Interface
-from openc3.config.config_parser import ConfigParser
 from openc3.system.system import System
 from openc3.utilities.logger import Logger
+# See https://eclipse.dev/paho/files/paho.mqtt.python/html/client.html
 import paho.mqtt.client as mqtt
 
 # Base class for interfaces that send and receive messages over MQTT
 class MqttInterface(Interface):
     # @param hostname [String] MQTT server to connect to
     # @param port [Integer] MQTT port
-    # @param ssl [Boolean] Use SSL true/false
-    def __init__(self, hostname, port = 1883, ssl = False):
+    def __init__(self, hostname, port = 1883, ack_timeout = 5.0):
         super().__init__()
         self.hostname = hostname
         self.port = int(port)
-        self.ssl = ConfigParser.handle_true_false(ssl)
+        self.ack_timeout = float(ack_timeout)
         self.username = None
         self.password = None
         self.cert = None
@@ -60,7 +59,7 @@ class MqttInterface(Interface):
                         self.read_packets_by_topic[topic] = packet
 
     def connection_string(self):
-        return f"{self.hostname}:{self.port} (ssl: {self.ssl})"
+        return f"{self.hostname}:{self.port}"
 
     # Connects the interface to its target(s)
     def connect(self):
@@ -73,25 +72,23 @@ class MqttInterface(Interface):
         self.client.on_message = self.on_message
         self.client.user_data_set(self.pkt_queue) # passed to on_message
 
-        if self.ssl:
-            context = ssl.create_default_context()
-            self.client.tls_set_context(context)
         if self.username and self.password:
             self.client.username_pw_set(self.username, self.password)
-        if self.cert and self.key:
+        # You still need the ca_file if you're using your own cert and key
+        if self.cert and self.key and self.ca_file:
             if self.keyfile_password:
-                self.client.tls_set(certfile = self.cert, keyfile = self.key, keyfile_password = self.keyfile_password)
+                self.client.tls_set(ca_certs = self.ca_file.name, certfile = self.cert.name, keyfile = self.key.name, keyfile_password = self.keyfile_password)
             else:
-                self.client.tls_set(certfile = self.cert, keyfile = self.key)
-        if self.ca_file:
-            self.client.tls_set(ca_certs = self.ca_file.path)
+                self.client.tls_set(ca_certs = self.ca_file.name, certfile = self.cert.name, keyfile = self.key.name)
+        elif self.ca_file:
+            self.client.tls_set(ca_certs = self.ca_file.name)
         self.client.loop_start()
         # Connect doesn't fully establish the connection, it just sends the CONNECT packet
         # When the client loop receives an ONNACK packet from the broker in response to the CONNECT packet
         # it calls the on_connect callback and updates the client state to connected (is_connected() returns True)
         self.client.connect(self.hostname, self.port)
         i = 0
-        while not self.client.is_connected() and i < 500: # 5 seconds
+        while not self.client.is_connected() and i < (self.ack_timeout * 100):
             sleep(0.01)
             i += 1
         super().connect()
@@ -165,7 +162,9 @@ class MqttInterface(Interface):
             topic = self.write_topics.pop(0)
         except IndexError:
             raise RuntimeError(f"write_interface called with no topics: {self.write_topics}")
-        self.client.publish(topic, data)
+        info = self.client.publish(topic, data)
+        # This more closely matches the ruby implementation
+        info.wait_for_publish(timeout = self.ack_timeout)
 
     # Supported Options
     # USERNAME - Username for Mqtt Server
@@ -173,6 +172,7 @@ class MqttInterface(Interface):
     # CERT - Public Key for Client Cert Auth
     # KEY - Private Key for Client Cert Auth
     # CA_FILE - Certificate Authority for Client Cert Auth
+    # KEYFILE_PASSWORD - Password for encrypted cert and key files
     # (see Interface#set_option)
     def set_option(self, option_name, option_values):
         super().set_option(option_name, option_values)
@@ -182,13 +182,19 @@ class MqttInterface(Interface):
             case 'PASSWORD':
                 self.password = option_values[0]
             case 'CERT':
-                self.cert = option_values[0]
+                # CERT must be given as a file
+                self.cert = tempfile.NamedTemporaryFile(mode="w+", delete=False)
+                self.cert.write(option_values[0])
+                self.cert.close()
             case 'KEY':
-                self.key = option_values[0]
+                # KEY must be given as a file
+                self.key = tempfile.NamedTemporaryFile(mode="w+", delete=False)
+                self.key.write(option_values[0])
+                self.key.close()
             case 'CA_FILE':
-              # CA_FILE must be given as a file
-              self.ca_file = tempfile.NamedTemporaryFile(mode="w+b")
-              self.ca_file.write(option_values[0])
-              self.ca_file.seek(0)
+                # CA_FILE must be given as a file
+                self.ca_file = tempfile.NamedTemporaryFile(mode="w+", delete=False)
+                self.ca_file.write(option_values[0])
+                self.ca_file.close()
             case 'KEYFILE_PASSWORD':
                 self.keyfile_password = option_values[0]
