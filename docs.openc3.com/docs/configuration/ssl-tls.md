@@ -1,5 +1,5 @@
 ---
-sidebar_position: 10
+sidebar_position: 11
 title: SSL-TLS
 description: How to configure SSL and TLS
 sidebar_custom_props:

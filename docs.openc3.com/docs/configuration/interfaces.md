@@ -6,37 +6,31 @@ sidebar_custom_props:
   myEmoji: 💡
 ---
 
-Interfaces are the connection to the external embedded systems called targets. Interfaces are defined by the top level [INTERFACE](plugins.md#interface-1) keyword in the plugin.txt file.
+## Overview
 
-Interface classes provide the code that COSMOS uses to receive real-time telemetry from targets and to send commands to targets. The interface that a target uses could be anything (TCP/IP, serial, GPIB, Firewire, etc.), therefore it is important that this is a customizable portion of any reusable Command and Telemetry System. Fortunately the most common form of interfaces are over TCP/IP sockets, and COSMOS provides interface solutions for these. This guide will discuss how to use these interface classes, and how to create your own. Note that in most cases you can extend interfaces with [Protocols](protocols.md) rather than implementing a new interface.
+Interfaces are the connection to the external embedded systems called [targets](target). Interfaces are defined by the top level [INTERFACE](plugins.md#interface-1) keyword in the plugin.txt file.
+
+Interface classes provide the code that COSMOS uses to receive real-time telemetry from targets and to send commands to targets. The interface that a target uses could be anything (TCP/IP, serial, MQTT, SNMP, etc.), therefore it is important that this is a customizable portion of any reusable Command and Telemetry System. Fortunately the most common form of interfaces are over TCP/IP sockets, and COSMOS provides interface solutions for these. This guide will discuss how to use these interface classes, and how to create your own. Note that in most cases you can extend interfaces with [Protocols](protocols.md) rather than implementing a new interface.
 
 :::info Interface and Routers Are Very Similar
 Note that Interfaces and Routers are very similar and share the same configuration parameters. Routers are simply Interfaces which route an existing Interface's telemetry data out to the connected target and routes the connected target's commands back to the original Interface's target.
 :::
 
-Interfaces have the following methods that must be implemented:
+### Protocols
 
-1. **connect** - Open the socket or port or somehow establish the connection to the target. Note: This method may not block indefinitely. Be sure to call super() in your implementation.
-1. **connected?** - Return true or false depending on the connection state. Note: This method should return immediately.
-1. **disconnect** - Close the socket or port of somehow disconnect from the target. Note: This method may not block indefinitely. Be sure to call super() in your implementation.
-1. **read_interface** - Lowest level read of data on the interface. Note: This method should block until data is available or the interface disconnects. On a clean disconnect it should return nil.
-1. **write_interface** - Lowest level write of data on the interface. Note: This method may not block indefinitely.
+Protocols define the behaviour of an Interface, including differentiating packet boundaries and modifying data as necessary. See [Protocols](protocols) for more information.
 
-Interfaces also have the following methods that exist and have default implementations. They can be overridden if necessary but be sure to call super() to allow the default implementation to be executed.
+### Accessors
 
-1. **read_interface_base** - This method should always be called from read_interface(). It updates interface specific variables that are displayed by CmdTLmServer including the bytes read count, the most recent raw data read, and it handles raw logging if enabled.
-1. **write_interface_base** - This method should always be called from write_interface(). It updates interface specific variables that are displayed by CmdTLmServer including the bytes written count, the most recent raw data written, and it handles raw logging if enabled.
-1. **read** - Read the next packet from the interface. COSMOS implements this method to allow the Protocol system to operate on the data and the packet before it is returned.
-1. **write** - Send a packet to the interface. COSMOS implements this method to allow the Protocol system to operate on the packet and the data before it is sent.
-1. **write_raw** - Send a raw binary string of data to the target. COSMOS implements this method by basically calling write_interface with the raw data.
+Accessors are responsible for reading and writing the buffer which is trasmitted by the interface to the target. See [Accessors](accessors) for more information.
 
-:::warning Naming Conventions
-When creating your own interfaces, in most cases they will be subclasses of one of the built-in interfaces described below. It is important to know that both the filename and class name of the interface files must match with correct capitalization or you will receive "class not found" errors when trying to load your new interface. For example, an interface file called labview_interface.rb must contain the class LabviewInterface. If the class was named, LabVIEWInterface, for example, COSMOS would not be able to find the class because of the unexpected capitalization.
-:::
+For more information about how Interfaces fit with Protocols and Accessors see [Interoperability Without Standards](https://www.openc3.com/news/interoperability-without-standards).
 
 ## Provided Interfaces
 
-COSMOS provides the following interfaces for use: TCPIP Client, TCPIP Server, UDP, and Serial. The interface to use is defined by the [INTERFACE](plugins.md#interface) and [ROUTER](plugins.md#router) keywords.
+COSMOS provides the following interfaces: TCPIP Client, TCPIP Server, UDP, HTTP Client, HTTP Server, MQTT and Serial. The interface to use is defined by the [INTERFACE](plugins.md#interface) and [ROUTER](plugins.md#router) keywords. See [Interface Modifiers](plugins.md#interface-modifiers) for a description of the keywords which can follow the INTERFACE keyword.
+
+COSMOS Enterprise provides the following interfaces: SNMP, SNMP Trap, GEMS, InfluxDB.
 
 ### TCPIP Client Interface
 
@@ -76,8 +70,6 @@ INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker
 INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0 # no built-in protocol
 ```
 
-See [INTERFACE](plugins.md#interface) for a description of the INTERFACE keyword. See [Interface Modifiers](plugins.md#interface-modifiers) for a description of the keywords which can follow the INTERFACE keyword.
-
 ### TCPIP Server Interface
 
 The TCPIP server interface creates a TCPIP server which listens for incoming connections and dynamically creates sockets which communicate with the target. This interface is used for targets which open a socket and try to connect to a server.
@@ -91,6 +83,14 @@ The TCPIP server interface creates a TCPIP server which listens for incoming con
 | Protocol Type      | See Protocols.                                                                        | No       |
 | Protocol Arguments | See Protocols for the arguments each stream protocol takes.                           | No       |
 
+#### Interface Options
+
+Options are added directly beneath the interface definition as shown in the example.
+
+| Option         | Description                         | Default |
+| -------------- | ----------------------------------- | ------- |
+| LISTEN_ADDRESS | IP address to accept connections on | 0.0.0.0 |
+
 plugin.txt Ruby Examples:
 
 ```ruby
@@ -101,6 +101,7 @@ INTERFACE INTERFACE_NAME tcpip_server_interface.rb 8080 8080 10.0 10.0 TERMINATE
 INTERFACE INTERFACE_NAME tcpip_client_interface.rb 8080 8080 10.0 10.0 TEMPLATE 0xA 0xA
 INTERFACE INTERFACE_NAME tcpip_server_interface.rb 8080 8080 10.0 nil PREIDENTIFIED 0xCAFEBABE
 INTERFACE INTERFACE_NAME tcpip_client_interface.rb 8080 8080 10.0 10.0 # no built-in protocol
+  OPTION LISTEN_ADDRESS 127.0.0.1
 ```
 
 plugin.txt Python Examples:
@@ -114,8 +115,6 @@ INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py 8080 8080 1
 INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_server_interface.py 8080 8080 10.0 None PREIDENTIFIED 0xCAFEBABE
 INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py 8080 8080 10.0 10.0 # no built-in protocol
 ```
-
-See [INTERFACE](plugins.md#interface) for a description of the INTERFACE keyword. See [Interface Modifiers](plugins.md#interface-modifiers) for a description of the keywords which can follow the INTERFACE keyword. Note, TcpipServerInterface processes the [OPTION](plugins.md#option) modifier.
 
 ### UDP Interface
 
@@ -144,7 +143,117 @@ plugin.txt Python Example:
 INTERFACE INTERFACE_NAME openc3/interfaces/udp_interface.py host.docker.internal 8080 8081 8082 None 128 10.0 None
 ```
 
-See [INTERFACE](plugins.md#interface) for a description of the INTERFACE keyword. See [Interface Modifiers](plugins.md#interface-modifiers) for a description of the keywords which can follow the INTERFACE keyword.
+### HTTP Client Interface
+
+The HTTP client interface connects to a HTTP server to send commands and receive telemetry. This interface is used for interacting with existing standard web servers. This interface is commonly used with the [HttpAccessor](accessors#http-accessor) and [JsonAccessor](accessors#json-accessor). See the [openc3-cosmos-http-example](https://github.com/OpenC3/cosmos/tree/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-http-example) for more information.
+
+| Parameter                   | Description                                                                             | Required | Default    |
+| --------------------------- | --------------------------------------------------------------------------------------- | -------- | ---------- |
+| Host                        | Machine name to connect to                                                              | Yes      |            |
+| Port                        | Port to write commands to and read telemetry from                                       | No       | 80         |
+| Protocol                    | HTTP or HTTPS protocol                                                                  | No       | HTTP       |
+| Write Timeout               | Number of seconds to wait before aborting the write. Pass nil / None to block on write. | No       | 5          |
+| Read Timeout                | Number of seconds to wait before aborting the read. Pass nil / None to block on read.   | No       | nil / None |
+| Connect Timeout             | Number of seconds to wait before aborting the connection                                | No       | 5          |
+| Include Request In Response | Whether to include the request in the extra data                                        | No       | false      |
+
+plugin.txt Ruby Examples:
+
+```ruby
+INTERFACE INTERFACE_NAME http_client_interface.rb myserver.com 80
+```
+
+plugin.txt Python Examples:
+
+```ruby
+INTERFACE INTERFACE_NAME openc3/interfaces/http_client_interface.py mysecure.com 443 HTTPS
+```
+
+### HTTP Server Interface
+
+The HTTP server interface creates a simple unencrypted, unauthenticated HTTP server. This interface is commonly used with the [HttpAccessor](accessors#http-accessor) and [JsonAccessor](accessors#json-accessor). See the [openc3-cosmos-http-example](https://github.com/OpenC3/cosmos/tree/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-http-example) for more information.
+
+| Parameter | Description                                       | Required | Default |
+| --------- | ------------------------------------------------- | -------- | ------- |
+| Port      | Port to write commands to and read telemetry from | No       | 80      |
+
+#### Interface Options
+
+Options are added directly beneath the interface definition as shown in the example.
+
+| Option         | Description                         | Default |
+| -------------- | ----------------------------------- | ------- |
+| LISTEN_ADDRESS | IP address to accept connections on | 0.0.0.0 |
+
+plugin.txt Ruby Examples:
+
+```ruby
+INTERFACE INTERFACE_NAME http_server_interface.rb
+  LISTEN_ADDRESS 127.0.0.1
+```
+
+plugin.txt Python Examples:
+
+```ruby
+INTERFACE INTERFACE_NAME openc3/interfaces/http_server_interface.py 88
+```
+
+### MQTT Interface
+
+The MQTT interface is typically used for connecting to Internet of Things (IoT) devices. The COSMOS MQTT interface is a client that can both publish and receive messages (commands and telemetry). It has built in support for SSL certificates as well as authentication.
+
+| Parameter | Description                                                                          | Required | Default |
+| --------- | ------------------------------------------------------------------------------------ | -------- | ------- |
+| Host      | Host name or IP address of the MQTT broker                                           | Yes      |         |
+| Port      | Port on the MQTT broker to connect to. Keep in mind whether you're using SSL or not. | No       | 1883    |
+| SSL       | Whether you're using SSL/TLS to connect                                              | No       | False   |
+
+#### Interface Options
+
+Options are added directly beneath the interface definition as shown in the example.
+
+| Option           | Description                                                                                |
+| ---------------- | ------------------------------------------------------------------------------------------ |
+| USERNAME         | Username for authentication with the MQTT broker                                           |
+| PASSWORD         | Password for authentication with the MQTT broker                                           |
+| CERT             | PEM encoded client certificate filename used with KEY for client TLS based authentication  |
+| KEY              | PEM encoded client private keys filename                                                   |
+| KEYFILE_PASSWORD | Password to decrypt the CERT and KEY files                                                 |
+| CA_FILE          | Certificate Authority certificate filename that is to be treated as trusted by this client |
+
+plugin.txt Ruby Example:
+
+```ruby
+INTERFACE MQTT_INT mqtt_interface.rb test.mosquitto.org 1883 false
+  OPTION USERNAME jason
+  OPTION PASSWORD abc123
+```
+
+plugin.txt Python Example:
+
+```ruby
+INTERFACE MQTT_INT openc3/interfaces/mqtt_interface.py test.mosquitto.org 8883 true
+```
+
+#### Packet Definitions
+
+The MQTT Interface utilizes 'META TOPIC &lt;topic name&gt;' in the command and telemetry definition files to determine which topics to publish and receive messages from. Thus to send to the topic 'TEST' you would create a command like the following (Note: The command name 'TEST' does NOT have to match the topic name):
+
+```
+COMMAND MQTT TEST BIG_ENDIAN "Test"
+  META TOPIC TEST # <- The topic name is 'TEST'
+  APPEND_PARAMETER DATA 0 BLOCK '' "MQTT Data"
+```
+
+Similarly to receive from the topic 'TEST' you would create a telemetry packet like the following (Note: The telemetry name 'TEST' does NOT have to match the topic name):
+
+```
+TELEMETRY MQTT TEST BIG_ENDIAN "Test"
+  META TOPIC TEST # <- The topic name is 'TEST'
+  APPEND_ITEM DATA 0 BLOCK "MQTT Data"
+```
+
+For a full example, please see the [openc3-cosmos-mqtt-test](https://github.com/OpenC3/cosmos/tree/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-mqtt-test) in the COSMOS source.
 
 ### Serial Interface
 
@@ -162,6 +271,15 @@ The serial interface connects to a target over a serial port. COSMOS provides dr
 | Protocol Type      | See Protocols.                                                                                     | No       |
 | Protocol Arguments | See Protocols for the arguments each stream protocol takes.                                        | No       |
 
+#### Interface Options
+
+Options are added directly beneath the interface definition as shown in the example.
+
+| Option       | Description                                              | Default |
+| ------------ | -------------------------------------------------------- | ------- |
+| FLOW_CONTROL | Serial port flow control. Must be one of NONE or RTSCTS. | NONE    |
+| DATA_BITS    | Number of data bits.                                     | 8       |
+
 plugin.txt Ruby Examples:
 
 ```ruby
@@ -172,72 +290,36 @@ INTERFACE INTERFACE_NAME serial_interface.rb COM4 COM4 115200 NONE 1 10.0 10.0 T
 INTERFACE INTERFACE_NAME serial_interface.rb COM4 COM4 115200 NONE 1 10.0 10.0 TEMPLATE 0xA 0xA
 INTERFACE INTERFACE_NAME serial_interface.rb /dev/ttyS0 /dev/ttyS0 57600 NONE 1 10.0 nil PREIDENTIFIED 0xCAFEBABE
 INTERFACE INTERFACE_NAME serial_interface.rb COM4 COM4 115200 NONE 1 10.0 10.0 # no built-in protocol
+  OPTION FLOW_CONTROL RTSCTS
+  OPTION DATA_BITS 7
 ```
 
-See [INTERFACE](plugins.md#interface) for a description of the INTERFACE keyword. See [Interface Modifiers](plugins.md#interface-modifiers) for a description of the keywords which can follow the INTERFACE keyword. Note, SerialInterface processes the [OPTION](plugins.md#option) modifier.
+### SNMP Interface (Enterprise)
 
-## Streams
+### SNMP Trap Interface (Enterprise)
 
-Streams are low level classes that implement read, read_nonblock, write, connect, connected? and disconnect methods. The built-in Stream classes are SerialStream, TcpipSocketStream and TcpipClientStream and they are automatically used when creating a Serial Interface, TCP/IP Server Interface, or TCP/IP Client Interface.
+### GEMS Interface (Enterprise)
 
-## Protocols
+### InfluxDb Interface (Enterprise)
 
-Protocols define the behaviour of an Interface, including differentiating packet boundaries and modifying data as necessary. COSMOS defines the following built-in protocols which can be used with the above interfaces:
+## Custom Interfaces
 
-| Name                                                 | Description                                                                           |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| [Burst](protocols.md#burst-protocol)                 | Reads as much data as possible from the interface                                     |
-| [Fixed](protocols.md#fixed-protocol)                 | Processes fixed length packets with a known ID position                               |
-| [Length](protocols.md#length-protocol)               | Processes a length field at a fixed location and then reads the remainder of the data |
-| [Terminated](protocols.md#terminated-protocol)       | Delineates packets uses termination characters at the end of each packet              |
-| [Template](protocols.md#template-protocol)           | Processes text based command / response data such as SCPI interfaces                  |
-| [Preidentified](protocols.md#preidentified-protocol) | Internal COSMOS protocol used by COSMOS tools                                         |
+Interfaces have the following methods that must be implemented:
 
-These protocols are declared directly after the interface:
+1. **connect** - Open the socket or port or somehow establish the connection to the target. Note: This method may not block indefinitely. Be sure to call super() in your implementation.
+1. **connected?** - Return true or false depending on the connection state. Note: This method should return immediately.
+1. **disconnect** - Close the socket or port of somehow disconnect from the target. Note: This method may not block indefinitely. Be sure to call super() in your implementation.
+1. **read_interface** - Lowest level read of data on the interface. Note: This method should block until data is available or the interface disconnects. On a clean disconnect it should return nil.
+1. **write_interface** - Lowest level write of data on the interface. Note: This method may not block indefinitely.
 
-```ruby
-INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 nil BURST 4 0xDEADBEEF
-INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 nil FIXED 6 0 nil true
-INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil LENGTH 0 16 0 1 BIG_ENDIAN 4
-INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 10.0 TERMINATED 0x0D0A 0x0D0A true 0 0xF005BA11
-INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 10.0 TEMPLATE 0xA 0xA
-INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 nil PREIDENTIFIED 0xCAFEBABE
-```
+Interfaces also have the following methods that exist and have default implementations. They can be overridden if necessary but be sure to call super() to allow the default implementation to be executed.
 
-```ruby
-INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 None BURST 4 0xDEADBEEF
-INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 None FIXED 6 0 None true
-INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8081 10.0 None LENGTH 0 16 0 1 BIG_ENDIAN 4
-INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0 TERMINATED 0x0D0A 0x0D0A true 0 0xF005BA11
-INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0 TEMPLATE 0xA 0xA
-INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 None PREIDENTIFIED 0xCAFEBABE
-```
+1. **read_interface_base** - This method should always be called from read_interface(). It updates interface specific variables that are displayed by CmdTLmServer including the bytes read count, the most recent raw data read, and it handles raw logging if enabled.
+1. **write_interface_base** - This method should always be called from write_interface(). It updates interface specific variables that are displayed by CmdTLmServer including the bytes written count, the most recent raw data written, and it handles raw logging if enabled.
+1. **read** - Read the next packet from the interface. COSMOS implements this method to allow the Protocol system to operate on the data and the packet before it is returned.
+1. **write** - Send a packet to the interface. COSMOS implements this method to allow the Protocol system to operate on the packet and the data before it is sent.
+1. **write_raw** - Send a raw binary string of data to the target. COSMOS implements this method by basically calling write_interface with the raw data.
 
-COSMOS also defines the following helper protocols:
-
-| Name                                          | Description                                                         |
-| --------------------------------------------- | ------------------------------------------------------------------- |
-| [CRC](protocols.md#crc-protocol)              | Adds CRCs to outgoing packets and verifies CRCs on incoming packets |
-| [Ignore](protocols.md#ignore-packet-protocol) | Ignores the specified packet by dropping it                         |
-
-These protocols are declared after the INTERFACE:
-
-```ruby
-INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 nil BURST 4 0xDEADBEEF
-  TARGET TGT
-  PROTOCOL WRITE CrcProtocol CRC # See the documentation for parameters
-```
-
-```ruby
-INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 None BURST 4 0xDEADBEEF
-  TARGET TGT
-  PROTOCOL WRITE CrcProtocol CRC # See the documentation for parameters
-```
-
-Note the first parameter after the PROTOCOL keyword is how to apply the protocol: READ, WRITE, or READ_WRITE. Read applies the protocol on incoming packets (telemetry) and write on outgoing packets (commands). The next parameter is the protocol filename or class name. All other parameters are protocol specific.
-
-In addition, you can define your own protocols which are declared like the COSMOS helper protocols after your interface. See the [Custom Protocols](../configuration/protocols.md#custom-protocols) documentation for more information.
-
-:::info Protocol Run Order
-Read protocols execute in the order specified (First specified runs first). Write protocols execute in the reverse order (Last specified executes first).
+:::warning Naming Conventions
+When creating your own interfaces, in most cases they will be subclasses of one of the built-in interfaces described below. It is important to know that both the filename and class name of the interface files must match with correct capitalization or you will receive "class not found" errors when trying to load your new interface. For example, an interface file called labview_interface.rb must contain the class LabviewInterface. If the class was named, LabVIEWInterface, for example, COSMOS would not be able to find the class because of the unexpected capitalization.
 :::

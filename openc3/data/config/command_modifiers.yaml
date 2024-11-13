@@ -165,7 +165,7 @@ HAZARDOUS:
 ACCESSOR:
   summary: Defines the class used to read and write raw values from the packet
   description: Defines the class that is used too read raw values from the packet. Defaults to BinaryAccessor.
-    Provided accessors also include JsonAccessor, CborAccessor, HtmlAccessor, and XmlAccessor.
+    For more information see [Accessors](accessors).
   parameters:
     - name: Accessor Class Name
       required: true

@@ -6,7 +6,7 @@ sidebar_custom_props:
   myEmoji: 💡
 ---
 
-Protocols process data on behalf of an Interface. They can modify the data being written, data being read, or both. Protocols can also mark a packet as stored instead of real-time which means COSMOS will not update the current value table with the packet data. Protocols can be layered and will be processed in order. For example, if you have a low-level encryption layer that must be first removed before processing a higher level buffer length protocol.
+Protocols process data on behalf of an [Interface](interfaces). They can modify the data being written, data being read, or both. Protocols can also mark a packet as stored instead of real-time which means COSMOS will not update the current value table with the packet data. Protocols can be layered and will be processed in order. For example, if you have a low-level encryption layer that must be first removed before processing a higher level buffer length protocol.
 
 :::info Protocol Run Order
 Read protocols execute in the order specified (First specified runs first). Write protocols execute in the reverse order (Last specified executes first).
@@ -22,11 +22,17 @@ Serial is a much less friendly byte stream. With serial connections, it is very 
 
 UDP is an inherently packet based connection. If you read from a UDP socket, you will always receive back an entire packet. The best UDP based Protocols take advantage of this fact. Some implementations try to make UDP act like a byte stream, but this is a misuse of the protocol because it is highly likely that you will lose data and have no way to recover.
 
+For more information about how Protocols fit with Interfaces and Accessors see [Interoperability Without Standards](https://www.openc3.com/news/interoperability-without-standards).
+
 ## Packet Delineation Protocols
 
 COSMOS provides the following packet delineation protocols: COBS, SLIP, Burst, Fixed, Length, Template (deprecated), Terminated and Preidentified. Each of these protocols has the primary purpose of separating out packets from a byte stream.
 
+COSMOS Enterprise provides the following packet delineation protocols: CCSDS CLTU (with BCH Encoding), CCSDS TCTF (with Randomizer), CCSDS TMTF (with Randomizer), and GEMS.
+
 Note that all protocols take a final parameter called "Allow Empty Data". This indicates whether the protocol will allow an empty string to be passed down to later Protocols (instead of returning :STOP). Can be true, false, or nil, where nil is interpreted as true unless the Protocol is the last Protocol of the chain. End users of a protocol will almost always simply leave off this parameter. For more information read the [Custom Protocols](protocols.md#custom-protocols) documentation.
+
+Note the first parameter after the PROTOCOL keyword is how to apply the protocol: READ, WRITE, or READ_WRITE. Read applies the protocol on incoming packets (telemetry) and write on outgoing packets (commands). The next parameter is the protocol filename or class name. All other parameters are protocol specific.
 
 ### COBS Protocol
 

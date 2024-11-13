@@ -168,7 +168,7 @@ If an item's bit offset overlaps another item, OpenC3 issues a warning. This key
 #### KEY
 <div class="right">(Since 5.0.10)</div>**Defines the key used to access this raw value in the packet.**
 
-Keys are often JsonPath or XPath strings
+Keys are often [JSONPath](https://en.wikipedia.org/wiki/JSONPath) or [XPath](https://en.wikipedia.org/wiki/XPath) strings
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -531,7 +531,7 @@ This packet will not appear in Packet Viewer, Telemetry Grapher and Handbook Cre
 ### ACCESSOR
 <div class="right">(Since 5.0.10)</div>**Defines the class used to read and write raw values from the packet**
 
-Defines the class that is used too read raw values from the packet. Defaults to BinaryAccessor. Provided accessors also include JsonAccessor, CborAccessor, HtmlAccessor, and XmlAccessor.
+Defines the class that is used too read raw values from the packet. Defaults to BinaryAccessor. For more information see [Accessors](accessors).
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|

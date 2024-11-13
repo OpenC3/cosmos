@@ -1,5 +1,5 @@
 ---
-sidebar_position: 9
+sidebar_position: 10
 title: Screens
 description: Telemetry Viewer screen definition and widget documentation
 sidebar_custom_props:

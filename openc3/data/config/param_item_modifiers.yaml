@@ -52,7 +52,7 @@ OVERLAP:
   since: 4.4.1
 KEY:
   summary: Defines the key used to access this raw value in the packet.
-  description: Keys are often JsonPath or XPath strings
+  description: Keys are often [JSONPath](https://en.wikipedia.org/wiki/JSONPath) or [XPath](https://en.wikipedia.org/wiki/XPath) strings
   example: KEY $.book.title
   parameters:
     - name: Key string
