@@ -353,12 +353,20 @@ export default {
     navigateToUrl,
     newTabUrl(tool) {
       let url = null
-      if (tool.url[0] == '/' && tool.url[1] != '/') {
-        url = new URL(tool.url, window.location.origin)
-      } else {
-        url = new URL(tool.url)
+      try {
+        if (tool.url[0] == '/' && tool.url[1] != '/') {
+          url = new URL(tool.url, window.location.origin)
+        } else {
+          url = new URL(tool.url)
+        }
+        url.searchParams.set('scope', window.openc3Scope)
+      } catch (error) {
+        window.$cosmosNotify.serious({
+          title: `Invalid URL '${tool.url}' for tool ${tool.name}`,
+          message: error.message,
+        })
+        url.href = '/'
       }
-      url.searchParams.set('scope', window.openc3Scope)
       return url.href
     },
   },
