@@ -127,6 +127,8 @@ LABEL "THIS IS A TEST"
 LABEL "THIS IS A TEST"
   SETTING WIDTH 20em
 ```
+![WIDTH](/img/telemetry_viewer/widgets/width.png)
+
 
 ### HEIGHT
 **Sets the widget height**
@@ -146,6 +148,8 @@ LABEL "THIS IS A TEST"
   SETTING BACKCOLOR GREY
   SETTING HEIGHT 2em
 ```
+![HEIGHT](/img/telemetry_viewer/widgets/height.png)
+
 
 ### MARGIN
 **Sets the widget margin**
@@ -166,6 +170,8 @@ LABEL "THIS IS A TEST"
 LABEL "THIS IS A TEST"
   SETTING BACKCOLOR GREEN
 ```
+![MARGIN](/img/telemetry_viewer/widgets/margin.png)
+
 
 ### PADDING
 **Sets the widget padding**
@@ -186,6 +192,8 @@ LABEL "THIS IS A TEST"
 LABEL "THIS IS A TEST"
   SETTING BACKCOLOR GREEN
 ```
+![PADDING](/img/telemetry_viewer/widgets/padding.png)
+
 
 ### BACKCOLOR
 **The BACKCOLOR setting sets the background color for a widget**
@@ -203,6 +211,8 @@ LABEL "THIS IS A TEST"
 LABEL "THIS IS A TEST"
   SETTING BACKCOLOR 155 50 155
 ```
+![BACKCOLOR](/img/telemetry_viewer/widgets/backcolor.png)
+
 
 ### TEXTCOLOR
 **The TEXTCOLOR setting sets the text color for a widget**
@@ -220,6 +230,8 @@ LABEL "THIS IS A TEST"
 LABEL "THIS IS A TEST"
   SETTING TEXTCOLOR 155 50 155
 ```
+![TEXTCOLOR](/img/telemetry_viewer/widgets/textcolor.png)
+
 
 ### BORDERCOLOR
 **The BORDERCOLOR setting sets the border color for a layout widget**
@@ -241,6 +253,8 @@ VERTICAL
 END
 SETTING BORDERCOLOR 155 50 155
 ```
+![BORDERCOLOR](/img/telemetry_viewer/widgets/bordercolor.png)
+
 
 ### RAW
 **Apply a raw CSS stylesheet key and value**
@@ -255,6 +269,8 @@ Example Usage:
 LABEL "Label 1"
   SETTING RAW font-size 30px
 ```
+![RAW](/img/telemetry_viewer/widgets/raw.png)
+
 
 ## SUBSETTING
 **Applies a widget subsetting to the previously defined widget**
@@ -276,6 +292,8 @@ VERTICALBOX
     SUBSETTING 0 TEXTCOLOR green # Change the label's text to green
 END
 ```
+![SUBSETTING](/img/telemetry_viewer/widgets/subsetting.png)
+
 
 ## NAMED_WIDGET
 **Name a widget to allow access to it via the getNamedWidget method**
@@ -297,6 +315,8 @@ Example Usage:
 NAMED_WIDGET DURATION TEXTFIELD
 BUTTON "Push" "screen.getNamedWidget('DURATION').text()"
 ```
+![NAMED_WIDGET](/img/telemetry_viewer/widgets/named_widget.png)
+
 
 ## Layout Widgets
 ****
@@ -320,6 +340,8 @@ VERTICAL 5px
   LABEL "SCREEN"
 END
 ```
+![VERTICAL](/img/telemetry_viewer/widgets/vertical.png)
+
 
 ### VERTICALBOX
 **Places the widgets it encapsulates vertically inside a thin border**
@@ -338,6 +360,8 @@ VERTICALBOX Info
   LABEL "SCREEN"
 END
 ```
+![VERTICALBOX](/img/telemetry_viewer/widgets/verticalbox.png)
+
 
 ### HORIZONTAL
 **Places the widgets it encapsulates horizontally**
@@ -355,6 +379,8 @@ HORIZONTAL 100
   LABEL "SCREEN"
 END
 ```
+![HORIZONTAL](/img/telemetry_viewer/widgets/horizontal.png)
+
 
 ### HORIZONTALBOX
 **Places the widgets it encapsulates horizontally inside a thin border**
@@ -373,6 +399,8 @@ HORIZONTALBOX Info 10
   LABEL "SCREEN"
 END
 ```
+![HORIZONTALBOX](/img/telemetry_viewer/widgets/horizontalbox.png)
+
 
 ### MATRIXBYCOLUMNS
 **Places the widgets into a table-like matrix**
@@ -395,6 +423,8 @@ MATRIXBYCOLUMNS 3 10
   LABEL "300"
 END
 ```
+![MATRIXBYCOLUMNS](/img/telemetry_viewer/widgets/matrixbycolumns.png)
+
 
 ### SCROLLWINDOW
 **Places the widgets inside of it into a scrollable area**
@@ -422,6 +452,8 @@ SCROLLWINDOW 100 10
   END
 END
 ```
+![SCROLLWINDOW](/img/telemetry_viewer/widgets/scrollwindow.png)
+
 
 ### TABBOOK
 **Creates a tabbed area in which to place TABITEM widgets**
@@ -447,6 +479,8 @@ TABBOOK
   END
 END
 ```
+![TABITEM](/img/telemetry_viewer/widgets/tabitem.png)
+
 
 ### IFRAME
 **Open external tools in an Iframe within OpenC3**
@@ -461,6 +495,8 @@ Example Usage:
 ```ruby
 IFRAME https://openc3.com 900 450
 ```
+![IFRAME](/img/telemetry_viewer/widgets/iframe.png)
+
 
 ## Decoration Widgets
 ****
@@ -481,6 +517,8 @@ Example Usage:
 ```ruby
 LABEL "Note: This is only a warning"
 ```
+![LABEL](/img/telemetry_viewer/widgets/label.png)
+
 
 ### HORIZONTALLINE
 <div class="right">(Since 5.5.1)</div>**Displays a horizontal line on the screen that can be used as a separator**
@@ -492,6 +530,8 @@ LABEL Over
 HORIZONTALLINE
 LABEL Under
 ```
+![HORIZONTALLINE](/img/telemetry_viewer/widgets/horizontalline.png)
+
 
 ### TITLE
 **Displays a large centered title on the screen**
@@ -506,6 +546,8 @@ TITLE "Title"
 HORIZONTALLINE
 LABEL "Label"
 ```
+![TITLE](/img/telemetry_viewer/widgets/title.png)
+
 
 ### SPACER
 **Places a fixed size spacer in between widgets**
@@ -523,6 +565,8 @@ VERTICAL 3
   LABEL "Spacer above"
 END
 ```
+![SPACER](/img/telemetry_viewer/widgets/spacer.png)
+
 
 ## Telemetry Widgets
 ****
@@ -549,6 +593,8 @@ Example Usage:
 ARRAY INST HEALTH_STATUS ARY 250 80 "0x%x" 6 FORMATTED
 ARRAY INST HEALTH_STATUS ARY2 200 100 nil 4 WITH_UNITS
 ```
+![ARRAY](/img/telemetry_viewer/widgets/array.png)
+
 
 ### BLOCK
 **Displays BLOCK data organized into rows and space separated**
@@ -568,8 +614,10 @@ ARRAY INST HEALTH_STATUS ARY2 200 100 nil 4 WITH_UNITS
 
 Example Usage:
 ```ruby
-BLOCK INST IMAGE IMAGE 400 130 "%02X" 4 4 "0x%08X:"
+BLOCK INST IMAGE IMAGE 620 200 "%02X" 4 4 "0x%08X:"
 ```
+![BLOCK](/img/telemetry_viewer/widgets/block.png)
+
 
 ### FORMATVALUE
 **Displays a box with a formatted value**
@@ -588,7 +636,10 @@ Data is formatted by the specified string rather than by a format string given i
 Example Usage:
 ```ruby
 FORMATVALUE INST LATEST TIMESEC %012u CONVERTED 20
+FORMATVALUE INST LATEST TEMP1 %.2f CONVERTED 20
 ```
+![FORMATVALUE](/img/telemetry_viewer/widgets/formatvalue.png)
+
 
 ### LABELLED
 **Displays a LABEL followed by a LED**
@@ -609,6 +660,8 @@ LABELLED INST PARAMS VALUE1
   SETTING LED_COLOR GOOD GREEN
   SETTING LED_COLOR BAD RED
 ```
+![LABELLED](/img/telemetry_viewer/widgets/labelled.png)
+
 The following settings apply to LABELLED. They are applied using the SETTING keyword.
 #### LED_COLOR
 **Map a state or value to a color**
@@ -635,6 +688,8 @@ Example Usage:
 LABELPROGRESSBAR INST ADCS POSPROGRESS 2 200 RAW
 LABELPROGRESSBAR INST ADCS POSPROGRESS
 ```
+![LABELPROGRESSBAR](/img/telemetry_viewer/widgets/labelprogressbar.png)
+
 
 ### LABELVALUE
 **Displays a LABEL with the item name followed by a VALUE**
@@ -652,6 +707,8 @@ Example Usage:
 LABELVALUE INST LATEST TIMESEC CONVERTED 18
 LABELVALUE INST LATEST COLLECT_TYPE
 ```
+![LABELVALUE](/img/telemetry_viewer/widgets/labelvalue.png)
+
 
 ### LABELVALUEDESC
 **Displays a LABEL with the items description followed by a VALUE**
@@ -670,6 +727,8 @@ Example Usage:
 LABELVALUEDESC INST HEALTH_STATUS TEMP1 "Temperature number 1" RAW 18
 LABELVALUEDESC INST HEALTH_STATUS COLLECT_TYPE
 ```
+![LABELVALUEDESC](/img/telemetry_viewer/widgets/labelvaluedesc.png)
+
 
 ### LABELVALUELIMITSBAR
 **Displays a LABEL with the item name followed by VALUE and LIMITSBAR widgets**
@@ -698,6 +757,8 @@ Example Usage:
 LABELVALUELIMITSCOLUMN INST HEALTH_STATUS TEMP1 CONVERTED 18
 LABELVALUELIMITSCOLUMN INST HEALTH_STATUS TEMP1
 ```
+![LABELVALUELIMITSCOLUMN](/img/telemetry_viewer/widgets/labelvaluelimitscolumn.png)
+
 
 ### LABELVALUERANGEBAR
 **Displays a LABEL with the item name followed by VALUE and RANGEBAR widgets**
@@ -719,6 +780,8 @@ Example Usage:
 LABELVALUERANGEBAR INST HEALTH_STATUS TEMP1 0 100000 RAW 18 200 40
 LABELVALUERANGEBAR INST HEALTH_STATUS TEMP1 -120 120
 ```
+![LABELVALUERANGEBAR](/img/telemetry_viewer/widgets/labelvaluerangebar.png)
+
 
 ### LED
 **Displays a LED which changes color based on telemetry values**
@@ -741,6 +804,8 @@ LED INST PARAMS VALUE5 RAW 25 20 # Ellipse
   SETTING LED_COLOR 1 RED
   SETTING LED_COLOR ANY YELLOW
 ```
+![LED](/img/telemetry_viewer/widgets/led.png)
+
 The following settings apply to LED. They are applied using the SETTING keyword.
 #### LED_COLOR
 **Map a state or value to a color**
@@ -767,6 +832,8 @@ Example Usage:
 LIMITSBAR INST HEALTH_STATUS TEMP1 CONVERTED 200 50
 LIMITSBAR INST HEALTH_STATUS TEMP1
 ```
+![LIMITSBAR](/img/telemetry_viewer/widgets/limitsbar.png)
+
 
 ### LIMITSCOLUMN
 **Displays an item's current value within its colored limits vertically**
@@ -785,6 +852,8 @@ Example Usage:
 LIMITSCOLUMN INST HEALTH_STATUS TEMP1 CONVERTED 50 200
 LIMITSCOLUMN INST HEALTH_STATUS TEMP1
 ```
+![LIMITSCOLUMN](/img/telemetry_viewer/widgets/limitscolumn.png)
+
 
 ### LIMITSCOLOR
 **Displays a circle depicting the limits color of an item**
@@ -803,6 +872,8 @@ Example Usage:
 LIMITSCOLOR INST HEALTH_STATUS TEMP1 CONVERTED 30 TRUE
 LIMITSCOLOR INST HEALTH_STATUS TEMP1
 ```
+![LIMITSCOLOR](/img/telemetry_viewer/widgets/limitscolor.png)
+
 
 ### VALUELIMITSBAR
 **Displays an item VALUE followed by LIMITSBAR**
@@ -820,6 +891,8 @@ Example Usage:
 VALUELIMITSBAR INST HEALTH_STATUS TEMP1 CONVERTED 18
 VALUELIMITSBAR INST HEALTH_STATUS TEMP1
 ```
+![VALUELIMITSBAR](/img/telemetry_viewer/widgets/valuelimitsbar.png)
+
 
 ### VALUELIMITSCOLUMN
 **Displays an item VALUE followed by LIMITSCOLUMN**
@@ -837,6 +910,8 @@ Example Usage:
 VALUELIMITSCOLUMN INST HEALTH_STATUS TEMP1 CONVERTED 18
 VALUELIMITSCOLUMN INST HEALTH_STATUS TEMP1
 ```
+![VALUELIMITSCOLUMN](/img/telemetry_viewer/widgets/valuelimitscolumn.png)
+
 
 ### VALUERANGEBAR
 **Displays an item VALUE followed by RANGEBAR**
@@ -858,6 +933,8 @@ Example Usage:
 VALUERANGEBAR INST HEALTH_STATUS TEMP1 0 100000 RAW 18 200 40
 VALUERANGEBAR INST HEALTH_STATUS TEMP1 -120 120
 ```
+![VALUERANGEBAR](/img/telemetry_viewer/widgets/valuerangebar.png)
+
 
 ### LINEGRAPH
 **Displays a line graph of a telemetry item**
@@ -875,13 +952,9 @@ Example Usage:
 ```ruby
 LINEGRAPH INST HEALTH_STATUS TEMP1
   SETTING ITEM INST ADCS Q1 # Add additional item to graph
-LINEGRAPH INST HEALTH_STATUS TEMP2 RAW
-LINEGRAPH INST HEALTH_STATUS TEMP3 CONVERTED REDUCED_MINUTE MIN
-  SETTING SIZE 600 500 # width height
-  SETTING HISTORY 1h # load 1 hour of data into graph
-LINEGRAPH INST HEALTH_STATUS TEMP4
-  SETTING HISTORY 30m # load 30 minutes of data into graph
 ```
+![LINEGRAPH](/img/telemetry_viewer/widgets/linegraph.png)
+
 The following settings apply to LINEGRAPH. They are applied using the SETTING keyword.
 #### ITEM
 **Add a telemetry item to the graph**
@@ -956,6 +1029,8 @@ SPARKLINE INST HEALTH_STATUS TEMP1
   SETTING SIZE 400 50
   SETTING HISTORY 30s # Add 30 seconds of data into graph
 ```
+![SPARKLINE](/img/telemetry_viewer/widgets/sparkline.png)
+
 The following settings apply to SPARKLINE. They are applied using the SETTING keyword.
 #### ITEM
 **Add a telemetry item to the graph**
@@ -1029,6 +1104,8 @@ Example Usage:
 LABELSPARKLINE INST HEALTH_STATUS TEMP1
   SETTING HISTORY 5m # Add 5 minutes of data into graph
 ```
+![LABELSPARKLINE](/img/telemetry_viewer/widgets/labelsparkline.png)
+
 The following settings apply to LABELSPARKLINE. They are applied using the SETTING keyword.
 #### ITEM
 **Add a telemetry item to the graph**
@@ -1099,6 +1176,8 @@ Example Usage:
 ```ruby
 IMAGEVIEWER INST IMAGE IMAGE jpg
 ```
+![IMAGEVIEWER](/img/telemetry_viewer/widgets/imageviewer.png)
+
 
 ### PROGRESSBAR
 **Displays a progress bar that is useful for displaying percentages**
@@ -1117,6 +1196,8 @@ Example Usage:
 PROGRESSBAR INST ADCS POSPROGRESS 0.5 200
 PROGRESSBAR INST ADCS POSPROGRESS
 ```
+![PROGRESSBAR](/img/telemetry_viewer/widgets/progressbar.png)
+
 
 ### RANGEBAR
 **Displays a custom range bar displaying the item value**
@@ -1137,6 +1218,8 @@ Example Usage:
 RANGEBAR INST HEALTH_STATUS TEMP1 0 100000 RAW 200 50
 RANGEBAR INST HEALTH_STATUS TEMP1 -100 100
 ```
+![RANGEBAR](/img/telemetry_viewer/widgets/rangebar.png)
+
 
 ### ROLLUP
 <div class="right">(Since 5.17.1)</div>**Displays a notification icon which changes color based on a rollup telemetry**
@@ -1162,6 +1245,8 @@ ROLLUP antenna "GND 2" "Location"
   SETTING TLM INST HEALTH_STATUS TEMP3
   SETTING TLM INST HEALTH_STATUS TEMP4
 ```
+![ROLLUP](/img/telemetry_viewer/widgets/rollup.png)
+
 
 ### SIGNAL
 <div class="right">(Since 5.17.2)</div>**Displays a cellular signal icon which changes based on telemetry value**
@@ -1186,6 +1271,8 @@ SIGNAL INST HEALTH_STATUS TEMP1
   # Value >= 50 displays 5 bars
   SETTING RANGE -50 0 50
 ```
+![SIGNAL](/img/telemetry_viewer/widgets/signal.png)
+
 
 ### TEXTBOX
 **Provides a large box for multiline text**
@@ -1201,8 +1288,9 @@ SIGNAL INST HEALTH_STATUS TEMP1
 Example Usage:
 ```ruby
 TEXTBOX INST HEALTH_STATUS PACKET_TIMEFORMATTED 150 70
-TEXTBOX INST HEALTH_STATUS PACKET_TIMEFORMATTED
 ```
+![TEXTBOX](/img/telemetry_viewer/widgets/textbox.png)
+
 
 ### VALUE
 **Displays a box with a telemetry item value**
@@ -1222,6 +1310,8 @@ Example Usage:
 VALUE INST HEALTH_STATUS TEMP1 CONVERTED 18
 VALUE INST HEALTH_STATUS TEMP1
 ```
+![VALUE](/img/telemetry_viewer/widgets/value.png)
+
 
 ## Interactive Widgets
 ****
@@ -1276,6 +1366,8 @@ BUTTON 'Run Script' "var script=screen.getNamedWidget('SCRIPTNAME').text();" \
   "var env = {}; env['TYPE'] = 'TEST';" \
   "runScript('INST/procedures/'+script, !screen.getNamedWidget('BG').checked(), env)"
 ```
+![BUTTON](/img/telemetry_viewer/widgets/button.png)
+
 
 ### CHECKBUTTON
 **Displays a check box**
@@ -1292,6 +1384,8 @@ NAMED_WIDGET CHECK CHECKBUTTON 'Ignore Hazardous Checks'
 BUTTON 'Send' 'screen.getNamedWidget("CHECK").checked() ? ' \
   'api.cmd_no_hazardous_check("INST CLEAR") : api.cmd("INST CLEAR")'
 ```
+![CHECKBUTTON](/img/telemetry_viewer/widgets/checkbutton.png)
+
 
 ### COMBOBOX
 **Displays a drop down list of text items**
@@ -1309,6 +1403,8 @@ BUTTON 'Start Collect' 'var type = screen.getNamedWidget("COLLECT_TYPE").text();
   'api.cmd("INST COLLECT with TYPE "+type+", DURATION 10.0")'
 NAMED_WIDGET COLLECT_TYPE COMBOBOX NORMAL SPECIAL
 ```
+![COMBOBOX](/img/telemetry_viewer/widgets/combobox.png)
+
 
 ### DATE
 **Displays a date picker**
@@ -1325,6 +1421,8 @@ BUTTON 'Alert Date' 'var date = screen.getNamedWidget("DATE").text();' +
   'alert("Date:"+date)'
 NAMED_WIDGET DATE DATE
 ```
+![DATE](/img/telemetry_viewer/widgets/date.png)
+
 
 ### RADIOGROUP
 **Creates a group of RADIOBUTTONs**
@@ -1353,6 +1451,8 @@ END
 BUTTON 'Send' "screen.getNamedWidget('GROUP').selected() === 0 ? " +
   "api.cmd('INST ABORT') : api.cmd('INST CLEAR')"
 ```
+![RADIOBUTTON](/img/telemetry_viewer/widgets/radiobutton.png)
+
 
 ### TEXTFIELD
 **Displays a rectangular box where the user can enter text**
@@ -1368,6 +1468,8 @@ NAMED_WIDGET DURATION TEXTFIELD 12 "10.0"
 BUTTON 'Start Collect' 'var dur = screen.getNamedWidget("DURATION").text();' +
       'api.cmd("INST COLLECT with TYPE NORMAL, DURATION "+dur+"")'
 ```
+![TEXTFIELD](/img/telemetry_viewer/widgets/textfield.png)
+
 
 ### TIME
 **Displays a time picker**
@@ -1384,6 +1486,8 @@ BUTTON 'Alert Time' 'var time = screen.getNamedWidget("TIME").text();' +
   'alert("Time:"+time)'
 NAMED_WIDGET TIME TIME
 ```
+![TIME](/img/telemetry_viewer/widgets/time.png)
+
 
 ## Canvas Widgets
 ****
@@ -1423,6 +1527,8 @@ CANVAS 100 100
   CANVASLABEL 5 70 "Label2" 18 blue
 END
 ```
+![CANVASLABEL](/img/telemetry_viewer/widgets/canvaslabel.png)
+
 
 ### CANVASLABELVALUE
 **Draws the text value of a telemetry item onto the canvas in an optional frame**
@@ -1445,6 +1551,8 @@ CANVAS 200 100
   CANVASLABELVALUE INST HEALTH_STATUS TEMP2 5 70 10 blue WITH_UNITS
 END
 ```
+![CANVASLABELVALUE](/img/telemetry_viewer/widgets/canvaslabelvalue.png)
+
 
 ### CANVASIMAGE
 **Displays an image on the canvas**
@@ -1463,6 +1571,8 @@ CANVAS 250 430
   CANVASIMAGE "https://images.pexels.com/photos/256152/pexels-photo-256152.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=640&w=426" 0 250 250 150
 END
 ```
+![CANVASIMAGE](/img/telemetry_viewer/widgets/canvasimage.png)
+
 The following settings apply to CANVASIMAGE. They are applied using the SETTING keyword.
 #### SCREEN
 **Open another screen when clicked**
@@ -1498,6 +1608,8 @@ CANVAS 230 230
     SETTING SCREEN INST HS
 END
 ```
+![CANVASIMAGEVALUE](/img/telemetry_viewer/widgets/canvasimagevalue.png)
+
 The following settings apply to CANVASIMAGEVALUE. They are applied using the SETTING keyword.
 #### IMAGE
 **Map an image to a state or value**
@@ -1537,6 +1649,8 @@ CANVAS 100 50
   CANVASLINE 95 5 95 45 blue 3
 END
 ```
+![CANVASLINE](/img/telemetry_viewer/widgets/canvasline.png)
+
 
 ### CANVASLINEVALUE
 **Draws a color changing line onto the canvas**
@@ -1567,6 +1681,8 @@ CANVAS 120 50
     SETTING VALUE_EQ UNAVAILABLE RED
 END
 ```
+![CANVASLINEVALUE](/img/telemetry_viewer/widgets/canvaslinevalue.png)
+
 The following settings apply to CANVASLINEVALUE. They are applied using the SETTING keyword.
 #### VALUE_EQ
 <div class="right">(Since 5.5.1)</div>**Map a value to a color**
@@ -1592,6 +1708,8 @@ CANVAS 50 50
   CANVASDOT 10 15 BLUE 5
 END
 ```
+![CANVASDOT](/img/telemetry_viewer/widgets/canvasdot.png)
+
 
 
 ## Example File
