@@ -181,10 +181,8 @@ module OpenC3
         end
       end
 
-      if @url and !@url.start_with?('/')
-        if !@url.start_with?('http')
-          raise "URL must be a full URL (http://domain.com/path) or a relative path (/path)"
-        end
+      if @url and !@url.start_with?('/') and !@url.start_with?('http')
+        raise "URL must be a full URL (http://domain.com/path) or a relative path (/path)"
       end
 
       super(update: update, force: force, queued: queued)
