@@ -81,12 +81,14 @@ export default {
     let languageMode = null
     const fileExtension = this.filename ? this.filename.split('.').pop() : 'txt'
     switch (fileExtension) {
-      case 'txt':
-      case 'rb':
-        const RubyMode = this.buildRubyMode()
-        languageMode = new RubyMode()
-        break
+      case 'json':
+        const JsonMode = this.buildJsonMode()
+        languageMode = new JsonMode()
+        this.editor.setOptions({
+          useWorker: false,
+        })
       case 'py':
+      case 'pyi':
         const PythonMode = this.buildPythonMode()
         languageMode = new PythonMode()
         break
@@ -95,11 +97,11 @@ export default {
         languageMode = new MarkdownMode()
         break
       default:
-        const JsonMode = this.buildJsonMode()
-        languageMode = new JsonMode()
-        this.editor.setOptions({
-          useWorker: false,
-        })
+        // Most of the COSMOS text files are best display in Ruby
+        // This includes Rakefiles, Gemfiles, etc.
+        const RubyMode = this.buildRubyMode()
+        languageMode = new RubyMode()
+        break
     }
     this.editor.session.setMode(languageMode)
     this.editor.session.setUseWrapMode(true)

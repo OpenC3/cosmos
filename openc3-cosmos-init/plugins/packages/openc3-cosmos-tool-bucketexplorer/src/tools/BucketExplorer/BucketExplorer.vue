@@ -91,33 +91,33 @@
               icon="mdi-chevron-left-box-outline"
               variant="text"
               density="compact"
-              class="mt-1"
+              class="ml-3 mt-1"
               @click.stop="backArrow"
               data-test="be-nav-back"
             />
             <span class=".text-body-1 ma-2 font-size" data-test="file-path">
-              <span
+              <a
                 v-for="(part, index) in breadcrumbPath"
                 :key="index"
-                @click.stop="gotoPath(part.path)"
+                @click.prevent="gotoPath(part.path)"
                 style="cursor: pointer"
                 >/&nbsp;{{ part.name }}&nbsp;
-              </span>
+              </a>
             </span>
             <v-spacer />
-            <div class="pa-1 font-size">
+            <div class="ma-2 font-size">
               Folder Size: {{ folderTotal }}
               <span class="small-font-size">(not recursive)</span>
             </div>
 
             <v-spacer />
-            <div style="display: flex" v-if="mode === 'bucket'">
-              <span class="pa-1 font-size">Upload File</span>
+            <div class="ma-2" style="display: flex" v-if="mode === 'bucket'">
+              <span class="font-size">Upload File</span>
               <v-file-input
                 v-model="file"
                 hide-input
                 hide-details
-                class="file-input"
+                class="mr-1 file-input"
                 prepend-icon="mdi-upload"
                 data-test="upload-file"
               />
@@ -133,7 +133,7 @@
         </template>
         <template v-slot:item.action="{ item }">
           <v-icon
-            v-if="item.icon === 'mdi-file' && !isBinary(item.name)"
+            v-if="item.icon === 'mdi-file' && isText(item.name)"
             @click="viewFile(item.name)"
             class="mr-3"
             data-test="view-file"
@@ -266,6 +266,7 @@ export default {
       optionsDialog: false,
       refreshInterval: 60,
       updater: null,
+      updating: false,
       path: '',
       file: null,
       files: [],
@@ -284,6 +285,7 @@ export default {
           title: 'Name',
           value: 'name',
           sortable: true,
+          nowrap: true,
         },
         {
           title: 'Size',
@@ -298,6 +300,8 @@ export default {
         {
           title: 'Action',
           value: 'action',
+          align: 'end',
+          nowrap: true,
         },
       ],
       menus: [
@@ -331,6 +335,7 @@ export default {
     },
   },
   created() {
+    this.updating = true
     Api.get('/openc3-api/storage/buckets').then((response) => {
       this.buckets = response.data
     })
@@ -368,15 +373,38 @@ export default {
     },
   },
   methods: {
-    isBinary(filename) {
+    isText(filename) {
+      if (['Rakefile', 'Dockerfile'].includes(filename)) {
+        return true
+      }
       let ext = filename.split('.').pop()
-      return ['gz', 'bin', 'gem', 'zip'].includes(ext)
+      // Add some common COSMOS text file extensions
+      return [
+        'txt',
+        'md',
+        'rb',
+        'py',
+        'pyi',
+        'cfg',
+        'html',
+        'js',
+        'json',
+        'info',
+        'vue',
+        'sh',
+        'bat',
+        'csv',
+      ].includes(ext)
     },
     gotoPath(path) {
-      this.path = path
-      this.update()
+      if (!this.updating) {
+        this.updating = true
+        this.path = path
+        this.update()
+      }
     },
     update() {
+      this.updating = true
       this.$router.push({
         name: 'Bucket Explorer',
         params: {
@@ -401,31 +429,43 @@ export default {
       }
     },
     selectBucket(bucket) {
-      this.mode = 'bucket'
-      this.root = bucket
-      this.path = ''
-      this.update()
+      if (!this.updating) {
+        this.updating = true
+        this.mode = 'bucket'
+        this.root = bucket
+        this.path = ''
+        this.update()
+      }
     },
     selectVolume(volume) {
-      this.mode = 'volume'
-      this.root = volume
-      this.path = ''
-      this.update()
+      if (!this.updating) {
+        this.updating = true
+        this.mode = 'volume'
+        this.root = volume
+        this.path = ''
+        this.update()
+      }
     },
     backArrow() {
       // Nothing to do if we're at the root so return
       if (this.path === '') return
-      let parts = this.path.split('/')
-      this.path = parts.slice(0, parts.length - 2).join('/')
-      // Only append the last slash if we're not at the root
-      // The root is 2 because it's the path before clicking back
-      if (parts.length > 2) {
-        this.path += '/'
+      if (!this.updating) {
+        this.updating = true
+        let parts = this.path.split('/')
+        this.path = parts.slice(0, parts.length - 2).join('/')
+        // Only append the last slash if we're not at the root
+        // The root is 2 because it's the path before clicking back
+        if (parts.length > 2) {
+          this.path += '/'
+        }
+        this.update()
       }
-      this.update()
     },
     fileClick(_, { item }) {
-      if (item.icon === 'mdi-folder') {
+      // Nothing to do if they click on a file
+      if (item.icon !== 'mdi-folder') return
+      if (!this.updating) {
+        this.updating = true
         if (this.root === '') {
           // initial root click
           this.root = item.name
@@ -564,6 +604,7 @@ export default {
               }
             }),
           )
+          this.updating = false
         })
         .catch(({ response }) => {
           this.files = []
@@ -576,6 +617,7 @@ export default {
               title: response.message,
             })
           }
+          this.updating = false
         })
     },
   },
