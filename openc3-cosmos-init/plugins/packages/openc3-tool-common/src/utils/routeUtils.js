@@ -18,9 +18,12 @@
 
 const prependBasePath = function (route) {
   if (!route.name !== 'NotFound') {
-    route.path = `${process.env.BASE_URL}${route.path.replace(/^\//, '')}`
+    route.path = `${import.meta.env.BASE_URL}/${route.path.replace(/^\//, '')}`
   }
   route.children?.forEach(prependBasePath)
 }
+
+// eslint-disable-next-line
+console.log('base ' + import.meta.env.BASE_URL)
 
 export { prependBasePath }

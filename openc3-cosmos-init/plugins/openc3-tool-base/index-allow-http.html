@@ -16,15 +16,9 @@
     <!-- OPENC3EE KEYCLOAK PLACEHOLDER -->
 
     <!--
-    Remove this if you only support browsers that support async/await.
-    This is needed by babel to share largeish helper code for compiling async/await in older
-    browsers. More information at https://github.com/single-spa/create-single-spa/issues/112
-  -->
-    <script src="/js/regenerator-runtime-0.14.1.min.js"></script>
-    <!--
-    This CSP allows any SSL-enabled host and for arbitrary eval(), but you should limit these directives further to increase your app's security.
-    Learn more about CSP policies at https://content-security-policy.com/#directive
-  -->
+      This CSP allows any SSL-enabled host and for arbitrary eval(), but you should limit these directives further to increase your app's security.
+      Learn more about CSP policies at https://content-security-policy.com/#directive
+    -->
     <meta
       http-equiv="Content-Security-Policy"
       content="default-src 'self' blob: data: http: https:; script-src 'unsafe-inline' 'unsafe-eval' http: https: blob:; connect-src blob: http: https: wss: ws:; style-src 'unsafe-inline' http: https:; object-src 'none';"
@@ -37,15 +31,15 @@
 
     <!-- Shared dependencies go into this import map. Your shared dependencies must be of one of the following formats:
 
-    1. System.register (preferred when possible) - https://github.com/systemjs/systemjs/blob/master/docs/system-register.md
-    2. UMD - https://github.com/umdjs/umd
-    3. Global variable
+      1. System.register (preferred when possible) - https://github.com/systemjs/systemjs/blob/master/docs/system-register.md
+      2. UMD - https://github.com/umdjs/umd
+      3. Global variable
 
-    More information about shared dependencies can be found at https://single-spa.js.org/docs/recommended-setup#sharing-with-import-maps.
+      More information about shared dependencies can be found at https://single-spa.js.org/docs/recommended-setup#sharing-with-import-maps.
 
-    Update by downloading latest release from https://github.com/vuetifyjs/vuetify/releases (for example)
-    and putting the vuetify-vX.Y.Z.min.js in ../public/js (delete the old one)
-  -->
+      Update by downloading latest release from https://github.com/vuetifyjs/vuetify/releases (for example)
+      and putting the vuetify-vX.Y.Z.min.js in ../public/js (delete the old one)
+    -->
     <script type="systemjs-importmap">
       {
         "imports": {
@@ -53,11 +47,11 @@
           "vue": "/js/vue-3.5.4.min.js",
           "vuetify": "/js/vuetify-3.7.1.min.js",
           "vue-router": "/js/vue-router-4.4.4.min.js",
-          "vuex": "/js/vuex-4.1.0.min.js",
-          "openc3-tool-base": "/openc3-tool-base.js"
+          "vuex": "/js/vuex-4.1.0.min.js"
         }
       }
     </script>
+    <script type="module" src="/src/openc3-tool-base.js"></script>
     <!-- See note above for how to update these -->
     <link rel="preload" href="/js/single-spa-5.9.5.min.js" as="script" />
     <link rel="preload" href="/js/vue-3.5.4.min.js" as="script" />
@@ -68,10 +62,10 @@
     <script src="/js/auth.js"></script>
     <script src="/js/import-map-overrides-3.1.1.min.js"></script>
     <!-- systemjs homepage: https://github.com/systemjs/systemjs/releases
-    We use system.js instead of s.js which includes global and module-types.
-    We also explicitly use amd (asynchronous module definition) which uses named-register
-    Note that named-exports, transform and use-default are deprecated.
-  -->
+      We use system.js instead of s.js which includes global and module-types.
+      We also explicitly use amd (asynchronous module definition) which uses named-register
+      Note that named-exports, transform and use-default are deprecated.
+    -->
     <script src="/js/systemjs-6.15.1.min.js"></script>
     <!-- All the following belong to the system package -->
     <script src="/js/amd.min.js"></script>
@@ -96,7 +90,7 @@
           System.set(System.resolve('vue-router'), window.VueRouter)
           return System.import('vuetify')
         }).then(function () {
-          System.import('openc3-tool-base')
+          // System.import('openc3-tool-base')
         })
       })()
     </script>
