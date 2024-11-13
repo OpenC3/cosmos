@@ -71,7 +71,7 @@ module OpenC3
         expect(bplw.instance_variable_get(:@file_size)).to_not eq 8
         expect(bplw.buffered_first_time_nsec).to eq time1
         bplw.shutdown
-        sleep 0.1 # Allow for shutdown thread "copy" to S3
+        sleep 1.0 # Allow for shutdown thread "copy" to S3
         expect(bplw.buffered_first_time_nsec).to be_nil # set to nil in close_file
 
         # Files copied to S3 are named via the first_time, last_time, label

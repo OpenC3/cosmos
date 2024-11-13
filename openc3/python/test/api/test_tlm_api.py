@@ -837,9 +837,9 @@ class TestTlmApi(unittest.TestCase):
             get_tlm_values(["INST__HEALTH_STATUS__TEMP1__MINE"])
 
     def test_get_tlm_values_complains_about_bad_arguments(self):
-        with self.assertRaisesRegex(ValueError, "items must be array of strings"):
+        with self.assertRaisesRegex(TypeError, "items must be array of strings"):
             get_tlm_values([])
-        with self.assertRaisesRegex(ValueError, "items must be array of strings"):
+        with self.assertRaisesRegex(TypeError, "items must be array of strings"):
             get_tlm_values([["INST", "HEALTH_STATUS", "TEMP1"]])
         with self.assertRaisesRegex(ValueError, "items must be formatted"):
             get_tlm_values(["INST", "HEALTH_STATUS", "TEMP1"])

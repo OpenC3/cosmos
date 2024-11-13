@@ -764,7 +764,7 @@ class TestCrcProtocol(unittest.TestCase):
         packet.append_item("TRAILER", 32, "UINT")
         packet.buffer = b"\x00\x01\x02\x03\x00\x00\x00\x00\x04\x05\x06\x07"
         with self.assertRaisesRegex(
-            ValueError, "Packet item 'TGT PKT MYCRC' does not exist"
+            RuntimeError, "Packet item 'TGT PKT MYCRC' does not exist"
         ):
             self.interface.write(packet)
 

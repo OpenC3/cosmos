@@ -56,7 +56,7 @@ class TestUnixTimeFormattedConversion(unittest.TestCase):
         utfc = UnixTimeFormattedConversion("TIME")
         packet = Packet("TGT", "PKT")
         with self.assertRaisesRegex(
-            ValueError, "Packet item 'TGT PKT TIME' does not exist"
+            RuntimeError, "Packet item 'TGT PKT TIME' does not exist"
         ):
             utfc.call(None, packet, packet.buffer)
 
@@ -65,7 +65,7 @@ class TestUnixTimeFormattedConversion(unittest.TestCase):
         packet = Packet("TGT", "PKT")
         packet.append_item("TIME", 32, "UINT")
         with self.assertRaisesRegex(
-            ValueError, "Packet item 'TGT PKT TIME_US' does not exist"
+            RuntimeError, "Packet item 'TGT PKT TIME_US' does not exist"
         ):
             utfc.call(None, packet, packet.buffer)
 

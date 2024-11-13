@@ -42,6 +42,7 @@ class MqttInterface(Interface):
         self.cert = None
         self.key = None
         self.ca_file = None
+        self.keyfile_password = None
 
         self.read_topics = []
         self.write_topics = []
@@ -73,12 +74,15 @@ class MqttInterface(Interface):
         self.client.user_data_set(self.pkt_queue) # passed to on_message
 
         if self.ssl:
-            context = ssl.SSLContext.create_default_context()
+            context = ssl.create_default_context()
             self.client.tls_set_context(context)
         if self.username and self.password:
             self.client.username_pw_set(self.username, self.password)
         if self.cert and self.key:
-            self.client.tls_set(certfile = self.cert, keyfile = self.key)
+            if self.keyfile_password:
+                self.client.tls_set(certfile = self.cert, keyfile = self.key, keyfile_password = self.keyfile_password)
+            else:
+                self.client.tls_set(certfile = self.cert, keyfile = self.key)
         if self.ca_file:
             self.client.tls_set(ca_certs = self.ca_file.path)
         self.client.loop_start()
@@ -186,3 +190,5 @@ class MqttInterface(Interface):
               self.ca_file = tempfile.NamedTemporaryFile(mode="w+b")
               self.ca_file.write(option_values[0])
               self.ca_file.seek(0)
+            case 'KEYFILE_PASSWORD':
+                self.keyfile_password = option_values[0]
