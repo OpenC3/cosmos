@@ -16,14 +16,15 @@ VARIABLE mqtt_ca_file_secret ""
 <% include_mqtt_ca_file_secret = (mqtt_ca_file_secret.to_s.strip.length > 0) %>
 
 # NOTE: SECRET only works if you update the Secrets tab with the expected secrets
-# In this case you need to potentially set PASSWORD, CERT and KEY, or CA_FILE
-# PASSWORD is a simple value, CERT, KEY and CA_FILE are files
+# See the README for more information
 
 TARGET MQTT <%= mqtt_target_name %>
-# INTERFACE MQTT_INT mqtt_interface.rb <%= mqtt_host %> <%= mqtt_port %>
 INTERFACE MQTT_INT openc3/interfaces/mqtt_interface.py <%= mqtt_host %> <%= mqtt_port %>
+# Ruby equivalent of the above Python MqttInterface
+# INTERFACE MQTT_INT mqtt_interface.rb <%= mqtt_host %> <%= mqtt_port %>
   MAP_TARGET <%= mqtt_target_name %>
   <% if include_mqtt_username %>
+  # No need to hide the USERNAME so directly set the OPTION
   OPTION USERNAME <%= mqtt_username %>
   <% end %>
   <% if include_mqtt_password_secret %>
