@@ -1,5 +1,8 @@
 ---
 title: Developing COSMOS
+description: Building COSMOS and developing the frontend and backend
+sidebar_custom_props:
+  myEmoji: 💻
 ---
 
 # Developing COSMOS

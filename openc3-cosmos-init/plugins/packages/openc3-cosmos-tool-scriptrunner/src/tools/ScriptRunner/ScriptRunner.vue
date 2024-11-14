@@ -21,385 +21,383 @@
 -->
 
 <template>
-  <div>
-    <top-bar :menus="menus" :title="title" />
-    <v-snackbar v-model="showAlert" top :color="alertType" :timeout="3000">
-      <v-icon> mdi-{{ alertType }} </v-icon>
-      {{ alertText }}
-      <template v-slot:action="{ attrs }">
-        <v-btn text v-bind="attrs" @click="showAlert = false"> Close </v-btn>
-      </template>
-    </v-snackbar>
-    <v-snackbar v-model="showEditingToast" top :timeout="-1" color="orange">
-      <v-icon> mdi-pencil-off </v-icon>
-      {{ lockedBy }} is editing this script. Editor is in read-only mode
-      <template v-slot:action="{ attrs }">
-        <v-btn
-          text
-          v-bind="attrs"
-          color="danger"
-          @click="confirmLocalUnlock"
-          data-test="unlock-button"
-        >
-          Unlock
-        </v-btn>
-        <v-btn
-          text
-          v-bind="attrs"
-          @click="
-            () => {
-              showEditingToast = false
-            }
-          "
-        >
-          dismiss
-        </v-btn>
-      </template>
-    </v-snackbar>
-    <div class="grid">
-      <div
-        class="item"
-        v-for="def in screens"
-        :key="def.id"
-        :id="screenId(def.id)"
-        ref="gridItem"
+  <top-bar :menus="menus" :title="title" />
+  <v-snackbar
+    v-model="showAlert"
+    location="top"
+    :color="alertType"
+    :timeout="3000"
+  >
+    <v-icon> mdi-{{ alertType }} </v-icon>
+    {{ alertText }}
+    <template v-slot:actions="{ attrs }">
+      <v-btn variant="text" v-bind="attrs" @click="showAlert = false">
+        Close
+      </v-btn>
+    </template>
+  </v-snackbar>
+  <v-snackbar
+    v-model="showEditingToast"
+    location="top"
+    :timeout="-1"
+    color="orange"
+  >
+    <v-icon> mdi-pencil-off </v-icon>
+    {{ lockedBy }} is editing this script. Editor is in read-only mode
+    <template v-slot:actions="{ attrs }">
+      <v-btn
+        variant="text"
+        v-bind="attrs"
+        color="danger"
+        @click="confirmLocalUnlock"
+        data-test="unlock-button"
       >
-        <div class="item-content">
-          <openc3-screen
-            :target="def.target"
-            :screen="def.screen"
-            :definition="def.definition"
-            :keywords="screenKeywords"
-            :initialFloated="true"
-            :initialTop="def.top"
-            :initialLeft="def.left"
-            :initialZ="3"
-            :minZ="3"
-            :fixFloated="true"
-            :count="def.count"
-            @close-screen="closeScreen(def.id)"
-            @delete-screen="closeScreen(def.id)"
-          />
-        </div>
+        Unlock
+      </v-btn>
+      <v-btn
+        variant="text"
+        v-bind="attrs"
+        @click="
+          () => {
+            showEditingToast = false
+          }
+        "
+      >
+        dismiss
+      </v-btn>
+    </template>
+  </v-snackbar>
+  <div class="grid">
+    <div
+      class="item"
+      v-for="def in screens"
+      :key="def.id"
+      :id="screenId(def.id)"
+      ref="gridItem"
+    >
+      <div class="item-content">
+        <openc3-screen
+          :target="def.target"
+          :screen="def.screen"
+          :definition="def.definition"
+          :keywords="screenKeywords"
+          :initialFloated="true"
+          :initialTop="def.top"
+          :initialLeft="def.left"
+          :initialZ="3"
+          :minZ="3"
+          :fixFloated="true"
+          :count="def.count"
+          @close-screen="closeScreen(def.id)"
+          @delete-screen="closeScreen(def.id)"
+        />
       </div>
     </div>
-    <v-card style="padding: 10px">
-      <suite-runner
-        v-if="suiteRunner"
-        class="suite-runner"
-        :suite-map="suiteMap"
-        :disable-buttons="disableSuiteButtons"
-        :filename="fullFilename"
-        @button="suiteRunnerButton"
-        @loaded="doResize"
-      />
-      <div id="sr-controls">
-        <v-row no-gutters justify="space-between">
-          <v-icon v-if="showDisconnect" class="mr-2" color="red">
-            mdi-connection
-          </v-icon>
-          <v-tooltip bottom>
-            <template v-slot:activator="{ on, attrs }">
+  </div>
+  <v-card style="padding: 10px">
+    <suite-runner
+      v-if="suiteRunner"
+      class="suite-runner"
+      :suite-map="suiteMap"
+      :disable-buttons="disableSuiteButtons"
+      :filename="fullFilename"
+      @button="suiteRunnerButton"
+      @loaded="doResize"
+    />
+    <div id="sr-controls">
+      <v-row no-gutters justify="space-between">
+        <v-icon v-if="showDisconnect" class="mt-2" color="red">
+          mdi-connection
+        </v-icon>
+        <v-tooltip location="bottom">
+          <template v-slot:activator="{ props }">
+            <v-btn
+              v-bind="props"
+              icon="mdi-cached"
+              variant="text"
+              @click="reloadFile"
+              :disabled="filename === NEW_FILENAME"
+            />
+          </template>
+          <span> Reload File </span>
+        </v-tooltip>
+        <v-select
+          v-model="filenameSelect"
+          @update:model-value="fileNameChanged"
+          :items="fileList"
+          :disabled="fileList.length <= 1"
+          label="Filename"
+          id="filename"
+          data-test="filename"
+          style="width: 300px"
+          density="compact"
+          variant="outlined"
+          hide-details
+        />
+        <v-text-field
+          v-model="scriptId"
+          label="Script ID"
+          data-test="id"
+          class="shrink ml-2 script-state"
+          style="max-width: 100px"
+          density="compact"
+          variant="outlined"
+          readonly
+          hide-details
+        />
+        <v-text-field
+          v-model="stateTimer"
+          label="Script State"
+          data-test="state"
+          class="shrink ml-2 script-state"
+          style="max-width: 120px"
+          density="compact"
+          variant="outlined"
+          readonly
+          hide-details
+        />
+        <v-progress-circular
+          v-if="state === 'Connecting...'"
+          :size="40"
+          class="ml-2 mr-2"
+          indeterminate
+          color="primary"
+        />
+        <div v-else style="width: 40px; height: 40px" class="ml-2 mr-2"></div>
+
+        <!-- Hide the Start button when Suite Runner controls are showing -->
+        <v-spacer />
+        <div v-if="startOrGoButton === 'Start'">
+          <v-btn
+            @click="startHandler"
+            class="mx-1"
+            color="primary"
+            data-test="start-button"
+            :disabled="startOrGoDisabled || !executeUser"
+            :hidden="suiteRunner"
+          >
+            <span> Start </span>
+          </v-btn>
+          <v-tooltip location="bottom">
+            <template v-slot:activator="{ props }">
               <v-btn
-                v-on="on"
-                v-bind="attrs"
-                icon
-                @click="reloadFile"
-                :disabled="filename === NEW_FILENAME"
+                v-bind="props"
+                @click="scriptEnvironment.show = !scriptEnvironment.show"
+                class="mx-1"
+                data-test="env-button"
+                :color="environmentIconColor"
+                :disabled="envDisabled"
               >
-                <v-icon>mdi-cached</v-icon>
+                <v-icon> {{ environmentIcon }} </v-icon>
               </v-btn>
             </template>
-            <span> Reload File </span>
+            <span>Script Environment</span>
           </v-tooltip>
-          <v-select
-            v-model="filenameSelect"
-            @change="fileNameChanged"
-            :items="fileList"
-            :disabled="fileList.length <= 1"
-            label="Filename"
-            id="filename"
-            data-test="filename"
-            style="width: 300px"
-            dense
-            outlined
-            hide-details
-          />
-          <v-text-field
-            v-model="scriptId"
-            label="Script ID"
-            data-test="id"
-            class="shrink ml-2 script-state"
-            style="width: 100px"
-            dense
-            outlined
-            readonly
-            hide-details
-          />
-          <v-text-field
-            v-model="stateTimer"
-            label="Script State"
-            data-test="state"
-            class="shrink ml-2 script-state"
-            style="width: 120px"
-            dense
-            outlined
-            readonly
-            hide-details
-          />
-          <v-progress-circular
-            v-if="state === 'Connecting...'"
-            :size="40"
-            class="ml-2 mr-2"
-            indeterminate
+        </div>
+        <div v-else>
+          <v-btn
+            @click="go"
             color="primary"
+            class="mr-2"
+            :disabled="startOrGoDisabled"
+            data-test="go-button"
+          >
+            Go
+          </v-btn>
+          <v-btn
+            color="primary"
+            @click="pauseOrRetry"
+            class="mr-2"
+            :disabled="pauseOrRetryDisabled"
+            data-test="pause-retry-button"
+          >
+            {{ pauseOrRetryButton }}
+          </v-btn>
+
+          <v-btn
+            color="primary"
+            @click="stop"
+            data-test="stop-button"
+            :disabled="stopDisabled"
+          >
+            Stop
+          </v-btn>
+        </div>
+      </v-row>
+    </div>
+  </v-card>
+  <splitpanes horizontal @resize="calcHeight" style="height: 100%">
+    <pane class="editorbox" size="50">
+      <v-snackbar
+        v-model="showSave"
+        absolute
+        location="top right"
+        :timeout="-1"
+        class="saving"
+      >
+        Saving...
+      </v-snackbar>
+      <pre
+        ref="editor"
+        class="editor"
+        @contextmenu.prevent="showExecuteSelectionMenu"
+      ></pre>
+      <v-menu v-model="executeSelectionMenu" :target="[menuX, menuY]">
+        <v-list>
+          <v-list-item
+            v-for="item in executeSelectionMenuItems"
+            link
+            :key="item.label"
+            :disabled="scriptId"
+          >
+            <v-list-item-title @click="item.command">
+              {{ item.label }}
+            </v-list-item-title>
+          </v-list-item>
+        </v-list>
+      </v-menu>
+    </pane>
+    <pane id="messages" class="mt-2" ref="messagesDiv">
+      <div id="debug" class="pa-0" v-if="showDebug">
+        <v-row no-gutters>
+          <v-btn
+            color="primary"
+            @click="step"
+            style="width: 100px"
+            class="mr-4"
+            :disabled="!scriptId"
+            data-test="step-button"
+          >
+            Step
+            <v-icon end> mdi-step-forward </v-icon>
+          </v-btn>
+          <v-text-field
+            ref="debug"
+            class="mb-2"
+            variant="outlined"
+            density="compact"
+            hide-details
+            label="Debug"
+            v-model="debug"
+            @keydown="debugKeydown"
+            data-test="debug-text"
           />
-          <div v-else style="width: 40px; height: 40px" class="ml-2 mr-2"></div>
-
-          <!-- Hide the Start button when Suite Runner controls are showing -->
-          <v-spacer />
-          <div v-if="startOrGoButton === 'Start'">
-            <v-btn
-              @click="startHandler"
-              class="mx-1"
-              color="primary"
-              data-test="start-button"
-              :disabled="startOrGoDisabled || !executeUser"
-              :hidden="suiteRunner"
-            >
-              <span> Start </span>
-            </v-btn>
-            <v-tooltip bottom>
-              <template v-slot:activator="{ on, attrs }">
-                <v-btn
-                  v-on="on"
-                  v-bind="attrs"
-                  @click="scriptEnvironment.show = !scriptEnvironment.show"
-                  class="mx-1"
-                  data-test="env-button"
-                  :color="environmentIconColor"
-                  :disabled="envDisabled"
-                >
-                  <v-icon> {{ environmentIcon }} </v-icon>
-                </v-btn>
-              </template>
-              <span>Script Environment</span>
-            </v-tooltip>
-          </div>
-          <div v-else>
-            <v-btn
-              @click="go"
-              color="primary"
-              class="mr-2"
-              :disabled="startOrGoDisabled"
-              data-test="go-button"
-            >
-              Go
-            </v-btn>
-            <v-btn
-              color="primary"
-              @click="pauseOrRetry"
-              class="mr-2"
-              :disabled="pauseOrRetryDisabled"
-              data-test="pause-retry-button"
-            >
-              {{ pauseOrRetryButton }}
-            </v-btn>
-
-            <v-btn
-              color="primary"
-              @click="stop"
-              data-test="stop-button"
-              :disabled="stopDisabled"
-            >
-              Stop
-            </v-btn>
-          </div>
         </v-row>
       </div>
-    </v-card>
-    <!-- Create Multipane container to support resizing.
-         NOTE: We listen to paneResize event and call editor.resize() to prevent weird sizing issues,
-         The event must be paneResize and not pane-resize -->
-    <multipane layout="horizontal" @paneResize="doResize">
-      <div class="editorbox">
-        <v-snackbar
-          v-model="showSave"
-          absolute
-          top
-          right
-          :timeout="-1"
-          class="saving"
-        >
-          Saving...
-        </v-snackbar>
-        <pre
-          ref="editor"
-          class="editor"
-          @contextmenu.prevent="showExecuteSelectionMenu"
-        ></pre>
-        <v-menu
-          v-model="executeSelectionMenu"
-          :position-x="menuX"
-          :position-y="menuY"
-          absolute
-          offset-y
-        >
-          <v-list>
-            <v-list-item
-              v-for="item in executeSelectionMenuItems"
-              link
-              :key="item.label"
-              :disabled="scriptId"
-            >
-              <v-list-item-title @click="item.command">
-                {{ item.label }}
-              </v-list-item-title>
-            </v-list-item>
-          </v-list>
-        </v-menu>
-      </div>
-      <multipane-resizer><hr /></multipane-resizer>
-      <div id="messages" class="mt-2" ref="messagesDiv">
-        <div id="debug" class="pa-0" v-if="showDebug">
-          <v-row no-gutters>
-            <v-btn
-              color="primary"
-              @click="step"
-              style="width: 100px"
-              class="mr-4"
-              :disabled="!scriptId"
-              data-test="step-button"
-            >
-              Step
-              <v-icon right> mdi-step-forward </v-icon>
-            </v-btn>
-            <v-text-field
-              class="mb-2"
-              outlined
-              dense
-              hide-details
-              label="Debug"
-              v-model="debug"
-              @keydown="debugKeydown"
-              data-test="debug-text"
-            />
-          </v-row>
-        </div>
-        <script-log-messages
-          id="log-messages"
-          v-model="messages"
-          @sort="messageSortOrder"
-        />
-      </div>
-    </multipane>
-    <!--- MENUS --->
-    <file-open-save-dialog
-      v-if="fileOpen"
-      v-model="fileOpen"
-      type="open"
-      api-url="/script-api/scripts"
-      @file="setFile($event)"
-      @error="setError($event)"
-      @clear-temp="clearTemp($event)"
-    />
-    <file-open-save-dialog
-      v-if="showSaveAs"
-      v-model="showSaveAs"
-      type="save"
-      api-url="/script-api/scripts"
-      require-target-parent-dir
-      :input-filename="filenameOrBlank"
-      @filename="saveAsFilename($event)"
-      @error="setError($event)"
-      @clear-temp="clearTemp($event)"
-    />
-    <environment-dialog v-if="showEnvironment" v-model="showEnvironment" />
-    <ask-dialog
-      v-if="ask.show"
-      v-model="ask.show"
-      :question="ask.question"
-      :default="ask.default"
-      :password="ask.password"
-      :answer-required="ask.answerRequired"
-      @response="ask.callback"
-    />
-    <file-dialog
-      v-if="file.show"
-      v-model="file.show"
-      :title="file.title"
-      :message="file.message"
-      :multiple="file.multiple"
-      :filter="file.filter"
-      @response="fileDialogCallback"
-    />
-    <information-dialog
-      v-if="information.show"
-      v-model="information.show"
-      :title="information.title"
-      :text="information.text"
-    />
-    <event-list-dialog
-      v-if="inputMetadata.show"
-      v-model="inputMetadata.show"
-      :events="inputMetadata.events"
-      :time-zone="timeZone"
-      new-metadata
-      @close="inputMetadata.callback"
-    />
-    <overrides-dialog v-if="showOverrides" v-model="showOverrides" />
-    <prompt-dialog
-      v-if="prompt.show"
-      v-model="prompt.show"
-      :title="prompt.title"
-      :subtitle="prompt.subtitle"
-      :message="prompt.message"
-      :details="prompt.details"
-      :buttons="prompt.buttons"
-      :layout="prompt.layout"
-      :multiple="prompt.multiple"
-      @response="prompt.callback"
-    />
-    <results-dialog
-      v-if="results.show"
-      v-model="results.show"
-      :text="results.text"
-    />
-    <script-environment-dialog
-      v-if="scriptEnvironment.show"
-      v-model="scriptEnvironment.show"
-      :input-environment="scriptEnvironment.env"
-      @environment="environmentHandler"
-    />
-    <simple-text-dialog
-      v-model="showSuiteError"
-      title="Suite Analysis Error"
-      :text="suiteError"
-      :width="1000"
-    />
-    <critical-cmd-dialog
-      :uuid="criticalCmdUuid"
-      :cmdString="criticalCmdString"
-      :cmdUser="criticalCmdUser"
-      :persistent="true"
-      v-model="displayCriticalCmd"
-      @status="promptDialogCallback"
-    />
-    <v-bottom-sheet v-model="showScripts">
-      <v-sheet class="pb-11 pt-5 px-5">
-        <running-scripts
-          v-if="showScripts"
-          :connect-in-new-tab="!!fileModified"
-          @disconnect="scriptDisconnect"
-          @close="
-            () => {
-              showScripts = false
-            }
-          "
-        />
-      </v-sheet>
-    </v-bottom-sheet>
-  </div>
+      <script-log-messages
+        id="log-messages"
+        v-model="messages"
+        @sort="messageSortOrder"
+      />
+    </pane>
+  </splitpanes>
+  <!--- MENUS --->
+  <file-open-save-dialog
+    v-if="fileOpen"
+    v-model="fileOpen"
+    type="open"
+    api-url="/script-api/scripts"
+    @file="setFile($event)"
+    @error="setError($event)"
+    @clear-temp="clearTemp($event)"
+  />
+  <file-open-save-dialog
+    v-if="showSaveAs"
+    v-model="showSaveAs"
+    type="save"
+    api-url="/script-api/scripts"
+    require-target-parent-dir
+    :input-filename="filenameOrBlank"
+    @filename="saveAsFilename($event)"
+    @error="setError($event)"
+    @clear-temp="clearTemp($event)"
+  />
+  <environment-dialog v-if="showEnvironment" v-model="showEnvironment" />
+  <ask-dialog
+    v-if="ask.show"
+    v-model="ask.show"
+    :question="ask.question"
+    :default="ask.default"
+    :password="ask.password"
+    :answer-required="ask.answerRequired"
+    @response="ask.callback"
+  />
+  <file-dialog
+    v-if="file.show"
+    v-model="file.show"
+    :title="file.title"
+    :message="file.message"
+    :multiple="file.multiple"
+    :filter="file.filter"
+    @response="fileDialogCallback"
+  />
+  <information-dialog
+    v-if="information.show"
+    v-model="information.show"
+    :title="information.title"
+    :text="information.text"
+    :width="information.width"
+  />
+  <event-list-dialog
+    v-if="inputMetadata.show"
+    v-model="inputMetadata.show"
+    :events="inputMetadata.events"
+    :time-zone="timeZone"
+    new-metadata
+    @close="inputMetadata.callback"
+  />
+  <overrides-dialog v-if="showOverrides" v-model="showOverrides" />
+  <prompt-dialog
+    v-if="prompt.show"
+    v-model="prompt.show"
+    :title="prompt.title"
+    :subtitle="prompt.subtitle"
+    :message="prompt.message"
+    :details="prompt.details"
+    :buttons="prompt.buttons"
+    :layout="prompt.layout"
+    :multiple="prompt.multiple"
+    @response="prompt.callback"
+  />
+  <results-dialog
+    v-if="results.show"
+    v-model="results.show"
+    :text="results.text"
+  />
+  <script-environment-dialog
+    v-if="scriptEnvironment.show"
+    v-model="scriptEnvironment.show"
+    :input-environment="scriptEnvironment.env"
+    @environment="environmentHandler"
+  />
+  <simple-text-dialog
+    v-model="showSuiteError"
+    title="Suite Analysis Error"
+    :text="suiteError"
+    :width="1000"
+  />
+  <critical-cmd-dialog
+    :uuid="criticalCmdUuid"
+    :cmdString="criticalCmdString"
+    :cmdUser="criticalCmdUser"
+    :persistent="true"
+    v-model="displayCriticalCmd"
+    @status="promptDialogCallback"
+  />
+  <v-bottom-sheet v-model="showScripts">
+    <v-sheet class="pb-11 pt-5 px-5">
+      <running-scripts
+        v-if="showScripts"
+        :connect-in-new-tab="!!fileModified"
+        @disconnect="scriptDisconnect"
+        @close="
+          () => {
+            showScripts = false
+          }
+        "
+      />
+    </v-sheet>
+  </v-bottom-sheet>
 </template>
 
 <script>
@@ -413,7 +411,8 @@ import 'ace-builds/src-min-noconflict/theme-twilight'
 import 'ace-builds/src-min-noconflict/ext-language_tools'
 import 'ace-builds/src-min-noconflict/ext-searchbox'
 import { format } from 'date-fns'
-import { Multipane, MultipaneResizer } from 'vue-multipane'
+import { Splitpanes, Pane } from 'splitpanes'
+import 'splitpanes/dist/splitpanes.css'
 import FileOpenSaveDialog from '@openc3/tool-common/src/components/FileOpenSaveDialog'
 import EnvironmentDialog from '@openc3/tool-common/src/components/EnvironmentDialog'
 import SimpleTextDialog from '@openc3/tool-common/src/components/SimpleTextDialog'
@@ -454,8 +453,8 @@ export default {
     FileOpenSaveDialog,
     Openc3Screen,
     EnvironmentDialog,
-    Multipane,
-    MultipaneResizer,
+    Splitpanes,
+    Pane,
     TopBar,
     AskDialog,
     FileDialog,
@@ -564,6 +563,7 @@ export default {
         show: false,
         title: '',
         text: [],
+        width: '600',
       },
       inputMetadata: {
         show: false,
@@ -866,10 +866,12 @@ export default {
             {
               label: 'Enable Stack Traces',
               checkbox: true,
-              checked: false,
+              checked: this.enableStackTraces,
               disabled: this.scriptId,
-              command: (item) => {
-                this.enableStackTraces = item.checked
+              command: () => {
+                // Toggling the checkbox closes the menu so no need
+                // to check state, just toggle existing value
+                this.enableStackTraces = !this.enableStackTraces
               },
             },
             {
@@ -1004,31 +1006,8 @@ export default {
   mounted: async function () {
     this.editor = ace.edit(this.$refs.editor)
     this.editor.setTheme('ace/theme/twilight')
-    // Public apis in api_shared but not in OpenC3Api
-    const api_shared = [
-      'check',
-      'check_raw',
-      'check_formatted',
-      'check_with_units',
-      'check_exception',
-      'check_tolerance',
-      'check_expression',
-      'wait',
-      'wait_tolerance',
-      'wait_expression',
-      'wait_check',
-      'wait_check_tolerance',
-      'wait_check_expression',
-      'wait_packet',
-      'wait_check_packet',
-      'disable_instrumentation',
-      'set_line_delay',
-      'get_line_delay',
-      'set_max_output',
-      'get_max_output',
-    ]
-    const openC3RubyMode = this.buildOpenC3RubyMode(api_shared)
-    const openC3PythonMode = this.buildOpenC3PythonMode(api_shared)
+    const openC3RubyMode = this.buildOpenC3RubyMode()
+    const openC3PythonMode = this.buildOpenC3PythonMode()
     this.openC3RubyMode = new openC3RubyMode()
     this.openC3PythonMode = new openC3PythonMode()
     this.editor.session.setMode(this.openC3RubyMode)
@@ -1059,7 +1038,10 @@ export default {
     this.editor.container.addEventListener('resize', this.doResize)
     this.editor.container.addEventListener('keydown', this.keydown)
 
-    this.doResize()
+    // Allow the charts to dynamically resize when the window resizes
+    window.addEventListener('resize', this.calcHeight)
+    this.calcHeight()
+
     this.cable = new Cable('/script-api/cable')
 
     if (localStorage['script_runner__recent']) {
@@ -1101,11 +1083,11 @@ export default {
       this.processReceived()
     }, 100) // Every 100ms
   },
-  beforeDestroy() {
+  beforeUnmount() {
     this.editor.destroy()
     this.editor.container.remove()
   },
-  destroyed() {
+  unmounted() {
     this.unlockFile()
     if (this.updateInterval != null) {
       clearInterval(this.updateInterval)
@@ -1133,24 +1115,23 @@ export default {
       })
     },
     calcHeight() {
-      var editor = document.getElementsByClassName('editorbox')[0]
-      var h = Math.max(
+      const editor = document.getElementsByClassName('editorbox')[0]
+      const h = Math.max(
         document.documentElement.offsetHeight,
         window.innerHeight || 0,
       )
-      var editorHeight = 0
+      let editorHeight = 0
       if (editor) {
         editorHeight = editor.offsetHeight
       }
-      var suitesHeight = 0
-      var suites = document.getElementsByClassName('suite-runner')[0]
+      let suitesHeight = 0
+      const suites = document.getElementsByClassName('suite-runner')[0]
       if (suites) {
         suitesHeight = suites.offsetHeight
       }
-      var logMessages = document.getElementById('script-log-messages')
+      let logMessages = document.getElementById('script-log-messages')
       if (logMessages) {
-        // 295 is magic and was determined by experimentation
-        logMessages.style.height = `${h - editorHeight - suitesHeight - 292}px`
+        logMessages.style.height = `${h - editorHeight - suitesHeight}px`
       }
     },
     scriptDisconnect() {
@@ -1177,88 +1158,80 @@ export default {
         this.inputMetadata.show = true
       })
     },
-    buildOpenC3RubyMode(api_shared) {
-      var oop = ace.require('ace/lib/oop')
-      var RubyHighlightRules = ace.require(
-        'ace/mode/ruby_highlight_rules',
-      ).RubyHighlightRules
-
+    buildLanguageMode(HighlightRules, FoldMode) {
+      let oop = ace.require('ace/lib/oop')
       let apis = Object.getOwnPropertyNames(OpenC3Api.prototype)
         .filter((a) => a !== 'constructor')
         .filter((a) => a !== 'exec')
-        .concat(api_shared)
+        // Add the Public apis in api_shared but not in OpenC3Api
+        .concat([
+          'check',
+          'check_raw',
+          'check_formatted',
+          'check_with_units',
+          'check_exception',
+          'check_tolerance',
+          'check_expression',
+          'wait',
+          'wait_tolerance',
+          'wait_expression',
+          'wait_check',
+          'wait_check_tolerance',
+          'wait_check_expression',
+          'wait_packet',
+          'wait_check_packet',
+          'disable_instrumentation',
+          'set_line_delay',
+          'get_line_delay',
+          'set_max_output',
+          'get_max_output',
+        ])
       let regex = new RegExp(`(\\b${apis.join('\\b|\\b')}\\b)`)
-      var OpenC3HighlightRules = function () {
-        RubyHighlightRules.call(this)
-        // add openc3 rules to the ruby rules
-        for (var rule in this.$rules) {
+      let OpenC3HighlightRules = function () {
+        HighlightRules.call(this)
+        // add openc3 rules to the rules
+        for (let rule in this.$rules) {
           this.$rules[rule].unshift({
             regex: regex,
             token: 'support.function',
           })
         }
       }
-      oop.inherits(OpenC3HighlightRules, RubyHighlightRules)
+      oop.inherits(OpenC3HighlightRules, HighlightRules)
 
-      var MatchingBraceOutdent = ace.require(
+      let MatchingBraceOutdent = ace.require(
         'ace/mode/matching_brace_outdent',
       ).MatchingBraceOutdent
-      var CstyleBehaviour = ace.require(
+      let CstyleBehaviour = ace.require(
         'ace/mode/behaviour/cstyle',
       ).CstyleBehaviour
-      var FoldMode = ace.require('ace/mode/folding/ruby').FoldMode
-      var Mode = function () {
+      let Mode = function () {
         this.HighlightRules = OpenC3HighlightRules
         this.$outdent = new MatchingBraceOutdent()
         this.$behaviour = new CstyleBehaviour()
         this.foldingRules = new FoldMode()
         this.indentKeywords = this.foldingRules.indentKeywords
       }
-      var RubyMode = ace.require('ace/mode/ruby').Mode
+      return [oop, Mode]
+    },
+    buildOpenC3RubyMode() {
+      const [oop, Mode] = this.buildLanguageMode(
+        ace.require('ace/mode/ruby_highlight_rules').RubyHighlightRules,
+        ace.require('ace/mode/folding/ruby').FoldMode,
+      )
+      let RubyMode = ace.require('ace/mode/ruby').Mode
       oop.inherits(Mode, RubyMode)
       ;(function () {
         this.$id = 'ace/mode/openc3'
       }).call(Mode.prototype)
       return Mode
     },
-    buildOpenC3PythonMode(api_shared) {
-      var oop = ace.require('ace/lib/oop')
-      var PythonHighlightRules = ace.require(
-        'ace/mode/python_highlight_rules',
-      ).PythonHighlightRules
-
-      let apis = Object.getOwnPropertyNames(OpenC3Api.prototype)
-        .filter((a) => a !== 'constructor')
-        .filter((a) => a !== 'exec')
-        .concat(api_shared)
-      let regex = new RegExp(`(\\b${apis.join('\\b|\\b')}\\b)`)
-      var OpenC3HighlightRules = function () {
-        PythonHighlightRules.call(this)
-        // add openc3 rules to the python rules
-        for (var rule in this.$rules) {
-          this.$rules[rule].unshift({
-            regex: regex,
-            token: 'support.function',
-          })
-        }
-      }
-      oop.inherits(OpenC3HighlightRules, PythonHighlightRules)
-
-      var MatchingBraceOutdent = ace.require(
-        'ace/mode/matching_brace_outdent',
-      ).MatchingBraceOutdent
-      var CstyleBehaviour = ace.require(
-        'ace/mode/behaviour/cstyle',
-      ).CstyleBehaviour
-      var FoldMode = ace.require('ace/mode/folding/pythonic').FoldMode
-      var Mode = function () {
-        this.HighlightRules = OpenC3HighlightRules
-        this.$outdent = new MatchingBraceOutdent()
-        this.$behaviour = new CstyleBehaviour()
-        this.foldingRules = new FoldMode()
-        this.indentKeywords = this.foldingRules.indentKeywords
-      }
-      var PythonMode = ace.require('ace/mode/python').Mode
+    buildOpenC3PythonMode() {
+      const [oop, Mode] = this.buildLanguageMode(
+        ace.require('ace/mode/python_highlight_rules').PythonHighlightRules,
+        ace.require('ace/mode/folding/pythonic').FoldMode,
+      )
+      let PythonMode = ace.require('ace/mode/python').Mode
       oop.inherits(Mode, PythonMode)
       ;(function () {
         this.$id = 'ace/mode/openc3'
@@ -1999,7 +1972,7 @@ export default {
           }
           this.prompt.message = data.args[0]
           data.args.slice(1).forEach((v) => {
-            this.prompt.buttons.push({ text: v, value: v })
+            this.prompt.buttons.push({ title: v, value: v })
           })
           this.prompt.layout = 'combo'
           this.prompt.callback = this.promptDialogCallback
@@ -2027,6 +2000,7 @@ export default {
           this.information.title = 'Call Stack'
           this.information.text = data.args
           this.information.show = true
+          this.information.width = '600'
           break
         case 'metadata_input':
           this.inputMetadata.callback = (value) => {
@@ -2542,6 +2516,7 @@ class TestSuite(Suite):
         this.information.title = response.data.title
         this.information.text = JSON.parse(response.data.description)
         this.information.show = true
+        this.information.width = '600'
       })
     },
     showInstrumented() {
@@ -2555,6 +2530,7 @@ class TestSuite(Suite):
         this.information.title = response.data.title
         this.information.text = JSON.parse(response.data.description)
         this.information.show = true
+        this.information.width = '90vw'
       })
     },
     showCallStack() {
@@ -2562,6 +2538,11 @@ class TestSuite(Suite):
     },
     toggleDebug() {
       this.showDebug = !this.showDebug
+      if (this.showDebug) {
+        this.$nextTick(() => {
+          this.$refs.debug.focus()
+        })
+      }
     },
     toggleDisconnect() {
       this.showDisconnect = !this.showDisconnect
@@ -2651,25 +2632,13 @@ class TestSuite(Suite):
 #sr-controls {
   padding: 0px;
 }
-.editorbox {
-  height: 40vh;
-}
 .editor {
   height: 100%;
   width: 100%;
   position: relative;
   font-size: 16px;
 }
-hr {
-  pointer-events: none;
-  position: relative;
-  top: 7px;
-  background-color: grey;
-  height: 3px;
-  width: 5%;
-  margin: auto;
-}
-.script-state {
+.script-state :deep(.v-field) {
   background-color: var(--color-background-base-default);
 }
 .script-state :deep(input) {
@@ -2677,6 +2646,18 @@ hr {
 }
 </style>
 <style>
+.splitpanes {
+  height: 100%;
+}
+.splitpanes--horizontal > .splitpanes__splitter {
+  min-height: 4px;
+  position: relative;
+  top: 4px;
+  background-color: grey;
+  width: 5%;
+  margin: auto;
+  cursor: row-resize;
+}
 .runningMarker {
   position: absolute;
   background: rgba(0, 255, 0, 0.5);

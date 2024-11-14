@@ -46,12 +46,10 @@ module OpenC3
           next if Packet::RESERVED_ITEM_NAMES.include?(key)
 
           if value.is_a?(String)
-            value = value.convert_to_value.to_s
-            if value.length > 256
-              value = value[0..255] + "...'"
-            end
             if !value.is_printable?
               value = "BINARY"
+            elsif value.length > 256
+              value = value[0..255] + "...'"
             end
             value.tr!('"', "'")
           elsif value.is_a?(Array)

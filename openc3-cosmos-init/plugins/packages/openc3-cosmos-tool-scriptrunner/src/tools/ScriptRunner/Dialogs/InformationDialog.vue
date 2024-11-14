@@ -22,13 +22,13 @@
 
 <template>
   <!-- INFO -->
-  <v-dialog v-model="show" width="600">
+  <v-dialog v-model="show" :width="width">
     <v-card>
-      <v-system-bar>
+      <v-toolbar height="24">
         <v-spacer />
         <span style="white-space: pre-line" v-text="title" />
         <v-spacer />
-      </v-system-bar>
+      </v-toolbar>
       <div class="pa-2">
         <v-card-text>
           <v-row no-gutters v-for="(line, index) in text" :key="index">
@@ -36,9 +36,9 @@
           </v-row>
         </v-card-text>
       </div>
-      <v-card-actions>
+      <v-card-actions class="px-2">
         <v-spacer />
-        <v-btn color="primary" @click="show = !show"> Ok </v-btn>
+        <v-btn variant="flat" @click="show = !show"> Ok </v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -47,7 +47,7 @@
 <script>
 export default {
   props: {
-    value: {
+    modelValue: {
       type: Boolean,
       required: true,
     },
@@ -59,14 +59,18 @@ export default {
       type: String,
       required: true,
     },
+    width: {
+      type: String,
+      required: true,
+    },
   },
   computed: {
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
   },

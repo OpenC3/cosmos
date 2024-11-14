@@ -32,7 +32,7 @@
           :disabled="!name || !url || !icon"
         >
           Add
-          <v-icon right dark>{{ icon }}</v-icon>
+          <v-icon end theme="dark">{{ icon }}</v-icon>
         </v-btn>
       </v-col>
       <v-col cols="3">
@@ -52,33 +52,30 @@
     >
     <v-list class="list" data-test="toolList" id="toollist">
       <div v-for="(tool, index) in tools" :key="tool">
-        <v-list-item :class="{ filter: tool === 'Base' || tool === 'Admin' }">
-          <v-list-item-icon>
-            <v-icon> mdi-drag-horizontal </v-icon>
-          </v-list-item-icon>
-          <v-list-item-content>
-            <v-list-item-title>{{ tool }}</v-list-item-title>
-          </v-list-item-content>
-          <v-list-item-icon>
-            <v-tooltip bottom>
-              <template v-slot:activator="{ on, attrs }">
-                <v-icon @click="editTool(tool)" v-bind="attrs" v-on="on">
+        <v-list-item
+          :class="{ filter: tool === 'Base' || tool === 'Admin' }"
+          prepend-icon="mdi-drag-horizontal"
+        >
+          <v-list-item-title>{{ tool }}</v-list-item-title>
+
+          <template v-slot:append>
+            <v-tooltip location="bottom">
+              <template v-slot:activator="{ props }">
+                <v-icon v-bind="props" @click="editTool(tool)">
                   mdi-pencil
                 </v-icon>
               </template>
               <span>Edit Tool</span>
             </v-tooltip>
-          </v-list-item-icon>
-          <v-list-item-icon>
-            <v-tooltip bottom>
-              <template v-slot:activator="{ on, attrs }">
-                <v-icon @click="deleteTool(tool)" v-bind="attrs" v-on="on">
+            <v-tooltip location="bottom">
+              <template v-slot:activator="{ props }">
+                <v-icon v-bind="props" @click="deleteTool(tool)">
                   mdi-delete
                 </v-icon>
               </template>
               <span>Delete Tool</span>
             </v-tooltip>
-          </v-list-item-icon>
+          </template>
         </v-list-item>
         <v-divider v-if="index < tools.length - 1" :key="index" />
       </div>
@@ -104,7 +101,7 @@ export default {
   data() {
     return {
       name: null,
-      icon: '$astro-add-small',
+      icon: 'astro:add-small',
       url: null,
       tools: [],
       jsonContent: '',
@@ -115,7 +112,7 @@ export default {
   },
   mounted() {
     this.update()
-    var el = document.getElementById('toollist')
+    let el = document.getElementById('toollist')
     Sortable.create(el, {
       filter: '.filter', // 'filter' class is not draggable
       onUpdate: this.sortChanged,

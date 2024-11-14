@@ -1,6 +1,9 @@
 ---
 sidebar_position: 4
 title: Upgrading
+description: How to upgrade and migrate COSMOS
+sidebar_custom_props:
+  myEmoji: ⬆️
 ---
 
 ### COSMOS Upgrades

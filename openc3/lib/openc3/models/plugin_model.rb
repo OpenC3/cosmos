@@ -200,7 +200,12 @@ module OpenC3
           end
           unless validate_only
             Logger.info "Installing python packages from requirements.txt with pypi_url=#{pypi_url}"
-            puts `/openc3/bin/pipinstall --no-warn-script-location -i #{pypi_url} -r #{File.join(gem_path, 'requirements.txt')}`
+            if ENV['PIP_ENABLE_TRUSTED_HOST'].nil?
+              pip_args = "--no-warn-script-location -i #{pypi_url} -r #{File.join(gem_path, 'requirements.txt')}"
+            else
+              pip_args = "--no-warn-script-location -i #{pypi_url} --trusted-host #{URI.parse(pypi_url).host} -r #{File.join(gem_path, 'requirements.txt')}"
+            end
+            puts `/openc3/bin/pipinstall #{pip_args}`
           end
           needs_dependencies = true
         end

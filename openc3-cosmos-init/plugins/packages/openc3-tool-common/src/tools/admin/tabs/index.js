@@ -23,51 +23,61 @@
 const TabsList = [
   {
     displayName: 'Plugins',
+    name: 'PluginsTab',
     path: 'plugins',
     component: () => import('./PluginsTab'),
   },
   {
     displayName: 'Targets',
+    name: 'TargetsTab',
     path: 'targets',
     component: () => import('./TargetsTab'),
   },
   {
     displayName: 'Interfaces',
+    name: 'InterfacesTab',
     path: 'interfaces',
     component: () => import('./InterfacesTab'),
   },
   {
     displayName: 'Routers',
+    name: 'RoutersTab',
     path: 'routers',
     component: () => import('./RoutersTab'),
   },
   {
     displayName: 'Microservices',
+    name: 'MicroservicesTab',
     path: 'microservices',
     component: () => import('./MicroservicesTab'),
   },
   {
     displayName: 'Packages',
+    name: 'PackagesTab',
     path: 'packages',
     component: () => import('./PackagesTab'),
   },
   {
     displayName: 'Tools',
+    name: 'ToolsTab',
     path: 'tools',
     component: () => import('./ToolsTab'),
   },
   {
     displayName: 'Redis',
+    name: 'RedisTab',
     path: 'redis',
     component: () => import('./RedisTab'),
   },
   {
     displayName: 'Secrets',
+    name: 'SecretsTab',
     path: 'secrets',
     component: () => import('./SecretsTab'),
   },
   {
     displayName: 'Settings',
+    name: 'SettingsTab',
     path: 'settings',
     component: () => import('./SettingsTab'),
   },

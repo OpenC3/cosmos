@@ -24,8 +24,7 @@
   <div>
     <v-navigation-drawer
       v-if="!chromeless"
-      v-model="drawer"
-      app
+      :model-value="drawer"
       id="openc3-nav-drawer"
     >
       <img :src="logo" class="logo" alt="OpenC3" />
@@ -38,9 +37,9 @@
       <div v-for="(tool, name) in adminTools" :key="name" class="ma-3">
         <v-btn
           block
-          small
+          size="small"
           :href="tool.url"
-          onclick="singleSpaNavigate(event)"
+          @click.prevent="() => navigateToUrl(tool.url)"
           class="fixcenter"
           color="primary"
         >
@@ -50,38 +49,34 @@
       <v-divider />
       <v-treeview
         :items="items"
-        :open="initiallyOpen"
-        item-key="name"
-        dense
+        :opened="initiallyOpen"
+        item-value="name"
+        density="compact"
         open-on-click
-        expand-icon=""
       >
         <!-- Beginning Icon -->
-        <template v-slot:prepend="{ item, open }">
-          <v-icon v-if="!item.icon">
-            {{ open ? 'mdi-chevron-down' : 'mdi-chevron-right' }}
-          </v-icon>
-          <template v-else>
+        <template v-slot:prepend="{ item }">
+          <template v-if="item.icon">
             <a
               v-if="item.window === 'INLINE'"
               :href="item.url"
-              onclick="singleSpaNavigate(event)"
+              @click.prevent="() => navigateToUrl(item.url)"
             >
-              <v-icon> {{ item.icon }} </v-icon>
+              <v-icon class="mr-2"> {{ item.icon }} </v-icon>
             </a>
             <a v-else :href="item.url">
-              <v-icon> {{ item.icon }} </v-icon>
+              <v-icon class="mr-2"> {{ item.icon }} </v-icon>
             </a>
           </template>
         </template>
 
         <!-- Link Text -->
-        <template v-slot:label="{ item }">
+        <template v-slot:title="{ item }">
           <!-- Category has no Icon -->
           <a
             v-if="!item.icon"
             :href="item.url"
-            onclick="singleSpaNavigate(event)"
+            @click.prevent="() => navigateToUrl(item.url)"
           >
             {{ item.name }}
           </a>
@@ -90,7 +85,7 @@
             <a
               v-if="item.window === 'INLINE'"
               :href="item.url"
-              onclick="singleSpaNavigate(event)"
+              @click.prevent="() => navigateToUrl(item.url)"
             >
               {{ item.name }}
             </a>
@@ -123,17 +118,12 @@
         </template>
       </v-treeview>
     </v-navigation-drawer>
-    <v-app-bar app v-if="!chromeless" id="openc3-app-toolbar">
-      <v-row
-        class="flex-nowrap"
-        justify="space-between"
-        no-gutters
-        style="margin-top: 20px"
-      >
-        <v-col align-self="center">
+    <v-app-bar v-if="!chromeless" id="openc3-app-toolbar">
+      <v-row class="flex-nowrap" justify="space-between" no-gutters>
+        <v-col align-self="start">
           <v-row class="flex-nowrap">
             <rux-icon
-              class="mr-2 pa-2"
+              class="ml-3 mr-2 pa-2"
               size="small"
               icon="apps"
               @click="drawer = !drawer"
@@ -141,20 +131,21 @@
             <span id="openc3-menu" />
           </v-row>
         </v-col>
-        <v-col style="margin: auto">
-          <rux-clock
-            class="clock"
-            v-if="!astro.hideClock"
-            date-in=""
-            :timezone="astroTimeZone"
-          ></rux-clock>
+        <v-col>
+          <v-row class="clock flex-nowrap mt-0">
+            <rux-clock
+              v-if="!astro.hideClock"
+              date-in=""
+              :timezone="astroTimeZone"
+            />
+          </v-row>
         </v-col>
-        <v-col align-self="center">
-          <v-row class="flex-nowrap" style="margin-top: 10px">
+        <v-col align-self="center" class="mt-2">
+          <v-row class="flex-nowrap">
             <v-spacer />
             <scope-selector class="mr-6 mt-4" />
             <notifications class="mr-6" data-test="notifications" />
-            <user-menu class="mr-3" /> </v-row
+            <user-menu class="mr-6" /> </v-row
         ></v-col>
       </v-row>
     </v-app-bar>
@@ -169,7 +160,7 @@
 import { OpenC3Api } from '../../services/openc3-api'
 import Api from '../../services/api'
 import logo from '../../../public/img/logo.png'
-import { registerApplication, start } from 'single-spa'
+import { navigateToUrl, registerApplication, start } from 'single-spa'
 import ScopeSelector from './components/ScopeSelector.vue'
 import Notifications from './components/Notifications.vue'
 import UserMenu from './components/UserMenu.vue'
@@ -209,7 +200,7 @@ export default {
     // a computed getter
     shownTools: function () {
       let result = {}
-      for (var key of Object.keys(this.appNav)) {
+      for (let key of Object.keys(this.appNav)) {
         if (this.appNav[key].shown && this.appNav[key].category !== 'Admin') {
           result[key] = this.appNav[key]
         }
@@ -218,7 +209,7 @@ export default {
     },
     adminTools: function () {
       let result = {}
-      for (var key of Object.keys(this.appNav)) {
+      for (let key of Object.keys(this.appNav)) {
         if (this.appNav[key].shown && this.appNav[key].category === 'Admin') {
           result[key] = this.appNav[key]
         }
@@ -271,14 +262,16 @@ export default {
 
         let id = 1
         // Register apps and start single-spa
-        for (var key of Object.keys(this.appNav)) {
+        for (let key of Object.keys(this.appNav)) {
           if (this.appNav[key].shown) {
             if (
               this.appNav[key].category &&
               this.appNav[key].category !== 'Admin'
             ) {
               // TODO: Make this initiallyOpen configurable like with a CATEGORY parameter?
-              this.initiallyOpen.push(this.appNav[key].category)
+              if (!this.initiallyOpen.includes(this.appNav[key].category)) {
+                this.initiallyOpen.push(this.appNav[key].category)
+              }
               const result = this.items.filter(
                 (item) => item.name === this.appNav[key].category,
               )
@@ -345,20 +338,6 @@ export default {
           urlRerouteOnly: true,
         })
 
-        // Redirect some base paths to the first tool
-        if (
-          window.location.pathname == '/' ||
-          window.location.pathname == '/tools' ||
-          window.location.pathname == '/tools/'
-        ) {
-          for (var key of Object.keys(this.shownTools)) {
-            if (this.appNav[key].shown) {
-              history.replaceState(null, '', this.appNav[key].url)
-              break
-            }
-          }
-        }
-
         // Check every minute if we need to update our token
         setInterval(() => {
           OpenC3Auth.updateToken(120).then(function (refreshed) {
@@ -371,6 +350,7 @@ export default {
     )
   },
   methods: {
+    navigateToUrl,
     newTabUrl(tool) {
       let url = null
       if (tool.url[0] == '/' && tool.url[1] != '/') {
@@ -402,7 +382,6 @@ export default {
 }
 div a {
   color: white;
-  font-size: 16px;
   display: block;
   height: 100%;
   width: 100%;
@@ -419,21 +398,21 @@ a.fixcenter {
 /* Remove the padding on root level nodes since we removed the expand icon */
 #openc3-nav-drawer
   .v-treeview
-  > .v-treeview-node
-  > .v-treeview-node__root
-  > .v-treeview-node__level {
+  > .v-treeview-item
+  > .v-treeview-item__root
+  > .v-treeview-item__level {
   width: 0px;
 }
 #openc3-nav-drawer
   .v-treeview
-  > .v-treeview-node
-  > .v-treeview-node__root
-  > .v-treeview-node__toggle {
+  > .v-treeview-item
+  > .v-treeview-item__root
+  > .v-treeview-item__toggle {
   width: 0px;
 }
 #openc3-nav-drawer
-  .v-treeview-node__children
-  div.v-treeview-node__level:nth-child(1) {
+  .v-treeview-item__children
+  div.v-treeview-item__level:nth-child(1) {
   width: 0px;
 }
 </style>

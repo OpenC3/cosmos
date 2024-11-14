@@ -20,8 +20,8 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-require 'openc3/models/activity_model'
 require 'openc3/topics/timeline_topic'
+require 'openc3/models/activity_model'
 
 class ActivityController < ApplicationController
   NOT_FOUND = 'not found'

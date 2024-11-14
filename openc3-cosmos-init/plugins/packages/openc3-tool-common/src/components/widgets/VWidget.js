@@ -22,9 +22,9 @@
 
 import TimeFilters from '../../tools/base/util/timeFilters.js'
 import Widget from './Widget'
-import 'sprintf-js'
+import FormatValueBase from './FormatValueBase'
 export default {
-  mixins: [Widget, TimeFilters],
+  mixins: [Widget, TimeFilters, FormatValueBase],
   // ValueWidget can either get it's value and limitsState directly through props
   // or it will register itself in the Vuex store and be updated asynchronously
   props: {
@@ -44,8 +44,10 @@ export default {
       default: 'local',
     },
   },
+  emits: ['addItem', 'deleteItem', 'open'],
   data() {
     return {
+      appliedTimeZone: 'local',
       curValue: null,
       prevValue: null,
       grayLevel: 80,
@@ -74,7 +76,7 @@ export default {
                 encodeURIComponent(this.parameters[1]) +
                 '/' +
                 encodeURIComponent(this.parameters[2]),
-              '_blank'
+              '_blank',
             )
           },
         },
@@ -100,16 +102,16 @@ export default {
       this.curValue = this.value
       if (this.curValue === null) {
         // See store.js for how this is set
-        if (this.screen) {
-          if (this.screen.screenValues[this.valueId]) {
+        if (this.screenValues) {
+          if (this.screenValues[this.valueId]) {
             if (
               this.arrayIndex !== null &&
-              this.screen.screenValues[this.valueId][0]
+              this.screenValues[this.valueId][0]
             ) {
               this.curValue =
-                this.screen.screenValues[this.valueId][0][this.arrayIndex]
+                this.screenValues[this.valueId][0][this.arrayIndex]
             } else {
-              this.curValue = this.screen.screenValues[this.valueId][0]
+              this.curValue = this.screenValues[this.valueId][0]
             }
           }
         } else {
@@ -122,9 +124,9 @@ export default {
     _limitsState: function () {
       let limitsState = this.limitsState
       if (limitsState === null) {
-        if (this.screen) {
-          if (this.screen.screenValues[this.valueId]) {
-            limitsState = this.screen.screenValues[this.valueId][1]
+        if (this.screenValues) {
+          if (this.screenValues[this.valueId]) {
+            limitsState = this.screenValues[this.valueId][1]
           }
         } else {
           limitsState = null
@@ -135,9 +137,9 @@ export default {
     _counter: function () {
       let counter = this.counter
       if (counter === null) {
-        if (this.screen) {
-          if (this.screen.screenValues[this.valueId]) {
-            counter = this.screen.screenValues[this.valueId][2]
+        if (this.screenValues) {
+          if (this.screenValues[this.valueId]) {
+            counter = this.screenValues[this.valueId][2]
           }
         } else {
           counter = null
@@ -148,17 +150,17 @@ export default {
     valueClass: function () {
       return 'value shrink pa-1 ' + 'openc3-' + this.limitsColor
     },
-    astroIcon() {
+    astroStatus() {
       switch (this.limitsColor) {
         case 'green':
-          return '$vuetify.icons.astro-status-normal'
+          return 'normal'
         case 'yellow':
-          return '$vuetify.icons.astro-status-caution'
+          return 'caution'
         case 'red':
-          return '$vuetify.icons.astro-status-critical'
+          return 'critical'
         case 'blue':
           // This one is a little weird but it matches our color scheme
-          return '$vuetify.icons.astro-status-standby'
+          return 'standby'
         default:
           return null
       }
@@ -220,17 +222,17 @@ export default {
         this.parameters[2]
       }__${this.getType()}`
 
-      if (this.screen) {
-        this.screen.addItem(this.valueId)
-        this.timeZone = this.screen.timeZone
+      this.$emit('addItem', this.valueId)
+      if (this.screenTimeZone) {
+        this.appliedTimeZone = this.screenTimeZone
+      } else {
+        this.appliedTimeZone = this.timeZone
       }
     }
   },
   destroyed() {
     if (this.value === null || this.limitsState === null) {
-      if (this.screen) {
-        this.screen.deleteItem(this.valueId)
-      }
+      this.$emit('deleteItem', this.valueId)
     }
   },
   methods: {
@@ -251,51 +253,9 @@ export default {
         // Our dates have / rather than - which results in an invalid date on old browsers
         // when they call new Date(value)
         value = value.replaceAll('/', '-')
-        return this.formatUtcToLocal(new Date(value), this.timeZone)
+        return this.formatUtcToLocal(new Date(value), this.appliedTimeZone)
       }
-      // Convert json raw strings into the raw bytes
-      // Only convert the first 32 bytes before adding an ellipse
-      // TODO: Handle units on a BLOCK item
-      // TODO: Render data in a BLOCK item as bytes (instead of ASCII)
-      if (
-        value &&
-        value['json_class'] === 'String' &&
-        value['raw'] !== undefined
-      ) {
-        let result = Array.from(value['raw'].slice(0, 32), function (byte) {
-          return ('0' + (byte & 0xff).toString(16)).slice(-2)
-        })
-          .join(' ')
-          .toUpperCase()
-        if (value['raw'].length > 32) {
-          result += '...'
-        }
-        return result
-      }
-      if (Object.prototype.toString.call(value).slice(8, -1) === 'Array') {
-        let result = '['
-        for (let i = 0; i < value.length; i++) {
-          if (
-            Object.prototype.toString.call(value[i]).slice(8, -1) === 'String'
-          ) {
-            result += '"' + value[i] + '"'
-          } else {
-            result += value[i]
-          }
-          if (i != value.length - 1) {
-            result += ', '
-          }
-        }
-        result += ']'
-        return result
-      }
-      if (Object.prototype.toString.call(value).slice(8, -1) === 'Object') {
-        return ''
-      }
-      if (this.formatString && value) {
-        return sprintf(this.formatString, value)
-      }
-      return '' + value
+      return this.formatValueBase(value, this.formatString)
     },
     showContextMenu(e) {
       e.preventDefault()

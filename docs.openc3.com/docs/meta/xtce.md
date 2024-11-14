@@ -1,5 +1,8 @@
 ---
 title: XTCE Support
+description: XTCE Command and Telemetry Definition Standard
+sidebar_custom_props:
+  myEmoji: 😵
 ---
 
 COSMOS now has support for the [XTCE Command and Telemetry Definition Standard](https://www.omg.org/xtce/index.htm). This is an open standard designed to allow command and telemetry definitions to be transferred between different ground systems. COSMOS can run directly using the .xtce files, or can convert them into the COSMOS configuration file format.

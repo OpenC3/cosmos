@@ -1,6 +1,7 @@
 ---
 sidebar_position: 8
 title: Tables
+description: Table definition file format and keywords
 ---
 
 <!-- Be sure to edit _table.md because table.md is a generated file -->

@@ -30,24 +30,20 @@
             <v-select
               class="ma-0 pa-0"
               label="Select Target(s)"
-              dense
+              density="compact"
               hide-details
-              outlined
+              variant="outlined"
               :items="targetNames"
               v-model="selectedTargetNames"
-              @change="targetSelect"
               multiple
             >
               <template v-slot:prepend-item>
                 <v-list-item ripple @mousedown.prevent @click="toggleTargets">
-                  <v-list-item-action>
-                    <v-icon>
-                      {{ icon }}
-                    </v-icon>
-                  </v-list-item-action>
-                  <v-list-item-content>
-                    <v-list-item-title> Select All </v-list-item-title>
-                  </v-list-item-content>
+                  <v-list-item-title>
+                    <v-list-item-action end>
+                      <v-icon class="mr-2"> {{ icon }} </v-icon>Select All
+                    </v-list-item-action>
+                  </v-list-item-title>
                 </v-list-item>
                 <v-divider class="mt-2"></v-divider>
               </template>
@@ -55,7 +51,7 @@
           </v-col>
           <v-col>
             <v-btn
-              class="primary"
+              class="bg-primary"
               @click="renderedTargetNames = selectedTargetNames"
             >
               Display
@@ -64,9 +60,9 @@
           <v-col>
             <v-select
               label="Item Columns"
-              dense
+              density="compact"
               hide-details
-              outlined
+              variant="outlined"
               v-model="columns"
               :items="columnItems"
             ></v-select>
@@ -79,8 +75,8 @@
       <target
         :target="target"
         :columns="columns"
-        :hideIgnored="hideIgnored"
-        :hideDerived="hideDerived"
+        :hide-ignored="hideIgnored"
+        :hide-derived="hideDerived"
       ></target>
     </div>
   </div>
@@ -105,12 +101,12 @@ export default {
       api: null,
       columns: 3,
       columnItems: [
-        { text: '1', value: 12 },
-        { text: '2', value: 6 },
-        { text: '3', value: 4 },
-        { text: '4', value: 3 },
-        { text: '6', value: 2 },
-        { text: '12', value: 1 },
+        { title: '1', value: 12 },
+        { title: '2', value: 6 },
+        { title: '3', value: 4 },
+        { title: '4', value: 3 },
+        { title: '6', value: 2 },
+        { title: '12', value: 1 },
       ],
       hideIgnored: false,
       hideDerived: false,

@@ -25,8 +25,8 @@
     <top-bar :menus="menus" :title="title" />
     <v-expansion-panels v-model="panel" class="expansion">
       <v-expansion-panel>
-        <v-expansion-panel-header style="z-index: 1"></v-expansion-panel-header>
-        <v-expansion-panel-content>
+        <v-expansion-panel-title style="z-index: 1"></v-expansion-panel-title>
+        <v-expansion-panel-text>
           <div v-show="this.selectedGraphId === null">
             <v-row class="my-5">
               <v-spacer />
@@ -38,52 +38,54 @@
             </v-row>
           </div>
 
-          <v-row
-            v-show="this.selectedGraphId !== null"
-            class="ma-1"
-            style="flex-wrap: nowrap"
-          >
+          <v-container v-show="this.selectedGraphId !== null">
             <target-packet-item-chooser
               :initial-target-name="this.$route.params.target"
               :initial-packet-name="this.$route.params.packet"
               :initial-item-name="this.$route.params.item"
-              @click="addItem"
+              @addItem="addItem"
               button-text="Add Item"
               choose-item
               select-types
             />
-            <div class="grapher-info">
-              <v-btn
-                v-show="state === 'pause'"
-                class="pulse control-button"
-                v-on:click="
-                  () => {
-                    state = 'start'
-                  }
-                "
-                color="primary"
-                fab
-                data-test="start-graph"
-              >
-                <v-icon large>mdi-play</v-icon>
-              </v-btn>
-              <v-btn
-                v-show="state === 'start'"
-                class="control-button"
-                v-on:click="
-                  () => {
-                    state = 'pause'
-                  }
-                "
-                color="primary"
-                fab
-                data-test="pause-graph"
-              >
-                <v-icon large>mdi-pause</v-icon>
-              </v-btn>
-            </div>
-          </v-row>
-        </v-expansion-panel-content>
+            <!-- All this row / col stuff is to setup a structure similar to the
+                 target-packet-item-chooser so it will layout the same -->
+            <v-row class="grapher-info">
+              <v-col style="max-width: 300px; pointer-events: none"></v-col>
+              <v-col style="max-width: 300px; pointer-events: none"></v-col>
+              <v-col style="max-width: 300px; pointer-events: none"></v-col>
+              <v-col style="max-width: 140px">
+                <v-btn
+                  v-show="state === 'pause'"
+                  class="pulse"
+                  v-on:click="
+                    () => {
+                      state = 'start'
+                    }
+                  "
+                  color="primary"
+                  data-test="start-graph"
+                  icon="mdi-play"
+                  size="large"
+                >
+                </v-btn>
+                <v-btn
+                  v-show="state === 'start'"
+                  v-on:click="
+                    () => {
+                      state = 'pause'
+                    }
+                  "
+                  color="primary"
+                  data-test="pause-graph"
+                  icon="mdi-pause"
+                  size="large"
+                ></v-btn
+                ><v-spacer />
+              </v-col>
+            </v-row>
+          </v-container>
+        </v-expansion-panel-text>
       </v-expansion-panel>
     </v-expansion-panels>
     <div>
@@ -136,7 +138,7 @@
     />
     <!-- Note we're using v-if here so it gets re-created each time and refreshes the list -->
     <settings-dialog
-      v-show="showSettingsDialog"
+      v-if="showSettingsDialog"
       v-model="showSettingsDialog"
       :settings="settings"
     />
@@ -183,6 +185,7 @@ export default {
       selectedGraphId: 0,
       counter: 1,
       applyingConfig: false,
+      observer: null,
       menus: [
         {
           label: 'File',
@@ -353,8 +356,8 @@ export default {
     this.grid = new Muuri('.grid', {
       dragEnabled: true,
       layoutOnResize: true,
-      // Only allow drags starting from the v-system-bar title
-      dragHandle: '.v-system-bar',
+      // Only allow drags starting from the v-toolbar title
+      dragHandle: '.v-toolbar',
     })
     // Sometimes when we move graphs, other graphs become non-interactive
     // This seems to fix that issue
@@ -386,6 +389,19 @@ export default {
         this.applyConfig(config)
       }
     }
+    // Setup the observer to resize the graphs when the nav drawer is opened or closed
+    this.observer = new MutationObserver(() => {
+      this.resizeAll()
+    })
+    const navDrawer = document.getElementById('openc3-nav-drawer')
+    this.observer.observe(navDrawer, {
+      attributes: true,
+      attributeOldValue: true,
+      attributeFilter: ['class'],
+    })
+  },
+  beforeUnmount() {
+    this.observer.disconnect()
   },
   methods: {
     resizeAll: function () {
@@ -443,7 +459,7 @@ export default {
       this.graphs.push(id)
       this.counter += 1
       this.$nextTick(function () {
-        var items = this.grid.add(this.$refs[`gridItem${id}`], {
+        let items = this.grid.add(this.$refs[`gridItem${id}`], {
           active: false,
         })
         this.grid.show(items)
@@ -462,7 +478,7 @@ export default {
       this.saveDefaultConfig(this.currentConfig)
     },
     closeGraph: function (id) {
-      var items = this.grid.getItems([document.getElementById(`gridItem${id}`)])
+      let items = this.grid.getItems([document.getElementById(`gridItem${id}`)])
       this.grid.remove(items)
       this.graphs.splice(this.graphs.indexOf(id), 1)
       // Clear out the startTime if we close all the graphs ... we're starting over
@@ -613,21 +629,22 @@ i.v-icon.mdi-chevron-down {
   background-color: var(--color-background-base-default) !important;
   padding-bottom: 10px;
 }
+.v-container {
+  max-width: unset;
+  padding-top: 0px;
+  padding-bottom: 10px;
+}
 .grapher-info {
   position: relative;
-  margin-top: 60px;
-  left: -120px;
-  height: 50px;
+  top: -115px;
+  height: 0px;
 }
-.control-button {
-  margin-right: 10px;
-}
-.v-expansion-panel-content {
+.v-expansion-panel-text {
   .container {
     margin: 0px;
   }
 }
-.v-expansion-panel-header {
+.v-expansion-panel-title {
   min-height: 10px;
   padding: 5px;
 }
@@ -656,7 +673,6 @@ i.v-icon.mdi-chevron-down {
   border-radius: 6px;
   margin: 5px;
 }
-
 .pulse {
   animation: pulse 1s infinite;
 }

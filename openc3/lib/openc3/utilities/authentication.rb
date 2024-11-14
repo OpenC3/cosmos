@@ -39,7 +39,7 @@ module OpenC3
     end
 
     # Load the token from the environment
-    def token()
+    def token(include_bearer: true)
       @token
     end
   end
@@ -75,7 +75,7 @@ module OpenC3
     end
 
     # Load the token from the environment
-    def token
+    def token(include_bearer: true)
       @auth_mutex.synchronize do
         @log = [nil, nil]
         current_time = Time.now.to_i
@@ -87,7 +87,11 @@ module OpenC3
           _refresh_token(current_time)
         end
       end
-      "Bearer #{@token}"
+      if include_bearer
+        return "Bearer #{@token}"
+      else
+        return @token
+      end
     end
 
     def get_token_from_refresh_token(refresh_token)

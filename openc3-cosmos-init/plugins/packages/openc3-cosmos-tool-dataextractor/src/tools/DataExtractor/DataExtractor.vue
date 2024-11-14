@@ -71,7 +71,7 @@
         </v-row>
         <v-row no-gutters>
           <v-col>
-            <v-radio-group v-model="cmdOrTlm" row hide-details class="mt-0">
+            <v-radio-group v-model="cmdOrTlm" inline hide-details class="mt-0">
               <v-radio label="Command" value="cmd" data-test="cmd-radio" />
               <v-radio label="Telemetry" value="tlm" data-test="tlm-radio" />
             </v-radio-group>
@@ -80,7 +80,7 @@
         <v-row>
           <v-col>
             <target-packet-item-chooser
-              @click="addItem($event)"
+              @add-item="addItem($event)"
               button-text="Add Item"
               :mode="cmdOrTlm"
               :hidden="true"
@@ -91,44 +91,41 @@
         </v-row>
       </v-container>
       <v-toolbar class="pl-3">
-        <v-progress-circular :value="progress" />
+        <v-progress-circular :model-value="progress" />
         &nbsp; Processed: {{ totalPacketsReceived }} packets,
         {{ totalItemsReceived }} items
         <v-spacer />
         <v-btn
-          class="primary"
+          class="bg-primary"
           @click="processItems"
           :disabled="items.length < 1"
-          >{{ processButtonText }}</v-btn
         >
+          {{ processButtonText }}
+        </v-btn>
         <v-spacer />
-        <v-tooltip bottom>
-          <template v-slot:activator="{ on, attrs }">
+        <v-tooltip location="bottom">
+          <template v-slot:activator="{ props }">
             <v-btn
-              icon
+              icon="mdi-pencil"
+              variant="text"
               @click="editAll = true"
-              v-bind="attrs"
-              v-on="on"
+              v-bind="props"
               :disabled="items.length < 1"
               data-test="editAll"
-            >
-              <v-icon> mdi-pencil </v-icon>
-            </v-btn>
+            />
           </template>
-          <span>Edit All Items</span>
+          <span> Edit All Items </span>
         </v-tooltip>
-        <v-tooltip bottom>
-          <template v-slot:activator="{ on, attrs }">
+        <v-tooltip location="bottom">
+          <template v-slot:activator="{ props }">
             <v-btn
-              icon
+              icon="mdi-delete"
+              variant="text"
               @click="deleteAll"
-              v-bind="attrs"
-              v-on="on"
+              v-bind="props"
               :disabled="items.length < 1"
               data-test="delete-all"
-            >
-              <v-icon>mdi-delete</v-icon>
-            </v-btn>
+            />
           </template>
           <span>Delete All Items</span>
         </v-tooltip>
@@ -143,8 +140,8 @@
             label="Search"
             prepend-inner-icon="mdi-magnify"
             clearable
-            outlined
-            dense
+            variant="outlined"
+            density="compact"
             single-line
             hide-details
             class="search"
@@ -154,24 +151,19 @@
           :headers="headers"
           :items="items"
           :search="search"
-          :items-per-page="itemsPerPage"
-          @update:items-per-page="itemsPerPage = $event"
-          :footer-props="{
-            itemsPerPageOptions: [10, 20, 50, 100, 500, 1000],
-            showFirstLastPage: true,
-            firstIcon: 'mdi-page-first',
-            lastIcon: 'mdi-page-last',
-            prevIcon: 'mdi-chevron-left',
-            nextIcon: 'mdi-chevron-right',
-          }"
-          calculate-widths
+          v-model:items-per-page="itemsPerPage"
+          :items-per-page-options="[10, 20, 50, 100, -1]"
           multi-sort
-          dense
+          density="compact"
         >
           <template v-slot:item.edit="{ item }">
-            <v-tooltip bottom>
-              <template v-slot:activator="{ on, attrs }">
-                <v-icon @click.stop="item.edit = true" v-bind="attrs" v-on="on">
+            <v-tooltip location="bottom">
+              <template v-slot:activator="{ props }">
+                <v-icon
+                  @click.stop="item.edit = true"
+                  v-bind="props"
+                  data-test="edit-row"
+                >
                   mdi-pencil
                 </v-icon>
               </template>
@@ -183,53 +175,54 @@
               max-width="600"
             >
               <v-card>
-                <v-system-bar>
+                <v-toolbar height="24">
                   <v-spacer />
                   <span> DataExtractor: Edit Item Mode </span>
                   <v-spacer />
-                </v-system-bar>
+                </v-toolbar>
                 <v-card-text>
                   <v-row class="mt-3 title-font">
                     <v-col>
                       {{ getItemLabel(item) }}
-                    </v-col></v-row
-                  >
+                    </v-col>
+                  </v-row>
                   <v-row>
                     <v-col>
                       <v-select
                         hide-details
                         :items="modes"
                         label="Mode"
-                        outlined
-                        v-model="item.mode" /></v-col
-                  ></v-row>
-                  <v-row
-                    ><v-col>
+                        variant="outlined"
+                        v-model="item.mode"
+                      />
+                    </v-col>
+                  </v-row>
+                  <v-row>
+                    <v-col>
                       <v-select
                         hide-details
                         :items="valueTypes"
                         label="Value Type"
-                        outlined
-                        v-model="item.valueType" /></v-col
-                  ></v-row>
-                  <v-row
-                    ><v-col>
+                        variant="outlined"
+                        v-model="item.valueType"
+                      />
+                    </v-col>
+                  </v-row>
+                  <v-row>
+                    <v-col>
                       <v-select
                         hide-details
                         :items="reducedTypes"
                         label="Reduced Type"
-                        outlined
+                        variant="outlined"
                         v-model="item.reducedType"
-                      /> </v-col
-                  ></v-row>
+                      />
+                    </v-col>
+                  </v-row>
                 </v-card-text>
-                <v-card-actions>
+                <v-card-actions class="px-2">
                   <v-spacer />
-                  <v-btn
-                    color="primary"
-                    class="mx-2"
-                    @click="item.edit = false"
-                  >
+                  <v-btn variant="flat" @click="item.edit = false">
                     Close
                   </v-btn>
                 </v-card-actions>
@@ -237,69 +230,79 @@
             </v-dialog>
           </template>
           <template v-slot:item.delete="{ item }">
-            <v-tooltip bottom>
-              <template v-slot:activator="{ on, attrs }">
-                <v-icon @click="deleteItem(item)" v-bind="attrs" v-on="on">
+            <v-tooltip location="bottom">
+              <template v-slot:activator="{ props }">
+                <v-icon
+                  @click="deleteItem(item)"
+                  v-bind="props"
+                  data-test="delete-row"
+                >
                   mdi-delete
                 </v-icon>
               </template>
-              <span>Delete Item</span>
+              <span> Delete Item </span>
             </v-tooltip>
           </template>
         </v-data-table>
       </v-card>
     </v-card>
-    <v-dialog v-model="editAll" @keydown.esc="cancelEditAll" max-width="600">
+    <v-dialog
+      v-model="editAll"
+      @keydown.esc="editAll = !editAll"
+      max-width="600"
+    >
       <v-card>
-        <v-system-bar>
+        <v-toolbar height="24">
           <v-spacer />
           <span> DataExtractor: Edit All Items</span>
           <v-spacer />
-        </v-system-bar>
+        </v-toolbar>
         <v-card-text>
           <v-row class="mt-3">
             <v-col>
               This will change all items to the following data type!
-            </v-col></v-row
-          >
-          <v-row
-            ><v-col>
+            </v-col>
+          </v-row>
+          <v-row>
+            <v-col>
               <v-select
                 hide-details
                 :items="modes"
                 label="Mode"
-                outlined
-                v-model="allItemMode" /></v-col
-          ></v-row>
-          <v-row
-            ><v-col>
+                variant="outlined"
+                v-model="allItemMode"
+              />
+            </v-col>
+          </v-row>
+          <v-row>
+            <v-col>
               <v-select
                 hide-details
                 :items="valueTypes"
                 label="Value Type"
-                outlined
-                v-model="allItemValueType" /></v-col
-          ></v-row>
-          <v-row
-            ><v-col>
+                variant="outlined"
+                v-model="allItemValueType"
+              />
+            </v-col>
+          </v-row>
+          <v-row>
+            <v-col>
               <v-select
                 hide-details
                 :items="reducedTypes"
                 label="Reduced Type"
-                outlined
+                variant="outlined"
                 v-model="allItemReducedType"
-              /> </v-col
-          ></v-row>
+              />
+            </v-col>
+          </v-row>
         </v-card-text>
-        <v-card-actions>
+        <v-card-actions class="px-2">
           <v-spacer />
-          <v-btn outlined class="mx-2" @click="editAll = !editAll">
-            Cancel
-          </v-btn>
+          <v-btn variant="outlined" @click="editAll = !editAll"> Cancel </v-btn>
           <v-btn
+            variant="flat"
             :disabled="!allItemValueType"
-            color="primary"
-            class="mx-2"
             @click="editAllItems()"
           >
             Ok
@@ -326,7 +329,7 @@
 
 <script>
 // Putting large data into Vue data section causes lots of overhead
-var dataExtractorRawData = []
+let dataExtractorRawData = []
 
 import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 import Config from '@openc3/tool-common/src/components/config/Config'
@@ -374,14 +377,14 @@ export default {
       items: [],
       search: '',
       headers: [
-        { text: 'Target', value: 'targetName' },
-        { text: 'Packet', value: 'packetName' },
-        { text: 'Item', value: 'itemName' },
-        { text: 'Mode', value: 'mode' },
-        { text: 'ValueType', value: 'valueType' },
-        { text: 'ReducedType', value: 'reducedType' },
-        { text: 'Edit', value: 'edit' },
-        { text: 'Delete', value: 'delete' },
+        { title: 'Target', value: 'targetName' },
+        { title: 'Packet', value: 'packetName' },
+        { title: 'Item', value: 'itemName' },
+        { title: 'Mode', value: 'mode' },
+        { title: 'ValueType', value: 'valueType' },
+        { title: 'ReducedType', value: 'reducedType' },
+        { title: 'Edit', value: 'edit' },
+        { title: 'Delete', value: 'delete' },
       ],
       itemsPerPage: 20,
       columnMap: {},
@@ -403,112 +406,6 @@ export default {
       // uniqueIgnoreOptions: ['NO', 'YES'],
       cable: new Cable(),
       subscription: null,
-      menus: [
-        {
-          label: 'File',
-          radioGroup: 'Comma Delimited', // Default radio selected
-          items: [
-            {
-              label: 'Open Configuration',
-              icon: 'mdi-folder-open',
-              command: () => {
-                this.openConfig = true
-              },
-            },
-            {
-              label: 'Save Configuration',
-              icon: 'mdi-content-save',
-              command: () => {
-                this.saveConfig = true
-              },
-            },
-            {
-              label: 'Reset Configuration',
-              icon: 'mdi-monitor-shimmer',
-              command: () => {
-                this.resetConfig()
-                this.resetConfigBase()
-              },
-            },
-            {
-              divider: true,
-            },
-            {
-              label: 'Comma Delimited',
-              radio: true,
-              command: () => {
-                this.delimiter = ','
-              },
-            },
-            {
-              label: 'Tab Delimited',
-              radio: true,
-              command: () => {
-                this.delimiter = '\t'
-              },
-            },
-          ],
-        },
-        {
-          label: 'Mode',
-          radioGroup: 'Normal Columns', // Default radio selected
-          items: [
-            // TODO: Currently unimplemented
-            // {
-            //   label: 'Skip Ignored on Add',
-            //   checkbox: true,
-            //   checked: true, // Skip Ignored is the default
-            //   command: () => {
-            //     this.skipIgnored = !this.skipIgnored
-            //   },
-            // },
-            // {
-            //   divider: true,
-            // },
-            {
-              label: 'Fill Down',
-              checkbox: true,
-              checked: false,
-              command: (item) => {
-                this.fillDown = item.checked
-              },
-            },
-            {
-              label: 'Matlab Header',
-              checkbox: true,
-              checked: false,
-              command: (item) => {
-                this.matlabHeader = item.checked
-              },
-            },
-            {
-              label: 'Unique Only',
-              checkbox: true,
-              checked: false,
-              command: (item) => {
-                this.uniqueOnly = item.checked
-              },
-            },
-            {
-              divider: true,
-            },
-            {
-              label: 'Normal Columns',
-              radio: true,
-              command: () => {
-                this.columnMode = 'normal'
-              },
-            },
-            {
-              label: 'Full Column Names',
-              radio: true,
-              command: () => {
-                this.columnMode = 'full'
-              },
-            },
-          ],
-        },
-      ],
     }
   },
   watch: {
@@ -541,6 +438,119 @@ export default {
     },
   },
   computed: {
+    menus: function () {
+      return [
+        {
+          label: 'File',
+          items: [
+            {
+              label: 'Open Configuration',
+              icon: 'mdi-folder-open',
+              command: () => {
+                this.openConfig = true
+              },
+            },
+            {
+              label: 'Save Configuration',
+              icon: 'mdi-content-save',
+              command: () => {
+                this.saveConfig = true
+              },
+            },
+            {
+              label: 'Reset Configuration',
+              icon: 'mdi-monitor-shimmer',
+              command: () => {
+                this.resetConfig()
+                this.resetConfigBase()
+              },
+            },
+            {
+              divider: true,
+            },
+            {
+              radioGroup: true,
+              value: this.delimiter,
+              command: (value) => {
+                this.delimiter = value
+              },
+              choices: [
+                {
+                  label: 'Comma Delimited',
+                  value: ',',
+                },
+                {
+                  label: 'Tab Delimited',
+                  value: '\t',
+                },
+              ],
+            },
+          ],
+        },
+        {
+          label: 'Mode',
+          // radioGroup: 'Normal Columns', // Default radio selected
+          items: [
+            // TODO: Currently unimplemented
+            // {
+            //   label: 'Skip Ignored on Add',
+            //   checkbox: true,
+            //   checked: true, // Skip Ignored is the default
+            //   command: () => {
+            //     this.skipIgnored = !this.skipIgnored
+            //   },
+            // },
+            // {
+            //   divider: true,
+            // },
+            {
+              label: 'Fill Down',
+              checkbox: true,
+              checked: this.fillDown,
+              command: () => {
+                this.fillDown = !this.fillDown
+              },
+            },
+            {
+              label: 'Matlab Header',
+              checkbox: true,
+              checked: this.matlabHeader,
+              command: (item) => {
+                this.matlabHeader = !this.matlabHeader
+              },
+            },
+            {
+              label: 'Unique Only',
+              checkbox: true,
+              checked: this.uniqueOnly,
+              command: (item) => {
+                this.uniqueOnly = !this.uniqueOnly
+              },
+            },
+            {
+              divider: true,
+            },
+            {
+              radioGroup: true,
+              value: this.columnMode,
+              command: (value) => {
+                this.columnMode = value
+              },
+              choices: [
+                {
+                  label: 'Normal Columns',
+                  value: 'normal',
+                },
+                {
+                  label: 'Full Column Names',
+                  value: 'full',
+                },
+              ],
+            },
+          ],
+        },
+      ]
+    },
     currentConfig: function () {
       return {
         delimiter: this.delimiter,
@@ -568,9 +578,9 @@ export default {
       })
     let now = new Date()
     this.todaysDate = this.formatDate(now, this.timeZone)
-    this.startDate = this.formatDate(now, this.timeZone)
-    this.startTime = this.formatTime(now - 3600000, this.timeZone) // last hr data
-    this.endTime = this.formatTime(now, this.timeZone)
+    this.startDate = this.formatDate(now - 3600000, this.timeZone) // last hr data
+    this.startTime = this.formatTimeHMS(now - 3600000, this.timeZone) // last hr data
+    this.endTime = this.formatTimeHMS(now, this.timeZone)
     this.endDate = this.formatDate(now, this.timeZone)
   },
   mounted: function () {
@@ -585,7 +595,7 @@ export default {
       }
     }
   },
-  destroyed: function () {
+  unmounted: function () {
     if (this.subscription) {
       this.subscription.unsubscribe()
     }
@@ -599,9 +609,9 @@ export default {
       this.uniqueOnly = false
       this.columnMode = 'normal'
       let now = new Date()
-      this.startDate = this.formatDate(now, this.timeZone)
-      this.startTime = this.formatTime(now - 3600000, this.timeZone) // last hr data
-      this.endTime = this.formatTime(now, this.timeZone)
+      this.startDate = this.formatDate(now - 3600000, this.timeZone) // last hr data
+      this.startTime = this.formatTimeHMS(now - 3600000, this.timeZone) // last hr data
+      this.endTime = this.formatTimeHMS(now, this.timeZone)
       this.endDate = this.formatDate(now, this.timeZone)
       this.cmdOrTlm = 'tlm'
       this.items = []
@@ -669,7 +679,7 @@ export default {
       this.items.push(item)
     },
     deleteItem: function (item) {
-      var index = this.items.indexOf(item)
+      let index = this.items.indexOf(item)
       this.items.splice(index, 1)
     },
     deleteAll: function () {
@@ -795,7 +805,7 @@ export default {
     },
     onConnected: function () {
       this.resetAllVars()
-      var items = []
+      let items = []
       this.items.forEach((item, index) => {
         let key = `${item.mode}__${item.cmdOrTlm}__${item.targetName}__${item.packetName}__${item.itemName}__${item.valueType}`
         if (item.reducedType !== 'SAMPLE') {
@@ -834,7 +844,7 @@ export default {
       if (data.length > 0) {
         // Get all the items present in the data to pass to buildHeaders
         let keys = new Set()
-        for (var packet of data) {
+        for (let packet of data) {
           let packetKeys = Object.keys(packet)
           packetKeys.forEach(keys.add, keys)
           this.itemsReceived += packetKeys.length - 2 // Don't count __type and __time
@@ -915,13 +925,13 @@ export default {
       rawData.sort((a, b) => a.__time - b.__time)
       await this.yieldToMain()
 
-      var currentValues = []
-      var row = []
-      var previousRow = null
-      var count = 0
-      for (var packet of rawData) {
+      let currentValues = []
+      let row = []
+      let previousRow = null
+      let count = 0
+      for (let packet of rawData) {
         // Flag tracks if anything has changed for uniqueOnly mode
-        var changed = false
+        let changed = false
 
         // Start a new row with either the previous row data (fillDown) or a blank row
         if (this.fillDown && previousRow) {

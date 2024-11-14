@@ -1,6 +1,9 @@
 ---
 sidebar_position: 4
 title: Commands
+description: Command definition file format and keywords
+sidebar_custom_props:
+  myEmoji: 📡
 ---
 
 <!-- Be sure to edit _command.md because command.md is a generated file -->

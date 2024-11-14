@@ -1,6 +1,9 @@
 ---
 sidebar_position: 9
 title: Screens
+description: Telemetry Viewer screen definition and widget documentation
+sidebar_custom_props:
+  myEmoji: 🖥️
 ---
 
 <!-- Be sure to edit _telemetry_screens.md because telemetry_screens.md is a generated file -->

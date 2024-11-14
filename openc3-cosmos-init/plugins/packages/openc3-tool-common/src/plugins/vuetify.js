@@ -20,33 +20,31 @@
 # if purchased from OpenC3, Inc.
 */
 
-import Vue from 'vue'
-import Vuetify from 'vuetify/lib'
-import { AstroIconVuetifyValues } from '../components/icons/index.js'
+import { createVuetify } from 'vuetify'
+import * as components from 'vuetify/components'
+import * as directives from 'vuetify/directives'
+import { mdi } from 'vuetify/iconsets/mdi'
+import { VTreeview } from 'vuetify/labs/VTreeview'
+import { AstroIconVuetifySets } from '../components/icons/index.js'
+import cosmosDark from './cosmosThemeDark'
 
-Vue.use(Vuetify)
-
-export default new Vuetify({
+export default createVuetify({
+  components: {
+    ...components,
+    VTreeview,
+  },
+  directives,
   theme: {
-    dark: true,
-    options: {
-      customProperties: true,
-    },
+    defaultTheme: 'cosmosDark',
     themes: {
-      dark: {
-        primary: '#005a8f',
-        secondary: '#4dacff',
-        tertiary: '#283f58',
-      },
-      light: {
-        primary: '#cce6ff',
-        secondary: '#cce6ff',
-      },
+      cosmosDark,
     },
   },
   icons: {
-    values: {
-      ...AstroIconVuetifyValues,
+    defaultSet: 'mdi',
+    sets: {
+      mdi,
+      ...AstroIconVuetifySets,
     },
   },
 })

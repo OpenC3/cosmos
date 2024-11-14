@@ -1,5 +1,8 @@
 ---
 title: Telemetry Viewer
+description: Build custom screens using built-in widgets
+sidebar_custom_props:
+  myEmoji: 🛠️
 ---
 
 ## Introduction

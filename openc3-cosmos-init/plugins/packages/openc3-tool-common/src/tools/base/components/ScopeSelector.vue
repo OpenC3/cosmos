@@ -27,8 +27,8 @@
       :items="scopes"
       :disabled="scopes.length <= 1"
       label="Scope"
-      dense
-      outlined
+      density="compact"
+      variant="outlined"
       hide-details
       style="max-width: 150px"
     />

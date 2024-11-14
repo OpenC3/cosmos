@@ -25,23 +25,18 @@
     <v-list class="list" data-test="interfaceList">
       <div v-for="openc3_interface in interfaces" :key="openc3_interface">
         <v-list-item>
-          <v-list-item-content>
-            <v-list-item-title>{{ openc3_interface }}</v-list-item-title>
-          </v-list-item-content>
-          <v-list-item-icon>
-            <v-tooltip bottom>
-              <template v-slot:activator="{ on, attrs }">
-                <v-icon
-                  @click="showInterface(openc3_interface)"
-                  v-bind="attrs"
-                  v-on="on"
-                >
+          <v-list-item-title>{{ openc3_interface }}</v-list-item-title>
+
+          <template v-slot:append>
+            <v-tooltip location="bottom">
+              <template v-slot:activator="{ props }">
+                <v-icon v-bind="props" @click="showInterface(openc3_interface)">
                   mdi-eye
                 </v-icon>
               </template>
               <span>Show Interface Details</span>
             </v-tooltip>
-          </v-list-item-icon>
+          </template>
         </v-list-item>
         <v-divider />
       </div>
@@ -96,5 +91,8 @@ export default {
 <style scoped>
 .list {
   background-color: var(--color-background-surface-default) !important;
+}
+.v-theme--cosmosDark.v-list div:nth-child(odd) .v-list-item {
+  background-color: var(--color-background-base-selected) !important;
 }
 </style>

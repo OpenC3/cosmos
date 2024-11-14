@@ -74,7 +74,7 @@ http:
     # Matches any path with a file extension which is assumed to be
     # a static file
     tools-router:
-      rule: Path(`/tools/{id:.*/.*[.].*}`)
+      rule: PathRegexp(`/tools/.*/.*[.].*`)
       service: service-minio
       priority: 6
       tls:
@@ -85,7 +85,7 @@ http:
     # Where we need to add index.html to the path
     # Matches any tool name that starts with static and ends with slash
     statictools-index-router:
-      rule: Path(`/tools/static{rest:.*}/`)
+      rule: PathRegexp(`/tools/static.*/`)
       middlewares:
         # add index.html to the end
         - "addIndexHtml"
@@ -99,7 +99,7 @@ http:
     # Where we need to add .html to the path
     # Matches any tool name that starts with static
     statictools-dothtml-router:
-      rule: Path(`/tools/static{rest:.*}`)
+      rule: PathRegexp(`/tools/static.*`)
       middlewares:
         # add .html to the end
         - "addDotHtml"
@@ -125,7 +125,7 @@ http:
     # Matches any path with a file extension which is assumed to be
     # a static file
     base-router:
-      rule: Path(`/{id:.*[.].*}`)
+      rule: PathRegexp(`/.*[.].*`)
       middlewares:
         # add /tools/base to the beginning
         - "addToolsBase"
@@ -138,7 +138,7 @@ http:
     # This is the default route for everything that doesn't match a more specific route
     # It gets us to the base openc3 application
     web-router:
-      rule: HostRegexp(`{name:.*}`)
+      rule: HostRegexp(`.*`)
       middlewares:
         # Serve /tools/base/index.html from minio
         - "gotoToolsBaseIndex"

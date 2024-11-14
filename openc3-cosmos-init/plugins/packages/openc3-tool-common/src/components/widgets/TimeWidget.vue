@@ -39,16 +39,10 @@ export default {
     }
   },
   created() {
-    // Look through the settings and see if we're a NAMED_WIDGET
-    this.settings.forEach((setting) => {
-      if (setting[0] === 'NAMED_WIDGET') {
-        setting[2].setNamedWidget(setting[1], this)
-      }
-    })
     if (this.parameters[0]) {
       this.label = this.parameters[0]
     }
-    this.timeValue = this.formatTime(new Date(), this.screen.timeZone)
+    this.timeValue = this.formatTimeHMS(new Date(), this.screen.timeZone)
   },
   methods: {
     text() {

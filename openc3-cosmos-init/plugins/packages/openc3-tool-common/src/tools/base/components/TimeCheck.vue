@@ -33,7 +33,7 @@
       </v-card-text>
       <v-divider />
       <v-card-actions>
-        <v-btn color="primary" text @click="dismiss"> Dismiss </v-btn>
+        <v-btn color="primary" variant="text" @click="dismiss"> Dismiss </v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>

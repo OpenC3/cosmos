@@ -1,5 +1,8 @@
 ---
 title: Telemetry Grapher
+description: Graph real time or historical data
+sidebar_custom_props:
+  myEmoji: 🛠️
 ---
 
 ## Introductions

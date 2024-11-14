@@ -26,87 +26,87 @@
     <v-card>
       <v-expansion-panels v-model="panel" style="margin-bottom: 5px">
         <v-expansion-panel>
-          <v-expansion-panel-header
-            style="z-index: 1"
-          ></v-expansion-panel-header>
-          <v-expansion-panel-content>
-            <v-row dense>
-              <v-col>
-                <v-text-field
-                  v-model="startDate"
-                  label="Start Date"
-                  type="date"
-                  :rules="[rules.required]"
-                  data-test="start-date"
-                />
-              </v-col>
-              <v-col>
-                <v-text-field
-                  v-model="startTime"
-                  label="Start Time"
-                  type="time"
-                  step="1"
-                  :rules="[rules.required]"
-                  data-test="start-time"
-                />
-              </v-col>
-              <v-col>
-                <v-text-field
-                  v-model="endDate"
-                  label="End Date"
-                  type="date"
-                  :rules="endTime ? [rules.required] : []"
-                  data-test="end-date"
-                />
-              </v-col>
-              <v-col>
-                <v-text-field
-                  v-model="endTime"
-                  label="End Time"
-                  type="time"
-                  step="1"
-                  :rules="endDate ? [rules.required] : []"
-                  data-test="end-time"
-                />
-              </v-col>
-              <v-col cols="auto" class="pt-4">
-                <v-btn
-                  v-if="running"
-                  color="primary"
-                  width="100"
-                  data-test="stop-button"
-                  @click="stop"
-                >
-                  Stop
-                </v-btn>
-                <v-btn
-                  v-else
-                  :disabled="!canStart"
-                  color="primary"
-                  width="100"
-                  class="pulse-button"
-                  data-test="start-button"
-                  @click="start"
-                >
-                  Start
-                </v-btn>
-              </v-col>
-            </v-row>
-          </v-expansion-panel-content>
+          <v-expansion-panel-title style="z-index: 1"></v-expansion-panel-title>
+          <v-expansion-panel-text>
+            <v-container>
+              <v-row dense>
+                <v-col>
+                  <v-text-field
+                    v-model="startDate"
+                    label="Start Date"
+                    type="date"
+                    :rules="[rules.required]"
+                    data-test="start-date"
+                  />
+                </v-col>
+                <v-col>
+                  <v-text-field
+                    v-model="startTime"
+                    label="Start Time"
+                    type="time"
+                    step="1"
+                    :rules="[rules.required]"
+                    data-test="start-time"
+                  />
+                </v-col>
+                <v-col>
+                  <v-text-field
+                    v-model="endDate"
+                    label="End Date"
+                    type="date"
+                    :rules="endTime ? [rules.required] : []"
+                    data-test="end-date"
+                  />
+                </v-col>
+                <v-col>
+                  <v-text-field
+                    v-model="endTime"
+                    label="End Time"
+                    type="time"
+                    step="1"
+                    :rules="endDate ? [rules.required] : []"
+                    data-test="end-time"
+                  />
+                </v-col>
+                <v-col cols="auto" class="pt-4">
+                  <v-btn
+                    v-if="running"
+                    color="primary"
+                    width="100"
+                    data-test="stop-button"
+                    @click="stop"
+                  >
+                    Stop
+                  </v-btn>
+                  <v-btn
+                    v-else
+                    :disabled="!canStart"
+                    color="primary"
+                    width="100"
+                    class="pulse-button"
+                    data-test="start-button"
+                    @click="start"
+                  >
+                    Start
+                  </v-btn>
+                </v-col>
+              </v-row>
+            </v-container>
+          </v-expansion-panel-text>
         </v-expansion-panel>
       </v-expansion-panels>
       <div class="mb-3" v-show="warning || error || connectionFailure">
-        <v-alert type="warning" v-model="warning" dismissible>
+        <v-alert type="warning" v-model="warning" closable>
           {{ warningText }}
         </v-alert>
-        <v-alert type="error" v-model="error" dismissible>
+        <v-alert type="error" v-model="error" closable>
           {{ errorText }}
         </v-alert>
         <v-alert type="error" v-model="connectionFailure">
           OpenC3 backend connection failed.
         </v-alert>
       </div>
-      <v-tabs ref="tabs" v-model="curTab">
+      <v-tabs ref="tabs" v-model="curTab" :key="`v-tabs_${config.tabs.length}`">
         <v-tab
           v-for="(tab, index) in config.tabs"
           :key="index"
@@ -115,48 +115,51 @@
         >
           {{ tab.tabName }}
         </v-tab>
-        <v-tooltip bottom>
-          <template v-slot:activator="{ on, attrs }">
+        <v-tooltip location="bottom">
+          <template v-slot:activator="{ props }">
             <v-btn
-              icon
-              class="mt-2 ml-2"
+              icon="mdi-tab-plus"
+              class="ml-2"
+              variant="text"
               @click="addTab"
-              v-bind="attrs"
-              v-on="on"
+              v-bind="props"
               :class="config.tabs.length === 0 ? 'pulse-button' : ''"
               data-test="new-tab"
-            >
-              <v-icon>mdi-tab-plus</v-icon>
-            </v-btn>
+            />
           </template>
           <span>Add Component</span>
         </v-tooltip>
       </v-tabs>
-      <v-tabs-items v-model="curTab">
-        <v-tab-item v-for="(tab, index) in config.tabs" :key="tab.ref" eager>
+      <v-tabs-window
+        :model-value="curTab"
+        :key="`v-tabs-window_${config.tabs.length}`"
+      >
+        <v-tabs-window-item
+          v-for="(tab, index) in config.tabs"
+          :key="tab.ref"
+          eager
+        >
           <keep-alive>
             <v-card flat>
               <v-divider />
-              <v-card-title class="pa-3">
+              <v-card-title class="pa-3 d-flex align-center">
                 <span v-text="tab.name" />
                 <v-spacer />
-                <v-tooltip bottom>
-                  <template v-slot:activator="{ on, attrs }">
+                <v-tooltip location="bottom">
+                  <template v-slot:activator="{ props }">
                     <v-btn
-                      icon
+                      variant="text"
+                      icon="mdi-delete"
                       @click="() => deleteComponent(index)"
-                      v-bind="attrs"
-                      v-on="on"
+                      v-bind="props"
                       data-test="delete-component"
-                    >
-                      <v-icon>mdi-delete</v-icon>
-                    </v-btn>
+                    />
                   </template>
-                  <span>Remove Component</span>
+                  <span> Remove Component </span>
                 </v-tooltip>
               </v-card-title>
               <component
-                v-on="$listeners"
+                v-bind="$attrs"
                 :is="tab.type"
                 :name="tab.component"
                 :ref="tab.ref"
@@ -167,10 +170,10 @@
               <v-card-text v-if="receivedPackets.length === 0">
                 No data! Make sure to hit the START button!
               </v-card-text>
-            </v-card></keep-alive
-          >
-        </v-tab-item>
-      </v-tabs-items>
+            </v-card>
+          </keep-alive>
+        </v-tabs-window-item>
+      </v-tabs-window>
       <v-card v-if="!config.tabs.length">
         <v-card-title>You're not viewing any packets</v-card-title>
         <v-card-text>Click the new tab icon to start.</v-card-text>
@@ -192,11 +195,11 @@
     <!-- Dialog for renaming a new tab -->
     <v-dialog v-model="tabNameDialog" width="600">
       <v-card>
-        <v-system-bar>
+        <v-toolbar height="24">
           <v-spacer />
           <span> DataViewer: Rename Tab</span>
           <v-spacer />
-        </v-system-bar>
+        </v-toolbar>
         <v-card-text>
           <v-text-field
             v-model="newTabName"
@@ -204,19 +207,17 @@
             data-test="rename-tab-input"
           />
         </v-card-text>
-        <v-card-actions>
+        <v-card-actions class="px-2">
           <v-spacer />
           <v-btn
-            outlined
-            class="mx-2"
+            variant="outlined"
             data-test="cancel-rename"
             @click="cancelTabRename"
           >
             Cancel
           </v-btn>
           <v-btn
-            color="primary"
-            class="mx-2"
+            variant="flat"
             data-test="rename"
             :disabled="!newTabName"
             @click="renameTab"
@@ -227,13 +228,7 @@
       </v-card>
     </v-dialog>
     <!-- Menu for right clicking on a tab -->
-    <v-menu
-      v-model="showTabMenu"
-      :position-x="tabMenuX"
-      :position-y="tabMenuY"
-      absolute
-      offset-y
-    >
+    <v-menu v-model="showTabMenu" :target="[tabMenuX, tabMenuY]">
       <v-list>
         <v-list-item data-test="context-menu-rename">
           <v-list-item-title style="cursor: pointer" @click="openTabNameDialog">
@@ -396,9 +391,6 @@ export default {
     },
   },
   watch: {
-    'config.tabs.length': function () {
-      this.resizeTabs()
-    },
     // canStart is set by the subscription when it connects.
     // We set autoStart to true during mounted() when loading from
     // a route or a previous saved configuration.
@@ -428,7 +420,7 @@ export default {
       })
     let now = new Date()
     this.startDate = this.formatDate(now, this.timeZone)
-    this.startTime = this.formatTime(now, this.timeZone)
+    this.startTime = this.formatTimeHMS(now, this.timeZone)
 
     // Determine if there are any user added widgets
     Api.get('/openc3-api/widgets').then((response) => {
@@ -468,7 +460,7 @@ export default {
       }
     }
   },
-  destroyed: function () {
+  unmounted: function () {
     if (this.subscription) {
       this.subscription.unsubscribe()
     }
@@ -481,9 +473,6 @@ export default {
       } else {
         return `${packet.targetName} ${packet.packetName} [ ${packet.mode} ]`
       }
-    },
-    resizeTabs: function () {
-      if (this.$refs.tabs) this.$refs.tabs.onResize()
     },
     start: function () {
       this.autoStart = false
@@ -871,12 +860,12 @@ export default {
 </script>
 
 <style scoped>
-.v-expansion-panel-content {
+.v-expansion-panel-text {
   .container {
     margin: 0px;
   }
 }
-.v-expansion-panel-header {
+.v-expansion-panel-title {
   min-height: 10px;
   padding: 5px;
 }

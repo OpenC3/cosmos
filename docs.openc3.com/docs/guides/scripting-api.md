@@ -1,5 +1,8 @@
 ---
 title: Scripting API Guide
+description: Scripting API methods, deprecations and migrations
+sidebar_custom_props:
+  myEmoji: 📝
 ---
 
 This document provides the information necessary to write test procedures using the COSMOS scripting API. Scripting in COSMOS is designed to be simple and intuitive. The code completion ability for command and telemetry mnemonics makes Script Runner the ideal place to write your procedures, however any text editor will do. If there is functionality that you don't see here or perhaps an easier syntax for doing something, please submit a ticket.
@@ -35,7 +38,17 @@ There are four different ways that telemetry values can be retrieved in COSMOS. 
 
 The following methods are designed to be used in Script Runner procedures. Many can also be used in custom built COSMOS tools. Please see the COSMOS Tool API section for methods that are more efficient to use in custom tools.
 
-### Migration from COSMOS v4
+### Migration from COSMOS v5 to v6
+
+The following API methods have been removed from COSMOS v6. Most of the deprecated API methods still remain for backwards compatibility.
+
+| Method              | Tool                         | Status                             |
+| ------------------- | ---------------------------- | ---------------------------------- |
+| get_all_target_info | Command and Telemetry Server | Removed, use get_target_interfaces |
+| play_wav_file       | Script Runner                | Removed                            |
+| status_bar          | Script Runner                | Removed                            |
+
+### Migration from COSMOS v4 to v5
 
 The following API methods are either deprecated (will not be ported to COSMOS 5) or currently unimplemented (eventually will be ported to COSMOS 5):
 
@@ -83,6 +96,7 @@ The following API methods are either deprecated (will not be ported to COSMOS 5)
 | interface_state                       | Command and Telemetry Server | Deprecated, use get_interface                                       |
 | override_tlm_raw                      | Command and Telemetry Server | Deprecated, use override_tlm                                        |
 | open_directory_dialog                 | Script Runner                | Deprecated                                                          |
+| play_wav_file                         | Script Runner                | Deprecated                                                          |
 | replay_move_end                       | Replay                       | Deprecated                                                          |
 | replay_move_index                     | Replay                       | Deprecated                                                          |
 | replay_move_start                     | Replay                       | Deprecated                                                          |
@@ -104,6 +118,7 @@ The following API methods are either deprecated (will not be ported to COSMOS 5)
 | set_stdout_max_lines                  | Script Runner                | Deprecated                                                          |
 | set_tlm_raw                           | Script Runner                | Deprecated, use set_tlm                                             |
 | show_backtrace                        | Script Runner                | Deprecated, backtrace always shown                                  |
+| status_bar                            | Script Runner                | Deprecated                                                          |
 | shutdown_cmd_tlm                      | Command and Telemetry Server | Deprecated                                                          |
 | start_cmd_log                         | Command and Telemetry Server | Deprecated                                                          |
 | start_logging                         | Command and Telemetry Server | Deprecated                                                          |

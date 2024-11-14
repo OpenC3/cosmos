@@ -31,17 +31,15 @@ require 'openc3/topics/system_events_topic'
 begin
   require 'openc3-enterprise/models/cmd_authority_model'
   require 'openc3-enterprise/models/critical_cmd_model'
+  module OpenC3
+    class ScopeModel < Model
+      ENTERPRISE = true
+    end
+  end
 rescue LoadError
   module OpenC3
-    class CmdAuthorityModel
-      def self.names(scope:)
-        []
-      end
-    end
-    class CriticalCmdModel
-      def self.names(scope:)
-        []
-      end
+    class ScopeModel < Model
+      ENTERPRISE = false
     end
   end
 end
@@ -130,21 +128,23 @@ module OpenC3
       @scope = @name # Ensure @scope matches @name
       super(update: update, force: force, queued: queued)
 
-      # If we're updating the scope and disabling command_authority
-      # then we clear out all the existing values so it comes up fresh
-      if update and @command_authority == false
-        CmdAuthorityModel.names(scope: @name).each do |auth_name|
-          model = CmdAuthorityModel.get_model(name: auth_name, scope: @name)
-          model.destroy if model
+      if ENTERPRISE
+        # If we're updating the scope and disabling command_authority
+        # then we clear out all the existing values so it comes up fresh
+        if update and @command_authority == false
+          CmdAuthorityModel.names(scope: @name).each do |auth_name|
+            model = CmdAuthorityModel.get_model(name: auth_name, scope: @name)
+            model.destroy if model
+          end
         end
-      end
 
-      # If we're updating the scope and disabling critical_commanding
-      # then we clear out all the pending critical commands
-      if update and @critical_commanding == "OFF"
-        CriticalCmdModel.names(scope: @name).each do |name|
-          model = CriticalCmdModel.get_model(name: name, scope: @name)
-          model.destroy if model
+        # If we're updating the scope and disabling critical_commanding
+        # then we clear out all the pending critical commands
+        if update and @critical_commanding == "OFF"
+          CriticalCmdModel.names(scope: @name).each do |name|
+            model = CriticalCmdModel.get_model(name: name, scope: @name)
+            model.destroy if model
+          end
         end
       end
 
@@ -281,7 +281,7 @@ module OpenC3
       microservice = MicroserviceModel.new(
         name: microservice_name,
         cmd: ["ruby", "critical_cmd_microservice.rb", microservice_name],
-        work_dir: '/openc3/lib/openc3/microservices',
+        work_dir: '/openc3-enterprise/lib/openc3-enterprise/microservices',
         parent: parent,
         scope: @scope
       )
@@ -308,12 +308,14 @@ module OpenC3
     def deploy(gem_path, variables)
       seed_database()
 
-      # Create DEFAULT trigger group model
-      model = TriggerGroupModel.get(name: 'DEFAULT', scope: @scope)
-      unless model
-        model = TriggerGroupModel.new(name: 'DEFAULT', scope: @scope)
-        model.create()
-        model.deploy()
+      if ENTERPRISE
+        # Create DEFAULT trigger group model
+        model = TriggerGroupModel.get(name: 'DEFAULT', scope: @scope)
+        unless model
+          model = TriggerGroupModel.new(name: 'DEFAULT', scope: @scope)
+          model.create()
+          model.deploy()
+        end
       end
 
       # Create UNKNOWN target for display of unknown data
@@ -337,8 +339,10 @@ module OpenC3
       # Scope Cleanup Microservice
       deploy_scopecleanup_microservice(gem_path, variables, @parent)
 
-      # Critical Cmd Microservice
-      deploy_critical_cmd_microservice(gem_path, variables, @parent)
+      if ENTERPRISE
+        # Critical Cmd Microservice
+        deploy_critical_cmd_microservice(gem_path, variables, @parent)
+      end
 
       # Multi Microservice to parent other scope microservices
       deploy_scopemulti_microservice(gem_path, variables)
@@ -361,27 +365,30 @@ module OpenC3
       model.destroy if model
       model = MicroserviceModel.get_model(name: "#{@scope}__PERIODIC__#{@scope}", scope: @scope)
       model.destroy if model
-      model = MicroserviceModel.get_model(name: "#{@scope}__TRIGGER_GROUP__DEFAULT", scope: @scope)
-      model.destroy if model
-      model = MicroserviceModel.get_model(name: "#{@scope}__CRITICALCMD__#{@scope}", scope: @scope)
-      model.destroy if model
+      if ENTERPRISE
+        model = MicroserviceModel.get_model(name: "#{@scope}__TRIGGER_GROUP__DEFAULT", scope: @scope)
+        model.destroy if model
+        model = MicroserviceModel.get_model(name: "#{@scope}__CRITICALCMD__#{@scope}", scope: @scope)
+        model.destroy if model
+
+        Topic.del("#{@scope}__openc3_autonomic")
+        Topic.del("#{@scope}__TRIGGER__GROUP")
+      end
 
       # Delete the topics we created for the scope
       Topic.del("#{@scope}__COMMAND__{UNKNOWN}__UNKNOWN")
       Topic.del("#{@scope}__TELEMETRY__{UNKNOWN}__UNKNOWN")
       Topic.del("#{@scope}__openc3_targets")
       Topic.del("#{@scope}__CONFIG")
-      Topic.del("#{@scope}__openc3_autonomic")
-      Topic.del("#{@scope}__TRIGGER__GROUP")
     end
 
     def seed_database
       setting = SettingModel.get(name: 'source_url')
       SettingModel.set({ name: 'source_url', data: 'https://github.com/OpenC3/cosmos' }, scope: @scope) unless setting
       setting = SettingModel.get(name: 'rubygems_url')
-      SettingModel.set({ name: 'rubygems_url', data: 'https://rubygems.org' }, scope: @scope) unless setting
+      SettingModel.set({ name: 'rubygems_url', data: ENV['RUBYGEMS_URL'] || 'https://rubygems.org' }, scope: @scope) unless setting
       setting = SettingModel.get(name: 'pypi_url')
-      SettingModel.set({ name: 'pypi_url', data: 'https://pypi.org' }, scope: @scope) unless setting
+      SettingModel.set({ name: 'pypi_url', data: ENV['PYPI_URL'] || 'https://pypi.org' }, scope: @scope) unless setting
     end
   end
 end

@@ -1,5 +1,8 @@
 ---
 title: Autonomic (Enterprise)
+description: Automated execution of commands and scripts
+sidebar_custom_props:
+  myEmoji: 🛠️
 ---
 
 ## Introduction

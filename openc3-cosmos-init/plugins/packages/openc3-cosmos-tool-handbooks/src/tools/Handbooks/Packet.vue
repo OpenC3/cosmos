@@ -22,18 +22,22 @@
 
 <template>
   <v-card>
-    <v-card-title class="text-h4 justify-center"
-      >{{ packet.target_name }} {{ packet.packet_name }}</v-card-title
-    >
-    <v-card-subtitle
-      >{{ packet.description }}
+    <v-card-title class="text-h4 justify-center">
+      {{ packet.target_name }} {{ packet.packet_name }}
+    </v-card-title>
+    <v-card-subtitle>
+      {{ packet.description }}
       <div class="float-right">{{ packet.endianness }}</div>
     </v-card-subtitle>
     <v-card-text>
       <v-container fluid>
         <v-row dense>
           <v-col v-for="item in items" :key="item.name" :cols="columns">
-            <item :item="item"></item>
+            <item
+              :item="item"
+              :hide-ignored="hideIgnored"
+              :hide-derived="hideDerived"
+            />
           </v-col>
         </v-row>
       </v-container>

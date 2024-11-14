@@ -24,11 +24,11 @@
   <v-dialog v-model="show" width="600">
     <v-card>
       <form v-on:submit.prevent="addEnvironment">
-        <v-system-bar>
+        <v-toolbar height="24">
           <v-spacer />
           <span>Global Environment Variables</span>
           <v-spacer />
-        </v-system-bar>
+        </v-toolbar>
         <v-card-text>
           <div class="pa-3">
             <v-row dense class="mb-2">
@@ -39,10 +39,9 @@
                 data-test="search"
                 prepend-inner-icon="mdi-magnify"
                 clearable
-                outlined
-                dense
+                variant="outlined"
+                density="compact"
                 clear-icon="mdi-close-circle-outline"
-                clearable
                 autofocus
                 single-line
                 hide-details
@@ -56,7 +55,7 @@
               :headers="headers"
               :items="environment"
               :items-per-page="5"
-              :footer-props="{ 'items-per-page-options': [5] }"
+              :items-per-page-options="[5]"
             >
               <template v-slot:item.actions="{ item }">
                 <v-btn
@@ -105,7 +104,7 @@ import Api from '../services/api'
 
 export default {
   props: {
-    value: Boolean, // value is the default prop when using v-model
+    modelValue: Boolean,
   },
   data() {
     return {
@@ -137,10 +136,10 @@ export default {
   computed: {
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
   },

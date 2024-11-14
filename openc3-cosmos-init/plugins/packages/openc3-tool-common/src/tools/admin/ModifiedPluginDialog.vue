@@ -19,29 +19,27 @@
 <template>
   <v-dialog v-model="show" width="600">
     <v-card>
-      <v-system-bar>
+      <v-toolbar height="24">
         <v-spacer />
         <span> Modified Plugin </span>
         <v-spacer />
-      </v-system-bar>
+      </v-toolbar>
       <v-card-text class="pa-3">
         <div>
           Plugin {{ plugin }} was modified. Would you like to delete the
           existing modified files?
         </div>
         <v-list-item
-          two-line
+          lines="two"
           v-for="(target, index) in modifiedTargets"
           :key="index"
         >
-          <v-list-item-content>
-            <v-list-item-title>{{ target.name }}</v-list-item-title>
-            <v-list-item-subtitle
-              v-for="(file, itemIndex) in target.files"
-              :key="itemIndex"
-              >{{ file }}</v-list-item-subtitle
-            >
-          </v-list-item-content>
+          <v-list-item-title>{{ target.name }}</v-list-item-title>
+          <v-list-item-subtitle
+            v-for="(file, itemIndex) in target.files"
+            :key="itemIndex"
+            >{{ file }}</v-list-item-subtitle
+          >
         </v-list-item>
         <v-checkbox
           v-model="deleteModified"
@@ -50,27 +48,31 @@
           data-test="modified-plugin-delete-checkbox"
         />
       </v-card-text>
-      <v-card-actions>
+      <v-card-actions class="px-2">
         <v-spacer />
         <v-btn
-          class="mx-2"
-          outlined
+          variant="outlined"
           data-test="modified-plugin-cancel"
           @click="
-            show = false
-            $emit('cancel')
+            () => {
+              show = false
+              $emit('cancel')
+            }
           "
-          >Cancel</v-btn
         >
+          Cancel
+        </v-btn>
         <v-btn
-          class="mx-2"
-          color="primary"
+          variant="flat"
           data-test="modified-plugin-submit"
           @click="
-            show = false
-            $emit('submit', deleteModified)
+            () => {
+              show = false
+              $emit('submit', deleteModified)
+            }
           "
-          >Confirm
+        >
+          Confirm
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -82,7 +84,7 @@ import Api from '../../services/api'
 
 export default {
   props: {
-    value: Boolean, // value is the default prop when using v-model
+    modelValue: Boolean,
     plugin: String,
     targets: Array,
     pluginDelete: Boolean,
@@ -96,10 +98,10 @@ export default {
   computed: {
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
   },
@@ -114,7 +116,7 @@ export default {
               files: response.data,
             })
           }
-        }
+        },
       )
     }
   },

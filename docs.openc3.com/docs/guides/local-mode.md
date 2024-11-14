@@ -1,5 +1,8 @@
 ---
 title: Local Mode
+description: Edit scripts and screens directly on the host file system
+sidebar_custom_props:
+  myEmoji: 🧭
 ---
 
 Local Mode is a new feature in the 5.0.9 COSMOS release. It is intended to capture the configuration of an edited plugin so it can be configuration managed. It allows you to edit portions of a plugin (scripts and screens) locally in the editor of your choice and instantly have those changes appear in the COSMOS plugin. This avoids the plugin build / install cycle which is required when editing command and telemetry or interface definitions.

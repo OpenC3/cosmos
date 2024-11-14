@@ -1,5 +1,8 @@
 ---
 title: Little Endian Bitfields
+description: Defining little endian bitfields
+sidebar_custom_props:
+  myEmoji: 💻
 ---
 
 Defining little endian bitfields is a little weird but is possible in COSMOS. However, note that APPEND does not work with little endian bitfields.

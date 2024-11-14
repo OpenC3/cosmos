@@ -19,7 +19,7 @@
 <template>
   <img
     :src="src"
-    :alt="itemFullName"
+    :alt="valueId"
     :width="parameters[4]"
     :height="parameters[5]"
     :style="computedStyle"
@@ -39,17 +39,17 @@ export default {
   },
   computed: {
     src: function () {
-      return `data:image/${this.parameters[3]};base64, ${this.screen.screenValues[this.valueId][0]}`
+      return `data:image/${this.parameters[3]};base64, ${this.screenValues[this.valueId][0]}`
     },
   },
   created: function () {
     // TODO: We're hard coding CONVERTED because the existing 4th parameter is the image format
     // Future breaking change would be to put the type as 4th and format as fifth
     this.valueId = `${this.parameters[0]}__${this.parameters[1]}__${this.parameters[2]}__CONVERTED`
-    this.screen.addItem(this.valueId)
+    this.$emit('addItem', this.valueId)
   },
-  destroyed: function () {
-    this.screen.deleteItem(this.valueId)
+  unmounted: function () {
+    this.$emit('deleteItem', this.valueId)
   },
 }
 </script>

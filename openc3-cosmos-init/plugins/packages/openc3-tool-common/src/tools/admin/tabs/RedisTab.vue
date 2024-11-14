@@ -43,17 +43,16 @@
           Response: {{ redisResponse }}
         </span>
       </v-card-text>
-      <v-card-actions>
+      <v-card-actions class="px-2">
         <v-btn
           :disabled="!redisCommandText.length"
           @click="executeRaw"
           color="success"
-          text
-          class="ml-2 mr-3"
+          variant="text"
         >
           Execute
         </v-btn>
-        <v-radio-group v-model="redisEndpoint" row hide-details class="mt-0">
+        <v-radio-group v-model="redisEndpoint" inline hide-details class="mt-0">
           <v-radio
             label="Persistent"
             value="/openc3-api/redis/exec"
@@ -71,11 +70,9 @@
         :headers="headers"
         :items="commands"
         class="monospace"
-        item-class="monospace"
-        calculate-widths
-        disable-pagination
+        :items-per-page="-1"
         hide-default-footer
-        dense
+        density="compact"
         height="45vh"
       >
       </v-data-table>
