@@ -139,7 +139,7 @@ class MqttInterface(Interface):
                 self.write_topics.append(topic)
                 super().write(packet)
         else:
-            raise RuntimeError(f"Command packet {packet.target_name} {packet.packet_name} requires a META TOPIC or TOPICS")
+            raise RuntimeError(f"Command packet '{packet.target_name} {packet.packet_name}' requires a META TOPIC or TOPICS")
         self.write_mutex.release()
 
     def on_message(self, client, userdata, message):

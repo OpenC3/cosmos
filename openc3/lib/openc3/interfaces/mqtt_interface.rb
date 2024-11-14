@@ -192,7 +192,7 @@ module OpenC3
             super(packet)
           end
         else
-          raise "Command packet #{packet.target_name} #{packet.packet_name} requires a META TOPIC or TOPICS"
+          raise "Command packet '#{packet.target_name} #{packet.packet_name}' requires a META TOPIC or TOPICS"
         end
       end
     end
