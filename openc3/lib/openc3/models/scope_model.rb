@@ -56,6 +56,7 @@ module OpenC3
     attr_accessor :cleanup_poll_time
     attr_accessor :command_authority
     attr_accessor :critical_commanding
+    attr_accessor :shard
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -97,6 +98,7 @@ module OpenC3
       cleanup_poll_time: 900,
       command_authority: false,
       critical_commanding: "OFF",
+      shard: 0,
       updated_at: nil
     )
       super(
@@ -118,6 +120,7 @@ module OpenC3
       if not ["OFF", "NORMAL", "ALL"].include?(@critical_commanding)
         raise "Invalid value for critical_commanding: #{@critical_commanding}"
       end
+      @shard = shard.to_i # to_i to handle nil
       @children = []
     end
 
@@ -174,6 +177,7 @@ module OpenC3
         'cleanup_poll_time' => @cleanup_poll_time,
         'command_authority' => @command_authority,
         'critical_commanding' => @critical_commanding,
+        'shard' => @shard,
        }
     end
 
@@ -194,6 +198,7 @@ module OpenC3
         ],
         topics: topics,
         parent: parent,
+        shard: @shard,
         scope: @scope
       )
       microservice.create
@@ -216,6 +221,7 @@ module OpenC3
         topics: ["#{@scope}__COMMAND__{UNKNOWN}__UNKNOWN"],
         target_names: [],
         parent: parent,
+        shard: @shard,
         scope: @scope
       )
       microservice.create
@@ -238,6 +244,7 @@ module OpenC3
         topics: ["#{@scope}__TELEMETRY__{UNKNOWN}__UNKNOWN"],
         target_names: [],
         parent: parent,
+        shard: @shard,
         scope: @scope
       )
       microservice.create
@@ -253,6 +260,7 @@ module OpenC3
         cmd: ["ruby", "periodic_microservice.rb", microservice_name],
         work_dir: '/openc3/lib/openc3/microservices',
         parent: parent,
+        shard: @shard,
         scope: @scope
       )
       microservice.create
@@ -268,6 +276,7 @@ module OpenC3
         cmd: ["ruby", "scope_cleanup_microservice.rb", microservice_name],
         work_dir: '/openc3/lib/openc3/microservices',
         parent: parent,
+        shard: @shard,
         scope: @scope
       )
       microservice.create
@@ -283,6 +292,7 @@ module OpenC3
         cmd: ["ruby", "critical_cmd_microservice.rb", microservice_name],
         work_dir: '/openc3-enterprise/lib/openc3-enterprise/microservices',
         parent: parent,
+        shard: @shard,
         scope: @scope
       )
       microservice.create
@@ -298,6 +308,7 @@ module OpenC3
         cmd: ["ruby", "multi_microservice.rb", *@children],
         work_dir: '/openc3/lib/openc3/microservices',
         target_names: [],
+        shard: @shard,
         scope: @scope
       )
       microservice.create
@@ -312,14 +323,14 @@ module OpenC3
         # Create DEFAULT trigger group model
         model = TriggerGroupModel.get(name: 'DEFAULT', scope: @scope)
         unless model
-          model = TriggerGroupModel.new(name: 'DEFAULT', scope: @scope)
+          model = TriggerGroupModel.new(name: 'DEFAULT', shard: @shard, scope: @scope)
           model.create()
           model.deploy()
         end
       end
 
       # Create UNKNOWN target for display of unknown data
-      model = TargetModel.new(name: "UNKNOWN", scope: @scope)
+      model = TargetModel.new(name: "UNKNOWN", shard: @shard, scope: @scope)
       model.create
 
       @parent = "#{@scope}__SCOPEMULTI__#{@scope}"
