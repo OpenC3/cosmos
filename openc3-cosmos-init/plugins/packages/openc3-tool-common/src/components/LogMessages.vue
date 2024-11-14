@@ -155,7 +155,7 @@ export default {
       logLevel: 'INFO',
       search: '',
       headers: [
-        { title: 'Time', value: 'timestamp', width: 220 },
+        { title: 'Time', value: 'timestamp', nowrap: true },
         { title: 'Level', value: 'level' },
         { title: 'Source', value: 'microservice_name' },
         { title: 'Message', value: 'message' },
