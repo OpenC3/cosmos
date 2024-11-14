@@ -231,14 +231,14 @@ ROUTER SERIAL_ROUTER tcpip_server_interface.rb 2950 2950 10.0 nil BURST
 ### SECRET
 <div class="right">(Since 5.3.0)</div>**Define a secret needed by this interface**
 
-Defines a secret for this interface and optionally assigns its value to an option
+Defines a secret for this interface and optionally assigns its value to an option. For more information see [Admin Secrets](/docs/tools/admin#secrets).
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Type | ENV or FILE.  ENV will mount the secret into an environment variable. FILE mounts the secret into a file. | True |
-| Secret Name | The name of the secret to retrieve | True |
-| Environment Variable or File Path | Environment variable name or file path to store secret | True |
-| Option Name | Interface option to pass the secret value | False |
+| Secret Name | The name of the secret to retrieve from the Admin / Secrets tab. For more information see [Admin Secrets](/docs/tools/admin#secrets). | True |
+| Environment Variable or File Path | Environment variable name or file path to store secret. Note that if you use the Option Name to set an option to the secret value, this value doesn't really matter as long as it is unique. | True |
+| Option Name | Interface option to pass the secret value. This is the primary way to pass secrets to interfaces. | False |
 | Secret Store Name | Name of the secret store for stores with multipart keys | False |
 
 Example Usage:
@@ -674,12 +674,12 @@ Container to execute and run the microservice in. Only used in COSMOS Enterprise
 ### SECRET
 <div class="right">(Since 5.3.0)</div>**Define a secret needed by this microservice**
 
-Defines a secret for this microservice
+Defines a secret for this microservice. For more information see [Admin Secrets](/docs/tools/admin#secrets).
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Type | ENV or FILE.  ENV will mount the secret into an environment variable. FILE mounts the secret into a file. | True |
-| Secret Name | The name of the secret to retrieve | True |
+| Secret Name | The name of the secret to retrieve from the Admin / Secrets tab. For more information see [Admin Secrets](/docs/tools/admin#secrets). | True |
 | Environment Variable or File Path | Environment variable name or file path to store secret | True |
 | Secret Store Name | Name of the secret store for stores with multipart keys | False |
 

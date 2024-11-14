@@ -115,7 +115,7 @@ MICROSERVICE:
           values: .+
     SECRET:
       summary: Define a secret needed by this microservice
-      description: Defines a secret for this microservice
+      description: Defines a secret for this microservice. For more information see [Admin Secrets](/docs/tools/admin#secrets).
       since: 5.3.0
       parameters:
         - name: Type
@@ -126,7 +126,9 @@ MICROSERVICE:
           values: .*
         - name: Secret Name
           required: true
-          description: The name of the secret to retrieve
+          description:
+            The name of the secret to retrieve from the Admin / Secrets tab.
+            For more information see [Admin Secrets](/docs/tools/admin#secrets).
           values: .*
         - name: Environment Variable or File Path
           required: true

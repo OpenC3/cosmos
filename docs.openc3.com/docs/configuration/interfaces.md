@@ -202,11 +202,11 @@ INTERFACE INTERFACE_NAME openc3/interfaces/http_server_interface.py 88
 
 The MQTT interface is typically used for connecting to Internet of Things (IoT) devices. The COSMOS MQTT interface is a client that can both publish and receive messages (commands and telemetry). It has built in support for SSL certificates as well as authentication.
 
-| Parameter | Description                                                                          | Required | Default |
-| --------- | ------------------------------------------------------------------------------------ | -------- | ------- |
-| Host      | Host name or IP address of the MQTT broker                                           | Yes      |         |
-| Port      | Port on the MQTT broker to connect to. Keep in mind whether you're using SSL or not. | No       | 1883    |
-| SSL       | Whether you're using SSL/TLS to connect                                              | No       | False   |
+| Parameter   | Description                                                                          | Required | Default |
+| ----------- | ------------------------------------------------------------------------------------ | -------- | ------- |
+| Host        | Host name or IP address of the MQTT broker                                           | Yes      |         |
+| Port        | Port on the MQTT broker to connect to. Keep in mind whether you're using SSL or not. | No       | 1883    |
+| Ack Timeout | Time to wait when connecting to the MQTT broker                                      | No       | 5 sec   |
 
 #### Interface Options
 
@@ -218,21 +218,24 @@ Options are added directly beneath the interface definition as shown in the exam
 | PASSWORD         | Password for authentication with the MQTT broker                                           |
 | CERT             | PEM encoded client certificate filename used with KEY for client TLS based authentication  |
 | KEY              | PEM encoded client private keys filename                                                   |
-| KEYFILE_PASSWORD | Password to decrypt the CERT and KEY files                                                 |
+| KEYFILE_PASSWORD | Password to decrypt the CERT and KEY files (Python only)                                   |
 | CA_FILE          | Certificate Authority certificate filename that is to be treated as trusted by this client |
 
 plugin.txt Ruby Example:
 
 ```ruby
-INTERFACE MQTT_INT mqtt_interface.rb test.mosquitto.org 1883 false
-  OPTION USERNAME jason
-  OPTION PASSWORD abc123
+INTERFACE MQTT_INT mqtt_interface.rb test.mosquitto.org 1883
 ```
 
 plugin.txt Python Example:
 
 ```ruby
-INTERFACE MQTT_INT openc3/interfaces/mqtt_interface.py test.mosquitto.org 8883 true
+INTERFACE MQTT_INT openc3/interfaces/mqtt_interface.py test.mosquitto.org 8884
+  OPTION USERNAME rw
+  # Create an environment variable called MQTT_PASSWORD by pulling from the secret named PASSWORD
+  # and set an OPTION called PASSWORD (the last PASSWORD value) with the secret value
+  # For more information about secrets see the Admin Tool page
+  SECRET ENV PASSWORD MQTT_PASSWORD PASSWORD
 ```
 
 #### Packet Definitions
