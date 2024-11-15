@@ -12,8 +12,8 @@ export default defineConfig({
     copyPublicDir: true,
   },
   rollupOptions: {
-    input: "src/openc3-tool-base.js",
-    format: "system",
+    input: 'src/openc3-tool-base.js',
+    format: 'systemjs',
     preserveEntrySignatures: true,
   },
   plugins: [

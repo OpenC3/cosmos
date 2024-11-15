@@ -6,9 +6,9 @@ import vue from '@vitejs/plugin-vue'
 const DEFAULT_EXTENSIONS = ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json']
 
 export default defineConfig({
-  base: '/tools/tablemanager',
+  base: '/tools/admin',
   build: {
-    outDir: 'tools/tablemanager',
+    outDir: 'tools/admin',
     emptyOutDir: true,
     rollupOptions: {
       output: {
@@ -20,7 +20,7 @@ export default defineConfig({
     vue(),
     vitePluginSingleSpa({
       type: 'mife', // micro front-end
-      serverPort: 2916,
+      serverPort: 2930,
       spaEntryPoints: 'src/main.js',
     }),
   ],

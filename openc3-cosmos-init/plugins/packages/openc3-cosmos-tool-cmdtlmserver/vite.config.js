@@ -12,7 +12,7 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       output: {
-        format: 'system',
+        format: 'systemjs',
       },
     },
   },

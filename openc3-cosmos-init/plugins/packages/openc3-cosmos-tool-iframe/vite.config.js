@@ -12,7 +12,7 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       output: {
-        format: 'system',
+        format: 'systemjs',
       },
     },
   },
@@ -32,5 +32,5 @@ export default defineConfig({
   },
   optimizeDeps: {
     entries: [], // https://github.com/vituum/vituum/issues/25#issuecomment-1690080284
-  }
+  },
 })

@@ -47,7 +47,8 @@
           "vue": "/js/vue-3.5.4.min.js",
           "vuetify": "/js/vuetify-3.7.1.min.js",
           "vue-router": "/js/vue-router-4.4.4.min.js",
-          "vuex": "/js/vuex-4.1.0.min.js"
+          "vuex": "/js/vuex-4.1.0.min.js",
+          "openc3-tool-base": "/openc3-tool-base.js"
         }
       }
     </script>
@@ -88,8 +89,6 @@
           System.set(System.resolve('vue'), window.Vue)
           System.set(System.resolve('vue-router'), window.VueRouter)
           return System.import('vuetify')
-        }).then(function () {
-          // System.import('openc3-tool-base')
         })
       })()
     </script>
