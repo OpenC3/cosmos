@@ -1,4 +1,4 @@
 TOOL tlmgrapher "Telemetry Grapher"
-  INLINE_URL js/app.js
+  INLINE_URL main.js
   ICON mdi-chart-line
   POSITION 8
