@@ -70,8 +70,8 @@ module OpenC3
         bplw.buffered_write(:RAW_PACKET, :TLM, 'TGT2', 'PKT2', time3, false, "\x05\x06", nil, '0-0')
         expect(bplw.instance_variable_get(:@file_size)).to_not eq 8
         expect(bplw.buffered_first_time_nsec).to eq time1
-        bplw.shutdown
-        sleep 1.0 # Allow for shutdown thread "copy" to S3
+        threads = bplw.shutdown
+        threads.each { |t| t.join }
         expect(bplw.buffered_first_time_nsec).to be_nil # set to nil in close_file
 
         # Files copied to S3 are named via the first_time, last_time, label

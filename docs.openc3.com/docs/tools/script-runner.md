@@ -132,7 +132,7 @@ class ExampleGroup(Group):
         print("setup")
     def script_1(self):
         print("script 1")
-    def teardown(self)
+    def teardown(self):
         print("teardown")
 ```
 
@@ -164,7 +164,7 @@ In Python:
 from openc3.script.suite import Suite, Group
 class MySuite(Suite):
     def __init__(self):
-        self.add_group('ExampleGroup')
+        self.add_group(ExampleGroup)
     def setup(self):
         print("Suite setup")
     def teardown(self):
