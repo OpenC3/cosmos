@@ -111,6 +111,11 @@ module OpenC3
       packet.value3 = 2
       packet.value4 = 1
       packet.value5 = 0
+      packet.write('P_2.2,2', 2)
+      packet.write('P-3+3=3', 3)
+      packet.write('P4!@#$%^&*?', 4)
+      packet.write('P</5|\>', 5)
+      packet.write('P(:6;)', 6)
 
       packet = @tlm_packets['IMAGE']
       packet.enable_method_missing
