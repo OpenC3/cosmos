@@ -119,6 +119,11 @@ TELEMETRY <%= target_name %> PARAMS BIG_ENDIAN "Params set by SETPARAMS command"
       STATE GOOD 0 GREEN
       STATE BAD 1 RED
   <% end %>
+  APPEND_ITEM P_2.2,2      32 UINT "Test weird characters"
+  APPEND_ITEM P-3+3=3      32 UINT "Test weird characters"
+  APPEND_ITEM P4!@#$%^&*?  32 UINT "Test weird characters"
+  APPEND_ITEM P</5|\>      32 UINT "Test weird characters"
+  APPEND_ITEM P(:6;)       32 UINT "Test weird characters"
   ITEM PACKET_TIME 0 0 DERIVED "Python time based on TIMESEC and TIMEUS"
     READ_CONVERSION openc3/conversions/unix_time_conversion.py TIMESEC TIMEUS
 

@@ -155,7 +155,10 @@ export default {
       this.rawDialogs.splice(i, 1)
     },
     openCmdSender(target_name, packet_name) {
-      window.open(`/tools/cmdsender/${target_name}/${packet_name}`, '_blank')
+      window.open(
+        `/tools/cmdsender/${encodeURIComponent(target_name)}/${encodeURIComponent(packet_name)}`,
+        '_blank',
+      )
     },
     currentItems(event) {
       this.visible = event.map((i) => {

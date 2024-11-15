@@ -34,18 +34,20 @@ test('navigate config bucket', async ({ page, utils }) => {
   await page.getByText('config').click()
   await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/config%2F/)
   await page.getByRole('cell', { name: 'DEFAULT' }).click()
-  await expect(page.locator('[data-test="file-path"]')).toHaveText('/DEFAULT/')
+  await expect(page.locator('[data-test="file-path"]')).toHaveText(
+    '/ DEFAULT /',
+  )
   await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/config%2FDEFAULT%2F/)
   await page.getByRole('cell', { name: 'targets', exact: true }).click()
   await expect(page.locator('[data-test="file-path"]')).toHaveText(
-    '/DEFAULT/targets/',
+    '/ DEFAULT / targets /',
   )
   await expect(page).toHaveURL(
     /.*\/tools\/bucketexplorer\/config%2FDEFAULT%2Ftargets%2F/,
   )
   await page.getByRole('cell', { name: 'INST', exact: true }).click()
   await expect(page.locator('[data-test="file-path"]')).toHaveText(
-    '/DEFAULT/targets/INST/',
+    '/ DEFAULT / targets / INST /',
   )
   await expect(page).toHaveURL(
     /.*\/tools\/bucketexplorer\/config%2FDEFAULT%2Ftargets%2FINST%2F/,
@@ -71,13 +73,15 @@ test('navigate config bucket', async ({ page, utils }) => {
 
   await page.locator('[data-test="be-nav-back"]').click()
   await expect(page.locator('[data-test="file-path"]')).toHaveText(
-    '/DEFAULT/targets/',
+    '/ DEFAULT / targets /',
   )
   await expect(page).toHaveURL(
     /.*\/tools\/bucketexplorer\/config%2FDEFAULT%2Ftargets%2F/,
   )
   await page.locator('[data-test="be-nav-back"]').click()
-  await expect(page.locator('[data-test="file-path"]')).toHaveText('/DEFAULT/')
+  await expect(page.locator('[data-test="file-path"]')).toHaveText(
+    '/ DEFAULT /',
+  )
   await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/config%2FDEFAULT%2F/)
   await page.locator('[data-test="be-nav-back"]').click()
   await expect(page.locator('[data-test="file-path"]')).toHaveText('/')
@@ -94,7 +98,7 @@ test('navigate gems volume', async ({ page, utils }) => {
   await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/%2Fgems%2F/)
   await page.getByRole('cell', { name: 'cosmoscache' }).click()
   await expect(page.locator('[data-test="file-path"]')).toHaveText(
-    '/cosmoscache/',
+    '/ cosmoscache /',
   )
   await expect(page).toHaveURL(
     /.*\/tools\/bucketexplorer\/%2Fgems%2Fcosmoscache%2F/,
@@ -108,7 +112,7 @@ test('navigate gems volume', async ({ page, utils }) => {
   // Reload and ensure we get to the same place
   await page.reload()
   await expect(page.locator('[data-test="file-path"]')).toHaveText(
-    '/cosmoscache/',
+    '/ cosmoscache /',
   )
   await expect(page).toHaveURL(
     /.*\/tools\/bucketexplorer\/%2Fgems%2Fcosmoscache%2F/,
@@ -138,12 +142,32 @@ test('direct URLs', async ({ page }) => {
   ).toBeVisible()
 })
 
+test('view file', async ({ page, utils }) => {
+  await page.getByText('config').click()
+  await page.getByRole('cell', { name: 'DEFAULT' }).click()
+  await page.getByRole('cell', { name: 'targets' }).click()
+  await page.getByRole('cell', { name: 'INST', exact: true }).click()
+  await page.getByRole('cell', { name: 'procedures' }).click()
+  await page.locator('[data-test="search-input"] input').fill('calendar')
+  await page.locator('[data-test="view-file"]').first().click()
+  await expect(page.locator('pre')).toContainText('create_timeline')
+  await page.getByRole('button', { name: 'Ok' }).click()
+  await page.locator('[data-test="search-input"] input').fill('')
+  await page.getByText('/ INST').click()
+  await utils.sleep(500) // Allow the page to render
+  await page.locator('[data-test="view-file"]').first().click()
+  await expect(page.locator('pre')).toContainText('LANGUAGE ruby')
+  await page.getByRole('button', { name: 'Ok' }).click()
+})
+
 test('upload and delete', async ({ page, utils }) => {
   await page.getByText('config').click()
   await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/config%2F/)
   await expect(page.locator('[data-test="file-path"]')).toHaveText('/')
   await page.getByRole('cell', { name: 'DEFAULT' }).click()
-  await expect(page.locator('[data-test="file-path"]')).toHaveText('/DEFAULT/')
+  await expect(page.locator('[data-test="file-path"]')).toHaveText(
+    '/ DEFAULT /',
+  )
 
   // Upload something to make sure the tmp dir exists
   await expect(page.getByLabel('prepended action')).toBeVisible()
@@ -152,11 +176,13 @@ test('upload and delete', async ({ page, utils }) => {
     await page.getByLabel('prepended action').click(),
   ])
   await fileChooser1.setFiles('package.json')
-  await page.locator('[data-test="upload-file-path"] input').fill('DEFAULT/tmp/tmp.json')
+  await page
+    .locator('[data-test="upload-file-path"] input')
+    .fill('DEFAULT/tmp/tmp.json')
   await page.locator('[data-test="upload-file-submit-btn"]').click()
 
   await expect(page.locator('[data-test="file-path"]')).toHaveText(
-    '/DEFAULT/tmp/',
+    '/ DEFAULT / tmp /',
   )
   await utils.sleep(5000) // Ensure the table is rendered before getting the count
   let count = await page.locator('tbody > tr').count()
@@ -196,7 +222,7 @@ test('upload and delete', async ({ page, utils }) => {
     .fill('DEFAULT/tmp/TEST/tmp/myfile.json')
   await page.locator('[data-test="upload-file-submit-btn"]').click()
   await expect(page.locator('[data-test="file-path"]')).toHaveText(
-    '/DEFAULT/tmp/TEST/tmp/',
+    '/ DEFAULT / tmp / TEST / tmp /',
   )
   await page
     .locator('tr:has-text("myfile.json") [data-test="delete-file"]')
@@ -225,12 +251,16 @@ test('navigate logs and tools bucket', async ({ page, utils }) => {
   await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/logs%2F/)
 
   await page.getByRole('cell', { name: 'DEFAULT' }).click()
-  await expect(page.locator('[data-test="file-path"]')).toHaveText('/DEFAULT/')
+  await expect(page.locator('[data-test="file-path"]')).toHaveText(
+    '/ DEFAULT /',
+  )
   await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/logs%2FDEFAULT%2F/)
   await expect(page.locator('tbody > tr').first()).toHaveText(/\w+_logs/)
   // Reload and ensure we get to the same place
   await page.reload()
-  await expect(page.locator('[data-test="file-path"]')).toHaveText('/DEFAULT/')
+  await expect(page.locator('[data-test="file-path"]')).toHaveText(
+    '/ DEFAULT /',
+  )
   await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/logs%2FDEFAULT%2F/)
   // Ensure the log files have the correct dates
   let date = format(new Date(), 'yyyyMMdd')
@@ -254,7 +284,12 @@ test('navigate logs and tools bucket', async ({ page, utils }) => {
   }
 })
 
-test('auto refreshes to update files', async ({ page, utils, toolPath, context }) => {
+test('auto refreshes to update files', async ({
+  page,
+  utils,
+  toolPath,
+  context,
+}) => {
   // Upload something from the first tab to make sure the tmp dir exists
   await page.getByText('config').click()
   await expect(page.getByLabel('prepended action')).toBeVisible()
@@ -263,21 +298,27 @@ test('auto refreshes to update files', async ({ page, utils, toolPath, context }
     await page.getByLabel('prepended action').click(),
   ])
   await fileChooser1.setFiles('package.json')
-  await page.locator('[data-test="upload-file-path"] input').fill('DEFAULT/tmp/package1.json')
+  await page
+    .locator('[data-test="upload-file-path"] input')
+    .fill('DEFAULT/tmp/package1.json')
   await page.locator('[data-test="upload-file-submit-btn"]').click()
 
   // Open another tab and navigate to the tmp dir
   const pageTwo = await context.newPage()
   pageTwo.goto(toolPath)
   await pageTwo.getByText('config').click()
-  await pageTwo.getByRole('cell', { name: 'DEFAULT' }).click();
-  await pageTwo.getByRole('cell', { name: 'tmp' }).click();
+  await pageTwo.getByRole('cell', { name: 'DEFAULT' }).click()
+  await pageTwo.getByRole('cell', { name: 'tmp' }).click()
 
   // Set the refresh interval on the second tab to be really slow
   await pageTwo.locator('[data-test=bucket-explorer-file]').click()
   await pageTwo.locator('[data-test=bucket-explorer-file-options]').click()
-  await pageTwo.locator('.v-dialog [data-test=refresh-interval] input').fill('1000')
-  await pageTwo.locator('.v-dialog [data-test=refresh-interval] input').press('Enter')
+  await pageTwo
+    .locator('.v-dialog [data-test=refresh-interval] input')
+    .fill('1000')
+  await pageTwo
+    .locator('.v-dialog [data-test=refresh-interval] input')
+    .press('Enter')
   await pageTwo.locator('.v-dialog').press('Escape')
 
   // Upload a file from the first tab
@@ -287,23 +328,33 @@ test('auto refreshes to update files', async ({ page, utils, toolPath, context }
     await page.getByLabel('prepended action').click(),
   ])
   await fileChooser2.setFiles('package.json')
-  await page.locator('[data-test="upload-file-path"] input').fill('DEFAULT/tmp/package2.json')
+  await page
+    .locator('[data-test="upload-file-path"] input')
+    .fill('DEFAULT/tmp/package2.json')
   await page.locator('[data-test="upload-file-submit-btn"]').click()
 
   // The second tab shouldn't have refreshed yet, so the file shouldn't be there
   await utils.sleep(5000) // Ensure the table is rendered before checking
-  await expect(pageTwo.getByRole('cell', { name: 'package2.json' })).not.toBeVisible()
+  await expect(
+    pageTwo.getByRole('cell', { name: 'package2.json' }),
+  ).not.toBeVisible()
 
   // Set the refresh interval on the second tab to 1s
   await pageTwo.locator('[data-test=bucket-explorer-file]').click()
   await pageTwo.locator('[data-test=bucket-explorer-file-options]').click()
-  await pageTwo.locator('.v-dialog [data-test=refresh-interval] input').fill('1')
-  await pageTwo.locator('.v-dialog [data-test=refresh-interval] input').press('Enter')
+  await pageTwo
+    .locator('.v-dialog [data-test=refresh-interval] input')
+    .fill('1')
+  await pageTwo
+    .locator('.v-dialog [data-test=refresh-interval] input')
+    .press('Enter')
   await pageTwo.locator('.v-dialog').press('Escape')
 
   // Second tab should auto refresh in 1s and then the file should be there
   await utils.sleep(5000) // Ensure the table is rendered before checking
-  await expect(pageTwo.getByRole('cell', { name: 'package2.json' })).toBeVisible()
+  await expect(
+    pageTwo.getByRole('cell', { name: 'package2.json' }),
+  ).toBeVisible()
 
   // Cleanup
   await page
