@@ -42,7 +42,7 @@ module OpenC3
     # START PUBLIC API
     ###########################################################################
 
-    # Explictly avoid creating an initialize method which forces end users to call super()
+    # Explicitly avoid creating an initialize method which forces end users to call super()
 
     # Add a group to the suite
     def add_group(group_class)
@@ -84,8 +84,8 @@ module OpenC3
     # END PUBLIC API
     ###########################################################################
 
-    def <=>(other_suite)
-      self.name <=> other_suite.name
+    def <=>(other)
+      self.name <=> other.name
     end
 
     # Name of the suite
@@ -100,7 +100,7 @@ module OpenC3
     # Returns the number of scripts in the suite including setup and teardown methods
     def get_num_scripts
       num_scripts = 0
-      @plans.each do |type, group_class, script|
+      @plans.each do |type, group_class, _script|
         case type
         when :GROUP
           num_scripts += group_class.get_num_scripts
@@ -114,7 +114,7 @@ module OpenC3
     end
 
     # Run all the scripts
-    def run(&block)
+    def run(&)
       ScriptResult.suite = name()
       ScriptStatus.instance.total = get_num_scripts()
       results = []
@@ -131,7 +131,7 @@ module OpenC3
       @plans.each do |type, group_class, script|
         case type
         when :GROUP
-          results.concat(run_group(group_class, true, &block))
+          results.concat(run_group(group_class, true, &))
         when :SCRIPT
           result = run_script(group_class, script, true)
           results << result
@@ -167,7 +167,7 @@ module OpenC3
     end
 
     # Run a specific group
-    def run_group(group_class, internal = false, &block)
+    def run_group(group_class, internal = false, &)
       ScriptResult.suite = name() unless internal
 
       # Determine if this group_class is in the plan and the number of scripts associated with this group_class
@@ -186,7 +186,7 @@ module OpenC3
 
       if in_plan
         ScriptStatus.instance.total = group_class.get_num_scripts() unless internal
-        results = @scripts[group_class].run(&block)
+        results = @scripts[group_class].run(&)
       else
         results = []
         ScriptStatus.instance.total = num_scripts unless internal
@@ -278,7 +278,7 @@ module OpenC3
     @@abort_on_exception = false
     @@current_result = nil
 
-    # Explictly avoid creating an initialize method which forces end users to call super()
+    # Explicitly avoid creating an initialize method which forces end users to call super()
 
     def self.abort_on_exception
       @@abort_on_exception
@@ -374,26 +374,26 @@ module OpenC3
             result.result     = :FAIL
             RunningScript.instance.exceptions = nil
           end
-        rescue StandardError, SyntaxError => error
+        rescue StandardError, SyntaxError => e
           # Check that the error belongs to the StopScript inheritance chain
-          if error.class <= StopScript
+          if e.class <= StopScript
             result.stopped = true
             result.result  = :STOP
           end
           # Check that the error belongs to the SkipScript inheritance chain
-          if error.class <= SkipScript
+          if e.class <= SkipScript
             result.result  = :SKIP
             result.message ||= ''
-            result.message << error.message + "\n"
+            result.message << (e.message + "\n")
           else
-            if error.class != StopScript and
+            if e.class != StopScript and
                (not RunningScript.instance or
                  not RunningScript.instance.exceptions or
-                 not RunningScript.instance.exceptions.include? error)
+                 not RunningScript.instance.exceptions.include? e)
               result.exceptions ||= []
-              result.exceptions << error
+              result.exceptions << e
               puts "*** Exception in Control Statement:"
-              error.formatted.each_line do |line|
+              e.formatted.each_line do |line|
                 puts '  ' + line
               end
             end

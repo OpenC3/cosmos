@@ -36,9 +36,14 @@ VARIABLE reduced_log_retain_time 2592000
 
 <% if include_inst %>
   TARGET INST <%= inst_target_name %>
+    # If we're in the CI pipeline shorten the log file creation time
+    <% if ENV["CI"] %>
+      TLM_LOG_CYCLE_TIME 60
+    <% else %>
+      TLM_LOG_CYCLE_TIME 300
+    <% end %>
     LOG_RETAIN_TIME <%= log_retain_time %>
     REDUCED_LOG_RETAIN_TIME <%= reduced_log_retain_time %>
-    TLM_LOG_CYCLE_TIME 300
     # Allow the reducer microservice to take 50% of the cpu (default 30%)
     REDUCER_MAX_CPU_UTILIZATION 50
 <% end %>
@@ -86,7 +91,6 @@ VARIABLE reduced_log_retain_time 2592000
   # This expression builds the correct hostname for Open Source or Enterprise Edition in Kubernetes
   <% example_host = ENV['KUBERNETES_SERVICE_HOST'] ? "#{scope}-user-#{example_microservice_name.downcase.gsub('__', '-').gsub('_', '-')}-service" : "openc3-operator" %>
   INTERFACE <%= example_int_name %> example_interface.rb <%= example_host %> <%= example_port %>
-    PROTOCOL WRITE MyRejectProtocol
     MAP_TARGET <%= example_target_name %>
     DONT_CONNECT
     # Override the default log time of 600

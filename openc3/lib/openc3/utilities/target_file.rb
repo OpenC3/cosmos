@@ -64,8 +64,8 @@ module OpenC3
       end
 
       # Concat any remaining modified files (new files not in original target)
-      result.concat(modified)
-      result.concat(temp.uniq)
+      result = result.merge(modified)
+      result = result.merge(temp.uniq)
       result.sort
     end
 
@@ -154,8 +154,8 @@ module OpenC3
     # protected
 
     def self.remote_target_files(bucket_client:, prefix:, include_temp: false, path_matchers: nil)
-      result = []
-      temp = []
+      result = Set.new
+      temp = Set.new
       resp = bucket_client.list_objects(
         bucket: ENV['OPENC3_CONFIG_BUCKET'],
         prefix: prefix,

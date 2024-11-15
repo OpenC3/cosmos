@@ -152,7 +152,7 @@ mocks3 = MockS3()
 
 
 def mock_s3(self):
-    """Clear it out everytime it is used"""
+    """Clear it out every time it is used"""
     mocks3.clear()
     patcher = patch("boto3.session.Session", return_value=mocks3)
     patcher.start()

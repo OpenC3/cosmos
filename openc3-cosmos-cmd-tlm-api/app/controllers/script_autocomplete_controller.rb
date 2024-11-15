@@ -31,7 +31,7 @@ class ScriptAutocompleteController < ApplicationController
                     check check_tolerance wait wait_tolerance wait_check wait_check_tolerance)
 
   def reserved_item_names
-    render :json => OpenC3::Packet::RESERVED_ITEM_NAMES, :status => 200
+    render json: OpenC3::Packet::RESERVED_ITEM_NAMES
   end
 
   def keywords
@@ -42,15 +42,17 @@ class ScriptAutocompleteController < ApplicationController
       TLM_KEYWORDS
     when 'SCREEN'
       screen_keywords()
+    else
+      []
     end
-    render :json => keywords, :status => 200
+    render json: keywords
   end
 
   def ace_autocomplete_data
     return unless authorization('system')
     autocomplete_data = build_autocomplete_data(params[:type], params[:scope])
     response.headers['Cache-Control'] = 'must-revalidate' # TODO: Browser is ignoring this and not caching anything for some reason. Future enhancement
-    render :json => autocomplete_data, :status => 200
+    render json: autocomplete_data
   end
 
   # private
@@ -211,7 +213,14 @@ class ScriptAutocompleteController < ApplicationController
     end
     if filtered_items.any?
       params = filtered_items.each_with_index.map do |item, index|
-        default = item['default'] || 0
+        if item['data_type'] == 'BLOCK'
+          # Unpack binary data to uppercase hex string
+          default = "0x#{item['default'].unpack('H*').first.upcase}"
+        elsif item['data_type'] == 'STRING'
+          default = "'#{item['default']}'" || ''
+        else
+          default = item['default'] || 0
+        end
         if item.key? 'states'
           default_state = item['states'].find { |_key, val| val['value'] == default }
           default = default_state[0] if default_state

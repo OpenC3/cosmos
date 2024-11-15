@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -25,36 +25,37 @@
     <top-bar :title="title" :menus="menus" />
     <v-expansion-panels v-model="panel" style="margin-bottom: 5px">
       <v-expansion-panel>
-        <v-expansion-panel-header></v-expansion-panel-header>
-        <v-expansion-panel-content>
+        <v-expansion-panel-title></v-expansion-panel-title>
+        <v-expansion-panel-text>
           <v-container>
-            <v-row class="pt-3">
+            <v-row class="pa-3">
               <v-select
-                class="pa-0 mr-4"
-                dense
+                class="mr-4"
+                density="compact"
                 hide-details
-                outlined
+                variant="outlined"
                 label="Select Target"
                 :items="Object.keys(screens).sort()"
-                item-text="label"
+                item-title="label"
                 item-value="value"
                 v-model="selectedTarget"
-                @change="targetSelect"
                 style="max-width: 300px"
+                data-test="select-target"
               />
               <v-select
-                class="pa-0 mr-4"
-                dense
+                class="mr-4"
+                density="compact"
                 hide-details
-                outlined
+                variant="outlined"
                 label="Select Screen"
                 :items="screens[selectedTarget]"
                 v-model="selectedScreen"
-                @change="screenSelect"
+                @update:model-value="screenSelect"
                 style="max-width: 300px"
+                data-test="select-screen"
               />
               <v-btn
-                class="primary mr-2"
+                class="bg-primary mr-2"
                 :disabled="!selectedScreen"
                 @click="() => showScreen(selectedTarget, selectedScreen)"
                 data-test="show-screen"
@@ -62,7 +63,7 @@
                 Show
               </v-btn>
               <v-btn
-                class="primary"
+                class="bg-primary"
                 @click="() => newScreen(selectedTarget)"
                 data-test="new-screen"
               >
@@ -71,7 +72,7 @@
               </v-btn>
             </v-row>
           </v-container>
-        </v-expansion-panel-content>
+        </v-expansion-panel-text>
       </v-expansion-panel>
     </v-expansion-panels>
     <div class="grid">
@@ -88,10 +89,11 @@
             :screen="def.screen"
             :definition="def.definition"
             :keywords="keywords"
-            :initialFloated="def.floated"
-            :initialTop="def.top"
-            :initialLeft="def.left"
-            :initialZ="def.zIndex"
+            :initial-floated="def.floated"
+            :initial-top="def.top"
+            :initial-left="def.left"
+            :initial-z="def.zIndex"
+            :time-zone="timeZone"
             @close-screen="closeScreen(def.id)"
             @min-max-screen="refreshLayout"
             @add-new-screen="($event) => showScreen(...$event)"
@@ -221,12 +223,21 @@ export default {
     // Ensure Offline Access Is Setup For the Current User
     this.api = new OpenC3Api()
     this.api.ensure_offline_access()
+    this.api
+      .get_setting('time_zone')
+      .then((response) => {
+        if (response) {
+          this.timeZone = response
+        }
+      })
+      .catch((error) => {
+        // Do nothing
+      })
     Api.get('/openc3-api/screens').then((response) => {
       response.data.forEach((filename) => {
         let parts = filename.split('/')
         if (this.screens[parts[0]] === undefined) {
-          // Must call this.$set to allow Vue to make the screen arrays reactive
-          this.$set(this.screens, parts[0], [])
+          this.screens[parts[0]] = []
         }
         this.screens[parts[0]].push(parts[2].split('.')[0].toUpperCase())
       })
@@ -256,8 +267,8 @@ export default {
   mounted() {
     this.grid = new Muuri('.grid', {
       dragEnabled: true,
-      // Only allow drags starting from the v-system-bar title
-      dragHandle: '.v-system-bar',
+      // Only allow drags starting from the v-toolbar title
+      dragHandle: '.v-toolbar',
     })
     this.grid.on('dragEnd', this.refreshLayout)
   },
@@ -296,8 +307,7 @@ export default {
       }).then((response) => {
         this.newScreenDialog = false
         if (this.screens[targetName] === undefined) {
-          // Must call this.$set to allow Vue to make the screen arrays reactive
-          this.$set(this.screens, targetName, [])
+          this.screens[targetName] = []
         }
         this.screens[targetName].push(screenName)
         this.screens[targetName].sort()
@@ -336,7 +346,7 @@ export default {
       this.definitions.push(definition)
       this.$nextTick(function () {
         if (!definition.floated) {
-          var items = this.grid.add(
+          let items = this.grid.add(
             this.$refs.gridItem[this.$refs.gridItem.length - 1],
             {
               active: false,
@@ -361,7 +371,7 @@ export default {
       }
     },
     closeScreen(id) {
-      var items = this.grid.getItems([
+      let items = this.grid.getItems([
         document.getElementById(this.screenId(id)),
       ])
       this.grid.remove(items)
@@ -372,7 +382,7 @@ export default {
     },
     deleteScreen(def) {
       this.closeScreen(def.id)
-      var index = this.screens[def.target].indexOf(def.screen)
+      let index = this.screens[def.target].indexOf(def.screen)
       if (index !== -1) {
         this.screens[def.target].splice(index, 1)
         if (this.screens[def.target].length === 0) {
@@ -386,7 +396,7 @@ export default {
       definition.top = top
       definition.left = left
       definition.zIndex = zIndex
-      var items = this.grid.getItems([
+      let items = this.grid.getItems([
         document.getElementById(this.screenId(definition.id)),
       ])
       this.grid.remove(items)
@@ -397,7 +407,7 @@ export default {
       definition.top = top
       definition.left = left
       definition.zIndex = zIndex
-      var items = [document.getElementById(this.screenId(definition.id))]
+      let items = [document.getElementById(this.screenId(definition.id))]
       this.grid.add(items)
       this.grid.refreshItems().layout()
     },
@@ -488,14 +498,18 @@ i.v-icon.mdi-chevron-down {
     -webkit-box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
   }
 }
+.v-application {
+  /* fix for playwright scrolling I guess? */
+  margin-bottom: 120px;
+}
 </style>
 <style scoped>
-.v-expansion-panel-content {
+.v-expansion-panel-text {
   .container {
     margin: 0px;
   }
 }
-.v-expansion-panel-header {
+.v-expansion-panel-title {
   min-height: 10px;
   padding: 5px;
 }

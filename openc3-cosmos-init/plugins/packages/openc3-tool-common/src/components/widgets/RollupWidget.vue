@@ -18,9 +18,8 @@
 
 <template>
   <rux-monitoring-icon
-    v-bind="attrs"
-    v-on="on"
     class="rux-icon"
+    :style="pointerStyle"
     :icon="icon"
     :status="status"
     :label="label"
@@ -51,30 +50,37 @@ export default {
   computed: {
     status: function () {
       let state = 'off'
-      if (this.screen) {
-        // Calculate the overall state of all the items we care about
-        for (const item of this.items) {
-          let limitsState = this.screen.screenValues[item][1]
-          if (limitsState) {
-            if (
-              (limitsState.includes('BLUE') || limitsState.includes('GREEN')) &&
-              state != 'caution' &&
-              state != 'critical'
-            ) {
-              state = 'normal'
-            }
-            if (limitsState.includes('YELLOW') && state != 'critical') {
-              state = 'caution'
-            }
-            if (limitsState.includes('RED')) {
-              state = 'critical'
-            }
+      // Calculate the overall state of all the items we care about
+      for (const item of this.items) {
+        let limitsState = this.screenValues[item][1]
+        if (limitsState) {
+          if (
+            (limitsState.includes('BLUE') || limitsState.includes('GREEN')) &&
+            state != 'caution' &&
+            state != 'critical'
+          ) {
+            state = 'normal'
+          }
+          if (limitsState.includes('YELLOW') && state != 'critical') {
+            state = 'caution'
+          }
+          if (limitsState.includes('RED')) {
+            state = 'critical'
           }
         }
-      } else {
-        state = 'off'
       }
       return state
+    },
+    pointerStyle() {
+      if (this.screenTarget && this.screenName) {
+        return {
+          cursor: 'pointer',
+        }
+      } else {
+        return {
+          cursor: 'default',
+        }
+      }
     },
   },
   created: function () {
@@ -102,7 +108,7 @@ export default {
     //   }
     // })
 
-    this.settings.forEach((setting) => {
+    this.appliedSettings.forEach((setting) => {
       switch (setting[0].toUpperCase()) {
         // Create a link to an existing screen
         case 'SCREEN':
@@ -118,24 +124,20 @@ export default {
           }
           let item = `${setting[1]}__${setting[2]}__${setting[3]}__${type}`
           this.items.push(item)
-          if (this.screen) {
-            this.screen.addItem(item)
-          }
+          this.$emit('addItem', item)
           break
       }
     })
   },
   destroyed: function () {
-    if (this.screen) {
-      this.items.forEach((item) => {
-        this.screen.deleteItem(item)
-      })
-    }
+    this.items.forEach((item) => {
+      this.$emit('deleteItem', item)
+    })
   },
   methods: {
     clickHandler() {
       if (this.screenTarget && this.screenName) {
-        this.screen.open(this.screenTarget, this.screenName)
+        this.$emit('open', this.screenTarget, this.screenName)
       }
     },
   },

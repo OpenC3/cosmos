@@ -244,7 +244,7 @@ def get_tlm_packet(*args, stale_time: int = 30, type: str = "CONVERTED", scope: 
     if t is None:
         raise AttributeError(f"Unknown type '{type}' for {target_name} {packet_name}")
     cvt_items = [[target_name, packet_name, item["name"].upper(), type] for item in packet["items"]]
-    # This returns an array of arrays containin the value and the limits state:
+    # This returns an array of arrays containing the value and the limits state:
     # [[0, None], [0, 'RED_LOW'], ... ]
     current_values = CvtModel.get_tlm_values(cvt_items, stale_time=stale_time, scope=scope)
     return [[cvt_items[index][2], item[0], item[1]] for index, item in enumerate(current_values)]
@@ -260,7 +260,7 @@ def get_tlm_packet(*args, stale_time: int = 30, type: str = "CONVERTED", scope: 
 #   Array consisting of the item value and limits state
 #   given as symbols such as :RED, :YELLOW, :STALE
 def get_tlm_values(items, stale_time=30, cache_timeout=0.1, scope=OPENC3_SCOPE):
-    if type(items) is not list or len(items) == 0 or type(items[0]) is not str:
+    if not isinstance(items, list) or len(items) == 0 or not isinstance(items[0], str):
         raise AttributeError("items must be array of strings: ['TGT__PKT__ITEM__TYPE', ...]")
     packets = []
     cvt_items = []
@@ -373,7 +373,7 @@ def subscribe_packets(packets, scope=OPENC3_SCOPE):
     Return:
         (str) ID which should be passed to get_packets
     """
-    if type(packets) is not list or type(packets[0]) is not list:
+    if not isinstance(packets, list) or not isinstance(packets[0], list):
         raise RuntimeError("packets must be nested array: [['TGT','PKT'],...]")
 
     result = {}

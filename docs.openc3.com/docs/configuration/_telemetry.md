@@ -1,19 +1,22 @@
 ---
 sidebar_position: 5
 title: Telemetry
+description: Telemetry definition file format and keywords
+sidebar_custom_props:
+  myEmoji: 📡
 ---
 
 <!-- Be sure to edit _telemetry.md because telemetry.md is a generated file -->
 
 ## Telemetry Definition Files
 
-Telemetry definition files define the telemetry packets that can be received and processed from COSMOS targets. One large file can be used to define the telemetry packets, or multiple files can be used at the user's discretion. Telemetry definition files are placed in the target's cmd_tlm directory and are processed alphabetically. Therefore if you have some telemetry files that depend on others, e.g. they override or extend existing telemetry, they must be named last. The easist way to do this is to add an extension to an existing file name. For example, if you already have tlm.txt you can create tlm_override.txt for telemetry that depends on the definitions in tlm.txt. Note that due to the way the [ASCII Table](http://www.asciitable.com/) is structured, files beginning with capital letters are processed before lower case letters.
+Telemetry definition files define the telemetry packets that can be received and processed from COSMOS targets. One large file can be used to define the telemetry packets, or multiple files can be used at the user's discretion. Telemetry definition files are placed in the target's cmd_tlm directory and are processed alphabetically. Therefore if you have some telemetry files that depend on others, e.g. they override or extend existing telemetry, they must be named last. The easiest way to do this is to add an extension to an existing file name. For example, if you already have tlm.txt you can create tlm_override.txt for telemetry that depends on the definitions in tlm.txt. Note that due to the way the [ASCII Table](http://www.asciitable.com/) is structured, files beginning with capital letters are processed before lower case letters.
 
 When defining telemetry items you can choose from the following data types: INT, UINT, FLOAT, STRING, BLOCK. These correspond to integers, unsigned integers, floating point numbers, strings and binary blocks of data. Within COSMOS, the only difference between a STRING and BLOCK is when COSMOS reads a STRING type it stops reading when it encounters a null byte (0). This shows up when displaying the value in Packet Viewer or Tlm Viewer and in the output of Data Extractor. You should strive to store non-ASCII data inside BLOCK items and ASCII strings in STRING items.
 
 :::info Printing Data
 
-Most data types can be printed in a COSMOS script simply by doing <code>puts tlm("TGT PKT ITEM")</code>. However, if the ITEM is a BLOCK data type and contains binary (non-ASCII) data then that won't work. COSMOS comes with a built-in method called <code>formatted</code> to help you view binary data. If ITEM is a BLOCK type containing binary try <code>puts tlm("TGT PKT ITEM").formatted</code> which will print the bytes out as hex.
+Most data types can be printed in a COSMOS script simply by doing <code>print(tlm("TGT PKT ITEM"))</code>. However, if the ITEM is a BLOCK data type and contains binary (non-ASCII) data then that won't work. COSMOS comes with a built-in method called <code>formatted</code> to help you view binary data. If ITEM is a BLOCK type containing binary try <code>puts tlm("TGT PKT ITEM").formatted</code> (Ruby) and <code>print(formatted(tlm("TGT PKT ITEM")))</code> (Python) which will print the bytes out as hex.
 :::
 
 ### ID Items
@@ -42,18 +45,27 @@ RECEIVED_TIME is the time that COSMOS receives the packet. This is set by the in
 
 PACKET_TIME defaults to RECEIVED_TIME, but can be set as a derived item with a time object in the telemetry configuration file. This helps support stored telemetry packets so that they can be more reasonably handled by other COSMOS tools such as Telemetry Grapher and Data Extractor. You can set the 'stored' flag in your interface and the current value table is unaffected.
 
-The \_TIMEFORMATTED items returns the date and time in a YYYY/MM/DD HH:MM:SS.sss format and the \_TIMESECONDS returns the Unix seconds of the time.
+The \_TIMEFORMATTED items returns the date and time in a YYYY/MM/DD HH:MM:SS.sss format and the \_TIMESECONDS returns the Unix seconds of the time. Internally these are both stored as either a Ruby Time object or Python date object.
 
 #### Example
 
-COSMOS provides a Unix time conversion class which returns a Ruby time object based on the number of seconds and (optionally) microseconds since the Unix epoch. Note: This returns a Ruby Time object and not a float or string!
+COSMOS provides a Unix time conversion class which returns a Ruby Time object or Python date object based on the number of seconds and (optionally) microseconds since the Unix epoch. Note: This returns a native object and not a float or string!
 
-```
+Ruby Example:
+
+```ruby
 ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
     READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
 ```
 
-Definining PACKET_TIME allows the PACKET_TIMESECONDS and PACKET_TIMEFORMATTED to be calculated against an internal Packet time rather than the time COSMOS receives the packet.
+Python Example:
+
+```python
+ITEM PACKET_TIME 0 0 DERIVED "Python time based on TIMESEC and TIMEUS"
+    READ_CONVERSION openc3/conversions/unix_time_conversion.py TIMESEC TIMEUS
+```
+
+Defining PACKET_TIME allows the PACKET_TIMESECONDS and PACKET_TIMEFORMATTED to be calculated against an internal Packet time rather than the time COSMOS receives the packet.
 
 <div style={{"clear": 'both'}}></div>
 

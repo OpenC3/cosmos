@@ -1,6 +1,7 @@
 ---
 sidebar_position: 8
 title: Tables
+description: Table definition file format and keywords
 ---
 
 <!-- Be sure to edit _table.md because table.md is a generated file -->
@@ -8,7 +9,7 @@ title: Tables
 ## Table Definition Files
 
 Table definition files define the binary tables that can be displayed in COSMOS [Table Manager](../tools/table-manager.md)
-. Table definitions are defined in the target's tables/config directory and are typically named after the table such as `PPSSelectionTable_def.txt`. The `_def.txt` extention helps to identify the file as a table definition. Table definitions can be combined using the `TABLEFILE` keyword. This allows you to build individual table components into a larger binary.
+. Table definitions are defined in the target's tables/config directory and are typically named after the table such as `PPSSelectionTable_def.txt`. The `_def.txt` extension helps to identify the file as a table definition. Table definitions can be combined using the `TABLEFILE` keyword. This allows you to build individual table components into a larger binary.
 
 The Table definition files share a lot of similarity with the [Command Configuration](command.md). You have the same data types: INT, UINT, FLOAT, STRING, BLOCK. These correspond to integers, unsigned integers, floating point numbers, strings and binary blocks of data.
 
@@ -131,7 +132,7 @@ META TEST "This parameter is for test purposes only"
 #### OVERLAP
 <div class="right">(Since 4.4.1)</div>**This item is allowed to overlap other items in the packet**
 
-If an item's bit offset overlaps another item, OpenC3 issues a warning. This keyword explicitly allows an item to overlap another and supresses the warning message.
+If an item's bit offset overlaps another item, OpenC3 issues a warning. This keyword explicitly allows an item to overlap another and suppresses the warning message.
 
 
 #### KEY
@@ -147,6 +148,15 @@ Example Usage:
 ```ruby
 KEY $.book.title
 ```
+
+#### VARIABLE_BIT_SIZE
+<div class="right">(Since 5.18.0)</div>**Marks an item as having its bit size defined by another length item**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Length Item Name | The name of the associated length item | True |
+| Length Bits Per Count | Bits per count of the length item. Defaults to 8 | False |
+| Length Value Bit Offset | Offset in Bits to Apply to Length Field Value. Defaults to 0 | False |
 
 #### REQUIRED
 **Parameter is required to be populated in scripts**
@@ -201,10 +211,10 @@ APPEND_PARAMETER STRING 1024 STRING "NOOP" "String parameter"
 #### WRITE_CONVERSION
 **Applies a conversion when writing the current command parameter**
 
-Conversions are implemented in a custom Ruby file which should be
-located in the target's lib folder. The class must require 'openc3/conversions/conversion'
-and inherit from Conversion. It must implement the initialize method if it
-takes extra parameters and must always implement the call method. The conversion
+Conversions are implemented in a custom Ruby or Python file which should be
+located in the target's lib folder. The class must inherit from Conversion.
+It must implement the `initialize` (Ruby) or `__init__` (Python) method if it
+takes extra parameters and must always implement the `call` method. The conversion
 factor is applied to the value entered by the user before it is written into
 the binary command packet and sent.
 
@@ -220,10 +230,10 @@ values to the command. That can be used to check parameter values passed in.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Class Filename | The filename which contains the Ruby class. The filename must be named after the class such that the class is a CamelCase version of the underscored filename. For example, 'the_great_conversion.rb' should contain 'class TheGreatConversion'. | True |
+| Class Filename | The filename which contains the Ruby or Python class. The filename must be named after the class such that the class is a CamelCase version of the underscored filename. For example, 'the_great_conversion.rb' should contain 'class TheGreatConversion'. | True |
 | Parameter | Additional parameter values for the conversion which are passed to the class constructor. | False |
 
-Example Usage:
+Ruby Example:
 ```ruby
 WRITE_CONVERSION the_great_conversion.rb 1000
 
@@ -241,6 +251,21 @@ module OpenC3
     end
   end
 end
+```
+
+Python Example:
+```python
+WRITE_CONVERSION the_great_conversion.py 1000
+
+Defined in the_great_conversion.py:
+
+from openc3.conversions.conversion import Conversion
+class TheGreatConversion(Conversion):
+    def __init__(self, multiplier):
+        super().__init__()
+        self.multiplier = float(multiplier)
+    def call(self, value, packet, buffer):
+        return value * multiplier
 ```
 
 #### POLY_WRITE_CONVERSION
@@ -282,12 +307,12 @@ SEG_POLY_WRITE_CONVERSION 100 12 0.5 0.3 # Apply the conversion to all values >=
 Adds a generic conversion function to the current command parameter.
 This conversion factor is applied to the value entered by the user before it
 is written into the binary command packet and sent. The conversion is specified
-as ruby code that receives two implied parameters. 'value' which is the raw
+as Ruby or Python code that receives two implied parameters. 'value' which is the raw
 value being written and 'packet' which is a reference to the command packet
 class (Note, referencing the packet as 'myself' is still supported for backwards
-compatibility). The last line of ruby code given should return the converted
+compatibility). The last line of code should return the converted
 value. The GENERIC_WRITE_CONVERSION_END keyword specifies that all lines of
-ruby code for the conversion have been given.
+code for the conversion have been given.
 
 :::info Multiple write conversions on command parameters
 When a command is built, each item gets written (and write conversions are run)
@@ -304,11 +329,19 @@ Generic conversions are not a good long term solution. Consider creating a conve
 :::
 
 
-Example Usage:
+Ruby Example:
 ```ruby
 APPEND_PARAMETER ITEM1 32 UINT 0 0xFFFFFFFF 0
   GENERIC_WRITE_CONVERSION_START
-    (value * 1.5).to_i # Convert the value by a scale factor
+    return (value * 1.5).to_i # Convert the value by a scale factor
+  GENERIC_WRITE_CONVERSION_END
+```
+
+Python Example:
+```python
+APPEND_PARAMETER ITEM1 32 UINT 0 0xFFFFFFFF 0
+  GENERIC_WRITE_CONVERSION_START
+    return int(value * 1.5) # Convert the value by a scale factor
   GENERIC_WRITE_CONVERSION_END
 ```
 
@@ -319,7 +352,7 @@ APPEND_PARAMETER ITEM1 32 UINT 0 0xFFFFFFFF 0
 #### OVERFLOW
 **Set the behavior when writing a value overflows the type**
 
-By default OpenC3 throws an error if you try to write a value which overflows its specified type, e.g. writing 255 to a 8 bit signed value. Setting the overflow behavior also allows for OpenC3 to 'TRUNCATE' the value by eliminating any high order bits. You can also set 'SATURATE' which causes OpenC3 to replace the value with the maximum or minimum allowable value for that type. Finally you can specify 'ERROR_ALLOW_HEX' which will allow for a maximum hex value to be writen, e.g. you can successfully write 255 to a 8 bit signed value.
+By default OpenC3 throws an error if you try to write a value which overflows its specified type, e.g. writing 255 to a 8 bit signed value. Setting the overflow behavior also allows for OpenC3 to 'TRUNCATE' the value by eliminating any high order bits. You can also set 'SATURATE' which causes OpenC3 to replace the value with the maximum or minimum allowable value for that type. Finally you can specify 'ERROR_ALLOW_HEX' which will allow for a maximum hex value to be written, e.g. you can successfully write 255 to a 8 bit signed value.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -374,7 +407,7 @@ When Data Type is STRING, BLOCK the remaining parameters are:
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Table | The name of the existin table | True |
+| Table | The name of the existing table | True |
 
 ## DEFAULT
 **Specify default values for a SINGLE row in a multi-column table**

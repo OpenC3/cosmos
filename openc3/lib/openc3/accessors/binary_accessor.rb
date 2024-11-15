@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -85,8 +85,6 @@ module OpenC3
     # Valid overflow types
     OVERFLOW_TYPES = [:TRUNCATE, :SATURATE, :ERROR, :ERROR_ALLOW_HEX]
 
-    protected
-
     # Determines the endianness of the host running this code
     #
     # This method is protected to force the use of the constant
@@ -108,13 +106,175 @@ module OpenC3
       raise ArgumentError, "#{buffer.length} byte buffer insufficient to #{read_write} #{data_type} at bit_offset #{given_bit_offset} with bit_size #{given_bit_size}"
     end
 
-    public
-
     # Store the host endianness so that it only has to be determined once
     HOST_ENDIANNESS = get_host_endianness()
-    # Valid endianess
+    # Valid endianness
     ENDIANNESS = [:BIG_ENDIAN, :LITTLE_ENDIAN]
 
+    def handle_read_variable_bit_size(item, _buffer)
+      length_value = @packet.read(item.variable_bit_size['length_item_name'], :CONVERTED)
+      if item.array_size
+        item.array_size = (length_value * item.variable_bit_size['length_bits_per_count']) + item.variable_bit_size['length_value_bit_offset']
+      else
+        if item.data_type == :INT or item.data_type == :UINT
+          # QUIC encoding is currently assumed for individual variable sized integers
+          # see https://datatracker.ietf.org/doc/html/rfc9000#name-variable-length-integer-enc
+          case length_value
+          when 0
+            item.bit_size = 6
+          when 1
+            item.bit_size = 14
+          when 2
+            item.bit_size = 30
+          else
+            item.bit_size = 62
+          end
+        else
+          item.bit_size = (length_value * item.variable_bit_size['length_bits_per_count']) + item.variable_bit_size['length_value_bit_offset']
+        end
+      end
+    end
+
+    def read_item(item, buffer)
+      return nil if item.data_type == :DERIVED
+      handle_read_variable_bit_size(item, buffer) if item.variable_bit_size
+      self.class.read_item(item, buffer)
+    end
+
+    def handle_write_variable_bit_size(item, value, buffer)
+      # Update length field to new size
+      if (item.data_type == :INT or item.data_type == :UINT) and not item.original_array_size
+        # QUIC encoding is currently assumed for individual variable sized integers
+        # see https://datatracker.ietf.org/doc/html/rfc9000#name-variable-length-integer-enc
+
+        # Calculate current bit size so we can preserve bytes after the item
+        length_item_value = @packet.read(item.variable_bit_size['length_item_name'], :CONVERTED)
+        case length_item_value
+        when 0
+          current_bit_size = 6
+        when 1
+          current_bit_size = 14
+        when 2
+          current_bit_size = 30
+        when 3
+          current_bit_size = 62
+        else
+          raise "Value #{item.variable_bit_size['length_item_name']} has unknown QUIC bit size encoding: #{length_item_value}"
+        end
+
+        if item.data_type == :UINT
+          if value <= 63
+            # Length = 0, value up to 6-bits
+            new_bit_size = 6
+            item.bit_size = new_bit_size
+            @packet.write(item.variable_bit_size['length_item_name'], 0)
+          elsif value <= 16383
+            # Length = 1, value up to 14-bits
+            new_bit_size = 14
+            item.bit_size = new_bit_size
+            @packet.write(item.variable_bit_size['length_item_name'], 1)
+          elsif value <= 1073741823
+            # Length = 2, value up to 30-bits
+            new_bit_size = 30
+            item.bit_size = new_bit_size
+            @packet.write(item.variable_bit_size['length_item_name'], 2)
+          else
+            # Length = 3, value up to 62-bits
+            new_bit_size = 62
+            item.bit_size = new_bit_size
+            @packet.write(item.variable_bit_size['length_item_name'], 3)
+          end
+        else
+          if value <= 31 and value >= -32
+            # Length = 0, value up to 6-bits
+            new_bit_size = 6
+            item.bit_size = new_bit_size
+            @packet.write(item.variable_bit_size['length_item_name'], 0)
+          elsif value <= 8191 and value >= -8192
+            # Length = 1, value up to 14-bits
+            new_bit_size = 14
+            item.bit_size = new_bit_size
+            @packet.write(item.variable_bit_size['length_item_name'], 1)
+          elsif value <= 536870911 and value >= -536870912
+            # Length = 2, value up to 30-bits
+            new_bit_size = 30
+            item.bit_size = new_bit_size
+            @packet.write(item.variable_bit_size['length_item_name'], 2)
+          else
+            # Length = 3, value up to 62-bits
+            new_bit_size = 62
+            item.bit_size = new_bit_size
+            @packet.write(item.variable_bit_size['length_item_name'], 3)
+          end
+        end
+
+        # Later items need their bit_offset adjusted by the change in this item
+        adjustment = new_bit_size - current_bit_size
+        bytes = (adjustment / 8)
+        item_offset = item.bit_offset / 8
+        if bytes > 0
+          original_length = buffer.length
+          # Add extra bytes because we're adjusting larger
+          buffer << ("\000" * bytes)
+          # We added bytes to the end so now we have to shift the buffer over
+          #   NOTE: buffer[offset, length]
+          # We copy to the shifted offset location with the remaining buffer length
+          buffer[item_offset + bytes, buffer.length - (item_offset + bytes)] =
+              # We copy from the original offset location with the original length minus the offset
+              buffer[item_offset, original_length - item_offset]
+        elsif bytes < 0
+          # Remove extra bytes because we're adjusting smaller
+          buffer[item_offset + 1, -bytes] = ''
+        end
+      # Probably not possible to get this condition because we don't allow 0 sized floats
+      # but check for it just to cover all the possible data_types
+      elsif item.data_type == :FLOAT
+        raise "Variable bit size not currently supported for FLOAT data type"
+      else
+        # STRING, BLOCK, or array types
+
+        # Calculate current bit size so we can preserve bytes after the item
+        length_item_value = @packet.read(item.variable_bit_size['length_item_name'], :CONVERTED)
+        current_bit_size = (length_item_value * item.variable_bit_size['length_bits_per_count']) + item.variable_bit_size['length_value_bit_offset']
+
+        # Calculate bits after this item
+        bits_with_item = item.bit_offset + current_bit_size
+        bits_after_item = (buffer.length * 8) - bits_with_item
+        if item.original_array_size
+          item.array_size = -bits_after_item
+        else
+          item.bit_size = -bits_after_item
+        end
+
+        new_bit_size = value.length * 8
+        length_value = (new_bit_size - item.variable_bit_size['length_value_bit_offset']) / item.variable_bit_size['length_bits_per_count']
+        @packet.write(item.variable_bit_size['length_item_name'], length_value)
+
+        # Later items need their bit_offset adjusted by the change in this item
+        adjustment = new_bit_size - current_bit_size
+      end
+
+      # Recalculate bit offsets after this item
+      if adjustment != 0 and item.bit_offset >= 0
+        @packet.sorted_items.each do |sitem|
+          if sitem.data_type == :DERIVED or sitem.bit_offset < item.bit_offset
+            # Skip items before this item and derived items and items with negative bit offsets
+            next
+          end
+          if sitem != item
+            sitem.bit_offset += adjustment
+          end
+        end
+      end
+    end
+
+    def write_item(item, value, buffer)
+      return nil if item.data_type == :DERIVED
+      handle_write_variable_bit_size(item, value, buffer) if item.variable_bit_size
+      self.class.write_item(item, value, buffer)
+    end
+
+    # Note: do not use directly - use instance read_item
     def self.read_item(item, buffer)
       return nil if item.data_type == :DERIVED
       if item.array_size
@@ -124,6 +284,7 @@ module OpenC3
       end
     end
 
+    # Note: do not use directly - use instance write_item
     def self.write_item(item, value, buffer)
       return nil if item.data_type == :DERIVED
       if item.array_size
@@ -388,7 +549,7 @@ module OpenC3
                 # String was completely empty
                 if end_bytes > 0
                   # Preserve bytes at end of buffer
-                  buffer << "\000" * value.length
+                  buffer << ("\000" * value.length)
                   buffer[lower_bound + value.length, end_bytes] = buffer[lower_bound, end_bytes]
                 end
               elsif bit_size == 0
@@ -400,7 +561,7 @@ module OpenC3
               elsif (upper_bound > old_upper_bound) && (end_bytes > 0)
                 # Preserve bytes at end of buffer
                 diff = upper_bound - old_upper_bound
-                buffer << "\000" * diff
+                buffer << ("\000" * diff)
                 buffer[upper_bound + 1, end_bytes] = buffer[old_upper_bound + 1, end_bytes]
               end
             else # given_bit_size > 0
@@ -587,9 +748,8 @@ module OpenC3
         return value
       end
 
-      protected
 
-      # Check the bit size and bit offset for problems. Recalulate the bit offset
+      # Check the bit size and bit offset for problems. Recalculate the bit offset
       # and return back through the passed in pointer.
       def self.check_bit_offset_and_size(read_or_write, given_bit_offset, given_bit_size, data_type, buffer)
         bit_offset = given_bit_offset
@@ -705,7 +865,6 @@ module OpenC3
         (bit_size == 8) || (bit_size == 16) || (bit_size == 32) || (bit_size == 64)
       end
 
-      public
 
     end
 
@@ -945,10 +1104,10 @@ module OpenC3
             # Remove extra bytes from old buffer
             buffer[(upper_bound + 1)..old_upper_bound] = ''
           elsif upper_bound > old_upper_bound
-            # Grow buffer and preserve bytes at end of buffer if necesssary
+            # Grow buffer and preserve bytes at end of buffer if necessary
             buffer_length = buffer.length
             diff = upper_bound - old_upper_bound
-            buffer << ZERO_STRING * diff
+            buffer << (ZERO_STRING * diff)
             if end_bytes > 0
               buffer[(upper_bound + 1)..(buffer.length - 1)] = buffer[(old_upper_bound + 1)..(buffer_length - 1)]
             end
@@ -975,7 +1134,7 @@ module OpenC3
       end
 
       # Ensure the buffer has enough room
-      if bit_offset + num_writes * bit_size > buffer.length * 8
+      if bit_offset + (num_writes * bit_size) > buffer.length * 8
         raise_buffer_error(:write, buffer, data_type, given_bit_offset, given_bit_size)
       end
 
@@ -1249,7 +1408,7 @@ module OpenC3
       return false
     end
 
-    # If this is true it will enfore that COSMOS DERIVED items must have a
+    # If this is true it will enforce that COSMOS DERIVED items must have a
     # write_conversion to be written
     def enforce_derived_write_conversion(_item)
       return true

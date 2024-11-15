@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -23,9 +23,14 @@
 <template>
   <div>
     <top-bar :menus="menus" :title="title" />
-    <limits-control ref="control" v-model="ignored" :key="renderKey" />
+    <limits-control
+      ref="control"
+      v-model="ignored"
+      :key="renderKey"
+      :time-zone="timeZone"
+    />
     <div style="height: 15px" />
-    <limits-events />
+    <limits-events :time-zone="timeZone" />
     <!-- Note we're using v-if here so it gets re-created each time and refreshes the list -->
     <open-config-dialog
       v-if="openConfig"
@@ -42,38 +47,38 @@
     />
     <v-dialog v-model="limitsSetDialog" max-width="650">
       <v-card>
-        <v-system-bar>
+        <v-toolbar height="24">
           <v-spacer />
           <span>Change Limits Set</span>
           <v-spacer />
-        </v-system-bar>
-        <v-card-text class="pt-1">
-          <span style="display: block"
-            >The Limits Set is a global option which changes the Limits Set
-            across all tools.</span
-          >
-          <span style="display: block"
-            >NOTE: Changing this option clears the current list and recalculates
-            based on the new set.</span
-          >
+        </v-toolbar>
+        <v-card-text class="mt-6">
+          <span style="display: block">
+            The Limits Set is a global option which changes the Limits Set
+            across all tools.
+          </span>
+          <span style="display: block">
+            NOTE: Changing this option clears the current list and recalculates
+            based on the new set.
+          </span>
           <v-select
             label="Limits Set"
             :items="limitsSets"
             v-model="currentLimitsSet"
-            dense
-            outlined
+            density="compact"
+            variant="outlined"
             data-test="limits-set"
             hide-details
-            class="pt-3"
+            class="mt-3"
             style="max-width: 200px"
           />
         </v-card-text>
-        <v-card-actions>
+        <v-card-actions class="px-2">
           <v-spacer />
-          <v-btn @click="limitsSetDialog = false" outlined class="mx-2">
+          <v-btn variant="outlined" @click="limitsSetDialog = false">
             Cancel
           </v-btn>
-          <v-btn @click="setLimitsSet" color="primary"> Ok </v-btn>
+          <v-btn variant="flat" @click="setLimitsSet"> Ok </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -103,6 +108,7 @@ export default {
       title: 'Limits Monitor',
       configKey: 'limits_monitor',
       api: new OpenC3Api(),
+      timeZone: 'local',
       renderKey: 0,
       ignored: [],
       openConfig: false,
@@ -164,6 +170,16 @@ export default {
     this.api.get_limits_sets().then((sets) => {
       this.limitsSets = sets
     })
+    this.api
+      .get_setting('time_zone')
+      .then((response) => {
+        if (response) {
+          this.timeZone = response
+        }
+      })
+      .catch((error) => {
+        // Do nothing
+      })
   },
   mounted: function () {
     // Called like /tools/limitsmonitor?config=ignored
@@ -178,7 +194,7 @@ export default {
       }
     }
   },
-  destroyed: function () {
+  unmounted: function () {
     clearInterval(this.currentSetRefreshInterval)
   },
   methods: {

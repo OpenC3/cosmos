@@ -190,6 +190,22 @@ module OpenC3
           expect(@pc.warnings).to include("TGT1 PKT1 ITEM1 redefined.")
           tf.unlink
         end
+
+        it "works with 0 sized items" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY TGT1 PKT1 BIG_ENDIAN "Description"'
+          tf.puts '  APPEND_ITEM ITEM1 16 UINT "Item 1"'
+          tf.puts '  APPEND_ITEM ITEM2 40 BLOCK "block"'
+          tf.puts '  APPEND_ITEM ITEM3 0 BLOCK "zero size"'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          packet = @pc.telemetry["TGT1"]["PKT1"]
+          packet.buffer = "\xBE\xEF\x01\x02\x03\x04\x05\x0a\x0b\x0b\x0a"
+          expect(packet.read("ITEM1")).to eql 0xBEEF
+          expect(packet.read("ITEM2")).to eql "\x01\x02\x03\x04\x05"
+          expect(packet.read("ITEM3")).to eql "\x0a\x0b\x0b\x0a"
+          tf.unlink
+        end
       end
 
       context "with keywords including PARAMETER" do

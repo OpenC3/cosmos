@@ -65,7 +65,7 @@ class Packet(Structure):
         item_class=PacketItem,
     ):
         super().__init__(default_endianness, buffer, item_class)
-        # Explictly call the defined setter methods
+        # Explicitly call the defined setter methods
         self.target_name = target_name
         self.packet_name = packet_name
         self.description = description
@@ -96,6 +96,9 @@ class Packet(Structure):
         self.screen = None
         self.related_items = None
         self.ignore_overlap = False
+        self.virtual = False
+        self.restricted = False
+        self.validator = None
 
     @property
     def target_name(self):
@@ -106,7 +109,7 @@ class Packet(Structure):
         """Sets the target name this packet is associated with. Unidentified packets
         will have target name set to None."""
         if target_name is not None:
-            if type(target_name) != str:
+            if not isinstance(target_name, str):
                 raise AttributeError(f"target_name must be a str but is a {target_name.__class__.__name__}")
 
             self.__target_name = target_name.upper()
@@ -121,7 +124,7 @@ class Packet(Structure):
     def packet_name(self, packet_name):
         """Sets the packet name. Unidentified packets will have packet name set to None"""
         if packet_name is not None:
-            if type(packet_name) != str:
+            if not isinstance(packet_name, str):
                 raise AttributeError(f"packet_name must be a str but is a {packet_name.__class__.__name__}")
 
             self.__packet_name = packet_name.upper()
@@ -136,7 +139,7 @@ class Packet(Structure):
     def description(self, description):
         """Sets the packet description"""
         if description is not None:
-            if type(description) != str:
+            if not isinstance(description, str):
                 raise AttributeError(f"description must be a str but is a {description.__class__.__name__}")
 
             self.__description = description
@@ -168,7 +171,7 @@ class Packet(Structure):
     def received_time(self, received_time):
         """Sets the received time of the packet"""
         if received_time is not None:
-            if type(received_time) is not datetime.datetime:
+            if not isinstance(received_time, datetime.datetime):
                 raise AttributeError(f"received_time must be a datetime but is a {received_time.__class__.__name__}")
             self.__received_time = received_time
             self.read_conversion_cache = {}
@@ -182,11 +185,22 @@ class Packet(Structure):
     @received_count.setter
     def received_count(self, received_count):
         """Sets the packet name. Unidentified packets will have packet name set to None"""
-        if type(received_count) != int:
+        if not isinstance(received_count, int):
             raise AttributeError(f"received_count must be an int but is a {received_count.__class__.__name__}")
 
         self.__received_count = received_count
         self.read_conversion_cache = {}
+
+    @property
+    def virtual(self):
+        return self.__virtual
+
+    @virtual.setter
+    def virtual(self, virtual):
+        self.__virtual = virtual
+        if virtual:
+            self.hidden = True
+            self.disabled = True
 
     # Tries to identify if a buffer represents the currently defined packet. It:
     # does this by iterating over all the packet items that were created with
@@ -202,6 +216,8 @@ class Packet(Structure):
     # self.return [Boolean] Whether or not the buffer of data is this packet
     def identify(self, buffer):
         if not buffer:
+            return False
+        if self.virtual:
             return False
         if not self.id_items:
             return True
@@ -281,7 +297,7 @@ class Packet(Structure):
     def hazardous_description(self, hazardous_description):
         """Sets the packet hazardous_description"""
         if hazardous_description is not None:
-            if type(hazardous_description) != str:
+            if not isinstance(hazardous_description, str):
                 raise AttributeError(
                     f"hazardous_description must be a str but is a {hazardous_description.__class__.__name__}"
                 )
@@ -298,7 +314,7 @@ class Packet(Structure):
     def given_values(self, given_values):
         """Sets the packet given_values"""
         if given_values is not None:
-            if type(given_values) != dict:
+            if not isinstance(given_values, dict):
                 raise AttributeError(f"given_values must be a dict but is a {given_values.__class__.__name__}")
 
             self.__given_values = given_values
@@ -394,20 +410,20 @@ class Packet(Structure):
 
     # Define an item in the packet. This creates a new instance of the
     # item_class as given in the constructor and adds it to the items hash. It
-    # also resizes the buffer to accomodate the new item.
+    # also resizes the buffer to accommodate the new item.
     #
     # self.param name [String] Name of the item. Used by the items hash to retrieve
     #   the item.
     # self.param bit_offset [Integer] Bit offset of the item in the raw buffer
     # self.param bit_size [Integer] Bit size of the item in the raw buffer
     # self.param data_type [Symbol] Type of data contained by the item. This is
-    #   dependant on the item_class but by default see StructureItem.
+    #   dependent on the item_class but by default see StructureItem.
     # self.param array_size [Integer] Set to a non None value if the item is to:
     #   represented as an array.
     # self.param endianness [Symbol] Endianness of this item. By default the
-    #   endianness as set in the constructure is used.
+    #   endianness as set in the constructor is used.
     # self.param overflow [Symbol] How to handle value overflows. This is
-    #   dependant on the item_class but by default see StructureItem.
+    #   dependent on the item_class but by default see StructureItem.
     # self.param format_string [String] String to pass to Kernel#sprintf
     # self.param read_conversion [Conversion] Conversion to apply case reading the
     #   item from the packet buffer
@@ -437,7 +453,7 @@ class Packet(Structure):
         return self.packet_define_item(item, format_string, read_conversion, write_conversion, id_value)
 
     # Add an item to the packet by adding it to the items hash. It also
-    # resizes the buffer to accomodate the new item.
+    # resizes the buffer to accommodate the new item.
     #
     # self.param item [PacketItem] Item to add to the packet
     # self.return [PacketItem] The same packet item
@@ -449,7 +465,7 @@ class Packet(Structure):
 
     # Define an item at the end of the packet. This creates a new instance of the
     # item_class as given in the constructor and adds it to the items hash. It
-    # also resizes the buffer to accomodate the new item.
+    # also resizes the buffer to accommodate the new item.
     #
     # self.param name (see #define_item)
     # self.param bit_size (see #define_item)
@@ -522,9 +538,9 @@ class Packet(Structure):
                             if self.read_conversion_cache.get(item.name):
                                 value = self.read_conversion_cache[item.name]
                                 # Make sure cached value is not modified by anyone by creating a deep copy
-                                if type(value) is str:
+                                if isinstance(value, str):
                                     value = copy.copy(value)
-                                elif type(value) is list:
+                                elif isinstance(value, list):
                                     value = value.copy()
                                 using_cached_value = True
 
@@ -540,9 +556,9 @@ class Packet(Structure):
                                 self.read_conversion_cache[item.name] = value
 
                                 # Make sure cached value is not modified by anyone by creating a deep copy
-                                if type(value) is str:
+                                if isinstance(value, str):
                                     value = copy.copy(value)
-                                elif type(value) is list:
+                                elif isinstance(value, list):
                                     value = value.copy()
 
                 # Derived raw values perform read_conversions but nothing else:
@@ -551,7 +567,7 @@ class Packet(Structure):
 
                 # Convert from value to state if possible:
                 if item.states:
-                    if type(value) is list:
+                    if isinstance(value, list):
                         for index, val in enumerate(value):
                             key = item.states_by_value().get(value[index])
                             if key is not None:
@@ -569,7 +585,7 @@ class Packet(Structure):
                         else:
                             value = self.apply_format_string_and_units(item, value, value_type)
                 else:
-                    if type(value) is list:
+                    if isinstance(value, list):
                         for index, val in enumerate(value):
                             value[index] = self.apply_format_string_and_units(item, val, value_type)
                     else:
@@ -636,8 +652,8 @@ class Packet(Structure):
                 try:
                     super().write_item(item, value, "RAW", buffer)
                 except ValueError as error:
-                    if item.states and type(value) is str and "invalid literal for" in repr(error):
-                        raise ValueError(f"Unknown state {value} for {item.name}") from error
+                    if item.states and isinstance(value, str) and "invalid literal for" in repr(error):
+                        raise ValueError(f"Unknown state {value} for {item.name}, must be one of f{', '.join(item.states.keys())}") from error
                     else:
                         raise error
             case "FORMATTED" | "WITH_UNITS":
@@ -946,16 +962,24 @@ class Packet(Structure):
             config += f'TELEMETRY {quote_if_necessary(self.target_name)} {quote_if_necessary(self.packet_name)} {self.default_endianness} "{self.description}"\n'
         else:
             config += f'COMMAND {quote_if_necessary(self.target_name)} {quote_if_necessary(self.packet_name)} {self.default_endianness} "{self.description}"\n'
+        if self.accessor.__class__.__name__ != "BinaryAccessor":
+            config += f"  ACCESSOR {self.accessor.__class__.__name__}\n"
+        if self.validator:
+            config += f"  VALIDATOR {self.validator.__class__.__name__}\n"
         if self.short_buffer_allowed:
             config += "  ALLOW_SHORT\n"
         if self.hazardous:
             config += f"  HAZARDOUS {quote_if_necessary(self.hazardous_description)}\n"
         if self.messages_disabled:
             config += "  DISABLE_MESSAGES\n"
-        if self.disabled:
+        if self.virtual:
+            config += "  VIRTUAL\n"
+        elif self.disabled:
             config += "  DISABLED\n"
         elif self.hidden:
             config += "  HIDDEN\n"
+        if self.restricted:
+            config += "  RESTRICTED\n"
 
         if self.processors:
             for _, processor in self.processors:
@@ -989,7 +1013,7 @@ class Packet(Structure):
                 config += f"  RELATED_ITEM {quote_if_necessary(related_item[0])} {quote_if_necessary(related_item[1])} {quote_if_necessary(related_item[2])}\n"
 
         if self.ignore_overlap:
-            config += "  IGNORE_OVERLAP"
+            config += "  IGNORE_OVERLAP\n"
 
         return config
 
@@ -1011,8 +1035,14 @@ class Packet(Structure):
             config["disabled"] = True
         if self.hidden:
             config["hidden"] = True
+        if self.virtual:
+            config["virtual"] = True
+        if self.restricted:
+            config["restricted"] = True
         config["accessor"] = self.accessor.__class__.__name__
         # config["accessor_args"] = self.accessor.args
+        if self.validator:
+            config["validator"] = self.validator.__class__.__name__
         if self.template:
             config["template"] = base64.b64encode(self.template)
 
@@ -1059,17 +1089,28 @@ class Packet(Structure):
         packet.messages_disabled = hash.get("messages_disabled")
         packet.disabled = hash.get("disabled")
         packet.hidden = hash.get("hidden")
+        packet.virtual = hash.get("virtual")
+        packet.restricted = hash.get("restricted")
         if "accessor" in hash:
             try:
                 filename = class_name_to_filename(hash["accessor"])
                 accessor = get_class_from_module(f"openc3.accessors.{filename}", hash["accessor"])
                 if hash.get("accessor_args") and len(hash["accessor_args"]) > 0:
-                    packet.accessor = accessor(*hash["accessor_args"])
+                    packet.accessor = accessor(packet, *hash["accessor_args"])
                 else:
-                    packet.accessor = accessor()
+                    packet.accessor = accessor(packet)
             except RuntimeError as error:
                 Logger.error(
                     f"{packet.target_name} {packet.packet_name} accessor of {hash['accessor']} could not be found due to {repr(error)}"
+                )
+        if "validator" in hash:
+            try:
+                filename = class_name_to_filename(hash["validator"])
+                validator = get_class_from_module(filename, hash["validator"])
+                packet.validator = validator(packet)
+            except RuntimeError as error:
+                Logger.error(
+                    f"{packet.target_name} {packet.packet_name} validator of {hash['validator']} could not be found due to {repr(error)}"
                 )
         if "template" in hash:
             packet.template = base64.b64decode(hash["template"])

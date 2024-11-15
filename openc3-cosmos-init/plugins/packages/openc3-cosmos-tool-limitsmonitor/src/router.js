@@ -20,24 +20,24 @@
 # if purchased from OpenC3, Inc.
 */
 
-import Vue from 'vue'
-import Router from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router'
+import { prependBasePath } from '@openc3/tool-common/src/utils/routeUtils.js'
 
-Vue.use(Router)
+const routes = [
+  {
+    path: '/',
+    name: 'LimitsMonitor',
+    component: () => import('./tools/LimitsMonitor/LimitsMonitor.vue'),
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    component: () => import('@openc3/tool-common/src/components/NotFound'),
+  },
+]
+routes.forEach(prependBasePath)
 
-export default new Router({
-  mode: 'history',
-  base: process.env.BASE_URL,
-  routes: [
-    {
-      path: '/',
-      name: 'LimitsMonitor',
-      component: () => import('./tools/LimitsMonitor/LimitsMonitor.vue'),
-    },
-    {
-      path: '*',
-      name: 'NotFound',
-      component: () => import('@openc3/tool-common/src/components/NotFound'),
-    },
-  ],
+export default createRouter({
+  history: createWebHistory(),
+  routes,
 })

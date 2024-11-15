@@ -130,7 +130,7 @@ try:
     for msg in p.listen():
         parsed_cmd = json.loads(msg["data"])
         if not parsed_cmd == "shutdown" or (
-            type(parsed_cmd) is dict and parsed_cmd["method"]
+            isinstance(parsed_cmd, dict) and parsed_cmd["method"]
         ):
             run_script_log(id, f"Script {path} received command: {msg['data']}")
         match parsed_cmd:
@@ -148,7 +148,7 @@ try:
             case "shutdown":
                 p.unsubscribe()
             case _:
-                if type(parsed_cmd) is dict and "method" in parsed_cmd:
+                if isinstance(parsed_cmd, dict) and "method" in parsed_cmd:
                     match parsed_cmd["method"]:
                         # This list matches the list in running_script.py:113
                         case (
@@ -159,6 +159,7 @@ try:
                             | "combo_box"
                             | "prompt"
                             | "prompt_for_hazardous"
+                            | "prompt_for_critical_cmd"
                             | "metadata_input"
                             | "open_file_dialog"
                             | "open_files_dialog"

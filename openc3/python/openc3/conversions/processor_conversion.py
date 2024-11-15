@@ -37,14 +37,18 @@ class ProcessorConversion(Conversion):
         super().__init__()
         self.processor_name = str(processor_name).upper()
         self.result_name = str(result_name).upper()
+        self.params = [self.processor_name, self.result_name]
         if ConfigParser.handle_none(converted_type):
             self.converted_type = str(converted_type).upper()
             if self.converted_type not in BinaryAccessor.DATA_TYPES:
                 raise AttributeError(f"Unknown converted type: {converted_type}")
+            self.params.append(self.converted_type)
         if ConfigParser.handle_none(converted_bit_size):
             self.converted_bit_size = int(converted_bit_size)
+            self.params.append(self.converted_bit_size)
         if ConfigParser.handle_none(converted_array_size):
             self.converted_array_size = int(converted_array_size)
+            self.params.append(self.converted_array_size)
 
     # @param (see Conversion#call)
     # @return [Varies] The result of the associated processor
@@ -71,14 +75,3 @@ class ProcessorConversion(Conversion):
             config += f" {self.converted_array_size}"
         config += "\n"
         return config
-
-    def as_json(self):
-        result = super().as_json()
-        result["params"] = [
-            self.processor_name,
-            self.result_name,
-            self.converted_type,
-            self.converted_bit_size,
-            self.converted_array_size,
-        ]
-        return result

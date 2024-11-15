@@ -26,14 +26,17 @@
       :parameters="labelName"
       :settings="[...settings]"
       :line="line"
-      :lineNumber="lineNumber"
+      :line-number="lineNumber"
       :widget-index="0"
     />
     <value-widget
+      v-bind="$attrs"
       :parameters="valueParameters"
       :settings="[...settings]"
+      :screen-values="screenValues"
+      :screen-time-zone="screenTimeZone"
       :line="line"
-      :lineNumber="lineNumber"
+      :line-number="lineNumber"
       :widget-index="1"
     />
   </div>

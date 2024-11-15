@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -21,8 +21,10 @@
 */
 
 import { ConfigParserError } from '@openc3/tool-common/src/services/config-parser'
+import WidgetComponents from './WidgetComponents'
 
 export default {
+  mixins: [WidgetComponents],
   props: {
     widgetIndex: {
       type: Number,
@@ -36,6 +38,18 @@ export default {
       type: Array,
       default: () => [],
     },
+    screenValues: {
+      type: Object,
+      default: () => {},
+    },
+    screenTimeZone: {
+      type: String,
+      default: 'local',
+    },
+    namedWidgets: {
+      type: Object,
+      default: {},
+    },
     line: {
       type: String,
       default: '',
@@ -47,47 +61,96 @@ export default {
   },
   data() {
     return {
-      screen: null,
+      // The settings that apply to the current widget based on widgetIndex
+      // Calculated in created, updated in setWidth & setHeight and used in computedStyle
+      appliedSettings: [],
       // We make style a data attribute so as we recurse through nested
       // widgets we can check to see if style attributes have been applied
       // at any level of the widget, i.e. if LABELVALUE applies a style
       // to the VALUE component then we don't want the VALUE widget to think
       // it doesn't have a style when it renders.
-      style: {},
+      appliedStyle: {},
+      widgetName: null,
+      screenId: 'NO_SCREEN', // only used for named widgets - hopefully overwritten by settings value in created()
     }
   },
   computed: {
-    computedStyle() {
-      this.settings.forEach((setting) => {
-        const index = parseInt(setting[0])
-        if (this.widgetIndex !== null) {
-          if (this.widgetIndex === index) {
-            setting = setting.slice(1)
-          } else {
-            return
-          }
-        }
-        this.applySetting(this.style, setting)
+    computedStyle: function () {
+      // Take all the COSMOS settings and create appliedStyle with actual css values
+      this.appliedSettings.forEach((setting) => {
+        this.applyStyleSetting(setting)
       })
+
       // If nothing has yet defined a width then we add flex to the style
-      if (this.style['width'] === undefined) {
+      if (this.appliedStyle['width'] === undefined) {
         // This flex allows for alignment in our widgets
         // The value of '0 10 100%' was achieved through trial and error
         // The larger flex-shrink value was critical for success
-        this.style['flex'] = '0 10 100%' // flex-grow, flex-shrink, flex-basis
+        this.appliedStyle['flex'] = '0 10 100%' // flex-grow, flex-shrink, flex-basis
       }
-      return this.style
+      return this.appliedStyle
+    },
+    screen: function () {
+      // This exists for backwards compatibility of screen definitions since widgets no longer have a reference
+      // to the Openc3Screen component instance
+      const that = this
+      return {
+        getNamedWidget: function (widgetName) {
+          return that.$store.getters.namedWidget(
+            that.toQualifiedWidgetName(widgetName),
+          )
+        },
+        open: function (target, screen) {
+          that.$emit('open', target, screen)
+        },
+        close: function (target, screen) {
+          that.$emit('close', target, screen)
+        },
+        closeAll: function () {
+          that.$emit('closeAll')
+        },
+      }
+    },
+    listeners: function () {
+      // Vue 3 deprecated $listeners, which was used to bubble up events to the Openc3Screen component. The new way is
+      // to use v-bind="$attrs", but that also passes the `style` DOM attribute to children, which makes widgets
+      // inherit styles from the layout like height and flex.
+      // This is a workaround to let us v-bind to just the event listeners (which were previously in the $listeners
+      // object in Vue 2).
+      return Object.entries(this.$attrs).reduce((listeners, entry) => {
+        if (entry[0].startsWith('on')) {
+          return {
+            ...listeners,
+            [entry[0]]: entry[1],
+          }
+        }
+        return listeners
+      }, {})
+    },
+  },
+  watch: {
+    widgetName: function (newName, oldName) {
+      this.$store.commit(
+        'clearNamedWidget',
+        this.toQualifiedWidgetName(oldName),
+      )
+      this.$store.commit('setNamedWidget', {
+        [this.toQualifiedWidgetName(newName)]: this,
+      })
     },
   },
   created() {
     // Look through the settings and get a reference to the screen
-    this.settings.forEach((setting) => {
-      if (setting[0] === '__SCREEN__') {
-        this.screen = setting[1]
-      }
-    })
+    this.screenId = this.settings
+      .find((setting) => setting[0] === '__SCREEN_ID__')
+      ?.at(1)
+
+    this.widgetName = this.settings
+      .find((setting) => setting[0] === 'NAMED_WIDGET')
+      ?.at(1)
+
     // Figure out any subsettings that apply
-    this.settings = this.settings
+    this.appliedSettings = this.settings
       .map((setting) => {
         const index = parseInt(setting[0])
         // If the first value isn't a number or if there isn't a widgetIndex
@@ -96,7 +159,7 @@ export default {
           return setting
         }
         // This is our setting so slice off the index and return
-        // this effectively promotes'the subsetting to a setting
+        // this effectively promotes the subsetting to a setting
         // on the current widget
         if (this.widgetIndex === index) {
           return setting.slice(1)
@@ -105,52 +168,63 @@ export default {
       // Remove any settings that we filtered out with null
       .filter((setting) => setting !== undefined)
   },
+  beforeUnmount() {
+    if (this.widgetName) {
+      this.$store.commit(
+        'clearNamedWidget',
+        this.toQualifiedWidgetName(this.widgetName),
+      )
+    }
+  },
   methods: {
-    applySetting(style, setting) {
+    applyStyleSetting(setting) {
       switch (setting[0]) {
         case 'TEXTALIGN':
-          style['text-align'] = setting[1].toLowerCase() + ' !important'
-          style['--text-align'] = setting[1].toLowerCase()
+          this.appliedStyle['text-align'] =
+            setting[1].toLowerCase() + ' !important'
+          this.appliedStyle['--text-align'] = setting[1].toLowerCase()
           break
         case 'PADDING':
           if (!isNaN(Number(setting[1]))) {
             setting[1] += 'px'
           }
-          style['padding'] = setting[1] + ' !important'
+          this.appliedStyle['padding'] = setting[1] + ' !important'
           break
         case 'MARGIN':
           if (!isNaN(Number(setting[1]))) {
             setting[1] += 'px'
           }
-          style['margin'] = setting[1] + ' !important'
+          this.appliedStyle['margin'] = setting[1] + ' !important'
           break
         case 'BACKCOLOR':
-          style['background-color'] =
+          this.appliedStyle['background-color'] =
             this.getColor(setting.slice(1)) + ' !important'
           break
         case 'TEXTCOLOR':
-          style['color'] = this.getColor(setting.slice(1)) + ' !important'
+          this.appliedStyle['color'] =
+            this.getColor(setting.slice(1)) + ' !important'
           break
         case 'BORDERCOLOR':
-          style['border-width'] = '1px!important'
-          style['border-style'] = 'solid!important'
-          style['border-color'] =
+          this.appliedStyle['border-width'] = '1px!important'
+          this.appliedStyle['border-style'] = 'solid!important'
+          this.appliedStyle['border-color'] =
             this.getColor(setting.slice(1)) + ' !important'
           break
         case 'WIDTH':
           if (!isNaN(Number(setting[1]))) {
             setting[1] += 'px'
           }
-          style['width'] = setting[1] + ' !important'
+          this.appliedStyle['width'] = setting[1] + ' !important'
           break
         case 'HEIGHT':
           if (!isNaN(Number(setting[1]))) {
             setting[1] += 'px'
           }
-          style['height'] = setting[1] + ' !important'
+          this.appliedStyle['height'] = setting[1] + ' !important'
           break
         case 'RAW':
-          style[setting[1].toLowerCase()] = setting[2] + ' !important'
+          this.appliedStyle[setting[1].toLowerCase()] =
+            setting[2] + ' !important'
           break
       }
     },
@@ -164,7 +238,7 @@ export default {
 
       // This syntax works with 0 because each doesn't return any values
       // for a backwards range
-      for (var index = 1; index <= min_num_params; index++) {
+      for (let index = 1; index <= min_num_params; index++) {
         // If the parameter is nil (0 based) then we have a problem
         if (this.parameters[index - 1] === undefined) {
           throw new ConfigParserError(
@@ -189,32 +263,17 @@ export default {
       // Don't set the width if someone has already set it
       // This is important in PacketViewer which uses the value-widget
       // and passes an explicit width setting to use
-      let foundSetting = null
-      if (this.widgetIndex !== null) {
-        foundSetting = this.settings.find(
-          (setting) =>
-            parseInt(setting[0]) === this.widgetIndex && setting[1] === 'WIDTH',
-        )
-      } else {
-        foundSetting = this.settings.find((setting) => setting[0] === 'WIDTH')
-      }
+      let foundSetting = this.appliedSettings.find(
+        (setting) => setting[0] === 'WIDTH',
+      )
       if (foundSetting) {
         return foundSetting['WIDTH']
       } else {
         if (width) {
-          let setting = ['WIDTH', `${width}${units}`]
-          // If we have a widgetIndex apply that so we apply the width to ourselves
-          if (this.widgetIndex !== null) {
-            setting.unshift(this.widgetIndex)
-          }
-          this.settings.push(setting)
+          this.appliedSettings.push(['WIDTH', `${width}${units}`])
           return parseInt(width)
         } else {
-          let setting = ['WIDTH', `${defaultWidth}${units}`]
-          if (this.widgetIndex !== null) {
-            setting.unshift(this.widgetIndex)
-          }
-          this.settings.push(setting)
+          this.appliedSettings.push(['WIDTH', `${defaultWidth}${units}`])
           return parseInt(defaultWidth)
         }
       }
@@ -222,32 +281,17 @@ export default {
     setHeight(height, units = 'px', defaultHeight = '20') {
       // Don't set the height if someone has already set it
       let foundSetting = null
-      if (this.widgetIndex !== null) {
-        foundSetting = this.settings.find(
-          (setting) =>
-            parseInt(setting[0]) === this.widgetIndex &&
-            setting[1] === 'HEIGHT',
-        )
-      } else {
-        foundSetting = this.settings.find((setting) => setting[0] === 'HEIGHT')
-      }
+      foundSetting = this.appliedSettings.find(
+        (setting) => setting[0] === 'HEIGHT',
+      )
       if (foundSetting) {
         return foundSetting['HEIGHT']
       } else {
         if (height) {
-          let setting = ['HEIGHT', `${height}${units}`]
-          // If we have a widgetIndex apply that so we apply the height to ourselves
-          if (this.widgetIndex !== null) {
-            setting.unshift(this.widgetIndex)
-          }
-          this.settings.push(setting)
+          this.appliedSettings.push(['HEIGHT', `${height}${units}`])
           return parseInt(height)
         } else {
-          let setting = ['HEIGHT', `${defaultHeight}${units}`]
-          if (this.widgetIndex !== null) {
-            setting.unshift(this.widgetIndex)
-          }
-          this.settings.push(setting)
+          this.appliedSettings.push(['HEIGHT', `${defaultHeight}${units}`])
           return parseInt(defaultHeight)
         }
       }
@@ -260,6 +304,9 @@ export default {
         case 3:
           return `rgb(${setting[0]},${setting[1]},${setting[2]})`
       }
+    },
+    toQualifiedWidgetName(widgetName) {
+      return `${this.screenId}:${widgetName}`
     },
   },
 }

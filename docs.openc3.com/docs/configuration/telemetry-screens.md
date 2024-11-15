@@ -1,6 +1,9 @@
 ---
 sidebar_position: 9
 title: Screens
+description: Telemetry Viewer screen definition and widget documentation
+sidebar_custom_props:
+  myEmoji: 🖥️
 ---
 
 <!-- Be sure to edit _telemetry_screens.md because telemetry_screens.md is a generated file -->
@@ -79,7 +82,7 @@ GLOBAL_SETTING LABELVALUELIMITSBAR TEXTCOLOR BLACK
 ## GLOBAL_SUBSETTING
 **Applies a widget subsetting to all widgets of a certain type**
 
-Subsettings are only valid for widgets that are made up of more than one subwidget. For example, LABELVALUE is made up of a LABEL at subwidget index 0 and a VALUE at subwidget index 1. This allows for passing settings to specific subwidgets. Some widgets are made up of multiple subwidgets, e.g. LABELVALUELIMITSBAR. To set the label text color, pass '0:0' as the Subwidget Index to first index the LABELVALUE and then the LABEL.
+Subsettings are only valid for widgets that are made up of more than one subwidget. For example, LABELVALUE is made up of a LABEL at subwidget index 0 and a VALUE at subwidget index 1. This allows for passing settings to specific subwidgets. Some widgets are made up of multiple subwidgets, e.g. LABELVALUELIMITSBAR. To set the Label widget, pass 0 as the Subwidget Index, pass 1 for the Value widget, and 2 for the LimitsBar widget.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -91,7 +94,7 @@ Subsettings are only valid for widgets that are made up of more than one subwidg
 Example Usage:
 ```ruby
 # Set all text color to white for labelvaluelimitsbars
-GLOBAL_SUBSETTING LABELVALUELIMITSBAR 0:0 TEXTCOLOR white
+GLOBAL_SUBSETTING LABELVALUELIMITSBAR 0 TEXTCOLOR white
 ```
 
 ## SETTING
@@ -104,7 +107,7 @@ SETTING and SUBSETTING applies only to the widget defined immediately before it.
 GLOBAL_SETTING and GLOBAL_SUBSETTING applies to all widgets.
 
 Common wiget settings are defined here. Some widgets define their own
-unqiue settings which are documented under that specific widget.
+unique settings which are documented under that specific widget.
 
 
 
@@ -256,7 +259,7 @@ LABEL "Label 1"
 ## SUBSETTING
 **Applies a widget subsetting to the previously defined widget**
 
-Subsettings are only valid for widgets that are made up of more than one subwidget. For example, LABELVALUE is made up of a LABEL at subwidget index 0 and a VALUE at subwidget index 1. This allows for passing settings to specific subwidgets. Some widgets are made up of multiple subwidgets, e.g. LABELVALUELIMITSBAR. To set the label text color, pass '0:0' as the Subwidget Index to first index the LABELVALUE and then the LABEL.
+Subsettings are only valid for widgets that are made up of more than one subwidget. For example, LABELVALUE is made up of a LABEL at subwidget index 0 and a VALUE at subwidget index 1. This allows for passing settings to specific subwidgets. Some widgets are made up of multiple subwidgets, e.g. LABELVALUELIMITSBAR. To set the Label widget, pass 0 as the Subwidget Index, pass 1 for the Value widget, and 2 for the LimitsBar widget.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -268,16 +271,16 @@ Example Usage:
 ```ruby
 VERTICALBOX
   LABELVALUE INST HEALTH_STATUS TEMP1
-  SUBSETTING 0 TEXTCOLOR blue # Change the label's text to blue
+    SUBSETTING 0 TEXTCOLOR blue # Change the label's text to blue
   LABELVALUELIMITSBAR INST HEALTH_STATUS TEMP1
-  SUBSETTING 0:0 TEXTCOLOR green # Change the label's text to green
+    SUBSETTING 0 TEXTCOLOR green # Change the label's text to green
 END
 ```
 
 ## NAMED_WIDGET
 **Name a widget to allow access to it via the getNamedWidget method**
 
-To programatically access parts of a telemetry screen you need to name the widget. This is useful when creating screens with buttons that read values from other widgets.
+To programmatically access parts of a telemetry screen you need to name the widget. This is useful when creating screens with buttons that read values from other widgets.
 
 :::warning
 getNamedWidget returns the widget itself and thus must be operated on using methods native to that widget
@@ -429,7 +432,7 @@ END
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Tab text | Text to diplay in the tab | True |
+| Tab text | Text to display in the tab | True |
 
 Example Usage:
 ```ruby
@@ -489,15 +492,6 @@ LABEL Over
 HORIZONTALLINE
 LABEL Under
 ```
-
-### SECTIONHEADER
-**DEPRECATED - Displays a label that is underlined with a horizontal line**
-
-Use a VERTICALBOX or HORIZONTALBOX with title parameter instead of SECTIONHEADER
-
-| Parameter | Description | Required |
-|-----------|-------------|----------|
-| Text | Text to display | True |
 
 ### TITLE
 **Displays a large centered title on the screen**
@@ -1098,10 +1092,8 @@ The following settings apply to LABELSPARKLINE. They are applied using the SETTI
 |-----------|-------------|----------|
 | Target name | The target name | True |
 | Packet name | The packet name | True |
-| Item name | The item name | True |
+| Item name | The item name to pull the CONVERTED value from. If additional processing (base64 encoding) is needed consider using a DERIVED item. | True |
 | Format | The image format of the base64 data (e.g. jpg, png, etc) | True |
-| Width | Width of the widget | False |
-| Height | Height of the widget | False |
 
 Example Usage:
 ```ruby
@@ -1111,6 +1103,14 @@ IMAGEVIEWER INST IMAGE IMAGE jpg
 ### PROGRESSBAR
 **Displays a progress bar that is useful for displaying percentages**
 
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Target name | The target name | True |
+| Packet name | The packet name | True |
+| Item name | The item name | True |
+| Scale factor | Value to multiple the telemetry item by before displaying the in the progress bar. Final value should be in the range of 0 to 100. Default is 1.0. | False |
+| Width | Width of the progress bar (default = 100 pixels) | False |
+| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
 
 Example Usage:
 ```ruby
@@ -1232,7 +1232,7 @@ Interactive widgets are used to gather input from the user. Unlike all other wid
 ### BUTTON
 **Displays a rectangular clickable button**
 
-Upon clicking, the button executes the Ruby code assigned. Buttons
+Upon clicking, the button executes the Javascript code assigned. Buttons
 can be used to send commands and perform other tasks. If you want your button
 to use values from other widgets, define them as named widgets and read their
 values using the `screen.getNamedWidget("WIDGET_NAME").text()` method.
@@ -1246,7 +1246,7 @@ be evaluated separately. Note that all OpenC3 commands (using api.cmd) must be
 separated by `;;`.
 
 You can send commands with buttons using api.cmd(). The cmd() syntax looks exactly
-like the standard COSMOS Ruby scripting syntax. You can also request and use
+like the standard COSMOS scripting syntax. You can also request and use
 telemetry in screens using Javascript Promises.
 
 `api.tlm('INST PARAMS VALUE3', 'RAW').then(dur => api.cmd('INST COLLECT with TYPE NORMAL, DURATION '+dur))"`
@@ -1310,6 +1310,22 @@ BUTTON 'Start Collect' 'var type = screen.getNamedWidget("COLLECT_TYPE").text();
 NAMED_WIDGET COLLECT_TYPE COMBOBOX NORMAL SPECIAL
 ```
 
+### DATE
+**Displays a date picker**
+
+Note this is of limited use by itself and is primarily used in conjunction with NAMED_WIDGET.
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Date label | Text to label the data selection ('Date' by default) | False |
+
+Example Usage:
+```ruby
+BUTTON 'Alert Date' 'var date = screen.getNamedWidget("DATE").text();' +
+  'alert("Date:"+date)'
+NAMED_WIDGET DATE DATE
+```
+
 ### RADIOGROUP
 **Creates a group of RADIOBUTTONs**
 
@@ -1351,6 +1367,22 @@ Example Usage:
 NAMED_WIDGET DURATION TEXTFIELD 12 "10.0"
 BUTTON 'Start Collect' 'var dur = screen.getNamedWidget("DURATION").text();' +
       'api.cmd("INST COLLECT with TYPE NORMAL, DURATION "+dur+"")'
+```
+
+### TIME
+**Displays a time picker**
+
+Note this is of limited use by itself and is primarily used in conjunction with NAMED_WIDGET.
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Time label | Text to label the time selection ('Time' by default) | False |
+
+Example Usage:
+```ruby
+BUTTON 'Alert Time' 'var time = screen.getNamedWidget("TIME").text();' +
+  'alert("Time:"+time)'
+NAMED_WIDGET TIME TIME
 ```
 
 ## Canvas Widgets

@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -25,7 +25,7 @@ require 'date'
 require 'openc3/core_ext/string'
 
 class Object
-  def as_json(options = nil) #:nodoc:
+  def as_json(_options = nil) #:nodoc:
     if respond_to?(:to_hash)
       to_hash
     else
@@ -43,21 +43,21 @@ class Struct #:nodoc:
 end
 
 class TrueClass
-  def as_json(options = nil) self end #:nodoc:
+  def as_json(_options = nil) self end #:nodoc:
 end
 
 class FalseClass
-  def as_json(options = nil) self end #:nodoc:
+  def as_json(_options = nil) self end #:nodoc:
 end
 
 class NilClass
-  def as_json(options = nil) self end #:nodoc:
+  def as_json(_options = nil) self end #:nodoc:
 end
 
 class String
   NON_ASCII_PRINTABLE = /[^\x21-\x7e\s]/
   NON_UTF8_PRINTABLE = /[\x00-\x08\x0E-\x1F\x7F]/
-  def as_json(options = nil)
+  def as_json(_options = nil)
     as_utf8 = self.dup.force_encoding('UTF-8')
     if as_utf8.valid_encoding?
       if as_utf8 =~ NON_UTF8_PRINTABLE
@@ -72,11 +72,11 @@ class String
 end
 
 class Symbol
-  def as_json(options = nil) to_s end #:nodoc:
+  def as_json(_options = nil) to_s end #:nodoc:
 end
 
 class Numeric
-  def as_json(options = nil) self end #:nodoc:
+  def as_json(_options = nil) self end #:nodoc:
 end
 
 class Float
@@ -88,7 +88,7 @@ class Float
     end
   end
 
-  def as_json(options = nil)
+  def as_json(_options = nil)
     return { "json_class" => "Float", "raw" => "Infinity" }  if self.infinite? ==  1
     return { "json_class" => "Float", "raw" => "-Infinity" } if self.infinite? == -1
     return { "json_class" => "Float", "raw" => "NaN" }       if self.nan?
@@ -98,7 +98,7 @@ class Float
 end
 
 class Regexp
-  def as_json(options = nil) to_s end #:nodoc:
+  def as_json(_options = nil) to_s end #:nodoc:
 end
 
 module Enumerable
@@ -122,19 +122,19 @@ class Hash
 end
 
 class Time
-  def as_json(options = nil) #:nodoc:
+  def as_json(_options = nil) #:nodoc:
     self.to_s
   end
 end
 
 class Date
-  def as_json(options = nil) #:nodoc:
+  def as_json(_options = nil) #:nodoc:
     self.to_s
   end
 end
 
 class DateTime
-  def as_json(options = nil) #:nodoc:
+  def as_json(_options = nil) #:nodoc:
     self.to_s
   end
 end
@@ -214,7 +214,7 @@ module OpenC3
 
   # Represents a JSON Remote Procedure Call Request
   class JsonRpcRequest < JsonRpc
-    DANGEROUS_METHODS = ['__send__', 'send', 'instance_eval', 'instance_exec']
+    DANGEROUS_METHODS = Set['__send__', 'send', 'instance_eval', 'instance_exec']
 
     # @param method_name [String] The name of the method to call
     # @param method_params [Array<String>] Array of strings which represent the
@@ -269,6 +269,7 @@ module OpenC3
     def self.from_json(request_data, request_headers)
       hash = JSON.parse(request_data, :allow_nan => true, :create_additions => true)
       hash['keyword_params']['token'] = request_headers['HTTP_AUTHORIZATION'] if request_headers['HTTP_AUTHORIZATION']
+      hash['keyword_params']['manual'] = request_headers['HTTP_MANUAL'] if request_headers['HTTP_MANUAL']
       # Verify the jsonrpc version is correct and there is a method and id
       raise unless hash['jsonrpc'.freeze] == "2.0".freeze && hash['method'.freeze] && hash['id'.freeze]
 
@@ -378,16 +379,17 @@ module OpenC3
   class JsonRpcError < JsonRpc
     # Enumeration of JSON RPC error codes
     class ErrorCode
-      PARSE_ERROR      = -32700
-      INVALID_REQUEST  = -32600
-      METHOD_NOT_FOUND = -32601
-      INVALID_PARAMS   = -32602
-      INTERNAL_ERROR   = -32603
-      AUTH_ERROR       = -32500
-      FORBIDDEN_ERROR  = -32501
-      HAZARDOUS_ERROR  = -32502
+      PARSE_ERROR        = -32700
+      INVALID_REQUEST    = -32600
+      METHOD_NOT_FOUND   = -32601
+      INVALID_PARAMS     = -32602
+      INTERNAL_ERROR     = -32603
+      AUTH_ERROR         = -32500
+      FORBIDDEN_ERROR    = -32501
+      HAZARDOUS_ERROR    = -32502
+      CRITICAL_CMD_ERROR = -32503
       # Server error reserved: -32000 to -32099
-      OTHER_ERROR      = -1
+      OTHER_ERROR        = -1
     end
 
     # @param code [Integer] The error type that occurred

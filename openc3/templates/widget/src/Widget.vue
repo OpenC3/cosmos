@@ -16,7 +16,6 @@
         single-line
         hide-no-data
         hide-details
-        placeholder="Value"
         :value="_value"
         :class="valueClass"
         :style="computedStyle"

@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -47,8 +47,14 @@ module OpenC3
       @position_file_bytes_read = 0
       @attitude_file_bytes_read = 0
 
+      @images = []
       data = File.read(File.join(@target.dir, 'public', 'spiral.jpg'), mode: "rb")
-      @image = Base64.encode64(data)
+      @images << Base64.encode64(data)
+      data = File.read(File.join(@target.dir, 'public', 'sun.jpg'), mode: "rb")
+      @images << Base64.encode64(data)
+      data = File.read(File.join(@target.dir, 'public', 'ganymede.jpg'), mode: "rb")
+      @images << Base64.encode64(data)
+      @cur_image = 0
 
       @pos_packet = Structure.new(:BIG_ENDIAN)
       @pos_packet.append_item('DAY', 16, :UINT)
@@ -125,17 +131,17 @@ module OpenC3
       @solar_panel_thread = nil
       @solar_panel_thread_cancel = false
 
-      @trackStars = Array.new
-      @trackStars[0] = 1237
-      @trackStars[1] = 1329
-      @trackStars[2] = 1333
-      @trackStars[3] = 1139
-      @trackStars[4] = 1161
-      @trackStars[5] = 682
-      @trackStars[6] = 717
-      @trackStars[7] = 814
-      @trackStars[8] = 583
-      @trackStars[9] = 622
+      @track_stars = Array.new
+      @track_stars[0] = 1237
+      @track_stars[1] = 1329
+      @track_stars[2] = 1333
+      @track_stars[3] = 1139
+      @track_stars[4] = 1161
+      @track_stars[5] = 682
+      @track_stars[6] = 717
+      @track_stars[7] = 814
+      @track_stars[8] = 583
+      @track_stars[9] = 622
 
       @bad_temp2 = false
       @last_temp2 = 0
@@ -168,31 +174,27 @@ module OpenC3
 
       case name
       when 'COLLECT'
+        hs_packet.cmd_acpt_cnt += 1
         hs_packet.collects += 1
         hs_packet.duration = packet.read('duration')
         hs_packet.collect_type = packet.read("type")
+      when 'ABORT', 'FLTCMD', 'ARYCMD'
+        hs_packet.cmd_acpt_cnt += 1
       when 'CLEAR'
+        hs_packet.cmd_acpt_cnt = 0
         hs_packet.collects = 0
-      when 'MEMLOAD'
-        hs_packet.blocktest = packet.read('data')
-      when 'QUIET'
-        if packet.read('state') == 'TRUE'
-          @quiet = true
-        else
-          @quiet = false
-        end
-      when 'TIME_OFFSET'
-        @time_offset = packet.read('seconds')
       when 'SETPARAMS'
-        # puts "SETPARAMS packet: #{packet.buffer.formatted}"
+        hs_packet.cmd_acpt_cnt += 1
         params_packet.value1 = packet.read('value1')
         params_packet.value2 = packet.read('value2')
         params_packet.value3 = packet.read('value3')
         params_packet.value4 = packet.read('value4')
         params_packet.value5 = packet.read('value5')
       when 'ASCIICMD'
+        hs_packet.cmd_acpt_cnt += 1
         hs_packet.asciicmd = packet.read('string')
       when 'SLRPNLDEPLOY'
+        hs_packet.cmd_acpt_cnt += 1
         return if @solar_panel_thread and @solar_panel_thread.alive?
         @solar_panel_thread = Thread.new do
           @solar_panel_thread_cancel = false
@@ -215,9 +217,24 @@ module OpenC3
           end
         end
       when 'SLRPNLRESET'
+        hs_packet.cmd_acpt_cnt += 1
         OpenC3.kill_thread(self, @solar_panel_thread)
         @solar_panel_positions = SOLAR_PANEL_DFLTS.dup
+      when 'MEMLOAD'
+        hs_packet.cmd_acpt_cnt += 1
+        hs_packet.blocktest = packet.read('data')
+      when 'QUIET'
+        hs_packet.cmd_acpt_cnt += 1
+        if packet.read('state') == 'TRUE'
+          @quiet = true
+        else
+          @quiet = false
+        end
+      when 'TIME_OFFSET'
+        hs_packet.cmd_acpt_cnt += 1
+        @time_offset = packet.read('seconds')
       when 'HIDDEN'
+        # Deliberately do not increment cmd_acpt_cnt
         @tlm_packets['HIDDEN'].count = packet.read('count')
       end
     end
@@ -280,11 +297,11 @@ module OpenC3
           packet.biasy = @att_packet.biasy
           packet.biasy = @att_packet.biasz
 
-          packet.star1id = @trackStars[((count_100hz / 100) + 0) % 10]
-          packet.star2id = @trackStars[((count_100hz / 100) + 1) % 10]
-          packet.star3id = @trackStars[((count_100hz / 100) + 2) % 10]
-          packet.star4id = @trackStars[((count_100hz / 100) + 3) % 10]
-          packet.star5id = @trackStars[((count_100hz / 100) + 4) % 10]
+          packet.star1id = @track_stars[((count_100hz / 100) + 0) % 10]
+          packet.star2id = @track_stars[((count_100hz / 100) + 1) % 10]
+          packet.star3id = @track_stars[((count_100hz / 100) + 2) % 10]
+          packet.star4id = @track_stars[((count_100hz / 100) + 3) % 10]
+          packet.star5id = @track_stars[((count_100hz / 100) + 4) % 10]
 
           packet.posprogress = (@position_file_bytes_read.to_f / @position_file_size.to_f) * 100.0
           packet.attprogress = (@attitude_file_bytes_read.to_f / @attitude_file_size.to_f) * 100.0
@@ -360,12 +377,16 @@ module OpenC3
         when 'IMAGE'
           packet.timesec = time.tv_sec - @time_offset
           packet.timeus = time.tv_usec
-          packet.image = @image
+          packet.ccsdsseqcnt += 1
+          if packet.ccsdsseqcnt % 20 == 0
+            @cur_image += 1
+            @cur_image = 0 if @cur_image == @images.length
+          end
+          packet.image = @images[@cur_image]
           # Create an Array and then initialize
           # using a sample of all possible hex values (0..15)
           # finally pack it into binary using the Character 'C' specifier
           packet.block = Array.new(1000) { Array(0..15).sample }.pack("C*")
-          packet.ccsdsseqcnt += 1
 
         when 'MECH'
           packet.timesec = time.tv_sec - @time_offset

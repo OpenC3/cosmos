@@ -1,5 +1,8 @@
 ---
 title: Script Writing Guide
+description: Key concepts and best practices for script writing
+sidebar_custom_props:
+  myEmoji: 🏃‍➡️
 ---
 
 ## Introduction
@@ -213,7 +216,7 @@ def test_minimum_temp(enable_cmd_name, enable_tlm, temp_tlm, expected_temp):
 Use comments when what you are doing is unclear or there is a higher-level purpose to a set of lines. Try to avoid putting numbers or other details in a comment as they can become out of sync with the underlying code. Ruby and Python comments start with a # pound symbol and can be anywhere on a line.
 
 ```ruby
-# This line sends an abort command - BAD COMMENT, UNNECCESSARY
+# This line sends an abort command - BAD COMMENT, UNNECESSARY
 cmd("INST ABORT")
 # Rotate the gimbal to look at the calibration target - GOOD COMMENT
 cmd("INST ROTATE with ANGLE 180.0") # Rotate 180 degrees - BAD COMMENT
@@ -317,7 +320,7 @@ def script_1_heater_zone_control():
 
 ### Using Classes vs Unscoped Methods
 
-Classes in object-oriented programing allow you to organize a set of related methods and some associated state. The most important aspect is that the methods work on some shared state. For example, if you have code that moves a gimbal around, and need to keep track of the number of moves, or steps, performed across methods, then that is a wonderful place to use a class. If you just need a helper method to do something that happens multiple times in a script without copy and pasting, it probably does not need to be in a class.
+Classes in object-oriented programming allow you to organize a set of related methods and some associated state. The most important aspect is that the methods work on some shared state. For example, if you have code that moves a gimbal around, and need to keep track of the number of moves, or steps, performed across methods, then that is a wonderful place to use a class. If you just need a helper method to do something that happens multiple times in a script without copy and pasting, it probably does not need to be in a class.
 
 NOTE: The convention in COSMOS is to have a TARGET/lib/target.\[rb/py\] file which is named after the TARGET name and contains a class called Target. This discussion refers to scripts in the TARGET/procedures directory.
 
@@ -533,7 +536,7 @@ else:
 
 When running suites, there is a checkbox at the top of the tool called “Manual” that affects this $manual variable directly.
 
-### Outputing Extra Information to a Report
+### Outputting Extra Information to a Report
 
 COSMOS Script Runner operating on a script suite automatically generates a report that shows the PASS/FAILED/SKIPPED state for each script. You can also inject arbitrary text into this report using the example as follows. Alternatively, you can simply use print text into the Script Runner message log.
 
@@ -588,7 +591,7 @@ id, packets = get_packets(id)
 packets.each do |packet|
   puts "#{packet['PACKET_TIMESECONDS']}: #{packet['target_name']} #{packet['packet_name']}"
 end
-# Wait for some time later and re-use the last returned ID
+# Wait for some time later and reuse the last returned ID
 id, packets = get_packets(id)
 ```
 
@@ -600,7 +603,7 @@ wait(1.5)
 id, packets = get_packets(id)
 for packet in packets:
     print(f"{packet['PACKET_TIMESECONDS']}: {packet['target_name']} {packet['packet_name']}")
-# Wait for some time later and re-use the last returned ID
+# Wait for some time later and reuse the last returned ID
 id, packets = get_packets(id)
 ```
 

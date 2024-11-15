@@ -76,6 +76,11 @@ module OpenC3
           sleep 0.1
           @data
         end
+
+        def write_interface(data, extra = nil)
+          sleep 0.001
+          @data = data
+        end
       end
 
       mock_redis()
@@ -217,6 +222,26 @@ module OpenC3
           im.shutdown
         end
       end
+
+      it "sends a command to the interface" do
+        im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        all = InterfaceStatusModel.all(scope: "DEFAULT")
+        expect(all["INST_INT"]["state"]).to eql("ATTEMPTING")
+
+        expect(CommandDecomTopic).to receive(:write_packet) do |command, scope|
+          expect(command.target_name).to eql("INST")
+          expect(command.packet_name).to eql("ABORT")
+          expect(scope).to eql({:scope => "DEFAULT"})
+        end
+        Thread.new { im.run }
+        sleep 1
+        all = InterfaceStatusModel.all(scope: "DEFAULT")
+        expect(all["INST_INT"]["state"]).to eql "CONNECTED"
+
+        @api.cmd("INST", "ABORT")
+        sleep 0.1
+        im.shutdown
+      end
     end
 
     describe "connect" do
@@ -266,8 +291,14 @@ module OpenC3
       interface = im.instance_variable_get(:@interface)
       interface.reconnect_delay = 0.1 # Override the reconnect delay to be quick
 
+      # Mock this because it calls exit which breaks SimpleCov
+      allow(OpenC3).to receive(:handle_fatal_exception) do |exception, _message|
+        expect(exception.message).to eql "test-error"
+      end
+
       capture_io do |stdout|
         Thread.new { im.run }
+
         sleep 0.1 # Allow to start and immediately crash
         expect(stdout.string).to include("RuntimeError")
 

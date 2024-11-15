@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -32,7 +32,7 @@
           :disabled="!name || !url || !icon"
         >
           Add
-          <v-icon right dark>{{ icon }}</v-icon>
+          <v-icon end theme="dark">{{ icon }}</v-icon>
         </v-btn>
       </v-col>
       <v-col cols="3">
@@ -52,38 +52,35 @@
     >
     <v-list class="list" data-test="toolList" id="toollist">
       <div v-for="(tool, index) in tools" :key="tool">
-        <v-list-item :class="{ filter: tool === 'Base' || tool === 'Admin' }">
-          <v-list-item-icon>
-            <v-icon> mdi-drag-horizontal </v-icon>
-          </v-list-item-icon>
-          <v-list-item-content>
-            <v-list-item-title>{{ tool }}</v-list-item-title>
-          </v-list-item-content>
-          <v-list-item-icon>
-            <v-tooltip bottom>
-              <template v-slot:activator="{ on, attrs }">
-                <v-icon @click="editTool(tool)" v-bind="attrs" v-on="on">
+        <v-list-item
+          :class="{ filter: tool === 'Base' || tool === 'Admin' }"
+          prepend-icon="mdi-drag-horizontal"
+        >
+          <v-list-item-title>{{ tool }}</v-list-item-title>
+
+          <template v-slot:append>
+            <v-tooltip location="bottom">
+              <template v-slot:activator="{ props }">
+                <v-icon v-bind="props" @click="editTool(tool)">
                   mdi-pencil
                 </v-icon>
               </template>
               <span>Edit Tool</span>
             </v-tooltip>
-          </v-list-item-icon>
-          <v-list-item-icon>
-            <v-tooltip bottom>
-              <template v-slot:activator="{ on, attrs }">
-                <v-icon @click="deleteTool(tool)" v-bind="attrs" v-on="on">
+            <v-tooltip location="bottom">
+              <template v-slot:activator="{ props }">
+                <v-icon v-bind="props" @click="deleteTool(tool)">
                   mdi-delete
                 </v-icon>
               </template>
               <span>Delete Tool</span>
             </v-tooltip>
-          </v-list-item-icon>
+          </template>
         </v-list-item>
         <v-divider v-if="index < tools.length - 1" :key="index" />
       </div>
     </v-list>
-    <edit-dialog
+    <output-dialog
       v-model="showDialog"
       v-if="showDialog"
       :content="jsonContent"
@@ -96,15 +93,15 @@
 
 <script>
 import Api from '../../../services/api'
-import EditDialog from '../EditDialog'
+import OutputDialog from '../../../components/OutputDialog'
 import Sortable from 'sortablejs'
 
 export default {
-  components: { EditDialog },
+  components: { OutputDialog },
   data() {
     return {
       name: null,
-      icon: '$astro-add-small',
+      icon: 'astro:add-small',
       url: null,
       tools: [],
       jsonContent: '',
@@ -115,7 +112,7 @@ export default {
   },
   mounted() {
     this.update()
-    var el = document.getElementById('toollist')
+    let el = document.getElementById('toollist')
     Sortable.create(el, {
       filter: '.filter', // 'filter' class is not draggable
       onUpdate: this.sortChanged,
@@ -127,6 +124,7 @@ export default {
         data: {
           position: evt.newIndex,
         },
+        // Tools are global and are always installed into the DEFAULT scope
         params: { scope: 'DEFAULT' },
       }).then((response) => {
         this.$notify.normal({
@@ -136,6 +134,7 @@ export default {
       })
     },
     update() {
+      // Tools are global and are always installed into the DEFAULT scope
       Api.get('/openc3-api/tools', { params: { scope: 'DEFAULT' } }).then(
         (response) => {
           this.tools = response.data
@@ -155,6 +154,7 @@ export default {
             window: 'NEW',
           }),
         },
+        // Tools are global and are always installed into the DEFAULT scope
         params: { scope: 'DEFAULT' },
       }).then((response) => {
         this.$notify.normal({
@@ -165,6 +165,7 @@ export default {
     },
     editTool(name) {
       Api.get(`/openc3-api/tools/${name}`, {
+        // Tools are global and are always installed into the DEFAULT scope
         params: { scope: 'DEFAULT' },
       }).then((response) => {
         this.tool_id = name
@@ -188,6 +189,7 @@ export default {
           data: {
             json: content,
           },
+          // Tools are global and are always installed into the DEFAULT scope
           params: { scope: 'DEFAULT' },
         }).then((response) => {
           this.$notify.normal({
@@ -205,6 +207,7 @@ export default {
         })
         .then(function (dialog) {
           return Api.delete(`/openc3-api/tools/${name}`, {
+            // Tools are global and are always installed into the DEFAULT scope
             params: { scope: 'DEFAULT' },
           })
         })

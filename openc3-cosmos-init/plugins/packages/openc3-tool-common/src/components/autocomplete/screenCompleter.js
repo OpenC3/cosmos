@@ -64,7 +64,7 @@ export default class ScreenCompleter {
     var result = {}
     var more = true
     // If we found suggestions and the suggestions have params
-    // then we do logic to substitue suggestions using the actual
+    // then we do logic to substitute suggestions using the actual
     // target, packet, item data
     if (suggestions && suggestions['params']) {
       // Check if this is the last autocomplete parameter
@@ -84,7 +84,7 @@ export default class ScreenCompleter {
         var packets = await this.api.get_all_tlm(target)
         suggestions = packets.reduce(
           (acc, pkt) => ((acc[pkt.packet_name] = pkt.description), acc),
-          {},
+          {}
         )
       } else if (current['Item name']) {
         var target = parsedLine[parsedLine.length - 3]
@@ -92,7 +92,7 @@ export default class ScreenCompleter {
         var packet = await this.api.get_tlm(target, packet)
         suggestions = packet.items.reduce(
           (acc, item) => ((acc[item.name] = item.description), acc),
-          {},
+          {}
         )
       } else {
         // Not a special case so just use the param as is

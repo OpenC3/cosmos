@@ -35,15 +35,25 @@ class TestCommands(unittest.TestCase):
         tf.write("#\n")
         tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "TGT1 PKT1 Description"\n')
         tf.write('  APPEND_ID_PARAMETER item1 8 UINT 1 1 1 "Item1"\n')
-        tf.write('  APPEND_PARAMETER item2 8 UINT 0 254 2 "Item2"\n')
-        tf.write('  APPEND_PARAMETER item3 8 UINT 0 254 3 "Item3"\n')
-        tf.write('  APPEND_PARAMETER item4 8 UINT 0 254 4 "Item4"\n')
+        tf.write('  APPEND_PARAMETER item2 8 UINT 0 200 2 "Item2"\n')
+        tf.write('  APPEND_PARAMETER item3 8 UINT 0 200 3 "Item3"\n')
+        tf.write('  APPEND_PARAMETER item4 8 UINT 0 200 4 "Item4"\n')
         tf.write('COMMAND tgt1 pkt2 LITTLE_ENDIAN "TGT1 PKT2 Description"\n')
         tf.write('  APPEND_ID_PARAMETER item1 8 UINT 2 2 2 "Item1"\n')
         tf.write('  APPEND_PARAMETER item2 8 UINT 0 255 2 "Item2"\n')
         tf.write('    STATE BAD1 0 HAZARDOUS "Hazardous"\n')
         tf.write("    STATE BAD2 1 HAZARDOUS\n")
         tf.write("    STATE GOOD 2 DISABLE_MESSAGES\n")
+        tf.write('  APPEND_PARAMETER item3 32 FLOAT 0 1 0 "Item3"\n')
+        tf.write('    STATE S1 0.0\n')
+        tf.write('    STATE S2 0.25\n')
+        tf.write('    STATE S3 0.5\n')
+        tf.write('    STATE S4 0.75\n')
+        tf.write('    STATE S5 1.0\n')
+        tf.write('  APPEND_PARAMETER item4 40 STRING "HELLO"\n')
+        tf.write('    STATE HI HELLO\n')
+        tf.write('    STATE WO WORLD\n')
+        tf.write('    STATE JA JASON\n')
         tf.write('COMMAND tgt2 pkt3 LITTLE_ENDIAN "TGT2 PKT3 Description"\n')
         tf.write('  HAZARDOUS "Hazardous"\n')
         tf.write('  APPEND_ID_PARAMETER item1 8 UINT 3 3 3 "Item1"\n')
@@ -57,6 +67,10 @@ class TestCommands(unittest.TestCase):
         tf.write('  APPEND_ID_PARAMETER item1 8 UINT 5 5 5 "Item1"\n')
         tf.write('  APPEND_PARAMETER item2 8 UINT 0 100 0 "Item2"\n')
         tf.write("    POLY_WRITE_CONVERSION 0 2\n")
+        tf.write('COMMAND tgt2 pkt6 BIG_ENDIAN "TGT2 PKT6 Description"\n')
+        tf.write('  APPEND_ID_PARAMETER item1 16 UINT 6 6 6 "Item1"\n')
+        tf.write('  APPEND_PARAMETER item2 16 UINT MIN MAX 0 "Item2" LITTLE_ENDIAN\n')
+        tf.write('  APPEND_PARAMETER item3 16 UINT MIN MAX 0 "Item3"\n')
         tf.seek(0)
 
         pc = PacketConfig()
@@ -84,10 +98,11 @@ class TestCommands(unittest.TestCase):
 
     def test_packets_returns_all_packets_target_tgt2(self):
         pkts = self.cmd.packets("TGT2")
-        self.assertEqual(len(pkts), 3)
+        self.assertEqual(len(pkts), 4)
         self.assertIn("PKT3", pkts.keys())
         self.assertIn("PKT4", pkts.keys())
         self.assertIn("PKT5", pkts.keys())
+        self.assertIn("PKT6", pkts.keys())
 
     def test_params_complains_about_non_existant_targets(self):
         with self.assertRaisesRegex(RuntimeError, "Command target 'TGTX' does not exist"):
@@ -208,63 +223,166 @@ class TestCommands(unittest.TestCase):
         self.assertEqual(pkt.read("item2"), 2)
 
     def test_build_cmd_complains_about_non_existant_targets(self):
-        with self.assertRaisesRegex(RuntimeError, "Command target 'TGTX' does not exist"):
-            self.cmd.build_cmd("tgtX", "pkt1")
+        for range_checking in [True, False]:
+            for raw in [True, False]:
+                with self.assertRaisesRegex(RuntimeError, "Command target 'TGTX' does not exist"):
+                    self.cmd.build_cmd("tgtX", "pkt1", {}, range_checking, raw)
 
     def test_build_cmd_complains_about_non_existant_packets(self):
-        with self.assertRaisesRegex(RuntimeError, "Command packet 'TGT1 PKTX' does not exist"):
-            self.cmd.build_cmd("tgt1", "pktX")
+        for range_checking in [True, False]:
+            for raw in [True, False]:
+                with self.assertRaisesRegex(RuntimeError, "Command packet 'TGT1 PKTX' does not exist"):
+                    self.cmd.build_cmd("tgt1", "pktX", {}, range_checking, raw)
 
     def test_build_cmd_complains_about_non_existant_items(self):
-        with self.assertRaisesRegex(AttributeError, "Packet item 'TGT1 PKT1 ITEMX' does not exist"):
-            self.cmd.build_cmd("tgt1", "pkt1", {"itemX": 1})
-
-    def test_build_cmd_creates_a_populated_command_packet_with_default_values(self):
-        cmd = self.cmd.build_cmd("TGT1", "PKT1")
-        self.assertEqual(cmd.read("item1"), 1)
-        self.assertEqual(cmd.read("item2"), 2)
-        self.assertEqual(cmd.read("item3"), 3)
-        self.assertEqual(cmd.read("item4"), 4)
-
-    def test_build_cmd_complains_about_out_of_range_item_values(self):
-        with self.assertRaisesRegex(
-            RuntimeError,
-            "Command parameter 'TGT1 PKT1 ITEM2' = 1000 not in valid range of 0 to 254",
-        ):
-            self.cmd.build_cmd("tgt1", "pkt1", {"item2": 1000})
-
-    def test_build_cmd_handles_string_values(self):
-        with self.assertRaisesRegex(
-            RuntimeError,
-            "Command parameter 'TGT1 PKT1 ITEM2' = '10' not in valid range of 0 to 254",
-        ):
-            self.cmd.build_cmd("tgt1", "pkt1", {"item2": "10"})
-
-    def test_build_cmd_ignores_out_of_range_item_values_if_requested(self):
-        cmd = self.cmd.build_cmd("tgt1", "pkt1", {"item2": 255}, False)
-        self.assertEqual(cmd.read("item1"), 1)
-        self.assertEqual(cmd.read("item2"), 255)
-        self.assertEqual(cmd.read("item3"), 3)
-        self.assertEqual(cmd.read("item4"), 4)
-
-    def test_build_cmd_creates_a_command_packet_with_override_item_values(self):
-        items = {"ITEM2": 10, "ITEM4": 11}
-        cmd = self.cmd.build_cmd("TGT1", "PKT1", items)
-        self.assertEqual(cmd.read("item1"), 1)
-        self.assertEqual(cmd.read("item2"), 10)
-        self.assertEqual(cmd.read("item3"), 3)
-        self.assertEqual(cmd.read("item4"), 11)
-
-    def test_build_cmd_creates_a_command_packet_with_override_item_value_states(self):
-        items = {"ITEM2": "GOOD"}
-        cmd = self.cmd.build_cmd("TGT1", "PKT2", items)
-        self.assertEqual(cmd.read("item1"), 2)
-        self.assertEqual(cmd.read("item2"), "GOOD")
-        self.assertEqual(cmd.read("ITEM2", "RAW"), 2)
+        for range_checking in [True, False]:
+            for raw in [True, False]:
+                with self.assertRaisesRegex(AttributeError, "Packet item 'TGT1 PKT1 ITEMX' does not exist"):
+                    self.cmd.build_cmd("tgt1", "pkt1", {"itemX": 1}, range_checking, raw)
 
     def test_build_cmd_complains_about_missing_required_parameters(self):
-        with self.assertRaisesRegex(RuntimeError, "Required command parameter 'TGT2 PKT3 ITEM2' not given"):
-            self.cmd.build_cmd("tgt2", "pkt3")
+        for range_checking in [True, False]:
+            for raw in [True, False]:
+                with self.assertRaisesRegex(RuntimeError, "Required command parameter 'TGT2 PKT3 ITEM2' not given"):
+                    self.cmd.build_cmd("tgt2", "pkt3", {}, range_checking, raw)
+
+    def test_creates_a_command_packet_with_mixed_endianness(self):
+        for range_checking in [True, False]:
+            for raw in [True, False]:
+                items = { "ITEM2": 0xABCD, "ITEM3": 0x6789 }
+                cmd = self.cmd.build_cmd("TGT2", "PKT6", items, range_checking, raw)
+                self.assertEqual(cmd.read("item1"), 6)
+                self.assertEqual(cmd.read("item2"), 0xABCD)
+                self.assertEqual(cmd.read("item3"), 0x6789)
+                self.assertEqual(cmd.buffer, b"\x00\x06\xCD\xAB\x67\x89")
+
+    def test_build_cmd_resets_the_buffer_size(self):
+        for range_checking in [True, False]:
+            for raw in [True, False]:
+                packet = self.cmd.packet("TGT1", "PKT1")
+                packet.buffer = b"\x00" * (packet.defined_length + 1)
+                self.assertEqual(len(packet.buffer), 5)
+                items = {"ITEM2": 10}
+                cmd = self.cmd.build_cmd("TGT1", "PKT1", items, range_checking, raw)
+                self.assertEqual(cmd.read("ITEM2"), 10)
+                self.assertEqual(len(cmd.buffer), 4)
+
+    def test_build_cmd_creates_a_populated_command_packet_with_default_values(self):
+        for range_checking in [True, False]:
+            for raw in [True, False]:
+                cmd = self.cmd.build_cmd("TGT1", "PKT1", {}, range_checking, raw)
+                self.assertEqual(cmd.read("item1"), 1)
+                self.assertEqual(cmd.read("item2"), 2)
+                self.assertEqual(cmd.read("item3"), 3)
+                self.assertEqual(cmd.read("item4"), 4)
+
+    def test_build_cmd_creates_a_command_packet_with_override_item_values(self):
+        for range_checking in [True, False]:
+            for raw in [True, False]:
+                items = {"ITEM2": 10, "ITEM4": 11}
+                cmd = self.cmd.build_cmd("TGT1", "PKT1", items, range_checking, raw)
+                self.assertEqual(cmd.read("item1"), 1)
+                self.assertEqual(cmd.read("item2"), 10)
+                self.assertEqual(cmd.read("item3"), 3)
+                self.assertEqual(cmd.read("item4"), 11)
+
+    def test_build_cmd_creates_a_command_packet_with_override_item_value_states(self):
+        for range_checking in [True, False]:
+            for raw in [True, False]:
+                if raw:
+                    items = {"ITEM2": 2, "ITEM3": 0.5, "ITEM4": "WORLD"}
+                else:
+                    # Converted (not raw) can take either states or values
+                    items = {"ITEM2": 2, "ITEM3": "S3", "ITEM4": "WO"}
+                cmd = self.cmd.build_cmd("TGT1", "PKT2", items, range_checking, raw)
+                self.assertEqual(cmd.read("item1"), 2)
+                self.assertEqual(cmd.read("item2"), "GOOD")
+                self.assertEqual(cmd.read("ITEM2", "RAW"), 2)
+                self.assertEqual(cmd.read("item3"), "S3")
+                self.assertEqual(cmd.read("ITEM3", "RAW"), 0.5)
+                self.assertEqual(cmd.read("item4"), "WO")
+                self.assertEqual(cmd.read("ITEM4", "RAW"), "WORLD")
+
+    def test_build_cmd_complains_about_out_of_range_item_values(self):
+        for raw in [True, False]:
+            with self.assertRaisesRegex(
+                RuntimeError,
+                "Command parameter 'TGT1 PKT1 ITEM2' = 255 not in valid range of 0 to 200",
+            ):
+                self.cmd.build_cmd("tgt1", "pkt1", {"item2": 255}, True, raw)
+
+    def test_build_cmd_complains_about_out_of_range_item_states(self):
+        for raw in [True, False]:
+            items = { "ITEM2": 3, "ITEM3": 0.0, "ITEM4": "WORLD" }
+            if raw:
+                with self.assertRaisesRegex(
+                RuntimeError,
+                "Command parameter 'TGT1 PKT2 ITEM2' = 3 not one of 0, 1, 2",
+                ):
+                    self.cmd.build_cmd("tgt1", "pkt2", items, True, raw)
+            else:
+                with self.assertRaisesRegex(
+                RuntimeError,
+                "Command parameter 'TGT1 PKT2 ITEM2' = 3 not one of BAD1, BAD2, GOOD",
+                ):
+                    self.cmd.build_cmd("tgt1", "pkt2", items, True, raw)
+
+            items = { "ITEM2": 0, "ITEM3": 2.0, "ITEM4": "WORLD" }
+            if raw:
+                with self.assertRaisesRegex(
+                RuntimeError,
+                "Command parameter 'TGT1 PKT2 ITEM3' = 2.0 not one of 0.0, 0.25, 0.5, 0.75, 1.0",
+                ):
+                    self.cmd.build_cmd("tgt1", "pkt2", items, True, raw)
+            else:
+                with self.assertRaisesRegex(
+                RuntimeError,
+                "Command parameter 'TGT1 PKT2 ITEM3' = 2.0 not one of S1, S2, S3, S4, S5",
+                ):
+                    self.cmd.build_cmd("tgt1", "pkt2", items, True, raw)
+
+            items = { "ITEM2": 0, "ITEM3": 0.0, "ITEM4": "TESTY" }
+            if raw:
+                with self.assertRaisesRegex(
+                RuntimeError,
+                "Command parameter 'TGT1 PKT2 ITEM4' = TESTY not one of HELLO, WORLD, JASON",
+                ):
+                    self.cmd.build_cmd("tgt1", "pkt2", items, True, raw)
+            else:
+                with self.assertRaisesRegex(
+                RuntimeError,
+                "Command parameter 'TGT1 PKT2 ITEM4' = TESTY not one of HI, WO, JA",
+                ):
+                    self.cmd.build_cmd("tgt1", "pkt2", items, True, raw)
+
+    def test_build_cmd_ignores_about_out_of_range_item_values(self):
+        for raw in [True, False]:
+            cmd = self.cmd.build_cmd("tgt1", "pkt1", {"item2": 255}, False, raw)
+            self.assertEqual(cmd.read("item1"), 1)
+            self.assertEqual(cmd.read("item2"), 255)
+            self.assertEqual(cmd.read("item3"), 3)
+            self.assertEqual(cmd.read("item4"), 4)
+
+
+    def test_build_cmd_ignores_out_of_range_item_states(self):
+        for raw in [True, False]:
+            items = { "ITEM2": 3, "ITEM3": 0.0, "ITEM4": "WORLD" }
+            cmd = self.cmd.build_cmd("tgt1", "pkt2", items, False, raw)
+            self.assertEqual(cmd.read("item2", 'RAW'), 3)
+            self.assertEqual(cmd.read("item3", 'RAW'), 0.0)
+            self.assertEqual(cmd.read("item4", 'RAW'), 'WORLD')
+
+            items = { "ITEM2": 0, "ITEM3": 2.0, "ITEM4": "WORLD" }
+            cmd = self.cmd.build_cmd("tgt1", "pkt2", items, False, raw)
+            self.assertEqual(cmd.read("item2", 'RAW'), 0)
+            self.assertEqual(cmd.read("item3", 'RAW'), 2.0)
+            self.assertEqual(cmd.read("item4", 'RAW'), 'WORLD')
+
+            items = { "ITEM2": 0, "ITEM3": 0.0, "ITEM4": "TESTY" }
+            cmd = self.cmd.build_cmd("tgt1", "pkt2", items, False, raw)
+            self.assertEqual(cmd.read("item2", 'RAW'), 0)
+            self.assertEqual(cmd.read("item3", 'RAW'), 0.0)
+            self.assertEqual(cmd.read("item4", 'RAW'), 'TESTY')
 
     def test_build_cmd_supports_building_raw_commands(self):
         items = {"ITEM2": 10}
@@ -275,15 +393,6 @@ class TestCommands(unittest.TestCase):
         cmd = self.cmd.build_cmd("TGT1", "PKT1", items, False, True)
         self.assertEqual(cmd.raw, True)
         self.assertEqual(cmd.read("ITEM2"), 10)
-
-    def test_build_cmd_resets_the_buffer_size(self):
-        packet = self.cmd.packet("TGT1", "PKT1")
-        packet.buffer = b"\x00" * (packet.defined_length + 1)
-        self.assertEqual(len(packet.buffer), 5)
-        items = {"ITEM2": 10}
-        cmd = self.cmd.build_cmd("TGT1", "PKT1", items)
-        self.assertEqual(cmd.read("ITEM2"), 10)
-        self.assertEqual(len(cmd.buffer), 4)
 
     def test_format_creates_a_string_representation_of_a_command(self):
         pkt = self.cmd.packet("TGT1", "PKT1")
@@ -351,17 +460,6 @@ class TestCommands(unittest.TestCase):
         hazardous, description = self.cmd.cmd_hazardous("TGT1", "PKT2", {"ITEM2": 2})
         self.assertFalse(hazardous)
         self.assertIsNone(description)
-
-    def test_clears_the_received_counters_in_all_packets(self):
-        self.cmd.packet("TGT1", "PKT1").received_count = 1
-        self.cmd.packet("TGT1", "PKT2").received_count = 2
-        self.cmd.packet("TGT2", "PKT3").received_count = 3
-        self.cmd.packet("TGT2", "PKT4").received_count = 4
-        self.cmd.clear_counters()
-        self.assertEqual(self.cmd.packet("TGT1", "PKT1").received_count, 0)
-        self.assertEqual(self.cmd.packet("TGT1", "PKT2").received_count, 0)
-        self.assertEqual(self.cmd.packet("TGT2", "PKT3").received_count, 0)
-        self.assertEqual(self.cmd.packet("TGT2", "PKT4").received_count, 0)
 
     def test_returns_all_packets(self):
         self.assertEqual(list(self.cmd.all().keys()), ["UNKNOWN", "TGT1", "TGT2"])

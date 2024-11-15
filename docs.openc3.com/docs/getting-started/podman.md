@@ -1,6 +1,9 @@
 ---
 sidebar_position: 7
 title: Podman
+description: Installing and running COSMOS with Podman
+sidebar_custom_props:
+  myEmoji: 🫛
 ---
 
 ### OpenC3 COSMOS Using Rootless Podman and Docker-Compose

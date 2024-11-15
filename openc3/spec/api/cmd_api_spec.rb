@@ -42,6 +42,7 @@ module OpenC3
     before(:each) do
       redis = mock_redis()
       setup_system()
+      local_s3()
 
       require 'openc3/models/target_model'
       model = TargetModel.new(folder_name: 'INST', name: 'INST', scope: "DEFAULT")
@@ -83,6 +84,7 @@ module OpenC3
     end
 
     after(:each) do
+      local_s3_unset()
       InterfaceTopic.shutdown(@interface, scope: 'DEFAULT')
       count = 0
       while @int_thread.alive? or count < 100 do
@@ -94,10 +96,8 @@ module OpenC3
     def test_cmd_unknown(method)
       expect { @api.send(method, "BLAH COLLECT with TYPE NORMAL") }.to raise_error(/does not exist/)
       expect { @api.send(method, "INST UNKNOWN with TYPE NORMAL") }.to raise_error(/does not exist/)
-      # expect { @api.send(method, "INST COLLECT with BLAH NORMAL") }.to raise_error(/does not exist/)
       expect { @api.send(method, "BLAH", "COLLECT", "TYPE" => "NORMAL") }.to raise_error(/does not exist/)
       expect { @api.send(method, "INST", "UNKNOWN", "TYPE" => "NORMAL") }.to raise_error(/does not exist/)
-      # expect { @api.send(method, "INST", "COLLECT", "BLAH"=>"NORMAL") }.to raise_error(/does not exist/)
     end
 
     %w(cmd cmd_no_checks cmd_no_range_check cmd_no_hazardous_check cmd_raw cmd_raw_no_checks cmd_raw_no_range_check cmd_raw_no_hazardous_check).each do |method|
@@ -154,6 +154,28 @@ module OpenC3
           end
         end
 
+        it "warns about bad state parameters" do
+          if method.include?('raw')
+            type = 2
+            check = '0, 1'
+          else
+            type = 'OTHER'
+            check = 'NORMAL, SPECIAL'
+          end
+          if method.include?('no_checks') or method.include?('no_range')
+            if method.include?('raw')
+              # If we're using raw commands, we can set any state parameter because it's numeric
+              expect { @api.send(method, "INST COLLECT with TYPE #{type}, DURATION 10") }.not_to raise_error
+            else
+              # Non-raw commands still raise because the state parameter is checked during the write
+              expect { @api.send(method, "INST COLLECT with TYPE #{type}, DURATION 10") }.to raise_error("Unknown state OTHER for TYPE, must be one of NORMAL, SPECIAL")
+            end
+          else
+            # cmd(), cmd_raw() and (no_hazardous_check variants) check the state parameter and raise
+            expect { @api.send(method, "INST COLLECT with TYPE #{type}, DURATION 10") }.to raise_error("Command parameter 'INST COLLECT TYPE' = #{type} not one of #{check}")
+          end
+        end
+
         it "warns about hazardous parameters" do
           type = method.include?('raw') ? 1 : 'SPECIAL'
           if method.include?('no_checks') or method.include?('no_hazard')
@@ -181,7 +203,7 @@ module OpenC3
           expect { @api.send(method, "INST", "ABORT", timeout: "YES") }.to raise_error("Invalid timeout parameter: YES. Must be numeric.")
           begin
             @process = false
-            expect { @api.send(method, "INST", "ABORT") }.to raise_error("Timeout of 5s waiting for cmd ack")
+            expect { @api.send(method, "INST", "ABORT") }.to raise_error("Timeout of 30s waiting for cmd ack")
             expect { @api.send(method, "INST", "ABORT", timeout: 1) }.to raise_error("Timeout of 1s waiting for cmd ack")
           ensure
             @process = true
@@ -355,6 +377,12 @@ module OpenC3
         sleep 0.01
         expect(@interface_data).to eql "\x00\x01\x02\x03"
       end
+
+      it "sends raw data to an interface" do
+        @api.send_raw("inst_int", "\x00\x01\x02\x03")
+        sleep 0.01
+        expect(@interface_data).to eql "\x00\x01\x02\x03"
+      end
     end
 
     describe 'get_all_cmds' do
@@ -464,6 +492,10 @@ module OpenC3
       it "raises with the wrong number of arguments" do
         expect { @api.get_cmd_hazardous("INST", "COLLECT", "TYPE", "SPECIAL") }.to raise_error(/Invalid number of arguments/)
       end
+
+      it "ignores the manual keyword" do
+        @api.get_cmd_hazardous("INST CLEAR", manual: true)
+      end
     end
 
     describe "get_cmd_value" do
@@ -549,12 +581,12 @@ module OpenC3
     end
 
     describe "get_cmd_cnt" do
-      it "complains about non-existant targets" do
+      it "complains about non-existent targets" do
         expect { @api.get_cmd_cnt("BLAH", "ABORT") }.to raise_error("Packet 'BLAH ABORT' does not exist")
         expect { @api.get_cmd_cnt("BLAH ABORT") }.to raise_error("Packet 'BLAH ABORT' does not exist")
       end
 
-      it "complains about non-existant packets" do
+      it "complains about non-existent packets" do
         expect { @api.get_cmd_cnt("INST", "BLAH") }.to raise_error("Packet 'INST BLAH' does not exist")
       end
 

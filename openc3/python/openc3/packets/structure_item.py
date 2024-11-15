@@ -55,10 +55,14 @@ class StructureItem:
         self.endianness = endianness
         self.data_type = data_type
         self.bit_offset = bit_offset
+        self.original_bit_offset = bit_offset
         self.bit_size = bit_size
+        self.original_bit_size = bit_size
         self.array_size = array_size
+        self.original_array_size = array_size
         self.overflow = overflow
         self.overlap = False
+        self.variable_bit_size = False
         self.create_index = StructureItem.create_index
         StructureItem.create_index += 1
         self.structure_item_constructed = True
@@ -70,7 +74,7 @@ class StructureItem:
 
     @name.setter
     def name(self, name):
-        if type(name) != str:
+        if not isinstance(name, str):
             raise AttributeError(f"name must be a String but is a {name.__class__.__name__}")
         if len(name) == 0:
             raise AttributeError("name must contain at least one character")
@@ -85,7 +89,7 @@ class StructureItem:
 
     @key.setter
     def key(self, key):
-        if type(key) != str:
+        if not isinstance(key, str):
             raise AttributeError(f"key must be a String but is a {key.__class__.__name__}")
         if len(key) == 0:
             raise AttributeError("key must contain at least one character")
@@ -97,7 +101,7 @@ class StructureItem:
 
     @endianness.setter
     def endianness(self, endianness):
-        if type(endianness) != str:
+        if not isinstance(endianness, str):
             raise AttributeError(f"{self.name}: endianness must be a String but is a {endianness.__class__.__name__}")
         if endianness not in BinaryAccessor.ENDIANNESS:
             raise AttributeError(
@@ -113,7 +117,7 @@ class StructureItem:
 
     @bit_offset.setter
     def bit_offset(self, bit_offset):
-        if type(bit_offset) != int:
+        if not isinstance(bit_offset, int):
             raise AttributeError(f"{self.name}: bit_offset must be an Integer")
 
         byte_aligned = (bit_offset % 8) == 0
@@ -135,14 +139,12 @@ class StructureItem:
 
     @bit_size.setter
     def bit_size(self, bit_size):
-        if type(bit_size) != int:
+        if not isinstance(bit_size, int):
             raise AttributeError(f"{self.name}: bit_size must be an Integer")
 
         byte_multiple = (bit_size % 8) == 0
-        if bit_size <= 0 and (self.data_type == "INT" or self.data_type == "UINT" or self.data_type == "FLOAT"):
-            raise AttributeError(
-                f"{self.name}: bit_size cannot be negative or zero for 'INT', 'UINT', and 'FLOAT' items: {bit_size}"
-            )
+        if bit_size <= 0 and self.data_type == "FLOAT":
+            raise AttributeError(f"{self.name}: bit_size cannot be negative or zero for 'FLOAT' items: {bit_size}")
         if (self.data_type == "STRING" or self.data_type == "BLOCK") and not byte_multiple:
             raise AttributeError(f"{self.name}: bit_size for STRING and BLOCK items must be byte multiples")
         if self.data_type == "FLOAT" and bit_size != 32 and bit_size != 64:
@@ -160,7 +162,7 @@ class StructureItem:
 
     @data_type.setter
     def data_type(self, data_type):
-        if type(data_type) != str:
+        if not isinstance(data_type, str):
             raise AttributeError(
                 f"{self.name}: data_type must be a str but {data_type} is a {type(data_type).__name__}"
             )
@@ -180,7 +182,7 @@ class StructureItem:
     @array_size.setter
     def array_size(self, array_size):
         if array_size is not None:
-            if type(array_size) != int:
+            if not isinstance(array_size, int):
                 raise AttributeError(f"{self.name}: array_size must be an Integer")
             if not (self.bit_size == 0 or (array_size % self.bit_size == 0) or array_size < 0):
                 raise AttributeError(f"{self.name}: array_size must be a multiple of bit_size")
@@ -197,7 +199,7 @@ class StructureItem:
 
     @overflow.setter
     def overflow(self, overflow):
-        if type(overflow) != str:
+        if not isinstance(overflow, str):
             raise AttributeError(f"{self.name}: overflow type must be a String")
 
         if overflow not in BinaryAccessor.OVERFLOW_TYPES:
@@ -206,6 +208,25 @@ class StructureItem:
             )
 
         self.__overflow = overflow
+        if self.structure_item_constructed:
+            self.verify_overall()
+
+    @property
+    def variable_bit_size(self):
+        return self.__variable_bit_size
+
+    @variable_bit_size.setter
+    def variable_bit_size(self, variable_bit_size):
+        if variable_bit_size:
+            if not isinstance(variable_bit_size, dict):
+                raise AttributeError(f"{self.name}: variable_bit_size must be a dict")
+            if not isinstance(variable_bit_size["length_item_name"], str):
+                raise AttributeError(f"{self.name}: variable_bit_size['length_item_name'] must be a String")
+            if not isinstance(variable_bit_size["length_value_bit_offset"], int):
+                raise AttributeError(f"{self.name}: variable_bit_size['length_value_bit_offset'] must be an Integer")
+            if not isinstance(variable_bit_size["length_bits_per_count"], int):
+                raise AttributeError(f"{self.name}: variable_bit_size['length_bits_per_count'] must be an Integer")
+        self.__variable_bit_size = variable_bit_size
         if self.structure_item_constructed:
             self.verify_overall()
 
@@ -269,11 +290,11 @@ class StructureItem:
         hash = {}
         hash["name"] = self.name
         hash["key"] = self.key
-        hash["bit_offset"] = self.bit_offset
-        hash["bit_size"] = self.bit_size
+        hash["bit_offset"] = self.original_bit_offset
+        hash["bit_size"] = self.original_bit_size
         hash["data_type"] = self.data_type
         hash["endianness"] = self.endianness
-        hash["array_size"] = self.array_size
+        hash["array_size"] = self.original_array_size
         hash["overflow"] = self.overflow
         return hash
 

@@ -35,8 +35,10 @@
             </v-row>
             <v-row>
               <v-spacer />
-              <v-btn @click="cancelHazardousCmd" outlined> Cancel </v-btn>
-              <v-btn @click="sendHazardousCmd" class="primary mx-1">
+              <v-btn @click="cancelHazardousCmd" variant="outlined">
+                Cancel
+              </v-btn>
+              <v-btn @click="sendHazardousCmd" class="bg-primary mx-1">
                 Send
               </v-btn>
             </v-row>
@@ -44,6 +46,12 @@
         </v-card-text>
       </v-card>
     </v-dialog>
+    <critical-cmd-dialog
+      :uuid="criticalCmdUuid"
+      :cmdString="criticalCmdString"
+      :cmdUser="criticalCmdUser"
+      v-model="displayCriticalCmd"
+    />
   </div>
 </template>
 
@@ -51,15 +59,22 @@
 import { OpenC3Api } from '../../services/openc3-api'
 import Api from '../../services/api'
 import Widget from './Widget'
+import CriticalCmdDialog from '@openc3/tool-common/src/components/CriticalCmdDialog'
 
 export default {
   mixins: [Widget],
+  components: {
+    CriticalCmdDialog,
+  },
   data() {
     return {
       api: null,
-      screen: null,
       displaySendHazardous: false,
       lastCmd: '',
+      criticalCmdUuid: null,
+      criticalCmdString: null,
+      criticalCmdUser: null,
+      displayCriticalCmd: false,
     }
   },
   computed: {
@@ -77,36 +92,64 @@ export default {
     async onClick() {
       const lines = this.eval.split(';;')
       // Create local references to variables so users don't need to use 'this'
-      const self = this // needed for $emit
-      const screen = this.screen
-      const api = this.api
-      const run_script = this.runScript // TODO: deprecate this in favor of runScript?
-      const runScript = this.runScript
+      // Tell SonarCloud to ignore these as user code may need them
+      const self = this // NOSONAR needed for $emit
+      const screen = this.screen //NOSONAR
+      const screenValues = this.screenValues //NOSONAR
+      const screenTimeZone = this.screenTimeZone //NOSONAR
+      const api = this.api //NOSONAR
+      const runScript = this.runScript //NOSONAR
       for (let i = 0; i < lines.length; i++) {
-        const result = eval(lines[i].trim())
-        if (result instanceof Promise) {
-          try {
+        try {
+          const result = eval(lines[i].trim())
+          if (result instanceof Promise) {
             await result
-          } catch (err) {
-            // This text is in top_level.rb HazardousError.to_s
-            if (err.message.includes('is Hazardous')) {
-              this.lastCmd = err.message.split('\n').pop()
-              this.displaySendHazardous = true
-              while (this.displaySendHazardous) {
-                await new Promise((resolve) => setTimeout(resolve, 500))
-              }
+          }
+        } catch (error) {
+          // This text is in top_level.rb HazardousError.to_s
+          if (error.message.includes('CriticalCmdError')) {
+            this.criticalCmdUuid = error.object.data.instance_variables['@uuid']
+            this.criticalCmdString =
+              error.object.data.instance_variables['@cmd_string']
+            this.criticalCmdUser =
+              error.object.data.instance_variables['@username']
+            this.displayCriticalCmd = true
+          }
+          if (error.message.includes('is Hazardous')) {
+            this.lastCmd = error.message.split('\n').pop()
+            this.displaySendHazardous = true
+            while (this.displaySendHazardous) {
+              await new Promise((resolve) => setTimeout(resolve, 500))
             }
           }
         }
       }
     },
-    sendHazardousCmd() {
+    async sendHazardousCmd() {
       // TODO: This only handles basic cmd() calls in buttons, do we need to handle other? cmd_raw()?
       this.lastCmd = this.lastCmd.replace(
         'cmd(',
         'this.api.cmd_no_hazardous_check(',
       )
-      eval(this.lastCmd)
+
+      try {
+        const result = eval(this.lastCmd)
+
+        if (result instanceof Promise) {
+          await result
+        }
+      } catch (error) {
+        // This text is in top_level.rb HazardousError.to_s
+        if (error.message.includes('CriticalCmdError')) {
+          this.criticalCmdUuid = error.object.data.instance_variables['@uuid']
+          this.criticalCmdString =
+            error.object.data.instance_variables['@cmd_string']
+          this.criticalCmdUser =
+            error.object.data.instance_variables['@username']
+          this.displayCriticalCmd = true
+        }
+      }
+
       this.displaySendHazardous = false
     },
     cancelHazardousCmd() {

@@ -169,7 +169,7 @@ module OpenC3
       return @body_accessor.enforce_short_buffer_allowed
     end
 
-    # If this is true it will enfore that COSMOS DERIVED items must have a
+    # If this is true it will enforce that COSMOS DERIVED items must have a
     # write_conversion to be written
     def enforce_derived_write_conversion(item)
       case item.name

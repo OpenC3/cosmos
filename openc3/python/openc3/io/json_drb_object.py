@@ -22,7 +22,7 @@ from .json_rpc import (
     JsonRpcSuccessResponse,
     JsonRpcErrorResponse,
 )
-from openc3.top_level import HazardousError, DisabledError  # noqa: F401
+from openc3.top_level import HazardousError, CriticalCmdError, DisabledError  # noqa: F401
 
 
 class JsonDrbUnknownError(Exception):
@@ -141,7 +141,7 @@ class JsonDRbObject(JsonApiObject):
 
     def handle_response(self, response: JsonRpcSuccessResponse | JsonRpcErrorResponse):
         # The code below will always either raise or return breaking out of the loop
-        if type(response) == JsonRpcErrorResponse:
+        if isinstance(response, JsonRpcErrorResponse):
             if response.error.data:
                 error = JsonDRbError.from_hash(response.error.data)
                 raise error

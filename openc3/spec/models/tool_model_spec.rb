@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 Ball Aerospace & Technologies Corp.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -12,10 +12,6 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
-
-# Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
-# All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -28,6 +24,8 @@ module OpenC3
   describe ToolModel do
     before(:each) do
       mock_redis()
+      local_s3()
+      local_s3_unset()
     end
 
     describe "self.get" do

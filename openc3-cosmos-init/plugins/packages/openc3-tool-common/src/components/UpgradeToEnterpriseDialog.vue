@@ -18,13 +18,13 @@
 
 <template>
   <v-dialog v-model="show" width="650px">
+    <v-toolbar height="24">
+      <v-spacer />
+      <span> Upgrade to COSMOS Enterprise Edition </span>
+      <v-spacer />
+    </v-toolbar>
     <v-card>
-      <v-system-bar>
-        <v-spacer />
-        <span> Upgrade to COSMOS Enterprise Edition </span>
-        <v-spacer />
-      </v-system-bar>
-      <v-card-text class="mt-2">
+      <v-card-text class="mt-4">
         <div class="logo">
           <img :src="logo" alt="OpenC3" />
           <div class="cosmos">Enterprise Edition</div>
@@ -39,20 +39,21 @@
         </div>
         COSMOS Enterprise Edition removes all restrictions and offers users with
         role based access control, scaling on kubernetes, cloud platform
-        support, multiple scopes, various integrations with common protocols and
-        hardware, commercial licensing, and much more!<br /><br />
+        support, multiple scopes, Calendar and Autonomic, various integrations
+        with common protocols and hardware, commercial licensing, and much
+        more!<br /><br />
         Learn more at
-        <a href="https://openc3.com/enterprise"
-          >https://openc3.com/enterprise</a
-        >
+        <a href="https://openc3.com/enterprise">
+          https://openc3.com/enterprise
+        </a>
         and help support COSMOS Open Source by supporting our business. Contact
         us at <a href="mailto:support@openc3.com">support@openc3.com</a> for
         more information about Enterprise Edition, COSMOS training, COSMOS
         support, and custom COSMOS development.
       </v-card-text>
-      <v-card-actions>
+      <v-card-actions class="px-2">
         <v-spacer />
-        <v-btn class="mx-2" color="primary" @click="show = !show"> Ok </v-btn>
+        <v-btn variant="flat" @click="show = !show"> Ok </v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -63,9 +64,10 @@ import logo from '../../public/img/logo.png'
 
 export default {
   props: {
-    value: Boolean, // value is the default prop when using v-model
+    modelValue: Boolean, // modelValue is the default prop when using v-model
     reason: String,
   },
+  emits: ['update:modelValue'],
   data() {
     return {
       logo: logo,
@@ -74,15 +76,16 @@ export default {
   computed: {
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value) // update is the default event when using v-model
       },
     },
   },
 }
 </script>
+
 <style scoped>
 .logo {
   float: right;

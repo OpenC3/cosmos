@@ -23,17 +23,13 @@ RUN mkdir -p lib/openc3/ext \
   && ln -s $openc3_gem/openc3 $openc3_gem/cosmos \
   && mkdir -p gems \
   && mv *.gem gems/. \
-  # TODO: Remove google-protobuf / grpc manually install once grpc fixed
-  && gem install google-protobuf -v 3.24.0 --platform ruby \
-  && gem install grpc -v 1.59.2 \
-  && gem uninstall google-protobuf -v "!= 3.24.0" --all \
-  && gem uninstall google-protobuf -v "!= 3.24.0" --all \
   && gem cleanup \
   && rm -rf /usr/lib/ruby/gems/*/cache/* /var/cache/apk/* /tmp/* /var/tmp/*
 
 WORKDIR /openc3/python
 
-RUN pip3 install -r requirements.txt && pip3 install --pre .
+RUN . /openc3/venv/bin/activate \
+  && pip3 install -r requirements.txt && pip3 install --pre .
 
 WORKDIR /openc3/
 

@@ -43,7 +43,7 @@ class ApiController < ApplicationController
           OpenC3::Logger.info("API data: #{request_data}", scope: nil, user: username())
           OpenC3::Logger.debug("API headers: #{request_headers}", scope: nil, user: username())
           status, content_type, body = handle_post(request_data, request_headers)
-        rescue OpenC3::AuthError => e
+        rescue OpenC3::AuthError, OpenC3::ForbiddenError => e
           id = 1
           begin
             parsed = JSON.parse(request_data, :allow_nan => true)
@@ -51,11 +51,16 @@ class ApiController < ApplicationController
           rescue
             OpenC3::Logger.warn("Unable to extract id from JSON-RPC message")
           end
-          error_code = OpenC3::JsonRpcError::ErrorCode::AUTH_ERROR
+          if OpenC3::AuthError === e
+            error_code = OpenC3::JsonRpcError::ErrorCode::AUTH_ERROR
+            status = 401
+          else
+            error_code = OpenC3::JsonRpcError::ErrorCode::FORBIDDEN_ERROR
+            status = 403
+          end
           response = OpenC3::JsonRpcErrorResponse.new(
             OpenC3::JsonRpcError.new(error_code, e.message, e), id
           )
-          status = 401
           content_type = "application/json-rpc"
           body = response.to_json(:allow_nan => true)
         end
@@ -97,11 +102,12 @@ class ApiController < ApplicationController
     # see http://www.jsonrpc.org/historical/json-rpc-over-http.html#errors
     if error_code
       case error_code
-      when OpenC3::JsonRpcError::ErrorCode::INVALID_REQUEST  then status = 400 # Bad request
-      when OpenC3::JsonRpcError::ErrorCode::AUTH_ERROR       then status = 401 # Auth
-      when OpenC3::JsonRpcError::ErrorCode::FORBIDDEN_ERROR  then status = 403 # Forbidden
-      when OpenC3::JsonRpcError::ErrorCode::METHOD_NOT_FOUND then status = 404 # Not found
-      when OpenC3::JsonRpcError::ErrorCode::HAZARDOUS_ERROR  then status = 409 # Server conflict
+      when OpenC3::JsonRpcError::ErrorCode::INVALID_REQUEST    then status = 400 # Bad request
+      when OpenC3::JsonRpcError::ErrorCode::AUTH_ERROR         then status = 401 # Auth
+      when OpenC3::JsonRpcError::ErrorCode::FORBIDDEN_ERROR    then status = 403 # Forbidden
+      when OpenC3::JsonRpcError::ErrorCode::METHOD_NOT_FOUND   then status = 404 # Not found
+      when OpenC3::JsonRpcError::ErrorCode::HAZARDOUS_ERROR    then status = 409 # Server conflict
+      when OpenC3::JsonRpcError::ErrorCode::CRITICAL_CMD_ERROR then status = 428 # Precondition required
       else
         # Also includes the following errors:
         # OpenC3::JsonRpcError::ErrorCode::PARSE_ERROR

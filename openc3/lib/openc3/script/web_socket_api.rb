@@ -126,7 +126,7 @@ module OpenC3
     # Connect to the websocket with authorization in query params
     def connect
       disconnect()
-      final_url = @url + "?scope=#{@scope}&authorization=#{@authentication.token}"
+      final_url = @url + "?scope=#{@scope}&authorization=#{@authentication.token(include_bearer: false)}"
       @stream = WebSocketClientStream.new(final_url, @write_timeout, @read_timeout, @connect_timeout)
       @stream.headers = {
         'Sec-WebSocket-Protocol' => 'actioncable-v1-json, actioncable-unsupported',
@@ -240,7 +240,7 @@ module OpenC3
     end
   end
 
-  # Autonomic Events WebSocket
+  # Autonomic Events WebSocket (Enterprise Only)
   class AutonomicEventsWebSocketApi < CmdTlmWebSocketApi
     def initialize(history_count: 0, url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
       @identifier = {
@@ -251,7 +251,7 @@ module OpenC3
     end
   end
 
-  # Calendar Events WebSocket
+  # Calendar Events WebSocket (Enterprise Only)
   class CalendarEventsWebSocketApi < CmdTlmWebSocketApi
     def initialize(history_count: 0, url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
       @identifier = {
@@ -278,6 +278,17 @@ module OpenC3
     def initialize(history_count: 0, url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
       @identifier = {
         channel: "LimitsEventsChannel",
+        history_count: history_count
+      }
+      super(url: url, write_timeout: write_timeout, read_timeout: read_timeout, connect_timeout: connect_timeout, authentication: authentication, scope: scope)
+    end
+  end
+
+  # System Events WebSocket
+  class SystemEventsWebSocketApi < CmdTlmWebSocketApi
+    def initialize(history_count: 0, url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
+      @identifier = {
+        channel: "SystemEventsChannel",
         history_count: history_count
       }
       super(url: url, write_timeout: write_timeout, read_timeout: read_timeout, connect_timeout: connect_timeout, authentication: authentication, scope: scope)
@@ -344,7 +355,7 @@ module OpenC3
       data_hash['items'] = items if items
       data_hash['packets'] = packets if packets
       data_hash['scope'] = scope
-      data_hash['token'] = @authentication.token
+      data_hash['token'] = @authentication.token(include_bearer: false)
       write_action(data_hash)
     end
 
@@ -373,7 +384,7 @@ module OpenC3
       data_hash['items'] = items if items
       data_hash['packets'] = packets if packets
       data_hash['scope'] = scope
-      data_hash['token'] = @authentication.token
+      data_hash['token'] = @authentication.token(include_bearer: false)
       write_action(data_hash)
     end
 

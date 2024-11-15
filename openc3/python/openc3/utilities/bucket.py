@@ -36,7 +36,7 @@ class Bucket:
             my_module = importlib.import_module("." + OPENC3_CLOUD.lower() + "_bucket", "openc3.utilities")
         # If the file doesn't exist try the Enterprise module
         except ModuleNotFoundError:
-            my_module = importlib.import_module("." + OPENC3_CLOUD.lower() + "_bucket", "openc3-enterprise.utilities")
+            my_module = importlib.import_module("." + OPENC3_CLOUD.lower() + "_bucket", "openc3enterprise.utilities")
         return getattr(my_module, bucket_class)()
 
     def create(self, bucket):

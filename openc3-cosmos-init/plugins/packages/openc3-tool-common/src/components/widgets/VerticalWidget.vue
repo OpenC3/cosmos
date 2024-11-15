@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -23,17 +23,19 @@
 <template>
   <div ref="container" class="d-flex flex-column" :style="computedStyle">
     <component
-      v-on="$listeners"
+      v-bind="listeners"
       v-for="(widget, index) in widgets"
       :key="index"
       :is="widget.type"
       :target="widget.target"
       :parameters="widget.parameters"
       :settings="widget.settings"
+      :screen-values="screenValues"
+      :screen-time-zone="screenTimeZone"
       :widgets="widget.widgets"
       :name="widget.name"
       :line="widget.line"
-      :lineNumber="widget.lineNumber"
+      :line-number="widget.lineNumber"
     />
   </div>
 </template>
@@ -51,7 +53,7 @@ export default {
           (setting) =>
             setting[0] === 'MARGIN' ||
             (setting[0] === 'RAW' &&
-              setting[1].toUpperCase().includes('MARGIN'))
+              setting[1].toUpperCase().includes('MARGIN')),
         )
         if (found === undefined) {
           widget.settings.push(['MARGIN', margin])

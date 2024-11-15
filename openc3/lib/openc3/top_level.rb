@@ -49,6 +49,15 @@ class HazardousError < StandardError
   end
 end
 
+class CriticalCmdError < StandardError
+  attr_accessor :uuid
+  attr_accessor :username
+  attr_accessor :target_name
+  attr_accessor :cmd_name
+  attr_accessor :cmd_params
+  attr_accessor :cmd_string
+end
+
 # If a disabled command is sent through the {OpenC3::Api} this error is raised.
 class DisabledError < StandardError
   attr_accessor :target_name
@@ -454,11 +463,6 @@ module OpenC3
           "Ensure #{filename} is in the OpenC3 lib directory."
     Logger.error msg if log_error
     raise $!, msg, $!.backtrace
-  end
-
-  # @param filename [String] Name of the file to open in the web browser
-  def self.open_in_web_browser(_filename)
-    puts "open_in_web_browser is DEPRECATED"
   end
 
   # Temporarily set the working directory during a block

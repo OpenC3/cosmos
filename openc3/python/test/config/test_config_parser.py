@@ -254,7 +254,7 @@ class TestConfigParser(unittest.TestCase):
         tf = tempfile.NamedTemporaryFile(mode="w+t")
         tf.writelines("KEYWORD PARAM1 'continues ' \\\n")
         tf.writelines("next line\n")  # Forgot quotes
-        tf.writelines("KEYWORD2 PARAM2")  # Ensure we proces the next line
+        tf.writelines("KEYWORD2 PARAM2")  # Ensure we process the next line
         tf.seek(0)
         for keyword, params in self.cp.parse_file(tf.name):
             if keyword == "KEYWORD":

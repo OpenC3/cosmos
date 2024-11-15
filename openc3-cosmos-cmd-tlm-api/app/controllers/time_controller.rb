@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -24,7 +24,7 @@ class TimeController < ApplicationController
   def get_current
     response.headers["Cache-Control"] = "no-store"
     now = Time.now.to_nsec_from_epoch
-    render :json => {
+    render json: {
       now_nsec: now
     }
   end

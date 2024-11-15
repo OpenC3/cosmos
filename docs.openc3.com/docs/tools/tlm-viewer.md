@@ -1,10 +1,13 @@
 ---
 title: Telemetry Viewer
+description: Build custom screens using built-in widgets
+sidebar_custom_props:
+  myEmoji: 🛠️
 ---
 
 ## Introduction
 
-Telemetry Viewer is a live telemetry viewer which displays custom built screens. Screens are configured through simple text files which utilize numerous build-in widgets.
+Telemetry Viewer is a live telemetry viewer which displays custom built screens. Screens are configured through simple text files which utilize numerous built-in widgets.
 
 ![Telemetry Viewer](/img/telemetry_viewer/telemetry_viewer.png)
 

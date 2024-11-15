@@ -1,5 +1,8 @@
 ---
 title: Philosophy
+description: COSMOS goals and philosophy
+sidebar_custom_props:
+  myEmoji: 🤔
 ---
 
 COSMOS is a C3 (Command, Control and Communication) system with the following primary goals:

@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -28,9 +28,9 @@ class ExampleLimitsResponse < OpenC3::LimitsResponse
   def call(packet, item, old_limits_state)
     case item.limits.state
     when :RED_HIGH
-      cmd('<%= target_name %>', 'COLLECT', 'TYPE' => 'NORMAL', 'DURATION' => 7)
+      cmd('<%= target_name %> COLLECT with TYPE NORMAL, DURATION 7', validate: false)
     when :RED_LOW
-      cmd_no_hazardous_check('<%= target_name %>', 'CLEAR')
+      cmd('<%= target_name %> ABORT', validate: false)
     end
   end
 end

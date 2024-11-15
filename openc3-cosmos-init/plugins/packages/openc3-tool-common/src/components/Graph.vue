@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -22,33 +22,32 @@
 
 <template>
   <div>
-    <v-card @click.native="$emit('click')">
-      <v-system-bar
-        :class="selectedGraphId === id ? 'active' : 'inactive'"
-        v-show="!hideSystemBar"
+    <v-card @click="$emit('click')">
+      <v-toolbar
+        height="24"
+        class="pl-2 pr-2"
+        :class="selectedGraphId === id ? 'active' : ''"
+        v-show="!hideToolbarData"
       >
         <div v-show="errors.length !== 0" class="mx-2">
-          <v-tooltip top>
-            <template v-slot:activator="{ on, attrs }">
-              <div v-on="on" v-bind="attrs">
-                <v-icon data-test="error-graph-icon" @click="errorDialog = true"
-                  >mdi-alert</v-icon
-                >
-              </div>
+          <v-tooltip text="Errors" location="bottom">
+            <template v-slot:activator="{ props }">
+              <v-icon v-bind="props" @click="errorDialog = true"
+                >mdi-alert</v-icon
+              >
             </template>
-            <span>Errors</span>
           </v-tooltip>
         </div>
 
-        <v-tooltip top>
-          <template v-slot:activator="{ on, attrs }">
-            <div v-on="on" v-bind="attrs">
-              <v-icon data-test="edit-graph-icon" @click="editGraph = true">
-                mdi-pencil
-              </v-icon>
-            </div>
+        <v-tooltip text="Edit" location="bottom">
+          <template v-slot:activator="{ props }">
+            <v-icon
+              v-bind="props"
+              @click="editGraph = true"
+              data-test="edit-graph-icon"
+              >mdi-pencil</v-icon
+            >
           </template>
-          <span> Edit </span>
         </v-tooltip>
 
         <v-spacer />
@@ -56,341 +55,139 @@
         <v-spacer />
 
         <div v-show="expand">
-          <v-tooltip top>
-            <template v-slot:activator="{ on, attrs }">
-              <div v-on="on" v-bind="attrs">
-                <v-icon
-                  data-test="collapse-all"
-                  v-show="calcFullSize"
-                  @click="collapseAll"
-                >
-                  mdi-arrow-collapse
-                </v-icon>
-                <v-icon
-                  data-test="expand-all"
-                  v-show="!calcFullSize"
-                  @click="expandAll"
-                >
-                  mdi-arrow-expand
-                </v-icon>
-              </div>
+          <v-tooltip v-if="calcFullSize" text="Collapse" location="bottom">
+            <template v-slot:activator="{ props }">
+              <v-icon
+                v-bind="props"
+                @click="collapseAll"
+                data-test="collapse-all"
+                >mdi-arrow-collapse</v-icon
+              >
             </template>
-            <span v-show="calcFullSize"> Collapse </span>
-            <span v-show="!calcFullSize"> Expand </span>
+          </v-tooltip>
+          <v-tooltip v-else text="Expand" location="bottom">
+            <template v-slot:activator="{ props }">
+              <v-icon v-bind="props" @click="expandAll" data-test="expand-all"
+                >mdi-arrow-expand</v-icon
+              >
+            </template>
           </v-tooltip>
         </div>
 
         <div v-show="expand">
-          <v-tooltip top>
-            <template v-slot:activator="{ on, attrs }">
-              <div v-on="on" v-bind="attrs">
-                <v-icon
-                  data-test="collapse-width"
-                  v-show="fullWidth"
-                  @click="collapseWidth"
-                >
-                  mdi-arrow-collapse-horizontal
-                </v-icon>
-                <v-icon
-                  data-test="expand-width"
-                  v-show="!fullWidth"
-                  @click="expandWidth"
-                >
-                  mdi-arrow-expand-horizontal
-                </v-icon>
-              </div>
+          <v-tooltip v-if="fullWidth" text="Collapse Width" location="bottom">
+            <template v-slot:activator="{ props }">
+              <v-icon
+                v-bind="props"
+                @click="collapseWidth"
+                data-test="collapse-width"
+                >mdi-arrow-collapse-horizontal</v-icon
+              >
             </template>
-            <span v-show="fullWidth"> Collapse Width </span>
-            <span v-show="!fullWidth"> Expand Width </span>
+          </v-tooltip>
+          <v-tooltip v-else text="Expand Width" location="bottom">
+            <template v-slot:activator="{ props }">
+              <v-icon
+                v-bind="props"
+                @click="expandWidth"
+                data-test="expand-width"
+                >mdi-arrow-expand-horizontal</v-icon
+              >
+            </template>
           </v-tooltip>
         </div>
 
         <div v-show="expand">
-          <v-tooltip top>
-            <template v-slot:activator="{ on, attrs }">
-              <div v-on="on" v-bind="attrs">
-                <v-icon
-                  data-test="collapse-height"
-                  v-show="fullHeight"
-                  @click="collapseHeight"
-                >
-                  mdi-arrow-collapse-vertical
-                </v-icon>
-                <v-icon
-                  data-test="expand-height"
-                  v-show="!fullHeight"
-                  @click="expandHeight"
-                >
-                  mdi-arrow-expand-vertical
-                </v-icon>
-              </div>
+          <v-tooltip v-if="fullHeight" text="Collapse Height" location="bottom">
+            <template v-slot:activator="{ props }">
+              <v-icon
+                v-bind="props"
+                @click="collapseHeight"
+                data-test="collapse-height"
+                >mdi-arrow-collapse-vertical</v-icon
+              >
             </template>
-            <span v-show="fullHeight"> Collapse Height </span>
-            <span v-show="!fullHeight"> Expand Height </span>
+          </v-tooltip>
+          <v-tooltip v-else text="Expand Height" location="bottom">
+            <template v-slot:activator="{ props }">
+              <v-icon
+                v-bind="props"
+                @click="expandHeight"
+                data-test="expand-height"
+                >mdi-arrow-expand-vertical</v-icon
+              >
+            </template>
           </v-tooltip>
         </div>
 
-        <v-tooltip top>
-          <template v-slot:activator="{ on, attrs }">
-            <div v-on="on" v-bind="attrs">
-              <v-icon
-                data-test="minimize-screen-icon"
-                @click="minMaxTransition"
-                v-show="expand"
-              >
-                mdi-window-minimize
-              </v-icon>
-              <v-icon
-                data-test="maximize-screen-icon"
-                @click="minMaxTransition"
-                v-show="!expand"
-              >
-                mdi-window-maximize
-              </v-icon>
-            </div>
+        <v-tooltip v-if="expand" text="Minimize" location="bottom">
+          <template v-slot:activator="{ props }">
+            <v-icon
+              v-bind="props"
+              @click="minMaxTransition"
+              data-test="minimize-screen-icon"
+              >mdi-window-minimize</v-icon
+            >
           </template>
-          <span v-show="expand"> Minimize </span>
-          <span v-show="!expand"> Maximize </span>
+        </v-tooltip>
+        <v-tooltip v-else text="Maximize" location="bottom">
+          <template v-slot:activator="{ props }">
+            <v-icon
+              v-bind="props"
+              @click="minMaxTransition"
+              data-test="maximize-screen-icon"
+              >mdi-window-maximize</v-icon
+            >
+          </template>
         </v-tooltip>
 
-        <v-tooltip top>
-          <template v-slot:activator="{ on, attrs }">
-            <div v-on="on" v-bind="attrs">
-              <v-icon
-                data-test="close-graph-icon"
-                @click="$emit('close-graph')"
-              >
-                mdi-close-box
-              </v-icon>
-            </div>
+        <v-tooltip text="Close" location="bottom">
+          <template v-slot:activator="{ props }">
+            <v-icon
+              v-bind="props"
+              @click="$emit('close-graph')"
+              data-test="close-graph-icon"
+              >mdi-close-box</v-icon
+            >
           </template>
-          <span> Close </span>
         </v-tooltip>
-      </v-system-bar>
+      </v-toolbar>
 
       <v-expand-transition>
         <div class="pa-1" id="chart" ref="chart" v-show="expand">
           <div :id="`chart${id}`"></div>
-          <div id="betweenCharts" />
+          <div id="betweenCharts"></div>
           <div :id="`overview${id}`" v-show="showOverview"></div>
         </div>
       </v-expand-transition>
     </v-card>
 
-    <!-- Edit dialog, TODO: This should be a separate component -->
-    <v-dialog
+    <!-- Edit graph dialog -->
+    <graph-edit-dialog
+      v-if="editGraph"
       v-model="editGraph"
-      @keydown.esc="$emit('input')"
-      @input="editGraphClose()"
-      max-width="700"
-    >
-      <v-system-bar>
-        <v-spacer />
-        <span>Edit Graph</span>
-        <v-spacer />
-      </v-system-bar>
-      <v-card class="pa-3">
-        <v-tabs v-model="tab" class="ml-3">
-          <v-tab :key="0"> Settings </v-tab>
-          <v-tab :key="1"> Scale / Lines </v-tab>
-          <v-tab :key="1"> Items </v-tab>
-        </v-tabs>
-        <v-tabs-items v-model="tab">
-          <v-tab-item :key="0" eager="true" class="tab">
-            <div class="edit-box">
-              <v-row
-                ><v-col>
-                  <v-card-text class="pa-0">
-                    <v-text-field
-                      class="pb-2"
-                      label="Title"
-                      v-model="title"
-                      hide-details
-                      data-test="edit-graph-title"
-                    />
-                  </v-card-text>
-                </v-col>
-                <v-col style="margin-top=5px">
-                  <v-select
-                    label="Legend Position"
-                    dense
-                    outlined
-                    hide-details
-                    :items="legendPositions"
-                    v-model="legendPosition"
-                    data-test="edit-legend-position"
-                    style="max-width: 280px"
-                  /> </v-col
-              ></v-row>
-            </div>
-            <div class="edit-box">
-              <v-card-text class="pa-0">
-                Select a start date/time for the graph. Leave blank for start
-                now.
-              </v-card-text>
-              <date-time-chooser
-                :required="false"
-                date-label="Start Date"
-                time-label="Start Time"
-                :date-time="graphStartDateTime"
-                @date-time="graphStartDateTime = $event"
-              />
-              <v-card-text class="pa-0">
-                Select a end date/time for the graph. Leave blank for continuous
-                real-time graphing.
-              </v-card-text>
-              <date-time-chooser
-                date-label="End Date"
-                time-label="End Time"
-                :date-time="graphEndDateTime"
-                @date-time="graphEndDateTime = $event"
-              />
-            </div>
-          </v-tab-item>
-          <v-tab-item :key="1" eager="true" class="tab">
-            <div class="edit-box">
-              <v-card-text class="pa-0">
-                Set a min or max Y value to override automatic scaling
-              </v-card-text>
-              <v-row dense>
-                <v-col class="px-2">
-                  <v-text-field
-                    hide-details
-                    label="Min Y Axis (Optional)"
-                    v-model="graphMinY"
-                    type="number"
-                    data-test="edit-graph-min-y"
-                  />
-                </v-col>
-                <v-col class="px-2">
-                  <v-text-field
-                    hide-details
-                    label="Max Y Axis (Optional)"
-                    v-model="graphMaxY"
-                    type="number"
-                    data-test="edit-graph-max-y"
-                  />
-                </v-col>
-              </v-row>
-            </div>
-            <div class="edit-box">
-              <v-card-text class="pa-0"
-                >Add horizontal lines to the graph</v-card-text
-              >
-              <v-data-table
-                item-key="lineId"
-                data-test="edit-graph-lines"
-                :headers="lineHeaders"
-                :items="lines"
-                :items-per-page="5"
-                :footer-props="{
-                  itemsPerPageOptions: [5],
-                }"
-              >
-                <template v-slot:item.yValue="props">
-                  <v-edit-dialog :return-value.sync="props.item.yValue">
-                    {{ props.item.yValue }}
-                    <template v-slot:input>
-                      <v-text-field
-                        v-model="props.item.yValue"
-                        label="Edit"
-                        single-line
-                        counter
-                      ></v-text-field>
-                    </template>
-                  </v-edit-dialog>
-                </template>
-                <template v-slot:item.color="props">
-                  <v-edit-dialog :return-value.sync="props.item.color">
-                    {{ props.item.color }}
-                    <template v-slot:input>
-                      <v-select
-                        outlined
-                        hide-details
-                        label="Color"
-                        :items="colors"
-                        v-model="props.item.color"
-                      />
-                    </template>
-                  </v-edit-dialog>
-                </template>
-                <template v-slot:footer.prepend>
-                  <v-btn small style="margin-top: 3px" @click="addLine">
-                    New Horizontal Line
-                  </v-btn>
-                  &nbsp;&nbsp;Click to edit values, Enter to save
-                  <v-spacer />
-                </template>
-                <template v-slot:item.actions="{ item }">
-                  <v-tooltip top>
-                    <template v-slot:activator="{ on, attrs }">
-                      <div v-on="on" v-bind="attrs">
-                        <v-btn
-                          icon
-                          :data-test="`delete-line-icon${item.lineId}`"
-                          @click="() => removeLine(item)"
-                        >
-                          <v-icon>mdi-delete</v-icon>
-                        </v-btn>
-                      </div>
-                    </template>
-                    <span>Remove</span>
-                  </v-tooltip>
-                </template>
-                <template v-slot:no-data>
-                  <span>Currently no horizontal lines on this graph</span>
-                </template>
-              </v-data-table>
-            </div>
-          </v-tab-item>
-          <v-tab-item :key="2" eager="true" class="tab">
-            <v-data-table
-              item-key="itemId"
-              class="elevation-1 my-2"
-              data-test="edit-graph-items"
-              :headers="itemHeaders"
-              :items="editItems"
-              :items-per-page="5"
-              :footer-props="{
-                'items-per-page-options': [5],
-              }"
-            >
-              <template v-slot:item.actions="{ item }">
-                <v-tooltip top>
-                  <template v-slot:activator="{ on, attrs }">
-                    <div v-on="on" v-bind="attrs">
-                      <v-btn
-                        icon
-                        :data-test="`delete-item-icon${item.itemId}`"
-                        @click="() => removeItems([item])"
-                      >
-                        <v-icon>mdi-delete</v-icon>
-                      </v-btn>
-                    </div>
-                  </template>
-                  <span>Remove</span>
-                </v-tooltip>
-              </template>
-              <template v-slot:no-data>
-                <span>Currently no items on this graph</span>
-              </template>
-            </v-data-table>
-          </v-tab-item>
-        </v-tabs-items>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn color="primary" @click="editGraphClose"> Ok </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+      :title="title"
+      :legend-position="legendPosition"
+      :items="items"
+      :graph-min-y="graphMinY"
+      :graph-max-y="graphMaxY"
+      :lines="lines"
+      :colors="colors"
+      :start-date-time="graphStartDateTime"
+      :end-date-time="graphEndDateTime"
+      :time-zone="timeZone"
+      @remove="removeItems([$event])"
+      @ok="editGraphClose"
+      @cancel="editGraph = false"
+    />
 
     <!-- Error dialog -->
     <v-dialog v-model="errorDialog" max-width="600">
-      <v-system-bar>
+      <v-toolbar height="24">
         <v-spacer />
         <span>Errors</span>
         <v-spacer />
-      </v-system-bar>
+      </v-toolbar>
       <v-card class="pa-3">
         <v-row dense>
           <v-text-field
@@ -414,8 +211,7 @@
     <v-menu
       v-if="editGraphMenu"
       v-model="editGraphMenu"
-      :position-x="editGraphMenuX"
-      :position-y="editGraphMenuY"
+      :target="[editGraphMenuX, editGraphMenuY]"
       absolute
       offset-y
     >
@@ -443,32 +239,33 @@
     <v-menu
       v-if="itemMenu"
       v-model="itemMenu"
-      :position-x="itemMenuX"
-      :position-y="itemMenuY"
+      :target="[itemMenuX, itemMenuY]"
       absolute
       offset-y
     >
-      <v-list nav dense>
-        <v-subheader>
+      <v-list nav density="compact">
+        <v-list-subheader>
           {{ selectedItem.targetName }}
           {{ selectedItem.packetName }}
           {{ selectedItem.itemName }}
-        </v-subheader>
+        </v-list-subheader>
         <v-list-item @click="editItem = true">
-          <v-list-item-icon>
-            <v-icon>mdi-pencil</v-icon>
-          </v-list-item-icon>
-          <v-list-item-content>
-            <v-list-item-title> Edit </v-list-item-title>
-          </v-list-item-content>
+          <template v-slot:prepend>
+            <v-icon icon="mdi-pencil"></v-icon>
+          </template>
+          <v-list-item-title> Edit </v-list-item-title>
+        </v-list-item>
+        <v-list-item @click="clearData([selectedItem])">
+          <template v-slot:prepend>
+            <v-icon icon="mdi-eraser"></v-icon>
+          </template>
+          <v-list-item-title> Clear </v-list-item-title>
         </v-list-item>
         <v-list-item @click="removeItems([selectedItem])">
-          <v-list-item-icon>
-            <v-icon>mdi-delete</v-icon>
-          </v-list-item-icon>
-          <v-list-item-content>
-            <v-list-item-title> Delete </v-list-item-title>
-          </v-list-item-content>
+          <template v-slot:prepend>
+            <v-icon icon="mdi-delete"></v-icon>
+          </template>
+          <v-list-item-title> Delete </v-list-item-title>
         </v-list-item>
       </v-list>
     </v-menu>
@@ -477,8 +274,7 @@
     <v-menu
       v-if="legendMenu"
       v-model="legendMenu"
-      :position-x="legendMenuX"
-      :position-y="legendMenuY"
+      :target="[legendMenuX, legendMenuY]"
       absolute
       offset-y
     >
@@ -505,22 +301,33 @@
         </v-list-item>
       </v-list>
     </v-menu>
+
+    <div v-if="!sparkline" class="u-series" ref="info">
+      <v-tooltip
+        text="Click item to toggle, Right click to edit"
+        location="bottom"
+      >
+        <template v-slot:activator="{ props }">
+          <v-icon v-bind="props">mdi-information-variant-circle</v-icon>
+        </template>
+      </v-tooltip>
+    </div>
   </div>
 </template>
 
 <script>
-import DateTimeChooser from './DateTimeChooser'
+import GraphEditDialog from './GraphEditDialog'
 import GraphEditItemDialog from './GraphEditItemDialog'
 import uPlot from 'uplot'
 import bs from 'binary-search'
-import { toDate, format } from 'date-fns'
 import Cable from '../services/cable.js'
+import TimeFilters from '@openc3/tool-common/src/tools/base/util/timeFilters.js'
 
 require('uplot/dist/uPlot.min.css')
 
 export default {
   components: {
-    DateTimeChooser,
+    GraphEditDialog,
     GraphEditItemDialog,
   },
   props: {
@@ -557,7 +364,7 @@ export default {
       type: Number,
       default: 200,
     },
-    hideSystemBar: {
+    hideToolbar: {
       type: Boolean,
       default: false,
     },
@@ -579,22 +386,15 @@ export default {
     width: {
       type: Number,
     },
+    timeZone: {
+      type: String,
+      default: 'local',
+    },
   },
+  mixins: [TimeFilters],
   data() {
     return {
-      tab: 0,
-      itemHeaders: [
-        { text: 'Target Name', value: 'targetName' },
-        { text: 'Packet Name', value: 'packetName' },
-        { text: 'Item Name', value: 'itemName' },
-        { text: 'Actions', value: 'actions', sortable: false },
-      ],
       lines: [],
-      lineHeaders: [
-        { text: 'Y Value', value: 'yValue' },
-        { text: 'Color', value: 'color' },
-        { text: 'Actions', value: 'actions', sortable: false },
-      ],
       active: true,
       expand: true,
       fullWidth: true,
@@ -612,16 +412,17 @@ export default {
       legendMenuX: 0,
       legendMenuY: 0,
       legendPosition: 'bottom',
-      legendPositions: ['top', 'bottom', 'left', 'right'],
       selectedItem: null,
+      hideToolbarData: this.hideToolbar,
       showOverview: !this.hideOverview,
+      hideOverviewData: this.hideOverview,
       title: '',
       overview: null,
       data: [[]],
       dataChanged: false,
       timeout: null,
-      graphMinY: '',
-      graphMaxY: '',
+      graphMinY: null,
+      graphMaxY: null,
       graphStartDateTime: null,
       graphEndDateTime: null,
       indexes: {},
@@ -664,14 +465,6 @@ export default {
   computed: {
     calcFullSize: function () {
       return this.fullWidth || this.fullHeight
-    },
-    editItems: function () {
-      if (!this.items) return []
-      let itemId = 0
-      return this.items.map((item) => {
-        itemId += 1
-        return { ...item, itemId }
-      })
     },
     error: function () {
       if (this.errorDialog && this.errors.length > 0) {
@@ -768,8 +561,8 @@ export default {
 
     let chartOpts = {}
     if (this.sparkline) {
-      this.hideSystemBar = true
-      this.hideOverview = true
+      this.hideToolbarData = true
+      this.hideOverviewData = true
       this.showOverview = false
       chartOpts = {
         width: this.width,
@@ -810,20 +603,24 @@ export default {
         document.getElementById(`chart${this.id}`),
       )
     } else {
+      // Uplot wants the real timezone name ('local' doesn't work)
+      let timeZoneName = Intl.DateTimeFormat().resolvedOptions().timeZone
+      if (this.timeZone && this.timeZone !== 'local') {
+        timeZoneName = this.timeZone
+      }
       chartOpts = {
         ...this.getSize('chart'),
         ...this.getScales(),
         ...this.getAxes('chart'),
         // series: series, // TODO: Uncomment with the performance code
         plugins: [this.linesPlugin()],
+        tzDate: (ts) => uPlot.tzDate(new Date(ts * 1e3), timeZoneName),
         series: [
           {
             label: 'Time',
             value: (u, v) =>
               // Convert the unix timestamp into a formatted date / time
-              v == null
-                ? '--'
-                : format(toDate(v * 1000), 'yyyy-MM-dd HH:mm:ss'),
+              v == null ? '--' : this.formatSeconds(v, this.timeZone),
           },
           ...chartSeries,
         ],
@@ -886,14 +683,6 @@ export default {
                 this.editGraphMenuY = e.clientY
                 this.editGraphMenu = true
               })
-              // Tell TlmGrapher that you might need to resize since on mouseenter
-              // we start showing value popups and the graph can expand
-              canvas.addEventListener('mouseenter', (e) => {
-                this.$emit('resize')
-              })
-              canvas.addEventListener('mouseleave', (e) => {
-                this.$emit('resize')
-              })
               let legend = u.root.querySelector('.u-legend')
               legend.addEventListener('contextmenu', (e) => {
                 e.preventDefault()
@@ -917,11 +706,12 @@ export default {
                   this.legendMenu = true
                 }
               })
+              // Append the info to the legend
+              legend.querySelector('tbody').appendChild(this.$refs.info)
             },
           ],
         },
       }
-      // console.time('chart')
       this.graph = new uPlot(
         chartOpts,
         this.data,
@@ -933,12 +723,10 @@ export default {
         ...this.getScales(),
         ...this.getAxes('overview'),
         // series: series, // TODO: Uncomment with the performance code
+        tzDate: (ts) => uPlot.tzDate(new Date(ts * 1e3), timeZoneName),
         series: [...overviewSeries],
         cursor: {
           y: false,
-          points: {
-            show: false, // TODO: This isn't working
-          },
           drag: {
             setScale: false,
             x: true,
@@ -974,21 +762,20 @@ export default {
         this.data,
         document.getElementById(`overview${this.id}`),
       )
-      //console.timeEnd('chart')
       this.moveLegend(this.legendPosition)
 
       // Allow the charts to dynamically resize when the window resizes
-      window.addEventListener('resize', this.handleResize)
+      window.addEventListener('resize', this.resize)
     }
 
     if (this.state !== 'stop') {
       this.startGraph()
     }
   },
-  beforeDestroy: function () {
+  beforeUnmount: function () {
     this.stopGraph()
     this.cable.disconnect()
-    window.removeEventListener('resize', this.handleResize)
+    window.removeEventListener('resize', this.resize)
   },
   watch: {
     state: function (newState, oldState) {
@@ -1024,17 +811,29 @@ export default {
       this.setGraphRange()
     },
     graphStartDateTime: function (newVal, oldVal) {
-      this.needToUpdate = true
       if (newVal && typeof newVal === 'string') {
         this.graphStartDateTime =
-          new Date(this.graphStartDateTime).getTime() * 1_000_000
+          this.parseDateTime(this.graphStartDateTime, this.timeZone) * 1_000_000
+        if (this.graphStartDateTime !== oldVal) {
+          this.needToUpdate = true
+        }
+      } else if (newVal === null && oldVal) {
+        // If they clear the start date time we need to update
+        this.graphStartDateTime = null
+        this.needToUpdate = true
       }
     },
     graphEndDateTime: function (newVal, oldVal) {
-      this.needToUpdate = true
       if (newVal && typeof newVal === 'string') {
         this.graphEndDateTime =
-          new Date(this.graphEndDateTime).getTime() * 1_000_000
+          this.parseDateTime(this.graphEndDateTime, this.timeZone) * 1_000_000
+        if (this.graphEndDateTime !== oldVal) {
+          this.needToUpdate = true
+        }
+      } else if (newVal === null && oldVal) {
+        // If they clear the end date time we need to update
+        this.graphEndDateTime = null
+        this.needToUpdate = true
       }
     },
   },
@@ -1081,13 +880,6 @@ export default {
       }
       this.graph.setScale('x', { min, max })
       this.dataChanged = false
-    },
-    addLine() {
-      this.lines.push({ yValue: 0, color: 'white' })
-    },
-    removeLine(dline) {
-      let i = this.lines.indexOf(dline)
-      this.lines.splice(i, 1)
     },
     formatLabel(item) {
       if (item.valueType === 'CONVERTED' && item.reduced === 'DECOM') {
@@ -1138,34 +930,38 @@ export default {
     clearErrors: function () {
       this.errors = []
     },
-    editGraphClose: function () {
+    editGraphClose: function (graph) {
       this.editGraph = false
-      if (this.needToUpdate) {
-        if (this.subscription == null) {
-          this.startGraph()
-        } else {
-          // NOTE: removing and adding back to back broke the streaming_api
-          // because the messages got out of order (add before remove)
-          // Code in openc3-cosmos-cmd-tlm-api/app/channels/application_cable/channel.rb
-          // fixed the issue to enforce ordering.
-          // Clone the items first because removeItems modifies this.items
-          let clonedItems = JSON.parse(JSON.stringify(this.items))
-          this.removeItems(clonedItems)
-          setTimeout(() => {
-            this.addItems(clonedItems)
-          }, 0)
+      this.title = graph.title
+      // Don't need to copy items because we don't modify them
+      this.legendPosition = graph.legendPosition
+      this.graphMinY = graph.graphMinY
+      this.graphMaxY = graph.graphMaxY
+      this.lines = [...graph.lines]
+      this.graphStartDateTime = graph.startDateTime
+      this.graphEndDateTime = graph.endDateTime
+      // Allow the watch to update needToUpdate
+      this.$nextTick(() => {
+        if (this.needToUpdate) {
+          if (this.subscription == null) {
+            this.startGraph()
+          } else {
+            // NOTE: removing and adding back to back broke the streaming_api
+            // because the messages got out of order (add before remove)
+            // Code in openc3-cosmos-cmd-tlm-api/app/channels/application_cable/channel.rb
+            // fixed the issue to enforce ordering.
+            // Clone the items first because removeItems modifies this.items
+            let clonedItems = JSON.parse(JSON.stringify(this.items))
+            this.removeItems(clonedItems)
+            setTimeout(() => {
+              this.addItems(clonedItems)
+            }, 0)
+          }
+          this.needToUpdate = false
         }
-        this.needToUpdate = false
-      }
+      })
       this.moveLegend(this.legendPosition)
       this.$emit('edit')
-    },
-    handleResize: function () {
-      // TODO: Should this method be throttled?
-      this.graph.setSize(this.getSize('chart'))
-      if (this.overview) {
-        this.overview.setSize(this.getSize('overview'))
-      }
     },
     resize: function () {
       this.graph.setSize(this.getSize('chart'))
@@ -1253,7 +1049,7 @@ export default {
         })
     },
     // throttle(cb, limit) {
-    //   var wait = false
+    //   let wait = false
     //   return () => {
     //     if (!wait) {
     //       requestAnimationFrame(cb)
@@ -1269,12 +1065,11 @@ export default {
       const navDrawer = document.getElementById('openc3-nav-drawer')
       if (navDrawer) {
         navDrawerWidth = navDrawer.classList.contains(
-          'v-navigation-drawer--open',
+          'v-navigation-drawer--active',
         )
           ? navDrawer.clientWidth
           : 0
       }
-
       let legendWidth = 0
       if (this.legendPosition === 'right' || this.legendPosition === 'left') {
         const legend = document.getElementsByClassName('u-legend')[0]
@@ -1289,23 +1084,23 @@ export default {
         window.innerHeight || 0,
       )
 
-      const chooser = document.getElementsByClassName('tgt-pkt-item-chooser')[0]
+      const panel = document.getElementsByClassName('v-expansion-panel')[0]
       let height = 100
       if (type === 'overview') {
         // Show overview if we're full height and we're not explicitly hiding it
-        if (this.fullHeight && !this.hideOverview) {
+        if (this.fullHeight && !this.hideOverviewData) {
           this.showOverview = true
         } else {
           this.showOverview = false
         }
-      } else if (chooser) {
-        // Height of chart is viewportSize - chooser - overview - fudge factor (primarily padding)
-        height = viewHeight - chooser.clientHeight - height - 250
+      } else {
+        // Height of chart is viewportSize - expansion-panel - overview - fudge factor (primarily padding)
+        height = viewHeight - panel.clientHeight - height - 250
         if (!this.fullHeight) {
           height = height / 2.0 + 10 // 5px padding top and bottom
         }
       }
-      let width = viewWidth - 62 // 31px padding left and right
+      let width = viewWidth - 50 // padding left and right
       if (!this.fullWidth) {
         width = width / 2.0 - 10 // 5px padding left and right
       }
@@ -1333,12 +1128,8 @@ export default {
       }
     },
     getAxes: function (type) {
-      let strokeColor = 'rgba(0, 0, 0, .1)'
-      let axisColor = 'black'
-      if (this.$vuetify.theme.dark) {
-        strokeColor = 'rgba(255, 255, 255, .1)'
-        axisColor = 'white'
-      }
+      let strokeColor = 'rgba(255, 255, 255, .1)'
+      let axisColor = 'white'
       return {
         axes: [
           {
@@ -1359,7 +1150,7 @@ export default {
             },
             // Forces the axis values to be formatted correctly
             // especially with really small or large values
-            values(self, splits) {
+            values(u, splits) {
               if (
                 splits.some((el) => el >= 10_000_000) ||
                 splits.every((el) => el < 0.01)
@@ -1529,77 +1320,71 @@ export default {
       }, 0)
     },
     addItems: function (itemArray, type = 'CONVERTED') {
-      for (const item of itemArray) {
+      itemArray.forEach((item) => {
         item.valueType ||= type // set the default type
-        if (item.color === undefined) {
-          item.color = this.colors[this.colorIndex]
+        item.color ||= this.colors[this.colorIndex]
+        item.limits ||= []
+
+        if (item.limits.length > 0) {
+          this.limitsValues = item.limits
         }
-        if (item.limits === undefined) {
-          // [] matches 'NONE' in GraphEditItemDialog
-          item.limits = []
-        } else {
-          if (item.limits.length > 0) {
-            // If somehow we have more than one limits
-            // the last one wins which is fine
-            this.limitsValues = item.limits
-          }
-        }
-        this.colorIndex++
-        if (this.colorIndex === this.colors.length) {
-          this.colorIndex = 0
-        }
+
+        this.colorIndex = (this.colorIndex + 1) % this.colors.length
         this.items.push(item)
+
         const index = this.data.length
-        this.graph.addSeries(
-          {
-            spanGaps: true,
-            item: item,
-            label: this.formatLabel(item),
-            stroke: (u, seriesIdx) => {
-              return this.items[seriesIdx - 1].color
-            },
-            width: 2,
-            value: (self, rawValue) => {
-              if (typeof rawValue === 'string' || isNaN(rawValue)) {
-                return 'NaN'
-              } else {
-                if (rawValue == null) {
-                  return '--'
-                } else if (
-                  Math.abs(rawValue) < 0.01 ||
-                  Math.abs(rawValue) >= 10_000_000
-                ) {
-                  return rawValue.toExponential(6)
-                } else {
-                  return rawValue.toFixed(6)
-                }
-              }
-            },
-          },
-          index,
-        )
+        this.graph.addSeries(this.createSeriesConfig(item), index)
+
         if (this.overview) {
-          this.overview.addSeries(
-            {
-              spanGaps: true,
-              stroke: (u, seriesIdx) => {
-                return this.items[seriesIdx - 1].color
-              },
-            },
-            index,
-          )
+          this.overview.addSeries(this.createOverviewSeriesConfig(), index)
         }
-        let newData = Array(this.data[0].length)
-        this.data.splice(index, 0, newData)
+
+        this.data.splice(index, 0, Array(this.data[0].length))
         this.indexes[this.subscriptionKey(item)] = index
-      }
-      // Figure out the last item's color and set the colorIndex past that
-      let index = this.colors.indexOf(itemArray[itemArray.length - 1].color)
-      if (index) {
-        this.colorIndex = index + 1
-      }
+      })
+
+      this.updateColorIndex(itemArray)
       this.addItemsToSubscription(itemArray)
+      this.$emit('resize')
       this.$emit('edit')
+    },
+    createSeriesConfig: function (item) {
+      return {
+        spanGaps: true,
+        item: item,
+        label: this.formatLabel(item),
+        stroke: (u, seriesIdx) => this.items[seriesIdx - 1].color,
+        width: 2,
+        value: (self, rawValue) => {
+          if (typeof rawValue === 'string' || isNaN(rawValue)) {
+            return 'NaN'
+          } else if (rawValue == null) {
+            return '--'
+          } else if (
+            (Math.abs(rawValue) < 0.01 && rawValue !== 0) ||
+            Math.abs(rawValue) >= 10_000_000
+          ) {
+            return rawValue.toExponential(6)
+          } else {
+            return rawValue.toFixed(6)
+          }
+        },
+      }
+    },
+    createOverviewSeriesConfig: function () {
+      return {
+        spanGaps: true,
+        stroke: (u, seriesIdx) => this.items[seriesIdx - 1].color,
+      }
+    },
+    updateColorIndex: function (itemArray) {
+      const lastItem = itemArray[itemArray.length - 1]
+      if (lastItem) {
+        const index = this.colors.indexOf(lastItem.color)
+        if (index !== -1) {
+          this.colorIndex = (index + 1) % this.colors.length
+        }
+      }
     },
     addItemsToSubscription: function (itemArray = this.items) {
       let theStartTime = this.startTime
@@ -1623,6 +1408,28 @@ export default {
         )
       }
     },
+    clearAllData: function () {
+      // Clear all data so delete the time data as well
+      this.data[0] = []
+      this.clearData(this.items)
+    },
+    clearData: function (itemArray) {
+      for (const key of itemArray.map(this.subscriptionKey)) {
+        let index = this.indexes[key]
+        this.data[index] = Array(this.data[0].length).fill(null)
+        this.graph.setData(this.data)
+        if (this.overview) {
+          this.overview.setData(this.data)
+        }
+      }
+      // data.length of 2 means we only have 1 item
+      // so delete all the time (data[0]) to start fresh
+      if (this.data.length === 2) {
+        this.data[0] = []
+        this.graph.setData(this.data)
+        this.overview.setData(this.data)
+      }
+    },
     removeItems: function (itemArray) {
       this.removeItemsFromSubscription(itemArray)
 
@@ -1644,6 +1451,7 @@ export default {
         this.graph.setData(this.data)
         this.overview.setData(this.data)
       }
+      this.$emit('resize')
       this.$emit('edit')
     },
     removeItemsFromSubscription: function (itemArray = this.items) {
@@ -1658,7 +1466,7 @@ export default {
     reorderIndexes: function (key) {
       let index = this.indexes[key]
       delete this.indexes[key]
-      for (var i in this.indexes) {
+      for (let i in this.indexes) {
         if (this.indexes[i] > index) {
           this.indexes[i] -= 1
         }
@@ -1762,19 +1570,6 @@ export default {
 .v-window-item {
   background-color: var(--color-background-surface-default);
 }
-.edit-box {
-  color: hsla(0, 0%, 100%, 0.7);
-  background-color: var(--color-background-surface-default);
-  padding: 10px;
-  margin-top: 10px;
-}
-/* For the Y Axis item editor within the Edit Dialog */
-.v-small-dialog__content {
-  background-color: var(--color-background-surface-selected);
-}
-.v-small-dialog__content {
-  padding: 5px 5px;
-}
 /* left right stacked legend */
 .uplot.side-legend {
   display: flex;
@@ -1806,18 +1601,21 @@ export default {
 .uplot.top-legend .u-legend {
   order: -1;
 }
-</style>
-
-<style scoped>
-/* TODO: Get this to work with white theme, values would be 0 in white */
-#chart :deep(.u-select) {
-  background-color: rgba(255, 255, 255, 0.07);
+/* This value is large enough to support negative scientific notation
+   that we use on the value with rawValue.toExponential(6) */
+.u-legend.u-inline .u-series .u-value {
+  width: 105px;
 }
-/* This prevents the axis from responding to pointer-events.
-   Necessary if we set overview height to 0 which makes it hidden but still present.
-   However, we simply don't display the overview with v-show.
-   See https://github.com/leeoniya/uPlot/issues/689
-#chart :deep(.u-axis) {
-  pointer-events: none;
-} */
+/* This value is large enough to support our date format: YYYY-MM-DD HH:MM:SS.sss */
+.u-legend.u-inline .u-series:first-child .u-value {
+  width: 185px;
+}
+.u-select {
+  color: rgba(255, 255, 255, 0.07);
+}
+</style>
+<style scoped>
+.active {
+  background-color: var(--color-background-surface-selected) !important;
+}
 </style>

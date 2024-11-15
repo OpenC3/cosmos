@@ -27,10 +27,18 @@ test.use({
 
 test('displays the list of command', async ({ page, utils }) => {
   // When we ask for just text there are no spaces
-  await expect(page.locator('text=INSTABORT')).toBeVisible()
-  await expect(page.locator('text=INSTCLEAR')).toBeVisible()
-  await expect(page.locator('text=INSTCOLLECT')).toBeVisible()
-  await expect(page.locator('text=EXAMPLESTART')).toBeVisible()
+  await expect(
+    page.locator('[data-test=cmd-packets-table]').locator('text=INSTABORT'),
+  ).toBeVisible()
+  await expect(
+    page.locator('[data-test=cmd-packets-table]').locator('text=INSTCLEAR'),
+  ).toBeVisible()
+  await expect(
+    page.locator('[data-test=cmd-packets-table]').locator('text=INSTCOLLECT'),
+  ).toBeVisible()
+  await expect(
+    page.locator('[data-test=cmd-packets-table]').locator('text=EXAMPLESTART'),
+  ).toBeVisible()
 })
 
 test('displays the command count', async ({ page, utils }) => {
@@ -42,7 +50,7 @@ test('displays the command count', async ({ page, utils }) => {
   await utils.sleep(1500) // Allow API to fetch counts
   await page
     .locator(
-      'div.v-card__title:has-text("Command Packets") >> input[type="text"]',
+      'div.v-card-title:has-text("Command Packets") >> input[type="text"]',
     )
     .fill('abort')
   await expect
@@ -78,7 +86,7 @@ test('displays the command count', async ({ page, utils }) => {
   await utils.sleep(1500) // Allow API to fetch counts
   await page
     .locator(
-      'div.v-card__title:has-text("Command Packets") >> input[type="text"]',
+      'div.v-card-title:has-text("Command Packets") >> input[type="text"]',
     )
     .fill('abort')
   await expect

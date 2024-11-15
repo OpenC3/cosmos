@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -23,8 +23,6 @@
 require 'openc3/models/target_model'
 
 class TargetsController < ModelController
-  before_action :sanitize_scope
-
   def initialize
     @model_class = OpenC3::TargetModel
   end
@@ -32,57 +30,55 @@ class TargetsController < ModelController
   # All targets with indication of modified targets
   def all_modified
     return unless authorization('system')
-    render :json => @model_class.all_modified(scope: params[:scope])
+    scope = sanitize_params([:scope], require_params: true)
+    return unless scope
+    scope = scope[0]
+    render json: @model_class.all_modified(scope: scope)
   end
 
   def modified_files
     return unless authorization('system')
+    scope, id = sanitize_params([:scope, :id], require_params: true)
+    return unless scope
     begin
-      render :json => @model_class.modified_files(params[:id], scope: params[:scope])
+      render json: @model_class.modified_files(id, scope: scope)
     rescue Exception => e
-      OpenC3::Logger.info("Target '#{params[:id]} modified_files failed: #{e.message}", user: username())
+      logger.error(e.formatted)
+      OpenC3::Logger.info("Target '#{id} modified_files failed: #{e.message}", user: username())
       head :internal_server_error
     end
   end
 
   def delete_modified
     return unless authorization('system')
+    scope, id = sanitize_params([:scope, :id], require_params: true)
+    return unless scope
     begin
-      @model_class.delete_modified(params[:id], scope: params[:scope])
+      @model_class.delete_modified(id, scope: scope)
       head :ok
     rescue Exception => e
-      OpenC3::Logger.info("Target '#{params[:id]} delete_modified failed: #{e.message}", user: username())
+      logger.error(e.formatted)
+      OpenC3::Logger.info("Target '#{id} delete_modified failed: #{e.message}", user: username())
       head :internal_server_error
     end
   end
 
   def download
     return unless authorization('system')
+    scope, id = sanitize_params([:scope, :id], require_params: true)
+    return unless scope
     begin
-      file = @model_class.download(params[:id], scope: params[:scope])
+      file = @model_class.download(id, scope: scope)
       if file
-        results = { 'filename' => file.filename, 'contents' => Base64.encode64(file.contents) }
+        results = { filename: file.filename, contents: Base64.encode64(file.contents) }
         render json: results
       else
         head :not_found
       end
     rescue Exception => e
-      OpenC3::Logger.info("Target '#{params[:id]} download failed: #{e.message}", user: username())
-      render(json: { status: 'error', message: e.message }, status: 500) and return
-    end
-  end
-
-  private
-
-  def sanitize_scope
-    # scope is passed as a parameter and we use it to create paths in local_mode,
-    # thus we have to sanitize it or the code scanner detects:
-    # "Uncontrolled data used in path expression"
-    # This method is taken directly from the Rails source:
-    #   https://api.rubyonrails.org/v5.2/classes/ActiveStorage/Filename.html#method-i-sanitized
-    scope = params[:scope].encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: "�").strip.tr("\u{202E}%$|:;/\t\r\n\\", "-")
-    if scope != params[:scope]
-      render(json: { status: 'error', message: "Invalid scope: #{params[:scope]}" }, status: 400)
+      logger.error(e.formatted)
+      OpenC3::Logger.info("Target '#{id} download failed: #{e.message}", user: username())
+      render json: { status: 'error', message: e.message }, status: 500
     end
   end
 end

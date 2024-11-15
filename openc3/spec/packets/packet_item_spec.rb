@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -479,7 +479,7 @@ module OpenC3
         expect(hash["maximum"]).to eql 100
         expect(hash["required"]).to be true
         expect(hash["limits"]).to_not be_nil
-        expect(hash["limits"]["enabled"]).to be_nil # Missing if false
+        expect(hash["limits"]["enabled"]).to be false
         # State is actually stored in Redis so it doesn't make sense to return via PacketItemLimits
         expect(hash["limits"]["state"]).to be_nil
         expect(hash["limits"]["response"]).to match("LimitsResponse")

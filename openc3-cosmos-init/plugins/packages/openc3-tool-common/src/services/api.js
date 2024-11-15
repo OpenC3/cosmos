@@ -31,13 +31,13 @@ const request = async function (
     headers,
     noAuth = false,
     noScope = false,
-    onUploadProgress = {},
-  } = {}
+    onUploadProgress = false,
+  } = {},
 ) {
   if (!noAuth) {
     try {
       let refreshed = await OpenC3Auth.updateToken(
-        OpenC3Auth.defaultMinValidity
+        OpenC3Auth.defaultMinValidity,
       )
       if (refreshed) {
         OpenC3Auth.setTokens()
@@ -47,6 +47,10 @@ const request = async function (
     }
     headers['Authorization'] = localStorage.openc3Token
   }
+  // Everything from the front-end is manual by default
+  // The various api methods decide whether to pass the manual
+  // flag to the authorize routine
+  headers['manual'] = true
   if (!noScope && !params['scope']) {
     params['scope'] = window.openc3Scope
   }
@@ -78,7 +82,7 @@ export default {
       noScope,
       noAuth,
       onUploadProgress,
-    } = {}
+    } = {},
   ) {
     return request('get', path, {
       params,
@@ -98,7 +102,7 @@ export default {
       noScope,
       noAuth,
       onUploadProgress,
-    } = {}
+    } = {},
   ) {
     return request('put', path, {
       data,
@@ -119,7 +123,7 @@ export default {
       noScope,
       noAuth,
       onUploadProgress,
-    } = {}
+    } = {},
   ) {
     return request('post', path, {
       data,
@@ -139,7 +143,7 @@ export default {
       noScope,
       noAuth,
       onUploadProgress,
-    } = {}
+    } = {},
   ) {
     return request('delete', path, {
       params,

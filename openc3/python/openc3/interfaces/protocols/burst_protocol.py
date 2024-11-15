@@ -79,7 +79,7 @@ class BurstProtocol(Protocol):
                     continue
 
             # Potentially allow blank string to be sent to other protocols if no packet is ready in this one
-            if type(packet_data) is str:
+            if isinstance(packet_data, str):
                 if (len(data) <= 0) and packet_data != "DISCONNECT":
                     # On blank string test, return blank string (if not we had a packet or need disconnect)
                     # The base class handles the special match of returning STOP if on the last protocol in the

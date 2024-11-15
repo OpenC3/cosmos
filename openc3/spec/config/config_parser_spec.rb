@@ -34,6 +34,11 @@ module OpenC3
       ConfigParser.progress_callback = nil
     end
 
+    after(:each) do
+      ConfigParser.message_callback = nil
+      ConfigParser.progress_callback = nil
+    end
+
     describe "parse_file", no_ext: true do
       it "yields keyword, parameters to the block" do
         tf = Tempfile.new('unittest')
@@ -287,7 +292,7 @@ module OpenC3
         tf = Tempfile.new('unittest')
         tf.puts "KEYWORD PARAM1 'continues ' \\"
         tf.puts "next line" # Forgot quotes
-        tf.puts "KEYWORD2 PARAM2" # Ensure we proces the next line
+        tf.puts "KEYWORD2 PARAM2" # Ensure we process the next line
         tf.close
         @cp.parse_file(tf.path) do |keyword, params|
           if keyword == 'KEYWORD'

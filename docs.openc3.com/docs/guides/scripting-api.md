@@ -1,5 +1,8 @@
 ---
 title: Scripting API Guide
+description: Scripting API methods, deprecations and migrations
+sidebar_custom_props:
+  myEmoji: 📝
 ---
 
 This document provides the information necessary to write test procedures using the COSMOS scripting API. Scripting in COSMOS is designed to be simple and intuitive. The code completion ability for command and telemetry mnemonics makes Script Runner the ideal place to write your procedures, however any text editor will do. If there is functionality that you don't see here or perhaps an easier syntax for doing something, please submit a ticket.
@@ -35,7 +38,17 @@ There are four different ways that telemetry values can be retrieved in COSMOS. 
 
 The following methods are designed to be used in Script Runner procedures. Many can also be used in custom built COSMOS tools. Please see the COSMOS Tool API section for methods that are more efficient to use in custom tools.
 
-### Migration from COSMOS v4
+### Migration from COSMOS v5 to v6
+
+The following API methods have been removed from COSMOS v6. Most of the deprecated API methods still remain for backwards compatibility.
+
+| Method              | Tool                         | Status                             |
+| ------------------- | ---------------------------- | ---------------------------------- |
+| get_all_target_info | Command and Telemetry Server | Removed, use get_target_interfaces |
+| play_wav_file       | Script Runner                | Removed                            |
+| status_bar          | Script Runner                | Removed                            |
+
+### Migration from COSMOS v4 to v5
 
 The following API methods are either deprecated (will not be ported to COSMOS 5) or currently unimplemented (eventually will be ported to COSMOS 5):
 
@@ -83,6 +96,7 @@ The following API methods are either deprecated (will not be ported to COSMOS 5)
 | interface_state                       | Command and Telemetry Server | Deprecated, use get_interface                                       |
 | override_tlm_raw                      | Command and Telemetry Server | Deprecated, use override_tlm                                        |
 | open_directory_dialog                 | Script Runner                | Deprecated                                                          |
+| play_wav_file                         | Script Runner                | Deprecated                                                          |
 | replay_move_end                       | Replay                       | Deprecated                                                          |
 | replay_move_index                     | Replay                       | Deprecated                                                          |
 | replay_move_start                     | Replay                       | Deprecated                                                          |
@@ -104,6 +118,7 @@ The following API methods are either deprecated (will not be ported to COSMOS 5)
 | set_stdout_max_lines                  | Script Runner                | Deprecated                                                          |
 | set_tlm_raw                           | Script Runner                | Deprecated, use set_tlm                                             |
 | show_backtrace                        | Script Runner                | Deprecated, backtrace always shown                                  |
+| status_bar                            | Script Runner                | Deprecated                                                          |
 | shutdown_cmd_tlm                      | Command and Telemetry Server | Deprecated                                                          |
 | start_cmd_log                         | Command and Telemetry Server | Deprecated                                                          |
 | start_logging                         | Command and Telemetry Server | Deprecated                                                          |
@@ -166,7 +181,7 @@ password = ask("Enter your password", False, True)
 
 ### ask_string
 
-Prompts the user for input with a question. User input is always returned as a string. For exampe if the user enters "1", the string "1" will be returned.
+Prompts the user for input with a question. User input is always returned as a string. For example if the user enters "1", the string "1" will be returned.
 
 Ruby / Python Syntax:
 
@@ -560,7 +575,7 @@ cmd_no_hazardous_check("INST", "CLEAR")
 
 ### cmd_no_checks
 
-Sends a specified command without performing the parameter range checks or notification if it is a hazardous command. This should only be used when it is necessary to fully automate testing involving hazardous commands that intentially have invalid parameters.
+Sends a specified command without performing the parameter range checks or notification if it is a hazardous command. This should only be used when it is necessary to fully automate testing involving hazardous commands that intentionally have invalid parameters.
 
 Ruby Syntax:
 
@@ -717,7 +732,7 @@ cmd_raw_no_hazardous_check("INST", "CLEAR")
 
 ### cmd_raw_no_checks
 
-Sends a specified command without running conversions or performing the parameter range checks or notification if it is a hazardous command. This should only be used when it is necessary to fully automate testing involving hazardous commands that intentially have invalid parameters.
+Sends a specified command without running conversions or performing the parameter range checks or notification if it is a hazardous command. This should only be used when it is necessary to fully automate testing involving hazardous commands that intentionally have invalid parameters.
 
 Ruby Syntax:
 
@@ -1114,7 +1129,7 @@ These methods allow the user to interact with telemetry items.
 
 ### check, check_raw, check_formatted, check_with_units
 
-Performs a verification of a telemetry item using its specified telemetry type. If the verification fails then the script will be paused with an error. If no comparision is given to check then the telemetry item is simply printed to the script output. Note: In most cases using wait_check is a better choice than using check.
+Performs a verification of a telemetry item using its specified telemetry type. If the verification fails then the script will be paused with an error. If no comparison is given to check then the telemetry item is simply printed to the script output. Note: In most cases using wait_check is a better choice than using check.
 
 Ruby / Python Syntax:
 
@@ -1186,7 +1201,7 @@ check_tolerance("INST HEALTH_STATUS TEMP1", 50000, 20000, type='RAW')
 
 ### check_expression
 
-Evaluates an expression. If the expression evaluates to false the script will be paused with an error. This method can be used to perform more complicated comparisons than using check as shown in the example. Note: In most cases using [wait_check_expression](#waitcheckexpression) is a better choice than using check_expression.
+Evaluates an expression. If the expression evaluates to false the script will be paused with an error. This method can be used to perform more complicated comparisons than using check as shown in the example. Note: In most cases using [wait_check_expression](#wait_check_expression) is a better choice than using check_expression.
 
 Remember that everything inside the check_expression string will be evaluated directly and thus must be valid syntax. A common mistake is to check a variable like so (Ruby variable interpolation):
 
@@ -1631,7 +1646,7 @@ normalize_tlm("INST HEALTH_STATUS TEMP1", type='RAW') # clear only the RAW overr
 
 ### get_overrides
 
-Returns an array of the the currently overriden values set by override_tlm. NOTE: This returns all the value types that are overriden which by default is all 4 values types when using override_tlm.
+Returns an array of the the currently overridden values set by override_tlm. NOTE: This returns all the value types that are overridden which by default is all 4 values types when using override_tlm.
 
 Ruby / Python Syntax:
 
@@ -1897,7 +1912,7 @@ success = wait_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, type='RAW
 
 ### wait_expression
 
-Pauses the script until an expression is evaluated to be true or a timeout occurs. If a timeout occurs the script will continue. This method can be used to perform more complicated comparisons than using wait as shown in the example. Note that on a timeout, wait_expression does not stop the script, usually [wait_check_expression](#waitcheckexpression) is a better choice.
+Pauses the script until an expression is evaluated to be true or a timeout occurs. If a timeout occurs the script will continue. This method can be used to perform more complicated comparisons than using wait as shown in the example. Note that on a timeout, wait_expression does not stop the script, usually [wait_check_expression](#wait_check_expression) is a better choice.
 
 Syntax:
 
@@ -2018,7 +2033,7 @@ elapsed = wait_check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, typ
 
 ### wait_check_expression
 
-Pauses the script until an expression is evaluated to be true or a timeout occurs. If a timeout occurs the script will stop. This method can be used to perform more complicated comparisons than using wait as shown in the example. Also see the syntax notes for [check_expression](#checkexpression).
+Pauses the script until an expression is evaluated to be true or a timeout occurs. If a timeout occurs the script will stop. This method can be used to perform more complicated comparisons than using wait as shown in the example. Also see the syntax notes for [check_expression](#check_expression).
 
 Ruby / Python Syntax:
 
@@ -2239,25 +2254,36 @@ limits_sets = get_limits_sets()
 
 ### get_limits
 
-Returns limits settings for a telemetry point.
+Returns hash / dict of all the limits settings for a telemetry point.
 
 Ruby / Python Syntax:
 
 ```ruby
-get_limits(<Target Name>, <Packet Name>, <Item Name>, <Limits Set (optional)>)
+get_limits(<Target Name>, <Packet Name>, <Item Name>)
 ```
 
-| Parameter   | Description                                                                                                                   |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Target Name | Name of the target of the telemetry item.                                                                                     |
-| Packet Name | Name of the telemetry packet of the telemetry item.                                                                           |
-| Item Name   | Name of the telemetry item.                                                                                                   |
-| Limits Set  | Get the limits for a specific limits set. If not given then it defaults to returning the settings for the current limits set. |
+| Parameter   | Description                                        |
+| ----------- | -------------------------------------------------- |
+| Target Name | Name of the target of the telemetry item           |
+| Packet Name | Name of the telemetry packet of the telemetry item |
+| Item Name   | Name of the telemetry item                         |
 
-Ruby / Python Example:
+Ruby Example:
 
 ```ruby
-limits_set, persistence_setting, enabled, red_low, yellow_low, yellow_high, red_high, green_low, green_high = get_limits('INST', 'HEALTH_STATUS', 'TEMP1')
+result = get_limits('INST', 'HEALTH_STATUS', 'TEMP1')
+puts result #=> {"DEFAULT"=>[-80.0, -70.0, 60.0, 80.0, -20.0, 20.0], "TVAC"=>[-80.0, -30.0, 30.0, 80.0]}
+puts result.keys #=> ['DEFAULT', 'TVAC']
+puts result['DEFAULT'] #=> [-80.0, -70.0, 60.0, 80.0, -20.0, 20.0]
+```
+
+Python Example:
+
+```python
+result = get_limits('INST', 'HEALTH_STATUS', 'TEMP1')
+print(result) #=> {'DEFAULT'=>[-80.0, -70.0, 60.0, 80.0, -20.0, 20.0], 'TVAC'=>[-80.0, -30.0, 30.0, 80.0]}
+print(result.keys()) #=> dict_keys(['DEFAULT', 'TVAC'])
+print(result['DEFAULT']) #=> [-80.0, -70.0, 60.0, 80.0, -20.0, 20.0]
 ```
 
 ### set_limits
@@ -2281,7 +2307,7 @@ set_limits(<Target Name>, <Packet Name>, <Item Name>, <Red Low>, <Yellow Low>, <
 | Red High    | Red High setting for this limits set. Any value above this value will be make the item red.                                                                                         |
 | Green Low   | Optional. If given, any value greater than Green Low and less than Green_High will make the item blue indicating a good operational value.                                          |
 | Green High  | Optional. If given, any value greater than Green Low and less than Green_High will make the item blue indicating a good operational value.                                          |
-| Limits Set  | Optional. Set the limits for a specific limits set. If not given then it defaults to setting limts for the CUSTOM limits set.                                                       |
+| Limits Set  | Optional. Set the limits for a specific limits set. If not given then it defaults to setting limits for the CUSTOM limits set.                                                      |
 | Persistence | Optional. Set the number of samples this item must be out of limits before changing limits state. Defaults to no change. Note: This affects all limits settings across limits sets. |
 | Enabled     | Optional. Whether or not limits are enabled for this item. Defaults to true. Note: This affects all limits settings across limits sets.                                             |
 
@@ -3323,7 +3349,7 @@ print(get_max_output()) #=> 50000
 ### disable_instrumentation
 
 Disables instrumentation for a block of code (line highlighting and exception catching). This is especially useful for speeding up loops that are very slow if lines are instrumented.
-Consider breaking code like this into a seperate file and using either require/load to read the file for the same effect while still allowing errors to be caught by your script.
+Consider breaking code like this into a separate file and using either require/load to read the file for the same effect while still allowing errors to be caught by your script.
 
 :::warning Use with Caution
 Disabling instrumentation will cause any error that occurs while disabled to cause your script to completely stop.
@@ -3531,11 +3557,11 @@ Ruby / Python Syntax:
 metadata_set(<Metadata>, start, color)
 ```
 
-| Parameter | Description                                                                    |
-| --------- | ------------------------------------------------------------------------------ |
-| Metadata  | Hash or dict of key value pairs to store as metadata.                          |
-| start     | Named parameter, time at which to store metadata. Default is now.              |
-| color     | Named parameter, color to display metadat in the calendar. Default is #003784. |
+| Parameter | Description                                                                     |
+| --------- | ------------------------------------------------------------------------------- |
+| Metadata  | Hash or dict of key value pairs to store as metadata.                           |
+| start     | Named parameter, time at which to store metadata. Default is now.               |
+| color     | Named parameter, color to display metadata in the calendar. Default is #003784. |
 
 Ruby Example:
 
@@ -3561,11 +3587,11 @@ Ruby / Python Syntax:
 metadata_update(<Metadata>, start, color)
 ```
 
-| Parameter | Description                                                                    |
-| --------- | ------------------------------------------------------------------------------ |
-| Metadata  | Hash or dict of key value pairs to update as metadata.                         |
-| start     | Named parameter, time at which to update metadata. Default is latest metadata. |
-| color     | Named parameter, color to display metadat in the calendar. Default is #003784. |
+| Parameter | Description                                                                     |
+| --------- | ------------------------------------------------------------------------------- |
+| Metadata  | Hash or dict of key value pairs to update as metadata.                          |
+| start     | Named parameter, time at which to update metadata. Default is latest metadata.  |
+| color     | Named parameter, color to display metadata in the calendar. Default is #003784. |
 
 Ruby Example:
 
@@ -3697,7 +3723,7 @@ print(get_settings('pypi_url')) #=> 'https://mypypiserver'
 
 ## Configuration
 
-Many COSMOS tools have the ability to load and save a configuration. These APIs allow you to programatically load and save the configuration.
+Many COSMOS tools have the ability to load and save a configuration. These APIs allow you to programmatically load and save the configuration.
 
 ### config_tool_names
 

@@ -13,21 +13,20 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 */
 
-import Vue from 'vue'
-import Router from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router'
+import { navigateToUrl } from 'single-spa'
 
-Vue.use(Router)
+const DEFAULT_TOOL_PATH = '/tools/cmdtlmserver'
 
-export default new Router({
-  mode: 'history',
-  base: process.env.BASE_URL,
+const router = createRouter({
+  history: createWebHistory(),
   routes: [
     {
       path: '/login',
@@ -37,5 +36,20 @@ export default new Router({
           '../../packages/openc3-tool-common/src/tools/base/components/Login'
         ),
     },
+    {
+      // Empty component for all other routes to avoid VueRouter warnings, since all other routes are handled by single-spa
+      path: '/:pathMatch(.*)*',
+      name: '',
+      component: () =>
+        import('../../packages/openc3-tool-common/src/components/Empty'),
+    },
   ],
 })
+
+router.beforeEach(({ path }) => {
+  if (['/', '/tools', '/tools/'].includes(path)) {
+    navigateToUrl(DEFAULT_TOOL_PATH)
+  }
+})
+
+export default router

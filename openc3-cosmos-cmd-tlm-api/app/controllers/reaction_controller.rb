@@ -14,16 +14,17 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/reaction_model'
-require 'openc3/topics/autonomic_topic'
 
 class ReactionController < ApplicationController
+  NOT_FOUND = 'not found'
+
   def initialize
     super()
     @model_class = OpenC3::ReactionModel
@@ -41,9 +42,10 @@ class ReactionController < ApplicationController
       triggers.each do |_, trigger|
         ret << trigger
       end
-      render :json => ret, :status => 200
+      render json: ret
     rescue StandardError => e
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
+      logger.error(e.formatted)
+      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
     end
   end
 
@@ -56,13 +58,16 @@ class ReactionController < ApplicationController
     return unless authorization('system')
     begin
       model = @model_class.get(name: params[:name], scope: params[:scope])
-      render :json => model.as_json(:allow_nan => true), :status => 200
+      render json: model.as_json(:allow_nan => true)
     rescue OpenC3::ReactionInputError => e
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 404
+      logger.error(e.formatted)
+      render json: { status: 'error', message: e.message, type: e.class }, status: 404
     rescue OpenC3::ReactionError => e
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400
+      logger.error(e.formatted)
+      render json: { status: 'error', message: e.message, type: e.class }, status: 400
     rescue StandardError => e
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
+      logger.error(e.formatted)
+      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
     end
   end
 
@@ -107,13 +112,16 @@ class ReactionController < ApplicationController
       model = @model_class.from_json(hash.symbolize_keys, name: name, scope: params[:scope])
       model.create()
       model.deploy()
-      render :json => model.as_json(:allow_nan => true), :status => 201
+      render json: model.as_json(:allow_nan => true), status: 201
     rescue OpenC3::ReactionInputError => e
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400
+      logger.error(e.formatted)
+      render json: { status: 'error', message: e.message, type: e.class }, status: 400
     rescue OpenC3::ReactionError => e
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 418
+      logger.error(e.formatted)
+      render json: { status: 'error', message: e.message, type: e.class }, status: 418
     rescue StandardError => e
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
+      logger.error(e.formatted)
+      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
     end
   end
 
@@ -140,7 +148,7 @@ class ReactionController < ApplicationController
     begin
       model = @model_class.get(name: params[:name], scope: params[:scope])
       if model.nil?
-        render :json => { :status => 'error', :message => 'not found' }, :status => 404
+        render json: { status: 'error', message: NOT_FOUND }, status: 404
         return
       end
       hash = params.to_unsafe_h.slice(:snooze, :triggers, :triggerLevel, :actions).to_h
@@ -152,13 +160,16 @@ class ReactionController < ApplicationController
       # We don't update directly here to avoid a race condition between the microservice
       # updating state and an asynchronous user updating the reaction
       model.notify(kind: 'updated')
-      render :json => model.as_json(:allow_nan => true), :status => 200
+      render json: model.as_json(:allow_nan => true)
     rescue OpenC3::ReactionInputError => e
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400
+      logger.error(e.formatted)
+      render json: { status: 'error', message: e.message, type: e.class }, status: 400
     rescue OpenC3::ReactionError => e
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 418
+      logger.error(e.formatted)
+      render json: { status: 'error', message: e.message, type: e.class }, status: 418
     rescue StandardError => e
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
+      logger.error(e.formatted)
+      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
     end
   end
 
@@ -183,16 +194,17 @@ class ReactionController < ApplicationController
     begin
       model = @model_class.get(name: params[:name], scope: params[:scope])
       if model.nil?
-        render :json => { :status => 'error', :message => 'not found' }, :status => 404
+        render json: { status: 'error', message: NOT_FOUND }, status: 404
         return
       end
       # Notify the ReactionMicroservice to enable the ReactionModel
       # We don't update directly here to avoid a race condition between the microservice
       # updating state and an asynchronous user enabling the reaction
       model.notify_enable
-      render :json => model.as_json(:allow_nan => true), :status => 200
+      render json: model.as_json(:allow_nan => true)
     rescue StandardError => e
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
+      logger.error(e.formatted)
+      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
     end
   end
 
@@ -217,16 +229,17 @@ class ReactionController < ApplicationController
     begin
       model = @model_class.get(name: params[:name], scope: params[:scope])
       if model.nil?
-        render :json => { :status => 'error', :message => 'not found' }, :status => 404
+        render json: { status: 'error', message: NOT_FOUND }, status: 404
         return
       end
       # Notify the ReactionMicroservice to disable the ReactionModel
       # We don't update directly here to avoid a race condition between the microservice
       # updating state and an asynchronous user disabling the reaction
       model.notify_disable
-      render :json => model.as_json(:allow_nan => true), :status => 200
+      render json: model.as_json(:allow_nan => true)
     rescue StandardError => e
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
+      logger.error(e.formatted)
+      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
     end
   end
 
@@ -236,16 +249,17 @@ class ReactionController < ApplicationController
     begin
       model = @model_class.get(name: params[:name], scope: params[:scope])
       if model.nil?
-        render :json => { :status => 'error', :message => 'not found' }, :status => 404
+        render json: { status: 'error', message: NOT_FOUND }, status: 404
         return
       end
       # Notify the ReactionMicroservice to execute the ReactionModel
       # We don't update directly here to avoid a race condition between the microservice
       # updating state and an asynchronous user executing the reaction
       model.notify_execute
-      render :json => model.as_json(:allow_nan => true), :status => 200
+      render json: model.as_json(:allow_nan => true)
     rescue StandardError => e
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
+      logger.error(e.formatted)
+      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
     end
   end
 
@@ -253,7 +267,7 @@ class ReactionController < ApplicationController
   #
   # name [String] the reaction name, `REACT1`
   # scope [String] the scope of the reaction, `TEST`
-  # @return [String] object/hash converted into json format but with a 204 no-content status code
+  # @return [String] object/hash converted into json format but with a 200 status code
   # Request Headers
   #```json
   #  {
@@ -266,20 +280,23 @@ class ReactionController < ApplicationController
     begin
       model = @model_class.get(name: params[:name], scope: params[:scope])
       if model.nil?
-        render :json => { :status => 'error', :message => 'not found' }, :status => 404
+        render json: { status: 'error', message: NOT_FOUND }, status: 404
         return
       end
       # Notify the ReactionMicroservice to delete the ReactionModel
       # We don't update directly here to avoid a race condition between the microservice
       # updating state and an asynchronous user deleting the reaction
       model.notify(kind: 'deleted')
-      render :json => model.as_json(:allow_nan => true), :status => 200
+      render json: model.as_json(:allow_nan => true)
     rescue OpenC3::ReactionInputError => e
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 404
+      logger.error(e.formatted)
+      render json: { status: 'error', message: e.message, type: e.class }, status: 404
     rescue OpenC3::ReactionError => e
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400
+      logger.error(e.formatted)
+      render json: { status: 'error', message: e.message, type: e.class }, status: 400
     rescue StandardError => e
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
+      logger.error(e.formatted)
+      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
     end
   end
 end

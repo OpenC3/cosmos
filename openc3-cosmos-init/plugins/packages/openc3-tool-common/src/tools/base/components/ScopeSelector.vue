@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -27,14 +27,14 @@
       :items="scopes"
       :disabled="scopes.length <= 1"
       label="Scope"
-      dense
-      outlined
+      density="compact"
+      variant="outlined"
       hide-details
       style="max-width: 150px"
     />
     <upgrade-to-enterprise-dialog
       v-model="showUpgradeToEnterpriseDialog"
-      reason="Open Source has a single DEFAULT scope."
+      reason="Enterprise allows additional Scopes"
     ></upgrade-to-enterprise-dialog>
   </div>
 </template>
@@ -47,6 +47,7 @@ export default {
   },
   data: function () {
     return {
+      // Open Source only has one scope: 'DEFAULT'
       scopes: ['DEFAULT'],
       scope: 'DEFAULT',
       showUpgradeToEnterpriseDialog: false,

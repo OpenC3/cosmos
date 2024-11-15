@@ -64,10 +64,10 @@ STATE:
 WRITE_CONVERSION:
   summary: Applies a conversion when writing the current command parameter
   description: |
-    Conversions are implemented in a custom Ruby file which should be
-    located in the target's lib folder. The class must require 'openc3/conversions/conversion'
-    and inherit from Conversion. It must implement the initialize method if it
-    takes extra parameters and must always implement the call method. The conversion
+    Conversions are implemented in a custom Ruby or Python file which should be
+    located in the target's lib folder. The class must inherit from Conversion.
+    It must implement the `initialize` (Ruby) or `__init__` (Python) method if it
+    takes extra parameters and must always implement the `call` method. The conversion
     factor is applied to the value entered by the user before it is written into
     the binary command packet and sent.
 
@@ -79,7 +79,7 @@ WRITE_CONVERSION:
     given_values() method which can be used to retrieve a hash of the user provided
     values to the command. That can be used to check parameter values passed in.
     :::
-  example: |
+  ruby_example: |
     WRITE_CONVERSION the_great_conversion.rb 1000
 
     Defined in the_great_conversion.rb:
@@ -96,14 +96,26 @@ WRITE_CONVERSION:
         end
       end
     end
+  python_example: |
+    WRITE_CONVERSION the_great_conversion.py 1000
+
+    Defined in the_great_conversion.py:
+
+    from openc3.conversions.conversion import Conversion
+    class TheGreatConversion(Conversion):
+        def __init__(self, multiplier):
+            super().__init__()
+            self.multiplier = float(multiplier)
+        def call(self, value, packet, buffer):
+            return value * multiplier
   parameters:
     - name: Class Filename
       required: true
-      description: The filename which contains the Ruby class. The filename must
+      description: The filename which contains the Ruby or Python class. The filename must
         be named after the class such that the class is a CamelCase version of the
         underscored filename. For example, 'the_great_conversion.rb' should contain
         'class TheGreatConversion'.
-      values: .*\.rb
+      values: .*
     - name: Parameter
       required: false
       description: Additional parameter values for the conversion which are passed
@@ -157,12 +169,12 @@ GENERIC_WRITE_CONVERSION_START:
     Adds a generic conversion function to the current command parameter.
     This conversion factor is applied to the value entered by the user before it
     is written into the binary command packet and sent. The conversion is specified
-    as ruby code that receives two implied parameters. 'value' which is the raw
+    as Ruby or Python code that receives two implied parameters. 'value' which is the raw
     value being written and 'packet' which is a reference to the command packet
     class (Note, referencing the packet as 'myself' is still supported for backwards
-    compatibility). The last line of ruby code given should return the converted
+    compatibility). The last line of code should return the converted
     value. The GENERIC_WRITE_CONVERSION_END keyword specifies that all lines of
-    ruby code for the conversion have been given.
+    code for the conversion have been given.
 
     :::info Multiple write conversions on command parameters
     When a command is built, each item gets written (and write conversions are run)
@@ -175,10 +187,15 @@ GENERIC_WRITE_CONVERSION_START:
   warning: Generic conversions are not a good long term solution. Consider creating
     a conversion class and using WRITE_CONVERSION instead. WRITE_CONVERSION is easier
     to debug and higher performance.
-  example: |
+  ruby_example: |
     APPEND_PARAMETER ITEM1 32 UINT 0 0xFFFFFFFF 0
       GENERIC_WRITE_CONVERSION_START
-        (value * 1.5).to_i # Convert the value by a scale factor
+        return (value * 1.5).to_i # Convert the value by a scale factor
+      GENERIC_WRITE_CONVERSION_END
+  python_example: |
+    APPEND_PARAMETER ITEM1 32 UINT 0 0xFFFFFFFF 0
+      GENERIC_WRITE_CONVERSION_START
+        return int(value * 1.5) # Convert the value by a scale factor
       GENERIC_WRITE_CONVERSION_END
 GENERIC_WRITE_CONVERSION_END:
   summary: Complete a generic write conversion
@@ -190,7 +207,7 @@ OVERFLOW:
     the value by eliminating any high order bits. You can also set 'SATURATE' which
     causes OpenC3 to replace the value with the maximum or minimum allowable value
     for that type. Finally you can specify 'ERROR_ALLOW_HEX' which will allow for
-    a maximum hex value to be writen, e.g. you can successfully write 255 to a 8
+    a maximum hex value to be written, e.g. you can successfully write 255 to a 8
     bit signed value.
   example: OVERFLOW TRUNCATE
   parameters:

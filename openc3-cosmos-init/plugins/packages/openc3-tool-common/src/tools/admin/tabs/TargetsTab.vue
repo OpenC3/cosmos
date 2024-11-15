@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -25,51 +25,41 @@
     <v-list class="list" data-test="targetList">
       <div v-for="target in targets" :key="target">
         <v-list-item>
-          <v-list-item-content>
-            <v-list-item-title>{{ target.name }}</v-list-item-title>
-            <v-list-item-subtitle
-              >Plugin: {{ target.plugin }}</v-list-item-subtitle
-            >
-          </v-list-item-content>
-          <v-list-item-icon>
+          <v-list-item-title>{{ target.name }}</v-list-item-title>
+          <v-list-item-subtitle
+            >Plugin: {{ target.plugin }}</v-list-item-subtitle
+          >
+
+          <template v-slot:append>
             <div class="mx-3" v-if="target.modified">
-              <v-tooltip bottom>
-                <template v-slot:activator="{ on, attrs }">
-                  <v-icon
-                    @click="downloadTarget(target.name)"
-                    v-bind="attrs"
-                    v-on="on"
-                  >
+              <v-tooltip location="bottom">
+                <template v-slot:activator="{ props }">
+                  <v-icon v-bind="props" @click="downloadTarget(target.name)">
                     mdi-download
                   </v-icon>
                 </template>
                 <span>Download Target Modified Files</span>
               </v-tooltip>
             </div>
-            <v-tooltip bottom>
-              <template v-slot:activator="{ on, attrs }">
-                <v-icon
-                  @click="showTarget(target.name)"
-                  v-bind="attrs"
-                  v-on="on"
-                >
+            <v-tooltip location="bottom">
+              <template v-slot:activator="{ props }">
+                <v-icon v-bind="props" @click="showTarget(target.name)">
                   mdi-eye
                 </v-icon>
               </template>
               <span>Show Target Details</span>
             </v-tooltip>
-          </v-list-item-icon>
+          </template>
         </v-list-item>
         <v-divider />
       </div>
     </v-list>
-    <edit-dialog
+    <output-dialog
       v-model="showDialog"
       v-if="showDialog"
       :content="jsonContent"
       type="Target"
       :name="dialogTitle"
-      readonly
       @submit="dialogCallback"
     />
   </div>
@@ -77,9 +67,9 @@
 
 <script>
 import Api from '../../../services/api'
-import EditDialog from '../EditDialog'
+import OutputDialog from '../../../components/OutputDialog'
 export default {
-  components: { EditDialog },
+  components: { OutputDialog },
   data() {
     return {
       targets: [],
@@ -131,5 +121,8 @@ export default {
 <style scoped>
 .list {
   background-color: var(--color-background-surface-default) !important;
+}
+.v-theme--cosmosDark.v-list div:nth-child(odd) .v-list-item {
+  background-color: var(--color-background-base-selected) !important;
 }
 </style>

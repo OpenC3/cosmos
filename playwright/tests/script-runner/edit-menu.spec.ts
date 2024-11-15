@@ -27,7 +27,7 @@ test.use({
 
 test('finds text on page', async ({ page, utils }) => {
   // Have to fill on an editable area like the textarea
-  var string = `openc3 is a command and control system
+  let string = `openc3 is a command and control system
 openc3 can send commands and execute scripts
 openc3 is everything I thought it could be`
   await page.locator('textarea').fill(string)

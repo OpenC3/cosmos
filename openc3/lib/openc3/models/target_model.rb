@@ -109,7 +109,7 @@ module OpenC3
         modified_targets = Bucket.getClient().list_files(bucket: ENV['OPENC3_CONFIG_BUCKET'], path: "DEFAULT/targets_modified/", only_directories: true)
         modified_targets.each do |target_name|
           # A target could have been deleted without removing the modified files
-          # Thus we have to check for the existance of the target_name key
+          # Thus we have to check for the existence of the target_name key
           if targets.has_key?(target_name)
             targets[target_name]['modified'] = true
           end
@@ -250,7 +250,7 @@ module OpenC3
         (items - found_items).each do |item|
           not_found << "'#{target_name} #{packet_name} #{item}'"
         end
-        # 'does not exist' not gramatically correct but we use it in every other exception
+        # 'does not exist' not grammatically correct but we use it in every other exception
         raise "Item(s) #{not_found.join(', ')} does not exist"
       end
       found
@@ -660,7 +660,10 @@ module OpenC3
       Store.del(item_map_key)
       @@item_map_cache[@name] = nil
 
-      ConfigTopic.write({ kind: 'deleted', type: 'target', name: @name, plugin: @plugin }, scope: @scope)
+      topic = { kind: 'deleted', type: 'target', name: @name }
+      # The UNKNOWN target doesn't have an associated plugin
+      topic[:plugin] = @plugin if @plugin
+      ConfigTopic.write(topic, scope: @scope)
     rescue Exception => e
       Logger.error("Error undeploying target model #{@name} in scope #{@scope} due to #{e}")
     end
@@ -1118,7 +1121,7 @@ module OpenC3
             end
           end
           # If there are any topics (packets) left over that haven't been
-          # explictly handled above, spawn another microservice
+          # explicitly handled above, spawn another microservice
           if all_topics.length > 0
             instance = nil
             instance = deploy_count unless deploy_count == 0

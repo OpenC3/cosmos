@@ -18,42 +18,144 @@
 
 require 'spec_helper'
 require 'openc3/interfaces/http_server_interface'
+require 'openc3/packets/packet'
+require 'openc3/system/system'
 
 module OpenC3
   describe HttpServerInterface do
-    describe "initialize" do
-      it "uses a default port of 80" do
-        i = HttpServerInterface.new()
-        expect(i.name).to eql "HttpServerInterface"
-        expect(i.instance_variable_get(:@port)).to eql 80
-      end
-
-      it "sets the listen port" do
-        i = HttpServerInterface.new('8080')
-        expect(i.name).to eql "HttpServerInterface"
-        expect(i.instance_variable_get(:@port)).to eql 8080
-      end
-    end
-
-    describe "connection_string" do
-      it "builds a human readable connection string" do
-        i = HttpServerInterface.new()
-        expect(i.connection_string).to eql "listening on 0.0.0.0:80"
-
-        i = HttpServerInterface.new('8080')
-        expect(i.connection_string).to eql "listening on 0.0.0.0:8080"
+    before(:all) do
+      setup_system()
+      @localhost = '127.0.0.1'
+      @socket_80 = 80 # make desktop spec not collide with dev/CI env where Cosmos is already running
+      begin
+        sock = Socket.new(Socket::Constants::AF_INET, Socket::Constants::SOCK_STREAM, 0)
+        sock.bind(Socket.pack_sockaddr_in(80,  @localhost )) #raise if listening
+        sock.close
+      rescue Errno::EACCES => e;
+        Logger.info("Found listener on port 80; presumably in CI\n#{e.message}")
+        @socket_80 = 81
       end
     end
 
-    describe "set_option" do
-      it "sets the listen address for the tcpip_server" do
-        i = HttpServerInterface.new('8888')
-        i.set_option('LISTEN_ADDRESS', ['127.0.0.1'])
-        expect(i.instance_variable_get(:@listen_address)).to eq '127.0.0.1'
-        expect(i.connection_string).to eql "listening on 127.0.0.1:8888"
+    before(:each) do
+      @interface = HttpServerInterface.new(8000+@socket_80)
+    end
+
+    after(:each) do
+      kill_leftover_threads()
+    end
+
+    describe "#initialize" do
+      it "initializes with default port" do # above the privileged port range
+        expect(@interface.instance_variable_get(:@port)).to eq(8000+@socket_80)
+      end
+
+      it "initializes with custom port" do
+        interface = HttpServerInterface.new(8000+@socket_80)
+        expect(interface.instance_variable_get(:@port)).to eq(8000+@socket_80)
       end
     end
 
-    # TODO: This needs more testing
+    describe "#set_option" do
+      it "sets the listen address" do
+        @interface.set_option("LISTEN_ADDRESS", [ @localhost ])
+        expect(@interface.instance_variable_get(:@listen_address)).to eq( @localhost )
+      end
+    end
+
+    describe "#connection_string" do
+      it "returns the correct connection string" do
+        expect(@interface.connection_string).to eq("listening on 0.0.0.0:#{8000+@socket_80}")
+      end
+    end
+
+    describe "#connect" do
+      it "connects to a web server and mounts routes" do
+        allow_any_instance_of(Packet).to receive(:read).with('HTTP_PATH').and_return('/test')
+        allow_any_instance_of(Packet).to receive(:read).with('HTTP_STATUS').and_return(200)
+        @interface.instance_variable_set(:@port, 8000+@socket_80)
+        @interface.connect
+        expect(@interface.instance_variable_get(:@server)).to_not be_nil
+      end
+
+      it "creates a response hook for every command packet" do
+        @interface.target_names = ['INST']
+        server_double = double
+        allow(WEBrick::HTTPServer).to receive(:new).and_return(server_double)
+        request = OpenStruct.new(header: {alpha: "bet"}, query: {what: "is"}, status: nil, body: nil)
+        response = OpenStruct.new(status: nil, body: nil)
+        allow(server_double).to receive(:mount_proc).with('/test').and_yield(request, response)
+        expect(server_double).to receive(:start) do
+          sleep(0.1)
+        end
+        @interface.instance_variable_set(:@port, 8000+@socket_80)
+        @interface.connect
+        sleep 0.2
+      end
+    end
+
+    describe "#connected?" do
+      it "returns true when server is present" do
+        @interface.instance_variable_set(:@server, double('server'))
+        expect(@interface.connected?).to be true
+      end
+
+      it "returns false when server is not present" do
+        expect(@interface.connected?).to be false
+      end
+    end
+
+    describe "#disconnect" do
+      it "shuts down the server and clears the queue" do
+        server = double('server')
+        expect(server).to receive(:shutdown)
+        @interface.instance_variable_set(:@server, server)
+        @interface.instance_variable_set(:@request_queue, Queue.new)
+        @interface.instance_variable_get(:@request_queue).push("test")
+        @interface.disconnect
+        expect(@interface.instance_variable_get(:@server)).to be_nil
+        expect(@interface.instance_variable_get(:@request_queue).size).to eq(1)
+        expect(@interface.instance_variable_get(:@request_queue).pop).to be_nil
+      end
+    end
+
+    describe "#read_interface" do
+      it "reads from the request queue" do
+        @interface.instance_variable_set(:@request_queue, Queue.new)
+        @interface.instance_variable_get(:@request_queue).push(["data", {}])
+        expect(@interface).to receive(:read_interface_base).with("data", {})
+        data, extra = @interface.read_interface
+        expect(data).to eq("data")
+        expect(extra).to eq({})
+      end
+    end
+
+    describe "#write_interface" do
+      it "raises an error" do
+        expect { @interface.write_interface({}) }.to raise_error(RuntimeError, "Commands cannot be sent to HttpServerInterface")
+      end
+    end
+
+    describe "#convert_data_to_packet" do
+      it "converts data to a packet" do
+        data = "test data"
+        extra = {
+          'HTTP_REQUEST_TARGET_NAME' => 'TARGET',
+          'HTTP_REQUEST_PACKET_NAME' => 'PACKET',
+          'EXTRA_INFO' => 'value'
+        }
+        packet = @interface.convert_data_to_packet(data, extra)
+        expect(packet.target_name).to eq('TARGET')
+        expect(packet.packet_name).to eq('PACKET')
+        expect(packet.buffer).to eq(data)
+        expect(packet.extra).to eq({'EXTRA_INFO' => 'value'})
+      end
+    end
+
+    describe "#convert_packet_to_data" do
+      it "raises an error" do
+        expect { @interface.convert_packet_to_data(Packet.new('TGT', 'PKT')) }.to raise_error(RuntimeError, "Commands cannot be sent to HttpServerInterface")
+      end
+    end
   end
 end

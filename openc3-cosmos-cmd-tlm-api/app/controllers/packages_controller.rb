@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -25,7 +25,7 @@ class PackagesController < ApplicationController
     return unless authorization('system')
     gems = OpenC3::GemModel.names
     packages = OpenC3::PythonPackageModel.names
-    render :json => {"ruby" => gems, "python" => packages}
+    render json: { ruby: gems, python: packages }
   end
 
   # Add a new package
@@ -44,16 +44,16 @@ class PackagesController < ApplicationController
           process_name = OpenC3::PythonPackageModel.put(package_file_path, package_install: true, scope: params[:scope])
         end
         OpenC3::Logger.info("Package created: #{params[:package]}", scope: params[:scope], user: username())
-        render :json => process_name
+        render json: process_name
       rescue => e
         OpenC3::Logger.error("Error installing package: #{file.original_filename}:#{e.formatted}", scope: params[:scope], user: username())
-        render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400
+        render json: { status: 'error', message: e.message, type: e.class }, status: 400
       ensure
         FileUtils.remove_entry(temp_dir) if temp_dir and File.exist?(temp_dir)
       end
     else
       OpenC3::Logger.error("Error installing package: Package file as params[:package] is required", scope: params[:scope], user: username())
-      render :json => { :status => 'error', :message => "Package file as params[:package] is required" }, :status => 400
+      render json: { status: 'error', message: "Package file as params[:package] is required" }, status: 400
     end
   end
 
@@ -71,11 +71,11 @@ class PackagesController < ApplicationController
         head :ok
       rescue => e
         OpenC3::Logger.error("Error destroying package: #{params[:id]}:#{e.formatted}", scope: params[:scope], user: username())
-        render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400
+        render json: { status: 'error', message: e.message, type: e.class }, status: 400
       end
     else
       OpenC3::Logger.error("Error destroying package: Package name as params[:id] is required", scope: params[:scope], user: username())
-      render :json => { :status => 'error', :message => "Package name as params[:id] is required" }, :status => 400
+      render json: { status: 'error', message: "Package name as params[:id] is required" }, status: 400
     end
   end
 
@@ -89,10 +89,10 @@ class PackagesController < ApplicationController
         package_file_path = OpenC3::PythonPackageModel.get(package_name)
       end
       file = File.read(package_file_path, mode: 'rb')
-      render :json => { filename: package_name, contents: Base64.encode64(file) }
+      render json: { filename: package_name, contents: Base64.encode64(file) }
     rescue Exception => e
       OpenC3::Logger.info("Package '#{params[:id]}' download failed: #{e.message}", user: username())
-      render :json => { status: 'error', message: e.message }, status: 500
+      render json: { status: 'error', message: e.message }, status: 500
     end
   end
 end

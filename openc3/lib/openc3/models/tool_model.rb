@@ -96,7 +96,7 @@ module OpenC3
     def self.set_position(name:, position:, scope:)
       moving = from_json(get(name: name, scope: scope), scope: scope)
       old_pos = moving.position
-      new_pos = Integer(position)
+      new_pos = position
       direction = :down
       if (old_pos == new_pos)
         return # we're not doing anything
@@ -126,7 +126,7 @@ module OpenC3
     def initialize(
       name:,
       folder_name: nil,
-      icon: '$astro-caution',
+      icon: 'astro:warning',
       url: nil,
       inline_url: nil,
       window: 'INLINE',
@@ -225,7 +225,7 @@ module OpenC3
         @shown = ConfigParser.handle_true_false(parameters[0])
       when 'POSITION'
         parser.verify_num_parameters(1, 1, "POSITION <value>")
-        @position = parameters[0].to_i
+        @position = parameters[0].to_f
       when 'DISABLE_ERB'
         # 0 to unlimited parameters
         @disable_erb ||= []
@@ -274,8 +274,8 @@ module OpenC3
           ConfigTopic.write({ kind: 'deleted', type: 'tool', name: @folder_name, plugin: @plugin }, scope: @scope)
         end
       end
-    rescue Exception => error
-      Logger.error("Error undeploying tool model #{@name} in scope #{@scope} due to #{error}")
+    rescue Exception => e
+      Logger.error("Error undeploying tool model #{@name} in scope #{@scope} due to #{e}")
     end
 
     ##################################################

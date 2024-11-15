@@ -121,7 +121,7 @@ Layout Widgets:
       parameters:
         - name: Tab text
           required: true
-          description: Text to diplay in the tab
+          description: Text to display in the tab
           values: .*
       example: |
         TABBOOK
@@ -173,14 +173,6 @@ Decoration Widgets:
         LABEL Over
         HORIZONTALLINE
         LABEL Under
-    SECTIONHEADER:
-      summary: DEPRECATED - Displays a label that is underlined with a horizontal line
-      description: Use a VERTICALBOX or HORIZONTALBOX with title parameter instead of SECTIONHEADER
-      parameters:
-        - name: Text
-          required: true
-          description: Text to display
-          values: .*
     TITLE:
       summary: Displays a large centered title on the screen
       parameters:
@@ -1023,25 +1015,18 @@ Telemetry Widgets:
           values: .+
         - name: Item name
           required: true
-          description: The item name
+          description: The item name to pull the CONVERTED value from.
+            If additional processing (base64 encoding) is needed consider using a DERIVED item.
           values: .+
         - name: Format
           required: true
           description: The image format of the base64 data (e.g. jpg, png, etc)
           values: .+
-        - name: Width
-          required: false
-          description: Width of the widget
-          values: .*
-        - name: Height
-          required: false
-          description: Height of the widget
-          values: .*
       example: |
         IMAGEVIEWER INST IMAGE IMAGE jpg
     PROGRESSBAR:
       summary: Displays a progress bar that is useful for displaying percentages
-      parmeters:
+      parameters:
         - name: Target name
           required: true
           description: The target name
@@ -1115,7 +1100,7 @@ Telemetry Widgets:
         RANGEBAR INST HEALTH_STATUS TEMP1 -100 100
     # RANGECOLUMN:
     #   summary: Displays a graphical representation of where
-    #     an item's value falls withing a range vertically
+    #     an item's value falls within a range vertically
     #   parameters:
     #     - name: Target name
     #       required: true
@@ -1354,7 +1339,7 @@ Interactive Widgets:
     BUTTON:
       summary: Displays a rectangular clickable button
       description: |
-        Upon clicking, the button executes the Ruby code assigned. Buttons
+        Upon clicking, the button executes the Javascript code assigned. Buttons
         can be used to send commands and perform other tasks. If you want your button
         to use values from other widgets, define them as named widgets and read their
         values using the `screen.getNamedWidget("WIDGET_NAME").text()` method.
@@ -1368,7 +1353,7 @@ Interactive Widgets:
         separated by `;;`.
 
         You can send commands with buttons using api.cmd(). The cmd() syntax looks exactly
-        like the standard COSMOS Ruby scripting syntax. You can also request and use
+        like the standard COSMOS scripting syntax. You can also request and use
         telemetry in screens using Javascript Promises.
 
         `api.tlm('INST PARAMS VALUE3', 'RAW').then(dur => api.cmd('INST COLLECT with TYPE NORMAL, DURATION '+dur))"`
@@ -1430,6 +1415,20 @@ Interactive Widgets:
         BUTTON 'Start Collect' 'var type = screen.getNamedWidget("COLLECT_TYPE").text();' +
           'api.cmd("INST COLLECT with TYPE "+type+", DURATION 10.0")'
         NAMED_WIDGET COLLECT_TYPE COMBOBOX NORMAL SPECIAL
+    DATE:
+      summary: Displays a date picker
+      description:
+        Note this is of limited use by itself and is primarily used in
+        conjunction with NAMED_WIDGET.
+      parameters:
+        - name: Date label
+          required: false
+          description: Text to label the data selection ('Date' by default)
+          values: .+
+      example: |
+        BUTTON 'Alert Date' 'var date = screen.getNamedWidget("DATE").text();' +
+          'alert("Date:"+date)'
+        NAMED_WIDGET DATE DATE
     RADIOGROUP:
       summary: Creates a group of RADIOBUTTONs
       description: RADIOBUTTONs must be part of a group to enable selection logic
@@ -1471,6 +1470,20 @@ Interactive Widgets:
         NAMED_WIDGET DURATION TEXTFIELD 12 "10.0"
         BUTTON 'Start Collect' 'var dur = screen.getNamedWidget("DURATION").text();' +
               'api.cmd("INST COLLECT with TYPE NORMAL, DURATION "+dur+"")'
+    TIME:
+      summary: Displays a time picker
+      description:
+        Note this is of limited use by itself and is primarily used in
+        conjunction with NAMED_WIDGET.
+      parameters:
+        - name: Time label
+          required: false
+          description: Text to label the time selection ('Time' by default)
+          values: .+
+      example: |
+        BUTTON 'Alert Time' 'var time = screen.getNamedWidget("TIME").text();' +
+          'alert("Time:"+time)'
+        NAMED_WIDGET TIME TIME
 Canvas Widgets:
   description:
     Canvas Widgets are used to draw custom displays into telemetry screens.

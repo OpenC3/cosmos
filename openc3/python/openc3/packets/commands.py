@@ -28,7 +28,7 @@ class Commands:
 
     This should not be confused with the Api module which implements the JSON
     API that is used by tools when accessing the Server. The Api module always
-    provides Ruby primatives where the PacketConfig class can return actual
+    provides Ruby primitives where the PacketConfig class can return actual
     Packet or PacketItem objects. While there are some overlapping methods between
     the two, these are separate interfaces into the system."""
 
@@ -133,7 +133,7 @@ class Commands:
         return identified_packet
 
     # Returns a copy of the specified command packet with the parameters
-    # initialzed to the given params values.
+    # initialized to the given params values.
     #
     # @param target_name (see #packet)
     # @param packet_name (see #packet)
@@ -204,8 +204,10 @@ class Commands:
         if cmd_params is None or len(cmd_params) == 0:
             output_string += '")'
         else:
-            # TODO: Try except around this?
-            command_items = self.packet(target_name, cmd_name).items
+            try:
+                command_items = self.packet(target_name, cmd_name).items
+            except RuntimeError:
+                command_items = {}
 
             params = []
             for key, value in cmd_params:
@@ -271,11 +273,6 @@ class Commands:
         # check required parameters since we're not actually using the command.
         return self.cmd_pkt_hazardous(self.build_cmd(target_name, packet_name, params, False, False, False))
 
-    def clear_counters(self):
-        for target_name, target_packets in self.config.commands.items():
-            for packet_name, packet in target_packets.items():
-                packet.received_count = 0
-
     def all(self):
         return self.config.commands
 
@@ -286,17 +283,28 @@ class Commands:
             item = command.get_item(item_upcase)
             range_check_value = value
 
-            # Convert from state to value if possible
-            if item.states is not None and item.states.get(str(value).upper()) is not None:
-                range_check_value = item.states[value.upper()]
-
             if range_checking:
+                if item.states:
+                    if item.states.get(str(value).upper()) is not None:
+                        range_check_value = item.states[str(value).upper()]
+                    else:
+                        if value not in item.states.values():
+                            if command.raw:
+                                # Raw commands report missing value maps
+                                raise RuntimeError(
+                                    f"Command parameter '{command.target_name} {command.packet_name} {item_upcase}' = {value} not one of {', '.join(map(str, item.states.values()))}"
+                                )
+                            else:
+                                # Normal commands report missing state maps
+                                raise RuntimeError(
+                                    f"Command parameter '{command.target_name} {command.packet_name} {item_upcase}' = {value} not one of {', '.join(item.states.keys())}")
+
                 minimum = item.minimum
                 maximum = item.maximum
                 if minimum is not None and maximum is not None:
                     # Perform Range Check on command parameter
-                    if type(range_check_value) is str or range_check_value < minimum or range_check_value > maximum:
-                        if type(range_check_value) is str:
+                    if isinstance(range_check_value, str) or range_check_value < minimum or range_check_value > maximum:
+                        if isinstance(range_check_value, str):
                             range_check_value = f"'{range_check_value}'"
                         raise RuntimeError(
                             f"Command parameter '{command.target_name} {command.packet_name} {item_upcase}' = {range_check_value} not in valid range of {minimum} to {maximum}"

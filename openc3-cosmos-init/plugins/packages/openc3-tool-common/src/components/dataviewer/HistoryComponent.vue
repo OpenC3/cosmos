@@ -30,8 +30,8 @@
           class="search"
           prepend-inner-icon="mdi-magnify"
           clearable
-          outlined
-          dense
+          variant="outlined"
+          density="compact"
           single-line
           hide-details
           data-test="history-component-search"
@@ -58,34 +58,27 @@
                and it causes issues with the scrollbar. Therefore we use rows
                and calculate the number of rows based on the displayText. -->
           <v-textarea
-            ref="textarea"
-            :value="displayText"
+            :model-value="displayText"
             :rows="rows"
             no-resize
             readonly
-            solo
+            variant="solo"
             flat
             hide-details
             data-test="history-component-text-area"
           />
           <div class="floating-buttons">
-            <v-menu
-              :close-on-content-click="false"
-              :min-width="700"
-              :nudge-left="710"
-              :nudge-top="250"
-            >
-              <template v-slot:activator="{ on, attrs }">
+            <v-menu :close-on-content-click="false" :min-width="700">
+              <template v-slot:activator="{ props }">
                 <v-btn
                   class="ml-2"
                   color="secondary"
-                  v-bind="attrs"
-                  v-on="on"
-                  fab
-                  small
+                  v-bind="props"
+                  icon
+                  size="small"
                   data-test="history-component-open-settings"
                 >
-                  <v-icon>$astro-settings</v-icon>
+                  <v-icon>astro:settings</v-icon>
                 </v-btn>
               </template>
               <v-card>
@@ -98,7 +91,8 @@
                       <v-switch
                         v-model="currentConfig.showTimestamp"
                         label="Show timestamp"
-                        dense
+                        density="compact"
+                        color="primary"
                         hide-details
                         data-test="history-component-settings-show-timestamp"
                       />
@@ -106,7 +100,8 @@
                         v-if="hasRaw"
                         v-model="currentConfig.showAscii"
                         label="Show ASCII"
-                        dense
+                        density="compact"
+                        color="primary"
                         hide-details
                         data-test="history-component-settings-show-ascii"
                       />
@@ -114,7 +109,8 @@
                         v-if="hasRaw"
                         v-model="currentConfig.showLineAddress"
                         label="Show line address"
-                        dense
+                        density="compact"
+                        color="primary"
                         hide-details
                         data-test="history-component-settings-show-address"
                       />
@@ -122,7 +118,7 @@
                     <v-col>
                       <v-radio-group
                         v-model="currentConfig.newestAtTop"
-                        label="Print newest packets to the"
+                        label="Print newest to the"
                       >
                         <v-radio
                           label="Top"
@@ -157,7 +153,7 @@
                       />
                       <v-text-field
                         v-model="currentConfig.packetsToShow"
-                        label="Packets to show"
+                        label="Entries to show"
                         type="number"
                         min="1"
                         :hint="`Maximum: ${currentConfig.history}`"
@@ -174,8 +170,8 @@
               class="ml-2"
               v-on:click="download"
               color="secondary"
-              fab
-              small
+              icon
+              size="small"
               data-test="history-component-download"
             >
               <v-icon>mdi-file-download</v-icon>
@@ -185,11 +181,11 @@
               :class="{ pulse: paused }"
               v-on:click="togglePlayPause"
               color="primary"
-              fab
+              icon
               data-test="history-component-play-pause"
             >
-              <v-icon large v-if="paused">mdi-play</v-icon>
-              <v-icon large v-else>mdi-pause</v-icon>
+              <v-icon size="large" v-if="paused">mdi-play</v-icon>
+              <v-icon size="large" v-else>mdi-pause</v-icon>
             </v-btn>
           </div>
         </div>
@@ -284,9 +280,6 @@ export default {
       ...this.currentConfig,
     }
   },
-  mounted: function () {
-    this.textarea = this.$refs.textarea.$el.querySelectorAll('textarea')[0]
-  },
   methods: {
     rebuildDisplayText: function () {
       let packets = this.paused ? this.pausedHistory : this.history
@@ -323,7 +316,7 @@ export default {
       return text
         .split('\n')
         .filter((line) =>
-          line.toLowerCase().includes(this.filterText.toLowerCase())
+          line.toLowerCase().includes(this.filterText.toLowerCase()),
         )
         .join('\n')
     },
@@ -337,7 +330,7 @@ export default {
       link.href = url
       link.setAttribute(
         'download',
-        `${format(new Date(), 'yyyy_MM_dd_HH_mm_ss')}.txt`
+        `${format(new Date(), 'yyyy_MM_dd_HH_mm_ss')}.txt`,
       )
       link.click()
       window.URL.revokeObjectURL(url)

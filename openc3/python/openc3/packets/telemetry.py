@@ -23,7 +23,7 @@ class Telemetry:
 
     This should not be confused with the Api module which implements the JSON
     API that is used by tools when accessing the Server. The Api module always
-    provides Ruby primatives where the Telemetry class can return actual
+    provides Ruby primitives where the Telemetry class can return actual
     Packet or PacketItem objects. While there are some overlapping methods between
     the two, these are separate interfaces into the system."""
 
@@ -333,27 +333,11 @@ class Telemetry:
             for _, packet in packets.items():
                 packet.limits_change_callback = limits_change_callback
 
-    # # Clears the received_count value on every packet in every target
-    # def clear_counters:
-    #    for target_name, target_packets in self.config.telemetry:
-    #      for packet_name, packet in target_packets:
-    #       packet.received_count = 0
-
-    # # Resets metadata on every packet in every target
-    # def reset:
-    #    for target_name, target_packets in self.config.telemetry:
-    #      for packet_name, packet in target_packets:
-    #       packet.reset
-
-    # # Returns the first non-hidden packet
-    # def first_non_hidden:
-    #    for target_name, target_packets in self.config.telemetry:
-    #     if target_name == 'UNKNOWN':
-    #         next
-
-    #      for packet_name, packet in target_packets:
-    #       return packet if not packet.hidden
-    #   None
+    # Resets metadata on every packet in every target
+    def reset(self):
+        for _, packets in self.config.telemetry.items():
+            for _, packet in packets.items():
+                packet.reset()
 
     # # Returns an array with a "TARGET_NAME PACKET_NAME ITEM_NAME" string for every item in the system
     # def all_item_strings(include_hidden = False, splash = None):
