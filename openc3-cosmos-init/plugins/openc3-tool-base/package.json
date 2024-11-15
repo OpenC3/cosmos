@@ -16,7 +16,6 @@
     "date-fns": "4.1.0",
     "import-map-overrides": "3.1.1",
     "regenerator-runtime": "0.14.1",
-    "single-spa": "5.9.5",
     "systemjs": "6.15.1",
     "vue": "3.5.4",
     "vue-router": "4.4.4",
@@ -35,7 +34,6 @@
     "vite": "5.4.11",
     "vite-plugin-ejs": "1.7.0",
     "vite-plugin-html": "3.2.2",
-    "vite-plugin-single-spa": "0.4.0",
-    "vite-plugin-static-copy": "2.1.0"
+    "vite-plugin-single-spa": "0.4.0"
   }
 }

@@ -21,7 +21,6 @@
 */
 
 import { createRouter, createWebHistory } from 'vue-router'
-import { navigateToUrl } from 'single-spa'
 
 const DEFAULT_TOOL_PATH = '/tools/cmdtlmserver'
 
@@ -48,7 +47,7 @@ const router = createRouter({
 
 router.beforeEach(({ path }) => {
   if (['/', '/tools', '/tools/'].includes(path)) {
-    navigateToUrl(DEFAULT_TOOL_PATH)
+    singleSpaNavigate(DEFAULT_TOOL_PATH)
   }
 })
 

@@ -1,11 +1,9 @@
-import path from 'path'
 import { defineConfig } from 'vite'
 import { createHtmlPlugin } from 'vite-plugin-html'
 import { vitePluginSingleSpa } from 'vite-plugin-single-spa'
-import { viteStaticCopy } from 'vite-plugin-static-copy'
 import vue from '@vitejs/plugin-vue'
 
-const default_extensions = ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json']
+const DEFAULT_EXTENSIONS = ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json']
 
 export default defineConfig({
   build: {
@@ -22,40 +20,16 @@ export default defineConfig({
     vue(),
     vitePluginSingleSpa({
       type: 'root',
-      imo: '3.1.1', // TODO: change this to like `() => '/path/to/our/import-map-overrides.js'`
-      /*
-      importMaps: {
-        build: ['/openc3-api/map.json'],
-        dev: ['/openc3-api/map.json'],
-      },
-      */
+      imo: () => 'public/js/import-map-overrides-3.1.1.min.js',
     }),
-    /*
     createHtmlPlugin({
       template: 'index.html',
     }),
-    */
     createHtmlPlugin({
       template: 'index-allow-http.html',
     }),
-    // should be handled by this?
-    //    https://vite.dev/config/build-options#build-copypublicdir
-    //    https://vite.dev/guide/assets#the-public-directory
-    /*
-    viteStaticCopy({
-      targets: [
-        {
-          src: 'public',
-          dest: '.',
-        },
-      ],
-    }),
-    */
   ],
   resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-    },
-    extensions: [...default_extensions, '.vue'], // not recommended, but saves us from having to change every SFC import
+    extensions: [...DEFAULT_EXTENSIONS, '.vue'], // not recommended but saves us from having to change every SFC import
   },
 })

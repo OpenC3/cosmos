@@ -1,4 +1,3 @@
-// import 'systemjs-webpack-interop/auto-public-path/2'
 import { createApp, h } from 'vue'
 import singleSpaVue from 'single-spa-vue'
 

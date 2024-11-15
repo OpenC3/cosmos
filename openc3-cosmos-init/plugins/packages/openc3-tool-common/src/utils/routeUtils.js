@@ -23,7 +23,4 @@ const prependBasePath = function (route) {
   route.children?.forEach(prependBasePath)
 }
 
-// eslint-disable-next-line
-console.log('base ' + import.meta.env.BASE_URL)
-
 export { prependBasePath }
