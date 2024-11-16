@@ -25,6 +25,7 @@ module OpenC3
   autoload(:HttpClientInterface, 'openc3/interfaces/http_client_interface.rb')
   autoload(:HttpServerInterface, 'openc3/interfaces/http_server_interface.rb')
   autoload(:MqttInterface, 'openc3/interfaces/mqtt_interface.rb')
+  autoload(:MqttStreamInterface, 'openc3/interfaces/mqtt_stream_interface.rb')
   autoload(:StreamInterface, 'openc3/interfaces/stream_interface.rb')
   autoload(:SerialInterface, 'openc3/interfaces/serial_interface.rb')
   autoload(:SimulatedTargetInterface, 'openc3/interfaces/simulated_target_interface.rb')

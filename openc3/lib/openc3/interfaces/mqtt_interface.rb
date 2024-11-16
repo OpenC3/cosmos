@@ -92,11 +92,11 @@ module OpenC3
   class MqttInterface < Interface
     # @param hostname [String] MQTT server to connect to
     # @param port [Integer] MQTT port
-    def initialize(hostname, port = 1883, ack_timeout = 5.0)
+    def initialize(hostname, port = 1883)
       super()
       @hostname = hostname
       @port = Integer(port)
-      @ack_timeout = Float(ack_timeout)
+      @ack_timeout = 5.0
       @username = nil
       @password = nil
       @cert = nil
@@ -163,8 +163,10 @@ module OpenC3
 
     # Disconnects the interface from its target(s)
     def disconnect
-      @client.disconnect
-      @client = nil
+      if @client
+        @client.disconnect
+        @client = nil
+      end
       super()
     end
 
@@ -232,6 +234,8 @@ module OpenC3
     def set_option(option_name, option_values)
       super(option_name, option_values)
       case option_name.upcase
+      when 'ACK_TIMEOUT'
+        @ack_timeout = Float(option_values[0])
       when 'USERNAME'
         @username = option_values[0]
       when 'PASSWORD'

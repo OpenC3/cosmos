@@ -17,27 +17,29 @@
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
-require 'openc3/interfaces/mqtt_interface'
+require 'openc3/interfaces/mqtt_stream_interface'
 
 module OpenC3
-  describe MqttInterface do
+  describe MqttStreamInterface do
     before(:all) do
       setup_system()
     end
 
     describe "initialize" do
       it "sets all the instance variables" do
-        i = MqttInterface.new('localhost', '1883')
-        expect(i.name).to eql "MqttInterface"
+        i = MqttStreamInterface.new('localhost', '1883', 'write_topic', 'read_topic')
+        expect(i.name).to eql "MqttStreamInterface"
         expect(i.instance_variable_get(:@hostname)).to eql 'localhost'
         expect(i.instance_variable_get(:@port)).to eql 1883
+        expect(i.instance_variable_get(:@write_topic)).to eql 'write_topic'
+        expect(i.instance_variable_get(:@read_topic)).to eql 'read_topic'
       end
     end
 
     describe "connection_string" do
       it "builds a human readable connection string" do
-        i = MqttInterface.new('localhost', '1883')
-        expect(i.connection_string).to eql "localhost:1883"
+        i = MqttStreamInterface.new('localhost', '1883', 'write_topic', 'read_topic')
+        expect(i.connection_string).to eql "localhost:1883 write topic: write_topic read topic: read_topic"
       end
     end
 
@@ -56,11 +58,10 @@ module OpenC3
         expect(double).to receive(:connect)
         expect(double).to receive(:connected?).and_return(true)
         # inst_tlm.txt declares META TOPIC on the first 2 packets
-        expect(double).to receive(:subscribe).with('HEALTH_STATUS')
-        expect(double).to receive(:subscribe).with('ADCS')
+        expect(double).to receive(:subscribe).with('read_topic')
         allow(MQTT::Client).to receive(:new).and_return(double)
 
-        i = MqttInterface.new('localhost', '1883')
+        i = MqttStreamInterface.new('localhost', '1883', 'write_topic', 'read_topic')
         i.set_option('USERNAME', ['test_user'])
         i.set_option('PASSWORD', ['test_pass'])
         i.set_option('CERT', ['cert_content'])
@@ -79,7 +80,7 @@ module OpenC3
         expect(double).to receive(:disconnect)
         allow(MQTT::Client).to receive(:new).and_return(double)
 
-        i = MqttInterface.new('localhost', '1883')
+        i = MqttStreamInterface.new('localhost', '1883')
         i.connect()
         i.disconnect()
         expect(i.connected?).to be false
@@ -92,18 +93,20 @@ module OpenC3
         double = double('MQTT::Client').as_null_object
         expect(double).to receive(:connect)
         expect(double).to receive(:connected?).and_return(true)
-        expect(double).to receive(:get).and_return(['HEALTH_STATUS', "\x00\x00\x00\x00\x00\x00"])
-        expect(double).to receive(:get).and_return(['ADCS', "\x00\x00\x00\x00\x00\x00"])
+        expect(double).to receive(:get).and_return(['HEALTH_STATUS', "\x00\x01\x02\x03\x04\x05"])
+        expect(double).to receive(:get).and_return(['ADCS', "\x06\x07\x08\x09\x0A\x0B"])
         allow(MQTT::Client).to receive(:new).and_return(double)
 
-        i = MqttInterface.new('localhost', '1883')
+        i = MqttStreamInterface.new('localhost', '1883', 'write_topic', 'read_topic')
         i.connect()
         packet = i.read()
-        expect(packet.target_name).to eql "INST"
-        expect(packet.packet_name).to eql "HEALTH_STATUS"
+        expect(packet.target_name).to be_nil
+        expect(packet.packet_name).to be_nil
+        expect(packet.buffer).to eql "\x00\x01\x02\x03\x04\x05"
         packet = i.read()
-        expect(packet.target_name).to eql "INST"
-        expect(packet.packet_name).to eql "ADCS"
+        expect(packet.target_name).to be_nil
+        expect(packet.packet_name).to be_nil
+        expect(packet.buffer).to eql "\x06\x07\x08\x09\x0A\x0B"
       end
 
       it "disconnects if the mqtt client returns no data" do
@@ -114,7 +117,7 @@ module OpenC3
         allow(MQTT::Client).to receive(:new).and_return(double)
 
         capture_io do |stdout|
-          i = MqttInterface.new('localhost', '1883')
+          i = MqttStreamInterface.new('localhost', '1883', 'write_topic', 'read_topic')
           i.connect()
           packet = i.read()
           expect(stdout.string).to match(/read returned nil/)
@@ -130,24 +133,12 @@ module OpenC3
         expect(double).to receive(:connected?).and_return(true)
         allow(MQTT::Client).to receive(:new).and_return(double)
 
-        i = MqttInterface.new('localhost', '1883')
+        i = MqttStreamInterface.new('localhost', '1883', 'write_topic', 'read_topic')
         i.connect()
         pkt = System.commands.packet('INST', 'COLLECT')
         pkt.restore_defaults()
-        expect(double).to receive(:publish).with('COLLECT', pkt.buffer)
+        expect(double).to receive(:publish).with('write_topic', pkt.buffer)
         i.write(pkt)
-      end
-
-      it "raises on packets without META TOPIC" do
-        double = double('MQTT::Client').as_null_object
-        expect(double).to receive(:connect)
-        allow(MQTT::Client).to receive(:new).and_return(double)
-
-        i = MqttInterface.new('localhost', '1883')
-        i.connect()
-        pkt = System.commands.packet('INST', 'CLEAR')
-        pkt.restore_defaults()
-        expect { i.write(pkt) }.to raise_error(RuntimeError, "Command packet 'INST CLEAR' requires a META TOPIC or TOPICS")
       end
     end
   end

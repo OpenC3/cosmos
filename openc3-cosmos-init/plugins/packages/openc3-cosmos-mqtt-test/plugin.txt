@@ -19,9 +19,17 @@ VARIABLE mqtt_ca_file_secret ""
 # See the README for more information
 
 TARGET MQTT <%= mqtt_target_name %>
+
+# There are 4 possible MQTT interfaces: 2 each for Ruby and Python
+# You can use the META TOPIC in the cmd/tlm definitions using the mqtt_interface
+# Or read and write all telemetry from a fixed topic using the mqtt_stream_interface
+
+#=> Regular MQTT Interfaces (uses META TOPIC in the cmd/tlm definitions)
 INTERFACE MQTT_INT openc3/interfaces/mqtt_interface.py <%= mqtt_host %> <%= mqtt_port %>
-# Ruby equivalent of the above Python MqttInterface
 # INTERFACE MQTT_INT mqtt_interface.rb <%= mqtt_host %> <%= mqtt_port %>
+#=> Streaming MQTT Interfaces (uses fixed cmd/tlm topics)
+# INTERFACE MQTT_INT openc3/interfaces/mqtt_stream_interface.py <%= mqtt_host %> <%= mqtt_port %> <%= mqtt_cmd_topic %> <%= mqtt_tlm_topic %>
+# INTERFACE MQTT_INT mqtt_stream_interface.rb <%= mqtt_host %> <%= mqtt_port %> <%= mqtt_cmd_topic %> <%= mqtt_tlm_topic %>
   MAP_TARGET <%= mqtt_target_name %>
   <% if include_mqtt_username %>
   # No need to hide the USERNAME so directly set the OPTION

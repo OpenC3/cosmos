@@ -54,28 +54,16 @@ class TestSlipProtocol(unittest.TestCase):
     def test_complains_if_given_invalid_params(self):
         with self.assertRaisesRegex(ValueError, "invalid value 5.1234 for start_char"):
             self.interface.add_protocol(SlipProtocol, ["5.1234"], "READ_WRITE")
-        with self.assertRaisesRegex(
-            RuntimeError, "read_strip_characters must be True or False"
-        ):
+        with self.assertRaisesRegex(RuntimeError, "read_strip_characters must be True or False"):
             self.interface.add_protocol(SlipProtocol, [None, None], "READ_WRITE")
-        with self.assertRaisesRegex(
-            RuntimeError, "read_enable_escaping must be True or False"
-        ):
+        with self.assertRaisesRegex(RuntimeError, "read_enable_escaping must be True or False"):
             self.interface.add_protocol(SlipProtocol, [None, True, None], "READ_WRITE")
-        with self.assertRaisesRegex(
-            RuntimeError, "write_enable_escaping must be True or False"
-        ):
-            self.interface.add_protocol(
-                SlipProtocol, [None, True, True, None], "READ_WRITE"
-            )
+        with self.assertRaisesRegex(RuntimeError, "write_enable_escaping must be True or False"):
+            self.interface.add_protocol(SlipProtocol, [None, True, True, None], "READ_WRITE")
         with self.assertRaisesRegex(ValueError, "invalid literal for int"):
-            self.interface.add_protocol(
-                SlipProtocol, [None, True, True, True, "5.1234"], "READ_WRITE"
-            )
+            self.interface.add_protocol(SlipProtocol, [None, True, True, True, "5.1234"], "READ_WRITE")
         with self.assertRaisesRegex(ValueError, "invalid literal for int"):
-            self.interface.add_protocol(
-                SlipProtocol, [None, True, True, None, "0xC0", "5.1234"], "READ_WRITE"
-            )
+            self.interface.add_protocol(SlipProtocol, [None, True, True, None, "0xC0", "5.1234"], "READ_WRITE")
         with self.assertRaisesRegex(ValueError, "invalid literal for int"):
             self.interface.add_protocol(
                 SlipProtocol,
@@ -187,22 +175,16 @@ class TestSlipProtocol(unittest.TestCase):
     def test_handles_escape_sequences(self):
         self.interface.stream = TestSlipProtocol.SlipStream()
         self.interface.add_protocol(SlipProtocol, [], "READ_WRITE")
-        TestSlipProtocol.buffer = (
-            b"\x00\xDB\xDC\x44\xDB\xDD\x02\xDB\xDC\x03\xDB\xDD\xC0"
-        )
+        TestSlipProtocol.buffer = b"\x00\xDB\xDC\x44\xDB\xDD\x02\xDB\xDC\x03\xDB\xDD\xC0"
         packet = self.interface.read()
         self.assertEqual(packet.buffer, b"\x00\xC0\x44\xDB\x02\xC0\x03\xDB")
 
     def test_leaves_escape_sequences(self):
         self.interface.stream = TestSlipProtocol.SlipStream()
         self.interface.add_protocol(SlipProtocol, [None, True, False], "READ_WRITE")
-        TestSlipProtocol.buffer = (
-            b"\x00\xDB\xDC\x44\xDB\xDD\x02\xDB\xDC\x03\xDB\xDD\xC0"
-        )
+        TestSlipProtocol.buffer = b"\x00\xDB\xDC\x44\xDB\xDD\x02\xDB\xDC\x03\xDB\xDD\xC0"
         packet = self.interface.read()
-        self.assertEqual(
-            packet.buffer, b"\x00\xDB\xDC\x44\xDB\xDD\x02\xDB\xDC\x03\xDB\xDD"
-        )
+        self.assertEqual(packet.buffer, b"\x00\xDB\xDC\x44\xDB\xDD\x02\xDB\xDC\x03\xDB\xDD")
 
     def test_appends_end_char_to_the_packet(self):
         self.interface.stream = TestSlipProtocol.SlipStream()
@@ -214,9 +196,7 @@ class TestSlipProtocol(unittest.TestCase):
 
     def test_appends_a_different_end_char_to_the_packet(self):
         self.interface.stream = TestSlipProtocol.SlipStream()
-        self.interface.add_protocol(
-            SlipProtocol, [None, True, True, True, "0xEE"], "READ_WRITE"
-        )
+        self.interface.add_protocol(SlipProtocol, [None, True, True, True, "0xEE"], "READ_WRITE")
         pkt = Packet("tgt", "pkt")
         pkt.buffer = b"\x00\x01\x02\x03"
         self.interface.write(pkt)
@@ -252,15 +232,11 @@ class TestSlipProtocol(unittest.TestCase):
         pkt = Packet("tgt", "pkt")
         pkt.buffer = b"\x00\xC0\xDB\xDB\xC0\x02\x03"
         self.interface.write(pkt)
-        self.assertEqual(
-            TestSlipProtocol.buffer, b"\x00\xDB\xDC\xDB\xDD\xDB\xDD\xDB\xDC\x02\x03\xC0"
-        )
+        self.assertEqual(TestSlipProtocol.buffer, b"\x00\xDB\xDC\xDB\xDD\xDB\xDD\xDB\xDC\x02\x03\xC0")
 
     def test_handles_not_writing_escape_sequences(self):
         self.interface.stream = TestSlipProtocol.SlipStream()
-        self.interface.add_protocol(
-            SlipProtocol, [None, True, True, False], "READ_WRITE"
-        )
+        self.interface.add_protocol(SlipProtocol, [None, True, True, False], "READ_WRITE")
         pkt = Packet("tgt", "pkt")
         pkt.buffer = b"\x00\xC0\xDB\xDB\xC0\x02\x03"
         self.interface.write(pkt)
@@ -276,6 +252,4 @@ class TestSlipProtocol(unittest.TestCase):
         pkt = Packet("tgt", "pkt")
         pkt.buffer = b"\x00\xE0\xE1\xE1\xE0\x02\x03"
         self.interface.write(pkt)
-        self.assertEqual(
-            TestSlipProtocol.buffer, b"\x00\xE1\xE2\xE1\xE3\xE1\xE3\xE1\xE2\x02\x03\xE0"
-        )
+        self.assertEqual(TestSlipProtocol.buffer, b"\x00\xE1\xE2\xE1\xE3\xE1\xE3\xE1\xE2\x02\x03\xE0")

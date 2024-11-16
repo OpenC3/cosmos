@@ -41,9 +41,7 @@ class TestSimulatedTargetInterface(unittest.TestCase):
         setup_system()
 
     def test_complains_if_the_simulated_target_file_doesnt_exist(self):
-        with self.assertRaisesRegex(
-            ModuleNotFoundError, "No module named 'doesnt_exist'"
-        ):
+        with self.assertRaisesRegex(ModuleNotFoundError, "No module named 'doesnt_exist'"):
             SimulatedTargetInterface("doesnt_exist.py")
 
     def test_creates_the_simulated_target_class(self):

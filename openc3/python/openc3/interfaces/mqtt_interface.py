@@ -24,18 +24,20 @@ import tempfile
 from openc3.interfaces.interface import Interface
 from openc3.system.system import System
 from openc3.utilities.logger import Logger
+
 # See https://eclipse.dev/paho/files/paho.mqtt.python/html/client.html
 import paho.mqtt.client as mqtt
+
 
 # Base class for interfaces that send and receive messages over MQTT
 class MqttInterface(Interface):
     # @param hostname [String] MQTT server to connect to
     # @param port [Integer] MQTT port
-    def __init__(self, hostname, port = 1883, ack_timeout = 5.0):
+    def __init__(self, hostname, port=1883):
         super().__init__()
         self.hostname = hostname
         self.port = int(port)
-        self.ack_timeout = float(ack_timeout)
+        self.ack_timeout = 5.0
         self.username = None
         self.password = None
         self.cert = None
@@ -51,9 +53,9 @@ class MqttInterface(Interface):
         self.read_packets_by_topic = {}
         for _, target_packets in System.telemetry.all().items():
             for _, packet in target_packets.items():
-                topics = packet.meta.get('TOPIC')
+                topics = packet.meta.get("TOPIC")
                 if not topics:
-                    topics = packet.meta.get('TOPICS')
+                    topics = packet.meta.get("TOPICS")
                 if topics:
                     for topic in topics:
                         self.read_packets_by_topic[topic] = packet
@@ -70,18 +72,24 @@ class MqttInterface(Interface):
         self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         self.client.on_connect = self.on_connect
         self.client.on_message = self.on_message
-        self.client.user_data_set(self.pkt_queue) # passed to on_message
+        self.client.user_data_set(self.pkt_queue)  # passed to on_message
 
         if self.username and self.password:
             self.client.username_pw_set(self.username, self.password)
         # You still need the ca_file if you're using your own cert and key
         if self.cert and self.key and self.ca_file:
             if self.keyfile_password:
-                self.client.tls_set(ca_certs = self.ca_file.name, certfile = self.cert.name, keyfile = self.key.name, keyfile_password = self.keyfile_password)
+                self.client.tls_set(
+                    ca_certs=self.ca_file.name,
+                    certfile=self.cert.name,
+                    keyfile=self.key.name,
+                    keyfile_password=self.keyfile_password,
+                )
             else:
-                self.client.tls_set(ca_certs = self.ca_file.name, certfile = self.cert.name, keyfile = self.key.name)
+                self.client.tls_set(ca_certs=self.ca_file.name, certfile=self.cert.name, keyfile=self.key.name)
         elif self.ca_file:
-            self.client.tls_set(ca_certs = self.ca_file.name)
+            self.client.tls_set(ca_certs=self.ca_file.name)
+
         self.client.loop_start()
         # Connect doesn't fully establish the connection, it just sends the CONNECT packet
         # When the client loop receives an ONNACK packet from the broker in response to the CONNECT packet
@@ -104,8 +112,8 @@ class MqttInterface(Interface):
 
     # @return [Boolean] Whether the MQTT client is connected
     def connected(self):
-        if self.client and self.client.is_connected():
-            return True
+        if self.client:
+            return self.client.is_connected()
         else:
             return False
 
@@ -131,15 +139,17 @@ class MqttInterface(Interface):
 
     def write(self, packet):
         self.write_mutex.acquire()
-        topics = packet.meta.get('TOPIC')
+        topics = packet.meta.get("TOPIC")
         if not topics:
-            topics = packet.meta.get('TOPICS')
+            topics = packet.meta.get("TOPICS")
         if topics:
             for topic in topics:
                 self.write_topics.append(topic)
                 super().write(packet)
         else:
-            raise RuntimeError(f"Command packet '{packet.target_name} {packet.packet_name}' requires a META TOPIC or TOPICS")
+            raise RuntimeError(
+                f"Command packet '{packet.target_name} {packet.packet_name}' requires a META TOPIC or TOPICS"
+            )
         self.write_mutex.release()
 
     def on_message(self, client, userdata, message):
@@ -156,7 +166,7 @@ class MqttInterface(Interface):
 
     # Writes to the client
     # @param data [String] Raw packet data
-    def write_interface(self, data, extra = None):
+    def write_interface(self, data, extra=None):
         self.write_interface_base(data, extra)
         try:
             topic = self.write_topics.pop(0)
@@ -164,7 +174,7 @@ class MqttInterface(Interface):
             raise RuntimeError(f"write_interface called with no topics: {self.write_topics}")
         info = self.client.publish(topic, data)
         # This more closely matches the ruby implementation
-        info.wait_for_publish(timeout = self.ack_timeout)
+        info.wait_for_publish(timeout=self.ack_timeout)
 
     # Supported Options
     # USERNAME - Username for Mqtt Server
@@ -177,24 +187,26 @@ class MqttInterface(Interface):
     def set_option(self, option_name, option_values):
         super().set_option(option_name, option_values)
         match option_name.upper():
-            case 'USERNAME':
+            case "ACK_TIMEOUT":
+                self.ack_timeout = float(option_values[0])
+            case "USERNAME":
                 self.username = option_values[0]
-            case 'PASSWORD':
+            case "PASSWORD":
                 self.password = option_values[0]
-            case 'CERT':
+            case "CERT":
                 # CERT must be given as a file
                 self.cert = tempfile.NamedTemporaryFile(mode="w+", delete=False)
                 self.cert.write(option_values[0])
                 self.cert.close()
-            case 'KEY':
+            case "KEY":
                 # KEY must be given as a file
                 self.key = tempfile.NamedTemporaryFile(mode="w+", delete=False)
                 self.key.write(option_values[0])
                 self.key.close()
-            case 'CA_FILE':
+            case "CA_FILE":
                 # CA_FILE must be given as a file
                 self.ca_file = tempfile.NamedTemporaryFile(mode="w+", delete=False)
                 self.ca_file.write(option_values[0])
                 self.ca_file.close()
-            case 'KEYFILE_PASSWORD':
+            case "KEYFILE_PASSWORD":
                 self.keyfile_password = option_values[0]
