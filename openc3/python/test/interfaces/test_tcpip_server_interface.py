@@ -18,8 +18,6 @@ import time
 import socket
 import threading
 import unittest
-from unittest.mock import *
-from test.test_helper import *
 from openc3.interfaces.tcpip_server_interface import TcpipServerInterface
 from openc3.packets.packet import Packet
 

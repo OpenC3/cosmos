@@ -18,8 +18,7 @@ import time
 import socket
 import threading
 import unittest
-from unittest.mock import *
-from test.test_helper import *
+from unittest.mock import patch
 from openc3.interfaces.udp_interface import UdpInterface
 from openc3.io.udp_sockets import UdpReadSocket, UdpWriteSocket
 from openc3.packets.packet import Packet

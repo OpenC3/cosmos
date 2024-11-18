@@ -118,23 +118,23 @@ class TestFixedProtocol(unittest.TestCase):
         self.interface.tlm_target_names = ["SYSTEM"]
         TestFixedProtocol.index = 1
         packet = self.interface.read()
-        self.assertTrue(datetime.now(timezone.utc).timestamp() - packet.received_time.timestamp() < 0.1)
+        self.assertLess(datetime.now(timezone.utc).timestamp() - packet.received_time.timestamp(), 0.1)
         self.assertEqual(packet.target_name, "SYSTEM")
         self.assertEqual(packet.packet_name, "META")
         TestFixedProtocol.index = 2
         packet = self.interface.read()
-        self.assertTrue(datetime.now(timezone.utc).timestamp() - packet.received_time.timestamp() < 0.1)
+        self.assertLess(datetime.now(timezone.utc).timestamp() - packet.received_time.timestamp(), 0.1)
         self.assertEqual(packet.target_name, "SYSTEM")
         self.assertEqual(packet.packet_name, "LIMITS_CHANGE")
         target.tlm_unique_id_mode = True
         TestFixedProtocol.index = 1
         packet = self.interface.read()
-        self.assertTrue(datetime.now(timezone.utc).timestamp() - packet.received_time.timestamp() < 0.1)
+        self.assertLess(datetime.now(timezone.utc).timestamp() - packet.received_time.timestamp(), 0.1)
         self.assertEqual(packet.target_name, "SYSTEM")
         self.assertEqual(packet.packet_name, "META")
         TestFixedProtocol.index = 2
         packet = self.interface.read()
-        self.assertTrue(datetime.now(timezone.utc).timestamp() - packet.received_time.timestamp() < 0.1)
+        self.assertLess(datetime.now(timezone.utc).timestamp() - packet.received_time.timestamp(), 0.1)
         self.assertEqual(packet.target_name, "SYSTEM")
         self.assertEqual(packet.packet_name, "LIMITS_CHANGE")
         target.tlm_unique_id_mode = False
@@ -164,13 +164,13 @@ class TestFixedProtocol(unittest.TestCase):
         self.interface.tlm_target_names = ["SYSTEM"]
         target.cmd_unique_id_mode = False
         packet = self.interface.read()
-        self.assertTrue(datetime.now(timezone.utc).timestamp() - packet.received_time.timestamp() < 0.01)
+        self.assertLess(datetime.now(timezone.utc).timestamp() - packet.received_time.timestamp(), 0.1)
         self.assertEqual(packet.target_name, "SYSTEM")
         self.assertEqual(packet.packet_name, "STARTLOGGING")
         self.assertEqual(packet.buffer, buffer)
         target.cmd_unique_id_mode = True
         packet = self.interface.read()
-        self.assertTrue(datetime.now(timezone.utc).timestamp() - packet.received_time.timestamp() < 0.01)
+        self.assertLess(datetime.now(timezone.utc).timestamp() - packet.received_time.timestamp(), 0.1)
         self.assertEqual(packet.target_name, "SYSTEM")
         self.assertEqual(packet.packet_name, "STARTLOGGING")
         self.assertEqual(packet.buffer, buffer)

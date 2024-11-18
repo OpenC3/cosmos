@@ -17,8 +17,6 @@
 import time
 import unittest
 import threading
-from unittest.mock import *
-from test.test_helper import *
 from openc3.interfaces.interface import Interface
 from openc3.interfaces.protocols.protocol import Protocol
 from openc3.packets.packet import Packet

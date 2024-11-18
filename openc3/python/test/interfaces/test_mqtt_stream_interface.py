@@ -15,9 +15,10 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
-from unittest.mock import *
-from test.test_helper import *
+from unittest.mock import patch, Mock, ANY
+from test.test_helper import mock_redis, setup_system
 from openc3.interfaces.mqtt_stream_interface import MqttStreamInterface
+from openc3.system.system import System
 
 
 class TestMqttStreamInterface(unittest.TestCase):
@@ -38,8 +39,8 @@ class TestMqttStreamInterface(unittest.TestCase):
         self.assertEqual(i.connection_string(), "localhost:1883 write topic: write_topic read topic: read_topic")
 
     @patch("openc3.streams.mqtt_stream.mqtt.Client")
-    def test_connects_to_mqtt_broker(self, MockClient):
-        mock_client_instance = MockClient.return_value
+    def test_connects_to_mqtt_broker(self, mock_client):
+        mock_client_instance = mock_client.return_value
         mock_client_instance.is_connected.return_value = True
         i = MqttStreamInterface("localhost", "1883", "write_topic", "read_topic")
         i.set_option("ACK_TIMEOUT", ["10.0"])
@@ -49,7 +50,7 @@ class TestMqttStreamInterface(unittest.TestCase):
         i.set_option("KEY", ["key_content"])
         i.set_option("CA_FILE", ["ca_file_content"])
         i.connect()
-        self.assertEqual(i.connected(), True)
+        self.assertTrue(i.connected())
         self.assertEqual(i.ack_timeout, 10.0)
         mock_client_instance.username_pw_set.assert_called_with("test_user", "test_pass")
         mock_client_instance.tls_set.assert_called_with(ca_certs=ANY, certfile=ANY, keyfile=ANY)
@@ -63,18 +64,18 @@ class TestMqttStreamInterface(unittest.TestCase):
         mock_client_instance.subscribe.assert_called_with("read_topic")
 
     @patch("openc3.streams.mqtt_stream.mqtt.Client")
-    def test_disconnects_the_mqtt_client(self, MockClient):
-        mock_client_instance = MockClient.return_value
+    def test_disconnects_the_mqtt_client(self, mock_client):
+        mock_client_instance = mock_client.return_value
         i = MqttStreamInterface("localhost", "1883", "write_topic", "read_topic")
         i.connect()
         i.disconnect()
-        self.assertEqual(i.connected(), False)
+        self.assertFalse(i.connected())
         i.disconnect()  # Safe to call twice
         mock_client_instance.disconnect.assert_called()
 
     @patch("openc3.streams.mqtt_stream.mqtt.Client")
-    def test_reads_a_message_from_the_mqtt_client(self, MockClient):
-        mock_client_instance = MockClient.return_value
+    def test_reads_a_message_from_the_mqtt_client(self, mock_client):
+        mock_client_instance = mock_client.return_value
         i = MqttStreamInterface("localhost", "1883", "write_topic", "read_topic")
         i.connect()
         message = Mock()
@@ -82,13 +83,13 @@ class TestMqttStreamInterface(unittest.TestCase):
         message.payload = b"\x00\x01\x02\x03\x04\x05"
         mock_client_instance.on_message(mock_client_instance, i.stream.pkt_queue, message)
         packet = i.read()
-        self.assertEqual(packet.target_name, None)
-        self.assertEqual(packet.packet_name, None)
+        self.assertIsNone(packet.target_name)
+        self.assertIsNone(packet.packet_name)
         self.assertEqual(packet.buffer, b"\x00\x01\x02\x03\x04\x05")
 
     @patch("openc3.streams.mqtt_stream.mqtt.Client")
-    def test_writes_a_message_to_the_mqtt_client(self, MockClient):
-        mock_client_instance = MockClient.return_value
+    def test_writes_a_message_to_the_mqtt_client(self, mock_client):
+        mock_client_instance = mock_client.return_value
         i = MqttStreamInterface("localhost", "1883", "write_topic", "read_topic")
         i.connect()
         pkt = System.commands.packet("INST", "COLLECT")

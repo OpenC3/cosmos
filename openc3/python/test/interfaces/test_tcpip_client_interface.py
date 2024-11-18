@@ -15,8 +15,6 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
-from unittest.mock import *
-from test.test_helper import *
 from openc3.interfaces.tcpip_client_interface import TcpipClientInterface
 
 
