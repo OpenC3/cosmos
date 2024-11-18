@@ -23,34 +23,18 @@
 <template>
   <div>
     <v-row no-gutters align="center" class="px-2">
-      <v-col>
-        <v-file-input
-          v-model="files"
-          multiple
-          show-size
-          accept=".gem,.gz,.zip,.whl"
-          class="mx-2"
-          label="Click to select file(s) to add to COSMOS"
+      <v-col class="pa-2 mt-2">
+        <v-btn @click="selectFile">Install Package</v-btn>
+        <input
+          style="display: none"
+          type="file"
           ref="fileInput"
+          @change="fileChange"
         />
       </v-col>
       <v-col class="ml-4 mr-2" cols="4">
         <rux-progress :value="progress"></rux-progress>
       </v-col>
-      <v-btn
-        @click="upload()"
-        class="mx-2"
-        color="primary"
-        data-test="packageUpload"
-        :disabled="files.length < 1"
-        :loading="loadingPackage"
-      >
-        <v-icon start theme="dark">mdi-cloud-upload</v-icon>
-        <span> Upload </span>
-        <template v-slot:loader>
-          <span>Loading...</span>
-        </template>
-      </v-btn>
     </v-row>
     <v-alert v-model="showAlert" closable :type="alertType">{{
       alert
@@ -203,43 +187,49 @@ export default {
         'yyyy-MM-dd HH:mm:ss.SSS',
       )
     },
-    upload: function () {
-      this.loadingPackage = true
+    selectFile() {
       this.progress = 0
-      let self = this
-      const promises = this.files.map((file) => {
-        const formData = new FormData()
-        formData.append('package', file, file.name)
-        return Api.post('/openc3-api/packages', {
-          data: formData,
-          headers: { 'Content-Type': 'multipart/form-data' },
-          onUploadProgress: function (progressEvent) {
-            let percentCompleted = Math.round(
-              (progressEvent.loaded * 100) / progressEvent.total,
-            )
-            self.progress = percentCompleted
-          },
+      this.$refs.fileInput.click()
+    },
+    fileChange(event) {
+      const files = event.target.files
+      if (files.length > 0) {
+        this.loadingPackage = true
+        let self = this
+        const promises = [...files].map((file) => {
+          const formData = new FormData()
+          formData.append('package', file, file.name)
+          return Api.post('/openc3-api/packages', {
+            data: formData,
+            headers: { 'Content-Type': 'multipart/form-data' },
+            onUploadProgress: function (progressEvent) {
+              let percentCompleted = Math.round(
+                (progressEvent.loaded * 100) / progressEvent.total,
+              )
+              self.progress = percentCompleted
+            },
+          })
         })
-      })
-      Promise.all(promises)
-        .then((responses) => {
-          this.progress = 100
-          this.alert = `Uploaded ${responses.length} package${
-            responses.length > 1 ? 's' : ''
-          }`
-          this.alertType = 'success'
-          this.showAlert = true
-          this.loadingPackage = false
-          this.files = []
-          setTimeout(() => {
-            this.showAlert = false
-            this.updateProcesses()
-          }, 5000)
-          this.update()
-        })
-        .catch((error) => {
-          this.loadingPackage = false
-        })
+        Promise.all(promises)
+          .then((responses) => {
+            this.progress = 100
+            this.alert = `Uploaded ${responses.length} package${
+              responses.length > 1 ? 's' : ''
+            }`
+            this.alertType = 'success'
+            this.showAlert = true
+            this.loadingPackage = false
+            this.files = []
+            setTimeout(() => {
+              this.showAlert = false
+              this.updateProcesses()
+            }, 5000)
+            this.update()
+          })
+          .catch((error) => {
+            this.loadingPackage = false
+          })
+      }
     },
     deletePackage: function (pkg) {
       this.$dialog
