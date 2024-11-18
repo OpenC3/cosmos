@@ -1,3 +1,11 @@
+# Installation
+
+First build the plugin using the COSMOS CLI:
+
+```bash
+openc3.sh cli rake build VERSION=1.0.0
+```
+
 # Usage
 
 The easiest way to test the MQTT interface is to interact with the server at https://test.mosquitto.org/. It has an unencrypted unauthenticated port, an unencrypted authenticated port, an encrypted unauthenticated port, and an encrypted authenticated port to test against.
