@@ -21,6 +21,8 @@ require 'openc3/interfaces/mqtt_interface'
 
 module OpenC3
   describe MqttInterface do
+    MQTT_CLIENT = 'MQTT::Client'.freeze
+
     before(:all) do
       setup_system()
     end
@@ -43,7 +45,7 @@ module OpenC3
 
     describe "connect" do
       it "sets various ssl settings based on options" do
-        double = double('MQTT::Client')
+        double = double(MQTT_CLIENT)
         expect(double).to receive(:ack_timeout=).with(10.0)
         expect(double).to receive(:host=).with('localhost')
         expect(double).to receive(:port=).with(1883)
@@ -74,7 +76,7 @@ module OpenC3
 
     describe "disconnect" do
       it "disconnects the mqtt client" do
-        double = double('MQTT::Client').as_null_object
+        double = double(MQTT_CLIENT).as_null_object
         expect(double).to receive(:connect)
         expect(double).to receive(:disconnect)
         allow(MQTT::Client).to receive(:new).and_return(double)
@@ -89,7 +91,7 @@ module OpenC3
 
     describe "read" do
       it "reads a message from the mqtt client" do
-        double = double('MQTT::Client').as_null_object
+        double = double(MQTT_CLIENT).as_null_object
         expect(double).to receive(:connect)
         expect(double).to receive(:connected?).and_return(true)
         expect(double).to receive(:get).and_return(['HEALTH_STATUS', "\x00\x00\x00\x00\x00\x00"])
@@ -107,7 +109,7 @@ module OpenC3
       end
 
       it "disconnects if the mqtt client returns no data" do
-        double = double('MQTT::Client').as_null_object
+        double = double(MQTT_CLIENT).as_null_object
         expect(double).to receive(:connect)
         expect(double).to receive(:connected?).and_return(true)
         expect(double).to receive(:get).and_return(['HEALTH_STATUS', nil])
@@ -125,7 +127,7 @@ module OpenC3
 
     describe "write" do
       it "writes a message to the mqtt client" do
-        double = double('MQTT::Client').as_null_object
+        double = double(MQTT_CLIENT).as_null_object
         expect(double).to receive(:connect)
         expect(double).to receive(:connected?).and_return(true)
         allow(MQTT::Client).to receive(:new).and_return(double)
@@ -139,7 +141,7 @@ module OpenC3
       end
 
       it "raises on packets without META TOPIC" do
-        double = double('MQTT::Client').as_null_object
+        double = double(MQTT_CLIENT).as_null_object
         expect(double).to receive(:connect)
         allow(MQTT::Client).to receive(:new).and_return(double)
 
