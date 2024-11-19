@@ -100,7 +100,7 @@ module OpenC3
         $read_buffer = "\x31\x30\xAB\xCD"
         data = @interface.read
         expect(Time.now - start > 1.5).to be true # It takes at least 1.5s
-        expect(Time.now - start < 2.5).to be true # Give it some extra time to connect (espcially on CI)
+        expect(Time.now - start < 2.5).to be true # Give it some extra time to connect (especially on CI)
         expect(data.buffer).to eql("\x31\x30")
       end
     end
