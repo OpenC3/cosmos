@@ -1,5 +1,4 @@
 import { defineConfig } from 'vite'
-import federation from '@originjs/vite-plugin-federation'
 import VitePluginStyleInject from 'vite-plugin-style-inject'
 import vue from '@vitejs/plugin-vue'
 
@@ -10,27 +9,23 @@ export default defineConfig({
     outDir: 'tools/widgets/BigWidget',
     emptyOutDir: true,
     sourcemap: true,
-    /*
     lib: {
       entry: './src/BigWidget.vue',
       name: 'BigWidget',
       fileName: (format, entryName) => `${entryName}.${format}.min.js`,
       formats: ['umd'],
     },
-    */
     rollupOptions: {
-      input: ['./src/BigWidget.vue'],
+      // input: ['./src/BigWidget.vue'],
       output: {
-        entryFileNames: 'BigWidget.umd.min.js',
-        format: 'umd',
-        /*
+        // entryFileNames: 'BigWidget.umd.min.js',
+        // format: 'umd',
         globals: {
           vue: 'Vue',
           vuetify: 'Vuetify',
         },
-        */
       },
-      // external: ['vue', 'vuetify'],
+      external: ['vue', 'vuetify'],
     },
   },
   plugins: [
