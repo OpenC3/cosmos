@@ -4,8 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "serve": "vite preview",
+    "serve": "vite build --watch --mode dev-server",
     "build": "vite build",
     "lint": "eslint src",
     "serve:standalone": "vite preview --mode standalone"
