@@ -572,7 +572,6 @@ class Structure:
         if not self.fixed_size:
             self.recalculate_bit_offsets()
 
-        # self.buffer.force_encoding('ASCII-8BIT'.freeze)
         if self.accessor.enforce_length():
             if len(self._buffer) != self.defined_length:
                 if len(self._buffer) < self.defined_length:

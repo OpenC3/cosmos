@@ -1,0 +1,175 @@
+# Copyright 2024 OpenC3, Inc.
+# All Rights Reserved.
+#
+# This program is free software; you can modify and/or redistribute it
+# under the terms of the GNU Affero General Public License
+# as published by the Free Software Foundation; version 3 with
+# attribution addendums as found in the LICENSE.txt
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
+from .accessor import Accessor
+from openc3.top_level import get_class_from_module
+from openc3.utilities.string import class_name_to_filename
+
+
+class HttpAccessor(Accessor):
+    def __init__(self, packet, body_accessor="FormAccessor", *body_accessor_args):
+        super().__init__(packet)
+        self.args.append(body_accessor)
+        for arg in body_accessor_args:
+            self.args.append(arg)
+        filename = class_name_to_filename(body_accessor)
+        klass = get_class_from_module(f"openc3.accessors.{filename}", body_accessor)
+        self.body_accessor = klass(packet, *body_accessor_args)
+
+    def read_item(self, item, buffer):
+        item_name = item.name
+        match item_name:
+            case "HTTP_STATUS":
+                if not self.packet.extra:
+                    return None
+                return self.packet.extra["HTTP_STATUS"]
+            case "HTTP_PATH":
+                if not self.packet.extra:
+                    return None
+                return self.packet.extra["HTTP_PATH"]
+            case "HTTP_METHOD":
+                if not self.packet.extra:
+                    return None
+                return self.packet.extra["HTTP_METHOD"]
+            case "HTTP_PACKET":
+                if not self.packet.extra:
+                    return None
+                return self.packet.extra["HTTP_PACKET"]
+            case "HTTP_ERROR_PACKET":
+                if not self.packet.extra:
+                    return None
+                return self.packet.extra["HTTP_ERROR_PACKET"]
+            case r"^HTTP_QUERY_":
+                if not self.packet.extra:
+                    return None
+                if item.key == r"^HTTP_QUERY_":
+                    query_name = item_name[11:].lower()
+                else:
+                    query_name = item.key
+                queries = self.packet.extra["HTTP_QUERIES"]
+                if queries:
+                    return queries[query_name]
+                else:
+                    return None
+            case r"^HTTP_HEADER_":
+                if not self.packet.extra:
+                    return None
+                if item.key == r"^HTTP_HEADER_":
+                    header_name = item_name[12:].lower()
+                else:
+                    header_name = item.key
+                headers = self.packet.extra["HTTP_HEADERS"]
+                if headers:
+                    return headers[header_name]
+                else:
+                    return None
+            case _:
+                return self.body_accessor.read_item(item, buffer)
+
+    def write_item(self, item, value, buffer):
+        item_name = item.name
+        match item_name:
+            case "HTTP_STATUS":
+                self.packet.extra = self.packet.extra or {}
+                self.packet.extra["HTTP_STATUS"] = int(value)
+            case "HTTP_PATH":
+                self.packet.extra = self.packet.extra or {}
+                self.packet.extra["HTTP_PATH"] = str(value)
+            case "HTTP_METHOD":
+                self.packet.extra = self.packet.extra or {}
+                self.packet.extra["HTTP_METHOD"] = str(value).lower()
+            case "HTTP_PACKET":
+                self.packet.extra = self.packet.extra or {}
+                self.packet.extra["HTTP_PACKET"] = str(value).upper()
+            case "HTTP_ERROR_PACKET":
+                self.packet.extra = self.packet.extra or {}
+                self.packet.extra["HTTP_ERROR_PACKET"] = str(value).upper()
+            case r"^HTTP_QUERY_":
+                self.packet.extra = self.packet.extra or {}
+                if item.key == r"^HTTP_QUERY_":
+                    query_name = item_name[11:].lower()
+                else:
+                    query_name = item.key
+                self.packet.extra["HTTP_QUERIES"] = self.packet.extra["HTTP_QUERIES"] or {}
+                queries = self.packet.extra["HTTP_QUERIES"]
+                queries[query_name] = str(value)
+            case r"^HTTP_HEADER_":
+                self.packet.extra = self.packet.extra or {}
+                if item.key == r"^HTTP_HEADER_":
+                    header_name = item_name[12:].lower()
+                else:
+                    header_name = item.key
+                self.packet.extra["HTTP_HEADERS"] = self.packet.extra["HTTP_HEADERS"] or {}
+                headers = self.packet.extra["HTTP_HEADERS"]
+                headers[header_name] = str(value)
+            case _:
+                self.body_accessor.write_item(item, value, buffer)
+        return value
+
+    def read_items(self, items, buffer):
+        result = {}
+        body_items = []
+        for item in items:
+            if item.name[0:4] == "HTTP_":
+                result[item.name] = self.read_item(item, buffer)
+            else:
+                body_items.append(item)
+        body_result = self.body_accessor.read_items(body_items, buffer)
+        return result | body_result  # Merge Body accessor read items with HTTP_ items
+
+    def write_items(self, items, values, buffer):
+        body_items = []
+        for item, index in enumerate(items):
+            if item.name[0:4] == "HTTP_":
+                self.write_item(item, values[index], buffer)
+            else:
+                body_items.append(item)
+        self.body_accessor.write_items(body_items, values, buffer)
+        return values
+
+    # If this is set it will enforce that buffer data is encoded
+    # in a specific encoding
+    def enforce_encoding(self):
+        return self.body_accessor.enforce_encoding()
+
+    # This affects whether the Packet class enforces the buffer
+    # length at all.  Set to false to remove any correlation between
+    # buffer length and defined sizes of items in COSMOS
+    def enforce_length(self):
+        return self.body_accessor.enforce_length()
+
+    # This sets the short_buffer_allowed flag in the Packet class
+    # which allows packets that have a buffer shorter than the defined size.
+    # Note that the buffer is still resized to the defined length
+    def enforce_short_buffer_allowed(self):
+        return self.body_accessor.enforce_short_buffer_allowed()
+
+    # If this is true it will enforce that COSMOS DERIVED items must have a
+    # write_conversion to be written
+    def enforce_derived_write_conversion(self, item):
+        match item.name:
+            case (
+                "HTTP_STATUS"
+                | "HTTP_PATH"
+                | "HTTP_METHOD"
+                | "HTTP_PACKET"
+                | "HTTP_ERROR_PACKET"
+                | r"^HTTP_QUERY_"
+                | r"^HTTP_HEADER_"
+            ):
+                return False
+            case _:
+                return self.body_accessor.enforce_derived_write_conversion(item)

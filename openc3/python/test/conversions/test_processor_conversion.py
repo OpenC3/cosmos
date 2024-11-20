@@ -46,9 +46,8 @@ class TestProcessorConversion(unittest.TestCase):
         self.assertEqual(c.call(2, packet, None), 0)
         proc.results = {}
         packet.processors["TEST"] = proc
-        # TODO: We could maybe rescue this but I don't want to hide typos
         with self.assertRaisesRegex(KeyError, "RESULT"):
-            self.assertEqual(c.call(2, packet, None), 0)
+            c.call(2, packet, None)
 
     def test_returns_the_equation(self):
         self.assertEqual(
