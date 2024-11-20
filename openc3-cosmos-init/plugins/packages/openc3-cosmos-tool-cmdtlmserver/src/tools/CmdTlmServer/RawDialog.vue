@@ -347,10 +347,10 @@ export default {
   top: 0;
   z-index: 1;
 }
-.raw-dialog .v-card-text {
+.raw-dialog :deep(.v-card-text) {
   background-color: var(--color-background-base-selected);
 }
-.v-textarea textarea {
+.v-textarea :deep(textarea) {
   margin-top: 10px;
   font-family: 'Courier New', Courier, monospace;
   overflow-y: scroll;
