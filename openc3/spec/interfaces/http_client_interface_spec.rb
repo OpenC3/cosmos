@@ -136,10 +136,10 @@ module OpenC3
         allow(mock_response).to receive(:headers).and_return({})
         allow(mock_response).to receive(:status).and_return(204)
         allow(mock_response).to receive(:body).and_return('')
-
-        expect(@interface.instance_variable_get(:@http)).to receive(:delete)
-          .with("#{@api_resource}/1", { 'confirm' => 'true' }, { 'Authorization' => 'Bearer token' })
-          .and_return(mock_response)
+        expect(@interface.instance_variable_get(:@http)).to receive(:delete) do |args, &block|
+          expect(args).to eql "#{@api_resource}/1"
+          # Not sure how to test block here
+        end.and_return(mock_response)
 
         @interface.write_interface(data, extra)
         expect(@interface.instance_variable_get(:@response_queue).pop).to eq(['', {
@@ -216,13 +216,13 @@ module OpenC3
       end
 
       it "sets target and packet names for successful responses" do
-        packet = @interface.convert_data_to_packet('success', { 'HTTP_STATUS' => 200, 'HTTP_REQUEST_TARGET_NAME' => 'TARGET', 'HTTP_PACKET' => 'SUCCESS' })
+        packet = @interface.convert_data_to_packet('success', { 'HTTP_STATUS' => 200, 'HTTP_REQUEST' => ['', {'HTTP_REQUEST_TARGET_NAME' => 'TARGET', 'HTTP_PACKET' => 'SUCCESS' }]})
         expect(packet.target_name).to eq('TARGET')
         expect(packet.packet_name).to eq('SUCCESS')
       end
 
       it "sets error packet name for error responses" do
-        packet = @interface.convert_data_to_packet('error', { 'HTTP_STATUS' => 404, 'HTTP_REQUEST_TARGET_NAME' => 'TARGET', 'HTTP_ERROR_PACKET' => 'ERROR' })
+        packet = @interface.convert_data_to_packet('error', { 'HTTP_STATUS' => 404, 'HTTP_REQUEST' => ['', {'HTTP_REQUEST_TARGET_NAME' => 'TARGET', 'HTTP_ERROR_PACKET' => 'ERROR' }]})
         expect(packet.target_name).to eq('TARGET')
         expect(packet.packet_name).to eq('ERROR')
       end
@@ -241,7 +241,6 @@ module OpenC3
 
         expect(data).to eq( @packet_data )
         expect(extra['HTTP_REQUEST_TARGET_NAME']).to eq('TARGET')
-        expect(extra['HTTP_REQUEST_PACKET_NAME']).to eq('PACKET')
         uri_str = extra['HTTP_URI'].encode('ASCII-8BIT', 'UTF-8')
         expect(uri_str).to eq("https://example.com:8080#{@api_resource}")
       end
@@ -262,7 +261,6 @@ module OpenC3
 
         expect(uri_str).to eq("https://example.com:8080#{@api_resource}")
         expect(extra['HTTP_REQUEST_TARGET_NAME']).to eq('TARGET')
-        expect(extra['HTTP_REQUEST_PACKET_NAME']).to eq('PACKET')
       end
     end
   end

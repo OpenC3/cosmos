@@ -188,23 +188,21 @@ module OpenC3
     # Called to convert the read data into a OpenC3 Packet object
     #
     # @param data [String] Raw packet data
-    # @param extra [Hash] Key/Value pairs of extra data
+    # @param extra [Hash] Contains the following keys:
+    #   HTTP_HEADERS - Hash of response headers
+    #   HTTP_STATUS - Integer response status code
+    #   HTTP_REQUEST - [data, extra]
+    #     where data is the request data and extra contains:
+    #       HTTP_REQUEST_TARGET_NAME - String request target name
+    #       HTTP_URI - String request URI based on HTTP_PATH
+    #       HTTP_PATH - String request path
+    #       HTTP_METHOD - String request method
+    #       HTTP_PACKET - String response packet name
+    #       HTTP_ERROR_PACKET - Optional string error packet name
+    #       HTTP_QUERIES - Optional hash of request queries
+    #       HTTP_HEADERS - Optional hash of request headers
     # @return [Packet] OpenC3 Packet with buffer filled with data
     def convert_data_to_packet(data, extra = nil)
-      # extra contains the following keys:
-      # HTTP_HEADERS - Hash of response headers
-      # HTTP_STATUS - Integer response status code
-      # HTTP_REQUEST - [data, extra]
-      #   where data is the request data and extra contains:
-      #     HTTP_REQUEST_TARGET_NAME - String request target name
-      #     HTTP_URI - String request URI based on HTTP_PATH
-      #     HTTP_PATH - String request path
-      #     HTTP_METHOD - String request method
-      #     HTTP_PACKET - String response packet name
-      #     HTTP_ERROR_PACKET - Optional string error packet name
-      #     HTTP_QUERIES - Optional hash of request queries
-      #     HTTP_HEADERS - Optional hash of request headers
-
       packet = Packet.new(nil, nil, :BIG_ENDIAN, nil, data.to_s)
       packet.accessor = HttpAccessor.new(packet)
       # Grab the request extra set in the write_interface method
@@ -216,7 +214,7 @@ module OpenC3
           request_target_name = request_target_name.to_s.upcase
           response_packet_name = request_extra['HTTP_PACKET']
           error_packet_name = request_extra['HTTP_ERROR_PACKET']
-          # HTTP_STATUS was set in the base response_extra
+          # HTTP_STATUS was set in the base extra
           status = extra['HTTP_STATUS'].to_i
           if status >= 300 and error_packet_name
             # Handle error special case response packet
