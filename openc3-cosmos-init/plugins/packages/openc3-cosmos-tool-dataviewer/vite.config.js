@@ -6,7 +6,6 @@ import vue from '@vitejs/plugin-vue'
 const DEFAULT_EXTENSIONS = ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json']
 
 export default defineConfig({
-  base: '/tools/dataviewer',
   build: {
     outDir: 'tools/dataviewer',
     emptyOutDir: true,
@@ -29,6 +28,9 @@ export default defineConfig({
       '@': resolve(__dirname, './src'),
     },
     extensions: [...DEFAULT_EXTENSIONS, '.vue'], // not recommended but saves us from having to change every SFC import
+  },
+  define: {
+    __BASE_URL__: JSON.stringify('/tools/dataviewer'),
   },
   optimizeDeps: {
     entries: [], // https://github.com/vituum/vituum/issues/25#issuecomment-1690080284
