@@ -145,7 +145,7 @@ INTERFACE INTERFACE_NAME openc3/interfaces/udp_interface.py host.docker.internal
 
 ### HTTP Client Interface
 
-The HTTP client interface connects to a HTTP server to send commands and receive telemetry. This interface is used for interacting with existing standard web servers. This interface is commonly used with the [HttpAccessor](accessors#http-accessor) and [JsonAccessor](accessors#json-accessor). See the [openc3-cosmos-http-example](https://github.com/OpenC3/cosmos/tree/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-http-example) for more information.
+The HTTP client interface connects to a HTTP server to send commands and receive telemetry. This interface is commonly used with the [HttpAccessor](accessors#http-accessor) and [JsonAccessor](accessors#json-accessor). See the [openc3-cosmos-http-example](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-http-example) for more information.
 
 | Parameter                   | Description                                                                             | Required | Default    |
 | --------------------------- | --------------------------------------------------------------------------------------- | -------- | ---------- |
@@ -171,7 +171,7 @@ INTERFACE INTERFACE_NAME openc3/interfaces/http_client_interface.py mysecure.com
 
 ### HTTP Server Interface
 
-The HTTP server interface creates a simple unencrypted, unauthenticated HTTP server. This interface is commonly used with the [HttpAccessor](accessors#http-accessor) and [JsonAccessor](accessors#json-accessor). See the [openc3-cosmos-http-example](https://github.com/OpenC3/cosmos/tree/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-http-example) for more information.
+The HTTP server interface creates a simple unencrypted, unauthenticated HTTP server. This interface is commonly used with the [HttpAccessor](accessors#http-accessor) and [JsonAccessor](accessors#json-accessor). See the [openc3-cosmos-http-example](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-http-example) for more information.
 
 | Parameter | Description                                       | Required | Default |
 | --------- | ------------------------------------------------- | -------- | ------- |

@@ -44,7 +44,7 @@ The Concise Binary Object Representation ([CBOR](https://en.wikipedia.org/wiki/C
 
 #### Commands
 
-Using the CBOR Accessor for [command definitions](command) requires the use of [TEMPLATE_FILE](command#template_file) and [KEY](command#key) to allow the user to set values in the CBOR data. Note that the KEY values are the [JSONPath](https://en.wikipedia.org/wiki/JSONPath) to access the values.
+Using the CBOR Accessor for [command definitions](command) requires the use of [TEMPLATE_FILE](command#template_file) and [KEY](command#key) to allow the user to set values in the CBOR data. Note that the KEY values use [JSONPath](https://en.wikipedia.org/wiki/JSONPath).
 
 ```ruby
 COMMAND CBOR CBORCMD BIG_ENDIAN "CBOR Accessor Command"
@@ -78,7 +78,7 @@ end
 
 #### Telemetry
 
-Using the CBOR Accessor for [telemetry definitions](telemetry) only requires the use of [KEY](command#key) to pull values from the CBOR data. Note that the KEY values are the [JSONPath](https://en.wikipedia.org/wiki/JSONPath) to access the values.
+Using the CBOR Accessor for [telemetry definitions](telemetry) only requires the use of [KEY](command#key) to pull values from the CBOR data. Note that the KEY values use [JSONPath](https://en.wikipedia.org/wiki/JSONPath).
 
 ```ruby
 TELEMETRY CBOR CBORTLM BIG_ENDIAN "CBOR Accessor Telemetry"
@@ -108,7 +108,7 @@ The Form Accessor is typically used with the [HTTP Client](interfaces#http-clien
 
 #### Commands
 
-Using the Form Accessor for [command definitions](command) requires the use of [KEY](command#key) to allow the user to set values in the HTTP form. Note that the KEY values are the [XPath](https://en.wikipedia.org/wiki/XPath) to access the values.
+Using the Form Accessor for [command definitions](command) requires the use of [KEY](command#key) to allow the user to set values in the HTTP form. Note that the KEY values use [XPath](https://en.wikipedia.org/wiki/XPath).
 
 ```ruby
 COMMAND FORM FORMCMD BIG_ENDIAN "Form Accessor Command"
@@ -122,7 +122,7 @@ COMMAND FORM FORMCMD BIG_ENDIAN "Form Accessor Command"
 
 #### Telemetry
 
-Using the Form Accessor for [telemetry definitions](telemetry) only requires the use of [KEY](command#key) to pull values from the HTTP response data. Note that the KEY values are the [XPath](https://en.wikipedia.org/wiki/XPath) to access the values.
+Using the Form Accessor for [telemetry definitions](telemetry) only requires the use of [KEY](command#key) to pull values from the HTTP response data. Note that the KEY values use [XPath](https://en.wikipedia.org/wiki/XPath).
 
 ```ruby
 TELEMETRY FORM FORMTLM BIG_ENDIAN "Form Accessor Telemetry"
@@ -135,57 +135,110 @@ TELEMETRY FORM FORMTLM BIG_ENDIAN "Form Accessor Telemetry"
 
 ### HTML Accessor
 
+The HTML Accessor is typically used with the [HTTP Client](interfaces#http-client-interface) interface to parse a web page. For a full example see [openc3-cosmos-http-get](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-http-get).
+
 #### Commands
 
-```ruby
-COMMAND HTML HTMLCMD BIG_ENDIAN "HTML Accessor Command"
-  ACCESSOR HtmlAccessor
-  TEMPLATE '<!DOCTYPE html><html lang="en"><head><title>4</title><script src="101"></script></head><body><noscript>12</noscript><img src="3.14" alt="An Image"/><p>Example</p><ul><li>1</li><li>3.14</li></ul></body></html>'
-  APPEND_ID_PARAMETER ID_ITEM 32 INT 4 4 4 "Int Item"
-    KEY "/html/head/title/text()"
-  APPEND_PARAMETER ITEM1 16 UINT MIN MAX 101 "Int Item 2"
-    KEY "/html/head/script/@src"
-    UNITS CELSIUS C
-  APPEND_PARAMETER ITEM2 16 UINT MIN MAX 12 "Int Item 3"
-    KEY "/html/body/noscript/text()"
-    FORMAT_STRING "0x%X"
-  APPEND_PARAMETER ITEM3 64 FLOAT MIN MAX 3.14 "Float Item"
-    KEY "/html/body/img/@src"
-  APPEND_PARAMETER ITEM4 128 STRING "Example" "String Item"
-    KEY "/html/body/p/text()"
-```
+HTLM Accessor is not typically used for commands but it would be similar to Telemetry using XPath Keys.
 
 #### Telemetry
 
 ```ruby
-TELEMETRY HTML HTMLTLM BIG_ENDIAN "HTML Accessor Telemetry"
-  ACCESSOR HtmlAccessor
-  APPEND_ID_ITEM ID_ITEM 32 INT 4 "Int Item"
-    KEY "/html/head/title/text()"
-  APPEND_ITEM ITEM1 16 UINT "Int Item 2"
-    KEY "/html/head/script/@src"
-    GENERIC_READ_CONVERSION_START UINT 16
-      value * 2
-    GENERIC_READ_CONVERSION_END
-    UNITS CELSIUS C
-  APPEND_ITEM ITEM2 16 UINT "Int Item 3"
-    KEY "/html/body/noscript/text()"
-    FORMAT_STRING "0x%X"
-  APPEND_ITEM ITEM3 64 FLOAT "Float Item"
-    KEY "/html/body/img/@src"
-  APPEND_ITEM ITEM4 128 STRING "String Item"
-    KEY "/html/body/p/text()"
+TELEMETRY HTML RESPONSE BIG_ENDIAN "Search results"
+  # Typically you use the HtmlAccessor to parse out the page that is returned
+  # HtmlAccessor is passed to HttpAccessor and used internally
+  ACCESSOR HttpAccessor HtmlAccessor
+  APPEND_ITEM NAME 240 STRING
+    # Keys were located by doing a manual search and then inspecting the page
+    # Right click the text you're looking for and then Copy -> Copy XPath
+    KEY normalize-space(//main/div/a[2]/span/h2/text())
+  APPEND_ITEM DESCRIPTION 480 STRING
+    KEY //main/div/a[2]/span/p/text()
+  APPEND_ITEM VERSION 200 STRING
+    KEY //main/div/a[2]/span/h2/span/text()
+  APPEND_ITEM DOWNLOADS 112 STRING
+    KEY normalize-space(//main/div/a[2]/p/text())
 ```
 
 ### HTTP Accessor
 
-### JSON Accessor
-
-The JSON Accessor serializes data into JavaScript Object Notation ([JSON](https://en.wikipedia.org/wiki/JSON)). JSON is a data interchange format that uses human-readable text to transmit data consisting of key value pairs and arrays.
+HTTP Accessor is typically used with the [HTTP Client](interfaces#http-client-interface) or [HTTP Server](interfaces#http-server-interface) interface to parse a web page. It takes another accessor to do the low level reading and writing of the items. The default accessor is FormAccessor. HtlmAccessor, XmlAccessor and JsonAccessor are also common for manipulating HTML, XML and JSON respectively. For a full example see [openc3-cosmos-http-get](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-http-get).
 
 #### Commands
 
-Using the JSON Accessor for [command definitions](command) requires the use of [TEMPLATE](command#template) and [KEY](command#key) to allow the user to set values in the JSON data. Note that the KEY values are the [JSONPath](https://en.wikipedia.org/wiki/JSONPath) to access the values.
+When used with the HTTP Client Interface, HTTP Accessor utilizes the following command parameters:
+
+| Parameter         | Description                                                                                          |
+| ----------------- | ---------------------------------------------------------------------------------------------------- |
+| HTTP_PATH         | requests at this path                                                                                |
+| HTTP_METHOD       | request method (GET, POST, DELETE)                                                                   |
+| HTTP_PACKET       | telemetry packet to store the response                                                               |
+| HTTP_ERROR_PACKET | telemetry packet to store error responses (status code >= 300)                                       |
+| HTTP_QUERY_XXX    | sets a value in the params passed to the request (XXX => value, or KEY => value), see example below  |
+| HTTP_HEADER_XXX   | sets a value in the headers passed to the request (XXX => value, or KEY => value), see example below |
+
+When used with the HTTP Server Interface, HTTP Accessor utilizes the following command parameters:
+
+| Parameter       | Description                                                                             |
+| --------------- | --------------------------------------------------------------------------------------- |
+| HTTP_STATUS     | status to return to clients                                                             |
+| HTTP_PATH       | mount point for server                                                                  |
+| HTTP_PACKET     | telemetry packet to store the request                                                   |
+| HTTP_HEADER_XXX | sets a value in the response headers (XXX => value, or KEY => value), see example below |
+
+```ruby
+COMMAND HTML SEARCH BIG_ENDIAN "Searches Rubygems.org"
+  # Note FormAccessor is the default argument for HttpAccessor so it is typically not specified
+  ACCESSOR HttpAccessor
+  PARAMETER HTTP_PATH 0 0 DERIVED nil nil "/search"
+  PARAMETER HTTP_METHOD 0 0 DERIVED nil nil "GET"
+  PARAMETER HTTP_PACKET 0 0 DERIVED nil nil "RESPONSE"
+  PARAMETER HTTP_ERROR_PACKET 0 0 DERIVED nil nil "ERROR"
+  # This sets parameter query=openc3+cosmos
+  # Note the parameter name 'query' based on HTTP_QUERY_QUERY
+  PARAMETER HTTP_QUERY_QUERY 0 0 DERIVED nil nil "openc3 cosmos"
+    GENERIC_READ_CONVERSION_START
+      value.split.join('+')
+    GENERIC_READ_CONVERSION_END
+  # This sets header Content-Type=text/html
+  # Note that TYPE is not used since the KEY is specified
+  PARAMETER HTTP_HEADER_TYPE 0 0 DERIVED nil nil "text/html"
+    KEY Content-Type
+```
+
+#### Telemetry
+
+HTTP Accessor utilizes the following telemetry items:
+
+| Parameter    | Description                                                                                                           |
+| ------------ | --------------------------------------------------------------------------------------------------------------------- |
+| HTTP_STATUS  | the request status                                                                                                    |
+| HTTP_HEADERS | hash of the response headers                                                                                          |
+| HTTP_REQUEST | optional hash which returns all the request parameters, see [HTTP Client Interface](interfaces#http-client-interface) |
+
+```ruby
+TELEMETRY HTML RESPONSE BIG_ENDIAN "Search results"
+  # Typically you use the HtmlAccessor to parse out the page that is returned
+  ACCESSOR HttpAccessor HtmlAccessor
+  APPEND_ITEM NAME 240 STRING
+    # Keys were located by doing a manual search and then inspecting the page
+    # Right click the text you're looking for and then Copy -> Copy XPath
+    KEY normalize-space(//main/div/a[2]/span/h2/text())
+  APPEND_ITEM DESCRIPTION 480 STRING
+    KEY //main/div/a[2]/span/p/text()
+  APPEND_ITEM VERSION 200 STRING
+    KEY //main/div/a[2]/span/h2/span/text()
+  APPEND_ITEM DOWNLOADS 112 STRING
+    KEY normalize-space(//main/div/a[2]/p/text())
+```
+
+### JSON Accessor
+
+The JSON Accessor serializes data into JavaScript Object Notation ([JSON](https://en.wikipedia.org/wiki/JSON)). JSON is a data interchange format that uses human-readable text to transmit data consisting of key value pairs and arrays. For a full example see [openc3-cosmos-accessor-test](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-accessor-test).
+
+#### Commands
+
+Using the JSON Accessor for [command definitions](command) requires the use of [TEMPLATE](command#template) and [KEY](command#key) to allow the user to set values in the JSON data. Note that the KEY values use [JSONPath](https://en.wikipedia.org/wiki/JSONPath).
 
 ```ruby
 COMMAND JSON JSONCMD BIG_ENDIAN "JSON Accessor Command"
@@ -209,7 +262,7 @@ COMMAND JSON JSONCMD BIG_ENDIAN "JSON Accessor Command"
 
 #### Telemetry
 
-Using the JSON Accessor for [telemetry definitions](telemetry) only requires the use of [KEY](command#key) to pull values from the JSON data. Note that the KEY values are the [JSONPath](https://en.wikipedia.org/wiki/JSONPath) to access the values.
+Using the JSON Accessor for [telemetry definitions](telemetry) only requires the use of [KEY](command#key) to pull values from the JSON data. Note that the KEY values use [JSONPath](https://en.wikipedia.org/wiki/JSONPath).
 
 ```ruby
 TELEMETRY JSON JSONTLM BIG_ENDIAN "JSON Accessor Telemetry"
@@ -236,6 +289,56 @@ TELEMETRY JSON JSONTLM BIG_ENDIAN "JSON Accessor Telemetry"
 ### Template Accessor
 
 ### XML Accessor
+
+The XML Accessor is typically used with the [HTTP Client](interfaces#http-client-interface) interface to send and receive XML from a web server. For a full example see [openc3-cosmos-accessor-test](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-accessor-test).
+
+#### Commands
+
+Using the XML Accessor for [command definitions](command) requires the use of [TEMPLATE](command#template) and [KEY](command#key) to allow the user to set values in the XML data. Note that the KEY values use [XPath](https://en.wikipedia.org/wiki/XPath).
+
+```ruby
+COMMAND XML XMLCMD BIG_ENDIAN "XML Accessor Command"
+  ACCESSOR XmlAccessor
+  TEMPLATE '<html><head><script src="3"></script><noscript>101</noscript></head><body><img src="12"/><div><ul><li>3.14</li><li>Example</li></ul></div><div></div></body></html>'
+  APPEND_ID_PARAMETER ID_ITEM 32 INT 3 3 3 "Int Item"
+    KEY "/html/head/script/@src"
+  APPEND_PARAMETER ITEM1 16 UINT MIN MAX 101 "Int Item 2"
+    KEY "/html/head/noscript/text()"
+    UNITS CELSIUS C
+  APPEND_PARAMETER ITEM2 16 UINT MIN MAX 12 "Int Item 3"
+    KEY "/html/body/img/@src"
+    FORMAT_STRING "0x%X"
+  APPEND_PARAMETER ITEM3 64 FLOAT MIN MAX 3.14 "Float Item"
+    KEY "/html/body/div/ul/li[1]/text()"
+  APPEND_PARAMETER ITEM4 128 STRING "Example" "String Item"
+    KEY "/html/body/div/ul/li[2]/text()"
+```
+
+#### Telemetry
+
+Using the XML Accessor for [telemetry definitions](telemetry) only requires the use of [KEY](command#key) to pull values from the XML data. Note that the KEY values use [XPath](https://en.wikipedia.org/wiki/XPath).
+
+```ruby
+TELEMETRY XML XMLTLM BIG_ENDIAN "XML Accessor Telemetry"
+  ACCESSOR XmlAccessor
+  # Template is not required for telemetry, but is useful for simulation
+  TEMPLATE '<html><head><script src="3"></script><noscript>101</noscript></head><body><img src="12"/><div><ul><li>3.14</li><li>Example</li></ul></div><div></div></body></html>'
+  APPEND_ID_ITEM ID_ITEM 32 INT 3 "Int Item"
+    KEY "/html/head/script/@src"
+  APPEND_ITEM ITEM1 16 UINT "Int Item 2"
+    KEY "/html/head/noscript/text()"
+    GENERIC_READ_CONVERSION_START UINT 16
+      value * 2
+    GENERIC_READ_CONVERSION_END
+    UNITS CELSIUS C
+  APPEND_ITEM ITEM2 16 UINT "Int Item 3"
+    KEY "/html/body/img/@src"
+    FORMAT_STRING "0x%X"
+  APPEND_ITEM ITEM3 64 FLOAT "Float Item"
+    KEY "/html/body/div/ul/li[1]/text()"
+  APPEND_ITEM ITEM4 128 STRING "String Item"
+    KEY "/html/body/div/ul/li[2]/text()"
+```
 
 ### GEMS Ascii (Enterprise)
 
