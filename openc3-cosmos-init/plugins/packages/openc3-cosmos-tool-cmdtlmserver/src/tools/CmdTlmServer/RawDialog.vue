@@ -27,44 +27,44 @@
     class="raw-dialog"
     ref="rawDialog"
   >
+    <div ref="bar" class="toolbar-wrapper">
+      <v-toolbar height="24">
+        <v-tooltip location="top">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
+              <v-icon data-test="copy-icon" @click="copyRawData">
+                mdi-content-copy
+              </v-icon>
+            </div>
+          </template>
+          <span> Copy </span>
+        </v-tooltip>
+        <v-tooltip location="top">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
+              <v-icon data-test="download" @click="downloadRawData">
+                mdi-download
+              </v-icon>
+            </div>
+          </template>
+          <span> Download </span>
+        </v-tooltip>
+        <v-spacer />
+        <span> {{ type }} </span>
+        <v-spacer />
+        <v-tooltip location="top">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
+              <v-icon data-test="close" @click="$emit('close')">
+                mdi-close-box
+              </v-icon>
+            </div>
+          </template>
+          <span> Close </span>
+        </v-tooltip>
+      </v-toolbar>
+    </div>
     <v-card>
-      <div ref="bar">
-        <v-toolbar height="24">
-          <v-tooltip location="top">
-            <template v-slot:activator="{ props }">
-              <div v-bind="props">
-                <v-icon data-test="copy-icon" @click="copyRawData">
-                  mdi-content-copy
-                </v-icon>
-              </div>
-            </template>
-            <span> Copy </span>
-          </v-tooltip>
-          <v-tooltip location="top">
-            <template v-slot:activator="{ props }">
-              <div v-bind="props">
-                <v-icon data-test="download" @click="downloadRawData">
-                  mdi-download
-                </v-icon>
-              </div>
-            </template>
-            <span> Download </span>
-          </v-tooltip>
-          <v-spacer />
-          <span> {{ type }} </span>
-          <v-spacer />
-          <v-tooltip location="top">
-            <template v-slot:activator="{ props }">
-              <div v-bind="props">
-                <v-icon data-test="close" @click="$emit('close')">
-                  mdi-close-box
-                </v-icon>
-              </div>
-            </template>
-            <span> Close </span>
-          </v-tooltip>
-        </v-toolbar>
-      </div>
       <v-card-title class="d-flex align-center justify-content-space-between">
         <span> {{ header }} </span>
         <v-spacer />
@@ -200,9 +200,8 @@ export default {
       this.dragX = e.clientX
       this.dragY = e.clientY
       // set the element's new position:
-      this.top = this.$refs.bar.parentElement.parentElement.offsetTop - yOffset
-      this.left =
-        this.$refs.bar.parentElement.parentElement.offsetLeft - xOffset
+      this.top = this.$refs.bar.parentElement.offsetTop - yOffset
+      this.left = this.$refs.bar.parentElement.offsetLeft - xOffset
     },
     closeDragElement: function () {
       // stop moving when mouse button is released
@@ -338,18 +337,20 @@ export default {
   border-color: white;
   resize: both;
   overflow: auto;
+  min-height: 28px;
   max-height: 85vh;
-  background-color: var(--color-background-base-selected);
-}
-.raw-dialog :deep(.v-card) {
-  height: 100%;
   min-width: 800px;
-}
-.raw-dialog :deep(.v-card__text) {
-  height: 100%;
   background-color: var(--color-background-base-selected);
 }
-.v-textarea :deep(textarea) {
+.raw-dialog .toolbar-wrapper {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.raw-dialog .v-card-text {
+  background-color: var(--color-background-base-selected);
+}
+.v-textarea textarea {
   margin-top: 10px;
   font-family: 'Courier New', Courier, monospace;
   overflow-y: scroll;
