@@ -99,7 +99,13 @@
             <span> {{ receivedCount }} </span>
           </v-col>
         </v-row>
-        <v-textarea v-model="rawData" class="pa-0 ma-0" auto-grow readonly />
+        <v-textarea
+          class="pa-0 ma-0"
+          v-model="rawData"
+          :rows="numRows"
+          no-resize
+          readonly
+        />
       </v-card-text>
     </v-card>
   </div>
@@ -171,6 +177,10 @@ export default {
       style['left'] = this.left + 'px'
       style['z-index'] = this.zIndex
       return style
+    },
+    numRows() {
+      // This is because v-textarea doesn't behave correctly with really long monospace text
+      return this.rawData.split('\n').length
     },
   },
   mounted() {
@@ -335,11 +345,11 @@ export default {
   border: solid;
   border-width: 1px;
   border-color: white;
-  resize: both;
+  resize: vertical;
   overflow: auto;
   min-height: 28px;
   max-height: 85vh;
-  min-width: 830px;
+  width: 815px;
   background-color: var(--color-background-base-selected);
 }
 .raw-dialog .toolbar-wrapper {
