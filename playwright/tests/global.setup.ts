@@ -34,8 +34,8 @@ setup('global setup', async ({ page }) => {
     }
 
     // Logout and log back in as admin
-    await page.getByText('The Operator').click()
-    await page.locator('button:has-text("Logout")').click()
+    await page.getByText('The Operator', { exact: true }).click()
+    await page.getByRole('button', { name: 'Logout' }).click()
     await page.waitForURL('**/auth/**')
     await page.getByLabel('Username or email').fill('admin')
     await page.getByLabel('Password', { exact: true }).fill('admin')

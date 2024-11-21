@@ -47,6 +47,7 @@ test.describe('CmdTlmServer', () => {
   test.use({
     toolPath: '/tools/cmdtlmserver',
     toolName: 'CmdTlmServer',
+    storageState: 'adminStorageState.json',
   })
   test('displays in local or UTC time', async ({ page, utils }) => {
     // Allow the table to populate
@@ -111,6 +112,7 @@ test.describe('Data Extractor', () => {
   test.use({
     toolPath: '/tools/dataextractor',
     toolName: 'Data Extractor',
+    storageState: 'adminStorageState.json',
   })
 
   test('displays in local or UTC time', async ({ page, utils }) => {
@@ -210,6 +212,7 @@ test.describe('Data Viewer', () => {
   test.use({
     toolPath: '/tools/dataviewer',
     toolName: 'Data Viewer',
+    storageState: 'adminStorageState.json',
   })
 
   test('displays in local or UTC time', async ({ page, utils }) => {
@@ -285,6 +288,7 @@ test.describe('Packet Viewer', () => {
   test.use({
     toolPath: '/tools/packetviewer',
     toolName: 'Packet Viewer',
+    storageState: 'adminStorageState.json',
   })
 
   test('displays in local or UTC time', async ({ page, utils }) => {
@@ -367,6 +371,7 @@ test.describe('Telemetry Grapher', () => {
   test.use({
     toolPath: '/tools/tlmgrapher',
     toolName: 'Telemetry Grapher',
+    storageState: 'adminStorageState.json',
   })
 
   test('displays in local or UTC time', async ({ page, utils }) => {
