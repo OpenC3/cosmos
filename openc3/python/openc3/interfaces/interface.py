@@ -358,7 +358,7 @@ class Interface:
         if option_name_upcase == "PERIODIC_CMD":
             # OPTION PERIODIC_CMD LOG/DONT_LOG 1.0 "INST COLLECT with TYPE NORMAL"
             self.options[option_name_upcase] = self.options[option_name_upcase] or []
-            self.options[option_name_upcase].push(option_values[:])
+            self.options[option_name_upcase].append(option_values[:])
         else:
             self.options[option_name_upcase] = option_values[:]
 

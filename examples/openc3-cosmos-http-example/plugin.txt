@@ -1,0 +1,15 @@
+VARIABLE ruby_client_hostname openc3-cosmos-cmd-tlm-api
+VARIABLE ruby_client_port 2901
+VARIABLE ruby_client_protocol http
+VARIABLE ruby_server_port 9090
+
+TARGET RUBY_CLIENT RUBY_CLIENT
+
+INTERFACE HTTP_CLIENT_INT http_client_interface.rb <%= ruby_client_hostname %> <%= ruby_client_port %> <%= ruby_client_protocol %> 5.0 5.0
+  MAP_TARGET RUBY_CLIENT
+  OPTION PERIODIC_CMD DONT_LOG 1.0 "RUBY_CLIENT TLM"
+
+TARGET RUBY_SERVER RUBY_SERVER
+
+INTERFACE RUBY_SERVER_INT http_server_interface.rb <%= ruby_server_port %>
+  MAP_TARGET RUBY_SERVER

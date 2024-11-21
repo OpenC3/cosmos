@@ -78,7 +78,6 @@ class HttpClientInterface(Interface):
         super().connect()
 
     def connected(self):
-        self.response_queue.empty()
         if self.http:
             return True
         else:
@@ -89,8 +88,8 @@ class HttpClientInterface(Interface):
         if self.http:
             self.http.close
         self.http = None
-        while self.response_queue.qsize() > 0:
-            self.response_queue.pop
+        while not self.response_queue.empty():
+            self.response_queue.get_nowait()
         super().disconnect()
         self.response_queue.put(None)
 
@@ -192,10 +191,9 @@ class HttpClientInterface(Interface):
                     # Handle error special case response packet
                     packet.target_name = request_target_name
                     packet.packet_name = str(error_packet_name).upper()
-                else:
-                    if response_packet_name is not None:
-                        packet.target_name = request_target_name
-                        packet.packet_name = str(response_packet_name).upper()
+                elif response_packet_name is not None:
+                    packet.target_name = request_target_name
+                    packet.packet_name = str(response_packet_name).upper()
 
             if not self.include_request_in_response:
                 extra.pop("HTTP_REQUEST", None)
