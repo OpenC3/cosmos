@@ -98,7 +98,7 @@ class HttpServerInterface(Interface):
 
     def build_path_lookup(self):
         self.lookup = {}
-        for target_name in self.target_names():
+        for target_name in self.target_names:
             for packet_name, packet in System.commands.packets(target_name).items():
                 packet.restore_defaults()
                 path = None

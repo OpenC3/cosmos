@@ -14,6 +14,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import re
 from .accessor import Accessor
 from openc3.top_level import get_class_from_module
 from openc3.utilities.string import class_name_to_filename
@@ -30,93 +31,92 @@ class HttpAccessor(Accessor):
         self.body_accessor = klass(packet, *body_accessor_args)
 
     def read_item(self, item, buffer):
+        if item.name in [
+            "HTTP_STATUS",
+            "HTTP_PATH",
+            "HTTP_METHOD",
+            "HTTP_PACKET",
+            "HTTP_ERROR_PACKET",
+        ]:
+            if not self.packet.extra:
+                return None
+            return self.packet.extra[item.name]
+
         item_name = item.name
-        match item_name:
-            case "HTTP_STATUS":
-                if not self.packet.extra:
-                    return None
-                return self.packet.extra["HTTP_STATUS"]
-            case "HTTP_PATH":
-                if not self.packet.extra:
-                    return None
-                return self.packet.extra["HTTP_PATH"]
-            case "HTTP_METHOD":
-                if not self.packet.extra:
-                    return None
-                return self.packet.extra["HTTP_METHOD"]
-            case "HTTP_PACKET":
-                if not self.packet.extra:
-                    return None
-                return self.packet.extra["HTTP_PACKET"]
-            case "HTTP_ERROR_PACKET":
-                if not self.packet.extra:
-                    return None
-                return self.packet.extra["HTTP_ERROR_PACKET"]
-            case r"^HTTP_QUERY_":
-                if not self.packet.extra:
-                    return None
-                if item.key == r"^HTTP_QUERY_":
-                    query_name = item_name[11:].lower()
-                else:
-                    query_name = item.key
-                queries = self.packet.extra["HTTP_QUERIES"]
-                if queries:
-                    return queries[query_name]
-                else:
-                    return None
-            case r"^HTTP_HEADER_":
-                if not self.packet.extra:
-                    return None
-                if item.key == r"^HTTP_HEADER_":
-                    header_name = item_name[12:].lower()
-                else:
-                    header_name = item.key
-                headers = self.packet.extra["HTTP_HEADERS"]
-                if headers:
-                    return headers[header_name]
-                else:
-                    return None
-            case _:
-                return self.body_accessor.read_item(item, buffer)
+        if re.match(r"^HTTP_QUERY_", item_name):
+            if not self.packet.extra:
+                return None
+            if item.key == r"^HTTP_QUERY_":
+                query_name = item_name[11:].lower()
+            else:
+                query_name = item.key
+            queries = self.packet.extra["HTTP_QUERIES"]
+            if queries:
+                return queries[query_name]
+            else:
+                return None
+
+        if re.match(r"^HTTP_HEADER_", item_name):
+            if not self.packet.extra:
+                return None
+            if item.key == r"^HTTP_HEADER_":
+                header_name = item_name[12:].lower()
+            else:
+                header_name = item.key
+            headers = self.packet.extra["HTTP_HEADERS"]
+            if headers:
+                return headers[header_name]
+            else:
+                return None
+
+        return self.body_accessor.read_item(item, buffer)
 
     def write_item(self, item, value, buffer):
+        if item.name == "HTTP_STATUS":
+            self.packet.extra = self.packet.extra or {}
+            self.packet.extra[item.name] = int(value)
+            return self.packet.extra[item.name]
+
+        if item.name in [
+            "HTTP_STATUS",
+            "HTTP_PATH",
+            "HTTP_METHOD",
+            "HTTP_PACKET",
+            "HTTP_ERROR_PACKET",
+        ]:
+            self.packet.extra = self.packet.extra or {}
+            value = str(value)
+            if item.name == "HTTP_METHOD":
+                value = value.lower()
+            elif item.name in ["HTTP_PACKET", "HTTP_ERROR_PACKET"]:
+                value = value.upper()
+            self.packet.extra[item.name] = value
+            return self.packet.extra[item.name]
+
         item_name = item.name
-        match item_name:
-            case "HTTP_STATUS":
-                self.packet.extra = self.packet.extra or {}
-                self.packet.extra["HTTP_STATUS"] = int(value)
-            case "HTTP_PATH":
-                self.packet.extra = self.packet.extra or {}
-                self.packet.extra["HTTP_PATH"] = str(value)
-            case "HTTP_METHOD":
-                self.packet.extra = self.packet.extra or {}
-                self.packet.extra["HTTP_METHOD"] = str(value).lower()
-            case "HTTP_PACKET":
-                self.packet.extra = self.packet.extra or {}
-                self.packet.extra["HTTP_PACKET"] = str(value).upper()
-            case "HTTP_ERROR_PACKET":
-                self.packet.extra = self.packet.extra or {}
-                self.packet.extra["HTTP_ERROR_PACKET"] = str(value).upper()
-            case r"^HTTP_QUERY_":
-                self.packet.extra = self.packet.extra or {}
-                if item.key == r"^HTTP_QUERY_":
-                    query_name = item_name[11:].lower()
-                else:
-                    query_name = item.key
-                self.packet.extra["HTTP_QUERIES"] = self.packet.extra["HTTP_QUERIES"] or {}
-                queries = self.packet.extra["HTTP_QUERIES"]
-                queries[query_name] = str(value)
-            case r"^HTTP_HEADER_":
-                self.packet.extra = self.packet.extra or {}
-                if item.key == r"^HTTP_HEADER_":
-                    header_name = item_name[12:].lower()
-                else:
-                    header_name = item.key
-                self.packet.extra["HTTP_HEADERS"] = self.packet.extra["HTTP_HEADERS"] or {}
-                headers = self.packet.extra["HTTP_HEADERS"]
-                headers[header_name] = str(value)
-            case _:
-                self.body_accessor.write_item(item, value, buffer)
+        if re.match(r"^HTTP_QUERY_", item_name):
+            self.packet.extra = self.packet.extra or {}
+            if item.key == r"^HTTP_QUERY_":
+                query_name = item_name[11:].lower()
+            else:
+                query_name = item.key
+            self.packet.extra["HTTP_QUERIES"] = self.packet.extra["HTTP_QUERIES"] or {}
+            queries = self.packet.extra["HTTP_QUERIES"]
+            queries[query_name] = str(value)
+            return queries[query_name]
+
+        if re.match(r"^HTTP_HEADER_", item_name):
+            self.packet.extra = self.packet.extra or {}
+            if item.key == r"^HTTP_HEADER_":
+                header_name = item_name[12:].lower()
+            else:
+                header_name = item.key
+            self.packet.extra["HTTP_HEADERS"] = self.packet.extra["HTTP_HEADERS"] or {}
+            headers = self.packet.extra["HTTP_HEADERS"]
+            headers[header_name] = str(value)
+            return headers[header_name]
+
+        self.body_accessor.write_item(item, value, buffer)
         return value
 
     def read_items(self, items, buffer):
@@ -160,16 +160,15 @@ class HttpAccessor(Accessor):
     # If this is true it will enforce that COSMOS DERIVED items must have a
     # write_conversion to be written
     def enforce_derived_write_conversion(self, item):
-        match item.name:
-            case (
-                "HTTP_STATUS"
-                | "HTTP_PATH"
-                | "HTTP_METHOD"
-                | "HTTP_PACKET"
-                | "HTTP_ERROR_PACKET"
-                | r"^HTTP_QUERY_"
-                | r"^HTTP_HEADER_"
-            ):
-                return False
-            case _:
-                return self.body_accessor.enforce_derived_write_conversion(item)
+        if item.name in [
+            "HTTP_STATUS",
+            "HTTP_PATH",
+            "HTTP_METHOD",
+            "HTTP_PACKET",
+            "HTTP_ERROR_PACKET",
+        ]:
+            return False
+        if re.match(r"^HTTP_QUERY_", item.name) or re.match(r"^HTTP_HEADER_", item.name):
+            return False
+
+        return self.body_accessor.enforce_derived_write_conversion(item)
