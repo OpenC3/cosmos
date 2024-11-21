@@ -339,7 +339,7 @@ export default {
   overflow: auto;
   min-height: 28px;
   max-height: 85vh;
-  min-width: 800px;
+  min-width: 830px;
   background-color: var(--color-background-base-selected);
 }
 .raw-dialog .toolbar-wrapper {
@@ -353,6 +353,5 @@ export default {
 .v-textarea :deep(textarea) {
   margin-top: 10px;
   font-family: 'Courier New', Courier, monospace;
-  overflow-y: scroll;
 }
 </style>
