@@ -22,7 +22,7 @@
 
 <template>
   <top-bar :menus="menus" :title="title" />
-  <v-card>
+  <v-card style="z-index: 2 !important">
     <v-expansion-panels v-model="panel">
       <v-expansion-panel>
         <v-expansion-panel-title>
