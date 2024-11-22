@@ -122,7 +122,7 @@ module OpenC3
         name: @microservice_name,
         folder_name: nil,
         cmd: ['ruby', "trigger_group_microservice.rb", @microservice_name],
-        work_dir: '/openc3/lib/openc3/microservices',
+        work_dir: '/openc3-enterprise/lib/openc3-enterprise/microservices',
         options: [],
         topics: topics,
         target_names: [],

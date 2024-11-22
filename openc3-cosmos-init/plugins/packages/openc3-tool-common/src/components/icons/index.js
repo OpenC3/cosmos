@@ -20,54 +20,9 @@
 # if purchased from OpenC3, Inc.
 */
 
-import AstroIcon from './AstroIcon'
+import { h } from 'vue'
+import CosmosRuxIcon from './CosmosRuxIcon'
 import AstroStatusIndicator from './AstroStatusIndicator'
-
-const AstroRuxIcons = [
-  // These are the 'astro' icons taken from
-  // https://github.com/RocketCommunicationsInc/astro-components/blob/master/static/json/rux-icons.json
-  'altitude',
-  'antenna',
-  'antenna-off',
-  'antenna-receive',
-  'antenna-transmit',
-  'equipment',
-  'mission',
-  'netcom',
-  'payload',
-  'processor',
-  'processor-alt',
-  'propulsion-power',
-  'satellite-off',
-  'satellite-receive',
-  'satellite-transmit',
-  'solar',
-  'thermal',
-]
-
-const AstroIconLibrary = [
-  // These are from the IDs in the default RuxIcon library: https://github.com/RocketCommunicationsInc/astro-components/blob/master/static/icons/astro.svg
-  ...AstroRuxIcons,
-  'add-large',
-  'add-small',
-  'close-large',
-  'close-small',
-  'collapse',
-  'expand',
-  'lock',
-  'unlock',
-  'search',
-  'caution',
-  'maintenance',
-  'notifications',
-  'settings',
-
-  // These are in that SVG file, but they're broken in RuxIcon:
-  // 'twitter', // the twitter logo
-  // 'progress', // circle
-  // 'resources', // filing cabinet
-  // 'solar', // grid
-]
 
 const UnknownToAstroStatus = {
   fatal: 'critical',
@@ -147,35 +102,29 @@ const getStatusColorContrast = function (severityLevel) {
 
 const AstroStatuses = Object.keys(AstroStatusColors)
 
-const AstroRegularIcons = AstroIconLibrary.reduce((values, icon) => {
-  return {
-    [`astro-${icon}`]: {
-      component: AstroIcon,
-      props: {
-        icon,
-      },
+const AstroIconVuetifySets = {
+  astro: {
+    component: (props) => {
+      return h(CosmosRuxIcon, {
+        ...props,
+      })
     },
-    ...values,
-  }
-}, {})
-const AstroStatusIcons = AstroStatuses.reduce((values, status) => {
-  return {
-    [`astro-status-${status}`]: {
-      component: AstroStatusIndicator,
-      props: {
-        status: status,
-      },
+  },
+  ['astro-status']: {
+    component: (props) => {
+      return h(AstroStatusIndicator, {
+        ...props,
+        status: props.icon,
+      })
     },
-    ...values,
-  }
-}, {})
-const AstroIconVuetifyValues = { ...AstroRegularIcons, ...AstroStatusIcons }
+  },
+}
 
 export {
-  AstroIconLibrary,
-  AstroIconVuetifyValues,
+  AstroIconVuetifySets,
   AstroStatuses,
   AstroStatusColors,
+  AstroStatusIndicator,
   getStatusColorContrast,
   UnknownToAstroStatus,
   UnknownToCosmosStatus,

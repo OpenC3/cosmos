@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 module OpenC3
@@ -61,7 +61,7 @@ module OpenC3
             # Convert argument into array of longs
             args[index], = [arg].pack("p").unpack(POINTER_TYPE)
           when 'I'
-            # Handle intergers larger than 2^31 - 1
+            # Handle integers larger than 2^31 - 1
             args[index], = [arg].pack("I").unpack("i")
           end
         end

@@ -23,10 +23,10 @@
 <template>
   <div>
     <top-bar :menus="menus" :title="title" />
-    <v-expansion-panels v-model="panel" style="margin-bottom: 5px">
+    <v-expansion-panels v-model="panel" class="expansion">
       <v-expansion-panel>
-        <v-expansion-panel-header style="z-index: 1"></v-expansion-panel-header>
-        <v-expansion-panel-content>
+        <v-expansion-panel-title style="z-index: 1"></v-expansion-panel-title>
+        <v-expansion-panel-text>
           <div v-show="this.selectedGraphId === null">
             <v-row class="my-5">
               <v-spacer />
@@ -38,53 +38,54 @@
             </v-row>
           </div>
 
-          <v-row
-            v-show="this.selectedGraphId !== null"
-            class="ma-1"
-            style="flex-wrap: nowrap"
-          >
+          <v-container v-show="this.selectedGraphId !== null">
             <target-packet-item-chooser
               :initial-target-name="this.$route.params.target"
               :initial-packet-name="this.$route.params.packet"
               :initial-item-name="this.$route.params.item"
-              @click="addItem"
+              @addItem="addItem"
               button-text="Add Item"
               choose-item
               select-types
             />
-            <v-btn
-              v-show="state === 'pause'"
-              class="pulse control"
-              v-on:click="
-                () => {
-                  state = 'start'
-                }
-              "
-              color="primary"
-              fab
-              data-test="start-graph"
-            >
-              <v-icon large>mdi-play</v-icon>
-            </v-btn>
-            <v-btn
-              v-show="state === 'start'"
-              class="control"
-              v-on:click="
-                () => {
-                  state = 'pause'
-                }
-              "
-              color="primary"
-              fab
-              data-test="pause-graph"
-            >
-              <v-icon large>mdi-pause</v-icon>
-            </v-btn>
-            <div class="graph-info">
-              Click item name in Legend to toggle. Right click to edit.
-            </div>
-          </v-row>
-        </v-expansion-panel-content>
+            <!-- All this row / col stuff is to setup a structure similar to the
+                 target-packet-item-chooser so it will layout the same -->
+            <v-row class="grapher-info">
+              <v-col style="max-width: 300px; pointer-events: none"></v-col>
+              <v-col style="max-width: 300px; pointer-events: none"></v-col>
+              <v-col style="max-width: 300px; pointer-events: none"></v-col>
+              <v-col style="max-width: 140px">
+                <v-btn
+                  v-show="state === 'pause'"
+                  class="pulse"
+                  v-on:click="
+                    () => {
+                      state = 'start'
+                    }
+                  "
+                  color="primary"
+                  data-test="start-graph"
+                  icon="mdi-play"
+                  size="large"
+                >
+                </v-btn>
+                <v-btn
+                  v-show="state === 'start'"
+                  v-on:click="
+                    () => {
+                      state = 'pause'
+                    }
+                  "
+                  color="primary"
+                  data-test="pause-graph"
+                  icon="mdi-pause"
+                  size="large"
+                ></v-btn
+                ><v-spacer />
+              </v-col>
+            </v-row>
+          </v-container>
+        </v-expansion-panel-text>
       </v-expansion-panel>
     </v-expansion-panels>
     <div>
@@ -107,6 +108,7 @@
               :points-saved="settings.pointsSaved.value"
               :points-graphed="settings.pointsGraphed.value"
               :refresh-interval-ms="settings.refreshIntervalMs.value"
+              :time-zone="timeZone"
               @close-graph="() => closeGraph(graph)"
               @min-max-graph="() => minMaxGraph(graph)"
               @resize="() => resize()"
@@ -136,7 +138,7 @@
     />
     <!-- Note we're using v-if here so it gets re-created each time and refreshes the list -->
     <settings-dialog
-      v-show="showSettingsDialog"
+      v-if="showSettingsDialog"
       v-model="showSettingsDialog"
       :settings="settings"
     />
@@ -144,6 +146,7 @@
 </template>
 
 <script>
+import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 import Config from '@openc3/tool-common/src/components/config/Config'
 import Graph from '@openc3/tool-common/src/components/Graph.vue'
 import OpenConfigDialog from '@openc3/tool-common/src/components/config/OpenConfigDialog'
@@ -151,10 +154,9 @@ import SaveConfigDialog from '@openc3/tool-common/src/components/config/SaveConf
 import TargetPacketItemChooser from '@openc3/tool-common/src/components/TargetPacketItemChooser'
 import TopBar from '@openc3/tool-common/src/components/TopBar'
 import Muuri from 'muuri'
-
 import SettingsDialog from '@/tools/TlmGrapher/SettingsDialog'
 
-const MURRI_REFRESH_TIME = 250
+const MUURI_REFRESH_TIME = 250
 export default {
   components: {
     Graph,
@@ -172,6 +174,8 @@ export default {
       showOpenConfig: false,
       showSaveConfig: false,
       showSettingsDialog: false,
+      api: null,
+      timeZone: null, // deliberately null so we know when it is set
       grid: null,
       panel: 0,
       state: 'stop', // Valid: stop, start, pause
@@ -181,6 +185,7 @@ export default {
       selectedGraphId: 0,
       counter: 1,
       applyingConfig: false,
+      observer: null,
       menus: [
         {
           label: 'File',
@@ -248,6 +253,13 @@ export default {
               divider: true,
             },
             {
+              label: 'Clear All Data',
+              icon: 'mdi-eraser',
+              command: () => {
+                this.clearAllData()
+              },
+            },
+            {
               label: 'Settings',
               icon: 'mdi-cog',
               command: () => {
@@ -288,6 +300,9 @@ export default {
       },
       deep: true,
     },
+    panel: function () {
+      this.resizeAll()
+    },
   },
   computed: {
     currentConfig: function () {
@@ -324,12 +339,25 @@ export default {
       }
     },
   },
+  created() {
+    this.api = new OpenC3Api()
+    this.api
+      .get_setting('time_zone')
+      .then((response) => {
+        if (response) {
+          this.timeZone = response
+        }
+      })
+      .catch((error) => {
+        // Do nothing
+      })
+  },
   mounted: function () {
     this.grid = new Muuri('.grid', {
       dragEnabled: true,
       layoutOnResize: true,
-      // Only allow drags starting from the v-system-bar title
-      dragHandle: '.v-system-bar',
+      // Only allow drags starting from the v-toolbar title
+      dragHandle: '.v-toolbar',
     })
     // Sometimes when we move graphs, other graphs become non-interactive
     // This seems to fix that issue
@@ -361,8 +389,32 @@ export default {
         this.applyConfig(config)
       }
     }
+    // Setup the observer to resize the graphs when the nav drawer is opened or closed
+    this.observer = new MutationObserver(() => {
+      this.resizeAll()
+    })
+    const navDrawer = document.getElementById('openc3-nav-drawer')
+    this.observer.observe(navDrawer, {
+      attributes: true,
+      attributeOldValue: true,
+      attributeFilter: ['class'],
+    })
+  },
+  beforeUnmount() {
+    this.observer.disconnect()
   },
   methods: {
+    resizeAll: function () {
+      setTimeout(() => {
+        this.grid.getItems().map((item) => {
+          // Map the gridItem id to the graph id
+          const graphId = `graph${item.getElement().id.substring(8)}`
+          const vueGraph = this.$refs[graphId][0]
+          vueGraph.resize()
+        })
+        this.resize()
+      }, MUURI_REFRESH_TIME)
+    },
     graphSelected: function (id) {
       this.selectedGraphId = id
     },
@@ -407,7 +459,7 @@ export default {
       this.graphs.push(id)
       this.counter += 1
       this.$nextTick(function () {
-        var items = this.grid.add(this.$refs[`gridItem${id}`], {
+        let items = this.grid.add(this.$refs[`gridItem${id}`], {
           active: false,
         })
         this.grid.show(items)
@@ -421,12 +473,12 @@ export default {
         }
         setTimeout(() => {
           this.grid.refreshItems().layout()
-        }, MURRI_REFRESH_TIME)
+        }, MUURI_REFRESH_TIME)
       })
       this.saveDefaultConfig(this.currentConfig)
     },
     closeGraph: function (id) {
-      var items = this.grid.getItems([document.getElementById(`gridItem${id}`)])
+      let items = this.grid.getItems([document.getElementById(`gridItem${id}`)])
       this.grid.remove(items)
       this.graphs.splice(this.graphs.indexOf(id), 1)
       // Clear out the startTime if we close all the graphs ... we're starting over
@@ -445,22 +497,44 @@ export default {
       }
       this.counter = 0
     },
+    clearAllData: function () {
+      for (let graph of this.graphs) {
+        this.$refs[`graph${graph}`][0].clearAllData()
+      }
+    },
     minMaxGraph: function (id) {
       this.selectedGraphId = id
       setTimeout(
         () => {
           this.grid.refreshItems().layout()
         },
-        MURRI_REFRESH_TIME * 2, // Double the time since there is more animation
+        MUURI_REFRESH_TIME * 2, // Double the time since there is more animation
       )
       this.saveDefaultConfig(this.currentConfig)
     },
     resize: function () {
+      // Calculate the largest height of the legend elements and apply it to all
+      const elements = document.querySelectorAll('.u-legend')
+      let maxHeight = 0
+      elements.forEach((element) => {
+        element.style.height = ''
+        if (element.clientHeight > maxHeight) {
+          maxHeight = element.clientHeight
+        }
+      })
+      if (maxHeight !== 0) {
+        elements.forEach((element) => {
+          if (element.clientHeight !== maxHeight) {
+            element.style.height = `${maxHeight}px`
+          }
+        })
+      }
+
       setTimeout(
         () => {
           this.grid.refreshItems().layout()
         },
-        MURRI_REFRESH_TIME * 2, // Double the time since there is more animation
+        MUURI_REFRESH_TIME * 2, // Double the time since there is more animation
       )
     },
     graphStarted: function (time) {
@@ -471,6 +545,21 @@ export default {
       }
     },
     applyConfig: async function (config) {
+      // Grab the timeZone if we haven't already
+      // This ensures we're waiting for it and pass it to the graphs
+      if (this.timeZone === null) {
+        await this.api
+          .get_setting('time_zone')
+          .then((response) => {
+            if (response) {
+              this.timeZone = response
+            }
+          })
+          .catch((error) => {
+            // Do nothing
+          })
+      }
+
       // Don't save the default config while we're applying new config
       this.dontSaveDefaultConfig = true
       this.closeAllGraphs()
@@ -535,20 +624,27 @@ i.v-icon.mdi-chevron-down {
 }
 </style>
 <style lang="scss" scoped>
-.control {
-  margin-top: 60px;
+.expansion {
+  padding: 5px;
+  background-color: var(--color-background-base-default) !important;
+  padding-bottom: 10px;
 }
-.graph-info {
-  width: 140px;
-  margin-left: 20px;
-  margin-top: 65px;
+.v-container {
+  max-width: unset;
+  padding-top: 0px;
+  padding-bottom: 10px;
 }
-.v-expansion-panel-content {
+.grapher-info {
+  position: relative;
+  top: -115px;
+  height: 0px;
+}
+.v-expansion-panel-text {
   .container {
     margin: 0px;
   }
 }
-.v-expansion-panel-header {
+.v-expansion-panel-title {
   min-height: 10px;
   padding: 5px;
 }
@@ -577,7 +673,6 @@ i.v-icon.mdi-chevron-down {
   border-radius: 6px;
   margin: 5px;
 }
-
 .pulse {
   animation: pulse 1s infinite;
 }

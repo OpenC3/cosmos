@@ -291,15 +291,15 @@ module OpenC3
         sleep(1.01)
       end
 
-      it "complains about non-existant targets" do
+      it "complains about non-existent targets" do
         expect { @api.inject_tlm("BLAH", "HEALTH_STATUS") }.to raise_error("Packet 'BLAH HEALTH_STATUS' does not exist")
       end
 
-      it "complains about non-existant packets" do
+      it "complains about non-existent packets" do
         expect { @api.inject_tlm("INST", "BLAH") }.to raise_error("Packet 'INST BLAH' does not exist")
       end
 
-      it "complains about non-existant items" do
+      it "complains about non-existent items" do
         expect { @api.inject_tlm("INST", "HEALTH_STATUS", { 'BLAH' => 0 }) }.to raise_error("Item(s) 'INST HEALTH_STATUS BLAH' does not exist")
       end
 
@@ -558,11 +558,11 @@ module OpenC3
     end
 
     describe "get_tlm_packet" do
-      it "complains about non-existant targets" do
+      it "complains about non-existent targets" do
         expect { @api.get_tlm_packet("BLAH", "HEALTH_STATUS") }.to raise_error(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist")
       end
 
-      it "complains about non-existant packets" do
+      it "complains about non-existent packets" do
         expect { @api.get_tlm_packet("INST BLAH") }.to raise_error(RuntimeError, "Packet 'INST BLAH' does not exist")
       end
 
@@ -570,7 +570,7 @@ module OpenC3
         expect { @api.get_tlm_packet("INST", "LATEST") }.to raise_error(RuntimeError, "Packet 'INST LATEST' does not exist")
       end
 
-      it "complains about non-existant value_types" do
+      it "complains about non-existent value_types" do
         expect { @api.get_tlm_packet("INST   HEALTH_STATUS", type: :MINE) }.to raise_error(/Unknown type 'MINE'/)
       end
 
@@ -697,20 +697,20 @@ module OpenC3
     end
 
     describe "get_tlm_values" do
-      it "complains about non-existant targets" do
+      it "complains about non-existent targets" do
         expect { @api.get_tlm_values(["BLAH__HEALTH_STATUS__TEMP1__CONVERTED"]) }.to raise_error(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist")
       end
 
-      it "complains about non-existant packets" do
+      it "complains about non-existent packets" do
         expect { @api.get_tlm_values(["INST__BLAH__TEMP1__CONVERTED"]) }.to raise_error(RuntimeError, "Packet 'INST BLAH' does not exist")
       end
 
-      it "complains about non-existant items" do
+      it "complains about non-existent items" do
         expect { @api.get_tlm_values(["INST__HEALTH_STATUS__BLAH__CONVERTED"]) }.to raise_error(RuntimeError, "Item 'INST HEALTH_STATUS BLAH' does not exist")
         expect { @api.get_tlm_values(["INST__LATEST__BLAH__CONVERTED"]) }.to raise_error(RuntimeError, "Item 'INST LATEST BLAH' does not exist for scope: DEFAULT")
       end
 
-      it "complains about non-existant value_types" do
+      it "complains about non-existent value_types" do
         expect { @api.get_tlm_values(["INST__HEALTH_STATUS__TEMP1__MINE"]) }.to raise_error(RuntimeError, "Unknown value type 'MINE'")
       end
 
@@ -887,11 +887,11 @@ module OpenC3
     end
 
     describe "get_tlm_cnt" do
-      it "complains about non-existant targets" do
+      it "complains about non-existent targets" do
         expect { @api.get_tlm_cnt("BLAH", "ABORT") }.to raise_error("Packet 'BLAH ABORT' does not exist")
       end
 
-      it "complains about non-existant packets" do
+      it "complains about non-existent packets" do
         expect { @api.get_tlm_cnt("INST BLAH") }.to raise_error("Packet 'INST BLAH' does not exist")
       end
 
@@ -922,11 +922,11 @@ module OpenC3
     end
 
     describe "get_packet_derived_items" do
-      it "complains about non-existant targets" do
+      it "complains about non-existent targets" do
         expect { @api.get_packet_derived_items("BLAH", "ABORT") }.to raise_error("Packet 'BLAH ABORT' does not exist")
       end
 
-      it "complains about non-existant packets" do
+      it "complains about non-existent packets" do
         expect { @api.get_packet_derived_items("INST BLAH") }.to raise_error("Packet 'INST BLAH' does not exist")
       end
 

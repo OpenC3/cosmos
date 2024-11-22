@@ -258,7 +258,7 @@ module OpenC3
       first = true
       loop do
         # Protocols may have cached data for a packet, so initially just inject a blank string
-        # Otherwise we can hold off outputing other packets where all the data has already
+        # Otherwise we can hold off outputting other packets where all the data has already
         # been received
         extra = nil
         if !first or @read_protocols.length <= 0
@@ -574,8 +574,7 @@ module OpenC3
     end
 
     def interface_cmd(cmd_name, *_cmd_args)
-      case cmd_name
-      when 'clear_counters'
+      if cmd_name == 'clear_counters'
         @write_queue_size = 0
         @read_queue_size = 0
         @bytes_written = 0

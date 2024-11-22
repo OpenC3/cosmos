@@ -48,5 +48,68 @@ module OpenC3
         expect(json["name"]).to eql("foo")
       end
     end
+
+    describe "class get" do
+      it "gets by name in scope" do
+        model = MetricModel.new(name: "baz", scope: "scope", values: {"test "=> {"value" =>6}})
+        model.create
+        result = MetricModel.get(name: "baz", scope: "scope")
+        expect(result['name']).to eq('baz')
+      end
+    end
+
+    describe "class destroy" do
+      it "destroys by name in scope" do
+        model = MetricModel.new(name: "baz", scope: "scope", values: {"test "=> {"value" =>6}})
+        model.create
+        model = MetricModel.new(name: "bOz", scope: "scope", values: {"test "=> {"value" =>6}})
+        model.create
+        MetricModel.destroy(scope: 'scope', name: 'baz')
+        result = MetricModel.get(name: "baz", scope: "scope")
+        expect(result).to be_nil
+      end
+    end
+
+    describe "names" do
+      it "returns all names" do
+        model = MetricModel.new(name: 'baz', scope: "scope", values: {"test "=> {"value" =>6}})
+        model.create
+        result = MetricModel.names(scope: "scope")
+        expect(result[0]).to eq('baz')
+      end
+    end
+
+    describe "redis_metrics" do
+      it "returns redis metrics from Store and Ephemeral Store" do
+        values = {
+          'connected_clients' => {'value' => 37},
+          'used_memory_rss' => {'value' => 0},
+          'total_commands_processed' => {'value' => 0},
+          'instantaneous_ops_per_sec' => {'value' => 0},
+          'instantaneous_input_kbps' => {'value' => 0},
+          'instantaneous_output_kbps' => {'value' => 0},
+          'latency_percentiles_usec_hget'=> {'value' => '1,2'}
+        }
+        model = MetricModel.new(name: "all", scope: "scope", values: {"test" => {"value" => 7}})
+        model.create(force: true)
+
+        json = {}
+        json['name'] = 'all'
+        json['values'] = values
+        model = MetricModel.set(json, scope: 'scope')
+
+        allow(OpenC3::Store.instance).to receive(:info) do
+          values
+        end
+
+        allow(OpenC3::EphemeralStore.instance).to receive(:info) do
+          values
+        end
+
+        result = MetricModel.redis_metrics
+        expect(result.empty?).to eql(false)
+        expect(result['redis_connected_clients_total']['value']).to eql(37)
+      end
+    end
   end
 end

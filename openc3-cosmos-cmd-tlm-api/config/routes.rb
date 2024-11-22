@@ -68,11 +68,6 @@ Rails.application.routes.draw do
     match '/scopes/:id', to: 'scopes#update', id: /[^\/]+/, via: [:patch, :put]
     delete '/scopes/:id', to: 'scopes#destroy', id: /[^\/]+/
 
-    resources :roles, only: [:index, :create]
-    get '/roles/:id', to: 'roles#show', id: /[^\/]+/
-    match '/roles/:id', to: 'roles#update', id: /[^\/]+/, via: [:patch, :put]
-    delete '/roles/:id', to: 'roles#destroy', id: /[^\/]+/
-
     resources :widgets, only: [:index, :create]
     get '/widgets/:id', to: 'widgets#show', id: /[^\/]+/
     match '/widgets/:id', to: 'widgets#update', id: /[^\/]+/, via: [:patch, :put]
@@ -103,7 +98,8 @@ Rails.application.routes.draw do
     get '/timeline/:name/activity/:id', to: 'activity#show', name: /[^\/]+/, id: /[^\/]+/
     post '/timeline/:name/activity/:id', to: 'activity#event', name: /[^\/]+/, id: /[^\/]+/
     match '/timeline/:name/activity/:id', to: 'activity#update', name: /[^\/]+/, id: /[^\/]+/, via: [:patch, :put]
-    delete '/timeline/:name/activity/:id', to: 'activity#destroy', name: /[^\/]+/, id: /[^\/]+/
+    # NOTE: uuid is new as of 5.19.0
+    delete '/timeline/:name/activity/:id(/:uuid)', to: 'activity#destroy', name: /[^\/]+/, id: /[^\/]+/, uuid: /[^\/]+/
 
     get '/autonomic/group', to: 'trigger_group#index'
     post '/autonomic/group', to: 'trigger_group#create'
@@ -128,6 +124,13 @@ Rails.application.routes.draw do
     match '/autonomic/reaction/:name', to: 'reaction#update', name: /[^\/]+/, via: [:patch, :put]
     delete '/autonomic/reaction/:name', to: 'reaction#destroy', name: /[^\/]+/
 
+    get '/notes', to: 'notes#index'
+    post '/notes', to: 'notes#create'
+    # get '/note/_search', to: 'note#search'
+    get '/notes/:id', to: 'notes#show', id: /[^\/]+/
+    match '/notes/:id', to: 'notes#update', id: /[^\/]+/, via: [:patch, :put]
+    delete '/notes/:id', to: 'notes#destroy', id: /[^\/]+/
+
     get '/metadata', to: 'metadata#index'
     post '/metadata', to: 'metadata#create'
     get '/metadata/latest', to: 'metadata#latest', name: /[^\/]+/
@@ -135,13 +138,6 @@ Rails.application.routes.draw do
     get '/metadata/:id', to: 'metadata#show', id: /[^\/]+/
     match '/metadata/:id', to: 'metadata#update', id: /[^\/]+/, via: [:patch, :put]
     delete '/metadata/:id', to: 'metadata#destroy', id: /[^\/]+/
-
-    get '/notes', to: 'notes#index'
-    post '/notes', to: 'notes#create'
-    # get '/note/_search', to: 'note#search'
-    get '/notes/:id', to: 'notes#show', id: /[^\/]+/
-    match '/notes/:id', to: 'notes#update', id: /[^\/]+/, via: [:patch, :put]
-    delete '/notes/:id', to: 'notes#destroy', id: /[^\/]+/
 
     get '/autocomplete/reserved-item-names', to: 'script_autocomplete#reserved_item_names'
     get '/autocomplete/keywords/:type', to: 'script_autocomplete#keywords', type: /[^\/]+/
@@ -195,11 +191,6 @@ Rails.application.routes.draw do
     post "/auth/verify" => "auth#verify"
     post "/auth/set" => "auth#set"
 
-    get "/users/active" => "users#active"
-    match "/users/logout/:user", to: "users#logout", id: /[^\/]+/, via: [:patch, :put]
-
-    get "/info" => "info#info"
-
     get "/internal/health" => "internal_health#health"
     get "/internal/metrics" => "internal_metrics#index"
     get "/internal/status" => "internal_status#status"
@@ -210,5 +201,29 @@ Rails.application.routes.draw do
     get "/traefik" => "microservices#traefik"
 
     post "/redis/exec" => "redis#execute_raw"
+
+    ##########################
+    # COSMOS Enterprise Routes
+    ##########################
+    get "/users/active" => "users#active"
+    match "/users/logout/:user", to: "users#logout", id: /[^\/]+/, via: [:patch, :put]
+
+    get "/info" => "info#info"
+
+    resources :roles, only: [:index, :create]
+    get '/roles/:id', to: 'roles#show', id: /[^\/]+/
+    match '/roles/:id', to: 'roles#update', id: /[^\/]+/, via: [:patch, :put]
+    delete '/roles/:id', to: 'roles#destroy', id: /[^\/]+/
+
+    get '/cmdauth', to: 'cmd_authority#index'
+    post '/cmdauth/take', to: 'cmd_authority#take'
+    post '/cmdauth/release', to: 'cmd_authority#release'
+    post '/cmdauth/take-all', to: 'cmd_authority#take_all'
+    post '/cmdauth/release-all', to: 'cmd_authority#release_all'
+
+    get '/criticalcmd/status/:id', to: 'critical_cmd#status'
+    post '/criticalcmd/approve/:id', to: 'critical_cmd#approve'
+    post '/criticalcmd/reject/:id', to: 'critical_cmd#reject'
+    get '/criticalcmd/canapprove/:id', to: 'critical_cmd#canapprove'
   end
 end

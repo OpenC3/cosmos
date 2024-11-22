@@ -24,7 +24,7 @@ ENV NODE_EXTRA_CA_CERTS=/devel/cacert.pem
 
 ENV NOKOGIRI_USE_SYSTEM_LIBRARIES=1
 
-ADD .gemrc /root/.gemrc
+COPY .gemrc /root/.gemrc
 RUN sed -i "s|RUBYGEMS_URL|${RUBYGEMS_URL}|g" /root/.gemrc
 RUN cp /root/.gemrc /etc/gemrc
 RUN cp /root/.gemrc /usr/local/etc/gemrc
@@ -35,7 +35,7 @@ COPY *.tar.gz /tmp/
 ARG PACKAGES="gcc-c++ patch readline zlib zlib-devel libffi-devel libedit \
     openssl-devel make nc bzip2 autoconf automake libtool sqlite-devel libpq-devel \
     python3.11 python3.11-devel python3.11-pip python3.11-numpy	ca-certificates curl less git \
-    libxml2-devel libxslt-devel libyaml-devel cmake glibc-static"
+    libxml2-devel libxslt-devel libyaml-devel cmake glibc-static vim procps"
 
 RUN rm /etc/yum.repos.d/*
 COPY ./ubi.repo /etc/yum.repos.d/ubi.repo
@@ -70,6 +70,8 @@ RUN cd / \
     && rm -rf /var/cache/dnf/ /var/tmp/* /tmp/* /var/tmp/.???* /tmp/.???* \
     && ln /bin/python3 /bin/python \
     && ln /bin/pip3 /bin/pip \
+    && python3 -m venv /openc3/venv \
+    && source /openc3/venv/bin/activate \
     && pip3 config --global set global.index $PYPI_URL/pypi \
     && pip3 config --global set global.index-url $PYPI_URL/simple
 
@@ -89,6 +91,9 @@ ENV IMAGE_USER=openc3
 ENV IMAGE_GROUP=openc3
 ENV USER_ID=1001
 ENV GROUP_ID=1001
+# The build time venv is at /openc3/venv and the runtime venv is at /gems/python_packages
+# NOTE: This is declared as PYTHONUSERBASE: "/gems/python_packages" in compose.yaml
+ENV PYTHONPATH=/openc3/venv/lib/python3.11/site-packages/:/gems/python_packages/lib/python3.11/site-packages/
 RUN groupadd -g ${GROUP_ID} ${IMAGE_GROUP}
 RUN useradd -u ${USER_ID} -g ${IMAGE_GROUP} -s /bin/sh ${IMAGE_USER}
 

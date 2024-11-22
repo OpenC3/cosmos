@@ -39,6 +39,9 @@ module OpenC3
       @converted_bit_size = 0
       @seconds_type = seconds_type.to_sym
       @microseconds_type = microseconds_type.to_sym
+      @params = [@seconds_item_name, @microseconds_item_name]
+      @params << @seconds_type if @seconds_type != :RAW
+      @params << @microseconds_type if @microseconds_type != :RAW
     end
 
     # @param (see Conversion#call)
@@ -65,11 +68,5 @@ module OpenC3
     def to_config(read_or_write)
       "    #{read_or_write}_CONVERSION #{self.class.name.class_name_to_filename} #{@seconds_item_name} #{@microseconds_item_name}\n"
     end
-
-    def as_json(*a)
-      result = super(*a)
-      result['params'] = [@seconds_item_name, @microseconds_item_name, @seconds_type, @microseconds_type]
-      result
-    end
-  end # class UnixTimeConversion
+  end
 end

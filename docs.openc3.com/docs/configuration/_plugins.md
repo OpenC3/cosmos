@@ -1,6 +1,9 @@
 ---
 sidebar_position: 2
 title: Plugins
+description: Plugin definition file format and keywords
+sidebar_custom_props:
+  myEmoji: 🔌
 ---
 
 <!-- Be sure to edit _plugins.md because plugins.md is a generated file -->

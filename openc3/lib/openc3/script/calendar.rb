@@ -86,8 +86,8 @@ module OpenC3
       return _handle_response(response, 'Failed to get timeline activity')
     end
 
-    def delete_timeline_activity(name, start, scope: $openc3_scope, token: $openc3_token)
-      response = $api_server.request('delete', "/openc3-api/timeline/#{name}/activity/#{start}", scope: scope)
+    def delete_timeline_activity(name, start, uuid, scope: $openc3_scope, token: $openc3_token)
+      response = $api_server.request('delete', "/openc3-api/timeline/#{name}/activity/#{start}/#{uuid}", scope: scope)
       return _handle_response(response, 'Failed to delete timeline activity')
     end
 
@@ -98,12 +98,7 @@ module OpenC3
         result = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
         raise "#{error_message} due to #{result['message']}"
       end
-      # TODO: Not sure why the response body is empty (on delete) but check for that
-      if response.body.nil? or response.body.empty?
-        return nil
-      else
-        return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
-      end
+      return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
     end
   end
 end

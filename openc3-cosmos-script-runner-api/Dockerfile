@@ -12,8 +12,6 @@ USER root
 
 RUN bundle config set --local without 'development' \
   && bundle install --quiet \
-  # Temporary until grpc updated
-  && gem uninstall google-protobuf -v "!= 3.24.0" --all \
   && rm Gemfile.lock \
   && rm -rf /usr/lib/ruby/gems/*/cache/* \
   /var/cache/apk/* \

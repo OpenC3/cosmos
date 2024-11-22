@@ -1,6 +1,7 @@
 ---
 sidebar_position: 1
 title: File Format
+description: Structure of a COSMOS file, including using ERB
 ---
 
 COSMOS configuration files are just text files. They can (and should) be checked into your configuration management system and thus can be easily diffed throughout their history. They support ERB syntax, partials, and various line continuations which make them extremely flexible.

@@ -14,56 +14,66 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
 require 'openc3/core_ext/exception'
 
 describe Exception do
+  describe "filtered" do
+    it "filters an Exception" do
+      raise "My message"
+    rescue => e
+      e.backtrace << "/lib/ruby/gems/2.7.0/gems/rspec-core-3.10.1/lib/rspec/core/example_group.rb:1"
+      expect(e.filtered).to match(/My message/)
+      expect(e.filtered).not_to match(/lib\/ruby\/gems/)
+    end
+  end
+
   describe "formatted" do
     it "formats an Exception" do
       raise "My message"
-    rescue => err
-      expect(err.formatted).to match(/RuntimeError : My message/)
-      expect(err.formatted).to match(/#{File.expand_path(__FILE__)}/)
+    rescue => e
+      expect(e.formatted).to match(/RuntimeError : My message/)
+      expect(e.formatted).to match(/#{File.expand_path(__FILE__)}/)
     end
 
     it "formats an Exception without RuntimeError class" do
       begin
         raise "My message"
-      rescue => err
-        expect(err.formatted(true)).not_to match(/RuntimeError/)
-        expect(err.formatted(true)).to match(/My message/)
-        expect(err.formatted(true)).to match(/#{File.expand_path(__FILE__)}/)
+      rescue => e
+        expect(e.formatted(true)).not_to match(/RuntimeError/)
+        expect(e.formatted(true)).to match(/My message/)
+        expect(e.formatted(true)).to match(/#{File.expand_path(__FILE__)}/)
       end
 
       # If it's not a RuntimeError then we should still see the class
       begin
         raise ArgumentError.new("My message")
-      rescue => err
-        expect(err.formatted(true)).to match(/ArgumentError/)
-        expect(err.formatted(true)).to match(/My message/)
-        expect(err.formatted(true)).to match(/#{File.expand_path(__FILE__)}/)
+      rescue => e
+        expect(e.formatted(true)).to match(/ArgumentError/)
+        expect(e.formatted(true)).to match(/My message/)
+        expect(e.formatted(true)).to match(/#{File.expand_path(__FILE__)}/)
       end
     end
 
     it "formats an Exception without stack trace" do
       begin
         raise "My message"
-      rescue => err
-        expect(err.formatted(false, false)).to match(/RuntimeError : My message/)
-        expect(err.formatted(false, false)).not_to match(/#{File.expand_path(__FILE__)}/)
+      rescue => e
+        expect(e.formatted(false, false)).to match(/RuntimeError : My message/)
+        expect(e.formatted(false, false)).not_to match(/#{File.expand_path(__FILE__)}/)
       end
 
       begin
         raise "My message"
-      rescue => err
-        expect(err.formatted(true, false)).to match(/My message/)
-        expect(err.formatted(true, false)).not_to match(/#{File.expand_path(__FILE__)}/)
+      rescue => e
+        expect(e.formatted(true, false)).to match(/My message/)
+        expect(e.formatted(true, false)).not_to match(/#{File.expand_path(__FILE__)}/)
       end
     end
   end
@@ -71,24 +81,24 @@ describe Exception do
   describe "source" do
     it "returns the file and line number of the exception" do
       line = __LINE__; raise "My message"
-    rescue => err
-      file, line = err.source
+    rescue => e
+      file, line = e.source
       expect(file).to eql __FILE__
       expect(line).to eql line
     end
 
     it "returns the file and line number of the exception" do
       line = __LINE__; raise "My message"
-    rescue => err
+    rescue => e
       # Check to simulate being on UNIX or Windows
-      if err.backtrace[0].include?(':') # windows
-        err.backtrace[0].gsub!(/[A-Z]:/, '')
+      if e.backtrace[0].include?(':') # windows
+        e.backtrace[0].gsub!(/[A-Z]:/, '')
         file_name = __FILE__.gsub(/[A-Z]:/, '')
       else
-        err.backtrace[0] = "C:" + err.backtrace[0]
+        e.backtrace[0] = "C:" + e.backtrace[0]
         file_name = "C:#{__FILE__}"
       end
-      file, line = err.source
+      file, line = e.source
       expect(file).to eql file_name
       expect(line).to eql line
     end

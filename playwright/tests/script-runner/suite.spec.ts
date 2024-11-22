@@ -29,7 +29,7 @@ async function saveAs(page, filename: string) {
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Save As...').click()
   await page
-    .locator('[data-test=file-open-save-filename]')
+    .locator('[data-test=file-open-save-filename] input')
     .fill(`INST/procedures/${filename}`)
   await page.locator('[data-test=file-open-save-submit-btn]').click()
 
@@ -65,12 +65,9 @@ async function runAndCheckResults(
 ) {
   await page.locator(startLocator).click()
   // Wait for the results ... allow for additional time
-  await expect(page.locator('.v-dialog.v-dialog--active')).toContainText(
-    'Script Results',
-    {
-      timeout: 30000,
-    },
-  )
+  await expect(page.locator('.v-dialog')).toContainText('Script Results', {
+    timeout: 30000,
+  })
   // Allow the caller to validate the results
   validator(await page.inputValue('.v-dialog >> textarea'))
 
@@ -96,17 +93,13 @@ async function runAndCheckResults(
 
 async function suiteTemplate(page, utils, type) {
   await page.locator('[data-test=script-runner-file]').click()
-  await page.getByText('New Test Suite').hover()
+  await page.getByText('New Suite').hover()
   await page.getByText(type).click()
   await utils.sleep(1000)
   // Verify the drop downs are populated
-  await expect(
-    page.locator('role=button[name="Suite: TestSuite"]'),
-  ).toBeEnabled()
-  await expect(page.locator('role=button[name="Group: Power"]')).toBeEnabled()
-  await expect(
-    page.locator('role=button[name="Script: script_power_on"]'),
-  ).toBeEnabled()
+  await expect(page.getByText('Suite:TestSuiteSuite:')).toBeEnabled()
+  await expect(page.getByText('Group:PowerGroup:')).toBeEnabled()
+  await expect(page.getByText('Script:power_onScript:')).toBeEnabled()
   // Verify Suite Start buttons are enabled
   await expect(page.locator('[data-test=start-suite]')).toBeEnabled()
   await expect(page.locator('[data-test=start-group]')).toBeEnabled()
@@ -141,20 +134,22 @@ test('loads Suite controls when opening a suite', async ({ page, utils }) => {
     `INST/procedures/my_script_suite.rb`,
   )
   // Verify defaults in the Suite options
-  await expect(page.locator('[data-test=pause-on-error]')).toBeChecked()
-  await expect(page.locator('[data-test=manual]')).toBeChecked()
-  await expect(page.locator('[data-test=continue-after-error]')).toBeChecked()
-  await expect(page.locator('[data-test=loop]')).not.toBeChecked()
-  await expect(page.locator('[data-test=abort-after-error]')).not.toBeChecked()
-  await expect(page.locator('[data-test=break-loop-on-error]')).toBeDisabled()
+  await expect(page.locator('[data-test=pause-on-error] input')).toBeChecked()
+  await expect(page.locator('[data-test=manual] input')).toBeChecked()
+  await expect(
+    page.locator('[data-test=continue-after-error] input'),
+  ).toBeChecked()
+  await expect(page.locator('[data-test=loop] input')).not.toBeChecked()
+  await expect(
+    page.locator('[data-test=abort-after-error] input'),
+  ).not.toBeChecked()
+  await expect(
+    page.locator('[data-test=break-loop-on-error] input'),
+  ).toBeDisabled()
   // Verify the drop downs are populated
-  await expect(page.locator('role=button[name="Suite: MySuite"]')).toBeEnabled()
-  await expect(
-    page.locator('role=button[name="Group: ExampleGroup"]'),
-  ).toBeEnabled()
-  await expect(
-    page.locator('role=button[name="Script: script_2"]'),
-  ).toBeEnabled()
+  await expect(page.getByText('Suite:MySuiteSuite:')).toBeEnabled()
+  await expect(page.getByText('Group:ExampleGroupGroup:')).toBeEnabled()
+  await expect(page.getByText('Script:2Script:')).toBeEnabled()
   // // Verify Suite Start buttons are enabled
   await expect(page.locator('[data-test=start-suite]')).toBeEnabled()
   await expect(page.locator('[data-test=start-group]')).toBeEnabled()
@@ -199,9 +194,12 @@ test('disables all suite buttons when running', async ({ page, utils }) => {
   await saveAs(page, 'test_suite_buttons.rb')
 
   await page.locator('[data-test=start-script]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('waiting', {
-    timeout: 20000,
-  })
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    /waiting \d+s/,
+    {
+      timeout: 20000,
+    },
+  )
   // After script starts the Script Start/Go and all Suite buttons should be disabled
   await expect(page.locator('[data-test=start-suite]')).toBeDisabled()
   await expect(page.locator('[data-test=start-group]')).toBeDisabled()

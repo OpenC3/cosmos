@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -22,39 +22,44 @@
 
 <template>
   <v-card>
-    <v-card-title>
-      <v-tooltip top>
-        <template v-slot:activator="{ on, attrs }">
-          <div v-on="on" v-bind="attrs">
-            <v-btn
-              icon
-              class="mx-2"
-              data-test="download-log"
-              @click="downloadLog"
-            >
-              <v-icon> mdi-download </v-icon>
-            </v-btn>
-          </div>
-        </template>
-        <span> Download Log </span>
-      </v-tooltip>
-      <span> Log Messages </span>
-      <v-tooltip top>
-        <template v-slot:activator="{ on, attrs }">
-          <div v-on="on" v-bind="attrs">
-            <v-btn icon data-test="pause" @click="pause">
-              <v-icon> {{ buttonIcon }} </v-icon>
-            </v-btn>
-          </div>
-        </template>
-        <span> {{ buttonLabel }} </span>
-      </v-tooltip>
+    <v-card-title class="d-flex align-center justify-content-space-between">
+      <div class="d-flex align-baseline">
+        <v-tooltip location="top">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
+              <v-btn
+                icon="mdi-download"
+                variant="text"
+                size="small"
+                class="mr-2"
+                data-test="download-log"
+                @click="downloadLog"
+              />
+            </div>
+          </template>
+          <span> Download Log </span>
+        </v-tooltip>
+        <span> Log Messages </span>
+        <v-tooltip location="top">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
+              <v-btn
+                :icon="buttonIcon"
+                variant="text"
+                data-test="pause"
+                @click="pause"
+              />
+            </div>
+          </template>
+          <span> {{ buttonLabel }} </span>
+        </v-tooltip>
+      </div>
       <v-spacer />
       <v-select
         label="Filter by log level"
         hide-details
-        outlined
-        dense
+        variant="outlined"
+        density="compact"
         :items="logLevels"
         v-model="logLevel"
         class="mr-2"
@@ -67,20 +72,24 @@
         label="Search"
         prepend-inner-icon="mdi-magnify"
         clearable
-        outlined
-        dense
+        variant="outlined"
+        density="compact"
         single-line
         hide-details
         style="max-width: 300px"
         class="search"
         data-test="search-log-messages"
       />
-      <v-tooltip top>
-        <template v-slot:activator="{ on, attrs }">
-          <div v-on="on" v-bind="attrs">
-            <v-btn icon class="mx-2" data-test="clear-log" @click="clearLog">
-              <v-icon> mdi-delete </v-icon>
-            </v-btn>
+      <v-tooltip location="top">
+        <template v-slot:activator="{ props }">
+          <div v-bind="props">
+            <v-btn
+              icon="mdi-delete"
+              variant="text"
+              class="ml-2"
+              data-test="clear-log"
+              @click="clearLog"
+            />
           </div>
         </template>
         <span> Clear Log </span>
@@ -90,12 +99,12 @@
       :headers="headers"
       :items="shownData"
       :search="search"
-      calculate-widths
-      disable-pagination
+      :items-per-page="-1"
       hide-default-footer
       multi-sort
-      dense
-      height="70vh"
+      density="compact"
+      sticky
+      hover
       data-test="log-messages"
     >
       <template v-slot:item.timestamp="{ item }">
@@ -117,20 +126,26 @@
 </template>
 
 <script>
-import { parseISO, format } from 'date-fns'
+import { format } from 'date-fns'
 import Cable from '../services/cable.js'
 import {
   AstroStatusColors,
   UnknownToAstroStatus,
 } from '@openc3/tool-common/src/components/icons'
+import TimeFilters from '@openc3/tool-common/src/tools/base/util/timeFilters.js'
 
 export default {
   props: {
-    history_count: {
+    historyCount: {
       type: Number,
       default: 200,
     },
+    timeZone: {
+      type: String,
+      default: 'local',
+    },
   },
+  mixins: [TimeFilters],
   data() {
     return {
       AstroStatusColors,
@@ -140,10 +155,10 @@ export default {
       logLevel: 'INFO',
       search: '',
       headers: [
-        { text: 'Time', value: 'timestamp', width: 220 },
-        { text: 'Level', value: 'level' },
-        { text: 'Source', value: 'microservice_name' },
-        { text: 'Message', value: 'message' },
+        { title: 'Time', value: 'timestamp', nowrap: true },
+        { title: 'Level', value: 'level' },
+        { title: 'Source', value: 'microservice_name' },
+        { title: 'Message', value: 'message' },
       ],
       cable: new Cable(),
       subscription: null,
@@ -174,7 +189,7 @@ export default {
   created() {
     this.createSubscription()
   },
-  destroyed() {
+  unmounted() {
     if (this.subscription) {
       this.subscription.unsubscribe()
     }
@@ -197,8 +212,8 @@ export default {
           {
             received: (messages) => {
               this.cable.recordPing()
-              if (messages.length > this.history_count) {
-                messages.splice(0, messages.length - this.history_count)
+              if (messages.length > this.historyCount) {
+                messages.splice(0, messages.length - this.historyCount)
               }
               // Filter messages before they're added to the table
               // This prevents a bunch of invisible 'INFO' messages from pushing
@@ -240,7 +255,10 @@ export default {
                 return false
               })
               messages.map((message) => {
-                message.timestamp = this.formatDate(message['@timestamp'])
+                message.timestamp = this.formatTimestamp(
+                  message['@timestamp'],
+                  this.timeZone,
+                )
                 if (
                   message.message.raw &&
                   message.message.json_class === 'String'
@@ -248,7 +266,7 @@ export default {
                   // This is binary data, display in hex.
                   let result = '0x'
                   for (let i = 0; i < message.message.raw.length; i++) {
-                    var nibble = message.message.raw[i]
+                    let nibble = message.message.raw[i]
                       .toString(16)
                       .toUpperCase()
                     if (nibble.length < 2) {
@@ -262,8 +280,8 @@ export default {
                 }
               })
               this.data = messages.reverse().concat(this.data)
-              if (this.data.length > this.history_count) {
-                this.data.length = this.history_count
+              if (this.data.length > this.historyCount) {
+                this.data.length = this.historyCount
               }
               if (!this.paused) {
                 this.shownData = this.data
@@ -271,16 +289,14 @@ export default {
             },
           },
           {
-            history_count: this.history_count,
+            // Channel parameter is history_count with underscore
+            history_count: this.historyCount,
+            types: ['log', 'notification', 'alert'],
           },
         )
         .then((subscription) => {
           this.subscription = subscription
         })
-    },
-    formatDate(timestamp) {
-      // timestamp: 2021-01-20T21:08:49.784Z
-      return format(parseISO(timestamp), 'yyyy-MM-dd HH:mm:ss.SSS')
     },
     getColor(level) {
       return AstroStatusColors[UnknownToAstroStatus[level]]
@@ -319,9 +335,26 @@ export default {
           this.shownData = []
         })
         .catch(function (err) {
-          // Cancelling the dialog forces catch and sets err to true
+          // Canceling the dialog forces catch and sets err to true
         })
     },
   },
 }
 </script>
+
+<style scoped>
+.v-card {
+  /* take up any remaining vertical space
+     (e.g. whatever is left after the tabs in cmdtlmserver)
+   */
+  flex-grow: 1;
+
+  /* flex so the table can grow without making the card itself scroll */
+  display: flex;
+  flex-direction: column;
+}
+.v-data-table {
+  height: 25vh; /* give it at least a bit of height to start with */
+  flex-grow: 1; /* and then grow to fill all the space it can */
+}
+</style>

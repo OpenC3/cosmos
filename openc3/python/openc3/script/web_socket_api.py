@@ -128,7 +128,7 @@ class WebSocketApi:
         self.disconnect()
         # Add the token directly in the URL since adding it to the header doesn't seem to work
         # Note in the this case we remove the "Bearer " string which is part of the token
-        final_url = self.url + f"?scope={self.scope}&authorization={self.authentication.token()[7:]}"
+        final_url = self.url + f"?scope={self.scope}&authorization={self.authentication.token(include_bearer=False)}"
         self.stream = WebSocketClientStream(final_url, self.write_timeout, self.read_timeout, self.connect_timeout)
         self.stream.headers = {
             "Sec-WebSocket-Protocol": "actioncable-v1-json, actioncable-unsupported",
@@ -136,7 +136,7 @@ class WebSocketApi:
             # Adding the authorization token to the header is supposed to work
             # We add it directly with "Bearer <token>"
             # But for some reason it doesn't so we add it directly to the URL above
-            # "Authorization": self.authentication.token(),
+            # "Authorization": self.authentication.token(include_bearer=False),
         }
         return self.stream.connect()
 
@@ -316,7 +316,7 @@ class MessagesWebSocketApi(CmdTlmWebSocketApi):
         )
 
 
-# Autonomic Events WebSocket
+# Autonomic Events WebSocket (Enterprise Only)
 class AutonomicEventsWebSocketApi(CmdTlmWebSocketApi):
     def __init__(
         self,
@@ -342,7 +342,7 @@ class AutonomicEventsWebSocketApi(CmdTlmWebSocketApi):
         )
 
 
-# Calendar Events WebSocket
+# Calendar Events WebSocket (Enterprise Only)
 class CalendarEventsWebSocketApi(CmdTlmWebSocketApi):
     def __init__(
         self,
@@ -508,7 +508,7 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
         if packets:
             data_hash["packets"] = packets
         data_hash["scope"] = scope
-        data_hash["token"] = self.authentication.token()
+        data_hash["token"] = self.authentication.token(include_bearer=False)
         self.write_action(data_hash)
 
     # Request to remove data from the stream
@@ -538,7 +538,7 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
         if packets:
             data_hash["packets"] = packets
         data_hash["scope"] = scope
-        data_hash["token"] = self.authentication.token()
+        data_hash["token"] = self.authentication.token(include_bearer=False)
         self.write_action(data_hash)
 
     # Convenience method to read all data until end marker is received.

@@ -14,10 +14,10 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/info_model'
@@ -29,9 +29,10 @@ class InternalHealthController < ApplicationController
   def health
     return unless authorization('system')
     begin
-      render :json => { :redis => OpenC3::InfoModel.get() }, :status => 200
+      render json: { redis: OpenC3::InfoModel.get() }
     rescue => e
-      render :json => { :status => 'error', :message => e.message, :type => e.class }, :status => 500
+      logger.error(e.formatted)
+      render json: { status: 'error', message: e.message, type: e.class }, status: 500
     end
   end
 end

@@ -53,7 +53,7 @@ export class ConfigParserService {
           this,
           `Not enough parameters for ${this.keyword}.`,
           usage,
-          this.url
+          this.url,
         )
       }
     }
@@ -63,7 +63,7 @@ export class ConfigParserService {
         this,
         `Too many parameters for ${this.keyword}.`,
         usage,
-        this.url
+        this.url,
       )
     }
   }
@@ -98,7 +98,7 @@ export class ConfigParserService {
     original_filename,
     yield_non_keyword_lines,
     remove_quotes,
-    handler
+    handler,
   ) {
     let string_concat = false
     this.line = ''

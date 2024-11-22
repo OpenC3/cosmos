@@ -1,38 +1,48 @@
 ---
 title: Roadmap
+description: COSMOS roadmap now and into the future
+sidebar_custom_props:
+  myEmoji: 🗺️
 ---
 
 ## Key Features Still to Come in OpenC3 COSMOS 5.x:
 
-- [ ] Command Authority (Enterprise)
-- [ ] Critical Commanding (Two Operators - Enterprise)
-- [ ] Log Message Extractor Tool (Enterprise)
-- [ ] System Health Tool (Enterprise)
+:white_check_mark:&nbsp;&nbsp;Python Support<br/>
+:white_check_mark:&nbsp;&nbsp;Standardized Mission Planning Interface (aka Command Load Generator (CLG))<br/>
+:white_check_mark:&nbsp;&nbsp;Protocol buffer support<br/>
+:white_check_mark:&nbsp;&nbsp;Command Authority (Enterprise)<br/>
+:white_check_mark:&nbsp;&nbsp;Critical Commanding (Two Operators - Enterprise)<br/>
 
-## OpenC3 COSMOS 6.0 (Summer 2024)
+## OpenC3 COSMOS 6.0 (Late 2024)
 
 Core Features:
 
-- [x] Python Support
-- [ ] Upgrade Tools to Vue 3 / Vuetify 3
-- [ ] Plugin App Store
+:white_check_mark:&nbsp;&nbsp;Upgrade Tools to Vue 3 / Vuetify 3<br/>
+:white_check_mark:&nbsp;&nbsp;Traefik v3<br/>
+:white_large_square:&nbsp;&nbsp;Python / Ruby parity (interfaces, protocols, etc)<br/>
 
 Functionality For 6.1+:
 
-- [ ] Standardized Mission Planning Interface (aka Command Load Generator (CLG))
-- [ ] libCSP Interface
-- [ ] Standardized Interfaces for All Common Message Buses
+:white_large_square:&nbsp;&nbsp;Plugin App Store<br/>
+:white_large_square:&nbsp;&nbsp;System Health Tool (Enterprise)<br/>
+:white_large_square:&nbsp;&nbsp;Log Message Extractor Tool (Enterprise)<br/>
+:white_large_square:&nbsp;&nbsp;Telemetry Viewer screen playback of historical data<br/>
+:white_large_square:&nbsp;&nbsp;libCSP Interface (Cubesat Space Protocol)<br/>
+:white_large_square:&nbsp;&nbsp;Standardized Interfaces for common message buses (ZeroMQ, ActiveMQ, etc)<br/>
+:white_large_square:&nbsp;&nbsp;COSMOS Notebooks (similar to Jupyter Notebooks)<br/>
+:white_large_square:&nbsp;&nbsp;COSMOS Dashboards (configurable iFrames for Common Operating Picture)<br/>
+:white_large_square:&nbsp;&nbsp;Integration with ground networks (Atlas, RBC Signals)<br/>
+:white_large_square:&nbsp;&nbsp;Integration with mission planning (Orbit Logic, Cognitive Space)<br/>
+:white_large_square:&nbsp;&nbsp;Integration with flight dynamics (Kayhan, SEE, Exotrail)<br/>
 
-## OpenC3 COSMOS 7.0 (Summer 2025)
+## OpenC3 COSMOS 7.0
 
 Core Features:
 
-- [ ] Super Bridge - This will enable SaaS COSMOS and provide a secure method to communicate from a cloud server to an intranet for hardware control
+:white_large_square:&nbsp;&nbsp;Super Bridge - This will enable SaaS COSMOS and provide a secure method to communicate from a cloud server to an intranet for hardware control
 
-## Near-term Quarterly Roadmap
+## Near-term Planning
 
-Our near-term product roadmap linking to specific tickets is a Github Project found at the link below.
+Our near-term planning linking to specific tickets is on our [Github Planning Project](https://github.com/orgs/openc3/projects/2/views/1).
 
-[Roadmap](https://github.com/orgs/openc3/projects/2/views/1)
-
-If you would like to commit feature ideas for our roadmap, please do so with normal Github issues at the main repo.
+If you would like to commit feature ideas for COSMOS, please do so with normal Github issues at the main repo.

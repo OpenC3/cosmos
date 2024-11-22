@@ -21,18 +21,17 @@
 -->
 
 <template>
-  <!-- tgt-pkt-item-chooser class used by Graph.vue to size the graph -->
-  <div class="pt-4 tgt-pkt-item-chooser">
+  <div class="pt-4 pb-4">
     <v-row>
       <v-col :cols="colSize" class="select" data-test="select-target">
         <v-autocomplete
           label="Select Target"
           hide-details
-          dense
-          outlined
-          @change="targetNameChanged"
+          density="compact"
+          variant="outlined"
+          @update:model-value="targetNameChanged"
           :items="targetNames"
-          item-text="label"
+          item-title="label"
           item-value="value"
           v-model="selectedTargetName"
         />
@@ -41,18 +40,18 @@
         <v-autocomplete
           label="Select Packet"
           hide-details
-          dense
-          outlined
-          @change="packetNameChanged"
-          :disabled="packetsDisabled || buttonDisabled"
+          density="compact"
+          variant="outlined"
+          @update:model-value="packetNameChanged"
+          :disabled="packetsDisabled || autocompleteDisabled"
           :items="packetNames"
-          item-text="label"
+          item-title="label"
           item-value="value"
           v-model="selectedPacketName"
         />
       </v-col>
       <v-col
-        v-if="chooseItem && !buttonDisabled"
+        v-if="chooseItem"
         :cols="colSize"
         class="select"
         data-test="select-item"
@@ -60,39 +59,38 @@
         <v-autocomplete
           label="Select Item"
           hide-details
-          dense
-          outlined
-          @change="itemNameChanged($event)"
-          :disabled="itemsDisabled || buttonDisabled"
+          density="compact"
+          variant="outlined"
+          @update:model-value="itemNameChanged($event)"
+          :disabled="itemsDisabled || autocompleteDisabled"
           :items="itemNames"
-          item-text="label"
+          item-title="label"
           item-value="value"
           v-model="selectedItemName"
         />
       </v-col>
       <v-col
-        v-if="itemIsArray()"
-        :cols="colSize"
+        v-if="chooseItem && itemIsArray()"
+        cols="1"
         class="select"
         data-test="array-index"
       >
         <v-combobox
-          label="Array Index"
+          label="Index"
           hide-details
-          dense
-          outlined
-          @change="indexChanged($event)"
-          :disabled="itemsDisabled || buttonDisabled"
+          density="compact"
+          variant="outlined"
+          @update:model-value="indexChanged($event)"
+          :disabled="itemsDisabled || autocompleteDisabled"
           :items="arrayIndexes()"
-          item-text="label"
+          item-title="label"
           item-value="value"
           v-model="selectedArrayIndex"
         />
       </v-col>
-      <v-col v-if="buttonText" :cols="colSize" style="max-width: 0px">
+      <v-col v-if="buttonText" :cols="colSize" style="max-width: 140px">
         <v-btn
           :disabled="buttonDisabled"
-          block
           color="primary"
           data-test="select-send"
           @click="buttonPressed"
@@ -106,8 +104,8 @@
         <v-autocomplete
           label="Value Type"
           hide-details
-          dense
-          outlined
+          density="compact"
+          variant="outlined"
           :items="valueTypes"
           v-model="selectedValueType"
         />
@@ -116,8 +114,8 @@
         <v-autocomplete
           label="Reduced"
           hide-details
-          dense
-          outlined
+          density="compact"
+          variant="outlined"
           :items="reductionModes"
           v-model="selectedReduced"
         />
@@ -126,16 +124,16 @@
         <v-autocomplete
           label="Reduced Type"
           hide-details
-          dense
-          outlined
+          density="compact"
+          variant="outlined"
           :disabled="selectedReduced === 'DECOM'"
           :items="reducedTypes"
           v-model="selectedReducedType"
         />
       </v-col>
-      <v-col :cols="colSize" style="max-width: 0px"> </v-col>
+      <v-col :cols="colSize" style="max-width: 140px"> </v-col>
     </v-row>
-    <v-row no-gutters class="pt-1">
+    <v-row no-gutters class="pt-3 pb-3">
       <v-col v-if="hazardous" :cols="colSize" class="openc3-yellow"
         >Description: {{ description }} (HAZARDOUS)</v-col
       >
@@ -200,6 +198,10 @@ export default {
       type: Boolean,
       default: false,
     },
+    hidden: {
+      type: Boolean,
+      default: false,
+    },
   },
   data() {
     return {
@@ -213,10 +215,10 @@ export default {
       selectedValueType: 'CONVERTED',
       reductionModes: [
         // Map NONE to DECOM for clarity
-        { text: 'NONE', value: 'DECOM' },
-        { text: 'REDUCED_MINUTE', value: 'REDUCED_MINUTE' },
-        { text: 'REDUCED_HOUR', value: 'REDUCED_HOUR' },
-        { text: 'REDUCED_DAY', value: 'REDUCED_DAY' },
+        { title: 'NONE', value: 'DECOM' },
+        { title: 'REDUCED_MINUTE', value: 'REDUCED_MINUTE' },
+        { title: 'REDUCED_HOUR', value: 'REDUCED_HOUR' },
+        { title: 'REDUCED_DAY', value: 'REDUCED_DAY' },
       ],
       selectedArrayIndex: null,
       selectedReduced: 'DECOM',
@@ -254,7 +256,7 @@ export default {
       // TODO: This is a nice enhancement but results in logs of API calls for many targets
       // See if we can reduce this to a single API call
       // Filter out any targets without packets
-      // for (var i = this.targetNames.length - 1; i >= 0; i--) {
+      // for (let i = this.targetNames.length - 1; i >= 0; i--) {
       //   const cmd =
       //     this.mode === 'tlm' ? 'get_all_tlm_names' : 'get_all_cmd_names'
       //   await this.api[cmd](this.targetNames[i].value).then((names) => {
@@ -266,11 +268,15 @@ export default {
       if (this.allowAllTargets) {
         this.targetNames.unshift(this.ALL)
       }
+      // If the initial target name is not set, default to the first target
+      // which also updates packets and items as needed
       if (!this.selectedTargetName) {
         this.selectedTargetName = this.targetNames[0].value
         this.targetNameChanged(this.selectedTargetName)
+      } else {
+        // Selected target name was set but we still have to update packets
+        this.updatePackets()
       }
-      this.updatePackets()
       if (this.unknown) {
         this.targetNames.push(this.UNKNOWN)
       }
@@ -286,14 +292,24 @@ export default {
       }
       return this.buttonText
     },
-    buttonDisabled: function () {
+    autocompleteDisabled: function () {
       return this.disabled || this.internalDisabled
+    },
+    buttonDisabled: function () {
+      return (
+        this.disabled ||
+        this.internalDisabled ||
+        this.selectedTargetName === null ||
+        this.selectedPacketName === null ||
+        this.selectedItemNameWIndex === null
+      )
     },
     colSize: function () {
       return this.vertical ? 12 : false
     },
     selectedItemNameWIndex: function () {
       if (
+        this.itemIsArray() &&
         this.selectedArrayIndex !== null &&
         this.selectedArrayIndex !== this.ALL.label
       ) {
@@ -307,7 +323,15 @@ export default {
     mode: function (newVal, oldVal) {
       this.selectedPacketName = null
       this.selectedItemName = null
-      this.updatePackets()
+      // This also updates packets and items as needed
+      this.targetNameChanged(this.selectedTargetName)
+    },
+    chooseItem: function (newVal, oldVal) {
+      if (newVal) {
+        this.updateItems()
+      } else {
+        this.itemNames = []
+      }
     },
   },
   methods: {
@@ -329,7 +353,7 @@ export default {
       this.internalDisabled = true
       const cmd =
         this.mode === 'tlm' ? 'get_all_tlm_names' : 'get_all_cmd_names'
-      this.api[cmd](this.selectedTargetName).then((names) => {
+      this.api[cmd](this.selectedTargetName, this.hidden).then((names) => {
         this.packetNames = names.map((name) => {
           return {
             label: name,
@@ -433,12 +457,22 @@ export default {
       this.selectedTargetName = value
       this.selectedPacketName = ''
       this.selectedItemName = ''
-      this.updatePackets()
+      // When the target name is completed deleted in the v-autocomplete
+      // the @change handler is fired but the value is null
+      // In this case we don't want to update packets
+      if (value !== null) {
+        this.updatePackets()
+      }
     },
 
     packetNameChanged: function (value) {
       this.selectedItemName = ''
-      this.updatePacketDetails(value)
+      // When the packet name is completed deleted in the v-autocomplete
+      // the @change handler is fired but the value is null
+      // In this case we don't want to update packet details
+      if (value !== null) {
+        this.updatePacketDetails(value)
+      }
     },
 
     updatePacketDetails: function (value) {
@@ -511,7 +545,7 @@ export default {
       } else if (this.selectedItemName === 'ALL') {
         this.allPacketItems()
       } else if (this.chooseItem) {
-        this.$emit('click', {
+        this.$emit('addItem', {
           targetName: this.selectedTargetName,
           packetName: this.selectedPacketName,
           itemName: this.selectedItemNameWIndex,
@@ -520,7 +554,7 @@ export default {
           reducedType: this.selectedReducedType,
         })
       } else {
-        this.$emit('click', {
+        this.$emit('addItem', {
           targetName: this.selectedTargetName,
           packetName: this.selectedPacketName,
           valueType: this.selectedValueType,
@@ -537,7 +571,7 @@ export default {
         this.api[cmd](this.selectedTargetName, packetName.value).then(
           (packet) => {
             packet.items.forEach((item) => {
-              this.$emit('click', {
+              this.$emit('addItem', {
                 targetName: this.selectedTargetName,
                 packetName: packetName.value,
                 itemName: item['name'],
@@ -554,7 +588,7 @@ export default {
     allPacketItems: function () {
       this.itemNames.forEach((item) => {
         if (item === this.ALL) return
-        this.$emit('click', {
+        this.$emit('addItem', {
           targetName: this.selectedTargetName,
           packetName: this.selectedPacketName,
           itemName: item.value,
@@ -573,8 +607,5 @@ export default {
 }
 .select {
   max-width: 300px;
-}
-.row + .row {
-  margin-top: 0px;
 }
 </style>

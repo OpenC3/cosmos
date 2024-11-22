@@ -1,10 +1,13 @@
 ---
 title: Command Sender
+description: Send individual commands
+sidebar_custom_props:
+  myEmoji: 🛠️
 ---
 
 ## Introduction
 
-Command Sender provides the ability to send any command defined by COSMOS. Commands are selected using the Target and Packet drop down fields which populate the command parameter (if any). A command history is stored which is also editable. Commands in the command history can be re-executed by pressing Enter.
+Command Sender provides the ability to send any command defined by COSMOS. Commands are selected using the Target and Packet drop down fields which populate the command parameter (if any). A command history is stored which is also editable. Commands in the command history can be re-executed by pressing Enter. Related telemetry or screens are displayed in the bottom right next to the command history.
 
 ![Command Sender](/img/command_sender/command_sender.png)
 

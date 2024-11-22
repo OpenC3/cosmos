@@ -80,14 +80,14 @@ class CrcProtocol(Protocol):
 
         poly = ConfigParser.handle_none(poly)
         try:
-            if type(poly) is str:
+            if isinstance(poly, str):
                 poly = int(poly, 0)
         except (ValueError, TypeError):
             raise ValueError(f"Invalid polynomial of {poly}. Must be a number.")
 
         seed = ConfigParser.handle_none(seed)
         try:
-            if type(seed) is str:
+            if isinstance(seed, str):
                 seed = int(seed, 0)
         except ValueError:
             raise ValueError(f"Invalid seed of {seed}. Must be a number.")

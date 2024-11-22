@@ -11,7 +11,7 @@ set_timeline_color("Mine", "#4287f5")
 puts get_timeline("Mine") #=> {"name"=>"Mine", "color"=>"#4287f5", "scope"=>"DEFAULT", "updated_at"=>1698763720728596964}
 
 now = Time.now()
-start = Time.new(now.year, now.month, now.day, now.hour + 1, 30, 00)
+start = now + 3600
 stop = start + 3600 # Stop plus 1hr
 act = create_timeline_activity("Mine", kind: "reserve", start: start, stop: stop)
 puts act #=>
@@ -31,7 +31,7 @@ stop = start + 300
 act = create_timeline_activity("Mine", kind: "reserve", start: start, stop: stop)
 tlas = get_timeline_activities("Mine")
 check_expression("#{tlas.length} == 2")
-delete_timeline_activity("Mine", act['start'])
+delete_timeline_activity("Mine", act['start'], act['uuid'])
 tlas = get_timeline_activities("Mine")
 check_expression("#{tlas.length} == 1")
 

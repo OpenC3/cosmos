@@ -15,7 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 
-# Class that implments the following methods= read, write(data),
+# Class that implements the following methods= read, write(data),
 # connect, connected? and disconnect. Streams are simply data sources which
 # {Protocol} classes read and write to. This separation of concerns
 # allows Streams to simply focus on getting and sending raw data while the

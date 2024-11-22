@@ -22,15 +22,15 @@
 
 <template>
   <div>
-    <v-simple-table dense>
+    <v-table dense>
       <tbody>
         <tr>
           <th scope="col" class="text-left">Key</th>
           <th scope="col" class="text-left">Value</th>
           <th scope="col" class="text-right">
-            <v-tooltip top>
-              <template v-slot:activator="{ on, attrs }">
-                <div v-on="on" v-bind="attrs">
+            <v-tooltip location="top">
+              <template v-slot:activator="{ props }">
+                <div v-bind="props">
                   <v-icon data-test="new-metadata-icon" @click="newMetadata">
                     mdi-plus
                   </v-icon>
@@ -40,43 +40,41 @@
             </v-tooltip>
           </th>
         </tr>
-        <template v-for="(meta, i) in metadata">
-          <tr :key="`tr-${i}`">
-            <td>
-              <v-text-field
-                v-model="meta.key"
-                type="text"
-                dense
-                :data-test="`key-${i}`"
-              />
-            </td>
-            <td>
-              <v-text-field
-                v-model="meta.value"
-                type="text"
-                dense
-                :data-test="`value-${i}`"
-              />
-            </td>
-            <td>
-              <v-tooltip top>
-                <template v-slot:activator="{ on, attrs }">
-                  <div v-on="on" v-bind="attrs">
-                    <v-icon
-                      :data-test="`delete-metadata-icon-${i}`"
-                      @click="rm(i)"
-                    >
-                      mdi-delete
-                    </v-icon>
-                  </div>
-                </template>
-                <span> Delete Metadata </span>
-              </v-tooltip>
-            </td>
-          </tr>
-        </template>
+        <tr v-for="(meta, i) in metadata" :key="`tr-${i}`">
+          <td>
+            <v-text-field
+              v-model="meta.key"
+              type="text"
+              density="compact"
+              :data-test="`key-${i}`"
+            />
+          </td>
+          <td>
+            <v-text-field
+              v-model="meta.value"
+              type="text"
+              density="compact"
+              :data-test="`value-${i}`"
+            />
+          </td>
+          <td>
+            <v-tooltip location="top">
+              <template v-slot:activator="{ props }">
+                <div v-bind="props">
+                  <v-icon
+                    :data-test="`delete-metadata-icon-${i}`"
+                    @click="rm(i)"
+                  >
+                    mdi-delete
+                  </v-icon>
+                </div>
+              </template>
+              <span> Delete Metadata </span>
+            </v-tooltip>
+          </td>
+        </tr>
       </tbody>
-    </v-simple-table>
+    </v-table>
   </div>
 </template>
 
@@ -84,7 +82,7 @@
 export default {
   components: {},
   props: {
-    value: {
+    modelValue: {
       type: Array,
       required: true,
     },
@@ -95,10 +93,10 @@ export default {
   computed: {
     metadata: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
   },

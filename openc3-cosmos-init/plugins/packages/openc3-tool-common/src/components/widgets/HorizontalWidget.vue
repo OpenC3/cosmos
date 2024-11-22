@@ -24,16 +24,18 @@
   <div ref="container" class="d-flex flex-row" :style="computedStyle">
     <component
       v-for="(widget, index) in widgets"
-      v-on="$listeners"
+      v-bind="listeners"
       :key="index"
       :is="widget.type"
       :target="widget.target"
       :parameters="widget.parameters"
       :settings="widget.settings"
+      :screen-values="screenValues"
+      :screen-time-zone="screenTimeZone"
       :widgets="widget.widgets"
       :name="widget.name"
       :line="widget.line"
-      :lineNumber="widget.lineNumber"
+      :line-number="widget.lineNumber"
     />
   </div>
 </template>
@@ -51,7 +53,7 @@ export default {
           (setting) =>
             setting[0] === 'MARGIN' ||
             (setting[0] === 'RAW' &&
-              setting[1].toUpperCase().includes('MARGIN'))
+              setting[1].toUpperCase().includes('MARGIN')),
         )
         if (found === undefined) {
           widget.settings.push(['MARGIN', margin])

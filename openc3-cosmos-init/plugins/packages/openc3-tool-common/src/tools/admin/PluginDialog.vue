@@ -26,7 +26,7 @@
       <v-card-text>
         <v-card-title>{{ pluginName }} </v-card-title>
         <v-row v-if="existingPluginTxt !== null" class="notice d-flex flex-row">
-          <v-icon x-large left color="yellow">mdi-alert-box</v-icon>
+          <v-icon size="x-large" start color="yellow"> mdi-alert-box </v-icon>
           <div style="flex: 1">
             The existing plugin.txt is different from the {{ pluginName }}'s
             plugin.txt. Navigate the diffs making whatever edits you want before
@@ -37,15 +37,12 @@
         <v-row class="pb-3 pr-3">
           <v-tabs v-model="tab" class="ml-3">
             <v-tab :key="0"> Variables </v-tab>
-            <v-tab v-if="existingPluginTxt === null" :key="1">
-              plugin.txt
-            </v-tab>
-            <v-tab v-else :key="1"> plugin.txt </v-tab>
+            <v-tab :key="1"> plugin.txt </v-tab>
           </v-tabs>
         </v-row>
-        <form v-on:submit.prevent="submit">
-          <v-tabs-items v-model="tab">
-            <v-tab-item :key="0" eager="true" class="tab">
+        <form @submit.prevent="onSubmit">
+          <v-window v-model="tab">
+            <v-window-item :key="0" eager="true" class="tab">
               <div class="pa-3">
                 <v-row class="mt-3">
                   <div v-for="(value, name) in localVariables" :key="name">
@@ -60,58 +57,55 @@
                   </div>
                 </v-row>
               </div>
-            </v-tab-item>
-            <v-tab-item
+            </v-window-item>
+            <v-window-item
               v-if="existingPluginTxt === null"
-              :key="1"
+              :key="1 + '-new'"
               eager="true"
               class="tab"
             >
-              <v-row class="pa-3"
-                ><v-col>This can be edited before installation.</v-col></v-row
-              >
+              <v-row class="pa-3">
+                <v-col> This can be edited before installation. </v-col>
+              </v-row>
               <pre ref="editor" class="editor"></pre>
-            </v-tab-item>
-            <v-tab-item v-else :key="1" eager="true" class="tab">
-              <v-row class="pa-3"
-                ><v-col
-                  >Existing plugin.txt. This can be edited before
-                  installation.</v-col
-                ><v-col class="ml-6"
-                  >Uneditable plugin.txt from the new plugin.</v-col
-                ></v-row
-              >
+            </v-window-item>
+            <v-window-item
+              v-else
+              :key="1 + '-existing'"
+              eager="true"
+              class="tab"
+            >
+              <v-row class="pa-3">
+                <v-col>
+                  Existing plugin.txt. This can be edited before installation.
+                </v-col>
+                <v-col class="ml-6">
+                  Uneditable plugin.txt from the new plugin.
+                </v-col>
+              </v-row>
               <pre ref="editor" class="editor"></pre>
-            </v-tab-item>
-          </v-tabs-items>
+            </v-window-item>
+          </v-window>
 
-          <!-- <v-row class="pt-5"> -->
-          <v-card-actions class="mt-2">
+          <v-card-actions class="px-2 mt-2">
             <div v-if="existingPluginTxt !== null">
-              <v-btn color="primary" @click="nextDiff" class="mr-2"
-                >Next Diff</v-btn
-              >
-              <v-btn color="primary" @click="previousDiff">Previous Diff</v-btn>
+              <v-btn variant="text" @click="nextDiff"> Next Diff </v-btn>
+              <v-btn variant="text" @click="previousDiff">
+                Previous Diff
+              </v-btn>
             </div>
             <v-spacer />
             <v-btn
+              variant="outlined"
               @click.prevent="close"
-              outlined
-              class="mx-2"
               data-test="edit-cancel"
             >
               Cancel
             </v-btn>
-            <v-btn
-              class="mx-2"
-              color="primary"
-              type="submit"
-              data-test="edit-submit"
-            >
+            <v-btn variant="flat" @click="submit" data-test="edit-submit">
               Install
             </v-btn>
           </v-card-actions>
-          <!-- </v-row> -->
         </form>
       </v-card-text>
     </v-card>
@@ -127,6 +121,7 @@ import 'ace-builds/src-min-noconflict/ext-searchbox'
 import AceDiff from '@openc3/ace-diff'
 import '@openc3/ace-diff/dist/ace-diff.min.css'
 import '@openc3/ace-diff/dist/ace-diff-dark.min.css'
+import { toRaw } from 'vue'
 
 export default {
   props: {
@@ -146,7 +141,7 @@ export default {
       type: String,
       required: false,
     },
-    value: Boolean, // value is the default prop when using v-model
+    modelValue: Boolean, // modelValue is the default prop when using v-model
   },
   data() {
     return {
@@ -192,7 +187,7 @@ export default {
       this.curDiff = -1 // so the first will be 0
     }
   },
-  beforeDestroy() {
+  beforeUnmount() {
     if (this.editor) {
       this.editor.destroy()
     }
@@ -203,10 +198,10 @@ export default {
   computed: {
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
   },
@@ -252,18 +247,18 @@ export default {
       this.differ.getEditors().right.scrollToLine(rrow)
     },
     buildPluginMode() {
-      var oop = ace.require('ace/lib/oop')
-      var RubyHighlightRules = ace.require(
+      let oop = ace.require('ace/lib/oop')
+      let RubyHighlightRules = ace.require(
         'ace/mode/ruby_highlight_rules',
       ).RubyHighlightRules
 
       // TODO: Grab from code
       let keywords = ['VARIABLE']
       let regex = new RegExp(`(\\b${keywords.join('\\b|\\b')}\\b)`)
-      var PluginHighlightRules = function () {
+      let PluginHighlightRules = function () {
         RubyHighlightRules.call(this)
         // add openc3 rules to the ruby rules
-        for (var rule in this.$rules) {
+        for (let rule in this.$rules) {
           this.$rules[rule].unshift({
             regex: regex,
             token: 'support.function',
@@ -272,21 +267,21 @@ export default {
       }
       oop.inherits(PluginHighlightRules, RubyHighlightRules)
 
-      var MatchingBraceOutdent = ace.require(
+      let MatchingBraceOutdent = ace.require(
         'ace/mode/matching_brace_outdent',
       ).MatchingBraceOutdent
-      var CstyleBehaviour = ace.require(
+      let CstyleBehaviour = ace.require(
         'ace/mode/behaviour/cstyle',
       ).CstyleBehaviour
-      var FoldMode = ace.require('ace/mode/folding/ruby').FoldMode
-      var Mode = function () {
+      let FoldMode = ace.require('ace/mode/folding/ruby').FoldMode
+      let Mode = function () {
         this.HighlightRules = PluginHighlightRules
         this.$outdent = new MatchingBraceOutdent()
         this.$behaviour = new CstyleBehaviour()
         this.foldingRules = new FoldMode()
         this.indentKeywords = this.foldingRules.indentKeywords
       }
-      var RubyMode = ace.require('ace/mode/ruby').Mode
+      let RubyMode = ace.require('ace/mode/ruby').Mode
       oop.inherits(Mode, RubyMode)
       ;(function () {
         this.$id = 'ace/mode/openc3'
@@ -324,10 +319,10 @@ export default {
     emitSubmit(lines) {
       let pluginHash = {
         name: this.pluginName,
-        variables: this.localVariables,
+        variables: toRaw(this.localVariables),
         plugin_txt_lines: lines,
       }
-      this.$emit('submit', pluginHash)
+      this.$emit('callback', pluginHash)
     },
     close: function () {
       this.show = !this.show

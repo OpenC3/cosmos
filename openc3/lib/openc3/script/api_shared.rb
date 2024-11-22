@@ -14,13 +14,14 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/script/extract'
+require 'openc3/script/exceptions'
 
 module OpenC3
   module ApiShared
@@ -460,8 +461,9 @@ module OpenC3
     end
 
     def set_line_delay(delay)
-      if defined? RunningScript
-        RunningScript.line_delay = delay if delay >= 0.0
+      if defined? RunningScript and delay >= 0.0
+        RunningScript.line_delay = delay
+        puts "set_line_delay(#{delay})"
       end
     end
 
@@ -529,7 +531,7 @@ module OpenC3
     ###########################################################################
 
     # This must be here for custom microservices that might block.
-    # Overriden by running_script.rb for script sleep
+    # Overridden by running_script.rb for script sleep
     def openc3_script_sleep(sleep_time = nil)
       if sleep_time
         sleep(sleep_time)
@@ -544,7 +546,7 @@ module OpenC3
       "#{target_name.upcase} #{packet_name.upcase} #{item_name.upcase}"
     end
 
-    # Implementaton of the various check commands. It yields back to the
+    # Implementation of the various check commands. It yields back to the
     # caller to allow the return of the value through various telemetry calls.
     # This method should not be called directly by application code.
     def _check(*args, scope: $openc3_scope, token: $openc3_token)

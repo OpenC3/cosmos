@@ -53,7 +53,7 @@
           v-if="reset"
           type="submit"
           @click.prevent="setPassword"
-          large
+          size="large"
           :color="isSet ? 'warn' : 'success'"
           :disabled="!formValid"
           data-test="set-password"
@@ -65,19 +65,21 @@
             <v-btn
               type="submit"
               @click.prevent="verifyPassword"
-              large
+              size="large"
               color="success"
               :disabled="!formValid"
             >
               Login
             </v-btn>
             <v-spacer />
-            <v-btn text small @click="showReset"> Change Password </v-btn>
+            <v-btn variant="text" size="small" @click="showReset">
+              Change Password
+            </v-btn>
           </v-row>
         </v-container>
       </v-form>
     </v-card-text>
-    <v-alert :type="alertType" v-model="showAlert" dismissible>
+    <v-alert :type="alertType" v-model="showAlert" closable>
       {{ alert }}
     </v-alert>
   </v-card>
@@ -140,12 +142,17 @@ export default {
     showReset: function () {
       this.reset = true
     },
-    login: function () {
-      localStorage.openc3Token = this.password
+    login: function (response) {
+      localStorage.openc3Token = response.data
       const redirect = new URLSearchParams(window.location.search).get(
         'redirect',
       )
-      window.location = decodeURI(redirect || '/')
+      if (redirect.startsWith('/tools/')) {
+        // Valid relative redirect URL
+        window.location = decodeURI(redirect)
+      } else {
+        window.location = '/'
+      }
     },
     verifyPassword: function () {
       this.showAlert = false
@@ -156,7 +163,7 @@ export default {
         ...this.options,
       })
         .then((response) => {
-          this.login()
+          this.login(response)
         })
         .catch((error) => {
           this.alert = 'Incorrect password'
@@ -172,7 +179,15 @@ export default {
           token: this.password,
         },
         ...this.options,
-      }).then(this.login)
+      })
+        .then((response) => {
+          this.login(response)
+        })
+        .catch((error) => {
+          this.alert = `Invalid password: ${error.response.data.message}`
+          this.alertType = 'warning'
+          this.showAlert = true
+        })
     },
   },
 }

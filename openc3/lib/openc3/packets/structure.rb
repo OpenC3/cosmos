@@ -188,21 +188,21 @@ module OpenC3
 
     # Define an item in the structure. This creates a new instance of the
     # item_class as given in the constructor and adds it to the items hash. It
-    # also resizes the buffer to accomodate the new item.
+    # also resizes the buffer to accommodate the new item.
     #
     # @param name [String] Name of the item. Used by the items hash to retrieve
     #   the item.
     # @param bit_offset [Integer] Bit offset of the item in the raw buffer
     # @param bit_size [Integer] Bit size of the item in the raw buffer
     # @param data_type [Symbol] Type of data contained by the item. This is
-    #   dependant on the item_class but by default see StructureItem.
+    #   dependent on the item_class but by default see StructureItem.
     # @param array_size [Integer] Set to a non nil value if the item is to
     #   represented as an array.
     # @param endianness [Symbol] Endianness of this item. By default the
-    #   endianness as set in the constructure is used.
+    #   endianness as set in the constructor is used.
     # @param overflow [Symbol] How to handle value overflows. This is
-    #   dependant on the item_class but by default see StructureItem.
-    # @return [StrutureItem] The struture item defined
+    #   dependent on the item_class but by default see StructureItem.
+    # @return [StrutureItem] The structure item defined
     def define_item(name, bit_offset, bit_size, data_type, array_size = nil, endianness = @default_endianness, overflow = :ERROR)
       # Create the item
       item = @item_class.new(name, bit_offset, bit_size, data_type, endianness, array_size, overflow)
@@ -210,10 +210,10 @@ module OpenC3
     end
 
     # Adds the given item to the items hash. It also resizes the buffer to
-    # accomodate the new item.
+    # accommodate the new item.
     #
     # @param item [StructureItem] The structure item to add
-    # @return [StrutureItem] The struture item defined
+    # @return [StrutureItem] The structure item defined
     def define(item)
       # Handle Overwriting Existing Item
       if @items[item.name]
@@ -289,7 +289,7 @@ module OpenC3
 
     # Define an item at the end of the structure. This creates a new instance of the
     # item_class as given in the constructor and adds it to the items hash. It
-    # also resizes the buffer to accomodate the new item.
+    # also resizes the buffer to accommodate the new item.
     #
     # @param name (see #define_item)
     # @param bit_size (see #define_item)
@@ -299,7 +299,6 @@ module OpenC3
     # @param overflow (see #define_item)
     # @return (see #define_item)
     def append_item(name, bit_size, data_type, array_size = nil, endianness = @default_endianness, overflow = :ERROR)
-      raise ArgumentError, "Can't append an item after a variably sized item" if !@fixed_size
       if data_type == :DERIVED
         return define_item(name, 0, bit_size, data_type, array_size, endianness, overflow)
       else
@@ -308,17 +307,20 @@ module OpenC3
     end
 
     # Adds an item at the end of the structure. It adds the item to the items
-    # hash and resizes the buffer to accomodate the new item.
+    # hash and resizes the buffer to accommodate the new item.
     #
     # @param item (see #define)
     # @return (see #define)
     def append(item)
-      raise ArgumentError, "Can't append an item after a variably sized item" if !@fixed_size
-
       if item.data_type == :DERIVED
         item.bit_offset = 0
       else
+        # We're appending a new item so set the bit_offset
         item.bit_offset = @defined_length_bits
+        # Also set original_bit_offset because it's currently 0
+        # due to PacketItemParser::create_packet_item
+        # get_bit_offset() returning 0 if append
+        item.original_bit_offset = @defined_length_bits
       end
       return define(item)
     end
@@ -337,6 +339,20 @@ module OpenC3
     def set_item(item)
       if @items[item.name]
         @items[item.name] = item
+        # Need to allocate space for the variable length item if its minimum size is greater than zero
+        if item.variable_bit_size
+          minimum_data_bits = 0
+          if (item.data_type == :INT or item.data_type == :UINT) and not item.original_array_size
+            # Minimum QUIC encoded integer, see https://datatracker.ietf.org/doc/html/rfc9000#name-variable-length-integer-enc
+            minimum_data_bits = 6
+          # :STRING, :BLOCK, or array item
+          elsif item.variable_bit_size['length_value_bit_offset'] > 0
+            minimum_data_bits = item.variable_bit_size['length_value_bit_offset'] * item.variable_bit_size['length_bits_per_count']
+          end
+          if minimum_data_bits > 0 and item.bit_offset >= 0 and @defined_length_bits == item.bit_offset
+            @defined_length_bits += minimum_data_bits
+          end
+        end
       else
         raise ArgumentError, "Unknown item: #{item.name} - Ensure item name is uppercase"
       end
@@ -477,7 +493,7 @@ module OpenC3
     # further modifications to the buffer have no effect on the structure
     # items.
     #
-    # @param buffer [String] Buffer of data to back the stucture items
+    # @param buffer [String] Buffer of data to back the structure items
     def buffer=(buffer)
       synchronize() do
         internal_buffer_equals(buffer)
@@ -491,8 +507,8 @@ module OpenC3
     #   buffer of data
     def clone
       structure = super()
-      # Use instance_variable_set since we have overriden buffer= to do
-      # additional work that isn't neccessary here
+      # Use instance_variable_set since we have overridden buffer= to do
+      # additional work that isn't necessary here
       structure.instance_variable_set("@buffer".freeze, @buffer.clone) if @buffer
       # Need to update reference packet in the Accessor
       structure.accessor.packet = structure
@@ -566,12 +582,68 @@ module OpenC3
       end
     end
 
+    def calculate_total_bit_size(item)
+      if item.variable_bit_size
+        # Bit size is determined by length field
+        length_value = self.read(item.variable_bit_size['length_item_name'], :CONVERTED)
+        if item.data_type == :INT or item.data_type == :UINT and not item.original_array_size
+          case length_value
+          when 0
+            return 6
+          when 1
+            return 14
+          when 2
+            return 30
+          else
+            return 62
+          end
+        else
+          return (length_value * item.variable_bit_size['length_bits_per_count']) + item.variable_bit_size['length_value_bit_offset']
+        end
+      elsif item.original_bit_size <= 0
+        # Bit size is full packet length - bits before item + negative bits saved at end
+        return (@buffer.length * 8) - item.bit_offset + item.original_bit_size
+      elsif item.original_array_size and item.original_array_size <= 0
+        # Bit size is full packet length - bits before item + negative bits saved at end
+        return (@buffer.length * 8) - item.bit_offset + item.original_array_size
+      else
+        raise "Unexpected use of calculate_total_bit_size for non-variable-sized item"
+      end
+    end
+
+    def recalculate_bit_offsets
+      adjustment = 0
+      @sorted_items.each do |item|
+        # Anything with a negative bit offset should be left alone
+        if item.original_bit_offset >= 0
+          item.bit_offset = item.original_bit_offset + adjustment
+
+          # May need to update adjustment with variable length items
+          # Note legacy variable length does not push anything
+          if item.data_type != :DERIVED and item.variable_bit_size # Not DERIVED and New Variable Length
+            # Calculate the actual current size of this variable length item
+            new_bit_size = calculate_total_bit_size(item)
+
+            if item.original_bit_size != new_bit_size
+              # Bit size has changed from original - so we need to adjust everything after this item
+              # This includes items that may have the same bit_offset as the variable length item because it
+              # started out at zero bit_size
+              adjustment += (new_bit_size - item.original_bit_size)
+            end
+          end
+        end
+      end
+    end
+
     def internal_buffer_equals(buffer)
       raise ArgumentError, "Buffer class is #{buffer.class} but must be String" unless String === buffer
 
       @buffer = buffer.dup
       if @accessor.enforce_encoding
         @buffer.force_encoding(@accessor.enforce_encoding)
+      end
+      if not @fixed_size
+        recalculate_bit_offsets()
       end
       if @accessor.enforce_length
         if @buffer.length != @defined_length

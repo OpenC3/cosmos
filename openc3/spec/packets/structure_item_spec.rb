@@ -110,10 +110,8 @@ module OpenC3
         expect { StructureItem.new("test", 0, nil, :UINT, :BIG_ENDIAN, nil) }.to raise_error(ArgumentError, "TEST: bit_size must be an Integer")
       end
 
-      it "complains about 0 size INT, UINT, and FLOAT" do
-        %w(INT UINT FLOAT).each do |type|
-          expect { StructureItem.new("test", 0, 0, type.to_sym, :BIG_ENDIAN, nil) }.to raise_error(ArgumentError, "TEST: bit_size cannot be negative or zero for :INT, :UINT, and :FLOAT items: 0")
-        end
+      it "complains about 0 size FLOAT" do
+        expect { StructureItem.new("test", 0, 0, :FLOAT, :BIG_ENDIAN, nil) }.to raise_error(ArgumentError, "TEST: bit_size cannot be negative or zero for :FLOAT items: 0")
       end
 
       it "complains about bad float bit sizes" do
@@ -158,9 +156,9 @@ module OpenC3
         expect(si1 > si2).to be false
       end
 
-      it "sorts items with 0 bit offset according to bit size" do
+      it "sorts items with DERIVED first" do
         si1 = StructureItem.new("si1", 0, 8, :UINT, :BIG_ENDIAN, nil)
-        si2 = StructureItem.new("si2", 0, 0, :BLOCK, :BIG_ENDIAN, nil)
+        si2 = StructureItem.new("si2", 0, 0, :DERIVED, :BIG_ENDIAN, nil)
         expect(si1 < si2).to be false
         expect(si1 == si2).to be false
         expect(si1 > si2).to be true
@@ -191,6 +189,22 @@ module OpenC3
         si1 = StructureItem.new("si1", 16, 8, :UINT, :BIG_ENDIAN, nil)
         expect { (si1 > 5) }.to raise_error(StandardError)
         expect(si1 <=> 5).to be nil
+      end
+
+      it "sorts new variable sized items before fixed sized items at same offset" do
+        si1 = StructureItem.new("si1", 8, 8, :UINT, :BIG_ENDIAN, nil)
+        si2 = StructureItem.new("si2", 8, 0, :UINT, :BIG_ENDIAN, nil)
+        si2.variable_bit_size = {'length_item_name' => 'item1_length', 'length_value_bit_offset' => 0, 'length_bits_per_count' => 8}
+        expect(si1 < si2).to be false
+        expect(si1 == si2).to be false
+        expect(si1 > si2).to be true
+
+        si1 = StructureItem.new("si1", 8, 0, :UINT, :BIG_ENDIAN, nil)
+        si1.variable_bit_size = {'length_item_name' => 'item1_length', 'length_value_bit_offset' => 0, 'length_bits_per_count' => 8}
+        si2 = StructureItem.new("si2", 8, 8, :UINT, :BIG_ENDIAN, nil)
+        expect(si1 < si2).to be true
+        expect(si1 == si2).to be false
+        expect(si1 > si2).to be false
       end
     end
 

@@ -1,5 +1,5 @@
 <!--
-# Copyright 2022 Ball Aerospace & Technologies Corp.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -12,10 +12,6 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-# Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
-# All Rights Reserved
-#
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
@@ -23,7 +19,7 @@
 <template>
   <img
     :src="src"
-    :alt="itemFullName"
+    :alt="valueId"
     :width="parameters[4]"
     :height="parameters[5]"
     :style="computedStyle"
@@ -31,102 +27,29 @@
 </template>
 
 <script>
-import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 import Widget from '@openc3/tool-common/src/components/widgets/Widget'
-import Cable from '@openc3/tool-common/src/services/cable.js'
 
 export default {
   mixins: [Widget],
   data: function () {
     return {
-      api: new OpenC3Api(),
-      cable: new Cable(),
-      subscription: null,
+      valueId: null,
       imageData: '',
     }
   },
   computed: {
     src: function () {
-      return `data:image/${this.parameters[3]};base64, ${this.imageData}`
-    },
-    itemFullName: function () {
-      return `TLM__${this.targetName}__${this.packetName}__${this.itemName}__${this.valueType}`
-    },
-    targetName: function () {
-      return this.parameters[0]
-    },
-    packetName: function () {
-      return this.parameters[1]
-    },
-    itemName: function () {
-      return this.parameters[2]
-    },
-    valueType: function () {
-      return 'CONVERTED'
+      return `data:image/${this.parameters[3]};base64, ${this.screenValues[this.valueId][0]}`
     },
   },
   created: function () {
-    this.api
-      .get_tlm_packet(this.targetName, this.packetName, this.valueType)
-      .then((packetItems) => {
-        const foundPacket = packetItems?.find(
-          (item) => item[0] === this.itemName
-        )
-        if (foundPacket) {
-          this.imageData = foundPacket[1]
-        }
-      })
-      .finally(() => {
-        this.subscribe()
-      })
+    // TODO: We're hard coding CONVERTED because the existing 4th parameter is the image format
+    // Future breaking change would be to put the type as 4th and format as fifth
+    this.valueId = `${this.parameters[0]}__${this.parameters[1]}__${this.parameters[2]}__CONVERTED`
+    this.$emit('addItem', this.valueId)
   },
-  destroyed: function () {
-    if (this.subscription) {
-      this.subscription.unsubscribe()
-    }
-    this.cable.disconnect()
-  },
-  methods: {
-    received: function (parsed) {
-      this.cable.recordPing()
-      if (parsed['error']) {
-        this.$notify.serious({
-          body: parsed['error'],
-        })
-      } else {
-        if (parsed.length) {
-          const packet = parsed[parsed.length - 1]
-          this.imageData = packet[this.itemFullName]
-        }
-      }
-    },
-    subscribe: function () {
-      this.cable
-        .createSubscription('StreamingChannel', window.openc3Scope, {
-          received: (data) => this.received(data),
-          connected: () => {
-            this.subscription.perform('add', {
-              scope: window.openc3Scope,
-              mode: 'DECOM',
-              token: localStorage.openc3Token,
-              items: [this.itemFullName],
-            })
-          },
-          disconnected: () => {
-            this.$notify.caution({
-              body: 'OpenC3 backend connection disconnected.',
-            })
-          },
-          rejected: () => {
-            this.$notify.caution({
-              body: 'OpenC3 backend connection rejected.',
-            })
-          },
-        })
-        .then((subscription) => {
-          this.subscription = subscription
-        })
-    },
+  unmounted: function () {
+    this.$emit('deleteItem', this.valueId)
   },
 }
 </script>

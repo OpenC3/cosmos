@@ -22,7 +22,7 @@
 
 module OpenC3
   # Encapsulates an {Interface} in a Ruby thread. When the thread is started by
-  # the {#start} method, it loops trying to connect. It then continously reads
+  # the {#start} method, it loops trying to connect. It then continuously reads
   # from the interface while handling the packets it receives.
   class InterfaceThread
     # The number of bytes to print when an UNKNOWN packet is received
@@ -82,8 +82,8 @@ module OpenC3
                   connect() unless @cancel_thread
                 end
                 break if @cancel_thread
-              rescue Exception => connect_error
-                handle_connection_failed(connect_error)
+              rescue Exception => e
+                handle_connection_failed(e)
                 if @cancel_thread
                   break
                 else
@@ -105,8 +105,8 @@ module OpenC3
                   end
                 end
                 packet.received_time = Time.now.sys unless packet.received_time
-              rescue Exception => err
-                handle_connection_lost(err)
+              rescue Exception => e
+                handle_connection_lost(e)
                 if @cancel_thread
                   break
                 else
@@ -120,12 +120,12 @@ module OpenC3
               handle_connection_lost(nil) if !@interface.connected?
             end
           end # loop
-        rescue Exception => error
+        rescue Exception => e
           if @fatal_exception_callback
-            @fatal_exception_callback.call(error)
+            @fatal_exception_callback.call(e)
           else
             Logger.error "Packet reading thread unexpectedly died for #{@interface.name}"
-            OpenC3.handle_fatal_exception(error)
+            OpenC3.handle_fatal_exception(e)
           end
         end
         Logger.info "Stopped packet reading for #{@interface.name}"
@@ -207,8 +207,8 @@ module OpenC3
       # Write to routers
       @interface.routers.each do |router|
         router.write(packet) if router.write_allowed? and router.connected?
-      rescue => err
-        Logger.error "Problem writing to router #{router.name} - #{err.class}:#{err.message}"
+      rescue => e
+        Logger.error "Problem writing to router #{router.name} - #{e.class}:#{e.message}"
       end
 
       # Write to packet log writers

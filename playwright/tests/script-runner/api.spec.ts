@@ -31,7 +31,9 @@ async function openFile(page, utils, filename) {
   let part2 = filename.substring(half, filename.length)
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Open File').click()
-  await expect(page.locator('.v-dialog >> text=INST2')).toBeVisible()
+  await expect(
+    page.locator('.v-dialog').getByText('INST2', { exact: true }),
+  ).toBeVisible()
   await utils.sleep(200)
   await page.locator('[data-test=file-open-save-search]').type(part1)
   await utils.sleep(200)
@@ -42,11 +44,9 @@ async function openFile(page, utils, filename) {
   await expect(page.locator('.v-dialog')).not.toBeVisible()
   await utils.sleep(500)
 
-  // Check for potential "Someone else is editing this script"
+  // Check for potential "<User> is editing this script"
   // This can happen if we had to do a retry on this test
-  const someone = page.getByText(
-    'Someone else is editing this script. Editor is in read-only mode',
-  )
+  const someone = page.getByText('is editing this script')
   if (await someone.isVisible()) {
     await page.locator('[data-test="unlock-button"]').click()
     await page.locator('[data-test="confirm-dialog-force unlock"]').click()
@@ -78,7 +78,7 @@ test('opens a target file', async ({ page, utils }) => {
   `)
 
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('error', {
+  await expect(page.locator('[data-test=state] input')).toHaveValue('error', {
     timeout: 30000,
   })
   await expect(page.locator('[data-test=output-messages]')).toContainText(
@@ -107,7 +107,7 @@ test('opens a target file', async ({ page, utils }) => {
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     'Original web',
   )
-  await expect(page.locator('[data-test=state]')).toHaveValue('stopped')
+  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped')
 })
 
 test('runs a script', async ({ page, utils }) => {
@@ -115,33 +115,41 @@ test('runs a script', async ({ page, utils }) => {
   script_run("INST/procedures/disconnect.rb")
   `)
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('Connecting...', {
-    timeout: 5000,
-  })
-  await expect(page.locator('[data-test=state]')).toHaveValue('stopped', {
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'Connecting...',
+    {
+      timeout: 5000,
+    },
+  )
+  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
     timeout: 20000,
   })
 
   await page.locator('[data-test="script-runner-script"]').click()
   await page.getByText('Execution Status').click()
-  await page.getByRole('cell', { name: 'Connect' }).nth(0).click()
+  await page.getByRole('button', { name: 'Connect' }).first().click()
 
-  await expect(page.locator('[data-test=state]')).toHaveValue('error')
+  await expect(page.locator('[data-test=state] input')).toHaveValue('error', {
+    timeout: 20000,
+  })
   await page.locator('[data-test="stop-button"]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('stopped')
+  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped')
 })
 
 async function testCalendarApis(page, utils, filename) {
   await openFile(page, utils, filename)
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('Connecting...', {
-    timeout: 5000,
-  })
-  await expect(page.locator('[data-test=state]')).toHaveValue('error', {
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'Connecting...',
+    {
+      timeout: 5000,
+    },
+  )
+  await expect(page.locator('[data-test=state] input')).toHaveValue('error', {
     timeout: 20000,
   })
   await page.locator('[data-test=go-button]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('stopped', {
+  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
     timeout: 20000,
   })
 }
@@ -157,10 +165,13 @@ test('test python calendar apis', async ({ page, utils }) => {
 async function testStashApis(page, utils, filename) {
   await openFile(page, utils, filename)
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('Connecting...', {
-    timeout: 5000,
-  })
-  await expect(page.locator('[data-test=state]')).toHaveValue('stopped', {
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'Connecting...',
+    {
+      timeout: 5000,
+    },
+  )
+  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
     timeout: 20000,
   })
 }
@@ -181,7 +192,7 @@ async function testMetadataApis(page, utils, filename) {
   await page.locator('[data-test=script-runner-script]').click()
   await page.locator('[data-test="script-runner-script-metadata"]').click()
   await utils.sleep(500)
-  await expect(page.getByText('Metadata Search')).toBeVisible()
+  await expect(page.locator('[data-test="new-event"]')).toBeVisible()
   // Delete any existing metadata so we start fresh
   while (true) {
     if (await page.$('[data-test=delete-event]')) {
@@ -195,20 +206,27 @@ async function testMetadataApis(page, utils, filename) {
   await page.locator('[data-test="close-event-list"]').click()
 
   await page.locator('[data-test=start-button]').click()
-  await expect(page.getByText('Metadata Search')).toBeVisible({
+  await expect(page.locator('[data-test="new-event"]')).toBeVisible({
     timeout: 20000,
   })
   await page.locator('[data-test="new-event"]').click()
-  await page.locator('[data-test="create-metadata-step-two-btn"]').click()
+  await page.getByRole('button', { name: 'Next', exact: true }).click()
   await page.locator('[data-test="new-metadata-icon"]').click()
-  await page.locator('[data-test="key-0"]').fill('inputkey')
-  await page.locator('[data-test="value-0"]').fill('inputvalue')
-  await page.locator('[data-test="create-metadata-submit-btn"]').click()
+  await page.locator('[data-test="key-0"]').locator('input').fill('inputkey')
+  await page
+    .locator('[data-test="value-0"]')
+    .locator('input')
+    .fill('inputvalue')
+  await page.locator('[data-test="trigger-create-submit-btn"]').click()
   await page.locator('[data-test="close-event-list"]').click()
 
-  await expect(page.locator('[data-test=state]')).toHaveValue('stopped', {
+  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
     timeout: 20000,
   })
+}
+
+test('test ruby metadata apis', async ({ page, utils }) => {
+  await testMetadataApis(page, utils, 'metadata.rb')
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     '"setkey"=>1',
   )
@@ -221,12 +239,34 @@ async function testMetadataApis(page, utils, filename) {
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     '"inputkey"=>"inputvalue"',
   )
-}
-
-test('test ruby metadata apis', async ({ page, utils }) => {
-  await testMetadataApis(page, utils, 'metadata.rb')
 })
 
-// test('test python metadata apis', async ({ page, utils }) => {
-//   await testMetadataApis(page, utils, 'metadata.py')
-// })
+test('test python metadata apis', async ({ page, utils }) => {
+  await testMetadataApis(page, utils, 'metadata.py')
+  await expect(page.locator('[data-test=output-messages]')).toContainText(
+    "'setkey': 1",
+  )
+  await expect(page.locator('[data-test=output-messages]')).toContainText(
+    "'setkey': 2",
+  )
+  await expect(page.locator('[data-test=output-messages]')).toContainText(
+    "'updatekey': 3",
+  )
+  await expect(page.locator('[data-test=output-messages]')).toContainText(
+    "'inputkey': 'inputvalue'",
+  )
+})
+
+test('test python numpy import', async ({ page, utils }) => {
+  await openFile(page, utils, 'numpy.py')
+  await page.locator('[data-test=start-button]').click()
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'Connecting...',
+    {
+      timeout: 5000,
+    },
+  )
+  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
+    timeout: 20000,
+  })
+})

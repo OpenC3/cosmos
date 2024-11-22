@@ -48,7 +48,7 @@ OVERLAP:
   summary: This item is allowed to overlap other items in the packet
   description:
     If an item's bit offset overlaps another item, OpenC3 issues a warning. This keyword explicitly
-    allows an item to overlap another and supresses the warning message.
+    allows an item to overlap another and suppresses the warning message.
   since: 4.4.1
 KEY:
   summary: Defines the key used to access this raw value in the packet.
@@ -60,3 +60,19 @@ KEY:
       description: The key to access this item
       values: .+
   since: 5.0.10
+VARIABLE_BIT_SIZE:
+  summary: Marks an item as having its bit size defined by another length item
+  since: 5.18.0
+  parameters:
+    - name: Length Item Name
+      required: true
+      description: The name of the associated length item
+      values: .+
+    - name: Length Bits Per Count
+      required: false
+      description: Bits per count of the length item. Defaults to 8
+      values: \d+
+    - name: Length Value Bit Offset
+      required: false
+      description: Offset in Bits to Apply to Length Field Value. Defaults to 0
+      values: \d+

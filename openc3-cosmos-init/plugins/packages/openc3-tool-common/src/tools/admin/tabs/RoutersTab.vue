@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -25,30 +25,28 @@
     <v-list class="list" data-test="routerList">
       <div v-for="(router, index) in routers" :key="index">
         <v-list-item>
-          <v-list-item-content>
-            <v-list-item-title>{{ router }}</v-list-item-title>
-          </v-list-item-content>
-          <v-list-item-icon>
-            <v-tooltip bottom>
-              <template v-slot:activator="{ on, attrs }">
-                <v-icon @click="showRouter(router)" v-bind="attrs" v-on="on">
+          <v-list-item-title>{{ router }}</v-list-item-title>
+
+          <template v-slot:append>
+            <v-tooltip location="bottom">
+              <template v-slot:activator="{ props }">
+                <v-icon v-bind="props" @click="showRouter(router)">
                   mdi-eye
                 </v-icon>
               </template>
               <span>Show Router Details</span>
             </v-tooltip>
-          </v-list-item-icon>
+          </template>
         </v-list-item>
         <v-divider />
       </div>
     </v-list>
-    <edit-dialog
+    <output-dialog
       v-model="showDialog"
       v-if="showDialog"
       :content="jsonContent"
       type="Router"
       :name="dialogTitle"
-      readonly
       @submit="dialogCallback"
     />
   </div>
@@ -56,9 +54,9 @@
 
 <script>
 import Api from '../../../services/api'
-import EditDialog from '../EditDialog'
+import OutputDialog from '../../../components/OutputDialog'
 export default {
-  components: { EditDialog },
+  components: { OutputDialog },
   data() {
     return {
       routers: [],
@@ -94,5 +92,8 @@ export default {
 <style scoped>
 .list {
   background-color: var(--color-background-surface-default) !important;
+}
+.v-theme--cosmosDark.v-list div:nth-child(odd) .v-list-item {
+  background-color: var(--color-background-base-selected) !important;
 }
 </style>

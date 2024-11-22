@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -23,27 +23,20 @@
 <template>
   <div class="block-widget-container">
     <v-textarea
-      solo
-      dense
+      variant="solo"
+      density="compact"
       readonly
       no-resize
       hide-details
-      placeholder="Value"
+      :rows="rows"
       :width="width"
-      :height="height"
-      :value="_value"
+      :model-value="_value"
       :class="valueClass"
       :style="[computedStyle, aging]"
       data-test="valueText"
       @contextmenu="showContextMenu"
     />
-    <v-menu
-      v-model="contextMenuShown"
-      :position-x="x"
-      :position-y="y"
-      absolute
-      offset-y
-    >
+    <v-menu v-model="contextMenuShown" :target="[x, y]">
       <v-list>
         <v-list-item
           v-for="(item, index) in contextMenuOptions"
@@ -90,6 +83,13 @@ export default {
         '--aging': this.grayLevel,
       }
     },
+    rows: function () {
+      // hack to set height since vuetify 3 removed the ability to set the
+      // <textarea>'s height by px and I can't get styling the element to work, either
+      const paddingHeight = 16 // px
+      const rowHeight = 24 // px
+      return (this.height - paddingHeight) / rowHeight
+    },
   },
   created: function () {
     this.width = this.setWidth(this.parameters[3], 'px', this.width)
@@ -110,20 +110,20 @@ export default {
   },
   methods: {
     getType: function () {
-      var type = 'RAW'
+      let type = 'RAW'
       if (this.parameters[9]) {
         type = this.parameters[9]
       }
       return type
     },
     formatValue: function (data) {
-      var text = ''
+      let text = ''
       if (data && data.raw) {
-        var space = ' '
-        var newLine = '\n'
+        let space = ' '
+        let newLine = '\n'
 
-        var byteCount = 0
-        var addr = 0
+        let byteCount = 0
+        let addr = 0
         const bytesPerRow = this.bytesPerWord * this.wordsPerRow
 
         for (const value of data.raw) {
@@ -160,6 +160,13 @@ export default {
   min-height: 24px !important;
   display: flex !important;
   align-items: center !important;
+}
+.block-widget-container :deep(.v-field__loader) {
+  display: none !important;
+}
+.block-widget-container :deep(textarea) {
+  padding-right: 0 !important;
+  padding-left: 12px !important;
 }
 .openc3-green :deep(input) {
   color: rgb(0, 200, 0);

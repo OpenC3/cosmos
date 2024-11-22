@@ -15,6 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 import os
+import tempfile
 from openc3.config.config_parser import ConfigParser
 from openc3.packets.packet import Packet
 from openc3.packets.parsers.packet_parser import PacketParser
@@ -207,7 +208,9 @@ class PacketConfig:
                         | "DISABLE_MESSAGES"
                         | "HIDDEN"
                         | "DISABLED"
+                        | "VIRTUAL"
                         | "ACCESSOR"
+                        | "VALIDATOR"
                         | "TEMPLATE"
                         | "TEMPLATE_FILE"
                         | "RESPONSE"
@@ -245,6 +248,7 @@ class PacketConfig:
                         | "OVERFLOW"
                         | "OVERLAP"
                         | "KEY"
+                        | "VARIABLE_BIT_SIZE"
                     ):
                         if not self.current_item:
                             raise parser.error(f"No current item for {keyword}")
@@ -320,21 +324,45 @@ class PacketConfig:
             if self.current_cmd_or_tlm == PacketConfig.COMMAND:
                 PacketParser.check_item_data_types(self.current_packet)
                 self.commands[self.current_packet.target_name][self.current_packet.packet_name] = self.current_packet
-                hash = self.cmd_id_value_hash.get(self.current_packet.target_name)
-                if not hash:
-                    hash = {}
-                self.cmd_id_value_hash[self.current_packet.target_name] = hash
-                self.update_id_value_hash(hash)
+                if not self.current_packet.virtual:
+                    hash = self.cmd_id_value_hash.get(self.current_packet.target_name)
+                    if not hash:
+                        hash = {}
+                    self.cmd_id_value_hash[self.current_packet.target_name] = hash
+                    self.update_id_value_hash(hash)
             else:
                 self.telemetry[self.current_packet.target_name][self.current_packet.packet_name] = self.current_packet
-                hash = self.tlm_id_value_hash.get(self.current_packet.target_name)
-                if not hash:
-                    hash = {}
-                self.tlm_id_value_hash[self.current_packet.target_name] = hash
-                self.update_id_value_hash(hash)
+                if not self.current_packet.virtual:
+                    hash = self.tlm_id_value_hash.get(self.current_packet.target_name)
+                    if not hash:
+                        hash = {}
+                    self.tlm_id_value_hash[self.current_packet.target_name] = hash
+                    self.update_id_value_hash(hash)
 
             self.current_packet = None
             self.current_item = None
+
+    # This method provides way to quickly test packet configs
+    #
+    # from openc3.packets.packet_config import PacketConfig
+    #
+    # config = """
+    #   ...
+    # """
+    #
+    # pc = PacketConfig.from_config(config, "MYTARGET")
+    # c = pc.commands['CMDADCS']['SET_POINTING_CMD']
+    # c.restore_defaults()
+    # c.write("MYITEM", 5)
+    # print(c.buffer)
+    @classmethod
+    def from_config(cls, config, process_target_name):
+        pc = cls()
+        with tempfile.NamedTemporaryFile(mode="w+t", suffix=".txt") as tf:
+            tf.write(config)
+            tf.seek(0)
+            pc.process_file(tf.name, process_target_name)
+        return pc
 
     def update_id_value_hash(self, hash):
         if self.current_packet.id_items and len(self.current_packet.id_items) > 0:
@@ -369,7 +397,7 @@ class PacketConfig:
                         self.current_item = self.current_packet.get_item(params[0])
                     else:  # DELETE
                         self.current_packet.delete_item(params[0])
-                except AttributeError:  # Rescue the default execption to provide a nicer error message
+                except AttributeError:  # Rescue the default exception to provide a nicer error message
                     raise parser.error(
                         f"{params[0]} not found in {self.current_cmd_or_tlm.lower()} packet {self.current_packet.target_name} {self.current_packet.packet_name}",
                         usage,
@@ -423,7 +451,7 @@ class PacketConfig:
                 else:
                     meta_values = []
                 for index, value in enumerate(meta_values):
-                    if type(value) is str:
+                    if isinstance(value, str):
                         meta_values[index] = value
                 if self.current_item:
                     # Item META
@@ -443,8 +471,20 @@ class PacketConfig:
                 self.current_packet.hidden = True
                 self.current_packet.disabled = True
 
+            case "VIRTUAL":
+                usage = keyword
+                parser.verify_num_parameters(0, 0, usage)
+                self.current_packet.hidden = True
+                self.current_packet.disabled = True
+                self.current_packet.virtual = True
+
+            case "RESTRICTED":
+                usage = keyword
+                parser.verify_num_parameters(0, 0, usage)
+                self.current_packet.restricted = True
+
             case "ACCESSOR":
-                usage = f"{keyword} <Accessor class name>"
+                usage = f"{keyword} <Class name> <Optional parameters> ..."
                 parser.verify_num_parameters(1, None, usage)
                 try:
                     filename = class_name_to_filename(params[0])
@@ -453,6 +493,21 @@ class PacketConfig:
                         self.current_packet.accessor = klass(self.current_packet, *params[1:])
                     else:
                         self.current_packet.accessor = klass(self.current_packet)
+                except ModuleNotFoundError as error:
+                    raise parser.error(error)
+
+            case "VALIDATOR":
+                usage = f"{keyword} <Class name> <Optional parameters> ..."
+                parser.verify_num_parameters(1, None, usage)
+                try:
+                    klass = get_class_from_module(
+                        filename_to_module(params[0]),
+                        filename_to_class_name(params[0]),
+                    )
+                    if len(params) > 1:
+                        self.current_packet.validator = klass(self.current_packet, *params[1:])
+                    else:
+                        self.current_packet.validator = klass(self.current_packet)
                 except ModuleNotFoundError as error:
                     raise parser.error(error)
 
@@ -646,7 +701,7 @@ class PacketConfig:
                 else:
                     raise parser.error(f"{keyword} only applies to command parameters")
 
-            # Update the mimimum value for the current command parameter
+            # Update the minimum value for the current command parameter
             case "MINIMUM_VALUE":
                 if self.current_cmd_or_tlm == PacketConfig.TELEMETRY:
                     raise parser.error(f"{keyword} only applies to command parameters")
@@ -703,6 +758,21 @@ class PacketConfig:
             case "KEY":
                 parser.verify_num_parameters(1, 1, "KEY <key or path into data>")
                 self.current_item.key = params[0]
+
+            case "VARIABLE_BIT_SIZE":
+                parser.verify_num_parameters(
+                    1,
+                    3,
+                    "VARIABLE_BIT_SIZE <length_item_name> <length_bits_per_count = 8> <length_value_bit_offset = 0>",
+                )
+
+                variable_bit_size = {"length_bits_per_count": 8, "length_value_bit_offset": 0}
+                variable_bit_size["length_item_name"] = params[0].upper()
+                if len(params) > 1:
+                    variable_bit_size["length_bits_per_count"] = int(params[1])
+                if len(params) > 2:
+                    variable_bit_size["length_value_bit_offset"] = int(params[2])
+                self.current_item.variable_bit_size = variable_bit_size
 
     def start_item(self, parser):
         self.finish_item()

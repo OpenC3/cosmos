@@ -14,10 +14,10 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/conversions/conversion'
@@ -49,6 +49,7 @@ module OpenC3
       end
       @converted_bit_size = Integer(converted_bit_size) if ConfigParser.handle_nil(converted_bit_size)
       @converted_array_size = Integer(converted_array_size) if ConfigParser.handle_nil(converted_array_size)
+      @params = [@code_to_eval, @converted_type, @converted_bit_size, @converted_array_size]
     end
 
     # (see OpenC3::Conversion#call)
@@ -75,12 +76,6 @@ module OpenC3
       config << @code_to_eval
       config << "    GENERIC_#{read_or_write}_CONVERSION_END\n"
       config
-    end
-
-    def as_json(*a)
-      result = super(*a)
-      result['params'] = [@code_to_eval, @converted_type, @converted_bit_size, @converted_array_size]
-      result
     end
   end
 end

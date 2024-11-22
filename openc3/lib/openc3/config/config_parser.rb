@@ -190,7 +190,7 @@ module OpenC3
     # @param remove_quotes [Boolean] Whether to remove beginning and ending single
     #   or double quote characters from parameters.
     # @param run_erb [Boolean] Whether or not to run ERB on the file
-    # @param variables [Hash] variables to pash to ERB context
+    # @param variables [Hash] variables to push to ERB context
     # @param block [Block] The block to yield to
     # @yieldparam keyword [String] The keyword in the current parsed line
     # @yieldparam parameters [Array<String>] The parameters in the current parsed line
@@ -248,7 +248,7 @@ module OpenC3
 
     # Verifies the indicated parameter in the config doesn't start or end
     # with an underscore, doesn't contain a double underscore or double bracket,
-    # doesn't contain spaces and doesn't start with a close bracket.
+    # doesn't contain spaces, quotes or brackets.
     #
     # @param [Integer] index The index of the parameter to check
     def verify_parameter_naming(index, usage = "")
@@ -265,8 +265,11 @@ module OpenC3
       if param.include? ' '
         raise Error.new(self, "Parameter #{index} (#{param}) for #{@keyword} cannot contain a space (' ').", usage, @url)
       end
-      if param.start_with?('}')
-        raise Error.new(self, "Parameter #{index} (#{param}) for #{@keyword} cannot start with a close bracket ('}').", usage, @url)
+      if param.include?('"') or param.include?("'")
+        raise Error.new(self, "Parameter #{index} (#{param}) for #{@keyword} cannot contain a quote (' or \").", usage, @url)
+      end
+      if param.include?('{') or param.include?('}')
+        raise Error.new(self, "Parameter #{index} (#{param}) for #{@keyword} cannot contain a curly bracket ('{' or '}').", usage, @url)
       end
     end
 
@@ -280,6 +283,8 @@ module OpenC3
         case value.upcase
         when '', 'NIL', 'NULL', 'NONE'
           return nil
+        else
+          return value
         end
       end
       return value
@@ -297,6 +302,8 @@ module OpenC3
           return true
         when 'FALSE'
           return false
+        else
+          return value
         end
       end
       return value

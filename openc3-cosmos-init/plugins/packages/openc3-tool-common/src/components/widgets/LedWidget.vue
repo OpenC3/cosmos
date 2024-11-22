@@ -21,7 +21,12 @@
 -->
 
 <template>
-  <div class="led mt-1" :style="cssProps"></div>
+  <v-tooltip bottom>
+    <template v-slot:activator="{ on, attrs }">
+      <div class="led mt-1" :style="cssProps" v-bind="attrs" v-on="on"></div>
+    </template>
+    <span>{{ fullName }}</span>
+  </v-tooltip>
 </template>
 
 <script>
@@ -45,10 +50,7 @@ export default {
       return this.parameters[5] ? parseInt(this.parameters[5]) : 20
     },
     cssProps() {
-      let value = null
-      if (this.screen) {
-        value = this.screen.screenValues[this.valueId][0]
-      }
+      let value = this.screenValues[this.valueId][0]
       let color = this.colors[value]
       if (!color) {
         color = this.colors.ANY
@@ -62,12 +64,17 @@ export default {
         '--color': color,
       }
     },
+    fullName() {
+      return (
+        this.parameters[0] + ' ' + this.parameters[1] + ' ' + this.parameters[2]
+      )
+    },
   },
-  // Note Vuejs still treats this syncronously, but this allows us to dispatch
+  // Note Vuejs still treats this synchronously, but this allows us to dispatch
   // the store mutation and return the array index.
   // What this means practically is that future lifecycle hooks may not have valueId set.
   created() {
-    this.settings.forEach((setting) => {
+    this.appliedSettings.forEach((setting) => {
       switch (setting[0]) {
         case 'LED_COLOR':
           this.colors[setting[1]] = setting[2]
@@ -78,14 +85,10 @@ export default {
       this.parameters[3] = 'CONVERTED'
     }
     this.valueId = `${this.parameters[0]}__${this.parameters[1]}__${this.parameters[2]}__${this.parameters[3]}`
-    if (this.screen) {
-      this.screen.addItem(this.valueId)
-    }
+    this.$emit('addItem', this.valueId)
   },
-  destroyed() {
-    if (this.screen) {
-      this.screen.deleteItem(this.valueId)
-    }
+  unmounted() {
+    this.$emit('deleteItem', this.valueId)
   },
 }
 </script>

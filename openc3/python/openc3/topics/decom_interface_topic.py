@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -44,7 +44,7 @@ class DecomInterfaceTopic(Topic):
         timeout = 5  # Arbitrary 5s timeout
         start_time = time.time()
         while (time.time() - start_time) < timeout:
-            for topic, msg_id, msg_hash, redis in Topic.read_topics([ack_topic]):
+            for _topic, _msg_id, msg_hash, _redis in Topic.read_topics([ack_topic]):
                 if msg_hash[b"id"] == decom_id:
                     if msg_hash[b"result"] == b"SUCCESS":
                         msg_hash = {k.decode(): v.decode() for (k, v) in msg_hash.items()}

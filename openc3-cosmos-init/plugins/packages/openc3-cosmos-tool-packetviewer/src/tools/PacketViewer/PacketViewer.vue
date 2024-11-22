@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -31,7 +31,7 @@
           @on-set="packetChanged($event)"
         />
       </div>
-      <v-card-title>
+      <v-card-title class="d-flex align-center justify-content-space-between">
         Items
         <v-spacer />
         <v-text-field
@@ -39,62 +39,89 @@
           label="Search"
           prepend-inner-icon="mdi-magnify"
           clearable
-          outlined
-          dense
+          variant="outlined"
+          density="compact"
           single-line
           hide-details
           class="search"
+          data-test="search"
         />
       </v-card-title>
       <v-data-table
+        :search="search"
         :headers="headers"
         :items="rows"
-        :search="search"
-        :items-per-page="itemsPerPage"
-        @update:items-per-page="itemsPerPage = $event"
-        :footer-props="{
-          itemsPerPageOptions: [10, 20, 50, 100, 500, 1000],
-          showFirstLastPage: true,
-          firstIcon: 'mdi-page-first',
-          lastIcon: 'mdi-page-last',
-          prevIcon: 'mdi-chevron-left',
-          nextIcon: 'mdi-chevron-right',
-        }"
+        :custom-filter="filter"
+        :sort-by="sortBy"
         multi-sort
-        dense
+        v-model:items-per-page="itemsPerPage"
+        :items-per-page-options="[10, 20, 50, 100, -1]"
+        density="compact"
       >
         <template v-slot:item.name="{ item }">
-          {{ item.name }}<span v-if="item.derived">&nbsp;*</span>
+          <div @contextmenu="(event) => showContextMenu(event, item)">
+            <v-tooltip bottom :key="`${item.name}-${isPinned(item.name)}`">
+              <template v-slot:activator="{ props }">
+                <v-icon
+                  v-if="isPinned(item.name)"
+                  v-bind="props"
+                  class="pin-item"
+                >
+                  mdi-pin
+                </v-icon>
+              </template>
+              <span
+                >Pinned items remain at the top.<br />Right click to
+                unpin.</span
+              >
+            </v-tooltip>
+            {{ item.name }}<span v-if="item.derived">&nbsp;*</span>
+          </div>
         </template>
         <template v-slot:item.value="{ item }">
           <value-widget
+            :key="item.name"
             :value="item.value"
             :limits-state="item.limitsState"
             :counter="item.counter"
             :parameters="[targetName, packetName, item.name]"
             :settings="[['WIDTH', '100%']]"
+            :screen-time-zone="timeZone"
           />
         </template>
-        <template v-slot:footer.prepend
-          >* indicates a&nbsp;
-          <a
-            href="http://localhost:2900/tools/staticdocs/docs/configuration/telemetry#derived-items"
-            >DERIVED</a
-          >&nbsp;item</template
-        >
+        <template v-slot:footer.prepend>
+          <v-tooltip right close-delay="2000">
+            <template v-slot:activator="{ props }">
+              <v-icon v-bind="props" class="info-tooltip">
+                mdi-information-variant-circle
+              </v-icon>
+            </template>
+            <span>
+              Name with * indicates
+              <a
+                href="/tools/staticdocs/docs/configuration/telemetry#derived-items"
+                target="_blank"
+                >DERIVED</a
+              >&nbsp;item<br />
+              Right click name to pin item<br />
+              Right click value for details / graph
+            </span>
+          </v-tooltip>
+          <v-spacer />
+        </template>
       </v-data-table>
     </v-card>
     <v-dialog
       v-model="optionsDialog"
       @keydown.esc="optionsDialog = false"
-      max-width="300"
+      max-width="360px"
     >
       <v-card>
-        <v-system-bar>
+        <v-toolbar :height="24">
           <v-spacer />
           <span>Options</span>
           <v-spacer />
-        </v-system-bar>
+        </v-toolbar>
         <v-card-text>
           <div class="pa-3">
             <v-text-field
@@ -103,8 +130,7 @@
               step="100"
               type="number"
               label="Refresh Interval (ms)"
-              :value="refreshInterval"
-              @change="refreshInterval = $event"
+              v-model="refreshInterval"
               data-test="refresh-interval"
             />
           </div>
@@ -115,8 +141,9 @@
               step="1"
               type="number"
               label="Time at which to mark data Stale (seconds)"
-              :value="staleLimit"
-              @change="staleLimit = parseInt($event)"
+              :model-value="staleLimit"
+              @update:model-value="staleLimit = parseInt($event)"
+              min-width="280px"
               data-test="stale-limit"
             />
           </div>
@@ -137,6 +164,17 @@
       :configKey="configKey"
       @success="saveConfiguration"
     />
+    <v-menu v-model="contextMenuShown" :target="[x, y]" absolute offset-y>
+      <v-list>
+        <v-list-item
+          v-for="(item, index) in contextMenuOptions"
+          :key="index"
+          @click.stop="item.action"
+        >
+          <v-list-item-title>{{ item.title }}</v-list-item-title>
+        </v-list-item>
+      </v-list>
+    </v-menu>
   </div>
 </template>
 
@@ -172,18 +210,72 @@ export default {
       configKey: 'packet_viewer',
       showOpenConfig: false,
       showSaveConfig: false,
+      timeZone: 'local',
       search: '',
       data: [],
       headers: [
-        { text: 'Name', value: 'name', align: 'end' },
-        { text: 'Value', value: 'value' },
+        {
+          title: 'Name',
+          key: 'name',
+          align: 'end',
+        },
+        { title: 'Value', key: 'value' },
       ],
+      sortBy: [{ key: 'pinned', order: 'desc' }],
       optionsDialog: false,
       showIgnored: false,
       derivedLast: false,
       ignoredItems: [],
       derivedItems: [],
-      menus: [
+      updater: null,
+      counter: 0,
+      targetName: '',
+      packetName: '',
+      valueType: 'WITH_UNITS',
+      refreshInterval: 1000,
+      staleLimit: 30,
+      rows: [],
+      menuItems: [],
+      itemsPerPage: 20,
+      api: null,
+      pinnedItems: [],
+      contextMenuShown: false,
+      itemName: '',
+      x: 0,
+      y: 0,
+    }
+  },
+  watch: {
+    showIgnored: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    derivedLast: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    valueType: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    // Create a watcher on refreshInterval so we can change the updater
+    refreshInterval: function () {
+      this.changeUpdater(false)
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    staleLimit: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    itemsPerPage: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    pinnedItems: {
+      handler(_newVal, _oldVal) {
+        this.saveDefaultConfig(this.currentConfig)
+      },
+      deep: true, // Because pinnedItems is an array
+    },
+  },
+  computed: {
+    menus: function () {
+      return [
         {
           label: 'File',
           items: [
@@ -223,94 +315,55 @@ export default {
         },
         {
           label: 'View',
-          radioGroup: 'Formatted Items with Units', // Default radio selected
           items: [
             {
               label: 'Show Ignored Items',
               checkbox: true,
-              checked: false,
+              checked: this.showIgnored,
               command: (item) => {
-                this.showIgnored = item.checked
+                this.showIgnored = !this.showIgnored
               },
             },
             {
               label: 'Display DERIVED Last',
               checkbox: true,
-              checked: false,
+              checked: this.derivedLast,
               command: (item) => {
-                this.derivedLast = item.checked
+                this.derivedLast = !this.derivedLast
               },
             },
             {
               divider: true,
             },
             {
-              label: valueTypeToRadioGroup['WITH_UNITS'],
-              radio: true,
-              command: () => {
-                this.valueType = 'WITH_UNITS'
+              radioGroup: true,
+              value: this.valueType,
+              command: (value) => {
+                this.valueType = value
               },
-            },
-            {
-              label: valueTypeToRadioGroup['FORMATTED'],
-              radio: true,
-              command: () => {
-                this.valueType = 'FORMATTED'
-              },
-            },
-            {
-              label: valueTypeToRadioGroup['CONVERTED'],
-              radio: true,
-              command: () => {
-                this.valueType = 'CONVERTED'
-              },
-            },
-            {
-              label: valueTypeToRadioGroup['RAW'],
-              radio: true,
-              command: () => {
-                this.valueType = 'RAW'
-              },
+              choices: [
+                {
+                  label: valueTypeToRadioGroup['WITH_UNITS'],
+                  value: 'WITH_UNITS',
+                },
+                {
+                  label: valueTypeToRadioGroup['FORMATTED'],
+                  value: 'FORMATTED',
+                },
+                {
+                  label: valueTypeToRadioGroup['CONVERTED'],
+                  value: 'CONVERTED',
+                },
+                {
+                  label: valueTypeToRadioGroup['RAW'],
+                  value: 'RAW',
+                },
+              ],
             },
           ],
         },
-      ],
-      updater: null,
-      counter: 0,
-      targetName: '',
-      packetName: '',
-      valueType: 'WITH_UNITS',
-      refreshInterval: 1000,
-      staleLimit: 30,
-      rows: [],
-      menuItems: [],
-      itemsPerPage: 20,
-      api: null,
-    }
-  },
-  watch: {
-    showIgnored: function () {
-      this.saveDefaultConfig(this.currentConfig)
+      ]
     },
-    derivedLast: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    valueType: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    // Create a watcher on refreshInterval so we can change the updater
-    refreshInterval: function () {
-      this.changeUpdater(false)
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    staleLimit: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    itemsPerPage: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-  },
-  computed: {
     currentConfig: function () {
       return {
         target: this.targetName,
@@ -321,11 +374,54 @@ export default {
         derivedLast: this.derivedLast,
         valueType: this.valueType,
         itemsPerPage: this.itemsPerPage,
+        pinnedItems: this.pinnedItems,
       }
+    },
+    contextMenuOptions: function () {
+      let options = []
+      if (this.isPinned(this.itemName)) {
+        options.push({
+          title: 'Unpin Item',
+          action: () => {
+            this.contextMenuShown = false
+            this.pinnedItems = this.pinnedItems.filter(
+              (item) =>
+                !(
+                  item.target === this.targetName &&
+                  item.packet === this.packetName &&
+                  item.item === this.itemName
+                ),
+            )
+          },
+        })
+      } else {
+        options.push({
+          title: 'Pin Item',
+          action: () => {
+            this.contextMenuShown = false
+            this.pinnedItems.push({
+              target: this.targetName,
+              packet: this.packetName,
+              item: this.itemName,
+            })
+          },
+        })
+      }
+      return options
     },
   },
   created() {
     this.api = new OpenC3Api()
+    this.api
+      .get_setting('time_zone')
+      .then((response) => {
+        if (response) {
+          this.timeZone = response
+        }
+      })
+      .catch((error) => {
+        // Do nothing
+      })
 
     // Called like /tools/packetviewer?config=temps
     if (this.$route.query && this.$route.query.config) {
@@ -352,19 +448,43 @@ export default {
               packet: config.packet,
             },
           })
-          this.$router.go()
         }
       }
       this.changeUpdater(true)
     }
   },
-  beforeDestroy() {
+  beforeUnmount() {
     if (this.updater != null) {
       clearInterval(this.updater)
       this.updater = null
     }
   },
   methods: {
+    showContextMenu(e, item) {
+      e.preventDefault()
+      this.itemName = item.name
+      this.contextMenuShown = false
+      this.x = e.clientX
+      this.y = e.clientY
+      this.$nextTick(() => {
+        this.contextMenuShown = true
+      })
+    },
+    isPinned(name) {
+      return this.pinnedItems.find(
+        (item) =>
+          item.target === this.targetName &&
+          item.packet === this.packetName &&
+          item.item === name,
+      )
+    },
+    filter(value, search, _item) {
+      if (this.isPinned(value)) {
+        return true
+      } else {
+        return value.toString().indexOf(search.toUpperCase()) >= 0
+      }
+    },
     packetChanged(event) {
       this.api.get_target(event.targetName).then((target) => {
         this.ignoredItems = target.ignored_items
@@ -425,6 +545,7 @@ export default {
                     limitsState: value[2],
                     derived: true,
                     counter: this.counter,
+                    pinned: this.isPinned(value[0]),
                   })
                 } else {
                   other.push({
@@ -433,6 +554,7 @@ export default {
                     limitsState: value[2],
                     derived: false,
                     counter: this.counter,
+                    pinned: this.isPinned(value[0]),
                   })
                 }
               })
@@ -453,14 +575,13 @@ export default {
       }, this.refreshInterval)
     },
     resetConfig: function () {
-      this.targetName = ''
-      this.packetName = ''
       this.refreshInterval = 1000
       this.staleLimit = 30
       this.showIgnored = false
       this.derivedLast = false
       this.valueType = 'WITH_UNITS'
       this.itemsPerPage = 20
+      this.pinnedItems = []
     },
     applyConfig: function (config) {
       this.targetName = config.target
@@ -474,6 +595,7 @@ export default {
       this.valueType = config.valueType || 'WITH_UNITS'
       this.menus[1].radioGroup = valueTypeToRadioGroup[this.valueType]
       this.itemsPerPage = config.itemsPerPage || 20
+      this.pinnedItems = config.pinnedItems || []
     },
     openConfiguration: function (name, routed = false) {
       this.openConfigBase(name, routed, async (config) => {
@@ -495,7 +617,6 @@ export default {
               config: name,
             },
           })
-          this.$router.go()
         }
       })
     },
@@ -505,3 +626,15 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+a {
+  color: blue;
+}
+.pin-item {
+  float: left;
+}
+.info-tooltip {
+  margin-left: 10px;
+}
+</style>

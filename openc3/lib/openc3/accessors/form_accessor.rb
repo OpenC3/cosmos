@@ -45,7 +45,7 @@ module OpenC3
       ary = URI.decode_www_form(buffer)
 
       # Remove existing item and bad keys from array
-      ary.reject! {|key, ary_value| (key == item.key) or (key.to_s[0] == "\u0000")}
+      ary.reject! {|key, _ary_value| (key == item.key) or (key.to_s[0] == "\u0000")}
 
       if Array === value
         value.each do |value_value|
@@ -79,7 +79,7 @@ module OpenC3
       return true
     end
 
-    # If this is true it will enfore that COSMOS DERIVED items must have a
+    # If this is true it will enforce that COSMOS DERIVED items must have a
     # write_conversion to be written
     def enforce_derived_write_conversion(_item)
       return true

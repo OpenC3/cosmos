@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -31,6 +31,7 @@ module OpenC3
       'openc3-cosmos-tool-admin',
       'openc3-cosmos-tool-bucketexplorer',
       'openc3-cosmos-tool-cmdsender',
+      'openc3-cosmos-tool-cmdhistory',
       'openc3-cosmos-tool-cmdtlmserver',
       'openc3-cosmos-tool-dataextractor',
       'openc3-cosmos-tool-dataviewer',

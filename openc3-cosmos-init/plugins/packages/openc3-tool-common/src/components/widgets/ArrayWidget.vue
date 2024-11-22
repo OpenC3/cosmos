@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -23,25 +23,20 @@
 <template>
   <div class="array-widget-container">
     <v-textarea
-      solo
-      dense
+      variant="solo"
+      density="compact"
       readonly
+      no-resize
+      auto-grow
+      rows="2"
       hide-details
-      placeholder="Value"
-      :height="height"
-      :value="_value"
+      :model-value="_value"
       :class="valueClass"
       :style="[computedStyle, aging]"
       data-test="array-widget"
       @contextmenu="showContextMenu"
     />
-    <v-menu
-      v-model="contextMenuShown"
-      :position-x="x"
-      :position-y="y"
-      absolute
-      offset-y
-    >
+    <v-menu v-model="contextMenuShown" :target="[x, y]">
       <v-list>
         <v-list-item
           v-for="(item, index) in contextMenuOptions"
@@ -99,17 +94,17 @@ export default {
   },
   methods: {
     getType: function () {
-      var type = 'CONVERTED'
+      let type = 'CONVERTED'
       if (this.parameters[7]) {
         type = this.parameters[7]
       }
       return type
     },
     formatValue: function (data) {
-      var text = ''
-      var space = ' '
-      var newLine = '\n'
-      var count = 0
+      let text = ''
+      let space = ' '
+      let newLine = '\n'
+      let count = 0
 
       if (Array.isArray(data)) {
         for (const value of data) {
@@ -143,6 +138,9 @@ export default {
   min-height: 24px !important;
   display: flex !important;
   align-items: center !important;
+}
+.array-widget-container :deep(.v-field__loader) {
+  display: none !important;
 }
 .openc3-green :deep(input) {
   color: rgb(0, 200, 0);

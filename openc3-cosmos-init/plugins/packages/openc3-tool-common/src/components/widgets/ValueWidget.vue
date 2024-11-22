@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -22,35 +22,28 @@
 
 <template>
   <div class="value-widget-container" :style="[computedStyle, aging]">
-    <v-tooltip bottom>
-      <template v-slot:activator="{ on, attrs }">
+    <v-tooltip location="bottom">
+      <template v-slot:activator="{ props }">
         <v-text-field
-          solo
-          dense
+          variant="solo"
+          density="compact"
+          flat
           readonly
-          single-line
-          hide-no-data
           hide-details
-          placeholder="Value"
-          :value="_value"
+          :model-value="_value"
           :class="valueClass"
-          :prepend-inner-icon="astroIcon"
           data-test="value"
           @contextmenu="showContextMenu"
-          v-bind="attrs"
-          v-on="on"
-        />
+          v-bind="props"
+        >
+          <template v-slot:prepend-inner v-if="astroStatus">
+            <rux-status :status="astroStatus" />
+          </template>
+        </v-text-field>
       </template>
       <span>{{ fullName }}</span>
     </v-tooltip>
-    <v-menu
-      v-model="contextMenuShown"
-      :position-x="x"
-      :position-y="y"
-      absolute
-      offset-y
-      style="z-index: 10"
-    >
+    <v-menu v-model="contextMenuShown" :target="[x, y]" style="z-index: 3000">
       <v-list>
         <v-list-item
           v-for="(item, index) in contextMenuOptions"
@@ -122,19 +115,19 @@ export default {
 .value-widget-container {
   min-height: 34px;
 }
-.value-widget-container :deep(.v-input__slot) {
+.value-widget-container :deep(.v-field) {
   background: rgba(var(--aging), var(--aging), var(--aging), 1) !important;
+  height: 26px;
+}
+.value-widget-container :deep(.v-field__loader) {
+  display: none !important;
 }
 .value-widget-container :deep(input) {
   text-align: var(--text-align) !important;
 }
 // If we're showing an icon then shrink the left padding
-:deep(.v-input__slot:has(.v-icon)) {
+:deep(.v-field:has(.v-icon)) {
   padding-left: 2px !important;
-}
-// Push some margin on top of the icon to center it in the text-field
-.value-widget-container :deep(.v-icon) {
-  margin-top: 9px;
 }
 .value :deep(div) {
   min-height: 24px !important;

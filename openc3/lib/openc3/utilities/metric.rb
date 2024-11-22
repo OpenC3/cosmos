@@ -19,7 +19,6 @@
 # Note: This file has been completely reimplemented post version 5.3.0
 
 require 'openc3/models/metric_model'
-require 'thread'
 
 module OpenC3
   class Metric
@@ -77,7 +76,7 @@ module OpenC3
     end
 
     def set_multiple(data)
-      @mutex.synchonize do
+      @mutex.synchronize do
         @data.merge!(data)
       end
     end

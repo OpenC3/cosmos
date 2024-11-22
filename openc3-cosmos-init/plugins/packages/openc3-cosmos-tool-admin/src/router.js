@@ -20,33 +20,32 @@
 # if purchased from OpenC3, Inc.
 */
 
-import Vue from 'vue'
-import Router from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router'
+import { prependBasePath } from '@openc3/tool-common/src/utils/routeUtils.js'
 import { TabsList } from '@openc3/tool-common/src/tools/admin/tabs'
 
-Vue.use(Router)
+const routes = [
+  {
+    path: '/',
+    component: () => import('@openc3/tool-common/src/tools/admin/OpenC3Admin'),
+    children: [
+      {
+        component: () =>
+          import('@openc3/tool-common/src/tools/admin/tabs/PluginsTab'),
+        path: '',
+      },
+      ...TabsList,
+    ],
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    component: () => import('@openc3/tool-common/src/components/NotFound'),
+  },
+]
+routes.forEach(prependBasePath)
 
-export default new Router({
-  mode: 'history',
-  base: process.env.BASE_URL,
-  routes: [
-    {
-      path: '/',
-      component: () =>
-        import('@openc3/tool-common/src/tools/admin/OpenC3Admin'),
-      children: [
-        {
-          component: () =>
-            import('@openc3/tool-common/src/tools/admin/tabs/PluginsTab'),
-          path: '',
-        },
-        ...TabsList,
-      ],
-    },
-    {
-      path: '*',
-      name: 'NotFound',
-      component: () => import('@openc3/tool-common/src/components/NotFound'),
-    },
-  ],
+export default createRouter({
+  history: createWebHistory(),
+  routes,
 })

@@ -38,7 +38,7 @@ class Structure:
     ):
         if (default_endianness == "BIG_ENDIAN") or (default_endianness == "LITTLE_ENDIAN"):
             self.default_endianness = default_endianness
-            if buffer is not None and not isinstance(buffer, (bytes, bytearray)):  # type(buffer) != str:
+            if buffer is not None and not isinstance(buffer, (bytes, bytearray)):
                 raise TypeError(f"wrong argument type {buffer.__class__.__name__} (expected bytes)")
             if buffer is None:
                 self._buffer = None
@@ -54,7 +54,7 @@ class Structure:
             self.fixed_size = True
             self.short_buffer_allowed = False
             self.mutex = None
-            self.accessor = BinaryAccessor()
+            self.accessor = BinaryAccessor(self)
         else:
             raise AttributeError(f"Unknown endianness '{default_endianness}', must be 'BIG_ENDIAN' or 'LITTLE_ENDIAN'")
 
@@ -100,7 +100,7 @@ class Structure:
     def accessor(self, accessor):
         self.__accessor = accessor
         # isinstance can fail if the class is reloaded because the class becomes a new class
-        # so direcly check the class name which is basically equivalent
+        # so directly check the class name which is basically equivalent
         if self.__accessor.enforce_short_buffer_allowed():
             self.short_buffer_allowed = True
 
@@ -144,21 +144,21 @@ class Structure:
 
     # Define an item in the structure. This creates a new instance of the
     # item_class as given in the constructor and adds it to the items hash. It
-    # also resizes the buffer to accomodate the new item.
+    # also resizes the buffer to accommodate the new item.
     #
     # self.param name [String] Name of the item. Used by the items hash to retrieve
     #   the item.
     # self.param bit_offset [Integer] Bit offset of the item in the raw buffer
     # self.param bit_size [Integer] Bit size of the item in the raw buffer
     # self.param data_type [Symbol] Type of data contained by the item. This is
-    #   dependant on the item_class but by default see StructureItem.
+    #   dependent on the item_class but by default see StructureItem.
     # self.param array_size [Integer] Set to a non None value if the item is to
     #   represented as an array.
     # self.param endianness [Symbol] Endianness of this item. By default the
-    #   endianness as set in the constructure is used.
+    #   endianness as set in the constructor is used.
     # self.param overflow [Symbol] How to handle value overflows. This is
-    #   dependant on the item_class but by default see StructureItem.
-    # self.return [StrutureItem] The struture item defined
+    #   dependent on the item_class but by default see StructureItem.
+    # self.return [StrutureItem] The structure item defined
     def define_item(
         self,
         name,
@@ -176,10 +176,10 @@ class Structure:
         return self.define(item)
 
     # Adds the given item to the items hash. It also resizes the buffer to
-    # accomodate the new item.
+    # accommodate the new item.
     #
     # self.param item [StructureItem] The structure item to add
-    # self.return [StrutureItem] The struture item defined
+    # self.return [StrutureItem] The structure item defined
     def define(self, item):
         # Handle Overwriting Existing Item
         if self.items.get(item.name):
@@ -247,7 +247,7 @@ class Structure:
 
     # Define an item at the end of the structure. This creates a new instance of the
     # item_class as given in the constructor and adds it to the items hash. It
-    # also resizes the buffer to accomodate the new item.
+    # also resizes the buffer to accommodate the new item.
     #
     # self.param name (see #define_item)
     # self.param bit_size (see #define_item)
@@ -267,8 +267,6 @@ class Structure:
     ):
         if not endianness:
             endianness = self.default_endianness
-        if not self.fixed_size:
-            raise AttributeError("Can't append an item after a variably sized item")
         if data_type == "DERIVED":
             return self.define_item(name, 0, bit_size, data_type, array_size, endianness, overflow)
         else:
@@ -283,18 +281,20 @@ class Structure:
             )
 
     # Adds an item at the  of the structure. It adds the item to the items
-    # hash and resizes the buffer to accomodate the new item.
+    # hash and resizes the buffer to accommodate the new item.
     #
     # self.param item (see #define)
     # self.return (see #define)
     def append(self, item):
-        if not self.fixed_size:
-            raise AttributeError("Can't append an item after a variably sized item")
-
         if item.data_type == "DERIVED":
             item.bit_offset = 0
         else:
+            # We're appending a new item so set the bit_offset
             item.bit_offset = self.defined_length_bits
+            # Also set original_bit_offset because it's currently 0
+            # due to PacketItemParser::create_packet_item
+            # get_bit_offset() returning 0 if append
+            item.original_bit_offset = self.defined_length_bits
 
         return self.define(item)
 
@@ -311,6 +311,21 @@ class Structure:
     def set_item(self, item):
         if self.items.get(item.name):
             self.items[item.name] = item
+
+            # Need to allocate space for the variable length item if its minimum size is greater than zero
+            if item.variable_bit_size:
+                minimum_data_bits = 0
+                if (item.data_type == "INT" or item.data_type == "UINT") and not item.original_array_size:
+                    # Minimum QUIC encoded integer, see https://datatracker.ietf.org/doc/html/rfc9000#name-variable-length-integer-enc
+                    minimum_data_bits = 6
+                # STRING, BLOCK, or array item
+                elif item.variable_bit_size["length_value_bit_offset"] > 0:
+                    minimum_data_bits = (
+                        item.variable_bit_size["length_value_bit_offset"]
+                        * item.variable_bit_size["length_bits_per_count"]
+                    )
+                if minimum_data_bits > 0 and item.bit_offset >= 0 and self.defined_length_bits == item.bit_offset:
+                    self.defined_length_bits += minimum_data_bits
         else:
             raise AttributeError(f"Unknown item: {item.name} - Ensure item name is uppercase")
 
@@ -452,7 +467,7 @@ class Structure:
     # further modifications to the buffer have no effect on the structure
     # items.
     #
-    # self.param buffer [String] Buffer of data to back the stucture items
+    # self.param buffer [String] Buffer of data to back the structure items
     @buffer.setter
     def buffer(self, buffer):
         with self.synchronize():
@@ -507,11 +522,56 @@ class Structure:
             else:  # if self.mutex_allow_reads == threading.get_ident()
                 yield
 
+    def calculate_total_bit_size(self, item):
+        if item.variable_bit_size:
+            # Bit size is determined by length field
+            length_value = self.read(item.variable_bit_size["length_item_name"], "CONVERTED")
+            if item.data_type == "INT" or item.data_type == "UINT" and not item.original_array_size:
+                match length_value:
+                    case 0:
+                        return 6
+                    case 1:
+                        return 14
+                    case 2:
+                        return 30
+                    case _:
+                        return 62
+            else:
+                return (length_value * item.variable_bit_size["length_bits_per_count"]) + item.variable_bit_size[
+                    "length_value_bit_offset"
+                ]
+        elif item.original_bit_size <= 0:
+            # Bit size is full packet length - bits before item + negative bits saved at end
+            return (len(self._buffer) * 8) - item.bit_offset + item.original_bit_size
+        elif item.original_array_size and item.original_array_size <= 0:
+            # Bit size is full packet length - bits before item + negative bits saved at end
+            return (len(self._buffer) * 8) - item.bit_offset + item.original_array_size
+        else:
+            raise AttributeError("Unexpected use of calculate_total_bit_size for non-variable-sized item")
+
+    def recalculate_bit_offsets(self):
+        adjustment = 0
+        for item in self.sorted_items:
+            # Anything with a negative bit offset should be left alone
+            if item.original_bit_offset >= 0:
+                item.bit_offset = item.original_bit_offset + adjustment
+                if item.data_type != "DERIVED" and (
+                    item.variable_bit_size
+                    or item.original_bit_size <= 0
+                    or (item.original_array_size and item.original_array_size <= 0)
+                ):
+                    new_bit_size = self.calculate_total_bit_size(item)
+                    if item.original_bit_size != new_bit_size:
+                        adjustment += new_bit_size - item.original_bit_size
+
     def internal_buffer_equals(self, buffer):
         if not isinstance(buffer, (bytes, bytearray)):
             raise AttributeError(f"Buffer class is {buffer.__class__.__name__} but must be bytearray")
 
         self._buffer = bytearray(buffer[:])
+        if not self.fixed_size:
+            self.recalculate_bit_offsets()
+
         # self.buffer.force_encoding('ASCII-8BIT'.freeze)
         if self.accessor.enforce_length():
             if len(self._buffer) != self.defined_length:

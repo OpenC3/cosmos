@@ -18,18 +18,19 @@
 
 <template>
   <div>
-    <top-bar :title="title" />
+    <top-bar :title="title" :menus="menus" />
     <v-card width="100%">
       <div style="padding-left: 5px; padding-top: 5px">
         <span class="ma-2 font-size">Buckets:</span>
         <v-chip
           v-for="(bucket, index) in buckets"
           :key="index"
+          variant="elevated"
           color="primary"
           class="ma-2"
           @click.stop="selectBucket(bucket)"
         >
-          <v-avatar left>
+          <v-avatar start>
             <v-icon>mdi-bucket</v-icon>
           </v-avatar>
           {{ bucket }}
@@ -40,17 +41,20 @@
         <v-chip
           v-for="(volume, index) in volumes"
           :key="index"
+          variant="elevated"
           color="primary"
           class="ma-2"
           @click.stop="selectVolume(volume)"
         >
-          <v-avatar left>
+          <v-avatar start>
             <v-icon>mdi-folder</v-icon>
           </v-avatar>
           {{ volume }}
         </v-chip>
       </div>
-      <v-card-title style="padding-top: 0px">
+      <v-card-title
+        class="pt-0 d-flex align-center justify-content-space-between"
+      >
         {{ root }} Files
         <v-spacer />
         <v-text-field
@@ -58,58 +62,62 @@
           label="Search"
           prepend-inner-icon="mdi-magnify"
           clearable
-          outlined
-          dense
+          variant="outlined"
+          density="compact"
           single-line
           hide-details
           class="search"
+          data-test="search-input"
         />
       </v-card-title>
       <v-data-table
         :headers="headers"
         :items="files"
         :search="search"
-        :items-per-page="1000"
-        :footer-props="{
-          showFirstLastPage: true,
-          itemsPerPageOptions: [1000],
-          firstIcon: 'mdi-page-first',
-          lastIcon: 'mdi-page-last',
-          prevIcon: 'mdi-chevron-left',
-          nextIcon: 'mdi-chevron-right',
-        }"
-        sort-by="modified"
-        sort-desc="true"
-        @click:row="fileClick"
-        calculate-widths
+        :items-per-page="-1"
+        :items-per-page-options="[10, 20, 50, 100, -1]"
+        v-model:sort-by="sortBy"
+        @click:row.stop="fileClick"
         multi-sort
-        dense
+        density="compact"
+        hover
       >
         <template v-slot:top>
           <v-row
             class="ma-0"
             style="background-color: var(--color-background-surface-header)"
           >
-            <v-btn icon>
-              <v-icon @click="backArrow">mdi-chevron-left-box-outline</v-icon>
-            </v-btn>
-            <span class=".text-body-1 ma-2 font-size" data-test="file-path"
-              >/{{ path }}</span
-            >
+            <v-btn
+              icon="mdi-chevron-left-box-outline"
+              variant="text"
+              density="compact"
+              class="ml-3 mt-1"
+              @click.stop="backArrow"
+              data-test="be-nav-back"
+            />
+            <span class=".text-body-1 ma-2 font-size" data-test="file-path">
+              <a
+                v-for="(part, index) in breadcrumbPath"
+                :key="index"
+                @click.prevent="gotoPath(part.path)"
+                style="cursor: pointer"
+                >/&nbsp;{{ part.name }}&nbsp;
+              </a>
+            </span>
             <v-spacer />
-            <div class="pa-1 font-size">
+            <div class="ma-2 font-size">
               Folder Size: {{ folderTotal }}
               <span class="small-font-size">(not recursive)</span>
             </div>
 
             <v-spacer />
-            <div style="display: flex" v-if="mode === 'bucket'">
-              <span class="pa-1 font-size">Upload File</span>
+            <div class="ma-2" style="display: flex" v-if="mode === 'bucket'">
+              <span class="font-size">Upload File</span>
               <v-file-input
                 v-model="file"
                 hide-input
                 hide-details
-                class="file-input"
+                class="mr-1 file-input"
                 prepend-icon="mdi-upload"
                 data-test="upload-file"
               />
@@ -117,43 +125,55 @@
           </v-row>
         </template>
         <template v-slot:item.name="{ item }">
-          <v-icon class="mr-2">{{ item.icon }}</v-icon
-          >{{ item.name }}
+          <v-icon class="mr-2">{{ item.icon }}</v-icon>
+          {{ item.name }}
         </template>
         <template v-slot:item.size="{ item }">
           {{ item.size ? item.size.toLocaleString() : '' }}
         </template>
         <template v-slot:item.action="{ item }">
           <v-icon
+            v-if="item.icon === 'mdi-file' && isText(item.name)"
+            @click="viewFile(item.name)"
             class="mr-3"
+            data-test="view-file"
+          >
+            mdi-eye
+          </v-icon>
+          <v-icon
             v-if="item.icon === 'mdi-file'"
             @click="downloadFile(item.name)"
+            class="mr-3"
             data-test="download-file"
-            >mdi-download-box</v-icon
           >
+            mdi-download-box
+          </v-icon>
           <v-icon
             v-if="item.icon === 'mdi-file'"
             @click="deleteFile(item.name)"
             data-test="delete-file"
-            >mdi-delete</v-icon
           >
+            mdi-delete
+          </v-icon>
         </template>
       </v-data-table>
     </v-card>
     <v-dialog v-model="uploadPathDialog" max-width="600">
       <v-card>
-        <v-system-bar>
+        <v-toolbar height="24">
           <v-spacer />
           <span> Upload Path </span>
           <v-spacer />
-        </v-system-bar>
+        </v-toolbar>
         <v-card-text>
           <div class="mx-1">
             <v-row class="my-2">
-              <span
-                >This file path can be modified. New directories will be
-                automatically created.</span
-              >
+              <span>
+                This file path can be modified. New directories will be
+                automatically created.
+              </span>
+            </v-row>
+            <v-row>
               <v-text-field
                 v-model="uploadFilePath"
                 hide-details
@@ -161,11 +181,11 @@
                 data-test="upload-file-path"
               />
             </v-row>
-            <v-row>
+            <v-row class="mt-6">
               <v-spacer />
               <v-btn
                 @click="uploadPathDialog = false"
-                outlined
+                variant="outlined"
                 class="mx-2"
                 data-test="upload-file-cancel-btn"
               >
@@ -185,17 +205,54 @@
         </v-card-text>
       </v-card>
     </v-dialog>
+    <v-dialog
+      v-model="optionsDialog"
+      @keydown.esc="optionsDialog = false"
+      max-width="300"
+    >
+      <v-card>
+        <v-toolbar height="24">
+          <v-spacer />
+          <span>Options</span>
+          <v-spacer />
+        </v-toolbar>
+        <v-card-text>
+          <div class="pa-3">
+            <v-text-field
+              v-model="refreshInterval"
+              min="1"
+              max="3600"
+              step="100"
+              type="number"
+              label="Refresh Interval (s)"
+              data-test="refresh-interval"
+            />
+          </div>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
+    <output-dialog
+      type="File"
+      :content="dialogContent"
+      :name="dialogName"
+      :filename="dialogFilename"
+      v-model="showDialog"
+      v-if="showDialog"
+      @submit="showDialog = false"
+    />
   </div>
 </template>
 
 <script>
 import TopBar from '@openc3/tool-common/src/components/TopBar'
+import OutputDialog from '@openc3/tool-common/src/components/OutputDialog'
 import Api from '@openc3/tool-common/src/services/api'
 import axios from 'axios'
 
 export default {
   components: {
     TopBar,
+    OutputDialog,
   },
   data() {
     return {
@@ -206,14 +263,60 @@ export default {
       buckets: [],
       volumes: [],
       uploadPathDialog: false,
+      optionsDialog: false,
+      refreshInterval: 60,
+      updater: null,
+      updating: false,
       path: '',
       file: null,
       files: [],
+      showDialog: false,
+      dialogName: '',
+      dialogContent: '',
+      dialogFilename: '',
+      sortBy: [
+        {
+          key: 'modified',
+          order: 'desc',
+        },
+      ],
       headers: [
-        { text: 'Name', value: 'name' },
-        { text: 'Size', value: 'size' },
-        { text: 'Modified Date', value: 'modified' },
-        { text: 'Action', value: 'action' },
+        {
+          title: 'Name',
+          value: 'name',
+          sortable: true,
+          nowrap: true,
+        },
+        {
+          title: 'Size',
+          value: 'size',
+          sortable: true,
+        },
+        {
+          title: 'ModifiedDate',
+          value: 'modified',
+          sortable: true,
+        },
+        {
+          title: 'Action',
+          value: 'action',
+          align: 'end',
+          nowrap: true,
+        },
+      ],
+      menus: [
+        {
+          label: 'File',
+          items: [
+            {
+              label: 'Options',
+              icon: 'mdi-cog',
+              command: () => {
+                this.optionsDialog = true
+              },
+            },
+          ],
+        },
       ],
     }
   },
@@ -223,6 +326,13 @@ export default {
         .reduce((a, b) => a + (b.size ? b.size : 0), 0)
         .toLocaleString()
     },
+    breadcrumbPath() {
+      const parts = this.path.split('/')
+      return parts.map((part, index) => ({
+        name: part,
+        path: parts.slice(0, index + 1).join('/') + '/',
+      }))
+    },
   },
   created() {
     Api.get('/openc3-api/storage/buckets').then((response) => {
@@ -231,8 +341,9 @@ export default {
     Api.get('/openc3-api/storage/volumes').then((response) => {
       this.volumes = response.data
     })
-    if (this.$route.params.path) {
-      let parts = this.$route.params.path.split('/')
+    if (this.$route.params.path?.length) {
+      this.updating = true
+      let parts = this.$route.params.path[0].split('/')
       if (parts[0] === '') {
         this.mode = 'volume'
         // Prepend the slash to note this is a volume not a bucket
@@ -245,6 +356,10 @@ export default {
       }
       this.updateFiles()
     }
+    this.changeUpdater()
+  },
+  beforeUnmount() {
+    this.clearUpdater()
   },
   watch: {
     // This is the upload function that is activated when the file gets set
@@ -253,9 +368,43 @@ export default {
       this.uploadFilePath = `${this.path}${this.file.name}`
       this.uploadPathDialog = true
     },
+    refreshInterval() {
+      this.changeUpdater()
+    },
   },
   methods: {
+    isText(filename) {
+      if (['Rakefile', 'Dockerfile'].includes(filename)) {
+        return true
+      }
+      let ext = filename.split('.').pop()
+      // Add some common COSMOS text file extensions
+      return [
+        'txt',
+        'md',
+        'rb',
+        'py',
+        'pyi',
+        'cfg',
+        'html',
+        'js',
+        'json',
+        'info',
+        'vue',
+        'sh',
+        'bat',
+        'csv',
+      ].includes(ext)
+    },
+    gotoPath(path) {
+      if (!this.updating) {
+        this.updating = true
+        this.path = path
+        this.update()
+      }
+    },
     update() {
+      this.updating = true
       this.$router.push({
         name: 'Bucket Explorer',
         params: {
@@ -264,42 +413,84 @@ export default {
       })
       this.updateFiles()
     },
+    changeUpdater() {
+      this.clearUpdater()
+      this.updater = setInterval(() => {
+        // need to be in a bucket/volume otherwise updateFiles gets mad
+        if (this.root) {
+          this.updateFiles()
+        }
+      }, this.refreshInterval * 1000)
+    },
+    clearUpdater() {
+      if (this.updater != null) {
+        clearInterval(this.updater)
+        this.updater = null
+      }
+    },
     selectBucket(bucket) {
-      if (this.root === bucket) return
-      this.mode = 'bucket'
-      this.root = bucket
-      this.path = ''
-      this.update()
+      if (!this.updating) {
+        this.updating = true
+        this.mode = 'bucket'
+        this.root = bucket
+        this.path = ''
+        this.update()
+      }
     },
     selectVolume(volume) {
-      if (this.root === volume) return
-      this.mode = 'volume'
-      this.root = volume
-      this.path = ''
-      this.update()
+      if (!this.updating) {
+        this.updating = true
+        this.mode = 'volume'
+        this.root = volume
+        this.path = ''
+        this.update()
+      }
     },
     backArrow() {
       // Nothing to do if we're at the root so return
       if (this.path === '') return
-      let parts = this.path.split('/')
-      this.path = parts.slice(0, parts.length - 2).join('/')
-      // Only append the last slash if we're not at the root
-      // The root is 2 because it's the path before clicking back
-      if (parts.length > 2) {
-        this.path += '/'
-      }
-      this.update()
-    },
-    fileClick(event) {
-      if (event.icon === 'mdi-folder') {
-        if (this.root === '') {
-          // initial root click
-          this.root = event.name
-        } else {
-          this.path += `${event.name}/`
+      if (!this.updating) {
+        this.updating = true
+        let parts = this.path.split('/')
+        this.path = parts.slice(0, parts.length - 2).join('/')
+        // Only append the last slash if we're not at the root
+        // The root is 2 because it's the path before clicking back
+        if (parts.length > 2) {
+          this.path += '/'
         }
         this.update()
       }
+    },
+    fileClick(_, { item }) {
+      // Nothing to do if they click on a file
+      if (item.icon !== 'mdi-folder') return
+      if (!this.updating) {
+        this.updating = true
+        if (this.root === '') {
+          // initial root click
+          this.root = item.name
+        } else {
+          this.path += `${item.name}/`
+        }
+        this.update()
+      }
+    },
+    viewFile(filename) {
+      let root = this.root.toUpperCase()
+      if (this.mode === 'volume') {
+        root = root.slice(1)
+      }
+      Api.get(
+        `/openc3-api/storage/download_file/${encodeURIComponent(
+          this.path,
+        )}${filename}?${this.mode}=OPENC3_${root}_${this.mode.toUpperCase()}`,
+      ).then((response) => {
+        this.dialogName = filename
+        this.dialogFilename = filename
+        // Decode Base64 string
+        this.dialogContent = window.atob(response.data.contents)
+        this.showDialog = true
+      })
     },
     downloadFile(filename) {
       let root = this.root.toUpperCase()
@@ -356,7 +547,7 @@ export default {
         )}?bucket=OPENC3_${this.root.toUpperCase()}_BUCKET`,
       )
       // This pushes the file into storage by using the fields in the presignedRequest
-      // See storage_controller.rb get_presigned_request()
+      // See storage_controller.rb get_upload_presigned_request()
       const response = await axios({
         ...presignedRequest,
         data: this.file,
@@ -387,6 +578,7 @@ export default {
         .then((response) => {
           this.updateFiles()
         })
+        .catch((err) => {})
     },
     updateFiles() {
       let root = this.root.toUpperCase()
@@ -412,10 +604,11 @@ export default {
               }
             }),
           )
+          this.updating = false
         })
-        .catch((response) => {
+        .catch(({ response }) => {
           this.files = []
-          if (response.data.message) {
+          if (response.data?.message) {
             this.$notify.caution({
               title: response.data.message,
             })
@@ -424,6 +617,7 @@ export default {
               title: response.message,
             })
           }
+          this.updating = false
         })
     },
   },

@@ -31,7 +31,7 @@ export default {
   },
   methods: {
     getPresignedUrl: async function (fileName) {
-      var targets = 'targets_modified'
+      let targets = 'targets_modified'
       await Api.get(
         `/openc3-api/storage/exists/${encodeURIComponent(
           `${window.openc3Scope}/${targets}/${this.target}/public/${fileName}`
@@ -39,7 +39,7 @@ export default {
         {
           headers: {
             Accept: 'application/json',
-            // Since we're just checking for existance, 404 is possible so ignore it
+            // Since we're just checking for existence, 404 is possible so ignore it
             'Ignore-Errors': '404',
           },
         }
@@ -49,7 +49,7 @@ export default {
         // If the file doesn't exist it will throw a 404 when it is actually retrieved
         targets = 'targets'
       })
-      var response = await Api.get(
+      let response = await Api.get(
         `/openc3-api/storage/download/${encodeURIComponent(
           `${window.openc3Scope}/${targets}/${this.target}/public/${fileName}`
         )}?bucket=OPENC3_CONFIG_BUCKET`

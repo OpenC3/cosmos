@@ -1,5 +1,8 @@
 ---
 title: Calendar (Enterprise)
+description: Calendar visualization of metadata, notes, and timelines
+sidebar_custom_props:
+  myEmoji: 🛠️
 ---
 
 ## Introduction
@@ -10,7 +13,7 @@ Calendar visualizes metadata, notes, and timeline information in one easy to und
 
 ### Adding Timelines
 
-Adding a Timeline to COSMOS is as simple as clicking Create -> Timeline and giving it a unique name. Timelines can be created for organizational purposes or for overlapping activities as no activies can overlap on a given timeline. However, each additional timeline consists of several threads so only create timelines as necessary.
+Adding a Timeline to COSMOS is as simple as clicking Create -> Timeline and giving it a unique name. Timelines can be created for organizational purposes or for overlapping activities as no activities can overlap on a given timeline. However, each additional timeline consists of several threads so only create timelines as necessary.
 
 ## Types of Events
 
@@ -46,7 +49,7 @@ Activities can run single commands, run a script, or simply "Reserve" space on t
 
 ![CreateActivity2](/img/calendar/create_activity2.png)
 
-When calendar activities are scheduled they appear with a green circle containing a plus (+). Once they complete successfully the icon changes to a green circle containing a checkbox (✓). Reserve activites simply have a blank green circle.
+When calendar activities are scheduled they appear with a green circle containing a plus (+). Once they complete successfully the icon changes to a green circle containing a checkbox (✓). Reserve activities simply have a blank green circle.
 
 ![Calendar](/img/calendar/calendar.png)
 
@@ -56,9 +59,9 @@ Calendar events can also be viewed in a list format via File->Show Table Display
 
 ## Timeline Implementation Details
 
-When a user creates a timeline, a new timeline microservice starts. The timeline microservice is the main thread of execution for the timeline. This starts a scheduler manager thread. The scheduler manger thread contains a thread pool that hosts more than one thread to run the activity. The scheduler manger will evaluate the schedule and based on the start time of the activity it will add the activity to the queue.
+When a user creates a timeline, a new timeline microservice starts. The timeline microservice is the main thread of execution for the timeline. This starts a scheduler manager thread. The scheduler manager thread contains a thread pool that hosts more than one thread to run the activity. The scheduler manager will evaluate the schedule and based on the start time of the activity it will add the activity to the queue.
 
-The main thread will block on the web socket to listen to request changes to the timeline, these could be adding, removing, or updating activities. The main thread will make the changes to the in memory schedule if these changes are within the hour of the current time. When the web socket gets an update it has an action lookup table. These actions are "created", "updated", "deleted", ect... Some actions require updating the schedule from the database to ensure the schedule and the database are always in sync.
+The main thread will block on the web socket to listen to request changes to the timeline, these could be adding, removing, or updating activities. The main thread will make the changes to the in memory schedule if these changes are within the hour of the current time. When the web socket gets an update it has an action lookup table. These actions are "created", "updated", "deleted", etc... Some actions require updating the schedule from the database to ensure the schedule and the database are always in sync.
 
 The schedule thread checks every second to make sure if a task can be run. If the start time is equal or less then the last 15 seconds it will then check the previously queued jobs list in the schedule. If the activity has not been queued and is not fulfilled the activity will be queued, this adds an event to the activity but is not saved to the database.
 

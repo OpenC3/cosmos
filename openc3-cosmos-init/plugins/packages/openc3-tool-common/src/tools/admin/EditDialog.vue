@@ -24,14 +24,14 @@
   <v-dialog :persistent="!readonly" v-model="show" width="80vw">
     <v-card>
       <form v-on:submit.prevent="submit">
-        <v-system-bar>
+        <v-toolbar height="24">
           <v-spacer />
           <span v-text="title" />
           <v-spacer />
           <div class="mx-2">
-            <v-tooltip top>
-              <template v-slot:activator="{ on, attrs }">
-                <div v-on="on" v-bind="attrs">
+            <v-tooltip location="top">
+              <template v-slot:activator="{ props }">
+                <div v-bind="props">
                   <v-icon data-test="downloadIcon" @click="download">
                     mdi-download
                   </v-icon>
@@ -40,7 +40,7 @@
               <span> Download </span>
             </v-tooltip>
           </div>
-        </v-system-bar>
+        </v-toolbar>
 
         <v-card-text>
           <div class="pa-3">
@@ -76,13 +76,13 @@
               <pre class="editor" ref="editor"></pre>
             </v-row>
             <v-row class="my-3">
-              <span class="red--text" v-show="error" v-text="error" />
+              <span class="text-red" v-show="error" v-text="error" />
             </v-row>
             <v-row>
               <v-spacer />
               <v-btn
                 @click.prevent="close"
-                outlined
+                variant="outlined"
                 class="mx-2"
                 data-test="editCancelBtn"
               >
@@ -122,7 +122,7 @@ export default {
     },
     type: String,
     name: String,
-    value: Boolean, // value is the default prop when using v-model
+    modelValue: Boolean,
     readonly: Boolean,
   },
   data() {
@@ -154,10 +154,10 @@ export default {
   computed: {
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
     title: function () {
@@ -192,26 +192,26 @@ export default {
       link.click()
     },
     buildPluginMode() {
-      var oop = ace.require('ace/lib/oop')
-      var JsonHighlightRules = ace.require(
+      let oop = ace.require('ace/lib/oop')
+      let JsonHighlightRules = ace.require(
         'ace/mode/json_highlight_rules',
       ).JsonHighlightRules
 
-      var MatchingBraceOutdent = ace.require(
+      let MatchingBraceOutdent = ace.require(
         'ace/mode/matching_brace_outdent',
       ).MatchingBraceOutdent
-      var CstyleBehaviour = ace.require(
+      let CstyleBehaviour = ace.require(
         'ace/mode/behaviour/cstyle',
       ).CstyleBehaviour
-      var FoldMode = ace.require('ace/mode/folding/ruby').FoldMode
-      var Mode = function () {
+      let FoldMode = ace.require('ace/mode/folding/ruby').FoldMode
+      let Mode = function () {
         this.HighlightRules = JsonHighlightRules
         this.$outdent = new MatchingBraceOutdent()
         this.$behaviour = new CstyleBehaviour()
         this.foldingRules = new FoldMode()
         this.indentKeywords = this.foldingRules.indentKeywords
       }
-      var RubyMode = ace.require('ace/mode/ruby').Mode
+      let RubyMode = ace.require('ace/mode/ruby').Mode
       oop.inherits(Mode, RubyMode)
       ;(function () {
         this.$id = 'ace/mode/openc3'

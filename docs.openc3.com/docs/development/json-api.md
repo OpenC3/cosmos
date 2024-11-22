@@ -1,12 +1,15 @@
 ---
 title: JSON API
+description: Interfacing to the COSMOS APIs using JSON-RPC
+sidebar_custom_props:
+  myEmoji: 🖥️
 ---
 
 :::note This documentation is for COSMOS Developers
-If you're looking for the methods available to write test procedures using the COSMOS scripting API, refer to the [Scripting API Guide](../guides/scripting-api.md) page. If you're trying to interface to a COSMOS Command and Telemetry Server from an external application using any language then this is the right place.
+If you're looking for the methods available to write test procedures using the COSMOS scripting API, refer to the [Scripting API Guide](../guides/scripting-api.md) page. If you're trying to interface to COSMOS from an external application using any language then this is the right place.
 :::
 
-This document provides the information necessary for external applications to interact with the COSMOS Command and Telemetry Server using the COSMOS API. External applications written in any language can send commands and retrieve individual telemetry points using this API. External applications also have the option of connecting to the COSMOS Command and Telemetry server to interact with raw tcp/ip streams of commands/telemetry. However, the COSMOS JSON API removes the requirement that external applications have knowledge of the binary formats of packets.
+This document provides the information necessary for external applications to interact with COSMOS using the COSMOS API. External applications written in any language can send commands and retrieve individual telemetry points using this API. External applications also have the option of connecting to the COSMOS Command and Telemetry server to interact with raw tcp/ip streams of commands/telemetry. However, the COSMOS JSON API removes the requirement that external applications have knowledge of the binary formats of packets.
 
 ## Authorization
 

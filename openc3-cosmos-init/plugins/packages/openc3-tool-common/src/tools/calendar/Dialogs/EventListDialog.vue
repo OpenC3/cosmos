@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -24,13 +24,13 @@
   <div>
     <v-dialog persistent v-model="show" width="80vw">
       <v-card>
-        <v-system-bar>
+        <v-toolbar height="24">
           <v-spacer />
           <span v-if="newMetadata">Metadata</span><span v-else>Events</span>
           <v-spacer />
-          <v-tooltip top>
-            <template v-slot:activator="{ on, attrs }">
-              <div v-on="on" v-bind="attrs">
+          <v-tooltip location="top">
+            <template v-slot:activator="{ props }">
+              <div v-bind="props">
                 <v-icon data-test="close-metadata-icon" @click="close">
                   mdi-close-box
                 </v-icon>
@@ -38,36 +38,35 @@
             </template>
             <span>Close</span>
           </v-tooltip>
-        </v-system-bar>
+        </v-toolbar>
         <v-card-title>
-          <span v-if="newMetadata">Metadata</span><span v-else>Events</span>
-          <v-spacer />
-          <v-text-field
-            v-model="search"
-            label="Search"
-            prepend-inner-icon="mdi-magnify"
-            clearable
-            outlined
-            dense
-            single-line
-            hide-details
-          />
+          <v-row class="pa-3">
+            <span v-if="newMetadata">Metadata</span><span v-else>Events</span>
+            <v-spacer />
+            <v-text-field
+              v-model="search"
+              label="Search"
+              prepend-inner-icon="mdi-magnify"
+              clearable
+              variant="outlined"
+              density="compact"
+              single-line
+              hide-details
+          /></v-row>
         </v-card-title>
         <v-data-table
           :headers="eventHeaders"
           :items="localEvents"
           :search="search"
-          sort-by="start"
-          sort-desc
         >
           <template v-slot:no-data>
             <span> No events </span>
           </template>
           <template v-slot:item.start="{ item }">
-            {{ logFormat(item.start, utc) }}
+            {{ formatDateTime(item.start, timeZone) }}
           </template>
           <template v-slot:item.end="{ item }">
-            {{ logFormat(item.end, utc) }}
+            {{ formatDateTime(item.end, timeZone) }}
           </template>
           <template v-slot:item.type="{ item }">
             {{ item.type.charAt(0).toUpperCase() + item.type.slice(1) }}
@@ -77,31 +76,30 @@
           </template>
           <template v-slot:item.actions="{ item }">
             <v-icon
-              small
+              size="small"
               class="mr-2"
               @click="editAction(item)"
               data-test="edit-event"
             >
               mdi-pencil
             </v-icon>
-            <v-icon small @click="deleteAction(item)" data-test="delete-event">
+            <v-icon
+              size="small"
+              @click="deleteAction(item)"
+              data-test="delete-event"
+            >
               mdi-delete
             </v-icon>
           </template>
         </v-data-table>
-        <v-card-actions>
+        <v-card-actions class="px-2">
           <v-spacer />
-          <v-btn
-            outlined
-            class="mx-2"
-            data-test="close-event-list"
-            @click="close"
-          >
+          <v-btn variant="outlined" data-test="close-event-list" @click="close">
             Close
           </v-btn>
           <v-btn
             v-if="newMetadata"
-            color="primary"
+            variant="flat"
             data-test="new-event"
             @click="showMetadataCreate = true"
           >
@@ -110,23 +108,33 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
-    <activity-update-dialog
+    <!-- Edit existing events -->
+    <activity-create-dialog
+      v-if="showActivityUpdate"
       v-model="showActivityUpdate"
       :activity="editActivity"
+      :time-zone="timeZone"
       @update="updateActivity"
     />
-    <metadata-update-dialog
+    <metadata-create-dialog
+      v-if="showMetadataUpdate"
       v-model="showMetadataUpdate"
-      :metadata-obj="editMetadata"
+      :metadata="editMetadata"
+      :time-zone="timeZone"
       @update="updateMetadata"
     />
-    <note-update-dialog
+    <note-create-dialog
+      v-if="showNoteUpdate"
       v-model="showNoteUpdate"
       :note="editNote"
+      :time-zone="timeZone"
       @update="updateNote"
     />
+    <!-- Create new metadata -->
     <metadata-create-dialog
+      v-if="showMetadataCreate"
       v-model="showMetadataCreate"
+      :time-zone="timeZone"
       @update="addMetadata"
     />
   </div>
@@ -134,19 +142,17 @@
 
 <script>
 import Api from '@openc3/tool-common/src/services/api'
-import TimeFilters from '@openc3/tool-common/src/tools/calendar/Filters/timeFilters.js'
+import TimeFilters from '@openc3/tool-common/src/tools/base/util/timeFilters.js'
 import DeleteItem from '@openc3/tool-common/src/tools/calendar/Dialogs/DeleteItem.js'
+import ActivityCreateDialog from '@openc3/tool-common/src/tools/calendar/Dialogs/ActivityCreateDialog'
 import MetadataCreateDialog from '@openc3/tool-common/src/tools/calendar/Dialogs/MetadataCreateDialog'
-import ActivityUpdateDialog from '@openc3/tool-common/src/tools/calendar/Dialogs/ActivityUpdateDialog'
-import MetadataUpdateDialog from '@openc3/tool-common/src/tools/calendar/Dialogs/MetadataUpdateDialog'
-import NoteUpdateDialog from '@openc3/tool-common/src/tools/calendar/Dialogs/NoteUpdateDialog'
+import NoteCreateDialog from '@openc3/tool-common/src/tools/calendar/Dialogs/NoteCreateDialog'
 
 export default {
   components: {
+    ActivityCreateDialog,
     MetadataCreateDialog,
-    ActivityUpdateDialog,
-    MetadataUpdateDialog,
-    NoteUpdateDialog,
+    NoteCreateDialog,
   },
   mixins: [TimeFilters, DeleteItem],
   props: {
@@ -154,12 +160,12 @@ export default {
       type: Array,
       required: true,
     },
-    utc: {
+    modelValue: {
       type: Boolean,
-      default: true,
+      required: true,
     },
-    value: {
-      type: Boolean,
+    timeZone: {
+      type: String,
       required: true,
     },
     types: {
@@ -175,11 +181,11 @@ export default {
       search: '',
       localEvents: [...this.events],
       eventHeaders: [
-        { text: 'Start', value: 'start', width: 190 },
-        { text: 'Stop', value: 'end', width: 190 },
-        { text: 'Type', value: 'type' },
-        { text: 'Data', value: 'data' },
-        { text: 'Actions', value: 'actions', sortable: false },
+        { title: 'Start', key: 'start', width: 215 },
+        { title: 'Stop', key: 'end', width: 215 },
+        { title: 'Type', key: 'type' },
+        { title: 'Data', key: 'data' },
+        { title: 'Actions', key: 'actions', sortable: false },
       ],
       editActivity: { start: new Date(), end: new Date() },
       editMetadata: { start: new Date(), end: new Date() },
@@ -194,20 +200,21 @@ export default {
   computed: {
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
   },
   created: function () {
-    this.$on('delete', (item) => {
-      let index = this.localEvents.findIndex((element) => {
-        return element.type === item.type && element.start === item.start
-      })
-      this.localEvents.splice(index, 1)
-    })
+    // TODO: Switch to vue3 syntax
+    // this.$on('delete', (item) => {
+    //   let index = this.localEvents.findIndex((element) => {
+    //     return element.type === item.type && element.start === item.start
+    //   })
+    //   this.localEvents.splice(index, 1)
+    // })
   },
   methods: {
     close() {
@@ -223,7 +230,7 @@ export default {
         case 'metadata':
           let rows = []
           Object.entries(event.metadata.metadata).forEach(([key, value]) =>
-            rows.push(`${key} => ${value}`),
+            rows.push(`${key}: ${value}`),
           )
           data = rows.join(', ')
           break
@@ -255,10 +262,12 @@ export default {
       })
       let api = null
       let start = null
+      let uuid = null
       switch (item.type) {
         case 'activity':
           api = `timeline/${item.activity.name}/activity`
           start = item.activity.start
+          uuid = item.activity.uuid
           break
         case 'metadata':
           api = 'metadata'
@@ -280,7 +289,11 @@ export default {
         )
         .then((dialog) => {
           this.localEvents.splice(deleteIndex, 1)
-          return Api.delete(`/openc3-api/${api}/${start}`)
+          let url = `/openc3-api/${api}/${start}`
+          if (uuid) {
+            url += `/${uuid}`
+          }
+          return Api.delete(url)
         })
         .then((response) => {
           this.$emit('update')

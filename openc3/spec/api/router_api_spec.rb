@@ -130,7 +130,7 @@ module OpenC3
     end
 
     describe "router_cmd" do
-      it "sends a comamnd to an router_cmd" do
+      it "sends a command to an router_cmd" do
         # Ultimately the router_cmd is still routed to interface_cmd on the interface
         expect_any_instance_of(OpenC3::Interface).to receive(:interface_cmd).with("cmd1")
         @api.router_cmd("ROUTE_INT", "cmd1")
@@ -141,7 +141,7 @@ module OpenC3
     end
 
     describe "router_protocol_cmd" do
-      it "sends a comamnd to an interface" do
+      it "sends a command to an interface" do
         expect_any_instance_of(OpenC3::Interface).to receive(:protocol_cmd).with("cmd1", {index: -1, read_write: "READ_WRITE"})
         @api.router_protocol_cmd("ROUTE_INT", "cmd1")
 

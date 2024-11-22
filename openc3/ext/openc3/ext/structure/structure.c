@@ -15,7 +15,7 @@
 
 /*
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -69,7 +69,9 @@ static ID id_method_class2 = 0;
 
 static ID id_ivar_buffer = 0;
 static ID id_ivar_bit_offset = 0;
+static ID id_ivar_original_bit_offset = 0;
 static ID id_ivar_bit_size = 0;
+static ID id_ivar_variable_bit_size = 0;
 static ID id_ivar_array_size = 0;
 static ID id_ivar_endianness = 0;
 static ID id_ivar_data_type = 0;
@@ -384,7 +386,7 @@ static void write_bitfield(int lower_bound, int upper_bound, int bit_offset, int
   memcpy(&buffer[lower_bound], write_value, num_bytes);
 }
 
-/* Check the bit size and bit offset for problems. Recalulate the bit offset
+/* Check the bit size and bit offset for problems. Recalculate the bit offset
  * and return back through the passed in pointer. */
 static void check_bit_offset_and_size(VALUE self, VALUE type_param, VALUE bit_offset_param, VALUE bit_size_param, VALUE data_type_param, VALUE buffer_param, int *new_bit_offset)
 {
@@ -1140,7 +1142,7 @@ static VALUE binary_accessor_write(VALUE self, VALUE value, VALUE param_bit_offs
         c_value = NUM2ULL(value);
         break;
       }
-      /* If the passed endianess doesn't match the host we reverse the bytes.
+      /* If the passed endianness doesn't match the host we reverse the bytes.
        * Then shift the result over so it's at the bottom of the long long value. */
       if (param_endianness != HOST_ENDIANNESS)
       {
@@ -1360,92 +1362,86 @@ static VALUE read_item(int argc, VALUE *argv, VALUE self)
  */
 static VALUE structure_item_spaceship(VALUE self, VALUE other_item)
 {
-  int bit_offset = 0;
-  int other_bit_offset = 0;
-  int bit_size = 0;
-  int other_bit_size = 0;
+  int original_bit_offset = 0;
+  int other_original_bit_offset = 0;
   int create_index = 0;
   int other_create_index = 0;
-  int have_create_index = 0;
-  volatile VALUE v_create_index = Qnil;
-  volatile VALUE v_other_create_index = Qnil;
+  volatile VALUE data_type = Qnil;
+  volatile VALUE other_data_type = Qnil;
+  volatile VALUE variable_bit_size = Qnil;
+  volatile VALUE other_variable_bit_size = Qnil;
 
   if (!RTEST(rb_funcall(other_item, id_method_kind_of, 1, cStructureItem)))
   {
     return Qnil;
   }
 
-  bit_offset = FIX2INT(rb_ivar_get(self, id_ivar_bit_offset));
-  other_bit_offset = FIX2INT(rb_ivar_get(other_item, id_ivar_bit_offset));
+  original_bit_offset = FIX2INT(rb_ivar_get(self, id_ivar_original_bit_offset));
+  other_original_bit_offset = FIX2INT(rb_ivar_get(other_item, id_ivar_original_bit_offset));
 
-  v_create_index = rb_ivar_get(self, id_ivar_create_index);
-  v_other_create_index = rb_ivar_get(other_item, id_ivar_create_index);
-  if (RTEST(v_create_index) && RTEST(v_other_create_index))
-  {
-    create_index = FIX2INT(v_create_index);
-    other_create_index = FIX2INT(v_other_create_index);
-    have_create_index = 1;
-  }
+  create_index = FIX2INT(rb_ivar_get(self, id_ivar_create_index));
+  other_create_index = FIX2INT(rb_ivar_get(other_item, id_ivar_create_index));
 
-  /* Handle same bit offset case */
-  if ((bit_offset == 0) && (other_bit_offset == 0))
+  data_type = rb_ivar_get(self, id_ivar_data_type);
+  other_data_type = rb_ivar_get(other_item, id_ivar_data_type);
+
+  variable_bit_size = rb_ivar_get(self, id_ivar_variable_bit_size);
+  other_variable_bit_size = rb_ivar_get(other_item, id_ivar_variable_bit_size);
+
+  /* Derived items should be first in the list with multiple derived sorted
+   * by create_index */
+  if (data_type == symbol_DERIVED)
   {
-    /* Both bit_offsets are 0 so sort by bit_size
-     * This allows derived items with bit_size of 0 to be listed first
-     * Compare based on bit size */
-    bit_size = FIX2INT(rb_ivar_get(self, id_ivar_bit_size));
-    other_bit_size = FIX2INT(rb_ivar_get(other_item, id_ivar_bit_size));
-    if (bit_size == other_bit_size)
-    {
-      if (have_create_index)
-      {
-        if (create_index <= other_create_index)
-        {
-          return INT2FIX(-1);
-        }
-        else
-        {
-          return INT2FIX(1);
-        }
-      }
-      else
-      {
-        return INT2FIX(0);
-      }
-    }
-    if (bit_size < other_bit_size)
+    if (other_data_type != symbol_DERIVED)
     {
       return INT2FIX(-1);
     }
     else
     {
-      return INT2FIX(1);
-    }
-  }
-
-  /* Handle different bit offsets */
-  if (((bit_offset >= 0) && (other_bit_offset >= 0)) || ((bit_offset < 0) && (other_bit_offset < 0)))
-  {
-    /* Both Have Same Sign */
-    if (bit_offset == other_bit_offset)
-    {
-      if (have_create_index)
+      if (create_index <= other_create_index)
       {
-        if (create_index <= other_create_index)
-        {
-          return INT2FIX(-1);
-        }
-        else
-        {
-          return INT2FIX(1);
-        }
+        return INT2FIX(-1);
       }
       else
       {
-        return INT2FIX(0);
+        return INT2FIX(1);
       }
     }
-    else if (bit_offset < other_bit_offset)
+  }
+  else if (other_data_type == symbol_DERIVED)
+  {
+    return INT2FIX(1);
+  }
+
+  /* Handle non-derived items */
+  if (((original_bit_offset >= 0) && (other_original_bit_offset >= 0)) || ((original_bit_offset < 0) && (other_original_bit_offset < 0)))
+  {
+    /* Both Have Same Sign */
+    if (original_bit_offset == other_original_bit_offset)
+    {
+      if (RTEST(variable_bit_size))
+      {
+        if (!RTEST(other_variable_bit_size))
+        {
+          return INT2FIX(-1);
+        }
+        /* If both variable_bit_size use create index */
+      }
+      else if (RTEST(other_variable_bit_size))
+      {
+        return INT2FIX(1);
+      }
+
+      if (create_index <= other_create_index)
+      {
+        return INT2FIX(-1);
+      }
+      else
+      {
+        return INT2FIX(1);
+      }
+    }
+    else if (original_bit_offset <= other_original_bit_offset)
     {
       return INT2FIX(-1);
     }
@@ -1457,25 +1453,7 @@ static VALUE structure_item_spaceship(VALUE self, VALUE other_item)
   else
   {
     /* Different Signs */
-    if (bit_offset == other_bit_offset)
-    {
-      if (have_create_index)
-      {
-        if (create_index <= other_create_index)
-        {
-          return INT2FIX(-1);
-        }
-        else
-        {
-          return INT2FIX(1);
-        }
-      }
-      else
-      {
-        return INT2FIX(0);
-      }
-    }
-    else if (bit_offset < other_bit_offset)
+    if (original_bit_offset < other_original_bit_offset)
     {
       return INT2FIX(1);
     }
@@ -1649,7 +1627,9 @@ void Init_structure(void)
 
   id_ivar_buffer = rb_intern("@buffer");
   id_ivar_bit_offset = rb_intern("@bit_offset");
+  id_ivar_original_bit_offset = rb_intern("@original_bit_offset");
   id_ivar_bit_size = rb_intern("@bit_size");
+  id_ivar_variable_bit_size = rb_intern("@variable_bit_size");
   id_ivar_array_size = rb_intern("@array_size");
   id_ivar_endianness = rb_intern("@endianness");
   id_ivar_data_type = rb_intern("@data_type");

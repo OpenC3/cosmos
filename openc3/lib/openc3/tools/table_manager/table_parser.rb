@@ -14,10 +14,10 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/packets/parsers/packet_parser'
@@ -29,7 +29,7 @@ module OpenC3
     # @param parser [ConfigParser] Configuration parser
     # @param tables [Hash] Hash of the currently defined tables
     # @param warnings [Array<String>] Any warning strings generated while
-    #   parsing this command will be appened to this array
+    #   parsing this command will be appended to this array
     def self.parse_table(parser, tables, warnings)
       parser = TableParser.new(parser)
       parser.verify_parameters
@@ -76,7 +76,6 @@ module OpenC3
       TableParser.finish_create_table(table, tables, warnings)
     end
 
-    protected
 
     def self.check_for_duplicate(tables, table)
       msg = nil

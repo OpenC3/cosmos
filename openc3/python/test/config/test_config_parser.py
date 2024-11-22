@@ -254,7 +254,7 @@ class TestConfigParser(unittest.TestCase):
         tf = tempfile.NamedTemporaryFile(mode="w+t")
         tf.writelines("KEYWORD PARAM1 'continues ' \\\n")
         tf.writelines("next line\n")  # Forgot quotes
-        tf.writelines("KEYWORD2 PARAM2")  # Ensure we proces the next line
+        tf.writelines("KEYWORD2 PARAM2")  # Ensure we process the next line
         tf.seek(0)
         for keyword, params in self.cp.parse_file(tf.name):
             if keyword == "KEYWORD":
@@ -298,7 +298,7 @@ class TestConfigParser(unittest.TestCase):
         tf.seek(0)
 
         lines = []
-        for keyword, params in self.cp.parse_file(tf.name, True):
+        for _, _ in self.cp.parse_file(tf.name, True):
             lines.append(self.cp.line)
 
         self.assertIn("# This is a comment", lines)
@@ -344,7 +344,7 @@ class TestConfigParser(unittest.TestCase):
         tf.writelines(line)
         tf.seek(0)
 
-        for keyword, params in self.cp.parse_file(tf.name):
+        for keyword, _ in self.cp.parse_file(tf.name):
             self.assertEqual(keyword, "KEYWORD")
             self.assertRaisesRegex(
                 ConfigParser.Error,
@@ -361,7 +361,7 @@ class TestConfigParser(unittest.TestCase):
         tf.writelines(line)
         tf.seek(0)
 
-        for keyword, params in self.cp.parse_file(tf.name):
+        for keyword, _ in self.cp.parse_file(tf.name):
             self.assertEqual(keyword, "KEYWORD")
             self.assertRaisesRegex(
                 ConfigParser.Error,
@@ -372,13 +372,23 @@ class TestConfigParser(unittest.TestCase):
             )
         tf.close()
 
-    def test_verifies_parameters_do_not_have_bad_characters(self):
+    def test_allows_parameters_with_most_characters(self):
         tf = tempfile.NamedTemporaryFile(mode="w+t")
-        line = "KEYWORD BAD1_ BAD__2 'BAD 3' }BAD_4 BAD[[5]]"
+        line = "KEYWORD P[1] P_2.2,2 P-3+3=3 P4!@#$%^&*? P</5|> P(:6;)"
         tf.writelines(line)
         tf.seek(0)
 
         for keyword, params in self.cp.parse_file(tf.name):
+            self.assertEqual(keyword, "KEYWORD")
+            self.assertListEqual(params, ["P[1]", "P_2.2,2", "P-3+3=3", "P4!@#$%^&*?", "P</5|>", "P(:6;)"])
+
+    def test_verifies_parameters_do_not_have_bad_characters(self):
+        tf = tempfile.NamedTemporaryFile(mode="w+t")
+        line = "KEYWORD BAD1_ BAD__2 'BAD 3' BAD{4 BAD}4 BAD[[6]] BAD'7 BAD\"8"
+        tf.writelines(line)
+        tf.seek(0)
+
+        for _, _ in self.cp.parse_file(tf.name):
             self.assertRaisesRegex(
                 ConfigParser.Error,
                 "cannot end with an underscore",
@@ -399,15 +409,33 @@ class TestConfigParser(unittest.TestCase):
             )
             self.assertRaisesRegex(
                 ConfigParser.Error,
-                "cannot start with a close bracket",
+                "cannot contain a curly bracket",
                 self.cp.verify_parameter_naming,
                 4,
             )
             self.assertRaisesRegex(
                 ConfigParser.Error,
-                "cannot contain double brackets",
+                "cannot contain a curly bracket",
                 self.cp.verify_parameter_naming,
                 5,
+            )
+            self.assertRaisesRegex(
+                ConfigParser.Error,
+                "cannot contain double brackets",
+                self.cp.verify_parameter_naming,
+                6,
+            )
+            self.assertRaisesRegex(
+                ConfigParser.Error,
+                "cannot contain a quote",
+                self.cp.verify_parameter_naming,
+                7,
+            )
+            self.assertRaisesRegex(
+                ConfigParser.Error,
+                "cannot contain a quote",
+                self.cp.verify_parameter_naming,
+                8,
             )
         tf.close()
 
@@ -417,7 +445,7 @@ class TestConfigParser(unittest.TestCase):
         tf.writelines(line)
         tf.seek(0)
 
-        for keyword, params in self.cp.parse_file(tf.name):
+        for _, _ in self.cp.parse_file(tf.name):
             error = self.cp.error("Hello")
             self.assertIn("Hello", repr(error))
             self.assertEqual(error.keyword, "KEYWORD")
@@ -432,7 +460,7 @@ class TestConfigParser(unittest.TestCase):
         tf.seek(0)
 
         try:
-            for keyword, params in self.cp.parse_file(tf.name):
+            for keyword, _ in self.cp.parse_file(tf.name):
                 if keyword == "KEYWORD1":
                     raise self.cp.error("Invalid KEYWORD1")
                 # TODO: This doesn't work in Python like Ruby

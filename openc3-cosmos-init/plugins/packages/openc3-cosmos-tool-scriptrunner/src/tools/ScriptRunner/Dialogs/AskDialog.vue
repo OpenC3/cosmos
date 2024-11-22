@@ -24,11 +24,11 @@
   <v-dialog persistent v-model="show" width="600">
     <v-card>
       <v-form v-model="valid" v-on:submit.prevent="submitHandler">
-        <v-system-bar>
+        <v-toolbar height="24">
           <v-spacer />
           <span> User Input Required </span>
           <v-spacer />
-        </v-system-bar>
+        </v-toolbar>
         <div class="pa-2">
           <v-card-text>
             <div class="question">{{ question }}</div>
@@ -41,20 +41,18 @@
             />
           </v-card-text>
         </div>
-        <v-card-actions>
+        <v-card-actions class="px-2">
           <v-spacer />
           <v-btn
             @click="cancelHandler"
-            outlined
-            class="mx-1"
+            variant="outlined"
             data-test="ask-cancel"
           >
             Cancel
           </v-btn>
           <v-btn
             @click.prevent="submitHandler"
-            class="mx-1"
-            color="primary"
+            variant="flat"
             type="submit"
             data-test="ask-ok"
             :disabled="!valid"
@@ -86,7 +84,7 @@ export default {
       type: Boolean,
       default: true,
     },
-    value: Boolean, // value is the default prop when using v-model
+    modelValue: Boolean,
   },
   data() {
     return {
@@ -108,10 +106,10 @@ export default {
   computed: {
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
   },
@@ -126,9 +124,9 @@ export default {
 }
 </script>
 
-<sytle lang="scss" scoped>
+<style lang="scss" scoped>
 .question {
   font-size: 1rem;
   white-space: pre-line;
 }
-</sytle>
+</style>

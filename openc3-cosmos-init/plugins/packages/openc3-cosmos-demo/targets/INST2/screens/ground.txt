@@ -20,7 +20,7 @@ VERTICAL
     CANVASIMAGE "satellite.png" 90 130 200 200
       # If the image is clicked the "<%= target_name %> ADCS" screen will popup
       SETTING SCREEN <%= target_name %> ADCS
-    # We're using the converted value and specifing a default of "ground_error.png"
+    # We're using the converted value and specifying a default of "ground_error.png"
     # if none of the IMAGE settings match the value
     CANVASIMAGEVALUE <%= target_name %> HEALTH_STATUS GROUND1STATUS CONVERTED "ground_error.png" 400 100 180 180
       SETTING IMAGE CONNECTED "ground_on.png" 400 100

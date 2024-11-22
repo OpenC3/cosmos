@@ -47,6 +47,10 @@ export class OpenC3Api {
     this.id = this.id + 1
     try {
       kwparams['scope'] = window.openc3Scope
+      // Everything from the front-end is manual by default
+      // The various api methods decide whether to pass the manual
+      // flag to the authorize routine
+      headerOptions['manual'] = true
       const response = await axios.post(
         '/openc3-api/api',
         {
@@ -65,9 +69,9 @@ export class OpenC3Api {
           timeout: timeout,
         }
       )
-      // var data = response.data
+      // let data = response.data
       // if (data.error) {
-      //   var err = new Error()
+      //   let err = new Error()
       //   err.name = data.error.data.class
       //   err.message = data.error.data.message
       //   console.log(data.error.data.backtrace.join('\n'))
@@ -75,12 +79,13 @@ export class OpenC3Api {
       // }
       return response.data.result
     } catch (error) {
-      var err = new Error()
+      let err = new Error()
       if (error.response) {
         // The request was made and the server responded with a
         // status code that falls out of the range of 2xx
         err.name = error.response.data.error.data.class
         err.message = error.response.data.error.data.message
+        err.object = error.response.data.error
       } else if (error.request) {
         // The request was made but no response was received, `error.request`
         // is an instance of XMLHttpRequest in the browser and an instance
@@ -196,11 +201,6 @@ export class OpenC3Api {
     return this.exec('get_target_interfaces', [])
   }
 
-  // DEPRECATED
-  get_all_target_info() {
-    return this.exec('get_all_target_info', [])
-  }
-
   get_tlm_cnts(target_commands) {
     return this.exec('get_tlm_cnts', [target_commands])
   }
@@ -214,7 +214,7 @@ export class OpenC3Api {
   }
   // DEPRECATED for get_param
   get_parameter(target, packet, item) {
-    return this.exec('get_parameter', [target, packet, item])
+    return this.exec('get_param', [target, packet, item])
   }
 
   get_limits_sets() {
@@ -240,33 +240,33 @@ export class OpenC3Api {
   get_target_names() {
     return this.exec('get_target_names', [])
   }
-  // DEPRECATED
+  // DEPRECATED for get_target_names
   get_target_list() {
-    return this.exec('get_target_list', [])
+    return this.exec('get_target_names', [])
   }
 
   get_tlm(target_name, packet_name) {
     return this.exec('get_tlm', [target_name, packet_name])
   }
-  // DEPRECATED
+  // DEPRECATED for get_tlm
   get_telemetry(target_name, packet_name) {
-    return this.exec('get_telemetry', [target_name, packet_name])
+    return this.exec('get_tlm', [target_name, packet_name])
   }
 
   get_all_tlm(target_name) {
     return this.exec('get_all_tlm', [target_name])
   }
-  // DEPREACTE
+  // DEPRECATED for get_all_tlm
   get_all_telemetry(target_name) {
-    return this.exec('get_all_telemetry', [target_name])
+    return this.exec('get_all_tlm', [target_name])
   }
 
-  get_all_tlm_names(target_name) {
-    return this.exec('get_all_tlm_names', [target_name])
+  get_all_tlm_names(target_name, hidden = false) {
+    return this.exec('get_all_tlm_names', [target_name], { hidden: hidden })
   }
-  // DEPRECATED
+  // DEPRECATED for get_all_tlm_names
   get_all_telemetry_names(target_name) {
-    return this.exec('get_all_telemetry_names', [target_name])
+    return this.exec('get_all_tlm_names', [target_name])
   }
 
   async get_tlm_packet(target_name, packet_name, value_type, stale_time = 30) {
@@ -276,9 +276,9 @@ export class OpenC3Api {
     })
     // Make sure data isn't null or undefined. Note this is the only valid use of == or !=
     if (data != null) {
-      var len = data.length
-      var converted = null
-      for (var i = 0; i < len; i++) {
+      let len = data.length
+      let converted = null
+      for (let i = 0; i < len; i++) {
         converted = this.decode_openc3_type(data[i][1])
         if (converted !== null) {
           data[i][1] = converted
@@ -310,9 +310,9 @@ export class OpenC3Api {
       {},
       10000 // 10s timeout ... should never be this long
     )
-    var len = data[0].length
-    var converted = null
-    for (var i = 0; i < len; i++) {
+    let len = data[0].length
+    let converted = null
+    for (let i = 0; i < len; i++) {
       converted = this.decode_openc3_type(data[0][i])
       if (converted !== null) {
         data[0][i] = converted
@@ -337,7 +337,7 @@ export class OpenC3Api {
       ) {
         data = await this.exec('tlm', [target_name], { type: packet_name })
       } else {
-        var err = new Error()
+        let err = new Error()
         err.name = 'TypeError'
         err.message = `Invalid data type ${packet_name}. Valid options are RAW, CONVERTED, FORMATTED, and WITH_UNITS.`
         throw err
@@ -347,7 +347,7 @@ export class OpenC3Api {
         type: value_type,
       })
     }
-    var converted = this.decode_openc3_type(data)
+    let converted = this.decode_openc3_type(data)
     if (converted !== null) {
       data = converted
     }
@@ -396,15 +396,15 @@ export class OpenC3Api {
   }
   // DEPRECATED for get_all_cmds
   get_all_commands(target_name) {
-    return this.exec('get_all_commands', [target_name])
+    return this.exec('get_all_cmds', [target_name])
   }
 
-  get_all_cmd_names(target_name) {
-    return this.exec('get_all_cmd_names', [target_name])
+  get_all_cmd_names(target_name, hidden = false) {
+    return this.exec('get_all_cmd_names', [target_name], { hidden: hidden })
   }
   // DEPRECATED for get_all_cmd_names
   get_all_command_names(target_name) {
-    return this.exec('get_all_command_names', [target_name])
+    return this.exec('get_all_cmd_names', [target_name])
   }
 
   get_cmd(target_name, command_name) {
@@ -412,7 +412,7 @@ export class OpenC3Api {
   }
   // DEPRECATED for get_cmd
   get_command(target_name, command_name) {
-    return this.exec('get_command', [target_name, command_name])
+    return this.exec('get_cmd', [target_name, command_name])
   }
 
   get_cmd_cnts(target_commands) {
@@ -439,8 +439,8 @@ export class OpenC3Api {
 
   // Implementation of functionality shared by cmd methods with param_lists.
   _cmd(method, target_name, command_name, param_list, headerOptions) {
-    var converted = null
-    for (var key in param_list) {
+    let converted = null
+    for (let key in param_list) {
       if (Object.prototype.hasOwnProperty.call(param_list, key)) {
         converted = this.encode_openc3_type(param_list[key])
         if (converted !== null) {
@@ -456,15 +456,16 @@ export class OpenC3Api {
     )
   }
 
-  get_cmd_hazardous(target_name, command_name, param_list) {
+  get_cmd_hazardous(target_name, command_name, param_list, headerOptions = {}) {
     if (command_name === undefined) {
-      return this.exec('get_cmd_hazardous', target_name)
+      return this.exec('get_cmd_hazardous', target_name, {}, headerOptions)
     } else {
       return this._cmd(
         'get_cmd_hazardous',
         target_name,
         command_name,
-        param_list
+        param_list,
+        headerOptions
       )
     }
   }
@@ -483,83 +484,125 @@ export class OpenC3Api {
     }
   }
 
-  cmd_no_range_check(target_name, command_name, param_list) {
+  cmd_no_range_check(
+    target_name,
+    command_name,
+    param_list,
+    headerOptions = {}
+  ) {
     if (command_name === undefined) {
-      return this.exec('cmd_no_range_check', target_name)
+      return this.exec('cmd_no_range_check', target_name, {}, headerOptions)
     } else {
       return this._cmd(
         'cmd_no_range_check',
         target_name,
         command_name,
-        param_list
+        param_list,
+        headerOptions
       )
     }
   }
 
-  cmd_raw(target_name, command_name, param_list) {
+  cmd_raw(target_name, command_name, param_list, headerOptions = {}) {
     if (command_name === undefined) {
-      return this.exec('cmd_raw', target_name)
+      return this.exec('cmd_raw', target_name, {}, headerOptions)
     } else {
-      return this._cmd('cmd_raw', target_name, command_name, param_list)
+      return this._cmd(
+        'cmd_raw',
+        target_name,
+        command_name,
+        param_list,
+        headerOptions
+      )
     }
   }
 
-  cmd_raw_no_range_check(target_name, command_name, param_list) {
+  cmd_raw_no_range_check(
+    target_name,
+    command_name,
+    param_list,
+    headerOptions = {}
+  ) {
     if (command_name === undefined) {
-      return this.exec('cmd_raw_no_range_check', target_name)
+      return this.exec('cmd_raw_no_range_check', target_name, {}, headerOptions)
     } else {
       return this._cmd(
         'cmd_raw_no_range_check',
         target_name,
         command_name,
-        param_list
+        param_list,
+        headerOptions
       )
     }
   }
 
-  cmd_no_hazardous_check(target_name, command_name, param_list) {
+  cmd_no_hazardous_check(
+    target_name,
+    command_name,
+    param_list,
+    headerOptions = {}
+  ) {
     if (command_name === undefined) {
-      return this.exec('cmd_no_hazardous_check', target_name)
+      return this.exec('cmd_no_hazardous_check', target_name, {}, headerOptions)
     } else {
       return this._cmd(
         'cmd_no_hazardous_check',
         target_name,
         command_name,
-        param_list
+        param_list,
+        headerOptions
       )
     }
   }
 
-  cmd_no_checks(target_name, command_name, param_list) {
+  cmd_no_checks(target_name, command_name, param_list, headerOptions = {}) {
     if (command_name === undefined) {
-      return this.exec('cmd_no_checks', target_name)
+      return this.exec('cmd_no_checks', target_name, {}, headerOptions)
     } else {
-      return this._cmd('cmd_no_checks', target_name, command_name, param_list)
+      return this._cmd(
+        'cmd_no_checks',
+        target_name,
+        command_name,
+        param_list,
+        headerOptions
+      )
     }
   }
 
-  cmd_raw_no_hazardous_check(target_name, command_name, param_list) {
+  cmd_raw_no_hazardous_check(
+    target_name,
+    command_name,
+    param_list,
+    headerOptions = {}
+  ) {
     if (command_name === undefined) {
-      return this.exec('cmd_raw_no_hazardous_check', target_name)
+      return this.exec(
+        'cmd_raw_no_hazardous_check',
+        target_name,
+        {},
+        headerOptions
+      )
     } else {
       return this._cmd(
         'cmd_raw_no_hazardous_check',
         target_name,
         command_name,
-        param_list
+        param_list,
+        headerOptions
       )
     }
   }
 
-  cmd_raw_no_checks(target_name, command_name, param_list) {
+  cmd_raw_no_checks(target_name, command_name, param_list, headerOptions = {}) {
     if (command_name === undefined) {
-      return this.exec('cmd_raw_no_checks', target_name)
+      return this.exec('cmd_raw_no_checks', target_name, {}, headerOptions)
     } else {
       return this._cmd(
         'cmd_raw_no_checks',
         target_name,
         command_name,
-        param_list
+        param_list,
+        headerOptions
       )
     }
   }
@@ -574,9 +617,9 @@ export class OpenC3Api {
   // DEPRECATED for build_cmd
   build_command(target_name, command_name, param_list) {
     if (command_name === undefined) {
-      return this.exec('build_command', target_name)
+      return this.exec('build_cmd', target_name)
     } else {
-      return this._cmd('build_command', target_name, command_name, param_list)
+      return this._cmd('build_cmd', target_name, command_name, param_list)
     }
   }
 
@@ -640,9 +683,9 @@ export class OpenC3Api {
     return this.exec('set_setting', [name, data])
   }
 
-  // DEPRECATED
+  // DEPRECATED for set_setting
   save_setting(name, data) {
-    return this.exec('save_setting', [name, data])
+    return this.exec('set_setting', [name, data])
   }
 
   get_metrics() {

@@ -22,9 +22,11 @@ require 'openc3/io/json_rpc'
 require 'openc3/accessors/accessor'
 
 # Monkey patch JsonPath to enable create_additions and allow_nan to support binary strings, and NaN, Infinity, -Infinity
-class JsonPath
-  def self.process_object(obj_or_str, opts = {})
-    obj_or_str.is_a?(String) ? MultiJson.decode(obj_or_str, max_nesting: opts[:max_nesting], create_additions: true, allow_nan: true) : obj_or_str
+OpenC3.disable_warnings do
+  class JsonPath
+    def self.process_object(obj_or_str, opts = {})
+      obj_or_str.is_a?(String) ? MultiJson.decode(obj_or_str, max_nesting: opts[:max_nesting], create_additions: true, allow_nan: true) : obj_or_str
+    end
   end
 end
 
@@ -161,7 +163,7 @@ module OpenC3
       return true
     end
 
-    # If this is true it will enfore that COSMOS DERIVED items must have a
+    # If this is true it will enforce that COSMOS DERIVED items must have a
     # write_conversion to be written
     def enforce_derived_write_conversion(_item)
       return true

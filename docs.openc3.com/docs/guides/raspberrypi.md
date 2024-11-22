@@ -1,5 +1,8 @@
 ---
 title: Raspberry Pi
+description: Running COSMOS on a Raspberry Pi
+sidebar_custom_props:
+  myEmoji: 🍓
 ---
 
 ### COSMOS Running on Raspberry Pi 4

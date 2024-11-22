@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -26,87 +26,87 @@
     <v-card>
       <v-expansion-panels v-model="panel" style="margin-bottom: 5px">
         <v-expansion-panel>
-          <v-expansion-panel-header
-            style="z-index: 1"
-          ></v-expansion-panel-header>
-          <v-expansion-panel-content>
-            <v-row dense>
-              <v-col>
-                <v-text-field
-                  v-model="startDate"
-                  label="Start Date"
-                  type="date"
-                  :rules="[rules.required]"
-                  data-test="start-date"
-                />
-              </v-col>
-              <v-col>
-                <v-text-field
-                  v-model="startTime"
-                  label="Start Time"
-                  type="time"
-                  step="1"
-                  :rules="[rules.required]"
-                  data-test="start-time"
-                />
-              </v-col>
-              <v-col>
-                <v-text-field
-                  v-model="endDate"
-                  label="End Date"
-                  type="date"
-                  :rules="endTime ? [rules.required] : []"
-                  data-test="end-date"
-                />
-              </v-col>
-              <v-col>
-                <v-text-field
-                  v-model="endTime"
-                  label="End Time"
-                  type="time"
-                  step="1"
-                  :rules="endDate ? [rules.required] : []"
-                  data-test="end-time"
-                />
-              </v-col>
-              <v-col cols="auto" class="pt-4">
-                <v-btn
-                  v-if="running"
-                  color="primary"
-                  width="100"
-                  data-test="stop-button"
-                  @click="stop"
-                >
-                  Stop
-                </v-btn>
-                <v-btn
-                  v-else
-                  :disabled="!canStart"
-                  color="primary"
-                  width="100"
-                  class="pulse-button"
-                  data-test="start-button"
-                  @click="start"
-                >
-                  Start
-                </v-btn>
-              </v-col>
-            </v-row>
-          </v-expansion-panel-content>
+          <v-expansion-panel-title style="z-index: 1"></v-expansion-panel-title>
+          <v-expansion-panel-text>
+            <v-container>
+              <v-row dense>
+                <v-col>
+                  <v-text-field
+                    v-model="startDate"
+                    label="Start Date"
+                    type="date"
+                    :rules="[rules.required]"
+                    data-test="start-date"
+                  />
+                </v-col>
+                <v-col>
+                  <v-text-field
+                    v-model="startTime"
+                    label="Start Time"
+                    type="time"
+                    step="1"
+                    :rules="[rules.required]"
+                    data-test="start-time"
+                  />
+                </v-col>
+                <v-col>
+                  <v-text-field
+                    v-model="endDate"
+                    label="End Date"
+                    type="date"
+                    :rules="endTime ? [rules.required] : []"
+                    data-test="end-date"
+                  />
+                </v-col>
+                <v-col>
+                  <v-text-field
+                    v-model="endTime"
+                    label="End Time"
+                    type="time"
+                    step="1"
+                    :rules="endDate ? [rules.required] : []"
+                    data-test="end-time"
+                  />
+                </v-col>
+                <v-col cols="auto" class="pt-4">
+                  <v-btn
+                    v-if="running"
+                    color="primary"
+                    width="100"
+                    data-test="stop-button"
+                    @click="stop"
+                  >
+                    Stop
+                  </v-btn>
+                  <v-btn
+                    v-else
+                    :disabled="!canStart"
+                    color="primary"
+                    width="100"
+                    class="pulse-button"
+                    data-test="start-button"
+                    @click="start"
+                  >
+                    Start
+                  </v-btn>
+                </v-col>
+              </v-row>
+            </v-container>
+          </v-expansion-panel-text>
         </v-expansion-panel>
       </v-expansion-panels>
       <div class="mb-3" v-show="warning || error || connectionFailure">
-        <v-alert type="warning" v-model="warning" dismissible>
+        <v-alert type="warning" v-model="warning" closable>
           {{ warningText }}
         </v-alert>
-        <v-alert type="error" v-model="error" dismissible>
+        <v-alert type="error" v-model="error" closable>
           {{ errorText }}
         </v-alert>
         <v-alert type="error" v-model="connectionFailure">
           OpenC3 backend connection failed.
         </v-alert>
       </div>
-      <v-tabs ref="tabs" v-model="curTab">
+      <v-tabs ref="tabs" v-model="curTab" :key="`v-tabs_${config.tabs.length}`">
         <v-tab
           v-for="(tab, index) in config.tabs"
           :key="index"
@@ -115,48 +115,51 @@
         >
           {{ tab.tabName }}
         </v-tab>
-        <v-tooltip bottom>
-          <template v-slot:activator="{ on, attrs }">
+        <v-tooltip location="bottom">
+          <template v-slot:activator="{ props }">
             <v-btn
-              icon
-              class="mt-2 ml-2"
+              icon="mdi-tab-plus"
+              class="ml-2"
+              variant="text"
               @click="addTab"
-              v-bind="attrs"
-              v-on="on"
+              v-bind="props"
               :class="config.tabs.length === 0 ? 'pulse-button' : ''"
               data-test="new-tab"
-            >
-              <v-icon>mdi-tab-plus</v-icon>
-            </v-btn>
+            />
           </template>
           <span>Add Component</span>
         </v-tooltip>
       </v-tabs>
-      <v-tabs-items v-model="curTab">
-        <v-tab-item v-for="(tab, index) in config.tabs" :key="tab.ref" eager>
+      <v-tabs-window
+        :model-value="curTab"
+        :key="`v-tabs-window_${config.tabs.length}`"
+      >
+        <v-tabs-window-item
+          v-for="(tab, index) in config.tabs"
+          :key="tab.ref"
+          eager
+        >
           <keep-alive>
             <v-card flat>
               <v-divider />
-              <v-card-title class="pa-3">
+              <v-card-title class="pa-3 d-flex align-center">
                 <span v-text="tab.name" />
                 <v-spacer />
-                <v-tooltip bottom>
-                  <template v-slot:activator="{ on, attrs }">
+                <v-tooltip location="bottom">
+                  <template v-slot:activator="{ props }">
                     <v-btn
-                      icon
+                      variant="text"
+                      icon="mdi-delete"
                       @click="() => deleteComponent(index)"
-                      v-bind="attrs"
-                      v-on="on"
+                      v-bind="props"
                       data-test="delete-component"
-                    >
-                      <v-icon>mdi-delete</v-icon>
-                    </v-btn>
+                    />
                   </template>
-                  <span>Remove Component</span>
+                  <span> Remove Component </span>
                 </v-tooltip>
               </v-card-title>
               <component
-                v-on="$listeners"
+                v-bind="$attrs"
                 :is="tab.type"
                 :name="tab.component"
                 :ref="tab.ref"
@@ -167,10 +170,10 @@
               <v-card-text v-if="receivedPackets.length === 0">
                 No data! Make sure to hit the START button!
               </v-card-text>
-            </v-card></keep-alive
-          >
-        </v-tab-item>
-      </v-tabs-items>
+            </v-card>
+          </keep-alive>
+        </v-tabs-window-item>
+      </v-tabs-window>
       <v-card v-if="!config.tabs.length">
         <v-card-title>You're not viewing any packets</v-card-title>
         <v-card-text>Click the new tab icon to start.</v-card-text>
@@ -192,11 +195,11 @@
     <!-- Dialog for renaming a new tab -->
     <v-dialog v-model="tabNameDialog" width="600">
       <v-card>
-        <v-system-bar>
+        <v-toolbar height="24">
           <v-spacer />
           <span> DataViewer: Rename Tab</span>
           <v-spacer />
-        </v-system-bar>
+        </v-toolbar>
         <v-card-text>
           <v-text-field
             v-model="newTabName"
@@ -204,19 +207,17 @@
             data-test="rename-tab-input"
           />
         </v-card-text>
-        <v-card-actions>
+        <v-card-actions class="px-2">
           <v-spacer />
           <v-btn
-            outlined
-            class="mx-2"
+            variant="outlined"
             data-test="cancel-rename"
             @click="cancelTabRename"
           >
             Cancel
           </v-btn>
           <v-btn
-            color="primary"
-            class="mx-2"
+            variant="flat"
             data-test="rename"
             :disabled="!newTabName"
             @click="renameTab"
@@ -227,13 +228,7 @@
       </v-card>
     </v-dialog>
     <!-- Menu for right clicking on a tab -->
-    <v-menu
-      v-model="showTabMenu"
-      :position-x="tabMenuX"
-      :position-y="tabMenuY"
-      absolute
-      offset-y
-    >
+    <v-menu v-model="showTabMenu" :target="[tabMenuX, tabMenuY]">
       <v-list>
         <v-list-item data-test="context-menu-rename">
           <v-list-item-title style="cursor: pointer" @click="openTabNameDialog">
@@ -254,19 +249,21 @@
 </template>
 
 <script>
-import { format } from 'date-fns'
+import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 import Api from '@openc3/tool-common/src/services/api'
 import Config from '@openc3/tool-common/src/components/config/Config'
 import OpenConfigDialog from '@openc3/tool-common/src/components/config/OpenConfigDialog'
 import SaveConfigDialog from '@openc3/tool-common/src/components/config/SaveConfigDialog'
 import Cable from '@openc3/tool-common/src/services/cable.js'
 import TopBar from '@openc3/tool-common/src/components/TopBar'
+import TimeFilters from '@openc3/tool-common/src/tools/base/util/timeFilters.js'
 
 import AddComponentDialog from '@/tools/DataViewer/AddComponentDialog'
 // DynamicComponent is how we load custom user components
 import DynamicComponent from '@/tools/DataViewer/DynamicComponent'
 // Import the built-in DataViewer components
 import DumpComponent from '@/tools/DataViewer/DumpComponent'
+import ValueComponent from '@/tools/DataViewer/ValueComponent'
 
 export default {
   components: {
@@ -275,15 +272,29 @@ export default {
     SaveConfigDialog,
     DynamicComponent,
     DumpComponent,
+    ValueComponent,
     TopBar,
   },
-  mixins: [Config],
+  mixins: [Config, TimeFilters],
   data() {
     return {
       title: 'Data Viewer',
       configKey: 'data_viewer',
+      api: null,
+      timeZone: 'local',
       // Initialize with all built-in components
-      components: [{ label: 'COSMOS Raw/Decom', value: 'DumpComponent' }],
+      components: [
+        {
+          label: 'COSMOS Packet Raw/Decom',
+          value: 'DumpComponent',
+          items: false,
+        },
+        {
+          label: 'COSMOS Item Value',
+          value: 'ValueComponent',
+          items: true,
+        },
+      ],
       counter: 0,
       panel: 0,
       componentType: null,
@@ -292,10 +303,10 @@ export default {
       saveConfig: false,
       cable: new Cable(),
       subscription: null,
-      startDate: format(new Date(), 'yyyy-MM-dd'),
-      startTime: format(new Date(), 'HH:mm:ss'),
-      endDate: '',
-      endTime: '',
+      startDate: null,
+      startTime: null,
+      endDate: null,
+      endTime: null,
       rules: {
         required: (value) => !!value || 'Required',
       },
@@ -351,12 +362,26 @@ export default {
   },
   computed: {
     startEndTime: function () {
+      let startTemp = null
+      let endTemp = null
+      try {
+        if (this.timeZone === 'local') {
+          startTemp = new Date(this.startDate + ' ' + this.startTime)
+          if (this.endDate !== null && this.endTime !== null) {
+            endTemp = new Date(this.endDate + ' ' + this.endTime)
+          }
+        } else {
+          startTemp = new Date(this.startDate + ' ' + this.startTime + 'Z')
+          if (this.endDate !== null && this.endTime !== null) {
+            endTemp = new Date(this.endDate + ' ' + this.endTime + 'Z')
+          }
+        }
+      } catch (e) {
+        return
+      }
       return {
-        start_time:
-          new Date(this.startDate + ' ' + this.startTime).getTime() * 1_000_000,
-        end_time: this.endDate
-          ? new Date(this.endDate + ' ' + this.endTime).getTime() * 1_000_000
-          : null,
+        start_time: startTemp.getTime() * 1_000_000,
+        end_time: endTemp ? endTemp.getTime() * 1_000_000 : null,
       }
     },
     allPackets: function () {
@@ -366,9 +391,6 @@ export default {
     },
   },
   watch: {
-    'config.tabs.length': function () {
-      this.resizeTabs()
-    },
     // canStart is set by the subscription when it connects.
     // We set autoStart to true during mounted() when loading from
     // a route or a previous saved configuration.
@@ -384,7 +406,22 @@ export default {
       deep: true,
     },
   },
-  created() {
+  async created() {
+    this.api = new OpenC3Api()
+    await this.api
+      .get_setting('time_zone')
+      .then((response) => {
+        if (response) {
+          this.timeZone = response
+        }
+      })
+      .catch((error) => {
+        // Do nothing
+      })
+    let now = new Date()
+    this.startDate = this.formatDate(now, this.timeZone)
+    this.startTime = this.formatTimeHMS(now, this.timeZone)
+
     // Determine if there are any user added widgets
     Api.get('/openc3-api/widgets').then((response) => {
       response.data.forEach((widget) => {
@@ -393,6 +430,7 @@ export default {
         if (found) {
           Api.get(`/openc3-api/widgets/${widget}`).then((response) => {
             let label = response.data.label
+            let items = response.data.items
             if (label === null) {
               label = response.data.name.slice(10)
               label = label.charAt(0) + label.slice(1).toLowerCase()
@@ -400,6 +438,7 @@ export default {
             this.components.push({
               label: label,
               value: found[0],
+              items: items,
             })
           })
         }
@@ -421,7 +460,7 @@ export default {
       }
     }
   },
-  destroyed: function () {
+  unmounted: function () {
     if (this.subscription) {
       this.subscription.unsubscribe()
     }
@@ -429,15 +468,16 @@ export default {
   },
   methods: {
     packetTitle: function (packet) {
-      return `${packet.targetName} ${packet.packetName} [ ${packet.mode} ]`
-    },
-    resizeTabs: function () {
-      if (this.$refs.tabs) this.$refs.tabs.onResize()
+      if (packet.itemName !== undefined) {
+        return `${packet.targetName} ${packet.packetName} ${packet.itemName}`
+      } else {
+        return `${packet.targetName} ${packet.packetName} [ ${packet.mode} ]`
+      }
     },
     start: function () {
       this.autoStart = false
       // Check for a future start time
-      if (new Date(this.startDate + ' ' + this.startTime) > Date.now()) {
+      if (this.startEndTime.start_time > new Date().getTime() * 1_000_000) {
         this.warningText = 'Start date/time is in the future!'
         this.warning = true
         return
@@ -449,7 +489,7 @@ export default {
         return
       }
       // Check for a future End Time
-      if (new Date(this.endDate + ' ' + this.endTime) > Date.now()) {
+      if (this.startEndTime.end_time) {
         this.warningText =
           'Note: End date/time is greater than current date/time. Data will continue to stream in real-time until ' +
           this.endDate +
@@ -459,11 +499,11 @@ export default {
         this.warning = true
       }
       this.running = true
-      this.addPacketsToSubscription()
+      this.addToSubscription()
     },
     stop: function () {
       this.running = false
-      this.removePacketsFromSubscription()
+      this.removeFromSubscription()
     },
     subscribe: function () {
       this.cable
@@ -487,47 +527,95 @@ export default {
         })
         .then((subscription) => {
           this.subscription = subscription
-          if (this.running) this.addPacketsToSubscription()
+          if (this.running) this.addToSubscription()
         })
     },
-    addPacketsToSubscription: function (packets) {
+    addToSubscription: function (packets) {
       packets = packets || this.allPackets
-      // Group by mode
-      const modeGroups = packets.reduce((groups, packet) => {
-        if (groups[packet.mode]) {
-          groups[packet.mode].push(packet)
+
+      let itemBased = []
+      let packetBased = []
+      packets.forEach((packet) => {
+        if (packet.itemName !== undefined) {
+          itemBased.push(packet)
         } else {
-          groups[packet.mode] = [packet]
+          packetBased.push(packet)
         }
-        return groups
-      }, {})
-      Object.keys(modeGroups).forEach((mode) => {
-        // This eliminates duplicates by converted to Set and back to Array
-        modeGroups[mode] = [...new Set(modeGroups[mode])]
       })
-      OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(
-        (refreshed) => {
-          if (refreshed) {
-            OpenC3Auth.setTokens()
-          }
-          Object.keys(modeGroups).forEach((mode) => {
+
+      if (itemBased.length > 0) {
+        // Add the items to the subscription
+        OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(
+          (refreshed) => {
+            if (refreshed) {
+              OpenC3Auth.setTokens()
+            }
             this.subscription.perform('add', {
               scope: window.openc3Scope,
               token: localStorage.openc3Token,
-              packets: modeGroups[mode].map(this.subscriptionKey),
+              items: itemBased.map(this.itemSubscriptionKey),
               ...this.startEndTime,
             })
-          })
-        },
-      )
+          },
+        )
+      }
+
+      if (packetBased.length > 0) {
+        // Group by mode
+        const modeGroups = packetBased.reduce((groups, packet) => {
+          if (groups[packet.mode]) {
+            groups[packet.mode].push(packet)
+          } else {
+            groups[packet.mode] = [packet]
+          }
+          return groups
+        }, {})
+        Object.keys(modeGroups).forEach((mode) => {
+          // This eliminates duplicates by converted to Set and back to Array
+          modeGroups[mode] = [...new Set(modeGroups[mode])]
+        })
+        OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(
+          (refreshed) => {
+            if (refreshed) {
+              OpenC3Auth.setTokens()
+            }
+            Object.keys(modeGroups).forEach((mode) => {
+              this.subscription.perform('add', {
+                scope: window.openc3Scope,
+                token: localStorage.openc3Token,
+                packets: modeGroups[mode].map(this.subscriptionKey),
+                ...this.startEndTime,
+              })
+            })
+          },
+        )
+      }
     },
-    removePacketsFromSubscription: function (packets) {
+    removeFromSubscription: function (packets) {
       packets = packets || this.allPackets
-      if (packets.length > 0) {
+
+      let itemBased = []
+      let packetBased = []
+      packets.forEach((packet) => {
+        if (packet.itemName !== undefined) {
+          itemBased.push(packet)
+        } else {
+          packetBased.push(packet)
+        }
+      })
+
+      if (itemBased.length > 0) {
         this.subscription.perform('remove', {
           scope: window.openc3Scope,
           token: localStorage.openc3Token,
-          packets: packets.map(this.subscriptionKey),
+          items: itemBased.map(this.itemSubscriptionKey),
+        })
+      }
+      if (packetBased.length > 0) {
+        this.subscription.perform('remove', {
+          scope: window.openc3Scope,
+          token: localStorage.openc3Token,
+          packets: packetBased.map(this.subscriptionKey),
         })
       }
     },
@@ -539,27 +627,72 @@ export default {
         return
       }
       if (!parsed.length) {
-        this.stop()
         return
       }
-      const groupedPackets = parsed.reduce((groups, packet) => {
-        if (groups[packet.__packet]) {
-          groups[packet.__packet].push(packet)
-        } else {
-          groups[packet.__packet] = [packet]
-        }
-        return groups
-      }, {})
-      this.config.tabs.forEach((tab, i) => {
-        tab.packets.forEach((packetConfig) => {
-          let packetName = this.packetKey(packetConfig)
-          this.receivedPackets[packetName] = true
-          if (groupedPackets[packetName]) {
-            this.$refs[tab.ref][0].receive(groupedPackets[packetName])
+
+      // Iterate over the parsed data and send it to the appropriate component
+
+      // If the parsed data has a __type of ITEMS, we're dealing with an array
+      // of items with attributes named after the item. We need to filter
+      // the items per tab and send them to the appropriate component.
+      if (parsed[0].__type === 'ITEMS') {
+        this.config.tabs.forEach((tab, i) => {
+          // Skip tabs without items
+          if (!tab.items) return
+
+          let keys = tab.packets.map((itemConfig) => this.itemKey(itemConfig))
+          let filtered = parsed
+            .map((item) => {
+              let newItem = {}
+              // These fields are always in the item subscription
+              newItem['__type'] = item['__type']
+              newItem['__time'] = item['__time']
+              let found = false
+              keys.forEach((key) => {
+                if (item[key]) {
+                  found = true
+                  newItem[key] = item[key]
+                }
+              })
+              if (found) {
+                return newItem
+              } else {
+                return
+              }
+            })
+            .filter(Boolean) // Remove undefined items
+          if (
+            filtered &&
+            typeof this.$refs[tab.ref][0].receive === 'function'
+          ) {
+            this.$refs[tab.ref][0].receive(filtered)
           }
         })
-      })
-      this.receivedPackets = { ...this.receivedPackets }
+      } else {
+        const groupedPackets = parsed.reduce((groups, packet) => {
+          if (groups[packet.__packet]) {
+            groups[packet.__packet].push(packet)
+          } else {
+            groups[packet.__packet] = [packet]
+          }
+          return groups
+        }, {})
+        this.config.tabs.forEach((tab, i) => {
+          // Skip tabs with items
+          if (tab.items) return
+          tab.packets.forEach((packetConfig) => {
+            let packetName = this.packetKey(packetConfig)
+            this.receivedPackets[packetName] = true
+            if (
+              groupedPackets[packetName] &&
+              typeof this.$refs[tab.ref][0].receive === 'function'
+            ) {
+              this.$refs[tab.ref][0].receive(groupedPackets[packetName])
+            }
+          })
+        })
+        this.receivedPackets = { ...this.receivedPackets }
+      }
     },
     packetKey: function (packet) {
       let key = packet.mode + '__'
@@ -572,10 +705,26 @@ export default {
       if (packet.mode === 'DECOM') key += `__${packet.valueType}`
       return key
     },
+    itemKey: function (item) {
+      let key = item.mode + '__'
+      if (item.cmdOrTlm === 'TLM') {
+        key += 'TLM'
+      } else {
+        key += 'CMD'
+      }
+      key += `__${item.targetName}__${item.packetName}__${item.itemName}`
+      if (item.mode === 'DECOM') key += `__${item.valueType}`
+      return key
+    },
+    // Maybe combine subscriptionKey with itemSubscriptionKey
     subscriptionKey: function (packet) {
       const cmdOrTlm = packet.cmdOrTlm.toUpperCase()
       let key = `${packet.mode}__${cmdOrTlm}__${packet.targetName}__${packet.packetName}`
       if (packet.mode === 'DECOM') key += `__${packet.valueType}`
+      return key
+    },
+    itemSubscriptionKey: function (item) {
+      let key = `DECOM__TLM__${item.targetName}__${item.packetName}__${item.itemName}__${item.valueType}`
       return key
     },
     resetConfig: function () {
@@ -651,14 +800,14 @@ export default {
         packets: [...event.packets], // Make a copy
         type: type,
         component: component,
-        config: {}, // Set an empty config object
-        ref: `component${this.counter}`,
+        items: event.component.items,
+        config: { timeZone: this.timeZone },
+        ref: Date.now(),
       })
-      this.counter++
       this.curTab = this.config.tabs.length - 1
 
       if (this.running) {
-        this.addPacketsToSubscription(event.packets)
+        this.addToSubscription(event.packets)
       }
       this.cancelAddComponent()
     },
@@ -666,19 +815,43 @@ export default {
       this.showAddComponentDialog = false
     },
     deleteComponent: function (tabIndex) {
-      // Get the list of packets the other tabs are using
-      let packetsInUse = []
-      this.config.tabs.forEach((tab, i) => {
-        if (i !== tabIndex) {
-          packetsInUse = packetsInUse.concat(tab.packets.map(this.packetKey))
+      // Check for item based components first
+      if (this.config.tabs[tabIndex].packets[0].itemName !== undefined) {
+        // Get the list of items the other tabs are using
+        let itemsInUse = []
+        this.config.tabs.forEach((tab, i) => {
+          // Skip tabs without items
+          if (!tab.items) return
+
+          if (i !== tabIndex) {
+            itemsInUse = itemsInUse.concat(tab.packets.map(this.itemKey))
+          }
+        })
+        // Filter out any items that are in use
+        let filtered = this.config.tabs[tabIndex].packets.filter(
+          (packet) => itemsInUse.indexOf(this.itemKey(packet)) === -1,
+        )
+        if (filtered.length > 0) {
+          this.removeFromSubscription(filtered)
         }
-      })
-      // Filter out any packets that are in use
-      let filtered = this.config.tabs[tabIndex].packets.filter(
-        (packet) => packetsInUse.indexOf(this.packetKey(packet)) === -1,
-      )
-      if (filtered.length > 0) {
-        this.removePacketsFromSubscription(filtered)
+      } else {
+        // Get the list of packets the other tabs are using
+        let packetsInUse = []
+        this.config.tabs.forEach((tab, i) => {
+          // Skip tabs with items
+          if (tab.items) return
+
+          if (i !== tabIndex) {
+            packetsInUse = packetsInUse.concat(tab.packets.map(this.packetKey))
+          }
+        })
+        // Filter out any packets that are in use
+        let filtered = this.config.tabs[tabIndex].packets.filter(
+          (packet) => packetsInUse.indexOf(this.packetKey(packet)) === -1,
+        )
+        if (filtered.length > 0) {
+          this.removeFromSubscription(filtered)
+        }
       }
       this.config.tabs.splice(tabIndex, 1)
     },
@@ -687,12 +860,12 @@ export default {
 </script>
 
 <style scoped>
-.v-expansion-panel-content {
+.v-expansion-panel-text {
   .container {
     margin: 0px;
   }
 }
-.v-expansion-panel-header {
+.v-expansion-panel-title {
   min-height: 10px;
   padding: 5px;
 }

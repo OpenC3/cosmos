@@ -13,43 +13,36 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
 <template>
   <div class="value-widget-container">
-    <v-tooltip bottom>
-      <template v-slot:activator="{ on, attrs }">
+    <v-tooltip location="bottom">
+      <template v-slot:activator="{ props }">
         <v-text-field
-          solo
-          dense
+          variant="solo"
+          density="compact"
           readonly
           single-line
           hide-no-data
           hide-details
-          placeholder="Value"
-          :value="_value"
+          width="500"
+          :model-value="_value"
           :class="valueClass"
           :style="computedStyle"
           data-test="value"
           @contextmenu="showContextMenu"
-          v-bind="attrs"
-          v-on="on"
+          v-bind="props"
         />
       </template>
       <span>{{ fullName }}</span>
     </v-tooltip>
-    <v-menu
-      v-model="contextMenuShown"
-      :position-x="x"
-      :position-y="y"
-      absolute
-      offset-y
-    >
+    <v-menu v-model="contextMenuShown" :target="[x, y]">
       <v-list>
         <v-list-item
           v-for="(item, index) in contextMenuOptions"
@@ -102,6 +95,9 @@ export default {
   max-height: none !important;
   line-height: 70px !important;
   font-size: 60px !important;
+}
+.value-widget-container :deep(.v-field__loader) {
+  display: none !important;
 }
 // TODO: These openc3 styles are also defined in assets/stylesheets/layout/_overrides.scss
 // Can they somehow be reused here? We need to force the style down into the input

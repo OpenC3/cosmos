@@ -18,14 +18,15 @@
 
 require 'rails_helper'
 require 'openc3/utilities/aws_bucket'
+require_relative '../../app/models/script'
 
 RSpec.describe ScriptsController, :type => :controller do
-  describe "create" do
-    before(:each) do
-      ENV.delete('OPENC3_LOCAL_MODE')
-      mock_redis()
-    end
+  before(:each) do
+    ENV.delete('OPENC3_LOCAL_MODE')
+    mock_redis()
+  end
 
+  describe "create" do
     it "creates a script when none exist" do
       s3 = instance_double("Aws::S3::Client")
       # nil means no script exists
@@ -70,10 +71,24 @@ RSpec.describe ScriptsController, :type => :controller do
     it "does not pass params which aren't permitted" do
       expect(Script).to receive(:create) do |params|
         # Check that we don't pass extra params
-        expect(params.keys).to eql(%w(scope name text breakpoints))
+        expect(params.keys).to eql(%w(text breakpoints scope name))
       end
       post :create, params: { scope: 'DEFAULT', name: 'script.rb', text: 'text', breakpoints: [1], other: 'nope' }
       expect(response).to have_http_status(:ok)
+    end
+  end
+
+  describe "run" do
+    it "returns an ok response" do
+      expect(Script).to receive(:run).with('DEFAULT', 'INST/procedures/test.rb', nil, false, nil, "Anonymous", "anonymous").and_return(1)
+      post :run, params: { scope: 'DEFAULT', name: 'INST/procedures/test.rb' }
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "returns an error response" do
+      expect(Script).to receive(:run).with('DEFAULT', 'INST/procedures/test.rb', nil, false, nil, "Anonymous", "anonymous")
+      post :run, params: { scope: 'DEFAULT', name: 'INST/procedures/test.rb' }
+      expect(response).to have_http_status(:not_found)
     end
   end
 end

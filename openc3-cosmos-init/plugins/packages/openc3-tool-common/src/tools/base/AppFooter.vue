@@ -28,13 +28,14 @@
       {{ license }}</span
     >
     <v-spacer />
-    <a :href="sourceUrl" class="white--text text-decoration-underline">
+    <a :href="sourceUrl" class="text-white text-decoration-underline">
       Source
     </a>
     <v-spacer />
     <div class="justify-right"><clock-footer /></div>
     <upgrade-to-enterprise-dialog
       v-model="showUpgradeToEnterpriseDialog"
+      reason="Enterprise is Commercially Licensed"
     ></upgrade-to-enterprise-dialog>
   </v-footer>
 </template>

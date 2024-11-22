@@ -56,7 +56,7 @@ module OpenC3
     end
 
     describe "files_between_time" do
-      it "returns empty array for non-existant bucket" do
+      it "returns empty array for non-existent bucket" do
         allow(@client).to receive(:exist?).and_return(false)
         files = BucketUtilities.files_between_time('blah', "DEFAULT/decom_logs/tlm/UNITTEST", Time.now, Time.now)
         expect(files).to eql []

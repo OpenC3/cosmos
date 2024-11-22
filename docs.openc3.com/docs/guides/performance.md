@@ -1,5 +1,8 @@
 ---
 title: Performance
+description: Hardware requirements like memory and CPU
+sidebar_custom_props:
+  myEmoji: 📊
 ---
 
 The COSMOS architecture was created with scalability in mind. Our goal is to support an unlimited number of connections and use cloud technologies to scale. Only [COSMOS Enterprise Edition](https://openc3.com/enterprise) supports Kubernetes and the various cloud platforms which allow this level of scalability. While true scalability is only achieved in COSMOS Enterprise, both Open Source and Enterprise have various levels of observability and configuration settings which can affect performance.

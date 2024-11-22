@@ -1,5 +1,8 @@
 ---
 title: Table Manager
+description: Binary file editor with upload / download
+sidebar_custom_props:
+  myEmoji: 🛠️
 ---
 
 ## Introduction

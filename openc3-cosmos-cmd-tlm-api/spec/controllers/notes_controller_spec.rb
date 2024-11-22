@@ -14,10 +14,10 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'rails_helper'
@@ -208,7 +208,7 @@ RSpec.describe NotesController, :type => :controller do
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
       delete :destroy, params: { 'scope' => 'DEFAULT', 'id' => json['start'] }
-      expect(response).to have_http_status(:no_content)
+      expect(response).to have_http_status(:success)
       get :index, params: { 'scope' => 'DEFAULT', 'name' => json['name'] }
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)

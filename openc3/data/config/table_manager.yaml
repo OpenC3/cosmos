@@ -53,7 +53,7 @@ TABLE:
         or a ROW_COLUMN table with identical rows containing different values.
       values:
         KEY_VALUE:
-          summary: Table rows will be unique items (previously ONE_DIMENSIONAL, now deprecated)
+          summary: Table rows will be unique items
           parameters:
             - name: Description
               requires: true
@@ -61,7 +61,7 @@ TABLE:
                 used in mouseover popups and status line information.
               values: "['\"].*['\"]"
         ROW_COLUMN:
-          summary: Table rows will be indentical with multiple columns (previously TWO_DIMENSIONAL, now deprecated)
+          summary: Table rows will be identical with multiple columns
           parameters:
             - name: Rows
               requires: true
@@ -77,7 +77,7 @@ SELECT_TABLE:
   parameters:
     - name: Table
       required: true
-      description: The name of the existin table
+      description: The name of the existing table
       values: .*
 DEFAULT:
   summary: Specify default values for a SINGLE row in a multi-column table
