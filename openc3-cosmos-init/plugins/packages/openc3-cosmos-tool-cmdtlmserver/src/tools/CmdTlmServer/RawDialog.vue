@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -180,7 +180,9 @@ export default {
     },
     numRows() {
       // This is because v-textarea doesn't behave correctly with really long monospace text
-      return this.rawData.split('\n').length
+      let lines = this.rawData.split('\n').length
+      // Add a small fudge factor every 2000 lines to prevent clipping at the bottom
+      return lines + Math.floor(lines / 2000)
     },
   },
   mounted() {
@@ -363,5 +365,6 @@ export default {
 .v-textarea :deep(textarea) {
   margin-top: 10px;
   font-family: 'Courier New', Courier, monospace;
+  overflow-y: hidden;
 }
 </style>
