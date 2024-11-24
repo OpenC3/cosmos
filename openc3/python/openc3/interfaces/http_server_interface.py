@@ -161,7 +161,7 @@ class HttpServerInterface(Interface):
     def read_interface(self):
         data, extra = self.request_queue.get(block=True)
         if data is None:
-            return None
+            return data, extra
         self.read_interface_base(data, extra)
         return data, extra
 

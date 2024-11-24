@@ -75,7 +75,7 @@ class MyInterface(Interface):
         if MyInterface.read_interface_raise:
             raise RuntimeError("test-error")
         time.sleep(0.1)
-        return (self.data, None)
+        return self.data, None
 
     def interface_cmd(self, cmd_name, *cmd_args):
         self.interface_cmd_name = cmd_name

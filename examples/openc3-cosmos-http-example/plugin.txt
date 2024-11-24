@@ -7,6 +7,7 @@ VARIABLE python_server_port 9191
 TARGET RUBY_CLIENT RUBY_CLIENT
 INTERFACE RUBY_CLIENT_INT http_client_interface.rb <%= client_hostname %> <%= client_port %> <%= client_protocol %> 5.0 5.0
   MAP_TARGET RUBY_CLIENT
+  DONT_CONNECT # We can only connect one at a time
   OPTION PERIODIC_CMD DONT_LOG 1.0 "RUBY_CLIENT TLM"
 
 TARGET RUBY_SERVER RUBY_SERVER

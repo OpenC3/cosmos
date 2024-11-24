@@ -11,6 +11,9 @@
     },
     {
       "path": "../cosmos-enterprise-project"
+    },
+    {
+      "path": "../cosmos-enterprise-plugins"
     }
   ],
   "settings": {

@@ -91,7 +91,7 @@ class HttpClientInterface(Interface):
         while not self.response_queue.empty():
             self.response_queue.get_nowait()
         super().disconnect()
-        self.response_queue.put(None)
+        self.response_queue.put((None, None))
 
     # Called to convert a packet into a data buffer. Write protocols then
     # potentially modify the data in their write_data methods. Finally
@@ -131,13 +131,14 @@ class HttpClientInterface(Interface):
         if resp:
             response_extra["HTTP_REQUEST"] = [data, extra]
             if resp.headers and len(resp.headers) > 0:
-                response_extra["HTTP_HEADERS"] = resp.headers
+                # Cast headers to a dictionary so it can be serialized
+                # because the requst library returns CaseInsensitiveDict
+                response_extra["HTTP_HEADERS"] = dict(resp.headers)
             response_extra["HTTP_STATUS"] = resp.status_code
             response_data = bytearray(resp.text, encoding="utf-8")
             response_data = response_data or b""  # Ensure an empty string
 
-        self.response_queue.put([response_data, response_extra])
-
+        self.response_queue.put((response_data, response_extra))
         self.write_interface_base(data, extra)
         return data, extra
 
@@ -149,10 +150,9 @@ class HttpClientInterface(Interface):
     def read_interface(self):
         data, extra = self.response_queue.get(block=True)
         if data is None:
-            return None
+            return data, extra
         self.read_interface_base(data, extra)
         return data, extra
-
 
     # Called to convert the read data into a OpenC3 Packet object
     #
@@ -176,8 +176,8 @@ class HttpClientInterface(Interface):
         packet.accessor = HttpAccessor(packet)
         # Grab the request extra set in the write_interface method
         request_extra = None
-        if extra and extra['HTTP_REQUEST']:
-            request_extra = extra['HTTP_REQUEST'][1]
+        if extra and extra["HTTP_REQUEST"]:
+            request_extra = extra["HTTP_REQUEST"][1]
         if request_extra is not None:
             # Identify the response
             request_target_name = request_extra.get("HTTP_REQUEST_TARGET_NAME")

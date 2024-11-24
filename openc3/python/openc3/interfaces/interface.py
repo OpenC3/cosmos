@@ -151,6 +151,7 @@ class Interface:
         try:
             first = True
             while True:
+                extra = None
                 # Protocols may have cached data for a packet, so initially just inject a blank string
                 # Otherwise we can hold off outputting other packets where all the data has already
                 # been received
@@ -164,7 +165,6 @@ class Interface:
                     data = b""
                     first = False
 
-                extra = None
                 for protocol in self.read_protocols:
                     data, extra = protocol.read_data(data, extra)
                     if data == "DISCONNECT":

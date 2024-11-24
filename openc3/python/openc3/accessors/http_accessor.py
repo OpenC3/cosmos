@@ -50,7 +50,7 @@ class HttpAccessor(Accessor):
                 query_name = item_name[11:].lower()
             else:
                 query_name = item.key
-            queries = self.packet.extra["HTTP_QUERIES"]
+            queries = self.packet.extra.get("HTTP_QUERIES")
             if queries:
                 return queries[query_name]
             else:
@@ -63,7 +63,7 @@ class HttpAccessor(Accessor):
                 header_name = item_name[12:].lower()
             else:
                 header_name = item.key
-            headers = self.packet.extra["HTTP_HEADERS"]
+            headers = self.packet.extra.get("HTTP_HEADERS")
             if headers:
                 return headers[header_name]
             else:
@@ -78,7 +78,6 @@ class HttpAccessor(Accessor):
             return self.packet.extra[item.name]
 
         if item.name in [
-            "HTTP_STATUS",
             "HTTP_PATH",
             "HTTP_METHOD",
             "HTTP_PACKET",
@@ -100,7 +99,7 @@ class HttpAccessor(Accessor):
                 query_name = item_name[11:].lower()
             else:
                 query_name = item.key
-            self.packet.extra["HTTP_QUERIES"] = self.packet.extra["HTTP_QUERIES"] or {}
+            self.packet.extra["HTTP_QUERIES"] = self.packet.extra.get("HTTP_QUERIES", {})
             queries = self.packet.extra["HTTP_QUERIES"]
             queries[query_name] = str(value)
             return queries[query_name]
@@ -111,7 +110,7 @@ class HttpAccessor(Accessor):
                 header_name = item_name[12:].lower()
             else:
                 header_name = item.key
-            self.packet.extra["HTTP_HEADERS"] = self.packet.extra["HTTP_HEADERS"] or {}
+            self.packet.extra["HTTP_HEADERS"] = self.packet.extra.get("HTTP_HEADERS", {})
             headers = self.packet.extra["HTTP_HEADERS"]
             headers[header_name] = str(value)
             return headers[header_name]
