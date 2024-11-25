@@ -1,12 +1,8 @@
-## OpenC3 Tool Common Javascript Library
+## OpenC3 JS Common Javascript Library
 
 [Documentation](https://openc3.com)
 
-This package captures the code common between OpenC3 first-party tools
-
-## Getting Started
-
-1.  At the OpenC3 Admin - Plugins, upload the openc3-tool-base.gem file
+This package contains library code for all COSMOS frontend development across stacks and frameworks
 
 ## Contributing
 

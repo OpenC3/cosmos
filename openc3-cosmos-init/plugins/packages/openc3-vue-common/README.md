@@ -1,12 +1,8 @@
-## OpenC3 Tool Common Javascript Library
+## OpenC3 Vue Common Javascript Library
 
 [Documentation](https://openc3.com)
 
-This package captures the code common between OpenC3 first-party tools
-
-## Getting Started
-
-1.  At the OpenC3 Admin - Plugins, upload the openc3-tool-base.gem file
+This package captures Vue components for re-use when developing OpenC3 tools
 
 ## Contributing
 
