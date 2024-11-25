@@ -82,3 +82,15 @@ TOOL:
           required: false
           description: Regex to match against filenames. If match, then no ERB processing
           values: .+
+    IMPORT_MAP_ITEM:
+      summary: Add an item to the import map
+      since: 6.0.0
+      parameters:
+        - name: key
+          required: true
+          description: Import Map Key
+          values: .+
+        - name: value
+          required: true
+          description: Import Map Value
+          values: .+

@@ -45,16 +45,20 @@ class ToolsController < ModelController
   end
 
   def importmap
-    result = ""
+    result = Hash.new
+    result["imports"] = Hash.new
+
     tools = @model_class.all_scopes
     inline_tools = {}
     tools.each do |key, tool|
-      inline_tools[key] = tool if tool['inline_url'] and tool['window'] == 'INLINE'
-    end
-    result = Hash.new
-    result["imports"] = Hash.new
-    inline_tools.each do |key, tool|
-      result["imports"]["@openc3/tool-#{tool['folder_name']}"] = "/tools/#{tool['folder_name']}/#{tool['inline_url']}"
+      if tool['import_map_items']
+        tool['import_map_items'].each do |item_key, item|
+          result["imports"][item_key] = item
+        end
+      end
+      if tool['inline_url'] and tool['window'] == 'INLINE'
+        result["imports"]["@openc3/tool-#{tool['folder_name']}"] = "/tools/#{tool['folder_name']}/#{tool['inline_url']}"
+      end
     end
     render json: result
   end
