@@ -1,6 +1,5 @@
 import { defineConfig } from 'vite'
 import { createHtmlPlugin } from 'vite-plugin-html'
-import { vitePluginSingleSpa } from 'vite-plugin-single-spa'
 import vue from '@vitejs/plugin-vue'
 
 const DEFAULT_EXTENSIONS = ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json']
@@ -18,10 +17,6 @@ export default defineConfig({
   },
   plugins: [
     vue(),
-    vitePluginSingleSpa({
-      type: 'root',
-      imo: () => 'public/js/import-map-overrides-3.1.1.min.js',
-    }),
     createHtmlPlugin({
       template: 'index.html',
     }),

@@ -16,12 +16,6 @@ export default defineConfig({
       formats: ['umd'],
     },
     rollupOptions: {
-      output: {
-        globals: {
-          vue: 'Vue',
-          vuetify: 'Vuetify',
-        },
-      },
       external: ['vue', 'vuetify'],
     },
   },

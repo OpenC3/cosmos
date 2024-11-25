@@ -1,6 +1,5 @@
 import { resolve } from 'path'
 import { defineConfig } from 'vite'
-import { vitePluginSingleSpa } from 'vite-plugin-single-spa'
 import vue from '@vitejs/plugin-vue'
 import { devServerPlugin } from '@openc3/tool-common/viteDevServerPlugin'
 
@@ -12,20 +11,19 @@ export default defineConfig((options) => {
       outDir: 'tools/tlmviewer',
       emptyOutDir: true,
       rollupOptions: {
+        input: 'src/main.js',
         output: {
           format: 'systemjs',
+          entryFileNames: `[name].js`,
         },
+        external: ['vue', 'vuex', 'vue-router', 'vuetify'],
+        preserveEntrySignatures: 'strict',
       },
     },
-    plugins: [
-      vue(),
-      vitePluginSingleSpa({
-        type: 'mife', // micro front-end
-        serverPort: 2920,
-        spaEntryPoints: 'src/main.js',
-      }),
-      devServerPlugin(options),
-    ],
+    server: {
+      port: 2920,
+    },
+    plugins: [vue(), devServerPlugin(options)],
     resolve: {
       alias: {
         '@': resolve(__dirname, './src'),

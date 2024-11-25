@@ -16,45 +16,14 @@ export default defineConfig({
       formats: ['umd'],
     },
     rollupOptions: {
-      // input: ['./src/BigWidget.vue'],
-      output: {
-        // entryFileNames: 'BigWidget.umd.min.js',
-        // format: 'umd',
-        globals: {
-          vue: 'Vue',
-          vuetify: 'Vuetify',
-        },
-      },
       external: ['vue', 'vuetify'],
     },
   },
   plugins: [
     vue(),
-    /*
-    federation({
-      name: 'BigWidget',
-      filename: 'BigWidget.umd.min.js',
-      exposes: {
-        './BigWidget': './src/BigWidget.vue',
-      },
-    }),
-    */
     VitePluginStyleInject(),
   ],
   resolve: {
     extensions: [...DEFAULT_EXTENSIONS, '.vue'], // not recommended but saves us from having to change every SFC import
-    // dedupe: ['vue'],
-    /*
-    alias: {
-      vue: 'window.Vue',
-      vuetify: 'window.Vuetify',
-    },
-    */
   },
-  /*
-  optimizeDeps: {
-    entries: [],
-    // exclude: ['vue', 'vuetify'],
-  },
-  */
 })
