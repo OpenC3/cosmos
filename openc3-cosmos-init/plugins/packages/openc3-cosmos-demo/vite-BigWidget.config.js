@@ -19,10 +19,7 @@ export default defineConfig({
       external: ['vue', 'vuetify'],
     },
   },
-  plugins: [
-    vue(),
-    VitePluginStyleInject(),
-  ],
+  plugins: [vue(), VitePluginStyleInject()],
   resolve: {
     extensions: [...DEFAULT_EXTENSIONS, '.vue'], // not recommended but saves us from having to change every SFC import
   },
