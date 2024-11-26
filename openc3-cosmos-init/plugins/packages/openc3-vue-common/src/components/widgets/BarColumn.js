@@ -17,7 +17,7 @@
 */
 
 import Widget from './Widget'
-import { OpenC3Api } from '../../services/openc3-api.js'
+import { OpenC3Api } from '@openc3/js-common/services'
 
 export default {
   mixins: [Widget],

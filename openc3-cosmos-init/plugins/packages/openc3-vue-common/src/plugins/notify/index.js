@@ -21,7 +21,7 @@
 */
 
 import { createApp } from 'vue'
-import vuetify from '../vuetify'
+import { vuetify } from '@/plugins'
 import Toast from './Toast.vue'
 
 class Notify {

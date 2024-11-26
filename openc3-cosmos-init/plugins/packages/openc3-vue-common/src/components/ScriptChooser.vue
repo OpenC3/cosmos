@@ -41,7 +41,7 @@
 </template>
 
 <script>
-import Api from '../services/api'
+import { Api } from '@openc3/js-common/services'
 
 export default {
   // TODO: cache items

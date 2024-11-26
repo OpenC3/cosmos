@@ -177,10 +177,8 @@
 
 <script>
 import { uniqueId } from 'lodash'
-import Api from '../services/api'
-import { ConfigParserService } from '../services/config-parser'
-import { OpenC3Api } from '../services/openc3-api'
-import EditScreenDialog from './EditScreenDialog'
+import { Api, ConfigParserService, OpenC3Api } from '@openc3/js-common/services'
+import EditScreenDialog from './EditScreenDialog.vue'
 import WidgetComponents from './widgets/WidgetComponents'
 
 const MAX_ERRORS = 20

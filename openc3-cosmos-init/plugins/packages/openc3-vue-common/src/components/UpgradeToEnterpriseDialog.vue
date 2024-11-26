@@ -60,7 +60,7 @@
 </template>
 
 <script>
-import logo from '../../public/img/logo.png'
+import logo from '/img/logo.png'
 
 export default {
   props: {

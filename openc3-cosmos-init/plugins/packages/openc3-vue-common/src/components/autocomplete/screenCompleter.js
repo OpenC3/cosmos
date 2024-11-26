@@ -16,8 +16,7 @@
 # if purchased from OpenC3, Inc.
 */
 
-import Api from '../../services/api'
-import { OpenC3Api } from '../../services/openc3-api'
+import { Api, OpenC3Api } from '@openc3/js-common/services'
 
 // Test data useful for testing ScreenCompleter
 // var autocompleteData = [

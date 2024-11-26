@@ -38,8 +38,9 @@
 </template>
 
 <script>
-import HorizontalWidget from './HorizontalWidget'
+import HorizontalWidget from './HorizontalWidget.vue'
 import Layout from './Layout'
+
 export default {
   mixins: [Layout],
   components: {

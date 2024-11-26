@@ -42,7 +42,7 @@
 
 <script>
 import Layout from './Layout'
-import VerticalWidget from './VerticalWidget'
+import VerticalWidget from './VerticalWidget.vue'
 
 export default {
   mixins: [Layout],

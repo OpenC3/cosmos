@@ -1,13 +1,42 @@
+import { resolve } from 'path'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
-const DEFAULT_EXTENSIONS = ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json']
-
 export default defineConfig({
-  plugins: [
-    vue(),
-  ],
+  build: {
+    sourcemap: true,
+    lib: {
+      entry: {
+        'components': './src/components/index.js',
+        'plugins': './src/plugins/index.js',
+        'util': './src/util/index.js',
+      },
+      name: '@openc3/vue-common',
+    },
+    rollupOptions: {
+      preserveEntrySignatures: 'strict',
+      onwarn: (warning, warn) => {
+        const ignoredWarnings = [
+          // We do eval on purpose 😈
+          'Use of eval in "src/components/widgets/ButtonWidget.vue" is strongly discouraged',
+
+          // TODO: Is this actually an issue?
+          // This warning comes up for all the widgets because we statically import them in other widgets, as well as
+          // dynamically import them in WidgetComponents.js, which is needed to make screens work.
+          'widgets/index.js, dynamic import will not move module into another chunk',
+        ]
+
+        if (ignoredWarnings.some((ignoredWarning) => warning.message.includes(ignoredWarning))) {
+          return
+        }
+        warn(warning)
+      },
+    },
+  },
+  plugins: [vue()],
   resolve: {
-    extensions: [...DEFAULT_EXTENSIONS, '.vue'], // not recommended but saves us from having to change every SFC import
+    alias: {
+      '@': resolve(__dirname, './src'),
+    },
   },
 })

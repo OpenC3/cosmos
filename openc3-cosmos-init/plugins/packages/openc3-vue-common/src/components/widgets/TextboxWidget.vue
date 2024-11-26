@@ -58,8 +58,8 @@
 </template>
 
 <script>
+import { DetailsDialog } from '@/components'
 import VWidget from './VWidget'
-import DetailsDialog from '../../components/DetailsDialog'
 import 'sprintf-js'
 
 export default {

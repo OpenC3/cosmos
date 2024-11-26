@@ -214,7 +214,7 @@
 </template>
 
 <script>
-import TimeFilters from '@openc3/tool-common/src/tools/base/util/timeFilters.js'
+import { TimeFilters } from '@/util'
 import { isValid, parse, toDate } from 'date-fns'
 export default {
   props: {

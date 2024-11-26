@@ -134,8 +134,8 @@
 </template>
 
 <script>
-import Api from '../services/api'
-import { fileIcon } from '../tools/base/util/fileIcon'
+import { Api } from '@openc3/js-common/services'
+import { fileIcon } from '@/util/fileIcon'
 
 export default {
   props: {

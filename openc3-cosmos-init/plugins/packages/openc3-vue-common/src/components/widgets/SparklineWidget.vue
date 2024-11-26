@@ -36,7 +36,7 @@
 
 <script>
 import GraphWidget from './GraphWidget'
-import Graph from '../Graph.vue'
+import { Graph } from '@/components'
 
 export default {
   components: {

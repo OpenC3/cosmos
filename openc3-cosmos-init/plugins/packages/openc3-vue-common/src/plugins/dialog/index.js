@@ -20,7 +20,7 @@
 # if purchased from OpenC3, Inc.
 */
 
-import vuetify from '../vuetify'
+import { vuetify } from '@/plugins'
 import ConfirmDialog from './ConfirmDialog.vue'
 
 class Dialog {

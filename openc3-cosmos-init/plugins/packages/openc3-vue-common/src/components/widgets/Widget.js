@@ -20,7 +20,7 @@
 # if purchased from OpenC3, Inc.
 */
 
-import { ConfigParserError } from '@openc3/tool-common/src/services/config-parser'
+import { ConfigParserError } from '@openc3/js-common/services'
 import WidgetComponents from './WidgetComponents'
 
 export default {

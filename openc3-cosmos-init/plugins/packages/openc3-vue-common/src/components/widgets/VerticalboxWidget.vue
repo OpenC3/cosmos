@@ -37,7 +37,7 @@
 </template>
 
 <script>
-import VerticalWidget from './VerticalWidget'
+import VerticalWidget from './VerticalWidget.vue'
 import Layout from './Layout'
 
 export default {

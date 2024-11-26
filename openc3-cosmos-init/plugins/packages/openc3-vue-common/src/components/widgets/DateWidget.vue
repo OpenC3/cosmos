@@ -28,7 +28,7 @@
 
 <script>
 import Widget from './Widget'
-import TimeFilters from '@openc3/tool-common/src/tools/base/util/timeFilters.js'
+import { TimeFilters } from '@/util'
 
 export default {
   mixins: [Widget, TimeFilters],

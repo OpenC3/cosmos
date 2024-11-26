@@ -56,10 +56,9 @@
 </template>
 
 <script>
-import { OpenC3Api } from '../../services/openc3-api'
-import Api from '../../services/api'
+import { Api, OpenC3Api } from '@openc3/js-common/services'
+import { CriticalCmdDialog } from '@/components'
 import Widget from './Widget'
-import CriticalCmdDialog from '@openc3/tool-common/src/components/CriticalCmdDialog'
 
 export default {
   mixins: [Widget],

@@ -83,7 +83,7 @@
 
 <script>
 import axios from 'axios'
-import Api from '../services/api.js'
+import { Api } from '@openc3/js-common/services'
 
 export default {
   props: {

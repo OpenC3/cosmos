@@ -63,8 +63,8 @@
 import {
   AstroStatusColors,
   getStatusColorContrast,
-} from '../../components/icons'
-import vuetify from '../vuetify.js'
+} from '@/components/icons'
+import { vuetify } from '@/plugins'
 
 export default {
   vuetify,

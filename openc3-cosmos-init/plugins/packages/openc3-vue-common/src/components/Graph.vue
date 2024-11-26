@@ -316,12 +316,12 @@
 </template>
 
 <script>
-import GraphEditDialog from './GraphEditDialog'
-import GraphEditItemDialog from './GraphEditItemDialog'
+import GraphEditDialog from './GraphEditDialog.vue'
+import GraphEditItemDialog from './GraphEditItemDialog.vue'
 import uPlot from 'uplot'
 import bs from 'binary-search'
-import Cable from '../services/cable.js'
-import TimeFilters from '@openc3/tool-common/src/tools/base/util/timeFilters.js'
+import { Cable } from '@openc3/js-common/services'
+import { TimeFilters } from '@/util'
 
 import 'uplot/dist/uPlot.min.css'
 

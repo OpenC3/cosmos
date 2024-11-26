@@ -20,7 +20,7 @@
 # if purchased from OpenC3, Inc.
 */
 
-import TimeFilters from '../../tools/base/util/timeFilters.js'
+import { TimeFilters } from '@/util'
 import Widget from './Widget'
 import FormatValueBase from './FormatValueBase'
 export default {

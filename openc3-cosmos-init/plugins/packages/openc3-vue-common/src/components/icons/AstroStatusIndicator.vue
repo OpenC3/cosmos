@@ -26,8 +26,8 @@
 
 <script>
 import { AstroStatuses, UnknownToAstroStatus } from '.'
-import dark from '../../../public/icons/status-dark.png'
-import light from '../../../public/icons/status-light.png'
+import dark from '/icons/status-dark.png'
+import light from '/icons/status-light.png'
 
 export default {
   props: {

@@ -27,7 +27,7 @@
 </template>
 
 <script>
-import Widget from '@openc3/tool-common/src/components/widgets/Widget'
+import Widget from './Widget'
 
 export default {
   mixins: [Widget],

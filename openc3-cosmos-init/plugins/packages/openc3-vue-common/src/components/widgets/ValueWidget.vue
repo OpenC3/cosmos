@@ -69,8 +69,9 @@
 // width applies to the enclosing div and not the underlying input
 const INPUT_PADDING = 4
 
+import { DetailsDialog } from '@/components'
 import VWidget from './VWidget'
-import DetailsDialog from '../../components/DetailsDialog'
+
 export default {
   components: {
     DetailsDialog,

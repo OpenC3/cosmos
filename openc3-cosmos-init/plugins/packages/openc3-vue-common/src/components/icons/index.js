@@ -21,8 +21,8 @@
 */
 
 import { h } from 'vue'
-import CosmosRuxIcon from './CosmosRuxIcon'
-import AstroStatusIndicator from './AstroStatusIndicator'
+import CosmosRuxIcon from './CosmosRuxIcon.vue'
+import AstroStatusIndicator from './AstroStatusIndicator.vue'
 
 const UnknownToAstroStatus = {
   fatal: 'critical',

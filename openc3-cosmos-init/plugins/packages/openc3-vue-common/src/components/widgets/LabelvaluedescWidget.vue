@@ -46,7 +46,7 @@
 import Widget from './Widget'
 import LabelWidget from './LabelWidget.vue'
 import ValueWidget from './ValueWidget.vue'
-import { OpenC3Api } from '../../services/openc3-api.js'
+import { OpenC3Api } from '@openc3/js-common/services'
 
 export default {
   mixins: [Widget],

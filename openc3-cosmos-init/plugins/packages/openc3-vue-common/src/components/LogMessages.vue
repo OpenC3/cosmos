@@ -127,12 +127,12 @@
 
 <script>
 import { format } from 'date-fns'
-import Cable from '../services/cable.js'
+import { Cable } from '@openc3/js-common/services'
 import {
   AstroStatusColors,
   UnknownToAstroStatus,
-} from '@openc3/tool-common/src/components/icons'
-import TimeFilters from '@openc3/tool-common/src/tools/base/util/timeFilters.js'
+} from '@/components/icons'
+import { TimeFilters } from '@/util'
 
 export default {
   props: {
