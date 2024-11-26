@@ -44,11 +44,10 @@ class FormAccessor(Accessor):
 
         if isinstance(value, list):
             for value_value in value:
-                ary.append([item.key, value_value])
+                ary.append((item.key, value_value))
         else:
-            ary.append([item.key, value])
-
-        buffer.replace(urllib.parse.urlencode(ary))
+            ary.append((item.key, value))
+        buffer[:] = urllib.parse.urlencode(ary).encode()
         return value
 
     # If this is set it will enforce that buffer data is encoded

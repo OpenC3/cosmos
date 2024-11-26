@@ -25,7 +25,13 @@ from openc3.utilities.logger import Logger
 
 
 class Handler(BaseHTTPRequestHandler):
+    def do_POST(self):
+        self.handle_request()
+
     def do_GET(self):
+        self.handle_request()
+
+    def handle_request(self):
         if self.server.lookup.get(self.path):
             packets = self.server.lookup[self.path]
             status = 200
@@ -55,7 +61,7 @@ class Handler(BaseHTTPRequestHandler):
                 try:
                     packet_name = packet.read("HTTP_PACKET")
                 except Exception:
-                    # No packet name means dont save the request as telemetry
+                    # No packet name means don't save the request as telemetry
                     pass
                 if packet_name:
                     data = b""
@@ -68,7 +74,7 @@ class Handler(BaseHTTPRequestHandler):
 
                     if self.headers:
                         extra["HTTP_HEADERS"] = {}
-                        for key, value in headers.items():
+                        for key, value in self.headers.items():
                             extra["HTTP_HEADERS"][key.lower()] = value
 
                     queries = {}
@@ -83,7 +89,7 @@ class Handler(BaseHTTPRequestHandler):
                         for key, value in queries.items():
                             extra["HTTP_QUERIES"][key] = value
 
-                    self.server.request_queue.put([data, extra])
+                    self.server.request_queue.put((data, extra))
 
 
 class HttpServerInterface(Interface):
@@ -93,8 +99,6 @@ class HttpServerInterface(Interface):
         self.listen_address = "0.0.0.0"  # Default to ANY
         self.port = int(port)
         self.server = None
-        self.request_queue = queue.Queue()
-        self.build_path_lookup()
 
     def build_path_lookup(self):
         self.lookup = {}
@@ -110,7 +114,7 @@ class HttpServerInterface(Interface):
                         f"HttpServerInterface Packet {target_name} {packet_name} unable to read HTTP_PATH\n{repr(error)}"
                     )
                 if path:
-                    self.lookup[path] = self.lookup[path] or []
+                    self.lookup[path] = self.lookup.get(path) or []
                     self.lookup[path].append(packet)
 
     # Supported Options
@@ -126,10 +130,14 @@ class HttpServerInterface(Interface):
 
     # Connects the interface to its target(s)
     def connect(self):
-        super().connect()
+        # Can't build the lookup until after init because the target_names are not set
+        self.build_path_lookup()
         self.server = ThreadingHTTPServer((self.listen_address, self.port), Handler)
-        self.server_thread = Thread(target=self.server.serve_forever())
+        self.server.request_queue = queue.Queue()
+        self.server.lookup = self.lookup
+        self.server_thread = Thread(target=self.server.serve_forever)
         self.server_thread.start()
+        super().connect()
 
     def connected(self):
         if self.server:
@@ -143,23 +151,16 @@ class HttpServerInterface(Interface):
             self.server.shutdown()
             self.server_thread.join()
         self.server = None
-        try:
-            while True:
-                # raises queue.Empty once empty
-                self.request_queue.get_nowait()
-        except queue.Empty:
-            pass
         super().disconnect()
-        self.request_queue.put(None)
 
-    def convert_packet_to_data(self, _packet):
+    def convert_packet_to_data(self, packet):
         raise RuntimeError("Commands cannot be sent to HttpServerInterface")
 
-    def write_interface(self, _data, _extra=None):
+    def write_interface(self, data, extra=None):
         raise RuntimeError("Commands cannot be sent to HttpServerInterface")
 
     def read_interface(self):
-        data, extra = self.request_queue.get(block=True)
+        data, extra = self.server.request_queue.get(block=True)
         if data is None:
             return data, extra
         self.read_interface_base(data, extra)
@@ -170,7 +171,7 @@ class HttpServerInterface(Interface):
     # @param data [String] Raw packet data
     # @return [Packet] OpenC3 Packet with buffer filled with data
     def convert_data_to_packet(self, data, extra=None):
-        packet = Packet(None, None, "BIG_ENDIAN", None, str(data))
+        packet = Packet(None, None, "BIG_ENDIAN", None, data)
         packet.accessor = HttpAccessor(packet)
         if extra:
             # Identify the response
@@ -179,8 +180,8 @@ class HttpServerInterface(Interface):
             if request_target_name and request_packet_name:
                 packet.target_name = str(request_target_name).upper()
                 packet.packet_name = str(request_packet_name).upper()
-            extra.delete("HTTP_REQUEST_TARGET_NAME")
-            extra.delete("HTTP_REQUEST_PACKET_NAME")
+            extra.pop("HTTP_REQUEST_TARGET_NAME", None)
+            extra.pop("HTTP_REQUEST_PACKET_NAME", None)
             packet.extra = extra
 
         return packet
