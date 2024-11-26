@@ -16,7 +16,7 @@ export default defineConfig((options) => {
           format: 'systemjs',
           entryFileNames: `[name].js`,
         },
-        external: ['vue', 'vuex', 'vue-router', 'vuetify'],
+        external: ['single-spa', 'vue', 'vuex', 'vue-router', 'vuetify'],
         preserveEntrySignatures: 'strict',
       },
     },

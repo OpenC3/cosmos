@@ -1,9 +1,3 @@
 TOOL base Base
   SHOWN false
   POSITION 0 # Fixed as Base is not displayed
-  IMPORT_MAP_ITEM "single-spa" "/js/single-spa-5.9.5.min.js"
-  IMPORT_MAP_ITEM "vue" "/js/vue-3.5.4.min.js"
-  IMPORT_MAP_ITEM "vuetify" "/js/vuetify-3.7.1.min.js"
-  IMPORT_MAP_ITEM "vue-router" "/js/vue-router-4.4.4.min.js"
-  IMPORT_MAP_ITEM "vuex" "/js/vuex-4.1.0.min.js"
-  IMPORT_MAP_ITEM "openc3-tool-base" "/openc3-tool-base.js"

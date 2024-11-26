@@ -152,7 +152,7 @@ module OpenC3
       @position = position
 
       if @shown and @window == 'INLINE'
-        @inline_url = 'js/app.js' unless @inline_url
+        @inline_url = 'main.js' unless @inline_url
         @url = "/tools/#{folder_name}" unless @url
       end
       @needs_dependencies = needs_dependencies

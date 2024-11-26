@@ -8,22 +8,17 @@ export default defineConfig({
   build: {
     outDir: 'tools/base',
     emptyOutDir: true,
-    copyPublicDir: true,
+    rollupOptions: {
+      input: 'src/main.js',
+      output: {
+        format: 'systemjs',
+        entryFileNames: `[name].js`,
+      },
+      external: ['single-spa', 'vue', 'vuex', 'vue-router', 'vuetify'],
+      preserveEntrySignatures: 'strict',
+    },
   },
-  rollupOptions: {
-    input: 'src/openc3-tool-base.js',
-    format: 'systemjs',
-    preserveEntrySignatures: true,
-  },
-  plugins: [
-    vue(),
-    createHtmlPlugin({
-      template: 'index.html',
-    }),
-    createHtmlPlugin({
-      template: 'index-allow-http.html',
-    }),
-  ],
+  plugins: [vue()],
   resolve: {
     extensions: [...DEFAULT_EXTENSIONS, '.vue'], // not recommended but saves us from having to change every SFC import
   },

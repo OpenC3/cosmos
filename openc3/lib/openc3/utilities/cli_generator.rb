@@ -281,7 +281,6 @@ module OpenC3
 
       # Add this tool to plugin.txt
       js_file = 'main.js'
-      js_file = 'js/app.js' if tool_type == 'tool_vue'
       File.open("plugin.txt", 'a') do |file|
         file.puts <<~DOC
 
