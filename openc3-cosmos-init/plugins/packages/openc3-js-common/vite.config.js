@@ -1,13 +1,20 @@
+import { resolve } from 'path'
 import { defineConfig } from 'vite'
-import vue from '@vitejs/plugin-vue'
-
-const DEFAULT_EXTENSIONS = ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json']
 
 export default defineConfig({
-  plugins: [
-    vue(),
-  ],
+  build: {
+    sourcemap: true,
+    lib: {
+      entry: {
+        'services': './src/services/index.js',
+        'utils': './src/utils/index.js',
+      },
+      name: '@openc3/js-common',
+    },
+  },
   resolve: {
-    extensions: [...DEFAULT_EXTENSIONS, '.vue'], // not recommended but saves us from having to change every SFC import
+    alias: {
+      '@': resolve(__dirname, './src'),
+    },
   },
 })

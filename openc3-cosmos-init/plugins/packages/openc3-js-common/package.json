@@ -2,6 +2,25 @@
   "name": "@openc3/js-common",
   "version": "5.21.0-beta0",
   "type": "module",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    "./services": {
+      "import": "./dist/services.js",
+      "require": "./dist/services.cjs"
+    },
+    "./utils": {
+      "import": "./dist/utils.js",
+      "require": "./dist/utils.cjs"
+    }
+  },
+  "scripts": {
+    "serve": "vite build --watch --mode dev-server",
+    "build": "vite build",
+    "lint": "eslint src",
+    "serve:standalone": "vite preview --mode standalone"
+  },
   "dependencies": {
     "@astrouxds/astro-web-components": "7.24.0",
     "@rails/actioncable": "7.1.3-4",

@@ -22,7 +22,7 @@
 
 import axios from './axios.js'
 
-export class OpenC3Api {
+export default class OpenC3Api {
   id = 1
 
   constructor() {}
