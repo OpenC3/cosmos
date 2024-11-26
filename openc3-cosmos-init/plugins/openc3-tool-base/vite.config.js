@@ -14,7 +14,10 @@ export default defineConfig((options) => {
         input: 'src/main.js',
         output: {
           format: 'systemjs',
-          entryFileNames: `[name].js`,
+          hashCharacters: 'hex',
+          entryFileNames: '[name].js',
+          chunkFileNames: '[name]-[hash:20].js',
+          assetFileNames: 'assets/[name]-[hash][extname]'
         },
         external: ['single-spa', 'vue', 'vuex', 'vue-router', 'vuetify'],
         preserveEntrySignatures: 'strict',
