@@ -20,8 +20,7 @@ export default defineConfig((options) => {
           assetFileNames: 'assets/[name]-[hash][extname]'
         },
         external: ['single-spa', 'vue', 'vuex', 'vue-router', 'vuetify'],
-        preserveEntrySignatures: 'strict',
-        copyPublicDir: true
+        preserveEntrySignatures: 'strict'
       },
     },
     server: {

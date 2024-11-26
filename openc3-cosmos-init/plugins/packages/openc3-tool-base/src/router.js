@@ -32,7 +32,7 @@ const router = createRouter({
       name: 'Login',
       component: () =>
         import(
-          '../../packages/openc3-tool-common/src/tools/base/components/Login'
+          '@openc3/tool-common/src/tools/base/components/Login'
         ),
     },
     {
@@ -40,7 +40,7 @@ const router = createRouter({
       path: '/:pathMatch(.*)*',
       name: '',
       component: () =>
-        import('../../packages/openc3-tool-common/src/components/Empty'),
+        import('@openc3/tool-common/src/components/Empty'),
     },
   ],
 })
