@@ -23,7 +23,16 @@ export default defineConfig((options) => {
     server: {
       port: 2923,
     },
-    plugins: [vue(), devServerPlugin(options)],
+    plugins: [
+      vue({
+        template: {
+          compilerOptions: {
+            isCustomElement: (tag) => tag.startsWith('rux-'),
+          },
+        },
+      }),
+      devServerPlugin(options),
+    ],
     resolve: {
       alias: {
         '@': resolve(__dirname, './src'),

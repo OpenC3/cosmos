@@ -23,10 +23,19 @@ export default defineConfig((options) => {
     server: {
       port: 2911,
     },
-    plugins: [vue(), devServerPlugin(options)],
+    plugins: [
+      vue({
+        template: {
+          compilerOptions: {
+            isCustomElement: (tag) => tag.startsWith('rux-'),
+          },
+        },
+      }),
+      devServerPlugin(options),
+    ],
     resolve: {
       alias: {
-        '@': resolve(__dirname, '../src'),
+        '@': resolve(__dirname, './src'),
       },
       extensions: [...DEFAULT_EXTENSIONS, '.vue'], // not recommended but saves us from having to change every SFC import
     },

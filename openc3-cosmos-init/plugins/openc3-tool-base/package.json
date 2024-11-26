@@ -15,7 +15,6 @@
     "axios": "1.7.7",
     "date-fns": "4.1.0",
     "import-map-overrides": "3.1.1",
-    "regenerator-runtime": "0.14.1",
     "systemjs": "6.15.1"
   },
   "peerDependencies": {
@@ -34,7 +33,6 @@
     "sass": "1.80.4",
     "serve": "14.2.4",
     "vite": "5.4.11",
-    "vite-plugin-ejs": "1.7.0",
-    "vite-plugin-html": "3.2.2"
+    "vite-plugin-ejs": "1.7.0"
   }
 }

@@ -44,7 +44,7 @@ class Notify {
    * This gets called each time `open()` is invoked by an app in COSMOS.
    * It puts the element into the DOM that allows toasts to be shown.
    */
-  mount = function () {
+  mount() {
     if (this.mounted) return
 
     const app = createApp(Toast)
@@ -56,7 +56,7 @@ class Notify {
     this.mounted = true
   }
 
-  open = function ({
+  open({
     method,
     title,
     body,
@@ -82,7 +82,7 @@ class Notify {
     this[method]({ title, body, message, level, duration, type })
   }
 
-  toast = function ({ title, body, message, level, duration, type }) {
+  toast({ title, body, message, level, duration, type }) {
     this.$root.toast(
       {
         title,
@@ -95,7 +95,7 @@ class Notify {
     )
   }
 
-  critical = function ({
+  critical({
     title,
     body,
     message,
@@ -116,10 +116,14 @@ class Notify {
       saveToHistory,
     })
   }
-  FATAL = this.critical
-  ERROR = this.critical
+  FATAL(options) {
+    this.critical(options)
+  }
+  ERROR(options) {
+    this.critical(options)
+  }
 
-  serious = function ({
+  serious({
     title,
     body,
     message,
@@ -140,7 +144,7 @@ class Notify {
       saveToHistory,
     })
   }
-  caution = function ({
+  caution({
     title,
     body,
     message,
@@ -161,9 +165,11 @@ class Notify {
       saveToHistory,
     })
   }
-  WARN = this.caution
+  WARN(options) {
+    this.caution(options)
+  }
 
-  normal = function ({
+  normal({
     title,
     body,
     message,
@@ -184,10 +190,14 @@ class Notify {
       saveToHistory,
     })
   }
-  INFO = this.normal
-  DEBUG = this.normal
+  INFO(options) {
+    this.normal(options)
+  }
+  DEBUG(options) {
+    this.normal(options)
+  }
 
-  standby = function ({
+  standby({
     title,
     body,
     message,
@@ -208,7 +218,8 @@ class Notify {
       saveToHistory,
     })
   }
-  off = function ({
+
+  off({
     title,
     body,
     message,
