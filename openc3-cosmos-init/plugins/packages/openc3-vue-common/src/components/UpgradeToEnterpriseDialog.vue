@@ -60,7 +60,7 @@
 </template>
 
 <script>
-import logo from '/img/logo.png'
+import logo from '/img/logo.png' // TODO: figure out how to import from @openc3/js-common
 
 export default {
   props: {

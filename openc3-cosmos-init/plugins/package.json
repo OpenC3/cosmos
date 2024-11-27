@@ -3,5 +3,10 @@
   "private": true,
   "workspaces": [
     "packages/*"
-  ]
+  ],
+  "dependencies": {
+    "@openc3/js-common": "./packages/openc3-js-common",
+    "@openc3/tool-common": "./packages/openc3-tool-common",
+    "@openc3/vue-common": "./packages/openc3-vue-common"
+  }
 }
