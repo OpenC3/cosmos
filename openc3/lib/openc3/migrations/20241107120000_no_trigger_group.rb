@@ -3,7 +3,7 @@ require 'openc3/models/scope_model'
 require 'openc3/models/microservice_model'
 
 module OpenC3
-  class NoCriticalCmd < Migration
+  class NoTriggerGroups < Migration
     begin
       require 'openc3-enterprise/models/cmd_authority_model'
       require 'openc3-enterprise/models/critical_cmd_model'
@@ -13,10 +13,11 @@ module OpenC3
     end
 
     def self.run
-      if BASE # Only remove the critical command model if we're not enterprise
-        ScopeModel.get_all_models(scope: nil).each do |scope, scope_model|
-          model = MicroserviceModel.get_model(name: "#{scope}__CRITICALCMD__#{scope}", scope: scope)
-          model.destroy if model
+      if BASE # Only remove the trigger group microservice if we're not enterprise
+        MicroserviceModel.get_all_models(scope: 'DEFAULT').each do |microservice_name, microservice_model|
+          if microservice_name =~ /__TRIGGER_GROUP__/
+            microservice_model.destroy
+          end
         end
       end
     end
@@ -24,5 +25,5 @@ module OpenC3
 end
 
 unless ENV['OPENC3_NO_MIGRATE']
-  OpenC3::NoCriticalCmd.run
+  OpenC3::NoTriggerGroups.run
 end
