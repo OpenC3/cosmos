@@ -64,8 +64,9 @@
 </template>
 
 <script>
-import VWidget from '@openc3/tool-common/src/components/widgets/VWidget'
-import DetailsDialog from '@openc3/tool-common/src/components/DetailsDialog'
+import { DetailsDialog, Widgets } from '@openc3/vue-common/components'
+
+const { VWidget } = Widgets
 
 export default {
   components: {

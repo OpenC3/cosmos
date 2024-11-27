@@ -31,7 +31,9 @@
 </template>
 
 <script>
-import Widget from '@openc3/tool-common/src/components/widgets/Widget'
+import { Widgets } from '@openc3/vue-common/components'
+
+const { Widget } = Widgets
 
 export default {
   mixins: [Widget],

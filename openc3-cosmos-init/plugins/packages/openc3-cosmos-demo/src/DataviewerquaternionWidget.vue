@@ -21,23 +21,25 @@
 -->
 
 <template>
-  <history-component
+  <data-viewer-history-component
     ref="history"
     :config="currentConfig"
     :packets="currentPackets"
     :calculatePacketText="calculatePacketText"
     @config="(config) => (currentConfig = config)"
-  ></history-component>
+  />
 </template>
 
 <script>
-import HistoryComponent from '@openc3/tool-common/src/components/dataviewer/HistoryComponent'
-import Component from '@openc3/tool-common/src/components/dataviewer/Component'
+import {
+  DataViewerComponent,
+  DataViewerHistoryComponent,
+} from '@openc3/vue-common/components'
 
 export default {
-  mixins: [Component],
+  mixins: [DataViewerComponent],
   components: {
-    HistoryComponent,
+    DataViewerHistoryComponent,
   },
   watch: {
     // Hook the HistoryComponent's receive method to our latestData being updated
