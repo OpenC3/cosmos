@@ -167,11 +167,11 @@
 </template>
 
 <script>
-import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
-import Cable from '@openc3/tool-common/src/services/cable.js'
-import LabelvalueWidget from '@openc3/tool-common/src/components/widgets/LabelvalueWidget'
-import LabelvaluelimitsbarWidget from '@openc3/tool-common/src/components/widgets/LabelvaluelimitsbarWidget'
-import TimeFilters from '@openc3/tool-common/src/tools/base/util/timeFilters.js'
+import { Cable, OpenC3Api } from '@openc3/js-common/services'
+import { Widgets } from '@openc3/vue-common/components'
+import { TimeFilters } from '@openc3/vue-common/util'
+
+const { LabelvalueWidget, LabelvaluelimitsbarWidget } = Widgets
 
 export default {
   components: {

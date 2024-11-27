@@ -17,7 +17,8 @@
 */
 
 import { createRouter, createWebHistory } from 'vue-router'
-import { prependBasePath } from '@openc3/tool-common/src/utils/routeUtils.js'
+import { prependBasePath } from '@openc3/js-common/utils'
+import { NotFound } from '@openc3/vue-common/components'
 
 const routes = [
   {
@@ -28,7 +29,7 @@ const routes = [
   {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
-    component: () => import('@openc3/tool-common/src/components/NotFound'),
+    component: NotFound,
   },
 ]
 routes.forEach(prependBasePath)

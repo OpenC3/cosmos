@@ -16,10 +16,10 @@
 # if purchased from OpenC3, Inc.
 */
 
-import DataViewerComponent from './Component'
-import HistoryComponent from './HistoryComponent.vue'
+import DataViewerComponent from './DataViewerComponent'
+import DataViewerHistoryComponent from './DataViewerHistoryComponent.vue'
 
 export {
   DataViewerComponent,
-  HistoryComponent,
+  DataViewerHistoryComponent,
 }

@@ -19,6 +19,7 @@
 import { ScreenCompleter } from './autocomplete'
 import { Config, OpenConfigDialog, SaveConfigDialog } from './config'
 import CriticalCmdDialog from './CriticalCmdDialog.vue'
+import { DataViewerComponent, DataViewerHistoryComponent } from './dataviewer'
 import DetailsDialog from './DetailsDialog.vue'
 import EditScreenDialog from './EditScreenDialog.vue'
 import Empty from './Empty.vue'
@@ -47,6 +48,8 @@ export {
   OpenConfigDialog,
   SaveConfigDialog,
   CriticalCmdDialog,
+  DataViewerComponent,
+  DataViewerHistoryComponent,
   DetailsDialog,
   EditScreenDialog,
   Empty,

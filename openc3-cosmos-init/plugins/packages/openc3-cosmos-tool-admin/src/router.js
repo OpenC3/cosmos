@@ -21,17 +21,19 @@
 */
 
 import { createRouter, createWebHistory } from 'vue-router'
-import { prependBasePath } from '@openc3/tool-common/src/utils/routeUtils.js'
-import { TabsList } from '@openc3/tool-common/src/tools/admin/tabs'
+import { prependBasePath } from '@openc3/js-common/utils'
+import { NotFound } from '@openc3/vue-common/components'
+import { OpenC3Admin, TabsList } from '@openc3/tool-common/admin'
+
+const pluginsTab = TabsList.find((tab) => tab.name === 'PluginsTab')
 
 const routes = [
   {
     path: '/',
-    component: () => import('@openc3/tool-common/src/tools/admin/OpenC3Admin'),
+    component: OpenC3Admin,
     children: [
       {
-        component: () =>
-          import('@openc3/tool-common/src/tools/admin/tabs/PluginsTab'),
+        component: pluginsTab.component,
         path: '',
       },
       ...TabsList,
@@ -40,7 +42,7 @@ const routes = [
   {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
-    component: () => import('@openc3/tool-common/src/components/NotFound'),
+    component: NotFound,
   },
 ]
 routes.forEach(prependBasePath)

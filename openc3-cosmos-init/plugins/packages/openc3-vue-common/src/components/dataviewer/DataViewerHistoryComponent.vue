@@ -197,11 +197,11 @@
 <script>
 import _ from 'lodash'
 import { format } from 'date-fns'
-import Component from './Component'
+import DataViewerComponent from './DataViewerComponent'
 
 export default {
   props: ['calculatePacketText'],
-  mixins: [Component],
+  mixins: [DataViewerComponent],
   data: function () {
     return {
       history: [],

@@ -331,14 +331,15 @@
 // Putting large data into Vue data section causes lots of overhead
 let dataExtractorRawData = []
 
-import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
-import Config from '@openc3/tool-common/src/components/config/Config'
-import OpenConfigDialog from '@openc3/tool-common/src/components/config/OpenConfigDialog'
-import SaveConfigDialog from '@openc3/tool-common/src/components/config/SaveConfigDialog'
-import TargetPacketItemChooser from '@openc3/tool-common/src/components/TargetPacketItemChooser'
-import Cable from '@openc3/tool-common/src/services/cable.js'
-import TopBar from '@openc3/tool-common/src/components/TopBar'
-import TimeFilters from '@openc3/tool-common/src/tools/base/util/timeFilters.js'
+import { Cable, OpenC3Api } from '@openc3/js-common/services'
+import {
+  Config,
+  OpenConfigDialog,
+  SaveConfigDialog,
+  TargetPacketItemChooser,
+  TopBar,
+} from '@openc3/vue-common/components'
+import { TimeFilters } from '@openc3/vue-common/util'
 
 export default {
   components: {

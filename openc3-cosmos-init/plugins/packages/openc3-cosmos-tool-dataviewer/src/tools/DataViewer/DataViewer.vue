@@ -249,14 +249,14 @@
 </template>
 
 <script>
-import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
-import Api from '@openc3/tool-common/src/services/api'
-import Config from '@openc3/tool-common/src/components/config/Config'
-import OpenConfigDialog from '@openc3/tool-common/src/components/config/OpenConfigDialog'
-import SaveConfigDialog from '@openc3/tool-common/src/components/config/SaveConfigDialog'
-import Cable from '@openc3/tool-common/src/services/cable.js'
-import TopBar from '@openc3/tool-common/src/components/TopBar'
-import TimeFilters from '@openc3/tool-common/src/tools/base/util/timeFilters.js'
+import { Api, Cable, OpenC3Api } from '@openc3/js-common/services'
+import {
+  Config,
+  OpenConfigDialog,
+  SaveConfigDialog,
+  TopBar,
+} from '@openc3/vue-common/components'
+import { TimeFilters } from '@openc3/vue-common/util'
 
 import AddComponentDialog from '@/tools/DataViewer/AddComponentDialog'
 // DynamicComponent is how we load custom user components

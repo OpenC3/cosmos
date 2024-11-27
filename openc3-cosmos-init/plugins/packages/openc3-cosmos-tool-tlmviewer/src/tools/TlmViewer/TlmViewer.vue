@@ -130,15 +130,17 @@
 </template>
 
 <script>
-import Api from '@openc3/tool-common/src/services/api'
-import Config from '@openc3/tool-common/src/components/config/Config'
-import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
-import TopBar from '@openc3/tool-common/src/components/TopBar'
-import Openc3Screen from '@openc3/tool-common/src/components/Openc3Screen'
-import NewScreenDialog from './NewScreenDialog'
-import OpenConfigDialog from '@openc3/tool-common/src/components/config/OpenConfigDialog'
-import SaveConfigDialog from '@openc3/tool-common/src/components/config/SaveConfigDialog'
 import Muuri from 'muuri'
+import { Api, OpenC3Api } from '@openc3/js-common/services'
+import {
+  Config,
+  Openc3Screen,
+  OpenConfigDialog,
+  SaveConfigDialog,
+  TargetPacketItemChooser,
+  TopBar,
+} from '@openc3/vue-common/components'
+import NewScreenDialog from './NewScreenDialog'
 
 export default {
   components: {

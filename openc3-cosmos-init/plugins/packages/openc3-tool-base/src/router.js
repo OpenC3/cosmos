@@ -21,6 +21,8 @@
 */
 
 import { createRouter, createWebHistory } from 'vue-router'
+import { Empty } from '@openc3/vue-common/components'
+import { Login } from '@openc3/tool-common/base'
 
 const DEFAULT_TOOL_PATH = '/tools/cmdtlmserver'
 
@@ -30,17 +32,13 @@ const router = createRouter({
     {
       path: '/login',
       name: 'Login',
-      component: () =>
-        import(
-          '@openc3/tool-common/src/tools/base/components/Login'
-        ),
+      component: Login,
     },
     {
       // Empty component for all other routes to avoid VueRouter warnings, since all other routes are handled by single-spa
       path: '/:pathMatch(.*)*',
       name: '',
-      component: () =>
-        import('@openc3/tool-common/src/components/Empty'),
+      component: Empty,
     },
   ],
 })

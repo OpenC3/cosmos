@@ -45,7 +45,7 @@
 </template>
 
 <script>
-import TopBar from '@openc3/tool-common/src/components/TopBar'
+import { TopBar } from '@openc3/vue-common/components'
 
 export default {
   components: {

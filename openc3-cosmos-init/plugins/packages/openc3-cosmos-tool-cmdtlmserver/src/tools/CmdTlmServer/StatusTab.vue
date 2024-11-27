@@ -54,8 +54,8 @@
 </template>
 
 <script>
+import { OpenC3Api } from '@openc3/js-common/services'
 import Updater from './Updater'
-import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 
 export default {
   mixins: [Updater],

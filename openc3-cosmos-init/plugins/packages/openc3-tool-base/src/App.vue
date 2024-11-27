@@ -37,10 +37,13 @@
 </template>
 
 <script>
-import AppFooter from '@openc3/tool-common/src/tools/base/AppFooter'
-import AppNav from '@openc3/tool-common/src/tools/base/AppNav'
-import TimeCheck from '@openc3/tool-common/src/tools/base/components/TimeCheck'
-import ClassificationBanners from '@openc3/tool-common/src/tools/base/components/ClassificationBanners'
+import {
+  AppFooter,
+  AppNav,
+  ClassificationBanners,
+  TimeCheck
+} from '@openc3/tool-common/base'
+
 export default {
   components: {
     AppFooter,

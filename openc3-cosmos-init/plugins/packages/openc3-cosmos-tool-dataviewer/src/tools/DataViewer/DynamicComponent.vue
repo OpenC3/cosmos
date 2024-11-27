@@ -27,10 +27,10 @@
 </template>
 
 <script>
-import Component from '@openc3/tool-common/src/components/dataviewer/Component'
+import { DataViewerComponent } from '@openc3/vue-common/components'
 
 export default {
-  mixins: [Component],
+  mixins: [DataViewerComponent],
   data() {
     return {
       widgetType: null,

@@ -22,10 +22,12 @@ import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import { mdi } from 'vuetify/iconsets/mdi'
 import { VTreeview } from 'vuetify/labs/VTreeview'
-import { AstroIconVuetifySets } from '@openc3/tool-common/src/components/icons/index.js'
-import cosmosDark from '@openc3/tool-common/src/plugins/cosmosThemeDark'
+import { Icons } from '@openc3/vue-common/components'
+import { cosmosThemeDark } from '@openc3/vue-common/plugins'
 
 import '@astrouxds/astro-web-components/dist/astro-web-components/astro-web-components.css'
+
+const { AstroIconVuetifySets } = Icons
 
 export default createVuetify({
   components: {
@@ -34,9 +36,9 @@ export default createVuetify({
   },
   directives,
   theme: {
-    defaultTheme: 'cosmosDark',
+    defaultTheme: 'cosmosThemeDark',
     themes: {
-      cosmosDark,
+      cosmosThemeDark,
     },
   },
   icons: {
