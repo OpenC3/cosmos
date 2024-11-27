@@ -32,8 +32,10 @@ class Handler(BaseHTTPRequestHandler):
         self.handle_request()
 
     def handle_request(self):
-        if self.server.lookup.get(self.path):
-            packets = self.server.lookup[self.path]
+        base = self.path.split("?")[0]
+        print("base:", base)
+        if self.server.lookup.get(base):
+            packets = self.server.lookup[base]
             status = 200
 
             for packet in packets:

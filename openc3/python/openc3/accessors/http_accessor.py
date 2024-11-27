@@ -46,7 +46,7 @@ class HttpAccessor(Accessor):
         if re.match(r"^HTTP_QUERY_", item_name):
             if not self.packet.extra:
                 return None
-            if item.key == r"^HTTP_QUERY_":
+            if re.match(r"^HTTP_QUERY_", item.key):
                 query_name = item_name[11:].lower()
             else:
                 query_name = item.key
@@ -59,7 +59,7 @@ class HttpAccessor(Accessor):
         if re.match(r"^HTTP_HEADER_", item_name):
             if not self.packet.extra:
                 return None
-            if item.key == r"^HTTP_HEADER_":
+            if re.match(r"^HTTP_HEADER_", item.key):
                 header_name = item_name[12:].lower()
             else:
                 header_name = item.key
@@ -95,7 +95,7 @@ class HttpAccessor(Accessor):
         item_name = item.name
         if re.match(r"^HTTP_QUERY_", item_name):
             self.packet.extra = self.packet.extra or {}
-            if item.key == r"^HTTP_QUERY_":
+            if re.match(r"^HTTP_QUERY_", item.key):
                 query_name = item_name[11:].lower()
             else:
                 query_name = item.key
@@ -106,7 +106,7 @@ class HttpAccessor(Accessor):
 
         if re.match(r"^HTTP_HEADER_", item_name):
             self.packet.extra = self.packet.extra or {}
-            if item.key == r"^HTTP_HEADER_":
+            if re.match(r"^HTTP_HEADER_", item.key):
                 header_name = item_name[12:].lower()
             else:
                 header_name = item.key

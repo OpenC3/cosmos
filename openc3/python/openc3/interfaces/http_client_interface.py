@@ -23,19 +23,32 @@ from openc3.packets.packet import Packet
 
 
 class HttpClientInterface(Interface):
-    # @param hostname [String] HTTP/HTTPS server to connect to
-    # @param port [Integer] HTTP/HTTPS port
-    # @param protocol [String] http or https
+    """
+    HttpClientInterface is a class that provides an interface for making HTTP
+    requests using the requests library.
+    """
+
     def __init__(
         self,
         hostname,
         port=80,
         protocol="http",
-        write_timeout=5,
+        write_timeout=None,
         read_timeout=None,
         connect_timeout=5,
         include_request_in_response=False,
     ):
+        """
+        Initializes the HTTPClientInterface with the given parameters.
+        Args:
+            hostname (str): The hostname of the server.
+            port (int, optional): The port number to connect to. Defaults to 80.
+            protocol (str, optional): The protocol to use ('http' or 'https'). Defaults to "http".
+            write_timeout (None, optional): Present to match Ruby parameters but not used.
+            read_timeout (float or None, optional): The timeout for reading operations in seconds. Defaults to None.
+            connect_timeout (float or None, optional): The timeout for connection operations in seconds. Defaults to 5.
+            include_request_in_response (bool, optional): Whether to include the request in the response. Defaults to False.
+        """
         super().__init__()
         self.hostname = hostname
         self.port = int(port)
@@ -44,9 +57,6 @@ class HttpClientInterface(Interface):
             self.url = f"{self.protocol}://{self.hostname}"
         else:
             self.url = f"{self.protocol}://{self.hostname}:{self.port}"
-        self.write_timeout = ConfigParser.handle_none(write_timeout)
-        if self.write_timeout:
-            self.write_timeout = float(self.write_timeout)
         self.read_timeout = ConfigParser.handle_none(read_timeout)
         if self.read_timeout:
             self.read_timeout = float(self.read_timeout)
@@ -58,26 +68,23 @@ class HttpClientInterface(Interface):
         self.response_queue = queue.Queue()
 
     def connection_string(self):
+        """Returns the url."""
         return self.url
 
-    # Connects the interface to its target(s)
     def connect(self):
-        # Per https://github.com/lostisland/faraday/blob/main/lib/faraday/options/env.rb
-        # :timeout       - time limit for the entire request (Integer in seconds)
-        # :open_timeout  - time limit for just the connection phase (e.g. handshake) (Integer in seconds)
-        # :read_timeout  - time limit for the first response byte received from the server (Integer in seconds)
-        # :write_timeout - time limit for the client to send the request to the server (Integer in seconds)
-        request = {}
-        if self.connect_timeout:
-            request["open_timeout"] = self.connect_timeout
-        if self.read_timeout:
-            request["read_timeout"] = self.read_timeout
-        if self.write_timeout:
-            request["write_timeout"] = self.write_timeout
+        """
+        Initializes an HTTP session and then calls the parent class's connect method.
+        """
         self.http = requests.Session()
         super().connect()
 
     def connected(self):
+        """
+        Check if the HTTP client is connected.
+
+        Returns:
+            bool: True if the HTTP client is connected, False otherwise.
+        """
         if self.http:
             return True
         else:
@@ -85,6 +92,13 @@ class HttpClientInterface(Interface):
 
     # Disconnects the interface from its target(s)
     def disconnect(self):
+        """
+        Disconnects the HTTP client interface.
+
+        This method closes the HTTP connection if it exists, sets the HTTP client to None,
+        clears the response queue, calls the superclass's disconnect method, and unblocks
+        the response queue to allow the read_interface method to return.
+        """
         if self.http:
             self.http.close
         self.http = None
@@ -93,13 +107,20 @@ class HttpClientInterface(Interface):
         super().disconnect()
         self.response_queue.put((None, None))
 
-    # Called to convert a packet into a data buffer. Write protocols then
-    # potentially modify the data in their write_data methods. Finally
-    # write_interface is called to send the data to the target.
-    #
-    # @param packet [Packet] Packet to extract data from
-    # @return data, extra
     def convert_packet_to_data(self, packet):
+        """
+        Converts a packet to data and extracts additional information.
+
+        Args:
+            packet (Packet): The packet to be converted.
+        Returns:
+            tuple: A tuple containing:
+                - data (bytes): The buffer data from the packet.
+                - extra (dict): A dictionary containing additional information extracted from the packet.
+                    - "HTTP_URI" (str): The full HTTP URI constructed from the base URL and the packet's HTTP path.
+                    - "HTTP_REQUEST_TARGET_NAME" (str): The target name of the HTTP request.
+        """
+
         extra = packet.extra
         extra = extra or {}
         data = packet.buffer  # Copy buffer so logged command isn't modified
@@ -109,6 +130,20 @@ class HttpClientInterface(Interface):
 
     # Calls the http request method to send the data to the target
     def write_interface(self, data, extra=None):
+        """
+        Sends the data to the target using an HTTP request.
+
+        Args:
+            data (bytes): The data to be sent.
+            extra (dict, optional): Additional parameters for the HTTP request. Defaults to None.
+                - HTTP_QUERIES: Query parameters for the HTTP request.
+                - HTTP_HEADERS: Headers for the HTTP request.
+                - HTTP_URI: The URI for the HTTP request.
+                - HTTP_METHOD: The HTTP method (e.g., GET, POST).
+
+        Returns:
+            tuple: The data and extra parameters.
+        """
         extra = extra or {}
         params = extra.get("HTTP_QUERIES")
         headers = extra.get("HTTP_HEADERS")
@@ -128,50 +163,57 @@ class HttpClientInterface(Interface):
         # Normalize Response into simple hash
         response_data = None
         response_extra = {}
-        if resp:
-            response_extra["HTTP_REQUEST"] = [data, extra]
-            if resp.headers and len(resp.headers) > 0:
-                # Cast headers to a dictionary so it can be serialized
-                # because the requst library returns CaseInsensitiveDict
-                response_extra["HTTP_HEADERS"] = dict(resp.headers)
-            response_extra["HTTP_STATUS"] = resp.status_code
-            response_data = bytearray(resp.text, encoding="utf-8")
-            response_data = response_data or b""  # Ensure an empty string
+        response_extra["HTTP_REQUEST"] = [data, extra]
+        if resp.headers and len(resp.headers) > 0:
+            # Cast headers to a dictionary so it can be serialized
+            # because the requst library returns CaseInsensitiveDict
+            response_extra["HTTP_HEADERS"] = dict(resp.headers)
+        response_extra["HTTP_STATUS"] = resp.status_code
+        response_data = bytearray(resp.text, encoding="utf-8")
 
         self.response_queue.put((response_data, response_extra))
         self.write_interface_base(data, extra)
         return data, extra
 
-    # Returns the response data and extra from the interface
-    # which was queued up by the write_interface method.
-    # Read protocols can then potentially modify the data in their read_data methods.
-    # Then convert_data_to_packet is called to convert the data into a Packet object.
-    # Finally the read protocols read_packet methods are called.
     def read_interface(self):
+        """
+        Returns the response data and extra parameters from the interface,
+        which were queued up by the write_interface method.
+        Read protocols can then potentially modify the data in their read_data methods.
+        Then convert_data_to_packet is called to convert the data into a Packet object.
+        Finally the read protocols read_packet methods are called.
+
+        Returns:
+            tuple: The response data and extra parameters.
+        """
         data, extra = self.response_queue.get(block=True)
         if data is None:
             return data, extra
         self.read_interface_base(data, extra)
         return data, extra
 
-    # Called to convert the read data into a OpenC3 Packet object
-    #
-    # @param data [String] Raw packet data
-    # @param extra [dict] Contains the following keys:
-    #   HTTP_HEADERS - Hash of response headers
-    #   HTTP_STATUS - Integer response status code
-    #   HTTP_REQUEST - [data, extra]
-    #     where data is the request data and extra contains:
-    #       HTTP_REQUEST_TARGET_NAME - String request target name
-    #       HTTP_URI - String request URI based on HTTP_PATH
-    #       HTTP_PATH - String request path
-    #       HTTP_METHOD - String request method
-    #       HTTP_PACKET - String response packet name
-    #       HTTP_ERROR_PACKET - Optional string error packet name
-    #       HTTP_QUERIES - Optional hash of request queries
-    #       HTTP_HEADERS - Optional hash of request headers
-    # @return [Packet] OpenC3 Packet with buffer filled with data
     def convert_data_to_packet(self, data, extra=None):
+        """
+        Converts the read data into an OpenC3 Packet object.
+
+        Args:
+            data (str): Raw packet data.
+            extra (dict, optional): Additional parameters for the packet. Defaults to None.
+                - HTTP_HEADERS: Hash of response headers.
+                - HTTP_STATUS: Integer response status code.
+                - HTTP_REQUEST: [data, extra] where data is the request data and extra contains:
+                    - HTTP_REQUEST_TARGET_NAME: String request target name.
+                    - HTTP_URI: String request URI based on HTTP_PATH.
+                    - HTTP_PATH: String request path.
+                    - HTTP_METHOD: String request method.
+                    - HTTP_PACKET: String response packet name.
+                    - HTTP_ERROR_PACKET: Optional string error packet name.
+                    - HTTP_QUERIES: Optional hash of request queries.
+                    - HTTP_HEADERS: Optional hash of request headers.
+
+        Returns:
+            Packet: OpenC3 Packet with buffer filled with data.
+        """
         packet = Packet(None, None, "BIG_ENDIAN", None, data)
         packet.accessor = HttpAccessor(packet)
         # Grab the request extra set in the write_interface method

@@ -24,21 +24,13 @@ class FormAccessor(Accessor):
         ary = urllib.parse.parse_qsl(buffer)
         value = None
         for key, ary_value in ary:
-            if key == item.key:
-                if value:
-                    if not isinstance(value, list):
-                        value_temp = []
-                        value_temp.append(value)
-                        value = value_temp
-                    value.append(ary_value)
-                else:
-                    value = ary_value
+            if key.decode() == item.key:
+                value = ary_value.decode()
         return value
 
     @classmethod
     def write_item(cls, item, value, buffer):
         ary = urllib.parse.parse_qsl(buffer)
-
         # Remove existing item and bad keys from list
         ary = [ary_value for ary_value in ary if (ary_value[0] != item.key) and (str(ary_value[0])[0] != "\u0000")]
 

@@ -26,16 +26,7 @@ module OpenC3
       value = nil
       ary.each do |key, ary_value|
         if key == item.key
-          if value
-            if not Array === value
-              value_temp = []
-              value_temp << value
-              value = value_temp
-            end
-            value << ary_value
-          else
-            value = ary_value
-          end
+          value = ary_value
         end
       end
       return value

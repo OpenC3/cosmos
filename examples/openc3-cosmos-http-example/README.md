@@ -37,13 +37,22 @@ RESPONSE_TEXT=Webhook+Received%21%
 RESPONSE_TEXT=Webhook+Received%21%
 ```
 
-You can also post data to the server:
+To update the HTTP_QUERY_TEMP value you can pass a 'temp' query parameter to the URL:
 
 ```bash
-% curl -H "Content-Type: application/json" --request POST --data '{"temp":"123"}' "127.0.0.1:9090/webhook"
+% curl "127.0.0.1:9090/webhook?temp=456"
 RESPONSE_TEXT=Webhook+Received%21%
-% curl -H "Content-Type: application/json" --request POST --data '{"temp":"123"}' "127.0.0.1:9191/webhook"
+% curl "127.0.0.1:9191/webhook?temp=456"
 RESPONSE_TEXT=Webhook+Received%21%
 ```
 
-The request data is mirrored back to the PYTHON_SERVER / RUBY_SERVER REQUEST packet.
+You can also post data to the server. Since the servers are using the FormAccessor we pass the data in the form of `key=value`.
+
+```bash
+% curl -H "Content-Type: application/json" --request POST --data 'temperature=123' "127.0.0.1:9090/webhook"
+RESPONSE_TEXT=Webhook+Received%21%
+% curl -H "Content-Type: application/json" --request POST --data 'temperature=123' "127.0.0.1:9191/webhook"
+RESPONSE_TEXT=Webhook+Received%21%
+```
+
+The request data is mirrored back to the PYTHON_SERVER / RUBY_SERVER REQUEST packet and the TEMPERATURE field will contain 123.
