@@ -40,7 +40,7 @@ export default {
   mounted() {
     this.changeUpdater()
   },
-  beforeDestroy() {
+  beforeUnmount() {
     if (this.updater != null) {
       clearInterval(this.updater)
       this.updater = null

@@ -114,6 +114,11 @@ class SimInst(SimulatedTarget):
         packet.write("value3", 2)
         packet.write("value4", 1)
         packet.write("value5", 0)
+        packet.write('P_2.2,2', 2)
+        packet.write('P-3+3=3', 3)
+        packet.write('P4!@#$%^&*?', 4)
+        packet.write('P</5|\>', 5)
+        packet.write('P(:6;)', 6)
 
         packet = self.tlm_packets["IMAGE"]
         packet.write("CcsdsSeqFlags", "NOGROUP")
