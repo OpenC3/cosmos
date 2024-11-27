@@ -10,10 +10,6 @@
     "@astrouxds/astro-web-components": "7.24.0",
     "@openc3/tool-common": "5.21.0-beta0"
   },
-  "peerDependencies": {
-    "vue": "3.5.4",
-    "vuetify": "3.7.1"
-  },
   "devDependencies": {
     "@rushstack/eslint-patch": "1.10.4",
     "@vitejs/plugin-vue": "5.1.5",
@@ -25,6 +21,7 @@
     "prettier": "3.3.3",
     "sass": "1.80.4",
     "vite": "5.4.11",
-    "vite-plugin-style-inject": "0.0.1"
+    "vite-plugin-style-inject": "0.0.1",
+    "vue": "3.5.4"
   }
 }

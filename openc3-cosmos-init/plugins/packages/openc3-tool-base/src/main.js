@@ -2,7 +2,7 @@ import { createApp } from 'vue'
 import { defineCustomElements } from '@astrouxds/astro-web-components/loader'
 
 import App from './App.vue'
-import vuetify from './plugins/vuetify'
+import vuetify from '@openc3/tool-common/src/plugins/vuetify'
 import router from './router'
 import store from '@openc3/tool-common/src/plugins/store'
 import '@openc3/tool-common/src/assets/stylesheets/layout/layout.scss'

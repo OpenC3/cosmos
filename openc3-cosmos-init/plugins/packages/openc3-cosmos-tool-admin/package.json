@@ -14,11 +14,7 @@
     "@openc3/ace-diff": "5.21.0-beta0",
     "@openc3/tool-common": "5.21.0-beta0",
     "ace-builds": "1.36.3",
-    "single-spa-vue": "3.0.0",
-    "vue": "3.5.4",
-    "vue-router": "4.4.4",
-    "vuetify": "3.7.1",
-    "vuex": "4.1.0"
+    "single-spa-vue": "3.0.0"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "5.1.5",
@@ -30,6 +26,7 @@
     "eslint-plugin-vue": "9.30.0",
     "prettier": "3.3.3",
     "sass": "1.80.4",
-    "vite": "5.4.11"
+    "vite": "5.4.11",
+    "vue": "3.5.4"
   }
 }
