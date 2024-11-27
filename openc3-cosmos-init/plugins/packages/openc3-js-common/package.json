@@ -3,7 +3,8 @@
   "version": "5.21.0-beta0",
   "type": "module",
   "files": [
-    "dist"
+    "dist",
+    "viteDevServerPlugin.mjs"
   ],
   "exports": {
     "./services": {
@@ -13,6 +14,9 @@
     "./utils": {
       "import": "./dist/utils.js",
       "require": "./dist/utils.cjs"
+    },
+    "./viteDevServerPlugin": {
+      "default": "./viteDevServerPlugin.mjs"
     }
   },
   "scripts": {
