@@ -45,7 +45,7 @@
     {
       "imports": {
         "single-spa": "/js/single-spa-5.9.5.min.js",
-        "vue": "/js/vue-3.5.4.min.js",
+        "vue": "/js/vue.global.prod-3.5.13.js",
         "vuetify": "/js/vuetify-labs-3.7.4.js",
         "vue-router": "/js/vue-router-4.4.4.min.js",
         "vuex": "/js/vuex-4.1.0.min.js"
@@ -55,7 +55,7 @@
   <script type="systemjs-importmap" src="/openc3-api/map.json"></script>
   <!-- See note above for how to update these -->
   <link rel="preload" href="/js/single-spa-5.9.5.min.js" as="script" />
-  <link rel="preload" href="/js/vue-3.5.4.min.js" as="script" />
+  <link rel="preload" href="/js/vue.global.prod-3.5.13.js" as="script" />
   <link rel="preload" href="/js/vuetify-labs-3.7.4.js" as="script" />
   <link rel="preload" href="/js/vue-router-4.4.4.min.js" as="script" />
   <link rel="preload" href="/js/vuex-4.1.0.min.js" as="script" />
@@ -81,15 +81,15 @@
       Promise.all([
         System.import('single-spa'),
         System.import('vue'),
-        System.import('vue-router'),
-        System.import('vuex'),
       ]).then(function (modules) {
         System.set(System.resolve('vue'), window.Vue)
-        System.set(System.resolve('vue-router'), window.VueRouter)
-        System.set(System.resolve('vuex'), window.Vuex)
         Promise.all([
+          System.import('vue-router'),
+          System.import('vuex'),
           System.import('vuetify')
         ]).then(function (modules) {
+          System.set(System.resolve('vue-router'), window.VueRouter)
+          System.set(System.resolve('vuex'), window.Vuex)
           System.import('@openc3/tool-base')
         })
       })
