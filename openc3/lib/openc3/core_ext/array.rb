@@ -24,22 +24,6 @@ require 'openc3/ext/array' if RUBY_ENGINE == 'ruby' and !ENV['OPENC3_NO_EXT']
 
 # OpenC3 specific additions to the Ruby Array class
 class Array
-  # Redefine inspect to only print for small numbers of
-  # items. Prevents exceptions taking forever to be raise with
-  # large objects. See http://blade.nagaokaut.ac.jp/cgi-bin/scat.rb/ruby/ruby-talk/105145
-  alias old_inspect inspect
-
-  # @param max_elements [Integer] The maximum number of elements in the array to
-  #   print out before simply displaying the array class and object id
-  # @return [String] String representation of the array
-  def inspect(max_elements = 10)
-    if self.length <= max_elements
-      old_inspect()
-    else
-      '#<' + self.class.to_s + ':' + self.object_id.to_s + '>'
-    end
-  end
-
   # @return [Array] Cloned array after all elements called to_f
   def clone_to_f
     new_array = self.class.new(0)
