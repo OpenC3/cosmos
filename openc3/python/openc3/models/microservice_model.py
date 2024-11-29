@@ -21,7 +21,6 @@ from openc3.models.model import Model
 
 # require 'openc3/models/metric_model'
 from openc3.utilities.bucket import Bucket
-from openc3.config.config_parser import ConfigParser
 
 
 class MicroserviceModel(Model):
