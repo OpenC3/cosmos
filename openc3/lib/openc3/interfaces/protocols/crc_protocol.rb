@@ -121,6 +121,13 @@ module OpenC3
 
       @bit_size = bit_size.to_i
       case @bit_size
+      when 8
+        @pack = (@endianness == :BIG_ENDIAN) ? 'n' : 'v'
+        if args.empty?
+          @crc = Crc8.new
+        else
+          @crc = Crc8.new(*args)
+        end
       when 16
         @pack = (@endianness == :BIG_ENDIAN) ? 'n' : 'v'
         if args.empty?

@@ -50,6 +50,7 @@ module OpenC3
     attr_accessor :work_dir
     attr_accessor :ports
     attr_accessor :prefix
+    attr_accessor :shard
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -121,6 +122,7 @@ module OpenC3
       env: {},
       container: nil,
       prefix: nil,
+      shard: 0,
       scope:
     )
       if self.class._get_type == 'INTERFACE'
@@ -158,6 +160,7 @@ module OpenC3
       @env = env
       @container = container
       @prefix = prefix
+      @shard = shard.to_i # to_i to handle nil
       @secrets = secrets
     end
 
@@ -222,6 +225,7 @@ module OpenC3
         'env' => @env,
         'container' => @container,
         'prefix' => @prefix,
+        'shard' => @shard,
         'updated_at' => @updated_at
       }
     end
@@ -341,6 +345,9 @@ module OpenC3
         parser.verify_num_parameters(1, 1, "#{keyword} <Route Prefix>")
         @prefix = parameters[0]
 
+      when 'SHARD'
+        parser.verify_num_parameters(1, 1, "#{keyword} <Shard Number Starting from 0>")
+        @shard = Integer(parameters[0])
       else
         raise ConfigParser::Error.new(parser, "Unknown keyword and parameters for Interface/Router: #{keyword} #{parameters.join(" ")}")
 
@@ -365,6 +372,7 @@ module OpenC3
         needs_dependencies: @needs_dependencies,
         secrets: @secrets,
         prefix: @prefix,
+        shard: @shard,
         scope: @scope
       )
       unless validate_only

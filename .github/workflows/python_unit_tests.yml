@@ -47,7 +47,7 @@ jobs:
           coverage run -m pytest ./test/
           coverage xml -i
         working-directory: openc3/python
-      - uses: codecov/codecov-action@v4
+      - uses: codecov/codecov-action@v5
         with:
           working-directory: openc3/python
           flags: python # See codecov.yml

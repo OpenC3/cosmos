@@ -42,6 +42,7 @@ module OpenC3
       @new_microservices = {}
       @changed_microservices = {}
       @removed_microservices = {}
+      @shard = ENV['OPENC3_SHARD'] || 0
     end
 
     def convert_microservice_to_process_definition(microservice_name, microservice_config)
@@ -86,6 +87,12 @@ module OpenC3
       @previous_microservices = @microservices.dup
       # Get all the microservice configuration
       @microservices = MicroserviceModel.all
+
+      # Filter to just this shard
+      @microservices = @microservices.select do |microservice_name, microservice_config|
+        microservice_shard = microservice_config['shard'] || 0
+        microservice_shard == @shard
+      end
 
       # Detect new and changed microservices
       @new_microservices = {}
