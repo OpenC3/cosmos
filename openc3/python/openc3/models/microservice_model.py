@@ -71,6 +71,7 @@ class MicroserviceModel(Model):
         secrets: Optional[list] = None,
         prefix=None,
         disable_erb=None,
+        shard=0,
         scope: str = OPENC3_SCOPE,
     ):
         parts = name.split("__")
@@ -108,6 +109,9 @@ class MicroserviceModel(Model):
         self.secrets = secrets
         self.prefix = prefix
         self.disable_erb = disable_erb
+        self.shard = shard
+        if self.shard is None:
+            self.shard = 0
         self.bucket = Bucket.getClient()
 
     def as_json(self):
@@ -129,69 +133,5 @@ class MicroserviceModel(Model):
             "secrets": self.secrets,  # .as_json(),
             "prefix": self.prefix,
             "disable_erb": self.disable_erb,
+            "shard": self.shard,
         }
-
-    def handle_keyword(self, parser, keyword, parameters):
-        match keyword:
-            case "ENV":
-                parser.verify_num_parameters(2, 2, f"{keyword} <Key> <Value>")
-                self.env[parameters[0]] = parameters[1]
-            case "WORK_DIR":
-                parser.verify_num_parameters(1, 1, f"{keyword} <Dir>")
-                self.work_dir = parameters[0]
-            case "PORT":
-                usage = "PORT <Number> <Protocol (Optional)"
-                parser.verify_num_parameters(1, 2, usage)
-                try:
-                    self.ports.append([int(parameters[0])])
-                except ValueError:
-                    raise ConfigParser.Error(parser, f"Port must be an integer: {parameters[0]}", usage)
-                if len(parameters) > 1:
-                    protocol = ConfigParser.handle_none(parameters[1])
-                    # Per https://kubernetes.io/docs/concepts/services-networking/service/#protocol-support
-                    if protocol.upper() in ["TCP", "UDP", "SCTP"]:
-                        self.ports[-1].append(protocol.upper())
-                    else:
-                        raise ConfigParser.Error(parser, f"Unknown port protocol: {parameters[1]}", usage)
-                else:
-                    self.ports[-1].append("TCP")
-            case "TOPIC":
-                parser.verify_num_parameters(1, 1, f"{keyword} <Topic Name>")
-                self.topics.append(parameters[0])
-            case "TARGET_NAME":
-                parser.verify_num_parameters(1, 1, f"{keyword} <Target Name>")
-                self.target_names.append(parameters[0])
-            case "CMD":
-                parser.verify_num_parameters(1, None, f"{keyword} <Args>")
-                self.cmd = parameters[:]
-            case "OPTION":
-                parser.verify_num_parameters(2, None, f"{keyword} <Option Name> <Option Values>")
-                self.options.append(parameters[:])
-            case "CONTAINER":
-                parser.verify_num_parameters(1, 1, f"{keyword} <Container Image Name>")
-                self.container = parameters[0]
-            case "SECRET":
-                parser.verify_num_parameters(
-                    3,
-                    4,
-                    f"{keyword} <Secret Type: ENV or FILE> <Secret Name> <Environment Variable Name or File Path> <Secret Store Name (Optional)>",
-                )
-                if ConfigParser.handle_none(parameters[3]):
-                    self.secrets.append(parameters[:])
-                else:
-                    self.secrets.append(parameters[0:3])
-            case "ROUTE_PREFIX":
-                parser.verify_num_parameters(1, 1, f"{keyword} <Route Prefix>")
-                self.prefix = parameters[0]
-            case "DISABLE_ERB":
-                # 0 to unlimited parameters
-                if self.disable_erb is None:
-                    self.disable_erb = []
-                if parameters:
-                    self.disable_erb.extend(parameters)
-            case _:
-                raise ConfigParser.Error(
-                    parser,
-                    f"Unknown keyword and parameters for Microservice: {keyword} {' '.join(parameters)}",
-                )
-        return None
