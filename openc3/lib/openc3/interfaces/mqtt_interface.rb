@@ -92,10 +92,12 @@ module OpenC3
   class MqttInterface < Interface
     # @param hostname [String] MQTT server to connect to
     # @param port [Integer] MQTT port
-    def initialize(hostname, port = 1883)
+    # @param ssl [Boolean] Whether to use SSL
+    def initialize(hostname, port = 1883, ssl = false)
       super()
       @hostname = hostname
       @port = Integer(port)
+      @ssl = ConfigParser.handle_true_false(ssl)
       @ack_timeout = 5.0
       @username = nil
       @password = nil
@@ -122,7 +124,7 @@ module OpenC3
     end
 
     def connection_string
-      return "#{@hostname}:#{@port}"
+      return "#{@hostname}:#{@port} (ssl: #{@ssl})"
     end
 
     # Connects the interface to its target(s)
@@ -135,6 +137,7 @@ module OpenC3
       @client.port = @port
       @client.username = @username if @username
       @client.password = @password if @password
+      @client.ssl = @ssl
       if @cert and @key
         @client.ssl = true
         @client.cert_file = @cert.path

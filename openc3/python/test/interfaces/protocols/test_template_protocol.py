@@ -67,7 +67,7 @@ class TestTemplateProtocol(unittest.TestCase):
         self.interface.add_protocol(TemplateProtocol, ["0xABCD", "0xABCD", 0, 2], "READ_WRITE")
         start = time.time()
         self.interface.connect()
-        self.assertTrue(self.interface.read_protocols[0].connect_complete_time >= (start + 2.0))
+        self.assertGreaterEqual(self.interface.read_protocols[0].connect_complete_time, (start + 2.0))
 
     # def test_unblocks_writes_waiting_for_responses(self):
     #     self.interface.stream = TestTemplateProtocol.TemplateStream()

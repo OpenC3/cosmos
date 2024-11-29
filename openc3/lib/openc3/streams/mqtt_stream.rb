@@ -33,11 +33,12 @@ module OpenC3
     attr_accessor :key
     attr_accessor :ca_file
 
-    def initialize(hostname, port = 1883, write_topic = nil, read_topic = nil, ack_timeout = 5)
+    def initialize(hostname, port = 1883, ssl = false, write_topic = nil, read_topic = nil, ack_timeout = 5)
       super()
 
       @hostname = hostname
       @port = Integer(port)
+      @ssl = ConfigParser.handle_true_false(ssl)
       @write_topic = ConfigParser.handle_nil(write_topic)
       @read_topic = ConfigParser.handle_nil(read_topic)
       @ack_timeout = Float(ack_timeout)
@@ -58,6 +59,7 @@ module OpenC3
       @client.ack_timeout = @ack_timeout
       @client.host = @hostname
       @client.port = @port
+      @client.ssl = @ssl
       @client.username = @username if @username
       @client.password = @password if @password
       if @cert and @key

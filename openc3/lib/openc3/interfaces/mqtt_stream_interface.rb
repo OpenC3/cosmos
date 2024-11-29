@@ -22,6 +22,7 @@
 
 require 'openc3/interfaces/stream_interface'
 require 'openc3/streams/mqtt_stream'
+require 'openc3/config/config_parser'
 
 module OpenC3
   class MqttStreamInterface < StreamInterface
@@ -29,10 +30,11 @@ module OpenC3
     # @param port [Integer] MQTT port
     # @param write_topic [String] MQTT publish topic
     # @param read_topic [String] MQTT receive topic
-    def initialize(hostname, port = 1883, write_topic = nil, read_topic = nil, protocol_type = nil, *protocol_args)
+    def initialize(hostname, port = 1883, ssl = false, write_topic = nil, read_topic = nil, protocol_type = nil, *protocol_args)
       super(protocol_type, protocol_args)
       @hostname = hostname
       @port = Integer(port)
+      @ssl = ConfigParser.handle_true_false(ssl)
       @write_topic = ConfigParser.handle_nil(write_topic)
       @read_topic = ConfigParser.handle_nil(read_topic)
       @ack_timeout = 5.0
@@ -44,7 +46,7 @@ module OpenC3
     end
 
     def connection_string
-      result = "#{@hostname}:#{@port}"
+      result = "#{@hostname}:#{@port} (ssl: #{@ssl})"
       result += " write topic: #{@write_topic}" if @write_topic
       result += " read topic: #{@read_topic}" if @read_topic
       return result
@@ -52,7 +54,7 @@ module OpenC3
 
     # Creates a new {SerialStream} using the parameters passed in the constructor
     def connect
-      @stream = MqttStream.new(@hostname, @port, @write_topic, @read_topic, @ack_timeout)
+      @stream = MqttStream.new(@hostname, @port, @ssl, @write_topic, @read_topic, @ack_timeout)
       @stream.username = @username if @username
       @stream.password = @password if @password
       @stream.cert = @cert if @cert
