@@ -166,7 +166,7 @@ class HttpClientInterface(Interface):
         response_extra["HTTP_REQUEST"] = [data, extra]
         if resp.headers and len(resp.headers) > 0:
             # Cast headers to a dictionary so it can be serialized
-            # because the requst library returns CaseInsensitiveDict
+            # because the request library returns CaseInsensitiveDict
             response_extra["HTTP_HEADERS"] = dict(resp.headers)
         response_extra["HTTP_STATUS"] = resp.status_code
         response_data = bytearray(resp.text, encoding="utf-8")
