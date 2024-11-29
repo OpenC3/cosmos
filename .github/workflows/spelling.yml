@@ -16,5 +16,5 @@ jobs:
         with:
           # Skip generated code as well as cstol_converter which has false
           # positivies on ADN and Adn
-          skip: ./docs,*.map,*.min.js,*.pem,*.bin,cstol_converter,vue.global.*,vuetify-labs*
+          skip: ./docs,*.map,*.min.js,*.pem,*.bin,cstol_converter,vue.global*,vuetify-labs*
           ignore_words_file: .whitelist
