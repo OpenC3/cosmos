@@ -28,7 +28,7 @@ class ModelController < ApplicationController
     render json: @model_class.names(scope: params[:scope])
   rescue StandardError => error
     render json: { status: 'error', message: error.message }, status: 500
-    OpenC3::Logger.error(error.formatted)
+    logger.error(error.formatted)
   end
 
   def create(update_model = false)
@@ -44,7 +44,7 @@ class ModelController < ApplicationController
     head :ok
   rescue StandardError => error
     render json: { status: 'error', message: error.message }, status: 500
-    OpenC3::Logger.error(error.formatted)
+    logger.error(error.formatted)
   end
 
   def show
@@ -56,7 +56,7 @@ class ModelController < ApplicationController
     end
   rescue StandardError => error
     render json: { status: 'error', message: error.message }, status: 500
-    OpenC3::Logger.error(error.formatted)
+    logger.error(error.formatted)
   end
 
   def update
@@ -70,6 +70,6 @@ class ModelController < ApplicationController
     head :ok
   rescue StandardError => error
     render json: { status: 'error', message: error.message }, status: 500
-    OpenC3::Logger.error(error.formatted)
+    logger.error(error.formatted)
   end
 end
