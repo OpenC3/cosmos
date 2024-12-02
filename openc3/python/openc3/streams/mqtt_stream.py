@@ -23,12 +23,14 @@ from openc3.utilities.logger import Logger
 # See https://eclipse.dev/paho/files/paho.mqtt.python/html/client.html
 import paho.mqtt.client as mqtt
 
+
 class MqttStream:
-    def __init__(self, hostname, port = 1883, write_topic = None, read_topic = None, ack_timeout = 5):
+    def __init__(self, hostname, port=1883, ssl=False, write_topic=None, read_topic=None, ack_timeout=5):
         super().__init__()
 
         self.hostname = hostname
         self.port = int(port)
+        self.ssl = ConfigParser.handle_true_false(ssl)
         self.write_topic = ConfigParser.handle_none(write_topic)
         self.read_topic = ConfigParser.handle_none(read_topic)
         self.ack_timeout = float(ack_timeout)
@@ -53,6 +55,8 @@ class MqttStream:
         self.client.on_message = self.on_message
         self.client.user_data_set(self.pkt_queue)  # passed to on_message
 
+        if self.ssl:
+            self.client.tls_set()
         if self.username and self.password:
             self.client.username_pw_set(self.username, self.password)
         # You still need the ca_file if you're using your own cert and key
@@ -95,9 +99,9 @@ class MqttStream:
             return False
 
     def disconnect(self):
-      if self.client:
-        self.client.disconnect()
-        self.client = None
+        if self.client:
+            self.client.disconnect()
+            self.client = None
 
     def on_message(self, client, userdata, message):
         # userdata is set via user_data_set

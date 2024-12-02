@@ -24,6 +24,7 @@ import tempfile
 from openc3.interfaces.interface import Interface
 from openc3.system.system import System
 from openc3.utilities.logger import Logger
+from openc3.config.config_parser import ConfigParser
 
 # See https://eclipse.dev/paho/files/paho.mqtt.python/html/client.html
 import paho.mqtt.client as mqtt
@@ -33,10 +34,11 @@ import paho.mqtt.client as mqtt
 class MqttInterface(Interface):
     # @param hostname [String] MQTT server to connect to
     # @param port [Integer] MQTT port
-    def __init__(self, hostname, port=1883):
+    def __init__(self, hostname, port=1883, ssl=False):
         super().__init__()
         self.hostname = hostname
         self.port = int(port)
+        self.ssl = ConfigParser.handle_true_false(ssl)
         self.ack_timeout = 5.0
         self.username = None
         self.password = None
@@ -61,7 +63,7 @@ class MqttInterface(Interface):
                         self.read_packets_by_topic[topic] = packet
 
     def connection_string(self):
-        return f"{self.hostname}:{self.port}"
+        return f"{self.hostname}:{self.port} (ssl: {self.ssl})"
 
     # Connects the interface to its target(s)
     def connect(self):
@@ -74,6 +76,8 @@ class MqttInterface(Interface):
         self.client.on_message = self.on_message
         self.client.user_data_set(self.pkt_queue)  # passed to on_message
 
+        if self.ssl:
+            self.client.tls_set()
         if self.username and self.password:
             self.client.username_pw_set(self.username, self.password)
         # You still need the ca_file if you're using your own cert and key
