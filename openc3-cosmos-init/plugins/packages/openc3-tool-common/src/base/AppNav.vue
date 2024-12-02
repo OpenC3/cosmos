@@ -160,13 +160,15 @@
 import { navigateToUrl, registerApplication, start } from 'single-spa'
 import { Api, OpenC3Api } from '@openc3/js-common/services'
 import { UpgradeToEnterpriseDialog } from '@openc3/vue-common/components'
-import { Notifications, ScopeSelector, UserMenu } from '.'
+import Notifications from './Notifications.vue'
+import ScopeSelector from './ScopeSelector.vue'
+import UserMenu from './UserMenu.vue'
 import logo from '/img/logo.png' // TODO: figure out how to import from @openc3/js-common
 
 export default {
   components: {
-    ScopeSelector,
     Notifications,
+    ScopeSelector,
     UserMenu,
     UpgradeToEnterpriseDialog,
   },

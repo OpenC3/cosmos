@@ -119,7 +119,9 @@
 <script>
 import { Api } from '@openc3/js-common/services'
 import { TimeFilters } from '@openc3/vue-common/util'
-import { ColorSelectForm, CreateDialog, MetadataInputForm } from '.'
+import ColorSelectForm from './ColorSelectform.vue'
+import CreateDialog from './CreateDialog'
+import MetadataInputForm from './MetadataInputForm.vue'
 
 export default {
   components: {

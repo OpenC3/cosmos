@@ -143,12 +143,10 @@
 <script>
 import { Api } from '@openc3/js-common/services'
 import { TimeFilters } from '@openc3/vue-common/util'
-import {
-  ActivityCreateDialog,
-  DeleteItem,
-  MetadataCreateDialog,
-  NoteCreateDialog
-} from '.'
+import ActivityCreateDialog from './ActivityCreateDialog.vue'
+import DeleteItem from './DeleteItem'
+import MetadataCreateDialog from './MetadataCreateDialog.vue'
+import NoteCreateDialog from './NoteCreateDialog.vue'
 
 export default {
   components: {

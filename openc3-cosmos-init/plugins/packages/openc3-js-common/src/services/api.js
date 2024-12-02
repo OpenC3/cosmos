@@ -20,7 +20,7 @@
 # if purchased from OpenC3, Inc.
 */
 
-import axios from './axios.js'
+import axios from './axios'
 
 const request = async function (
   method,

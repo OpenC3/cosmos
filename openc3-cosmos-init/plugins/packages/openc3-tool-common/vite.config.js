@@ -7,6 +7,7 @@ export default defineConfig({
     sourcemap: true,
     lib: {
       entry: {
+        'tool-common': './src/main.js',
         'admin': './src/admin/index.js',
         'base': './src/base/index.js',
         'calendar': './src/calendar/index.js'
@@ -15,6 +16,7 @@ export default defineConfig({
     },
     rollupOptions: {
       preserveEntrySignatures: 'strict',
+      external: ['single-spa', 'vue', 'vuex', 'vue-router', 'vuetify'],
     },
   },
   plugins: [vue()],

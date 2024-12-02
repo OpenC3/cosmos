@@ -70,10 +70,7 @@
 </template>
 
 <script>
-import { vuetify } from '@/plugins'
-
 export default {
-  vuetify,
   data: function () {
     return {
       show: false,

@@ -14,6 +14,7 @@ export default defineConfig({
       name: '@openc3/vue-common',
     },
     rollupOptions: {
+      external: ['single-spa', 'vue', 'vuex', 'vue-router', 'vuetify'],
       preserveEntrySignatures: 'strict',
       onwarn: (warning, warn) => {
         const ignoredWarnings = [

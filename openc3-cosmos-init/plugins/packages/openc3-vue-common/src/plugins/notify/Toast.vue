@@ -64,10 +64,8 @@ import {
   AstroStatusColors,
   getStatusColorContrast,
 } from '@/components/icons'
-import { vuetify } from '@/plugins'
 
 export default {
-  vuetify,
   data: function () {
     return {
       showToast: false,

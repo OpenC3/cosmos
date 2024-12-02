@@ -44,7 +44,7 @@
 import { Api, OpenC3Api } from '@openc3/js-common/services'
 import { UpgradeToEnterpriseDialog } from '@openc3/vue-common/components'
 import icon from '/img/icon.png'
-import { ClockFooter } from '.'
+import ClockFooter from './ClockFooter.vue'
 
 export default {
   components: {

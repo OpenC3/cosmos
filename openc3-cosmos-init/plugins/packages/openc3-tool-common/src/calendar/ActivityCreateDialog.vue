@@ -242,7 +242,7 @@
 import { Api } from '@openc3/js-common/services'
 import { EnvironmentChooser, ScriptChooser } from '@openc3/vue-common/components'
 import { TimeFilters } from '@openc3/vue-common/util'
-import { CreateDialog } from '.'
+import CreateDialog from './CreateDialog'
 
 export default {
   components: {
