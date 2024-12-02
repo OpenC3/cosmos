@@ -16,6 +16,7 @@
 # if purchased from OpenC3, Inc.
 */
 
+import { AceEditorModes } from './ace'
 import { ScreenCompleter } from './autocomplete'
 import { Config, OpenConfigDialog, SaveConfigDialog } from './config'
 import CriticalCmdDialog from './CriticalCmdDialog.vue'
@@ -43,6 +44,7 @@ import UpgradeToEnterpriseDialog from './UpgradeToEnterpriseDialog.vue'
 import * as Widgets from './widgets'
 
 export {
+  AceEditorModes,
   ScreenCompleter,
   Config,
   OpenConfigDialog,

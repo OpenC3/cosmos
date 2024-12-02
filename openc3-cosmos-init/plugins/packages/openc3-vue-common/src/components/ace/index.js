@@ -16,15 +16,8 @@
 # if purchased from OpenC3, Inc.
 */
 
-import * as admin from './admin'
-import * as base from './base'
-import * as calendar from './calendar'
+import AceEditorModes from './AceEditorModes'
 
-export default {
-  install(app, _) {
-    Object.entries(base)
-      .forEach(([componentName, component]) => {
-        app.component(componentName, component)
-      })
-  }
+export {
+  AceEditorModes,
 }

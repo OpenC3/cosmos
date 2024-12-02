@@ -1,11 +1,10 @@
 import { createApp } from 'vue'
 import { defineCustomElements } from '@astrouxds/astro-web-components/loader'
-import { Notify, store } from '@openc3/vue-common/plugins'
+import { Notify, store, vuetify } from '@openc3/vue-common/plugins'
 import ToolCommon from '@openc3/tool-common/plugin'
 // TODO: import '@openc3/tool-common/src/assets/stylesheets/layout/layout.scss'
 
 import App from './App.vue'
-import vuetify from '@openc3/tool-common/src/plugins/vuetify'
 import router from './router'
 
 defineCustomElements()

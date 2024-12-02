@@ -402,13 +402,13 @@
 
 <script>
 import axios from 'axios'
-import EditorModes from '@openc3/tool-common/src/components/ace/EditorModes'
 import { format } from 'date-fns'
 import { Splitpanes, Pane } from 'splitpanes'
 import 'splitpanes/dist/splitpanes.css'
 
 import { Api, Cable, OpenC3Api } from '@openc3/js-common/services'
 import {
+  AceEditorModes,
   CriticalCmdDialog,
   EnvironmentDialog,
   FileOpenSaveDialog,
@@ -462,7 +462,7 @@ export default {
     ScriptLogMessages,
     CriticalCmdDialog,
   },
-  mixins: [EditorModes],
+  mixins: [AceEditorModes],
   data() {
     return {
       title: 'Script Runner',

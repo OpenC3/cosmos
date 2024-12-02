@@ -24,7 +24,7 @@ import 'ace-builds/src-min-noconflict/mode-markdown'
 import 'ace-builds/src-min-noconflict/theme-twilight'
 import 'ace-builds/src-min-noconflict/ext-language_tools'
 import 'ace-builds/src-min-noconflict/ext-searchbox'
-import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
+import { OpenC3Api } from '@openc3/js-common/services'
 
 export default {
   data: {

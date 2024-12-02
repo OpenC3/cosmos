@@ -52,7 +52,7 @@
 </template>
 
 <script>
-import EditorModes from './ace/EditorModes'
+import { AceEditorModes } from './ace'
 
 export default {
   props: {
@@ -68,7 +68,7 @@ export default {
       required: false,
     },
   },
-  mixins: [EditorModes],
+  mixins: [AceEditorModes],
   data() {
     return {
       editor: null,
