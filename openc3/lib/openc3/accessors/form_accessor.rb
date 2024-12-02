@@ -26,7 +26,17 @@ module OpenC3
       value = nil
       ary.each do |key, ary_value|
         if key == item.key
-          value = ary_value
+          # Handle the case of multiple values for the same key
+          # and build up an array of values
+          if value
+            # Second time through value is not an Array yet
+            if not Array === value
+              value = [value]
+            end
+            value << ary_value
+          else
+            value = ary_value
+          end
         end
       end
       return value

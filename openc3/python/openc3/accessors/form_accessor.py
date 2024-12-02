@@ -25,7 +25,15 @@ class FormAccessor(Accessor):
         value = None
         for key, ary_value in ary:
             if key.decode() == item.key:
-                value = ary_value.decode()
+                # Handle the case of multiple values for the same key
+                # and build up an array of values
+                if value:
+                    # Second time through value is not a list yet
+                    if type(value) is not list:
+                        value = [value]
+                    value.append(ary_value)
+                else:
+                    value = ary_value
         return value
 
     @classmethod
