@@ -77,7 +77,7 @@
         :items-per-page="-1"
         :items-per-page-options="[10, 20, 50, 100, -1]"
         v-model:sort-by="sortBy"
-        @click:row="fileClick"
+        @click:row.stop="fileClick"
         multi-sort
         density="compact"
         hover
@@ -91,27 +91,33 @@
               icon="mdi-chevron-left-box-outline"
               variant="text"
               density="compact"
-              class="mt-1"
-              @click="backArrow"
+              class="ml-3 mt-1"
+              @click.stop="backArrow"
               data-test="be-nav-back"
             />
             <span class=".text-body-1 ma-2 font-size" data-test="file-path">
-              /{{ path }}
+              <a
+                v-for="(part, index) in breadcrumbPath"
+                :key="index"
+                @click.prevent="gotoPath(part.path)"
+                style="cursor: pointer"
+                >/&nbsp;{{ part.name }}&nbsp;
+              </a>
             </span>
             <v-spacer />
-            <div class="pa-1 font-size">
+            <div class="ma-2 font-size">
               Folder Size: {{ folderTotal }}
               <span class="small-font-size">(not recursive)</span>
             </div>
 
             <v-spacer />
-            <div style="display: flex" v-if="mode === 'bucket'">
-              <span class="pa-1 font-size">Upload File</span>
+            <div class="ma-2" style="display: flex" v-if="mode === 'bucket'">
+              <span class="font-size">Upload File</span>
               <v-file-input
                 v-model="file"
                 hide-input
                 hide-details
-                class="file-input"
+                class="mr-1 file-input"
                 prepend-icon="mdi-upload"
                 data-test="upload-file"
               />
@@ -127,9 +133,17 @@
         </template>
         <template v-slot:item.action="{ item }">
           <v-icon
+            v-if="item.icon === 'mdi-file' && isText(item.name)"
+            @click="viewFile(item.name)"
             class="mr-3"
+            data-test="view-file"
+          >
+            mdi-eye
+          </v-icon>
+          <v-icon
             v-if="item.icon === 'mdi-file'"
             @click="downloadFile(item.name)"
+            class="mr-3"
             data-test="download-file"
           >
             mdi-download-box
@@ -217,17 +231,27 @@
         </v-card-text>
       </v-card>
     </v-dialog>
+    <output-dialog
+      type="File"
+      :content="dialogContent"
+      :name="dialogName"
+      :filename="dialogFilename"
+      v-model="showDialog"
+      v-if="showDialog"
+      @submit="showDialog = false"
+    />
   </div>
 </template>
 
 <script>
 import { Api } from '@openc3/js-common/services'
-import { TopBar } from '@openc3/vue-common/components'
+import { OutputDialog, TopBar } from '@openc3/vue-common/components'
 import axios from 'axios'
 
 export default {
   components: {
     TopBar,
+    OutputDialog,
   },
   data() {
     return {
@@ -241,9 +265,14 @@ export default {
       optionsDialog: false,
       refreshInterval: 60,
       updater: null,
+      updating: false,
       path: '',
       file: null,
       files: [],
+      showDialog: false,
+      dialogName: '',
+      dialogContent: '',
+      dialogFilename: '',
       sortBy: [
         {
           key: 'modified',
@@ -255,6 +284,7 @@ export default {
           title: 'Name',
           value: 'name',
           sortable: true,
+          nowrap: true,
         },
         {
           title: 'Size',
@@ -269,6 +299,8 @@ export default {
         {
           title: 'Action',
           value: 'action',
+          align: 'end',
+          nowrap: true,
         },
       ],
       menus: [
@@ -293,6 +325,13 @@ export default {
         .reduce((a, b) => a + (b.size ? b.size : 0), 0)
         .toLocaleString()
     },
+    breadcrumbPath() {
+      const parts = this.path.split('/')
+      return parts.map((part, index) => ({
+        name: part,
+        path: parts.slice(0, index + 1).join('/') + '/',
+      }))
+    },
   },
   created() {
     Api.get('/openc3-api/storage/buckets').then((response) => {
@@ -302,6 +341,7 @@ export default {
       this.volumes = response.data
     })
     if (this.$route.params.path?.length) {
+      this.updating = true
       let parts = this.$route.params.path[0].split('/')
       if (parts[0] === '') {
         this.mode = 'volume'
@@ -332,7 +372,38 @@ export default {
     },
   },
   methods: {
+    isText(filename) {
+      if (['Rakefile', 'Dockerfile'].includes(filename)) {
+        return true
+      }
+      let ext = filename.split('.').pop()
+      // Add some common COSMOS text file extensions
+      return [
+        'txt',
+        'md',
+        'rb',
+        'py',
+        'pyi',
+        'cfg',
+        'html',
+        'js',
+        'json',
+        'info',
+        'vue',
+        'sh',
+        'bat',
+        'csv',
+      ].includes(ext)
+    },
+    gotoPath(path) {
+      if (!this.updating) {
+        this.updating = true
+        this.path = path
+        this.update()
+      }
+    },
     update() {
+      this.updating = true
       this.$router.push({
         name: 'Bucket Explorer',
         params: {
@@ -357,31 +428,43 @@ export default {
       }
     },
     selectBucket(bucket) {
-      this.mode = 'bucket'
-      this.root = bucket
-      this.path = ''
-      this.update()
+      if (!this.updating) {
+        this.updating = true
+        this.mode = 'bucket'
+        this.root = bucket
+        this.path = ''
+        this.update()
+      }
     },
     selectVolume(volume) {
-      this.mode = 'volume'
-      this.root = volume
-      this.path = ''
-      this.update()
+      if (!this.updating) {
+        this.updating = true
+        this.mode = 'volume'
+        this.root = volume
+        this.path = ''
+        this.update()
+      }
     },
     backArrow() {
       // Nothing to do if we're at the root so return
       if (this.path === '') return
-      let parts = this.path.split('/')
-      this.path = parts.slice(0, parts.length - 2).join('/')
-      // Only append the last slash if we're not at the root
-      // The root is 2 because it's the path before clicking back
-      if (parts.length > 2) {
-        this.path += '/'
+      if (!this.updating) {
+        this.updating = true
+        let parts = this.path.split('/')
+        this.path = parts.slice(0, parts.length - 2).join('/')
+        // Only append the last slash if we're not at the root
+        // The root is 2 because it's the path before clicking back
+        if (parts.length > 2) {
+          this.path += '/'
+        }
+        this.update()
       }
-      this.update()
     },
     fileClick(_, { item }) {
-      if (item.icon === 'mdi-folder') {
+      // Nothing to do if they click on a file
+      if (item.icon !== 'mdi-folder') return
+      if (!this.updating) {
+        this.updating = true
         if (this.root === '') {
           // initial root click
           this.root = item.name
@@ -390,6 +473,23 @@ export default {
         }
         this.update()
       }
+    },
+    viewFile(filename) {
+      let root = this.root.toUpperCase()
+      if (this.mode === 'volume') {
+        root = root.slice(1)
+      }
+      Api.get(
+        `/openc3-api/storage/download_file/${encodeURIComponent(
+          this.path,
+        )}${filename}?${this.mode}=OPENC3_${root}_${this.mode.toUpperCase()}`,
+      ).then((response) => {
+        this.dialogName = filename
+        this.dialogFilename = filename
+        // Decode Base64 string
+        this.dialogContent = window.atob(response.data.contents)
+        this.showDialog = true
+      })
     },
     downloadFile(filename) {
       let root = this.root.toUpperCase()
@@ -503,6 +603,7 @@ export default {
               }
             }),
           )
+          this.updating = false
         })
         .catch(({ response }) => {
           this.files = []
@@ -515,6 +616,7 @@ export default {
               title: response.message,
             })
           }
+          this.updating = false
         })
     },
   },

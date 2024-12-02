@@ -196,3 +196,14 @@ TARGET:
           required: false
           description: Regex to match against filenames. If match, then no ERB processing
           values: .+
+    SHARD:
+      summary: Operator shard to run target microservices on
+      description: Operator Shard. Only used if running multiple operator containers typically in Kubernetes
+      since: 6.0.0
+      parameters:
+        - name: Shard
+          required: false
+          description: Shard number starting from 0
+          values: \d+
+      example: |
+        SHARD 0

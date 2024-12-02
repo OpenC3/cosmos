@@ -5,7 +5,7 @@ import ToolCommon from '@openc3/tool-common/plugin'
 // TODO: import '@openc3/tool-common/src/assets/stylesheets/layout/layout.scss'
 
 import App from './App.vue'
-import vuetify from './plugins/vuetify'
+import vuetify from '@openc3/tool-common/src/plugins/vuetify'
 import router from './router'
 
 defineCustomElements()

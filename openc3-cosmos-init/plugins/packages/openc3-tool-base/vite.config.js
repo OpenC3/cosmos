@@ -8,6 +8,7 @@ const DEFAULT_EXTENSIONS = ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json']
 export default defineConfig((options) => {
   return {
     build: {
+      // minify: false,
       outDir: 'tools/base',
       emptyOutDir: true,
       rollupOptions: {

@@ -120,6 +120,8 @@ RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-docs"]
 
 FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_BASE_IMAGE}:${OPENC3_TAG}
 
+USER ${USER_ID}:${GROUP_ID}
+
 COPY --from=openc3-tmp1 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/packages/openc3-cosmos-ace-diff/ /openc3/plugins/packages/openc3-cosmos-ace-diff/
 COPY --from=openc3-tmp1 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gems/* /openc3/plugins/gems/
 COPY --from=openc3-tmp2 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gems/* /openc3/plugins/gems/

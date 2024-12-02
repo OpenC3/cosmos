@@ -163,6 +163,7 @@ export default {
       newScreenDialog: false,
       grid: null,
       api: null,
+      timeZone: null, // deliberately null so we know when it is set
       keywords: [],
       menus: [
         {

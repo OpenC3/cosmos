@@ -103,27 +103,26 @@
       >
         <template v-slot:item.view="{ item }">
           <v-btn color="primary" @click="viewScriptLog(item)">
-            <span v-if="item.name.includes('(') && item.name.includes(')')"
-              >Script Report</span
-            >
-            <span v-else>Script Log</span>
+            <span v-if="item.name.includes('(') && item.name.includes(')')">
+              Script Report
+            </span>
+            <span v-else> Script Log </span>
             <v-icon right> mdi-eye </v-icon>
           </v-btn>
         </template>
         <template v-slot:item.download="{ item }">
           <v-btn
-            icon
             :disabled="downloadScript"
             :loading="downloadScript && downloadScript.name === item.name"
             @click="downloadScriptLog(item)"
           >
-            <span v-if="item.name.includes('(') && item.name.includes(')')"
-              >Script Report</span
-            >
-            <span v-else>Script Log</span>
+            <span v-if="item.name.includes('(') && item.name.includes(')')">
+              Script Report
+            </span>
+            <span v-else> Script Log </span>
             <v-icon end> mdi-file-download-outline </v-icon>
             <template v-slot:loader>
-              <span>Loading...</span>
+              <span> Loading... </span>
             </template>
           </v-btn>
         </template>
