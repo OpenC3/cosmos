@@ -523,7 +523,7 @@ def run_migrations(folder)
     if extension == '.rb' and not migrations[name]
       unless brand_new
         puts "Running Migration: #{name}"
-        require File.join(folder, entry)
+        require entry
       end
       OpenC3::MigrationModel.new(name: name).create
     end
