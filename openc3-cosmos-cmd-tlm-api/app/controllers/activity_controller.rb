@@ -55,11 +55,9 @@ class ActivityController < ApplicationController
       render json: model.as_json(:allow_nan => true)
     rescue ArgumentError => e
       log_error(e)
-
       render json: { status: 'error', message: 'Invalid date provided. Recommend ISO format' }, status: 400
     rescue StandardError => e # includes ActivityInputError
       log_error(e)
-
       render json: { status: 'error', message: e.message, type: e.class }, status: 400
     end
   end
@@ -110,19 +108,15 @@ class ActivityController < ApplicationController
       render json: model.as_json(:allow_nan => true), status: 201
     rescue ArgumentError, TypeError => e
       log_error(e)
-
       render json: { status: 'error', message: "Invalid input: #{hash}", type: e.class, e: e.to_s }, status: 400
     rescue StandardError => e # includes ActivityInputError
       log_error(e)
-
       render json: { status: 'error', message: e.message, type: e.class, e: e.to_s }, status: 400
     rescue OpenC3::ActivityOverlapError => e
       log_error(e)
-
       render json: { status: 'error', message: e.message, type: e.class, e: e.to_s }, status: 409
     rescue OpenC3::ActivityError => e
       log_error(e)
-
       render json: { status: 'error', message: e.message, type: e.class, e: e.to_s }, status: 418
     end
   end
@@ -146,7 +140,6 @@ class ActivityController < ApplicationController
       render json: { name: params[:name], count: count }
     rescue StandardError => e
       log_error(e)
-
       render json: { status: 'error', message: e.message, type: e.class, e: e.to_s }, status: 400
     end
   end
@@ -175,7 +168,6 @@ class ActivityController < ApplicationController
       end
     rescue StandardError => e
       log_error(e)
-
       render json: { status: 'error', message: e.message, type: e.class, e: e.to_s }, status: 400
     end
   end
@@ -219,11 +211,9 @@ class ActivityController < ApplicationController
       render json: model.as_json(:allow_nan => true)
     rescue OpenC3::ActivityError => e
       log_error(e)
-
       render json: { status: 'error', message: e.message, type: e.class, e: e.to_s }, status: 418
     rescue StandardError => e
       log_error(e)
-
       render json: { status: 'error', message: e.message, type: e.class, e: e.to_s }, status: 400
     end
   end
@@ -273,19 +263,15 @@ class ActivityController < ApplicationController
       render json: model.as_json(:allow_nan => true)
     rescue ArgumentError, TypeError => e
       log_error(e)
-
       render json: { status: 'error', message: "Invalid input: #{hash}", type: e.class, e: e.to_s }, status: 400
     rescue OpenC3::ActivityOverlapError => e
       log_error(e)
-
       render json: { status: 'error', message: e.message, type: e.class, e: e.to_s }, status: 409
     rescue OpenC3::ActivityError => e
       log_error(e)
-
       render json: { status: 'error', message: e.message, type: e.class, e: e.to_s }, status: 418
     rescue StandardError => e # includes OpenC3::ActivityInputError
       log_error(e)
-
       render json: { status: 'error', message: e.message, type: e.class, e: e.to_s }, status: 400
     end
   end
@@ -319,7 +305,6 @@ class ActivityController < ApplicationController
       end
     rescue StandardError => e
       log_error(e)
-
       render json: { status: 'error', message: e.message, type: e.class, e: e.to_s }, status: 400
     end
   end
@@ -379,19 +364,15 @@ class ActivityController < ApplicationController
         ret << model.as_json(:allow_nan => true)
       rescue ArgumentError, TypeError => e
         log_error(e)
-
         ret << { status: 'error', message: "Invalid input, #{e.message}", input: input, type: e.class, err: 400 }
       rescue OpenC3::ActivityOverlapError => e
         log_error(e)
-
         ret << { status: 'error', message: e.message, input: input, type: e.class, err: 409 }
       rescue OpenC3::ActivityError => e
         log_error(e)
-
         ret << { status: 'error', message: e.message, input: input, type: e.class, err: 418 }
       rescue StandardError => e # includes OpenC3::ActivityInputError
         log_error(e)
-
         ret << { status: 'error', message: e.message, input: input, type: e.class, err: 400 }
       end
     end
@@ -439,7 +420,6 @@ class ActivityController < ApplicationController
         ret << { status: 'removed', removed: result, input: input, type: e.class }
       rescue StandardError => e # includes OpenC3::ActivityInputError
         log_error(e)
-
         ret << { status: 'error', message: e.message, input: input, type: e.class, err: 400 }
       end
     end

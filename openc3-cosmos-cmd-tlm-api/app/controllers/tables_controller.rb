@@ -41,7 +41,6 @@ class TablesController < ApplicationController
       render json: results
     rescue Table::NotFound => e
       log_error(e)
-
       render json: { status: 'error', message: e.message }, status: 404
     end
   end
@@ -55,7 +54,6 @@ class TablesController < ApplicationController
       render json: { filename: file.filename, contents: file.contents }
     rescue Table::NotFound => e
       log_error(e)
-
       render json: { status: 'error', message: e.message }, status: 404
     end
   end
@@ -69,7 +67,6 @@ class TablesController < ApplicationController
       render json: { filename: file.filename, contents: file.contents }
     rescue Table::NotFound => e
       log_error(e)
-
       render json: { status: 'error', message: e.message }, status: 404
     end
   end
@@ -109,7 +106,6 @@ class TablesController < ApplicationController
       render json: Table.load(scope, binary, definition)
     rescue Table::NotFound => e
       log_error(e)
-
       render json: { status: 'error', message: e.message }, status: 404
     end
   end
@@ -123,7 +119,6 @@ class TablesController < ApplicationController
       head :ok
     rescue Table::NotFound => e
       log_error(e)
-
       render json: { status: 'error', message: e.message }, status: 404
     end
   end
@@ -137,7 +132,6 @@ class TablesController < ApplicationController
       head :ok
     rescue Table::NotFound => e
       log_error(e)
-
       render json: { status: 'error', message: e.message }, status: 404
     end
   end
@@ -151,7 +145,6 @@ class TablesController < ApplicationController
       render json: { filename: filename }
     rescue Table::NotFound => e
       log_error(e)
-
       render json: { status: 'error', message: e.message }, status: 404
     end
   end

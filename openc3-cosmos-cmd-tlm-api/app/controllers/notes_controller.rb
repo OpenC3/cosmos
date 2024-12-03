@@ -225,7 +225,6 @@ class NotesController < ApplicationController
       yield
     rescue ArgumentError, TypeError => e
       log_error(e)
-
       render json: {
                status: 'error',
                message: "Invalid input: #{e.message}",
@@ -234,7 +233,6 @@ class NotesController < ApplicationController
              status: 400
     rescue OpenC3::SortedError => e
       log_error(e)
-
       render json: {
                status: 'error',
                message: e.message,
@@ -243,7 +241,6 @@ class NotesController < ApplicationController
              status: 400
     rescue StandardError => e
       log_error(e)
-
       render json: {
                status: 'error',
                message: e.message,

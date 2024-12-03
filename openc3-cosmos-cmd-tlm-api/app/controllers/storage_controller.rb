@@ -81,11 +81,9 @@ class StorageController < ApplicationController
     render json: results
   rescue OpenC3::Bucket::NotFound => e
     log_error(e)
-
     render json: { status: 'error', message: e.message }, status: 404
   rescue Exception => e
     log_error(e)
-
     OpenC3::Logger.error("File listing failed: #{e.message}", user: username())
     render json: { status: 'error', message: e.message }, status: 500
   end
@@ -107,7 +105,6 @@ class StorageController < ApplicationController
     end
   rescue Exception => e
     log_error(e)
-
     OpenC3::Logger.error("File exists request failed: #{e.message}", user: username())
     render json: { status: 'error', message: e.message }, status: 500
   end
@@ -137,7 +134,6 @@ class StorageController < ApplicationController
     render json: { filename: params[:object_id], contents: Base64.encode64(file) }
   rescue Exception => e
     log_error(e)
-
     OpenC3::Logger.error("Download failed: #{e.message}", user: username())
     render json: { status: 'error', message: e.message }, status: 500
   end
@@ -155,7 +151,6 @@ class StorageController < ApplicationController
     render json: result, status: 201
   rescue Exception => e
     log_error(e)
-
     OpenC3::Logger.error("Download request failed: #{e.message}", user: username())
     render json: { status: 'error', message: e.message }, status: 500
   end
@@ -181,7 +176,6 @@ class StorageController < ApplicationController
     render json: result, status: 201
   rescue Exception => e
     log_error(e)
-
     OpenC3::Logger.error("Upload request failed: #{e.message}", user: username())
     render json: { status: 'error', message: e.message }, status: 500
   end
@@ -198,7 +192,6 @@ class StorageController < ApplicationController
     head :ok
   rescue Exception => e
     log_error(e)
-
     OpenC3::Logger.error("Delete failed: #{e.message}", user: username())
     render json: { status: 'error', message: e.message }, status: 500
   end

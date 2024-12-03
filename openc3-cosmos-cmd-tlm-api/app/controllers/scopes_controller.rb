@@ -49,7 +49,6 @@ class ScopesController < ModelController
     head :ok
   rescue Exception => e
     log_error(e)
-
     render json: { status: 'error', message: e.message }, status: 500
   end
 
@@ -60,7 +59,6 @@ class ScopesController < ModelController
     render json: result
   rescue Exception => e
     log_error(e)
-
     render json: { status: 'error', message: e.message }, status: 500
   end
 end

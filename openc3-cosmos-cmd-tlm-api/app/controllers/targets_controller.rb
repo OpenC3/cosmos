@@ -44,7 +44,6 @@ class TargetsController < ModelController
       render json: @model_class.modified_files(id, scope: scope)
     rescue Exception => e
       log_error(e)
-
       OpenC3::Logger.info("Target '#{id} modified_files failed: #{e.message}", user: username())
       head :internal_server_error
     end
@@ -59,7 +58,6 @@ class TargetsController < ModelController
       head :ok
     rescue Exception => e
       log_error(e)
-
       OpenC3::Logger.info("Target '#{id} delete_modified failed: #{e.message}", user: username())
       head :internal_server_error
     end
@@ -79,7 +77,6 @@ class TargetsController < ModelController
       end
     rescue Exception => e
       log_error(e)
-
       OpenC3::Logger.info("Target '#{id} download failed: #{e.message}", user: username())
       render json: { status: 'error', message: e.message }, status: 500
     end

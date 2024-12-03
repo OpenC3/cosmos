@@ -78,15 +78,12 @@ class EnvironmentController < ApplicationController
       render json: model.as_json(:allow_nan => true), status: 201
     rescue RuntimeError, JSON::ParserError => e
       log_error(e)
-
       render json: { status: 'error', message: e.message, type: e.class }, status: 400
     rescue TypeError => e
       log_error(e)
-
       render json: { status: 'error', message: 'Invalid json object', type: e.class }, status: 400
     rescue OpenC3::EnvironmentError => e
       log_error(e)
-
       render json: { status: 'error', message: e.message, type: e.class }, status: 409
     end
   end
@@ -112,7 +109,6 @@ class EnvironmentController < ApplicationController
       render json: { name: params[:name] }
     rescue OpenC3::EnvironmentError => e
       log_error(e)
-
       render json: { status: 'error', message: e.message, type: e.class }, status: 400
     end
   end

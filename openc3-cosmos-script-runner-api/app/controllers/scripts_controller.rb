@@ -104,7 +104,6 @@ class ScriptsController < ApplicationController
     render json: results
   rescue => e
     log_error(e)
-
     render json: { status: 'error', message: e.message }, status: 500
   end
 
@@ -152,7 +151,6 @@ class ScriptsController < ApplicationController
     head :ok
   rescue => e
     log_error(e)
-
     render json: { status: 'error', message: e.message }, status: 500
   end
 

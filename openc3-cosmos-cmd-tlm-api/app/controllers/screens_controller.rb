@@ -48,7 +48,6 @@ class ScreensController < ApplicationController
     render json: screen
   rescue => e
     log_error(e)
-
     render json: { status: 'error', message: e.message }, status: 500
   end
 
@@ -61,7 +60,6 @@ class ScreensController < ApplicationController
     head :ok
   rescue => e
     log_error(e)
-
     render json: { status: 'error', message: e.message }, status: 500
   end
 end
