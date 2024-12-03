@@ -44,7 +44,8 @@ class ReactionController < ApplicationController
       end
       render json: ret
     rescue StandardError => e
-      logger.error(e.formatted)
+      log_error(e)
+
       render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
     end
   end
@@ -60,13 +61,16 @@ class ReactionController < ApplicationController
       model = @model_class.get(name: params[:name], scope: params[:scope])
       render json: model.as_json(:allow_nan => true)
     rescue OpenC3::ReactionInputError => e
-      logger.error(e.formatted)
+      log_error(e)
+
       render json: { status: 'error', message: e.message, type: e.class }, status: 404
     rescue OpenC3::ReactionError => e
-      logger.error(e.formatted)
+      log_error(e)
+
       render json: { status: 'error', message: e.message, type: e.class }, status: 400
     rescue StandardError => e
-      logger.error(e.formatted)
+      log_error(e)
+
       render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
     end
   end
@@ -88,7 +92,7 @@ class ReactionController < ApplicationController
   #```json
   #  {
   #    "snooze": 300,
-  #    "triggerLevel": 'EDGE',
+  #    "trigger_level": 'EDGE',
   #    "triggers": [
   #      {
   #        "name": "TV0-1234",
@@ -106,7 +110,7 @@ class ReactionController < ApplicationController
   def create
     return unless authorization('script_run')
     begin
-      hash = params.to_unsafe_h.slice(:snooze, :triggers, :triggerLevel, :actions).to_h
+      hash = params.to_unsafe_h.slice(:snooze, :triggers, :trigger_level, :actions).to_h
       name = @model_class.create_unique_name(scope: params[:scope])
       hash[:username] = username()
       model = @model_class.from_json(hash.symbolize_keys, name: name, scope: params[:scope])
@@ -114,13 +118,16 @@ class ReactionController < ApplicationController
       model.deploy()
       render json: model.as_json(:allow_nan => true), status: 201
     rescue OpenC3::ReactionInputError => e
-      logger.error(e.formatted)
+      log_error(e)
+
       render json: { status: 'error', message: e.message, type: e.class }, status: 400
     rescue OpenC3::ReactionError => e
-      logger.error(e.formatted)
+      log_error(e)
+
       render json: { status: 'error', message: e.message, type: e.class }, status: 418
     rescue StandardError => e
-      logger.error(e.formatted)
+      log_error(e)
+
       render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
     end
   end
@@ -151,10 +158,10 @@ class ReactionController < ApplicationController
         render json: { status: 'error', message: NOT_FOUND }, status: 404
         return
       end
-      hash = params.to_unsafe_h.slice(:snooze, :triggers, :triggerLevel, :actions).to_h
+      hash = params.to_unsafe_h.slice(:snooze, :triggers, :trigger_level, :actions).to_h
       model.snooze = hash['snooze']
       model.triggers = hash['triggers']
-      model.triggerLevel = hash['triggerLevel']
+      model.trigger_level = hash['trigger_level']
       model.actions = hash['actions']
       # Notify the ReactionMicroservice to update the ReactionModel
       # We don't update directly here to avoid a race condition between the microservice
@@ -162,13 +169,16 @@ class ReactionController < ApplicationController
       model.notify(kind: 'updated')
       render json: model.as_json(:allow_nan => true)
     rescue OpenC3::ReactionInputError => e
-      logger.error(e.formatted)
+      log_error(e)
+
       render json: { status: 'error', message: e.message, type: e.class }, status: 400
     rescue OpenC3::ReactionError => e
-      logger.error(e.formatted)
+      log_error(e)
+
       render json: { status: 'error', message: e.message, type: e.class }, status: 418
     rescue StandardError => e
-      logger.error(e.formatted)
+      log_error(e)
+
       render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
     end
   end
@@ -203,7 +213,8 @@ class ReactionController < ApplicationController
       model.notify_enable
       render json: model.as_json(:allow_nan => true)
     rescue StandardError => e
-      logger.error(e.formatted)
+      log_error(e)
+
       render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
     end
   end
@@ -238,7 +249,8 @@ class ReactionController < ApplicationController
       model.notify_disable
       render json: model.as_json(:allow_nan => true)
     rescue StandardError => e
-      logger.error(e.formatted)
+      log_error(e)
+
       render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
     end
   end
@@ -258,7 +270,8 @@ class ReactionController < ApplicationController
       model.notify_execute
       render json: model.as_json(:allow_nan => true)
     rescue StandardError => e
-      logger.error(e.formatted)
+      log_error(e)
+
       render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
     end
   end
@@ -289,13 +302,16 @@ class ReactionController < ApplicationController
       model.notify(kind: 'deleted')
       render json: model.as_json(:allow_nan => true)
     rescue OpenC3::ReactionInputError => e
-      logger.error(e.formatted)
+      log_error(e)
+
       render json: { status: 'error', message: e.message, type: e.class }, status: 404
     rescue OpenC3::ReactionError => e
-      logger.error(e.formatted)
+      log_error(e)
+
       render json: { status: 'error', message: e.message, type: e.class }, status: 400
     rescue StandardError => e
-      logger.error(e.formatted)
+      log_error(e)
+
       render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
     end
   end

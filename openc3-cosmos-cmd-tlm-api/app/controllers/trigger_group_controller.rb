@@ -42,7 +42,8 @@ class TriggerGroupController < ApplicationController
       end
       render json: ret
     rescue StandardError => e
-      logger.error(e.formatted)
+      log_error(e)
+
       render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
     end
   end
@@ -62,10 +63,12 @@ class TriggerGroupController < ApplicationController
       end
       render json: model.as_json(:allow_nan => true)
     rescue OpenC3::TriggerGroupInputError => e
-      logger.error(e.formatted)
+      log_error(e)
+
       render json: { status: 'error', message: e.message, type: e.class }, status: 400
     rescue StandardError => e
-      logger.error(e.formatted)
+      log_error(e)
+
       render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
     end
   end
@@ -96,13 +99,16 @@ class TriggerGroupController < ApplicationController
       model.deploy()
       render json: model.as_json(:allow_nan => true), status: 201
     rescue OpenC3::TriggerGroupInputError => e
-      logger.error(e.formatted)
+      log_error(e)
+
       render json: { status: 'error', message: e.message, type: e.class }, status: 400
     rescue OpenC3::TriggerGroupError => e
-      logger.error(e.formatted)
+      log_error(e)
+
       render json: { status: 'error', message: e.message, type: e.class }, status: 418
     rescue StandardError => e
-      logger.error(e.formatted)
+      log_error(e)
+
       render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
     end
   end
@@ -126,13 +132,16 @@ class TriggerGroupController < ApplicationController
       @model_class.delete(name: params[:group], scope: params[:scope])
       render json: { delete: true, group: params[:group] }
     rescue OpenC3::TriggerGroupInputError => e
-      logger.error(e.formatted)
+      log_error(e)
+
       render json: { status: 'error', message: e.message, type: e.class }, status: 404
     rescue OpenC3::TriggerGroupError => e
-      logger.error(e.formatted)
+      log_error(e)
+
       render json: { status: 'error', message: e.message, type: e.class }, status: 400
     rescue StandardError => e
-      logger.error(e.formatted)
+      log_error(e)
+
       render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
     end
   end

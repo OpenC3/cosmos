@@ -244,28 +244,32 @@ class MetadataController < ApplicationController
     begin
       yield
     rescue ArgumentError, TypeError => e
-      logger.error(e.formatted)
+      log_error(e)
+
       render json: {
                status: 'error',
                message: "Invalid input: #{e.message}",
                type: e.class,
              }, status: 400
     rescue OpenC3::SortedOverlapError => e
-      logger.error(e.formatted)
+      log_error(e)
+
       render json: {
                 status: 'error',
                 message: e.message,
                 type: e.class,
               }, status: 409 # Conflict
     rescue OpenC3::SortedError => e
-      logger.error(e.formatted)
+      log_error(e)
+
       render json: {
                status: 'error',
                message: e.message,
                type: e.class,
              }, status: 400
     rescue StandardError => e
-      logger.error(e.formatted)
+      log_error(e)
+
       render json: {
                status: 'error',
                message: e.message,

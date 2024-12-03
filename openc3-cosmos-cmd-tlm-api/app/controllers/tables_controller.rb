@@ -40,7 +40,8 @@ class TablesController < ApplicationController
       results = { filename: file.filename, contents: Base64.encode64(file.contents) }
       render json: results
     rescue Table::NotFound => e
-      logger.error(e.formatted)
+      log_error(e)
+
       render json: { status: 'error', message: e.message }, status: 404
     end
   end
@@ -53,7 +54,8 @@ class TablesController < ApplicationController
       file = Table.definition(scope, definition, table)
       render json: { filename: file.filename, contents: file.contents }
     rescue Table::NotFound => e
-      logger.error(e.formatted)
+      log_error(e)
+
       render json: { status: 'error', message: e.message }, status: 404
     end
   end
@@ -66,7 +68,8 @@ class TablesController < ApplicationController
       file = Table.report(scope, binary, definition, table)
       render json: { filename: file.filename, contents: file.contents }
     rescue Table::NotFound => e
-      logger.error(e.formatted)
+      log_error(e)
+
       render json: { status: 'error', message: e.message }, status: 404
     end
   end
@@ -105,7 +108,8 @@ class TablesController < ApplicationController
     begin
       render json: Table.load(scope, binary, definition)
     rescue Table::NotFound => e
-      logger.error(e.formatted)
+      log_error(e)
+
       render json: { status: 'error', message: e.message }, status: 404
     end
   end
@@ -118,7 +122,8 @@ class TablesController < ApplicationController
       Table.save(scope, binary, definition, params[:tables])
       head :ok
     rescue Table::NotFound => e
-      logger.error(e.formatted)
+      log_error(e)
+
       render json: { status: 'error', message: e.message }, status: 404
     end
   end
@@ -131,7 +136,8 @@ class TablesController < ApplicationController
       Table.save_as(scope, name, new_name)
       head :ok
     rescue Table::NotFound => e
-      logger.error(e.formatted)
+      log_error(e)
+
       render json: { status: 'error', message: e.message }, status: 404
     end
   end
@@ -144,7 +150,8 @@ class TablesController < ApplicationController
       filename = Table.generate(scope, definition)
       render json: { filename: filename }
     rescue Table::NotFound => e
-      logger.error(e.formatted)
+      log_error(e)
+
       render json: { status: 'error', message: e.message }, status: 404
     end
   end

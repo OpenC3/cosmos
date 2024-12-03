@@ -103,7 +103,8 @@ class ScriptsController < ApplicationController
     OpenC3::Logger.info("Script created: #{name}", scope: scope, user: username()) if success
     render json: results
   rescue => e
-    logger.error(e.formatted)
+    log_error(e)
+
     render json: { status: 'error', message: e.message }, status: 500
   end
 
@@ -150,7 +151,8 @@ class ScriptsController < ApplicationController
     OpenC3::Logger.info("Script destroyed: #{name}", scope: scope, user: username())
     head :ok
   rescue => e
-    logger.error(e.formatted)
+    log_error(e)
+
     render json: { status: 'error', message: e.message }, status: 500
   end
 

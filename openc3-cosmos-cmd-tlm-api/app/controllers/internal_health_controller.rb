@@ -31,7 +31,8 @@ class InternalHealthController < ApplicationController
     begin
       render json: { redis: OpenC3::InfoModel.get() }
     rescue => e
-      logger.error(e.formatted)
+      log_error(e)
+
       render json: { status: 'error', message: e.message, type: e.class }, status: 500
     end
   end
