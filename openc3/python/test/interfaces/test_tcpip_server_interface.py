@@ -20,9 +20,13 @@ import threading
 import unittest
 from openc3.interfaces.tcpip_server_interface import TcpipServerInterface
 from openc3.packets.packet import Packet
+from test.test_helper import mock_redis
 
 
 class TestTcpipServerInterface(unittest.TestCase):
+    def setUp(self):
+        mock_redis(self)
+
     def test_initializes_the_instance_variables(self):
         i = TcpipServerInterface("8888", "8889", "5", "5", "burst")
         self.assertEqual(i.name, "TcpipServerInterface")
@@ -118,13 +122,13 @@ class TestTcpipServerInterface(unittest.TestCase):
         self.assertEqual(i.listen_address, "127.0.0.1")
 
     def test_server_read_only(self):
-        i = TcpipServerInterface(None, "8888", None, "5", "burst")
+        i = TcpipServerInterface(None, "8889", None, "5", "burst")
         i.connect()
 
         # Create a TCP/IP socket
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # Connect the socket to the port where the server is listening
-        server_address = ("localhost", 8888)
+        server_address = ("localhost", 8889)
         sock.connect(server_address)
         buffer = b"\x00\x01\x02\x03"
         sock.sendall(buffer)

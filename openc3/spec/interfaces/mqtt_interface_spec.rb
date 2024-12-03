@@ -39,7 +39,9 @@ module OpenC3
     describe "connection_string" do
       it "builds a human readable connection string" do
         i = MqttInterface.new('localhost', '1883')
-        expect(i.connection_string).to eql "localhost:1883"
+        expect(i.connection_string).to eql "localhost:1883 (ssl: false)"
+        i = MqttInterface.new('localhost', '1883', true)
+        expect(i.connection_string).to eql "localhost:1883 (ssl: true)"
       end
     end
 
@@ -51,6 +53,7 @@ module OpenC3
         expect(double).to receive(:port=).with(1883)
         expect(double).to receive(:username=).with('test_user')
         expect(double).to receive(:password=).with('test_pass')
+        expect(double).to receive(:ssl=).with(false)
         expect(double).to receive(:ssl=).with(true).twice
         expect(double).to receive(:cert_file=)
         expect(double).to receive(:key_file=)
@@ -69,6 +72,17 @@ module OpenC3
         i.set_option('KEY', ['key_content'])
         i.set_option('CA_FILE', ['ca_file_content'])
         i.set_option('ACK_TIMEOUT', ['10.0'])
+        i.connect()
+        expect(i.connected?).to be true
+      end
+
+      it "sets ssl even without cert_file, key_file, or ca_file" do
+        double = double(MQTT_CLIENT).as_null_object
+        expect(double).to receive(:ssl=).with(true)
+        expect(double).to receive(:connected?).and_return(true)
+        allow(MQTT::Client).to receive(:new).and_return(double)
+
+        i = MqttInterface.new('localhost', '1883', true)
         i.connect()
         expect(i.connected?).to be true
       end

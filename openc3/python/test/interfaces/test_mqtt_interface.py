@@ -30,12 +30,15 @@ class TestMqttInterface(unittest.TestCase):
         i = MqttInterface("localhost", "1883")
         self.assertEqual(i.name, "MqttInterface")
         self.assertEqual(i.hostname, "localhost")
+        self.assertEqual(i.ssl, False)
         self.assertEqual(i.port, 1883)
         self.assertEqual(i.ack_timeout, 5.0)
 
     def test_builds_a_human_readable_connection_string(self):
-        i = MqttInterface("localhost", "1883")
-        self.assertEqual(i.connection_string(), "localhost:1883")
+        i = MqttInterface("localhost", "1883", False)
+        self.assertEqual(i.connection_string(), "localhost:1883 (ssl: False)")
+        i = MqttInterface("localhost", "1883", True)
+        self.assertEqual(i.connection_string(), "localhost:1883 (ssl: True)")
 
     @patch("openc3.interfaces.mqtt_interface.mqtt.Client")
     def test_connects_to_mqtt_broker(self, mock_client):

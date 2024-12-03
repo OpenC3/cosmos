@@ -29,7 +29,7 @@ module OpenC3
 
     describe "initialize" do
       it "sets all the instance variables" do
-        i = MqttStreamInterface.new('localhost', '1883', 'write_topic', 'read_topic')
+        i = MqttStreamInterface.new('localhost', '1883', false, 'write_topic', 'read_topic')
         expect(i.name).to eql "MqttStreamInterface"
         expect(i.instance_variable_get(:@hostname)).to eql 'localhost'
         expect(i.instance_variable_get(:@port)).to eql 1883
@@ -40,8 +40,10 @@ module OpenC3
 
     describe "connection_string" do
       it "builds a human readable connection string" do
-        i = MqttStreamInterface.new('localhost', '1883', 'write_topic', 'read_topic')
-        expect(i.connection_string).to eql "localhost:1883 write topic: write_topic read topic: read_topic"
+        i = MqttStreamInterface.new('localhost', '1883', false, 'write_topic', 'read_topic')
+        expect(i.connection_string).to eql "localhost:1883 (ssl: false) write topic: write_topic read topic: read_topic"
+        i = MqttStreamInterface.new('localhost', '1883', true, 'write_topic', 'read_topic')
+        expect(i.connection_string).to eql "localhost:1883 (ssl: true) write topic: write_topic read topic: read_topic"
       end
     end
 
@@ -53,6 +55,7 @@ module OpenC3
         expect(double).to receive(:port=).with(1883)
         expect(double).to receive(:username=).with('test_user')
         expect(double).to receive(:password=).with('test_pass')
+        expect(double).to receive(:ssl=).with(false)
         expect(double).to receive(:ssl=).with(true).twice
         expect(double).to receive(:cert_file=)
         expect(double).to receive(:key_file=)
@@ -63,13 +66,24 @@ module OpenC3
         expect(double).to receive(:subscribe).with('read_topic')
         allow(MQTT::Client).to receive(:new).and_return(double)
 
-        i = MqttStreamInterface.new('localhost', '1883', 'write_topic', 'read_topic')
+        i = MqttStreamInterface.new('localhost', '1883', false, 'write_topic', 'read_topic')
         i.set_option('USERNAME', ['test_user'])
         i.set_option('PASSWORD', ['test_pass'])
         i.set_option('CERT', ['cert_content'])
         i.set_option('KEY', ['key_content'])
         i.set_option('CA_FILE', ['ca_file_content'])
         i.set_option('ACK_TIMEOUT', ['10.0'])
+        i.connect()
+        expect(i.connected?).to be true
+      end
+
+      it "sets ssl even without cert_file, key_file, or ca_file" do
+        double = double(MQTT_CLIENT).as_null_object
+        expect(double).to receive(:ssl=).with(true)
+        expect(double).to receive(:connected?).and_return(true)
+        allow(MQTT::Client).to receive(:new).and_return(double)
+
+        i = MqttStreamInterface.new('localhost', '1883', true, 'write_topic', 'read_topic')
         i.connect()
         expect(i.connected?).to be true
       end
@@ -99,7 +113,7 @@ module OpenC3
         expect(double).to receive(:get).and_return(['ADCS', "\x06\x07\x08\x09\x0A\x0B"])
         allow(MQTT::Client).to receive(:new).and_return(double)
 
-        i = MqttStreamInterface.new('localhost', '1883', 'write_topic', 'read_topic')
+        i = MqttStreamInterface.new('localhost', '1883', false, 'write_topic', 'read_topic')
         i.connect()
         packet = i.read()
         expect(packet.target_name).to be_nil
@@ -119,7 +133,7 @@ module OpenC3
         allow(MQTT::Client).to receive(:new).and_return(double)
 
         capture_io do |stdout|
-          i = MqttStreamInterface.new('localhost', '1883', 'write_topic', 'read_topic')
+          i = MqttStreamInterface.new('localhost', '1883', false, 'write_topic', 'read_topic')
           i.connect()
           packet = i.read()
           expect(stdout.string).to match(/read returned nil/)
@@ -135,7 +149,7 @@ module OpenC3
         expect(double).to receive(:connected?).and_return(true)
         allow(MQTT::Client).to receive(:new).and_return(double)
 
-        i = MqttStreamInterface.new('localhost', '1883', 'write_topic', 'read_topic')
+        i = MqttStreamInterface.new('localhost', '1883', false, 'write_topic', 'read_topic')
         i.connect()
         pkt = System.commands.packet('INST', 'COLLECT')
         pkt.restore_defaults()

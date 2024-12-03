@@ -28,10 +28,11 @@ from openc3.streams.mqtt_stream import MqttStream
 class MqttStreamInterface(StreamInterface):
     # @param hostname [String] MQTT server to connect to
     # @param port [Integer] MQTT port
-    def __init__(self, hostname, port=1883, write_topic=None, read_topic=None, protocol_type=None, protocol_args=[]):
+    def __init__(self, hostname, port=1883, ssl=False, write_topic=None, read_topic=None, protocol_type=None, protocol_args=[]):
         super().__init__(protocol_type, protocol_args)
         self.hostname = hostname
         self.port = int(port)
+        self.ssl = ConfigParser.handle_true_false(ssl)
         self.write_topic = ConfigParser.handle_none(write_topic)
         self.read_topic = ConfigParser.handle_none(read_topic)
         self.ack_timeout = 5.0
@@ -43,7 +44,7 @@ class MqttStreamInterface(StreamInterface):
         self.keyfile_password = None
 
     def connection_string(self):
-        result = f"{self.hostname}:{self.port}"
+        result = f"{self.hostname}:{self.port} (ssl: {self.ssl})"
         if self.write_topic is not None:
             result += f" write topic: {self.write_topic}"
         if self.read_topic is not None:
@@ -52,7 +53,7 @@ class MqttStreamInterface(StreamInterface):
 
     # Creates a new {SerialStream} using the parameters passed in the constructor
     def connect(self):
-        self.stream = MqttStream(self.hostname, self.port, self.write_topic, self.read_topic, self.ack_timeout)
+        self.stream = MqttStream(self.hostname, self.port, self.ssl, self.write_topic, self.read_topic, self.ack_timeout)
         if self.username:
             self.stream.username = self.username
         if self.password:
