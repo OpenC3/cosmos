@@ -23,7 +23,7 @@
     "@babel/plugin-transform-modules-systemjs": "7.25.9",
     "@types/systemjs": "6.15.1",
     "@vitejs/plugin-vue": "5.1.5",
-    "eslint": "8.56.0",
+    "eslint": "9.16.0",
     "prettier": "3.3.3",
     "sass": "1.80.4",
     "serve": "14.2.4",
