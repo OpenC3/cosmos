@@ -46,10 +46,8 @@ RUN chmod +x ./docker-package-build.sh
 COPY ./plugins/packages/openc3-tool-base/ packages/openc3-tool-base/
 RUN ["/openc3/plugins/docker-package-build.sh", "openc3-tool-base"]
 
-FROM openc3-frontend-tmp AS openc3-tmp1
-RUN yarn workspace @openc3/ace-diff build
-
 # Build admin tool
+FROM openc3-frontend-tmp AS openc3-tmp1
 COPY ./plugins/packages/openc3-cosmos-tool-admin/ packages/openc3-cosmos-tool-admin/
 RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-admin"]
 
