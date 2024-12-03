@@ -51,19 +51,13 @@
                 Previous
               </v-btn>
               <v-spacer />
-              <v-btn
-                @click="clearHandler"
-                variant="outlined"
-                class="mr-4"
-                data-test="trigger-create-cancel-btn"
-              >
+              <v-btn @click="clearHandler" variant="outlined" class="mr-4">
                 Cancel
               </v-btn>
               <v-btn
                 @click.prevent="submitHandler"
                 type="submit"
                 color="primary"
-                data-test="trigger-create-submit-btn"
                 :disabled="!!error"
               >
                 Ok
