@@ -232,5 +232,6 @@ export default {
 <style scoped>
 .list {
   background-color: var(--color-background-surface-default) !important;
+  overflow-x: hidden;
 }
 </style>
