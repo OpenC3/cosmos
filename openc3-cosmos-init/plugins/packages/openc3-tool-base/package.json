@@ -19,7 +19,6 @@
     "systemjs": "6.15.1",
     "vuetify": "3.7.1"
   },
-  "__comment__": "NOTE: sass can't be upgraded until Vuetify 3 to avoid tons of deprecation warnings",
   "devDependencies": {
     "@babel/plugin-transform-modules-systemjs": "7.25.9",
     "@types/systemjs": "6.15.1",
