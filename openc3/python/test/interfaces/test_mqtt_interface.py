@@ -30,7 +30,7 @@ class TestMqttInterface(unittest.TestCase):
         i = MqttInterface("localhost", "1883")
         self.assertEqual(i.name, "MqttInterface")
         self.assertEqual(i.hostname, "localhost")
-        self.assertEqual(i.ssl, False)
+        self.assertFalse(i.ssl)
         self.assertEqual(i.port, 1883)
         self.assertEqual(i.ack_timeout, 5.0)
 

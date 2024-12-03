@@ -132,7 +132,7 @@ class TestTcpipServerInterface(unittest.TestCase):
         sock.connect(server_address)
         buffer = b"\x00\x01\x02\x03"
         sock.sendall(buffer)
-        time.sleep(0.01)  # Allow the data to be processed (thread switch)
+        time.sleep(0.1)  # Allow the data to be processed (thread switch)
         self.assertEqual(i.read_queue_size(), 1)
         self.assertEqual(i.write_queue_size(), 0)
         packet = i.read()
@@ -192,7 +192,7 @@ class TestTcpipServerInterface(unittest.TestCase):
         time.sleep(0.02)  # Allow the data to be processed (thread switch)
         write_buffer = b"\x06\x07\x08\x09"
         sock.sendall(write_buffer)
-        time.sleep(0.01)
+        time.sleep(0.1)
         self.assertEqual(i.read_queue_size(), 1)
         self.assertEqual(i.write_queue_size(), 1)
         data = sock.recv(4096)

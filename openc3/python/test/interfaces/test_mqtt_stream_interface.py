@@ -30,7 +30,7 @@ class TestMqttStreamInterface(unittest.TestCase):
         i = MqttStreamInterface("localhost", "1883", False, "write_topic", "read_topic")
         self.assertEqual(i.name, "MqttStreamInterface")
         self.assertEqual(i.hostname, "localhost")
-        self.assertEqual(i.ssl, False)
+        self.assertFalse(i.ssl)
         self.assertEqual(i.port, 1883)
         self.assertEqual(i.write_topic, "write_topic")
         self.assertEqual(i.read_topic, "read_topic")
