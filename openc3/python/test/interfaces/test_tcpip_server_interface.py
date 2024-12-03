@@ -134,7 +134,8 @@ class TestTcpipServerInterface(unittest.TestCase):
         sock.sendall(buffer)
         time.sleep(0.1)  # Allow the data to be processed (thread switch)
         self.assertEqual(i.read_queue_size(), 1)
-        self.assertEqual(i.write_queue_size(), 0)
+        # Can't reliably check the write_queue_size because the write is processed in another thread
+        # self.assertEqual(i.write_queue_size(), 0)
         packet = i.read()
         self.assertEqual(packet.buffer, buffer)
         self.assertEqual(i.num_clients(), 1)
@@ -189,12 +190,12 @@ class TestTcpipServerInterface(unittest.TestCase):
         # Connect the socket to the port where the server is listening
         server_address = ("localhost", 8888)
         sock.connect(server_address)
-        time.sleep(0.02)  # Allow the data to be processed (thread switch)
         write_buffer = b"\x06\x07\x08\x09"
         sock.sendall(write_buffer)
-        time.sleep(0.1)
+        time.sleep(0.1)  # Allow the data to be processed (thread switch)
         self.assertEqual(i.read_queue_size(), 1)
-        self.assertEqual(i.write_queue_size(), 1)
+        # Can't reliably check the write_queue_size because the write is processed in another thread
+        # self.assertEqual(i.write_queue_size(), 1)
         data = sock.recv(4096)
         self.assertEqual(data, b"\x00\x01")
         packet = i.read()
