@@ -123,7 +123,7 @@ module OpenC3
     def self.get_cache_control(filename)
       # Allow caching for files that have a filename versioning strategy
       has_version_number = /(-|_|\.)\d+(-|_|\.)\d+(-|_|\.)\d+\./.match(filename)
-      has_content_hash = /\.[a-f0-9]{20}\./.match(filename)
+      has_content_hash = /[\.-][a-f0-9]{20}\./.match(filename)
       return nil if has_version_number or has_content_hash
       return 'no-store'
     end

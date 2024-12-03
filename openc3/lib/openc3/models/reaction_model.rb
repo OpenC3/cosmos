@@ -82,7 +82,7 @@ module OpenC3
     end
 
     attr_reader :name, :scope, :snooze, :triggers, :actions, :enabled, :triggerLevel, :snoozed_until
-    attr_accessor :username, :shard
+    attr_accessor :username
 
     def initialize(
       name:,
@@ -94,7 +94,6 @@ module OpenC3
       enabled: true,
       snoozed_until: nil,
       username: nil,
-      shard: 0,
       updated_at: nil
     )
       super("#{scope}#{PRIMARY_KEY}", name: name, scope: scope)
@@ -106,7 +105,6 @@ module OpenC3
       @actions = validate_actions(actions)
       @triggers = validate_triggers(triggers)
       @username = username
-      @shard = shard.to_i # to_i to handle nil
       @updated_at = updated_at
     end
 
@@ -265,7 +263,6 @@ module OpenC3
         'triggers' => @triggers,
         'actions' => @actions,
         'username' => @username,
-        'shard' => @shard,
         'updated_at' => @updated_at
       }
     end
@@ -298,7 +295,6 @@ module OpenC3
         topics: topics,
         target_names: [],
         plugin: nil,
-        shard: @shard,
         scope: @scope
       )
       microservice.create

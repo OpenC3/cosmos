@@ -1,5 +1,5 @@
 TOOL tablemanager "Table Manager"
-  INLINE_URL js/app.js
+  INLINE_URL main.js
   ICON mdi-table-furniture
   POSITION 14
   CATEGORY Utilities

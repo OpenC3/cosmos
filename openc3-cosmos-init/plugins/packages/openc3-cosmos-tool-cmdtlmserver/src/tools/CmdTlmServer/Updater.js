@@ -47,7 +47,6 @@ export default {
     }
   },
   watch: {
-    // eslint-disable-next-line no-unused-vars
     refreshInterval: function (newVal, oldVal) {
       this.changeUpdater()
     },

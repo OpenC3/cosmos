@@ -68,6 +68,7 @@ class ScopeModel(Model):
         cleanup_poll_time: int = 900,
         command_authority: bool = False,
         critical_commanding: str = "OFF",
+        shard: int = 0,
         updated_at: int = None,
     ):
         super().__init__(
@@ -89,6 +90,9 @@ class ScopeModel(Model):
             self.critical_commanding = "OFF"
         if self.critical_commanding not in ["OFF", "NORMAL", "ALL"]:
             raise RuntimeError(f"Invalid value for critical_commanding: {self.critical_commanding}")
+        self.shard = shard
+        if self.shard is None:
+            self.shard = 0
         self.children = []
 
     # self.return [Hash] JSON encoding of this model
@@ -103,4 +107,5 @@ class ScopeModel(Model):
             "cleanup_poll_time": self.cleanup_poll_time,
             "command_authority": self.command_authority,
             "critical_commanding": self.critical_commanding,
+            "shard": self.shard,
         }

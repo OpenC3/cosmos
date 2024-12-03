@@ -64,9 +64,9 @@ module OpenC3
       end
     end
 
-    attr_reader :name, :scope, :shard, :updated_at
+    attr_reader :name, :scope, :updated_at
 
-    def initialize(name:, scope:, shard: 0, updated_at: nil)
+    def initialize(name:, scope:, updated_at: nil)
       unless name.is_a?(String)
         raise TriggerGroupInputError.new "invalid group name: '#{name}'"
       end
@@ -75,7 +75,6 @@ module OpenC3
       end
       super("#{scope}#{PRIMARY_KEY}", name: name, scope: scope)
       @microservice_name = "#{scope}__TRIGGER_GROUP__#{name}"
-      @shard = shard.to_i # to_i to handle nil
       @updated_at = updated_at
     end
 
@@ -94,7 +93,6 @@ module OpenC3
       return {
         'name' => @name,
         'scope' => @scope,
-        'shard' => @shard,
         'updated_at' => @updated_at,
       }
     end
@@ -129,7 +127,6 @@ module OpenC3
         topics: topics,
         target_names: [],
         plugin: nil,
-        shard: @shard,
         scope: @scope
       )
       microservice.create

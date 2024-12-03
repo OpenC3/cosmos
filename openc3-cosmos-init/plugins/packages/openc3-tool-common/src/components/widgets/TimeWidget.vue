@@ -42,7 +42,7 @@ export default {
     if (this.parameters[0]) {
       this.label = this.parameters[0]
     }
-    this.timeValue = this.formatTimeHMS(new Date(), this.screen.timeZone)
+    this.timeValue = this.formatTimeHMS(new Date(), this.screenTimeZone)
   },
   methods: {
     text() {
