@@ -52,7 +52,7 @@ GEMS="$SCRIPT_DIR/../../../openc3-cosmos-init/plugins/gems/"
 OPENC3_RELEASE_VERSION=5.21.0-beta0
 
 mkdir -p ${GEMS}
-cd ${PLUGINS}openc3-tool-base && yarn install && yarn run build && rake build VERSION=${OPENC3_RELEASE_VERSION} && mv *.gem ${GEMS}
+cd ${PLUGINS}packages/openc3-tool-base && yarn run build && rake build VERSION=${OPENC3_RELEASE_VERSION} && mv *.gem ${GEMS}
 cd ${PLUGINS}packages/openc3-cosmos-tool-admin && yarn run build && rake build VERSION=${OPENC3_RELEASE_VERSION} && mv *.gem ${GEMS}
 cd ${PLUGINS}packages/openc3-cosmos-tool-cmdsender && yarn run build && rake build VERSION=${OPENC3_RELEASE_VERSION} && mv *.gem ${GEMS}
 cd ${PLUGINS}packages/openc3-cosmos-tool-cmdtlmserver && yarn run build && rake build VERSION=${OPENC3_RELEASE_VERSION} && mv *.gem ${GEMS}

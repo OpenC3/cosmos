@@ -31,6 +31,7 @@
 </template>
 
 <script>
+import _ from 'lodash'
 import HistoryComponent from '@openc3/tool-common/src/components/dataviewer/HistoryComponent'
 import Component from '@openc3/tool-common/src/components/dataviewer/Component'
 

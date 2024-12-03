@@ -323,7 +323,7 @@ import bs from 'binary-search'
 import Cable from '../services/cable.js'
 import TimeFilters from '@openc3/tool-common/src/tools/base/util/timeFilters.js'
 
-require('uplot/dist/uPlot.min.css')
+import 'uplot/dist/uPlot.min.css'
 
 export default {
   components: {

@@ -18,7 +18,7 @@
 
 const prependBasePath = function (route) {
   if (!route.name !== 'NotFound') {
-    route.path = `${process.env.BASE_URL}${route.path.replace(/^\//, '')}`
+    route.path = `${__BASE_URL__}/${route.path.replace(/^\//, '')}`
   }
   route.children?.forEach(prependBasePath)
 }

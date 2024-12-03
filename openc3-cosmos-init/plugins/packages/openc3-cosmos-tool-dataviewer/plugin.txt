@@ -1,4 +1,4 @@
 TOOL dataviewer "Data Viewer"
-  INLINE_URL js/app.js
+  INLINE_URL main.js
   ICON mdi-hexadecimal
   POSITION 10
