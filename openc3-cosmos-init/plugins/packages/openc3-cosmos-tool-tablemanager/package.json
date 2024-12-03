@@ -2,13 +2,12 @@
   "name": "@openc3/cosmos-tool-tablemanager",
   "version": "5.21.0-beta0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "serve": "vue-cli-service serve",
-    "build": "vue-cli-service build --no-module",
-    "test:unit": "vue-cli-service test:unit",
-    "lint": "vue-cli-service lint",
-    "serve:standalone": "vue-cli-service serve --mode standalone",
-    "test:components": "vue-cli-service test:components"
+    "serve": "vite build --watch --mode dev-server",
+    "build": "vite build",
+    "lint": "eslint src",
+    "serve:standalone": "vite preview --mode standalone"
   },
   "dependencies": {
     "@astrouxds/astro-web-components": "7.24.0",
@@ -17,36 +16,19 @@
     "date-fns": "4.1.0",
     "lodash": "4.17.21",
     "single-spa-vue": "3.0.0",
-    "sprintf-js": "1.1.3",
-    "systemjs-webpack-interop": "2.3.7",
-    "vue": "3.5.4",
-    "vue-router": "4.4.4",
-    "vuetify": "3.7.1",
-    "vuex": "4.1.0"
+    "sprintf-js": "1.1.3"
   },
   "devDependencies": {
-    "@babel/eslint-parser": "7.25.9",
-    "@vue/babel-preset-app": "5.0.8",
-    "@vue/cli": "5.0.8",
-    "@vue/cli-plugin-babel": "5.0.8",
-    "@vue/cli-plugin-eslint": "5.0.8",
-    "@vue/cli-plugin-router": "5.0.8",
-    "@vue/cli-plugin-vuex": "5.0.8",
-    "@vue/cli-service": "5.0.8",
-    "@vue/compiler-sfc": "3.5.4",
+    "@vitejs/plugin-vue": "5.1.5",
     "@vue/eslint-config-prettier": "9.0.0",
     "@vue/test-utils": "2.4.6",
-    "babel-loader": "9.2.1",
-    "babel-plugin-istanbul": "7.0.0",
     "eslint": "8.56.0",
     "eslint-config-prettier": "9.1.0",
     "eslint-plugin-prettier": "5.2.1",
     "eslint-plugin-vue": "9.30.0",
     "prettier": "3.3.3",
     "sass": "1.80.4",
-    "sass-loader": "16.0.2",
-    "vue-cli-plugin-single-spa": "3.3.0",
-    "vue-cli-plugin-vuetify": "2.5.8",
-    "webpack": "5.95.0"
+    "vite": "5.4.11",
+    "vue": "3.5.13"
   }
 }

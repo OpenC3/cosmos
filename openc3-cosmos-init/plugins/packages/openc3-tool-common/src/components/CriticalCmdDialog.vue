@@ -122,7 +122,7 @@ export default {
       return !this.formValid && !this.canApprove
     },
   },
-  beforeDestroy() {
+  beforeUnmount() {
     clearInterval(this.updater)
     this.updater = null
     this.canApprove = false

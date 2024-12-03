@@ -23,34 +23,21 @@
 <template>
   <div>
     <v-row no-gutters align="center" class="px-2">
-      <v-col>
-        <v-file-input
-          v-model="file"
-          show-size
-          accept=".gem"
-          class="mx-2"
-          label="Click to install new plugin .gem (NOT upgrade)"
+      <v-col class="pa-2 mt-2">
+        <v-btn @click="selectFile">Install New Plugin</v-btn>
+        <input
+          style="display: none"
+          type="file"
           ref="fileInput"
-          @change="fileChange()"
-          @mousedown="fileMousedown()"
+          @change="fileChange"
         />
+        &nbsp;Note: Use <v-icon>mdi-update</v-icon> to upgrade existing plugins
       </v-col>
       <v-col class="ml-4 mr-2" cols="4">
         <rux-progress :value="progress"></rux-progress>
       </v-col>
-      <!-- <v-col align="right">
-        <v-btn
-          @click="showDownloadDialog = true"
-          class="mx-2"
-          data-test="download-plugin"
-          :disabled="file !== null"
-        >
-          <v-icon left>mdi-cloud-download</v-icon>
-          <span> Download </span>
-        </v-btn>
-      </v-col> -->
     </v-row>
-    <v-row no-gutters class="px-4" style="margin-top: 10px">
+    <v-row no-gutters class="px-2">
       <v-col>
         <v-checkbox
           v-model="showDefaultTools"
@@ -295,6 +282,15 @@ export default {
         'openc3-tool-base',
       ],
     }
+  },
+  watch: {
+    // watcher to reset the file input when the dialog is closed
+    showPluginDialog: function (newValue, oldValue) {
+      if (newValue === false) {
+        this.file = null
+        this.$refs.fileInput.value = null
+      }
+    },
   },
   computed: {
     shownPlugins() {
@@ -547,17 +543,21 @@ export default {
       this.update()
     },
     upgradePlugin(plugin) {
-      this.file = undefined
+      this.file = null
       this.currentPlugin = plugin
-      this.$refs.fileInput.click()
       this.progress = 0
+      this.$refs.fileInput.click()
     },
-    fileMousedown() {
+    selectFile() {
+      this.file = null
       this.currentPlugin = null
       this.progress = 0
+      this.$refs.fileInput.click()
     },
-    fileChange() {
-      if (this.file !== undefined) {
+    fileChange(event) {
+      const files = event.target.files
+      if (files.length > 0) {
+        this.file = files[0]
         if (this.currentPlugin !== null) {
           if (
             this.file.name.split('.gem')[0] ==
@@ -608,6 +608,9 @@ export default {
         } else {
           this.upload()
         }
+      } else {
+        // Reset the input element
+        this.$refs.fileInput.value = null
       }
     },
   },
