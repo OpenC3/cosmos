@@ -1,12 +1,10 @@
 {
   "name": "openc3",
   "private": true,
+  "scripts": {
+    "build:common": "yarn workspace @openc3/js-common build && yarn workspace @openc3/vue-common build && yarn workspace @openc3/tool-common build"
+  },
   "workspaces": [
     "packages/*"
-  ],
-  "dependencies": {
-    "@openc3/js-common": "./packages/openc3-js-common",
-    "@openc3/tool-common": "./packages/openc3-tool-common",
-    "@openc3/vue-common": "./packages/openc3-vue-common"
-  }
+  ]
 }

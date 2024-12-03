@@ -38,13 +38,16 @@ COPY ./plugins/packages/openc3-cosmos-demo/*.json packages/openc3-cosmos-demo/
 ARG NPM_URL=https://registry.npmjs.org
 RUN yarn config set registry $NPM_URL && yarn --network-timeout 600000
 
+RUN yarn build:common
+
 COPY ./plugins/docker-package-build.sh ./plugins/.eslintrc.cjs ./plugins/.nycrc ./
 RUN chmod +x ./docker-package-build.sh
+
 COPY ./plugins/packages/openc3-tool-base/ packages/openc3-tool-base/
 RUN ["/openc3/plugins/docker-package-build.sh", "openc3-tool-base"]
 
 FROM openc3-frontend-tmp AS openc3-tmp1
-RUN cd packages/openc3-cosmos-ace-diff && yarn build
+RUN yarn workspace @openc3/ace-diff build
 
 # Build admin tool
 COPY ./plugins/packages/openc3-cosmos-tool-admin/ packages/openc3-cosmos-tool-admin/
@@ -107,7 +110,7 @@ RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-scriptrunner
 
 # Build demo config
 COPY ./plugins/packages/openc3-cosmos-demo/ packages/openc3-cosmos-demo/
-RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-demo"]
+RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-demo", "widgets_src"]
 
 FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_BASE_IMAGE}:${OPENC3_TAG} AS base
 FROM openc3-frontend-tmp AS openc3-tmp5
@@ -116,7 +119,7 @@ FROM openc3-frontend-tmp AS openc3-tmp5
 COPY --from=base /openc3 /openc3/
 COPY --from=docs . packages/openc3-cosmos-tool-docs/
 RUN cd packages/openc3-cosmos-tool-docs/scripts && ruby generate_docs_from_yaml.rb PLUGIN && yarn
-RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-docs"]
+RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-docs", "docs-openc3-com"]
 
 FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_BASE_IMAGE}:${OPENC3_TAG}
 

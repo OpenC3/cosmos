@@ -119,7 +119,7 @@
 <script>
 import { Api } from '@openc3/js-common/services'
 import { TimeFilters } from '@openc3/vue-common/util'
-import ColorSelectForm from './ColorSelectform.vue'
+import ColorSelectForm from './ColorSelectForm.vue'
 import CreateDialog from './CreateDialog'
 import MetadataInputForm from './MetadataInputForm.vue'
 
