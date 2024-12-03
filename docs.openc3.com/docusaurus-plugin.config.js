@@ -16,6 +16,10 @@ const config = {
   tagline: "OpenC3 COSMOS Documentation",
   favicon: "img/favicon.png",
 
+  future: {
+    experimental_faster: true,
+  },
+
   // Set the production url of your site here
   url: "https://docs.openc3.com",
   // Set the /<baseUrl>/ pathname under which your site is served

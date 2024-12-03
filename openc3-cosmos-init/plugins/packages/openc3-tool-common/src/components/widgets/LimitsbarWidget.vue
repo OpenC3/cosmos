@@ -23,7 +23,6 @@
         class="limitsbar"
         :style="[cssProps, computedStyle]"
         v-bind="attrs"
-        v-on="on"
       >
         <div class="limitsbar__container">
           <div class="limitsbar__redlow" />

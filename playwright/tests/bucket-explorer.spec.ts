@@ -145,7 +145,7 @@ test('direct URLs', async ({ page }) => {
 test('view file', async ({ page, utils }) => {
   await page.getByText('config').click()
   await page.getByRole('cell', { name: 'DEFAULT' }).click()
-  await page.getByRole('cell', { name: 'targets' }).click()
+  await page.getByRole('cell', { name: 'targets', exact: true }).click()
   await page.getByRole('cell', { name: 'INST', exact: true }).click()
   await page.getByRole('cell', { name: 'procedures' }).click()
   await page.locator('[data-test="search-input"] input').fill('calendar')

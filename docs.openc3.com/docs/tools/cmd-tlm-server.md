@@ -40,6 +40,10 @@ Command Authority is enabled in the Admin Console and is enabled scope wide. Onc
 
 The other option shown in the Scope List is the Critical Command Mode. Critical commanding requires a different user to approve each command. It can either be enabled on just HAZARDOUS and RESTRICTED commands or on all manual commanding.
 
+Here is an example of sending a HAZARDOUS command in Command Sender when Critical Command Mode is set to NORMAL.
+
+![Critical Command](/img/cmd_tlm_server/critical_cmd_sender.png)
+
 ## Command Packets Tab
 
 The Command Packets tab displays all the available commands. The table can be sorted by clicking on the column headers. The table is paginated to support thousands of commands. The search bar searches all pages for a command.
