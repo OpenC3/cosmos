@@ -1,8 +1,10 @@
 import { createApp } from 'vue'
 import { defineCustomElements } from '@astrouxds/astro-web-components/loader'
 import { Notify, store, vuetify } from '@openc3/vue-common/plugins'
-import ToolCommon from '@openc3/tool-common/plugin'
-// TODO: import '@openc3/tool-common/src/assets/stylesheets/layout/layout.scss'
+
+import '@openc3/vue-common/styles'
+import '@openc3/tool-common/styles'
+import '@/assets/stylesheets/layout/layout.scss'
 
 import App from './App.vue'
 import router from './router'
@@ -17,7 +19,6 @@ app.use(store)
 app.use(vuetify)
 app.use(router)
 app.use(Notify, { store })
-app.use(ToolCommon)
 
 const options = OpenC3Auth.getInitOptions()
 OpenC3Auth.init(options).then(() => {

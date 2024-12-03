@@ -35,7 +35,7 @@
     <upgrade-to-enterprise-dialog
       v-model="showUpgradeToEnterpriseDialog"
       reason="Enterprise allows additional Scopes"
-    ></upgrade-to-enterprise-dialog>
+    />
   </div>
 </template>
 

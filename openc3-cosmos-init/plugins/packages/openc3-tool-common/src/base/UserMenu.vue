@@ -79,7 +79,7 @@
     <upgrade-to-enterprise-dialog
       v-model="showUpgradeToEnterpriseDialog"
       reason="Enterprise has individual users with RBAC"
-    ></upgrade-to-enterprise-dialog>
+    />
   </div>
 </template>
 

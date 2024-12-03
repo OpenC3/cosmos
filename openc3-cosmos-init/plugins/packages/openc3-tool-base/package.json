@@ -3,11 +3,10 @@
   "version": "5.21.0-beta0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "serve": "vite preview",
-    "lint": "eslint src --ext js",
-    "format": "prettier --write \"./**\"",
-    "build": "vite build"
+    "serve": "vite build --watch --mode dev-server",
+    "build": "vite build",
+    "lint": "eslint src",
+    "serve:standalone": "vite preview --mode standalone"
   },
   "dependencies": {
     "@astrouxds/astro-web-components": "7.24.0",

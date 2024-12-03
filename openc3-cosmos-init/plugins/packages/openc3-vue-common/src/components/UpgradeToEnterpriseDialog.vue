@@ -60,8 +60,6 @@
 </template>
 
 <script>
-import logo from '/img/logo.png' // TODO: figure out how to import from @openc3/js-common
-
 export default {
   props: {
     modelValue: Boolean, // modelValue is the default prop when using v-model
@@ -70,7 +68,7 @@ export default {
   emits: ['update:modelValue'],
   data() {
     return {
-      logo: logo,
+      logo: '/img/logo.png',
     }
   },
   computed: {

@@ -125,7 +125,7 @@
     <upgrade-to-enterprise-dialog
       v-model="showUpgradeToEnterpriseDialog"
       reason="Command Authority is Enterprise Only"
-    ></upgrade-to-enterprise-dialog>
+    />
   </v-card>
 </template>
 

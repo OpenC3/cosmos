@@ -6,9 +6,8 @@
     "dist"
   ],
   "exports": {
-    "./plugin": {
-      "import": "./dist/tool-common.js",
-      "require": "./dist/tool-common.cjs"
+    "./styles": {
+      "import": "./dist/style.css"
     },
     "./admin": {
       "import": "./dist/admin.js",

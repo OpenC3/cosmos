@@ -4,7 +4,6 @@ import singleSpaVue from 'single-spa-vue'
 import App from './App.vue'
 import router from './router'
 import { Dialog, Notify, store, vuetify } from '@openc3/vue-common/plugins'
-// TODO: import '@openc3/tool-common/src/assets/stylesheets/layout/layout.scss'
 
 const vueLifecycles = singleSpaVue({
   createApp,

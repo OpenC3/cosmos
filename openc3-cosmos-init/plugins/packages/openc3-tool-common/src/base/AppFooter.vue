@@ -23,10 +23,10 @@
 <template>
   <v-footer id="footer" app v-if="!chromeless" height="33">
     <img :src="icon" alt="OpenC3" />
-    <span :class="footerClass" @click="upgrade"
-      >OpenC3 {{ edition }} {{ version }} &copy; 2024 - License:
-      {{ license }}</span
-    >
+    <span :class="footerClass" @click="upgrade">
+      OpenC3 {{ edition }} {{ version }} &copy; 2024 - License:
+      {{ license }}
+    </span>
     <v-spacer />
     <a :href="sourceUrl" class="text-white text-decoration-underline">
       Source
@@ -36,14 +36,13 @@
     <upgrade-to-enterprise-dialog
       v-model="showUpgradeToEnterpriseDialog"
       reason="Enterprise is Commercially Licensed"
-    ></upgrade-to-enterprise-dialog>
+    />
   </v-footer>
 </template>
 
 <script>
 import { Api, OpenC3Api } from '@openc3/js-common/services'
 import { UpgradeToEnterpriseDialog } from '@openc3/vue-common/components'
-import icon from '/img/icon.png'
 import ClockFooter from './ClockFooter.vue'
 
 export default {
@@ -53,7 +52,7 @@ export default {
   },
   data() {
     return {
-      icon: icon,
+      icon: '/img/icon.png',
       edition: '',
       enterprise: false,
       license: '',

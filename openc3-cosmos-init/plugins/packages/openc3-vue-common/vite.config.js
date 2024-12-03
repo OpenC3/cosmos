@@ -5,6 +5,7 @@ import vue from '@vitejs/plugin-vue'
 export default defineConfig({
   build: {
     sourcemap: true,
+    cssCodeSplit: false,
     lib: {
       entry: {
         'components': './src/components/index.js',

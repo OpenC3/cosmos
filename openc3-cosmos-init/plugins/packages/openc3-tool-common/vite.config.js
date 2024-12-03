@@ -5,9 +5,9 @@ import vue from '@vitejs/plugin-vue'
 export default defineConfig({
   build: {
     sourcemap: true,
+    cssCodeSplit: false,
     lib: {
       entry: {
-        'tool-common': './src/main.js',
         'admin': './src/admin/index.js',
         'base': './src/base/index.js',
         'calendar': './src/calendar/index.js'

@@ -6,6 +6,9 @@
     "dist"
   ],
   "exports": {
+    "./styles": {
+      "import": "./dist/style.css"
+    },
     "./components": {
       "import": "./dist/components.js",
       "require": "./dist/components.cjs"

@@ -152,7 +152,7 @@
     <upgrade-to-enterprise-dialog
       v-model="showUpgradeToEnterpriseDialog"
       reason="Enterprise adds Calendar and Autonomic"
-    ></upgrade-to-enterprise-dialog>
+    />
   </div>
 </template>
 
@@ -163,7 +163,6 @@ import { UpgradeToEnterpriseDialog } from '@openc3/vue-common/components'
 import Notifications from './Notifications.vue'
 import ScopeSelector from './ScopeSelector.vue'
 import UserMenu from './UserMenu.vue'
-import logo from '/img/logo.png' // TODO: figure out how to import from @openc3/js-common
 
 export default {
   components: {
@@ -190,7 +189,7 @@ export default {
       items: [],
       drawer: true,
       appNav: {},
-      logo: logo,
+      logo: '/img/logo.png',
       initiallyOpen: [],
       showUpgradeToEnterpriseDialog: false,
       chromeless: this.$route.query.chromeless,
