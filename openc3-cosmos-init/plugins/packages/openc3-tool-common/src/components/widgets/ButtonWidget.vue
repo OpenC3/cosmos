@@ -107,7 +107,7 @@ export default {
         runScript
       ) {
         // Add a noop to preserve the variables in the if statement
-        // from being removed by compiler optimzations
+        // from being removed by compiler optimizations
         this.$nextTick(() => {})
       }
       for (let i = 0; i < lines.length; i++) {
