@@ -131,7 +131,7 @@ import { Cable } from '@openc3/js-common/services'
 import {
   AstroStatusColors,
   UnknownToAstroStatus,
-} from '@/components/icons'
+} from '@/icons'
 import { TimeFilters } from '@/util'
 
 export default {

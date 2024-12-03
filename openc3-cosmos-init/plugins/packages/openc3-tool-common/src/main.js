@@ -22,7 +22,9 @@ import * as calendar from './calendar'
 
 export default {
   install(app, _) {
-    Object.entries(base)
+    Object.entries(admin)
+      .concat(Object.entries(base))
+      .concat(Object.entries(calendar))
       .forEach(([componentName, component]) => {
         app.component(componentName, component)
       })

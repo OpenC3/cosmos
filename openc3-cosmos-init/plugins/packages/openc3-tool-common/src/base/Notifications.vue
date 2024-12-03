@@ -173,9 +173,13 @@ import { formatDistanceToNow } from 'date-fns'
 import { Api, Cable } from '@openc3/js-common/services'
 import { AstroStatus } from '@openc3/vue-common/util'
 import { Icons } from '@openc3/vue-common/components'
+import {
+  AstroStatusColors,
+  AstroStatusIndicator,
+  UnknownToAstroStatus
+} from '@openc3/vue-common/icons'
 
 const NOTIFICATION_HISTORY_MAX_LENGTH = 1000
-const { AstroStatusColors, AstroStatusIndicator, UnknownToAstroStatus } = Icons
 const { highestLevel, orderByLevel, groupByLevel } = AstroStatus
 
 export default {

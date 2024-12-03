@@ -186,10 +186,8 @@ import {
   SaveConfigDialog,
   TargetPacketItemChooser,
   TopBar,
-  Widgets,
 } from '@openc3/vue-common/components'
-
-const { ValueWidget } = Widgets
+import { ValueWidget } from '@openc3/vue-common/widgets'
 
 // Used in the menu and openConfiguration lookup
 const valueTypeToRadioGroup = {

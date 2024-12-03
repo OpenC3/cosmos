@@ -116,6 +116,7 @@ export {
   LabelvaluelimitsbarWidget,
   LabelvaluelimitscolumnWidget,
   LabelvaluerangebarWidget,
+  Layout,
   LedWidget,
   LimitsbarWidget,
   LimitscolorWidget,

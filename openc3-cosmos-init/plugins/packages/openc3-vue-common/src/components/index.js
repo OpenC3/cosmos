@@ -30,7 +30,6 @@ import FileOpenSaveDialog from './FileOpenSaveDialog.vue'
 import Graph from './Graph.vue'
 import GraphEditDialog from './GraphEditDialog.vue'
 import GraphEditItemDialog from './GraphEditItemDialog.vue'
-import * as Icons from './icons'
 import LogMessages from './LogMessages.vue'
 import NotFound from './NotFound.vue'
 import Openc3Screen from './Openc3Screen.vue'
@@ -41,7 +40,6 @@ import TargetPacketItemChooser from './TargetPacketItemChooser.vue'
 import TextBoxDialog from './TextBoxDialog.vue'
 import TopBar from './TopBar.vue'
 import UpgradeToEnterpriseDialog from './UpgradeToEnterpriseDialog.vue'
-import * as Widgets from './widgets'
 
 export {
   AceEditorModes,
@@ -61,7 +59,6 @@ export {
   Graph,
   GraphEditDialog,
   GraphEditItemDialog,
-  Icons,
   LogMessages,
   NotFound,
   Openc3Screen,
@@ -72,5 +69,4 @@ export {
   TextBoxDialog,
   TopBar,
   UpgradeToEnterpriseDialog,
-  Widgets,
 }

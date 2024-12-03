@@ -55,9 +55,7 @@
 </template>
 
 <script>
-import { Widget } from '@openc3/vue-common/components'
-
-const { FormatValueBase } = Widgets
+import { FormatValueBase } from '@openc3/vue-common/widgets'
 
 export default {
   mixins: [FormatValueBase],

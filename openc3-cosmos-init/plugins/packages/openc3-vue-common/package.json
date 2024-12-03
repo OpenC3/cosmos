@@ -10,6 +10,10 @@
       "import": "./dist/components.js",
       "require": "./dist/components.cjs"
     },
+    "./icons": {
+      "import": "./dist/icons.js",
+      "require": "./dist/icons.cjs"
+    },
     "./plugins": {
       "import": "./dist/plugins.js",
       "require": "./dist/plugins.cjs"
@@ -17,6 +21,10 @@
     "./util": {
       "import": "./dist/util.js",
       "require": "./dist/util.cjs"
+    },
+    "./widgets": {
+      "import": "./dist/widgets.js",
+      "require": "./dist/widgets.cjs"
     }
   },
   "scripts": {

@@ -8,8 +8,10 @@ export default defineConfig({
     lib: {
       entry: {
         'components': './src/components/index.js',
+        'icons': './src/icons/index.js',
         'plugins': './src/plugins/index.js',
         'util': './src/util/index.js',
+        'widgets': './src/widgets/index.js',
       },
       name: '@openc3/vue-common',
     },

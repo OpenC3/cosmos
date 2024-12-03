@@ -63,7 +63,7 @@
 import {
   AstroStatusColors,
   getStatusColorContrast,
-} from '@/components/icons'
+} from '@/icons'
 
 export default {
   data: function () {

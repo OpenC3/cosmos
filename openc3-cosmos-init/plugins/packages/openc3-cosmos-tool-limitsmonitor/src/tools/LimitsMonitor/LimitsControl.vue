@@ -168,10 +168,11 @@
 
 <script>
 import { Cable, OpenC3Api } from '@openc3/js-common/services'
-import { Widgets } from '@openc3/vue-common/components'
 import { TimeFilters } from '@openc3/vue-common/util'
-
-const { LabelvalueWidget, LabelvaluelimitsbarWidget } = Widgets
+import {
+  LabelvalueWidget,
+  LabelvaluelimitsbarWidget,
+} from '@openc3/vue-common/widgets'
 
 export default {
   components: {
