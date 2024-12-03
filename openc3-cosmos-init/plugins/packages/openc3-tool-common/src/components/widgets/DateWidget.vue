@@ -42,7 +42,7 @@ export default {
     if (this.parameters[0]) {
       this.label = this.parameters[0]
     }
-    this.dateValue = this.formatDate(new Date(), this.screen.timeZone)
+    this.dateValue = this.formatDate(new Date(), this.screenTimeZone)
   },
   methods: {
     text() {
