@@ -265,7 +265,7 @@ class TheGreatConversion(Conversion):
         super().__init__()
         self.multiplier = float(multiplier)
     def call(self, value, packet, buffer):
-        return value * multiplier
+        return value * self.multiplier
 ```
 
 #### POLY_WRITE_CONVERSION

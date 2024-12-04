@@ -331,6 +331,20 @@ Example Usage:
 ROUTE_PREFIX /interface
 ```
 
+### SHARD
+<div class="right">(Since 6.0.0)</div>**Operator shard to run target microservices on**
+
+Operator Shard. Only used if running multiple operator containers typically in Kubernetes
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Shard | Shard number starting from 0 | False |
+
+Example Usage:
+```ruby
+SHARD 0
+```
+
 ## ROUTER
 **Create router to receive commands and output telemetry packets from one or more interfaces**
 
@@ -535,6 +549,20 @@ Disable ERB processing for the entire target or a set of regular expressions ove
 |-----------|-------------|----------|
 | Regex | Regex to match against filenames. If match, then no ERB processing | False |
 
+### SHARD
+<div class="right">(Since 6.0.0)</div>**Operator shard to run target microservices on**
+
+Operator Shard. Only used if running multiple operator containers typically in Kubernetes
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Shard | Shard number starting from 0 | False |
+
+Example Usage:
+```ruby
+SHARD 0
+```
+
 ## MICROSERVICE
 **Defines a new microservice**
 
@@ -713,6 +741,20 @@ Disable ERB processing for the entire microservice or a set of regular expressio
 |-----------|-------------|----------|
 | Regex | Regex to match against filenames. If match, then no ERB processing | False |
 
+### SHARD
+<div class="right">(Since 6.0.0)</div>**Operator shard to run target microservices on**
+
+Operator Shard. Only used if running multiple operator containers typically in Kubernetes
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Shard | Shard number starting from 0 | False |
+
+Example Usage:
+```ruby
+SHARD 0
+```
+
 ## TOOL
 **Define a tool**
 
@@ -802,6 +844,14 @@ Disable ERB processing for the entire tool or a set of regular expressions over 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Regex | Regex to match against filenames. If match, then no ERB processing | False |
+
+### IMPORT_MAP_ITEM
+<div class="right">(Since 6.0.0)</div>**Add an item to the import map**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| key | Import Map Key | True |
+| value | Import Map Value | True |
 
 ## WIDGET
 **Define a custom widget**
