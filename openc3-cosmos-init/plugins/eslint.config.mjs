@@ -29,10 +29,6 @@ export default [...compat.extends(
 
         ecmaVersion: 5,
         sourceType: "commonjs",
-
-        parserOptions: {
-            parser: "@babel/eslint-parser",
-        },
     },
 
     rules: {
