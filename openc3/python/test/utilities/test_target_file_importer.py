@@ -62,4 +62,4 @@ class Helper:
         # from INST2.lib.helper import Helper
 
         # helper = Helper()
-        # self.assertEqual(helper.help(), 42)
+        # self.assertEqual(helper.print_help(), 42)
