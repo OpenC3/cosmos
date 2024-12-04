@@ -44,7 +44,7 @@ class TestPacket(unittest.TestCase):
 
     def test_complains_if_the_given_template_is_not_a_string(self):
         p = Packet("tgt", "pkt")
-        with self.assertRaisesRegex(AttributeError, "template must be bytes but is a int"):
+        with self.assertRaisesRegex(TypeError, "template must be bytes but is a int"):
             p.template = 1
 
 
@@ -77,7 +77,7 @@ class Buffer(unittest.TestCase):
         self.assertIsNone(p.target_name)
 
     def test_complains_about_non_string_target_names(self):
-        with self.assertRaisesRegex(AttributeError, "target_name must be a str but is a float"):
+        with self.assertRaisesRegex(TypeError, "target_name must be a str but is a float"):
             Packet(5.1, "pkt")
 
     def test_sets_the_packet_name_to_an_uppermatch_string(self):
@@ -89,7 +89,7 @@ class Buffer(unittest.TestCase):
         self.assertIsNone(p.packet_name)
 
     def test_complains_about_non_string_packet_names(self):
-        with self.assertRaisesRegex(AttributeError, "packet_name must be a str but is a float"):
+        with self.assertRaisesRegex(TypeError, "packet_name must be a str but is a float"):
             Packet("tgt", 5.1)
 
     def test_sets_the_description_to_a_string(self):
@@ -103,7 +103,7 @@ class Buffer(unittest.TestCase):
 
     def test_complains_about_non_string_descriptions(self):
         p = Packet("tgt", "pkt")
-        with self.assertRaisesRegex(AttributeError, "description must be a str but is a float"):
+        with self.assertRaisesRegex(TypeError, "description must be a str but is a float"):
             p.description = 5.1
 
     def test_sets_the_received_time_fast_to_a_time(self):
@@ -125,7 +125,7 @@ class Buffer(unittest.TestCase):
 
     def test_complains_about_non_time_received_times(self):
         p = Packet("tgt", "pkt")
-        with self.assertRaisesRegex(AttributeError, "received_time must be a datetime but is a str"):
+        with self.assertRaisesRegex(TypeError, "received_time must be a datetime but is a str"):
             p.received_time = "1pm"
 
     def test_sets_the_received_count_to_a_fixnum(self):
@@ -135,12 +135,12 @@ class Buffer(unittest.TestCase):
 
     def test_complains_about_none_received_count(self):
         p = Packet("tgt", "pkt")
-        with self.assertRaisesRegex(AttributeError, "received_count must be an int but is a NoneType"):
+        with self.assertRaisesRegex(TypeError, "received_count must be an int but is a NoneType"):
             p.received_count = None
 
     def test_complains_about_non_fixnum_received_counts(self):
         p = Packet("tgt", "pkt")
-        with self.assertRaisesRegex(AttributeError, "received_count must be an int but is a str"):
+        with self.assertRaisesRegex(TypeError, "received_count must be an int but is a str"):
             p.received_count = "5"
 
     def test_sets_the_hazardous_description_to_a_string(self):
@@ -155,7 +155,7 @@ class Buffer(unittest.TestCase):
 
     def test_complains_about_non_string_hazardous_descriptions(self):
         p = Packet("tgt", "pkt")
-        with self.assertRaisesRegex(AttributeError, "hazardous_description must be a str but is a float"):
+        with self.assertRaisesRegex(TypeError, "hazardous_description must be a str but is a float"):
             p.hazardous_description = 5.1
 
     def test_sets_the_given_values_to_a_hash(self):
@@ -171,7 +171,7 @@ class Buffer(unittest.TestCase):
 
     def test_complains_about_non_hash_given_valuess(self):
         p = Packet("tgt", "pkt")
-        with self.assertRaisesRegex(AttributeError, "given_values must be a dict but is a list"):
+        with self.assertRaisesRegex(TypeError, "given_values must be a dict but is a list"):
             p.given_values = []
 
     def test_allows_adding_items_to_the_meta_hash(self):
@@ -297,7 +297,7 @@ class Buffer(unittest.TestCase):
 
     def test_complains_if_an_item_doesnt_exist(self):
         p = Packet("tgt", "pkt")
-        with self.assertRaisesRegex(AttributeError, "Packet item 'TGT PKT TEST' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet item 'TGT PKT TEST' does not exist"):
             p.get_item("test")
 
 
@@ -309,27 +309,27 @@ class PacketReadReadItem(unittest.TestCase):
         self.p.append_item("item", 32, "UINT")
         i = self.p.get_item("ITEM")
         with self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
         ):
             self.p.read("ITEM", "MINE", b"\x01\x02\x03\x04")
         with self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
         ):
             self.p.read("ITEM", "MINE", b"\x01\x02\x03\x04")
         with self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
         ):
             self.p.read_item(i, "MINE", b"\x01\x02\x03\x04")
         with self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "Unknown value type 'ABCDEFGHIJ...', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
         ):
             self.p.read_item(i, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", b"\x01\x02\x03\x04")
         with self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "Unknown value type '.*', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
         ):
             self.p.read("ITEM", b"\00")
@@ -609,27 +609,27 @@ class PacketWrite(unittest.TestCase):
         self.p.append_item("item", 32, "UINT")
         i = self.p.get_item("ITEM")
         with self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
         ):
             self.p.write("ITEM", 0, "MINE")
         with self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
         ):
             self.p.write("ITEM", 0, "MINE")
         with self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
         ):
             self.p.write_item(i, 0, "MINE")
         with self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "Unknown value type 'ABCDEFGHIJ...', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
         ):
             self.p.write_item(i, 0, "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
         with self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "Unknown value type '.*', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
         ):
             self.p.write("ITEM", 0x01020304, "\x00")
@@ -728,17 +728,17 @@ class PacketWrite(unittest.TestCase):
     def test_complains_about_the_formatted_value_type(self):
         self.p.append_item("item", 8, "UINT")
         i = self.p.get_item("ITEM")
-        with self.assertRaisesRegex(AttributeError, "Invalid value type on write= FORMATTED"):
+        with self.assertRaisesRegex(ValueError, "Invalid value type on write: FORMATTED"):
             self.p.write("ITEM", 3, "FORMATTED", self.buffer)
-        with self.assertRaisesRegex(AttributeError, "Invalid value type on write= FORMATTED"):
+        with self.assertRaisesRegex(ValueError, "Invalid value type on write: FORMATTED"):
             self.p.write_item(i, 3, "FORMATTED", self.buffer)
 
     def test_complains_about_the_with_units_value_type(self):
         self.p.append_item("item", 8, "UINT")
         i = self.p.get_item("ITEM")
-        with self.assertRaisesRegex(AttributeError, "Invalid value type on write= WITH_UNITS"):
+        with self.assertRaisesRegex(ValueError, "Invalid value type on write: WITH_UNITS"):
             self.p.write("ITEM", 3, "WITH_UNITS", self.buffer)
-        with self.assertRaisesRegex(AttributeError, "Invalid value type on write= WITH_UNITS"):
+        with self.assertRaisesRegex(ValueError, "Invalid value type on write: WITH_UNITS"):
             self.p.write_item(i, 3, "WITH_UNITS", self.buffer)
 
 

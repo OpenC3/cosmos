@@ -66,15 +66,11 @@ class TestPreidentifiedProtocol(unittest.TestCase):
 
     def verify_time_tgt_pkt_buffer(self, offset, time, pkt):
         self.assertEqual(
-            struct.unpack(
-                ">I", TestPreidentifiedProtocol.buffer[offset : (offset + 4)]
-            )[0],
+            struct.unpack(">I", TestPreidentifiedProtocol.buffer[offset : (offset + 4)])[0],
             int(time.timestamp()),
         )
         self.assertEqual(
-            struct.unpack(
-                ">I", TestPreidentifiedProtocol.buffer[(offset + 4) : (offset + 8)]
-            )[0],
+            struct.unpack(">I", TestPreidentifiedProtocol.buffer[(offset + 4) : (offset + 8)])[0],
             500000,
         )
         offset += 8  # time fields
@@ -93,9 +89,7 @@ class TestPreidentifiedProtocol(unittest.TestCase):
         )
         offset += pkt_name_length
         self.assertEqual(
-            struct.unpack(
-                ">I", TestPreidentifiedProtocol.buffer[offset : (offset + 4)]
-            )[0],
+            struct.unpack(">I", TestPreidentifiedProtocol.buffer[offset : (offset + 4)])[0],
             len(pkt.buffer),
         )
         offset += 4
@@ -111,13 +105,9 @@ class TestPreidentifiedProtocol(unittest.TestCase):
             self.interface.read()
 
     def test_initializes_attributes(self):
-        self.interface.add_protocol(
-            PreidentifiedProtocol, ["0xDEADBEEF", 100], "READ_WRITE"
-        )
+        self.interface.add_protocol(PreidentifiedProtocol, ["0xDEADBEEF", 100], "READ_WRITE")
         self.assertEqual(self.interface.read_protocols[0].data, b"")
-        self.assertEqual(
-            self.interface.read_protocols[0].sync_pattern, b"\xDE\xAD\xBE\xEF"
-        )
+        self.assertEqual(self.interface.read_protocols[0].sync_pattern, b"\xDE\xAD\xBE\xEF")
         self.assertEqual(self.interface.read_protocols[0].max_length, 100)
 
     def test_write_creates_a_packet_header(self):
@@ -149,9 +139,7 @@ class TestPreidentifiedProtocol(unittest.TestCase):
         json_extra = json.dumps(extra_data)
         offset += 1
         self.assertEqual(
-            struct.unpack(
-                ">I", TestPreidentifiedProtocol.buffer[offset : (offset + 4)]
-            )[0],
+            struct.unpack(">I", TestPreidentifiedProtocol.buffer[offset : (offset + 4)])[0],
             len(json_extra),
         )
         offset += 4
@@ -172,9 +160,7 @@ class TestPreidentifiedProtocol(unittest.TestCase):
         json_extra = json.dumps(extra_data)
         offset = 1
         self.assertEqual(
-            struct.unpack(
-                ">I", TestPreidentifiedProtocol.buffer[offset : (offset + 4)]
-            )[0],
+            struct.unpack(">I", TestPreidentifiedProtocol.buffer[offset : (offset + 4)])[0],
             len(json_extra),
         )
         offset += 4
@@ -209,9 +195,7 @@ class TestPreidentifiedProtocol(unittest.TestCase):
         json_extra = json.dumps(extra_data)
         offset = 3
         self.assertEqual(
-            struct.unpack(
-                ">I", TestPreidentifiedProtocol.buffer[offset : (offset + 4)]
-            )[0],
+            struct.unpack(">I", TestPreidentifiedProtocol.buffer[offset : (offset + 4)])[0],
             len(json_extra),
         )
         offset += 4

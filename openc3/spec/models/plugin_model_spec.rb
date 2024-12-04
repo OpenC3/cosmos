@@ -26,6 +26,9 @@ require 'openc3/utilities/aws_bucket'
 
 module OpenC3
   describe PluginModel do
+    # Simple URL that is valid for testing (starts with /)
+    URL = "URL /myurl"
+
     before(:each) do
       mock_redis()
     end
@@ -142,7 +145,7 @@ module OpenC3
         expect(gem).to receive(:extract_files) do |path|
           File.open("#{path}/plugin.txt", 'w') do |file|
             file.puts "TOOL <%= folder %> <%= name %>"
-            file.puts "  URL myurl"
+            file.puts "  #{URL}"
             file.puts "TARGET <%= folder %> <%= name %>"
           end
         end
@@ -156,7 +159,7 @@ module OpenC3
         expect(GemModel).to receive(:install).and_return(nil)
         expect_any_instance_of(ToolModel).to receive(:deploy).with(anything, variables, validate_only: false).and_return(nil)
         expect_any_instance_of(TargetModel).to receive(:deploy).with(anything, variables, validate_only: false).and_return(nil)
-        plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => variables, "plugin_txt_lines" => ["TOOL THE_FOLDER THE_NAME", "  URL myurl", "TARGET THE_FOLDER THE_NAME"]}, scope: "DEFAULT")
+        plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => variables, "plugin_txt_lines" => ["TOOL THE_FOLDER THE_NAME", "  #{URL}", "TARGET THE_FOLDER THE_NAME"]}, scope: "DEFAULT")
         expect(plugin_model['needs_dependencies']).to eql false
       end
 
@@ -208,7 +211,7 @@ module OpenC3
 
         plugin_txt_lines = []
         plugin_txt_lines << "  TOOL THE_FOLDER THE_NAME"
-        plugin_txt_lines << "    URL myurl"
+        plugin_txt_lines << "    #{URL}"
         plugin_txt_lines << "  TARGET THE_FOLDER THE_NAME"
 
         expect(GemModel).to receive(:get).and_return("my_plugin.gem")
@@ -238,7 +241,7 @@ module OpenC3
 
         plugin_txt_lines = []
         plugin_txt_lines << "  TOOL THE_FOLDER THE_NAME"
-        plugin_txt_lines << "    URL myurl"
+        plugin_txt_lines << "    #{URL}"
         plugin_txt_lines << "  TARGET THE_FOLDER THE_NAME"
 
         expect(GemModel).to receive(:get).and_return("my_plugin.gem")
@@ -267,7 +270,7 @@ module OpenC3
 
         plugin_txt_lines = []
         plugin_txt_lines << "  TOOL THE_FOLDER THE_NAME"
-        plugin_txt_lines << "    URL myurl"
+        plugin_txt_lines << "    #{URL}"
         plugin_txt_lines << "  TARGET THE_FOLDER THE_NAME"
         plugin_txt_lines << "  NEEDS_DEPENDENCIES"
 

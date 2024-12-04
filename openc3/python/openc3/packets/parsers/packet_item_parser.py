@@ -87,7 +87,7 @@ class PacketItemParser:
             else:
                 item = packet.define(item)
             return item
-        except AttributeError as error:
+        except Exception as error:
             raise self.parser.error(error, self.usage)
 
     def _append(self):

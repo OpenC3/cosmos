@@ -301,9 +301,7 @@ module OpenC3
           # Option Name, Secret Name
           @secret_options << [parameters[3], parameters[1]]
         end
-        if ConfigParser.handle_nil(parameters[4])
-          @secrets[-1] << parameters[4]
-        end
+        @secrets[-1] << ConfigParser.handle_nil(parameters[4])
 
       when 'ENV'
         parser.verify_num_parameters(2, 2, "#{keyword} <Key> <Value>")

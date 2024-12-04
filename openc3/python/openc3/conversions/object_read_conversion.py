@@ -26,7 +26,7 @@ class ObjectReadConversion(Conversion):
         if cmd_or_tlm:
             self.cmd_or_tlm = str(cmd_or_tlm).upper()
             if self.cmd_or_tlm not in ["CMD", "TLM", "COMMAND", "TELEMETRY"]:
-                raise AttributeError(f"Unknown type:{cmd_or_tlm}")
+                raise TypeError(f"Unknown type: {cmd_or_tlm}")
         else:
             # Unknown - Will need to search
             self.cmd_or_tlm = None

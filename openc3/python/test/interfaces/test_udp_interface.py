@@ -18,8 +18,7 @@ import time
 import socket
 import threading
 import unittest
-from unittest.mock import *
-from test.test_helper import *
+from unittest.mock import patch
 from openc3.interfaces.udp_interface import UdpInterface
 from openc3.io.udp_sockets import UdpReadSocket, UdpWriteSocket
 from openc3.packets.packet import Packet
@@ -73,9 +72,7 @@ class TestUdpInterface(unittest.TestCase):
         self.assertFalse(i.read_allowed)
 
     def test_connection_string(self):
-        i = UdpInterface(
-            "123.4.5.6", "8888", "8889", "8890", "456.7.8.9", "64", "5", "5", "1.2.3.4"
-        )
+        i = UdpInterface("123.4.5.6", "8888", "8889", "8890", "456.7.8.9", "64", "5", "5", "1.2.3.4")
         self.assertEqual(
             i.connection_string(),
             "123.4.5.6:8888 (write dest port) 8890 (write src port) 123.4.5.6:8889 (read) 456.7.8.9 (interface addr) 1.2.3.4 (bind addr)",

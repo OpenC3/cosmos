@@ -15,8 +15,6 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
-from unittest.mock import *
-from test.test_helper import *
 from openc3.interfaces.tcpip_client_interface import TcpipClientInterface
 
 
@@ -53,9 +51,7 @@ class TestTcpipClientInterface(unittest.TestCase):
         self.assertEqual(i.connection_string(), "localhost:8889 (R/W)")
 
         i = TcpipClientInterface("localhost", "8889", "8890", "None", "5", "burst")
-        self.assertEqual(
-            i.connection_string(), "localhost:8889 (write) localhost:8890 (read)"
-        )
+        self.assertEqual(i.connection_string(), "localhost:8889 (write) localhost:8890 (read)")
 
         i = TcpipClientInterface("localhost", "8889", "None", "None", "5", "burst")
         self.assertEqual(i.connection_string(), "localhost:8889 (write)")
