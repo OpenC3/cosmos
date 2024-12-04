@@ -89,6 +89,7 @@ class InterfaceModel(Model):
         env: Optional[dict] = None,
         container=None,
         prefix=None,
+        shard=0,
         scope: str = OPENC3_SCOPE,
     ):
         type = self.__class__._get_type()
@@ -138,6 +139,9 @@ class InterfaceModel(Model):
         self.env = {} if env is None else env
         self.container = container
         self.prefix = prefix
+        self.shard = shard
+        if self.shard is None:
+            self.shard = 0
         self.secrets = [] if secrets is None else secrets
 
     # Called by InterfaceMicroservice to instantiate the Interface defined
@@ -201,6 +205,7 @@ class InterfaceModel(Model):
             "env": self.env,
             "container": self.container,
             "prefix": self.prefix,
+            "shard": self.shard,
             "updated_at": self.updated_at,
         }
 

@@ -23,7 +23,7 @@
 <template>
   <v-tooltip bottom>
     <template v-slot:activator="{ on, attrs }">
-      <div class="led mt-1" :style="cssProps" v-bind="attrs" v-on="on"></div>
+      <div class="led mt-1" :style="cssProps" v-bind="attrs"></div>
     </template>
     <span>{{ fullName }}</span>
   </v-tooltip>

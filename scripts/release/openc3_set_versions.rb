@@ -97,7 +97,7 @@ gemspec_files.each do |rel_path|
 end
 
 package_dot_json_files = [
-  'openc3-cosmos-init/plugins/openc3-tool-base/package.json',
+  'openc3-cosmos-init/plugins/packages/openc3-tool-base/package.json',
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-ace-diff/package.json',
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/package.json',
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-admin/package.json',
