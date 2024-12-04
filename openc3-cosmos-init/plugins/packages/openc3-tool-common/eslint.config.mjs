@@ -32,8 +32,8 @@ export default [...compat.extends(
     },
 
     rules: {
-        "no-console": "off",
-        "no-debugger": "off",
+        "no-console": "error",
+        "no-debugger": "error",
 
         "prettier/prettier": ["warn", {
             endOfLine: "auto",

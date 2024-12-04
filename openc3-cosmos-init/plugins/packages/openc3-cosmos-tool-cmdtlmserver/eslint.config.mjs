@@ -31,12 +31,11 @@ export default [...compat.extends(
         parser: parser,
         ecmaVersion: 2022,
         sourceType: "module",
-
     },
 
     rules: {
-        "no-console": "off",
-        "no-debugger": "off",
+        "no-console": "error",
+        "no-debugger": "error",
 
         "prettier/prettier": ["warn", {
             endOfLine: "auto",

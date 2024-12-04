@@ -29,17 +29,13 @@ export default [...compat.extends(
         },
 
         parser: parser,
-        ecmaVersion: 5,
-        sourceType: "commonjs",
-
-        parserOptions: {
-            parser: "@babel/eslint-parser",
-        },
+        ecmaVersion: 2020,
+        sourceType: "module",
     },
 
     rules: {
-        "no-console": "off",
-        "no-debugger": "off",
+        "no-console": "error",
+        "no-debugger": "error",
 
         "prettier/prettier": ["warn", {
             endOfLine: "auto",

@@ -1,5 +1,6 @@
 import prettier from "eslint-plugin-prettier";
 import globals from "globals";
+import parser from "vue-eslint-parser";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import js from "@eslint/js";
@@ -26,11 +27,15 @@ export default [...compat.extends(
         globals: {
             ...globals.node,
         },
+
+        parser: parser,
+        ecmaVersion: 2022,
+        sourceType: "module",
     },
 
     rules: {
-        "no-console": "off",
-        "no-debugger": "off",
+        "no-console": "error",
+        "no-debugger": "error",
 
         "prettier/prettier": ["warn", {
             endOfLine: "auto",

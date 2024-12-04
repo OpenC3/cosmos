@@ -21,6 +21,8 @@
 */
 
 export default class RegexAnnotator {
+  // TODO: the eslint parser errors on these because of the #
+  // Not sure if this naming is needed for the Ace editor or something?
   #id
   #editor
   #pattern
