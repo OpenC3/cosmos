@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -115,31 +115,6 @@ module OpenC3
       @write_mutex = Mutex.new
     end
 
-    # @return [String] Returns a binary string of data from the serial port
-    def read
-      raise "Attempt to read from write only stream" unless @read_serial_port
-
-      # No read mutex is needed because reads happen serially
-      @read_serial_port.read
-    end
-
-    # @return [String] Returns a binary string of data from the serial port without blocking
-    def read_nonblock
-      raise "Attempt to read from write only stream" unless @read_serial_port
-
-      # No read mutex is needed because reads happen serially
-      @read_serial_port.read_nonblock
-    end
-
-    # @param data [String] A binary string of data to write to the serial port
-    def write(data)
-      raise "Attempt to write to read only stream" unless @write_serial_port
-
-      @write_mutex.synchronize do
-        @write_serial_port.write(data)
-      end
-    end
-
     # Connect the stream
     def connect
       # N/A - Serial streams 'connect' on creation
@@ -168,5 +143,30 @@ module OpenC3
         @connected = false
       end
     end
-  end # class SerialStream
+
+    # @return [String] Returns a binary string of data from the serial port
+    def read
+      raise "Attempt to read from write only stream" unless @read_serial_port
+
+      # No read mutex is needed because reads happen serially
+      @read_serial_port.read
+    end
+
+    # @return [String] Returns a binary string of data from the serial port without blocking
+    def read_nonblock
+      raise "Attempt to read from write only stream" unless @read_serial_port
+
+      # No read mutex is needed because reads happen serially
+      @read_serial_port.read_nonblock
+    end
+
+    # @param data [String] A binary string of data to write to the serial port
+    def write(data)
+      raise "Attempt to write to read only stream" unless @write_serial_port
+
+      @write_mutex.synchronize do
+        @write_serial_port.write(data)
+      end
+    end
+  end
 end

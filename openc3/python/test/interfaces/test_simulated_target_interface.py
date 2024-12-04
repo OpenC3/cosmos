@@ -15,11 +15,11 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
-from unittest.mock import *
-from test.test_helper import *
+from test.test_helper import mock_redis, setup_system
 from openc3.interfaces.simulated_target_interface import SimulatedTargetInterface
 from openc3.packets.packet import Packet
 from openc3.interfaces.protocols.protocol import Protocol
+from openc3.system.system import System
 
 
 class MyProtocol(Protocol):
@@ -41,9 +41,7 @@ class TestSimulatedTargetInterface(unittest.TestCase):
         setup_system()
 
     def test_complains_if_the_simulated_target_file_doesnt_exist(self):
-        with self.assertRaisesRegex(
-            ModuleNotFoundError, "No module named 'doesnt_exist'"
-        ):
+        with self.assertRaisesRegex(ModuleNotFoundError, "No module named 'doesnt_exist'"):
             SimulatedTargetInterface("doesnt_exist.py")
 
     def test_creates_the_simulated_target_class(self):

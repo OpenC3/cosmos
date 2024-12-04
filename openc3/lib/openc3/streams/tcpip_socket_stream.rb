@@ -58,6 +58,25 @@ module OpenC3
       @connected = false
     end
 
+    # Connect the stream
+    def connect
+      # If called directly this class is acting as a server and does not need to connect the sockets
+      @connected = true
+    end
+
+    # @return [Boolean] Whether the sockets are connected
+    def connected?
+      @connected
+    end
+
+    # Disconnect by closing the sockets
+    def disconnect
+      OpenC3.close_socket(@write_socket)
+      OpenC3.close_socket(@read_socket)
+      @pipe_writer.write('.')
+      @connected = false
+    end
+
     # @return [String] Returns a binary string of data from the socket
     def read
       raise "Attempt to read from write only stream" unless @read_socket
@@ -140,25 +159,6 @@ module OpenC3
           data_to_send = data[total_bytes_sent..-1]
         end
       end
-    end
-
-    # Connect the stream
-    def connect
-      # If called directly this class is acting as a server and does not need to connect the sockets
-      @connected = true
-    end
-
-    # @return [Boolean] Whether the sockets are connected
-    def connected?
-      @connected
-    end
-
-    # Disconnect by closing the sockets
-    def disconnect
-      OpenC3.close_socket(@write_socket)
-      OpenC3.close_socket(@read_socket)
-      @pipe_writer.write('.')
-      @connected = false
     end
 
     def set_option(option_name, option_values)

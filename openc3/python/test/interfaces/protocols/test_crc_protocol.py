@@ -23,7 +23,7 @@ from openc3.interfaces.protocols.crc_protocol import CrcProtocol
 from openc3.interfaces.protocols.burst_protocol import BurstProtocol
 from openc3.packets.packet import Packet
 from openc3.streams.stream import Stream
-from openc3.utilities.crc import Crc16, Crc32, Crc64
+from openc3.utilities.crc import Crc16, Crc32, Crc64, Crc8
 
 
 class TestCrcProtocol(unittest.TestCase):
@@ -347,6 +347,33 @@ class TestCrcProtocol(unittest.TestCase):
         self.assertEqual(len(packet.buffer), 8)
         self.assertEqual(packet.buffer, TestCrcProtocol.buffer)
 
+    def test_reads_the_8_bit_crc_field_and_compares_to_the_crc(self):
+        self.interface.stream = TestCrcProtocol.CrcStream()
+        self.interface.add_protocol(BurstProtocol, [], "READ_WRITE")
+        self.interface.add_protocol(
+            CrcProtocol,
+            [
+                "CRC",  # item name
+                "FALSE",  # strip crc
+                "ERROR",  # bad strategy
+                -8,  # bit offset
+                8,
+            ],  # bit size
+            "READ_WRITE",
+        )
+        self.interface.target_names = ["TGT"]
+        packet = Packet("TGT", "PKT")
+        packet.append_item("DATA", 32, "UINT")
+        packet.append_item("CRC", 8, "UINT")
+
+        TestCrcProtocol.buffer = b"\x00\x01\x02\x03"
+        crc = Crc8().calc(TestCrcProtocol.buffer)
+        TestCrcProtocol.buffer += struct.pack(">B", crc)  # [crc].pack("n")
+
+        packet = self.interface.read()
+        self.assertEqual(len(packet.buffer), 5)
+        self.assertEqual(packet.buffer, TestCrcProtocol.buffer)
+
     def test_reads_the_16_bit_crc_field_and_compares_to_the_crc(self):
         self.interface.stream = TestCrcProtocol.CrcStream()
         self.interface.add_protocol(BurstProtocol, [], "READ_WRITE")
@@ -432,6 +459,39 @@ class TestCrcProtocol(unittest.TestCase):
         self.assertEqual(packet.buffer, TestCrcProtocol.buffer)
 
     #       context "with a specified CRC poly, seed, xor, and reflect"
+
+    def test_reads_the_8_bit_crc_field_and_compares_to_the_crc2(self):
+        self.interface.stream = TestCrcProtocol.CrcStream()
+        self.interface.add_protocol(BurstProtocol, [], "READ_WRITE")
+        self.interface.add_protocol(
+            CrcProtocol,
+            [
+                "CRC",  # item name
+                "FALSE",  # strip crc
+                "ERROR",  # bad strategy
+                -8,  # bit offset
+                8,  # bit size
+                "BIG_ENDIAN",  # endianness
+                0x39,  # poly for CRC-8/DARC
+                0x0,  # seed
+                "TRUE",  # xor
+                "TRUE",  # reflect
+            ],
+            "READ_WRITE",
+        )
+        self.interface.target_names = ["TGT"]
+        packet = Packet("TGT", "PKT")
+        packet.append_item("DATA", 32, "UINT")
+        packet.append_item("CRC", 8, "UINT")
+
+        TestCrcProtocol.buffer = b"\x00\x01\x02\x03"
+        crc8 = Crc8(0x39, 0, True, True)
+        crc = crc8.calc(TestCrcProtocol.buffer)
+        TestCrcProtocol.buffer += struct.pack(">B", crc)
+
+        packet = self.interface.read()
+        self.assertEqual(len(packet.buffer), 5)
+        self.assertEqual(packet.buffer, TestCrcProtocol.buffer)
 
     def test_reads_the_16_bit_crc_field_and_compares_to_the_crc2(self):
         self.interface.stream = TestCrcProtocol.CrcStream()
@@ -606,6 +666,33 @@ class TestCrcProtocol(unittest.TestCase):
                 stdout.getvalue(),
             )
 
+    def test_can_strip_the_8_bit_crc_at_the_end(self):
+        self.interface.stream = TestCrcProtocol.CrcStream()
+        self.interface.add_protocol(BurstProtocol, [], "READ_WRITE")
+        self.interface.add_protocol(
+            CrcProtocol,
+            [
+                "CRC",  # item name
+                "TRUE",  # strip crc
+                "ERROR",  # bad strategy
+                -8,  # bit offset
+                8,
+            ],  # bit size
+            "READ_WRITE",
+        )
+        self.interface.target_names = ["TGT"]
+        packet = Packet("TGT", "PKT")
+        packet.append_item("DATA", 32, "UINT")
+        packet.append_item("CRC", 8, "UINT")
+
+        TestCrcProtocol.buffer = b"\x00\x01\x02\x03"
+        crc = Crc8().calc(TestCrcProtocol.buffer)
+        TestCrcProtocol.buffer += struct.pack(">B", crc)
+
+        packet = self.interface.read()
+        self.assertEqual(len(packet.buffer), 4)
+        self.assertEqual(packet.buffer, TestCrcProtocol.buffer[0:4])
+
     def test_can_strip_the_16_bit_crc_at_the_end(self):
         self.interface.stream = TestCrcProtocol.CrcStream()
         self.interface.add_protocol(BurstProtocol, [], "READ_WRITE")
@@ -763,10 +850,34 @@ class TestCrcProtocol(unittest.TestCase):
         packet.append_item("CRC", 32, "UINT")
         packet.append_item("TRAILER", 32, "UINT")
         packet.buffer = b"\x00\x01\x02\x03\x00\x00\x00\x00\x04\x05\x06\x07"
-        with self.assertRaisesRegex(
-            RuntimeError, "Packet item 'TGT PKT MYCRC' does not exist"
-        ):
+        with self.assertRaisesRegex(RuntimeError, "Packet item 'TGT PKT MYCRC' does not exist"):
             self.interface.write(packet)
+
+    def test_calculates_and_writes_the_8_bit_crc_item(self):
+        self.interface.stream = TestCrcProtocol.CrcStream()
+        self.interface.add_protocol(BurstProtocol, [], "READ_WRITE")
+        self.interface.add_protocol(
+            CrcProtocol,
+            [
+                "CRC",  # item name
+                "FALSE",  # strip crc
+                "ERROR",  # bad strategy
+                -40,  # bit offset
+                8,
+            ],  # bit size
+            "READ_WRITE",
+        )
+        self.interface.target_names = ["TGT"]
+        packet = Packet("TGT", "PKT")
+        packet.append_item("DATA", 32, "UINT")
+        packet.append_item("CRC", 8, "UINT")
+        packet.append_item("TRAILER", 32, "UINT")
+        packet.buffer = b"\x00\x01\x02\x03\x3F\x04\x05\x06\x07"
+        self.interface.write(packet)
+        buffer = b"\x00\x01\x02\x03"
+        buffer += struct.pack(">B", Crc8().calc(b"\x00\x01\x02\x03"))
+        buffer += b"\x04\x05\x06\x07"
+        self.assertEqual(TestCrcProtocol.buffer, buffer)
 
     def test_calculates_and_writes_the_16_bit_crc_item(self):
         self.interface.stream = TestCrcProtocol.CrcStream()
@@ -839,9 +950,7 @@ class TestCrcProtocol(unittest.TestCase):
         packet.append_item("DATA", 32, "UINT")
         packet.append_item("CRC", 64, "UINT")
         packet.append_item("TRAILER", 32, "UINT")
-        packet.buffer = (
-            b"\x00\x01\x02\x03\x00\x00\x00\x00\x00\x00\x00\x00\x04\x05\x06\x07"
-        )
+        packet.buffer = b"\x00\x01\x02\x03\x00\x00\x00\x00\x00\x00\x00\x00\x04\x05\x06\x07"
         self.interface.write(packet)
         buffer = b"\x00\x01\x02\x03"
         crc = Crc64().calc(buffer)
@@ -850,6 +959,32 @@ class TestCrcProtocol(unittest.TestCase):
         buffer += struct.pack(">I", top_crc)
         buffer += struct.pack(">I", bottom_crc)
         buffer += b"\x04\x05\x06\x07"
+        self.assertEqual(TestCrcProtocol.buffer, buffer)
+
+    def test_appends_the_8_bit_crc_to_the_end(self):
+        self.interface.stream = TestCrcProtocol.CrcStream()
+        self.interface.add_protocol(BurstProtocol, [], "READ_WRITE")
+        self.interface.add_protocol(
+            CrcProtocol,
+            [
+                None,  # item name None means append
+                "FALSE",  # strip crc
+                "ERROR",  # bad strategy
+                -8,  # bit offset
+                8,
+            ],  # bit size
+            "READ_WRITE",
+        )
+        self.interface.target_names = ["TGT"]
+        packet = Packet("TGT", "PKT")
+        packet.append_item("DATA", 32, "UINT")
+        packet.append_item("CRC", 32, "UINT")
+        packet.append_item("TRAILER", 32, "UINT")
+        packet.buffer = b"\x00\x01\x02\x03\x00\x00\x00\x00\x04\x05\x06\x07"
+        buffer = packet.buffer
+        buffer += struct.pack(">B", Crc8().calc(packet.buffer))
+        self.interface.write(packet)
+        self.assertEqual(len(TestCrcProtocol.buffer), 13)
         self.assertEqual(TestCrcProtocol.buffer, buffer)
 
     def test_appends_the_16_bit_crc_to_the_end(self):

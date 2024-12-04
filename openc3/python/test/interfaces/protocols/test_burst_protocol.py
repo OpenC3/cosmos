@@ -52,28 +52,20 @@ class TestBurstProtocol(unittest.TestCase):
         self.interface = TestBurstProtocol.MyInterface()
 
     def test_initializes_attributes(self):
-        self.interface.add_protocol(
-            BurstProtocol, [1, "0xDEADBEEF", True], "READ_WRITE"
-        )
+        self.interface.add_protocol(BurstProtocol, [1, "0xDEADBEEF", True], "READ_WRITE")
         self.assertEqual(self.interface.read_protocols[0].data, b"")
         self.assertEqual(self.interface.read_protocols[0].discard_leading_bytes, 1)
-        self.assertEqual(
-            self.interface.read_protocols[0].sync_pattern, b"\xDE\xAD\xBE\xEF"
-        )
+        self.assertEqual(self.interface.read_protocols[0].sync_pattern, b"\xDE\xAD\xBE\xEF")
         self.assertTrue(self.interface.read_protocols[0].fill_fields)
 
     def test_connect_clears_the_data(self):
-        self.interface.add_protocol(
-            BurstProtocol, [1, "0xDEADBEEF", True], "READ_WRITE"
-        )
+        self.interface.add_protocol(BurstProtocol, [1, "0xDEADBEEF", True], "READ_WRITE")
         self.interface.read_protocols[0].data = b"\x00\x01\x02\x03"
         self.interface.connect()
         self.assertEqual(self.interface.read_protocols[0].data, b"")
 
     def test_disconnect_clears_the_data(self):
-        self.interface.add_protocol(
-            BurstProtocol, [1, "0xDEADBEEF", True], "READ_WRITE"
-        )
+        self.interface.add_protocol(BurstProtocol, [1, "0xDEADBEEF", True], "READ_WRITE")
         self.interface.read_protocols[0].data = b"\x00\x01\x02\x03"
         self.interface.disconnect()
         self.assertEqual(self.interface.read_protocols[0].data, b"")
@@ -177,23 +169,17 @@ class TestBurstProtocol(unittest.TestCase):
 
     def test_handle_auto_allow_empty_data_correctly(self):
         self.interface.add_protocol(BurstProtocol, [0, None, False, None], "READ_WRITE")
-        self.assertEqual(
-            self.interface.read_protocols[0].read_data(b""), ("STOP", None)
-        )
+        self.assertEqual(self.interface.read_protocols[0].read_data(b""), ("STOP", None))
         self.assertEqual(self.interface.read_protocols[0].read_data(b"A"), (b"A", None))
         self.interface.add_protocol(BurstProtocol, [0, None, False, None], "READ_WRITE")
         self.assertEqual(self.interface.read_protocols[0].read_data(b""), (b"", None))
-        self.assertEqual(
-            self.interface.read_protocols[1].read_data(b""), ("STOP", None)
-        )
+        self.assertEqual(self.interface.read_protocols[1].read_data(b""), ("STOP", None))
         self.assertEqual(self.interface.read_protocols[0].read_data(b"A"), (b"A", None))
         self.assertEqual(self.interface.read_protocols[1].read_data(b"A"), (b"A", None))
         self.interface.add_protocol(BurstProtocol, [0, None, False, None], "READ_WRITE")
         self.assertEqual(self.interface.read_protocols[0].read_data(b""), (b"", None))
         self.assertEqual(self.interface.read_protocols[1].read_data(b""), (b"", None))
-        self.assertEqual(
-            self.interface.read_protocols[2].read_data(b""), ("STOP", None)
-        )
+        self.assertEqual(self.interface.read_protocols[2].read_data(b""), ("STOP", None))
         self.assertEqual(self.interface.read_protocols[0].read_data(b"A"), (b"A", None))
         self.assertEqual(self.interface.read_protocols[1].read_data(b"A"), (b"A", None))
         self.assertEqual(self.interface.read_protocols[2].read_data(b"A"), (b"A", None))
@@ -211,9 +197,7 @@ class TestBurstProtocol(unittest.TestCase):
         data = Packet(None, None, "BIG_ENDIAN", None, b"\x00\x00")
         # Don't discard bytes, include and fill the sync pattern
         self.interface.stream = TestBurstProtocol.StreamStub()
-        self.interface.add_protocol(
-            BurstProtocol, [0, "0x12345678", True], "READ_WRITE"
-        )
+        self.interface.add_protocol(BurstProtocol, [0, "0x12345678", True], "READ_WRITE")
         # 2 bytes are not enough to hold the 4 byte sync
         with self.assertRaisesRegex(ValueError, "buffer insufficient"):
             self.interface.write(data)
@@ -232,9 +216,7 @@ class TestBurstProtocol(unittest.TestCase):
         data = Packet(None, None, "BIG_ENDIAN", None, b"\x00\x01\x02\x03")
         # Discard first 2 bytes (the sync pattern), include and fill the sync pattern
         self.interface.stream = TestBurstProtocol.StreamStub()
-        self.interface.add_protocol(
-            BurstProtocol, [2, "0x12345678", True], "READ_WRITE"
-        )
+        self.interface.add_protocol(BurstProtocol, [2, "0x12345678", True], "READ_WRITE")
         self.interface.write(data)
         self.assertEqual(TestBurstProtocol.data, b"\x12\x34\x56\x78\x02\x03")
 

@@ -18,6 +18,7 @@
 
 # You can quickly setup an unauthenticated MQTT server in Docker with
 # docker run -it -p 1883:1883 eclipse-mosquitto:2.0.15 mosquitto -c /mosquitto-no-auth.conf
+# You can also test against encrypted and authenticated servers at https://test.mosquitto.org/
 
 require 'openc3/interfaces/interface'
 require 'openc3/config/config_parser'
@@ -91,12 +92,13 @@ module OpenC3
   class MqttInterface < Interface
     # @param hostname [String] MQTT server to connect to
     # @param port [Integer] MQTT port
-    # @param ssl [Boolean] Use SSL true/false
+    # @param ssl [Boolean] Whether to use SSL
     def initialize(hostname, port = 1883, ssl = false)
       super()
       @hostname = hostname
       @port = Integer(port)
       @ssl = ConfigParser.handle_true_false(ssl)
+      @ack_timeout = 5.0
       @username = nil
       @password = nil
       @cert = nil
@@ -130,14 +132,21 @@ module OpenC3
       @write_topics = []
       @read_topics = []
       @client = MQTT::Client.new
+      @client.ack_timeout = @ack_timeout
       @client.host = @hostname
       @client.port = @port
-      @client.ssl = @ssl
       @client.username = @username if @username
       @client.password = @password if @password
-      @client.cert = @cert if @cert
-      @client.key = @key if @key
-      @client.ca_file = @ca_file.path if @ca_file
+      @client.ssl = @ssl
+      if @cert and @key
+        @client.ssl = true
+        @client.cert_file = @cert.path
+        @client.key_file = @key.path
+      end
+      if @ca_file
+        @client.ssl = true
+        @client.ca_file = @ca_file.path
+      end
       @client.connect
       @read_packets_by_topic.each do |topic, _|
         Logger.info "#{@name}: Subscribing to #{topic}"
@@ -157,8 +166,10 @@ module OpenC3
 
     # Disconnects the interface from its target(s)
     def disconnect
-      @client.disconnect
-      @client = nil
+      if @client
+        @client.disconnect
+        @client = nil
+      end
       super()
     end
 
@@ -186,7 +197,7 @@ module OpenC3
             super(packet)
           end
         else
-          raise "Command packet #{packet.target_name} #{packet.packet_name} requires a META TOPIC or TOPICS"
+          raise "Command packet '#{packet.target_name} #{packet.packet_name}' requires a META TOPIC or TOPICS"
         end
       end
     end
@@ -226,14 +237,22 @@ module OpenC3
     def set_option(option_name, option_values)
       super(option_name, option_values)
       case option_name.upcase
+      when 'ACK_TIMEOUT'
+        @ack_timeout = Float(option_values[0])
       when 'USERNAME'
         @username = option_values[0]
       when 'PASSWORD'
         @password = option_values[0]
       when 'CERT'
-        @cert = option_values[0]
+        # CERT must be given as a file
+        @cert = Tempfile.new('cert')
+        @cert.write(option_values[0])
+        @cert.close
       when 'KEY'
-        @key = option_values[0]
+        # KEY must be given as a file
+        @key = Tempfile.new('key')
+        @key.write(option_values[0])
+        @key.close
       when 'CA_FILE'
         # CA_FILE must be given as a file
         @ca_file = Tempfile.new('ca_file')
