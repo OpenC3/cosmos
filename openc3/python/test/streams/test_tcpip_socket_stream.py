@@ -31,7 +31,7 @@ class TestTcpipSocketStream(unittest.TestCase):
 
     def test_is_not_be_connected_when_initialized(self):
         ss = TcpipSocketStream(None, None, 10.0, None)
-        self.assertFalse(ss.connected)
+        self.assertFalse(ss.connected())
 
     def test_warns_if_the_write_timeout_is_None(self):
         for stdout in capture_io():
@@ -155,27 +155,27 @@ class TestTcpipSocketStream(unittest.TestCase):
         write = Mock()
         ss = TcpipSocketStream(write, None, 10.0, None)
         ss.connect()
-        self.assertTrue(ss.connected)
+        self.assertTrue(ss.connected())
         ss.disconnect()
-        self.assertFalse(ss.connected)
+        self.assertFalse(ss.connected())
         write.close.assert_called_once()
 
     def test_closes_the_read_socket(self):
         read = Mock()
         ss = TcpipSocketStream(None, read, 10.0, None)
         ss.connect()
-        self.assertTrue(ss.connected)
+        self.assertTrue(ss.connected())
         ss.disconnect()
-        self.assertFalse(ss.connected)
+        self.assertFalse(ss.connected())
         read.close.assert_called_once()
 
     def test_does_not_close_the_socket_twice(self):
         socket = Mock()
         ss = TcpipSocketStream(socket, socket, 10.0, None)
         ss.connect()
-        self.assertTrue(ss.connected)
+        self.assertTrue(ss.connected())
         ss.disconnect()
-        self.assertFalse(ss.connected)
+        self.assertFalse(ss.connected())
         ss.disconnect()
-        self.assertFalse(ss.connected)
+        self.assertFalse(ss.connected())
         socket.close.assert_called()

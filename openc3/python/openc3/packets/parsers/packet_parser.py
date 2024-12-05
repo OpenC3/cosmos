@@ -37,10 +37,10 @@ class PacketParser:
             for item in packet.sorted_items:
                 item.check_default_and_range_data_types()
 
-        except AttributeError as error:
+        except TypeError as error:
             # Add the target name and packet name to the error message so the user
             # can debug where the error occurred
-            raise AttributeError(f"{packet.target_name} {packet.packet_name} {error}") from error
+            raise TypeError(f"{packet.target_name} {packet.packet_name} {error}") from error
 
     @classmethod
     def _check_for_duplicate(cls, type, list, packet):

@@ -22,7 +22,6 @@ from collections import namedtuple
 from openc3.packets.packet import Packet
 from openc3.packets.packet_item import PacketItem
 
-
 class TestJsonAccessor(unittest.TestCase):
     def setUp(self):
         self.data1 = bytearray(
@@ -93,6 +92,13 @@ class TestJsonAccessor(unittest.TestCase):
         data = b'{"id_item":1, "item1":101, "more": { "item2":12, "item3":3.14, "item4":"Example", "item5":[4, 3, 2, 1] } }'
         item = self.Json("item", "$.packet.item1", "DERIVED", None)
         self.assertEqual(JsonAccessor.class_write_item(item, 3, data), None)
+
+    def test_should_write_into_empty_array(self):
+        data = bytearray(b'{"params": []}')
+        item = self.Json("item", "$.params[0]", "STRING", None)
+        JsonAccessor.class_write_item(item, "TARGET", data)
+        self.assertEqual(JsonAccessor.class_read_item(item, data), "TARGET")
+        self.assertEqual(data, bytearray(b'{"params": ["TARGET"]}'))
 
     def test_should_handle_various_keys(self):
         item = self.Json("item", "$.packet.item1", "INT", None)

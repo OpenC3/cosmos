@@ -30,6 +30,12 @@ This example assumes an existing COSMOS project at C:\cosmos-project.
    C:\cosmos-project> openc3.bat run
    ```
 
+:::warning Downgrades
+Downgrades are not necessarily supported. When upgrading COSMOS we need to upgrade databases and sometimes migrate internal data structures. While we perform a full regression test on every release, we recommend upgrading an individual machine with your specific plugins and do local testing before rolling out the upgrade to your production system.
+
+In general, patch releases (x.y.Z) can be downgraded, minor releases (x.Y.z) _might_ be able to be downgraded and major releases (X.y.z) are NOT able to be downgraded.
+:::
+
 ### Migrating From COSMOS 4 to COSMOS 5
 
 COSMOS 5 is a new architecture and treats targets as independent [plugins](../configuration/plugins.md). Thus the primary effort in porting from COSMOS 4 to COSMOS 5 is converting targets to plugins. We recommend creating plugins for each independent target (with its own interface) but targets which share an interface will need to be part of the same plugin. The reason for independent plugins is it allows the plugin to be versioned separately and more easily shared outside your specific project. If you have very project specific targets (e.g. custom hardware) those can potentially be combined for ease of deployment.

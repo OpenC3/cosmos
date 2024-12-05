@@ -33,7 +33,7 @@ class TelemetryTopic(Topic):
             "buffer": bytes(packet.buffer_no_copy()),
         }
         if packet.extra:
-            msg_hash["extra"] = json.dumps(packet.extra.as_json())
+            msg_hash["extra"] = json.dumps(packet.extra)
         if queued:
             EphemeralStoreQueued.write_topic(
                 f"{scope}__TELEMETRY__{{{packet.target_name}}}__{packet.packet_name}",

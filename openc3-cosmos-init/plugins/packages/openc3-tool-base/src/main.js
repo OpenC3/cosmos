@@ -11,7 +11,7 @@ import router from './router'
 
 defineCustomElements()
 
-Object.getPrototypeOf(System).firstGlobalProp = true;
+Object.getPrototypeOf(System).firstGlobalProp = true
 
 const app = createApp(App)
 

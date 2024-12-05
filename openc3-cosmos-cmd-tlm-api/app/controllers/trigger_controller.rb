@@ -45,7 +45,7 @@ class TriggerController < ApplicationController
       end
       render json: ret
     rescue StandardError => e
-      logger.error(e.formatted)
+      log_error(e)
       render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
     end
   end
@@ -66,10 +66,10 @@ class TriggerController < ApplicationController
       end
       render json: model.as_json(:allow_nan => true)
     rescue OpenC3::TriggerInputError => e
-      logger.error(e.formatted)
+      log_error(e)
       render json: { status: 'error', message: e.message, type: e.class }, status: 400
     rescue StandardError => e
-      logger.error(e.formatted)
+      log_error(e)
       render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
     end
   end
@@ -113,13 +113,13 @@ class TriggerController < ApplicationController
       model.create() # Create sends a notification
       render json: model.as_json(:allow_nan => true), status: 201
     rescue OpenC3::TriggerInputError => e
-      logger.error(e.formatted)
+      log_error(e)
       render json: { status: 'error', message: e.message, type: e.class }, status: 400
     rescue OpenC3::TriggerError => e
-      logger.error(e.formatted)
+      log_error(e)
       render json: { status: 'error', message: e.message, type: e.class }, status: 418
     rescue StandardError => e
-      logger.error(e.formatted)
+      log_error(e)
       render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
     end
   end
@@ -172,13 +172,13 @@ class TriggerController < ApplicationController
       model.notify(kind: 'updated')
       render json: model.as_json(:allow_nan => true)
     rescue OpenC3::TriggerInputError => e
-      logger.error(e.formatted)
+      log_error(e)
       render json: { status: 'error', message: e.message, type: e.class }, status: 400
     rescue OpenC3::TriggerError => e
-      logger.error(e.formatted)
+      log_error(e)
       render json: { status: 'error', message: e.message, type: e.class }, status: 418
     rescue StandardError => e
-      logger.error(e.formatted)
+      log_error(e)
       render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
     end
   end
@@ -214,7 +214,7 @@ class TriggerController < ApplicationController
       model.notify_enable()
       render json: model.as_json(:allow_nan => true)
     rescue StandardError => e
-      logger.error(e.formatted)
+      log_error(e)
       render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
     end
   end
@@ -250,7 +250,7 @@ class TriggerController < ApplicationController
       model.notify_disable()
       render json: model.as_json(:allow_nan => true)
     rescue StandardError => e
-      logger.error(e.formatted)
+      log_error(e)
       render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
     end
   end
@@ -284,7 +284,7 @@ class TriggerController < ApplicationController
       model.notify(kind: 'deleted')
       render json: model.as_json(:allow_nan => true)
     rescue StandardError => e
-      logger.error(e.formatted)
+      log_error(e)
       render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
     end
   end

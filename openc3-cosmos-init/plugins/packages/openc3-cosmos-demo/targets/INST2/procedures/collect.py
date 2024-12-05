@@ -5,7 +5,7 @@ load_utility("<%= target_name %>/procedures/utilities/clear.py")
 from INST2.lib.helper import Helper
 
 helper = Helper()
-helper.help()
+helper.print_help()
 
 number = ask("Enter a number.")
 if not isinstance(number, (int, float)):

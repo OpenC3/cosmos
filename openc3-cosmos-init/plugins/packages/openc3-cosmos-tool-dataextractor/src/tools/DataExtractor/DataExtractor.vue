@@ -728,8 +728,8 @@ export default {
       } catch (e) {
         return
       }
-      this.startDateTime = startTemp.getTime() * 1_000_000
-      this.endDateTime = endTemp.getTime() * 1_000_000
+      this.startDateTime = startTemp.getTime() * 1000000 // TODO: eslint parser doesn't like 1_000_000
+      this.endDateTime = endTemp.getTime() * 1000000
     },
     processItems: function () {
       // Check for a process in progress
@@ -758,14 +758,12 @@ export default {
         return
       }
       // Check for a future End Time
-      if (new Date(this.endDateTime / 1_000_000) > Date.now()) {
+      if (new Date(this.endDateTime / 1000000) > Date.now()) {
         this.$notify.caution({
           title: 'Note',
           body: `End date/time is greater than current date/time. Data will
             continue to stream in real-time until
-            ${new Date(
-              this.endDateTime / 1_000_000,
-            ).toISOString()} is reached.`,
+            ${new Date(this.endDateTime / 1000000).toISOString()} is reached.`,
         })
       }
 
@@ -1000,7 +998,7 @@ export default {
               valueType,
               reducedType,
             ] = regularKey.split('__')
-            row[0] = new Date(packet['__time'] / 1_000_000).toISOString()
+            row[0] = new Date(packet['__time'] / 1000000).toISOString()
             row[1] = targetName
             row[2] = packetName
           }
@@ -1049,8 +1047,8 @@ export default {
       if (dataExtractorRawData.length !== 0) {
         await this.createFile()
       } else if (this.fileCount === 0) {
-        let start = new Date(this.startDateTime / 1_000_000).toISOString()
-        let end = new Date(this.endDateTime / 1_000_000).toISOString()
+        let start = new Date(this.startDateTime / 1000000).toISOString()
+        let end = new Date(this.endDateTime / 1000000).toISOString()
         this.$notify.caution({
           body: `No data found for the items in the requested time range of ${start} to ${end}`,
         })

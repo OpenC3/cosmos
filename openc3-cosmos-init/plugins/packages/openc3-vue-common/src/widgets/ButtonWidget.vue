@@ -91,13 +91,24 @@ export default {
     async onClick() {
       const lines = this.eval.split(';;')
       // Create local references to variables so users don't need to use 'this'
-      // Tell SonarCloud to ignore these as user code may need them
-      const self = this // NOSONAR needed for $emit
-      const screen = this.screen //NOSONAR
-      const screenValues = this.screenValues //NOSONAR
-      const screenTimeZone = this.screenTimeZone //NOSONAR
-      const api = this.api //NOSONAR
-      const runScript = this.runScript //NOSONAR
+      const self = this
+      const screen = this.screen
+      const screenValues = this.screenValues
+      const screenTimeZone = this.screenTimeZone
+      const api = this.api
+      const runScript = this.runScript
+      if (
+        self ||
+        screen ||
+        screenValues ||
+        screenTimeZone ||
+        api ||
+        runScript
+      ) {
+        // Add a noop to preserve the variables in the if statement
+        // from being removed by compiler optimizations
+        this.$nextTick(() => {})
+      }
       for (let i = 0; i < lines.length; i++) {
         try {
           const result = eval(lines[i].trim())
@@ -113,13 +124,15 @@ export default {
             this.criticalCmdUser =
               error.object.data.instance_variables['@username']
             this.displayCriticalCmd = true
-          }
-          if (error.message.includes('is Hazardous')) {
+          } else if (error.message.includes('is Hazardous')) {
             this.lastCmd = error.message.split('\n').pop()
             this.displaySendHazardous = true
             while (this.displaySendHazardous) {
               await new Promise((resolve) => setTimeout(resolve, 500))
             }
+          } else {
+            // eslint-disable-next-line
+            console.error(error)
           }
         }
       }

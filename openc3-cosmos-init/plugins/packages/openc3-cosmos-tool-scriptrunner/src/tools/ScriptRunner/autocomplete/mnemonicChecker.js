@@ -57,7 +57,7 @@ export default class MnemonicChecker {
     })
   }
 
-  checkText = async function (text) {
+  async checkText(text) {
     const { linesToCheck, linesToSkip } = text.split('\n').reduce(
       (result, line, index) => {
         line = line.trim()
@@ -140,7 +140,7 @@ export default class MnemonicChecker {
     }
   }
 
-  _checkLines = async (linesToCheck) => {
+  async _checkLines(linesToCheck) {
     const problemLines = []
     const targetGroups = groupBy(
       linesToCheck,

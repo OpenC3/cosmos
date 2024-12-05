@@ -11,3 +11,4 @@ requests==2.32.3
 redis[hiredis]==4.6.0
 schedule==1.2.0
 websockets==11.0.3
+paho-mqtt==2.1.0

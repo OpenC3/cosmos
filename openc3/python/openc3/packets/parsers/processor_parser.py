@@ -54,7 +54,7 @@ class ProcessorParser:
             else:
                 processor = klass()
             if not isinstance(processor, Processor):
-                raise AttributeError(f"processor must be a Processor but is a {processor.__class__.__name__}")
+                raise TypeError(f"processor must be a Processor but is a {processor.__class__.__name__}")
 
             processor.name = self._get_processor_name()
             packet.processors[processor.name] = processor

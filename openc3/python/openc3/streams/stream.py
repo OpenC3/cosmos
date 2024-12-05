@@ -21,6 +21,19 @@
 # allows Streams to simply focus on getting and sending raw data while the
 # higher level processing occurs in {Protocol}.
 class Stream:
+    # Connects the stream
+    def connect(self):
+        raise RuntimeError("connect not defined by Stream")
+
+    # Whether the stream is connected
+    def connected(self):
+        raise RuntimeError("connected not defined by Stream")
+
+    # Disconnects the stream
+    # Note that streams are not designed to be reconnected and must be recreated
+    def disconnect(self):
+        raise RuntimeError("disconnect not defined by Stream")
+
     # Expected to return any amount of data on success, or a blank string on
     # closed/EOF, and may raise Timeout='E'rror, or other errors
     def read(self):
@@ -37,12 +50,3 @@ class Stream:
     # self.param data [String] Binary data to write to the stream
     def write(self, data):
         raise RuntimeError("write not defined by Stream")
-
-    # Connects the stream
-    def connect(self):
-        raise RuntimeError("connect not defined by Stream")
-
-    # Disconnects the stream
-    # Note that streams are not designed to be reconnected and must be recreated
-    def disconnect(self):
-        raise RuntimeError("disconnect not defined by Stream")

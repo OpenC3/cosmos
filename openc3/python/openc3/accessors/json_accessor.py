@@ -41,11 +41,18 @@ class JsonAccessor(Accessor):
             decoded = buffer
 
         value = cls.convert_to_type(value, item)
-        result = parse(item.key).update(decoded, value)
+        jsonpath = parse(item.key)
+        # update_or_create doesn't always work if the item is there
+        # so first find the item before updating
+        matches = jsonpath.find(decoded)
+        if len(matches) == 0:
+            jsonpath.update_or_create(decoded, value)
+        else:
+            jsonpath.update(decoded, value)
 
         if isinstance(buffer, bytearray):
             # buffer[0:] syntax so we copy into the buffer
-            buffer[0:] = bytearray(json.dumps(result), encoding="utf-8")
+            buffer[0:] = bytearray(json.dumps(decoded), encoding="utf-8")
 
     @classmethod
     def class_read_items(cls, items, buffer):

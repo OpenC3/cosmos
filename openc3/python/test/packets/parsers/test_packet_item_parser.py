@@ -419,7 +419,7 @@ class TestPacketItemParserCmd(unittest.TestCase):
         tf.write('  PARAMETER ITEM1 0 32 UINT 4.5 5.5 6.5 "" LITTLE_ENDIAN\n')
         tf.seek(0)
         with self.assertRaisesRegex(
-            AttributeError,
+            TypeError,
             "TGT1 PKT1 ITEM1: default must be a int but is a float",
         ):
             self.pc.process_file(tf.name, "TGT1")
