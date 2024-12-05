@@ -34,7 +34,7 @@ class TestObjectReadConversion(unittest.TestCase):
         self.assertEqual(orc.converted_bit_size, 0)
 
     def test_complains_about_invalid_cmd_tlm(self):
-        with self.assertRaisesRegex(AttributeError, "Unknown type:OTHER"):
+        with self.assertRaisesRegex(TypeError, "Unknown type: OTHER"):
             ObjectReadConversion("OTHER", "TGT", "PKT")
 
     def test_fills_the_cmd_packet_and_returns_a_hash_of_the_converted_values(self):

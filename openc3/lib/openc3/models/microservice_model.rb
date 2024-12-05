@@ -44,6 +44,7 @@ module OpenC3
     attr_accessor :prefix
     attr_accessor :disable_erb
     attr_accessor :ignore_changes
+    attr_accessor :shard
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -105,6 +106,7 @@ module OpenC3
       prefix: nil,
       disable_erb: nil,
       ignore_changes: nil,
+      shard: 0,
       scope:
     )
       parts = name.split("__")
@@ -131,6 +133,7 @@ module OpenC3
       @prefix = prefix
       @disable_erb = disable_erb
       @ignore_changes = ignore_changes
+      @shard = shard.to_i # to_i to handle nil
       @bucket = Bucket.getClient()
     end
 
@@ -153,7 +156,8 @@ module OpenC3
         'secrets' => @secrets.as_json(*a),
         'prefix' => @prefix,
         'disable_erb' => @disable_erb,
-        'ignore_changes' => @ignore_changes
+        'ignore_changes' => @ignore_changes,
+        'shard' => @shard,
       }
     end
 
@@ -215,6 +219,9 @@ module OpenC3
         if parameters
           @disable_erb.concat(parameters)
         end
+      when 'SHARD'
+        parser.verify_num_parameters(1, 1, "#{keyword} <Shard Number Starting from 0>")
+        @shard = Integer(parameters[0])
       else
         raise ConfigParser::Error.new(parser, "Unknown keyword and parameters for Microservice: #{keyword} #{parameters.join(" ")}")
       end

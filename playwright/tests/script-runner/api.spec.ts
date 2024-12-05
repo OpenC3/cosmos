@@ -217,7 +217,7 @@ async function testMetadataApis(page, utils, filename) {
     .locator('[data-test="value-0"]')
     .locator('input')
     .fill('inputvalue')
-  await page.locator('[data-test="trigger-create-submit-btn"]').click()
+  await page.getByRole('button', { name: 'Ok' }).click()
   await page.locator('[data-test="close-event-list"]').click()
 
   await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {

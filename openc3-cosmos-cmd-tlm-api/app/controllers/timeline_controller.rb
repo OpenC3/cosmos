@@ -72,13 +72,13 @@ class TimelineController < ApplicationController
       OpenC3::Logger.info("Timeline created: #{params['name']}", scope: params[:scope], user: username())
       render json: model.as_json(:allow_nan => true), status: 201
     rescue RuntimeError, JSON::ParserError => e
-      logger.error(e.formatted)
+      log_error(e)
       render json: { status: 'error', message: e.message, type: e.class }, status: 400
     rescue TypeError => e
-      logger.error(e.formatted)
+      log_error(e)
       render json: { status: 'error', message: 'Invalid json object', type: e.class }, status: 400
     rescue OpenC3::TimelineInputError => e
-      logger.error(e.formatted)
+      log_error(e)
       render json: { status: 'error', message: e.message, type: e.class }, status: 400
     end
   end
@@ -98,7 +98,7 @@ class TimelineController < ApplicationController
         render json: model.as_json(:allow_nan => true)
       end
     rescue StandardError => e
-      logger.error(e.formatted)
+      log_error(e)
       render json: { status: 'error', message: e.message, type: e.class, e: e.to_s }, status: 400
     end
   end
@@ -138,13 +138,13 @@ class TimelineController < ApplicationController
       model.notify(kind: 'updated')
       render json: model.as_json(:allow_nan => true)
     rescue RuntimeError, JSON::ParserError => e
-      logger.error(e.formatted)
+      log_error(e)
       render json: { status: 'error', message: e.message, type: e.class }, status: 400
     rescue TypeError => e
-      logger.error(e.formatted)
+      log_error(e)
       render json: { status: 'error', message: 'Invalid json object', type: e.class }, status: 400
     rescue OpenC3::TimelineInputError => e
-      logger.error(e.formatted)
+      log_error(e)
       render json: { status: 'error', message: e.message, type: e.class }, status: 400
     end
   end
@@ -168,7 +168,7 @@ class TimelineController < ApplicationController
         OpenC3::Logger.info("Timeline destroyed: #{params[:name]}", scope: params[:scope], user: username())
         render json: { name: params[:name]}
       rescue OpenC3::TimelineError => e
-        logger.error(e.formatted)
+        log_error(e)
         render json: { status: 'error', message: e.message, type: e.class }, status: 400
       end
     end

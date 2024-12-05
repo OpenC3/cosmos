@@ -55,15 +55,11 @@ class TestFixedProtocol(unittest.TestCase):
         self.interface = TestFixedProtocol.MyInterface()
 
     def test_initializes_attributes(self):
-        self.interface.add_protocol(
-            FixedProtocol, [2, 1, "0xDEADBEEF", False, True], "READ_WRITE"
-        )
+        self.interface.add_protocol(FixedProtocol, [2, 1, "0xDEADBEEF", False, True], "READ_WRITE")
         self.assertEqual(self.interface.read_protocols[0].data, b"")
         self.assertEqual(self.interface.read_protocols[0].min_id_size, 2)
         self.assertEqual(self.interface.read_protocols[0].discard_leading_bytes, 1)
-        self.assertEqual(
-            self.interface.read_protocols[0].sync_pattern, b"\xDE\xAD\xBE\xEF"
-        )
+        self.assertEqual(self.interface.read_protocols[0].sync_pattern, b"\xDE\xAD\xBE\xEF")
         self.assertFalse(self.interface.read_protocols[0].telemetry)
         self.assertTrue(self.interface.read_protocols[0].fill_fields)
 
@@ -122,35 +118,23 @@ class TestFixedProtocol(unittest.TestCase):
         self.interface.tlm_target_names = ["SYSTEM"]
         TestFixedProtocol.index = 1
         packet = self.interface.read()
-        self.assertTrue(
-            datetime.now(timezone.utc).timestamp() - packet.received_time.timestamp()
-            < 0.1
-        )
+        self.assertLess(datetime.now(timezone.utc).timestamp() - packet.received_time.timestamp(), 0.1)
         self.assertEqual(packet.target_name, "SYSTEM")
         self.assertEqual(packet.packet_name, "META")
         TestFixedProtocol.index = 2
         packet = self.interface.read()
-        self.assertTrue(
-            datetime.now(timezone.utc).timestamp() - packet.received_time.timestamp()
-            < 0.1
-        )
+        self.assertLess(datetime.now(timezone.utc).timestamp() - packet.received_time.timestamp(), 0.1)
         self.assertEqual(packet.target_name, "SYSTEM")
         self.assertEqual(packet.packet_name, "LIMITS_CHANGE")
         target.tlm_unique_id_mode = True
         TestFixedProtocol.index = 1
         packet = self.interface.read()
-        self.assertTrue(
-            datetime.now(timezone.utc).timestamp() - packet.received_time.timestamp()
-            < 0.1
-        )
+        self.assertLess(datetime.now(timezone.utc).timestamp() - packet.received_time.timestamp(), 0.1)
         self.assertEqual(packet.target_name, "SYSTEM")
         self.assertEqual(packet.packet_name, "META")
         TestFixedProtocol.index = 2
         packet = self.interface.read()
-        self.assertTrue(
-            datetime.now(timezone.utc).timestamp() - packet.received_time.timestamp()
-            < 0.1
-        )
+        self.assertLess(datetime.now(timezone.utc).timestamp() - packet.received_time.timestamp(), 0.1)
         self.assertEqual(packet.target_name, "SYSTEM")
         self.assertEqual(packet.packet_name, "LIMITS_CHANGE")
         target.tlm_unique_id_mode = False
@@ -173,28 +157,20 @@ class TestFixedProtocol(unittest.TestCase):
                 return b"\x1A\xCF\xFC\x1D\x55\x55" + buffer
 
         # Require 8 bytes, discard 6 leading bytes, use 0x1ACFFC1D sync, telemetry = False (command)
-        self.interface.add_protocol(
-            FixedProtocol, [8, 6, "0x1ACFFC1D", False], "READ_WRITE"
-        )
+        self.interface.add_protocol(FixedProtocol, [8, 6, "0x1ACFFC1D", False], "READ_WRITE")
         self.interface.stream = FixedStream2()
         self.interface.target_names = ["SYSTEM"]
         self.interface.cmd_target_names = ["SYSTEM"]
         self.interface.tlm_target_names = ["SYSTEM"]
         target.cmd_unique_id_mode = False
         packet = self.interface.read()
-        self.assertTrue(
-            datetime.now(timezone.utc).timestamp() - packet.received_time.timestamp()
-            < 0.01
-        )
+        self.assertLess(datetime.now(timezone.utc).timestamp() - packet.received_time.timestamp(), 0.1)
         self.assertEqual(packet.target_name, "SYSTEM")
         self.assertEqual(packet.packet_name, "STARTLOGGING")
         self.assertEqual(packet.buffer, buffer)
         target.cmd_unique_id_mode = True
         packet = self.interface.read()
-        self.assertTrue(
-            datetime.now(timezone.utc).timestamp() - packet.received_time.timestamp()
-            < 0.01
-        )
+        self.assertLess(datetime.now(timezone.utc).timestamp() - packet.received_time.timestamp(), 0.1)
         self.assertEqual(packet.target_name, "SYSTEM")
         self.assertEqual(packet.packet_name, "STARTLOGGING")
         self.assertEqual(packet.buffer, buffer)

@@ -146,7 +146,7 @@ export default {
       this.editor.setReadOnly(true)
     }
   },
-  beforeDestroy() {
+  beforeUnmount() {
     if (this.editor) {
       this.editor.destroy()
     }

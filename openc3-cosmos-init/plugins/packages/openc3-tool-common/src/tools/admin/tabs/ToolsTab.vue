@@ -156,12 +156,19 @@ export default {
         },
         // Tools are global and are always installed into the DEFAULT scope
         params: { scope: 'DEFAULT' },
-      }).then((response) => {
-        this.$notify.normal({
-          title: `Added tool ${this.name}`,
-        })
-        this.update()
       })
+        .then((response) => {
+          this.$notify.normal({
+            title: `Added tool ${this.name}`,
+          })
+          this.update()
+        })
+        .catch((error) => {
+          window.$cosmosNotify.serious({
+            title: `Failed to add tool ${this.name}`,
+            message: error.response.data,
+          })
+        })
     },
     editTool(name) {
       Api.get(`/openc3-api/tools/${name}`, {
@@ -225,5 +232,6 @@ export default {
 <style scoped>
 .list {
   background-color: var(--color-background-surface-default) !important;
+  overflow-x: hidden;
 }
 </style>

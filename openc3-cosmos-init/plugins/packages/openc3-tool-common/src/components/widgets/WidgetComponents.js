@@ -20,17 +20,8 @@ import { defineAsyncComponent } from 'vue'
 import upperFirst from 'lodash/upperFirst'
 import camelCase from 'lodash/camelCase'
 
-// Globally register all XxxWidget.vue components
-const requireComponent = require.context(
-  // The relative path of the components folder
-  '@openc3/tool-common/src/components/widgets',
-  // Whether or not to look in subfolders
-  false,
-  // The regular expression used to match base component filenames
-  /[A-Z][a-z]+Widget\.vue$/,
-)
-const components = {}
-requireComponent.keys().map((filename) => {
+const componentImports = import.meta.glob('./*Widget.vue')
+const components = Object.entries(componentImports).reduce((acc, [filename, importFunction]) => {
   filename = filename.split('/').pop() // trims off the leading './'
   // Get PascalCase name of component
   const componentName = upperFirst(
@@ -39,10 +30,11 @@ requireComponent.keys().map((filename) => {
     ),
   )
   // Register component locally
-  components[componentName] = defineAsyncComponent(
-    () => import(`@openc3/tool-common/src/components/widgets/${filename}`),
-  )
-})
+  return {
+    ...acc, 
+    [componentName]: defineAsyncComponent(importFunction),
+  }
+}, {})
 
 export default {
   components,

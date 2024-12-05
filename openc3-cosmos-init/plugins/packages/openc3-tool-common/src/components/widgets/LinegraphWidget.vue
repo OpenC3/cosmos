@@ -34,7 +34,7 @@
     :height="size.height"
     :width="size.width"
     :style="computedStyle"
-    :time-zone="this.screen.timeZone"
+    :time-zone="this.screenTimeZone"
     @pause="() => (state = 'pause')"
     @start="() => (state = 'start')"
     hide-toolbar

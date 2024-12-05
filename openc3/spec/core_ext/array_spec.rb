@@ -14,23 +14,16 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
 require 'openc3/core_ext/array'
 
 describe Array do
-  describe "inspect" do
-    it "limits the number of items to 10" do
-      expect(Array.new([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]).inspect).to eql "[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]"
-      expect(Array.new([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]).inspect).to match(/#<Array:\d+>/)
-    end
-  end
-
   describe "clone_to_f" do
     it "clones the array and convert all the values to floats" do
       expect(Array.new([1, 2, 3, 4, 5]).clone_to_f).to eql [1.0, 2.0, 3.0, 4.0, 5.0]

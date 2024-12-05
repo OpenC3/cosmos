@@ -208,7 +208,7 @@ export default {
     this.editor.clearSelection()
     this.editor.focus()
   },
-  beforeDestroy() {
+  beforeUnmount() {
     this.editor.destroy()
     this.editor.container.remove()
   },

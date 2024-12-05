@@ -26,6 +26,9 @@ class ModelController < ApplicationController
   def index
     return unless authorization('system')
     render json: @model_class.names(scope: params[:scope])
+  rescue StandardError => error
+    render json: { status: 'error', message: error.message }, status: 500
+    logger.error(error.formatted)
   end
 
   def create(update_model = false)
@@ -39,6 +42,9 @@ class ModelController < ApplicationController
       OpenC3::Logger.info("#{@model_class.name} created: #{params[:json]}", scope: params[:scope], user: username())
     end
     head :ok
+  rescue StandardError => error
+    render json: { status: 'error', message: error.message }, status: 500
+    logger.error(error.formatted)
   end
 
   def show
@@ -48,6 +54,9 @@ class ModelController < ApplicationController
     else
       render json: @model_class.get(name: params[:id], scope: params[:scope])
     end
+  rescue StandardError => error
+    render json: { status: 'error', message: error.message }, status: 500
+    logger.error(error.formatted)
   end
 
   def update
@@ -59,5 +68,8 @@ class ModelController < ApplicationController
     @model_class.new(name: params[:id], scope: params[:scope]).destroy
     OpenC3::Logger.info("#{@model_class.name} destroyed: #{params[:id]}", scope: params[:scope], user: username())
     head :ok
+  rescue StandardError => error
+    render json: { status: 'error', message: error.message }, status: 500
+    logger.error(error.formatted)
   end
 end

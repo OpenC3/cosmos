@@ -1,0 +1,37 @@
+COMMAND <%= target_name %> TLM BIG_ENDIAN "Gets a telemetry point"
+  ACCESSOR HttpAccessor JsonAccessor
+  TEMPLATE '{"jsonrpc": "2.0", "method": "tlm", "params": [], "keyword_params": {"type":"CONVERTED", "cache_timeout":0.1, "scope":"DEFAULT"}, "id": 0 }'
+  PARAMETER HTTP_PATH 0 0 DERIVED nil nil "/openc3-api/api"
+  PARAMETER HTTP_METHOD 0 0 DERIVED nil nil "POST"
+  PARAMETER HTTP_PACKET 0 0 DERIVED nil nil "TLM_RESPONSE"
+  PARAMETER HTTP_QUERY_SCOPE 0 0 DERIVED nil nil "DEFAULT"
+    KEY scope
+  PARAMETER HTTP_HEADER_CONTENT_TYPE 0 0 DERIVED nil nil "application/json-rpc"
+    KEY content-type
+  PARAMETER HTTP_HEADER_AUTHORIZATION 0 0 DERIVED nil nil "password"
+    KEY authorization
+  APPEND_PARAMETER TARGET_NAME 256 STRING "INST"
+    KEY $.params[0]
+  APPEND_PARAMETER PACKET_NAME 256 STRING "HEALTH_STATUS"
+    KEY $.params[1]
+  APPEND_PARAMETER ITEM_NAME 256 STRING "TEMP1"
+    KEY $.params[2]
+  APPEND_PARAMETER TYPE 256 STRING "CONVERTED"
+    KEY $.keyword_params.type
+  APPEND_PARAMETER CACHE_TIMEOUT 32 FLOAT 0.0 MAX 0.1
+    KEY $.keyword_params.cache_timeout
+  APPEND_PARAMETER SCOPE 256 STRING "DEFAULT"
+    KEY $.keyword_params.scope
+  APPEND_PARAMETER ID 32 UINT MIN MAX 0
+    KEY $.id
+
+TELEMETRY <%= target_name %> TLM_RESPONSE BIG_ENDIAN "Handles the TLM command response"
+  ACCESSOR HttpAccessor JsonAccessor
+  TEMPLATE '{"jsonrpc": "2.0", "result": 0.0, "id": 0}'
+  ITEM HTTP_STATUS 0 0 DERIVED
+  ITEM HTTP_HEADER_CONTENT_TYPE 0 0 DERIVED
+    KEY content-type
+  APPEND_ITEM VALUE 256 STRING
+    KEY $.result
+  APPEND_ITEM ID 32 UINT
+    KEY $.id

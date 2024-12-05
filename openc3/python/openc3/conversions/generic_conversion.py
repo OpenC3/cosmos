@@ -52,7 +52,7 @@ class GenericConversion(Conversion):
 
     def call(self, value, packet, buffer):
         myself = packet  # For backwards compatibility
-        if True or myself:  # Remove unused variable warning for myself
+        if myself:  # Remove unused variable warning for myself
             return eval(self.code_to_eval)
 
     # self.return [String] The conversion class followed by the code to evaluate

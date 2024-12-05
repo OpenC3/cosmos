@@ -35,7 +35,7 @@ class TestStructure(unittest.TestCase):
 
     def test_complains_about_unknown_data_types(self):
         self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "Unknown endianness 'BLAH', must be 'BIG_ENDIAN' or 'LITTLE_ENDIAN'",
             Structure,
             "BLAH",
@@ -96,7 +96,7 @@ class TestStructureDefineItem(unittest.TestCase):
 
     def test_adds_item_with_negative_offset(self):
         self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "TEST11: Can't define an item with array_size 128 greater than negative bit_offset -64",
             self.s.define_item,
             "test11",
@@ -106,7 +106,7 @@ class TestStructureDefineItem(unittest.TestCase):
             128,
         )
         self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "TEST10: Can't define an item with negative array_size -64 and negative bit_offset -64",
             self.s.define_item,
             "test10",
@@ -116,7 +116,7 @@ class TestStructureDefineItem(unittest.TestCase):
             -64,
         )
         self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "TEST9: Can't define an item with negative bit_size -64 and negative bit_offset -64",
             self.s.define_item,
             "test9",
@@ -125,7 +125,7 @@ class TestStructureDefineItem(unittest.TestCase):
             "BLOCK",
         )
         self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "TEST8: bit_size cannot be negative or zero for array items",
             self.s.define_item,
             "test8",
@@ -135,7 +135,7 @@ class TestStructureDefineItem(unittest.TestCase):
             64,
         )
         self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "TEST7: bit_size cannot be negative or zero for array items",
             self.s.define_item,
             "test7",
@@ -145,7 +145,7 @@ class TestStructureDefineItem(unittest.TestCase):
             64,
         )
         self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "TEST6: Can't define an item with bit_size 32 greater than negative bit_offset -24",
             self.s.define_item,
             "test6",
@@ -331,7 +331,7 @@ class TestStructureGetItem(unittest.TestCase):
         self.assertIsNotNone(self.s.get_item("test1"))
 
     def test_complains_if_an_item_doesnt_exist(self):
-        self.assertRaisesRegex(AttributeError, "Unknown item: test2", self.s.get_item, "test2")
+        self.assertRaisesRegex(ValueError, "Unknown item: test2", self.s.get_item, "test2")
 
 
 class TestStructureSetItem(unittest.TestCase):
@@ -350,7 +350,7 @@ class TestStructureSetItem(unittest.TestCase):
         item = self.s.get_item("test1")
         item.name = "TEST2"
         self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "Unknown item: TEST2 - Ensure item name is uppercase",
             self.s.set_item,
             item,
@@ -366,7 +366,7 @@ class TestStructureDeleteItem(unittest.TestCase):
         self.s.append_item("test2", 16, "UINT")
         self.assertEqual(self.s.defined_length, 3)
         self.s.delete_item("test1")
-        self.assertRaisesRegex(AttributeError, "Unknown item: test1", self.s.get_item, "test1")
+        self.assertRaisesRegex(ValueError, "Unknown item: test1", self.s.get_item, "test1")
         self.assertEqual(self.s.defined_length, 3)
         self.assertIsNone(self.s.items.get("TEST1"))
         self.assertIsNotNone(self.s.items["TEST2"])
@@ -449,7 +449,7 @@ class TestStructureWriteItem(unittest.TestCase):
 
 class TestStructureRead(unittest.TestCase):
     def test_complains_if_item_doesnt_exist(self):
-        self.assertRaisesRegex(AttributeError, "Unknown item: BLAH", Structure().read, "BLAH")
+        self.assertRaisesRegex(ValueError, "Unknown item: BLAH", Structure().read, "BLAH")
 
     def test_reads_data_from_the_buffer(self):
         s = Structure()
@@ -478,7 +478,7 @@ class TestStructureRead(unittest.TestCase):
 
 class TestStructureWrite(unittest.TestCase):
     def test_complains_if_item_doesnt_exist(self):
-        with self.assertRaisesRegex(AttributeError, "Unknown item: BLAH"):
+        with self.assertRaisesRegex(ValueError, "Unknown item: BLAH"):
             Structure().write("BLAH", 0)
 
     def test_writes_data_to_the_buffer(self):
@@ -600,13 +600,13 @@ class TestStructureBuffer(unittest.TestCase):
     def test_complains_if_the_given_buffer_is_too_small(self):
         s = Structure("BIG_ENDIAN")
         s.append_item("test1", 16, "UINT")
-        with self.assertRaisesRegex(AttributeError, "Buffer length less than defined length"):
+        with self.assertRaisesRegex(ValueError, "Buffer length less than defined length"):
             s.buffer = b"\x00"
 
     def test_complains_if_the_given_buffer_is_too_big(self):
         s = Structure("BIG_ENDIAN")
         s.append_item("test1", 16, "UINT")
-        with self.assertRaisesRegex(AttributeError, "Buffer length greater than defined length"):
+        with self.assertRaisesRegex(ValueError, "Buffer length greater than defined length"):
             s.buffer = b"\x00\x00\x00"
 
     def test_does_not_complain_if_the_given_buffer_is_too_big_and_were_not_fixed_length(

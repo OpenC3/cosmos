@@ -45,6 +45,8 @@ export default {
       label: '',
       subLabel: '',
       items: [],
+      screenTarget: null,
+      screenName: null,
     }
   },
   computed: {

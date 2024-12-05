@@ -63,7 +63,7 @@ class TestJsonRpc(unittest.TestCase):
         json_request_example = '{"jsonrpc": "1.0", "method": "connect_interface", "params": ["EXAMPLE_INT"]}'
         with self.assertRaises(RequestError) as context:
             JsonRpcRequest.from_json(json_request_example, {})
-            self.assertTrue("jsonrpc" in context.exception)
+        self.assertIn("jsonrpc", context.exception.__str__())
 
     def test_bad_request(self):
         """
@@ -74,7 +74,7 @@ class TestJsonRpc(unittest.TestCase):
         )
         with self.assertRaises(RequestError) as context:
             JsonRpcRequest.from_json(json_request_example, {})
-        self.assertTrue("invalid json-rpc 2.0 request" in context.exception.__str__())
+        self.assertIn("invalid json-rpc 2.0 request", context.exception.__str__())
 
 
 if __name__ == "__main__":

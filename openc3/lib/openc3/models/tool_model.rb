@@ -40,6 +40,7 @@ module OpenC3
     attr_accessor :position
     attr_accessor :needs_dependencies
     attr_accessor :disable_erb
+    attr_accessor :import_map_items
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -137,6 +138,7 @@ module OpenC3
       plugin: nil,
       needs_dependencies: false,
       disable_erb: nil,
+      import_map_items: nil,
       scope:
     )
       super("#{scope}__#{PRIMARY_KEY}", name: name, plugin: plugin, updated_at: updated_at, scope: scope)
@@ -150,11 +152,12 @@ module OpenC3
       @position = position
 
       if @shown and @window == 'INLINE'
-        @inline_url = 'js/app.js' unless @inline_url
+        @inline_url = 'main.js' unless @inline_url
         @url = "/tools/#{folder_name}" unless @url
       end
       @needs_dependencies = needs_dependencies
       @disable_erb = disable_erb
+      @import_map_items = import_map_items
     end
 
     def create(update: false, force: false, queued: false)
@@ -181,6 +184,10 @@ module OpenC3
         end
       end
 
+      if @url and !@url.start_with?('/') and !@url.start_with?('http')
+        raise "URL must be a full URL (http://domain.com/path) or a relative path (/path)"
+      end
+
       super(update: update, force: force, queued: queued)
     end
 
@@ -198,7 +205,8 @@ module OpenC3
         'updated_at' => @updated_at,
         'plugin' => @plugin,
         'needs_dependencies' => @needs_dependencies,
-        'disable_erb' => @disable_erb
+        'disable_erb' => @disable_erb,
+        'import_map_items' => @import_map_items,
       }
     end
 
@@ -232,6 +240,10 @@ module OpenC3
         if parameters
           @disable_erb.concat(parameters)
         end
+      when 'IMPORT_MAP_ITEM'
+        parser.verify_num_parameters(2, 2, "IMPORT_MAP_ITEM <key> <value>")
+        @import_map_items ||= []
+        @import_map_items << [parameters[0], parameters[1]]
       else
         raise ConfigParser::Error.new(parser, "Unknown keyword and parameters for Tool: #{keyword} #{parameters.join(" ")}")
       end

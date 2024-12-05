@@ -14,7 +14,7 @@ WORKDIR /openc3/plugins/
 USER root
 
 COPY ./plugins/*.json ./
-COPY ./plugins/openc3-tool-base/*.json openc3-tool-base/
+COPY ./plugins/packages/openc3-tool-base/*.json packages/openc3-tool-base/
 COPY ./plugins/packages/openc3-cosmos-tool-admin/*.json packages/openc3-cosmos-tool-admin/
 COPY ./plugins/packages/openc3-cosmos-tool-bucketexplorer/*.json packages/openc3-cosmos-tool-bucketexplorer/
 COPY ./plugins/packages/openc3-cosmos-tool-cmdsender/*.json packages/openc3-cosmos-tool-cmdsender/
@@ -36,14 +36,15 @@ COPY ./plugins/packages/openc3-cosmos-demo/*.json packages/openc3-cosmos-demo/
 ARG NPM_URL=https://registry.npmjs.org
 RUN yarn config set registry $NPM_URL && yarn --network-timeout 600000
 
-COPY ./plugins/docker-package-build.sh ./plugins/docker-package-install.sh ./plugins/babel.config.js ./plugins/.eslintrc.js ./plugins/.nycrc ./
-RUN chmod +x ./docker-package-build.sh ./docker-package-install.sh
-COPY ./plugins/openc3-tool-base/ openc3-tool-base/
-RUN ["/openc3/plugins/docker-package-install.sh", "openc3-tool-base"]
+COPY ./plugins/docker-package-build.sh ./plugins/eslint.config.mjs ./plugins/.nycrc ./
+RUN chmod +x ./docker-package-build.sh
+COPY ./plugins/packages/openc3-tool-base/ packages/openc3-tool-base/
+RUN ["/openc3/plugins/docker-package-build.sh", "openc3-tool-base"]
 
-# Build admin tool
 FROM openc3-frontend-tmp AS openc3-tmp1
 RUN cd packages/openc3-cosmos-ace-diff && yarn build
+
+# Build admin tool
 COPY ./plugins/packages/openc3-cosmos-tool-admin/ packages/openc3-cosmos-tool-admin/
 RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-admin"]
 
@@ -117,6 +118,8 @@ RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-docs"]
 
 FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_BASE_IMAGE}:${OPENC3_TAG}
 
+USER ${USER_ID}:${GROUP_ID}
+
 COPY --from=openc3-tmp1 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/packages/openc3-cosmos-ace-diff/ /openc3/plugins/packages/openc3-cosmos-ace-diff/
 COPY --from=openc3-tmp1 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gems/* /openc3/plugins/gems/
 COPY --from=openc3-tmp2 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gems/* /openc3/plugins/gems/
@@ -125,7 +128,6 @@ COPY --from=openc3-tmp4 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gem
 COPY --from=openc3-tmp5 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gems/* /openc3/plugins/gems/
 COPY --from=openc3-frontend-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/packages/openc3-tool-common/ /openc3/plugins/packages/openc3-tool-common/
 COPY --from=openc3-frontend-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/yarn.lock /openc3/plugins/yarn.lock
-COPY --from=openc3-frontend-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/openc3-tool-base/yarn.lock /openc3/plugins/yarn-tool-base.lock
 COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} ./init.sh /openc3/
 
 COPY --from=minio-mc /bin/mc /bin/mc

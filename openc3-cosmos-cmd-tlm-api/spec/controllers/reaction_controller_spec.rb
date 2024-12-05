@@ -69,7 +69,7 @@ RSpec.describe ReactionController, :type => :controller do
     return {
       'snooze' => 300,
       'triggers' => triggers,
-      'triggerLevel' => 'EDGE',
+      'trigger_level' => 'EDGE',
       'actions' => actions
     }
   end

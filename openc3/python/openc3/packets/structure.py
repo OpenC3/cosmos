@@ -56,7 +56,7 @@ class Structure:
             self.mutex = None
             self.accessor = BinaryAccessor(self)
         else:
-            raise AttributeError(f"Unknown endianness '{default_endianness}', must be 'BIG_ENDIAN' or 'LITTLE_ENDIAN'")
+            raise ValueError(f"Unknown endianness '{default_endianness}', must be 'BIG_ENDIAN' or 'LITTLE_ENDIAN'")
 
     # Read an item in the structure
     #
@@ -303,7 +303,7 @@ class Structure:
     def get_item(self, name):
         item = self.items.get(name.upper())
         if not item:
-            raise AttributeError(f"Unknown item: {name}")
+            raise ValueError(f"Unknown item: {name}")
         return item
 
     # self.param item [#name] Instance of StructureItem or one of its subclasses.
@@ -327,13 +327,13 @@ class Structure:
                 if minimum_data_bits > 0 and item.bit_offset >= 0 and self.defined_length_bits == item.bit_offset:
                     self.defined_length_bits += minimum_data_bits
         else:
-            raise AttributeError(f"Unknown item: {item.name} - Ensure item name is uppercase")
+            raise ValueError(f"Unknown item: {item.name} - Ensure item name is uppercase")
 
     # self.param name [String] Name of the item to delete in the items Hash
     def delete_item(self, name):
         item = self.items[name.upper()]
         if not item:
-            raise AttributeError(f"Unknown item: {name}")
+            raise RuntimeError(f"Unknown item: {name}")
 
         # Find the item to delete in the sorted_items array
         item_index = None
@@ -547,7 +547,7 @@ class Structure:
             # Bit size is full packet length - bits before item + negative bits saved at end
             return (len(self._buffer) * 8) - item.bit_offset + item.original_array_size
         else:
-            raise AttributeError("Unexpected use of calculate_total_bit_size for non-variable-sized item")
+            raise RuntimeError("Unexpected use of calculate_total_bit_size for non-variable-sized item")
 
     def recalculate_bit_offsets(self):
         adjustment = 0
@@ -566,18 +566,17 @@ class Structure:
 
     def internal_buffer_equals(self, buffer):
         if not isinstance(buffer, (bytes, bytearray)):
-            raise AttributeError(f"Buffer class is {buffer.__class__.__name__} but must be bytearray")
+            raise TypeError(f"Buffer class is {buffer.__class__.__name__} but must be bytearray")
 
         self._buffer = bytearray(buffer[:])
         if not self.fixed_size:
             self.recalculate_bit_offsets()
 
-        # self.buffer.force_encoding('ASCII-8BIT'.freeze)
         if self.accessor.enforce_length():
             if len(self._buffer) != self.defined_length:
                 if len(self._buffer) < self.defined_length:
                     self.resize_buffer()
                     if not self.short_buffer_allowed:
-                        raise AttributeError("Buffer length less than defined length")
+                        raise ValueError("Buffer length less than defined length")
                 elif self.fixed_size and self.defined_length != 0:
-                    raise AttributeError("Buffer length greater than defined length")
+                    raise ValueError("Buffer length greater than defined length")

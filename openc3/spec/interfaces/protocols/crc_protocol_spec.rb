@@ -27,6 +27,7 @@ require 'openc3/streams/stream'
 
 module OpenC3
   describe CrcProtocol do
+    let(:crc8) { Crc8.new() }
     let(:crc16) { Crc16.new() }
     let(:crc32) { Crc32.new() }
     let(:crc64) { Crc64.new() }
@@ -343,6 +344,32 @@ module OpenC3
         expect(packet.buffer).to eql $buffer
       end
 
+      it "reads the 8 bit CRC field and compares to the CRC" do
+        @interface.instance_variable_set(:@stream, CrcStream.new)
+        @interface.add_protocol(BurstProtocol, [], :READ_WRITE)
+        @interface.add_protocol(CrcProtocol, [
+                                  'CRC', # item name
+                                  'FALSE', # strip crc
+                                  'ERROR', # bad strategy
+                                  -8, # bit offset
+                                  8
+                                ], # bit size
+                                :READ_WRITE)
+        @interface.target_names = ['TGT']
+        packet = Packet.new('TGT', 'PKT')
+        packet.append_item("DATA", 32, :UINT)
+        packet.append_item("CRC", 8, :UINT)
+
+        $buffer = "\x00\x01\x02\x03"
+        crc = crc8.calc($buffer)
+        $buffer << [crc].pack("C")
+
+        expect(Logger).to_not receive(:error)
+        packet = @interface.read
+        expect(packet.buffer.length).to eql 5
+        expect(packet.buffer).to eql $buffer
+      end
+
       it "reads the 16 bit CRC field and compares to the CRC" do
         @interface.instance_variable_set(:@stream, CrcStream.new)
         @interface.add_protocol(BurstProtocol, [], :READ_WRITE)
@@ -423,8 +450,40 @@ module OpenC3
         expect(packet.buffer.length).to eql 12
         expect(packet.buffer).to eql $buffer
       end
-
+  
       context "with a specified CRC poly, seed, xor, and reflect" do
+        it "reads the 8 bit CRC field and compares to the CRC" do
+          @interface.instance_variable_set(:@stream, CrcStream.new)
+          @interface.add_protocol(BurstProtocol, [], :READ_WRITE)
+          @interface.add_protocol(CrcProtocol, [
+                                    'CRC', # item name
+                                    'FALSE', # strip crc
+                                    'ERROR', # bad strategy
+                                    -8, # bit offset
+                                    8, # bit size
+                                    :BIG_ENDIAN, # endianness
+                                    0x39, # poly
+                                    0x0, # seed
+                                    'TRUE', # xor
+                                    'TRUE', # reflect
+                                  ],
+                                  :READ_WRITE)
+          @interface.target_names = ['TGT']
+          packet = Packet.new('TGT', 'PKT')
+          packet.append_item("DATA", 32, :UINT)
+          packet.append_item("CRC", 8, :UINT)
+
+          $buffer = "\x00\x01\x02\x03"
+          crc8 = Crc8.new(0x39, 0, true, true)
+          crc = crc8.calc($buffer)
+          $buffer << [crc].pack("C")
+
+          expect(Logger).to_not receive(:error)
+          packet = @interface.read
+          expect(packet.buffer.length).to eql 5
+          expect(packet.buffer).to eql $buffer
+        end
+
         it "reads the 16 bit CRC field and compares to the CRC" do
           @interface.instance_variable_set(:@stream, CrcStream.new)
           @interface.add_protocol(BurstProtocol, [], :READ_WRITE)
@@ -582,6 +641,33 @@ module OpenC3
         expect(packet).to be_nil # thread disconnects when packet is nil
       end
 
+
+      it "can strip the 8 bit CRC at the end" do
+        @interface.instance_variable_set(:@stream, CrcStream.new)
+        @interface.add_protocol(BurstProtocol, [], :READ_WRITE)
+        @interface.add_protocol(CrcProtocol, [
+                                  'CRC', # item name
+                                  'TRUE', # strip crc
+                                  'ERROR', # bad strategy
+                                  -8, # bit offset
+                                  8
+                                ], # bit size
+                                :READ_WRITE)
+        @interface.target_names = ['TGT']
+        packet = Packet.new('TGT', 'PKT')
+        packet.append_item("DATA", 32, :UINT)
+        packet.append_item("CRC", 8, :UINT)
+
+        $buffer = "\x00\x01\x02\x03"
+        crc = crc8.calc($buffer)
+        $buffer << [crc].pack("C")
+
+        expect(Logger).to_not receive(:error)
+        packet = @interface.read
+        expect(packet.buffer.length).to eql 4
+        expect(packet.buffer).to eql $buffer[0..3]
+      end
+
       it "can strip the 16 bit CRC at the end" do
         @interface.instance_variable_set(:@stream, CrcStream.new)
         @interface.add_protocol(BurstProtocol, [], :READ_WRITE)
@@ -734,6 +820,30 @@ module OpenC3
         packet.buffer = "\x00\x01\x02\x03\x00\x00\x00\x00\x04\x05\x06\x07"
         expect { @interface.write(packet) }.to raise_error(/Packet item 'TGT PKT MYCRC' does not exist/)
       end
+  
+      it "calculates and writes the 8 bit CRC item" do
+        @interface.instance_variable_set(:@stream, CrcStream.new)
+        @interface.add_protocol(BurstProtocol, [], :READ_WRITE)
+        @interface.add_protocol(CrcProtocol, [
+                                  'CRC', # item name
+                                  'FALSE', # strip crc
+                                  'ERROR', # bad strategy
+                                  -40, # bit offset
+                                  8
+                                ], # bit size
+                                :READ_WRITE)
+        @interface.target_names = ['TGT']
+        packet = Packet.new('TGT', 'PKT')
+        packet.append_item("DATA", 32, :UINT)
+        packet.append_item("CRC", 8, :UINT)
+        packet.append_item("TRAILER", 32, :UINT)
+        packet.buffer = "\x00\x01\x02\x03\x3F\x04\x05\x06\x07"
+        @interface.write(packet)
+        buffer = "\x00\x01\x02\x03"
+        buffer << [crc8.calc("\x00\x01\x02\x03")].pack("C")
+        buffer << "\x04\x05\x06\x07"
+        expect($buffer).to eql buffer
+      end
 
       it "calculates and writes the 16 bit CRC item" do
         @interface.instance_variable_set(:@stream, CrcStream.new)
@@ -808,6 +918,30 @@ module OpenC3
         buffer << [top_crc].pack("N")
         buffer << [bottom_crc].pack("N")
         buffer << "\x04\x05\x06\x07"
+        expect($buffer).to eql buffer
+      end
+
+      it "appends the 8 bit CRC to the end" do
+        @interface.instance_variable_set(:@stream, CrcStream.new)
+        @interface.add_protocol(BurstProtocol, [], :READ_WRITE)
+        @interface.add_protocol(CrcProtocol, [
+                                  nil, # item name nil means append
+                                  'FALSE', # strip crc
+                                  'ERROR', # bad strategy
+                                  -8, # bit offset
+                                  8
+                                ], # bit size
+                                :READ_WRITE)
+        @interface.target_names = ['TGT']
+        packet = Packet.new('TGT', 'PKT')
+        packet.append_item("DATA", 32, :UINT)
+        packet.append_item("CRC", 32, :UINT)
+        packet.append_item("TRAILER", 32, :UINT)
+        packet.buffer = "\x00\x01\x02\x03\x00\x00\x00\x00\x04\x05\x06\x07"
+        buffer = packet.buffer
+        buffer << [crc8.calc(packet.buffer)].pack("C")
+        @interface.write(packet)
+        expect($buffer.length).to eql 13
         expect($buffer).to eql buffer
       end
 

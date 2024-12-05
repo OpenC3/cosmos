@@ -27,6 +27,22 @@ module OpenC3
   # allows Streams to simply focus on getting and sending raw data while the
   # higher level processing occurs in {Protocol}.
   class Stream
+    # Connects the stream
+    def connect
+      raise "connect not defined by Stream"
+    end
+
+    # @return [Boolean] true if connected or false otherwise
+    def connected?
+      raise "connected? not defined by Stream"
+    end
+
+    # Disconnects the stream
+    # Note that streams are not designed to be reconnected and must be recreated
+    def disconnect
+      raise "disconnect not defined by Stream"
+    end
+
     # Expected to return any amount of data on success, or a blank string on
     # closed/EOF, and may raise Timeout::Error, or other errors
     def read
@@ -46,21 +62,5 @@ module OpenC3
     def write(data)
       raise "write not defined by Stream"
     end
-
-    # Connects the stream
-    def connect
-      raise "connect not defined by Stream"
-    end
-
-    # @return [Boolean] true if connected or false otherwise
-    def connected?
-      raise "connected? not defined by Stream"
-    end
-
-    # Disconnects the stream
-    # Note that streams are not designed to be reconnected and must be recreated
-    def disconnect
-      raise "disconnect not defined by Stream"
-    end
-  end # class Stream
+  end
 end

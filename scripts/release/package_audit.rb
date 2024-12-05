@@ -40,7 +40,7 @@ containers = [
   { name: "openc3inc/openc3-base:#{version_tag}", base_image: "openc3inc/openc3-ruby:#{version_tag}", apk: true, gems: true },
   { name: "openc3inc/openc3-cosmos-cmd-tlm-api:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true },
   { name: "openc3inc/openc3-cosmos-init:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true,
-    yarn: ["/openc3/plugins/yarn.lock", "/openc3/plugins/yarn-tool-base.lock"] },
+    yarn: ["/openc3/plugins/yarn.lock"] },
   { name: "openc3inc/openc3-operator:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true },
   { name: "openc3inc/openc3-cosmos-script-runner-api:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true },
   { name: "openc3inc/openc3-redis:#{version_tag}", base_image: "redis:#{redis_version}", apt: true },
@@ -74,8 +74,8 @@ check_alpine(client)
 check_container_version(client, containers, 'traefik')
 check_minio(client, containers)
 check_container_version(client, containers, 'redis')
-base_pkgs = %w(import-map-overrides regenerator-runtime single-spa systemjs vue vue-router vuetify vuex)
-check_tool_base('openc3-cosmos-init/plugins/openc3-tool-base', base_pkgs)
+base_pkgs = %w(import-map-overrides single-spa systemjs vue vue-router vuetify vuex)
+check_tool_base('openc3-cosmos-init/plugins/packages/openc3-tool-base', base_pkgs)
 
 puts "\n*** If you update a container version re-run to ensure there aren't additional updates! ***\n\n"
 
@@ -100,7 +100,6 @@ end
 
 puts "\n\nRun the following:"
 puts "cd openc3-cosmos-init/plugins; yarn install; yarn upgrade-interactive --latest; cd ../.."
-puts "cd openc3-cosmos-init/plugins/openc3-tool-base; yarn install; yarn upgrade-interactive --latest; cd ../../.."
 puts "cd openc3/templates/widget; yarn install; yarn upgrade-interactive --latest; cd ../../.."
 puts "cd openc3/templates/tool_vue; yarn install; yarn upgrade-interactive --latest; cd ../../.."
 puts "cd openc3/templates/tool_react; yarn install; yarn upgrade-interactive --latest; cd ../../.."

@@ -398,7 +398,7 @@ class CvtModel(Model):
                     item_name,
                 ]
             case _:
-                raise RuntimeError(f"Unknown value type '{value_type}'")
+                raise ValueError(f"Unknown value type '{value_type}'")
 
         # Check the overrides cache for this target / packet
         tgt_pkt_key = f"{scope}__tlm__{target_name}__{packet_name}"
