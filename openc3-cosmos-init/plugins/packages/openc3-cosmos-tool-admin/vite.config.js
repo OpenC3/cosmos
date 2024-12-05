@@ -22,6 +22,9 @@ export default defineConfig((options) => {
         external: ['single-spa', 'vue', 'vuex', 'vue-router', 'vuetify'],
         preserveEntrySignatures: 'strict',
       },
+      commonjsOptions: {
+        include: [/ace-diff/, /node_modules/],
+      },
     },
     server: {
       port: 2930,
@@ -47,6 +50,7 @@ export default defineConfig((options) => {
     },
     optimizeDeps: {
       entries: [], // https://github.com/vituum/vituum/issues/25#issuecomment-1690080284
+      include: ['@openc3/ace-diff'],
     },
   }
 })
