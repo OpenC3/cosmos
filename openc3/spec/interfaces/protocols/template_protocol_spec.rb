@@ -14,10 +14,10 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -99,7 +99,8 @@ module OpenC3
         @interface.connect
         $read_buffer = "\x31\x30\xAB\xCD"
         data = @interface.read
-        expect(Time.now - start).to be_within(0.1).of(1.5)
+        expect(Time.now - start > 1.5).to be true # It takes at least 1.5s
+        expect(Time.now - start < 2.5).to be true # Give it some extra time to connect (especially on CI)
         expect(data.buffer).to eql("\x31\x30")
       end
     end

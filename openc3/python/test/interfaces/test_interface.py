@@ -17,8 +17,6 @@
 import time
 import unittest
 import threading
-from unittest.mock import *
-from test.test_helper import *
 from openc3.interfaces.interface import Interface
 from openc3.interfaces.protocols.protocol import Protocol
 from openc3.packets.packet import Packet
@@ -28,9 +26,7 @@ gvData = None
 
 
 class InterfaceTestProtocol(Protocol):
-    def __init__(
-        self, added_data, stop_count=0, packet_added_data=None, packet_stop_count=0
-    ):
+    def __init__(self, added_data, stop_count=0, packet_added_data=None, packet_stop_count=0):
         self.added_data = added_data
         self.packet_added_data = packet_added_data
         self.stop_count = int(stop_count)
@@ -464,9 +460,7 @@ class WriteInterface(unittest.TestCase):
                 self.write_interface_base(data)
 
         interface = MyInterface()
-        interface.add_protocol(
-            InterfaceTestProtocol, [None, 0, "DISCONNECT", 0], "WRITE"
-        )
+        interface.add_protocol(InterfaceTestProtocol, [None, 0, "DISCONNECT", 0], "WRITE")
         interface.write(self.packet)
         self.assertEqual(interface.write_count, 1)
         self.assertEqual(interface.bytes_written, 0)
@@ -517,9 +511,7 @@ class WriteInterface(unittest.TestCase):
                 self.write_interface_base(data)
 
         interface = MyInterface()
-        interface.add_protocol(
-            InterfaceTestProtocol, ["DISCONNECT", 0, None, 0], "WRITE"
-        )
+        interface.add_protocol(InterfaceTestProtocol, ["DISCONNECT", 0, None, 0], "WRITE")
         interface.write(self.packet)
         self.assertEqual(interface.write_count, 1)
         self.assertEqual(interface.bytes_written, 0)
@@ -672,17 +664,11 @@ class ProtocolCmd(unittest.TestCase):
 
     def setUp(self):
         self.i = Interface()
-        self.i.add_protocol(
-            ProtocolCmd.InterfaceCmdProtocol, [None, 0, None, 0], "WRITE"
-        )
+        self.i.add_protocol(ProtocolCmd.InterfaceCmdProtocol, [None, 0, None, 0], "WRITE")
         self.write_protocol = self.i.write_protocols[-1]
-        self.i.add_protocol(
-            ProtocolCmd.InterfaceCmdProtocol, [None, 0, None, 0], "READ"
-        )
+        self.i.add_protocol(ProtocolCmd.InterfaceCmdProtocol, [None, 0, None, 0], "READ")
         self.read_protocol = self.i.read_protocols[-1]
-        self.i.add_protocol(
-            ProtocolCmd.InterfaceCmdProtocol, [None, 0, None, 0], "READ_WRITE"
-        )
+        self.i.add_protocol(ProtocolCmd.InterfaceCmdProtocol, [None, 0, None, 0], "READ_WRITE")
         self.read_write_protocol = self.i.read_protocols[-1]
 
     def test_handles_unknown_protocol_descriptors(self):

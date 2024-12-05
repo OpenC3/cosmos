@@ -104,6 +104,6 @@ class Accessor:
                 else:
                     value = float(value)
             case _:
-                raise AttributeError(f"data_type {item.data_type} is not recognized")
+                raise TypeError(f"data_type {item.data_type} is not recognized")
 
         return value

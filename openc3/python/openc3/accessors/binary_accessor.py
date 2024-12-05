@@ -95,7 +95,7 @@ class BinaryAccessor(Accessor):
 
     @classmethod
     def raise_buffer_error(cls, read_write, buffer, data_type, given_bit_offset, given_bit_size):
-        raise AttributeError(
+        raise ValueError(
             f"{len(buffer)} byte buffer insufficient to {read_write} {data_type} at bit_offset {given_bit_offset} with bit_size {given_bit_size}"
         )
 
@@ -158,7 +158,7 @@ class BinaryAccessor(Accessor):
         # Probably not possible to get this condition because we don't allow 0 sized floats
         # but check for it just to cover all the possible data_types
         elif item.data_type == "FLOAT":
-            raise AttributeError("Variable bit size not currently supported for FLOAT data type")
+            raise ValueError("Variable bit size not currently supported for FLOAT data type")
         else:
             # STRING, BLOCK, or array types
             adjustment = self._write_variable_other(item, value, buffer)
@@ -188,7 +188,7 @@ class BinaryAccessor(Accessor):
             case 3:
                 current_bit_size = 62
             case _:
-                raise AttributeError(
+                raise ValueError(
                     f"Value {item.variable_bit_size['length_item_name']} has unknown QUIC bit size encoding: {length_item_value}"
                 )
 
@@ -364,7 +364,7 @@ class BinaryAccessor(Accessor):
                     return buffer[lower_bound : upper_bound + 1]
 
             else:
-                raise AttributeError(f"bit_offset {given_bit_offset} is not byte aligned for data_type {data_type}")
+                raise ValueError(f"bit_offset {given_bit_offset} is not byte aligned for data_type {data_type}")
 
         elif data_type in ["INT", "UINT"]:
             ###################################
@@ -397,7 +397,7 @@ class BinaryAccessor(Accessor):
                     lower_bound = upper_bound - num_bytes + 1
 
                     if lower_bound < 0:
-                        raise AttributeError(
+                        raise ValueError(
                             f"LITTLE_ENDIAN bitfield with bit_offset {given_bit_offset} and bit_size {given_bit_size} is invalid"
                         )
                     temp_lower = lower_bound - 1 if lower_bound > 0 else lower_bound
@@ -446,15 +446,15 @@ class BinaryAccessor(Accessor):
                         buffer[lower_bound : upper_bound + 1],
                     )[0]
                 else:
-                    raise AttributeError(f"bit_size is {given_bit_size} but must be 32 or 64 for data_type {data_type}")
+                    raise ValueError(f"bit_size is {given_bit_size} but must be 32 or 64 for data_type {data_type}")
             else:
-                raise AttributeError(f"bit_offset {given_bit_offset} is not byte aligned for data_type {data_type}")
+                raise ValueError(f"bit_offset {given_bit_offset} is not byte aligned for data_type {data_type}")
 
         else:
             ############################
             # Handle Unknown data types
             ############################
-            raise AttributeError(f"data_type {data_type} is not recognized")
+            raise TypeError(f"data_type {data_type} is not recognized")
 
     # Writes binary data of any data type to a buffer
     #
@@ -492,7 +492,7 @@ class BinaryAccessor(Accessor):
             and (overflow != "ERROR")
             and (overflow != "ERROR_ALLOW_HEX")
         ):
-            raise AttributeError(f"unknown overflow type {overflow}")
+            raise ValueError(f"unknown overflow type {overflow}")
 
         if (data_type == "STRING") or (data_type == "BLOCK"):
             #######################################
@@ -500,7 +500,7 @@ class BinaryAccessor(Accessor):
             #######################################
 
             if cls.byte_aligned(bit_offset):
-                if data_type == "STRING" and isinstance(value, str):
+                if isinstance(value, str):
                     temp = value.encode(encoding="utf-8")
                 else:
                     temp = value
@@ -549,14 +549,14 @@ class BinaryAccessor(Accessor):
                             # Resize the value to fit the field
                             temp = value[0:byte_size]
                         else:
-                            raise AttributeError(
+                            raise ValueError(
                                 f"value of {len(value)} bytes does not fit into {byte_size} bytes for data_type {data_type}"
                             )
 
                 if bit_size != 0:
                     buffer[lower_bound : lower_bound + len(temp)] = temp
             else:
-                raise AttributeError(f"bit_offset {given_bit_offset} is not byte aligned for data_type {data_type}")
+                raise ValueError(f"bit_offset {given_bit_offset} is not byte aligned for data_type {data_type}")
 
         elif (data_type == "INT") or (data_type == "UINT"):
             ###################################
@@ -598,7 +598,7 @@ class BinaryAccessor(Accessor):
                     upper_bound = math.floor(bit_offset / 8)
                     lower_bound = upper_bound - num_bytes + 1
                     if lower_bound < 0:
-                        raise AttributeError(
+                        raise ValueError(
                             f"LITTLE_ENDIAN bitfield with bit_offset {given_bit_offset} and bit_size {given_bit_size} is invalid"
                         )
 
@@ -671,16 +671,16 @@ class BinaryAccessor(Accessor):
                         value,
                     )
                 else:
-                    raise AttributeError(f"bit_size is {given_bit_size} but must be 32 or 64 for data_type {data_type}")
+                    raise ValueError(f"bit_size is {given_bit_size} but must be 32 or 64 for data_type {data_type}")
             else:
-                raise AttributeError(f"bit_offset {given_bit_offset} is not byte aligned for data_type {data_type}")
+                raise ValueError(f"bit_offset {given_bit_offset} is not byte aligned for data_type {data_type}")
 
         else:
             ############################
             # Handle Unknown data types
             ############################
 
-            raise AttributeError(f"data_type {data_type} is not recognized")
+            raise TypeError(f"data_type {data_type} is not recognized")
 
         return value
 
@@ -691,12 +691,12 @@ class BinaryAccessor(Accessor):
         bit_offset = given_bit_offset
 
         if (given_bit_size <= 0) and (data_type != "STRING") and (data_type != "BLOCK"):
-            raise AttributeError(
+            raise ValueError(
                 f"bit_size {given_bit_size} must be positive for data types other than 'STRING' and 'BLOCK'"
             )
 
         if (given_bit_size <= 0) and (given_bit_offset < 0):
-            raise AttributeError(
+            raise ValueError(
                 f"negative or zero bit_sizes ({given_bit_size}) cannot be given with negative bit_offsets ({given_bit_offset})"
             )
 
@@ -824,7 +824,7 @@ class BinaryAccessor(Accessor):
 
         # Handle negative and zero bit sizes
         if bit_size <= 0:
-            raise AttributeError(f"bit_size {given_bit_size} must be positive for arrays")
+            raise ValueError(f"bit_size {given_bit_size} must be positive for arrays")
 
         # Handle negative bit offsets
         if bit_offset < 0:
@@ -835,7 +835,7 @@ class BinaryAccessor(Accessor):
         # Handle negative and zero array sizes
         if array_size <= 0:
             if given_bit_offset < 0:
-                raise AttributeError(
+                raise ValueError(
                     f"negative or zero array_size ({given_array_size}) cannot be given with negative bit_offset ({given_bit_offset})"
                 )
             else:
@@ -848,7 +848,7 @@ class BinaryAccessor(Accessor):
         # Calculate number of items in the array
         # If there is a remainder then we have a problem
         if array_size % bit_size != 0:
-            raise AttributeError(f"array_size {given_array_size} not a multiple of bit_size {given_bit_size}")
+            raise ValueError(f"array_size {given_array_size} not a multiple of bit_size {given_bit_size}")
 
         num_items = math.floor(array_size / bit_size)
 
@@ -871,7 +871,7 @@ class BinaryAccessor(Accessor):
                         value.append(cls.read(bit_offset, bit_size, data_type, buffer, endianness))
                         bit_offset += bit_size
                 else:
-                    raise AttributeError(f"bit_offset {given_bit_offset} is not byte aligned for data_type {data_type}")
+                    raise ValueError(f"bit_offset {given_bit_offset} is not byte aligned for data_type {data_type}")
 
             case "INT" | "UINT":
                 ###################################
@@ -895,7 +895,7 @@ class BinaryAccessor(Accessor):
                     # Handle 'INT' and 'UINT' Bitfields
                     ##################################
                     if endianness == "LITTLE_ENDIAN" and bit_size > 1:
-                        raise AttributeError(
+                        raise ValueError(
                             "read_array does not support little endian bit fields with bit_size greater than 1-bit"
                         )
 
@@ -921,19 +921,19 @@ class BinaryAccessor(Accessor):
                             )
                         )
                     else:
-                        raise AttributeError(
+                        raise ValueError(
                             f"bit_size is {given_bit_size} but must be 32 or 64 for data_type {data_type}"
                         )
 
                 else:
-                    raise AttributeError(f"bit_offset {given_bit_offset} is not byte aligned for data_type {data_type}")
+                    raise ValueError(f"bit_offset {given_bit_offset} is not byte aligned for data_type {data_type}")
 
             case _:
                 ############################
                 # Handle Unknown data types
                 ############################
 
-                raise AttributeError(f"data_type {data_type} is not recognized")
+                raise TypeError(f"data_type {data_type} is not recognized")
 
         return list(value)
 
@@ -969,11 +969,11 @@ class BinaryAccessor(Accessor):
 
         # Verify a list was given
         if not isinstance(values, list):
-            raise AttributeError(f"values must be a list but is {values.__class__.__name__}")
+            raise TypeError(f"values must be a list but is {values.__class__.__name__}")
 
         # Handle negative and zero bit sizes
         if bit_size <= 0:
-            raise AttributeError(f"bit_size {given_bit_size} must be positive for arrays")
+            raise ValueError(f"bit_size {given_bit_size} must be positive for arrays")
 
         # Handle negative bit offsets
         if bit_offset < 0:
@@ -984,7 +984,7 @@ class BinaryAccessor(Accessor):
         # Handle negative and zero array sizes
         if array_size <= 0:
             if given_bit_offset < 0:
-                raise AttributeError(
+                raise ValueError(
                     f"negative or zero array_size ({given_array_size}) cannot be given with negative bit_offset ({given_bit_offset})"
                 )
             else:
@@ -1026,15 +1026,15 @@ class BinaryAccessor(Accessor):
 
         # Ensure the given_array_size is an even multiple of bit_size
         if array_size % bit_size != 0:
-            raise AttributeError(f"array_size {given_array_size} not a multiple of bit_size {given_bit_size}")
+            raise ValueError(f"array_size {given_array_size} not a multiple of bit_size {given_bit_size}")
         if num_writes < len(values):
-            raise AttributeError(
+            raise ValueError(
                 f"too many values {len(values)} for given array_size {given_array_size} and bit_size {given_bit_size}"
             )
 
         # Check overflow type
         if overflow not in BinaryAccessor.OVERFLOW_TYPES:
-            raise AttributeError(f"unknown overflow type {overflow}")
+            raise TypeError(f"unknown overflow type {overflow}")
 
         # Expand the values by appending 0
         if len(values) < num_writes:
@@ -1063,7 +1063,7 @@ class BinaryAccessor(Accessor):
                         )
                         bit_offset += bit_size
                 else:
-                    raise AttributeError(f"bit_offset {given_bit_offset} is not byte aligned for data_type {data_type}")
+                    raise ValueError(f"bit_offset {given_bit_offset} is not byte aligned for data_type {data_type}")
 
             case "INT" | "UINT":
                 ###################################
@@ -1103,7 +1103,7 @@ class BinaryAccessor(Accessor):
                     # Handle 'INT' and 'UINT' Bitfields
                     ##################################
                     if endianness == "LITTLE_ENDIAN" and bit_size > 1:
-                        raise AttributeError(
+                        raise ValueError(
                             "write_array does not support little endian bit fields with bit_size greater than 1-bit"
                         )
 
@@ -1134,17 +1134,17 @@ class BinaryAccessor(Accessor):
                             *values,
                         )
                     else:
-                        raise AttributeError(
+                        raise ValueError(
                             f"bit_size is {given_bit_size} but must be 32 or 64 for data_type {data_type}"
                         )
                 else:
-                    raise AttributeError(f"bit_offset {given_bit_offset} is not byte aligned for data_type {data_type}")
+                    raise ValueError(f"bit_offset {given_bit_offset} is not byte aligned for data_type {data_type}")
 
             case _:
                 ############################
                 # Handle Unknown data types
                 ############################
-                raise AttributeError(f"data_type {data_type} is not recognized")
+                raise TypeError(f"data_type {data_type} is not recognized")
 
     #   # Adjusts the packed array to be the given number of bytes
     #   #
@@ -1205,12 +1205,12 @@ class BinaryAccessor(Accessor):
                 if overflow == "SATURATE":
                     value = max_value
                 elif overflow == "ERROR" or value > hex_max_value:
-                    raise AttributeError(f"value of {value} invalid for {bit_size}-bit {data_type}")
+                    raise ValueError(f"value of {value} invalid for {bit_size}-bit {data_type}")
             elif value < min_value:
                 if overflow == "SATURATE":
                     value = min_value
                 else:
-                    raise AttributeError(f"value of {value} invalid for {bit_size}-bit {data_type}")
+                    raise ValueError(f"value of {value} invalid for {bit_size}-bit {data_type}")
         return value
 
     # Checks for overflow of an array of integer data types

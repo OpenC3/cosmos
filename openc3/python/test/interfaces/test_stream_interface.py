@@ -15,8 +15,6 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
-from unittest.mock import *
-from test.test_helper import *
 from openc3.interfaces.stream_interface import StreamInterface
 from openc3.interfaces.protocols.burst_protocol import BurstProtocol
 from openc3.interfaces.protocols.length_protocol import LengthProtocol
