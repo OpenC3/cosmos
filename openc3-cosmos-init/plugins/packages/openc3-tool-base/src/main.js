@@ -10,7 +10,7 @@ import Notify from '@openc3/tool-common/src/plugins/notify'
 
 defineCustomElements()
 
-Object.getPrototypeOf(System).firstGlobalProp = true;
+Object.getPrototypeOf(System).firstGlobalProp = true
 
 const app = createApp(App)
 

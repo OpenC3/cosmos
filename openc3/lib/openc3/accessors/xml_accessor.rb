@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -24,7 +24,13 @@ module OpenC3
     def self.read_item(item, buffer)
       return nil if item.data_type == :DERIVED
       doc = buffer_to_doc(buffer)
-      return convert_to_type(doc.xpath(item.key).first.to_s, item)
+      doc_value = doc.xpath(item.key)
+      # Nokogiri returns a Nokogiri::XML::Text which responds to first
+      # unless they've applied some XPath functions to the result like normalize-space
+      if doc_value.respond_to?(:first)
+        doc_value = doc_value.first
+      end
+      return convert_to_type(doc_value.to_s, item)
     end
 
     def self.write_item(item, value, buffer)
@@ -43,7 +49,13 @@ module OpenC3
         if item.data_type == :DERIVED
           result[item.name] = nil
         else
-          result[item.name] = convert_to_type(doc.xpath(item.key).first.to_s, item)
+          doc_value = doc.xpath(item.key)
+          # Nokogiri returns a Nokogiri::XML::Text which responds to first
+          # unless they've applied some XPath functions to the result like normalize-space
+          if doc_value.respond_to?(:first)
+            doc_value = doc_value.first
+          end
+          result[item.name] = convert_to_type(doc_value.to_s, item)
         end
       end
       return result

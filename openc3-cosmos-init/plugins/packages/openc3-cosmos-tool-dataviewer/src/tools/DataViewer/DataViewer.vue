@@ -380,8 +380,8 @@ export default {
         return
       }
       return {
-        start_time: startTemp.getTime() * 1_000_000,
-        end_time: endTemp ? endTemp.getTime() * 1_000_000 : null,
+        start_time: startTemp.getTime() * 1000000,
+        end_time: endTemp ? endTemp.getTime() * 1000000 : null,
       }
     },
     allPackets: function () {
@@ -477,7 +477,7 @@ export default {
     start: function () {
       this.autoStart = false
       // Check for a future start time
-      if (this.startEndTime.start_time > new Date().getTime() * 1_000_000) {
+      if (this.startEndTime.start_time > new Date().getTime() * 1000000) {
         this.warningText = 'Start date/time is in the future!'
         this.warning = true
         return

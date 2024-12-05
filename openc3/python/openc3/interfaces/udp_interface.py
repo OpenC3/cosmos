@@ -194,11 +194,11 @@ class UdpInterface(Interface):
         # TODO: select.select can throw TypeErorr: fileno() returned a non-integer
         # Does it also throw socket.error?
         except (TypeError, socket.error):
-            return (None, None)
+            return None, None
 
     # Writes to the socket
     # @param data [String] Raw packet data
     def write_interface(self, data, extra=None):
         self.write_interface_base(data, extra)
         self.write_socket.write(data, self.write_timeout)
-        return (data, extra)
+        return data, extra

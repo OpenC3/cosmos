@@ -47,7 +47,7 @@ class ScreensController < ApplicationController
     OpenC3::Logger.info("Screen saved: #{params[:target]} #{params[:screen]}", scope: params[:scope], user: username())
     render json: screen
   rescue => e
-    logger.error(e.formatted)
+    log_error(e)
     render json: { status: 'error', message: e.message }, status: 500
   end
 
@@ -59,7 +59,7 @@ class ScreensController < ApplicationController
     OpenC3::Logger.info("Screen deleted: #{params[:target]} #{params[:screen]}", scope: params[:scope], user: username())
     head :ok
   rescue => e
-    logger.error(e.formatted)
+    log_error(e)
     render json: { status: 'error', message: e.message }, status: 500
   end
 end

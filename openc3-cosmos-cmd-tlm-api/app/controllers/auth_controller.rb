@@ -39,7 +39,7 @@ class AuthController < ApplicationController
         head :unauthorized
       end
     rescue StandardError => e
-      logger.error(e.formatted)
+      log_error(e)
       render json: { status: 'error', message: e.message, type: e.class }, status: 500
     end
   end
@@ -51,7 +51,7 @@ class AuthController < ApplicationController
       OpenC3::Logger.info("Password changed", user: username())
       render :plain => OpenC3::AuthModel.generate_session()
     rescue StandardError => e
-      logger.error(e.formatted)
+      log_error(e)
       render json: { status: 'error', message: e.message, type: e.class }, status: 500
     end
   end

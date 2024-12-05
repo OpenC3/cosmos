@@ -1644,7 +1644,6 @@ export default {
       let count = 0
       for (let data of this.receivedEvents) {
         count += 1
-        // eslint-disable-next-line
         // console.log(data) // Uncomment for debugging
         let index = 0
         switch (data.type) {

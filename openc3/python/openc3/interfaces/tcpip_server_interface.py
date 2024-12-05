@@ -149,7 +149,8 @@ class TcpipServerInterface(StreamInterface):
     def connect(self):
         self.cancel_threads = False
         if self.read_queue:
-            self.read_queue.empty()
+            while not self.read_queue.empty():
+                self.read_queue.get_nowait()
         if self.write_port == self.read_port:  # One socket
             self._start_listen_thread(self.read_port, True, True)
         else:

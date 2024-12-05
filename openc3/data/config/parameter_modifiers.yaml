@@ -107,7 +107,7 @@ WRITE_CONVERSION:
             super().__init__()
             self.multiplier = float(multiplier)
         def call(self, value, packet, buffer):
-            return value * multiplier
+            return value * self.multiplier
   parameters:
     - name: Class Filename
       required: true
