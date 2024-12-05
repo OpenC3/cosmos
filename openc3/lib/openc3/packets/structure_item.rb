@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -141,7 +141,7 @@ module OpenC3
     end
 
     def key=(key)
-      raise ArgumentError, "key must be a String but is a #{name.class}" unless String === key
+      raise ArgumentError, "key must be a String but is a #{key.class}" unless String === key
       raise ArgumentError, "key must contain at least one character" if key.empty?
 
       @key = key
