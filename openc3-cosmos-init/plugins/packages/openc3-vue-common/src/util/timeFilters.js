@@ -82,7 +82,7 @@ export default {
     },
     formatNanoseconds(nanoSecs, timeZone) {
       return this.formatDateTime(
-        new Date(parseInt(nanoSecs) / 1_000_000),
+        new Date(parseInt(nanoSecs) / 1000000),
         timeZone,
       )
     },

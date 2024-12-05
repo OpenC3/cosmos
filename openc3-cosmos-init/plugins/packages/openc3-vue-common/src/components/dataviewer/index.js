@@ -19,7 +19,4 @@
 import DataViewerComponent from './DataViewerComponent'
 import DataViewerHistoryComponent from './DataViewerHistoryComponent.vue'
 
-export {
-  DataViewerComponent,
-  DataViewerHistoryComponent,
-}
+export { DataViewerComponent, DataViewerHistoryComponent }

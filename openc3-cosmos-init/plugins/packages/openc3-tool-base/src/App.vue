@@ -41,7 +41,7 @@ import {
   AppFooter,
   AppNav,
   ClassificationBanners,
-  TimeCheck
+  TimeCheck,
 } from '@openc3/tool-common/base'
 
 export default {

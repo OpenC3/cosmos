@@ -36,6 +36,7 @@ export default [...compat.extends(
     rules: {
         "no-console": "error",
         "no-debugger": "error",
+        // "logical-assignment-operators": "off",
 
         "prettier/prettier": ["warn", {
             endOfLine: "auto",

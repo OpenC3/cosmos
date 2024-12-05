@@ -69,10 +69,11 @@ class Notify {
   }) {
     this.mount()
     if (logToConsole) {
-      // eslint-disable-next-line no-console
       if (message) {
+        // eslint-disable-next-line no-console
         console.log(`${level.toUpperCase()} - ${message}`)
       } else {
+        // eslint-disable-next-line no-console
         console.log(`${level.toUpperCase()} - ${title}: ${body}`)
       }
     }
@@ -219,15 +220,7 @@ class Notify {
     })
   }
 
-  off({
-    title,
-    body,
-    message,
-    type,
-    duration,
-    logToConsole,
-    saveToHistory,
-  }) {
+  off({ title, body, message, type, duration, logToConsole, saveToHistory }) {
     this.open({
       method: 'toast',
       level: 'off',

@@ -43,7 +43,7 @@ export default {
           {
             okText: 'Delete',
             cancelText: 'Cancel',
-          }
+          },
         )
         .then(() => {
           return Api.delete(`/openc3-api/${api}/${start}`)

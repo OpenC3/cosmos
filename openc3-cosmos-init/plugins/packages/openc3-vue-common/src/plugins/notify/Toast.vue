@@ -60,10 +60,7 @@
 </template>
 
 <script>
-import {
-  AstroStatusColors,
-  getStatusColorContrast,
-} from '@/icons'
+import { AstroStatusColors, getStatusColorContrast } from '@/icons'
 
 export default {
   data: function () {

@@ -84,7 +84,6 @@ export default {
     }
   },
   watch: {
-    // eslint-disable-next-line no-unused-vars
     _counter: function (newVal, oldVal) {
       if (this.curValue !== this.prevValue) {
         this.grayLevel = 80

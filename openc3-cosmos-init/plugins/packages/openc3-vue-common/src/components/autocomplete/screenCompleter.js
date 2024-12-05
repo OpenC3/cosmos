@@ -51,7 +51,7 @@ export default class ScreenCompleter {
     this.api = new OpenC3Api()
   }
 
-  getCompletions = async function (editor, session, pos, prefix, callback) {
+  async getCompletions(editor, session, pos, prefix, callback) {
     var line = session.getLine(pos.row)
     var lineBefore = line.slice(0, pos.column)
     var parsedLine = lineBefore.trimStart().split(/ (?![^<]*>)/)
@@ -83,7 +83,7 @@ export default class ScreenCompleter {
         var packets = await this.api.get_all_tlm(target)
         suggestions = packets.reduce(
           (acc, pkt) => ((acc[pkt.packet_name] = pkt.description), acc),
-          {}
+          {},
         )
       } else if (current['Item name']) {
         var target = parsedLine[parsedLine.length - 3]
@@ -91,7 +91,7 @@ export default class ScreenCompleter {
         var packet = await this.api.get_tlm(target, packet)
         suggestions = packet.items.reduce(
           (acc, item) => ((acc[item.name] = item.description), acc),
-          {}
+          {},
         )
       } else {
         // Not a special case so just use the param as is

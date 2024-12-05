@@ -29,7 +29,7 @@ class Dialog {
     this.$root = null
   }
 
-  mount = function () {
+  mount() {
     if (this.mounted) return
 
     const app = window.Vue.createApp(ConfirmDialog)
@@ -42,15 +42,7 @@ class Dialog {
     this.mounted = true
   }
 
-  open = function ({
-    title,
-    text,
-    okText,
-    okClass,
-    validateText,
-    cancelText,
-    html,
-  }) {
+  open({ title, text, okText, okClass, validateText, cancelText, html }) {
     // Per https://v2.vuetifyjs.com/en/features/theme/#customizing
     // okClass can be one of primary, secondary, accent, error, info, success, warning
     this.mount()
@@ -63,10 +55,7 @@ class Dialog {
     })
   }
 
-  confirm = function (
-    text,
-    { okText = 'Ok', cancelText = 'Cancel', okClass = 'primary' },
-  ) {
+  confirm(text, { okText = 'Ok', cancelText = 'Cancel', okClass = 'primary' }) {
     return this.open({
       title: 'Confirm',
       text: text,
@@ -77,10 +66,7 @@ class Dialog {
       html: false,
     })
   }
-  alert = function (
-    text,
-    { okText = 'Ok', html = false, okClass = 'primary' },
-  ) {
+  alert(text, { okText = 'Ok', html = false, okClass = 'primary' }) {
     return this.open({
       title: 'Alert',
       text: text,
@@ -91,7 +77,7 @@ class Dialog {
       html: html,
     })
   }
-  validate = function (
+  validate(
     text,
     {
       okText = 'Ok',

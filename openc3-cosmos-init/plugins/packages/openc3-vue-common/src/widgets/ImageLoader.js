@@ -34,7 +34,7 @@ export default {
       let targets = 'targets_modified'
       await Api.get(
         `/openc3-api/storage/exists/${encodeURIComponent(
-          `${window.openc3Scope}/${targets}/${this.target}/public/${fileName}`
+          `${window.openc3Scope}/${targets}/${this.target}/public/${fileName}`,
         )}?bucket=OPENC3_CONFIG_BUCKET`,
         {
           headers: {
@@ -42,7 +42,7 @@ export default {
             // Since we're just checking for existence, 404 is possible so ignore it
             'Ignore-Errors': '404',
           },
-        }
+        },
       ).catch((error) => {
         // If response fails then 'targets_modified' doesn't exist
         // so switch to 'targets' and then just try to get the URL
@@ -51,8 +51,8 @@ export default {
       })
       let response = await Api.get(
         `/openc3-api/storage/download/${encodeURIComponent(
-          `${window.openc3Scope}/${targets}/${this.target}/public/${fileName}`
-        )}?bucket=OPENC3_CONFIG_BUCKET`
+          `${window.openc3Scope}/${targets}/${this.target}/public/${fileName}`,
+        )}?bucket=OPENC3_CONFIG_BUCKET`,
       )
       return response.data.url
     },

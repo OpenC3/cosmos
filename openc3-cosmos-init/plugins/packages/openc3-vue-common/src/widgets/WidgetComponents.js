@@ -21,20 +21,23 @@ import upperFirst from 'lodash/upperFirst'
 import camelCase from 'lodash/camelCase'
 
 const componentImports = import.meta.glob('./*Widget.vue')
-const components = Object.entries(componentImports).reduce((acc, [filename, importFunction]) => {
-  filename = filename.split('/').pop() // trims off the leading './'
-  // Get PascalCase name of component
-  const componentName = upperFirst(
-    camelCase(
-      filename.replace(/\.\w+$/, ''), // trims off the trailing '.vue'
-    ),
-  )
-  // Register component locally
-  return {
-    ...acc, 
-    [componentName]: defineAsyncComponent(importFunction),
-  }
-}, {})
+const components = Object.entries(componentImports).reduce(
+  (acc, [filename, importFunction]) => {
+    filename = filename.split('/').pop() // trims off the leading './'
+    // Get PascalCase name of component
+    const componentName = upperFirst(
+      camelCase(
+        filename.replace(/\.\w+$/, ''), // trims off the trailing '.vue'
+      ),
+    )
+    // Register component locally
+    return {
+      ...acc,
+      [componentName]: defineAsyncComponent(importFunction),
+    }
+  },
+  {},
+)
 
 export default {
   components,

@@ -29,7 +29,7 @@ export default [...compat.extends(
         },
 
         parser: parser,
-        ecmaVersion: 2020,
+        ecmaVersion: 2022,
         sourceType: "module",
     },
 

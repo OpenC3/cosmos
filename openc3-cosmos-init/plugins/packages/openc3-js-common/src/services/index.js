@@ -22,12 +22,4 @@ import Cable from './cable'
 import { ConfigParserError, ConfigParserService } from './configParser'
 import OpenC3Api from './openc3Api'
 
-export {
-  Api,
-  axios,
-  Cable,
-  ConfigParserError,
-  ConfigParserService,
-  OpenC3Api,
-}
-
+export { Api, axios, Cable, ConfigParserError, ConfigParserService, OpenC3Api }

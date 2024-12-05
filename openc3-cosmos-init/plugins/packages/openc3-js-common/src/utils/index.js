@@ -18,6 +18,4 @@
 
 import { prependBasePath } from './routeUtils'
 
-export {
-  prependBasePath,
-}
+export { prependBasePath }

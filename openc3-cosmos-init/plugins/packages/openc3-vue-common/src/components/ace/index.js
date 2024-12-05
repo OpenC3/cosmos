@@ -18,6 +18,4 @@
 
 import AceEditorModes from './AceEditorModes'
 
-export {
-  AceEditorModes,
-}
+export { AceEditorModes }

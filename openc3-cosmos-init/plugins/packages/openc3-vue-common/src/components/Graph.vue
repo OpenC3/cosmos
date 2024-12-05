@@ -813,7 +813,7 @@ export default {
     graphStartDateTime: function (newVal, oldVal) {
       if (newVal && typeof newVal === 'string') {
         this.graphStartDateTime =
-          this.parseDateTime(this.graphStartDateTime, this.timeZone) * 1_000_000
+          this.parseDateTime(this.graphStartDateTime, this.timeZone) * 1000000
         if (this.graphStartDateTime !== oldVal) {
           this.needToUpdate = true
         }
@@ -826,7 +826,7 @@ export default {
     graphEndDateTime: function (newVal, oldVal) {
       if (newVal && typeof newVal === 'string') {
         this.graphEndDateTime =
-          this.parseDateTime(this.graphEndDateTime, this.timeZone) * 1_000_000
+          this.parseDateTime(this.graphEndDateTime, this.timeZone) * 1000000
         if (this.graphEndDateTime !== oldVal) {
           this.needToUpdate = true
         }
@@ -1152,7 +1152,7 @@ export default {
             // especially with really small or large values
             values(u, splits) {
               if (
-                splits.some((el) => el >= 10_000_000) ||
+                splits.some((el) => el >= 10000000) ||
                 splits.every((el) => el < 0.01)
               ) {
                 splits = splits.map((split) => split.toExponential(3))
@@ -1362,7 +1362,7 @@ export default {
             return '--'
           } else if (
             (Math.abs(rawValue) < 0.01 && rawValue !== 0) ||
-            Math.abs(rawValue) >= 10_000_000
+            Math.abs(rawValue) >= 10000000
           ) {
             return rawValue.toExponential(6)
           } else {
@@ -1481,7 +1481,7 @@ export default {
       //   return
       // }
       for (let i = 0; i < data.length; i++) {
-        let time = data[i].__time / 1_000_000_000.0 // Time in seconds
+        let time = data[i].__time / 1000000000.0 // Time in seconds
         let length = data[0].length
         if (length === 0 || time > data[0][length - 1]) {
           // Nominal case - append new data to end
@@ -1506,7 +1506,7 @@ export default {
       }
       // If we weren't passed a startTime notify grapher of our start
       if (this.startTime == null && this.data[0][0]) {
-        let newStartTime = this.data[0][0] * 1_000_000_000
+        let newStartTime = this.data[0][0] * 1000000000
         this.$emit('started', newStartTime)
       }
       this.dataChanged = true

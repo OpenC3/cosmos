@@ -145,7 +145,7 @@ export default {
       }
     }
   },
-  destroyed: function () {
+  unmounted: function () {
     this.$emit('deleteItem', this.valueId)
   },
   methods: {

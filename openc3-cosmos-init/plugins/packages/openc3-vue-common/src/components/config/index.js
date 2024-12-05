@@ -20,8 +20,4 @@ import Config from './Config'
 import OpenConfigDialog from './OpenConfigDialog.vue'
 import SaveConfigDialog from './SaveConfigDialog.vue'
 
-export {
-  Config,
-  OpenConfigDialog,
-  SaveConfigDialog,
-}
+export { Config, OpenConfigDialog, SaveConfigDialog }

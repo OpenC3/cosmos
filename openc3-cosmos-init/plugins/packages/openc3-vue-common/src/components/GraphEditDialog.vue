@@ -334,7 +334,7 @@ export default {
     // Start needs a default because if the timeZone is UTC the time will still be local time
     if (this.startDateTime) {
       // Use the passed dateTime as is
-      let date = toDate(this.startDateTime / 1_000_000)
+      let date = toDate(this.startDateTime / 1000000)
       this.startDate = this.formatDate(date, this.timeZone)
       this.startTime = this.formatTimeHMS(date, this.timeZone)
     } else {
@@ -345,7 +345,7 @@ export default {
     }
     // Only set end date / time if it is explicitly passed
     if (this.endDateTime) {
-      let date = toDate(this.endDateTime / 1_000_000)
+      let date = toDate(this.endDateTime / 1000000)
       this.endDate = this.formatDate(date, this.timeZone)
       this.endTime = this.formatTimeHMS(date, this.timeZone)
     }

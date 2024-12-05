@@ -176,7 +176,7 @@ import { Icons } from '@openc3/vue-common/components'
 import {
   AstroStatusColors,
   AstroStatusIndicator,
-  UnknownToAstroStatus
+  UnknownToAstroStatus,
 } from '@openc3/vue-common/icons'
 
 const NOTIFICATION_HISTORY_MAX_LENGTH = 1000
@@ -432,7 +432,7 @@ export default {
     },
     formatShortDateTime: function (nsec) {
       if (!nsec) return ''
-      const date = new Date(nsec / 1_000_000)
+      const date = new Date(nsec / 1000000)
       return formatDistanceToNow(date, { addSuffix: true })
     },
   },

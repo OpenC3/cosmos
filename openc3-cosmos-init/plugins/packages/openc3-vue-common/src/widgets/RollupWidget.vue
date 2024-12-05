@@ -131,7 +131,7 @@ export default {
       }
     })
   },
-  destroyed: function () {
+  unmounted: function () {
     this.items.forEach((item) => {
       this.$emit('deleteItem', item)
     })

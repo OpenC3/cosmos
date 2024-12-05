@@ -41,7 +41,6 @@ export default {
   },
   async mounted() {
     try {
-      /* eslint-disable-next-line */
       this.widgetType = await System.import(/* webpackIgnore: true */ this.url)
     } catch (e) {
       throw new Error(`Unknown widget: ${this.name}`)

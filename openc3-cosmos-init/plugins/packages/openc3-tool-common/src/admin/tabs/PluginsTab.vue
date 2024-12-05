@@ -365,7 +365,7 @@ export default {
     },
     formatDate(nanoSecs) {
       return format(
-        toDate(parseInt(nanoSecs) / 1_000_000),
+        toDate(parseInt(nanoSecs) / 1000000),
         'yyyy-MM-dd HH:mm:ss.SSS',
       )
     },

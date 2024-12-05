@@ -60,7 +60,7 @@ export default {
       axios
         .get('/openc3-api/time')
         .then((response) => {
-          this.discrepancy = response.data.now_nsec / 1_000_000 - Date.now()
+          this.discrepancy = response.data.now_nsec / 1000000 - Date.now()
         })
         .catch((error) => {
           // Silently fail
