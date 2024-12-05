@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "vite",
     "serve": "vite preview",
-    "lint": "eslint src --ext js",
+    "lint": "eslint src",
     "format": "prettier --write \"./**\"",
     "build": "vite build"
   },
@@ -23,11 +23,12 @@
     "@babel/plugin-transform-modules-systemjs": "7.25.9",
     "@types/systemjs": "6.15.1",
     "@vitejs/plugin-vue": "5.1.5",
-    "eslint": "8.56.0",
+    "eslint": "9.16.0",
     "prettier": "3.3.3",
     "sass": "1.80.4",
     "serve": "14.2.4",
     "vite": "5.4.11",
-    "vue": "3.5.13"
+    "vue": "3.5.13",
+    "vue-eslint-parser": "9.4.3"
   }
 }

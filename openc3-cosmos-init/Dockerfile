@@ -36,7 +36,7 @@ COPY ./plugins/packages/openc3-cosmos-demo/*.json packages/openc3-cosmos-demo/
 ARG NPM_URL=https://registry.npmjs.org
 RUN yarn config set registry $NPM_URL && yarn --network-timeout 600000
 
-COPY ./plugins/docker-package-build.sh ./plugins/.eslintrc.cjs ./plugins/.nycrc ./
+COPY ./plugins/docker-package-build.sh ./plugins/eslint.config.mjs ./plugins/.nycrc ./
 RUN chmod +x ./docker-package-build.sh
 COPY ./plugins/packages/openc3-tool-base/ packages/openc3-tool-base/
 RUN ["/openc3/plugins/docker-package-build.sh", "openc3-tool-base"]
