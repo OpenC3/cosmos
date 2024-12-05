@@ -1,4 +1,5 @@
 COMMAND INST COLLECT BIG_ENDIAN "Starts a collect on the instrument"
+  META TOPIC COLLECT
   PARAMETER    CCSDSVER        0   3  UINT  0     0   0 "CCSDS primary header version number"
   PARAMETER    CCSDSTYPE       3   1  UINT  1     1   1 "CCSDS primary header packet type"
   PARAMETER    CCSDSSHF        4   1  UINT  0     0   0 "CCSDS primary header secondary header flag"

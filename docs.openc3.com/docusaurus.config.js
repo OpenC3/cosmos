@@ -2,113 +2,141 @@
 // Note: type annotations allow type checking and IDEs autocompletion
 
 // Workaround to always use SHA256 to support FIPS mode
-const crypto = require('crypto')
-const crypto_orig_createHash = crypto.createHash
-crypto.createHash = algorithm =>
-  crypto_orig_createHash('sha256')
+const crypto = require("crypto");
+const crypto_orig_createHash = crypto.createHash;
+crypto.createHash = (algorithm) => crypto_orig_createHash("sha256");
 
-const {themes} = require('prism-react-renderer');
+const { themes } = require("prism-react-renderer");
 const lightCodeTheme = themes.nightOwlLight;
 const darkCodeTheme = themes.nightOwl;
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
-  title: 'OpenC3 Docs',
-  tagline: 'OpenC3 COSMOS Documentation',
-  favicon: 'img/favicon.png',
+  title: "OpenC3 Docs",
+  tagline: "OpenC3 COSMOS Documentation",
+  favicon: "img/favicon.png",
 
   future: {
     experimental_faster: true,
   },
 
   // Set the production url of your site here
-  url: 'https://docs.openc3.com',
+  url: "https://docs.openc3.com",
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
-  baseUrl: '/',
+  baseUrl: "/",
   trailingSlash: false,
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
-  organizationName: 'OpenC3', // Usually your GitHub org/user name.
-  projectName: 'cosmos', // Usually your repo name.
+  organizationName: "OpenC3", // Usually your GitHub org/user name.
+  projectName: "cosmos", // Usually your repo name.
 
-  onBrokenLinks: 'throw',
-  onBrokenMarkdownLinks: 'throw',
+  onBrokenLinks: "throw",
+  onBrokenMarkdownLinks: "throw",
 
   // Even if you don't use internalization, you can use this field to set useful
   // metadata like html lang. For example, if your site is Chinese, you may want
   // to replace "en" with "zh-Hans".
   i18n: {
-    defaultLocale: 'en',
-    locales: ['en'],
+    defaultLocale: "en",
+    locales: ["en"],
   },
 
   plugins: [
     [
-      '@docusaurus/plugin-client-redirects',
+      "@docusaurus/plugin-client-redirects",
       {
         redirects: [
-          { to: '/docs/', from: '/docs/v5/', },
-          { to: '/docs/tools', from: '/docs/v5/tools', },
-          { to: '/docs/getting-started/installation', from: '/docs/v5/installation', },
-          { to: '/docs/getting-started/gettingstarted', from: '/docs/v5/gettingstarted', },
-          { to: '/docs/getting-started/upgrading', from: '/docs/v5/upgrading', },
-          { to: '/docs/getting-started/requirements', from: '/docs/v5/requirements', },
-          { to: '/docs/getting-started/podman', from: '/docs/v5/podman', },
-          { to: '/docs/configuration/format', from: '/docs/v5/format', },
-          { to: '/docs/configuration/plugins', from: '/docs/v5/plugins', },
-          { to: '/docs/configuration/target', from: '/docs/v5/target', },
-          { to: '/docs/configuration/command', from: '/docs/v5/command', },
-          { to: '/docs/configuration/telemetry', from: '/docs/v5/telemetry', },
-          { to: '/docs/configuration/interfaces', from: '/docs/v5/interfaces', },
-          { to: '/docs/configuration/protocols', from: '/docs/v5/protocols', },
-          { to: '/docs/configuration/table', from: '/docs/v5/table', },
-          { to: '/docs/configuration/telemetry-screens', from: '/docs/v5/telemetry-screens', },
-          { to: '/docs/configuration/ssl-tls', from: '/docs/v5/ssl-tls', },
-          { to: '/docs/tools/cmd-tlm-server', from: '/docs/v5/cmd-tlm-server', },
-          { to: '/docs/tools/limits-monitor', from: '/docs/v5/limits-monitor', },
-          { to: '/docs/tools/cmd-sender', from: '/docs/v5/cmd-sender', },
-          { to: '/docs/tools/script-runner', from: '/docs/v5/script-runner', },
-          { to: '/docs/tools/packet-viewer', from: '/docs/v5/packet-viewer', },
-          { to: '/docs/tools/tlm-viewer', from: '/docs/v5/tlm-viewer', },
-          { to: '/docs/tools/tlm-grapher', from: '/docs/v5/tlm-grapher', },
-          { to: '/docs/tools/data-extractor', from: '/docs/v5/data-extractor', },
-          { to: '/docs/tools/data-viewer', from: '/docs/v5/data-viewer', },
-          { to: '/docs/tools/bucket-explorer', from: '/docs/v5/bucket-explorer', },
-          { to: '/docs/tools/table-manager', from: '/docs/v5/table-manager', },
-          { to: '/docs/tools/handbooks', from: '/docs/v5/handbooks', },
-          { to: '/docs/tools/calendar', from: '/docs/v5/calendar', },
-          { to: '/docs/guides/bridges', from: '/docs/v5/bridges', },
-          { to: '/docs/guides/cfs', from: '/docs/v5/cfs', },
-          { to: '/docs/guides/custom-widgets', from: '/docs/v5/custom-widgets', },
-          { to: '/docs/guides/little-endian-bitfields', from: '/docs/v5/little-endian-bitfields', },
-          { to: '/docs/guides/local-mode', from: '/docs/v5/local-mode', },
-          { to: '/docs/guides/logging', from: '/docs/v5/logging', },
-          { to: '/docs/guides/monitoring', from: '/docs/v5/monitoring', },
-          { to: '/docs/guides/performance', from: '/docs/v5/performance', },
-          { to: '/docs/guides/raspberrypi', from: '/docs/v5/raspberrypi', },
-          { to: '/docs/guides/scripting-api', from: '/docs/v5/scripting-api', },
-          { to: '/docs/guides/script-writing', from: '/docs/v5/script-writing', },
-          { to: '/docs/development/roadmap', from: '/docs/v5/roadmap', },
-          { to: '/docs/development/developing', from: '/docs/v5/development', },
-          { to: '/docs/development/testing', from: '/docs/v5/testing', },
-          { to: '/docs/development/json-api', from: '/docs/v5/json-api', },
-          { to: '/docs/development/streaming-api', from: '/docs/v5/streaming-api', },
-          { to: '/docs/development/log-structure', from: '/docs/v5/log-structure', },
-          { to: '/docs/development/host-install', from: '/docs/v5/host-install', },
-          { to: '/docs/meta/contributing', from: '/docs/v5/contributing', },
-          { to: '/docs/meta/philosophy', from: '/docs/v5/philosophy', },
-          { to: '/docs/meta/xtce', from: '/docs/v5/xtce', },
+          { to: "/docs/", from: "/docs/v5/" },
+          { to: "/docs/tools", from: "/docs/v5/tools" },
+          {
+            to: "/docs/getting-started/installation",
+            from: "/docs/v5/installation",
+          },
+          {
+            to: "/docs/getting-started/gettingstarted",
+            from: "/docs/v5/gettingstarted",
+          },
+          { to: "/docs/getting-started/upgrading", from: "/docs/v5/upgrading" },
+          {
+            to: "/docs/getting-started/requirements",
+            from: "/docs/v5/requirements",
+          },
+          { to: "/docs/getting-started/podman", from: "/docs/v5/podman" },
+          { to: "/docs/configuration/format", from: "/docs/v5/format" },
+          { to: "/docs/configuration/plugins", from: "/docs/v5/plugins" },
+          { to: "/docs/configuration/target", from: "/docs/v5/target" },
+          { to: "/docs/configuration/command", from: "/docs/v5/command" },
+          { to: "/docs/configuration/telemetry", from: "/docs/v5/telemetry" },
+          { to: "/docs/configuration/interfaces", from: "/docs/v5/interfaces" },
+          { to: "/docs/configuration/protocols", from: "/docs/v5/protocols" },
+          { to: "/docs/configuration/table", from: "/docs/v5/table" },
+          {
+            to: "/docs/configuration/telemetry-screens",
+            from: "/docs/v5/telemetry-screens",
+          },
+          { to: "/docs/configuration/ssl-tls", from: "/docs/v5/ssl-tls" },
+          { to: "/docs/tools/cmd-tlm-server", from: "/docs/v5/cmd-tlm-server" },
+          { to: "/docs/tools/limits-monitor", from: "/docs/v5/limits-monitor" },
+          { to: "/docs/tools/cmd-sender", from: "/docs/v5/cmd-sender" },
+          { to: "/docs/tools/script-runner", from: "/docs/v5/script-runner" },
+          { to: "/docs/tools/packet-viewer", from: "/docs/v5/packet-viewer" },
+          { to: "/docs/tools/tlm-viewer", from: "/docs/v5/tlm-viewer" },
+          { to: "/docs/tools/tlm-grapher", from: "/docs/v5/tlm-grapher" },
+          { to: "/docs/tools/data-extractor", from: "/docs/v5/data-extractor" },
+          { to: "/docs/tools/data-viewer", from: "/docs/v5/data-viewer" },
+          {
+            to: "/docs/tools/bucket-explorer",
+            from: "/docs/v5/bucket-explorer",
+          },
+          { to: "/docs/tools/table-manager", from: "/docs/v5/table-manager" },
+          { to: "/docs/tools/handbooks", from: "/docs/v5/handbooks" },
+          { to: "/docs/tools/calendar", from: "/docs/v5/calendar" },
+          { to: "/docs/guides/bridges", from: "/docs/v5/bridges" },
+          { to: "/docs/guides/cfs", from: "/docs/v5/cfs" },
+          {
+            to: "/docs/guides/custom-widgets",
+            from: "/docs/v5/custom-widgets",
+          },
+          {
+            to: "/docs/guides/little-endian-bitfields",
+            from: "/docs/v5/little-endian-bitfields",
+          },
+          { to: "/docs/guides/local-mode", from: "/docs/v5/local-mode" },
+          { to: "/docs/guides/logging", from: "/docs/v5/logging" },
+          { to: "/docs/guides/monitoring", from: "/docs/v5/monitoring" },
+          { to: "/docs/guides/performance", from: "/docs/v5/performance" },
+          { to: "/docs/guides/raspberrypi", from: "/docs/v5/raspberrypi" },
+          { to: "/docs/guides/scripting-api", from: "/docs/v5/scripting-api" },
+          {
+            to: "/docs/guides/script-writing",
+            from: "/docs/v5/script-writing",
+          },
+          { to: "/docs/development/roadmap", from: "/docs/v5/roadmap" },
+          { to: "/docs/development/developing", from: "/docs/v5/development" },
+          { to: "/docs/development/testing", from: "/docs/v5/testing" },
+          { to: "/docs/development/json-api", from: "/docs/v5/json-api" },
+          {
+            to: "/docs/development/streaming-api",
+            from: "/docs/v5/streaming-api",
+          },
+          {
+            to: "/docs/development/log-structure",
+            from: "/docs/v5/log-structure",
+          },
+          { to: "/docs/meta/contributing", from: "/docs/v5/contributing" },
+          { to: "/docs/meta/philosophy", from: "/docs/v5/philosophy" },
+          { to: "/docs/meta/xtce", from: "/docs/v5/xtce" },
         ],
       },
     ],
-    require.resolve('docusaurus-lunr-search'),
+    require.resolve("docusaurus-lunr-search"),
   ],
 
   presets: [
     [
-      'classic',
+      "classic",
       /** @type {import('@docusaurus/preset-classic').Options} */
       ({
         docs: {
@@ -116,10 +144,10 @@ const config = {
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
           editUrl:
-            'https://github.com/OpenC3/cosmos/tree/main/docs.openc3.com/',
+            "https://github.com/OpenC3/cosmos/tree/main/docs.openc3.com/",
         },
         theme: {
-          customCss: require.resolve('./src/css/custom.css'),
+          customCss: require.resolve("./src/css/custom.css"),
         },
       }),
     ],
@@ -131,85 +159,85 @@ const config = {
       // Replace with your project's social card
       // image: 'img/docusaurus-social-card.jpg',
       navbar: {
-        title: 'OpenC3 Docs',
+        title: "OpenC3 Docs",
         logo: {
-          alt: 'OpenC3 Logo',
-          src: 'img/logo.svg',
+          alt: "OpenC3 Logo",
+          src: "img/logo.svg",
         },
         items: [
           {
-            to: 'https://openc3.com',
-            label: 'Home',
+            to: "https://openc3.com",
+            label: "Home",
           },
           {
-            to: 'https://openc3.com/enterprise/',
-            label: 'Enterprise',
+            to: "https://openc3.com/enterprise/",
+            label: "Enterprise",
           },
           {
-            type: 'docSidebar',
-            sidebarId: 'defaultSidebar',
-            position: 'left',
-            label: 'Documentation',
+            type: "docSidebar",
+            sidebarId: "defaultSidebar",
+            position: "left",
+            label: "Documentation",
           },
           {
-            to: 'https://openc3.com/news/',
-            label: 'News',
+            to: "https://openc3.com/news/",
+            label: "News",
           },
           {
-            to: 'https://openc3.com/contact/',
-            label: 'Contact',
+            to: "https://openc3.com/contact/",
+            label: "Contact",
           },
           {
-            to: 'https://openc3.com/about/',
-            label: 'About',
+            to: "https://openc3.com/about/",
+            label: "About",
           },
           {
-            to: 'https://github.com/OpenC3/cosmos',
-            label: 'GitHub',
-            position: 'right',
+            to: "https://github.com/OpenC3/cosmos",
+            label: "GitHub",
+            position: "right",
           },
         ],
       },
       footer: {
-        style: 'dark',
+        style: "dark",
         links: [
           {
-            title: 'Homepage',
+            title: "Homepage",
             items: [
               {
-                label: 'Home',
-                to: 'https://openc3.com',
+                label: "Home",
+                to: "https://openc3.com",
               },
             ],
           },
           {
-            title: 'Docs',
+            title: "Docs",
             items: [
               {
-                label: 'Documentation',
-                to: '/docs',
+                label: "Documentation",
+                to: "/docs",
               },
             ],
           },
           {
-            title: 'Community',
+            title: "Community",
             items: [
               {
-                label: 'LinkedIn',
-                href: 'https://www.linkedin.com/company/openc3',
+                label: "LinkedIn",
+                href: "https://www.linkedin.com/company/openc3",
               },
             ],
           },
           {
-            title: 'More',
+            title: "More",
             items: [
               {
-                label: 'GitHub',
-                href: 'https://github.com/OpenC3/cosmos',
+                label: "GitHub",
+                href: "https://github.com/OpenC3/cosmos",
               },
               {
-                label: 'Privacy',
-                to: '/docs/privacy',
+                label: "Privacy",
+                to: "/docs/privacy",
               },
             ],
           },
@@ -219,10 +247,10 @@ const config = {
       prism: {
         theme: lightCodeTheme,
         darkTheme: darkCodeTheme,
-        additionalLanguages: ['ruby', 'python', 'bash', 'diff', 'json'],
+        additionalLanguages: ["ruby", "python", "bash", "diff", "json"],
       },
       colorMode: {
-        defaultMode: 'dark',
+        defaultMode: "dark",
         disableSwitch: false,
         respectPrefersColorScheme: false,
       },

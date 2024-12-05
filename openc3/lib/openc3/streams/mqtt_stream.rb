@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -33,7 +33,7 @@ module OpenC3
     attr_accessor :key
     attr_accessor :ca_file
 
-    def initialize(hostname, port = 1883, ssl = false, write_topic = nil, read_topic = nil)
+    def initialize(hostname, port = 1883, ssl = false, write_topic = nil, read_topic = nil, ack_timeout = 5)
       super()
 
       @hostname = hostname
@@ -41,7 +41,7 @@ module OpenC3
       @ssl = ConfigParser.handle_true_false(ssl)
       @write_topic = ConfigParser.handle_nil(write_topic)
       @read_topic = ConfigParser.handle_nil(read_topic)
-      @connected = false
+      @ack_timeout = Float(ack_timeout)
 
       @username = nil
       @password = nil
@@ -49,9 +49,45 @@ module OpenC3
       @key = nil
       @ca_file = nil
 
-      # Mutex on write is needed to protect from commands coming in from more
-      # than one tool
+      # Mutex on write is needed to protect from commands coming in from more than one tool
       @write_mutex = Mutex.new
+    end
+
+    # Connect the stream
+    def connect
+      @client = MQTT::Client.new
+      @client.ack_timeout = @ack_timeout
+      @client.host = @hostname
+      @client.port = @port
+      @client.ssl = @ssl
+      @client.username = @username if @username
+      @client.password = @password if @password
+      if @cert and @key
+        @client.ssl = true
+        @client.cert_file = @cert.path
+        @client.key_file = @key.path
+      end
+      if @ca_file
+        @client.ssl = true
+        @client.ca_file = @ca_file.path
+      end
+      @client.connect
+      @client.subscribe(@read_topic) if @read_topic
+    end
+
+    def connected?
+      if @client
+        return @client.connected?
+      else
+        return false
+      end
+    end
+
+    def disconnect
+      if @client
+        @client.disconnect
+        @client = nil
+      end
     end
 
     # @return [String] Returns a binary string of data from the read_topic
@@ -75,34 +111,6 @@ module OpenC3
 
       @write_mutex.synchronize do
         @client.publish(@write_topic, data)
-      end
-    end
-
-    # Connect the stream
-    def connect
-      @client = MQTT::Client.new
-      @client.host = @hostname
-      @client.port = @port
-      @client.ssl = @ssl
-      @client.username = @username if @username
-      @client.password = @password if @password
-      @client.cert = @cert if @cert
-      @client.key = @key if @key
-      @client.ca_file = @ca_file.path if @ca_file
-      @client.connect
-      @client.subscribe(@read_topic) if @read_topic
-      @connected = true
-    end
-
-    def connected?
-      @connected
-    end
-
-    def disconnect
-      if @connected
-        @client.disconnect
-        @client = nil
-        @connected = false
       end
     end
   end

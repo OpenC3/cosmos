@@ -237,7 +237,7 @@ class TestCommands(unittest.TestCase):
     def test_build_cmd_complains_about_non_existant_items(self):
         for range_checking in [True, False]:
             for raw in [True, False]:
-                with self.assertRaisesRegex(AttributeError, "Packet item 'TGT1 PKT1 ITEMX' does not exist"):
+                with self.assertRaisesRegex(RuntimeError, "Packet item 'TGT1 PKT1 ITEMX' does not exist"):
                     self.cmd.build_cmd("tgt1", "pkt1", {"itemX": 1}, range_checking, raw)
 
     def test_build_cmd_complains_about_missing_required_parameters(self):
@@ -439,7 +439,7 @@ class TestCommands(unittest.TestCase):
             self.cmd.cmd_hazardous("tgt1", "pktX")
 
     def test_cmd_hazardous_complains_about_non_existant_items(self):
-        with self.assertRaisesRegex(AttributeError, "Packet item 'TGT1 PKT1 ITEMX' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet item 'TGT1 PKT1 ITEMX' does not exist"):
             self.cmd.cmd_hazardous("tgt1", "pkt1", {"itemX": 1})
 
     def test_cmd_hazardous_returns_true_if_the_command_overall_is_hazardous(self):

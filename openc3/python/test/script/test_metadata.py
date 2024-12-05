@@ -69,7 +69,7 @@ class TestMetadata(unittest.TestCase):
         self.assertEqual("#123456", json["color"])
 
     def test_metadata_set(self):
-        with self.assertRaisesRegex(RuntimeError, "metadata must be a dict"):
+        with self.assertRaisesRegex(TypeError, "metadata must be a dict"):
             metadata_set("hello")
 
         global gData

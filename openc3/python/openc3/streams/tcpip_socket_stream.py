@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -48,7 +48,7 @@ class TcpipSocketStream(Stream):
         # than one tool
         self.write_mutex = threading.Lock()
         self.pipe_reader, self.pipe_writer = multiprocessing.Pipe()
-        self.connected = False
+        self._connected = False
 
     # self.return [String] Returns a binary string of data from the socket
     def read(self):
@@ -115,13 +115,16 @@ class TcpipSocketStream(Stream):
     # Connect the stream
     def connect(self):
         # If called directly this class is acting as a server and does not need to connect the sockets
-        self.connected = True
+        self._connected = True
+
+    def connected(self):
+        return self._connected
 
     # Disconnect by closing the sockets
     def disconnect(self):
-        if not self.connected:
+        if not self._connected:
             return
         close_socket(self.write_socket)
         close_socket(self.read_socket)
         self.pipe_writer.send(".")
-        self.connected = False
+        self._connected = False

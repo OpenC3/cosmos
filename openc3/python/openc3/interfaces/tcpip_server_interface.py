@@ -614,4 +614,4 @@ class TcpipServerInterface(StreamInterface):
 
             # Delete any dead sockets
             for index_to_delete in indexes_to_delete:
-                self.write_interface_infos.delete_at(index_to_delete)
+                del self.write_interface_infos[index_to_delete]

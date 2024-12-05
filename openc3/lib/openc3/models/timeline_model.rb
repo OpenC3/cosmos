@@ -74,7 +74,7 @@ module OpenC3
       self.new(**json.transform_keys(&:to_sym), name: name, scope: scope)
     end
 
-    def initialize(name:, scope:, updated_at: nil, color: nil)
+    def initialize(name:, scope:, updated_at: nil, color: nil, shard: 0)
       if name.nil? || scope.nil?
         raise TimelineInputError.new "name or scope must not be nil"
       end
@@ -82,6 +82,7 @@ module OpenC3
       super(PRIMARY_KEY, name: "#{scope}#{KEY}#{name}", scope: scope)
       @updated_at = updated_at
       @timeline_name = name
+      @shard = shard.to_i # to_i to handle nil
       update_color(color: color)
     end
 
@@ -104,6 +105,7 @@ module OpenC3
       {
         'name' => @timeline_name,
         'color' => @color,
+        'shard' => @shard,
         'scope' => @scope,
         'updated_at' => @updated_at
       }
@@ -136,6 +138,7 @@ module OpenC3
         topics: topics,
         target_names: [],
         plugin: nil,
+        shard: @shard,
         scope: @scope
       )
       microservice.create

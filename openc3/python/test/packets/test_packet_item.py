@@ -40,22 +40,22 @@ class TestPacketItem(unittest.TestCase):
 
     def test_complains_about_non_string_format_strings(self):
         with self.assertRaisesRegex(
-            AttributeError,
+            TypeError,
             f"{self.pi.name}: format_string must be a str but is a float",
         ):
             self.pi.format_string = 5.1
 
     def test_complains_about_badly_formatted_format_strings(self):
         with self.assertRaisesRegex(
-            AttributeError, f"{self.pi.name}: format_string invalid '%'"
+            ValueError, f"{self.pi.name}: format_string invalid '%'"
         ):
             self.pi.format_string = "%"
         with self.assertRaisesRegex(
-            AttributeError, f"{self.pi.name}: format_string invalid '5'"
+            ValueError, f"{self.pi.name}: format_string invalid '5'"
         ):
             self.pi.format_string = "5"
         with self.assertRaisesRegex(
-            AttributeError, f"{self.pi.name}: format_string invalid '%Q'"
+            ValueError, f"{self.pi.name}: format_string invalid '%Q'"
         ):
             self.pi.format_string = "%Q"
 
@@ -71,7 +71,7 @@ class TestPacketItem(unittest.TestCase):
 
     def test_complains_about_non_conversion_read_conversions(self):
         with self.assertRaisesRegex(
-            AttributeError,
+            TypeError,
             f"{self.pi.name}: read_conversion must be a Conversion but is a str",
         ):
             self.pi.read_conversion = "HI"
@@ -88,7 +88,7 @@ class TestPacketItem(unittest.TestCase):
 
     def test_complains_about_non_conversion_write_conversions(self):
         with self.assertRaisesRegex(
-            AttributeError,
+            TypeError,
             f"{self.pi.name}: write_conversion must be a Conversion but is a str",
         ):
             self.pi.write_conversion = "HI"
@@ -166,7 +166,7 @@ class TestPacketItem(unittest.TestCase):
 
     def test_complains_about_states_that_arent_hashes(self):
         with self.assertRaisesRegex(
-            AttributeError, f"{self.pi.name}: states must be a dict but is a str"
+            TypeError, f"{self.pi.name}: states must be a dict but is a str"
         ):
             self.pi.states = "state"
 
@@ -185,7 +185,7 @@ class TestPacketItem(unittest.TestCase):
 
     def test_complains_about_description_that_arent_strings(self):
         with self.assertRaisesRegex(
-            AttributeError,
+            TypeError,
             f"{self.pi.name}: description must be a str but is a float",
         ):
             self.pi.description = 5.1
@@ -201,7 +201,7 @@ class TestPacketItem(unittest.TestCase):
 
     def test_complains_about_units_full_that_arent_strings(self):
         with self.assertRaisesRegex(
-            AttributeError,
+            TypeError,
             f"{self.pi.name}: units_full must be a str but is a float",
         ):
             self.pi.units_full = 5.1
@@ -219,7 +219,7 @@ class TestPacketItem(unittest.TestCase):
 
     def test_complains_about_units_that_arent_strings(self):
         with self.assertRaisesRegex(
-            AttributeError, f"{self.pi.name}: units must be a str but is a float"
+            TypeError, f"{self.pi.name}: units must be a str but is a float"
         ):
             self.pi.units = 5.1
 
@@ -274,7 +274,7 @@ class TestPacketItem(unittest.TestCase):
         pi.maximum = 0xFFFF
         pi.default = 1.1
         with self.assertRaisesRegex(
-            AttributeError, "TEST: default must be a list but is a float"
+            TypeError, "TEST: default must be a list but is a float"
         ):
             pi.check_default_and_range_data_types()
         pi = PacketItem("test", 0, 8, "UINT", "BIG_ENDIAN", 16)
@@ -287,7 +287,7 @@ class TestPacketItem(unittest.TestCase):
         pi.maximum = 0xFFFF
         pi.default = 5.5
         with self.assertRaisesRegex(
-            AttributeError, "TEST: default must be a int but is a float"
+            TypeError, "TEST: default must be a int but is a float"
         ):
             pi.check_default_and_range_data_types()
         pi = PacketItem("test", 0, 32, "UINT", "BIG_ENDIAN", None)
@@ -300,7 +300,7 @@ class TestPacketItem(unittest.TestCase):
         pi.maximum = 0xFFFF
         pi.default = "test"
         with self.assertRaisesRegex(
-            AttributeError, "TEST: default must be a float but is a str"
+            TypeError, "TEST: default must be a float but is a str"
         ):
             pi.check_default_and_range_data_types()
         pi = PacketItem("test", 0, 32, "FLOAT", "BIG_ENDIAN", None)
@@ -318,7 +318,7 @@ class TestPacketItem(unittest.TestCase):
         pi.maximum = 0xFFFF
         pi.default = 5.1
         with self.assertRaisesRegex(
-            AttributeError, "TEST: default must be a str but is a float"
+            TypeError, "TEST: default must be a str but is a float"
         ):
             pi.check_default_and_range_data_types()
         pi = PacketItem("test", 0, 32, "STRING", "BIG_ENDIAN", None)
@@ -331,7 +331,7 @@ class TestPacketItem(unittest.TestCase):
         pi.maximum = 0xFFFF
         pi.default = 5.5
         with self.assertRaisesRegex(
-            AttributeError, "TEST: default must be a str but is a float"
+            TypeError, "TEST: default must be a str but is a float"
         ):
             pi.check_default_and_range_data_types()
         pi = PacketItem("test", 0, 32, "BLOCK", "BIG_ENDIAN", None)
@@ -346,13 +346,13 @@ class TestPacketItem(unittest.TestCase):
         pi.minimum = 5.5
         pi.maximum = 10
         with self.assertRaisesRegex(
-            AttributeError, "TEST: minimum must be a int but is a float"
+            TypeError, "TEST: minimum must be a int but is a float"
         ):
             pi.check_default_and_range_data_types()
         pi.minimum = 5
         pi.maximum = 10.5
         with self.assertRaisesRegex(
-            AttributeError, "TEST: maximum must be a int but is a float"
+            TypeError, "TEST: maximum must be a int but is a float"
         ):
             pi.check_default_and_range_data_types()
         pi = PacketItem("test", 0, 32, "FLOAT", "BIG_ENDIAN", None)
@@ -363,12 +363,12 @@ class TestPacketItem(unittest.TestCase):
         pi.minimum = "a"
         pi.maximum = "z"
         with self.assertRaisesRegex(
-            AttributeError, "TEST: minimum must be a float but is a str"
+            TypeError, "TEST: minimum must be a float but is a str"
         ):
             pi.check_default_and_range_data_types()
         pi.minimum = 5
         with self.assertRaisesRegex(
-            AttributeError, "TEST: maximum must be a float but is a str"
+            TypeError, "TEST: maximum must be a float but is a str"
         ):
             pi.check_default_and_range_data_types()
 
@@ -392,7 +392,7 @@ class TestPacketItem(unittest.TestCase):
 
     def test_complains_about_hazardous_that_arent_hashes(self):
         with self.assertRaisesRegex(
-            AttributeError, f"{self.pi.name}: hazardous must be a dict but is a str"
+            TypeError, f"{self.pi.name}: hazardous must be a dict but is a str"
         ):
             self.pi.hazardous = ""
 
@@ -416,7 +416,7 @@ class TestPacketItem(unittest.TestCase):
 
     def test_complains_about_messages_disabled_that_arent_hashes(self):
         with self.assertRaisesRegex(
-            AttributeError,
+            TypeError,
             f"{self.pi.name}: messages_disabled must be a dict but is a str",
         ):
             self.pi.messages_disabled = ""
@@ -439,7 +439,7 @@ class TestPacketItem(unittest.TestCase):
 
     def test_complains_about_state_colors_that_arent_hashes(self):
         with self.assertRaisesRegex(
-            AttributeError, f"{self.pi.name}: state_colors must be a dict but is a str"
+            TypeError, f"{self.pi.name}: state_colors must be a dict but is a str"
         ):
             self.pi.state_colors = ""
 
@@ -465,14 +465,14 @@ class TestPacketItem(unittest.TestCase):
 
     def test_complains_about_limits_that_arent_packetitemlimits(self):
         with self.assertRaisesRegex(
-            AttributeError,
+            TypeError,
             f"{self.pi.name}: limits must be a PacketItemLimits but is a str",
         ):
             self.pi.limits = ""
 
     def test_only_allows_a_hash(self):
         with self.assertRaisesRegex(
-            AttributeError,
+            TypeError,
             f"{self.pi.name}: meta must be a dict but is a int",
         ):
             self.pi.meta = 1

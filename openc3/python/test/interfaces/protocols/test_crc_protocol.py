@@ -850,9 +850,7 @@ class TestCrcProtocol(unittest.TestCase):
         packet.append_item("CRC", 32, "UINT")
         packet.append_item("TRAILER", 32, "UINT")
         packet.buffer = b"\x00\x01\x02\x03\x00\x00\x00\x00\x04\x05\x06\x07"
-        with self.assertRaisesRegex(
-            AttributeError, "Packet item 'TGT PKT MYCRC' does not exist"
-        ):
+        with self.assertRaisesRegex(RuntimeError, "Packet item 'TGT PKT MYCRC' does not exist"):
             self.interface.write(packet)
 
     def test_calculates_and_writes_the_8_bit_crc_item(self):
@@ -952,9 +950,7 @@ class TestCrcProtocol(unittest.TestCase):
         packet.append_item("DATA", 32, "UINT")
         packet.append_item("CRC", 64, "UINT")
         packet.append_item("TRAILER", 32, "UINT")
-        packet.buffer = (
-            b"\x00\x01\x02\x03\x00\x00\x00\x00\x00\x00\x00\x00\x04\x05\x06\x07"
-        )
+        packet.buffer = b"\x00\x01\x02\x03\x00\x00\x00\x00\x00\x00\x00\x00\x04\x05\x06\x07"
         self.interface.write(packet)
         buffer = b"\x00\x01\x02\x03"
         crc = Crc64().calc(buffer)
