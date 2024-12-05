@@ -38,14 +38,6 @@ class Limits:
     def sets(self):
         return self.config.limits_sets
 
-    # (see OpenC3::Packet#out_of_limits)
-    def out_of_limits(self):
-        items = []
-        for _, target_packets in self.config.telemetry:
-            for _, packet in target_packets:
-                items += packet.out_of_limits()
-        return items
-
     # @return [Hash(String, Array)] The defined limits groups
     def groups(self):
         return self.config.limits_groups
@@ -86,6 +78,11 @@ class Limits:
                 limits_set = self.system.limits_set()
             limits_for_set = limits.values.get(limits_set)
             if limits_for_set is not None:
+                gl = None
+                gh = None
+                if len(limits_for_set) > 4:
+                    gl = limits_for_set[4]
+                    gh = limits_for_set[5]
                 return [
                     limits_set,
                     limits.persistence_setting,
@@ -94,8 +91,7 @@ class Limits:
                     limits_for_set[1],
                     limits_for_set[2],
                     limits_for_set[3],
-                    limits_for_set[4],
-                    limits_for_set[5],
+                    gl, gh,
                 ]
             else:
                 return [None, None, None, None, None, None, None, None, None]
@@ -138,7 +134,7 @@ class Limits:
         if limits_set:
             limits_set = str(limits_set).upper()
         else:
-            limits_set = self.system.limits_set
+            limits_set = self.system.limits_set()
         if limits.values is None:
             if limits_set == "DEFAULT":
                 limits.values = {"DEFAULT": []}

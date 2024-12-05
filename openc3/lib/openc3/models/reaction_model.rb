@@ -81,7 +81,7 @@ module OpenC3
       model.undeploy()
     end
 
-    attr_reader :name, :scope, :snooze, :triggers, :actions, :enabled, :triggerLevel, :snoozed_until
+    attr_reader :name, :scope, :snooze, :triggers, :actions, :enabled, :trigger_level, :snoozed_until
     attr_accessor :username, :shard
 
     def initialize(
@@ -90,7 +90,7 @@ module OpenC3
       snooze:,
       actions:,
       triggers:,
-      triggerLevel:,
+      trigger_level:,
       enabled: true,
       snoozed_until: nil,
       username: nil,
@@ -101,7 +101,7 @@ module OpenC3
       @microservice_name = "#{scope}__OPENC3__REACTION"
       @enabled = enabled
       @snoozed_until = snoozed_until
-      @triggerLevel = validate_level(triggerLevel)
+      @trigger_level = validate_level(trigger_level)
       @snooze = validate_snooze(snooze)
       @actions = validate_actions(actions)
       @triggers = validate_triggers(triggers)
@@ -111,8 +111,8 @@ module OpenC3
     end
 
     # Modifiers for the reaction_controller update action
-    def triggerLevel=(triggerLevel)
-      @triggerLevel = validate_level(triggerLevel)
+    def trigger_level=(trigger_level)
+      @trigger_level = validate_level(trigger_level)
     end
     def snooze=(snooze)
       @snooze = validate_snooze(snooze)
@@ -129,7 +129,7 @@ module OpenC3
       when 'EDGE', 'LEVEL'
         return level
       else
-        raise ReactionInputError.new "invalid triggerLevel, must be EDGE or LEVEL: #{level}"
+        raise ReactionInputError.new "invalid trigger level, must be EDGE or LEVEL: #{level}"
       end
     end
 
@@ -259,7 +259,7 @@ module OpenC3
         'name' => @name,
         'scope' => @scope,
         'enabled' => @enabled,
-        'triggerLevel' => @triggerLevel,
+        'trigger_level' => @trigger_level,
         'snooze' => @snooze,
         'snoozed_until' => @snoozed_until,
         'triggers' => @triggers,

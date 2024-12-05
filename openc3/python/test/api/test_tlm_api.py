@@ -685,7 +685,7 @@ class TestTlmApi(unittest.TestCase):
 
     def test_complains_about_non_existant_value_types(self):
         with self.assertRaisesRegex(
-            AttributeError, "Unknown type 'MINE' for INST HEALTH_STATUS"
+            TypeError, "Unknown type 'MINE' for INST HEALTH_STATUS"
         ):
             get_tlm_packet("INST HEALTH_STATUS", type="MINE")
 
@@ -833,15 +833,15 @@ class TestTlmApi(unittest.TestCase):
             get_tlm_values(["INST__LATEST__BLAH__CONVERTED"])
 
     def test_get_tlm_values_complains_about_non_existant_value_types(self):
-        with self.assertRaisesRegex(RuntimeError, "Unknown value type 'MINE'"):
+        with self.assertRaisesRegex(ValueError, "Unknown value type 'MINE'"):
             get_tlm_values(["INST__HEALTH_STATUS__TEMP1__MINE"])
 
     def test_get_tlm_values_complains_about_bad_arguments(self):
-        with self.assertRaisesRegex(AttributeError, "items must be array of strings"):
+        with self.assertRaisesRegex(TypeError, "items must be array of strings"):
             get_tlm_values([])
-        with self.assertRaisesRegex(AttributeError, "items must be array of strings"):
+        with self.assertRaisesRegex(TypeError, "items must be array of strings"):
             get_tlm_values([["INST", "HEALTH_STATUS", "TEMP1"]])
-        with self.assertRaisesRegex(AttributeError, "items must be formatted"):
+        with self.assertRaisesRegex(ValueError, "items must be formatted"):
             get_tlm_values(["INST", "HEALTH_STATUS", "TEMP1"])
 
     def test_get_tlm_values_reads_all_the_specified_items(self):

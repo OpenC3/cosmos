@@ -50,18 +50,6 @@ module OpenC3
       return @config.limits_sets
     end
 
-    # (see OpenC3::Packet#out_of_limits)
-    def out_of_limits
-      items = []
-      @config.telemetry.each do |target_name, target_packets|
-        target_packets.each do |packet_name, packet|
-          new_items = packet.out_of_limits
-          items.concat(new_items)
-        end
-      end
-      return items
-    end
-
     # @return [Hash(String, Array)] The defined limits groups
     def groups
       return @config.limits_groups

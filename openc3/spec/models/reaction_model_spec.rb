@@ -54,7 +54,7 @@ module OpenC3
       name: 'REACT1',
       snooze: 300,
       triggers: [{'name' => 'TRIG1', 'group' => RMO_GROUP}],
-      triggerLevel: 'EDGE',
+      trigger_level: 'EDGE',
       actions: [{'type' => 'command', 'value' => 'TEST'}]
     )
       return ReactionModel.new(
@@ -62,7 +62,7 @@ module OpenC3
         scope: $openc3_scope,
         snooze: snooze,
         triggers: triggers,
-        triggerLevel: triggerLevel,
+        trigger_level: trigger_level,
         actions: actions
       )
     end
@@ -164,9 +164,9 @@ module OpenC3
         expect { generate_custom_reaction().create() }.to raise_error("existing reaction found: REACT1")
       end
 
-      it "validates triggerLevel" do
+      it "validates trigger_level" do
         generate_reaction()
-        expect { generate_custom_reaction(triggerLevel: 'HIGH') }.to raise_error("invalid triggerLevel, must be EDGE or LEVEL: HIGH")
+        expect { generate_custom_reaction(trigger_level: 'HIGH') }.to raise_error("invalid trigger level, must be EDGE or LEVEL: HIGH")
       end
 
       it "validates snooze" do

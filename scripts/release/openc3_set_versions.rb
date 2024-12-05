@@ -149,7 +149,6 @@ end
 shell_scripts = [
   'openc3-cosmos-init/plugins/docker-package-build.sh',
   'openc3-cosmos-init/plugins/docker-package-install.sh',
-  'examples/hostinstall/centos7/openc3_install_openc3.sh',
 ]
 
 shell_scripts.each do |rel_path|
