@@ -38,7 +38,7 @@ class SecretsController < ApplicationController
     OpenC3::Logger.info("Secret set: #{params[:key]}", scope: params[:scope], user: username())
     head :ok
   rescue => e
-    logger.error(e.formatted)
+    log_error(e)
     render json: { status: 'error', message: e.message }, status: 500
   end
 
@@ -48,7 +48,7 @@ class SecretsController < ApplicationController
     OpenC3::Logger.info("Secret deleted: #{params[:key]}", scope: params[:scope], user: username())
     head :ok
   rescue => e
-    logger.error(e.formatted)
+    log_error(e)
     render json: { status: 'error', message: e.message }, status: 500
   end
 end
