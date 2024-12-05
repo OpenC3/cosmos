@@ -22,7 +22,7 @@ Protocols define the behaviour of an Interface, including differentiating packet
 
 ### Accessors
 
-Accessors are responsible for reading and writing the buffer which is trasmitted by the interface to the target. See [Accessors](accessors) for more information.
+Accessors are responsible for reading and writing the buffer which is transmitted by the interface to the target. See [Accessors](accessors) for more information.
 
 For more information about how Interfaces fit with Protocols and Accessors see [Interoperability Without Standards](https://www.openc3.com/news/interoperability-without-standards).
 
