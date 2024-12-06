@@ -200,13 +200,13 @@ INTERFACE INTERFACE_NAME openc3/interfaces/http_server_interface.py 88
 
 ### MQTT Interface
 
-The MQTT interface is typically used for connecting to Internet of Things (IoT) devices. The COSMOS MQTT interface is a client that can both publish and receive messages (commands and telemetry). It has built in support for SSL certificates as well as authentication.
+The MQTT interface is typically used for connecting to Internet of Things (IoT) devices. The COSMOS MQTT interface is a client that can both publish and receive messages (commands and telemetry). It has built in support for SSL certificates as well as authentication. It differs from the MQTT Streaming Interface in that the commands and telemetry are transmitted over topics given by `META TOPIC` in the command and telemetry definitions.
 
-| Parameter   | Description                                                                          | Required | Default |
-| ----------- | ------------------------------------------------------------------------------------ | -------- | ------- |
-| Host        | Host name or IP address of the MQTT broker                                           | Yes      |         |
-| Port        | Port on the MQTT broker to connect to. Keep in mind whether you're using SSL or not. | No       | 1883    |
-| Ack Timeout | Time to wait when connecting to the MQTT broker                                      | No       | 5 sec   |
+| Parameter | Description                                                                          | Required | Default |
+| --------- | ------------------------------------------------------------------------------------ | -------- | ------- |
+| Host      | Host name or IP address of the MQTT broker                                           | Yes      |         |
+| Port      | Port on the MQTT broker to connect to. Keep in mind whether you're using SSL or not. | No       | 1883    |
+| SSL       | Whether to use SSL to connect                                                        | No       | false   |
 
 #### Interface Options
 
@@ -214,6 +214,7 @@ Options are added directly beneath the interface definition as shown in the exam
 
 | Option           | Description                                                                                |
 | ---------------- | ------------------------------------------------------------------------------------------ |
+| ACK_TIMEOUT      | Time to wait when connecting to the MQTT broker                                            |
 | USERNAME         | Username for authentication with the MQTT broker                                           |
 | PASSWORD         | Password for authentication with the MQTT broker                                           |
 | CERT             | PEM encoded client certificate filename used with KEY for client TLS based authentication  |
@@ -227,13 +228,13 @@ plugin.txt Ruby Example:
 INTERFACE MQTT_INT mqtt_interface.rb test.mosquitto.org 1883
 ```
 
-plugin.txt Python Example:
+plugin.txt Python Example (Note: This example uses the [SECRET](plugins#secret) keyword to set the PASSWORD option in the Interface):
 
 ```ruby
 INTERFACE MQTT_INT openc3/interfaces/mqtt_interface.py test.mosquitto.org 8884
   OPTION USERNAME rw
-  # Create an environment variable called MQTT_PASSWORD by pulling from the secret named PASSWORD
-  # and set an OPTION called PASSWORD (the last PASSWORD value) with the secret value
+  # Create an env variable called MQTT_PASSWORD with the secret named PASSWORD
+  # and set an OPTION called PASSWORD with the secret value
   # For more information about secrets see the Admin Tool page
   SECRET ENV PASSWORD MQTT_PASSWORD PASSWORD
 ```
@@ -255,6 +256,57 @@ TELEMETRY MQTT TEST BIG_ENDIAN "Test"
   META TOPIC TEST # <- The topic name is 'TEST'
   APPEND_ITEM DATA 0 BLOCK "MQTT Data"
 ```
+
+For a full example, please see the [openc3-cosmos-mqtt-test](https://github.com/OpenC3/cosmos/tree/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-mqtt-test) in the COSMOS source.
+
+### MQTT Streaming Interface
+
+The MQTT streaming interface is typically used for connecting to Internet of Things (IoT) devices. The COSMOS MQTT streaming interface is a client that can both publish and receive messages (commands and telemetry). It has built in support for SSL certificates as well as authentication. It differs from the MQTT Interface in that all the commands are transmitted on a single topic and all telemetry is received on a single topic.
+
+| Parameter          | Description                                                                             | Required | Default    |
+| ------------------ | --------------------------------------------------------------------------------------- | -------- | ---------- |
+| Host               | Host name or IP address of the MQTT broker                                              | Yes      |            |
+| Port               | Port on the MQTT broker to connect to. Keep in mind whether you're using SSL or not.    | No       | 1883       |
+| SSL                | Whether to use SSL to connect                                                           | No       | false      |
+| Write Topic        | Name of the write topic for all commands. Pass nil / None to make interface read only.  | No       | nil / None |
+| Read Topic         | Name of the read topic for all telemetry. Pass nil / None to make interface write only. | No       | nil / None |
+| Protocol Type      | See Protocols.                                                                          | No       |
+| Protocol Arguments | See Protocols for the arguments each stream protocol takes.                             | No       |
+
+#### Interface Options
+
+Options are added directly beneath the interface definition as shown in the example.
+
+| Option           | Description                                                                                |
+| ---------------- | ------------------------------------------------------------------------------------------ |
+| ACK_TIMEOUT      | Time to wait when connecting to the MQTT broker                                            |
+| USERNAME         | Username for authentication with the MQTT broker                                           |
+| PASSWORD         | Password for authentication with the MQTT broker                                           |
+| CERT             | PEM encoded client certificate filename used with KEY for client TLS based authentication  |
+| KEY              | PEM encoded client private keys filename                                                   |
+| KEYFILE_PASSWORD | Password to decrypt the CERT and KEY files (Python only)                                   |
+| CA_FILE          | Certificate Authority certificate filename that is to be treated as trusted by this client |
+
+plugin.txt Ruby Example:
+
+```ruby
+INTERFACE MQTT_INT mqtt_stream_interface.rb test.mosquitto.org 1883 false write read
+```
+
+plugin.txt Python Example (Note: This example uses the [SECRET](plugins#secret) keyword to set the PASSWORD option in the Interface):
+
+```ruby
+INTERFACE MQTT_INT openc3/interfaces/mqtt_stream_interface.py test.mosquitto.org 8884 False write read
+  OPTION USERNAME rw
+  # Create an env variable called MQTT_PASSWORD with the secret named PASSWORD
+  # and set an OPTION called PASSWORD with the secret value
+  # For more information about secrets see the Admin Tool page
+  SECRET ENV PASSWORD MQTT_PASSWORD PASSWORD
+```
+
+#### Packet Definitions
+
+The MQTT Streaming Interface utilizes the topic names passed to the interface so no additional information is necessary in the definition.
 
 For a full example, please see the [openc3-cosmos-mqtt-test](https://github.com/OpenC3/cosmos/tree/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-mqtt-test) in the COSMOS source.
 
@@ -299,7 +351,66 @@ INTERFACE INTERFACE_NAME serial_interface.rb COM4 COM4 115200 NONE 1 10.0 10.0 #
 
 ### SNMP Interface (Enterprise)
 
+The SNMP Interface is for connecting to Simple Network Management Protocol devices. The SNMP Interface is currently only implemented in Ruby.
+
+| Parameter | Description                  | Required | Default |
+| --------- | ---------------------------- | -------- | ------- |
+| Host      | Host name of the SNMP device | Yes      |         |
+| Port      | Port on the SNMP device      | No       | 161     |
+
+#### Interface Options
+
+Options are added directly beneath the interface definition as shown in the example.
+
+| Option         | Description                                        | Default |
+| -------------- | -------------------------------------------------- | ------- |
+| VERSION        | SNMP Version: 1, 2, or 3                           | 1       |
+| COMMUNITY      | Password or user ID that allows access to a device | private |
+| USERNAME       | Username                                           | N/A     |
+| RETRIES        | Retries when sending requests                      | N/A     |
+| TIMEOUT        | Timeout waiting for a response from an agent       | N/A     |
+| CONTEXT        | SNMP context                                       | N/A     |
+| SECURITY_LEVEL | Must be one of NO_AUTH, AUTH_PRIV, or AUTH_NO_PRIV | N/A     |
+| AUTH_PROTOCOL  | Must be one of MD5, SHA, or SHA256                 | N/A     |
+| PRIV_PROTOCOL  | Must be one of DES or AES                          | N/A     |
+| AUTH_PASSWORD  | Auth password                                      | N/A     |
+| PRIV_PASSWORD  | Priv password                                      | N/A     |
+
+plugin.txt Ruby Examples:
+
+```ruby
+INTERFACE SNMP_INT snmp_interface.rb 192.168.1.249 161
+  OPTION VERSION 1
+```
+
+For a full example, please see the [openc3-cosmos-apc-switched-pdu](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-apc-switched-pdu) in the COSMOS Enterprise Plugins.
+
 ### SNMP Trap Interface (Enterprise)
+
+The SNMP Trap Interface is for receiving Simple Network Management Protocol traps. The SNMP Trap Interface is currently only implemented in Ruby.
+
+| Parameter    | Description                 | Required | Default |
+| ------------ | --------------------------- | -------- | ------- |
+| Read Port    | Port to read from           | No       | 162     |
+| Read Timeout | Read timeout                | No       | nil     |
+| Bind Address | Address to bind UDP port to | Yes      | 0.0.0.0 |
+
+#### Interface Options
+
+Options are added directly beneath the interface definition as shown in the example.
+
+| Option  | Description              | Default |
+| ------- | ------------------------ | ------- |
+| VERSION | SNMP Version: 1, 2, or 3 | 1       |
+
+plugin.txt Ruby Examples:
+
+```ruby
+INTERFACE SNMP_INT snmp_trap_interface.rb 162
+  OPTION VERSION 1
+```
+
+For a full example, please see the [openc3-cosmos-apc-switched-pdu](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-apc-switched-pdu) in the COSMOS Enterprise Plugins.
 
 ### GEMS Interface (Enterprise)
 
