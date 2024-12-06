@@ -2,7 +2,7 @@
 
 [Documentation](https://openc3.com)
 
-This package captures Vue components for re-use when developing OpenC3 tools
+This package captures Vue components for reuse when developing OpenC3 tools
 
 ## Contributing
 
