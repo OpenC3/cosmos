@@ -1,6 +1,21 @@
 {
   "name": "@openc3/vue-common",
+  "description": "Vue component library for COSMOS tool development",
   "version": "5.21.0-beta0",
+  "license": "SEE LICENSE IN LICENSE.txt",
+  "homepage": "https://openc3.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OpenC3/cosmos.git",
+    "directory": "openc3-cosmos-init/plugins/packages/openc3-vue-common"
+  },
+  "bugs": {
+    "url": "https://github.com/OpenC3/cosmos/issues"
+  },
+  "keywords": [
+    "openc3",
+    "cosmos"
+  ],
   "type": "module",
   "files": [
     "dist"
