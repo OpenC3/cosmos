@@ -24,9 +24,9 @@ require 'fileutils'
 
 module OpenC3
   class FileInterface < Interface
-    # @param command_write_folder [String] Folder to write command files to
-    # @param telemetry_read_folder [String] Folder to read telemetry files from
-    # @param telemetry_archive_folder [String] Folder to move read telemetry files to
+    # @param command_write_folder [String] Folder to write command files to - Set to nil to disallow writes
+    # @param telemetry_read_folder [String] Folder to read telemetry files from - Set to nil to disallow reads
+    # @param telemetry_archive_folder [String] Folder to move read telemetry files to - Set to DELETE to delete files
     # @param file_read_size [Integer] Number of bytes to read from the file at a time
     # @param stored [Boolean] Whether to set stored flag on read telemetry
     # @param protocol_type [String] Name of the protocol to use
@@ -99,7 +99,7 @@ module OpenC3
 
     def read_interface
       while true
-        if @filef
+        if @file
           # Read more data from existing file
           data = @file.read(@file_read_size)
           if data and data.length > 0
