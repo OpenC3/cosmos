@@ -31,16 +31,13 @@ const router = createRouter({
       path: '/login',
       name: 'Login',
       component: () =>
-        import(
-          '@openc3/tool-common/src/tools/base/components/Login'
-        ),
+        import('@openc3/tool-common/src/tools/base/components/Login'),
     },
     {
       // Empty component for all other routes to avoid VueRouter warnings, since all other routes are handled by single-spa
       path: '/:pathMatch(.*)*',
       name: '',
-      component: () =>
-        import('@openc3/tool-common/src/components/Empty'),
+      component: () => import('@openc3/tool-common/src/components/Empty'),
     },
   ],
 })

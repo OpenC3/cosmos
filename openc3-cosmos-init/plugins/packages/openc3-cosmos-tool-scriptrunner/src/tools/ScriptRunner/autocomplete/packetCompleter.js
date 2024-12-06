@@ -49,7 +49,7 @@ export default class PacketCompleter {
     })
   }
 
-  getCompletions = function (editor, session, position, prefix, callback) {
+  getCompletions(_editor, session, position, _prefix, callback) {
     let matches = []
     const lineBeforeCursor = session.doc.$lines[position.row].slice(
       0,

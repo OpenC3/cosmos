@@ -27,7 +27,7 @@
     "@webpack-cli/generators": "^3.0.7",
     "babel-loader": "^9.2.1",
     "babel-plugin-istanbul": "7.0.0",
-    "eslint": "8.56.0",
+    "eslint": "9.16.0",
     "file-loader": "^6.2.0",
     "prettier": "3.3.3",
     "sass": "1.80.4",
