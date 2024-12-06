@@ -22,7 +22,7 @@
 
 import { createRouter, createWebHistory } from 'vue-router'
 import { Empty } from '@openc3/vue-common/components'
-import { Login } from '@openc3/tool-common/base'
+import { Login } from '@openc3/vue-common/tools/base'
 
 const DEFAULT_TOOL_PATH = '/tools/cmdtlmserver'
 

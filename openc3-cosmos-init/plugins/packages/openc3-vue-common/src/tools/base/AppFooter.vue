@@ -42,7 +42,7 @@
 
 <script>
 import { Api, OpenC3Api } from '@openc3/js-common/services'
-import { UpgradeToEnterpriseDialog } from '@openc3/vue-common/components'
+import { UpgradeToEnterpriseDialog } from '@/components'
 import ClockFooter from './ClockFooter.vue'
 
 export default {

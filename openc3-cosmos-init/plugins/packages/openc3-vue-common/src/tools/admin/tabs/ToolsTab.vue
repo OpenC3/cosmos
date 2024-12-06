@@ -94,7 +94,7 @@
 <script>
 import Sortable from 'sortablejs'
 import { Api } from '@openc3/js-common/services'
-import { OutputDialog } from '@openc3/vue-common/components'
+import { OutputDialog } from '@/components'
 
 export default {
   components: { OutputDialog },

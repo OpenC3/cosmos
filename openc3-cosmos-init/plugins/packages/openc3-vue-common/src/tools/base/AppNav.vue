@@ -159,7 +159,7 @@
 <script>
 import { navigateToUrl, registerApplication, start } from 'single-spa'
 import { Api, OpenC3Api } from '@openc3/js-common/services'
-import { UpgradeToEnterpriseDialog } from '@openc3/vue-common/components'
+import { UpgradeToEnterpriseDialog } from '@/components'
 import Notifications from './Notifications.vue'
 import ScopeSelector from './ScopeSelector.vue'
 import UserMenu from './UserMenu.vue'

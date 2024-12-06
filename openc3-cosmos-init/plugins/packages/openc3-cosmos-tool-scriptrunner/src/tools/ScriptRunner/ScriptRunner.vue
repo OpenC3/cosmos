@@ -417,7 +417,7 @@ import {
   TopBar,
 } from '@openc3/vue-common/components'
 import { fileIcon } from '@openc3/vue-common/util'
-import { EventListDialog } from '@openc3/tool-common/calendar' // Why is this in tools/calendar?
+import { EventListDialog } from '@openc3/vue-common/tools/calendar'
 
 import AskDialog from './Dialogs/AskDialog'
 import FileDialog from './Dialogs/FileDialog'

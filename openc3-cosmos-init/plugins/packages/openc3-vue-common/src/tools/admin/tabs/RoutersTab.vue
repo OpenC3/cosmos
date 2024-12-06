@@ -22,19 +22,19 @@
 
 <template>
   <div>
-    <v-list class="list" data-test="interfaceList">
-      <div v-for="openc3_interface in interfaces" :key="openc3_interface">
+    <v-list class="list" data-test="routerList">
+      <div v-for="(router, index) in routers" :key="index">
         <v-list-item>
-          <v-list-item-title>{{ openc3_interface }}</v-list-item-title>
+          <v-list-item-title>{{ router }}</v-list-item-title>
 
           <template v-slot:append>
             <v-tooltip location="bottom">
               <template v-slot:activator="{ props }">
-                <v-icon v-bind="props" @click="showInterface(openc3_interface)">
+                <v-icon v-bind="props" @click="showRouter(router)">
                   mdi-eye
                 </v-icon>
               </template>
-              <span>Show Interface Details</span>
+              <span>Show Router Details</span>
             </v-tooltip>
           </template>
         </v-list-item>
@@ -42,11 +42,11 @@
       </div>
     </v-list>
     <output-dialog
-      :content="jsonContent"
-      type="Interface"
-      :name="dialogTitle"
       v-model="showDialog"
       v-if="showDialog"
+      :content="jsonContent"
+      type="Router"
+      :name="dialogTitle"
       @submit="dialogCallback"
     />
   </div>
@@ -54,13 +54,13 @@
 
 <script>
 import { Api } from '@openc3/js-common/services'
-import { OutputDialog } from '@openc3/vue-common/components'
+import { OutputDialog } from '@/components'
 
 export default {
   components: { OutputDialog },
   data() {
     return {
-      interfaces: [],
+      routers: [],
       jsonContent: '',
       dialogTitle: '',
       showDialog: false,
@@ -71,12 +71,13 @@ export default {
   },
   methods: {
     update() {
-      Api.get('/openc3-api/interfaces').then((response) => {
-        this.interfaces = response.data
+      Api.get('/openc3-api/routers').then((response) => {
+        this.routers = response.data
       })
     },
-    showInterface(name) {
-      Api.get(`/openc3-api/interfaces/${name}`).then((response) => {
+    add() {},
+    showRouter(name) {
+      Api.get(`/openc3-api/routers/${name}`).then((response) => {
         this.jsonContent = JSON.stringify(response.data, null, '\t')
         this.dialogTitle = name
         this.showDialog = true

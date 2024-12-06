@@ -221,8 +221,8 @@
 <script>
 import { toDate, format } from 'date-fns'
 import { Api } from '@openc3/js-common/services'
-import { SimpleTextDialog } from '@openc3/vue-common/components'
-import { ModifiedPluginDialog, PluginDialog } from '@/admin'
+import { SimpleTextDialog } from '@/components'
+import { ModifiedPluginDialog, PluginDialog } from '@/tools/admin'
 
 export default {
   components: {

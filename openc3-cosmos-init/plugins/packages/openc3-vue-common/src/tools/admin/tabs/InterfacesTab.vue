@@ -22,32 +22,19 @@
 
 <template>
   <div>
-    <v-list class="list" data-test="targetList">
-      <div v-for="target in targets" :key="target">
+    <v-list class="list" data-test="interfaceList">
+      <div v-for="openc3_interface in interfaces" :key="openc3_interface">
         <v-list-item>
-          <v-list-item-title>{{ target.name }}</v-list-item-title>
-          <v-list-item-subtitle
-            >Plugin: {{ target.plugin }}</v-list-item-subtitle
-          >
+          <v-list-item-title>{{ openc3_interface }}</v-list-item-title>
 
           <template v-slot:append>
-            <div class="mx-3" v-if="target.modified">
-              <v-tooltip location="bottom">
-                <template v-slot:activator="{ props }">
-                  <v-icon v-bind="props" @click="downloadTarget(target.name)">
-                    mdi-download
-                  </v-icon>
-                </template>
-                <span>Download Target Modified Files</span>
-              </v-tooltip>
-            </div>
             <v-tooltip location="bottom">
               <template v-slot:activator="{ props }">
-                <v-icon v-bind="props" @click="showTarget(target.name)">
+                <v-icon v-bind="props" @click="showInterface(openc3_interface)">
                   mdi-eye
                 </v-icon>
               </template>
-              <span>Show Target Details</span>
+              <span>Show Interface Details</span>
             </v-tooltip>
           </template>
         </v-list-item>
@@ -55,11 +42,11 @@
       </div>
     </v-list>
     <output-dialog
+      :content="jsonContent"
+      type="Interface"
+      :name="dialogTitle"
       v-model="showDialog"
       v-if="showDialog"
-      :content="jsonContent"
-      type="Target"
-      :name="dialogTitle"
       @submit="dialogCallback"
     />
   </div>
@@ -67,13 +54,13 @@
 
 <script>
 import { Api } from '@openc3/js-common/services'
-import { OutputDialog } from '@openc3/vue-common/components'
+import { OutputDialog } from '@/components'
 
 export default {
   components: { OutputDialog },
   data() {
     return {
-      targets: [],
+      interfaces: [],
       jsonContent: '',
       dialogTitle: '',
       showDialog: false,
@@ -84,12 +71,12 @@ export default {
   },
   methods: {
     update() {
-      Api.get('/openc3-api/targets_modified').then((response) => {
-        this.targets = response.data
+      Api.get('/openc3-api/interfaces').then((response) => {
+        this.interfaces = response.data
       })
     },
-    showTarget(name) {
-      Api.get(`/openc3-api/targets/${name}`).then((response) => {
+    showInterface(name) {
+      Api.get(`/openc3-api/interfaces/${name}`).then((response) => {
         this.jsonContent = JSON.stringify(response.data, null, '\t')
         this.dialogTitle = name
         this.showDialog = true
@@ -97,23 +84,6 @@ export default {
     },
     dialogCallback(content) {
       this.showDialog = false
-    },
-    downloadTarget: function (name) {
-      Api.post(`/openc3-api/targets/${name}/download`).then((response) => {
-        // Decode Base64 string
-        const decodedData = window.atob(response.data.contents)
-        // Create UNIT8ARRAY of size same as row data length
-        const uInt8Array = new Uint8Array(decodedData.length)
-        // Insert all character code into uInt8Array
-        for (let i = 0; i < decodedData.length; ++i) {
-          uInt8Array[i] = decodedData.charCodeAt(i)
-        }
-        const blob = new Blob([uInt8Array], { type: 'application/zip' })
-        const link = document.createElement('a')
-        link.href = URL.createObjectURL(blob)
-        link.setAttribute('download', response.data.filename)
-        link.click()
-      })
     },
   },
 }

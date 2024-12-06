@@ -3,7 +3,6 @@ import { defineCustomElements } from '@astrouxds/astro-web-components/loader'
 import { Notify, store, vuetify } from '@openc3/vue-common/plugins'
 
 import '@openc3/vue-common/styles'
-import '@openc3/tool-common/styles'
 import '@/assets/stylesheets/layout/layout.scss'
 
 import App from './App.vue'

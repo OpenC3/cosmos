@@ -23,7 +23,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { prependBasePath } from '@openc3/js-common/utils'
 import { NotFound } from '@openc3/vue-common/components'
-import { OpenC3Admin, TabsList } from '@openc3/tool-common/admin'
+import { OpenC3Admin, TabsList } from '@openc3/vue-common/tools/admin'
 
 const pluginsTab = TabsList.find((tab) => tab.name === 'PluginsTab')
 

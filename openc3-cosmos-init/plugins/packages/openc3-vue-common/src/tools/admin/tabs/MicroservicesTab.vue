@@ -82,7 +82,7 @@
 <script>
 import { toDate, format } from 'date-fns'
 import { Api } from '@openc3/js-common/services'
-import { OutputDialog, TextBoxDialog } from '@openc3/vue-common/components'
+import { OutputDialog, TextBoxDialog } from '@/components'
 
 export default {
   components: {

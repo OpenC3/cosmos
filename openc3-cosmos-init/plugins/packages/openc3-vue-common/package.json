@@ -21,6 +21,18 @@
       "import": "./dist/plugins.js",
       "require": "./dist/plugins.cjs"
     },
+    "./tools/admin": {
+      "import": "./dist/tools/admin.js",
+      "require": "./dist/tools/admin.cjs"
+    },
+    "./tools/base": {
+      "import": "./dist/tools/base.js",
+      "require": "./dist/tools/base.cjs"
+    },
+    "./tools/calendar": {
+      "import": "./dist/tools/calendar.js",
+      "require": "./dist/tools/calendar.cjs"
+    },
     "./util": {
       "import": "./dist/util.js",
       "require": "./dist/util.cjs"

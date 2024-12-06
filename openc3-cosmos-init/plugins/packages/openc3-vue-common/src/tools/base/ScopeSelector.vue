@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -21,42 +21,38 @@
 -->
 
 <template>
-  <div>
-    <top-bar :title="title" />
-    <v-card>
-      <v-tabs v-model="curTab" fixed-tabs>
-        <v-tab v-for="(tab, index) in tabs" :key="index" :to="tab.path">
-          {{ tab.displayName }}
-        </v-tab>
-      </v-tabs>
-      <router-view />
-    </v-card>
+  <div style="cursor: pointer" @click="showUpgradeToEnterpriseDialog = true">
+    <v-select
+      v-model="scope"
+      :items="scopes"
+      :disabled="scopes.length <= 1"
+      label="Scope"
+      density="compact"
+      variant="outlined"
+      hide-details
+      style="max-width: 150px"
+    />
+    <upgrade-to-enterprise-dialog
+      v-model="showUpgradeToEnterpriseDialog"
+      reason="Enterprise allows additional Scopes"
+    />
   </div>
 </template>
 
 <script>
-import { TopBar } from '@openc3/vue-common/components'
-import { TabsList } from './tabs'
+import { UpgradeToEnterpriseDialog } from '@/components'
 
 export default {
   components: {
-    TopBar,
+    UpgradeToEnterpriseDialog,
   },
-  data() {
+  data: function () {
     return {
-      title: 'Administrator Console',
-      curTab: null,
+      // Open Source only has one scope: 'DEFAULT'
+      scopes: ['DEFAULT'],
+      scope: 'DEFAULT',
+      showUpgradeToEnterpriseDialog: false,
     }
-  },
-  computed: {
-    tabs: function () {
-      return TabsList.map((tab) => {
-        return {
-          displayName: tab.displayName,
-          path: { name: tab.name },
-        }
-      })
-    },
   },
 }
 </script>

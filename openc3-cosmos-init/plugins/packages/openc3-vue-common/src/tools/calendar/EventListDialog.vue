@@ -142,7 +142,7 @@
 
 <script>
 import { Api } from '@openc3/js-common/services'
-import { TimeFilters } from '@openc3/vue-common/util'
+import { TimeFilters } from '@/util'
 import ActivityCreateDialog from './ActivityCreateDialog.vue'
 import DeleteItem from './DeleteItem'
 import MetadataCreateDialog from './MetadataCreateDialog.vue'

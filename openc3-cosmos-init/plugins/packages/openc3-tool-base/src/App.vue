@@ -42,7 +42,7 @@ import {
   AppNav,
   ClassificationBanners,
   TimeCheck,
-} from '@openc3/tool-common/base'
+} from '@openc3/vue-common/tools/base'
 
 export default {
   components: {
