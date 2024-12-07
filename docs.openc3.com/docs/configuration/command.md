@@ -660,6 +660,12 @@ Defined in custom_validator.rb:
 
 require 'openc3/packets/command_validator'
 class CustomValidator < OpenC3::CommandValidator
+  # Both the pre_check and post_check are passed the command packet that was sent
+  # You can inspect the command in your checks as follows:
+  #   packet.target_name => target name
+  #   packet.packet_name => packet name (command name)
+  #   packet.read("ITEM") => converted value
+  #   packet.read("ITEM", :RAW) => raw value
   def pre_check(packet)
     if tlm("TGT PKT ITEM") == 0
       return [false, "TGT PKT ITEM is 0"]
@@ -681,6 +687,12 @@ VALIDATOR custom_validator.rb
 Defined in custom_validator.py:
 
 class CustomValidator(CommandValidator):
+    # Both the pre_check and post_check are passed the command packet that was sent
+    # You can inspect the command in your checks as follows:
+    #   packet.target_name => target name
+    #   packet.packet_name => packet name (command name)
+    #   packet.read("ITEM") => converted value
+    #   packet.read("ITEM", :RAW) => raw value
     def pre_check(self, command):
         if tlm("TGT PKT ITEM") == 0:
             return [False, "TGT PKT ITEM is 0"]

@@ -172,6 +172,22 @@ ACCESSOR:
       description: The name of the accessor class
       values: .+
   since: 5.0.10
+TEMPLATE:
+  summary: Defines a template string used to pull telemetry values from a string buffer
+  parameters:
+    - name: Template
+      required: true
+      description: The template string which should be enclosed in quotes
+      values: "['\"].*['\"]"
+  since: 5.0.10
+TEMPLATE_FILE:
+  summary: Defines a template file used to pull telemetry values from a string buffer
+  parameters:
+    - name: Template File Path
+      required: true
+      description: The relative path to the template file. Filename should generally start with an underscore.
+      values: .+
+  since: 5.0.10
 IGNORE_OVERLAP:
   summary: Ignores any packet items which overlap
   description: Packet items which overlap normally generate a warning unless each individual item has the OVERLAP keyword.

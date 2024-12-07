@@ -135,7 +135,9 @@ TELEMETRY FORM FORMTLM BIG_ENDIAN "Form Accessor Telemetry"
 
 ### HTML Accessor
 
-The HTML Accessor is typically used with the [HTTP Client](interfaces#http-client-interface) interface to parse a web page. For a full example see [openc3-cosmos-http-get](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-http-get).
+The HTML Accessor is typically used with the [HTTP Client](interfaces#http-client-interface) interface to parse a web page.
+
+For a full example see [openc3-cosmos-http-get](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-http-get).
 
 #### Commands
 
@@ -162,7 +164,9 @@ TELEMETRY HTML RESPONSE BIG_ENDIAN "Search results"
 
 ### HTTP Accessor
 
-HTTP Accessor is typically used with the [HTTP Client](interfaces#http-client-interface) or [HTTP Server](interfaces#http-server-interface) interface to parse a web page. It takes another accessor to do the low level reading and writing of the items. The default accessor is FormAccessor. HtlmAccessor, XmlAccessor and JsonAccessor are also common for manipulating HTML, XML and JSON respectively. For a full example see [openc3-cosmos-http-get](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-http-get).
+HTTP Accessor is typically used with the [HTTP Client](interfaces#http-client-interface) or [HTTP Server](interfaces#http-server-interface) interface to parse a web page. It takes another accessor to do the low level reading and writing of the items. The default accessor is FormAccessor. HtlmAccessor, XmlAccessor and JsonAccessor are also common for manipulating HTML, XML and JSON respectively.
+
+For a full example see [openc3-cosmos-http-get](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-http-get).
 
 #### Commands
 
@@ -234,7 +238,9 @@ TELEMETRY HTML RESPONSE BIG_ENDIAN "Search results"
 
 ### JSON Accessor
 
-The JSON Accessor serializes data into JavaScript Object Notation ([JSON](https://en.wikipedia.org/wiki/JSON)). JSON is a data interchange format that uses human-readable text to transmit data consisting of key value pairs and arrays. For a full example see [openc3-cosmos-accessor-test](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-accessor-test).
+The JSON Accessor serializes data into JavaScript Object Notation ([JSON](https://en.wikipedia.org/wiki/JSON)). JSON is a data interchange format that uses human-readable text to transmit data consisting of key value pairs and arrays.
+
+For a full example see [openc3-cosmos-accessor-test](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-accessor-test).
 
 #### Commands
 
@@ -288,9 +294,49 @@ TELEMETRY JSON JSONTLM BIG_ENDIAN "JSON Accessor Telemetry"
 
 ### Template Accessor
 
+The Template Accessor is commonly used with string based command / response protocols such as the [CmdResponseProtocol](protocols#cmdresponse-protocol).
+
+For a full example see [openc3-cosmos-scpi-power-supply](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-scpi-power-supply) in the COSMOS Enterprise Plugins.
+
+#### Commands
+
+Using the Template Accessor for [command definitions](command) requires the use of [TEMPLATE](command#template) to define a string template with optional parameters that are populated using the command parameters.
+
+```ruby
+# Some commands don't have any parameters and the template is sent as-is
+COMMAND SCPI_PS RESET BIG_ENDIAN "Reset the power supply state"
+  ACCESSOR TemplateAccessor
+  TEMPLATE "*RST"
+
+# This command has two parameters in the template defined by <XXX>
+COMMAND SCPI_PS VOLTAGE BIG_ENDIAN "Sets the voltage of a power supply channel"
+  ACCESSOR TemplateAccessor
+  # <VOLTAGE> and <CHANNEL> are replaced by the parameter values
+  TEMPLATE "VOLT <VOLTAGE>, (@<CHANNEL>)"
+  APPEND_PARAMETER VOLTAGE 32 FLOAT MIN MAX 0.0 "Voltage Setting"
+    UNITS VOLTS V
+  APPEND_PARAMETER CHANNEL 8 UINT 1 2 1 "Output Channel"
+```
+
+#### Telemetry
+
+Using the Template Accessor for [telemetry definitions](telemetry) requires the use of [TEMPLATE](telemetry#template) to define a template where telemetry values are pulled from the string buffer.
+
+```ruby
+TELEMETRY SCPI_PS STATUS BIG_ENDIAN "Power supply status"
+  ACCESSOR TemplateAccessor
+  # The raw string from the target is something like "1.234,2.345"
+  # String is split by the comma and pushed into MEAS_VOLTAGE_1, MEAS_VOLTAGE_2
+  TEMPLATE "<MEAS_VOLTAGE_1>,<MEAS_VOLTAGE_2>"
+  APPEND_ITEM MEAS_VOLTAGE_1 32 FLOAT "Current Reading for Channel 1"
+  APPEND_ITEM MEAS_VOLTAGE_2 32 FLOAT "Current Reading for Channel 2"
+```
+
 ### XML Accessor
 
-The XML Accessor is typically used with the [HTTP Client](interfaces#http-client-interface) interface to send and receive XML from a web server. For a full example see [openc3-cosmos-accessor-test](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-accessor-test).
+The XML Accessor is typically used with the [HTTP Client](interfaces#http-client-interface) interface to send and receive XML from a web server.
+
+For a full example see [openc3-cosmos-accessor-test](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-accessor-test).
 
 #### Commands
 
@@ -342,6 +388,23 @@ TELEMETRY XML XMLTLM BIG_ENDIAN "XML Accessor Telemetry"
 
 ### GEMS Ascii (Enterprise)
 
+The GemsAsciiAccessor inherits from [TemplateAccessor](accessors#template-accessor) to escape the following characters in outgoing commands: "&" => "&a", "|" => "&b", "," => "&c", and ";" => "&d" and reverse them in telemetry. See the [GEMS Spec](https://www.omg.org/spec/GEMS/1.3/PDF) for more information.
+
+For a full example, please see the [openc3-cosmos-gems-interface](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-gems-interface) in the COSMOS Enterprise Plugins.
+
 ### Prometheus (Enterprise)
 
+The PrometheusAccessor is used to read from a Prometheus endpoint and can automatically parse the results into a packet. The PrometheusAccessor is currently only implemented in Ruby.
+
+For a full example, please see the [openc3-cosmos-prometheus-metrics](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-prometheus-metrics) in the COSMOS Enterprise Plugins.
+
 ### Protocol Buffer (Enterprise)
+
+The ProtoAccessor is used to read and write protocol buffers. It is primarily used in conjunction with the [GrpcInterface](interfaces#grpc-interface-enterprise). The ProtoAccessor is currently only implemented in Ruby.
+
+| Parameter | Description                                        | Required |
+| --------- | -------------------------------------------------- | -------- |
+| Filename  | File generated by the protocol buffer compiler     | Yes      |
+| Class     | Class to use when encoding and decoding the buffer | Yes      |
+
+For a full example, please see the [openc3-cosmos-proto-target](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-proto-target) in the COSMOS Enterprise Plugins.

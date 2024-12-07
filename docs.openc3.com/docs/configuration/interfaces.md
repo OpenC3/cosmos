@@ -412,9 +412,31 @@ INTERFACE SNMP_INT snmp_trap_interface.rb 162
 
 For a full example, please see the [openc3-cosmos-apc-switched-pdu](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-apc-switched-pdu) in the COSMOS Enterprise Plugins.
 
-### GEMS Interface (Enterprise)
+### gRPC Interface (Enterprise)
 
-### InfluxDb Interface (Enterprise)
+The gRPC Interface is for interacting with [gRPC](https://grpc.io/). The gRPC Interface is currently only implemented in Ruby.
+
+| Parameter | Description | Required |
+| --------- | ----------- | -------- |
+| Hostname  | gRPC server | Yes      |
+| Port      | gRPC port   | Yes      |
+
+plugin.txt Ruby Examples:
+
+```ruby
+INTERFACE GRPC_INT grpc_interface.rb my.grpc.org 8080
+```
+
+#### Commands
+
+Using the GrpcInterface for [command definitions](command) requires the use of [META](command#meta) to define a GRPC_METHOD to use for each command.
+
+```ruby
+COMMAND PROTO GET_USER BIG_ENDIAN 'Get a User'
+  META GRPC_METHOD /example.photoservice.ExamplePhotoService/GetUser
+```
+
+For a full example, please see the [openc3-cosmos-proto-target](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-proto-target) in the COSMOS Enterprise Plugins.
 
 ## Custom Interfaces
 

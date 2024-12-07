@@ -537,6 +537,20 @@ Defines the class that is used too read raw values from the packet. Defaults to 
 |-----------|-------------|----------|
 | Accessor Class Name | The name of the accessor class | True |
 
+### TEMPLATE
+<div class="right">(Since 5.0.10)</div>**Defines a template string used to pull telemetry values from a string buffer**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Template | The template string which should be enclosed in quotes | True |
+
+### TEMPLATE_FILE
+<div class="right">(Since 5.0.10)</div>**Defines a template file used to pull telemetry values from a string buffer**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Template File Path | The relative path to the template file. Filename should generally start with an underscore. | True |
+
 ### IGNORE_OVERLAP
 <div class="right">(Since 5.16.0)</div>**Ignores any packet items which overlap**
 
