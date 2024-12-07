@@ -7,7 +7,7 @@ sidebar_custom_props:
 
 ## Introduction
 
-Admin has it's own dedicated button at the top of the tools list. It is responsible for administering the COSMOS sytem including installing new plugins, viewing configuration, storing secrets and changing settings.
+Admin has it's own dedicated button at the top of the tools list. It is responsible for administering the COSMOS system including installing new plugins, viewing configuration, storing secrets and changing settings.
 
 ### Plugins
 
