@@ -141,7 +141,7 @@ For a full example see [openc3-cosmos-http-get](https://github.com/OpenC3/cosmos
 
 #### Commands
 
-HTLM Accessor is not typically used for commands but it would be similar to Telemetry using XPath Keys.
+HTML Accessor is not typically used for commands but it would be similar to Telemetry using XPath Keys.
 
 #### Telemetry
 
