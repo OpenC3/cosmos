@@ -68,6 +68,7 @@ module OpenC3
       @label = "command"
       @queue = Queue.new
       @polling = false
+      @recursive = false
     end
 
     def connect
@@ -119,7 +120,7 @@ module OpenC3
 
         # Wait for a file to read
         result = @queue.pop
-        break unless result
+        return nil, nil unless result
       end
     end
 
@@ -154,6 +155,8 @@ module OpenC3
         @extension = option_values[0]
       when 'POLLING'
         @polling = ConfigParser.handle_true_false(option_values[0])
+      when 'RECURSIVE'
+        @recursive = ConfigParser.handle_true_false(option_values[0])
       end
     end
 
@@ -171,7 +174,11 @@ module OpenC3
     end
 
     def get_next_telemetry_file
-      Dir.glob("#{@telemetry_read_folder}/*").sort[0]
+      if @recursive
+        return Dir.glob("#{@telemetry_read_folder}/**/*").sort[0]
+      else
+        return Dir.glob("#{@telemetry_read_folder}/*").sort[0]
+      end
     end
 
     def create_unique_filename
