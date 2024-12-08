@@ -6,7 +6,7 @@ sidebar_custom_props:
   myEmoji: 💡
 ---
 
-Protocols process data on behalf of an Interface. They can modify the data being written, data being read, or both. Protocols can also mark a packet as stored instead of real-time which means COSMOS will not update the current value table with the packet data. Protocols can be layered and will be processed in order. For example, if you have a low-level encryption layer that must be first removed before processing a higher level buffer length protocol.
+Protocols process data on behalf of an [Interface](interfaces). They can modify the data being written, data being read, or both. Protocols can also mark a packet as stored instead of real-time which means COSMOS will not update the current value table with the packet data. Protocols can be layered and will be processed in order. For example, if you have a low-level encryption layer that must be first removed before processing a higher level buffer length protocol.
 
 :::info Protocol Run Order
 Read protocols execute in the order specified (First specified runs first). Write protocols execute in the reverse order (Last specified executes first).
@@ -22,11 +22,17 @@ Serial is a much less friendly byte stream. With serial connections, it is very 
 
 UDP is an inherently packet based connection. If you read from a UDP socket, you will always receive back an entire packet. The best UDP based Protocols take advantage of this fact. Some implementations try to make UDP act like a byte stream, but this is a misuse of the protocol because it is highly likely that you will lose data and have no way to recover.
 
+For more information about how Protocols fit with Interfaces and Accessors see [Interoperability Without Standards](https://www.openc3.com/news/interoperability-without-standards).
+
 ## Packet Delineation Protocols
 
 COSMOS provides the following packet delineation protocols: COBS, SLIP, Burst, Fixed, Length, Template (deprecated), Terminated and Preidentified. Each of these protocols has the primary purpose of separating out packets from a byte stream.
 
+COSMOS Enterprise provides the following packet delineation protocols: CCSDS CLTU (with BCH Encoding), CCSDS TCTF (with Randomizer), CCSDS TMTF (with Randomizer), and GEMS.
+
 Note that all protocols take a final parameter called "Allow Empty Data". This indicates whether the protocol will allow an empty string to be passed down to later Protocols (instead of returning :STOP). Can be true, false, or nil, where nil is interpreted as true unless the Protocol is the last Protocol of the chain. End users of a protocol will almost always simply leave off this parameter. For more information read the [Custom Protocols](protocols.md#custom-protocols) documentation.
+
+Note the first parameter after the PROTOCOL keyword is how to apply the protocol: READ, WRITE, or READ_WRITE. Read applies the protocol on incoming packets (telemetry) and write on outgoing packets (commands). The next parameter is the protocol filename or class name. All other parameters are protocol specific.
 
 ### COBS Protocol
 
@@ -107,9 +113,76 @@ The Terminated Protocol delineates packets using termination characters found at
 | Sync Pattern                 | Hex string representing a byte pattern that will be searched for in the raw data. This pattern represents a packet delimiter and all data found including the sync pattern will be returned. | No       | nil (no sync pattern)    |
 | Fill Fields                  | Whether to fill in the sync pattern on outgoing packets                                                                                                                                      | No       | false                    |
 
-### Template Protocol
+### GEMS Protocol (Enterprise)
 
-**Deprecated**
+The GEMS Protocol implements the Ground Equipment Monitoring Service protocol. It is added along with the TerminatedProtocol which delineates packets using '|END'. The GEMS Interface is currently only implemented in Ruby.
+
+The GEMS protocol doesn't take any parameters but should be added to an interface after the TerminatedProtocol and CmdResponseProtocol.
+
+plugin.txt Ruby Example:
+
+```ruby
+INTERFACE GEMS_INT tcpip_client_interface.rb openc3-operator 8080 8080 10.0 nil nil
+  # TerminatedProtocol 0x7C454E44 0x7C454E44 false 0       0x7C47454D53 false ... means:
+  #                    wtc        rtc        strip discard sync         fill
+  # where wtc = write termination characters, end of the gems protocol: 0x7C454E44 == '|END'
+  #       rtc = read termination characters, end of the gems protocol: 0x7C454E44 == '|END'
+  #       strip = strip read termination (false)
+  #       discard = 0 bytes
+  #       sync pattern = beginning of the GEMS protocol: 0x7C47454D53 == '|GEMS'
+  #       fill = whether to fill in the sync pattern (false as we specify fill in our cmd/tlm definitions)
+  PROTOCOL READ TerminatedProtocol 0x7C454E44 0x7C454E44 false 0 0x7C47454D53 false
+  # CmdResponseProtocol 5.0 0.2 true means:
+  #   5 sec response timeout, 0.2 sec response polling,
+  #   and true to raise exceptions when protocol errors occur
+  PROTOCOL READ_WRITE CmdResponseProtocol 5.0 0.2 true
+  PROTOCOL READ_WRITE GemsProtocol
+```
+
+For a full example, please see the [openc3-cosmos-gems-interface](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-gems-interface) in the COSMOS Enterprise Plugins.
+
+### CCSDS CLTU Protocol (Enterprise)
+
+The CCSDS CLTU Protocol handles the CLTU (Communicates Link Transfer Unit) for Command Streams. It encodes outgoing messages with a BCH encoding and then applies a header and footer to the data.
+
+| Parameter | Description                    | Required | Default            |
+| --------- | ------------------------------ | -------- | ------------------ |
+| Header    | Header before BCH encoded data | No       | 0xEB90             |
+| Footer    | Footer after BCH encoded data  | No       | 0xC5C5C5C5C5C5C579 |
+| Fill Byte | BCH encoding fill byte         | No       | 0x55               |
+
+For a full example, please see the [openc3-cosmos-ccsds-protocols](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-ccsds-protocols) in the COSMOS Enterprise Plugins.
+
+### CCSDS TCTF Protocol (Enterprise)
+
+The CCSDS TCTF Protocol handles the Telecommand Transfer Frame for Command Streams.
+
+| Parameter     | Description                                                                   | Required | Default |
+| ------------- | ----------------------------------------------------------------------------- | -------- | ------- |
+| Randomization | Whether to encode and randomize the transfer frame                            | No       | true    |
+| Error Control | Whether to use the Frame Error Control Field and apply a 16 bit CRC           | No       | false   |
+| Bypass        | Bypass bit where 0 is Type-A and 1 is Type-B (bypass frame acceptance checks) | No       | 1       |
+| SCID          | Spacecraft Identifier (10 bits)                                               | No       | 0       |
+| VCID          | Virtual Channel Identifier (6 bits)                                           | No       | 0       |
+
+For a full example, please see the [openc3-cosmos-ccsds-protocols](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-ccsds-protocols) in the COSMOS Enterprise Plugins.
+
+### CCSDS TMTF Protocol (Enterprise)
+
+The CCSDS TMTF Protocol handles the Telemetry Transfer Frame for Telemetry Streams. It adds VCID, MC_FRM_CNT, VC_FRM_CNT to extra which will be included in the Decom data.
+
+| Parameter             | Description                                                                                                                                                                                  | Required | Default                  |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------------ |
+| SCID                  | Spacecraft Identifier (10 bits)                                                                                                                                                              | Yes      |                          |
+| Frame Length          |                                                                                                                                                                                              | No       | 2048                     |
+| Randomization         | Whether the transfer frame was encoded and randomized                                                                                                                                        | No       | true                     |
+| Discard Leading Bytes | The number of bytes to discard from the binary data after reading. Note that this applies to bytes including the sync pattern if the sync pattern is being used.                             | No       | 0 (do not discard bytes) |
+| Sync Pattern          | Hex string representing a byte pattern that will be searched for in the raw data. This pattern represents a packet delimiter and all data found including the sync pattern will be returned. | No       | 0x1ACFFC1D               |
+| Fill Fields           | Whether to fill in the sync pattern on outgoing packets                                                                                                                                      | No       | true                     |
+
+For a full example, please see the [openc3-cosmos-ccsds-protocols](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-ccsds-protocols) in the COSMOS Enterprise Plugins.
+
+### Template Protocol (Deprecated)
 
 This protocol is now deprecated because it is not able to capture the original SCPI messages in COSMOS raw logging. Please use the TemplateAccessor with the CmdResponseProtocol instead.
 
@@ -130,9 +203,9 @@ The Template Protocol works much like the Terminated Protocol except it is desig
 | Response Polling Period      | Number of seconds to wait between polling for a response                                                                                                                                     | No       | 0.02                     |
 | Raise Exceptions             | Whether to raise exceptions when errors occur like timeouts or unexpected responses                                                                                                          | No       | false                    |
 
-### Preidentified Protocol
+### Preidentified Protocol (Internal)
 
-The Preidentified Protocol delineates packets using a custom COSMOS header. This Protocol is created to allow tools to connect and receive the entire packet stream. It can also be used to chain COSMOS instances together although that should rarely be needed with the new web native implementation.
+The Preidentified Protocol delineates packets using a custom COSMOS header. This internal Protocol was created to allow tools to connect and receive the entire packet stream. It can also be used to chain COSMOS instances together although that should rarely be needed with the new web native implementation.
 
 | Parameter    | Description                                                                                                                                                                                                                    | Required | Default                 |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- | ----------------------- |
@@ -146,13 +219,40 @@ COSMOS provides the following helper protocols: CmdResponse, Crc and Ignore. The
 
 ### CmdResponse Protocol
 
-The CmdResponse Protocol waits for a response for any commands with a defined response packet (TODO: More documentation and examples).
+The CmdResponse Protocol waits for a response for any commands with a defined response packet.
 
 | Parameter               | Description                                                                                                  | Required | Default |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------ | -------- | ------- |
 | Response Timeout        | Number of seconds to wait before timing out when waiting for a response                                      | No       | 5       |
 | Response Polling Period | Number of seconds to wait between polling for a response                                                     | No       | 0.02    |
 | Raise Exceptions        | Whether to raise exceptions when errors occur in the protocol like unexpected responses or response timeouts | No       | false   |
+
+#### Packet Definitions
+
+The CmdResponseProtocol utilizes the [RESPONSE](../configuration/command#response) keyword in the command definition to determine which telemetry packet should be expected when the given command is sent.
+
+```
+COMMAND SCPI_PS GET_STATUS BIG_ENDIAN "Gets status"
+  ACCESSOR TemplateAccessor
+  TEMPLATE ":MEAS:VOLT? (@1:2)"
+  RESPONSE SCPI_PS STATUS
+```
+
+The Response packet (STATUS) should be defined to contain the response data.
+
+```
+TELEMETRY SCPI_PS STATUS BIG_ENDIAN "Status"
+  ACCESSOR TemplateAccessor
+  TEMPLATE "<MEAS_VOLTAGE_1>,<MEAS_VOLTAGE_2>"
+  APPEND_ITEM MEAS_VOLTAGE_1 32 FLOAT "Voltage Reading for Channel 1"
+    UNITS VOLTS V
+    FORMAT_STRING %0.3f
+  APPEND_ITEM MEAS_VOLTAGE_2 32 FLOAT "Voltage Reading for Channel 2"
+    UNITS VOLTS V
+    FORMAT_STRING %0.3f
+```
+
+For a full example, please see the [openc3-cosmos-scpi-power-supply](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-scpi-power-supply) in the COSMOS Enterprise Plugins.
 
 ### CRC Protocol
 

@@ -134,7 +134,7 @@ If an item's bit offset overlaps another item, OpenC3 issues a warning. This key
 #### KEY
 <div class="right">(Since 5.0.10)</div>**Defines the key used to access this raw value in the packet.**
 
-Keys are often JsonPath or XPath strings
+Keys are often [JSONPath](https://en.wikipedia.org/wiki/JSONPath) or [XPath](https://en.wikipedia.org/wiki/XPath) strings
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -261,7 +261,7 @@ class TheGreatConversion(Conversion):
         super().__init__()
         self.multiplier = float(multiplier)
     def call(self, value, packet, buffer):
-        return value * multiplier
+        return value * self.multiplier
 ```
 
 #### POLY_WRITE_CONVERSION
@@ -572,7 +572,7 @@ Sending a hazardous command causes a dialog asking for confirmation before sendi
 ### ACCESSOR
 <div class="right">(Since 5.0.10)</div>**Defines the class used to read and write raw values from the packet**
 
-Defines the class that is used too read raw values from the packet. Defaults to BinaryAccessor. Provided accessors also include JsonAccessor, CborAccessor, HtmlAccessor, and XmlAccessor.
+Defines the class that is used too read raw values from the packet. Defaults to BinaryAccessor. For more information see [Accessors](accessors).
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -660,6 +660,12 @@ Defined in custom_validator.rb:
 
 require 'openc3/packets/command_validator'
 class CustomValidator < OpenC3::CommandValidator
+  # Both the pre_check and post_check are passed the command packet that was sent
+  # You can inspect the command in your checks as follows:
+  #   packet.target_name => target name
+  #   packet.packet_name => packet name (command name)
+  #   packet.read("ITEM") => converted value
+  #   packet.read("ITEM", :RAW) => raw value
   def pre_check(packet)
     if tlm("TGT PKT ITEM") == 0
       return [false, "TGT PKT ITEM is 0"]
@@ -681,6 +687,12 @@ VALIDATOR custom_validator.rb
 Defined in custom_validator.py:
 
 class CustomValidator(CommandValidator):
+    # Both the pre_check and post_check are passed the command packet that was sent
+    # You can inspect the command in your checks as follows:
+    #   packet.target_name => target name
+    #   packet.packet_name => packet name (command name)
+    #   packet.read("ITEM") => converted value
+    #   packet.read("ITEM", :RAW) => raw value
     def pre_check(self, command):
         if tlm("TGT PKT ITEM") == 0:
             return [False, "TGT PKT ITEM is 0"]

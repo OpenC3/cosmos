@@ -1,5 +1,5 @@
 ---
-sidebar_position: 8
+sidebar_position: 9
 title: Tables
 description: Table definition file format and keywords
 ---
@@ -138,7 +138,7 @@ If an item's bit offset overlaps another item, OpenC3 issues a warning. This key
 #### KEY
 <div class="right">(Since 5.0.10)</div>**Defines the key used to access this raw value in the packet.**
 
-Keys are often JsonPath or XPath strings
+Keys are often [JSONPath](https://en.wikipedia.org/wiki/JSONPath) or [XPath](https://en.wikipedia.org/wiki/XPath) strings
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -265,7 +265,7 @@ class TheGreatConversion(Conversion):
         super().__init__()
         self.multiplier = float(multiplier)
     def call(self, value, packet, buffer):
-        return value * multiplier
+        return value * self.multiplier
 ```
 
 #### POLY_WRITE_CONVERSION

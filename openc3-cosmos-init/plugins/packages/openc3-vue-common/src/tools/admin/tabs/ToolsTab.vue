@@ -61,8 +61,8 @@
           <template v-slot:append>
             <v-tooltip location="bottom">
               <template v-slot:activator="{ props }">
-                <v-icon v-bind="props" @click="editTool(tool)">
-                  mdi-pencil
+                <v-icon v-bind="props" @click="showTool(tool)">
+                  mdi-eye
                 </v-icon>
               </template>
               <span>Edit Tool</span>
@@ -170,7 +170,7 @@ export default {
           })
         })
     },
-    editTool(name) {
+    showTool(name) {
       Api.get(`/openc3-api/tools/${name}`, {
         // Tools are global and are always installed into the DEFAULT scope
         params: { scope: 'DEFAULT' },

@@ -153,7 +153,9 @@ OPTION:
       OPTION LISTEN_ADDRESS 127.0.0.1
 SECRET:
   summary: Define a secret needed by this interface
-  description: Defines a secret for this interface and optionally assigns its value to an option
+  description:
+    Defines a secret for this interface and optionally assigns its value to an option.
+    For more information see [Admin Secrets](/docs/tools/admin#secrets).
   since: 5.3.0
   parameters:
     - name: Type
@@ -164,15 +166,19 @@ SECRET:
       values: .*
     - name: Secret Name
       required: true
-      description: The name of the secret to retrieve
+      description:
+        The name of the secret to retrieve from the Admin / Secrets tab.
+        For more information see [Admin Secrets](/docs/tools/admin#secrets).
       values: .*
     - name: Environment Variable or File Path
       required: true
-      description: Environment variable name or file path to store secret
+      description: Environment variable name or file path to store secret.
+        Note that if you use the Option Name to set an option to the secret value,
+        this value doesn't really matter as long as it is unique.
       values: .*
     - name: Option Name
       required: false
-      description: Interface option to pass the secret value
+      description: Interface option to pass the secret value. This is the primary way to pass secrets to interfaces.
       values: .*
     - name: Secret Store Name
       required: false
