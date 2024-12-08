@@ -402,37 +402,34 @@
 
 <script>
 import axios from 'axios'
-import Cable from '@openc3/tool-common/src/services/cable.js'
-import Api from '@openc3/tool-common/src/services/api'
-import EditorModes from '@openc3/tool-common/src/components/ace/EditorModes'
 import { format } from 'date-fns'
 import { Splitpanes, Pane } from 'splitpanes'
 import 'splitpanes/dist/splitpanes.css'
-import FileOpenSaveDialog from '@openc3/tool-common/src/components/FileOpenSaveDialog'
-import EnvironmentDialog from '@openc3/tool-common/src/components/EnvironmentDialog'
-import SimpleTextDialog from '@openc3/tool-common/src/components/SimpleTextDialog'
-import CriticalCmdDialog from '@openc3/tool-common/src/components/CriticalCmdDialog'
-import TopBar from '@openc3/tool-common/src/components/TopBar'
-import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
-import { fileIcon } from '@openc3/tool-common/src/tools/base/util/fileIcon'
 
-import AskDialog from '@/tools/ScriptRunner/Dialogs/AskDialog'
-import FileDialog from '@/tools/ScriptRunner/Dialogs/FileDialog'
-import InformationDialog from '@/tools/ScriptRunner/Dialogs/InformationDialog'
-import EventListDialog from '@openc3/tool-common/src/tools/calendar/Dialogs/EventListDialog'
-import OverridesDialog from '@/tools/ScriptRunner/Dialogs/OverridesDialog'
-import PromptDialog from '@/tools/ScriptRunner/Dialogs/PromptDialog'
-import ResultsDialog from '@/tools/ScriptRunner/Dialogs/ResultsDialog'
-import ScriptEnvironmentDialog from '@/tools/ScriptRunner/Dialogs/ScriptEnvironmentDialog'
-import SuiteRunner from '@/tools/ScriptRunner/SuiteRunner'
-import ScriptLogMessages from '@/tools/ScriptRunner/ScriptLogMessages'
-import Openc3Screen from '@openc3/tool-common/src/components/Openc3Screen'
+import { Api, Cable, OpenC3Api } from '@openc3/js-common/services'
 import {
-  CmdCompleter,
-  TlmCompleter,
-  MnemonicChecker,
-} from '@/tools/ScriptRunner/autocomplete'
-import { SleepAnnotator } from '@/tools/ScriptRunner/annotations'
+  AceEditorModes,
+  CriticalCmdDialog,
+  EnvironmentDialog,
+  FileOpenSaveDialog,
+  Openc3Screen,
+  SimpleTextDialog,
+  TopBar,
+} from '@openc3/vue-common/components'
+import { fileIcon } from '@openc3/vue-common/util'
+import { EventListDialog } from '@openc3/vue-common/tools/calendar'
+
+import AskDialog from './Dialogs/AskDialog'
+import FileDialog from './Dialogs/FileDialog'
+import InformationDialog from './Dialogs/InformationDialog'
+import OverridesDialog from './Dialogs/OverridesDialog'
+import PromptDialog from './Dialogs/PromptDialog'
+import ResultsDialog from './Dialogs/ResultsDialog'
+import ScriptEnvironmentDialog from './Dialogs/ScriptEnvironmentDialog'
+import SuiteRunner from './SuiteRunner'
+import ScriptLogMessages from './ScriptLogMessages'
+import { CmdCompleter, TlmCompleter, MnemonicChecker } from './autocomplete'
+import { SleepAnnotator } from './annotations'
 import RunningScripts from './RunningScripts.vue'
 
 // Matches target_file.rb TEMP_FOLDER
@@ -465,7 +462,7 @@ export default {
     ScriptLogMessages,
     CriticalCmdDialog,
   },
-  mixins: [EditorModes],
+  mixins: [AceEditorModes],
   data() {
     return {
       title: 'Script Runner',

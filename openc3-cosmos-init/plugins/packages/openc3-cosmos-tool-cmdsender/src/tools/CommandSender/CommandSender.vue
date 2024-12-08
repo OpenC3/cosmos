@@ -240,19 +240,20 @@
 </template>
 
 <script>
+import 'sprintf-js'
 import * as ace from 'ace-builds'
 import 'ace-builds/src-min-noconflict/mode-ruby'
 import 'ace-builds/src-min-noconflict/theme-twilight'
-import Api from '@openc3/tool-common/src/services/api'
-import TargetPacketItemChooser from '@openc3/tool-common/src/components/TargetPacketItemChooser'
-import CommandParameterEditor from '@/tools/CommandSender/CommandParameterEditor'
-import Utilities from '@/tools/CommandSender/utilities'
-import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
-import DetailsDialog from '@openc3/tool-common/src/components/DetailsDialog'
-import CriticalCmdDialog from '@openc3/tool-common/src/components/CriticalCmdDialog'
-import TopBar from '@openc3/tool-common/src/components/TopBar'
-import Openc3Screen from '@openc3/tool-common/src/components/Openc3Screen'
-import 'sprintf-js'
+import { Api, OpenC3Api } from '@openc3/js-common/services'
+import {
+  DetailsDialog,
+  CriticalCmdDialog,
+  Openc3Screen,
+  TargetPacketItemChooser,
+  TopBar,
+} from '@openc3/vue-common/components'
+import CommandParameterEditor from './CommandParameterEditor'
+import Utilities from './utilities'
 
 export default {
   mixins: [Utilities],

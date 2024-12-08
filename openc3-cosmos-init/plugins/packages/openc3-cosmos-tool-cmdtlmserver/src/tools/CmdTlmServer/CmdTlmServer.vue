@@ -67,9 +67,9 @@
 </template>
 
 <script>
-import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
-import LogMessages from '@openc3/tool-common/src/components/LogMessages'
-import TopBar from '@openc3/tool-common/src/components/TopBar'
+import { OpenC3Api } from '@openc3/js-common/services'
+import { LogMessages, TopBar } from '@openc3/vue-common/components'
+
 export default {
   components: {
     LogMessages,

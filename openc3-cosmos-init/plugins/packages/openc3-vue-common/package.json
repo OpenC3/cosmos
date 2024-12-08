@@ -1,0 +1,95 @@
+{
+  "name": "@openc3/vue-common",
+  "description": "Vue component library for COSMOS tool development",
+  "version": "5.21.0-beta0",
+  "license": "SEE LICENSE IN LICENSE.txt",
+  "homepage": "https://openc3.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OpenC3/cosmos.git",
+    "directory": "openc3-cosmos-init/plugins/packages/openc3-vue-common"
+  },
+  "bugs": {
+    "url": "https://github.com/OpenC3/cosmos/issues"
+  },
+  "keywords": [
+    "openc3",
+    "cosmos"
+  ],
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    "./styles": {
+      "import": "./dist/style.css"
+    },
+    "./components": {
+      "import": "./dist/components.js",
+      "require": "./dist/components.cjs"
+    },
+    "./icons": {
+      "import": "./dist/icons.js",
+      "require": "./dist/icons.cjs"
+    },
+    "./plugins": {
+      "import": "./dist/plugins.js",
+      "require": "./dist/plugins.cjs"
+    },
+    "./tools/admin": {
+      "import": "./dist/tools/admin.js",
+      "require": "./dist/tools/admin.cjs"
+    },
+    "./tools/base": {
+      "import": "./dist/tools/base.js",
+      "require": "./dist/tools/base.cjs"
+    },
+    "./tools/calendar": {
+      "import": "./dist/tools/calendar.js",
+      "require": "./dist/tools/calendar.cjs"
+    },
+    "./util": {
+      "import": "./dist/util.js",
+      "require": "./dist/util.cjs"
+    },
+    "./widgets": {
+      "import": "./dist/widgets.js",
+      "require": "./dist/widgets.cjs"
+    }
+  },
+  "scripts": {
+    "serve": "vite build --watch --mode dev-server",
+    "build": "vite build",
+    "lint": "eslint src",
+    "serve:standalone": "vite preview --mode standalone"
+  },
+  "dependencies": {
+    "@astrouxds/astro-web-components": "7.24.0",
+    "@openc3/js-common": "5.21.0-beta0",
+    "@rails/actioncable": "7.1.3-4",
+    "axios": "1.7.7",
+    "binary-search": "1.3.6",
+    "date-fns": "4.1.0",
+    "date-fns-tz": "3.2.0",
+    "lodash": "4.17.21",
+    "sass": "1.80.4",
+    "single-spa": "5.9.5",
+    "sortablejs": "1.15.3",
+    "sprintf-js": "1.1.3",
+    "uplot": "1.6.31",
+    "vue": "3.5.4",
+    "vuetify": "3.7.1",
+    "vuex": "4.1.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "5.1.5",
+    "@vue/eslint-config-prettier": "9.0.0",
+    "eslint": "9.16.0",
+    "eslint-config-prettier": "9.1.0",
+    "eslint-plugin-prettier": "5.2.1",
+    "eslint-plugin-vue": "9.27.0",
+    "prettier": "3.3.3",
+    "vite": "5.4.11",
+    "vue-eslint-parser": "9.4.3"
+  }
+}

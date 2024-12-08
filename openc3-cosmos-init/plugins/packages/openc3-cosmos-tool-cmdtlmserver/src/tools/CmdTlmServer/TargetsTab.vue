@@ -125,15 +125,14 @@
     <upgrade-to-enterprise-dialog
       v-model="showUpgradeToEnterpriseDialog"
       reason="Command Authority is Enterprise Only"
-    ></upgrade-to-enterprise-dialog>
+    />
   </v-card>
 </template>
 
 <script>
-import Api from '@openc3/tool-common/src/services/api'
+import { Api, Cable } from '@openc3/js-common/services'
+import { UpgradeToEnterpriseDialog } from '@openc3/vue-common/components'
 import Updater from './Updater'
-import UpgradeToEnterpriseDialog from '@openc3/tool-common/src/components/UpgradeToEnterpriseDialog'
-import Cable from '@openc3/tool-common/src/services/cable.js'
 
 export default {
   components: {

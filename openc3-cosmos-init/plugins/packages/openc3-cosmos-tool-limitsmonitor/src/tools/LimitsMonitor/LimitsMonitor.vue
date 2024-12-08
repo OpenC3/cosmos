@@ -86,13 +86,15 @@
 </template>
 
 <script>
-import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
-import LimitsControl from '@/tools/LimitsMonitor/LimitsControl'
-import LimitsEvents from '@/tools/LimitsMonitor/LimitsEvents'
-import TopBar from '@openc3/tool-common/src/components/TopBar'
-import Config from '@openc3/tool-common/src/components/config/Config'
-import OpenConfigDialog from '@openc3/tool-common/src/components/config/OpenConfigDialog'
-import SaveConfigDialog from '@openc3/tool-common/src/components/config/SaveConfigDialog'
+import { OpenC3Api } from '@openc3/js-common/services'
+import {
+  Config,
+  OpenConfigDialog,
+  SaveConfigDialog,
+  TopBar,
+} from '@openc3/vue-common/components'
+import LimitsControl from './LimitsControl'
+import LimitsEvents from './LimitsEvents'
 
 export default {
   components: {

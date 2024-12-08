@@ -160,7 +160,7 @@
 </template>
 
 <script>
-import TargetPacketItemChooser from '@openc3/tool-common/src/components/TargetPacketItemChooser'
+import { TargetPacketItemChooser } from '@openc3/vue-common/components'
 
 export default {
   components: {

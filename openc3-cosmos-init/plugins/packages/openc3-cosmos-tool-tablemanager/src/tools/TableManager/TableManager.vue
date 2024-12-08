@@ -248,12 +248,13 @@
 </template>
 
 <script>
-import Api from '@openc3/tool-common/src/services/api'
-import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
-import TopBar from '@openc3/tool-common/src/components/TopBar'
-import TableRow from '@/tools/TableManager/TableRow'
-import FileOpenSaveDialog from '@openc3/tool-common/src/components/FileOpenSaveDialog'
-import SimpleTextDialog from '@openc3/tool-common/src/components/SimpleTextDialog'
+import { Api, OpenC3Api } from '@openc3/js-common/services'
+import {
+  FileOpenSaveDialog,
+  SimpleTextDialog,
+  TopBar,
+} from '@openc3/vue-common/components'
+import TableRow from './TableRow'
 
 export default {
   components: {

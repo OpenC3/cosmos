@@ -146,15 +146,17 @@
 </template>
 
 <script>
-import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
-import Config from '@openc3/tool-common/src/components/config/Config'
-import Graph from '@openc3/tool-common/src/components/Graph.vue'
-import OpenConfigDialog from '@openc3/tool-common/src/components/config/OpenConfigDialog'
-import SaveConfigDialog from '@openc3/tool-common/src/components/config/SaveConfigDialog'
-import TargetPacketItemChooser from '@openc3/tool-common/src/components/TargetPacketItemChooser'
-import TopBar from '@openc3/tool-common/src/components/TopBar'
 import Muuri from 'muuri'
-import SettingsDialog from '@/tools/TlmGrapher/SettingsDialog'
+import { OpenC3Api } from '@openc3/js-common/services'
+import {
+  Config,
+  Graph,
+  OpenConfigDialog,
+  SaveConfigDialog,
+  TargetPacketItemChooser,
+  TopBar,
+} from '@openc3/vue-common/components'
+import SettingsDialog from './SettingsDialog'
 
 const MUURI_REFRESH_TIME = 250
 export default {

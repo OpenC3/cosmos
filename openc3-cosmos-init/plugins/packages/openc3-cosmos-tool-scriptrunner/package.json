@@ -11,7 +11,8 @@
   },
   "dependencies": {
     "@astrouxds/astro-web-components": "7.24.0",
-    "@openc3/tool-common": "5.21.0-beta0",
+    "@openc3/js-common": "5.21.0-beta0",
+    "@openc3/vue-common": "5.21.0-beta0",
     "ace-builds": "1.36.3",
     "axios": "1.7.7",
     "date-fns": "4.1.0",

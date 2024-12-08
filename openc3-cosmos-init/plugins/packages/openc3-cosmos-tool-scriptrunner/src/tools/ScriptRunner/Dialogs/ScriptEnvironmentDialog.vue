@@ -56,7 +56,7 @@
 </template>
 
 <script>
-import EnvironmentChooser from '@openc3/tool-common/src/components/EnvironmentChooser'
+import { EnvironmentChooser } from '@openc3/vue-common/components'
 
 export default {
   components: {

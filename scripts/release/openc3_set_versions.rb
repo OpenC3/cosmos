@@ -114,7 +114,8 @@ package_dot_json_files = [
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tablemanager/package.json',
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tlmgrapher/package.json',
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tlmviewer/package.json',
-  'openc3-cosmos-init/plugins/packages/openc3-tool-common/package.json',
+  'openc3-cosmos-init/plugins/packages/openc3-js-common/package.json',
+  'openc3-cosmos-init/plugins/packages/openc3-vue-common/package.json',
   'openc3/templates/widget/package.json',
   'openc3/templates/tool_vue/package.json',
   'openc3/templates/tool_react/package.json',
@@ -132,8 +133,10 @@ package_dot_json_files.each do |rel_path|
   data.each_line do |line|
     if line =~ /\"version\":/
       mod_data << "  \"version\": \"#{version}\",\n"
-    elsif line =~ /\"@openc3\/tool-common\":/
-      mod_data << "    \"@openc3/tool-common\": \"#{version}\",\n"
+    elsif line =~ /\"@openc3\/js-common\":/
+      mod_data << "    \"@openc3/js-common\": \"#{version}\",\n"
+    elsif line =~ /\"@openc3\/vue-common\":/
+      mod_data << "    \"@openc3/vue-common\": \"#{version}\",\n"
     elsif line =~ /\"@openc3\/ace-diff\":/
       mod_data << "    \"@openc3/ace-diff\": \"#{version}\",\n"
     else
