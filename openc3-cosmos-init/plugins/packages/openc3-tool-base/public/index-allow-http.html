@@ -83,15 +83,15 @@
         System.import('vue'),
       ]).then(function (modules) {
         System.set(System.resolve('vue'), window.Vue)
-        Promise.all([
+        return Promise.all([
           System.import('vue-router'),
           System.import('vuex'),
           System.import('vuetify')
-        ]).then(function (modules) {
-          System.set(System.resolve('vue-router'), window.VueRouter)
-          System.set(System.resolve('vuex'), window.Vuex)
-          System.import('@openc3/tool-base')
-        })
+        ])
+      }).then(function (modules) {
+        System.set(System.resolve('vue-router'), window.VueRouter)
+        System.set(System.resolve('vuex'), window.Vuex)
+        System.import('@openc3/tool-base')
       })
     })()
   </script>
