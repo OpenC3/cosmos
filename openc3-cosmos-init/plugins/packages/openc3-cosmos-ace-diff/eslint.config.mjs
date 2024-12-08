@@ -23,12 +23,8 @@ export default [...compat.extends("plugin:prettier/recommended"), {
             ...globals.node,
         },
 
-        ecmaVersion: 5,
-        sourceType: "commonjs",
-
-        parserOptions: {
-            parser: "@babel/eslint-parser",
-        },
+        ecmaVersion: 2020,
+        sourceType: "module",
     },
 
     rules: {
