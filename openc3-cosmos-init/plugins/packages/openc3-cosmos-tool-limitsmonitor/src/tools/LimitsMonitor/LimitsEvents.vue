@@ -63,8 +63,8 @@
 </template>
 
 <script>
-import Cable from '@openc3/tool-common/src/services/cable.js'
-import TimeFilters from '@openc3/tool-common/src/tools/base/util/timeFilters.js'
+import { Cable } from '@openc3/js-common/services'
+import { TimeFilters } from '@openc3/vue-common/util'
 
 export default {
   props: {

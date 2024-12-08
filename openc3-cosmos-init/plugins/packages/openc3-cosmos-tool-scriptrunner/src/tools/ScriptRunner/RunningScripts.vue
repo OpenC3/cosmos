@@ -141,8 +141,8 @@
 </template>
 
 <script>
-import Api from '@openc3/tool-common/src/services/api'
-import OutputDialog from '@openc3/tool-common/src/components/OutputDialog'
+import { Api } from '@openc3/js-common/services'
+import { OutputDialog } from '@openc3/vue-common/components'
 
 export default {
   props: {

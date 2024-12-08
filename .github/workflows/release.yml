@@ -115,16 +115,28 @@ jobs:
           user: __token__
           password: ${{ secrets.PYPI_API_TOKEN }}
           packages-dir: openc3/python/dist
-      - name: publish npm packages
+      - name: publish npm js package
         if: ${{ github.event.inputs.update_latest == 'true' }}
         run: npm publish --access public
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-tool-common
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-js-common
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - name: publish npm packages pre
+      - name: publish npm js package pre
         if: ${{ github.event.inputs.update_latest != 'true' }}
         run: npm publish --tag pre --access public
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-tool-common
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-js-common
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: publish npm vue package
+        if: ${{ github.event.inputs.update_latest == 'true' }}
+        run: npm publish --access public
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-vue-common
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: publish npm vue package pre
+        if: ${{ github.event.inputs.update_latest != 'true' }}
+        run: npm publish --tag pre --access public
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-vue-common
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Update version to next

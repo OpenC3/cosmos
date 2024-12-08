@@ -17,7 +17,7 @@
 */
 
 import { createRouter, createWebHistory } from 'vue-router'
-import { prependBasePath } from '@openc3/tool-common/src/utils/routeUtils.js'
+import { prependBasePath } from '@openc3/js-common/utils'
 
 const routes = [
   {

@@ -179,13 +179,15 @@
 </template>
 
 <script>
-import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
-import ValueWidget from '@openc3/tool-common/src/components/widgets/ValueWidget'
-import TargetPacketItemChooser from '@openc3/tool-common/src/components/TargetPacketItemChooser'
-import TopBar from '@openc3/tool-common/src/components/TopBar'
-import Config from '@openc3/tool-common/src/components/config/Config'
-import OpenConfigDialog from '@openc3/tool-common/src/components/config/OpenConfigDialog'
-import SaveConfigDialog from '@openc3/tool-common/src/components/config/SaveConfigDialog'
+import { OpenC3Api } from '@openc3/js-common/services'
+import {
+  Config,
+  OpenConfigDialog,
+  SaveConfigDialog,
+  TargetPacketItemChooser,
+  TopBar,
+} from '@openc3/vue-common/components'
+import { ValueWidget } from '@openc3/vue-common/widgets'
 
 // Used in the menu and openConfiguration lookup
 const valueTypeToRadioGroup = {

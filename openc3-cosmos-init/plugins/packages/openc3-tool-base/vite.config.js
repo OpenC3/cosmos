@@ -1,14 +1,13 @@
 import { resolve } from 'path'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import { devServerPlugin } from '@openc3/tool-common/viteDevServerPlugin'
+import { devServerPlugin } from '@openc3/js-common/viteDevServerPlugin'
 
 const DEFAULT_EXTENSIONS = ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json']
 
 export default defineConfig((options) => {
   return {
     build: {
-      // minify: false,
       outDir: 'tools/base',
       emptyOutDir: true,
       rollupOptions: {

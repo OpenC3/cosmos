@@ -244,9 +244,8 @@
 </template>
 
 <script>
-import TopBar from '@openc3/tool-common/src/components/TopBar'
-import OutputDialog from '@openc3/tool-common/src/components/OutputDialog'
-import Api from '@openc3/tool-common/src/services/api'
+import { Api } from '@openc3/js-common/services'
+import { OutputDialog, TopBar } from '@openc3/vue-common/components'
 import axios from 'axios'
 
 export default {

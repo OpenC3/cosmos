@@ -1,12 +1,12 @@
 import { createApp } from 'vue'
 import { defineCustomElements } from '@astrouxds/astro-web-components/loader'
+import { Notify, store, vuetify } from '@openc3/vue-common/plugins'
+
+import '@openc3/vue-common/styles'
+import '@/assets/stylesheets/layout/layout.scss'
 
 import App from './App.vue'
-import vuetify from '@openc3/tool-common/src/plugins/vuetify'
 import router from './router'
-import store from '@openc3/tool-common/src/plugins/store'
-import '@openc3/tool-common/src/assets/stylesheets/layout/layout.scss'
-import Notify from '@openc3/tool-common/src/plugins/notify'
 
 defineCustomElements()
 
@@ -15,8 +15,8 @@ Object.getPrototypeOf(System).firstGlobalProp = true
 const app = createApp(App)
 
 app.use(store)
-app.use(router)
 app.use(vuetify)
+app.use(router)
 app.use(Notify, { store })
 
 const options = OpenC3Auth.getInitOptions()

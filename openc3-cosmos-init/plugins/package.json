@@ -1,6 +1,9 @@
 {
   "name": "openc3",
   "private": true,
+  "scripts": {
+    "build:common": "yarn workspace @openc3/ace-diff build && yarn workspace @openc3/js-common build && yarn workspace @openc3/vue-common build"
+  },
   "workspaces": [
     "packages/*"
   ],

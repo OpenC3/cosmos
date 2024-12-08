@@ -20,7 +20,7 @@
 # if purchased from OpenC3, Inc.
 */
 
-import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
+import { OpenC3Api } from '@openc3/js-common/services'
 
 export default {
   props: {

@@ -388,8 +388,8 @@ def check_tool_base(path, base_pkgs)
 
       # Now update the files with references to materialdesignicons
       files = %w(src/index.ejs src/index-allow-http.ejs)
-      # The base also has to update index.html in openc3-tool-common
-      files << "../packages/openc3-tool-common/public/index.html" unless path.include?('enterprise')
+      # The base also has to update index.html in openc3-tool-base
+      files << "../packages/openc3-tool-base/public/index.html" unless path.include?('enterprise')
       files.each do |filename|
         ejs = File.read(filename)
         ejs.gsub!(/materialdesignicons-.+.min.css/, "materialdesignicons-#{latest}.min.css")
