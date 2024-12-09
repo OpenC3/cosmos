@@ -135,9 +135,15 @@ export default {
   },
   methods: {
     messageClass(message) {
-      if (message.match(/CHECK:.*success with value.*after waiting/)) {
+      if (
+        message.match(/(CHECK|WAIT): .*(success|was within range.*) with value/)
+      ) {
         return 'openc3-green'
-      } else if (message.match(/CHECK:.*failed with value.*after waiting/)) {
+      } else if (
+        message.match(
+          /(CHECK|WAIT): .*(failed|failed to be within range.*) with value/,
+        )
+      ) {
         return 'openc3-red'
       } else {
         return ''
