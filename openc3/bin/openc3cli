@@ -508,7 +508,7 @@ def run_migrations(folder)
   if !folder
     folder = "/openc3/lib/openc3/migrations"
     entries = Dir.entries(folder).map { |entry| File.join(folder, entry) }
-    folder = "/openc3-enterprise/lib/openc3/migrations"
+    folder = "/openc3-enterprise/lib/openc3-enterprise/migrations"
     if File.exist?(folder)
       entries.concat(Dir.entries(folder).map { |entry| File.join(folder, entry) })
     end
