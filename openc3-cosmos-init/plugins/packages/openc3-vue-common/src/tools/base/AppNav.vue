@@ -337,6 +337,20 @@ export default {
           urlRerouteOnly: true,
         })
 
+        // Redirect some base paths to the first tool
+        if (
+          window.location.pathname == '/' ||
+          window.location.pathname == '/tools' ||
+          window.location.pathname == '/tools/'
+        ) {
+          for (let key of Object.keys(this.shownTools)) {
+            if (this.appNav[key].shown) {
+              history.replaceState(null, '', this.appNav[key].url)
+              break
+            }
+          }
+        }
+
         // Check every minute if we need to update our token
         setInterval(() => {
           OpenC3Auth.updateToken(120).then(function (refreshed) {
