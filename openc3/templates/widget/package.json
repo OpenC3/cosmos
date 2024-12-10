@@ -1,35 +1,28 @@
 {
-  "name": "widget",
+  "name": "<%= widget_name %>",
   "version": "5.21.0-beta0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "build": "vue-cli-service build --target lib --dest tools/widgets/<%= widget_name %> --formats umd-min <%= widget_path %> --name <%= widget_name %>"
+    "build": "vite build"
   },
   "dependencies": {
     "@astrouxds/astro-web-components": "7.24.0",
-    "vue": "3.5.4",
+    "@openc3/vue-common": "5.21.0-beta0",
     "vuetify": "3.7.1"
   },
   "devDependencies": {
-    "@babel/eslint-parser": "7.25.9",
-    "@rushstack/eslint-patch": "1.10.4",
-    "@vue/babel-preset-app": "5.0.8",
-    "@vue/cli": "5.0.8",
-    "@vue/cli-plugin-babel": "5.0.8",
-    "@vue/cli-plugin-eslint": "5.0.8",
-    "@vue/cli-service": "5.0.8",
+    "@vitejs/plugin-vue": "5.1.5",
     "@vue/eslint-config-prettier": "9.0.0",
-    "babel-loader": "9.2.1",
-    "babel-plugin-istanbul": "7.0.0",
-    "eslint": "8.56.0",
+    "eslint": "9.16.0",
     "eslint-config-prettier": "9.1.0",
     "eslint-plugin-prettier": "5.2.1",
     "eslint-plugin-vue": "9.30.0",
     "prettier": "3.3.3",
     "sass": "1.80.4",
-    "sass-loader": "16.0.2",
-    "vue-cli-plugin-vuetify": "2.5.8",
-    "vue-template-compiler": "2.7.16",
-    "webpack": "5.95.0"
+    "vite": "5.4.11",
+    "vue": "3.5.13",
+    "vite-plugin-style-inject": "0.0.1",
+    "vue-eslint-parser": "9.4.3"
   }
 }

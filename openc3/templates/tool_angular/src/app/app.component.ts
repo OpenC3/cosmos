@@ -1,6 +1,6 @@
 import { Component, ViewChild, AfterViewInit, OnDestroy } from '@angular/core';
 import {CdkPortal, DomPortalOutlet} from '@angular/cdk/portal';
-import { OpenC3Api } from "@openc3/tool-common/src/services/openc3-api";
+import { OpenC3Api } from "@openc3/js-common/services";
 
 @Component({
   selector: 'openc3-tool-<%= tool_name %>-root',

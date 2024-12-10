@@ -11,7 +11,7 @@
     <template>
       <v-text-field
         solo
-        dense
+        density="compact"
         readonly
         single-line
         hide-no-data
@@ -26,7 +26,7 @@
 </template>
 
 <script>
-import VWidget from '@openc3/tool-common/src/components/widgets/VWidget'
+import { VWidget } from '@openc3/vue-common/widgets'
 
 export default {
   mixins: [VWidget],

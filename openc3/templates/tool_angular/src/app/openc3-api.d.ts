@@ -1,1 +1,1 @@
-declare module '@openc3/tool-common/src/services/openc3-api';
+declare module '@openc3/js-common/services';
