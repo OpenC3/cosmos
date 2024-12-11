@@ -109,7 +109,7 @@
         <v-icon v-if="showDisconnect" class="mt-2" color="red">
           mdi-connection
         </v-icon>
-        <v-tooltip location="bottom">
+        <v-tooltip location="top">
           <template v-slot:activator="{ props }">
             <v-btn
               v-bind="props"
@@ -178,7 +178,7 @@
           >
             <span> Start </span>
           </v-btn>
-          <v-tooltip location="bottom">
+          <v-tooltip location="top">
             <template v-slot:activator="{ props }">
               <v-btn
                 v-bind="props"

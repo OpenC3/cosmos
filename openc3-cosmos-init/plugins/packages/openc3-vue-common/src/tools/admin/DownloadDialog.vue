@@ -81,7 +81,7 @@
                     <v-progress-circular indeterminate color="primary" />
                   </div>
                   <div v-else>
-                    <v-tooltip location="bottom">
+                    <v-tooltip location="top">
                       <template v-slot:activator="{ props }">
                         <v-icon
                           v-bind="props"

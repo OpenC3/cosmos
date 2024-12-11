@@ -30,7 +30,7 @@
         v-show="!hideToolbarData"
       >
         <div v-show="errors.length !== 0" class="mx-2">
-          <v-tooltip text="Errors" location="bottom">
+          <v-tooltip text="Errors" location="top">
             <template v-slot:activator="{ props }">
               <v-icon v-bind="props" @click="errorDialog = true"
                 >mdi-alert</v-icon
@@ -39,7 +39,7 @@
           </v-tooltip>
         </div>
 
-        <v-tooltip text="Edit" location="bottom">
+        <v-tooltip text="Edit" location="top">
           <template v-slot:activator="{ props }">
             <v-icon
               v-bind="props"
@@ -55,7 +55,7 @@
         <v-spacer />
 
         <div v-show="expand">
-          <v-tooltip v-if="calcFullSize" text="Collapse" location="bottom">
+          <v-tooltip v-if="calcFullSize" text="Collapse" location="top">
             <template v-slot:activator="{ props }">
               <v-icon
                 v-bind="props"
@@ -65,7 +65,7 @@
               >
             </template>
           </v-tooltip>
-          <v-tooltip v-else text="Expand" location="bottom">
+          <v-tooltip v-else text="Expand" location="top">
             <template v-slot:activator="{ props }">
               <v-icon v-bind="props" @click="expandAll" data-test="expand-all"
                 >mdi-arrow-expand</v-icon
@@ -75,7 +75,7 @@
         </div>
 
         <div v-show="expand">
-          <v-tooltip v-if="fullWidth" text="Collapse Width" location="bottom">
+          <v-tooltip v-if="fullWidth" text="Collapse Width" location="top">
             <template v-slot:activator="{ props }">
               <v-icon
                 v-bind="props"
@@ -85,7 +85,7 @@
               >
             </template>
           </v-tooltip>
-          <v-tooltip v-else text="Expand Width" location="bottom">
+          <v-tooltip v-else text="Expand Width" location="top">
             <template v-slot:activator="{ props }">
               <v-icon
                 v-bind="props"
@@ -98,7 +98,7 @@
         </div>
 
         <div v-show="expand">
-          <v-tooltip v-if="fullHeight" text="Collapse Height" location="bottom">
+          <v-tooltip v-if="fullHeight" text="Collapse Height" location="top">
             <template v-slot:activator="{ props }">
               <v-icon
                 v-bind="props"
@@ -108,7 +108,7 @@
               >
             </template>
           </v-tooltip>
-          <v-tooltip v-else text="Expand Height" location="bottom">
+          <v-tooltip v-else text="Expand Height" location="top">
             <template v-slot:activator="{ props }">
               <v-icon
                 v-bind="props"
@@ -120,7 +120,7 @@
           </v-tooltip>
         </div>
 
-        <v-tooltip v-if="expand" text="Minimize" location="bottom">
+        <v-tooltip v-if="expand" text="Minimize" location="top">
           <template v-slot:activator="{ props }">
             <v-icon
               v-bind="props"
@@ -130,7 +130,7 @@
             >
           </template>
         </v-tooltip>
-        <v-tooltip v-else text="Maximize" location="bottom">
+        <v-tooltip v-else text="Maximize" location="top">
           <template v-slot:activator="{ props }">
             <v-icon
               v-bind="props"
@@ -141,7 +141,7 @@
           </template>
         </v-tooltip>
 
-        <v-tooltip text="Close" location="bottom">
+        <v-tooltip text="Close" location="top">
           <template v-slot:activator="{ props }">
             <v-icon
               v-bind="props"
@@ -305,7 +305,7 @@
     <div v-if="!sparkline" class="u-series" ref="info">
       <v-tooltip
         text="Click item to toggle, Right click to edit"
-        location="bottom"
+        location="top"
       >
         <template v-slot:activator="{ props }">
           <v-icon v-bind="props">mdi-information-variant-circle</v-icon>

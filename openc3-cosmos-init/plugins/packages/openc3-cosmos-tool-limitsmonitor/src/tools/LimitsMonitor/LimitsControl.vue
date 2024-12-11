@@ -81,7 +81,7 @@
             v-on:add-item="addItem"
             v-on:delete-item="deleteItem"
           />
-          <v-tooltip location="bottom">
+          <v-tooltip location="top">
             <template v-slot:activator="{ props }">
               <v-btn
                 icon="mdi-close-circle-multiple"
@@ -94,7 +94,7 @@
             </template>
             <span>Ignore Entire Packet</span>
           </v-tooltip>
-          <v-tooltip location="bottom">
+          <v-tooltip location="top">
             <template v-slot:activator="{ props }">
               <v-btn
                 icon="mdi-close-circle"
@@ -107,7 +107,7 @@
             </template>
             <span>Ignore Item</span>
           </v-tooltip>
-          <v-tooltip location="bottom">
+          <v-tooltip location="top">
             <template v-slot:activator="{ props }">
               <v-btn
                 icon="mdi-eye-off"

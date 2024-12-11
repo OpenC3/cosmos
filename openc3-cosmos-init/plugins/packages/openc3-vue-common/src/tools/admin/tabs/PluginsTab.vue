@@ -90,7 +90,7 @@
             <div v-if="process.state === 'Running'">
               <v-progress-circular indeterminate color="primary" />
             </div>
-            <v-tooltip v-else location="bottom">
+            <v-tooltip v-else location="top">
               <template v-slot:activator="{ props }">
                 <v-icon
                   v-bind="props"
@@ -132,7 +132,7 @@
 
           <template v-slot:append>
             <div class="mx-3">
-              <v-tooltip location="bottom">
+              <v-tooltip location="top">
                 <template v-slot:activator="{ props }">
                   <v-icon
                     v-bind="props"
@@ -146,7 +146,7 @@
               </v-tooltip>
             </div>
             <div class="mx-3">
-              <v-tooltip location="bottom">
+              <v-tooltip location="top">
                 <template v-slot:activator="{ props }">
                   <v-icon
                     v-bind="props"
@@ -160,7 +160,7 @@
               </v-tooltip>
             </div>
             <div class="mx-3">
-              <v-tooltip location="bottom">
+              <v-tooltip location="top">
                 <template v-slot:activator="{ props }">
                   <v-icon
                     v-bind="props"
@@ -174,7 +174,7 @@
               </v-tooltip>
             </div>
             <div class="mx-3">
-              <v-tooltip location="bottom">
+              <v-tooltip location="top">
                 <template v-slot:activator="{ props }">
                   <v-icon
                     v-bind="props"

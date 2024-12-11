@@ -32,7 +32,7 @@
 
           <template v-slot:append>
             <div class="mx-3" v-if="target.modified">
-              <v-tooltip location="bottom">
+              <v-tooltip location="top">
                 <template v-slot:activator="{ props }">
                   <v-icon v-bind="props" @click="downloadTarget(target.name)">
                     mdi-download
@@ -41,7 +41,7 @@
                 <span>Download Target Modified Files</span>
               </v-tooltip>
             </div>
-            <v-tooltip location="bottom">
+            <v-tooltip location="top">
               <template v-slot:activator="{ props }">
                 <v-icon v-bind="props" @click="showTarget(target.name)">
                   mdi-eye
