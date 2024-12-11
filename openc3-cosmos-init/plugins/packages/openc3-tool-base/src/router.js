@@ -24,9 +24,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { Empty } from '@openc3/vue-common/components'
 import { Login } from '@openc3/vue-common/tools/base'
 
-const DEFAULT_TOOL_PATH = '/tools/cmdtlmserver'
-
-const router = createRouter({
+export default createRouter({
   history: createWebHistory(),
   routes: [
     {
@@ -42,11 +40,3 @@ const router = createRouter({
     },
   ],
 })
-
-router.beforeEach(({ path }) => {
-  if (['/', '/tools', '/tools/'].includes(path)) {
-    singleSpaNavigate(DEFAULT_TOOL_PATH)
-  }
-})
-
-export default router
