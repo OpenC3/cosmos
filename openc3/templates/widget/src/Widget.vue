@@ -8,20 +8,18 @@
 
 <template>
   <div class="value-widget-container">
-    <template>
-      <v-text-field
-        solo
-        density="compact"
-        readonly
-        single-line
-        hide-no-data
-        hide-details
-        :value="_value"
-        :class="valueClass"
-        :style="computedStyle"
-        data-test="value"
-      />
-    </template>
+    <v-text-field
+      variant="solo"
+      density="compact"
+      readonly
+      single-line
+      hide-no-data
+      hide-details
+      :value="_value"
+      :class="valueClass"
+      :style="computedStyle"
+      data-test="value"
+    />
   </div>
 </template>
 

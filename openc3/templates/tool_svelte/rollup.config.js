@@ -31,6 +31,8 @@ export default {
     resolve({
       browser: true,
       dedupe: ["svelte"],
+      exportConditions: ['default', 'module', 'import', 'svelte'],
+      extensions: ['.mjs', '.js', '.json', '.node', '.svelte'],
     }),
     commonjs(),
     postcss({
