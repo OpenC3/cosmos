@@ -134,7 +134,7 @@
             </v-row>
           </div>
           <div class="edit-box">
-            <v-list density="compact">
+            <v-list density="compact" class="horizontal-lines">
               <v-list-item>
                 <span style="padding-top: 5px">
                   Add horizontal lines to the graph
@@ -161,7 +161,7 @@
                     />
                   </v-col>
                   <v-col>
-                    <v-tooltip text="Remove" location="bottom">
+                    <v-tooltip text="Remove" location="top">
                       <template v-slot:activator="{ props }">
                         <v-icon
                           v-bind="props"
@@ -190,7 +190,7 @@
             }"
           >
             <template v-slot:item.actions="{ item }">
-              <v-tooltip text="Remove" location="bottom">
+              <v-tooltip text="Remove" location="top">
                 <template v-slot:activator="{ props }">
                   <v-icon v-bind="props" @click="$emit('remove', item)">
                     mdi-delete
@@ -386,5 +386,8 @@ export default {
 .v-small-dialog__content {
   background-color: var(--color-background-surface-selected);
   padding: 5px 5px;
+}
+.horizontal-lines {
+  background-color: var(--color-background-surface-default);
 }
 </style>

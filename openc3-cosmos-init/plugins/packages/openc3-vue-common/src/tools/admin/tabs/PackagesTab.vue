@@ -66,7 +66,7 @@
           </v-list-item-subtitle>
 
           <template v-slot:append v-if="process.state !== 'Running'">
-            <v-tooltip location="bottom">
+            <v-tooltip location="top">
               <template v-slot:activator="{ props }">
                 <v-icon v-bind="props" @click="showOutput(process)">
                   mdi-eye
@@ -86,7 +86,7 @@
           <v-list-item-title>{{ gem }}</v-list-item-title>
 
           <template v-slot:append>
-            <v-tooltip location="bottom">
+            <v-tooltip location="top">
               <template v-slot:activator="{ props }">
                 <v-icon v-bind="props" @click="deletePackage(gem)">
                   mdi-delete
@@ -104,7 +104,7 @@
           <v-list-item-title>{{ pkg }}</v-list-item-title>
 
           <template v-slot:append>
-            <v-tooltip location="bottom">
+            <v-tooltip location="top">
               <template v-slot:activator="{ props }">
                 <v-icon v-bind="props" @click="deletePackage(pkg)">
                   mdi-delete

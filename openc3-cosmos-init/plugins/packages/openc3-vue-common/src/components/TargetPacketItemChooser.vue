@@ -22,8 +22,8 @@
 
 <template>
   <div class="pt-4 pb-4">
-    <v-row>
-      <v-col :cols="colSize" class="select" data-test="select-target">
+    <v-row no-gutters>
+      <v-col :cols="colSize" class="tpic-select pr-4" data-test="select-target">
         <v-autocomplete
           label="Select Target"
           hide-details
@@ -36,7 +36,7 @@
           v-model="selectedTargetName"
         />
       </v-col>
-      <v-col :cols="colSize" class="select" data-test="select-packet">
+      <v-col :cols="colSize" class="tpic-select pr-4" data-test="select-packet">
         <v-autocomplete
           label="Select Packet"
           hide-details
@@ -53,7 +53,7 @@
       <v-col
         v-if="chooseItem"
         :cols="colSize"
-        class="select"
+        class="tpic-select pr-4"
         data-test="select-item"
       >
         <v-autocomplete
@@ -72,7 +72,7 @@
       <v-col
         v-if="chooseItem && itemIsArray()"
         cols="1"
-        class="select"
+        class="tpic-select pr-4"
         data-test="array-index"
       >
         <v-combobox
@@ -99,8 +99,8 @@
         </v-btn>
       </v-col>
     </v-row>
-    <v-row v-if="selectTypes">
-      <v-col :cols="colSize" class="select" data-test="data-type">
+    <v-row no-gutters v-if="selectTypes" class="pt-6">
+      <v-col :cols="colSize" class="tpic-select pr-4" data-test="data-type">
         <v-autocomplete
           label="Value Type"
           hide-details
@@ -110,7 +110,7 @@
           v-model="selectedValueType"
         />
       </v-col>
-      <v-col :cols="colSize" class="select" data-test="reduced">
+      <v-col :cols="colSize" class="tpic-select pr-4" data-test="reduced">
         <v-autocomplete
           label="Reduced"
           hide-details
@@ -120,7 +120,7 @@
           v-model="selectedReduced"
         />
       </v-col>
-      <v-col :cols="colSize" class="select" data-test="reduced-type">
+      <v-col :cols="colSize" class="tpic-select pr-4" data-test="reduced-type">
         <v-autocomplete
           label="Reduced Type"
           hide-details
@@ -133,7 +133,7 @@
       </v-col>
       <v-col :cols="colSize" style="max-width: 140px"> </v-col>
     </v-row>
-    <v-row no-gutters class="pt-3 pb-3">
+    <v-row no-gutters class="pa-3">
       <v-col v-if="hazardous" :cols="colSize" class="openc3-yellow"
         >Description: {{ description }} (HAZARDOUS)</v-col
       >
@@ -606,7 +606,7 @@ export default {
 .button {
   padding: 4px;
 }
-.select {
+.tpic-select {
   max-width: 300px;
 }
 </style>

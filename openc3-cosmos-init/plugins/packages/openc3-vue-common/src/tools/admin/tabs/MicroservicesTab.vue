@@ -36,7 +36,7 @@
           <template v-slot:append>
             <div v-if="microservice_status[microservice]">
               <div v-show="!!microservice_status[microservice].error">
-                <v-tooltip location="bottom">
+                <v-tooltip location="top">
                   <template v-slot:activator="{ props }">
                     <v-icon
                       v-bind="props"
@@ -49,7 +49,7 @@
                 </v-tooltip>
               </div>
             </div>
-            <v-tooltip location="bottom">
+            <v-tooltip location="top">
               <template v-slot:activator="{ props }">
                 <v-icon v-bind="props" @click="showMicroservice(microservice)">
                   mdi-eye

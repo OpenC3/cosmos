@@ -103,7 +103,7 @@
           {{ processButtonText }}
         </v-btn>
         <v-spacer />
-        <v-tooltip location="bottom">
+        <v-tooltip location="top">
           <template v-slot:activator="{ props }">
             <v-btn
               icon="mdi-pencil"
@@ -116,7 +116,7 @@
           </template>
           <span> Edit All Items </span>
         </v-tooltip>
-        <v-tooltip location="bottom">
+        <v-tooltip location="top">
           <template v-slot:activator="{ props }">
             <v-btn
               icon="mdi-delete"
@@ -157,7 +157,7 @@
           density="compact"
         >
           <template v-slot:item.edit="{ item }">
-            <v-tooltip location="bottom">
+            <v-tooltip location="top">
               <template v-slot:activator="{ props }">
                 <v-icon
                   @click.stop="item.edit = true"
@@ -230,7 +230,7 @@
             </v-dialog>
           </template>
           <template v-slot:item.delete="{ item }">
-            <v-tooltip location="bottom">
+            <v-tooltip location="top">
               <template v-slot:activator="{ props }">
                 <v-icon
                   @click="deleteItem(item)"

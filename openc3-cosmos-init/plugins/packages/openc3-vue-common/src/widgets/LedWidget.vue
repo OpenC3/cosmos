@@ -21,9 +21,9 @@
 -->
 
 <template>
-  <v-tooltip bottom>
-    <template v-slot:activator="{ attrs }">
-      <div class="led mt-1" :style="cssProps" v-bind="attrs"></div>
+  <v-tooltip location="top">
+    <template v-slot:activator="{ props }">
+      <div class="led mt-1" :style="cssProps" v-bind="props"></div>
     </template>
     <span>{{ fullName }}</span>
   </v-tooltip>

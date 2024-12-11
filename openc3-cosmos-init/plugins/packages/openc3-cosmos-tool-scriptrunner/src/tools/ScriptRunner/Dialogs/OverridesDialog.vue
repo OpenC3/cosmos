@@ -59,7 +59,7 @@
             density="compact"
           >
             <template v-slot:item.delete="{ item }">
-              <v-tooltip location="bottom">
+              <v-tooltip location="top">
                 <template v-slot:activator="{ props }">
                   <v-icon @click="deleteOverride(item)" v-bind="props">
                     mdi-delete

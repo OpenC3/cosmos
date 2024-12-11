@@ -28,7 +28,7 @@
           <v-list-item-title>{{ openc3_interface }}</v-list-item-title>
 
           <template v-slot:append>
-            <v-tooltip location="bottom">
+            <v-tooltip location="top">
               <template v-slot:activator="{ props }">
                 <v-icon v-bind="props" @click="showInterface(openc3_interface)">
                   mdi-eye
