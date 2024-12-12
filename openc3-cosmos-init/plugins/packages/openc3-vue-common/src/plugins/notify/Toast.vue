@@ -73,6 +73,7 @@ export default {
         message: 'Overall message here',
       },
       timeout: null,
+      noToastPaths: ['/login'],
     }
   },
   computed: {
@@ -103,6 +104,9 @@ export default {
   },
   methods: {
     toast: function (toastNotification, duration) {
+      if (this.noToastPaths.includes(window.location.pathname)) {
+        return
+      }
       if (duration === undefined) {
         duration = 5000
       }
