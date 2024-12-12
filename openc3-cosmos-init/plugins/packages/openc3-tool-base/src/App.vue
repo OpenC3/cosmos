@@ -28,7 +28,7 @@
     <v-main :style="mainStyle" min-height="100vh">
       <v-container fluid height="100%">
         <div><router-view /></div>
-        <div id="openc3-tool"></div>
+        <div id="openc3-tool" style="overflow: auto"></div>
       </v-container>
     </v-main>
     <app-footer app class="d-print-none" />

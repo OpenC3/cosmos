@@ -25,7 +25,7 @@
     <v-card-title class="d-flex align-center justify-content-space-between">
       {{ data.length }} Targets
       <v-spacer />
-      <v-tooltip location="bottom" :disabled="enterprise && commandAuthority">
+      <v-tooltip location="top" :disabled="enterprise && commandAuthority">
         <template v-slot:activator="{ props }">
           <!-- This is a little weird because it captures all the clicks -->
           <!-- including the clicks on the button so the tooltipHandler -->
@@ -51,7 +51,7 @@
           learn more.
         </span>
       </v-tooltip>
-      <v-tooltip location="bottom" :disabled="enterprise && commandAuthority">
+      <v-tooltip location="top" :disabled="enterprise && commandAuthority">
         <template v-slot:activator="{ props }">
           <div v-bind="props" @click="tooltipHandler('releaseAll')">
             <v-btn

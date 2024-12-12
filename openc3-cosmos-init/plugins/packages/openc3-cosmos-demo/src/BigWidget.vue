@@ -22,7 +22,7 @@
 
 <template>
   <div class="value-widget-container">
-    <v-tooltip location="bottom">
+    <v-tooltip location="top">
       <template v-slot:activator="{ props }">
         <v-text-field
           variant="solo"
