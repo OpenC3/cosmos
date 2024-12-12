@@ -27,7 +27,7 @@
   import List, { Item, Separator, Text } from '@smui/list';
   import Button, { Label } from '@smui/button';
   import Card from '@smui/card';
-  import { OpenC3Api } from "./services/openc3-api";
+  import { OpenC3Api } from '@openc3/js-common/services';
 
   let menu;
 

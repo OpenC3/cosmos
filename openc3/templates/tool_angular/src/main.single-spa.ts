@@ -30,7 +30,7 @@ const lifecycles = singleSpaAngular({
     if (elem) {
       return elem
     } else {
-      return new HTMLElement()
+      return document.createElement('div')
     }
   },
 });
