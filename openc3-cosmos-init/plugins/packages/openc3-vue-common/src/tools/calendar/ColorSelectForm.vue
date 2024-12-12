@@ -22,14 +22,14 @@
 
 <template>
   <div>
-    <v-select label="Color" :items="swatches" v-model="selectedColor">
-      <template v-slot:prepend-inner v-if="selectedColor">
-        <v-icon :color="selectedColor"> mdi-square </v-icon>
+    <v-select label="Color" :items="swatches" v-model="color">
+      <template v-slot:prepend-inner>
+        <v-icon :color="color"> mdi-square </v-icon>
       </template>
       <template v-slot:item="{ props, item }">
-        <v-list-item v-bind="props" :value="item">
+        <v-list-item v-bind="props" :value="item.raw">
           <template v-slot:prepend>
-            <v-icon :color="item"> mdi-square </v-icon>
+            <v-icon :color="item.raw"> mdi-square </v-icon>
           </template>
         </v-list-item>
       </template>
@@ -45,11 +45,6 @@ export default {
       type: String,
       required: true,
     },
-  },
-  data() {
-    return {
-      selectedColor: '',
-    }
   },
   computed: {
     color: {
