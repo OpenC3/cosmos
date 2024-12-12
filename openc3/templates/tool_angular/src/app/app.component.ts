@@ -23,7 +23,7 @@ export class AppComponent implements  AfterViewInit, OnDestroy {
     if (elem) {
       return elem
     } else {
-      return new HTMLElement()
+      return document.createElement('span')
     }
   }
   ngAfterViewInit(): void {
@@ -34,11 +34,12 @@ export class AppComponent implements  AfterViewInit, OnDestroy {
     document.title = "<%= tool_name_display %>";
     let tool = document.querySelector('#openc3-tool');
     if (tool == null) {
-      tool = new HTMLElement()
+      tool = document.createElement('div')
     }
     let overlay = document.querySelector('.cdk-overlay-container');
     if (overlay == null) {
-      overlay = new HTMLElement()
+      overlay = document.createElement('div')
+      overlay.classList.add('cdk-overlay-container');
     }
     // Move stuff
     tool.append(overlay);
