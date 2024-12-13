@@ -86,8 +86,8 @@ module OpenC3
       @updated_at = updated_at
       @timeline_name = name
       @shard = shard.to_i # to_i to handle nil
-      @execute = execute
-      @color = color
+      self.color = color
+      self.execute = execute
     end
 
     def color=(color)
@@ -106,7 +106,6 @@ module OpenC3
 
     def execute=(value)
       @execute = ConfigParser.handle_true_false(value)
-      puts "Setting execute to #{@execute}"
     end
 
     # @return [Hash] generated from the TimelineModel
