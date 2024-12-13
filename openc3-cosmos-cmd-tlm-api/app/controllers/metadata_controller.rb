@@ -85,7 +85,7 @@ class MetadataController < ApplicationController
       model = @model_class.from_json(hash.symbolize_keys, scope: params[:scope])
       model.create
       OpenC3::Logger.info(
-        "Metadata created: #{model}",
+        "Metadata created: #{hash}",
         scope: params[:scope],
         user: username()
       )
@@ -156,7 +156,7 @@ class MetadataController < ApplicationController
         metadata: hash['metadata'],
       )
       OpenC3::Logger.info(
-        "Metadata updated: #{model}",
+        "Metadata updated: #{hash}",
         scope: params[:scope],
         user: username()
       )
