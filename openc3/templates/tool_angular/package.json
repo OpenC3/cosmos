@@ -18,20 +18,20 @@
     "@angular/compiler": "^18.2.6",
     "@angular/core": "^18.2.6",
     "@angular/forms": "^18.2.6",
-    "@angular/material": "18.2.10",
+    "@angular/material": "^18.2.10",
     "@angular/platform-browser": "^18.2.6",
     "@angular/platform-browser-dynamic": "^18.2.6",
     "@angular/router": "^18.2.6",
-    "@astrouxds/astro-web-components": "7.24.0",
+    "@astrouxds/astro-web-components": "^7.24.0",
     "@openc3/js-common": "5.21.0-beta0",
     "rxjs": "~7.8.0",
-    "single-spa": "5.9.5",
+    "single-spa": "^5.9.5",
     "single-spa-angular": "^9.2.0",
     "tslib": "^2.7.0",
-    "zone.js": "0.13.0"
+    "zone.js": "^0.13.0"
   },
   "devDependencies": {
-    "@angular-builders/custom-webpack": "18.0.0",
+    "@angular-builders/custom-webpack": "^18.0.0",
     "@angular-devkit/build-angular": "^18.2.6",
     "@angular/cli": "~18.2.6",
     "@angular/compiler-cli": "^18.2.6",
@@ -43,6 +43,6 @@
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
     "style-loader": "^4.0.0",
-    "typescript": "5.5.4"
+    "typescript": "^5.5.4"
   }
 }

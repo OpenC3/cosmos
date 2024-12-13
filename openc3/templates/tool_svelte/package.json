@@ -11,14 +11,14 @@
     "smui-theme": "smui-theme compile build/smui.css -i src/theme"
   },
   "dependencies": {
-    "@astrouxds/astro-web-components": "7.24.0",
+    "@astrouxds/astro-web-components": "^7.24.0",
     "@openc3/js-common": "5.21.0-beta0",
     "@smui/button": "^7.0.0",
     "@smui/common": "^7.0.0",
     "@smui/card": "^7.0.0",
     "@smui/list": "^7.0.0",
     "@smui/menu": "^7.0.0",
-    "axios": "1.7.7",
+    "axios": "^1.7.7",
     "single-spa-svelte": "^2.1.1",
     "sirv-cli": "^2.0.2",
     "svelte-portal": "^2.2.0"
