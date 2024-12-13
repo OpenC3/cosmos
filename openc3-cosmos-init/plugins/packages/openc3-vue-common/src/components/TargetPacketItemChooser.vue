@@ -22,7 +22,7 @@
 
 <template>
   <div class="pt-4 pb-4">
-    <v-row no-gutters>
+    <v-row :no-gutters="!vertical">
       <v-col :cols="colSize" class="tpic-select pr-4" data-test="select-target">
         <v-autocomplete
           label="Select Target"
@@ -69,11 +69,13 @@
           v-model="selectedItemName"
         />
       </v-col>
+      <!-- min-width: 105px is enough to display a 2 digit index -->
       <v-col
         v-if="chooseItem && itemIsArray()"
         cols="1"
         class="tpic-select pr-4"
         data-test="array-index"
+        style="min-width: 105px"
       >
         <v-combobox
           label="Index"
