@@ -80,8 +80,8 @@
                   data-test="pause-graph"
                   icon="mdi-pause"
                   size="large"
-                ></v-btn
-                ><v-spacer />
+                />
+                <v-spacer />
               </v-col>
             </v-row>
           </v-container>
@@ -673,7 +673,7 @@ i.v-icon.mdi-chevron-down {
   position: relative;
   cursor: pointer;
   border-radius: 6px;
-  margin: 5px;
+  margin: 6px;
 }
 .pulse {
   animation: pulse 1s infinite;

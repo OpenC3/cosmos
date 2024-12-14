@@ -28,7 +28,7 @@
       @update:model-value="handleChange"
       hide-details
       density="compact"
-      variant="underlined"
+      variant="filled"
       data-test="cmd-param-value"
     />
     <div v-else class="d-flex align-center">
@@ -50,7 +50,7 @@
         disabled
         hide-details
         density="compact"
-        variant="underlined"
+        variant="outlined"
         min-width="60px"
         data-test="cmd-param-value"
       />

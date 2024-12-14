@@ -21,8 +21,8 @@
 -->
 
 <template>
-  <div>
-    <v-card @click="$emit('click')">
+  <div @click.prevent="$emit('click')">
+    <v-card>
       <v-toolbar
         height="24"
         class="pl-2 pr-2"
@@ -32,9 +32,9 @@
         <div v-show="errors.length !== 0" class="mx-2">
           <v-tooltip text="Errors" location="top">
             <template v-slot:activator="{ props }">
-              <v-icon v-bind="props" @click="errorDialog = true"
-                >mdi-alert</v-icon
-              >
+              <v-icon v-bind="props" @click="errorDialog = true">
+                mdi-alert
+              </v-icon>
             </template>
           </v-tooltip>
         </div>
@@ -45,13 +45,14 @@
               v-bind="props"
               @click="editGraph = true"
               data-test="edit-graph-icon"
-              >mdi-pencil</v-icon
             >
+              mdi-pencil
+            </v-icon>
           </template>
         </v-tooltip>
 
         <v-spacer />
-        <span>{{ title }}</span>
+        <span> {{ title }} </span>
         <v-spacer />
 
         <div v-show="expand">
@@ -61,15 +62,16 @@
                 v-bind="props"
                 @click="collapseAll"
                 data-test="collapse-all"
-                >mdi-arrow-collapse</v-icon
               >
+                mdi-arrow-collapse
+              </v-icon>
             </template>
           </v-tooltip>
           <v-tooltip v-else text="Expand" location="top">
             <template v-slot:activator="{ props }">
-              <v-icon v-bind="props" @click="expandAll" data-test="expand-all"
-                >mdi-arrow-expand</v-icon
-              >
+              <v-icon v-bind="props" @click="expandAll" data-test="expand-all">
+                mdi-arrow-expand
+              </v-icon>
             </template>
           </v-tooltip>
         </div>
@@ -81,8 +83,9 @@
                 v-bind="props"
                 @click="collapseWidth"
                 data-test="collapse-width"
-                >mdi-arrow-collapse-horizontal</v-icon
               >
+                mdi-arrow-collapse-horizontal
+              </v-icon>
             </template>
           </v-tooltip>
           <v-tooltip v-else text="Expand Width" location="top">
@@ -91,8 +94,9 @@
                 v-bind="props"
                 @click="expandWidth"
                 data-test="expand-width"
-                >mdi-arrow-expand-horizontal</v-icon
               >
+                mdi-arrow-expand-horizontal
+              </v-icon>
             </template>
           </v-tooltip>
         </div>
@@ -104,8 +108,9 @@
                 v-bind="props"
                 @click="collapseHeight"
                 data-test="collapse-height"
-                >mdi-arrow-collapse-vertical</v-icon
               >
+                mdi-arrow-collapse-vertical
+              </v-icon>
             </template>
           </v-tooltip>
           <v-tooltip v-else text="Expand Height" location="top">
@@ -114,8 +119,9 @@
                 v-bind="props"
                 @click="expandHeight"
                 data-test="expand-height"
-                >mdi-arrow-expand-vertical</v-icon
               >
+                mdi-arrow-expand-vertical
+              </v-icon>
             </template>
           </v-tooltip>
         </div>
@@ -126,8 +132,9 @@
               v-bind="props"
               @click="minMaxTransition"
               data-test="minimize-screen-icon"
-              >mdi-window-minimize</v-icon
             >
+              mdi-window-minimize
+            </v-icon>
           </template>
         </v-tooltip>
         <v-tooltip v-else text="Maximize" location="top">
@@ -136,8 +143,9 @@
               v-bind="props"
               @click="minMaxTransition"
               data-test="maximize-screen-icon"
-              >mdi-window-maximize</v-icon
             >
+              mdi-window-maximize
+            </v-icon>
           </template>
         </v-tooltip>
 
@@ -147,8 +155,9 @@
               v-bind="props"
               @click="$emit('close-graph')"
               data-test="close-graph-icon"
-              >mdi-close-box</v-icon
             >
+              mdi-close-box
+            </v-icon>
           </template>
         </v-tooltip>
       </v-toolbar>
@@ -185,7 +194,7 @@
     <v-dialog v-model="errorDialog" max-width="600">
       <v-toolbar height="24">
         <v-spacer />
-        <span>Errors</span>
+        <span> Errors </span>
         <v-spacer />
       </v-toolbar>
       <v-card class="pa-3">
@@ -251,19 +260,19 @@
         </v-list-subheader>
         <v-list-item @click="editItem = true">
           <template v-slot:prepend>
-            <v-icon icon="mdi-pencil"></v-icon>
+            <v-icon icon="mdi-pencil" />
           </template>
           <v-list-item-title> Edit </v-list-item-title>
         </v-list-item>
         <v-list-item @click="clearData([selectedItem])">
           <template v-slot:prepend>
-            <v-icon icon="mdi-eraser"></v-icon>
+            <v-icon icon="mdi-eraser" />
           </template>
           <v-list-item-title> Clear </v-list-item-title>
         </v-list-item>
         <v-list-item @click="removeItems([selectedItem])">
           <template v-slot:prepend>
-            <v-icon icon="mdi-delete"></v-icon>
+            <v-icon icon="mdi-delete" />
           </template>
           <v-list-item-title> Delete </v-list-item-title>
         </v-list-item>
@@ -280,24 +289,24 @@
     >
       <v-list>
         <v-list-item @click="moveLegend('top')">
-          <v-list-item-title style="cursor: pointer"
-            >Legend Top</v-list-item-title
-          >
+          <v-list-item-title style="cursor: pointer">
+            Legend Top
+          </v-list-item-title>
         </v-list-item>
         <v-list-item @click="moveLegend('bottom')">
-          <v-list-item-title style="cursor: pointer"
-            >Legend Bottom</v-list-item-title
-          >
+          <v-list-item-title style="cursor: pointer">
+            Legend Bottom
+          </v-list-item-title>
         </v-list-item>
         <v-list-item @click="moveLegend('left')">
-          <v-list-item-title style="cursor: pointer"
-            >Legend Left</v-list-item-title
-          >
+          <v-list-item-title style="cursor: pointer">
+            Legend Left
+          </v-list-item-title>
         </v-list-item>
         <v-list-item @click="moveLegend('right')">
-          <v-list-item-title style="cursor: pointer"
-            >Legend RIght</v-list-item-title
-          >
+          <v-list-item-title style="cursor: pointer">
+            Legend RIght
+          </v-list-item-title>
         </v-list-item>
       </v-list>
     </v-menu>
@@ -308,7 +317,7 @@
         location="top"
       >
         <template v-slot:activator="{ props }">
-          <v-icon v-bind="props">mdi-information-variant-circle</v-icon>
+          <v-icon v-bind="props"> mdi-information-variant-circle </v-icon>
         </template>
       </v-tooltip>
     </div>
@@ -1100,7 +1109,7 @@ export default {
           height = height / 2.0 + 10 // 5px padding top and bottom
         }
       }
-      let width = viewWidth - 50 // padding left and right
+      let width = viewWidth - 68 // padding left and right
       if (!this.fullWidth) {
         width = width / 2.0 - 10 // 5px padding left and right
       }
