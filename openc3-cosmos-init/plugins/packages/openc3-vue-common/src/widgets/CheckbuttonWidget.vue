@@ -45,6 +45,10 @@ export default {
   },
   created() {
     this.label = this.parameters[0]
+    // Any additional parameter we interpret as "checked"
+    if (this.parameters[1]) {
+      this.value = true
+    }
   },
   methods: {
     checked() {

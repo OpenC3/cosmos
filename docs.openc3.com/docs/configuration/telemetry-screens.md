@@ -1377,12 +1377,17 @@ Note this is of limited use by itself and is primarily used in conjunction with 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Checkbox Text | Text displayed next to the checkbox | True |
+| Checked | Whether the initial state of the checkbox is checked (default = false). Do not give a value to make the checkbox unchecked. | False |
 
 Example Usage:
 ```ruby
-NAMED_WIDGET CHECK CHECKBUTTON 'Ignore Hazardous Checks'
+NAMED_WIDGET UNCHECKED CHECKBUTTON 'Default Unchecked'
+NAMED_WIDGET CHECK CHECKBUTTON 'Ignore Hazardous Checks' CHECKED
 BUTTON 'Send' 'screen.getNamedWidget("CHECK").checked() ? ' \
   'api.cmd_no_hazardous_check("INST CLEAR") : api.cmd("INST CLEAR")'
+# You can programmatically check or uncheck the checkbox
+BUTTON 'Check' 'screen.getNamedWidget("CHECK").value = true'
+BUTTON 'Uncheck' 'screen.getNamedWidget("CHECK").value = false'
 ```
 ![CHECKBUTTON](/img/telemetry_viewer/widgets/checkbutton.png)
 
