@@ -133,7 +133,55 @@ class TimelineController < ApplicationController
       return
     end
     begin
-      model.update_color(color: params['color'])
+      # Model color=(value) method handles the color validation
+      model.color = params['color']
+      model.update()
+      model.notify(kind: 'updated')
+      render json: model.as_json(:allow_nan => true)
+    rescue RuntimeError, JSON::ParserError => e
+      log_error(e)
+      render json: { status: 'error', message: e.message, type: e.class }, status: 400
+    rescue TypeError => e
+      log_error(e)
+      render json: { status: 'error', message: 'Invalid json object', type: e.class }, status: 400
+    rescue OpenC3::TimelineInputError => e
+      log_error(e)
+      render json: { status: 'error', message: e.message, type: e.class }, status: 400
+    end
+  end
+
+  # Set the timeline execution status
+  #
+  # name [String] the timeline name, `system42`
+  # scope [String] the scope of the timeline, `TEST`
+  # json [String] The json of the timeline name (see below)
+  # @return [String] the timeline converted into json format
+  # Request Headers
+  #```json
+  #  {
+  #    "Authorization": "token/password",
+  #    "Content-Type": "application/json"
+  #  }
+  #```
+  # Request Post Body
+  #```json
+  #  {
+  #    "enable": "false"
+  #  }
+  #```
+  def execute
+    return unless authorization('script_run')
+    model = @model_class.get(name: params[:name], scope: params[:scope])
+    if model.nil?
+      render json: {
+        status: 'error',
+        message: "failed to find timeline: #{params[:name]}",
+      }, status: 404
+      return
+    end
+    begin
+      # Model execute=(value) method handles the conversion of the string to a boolean
+      model.execute = params['enable']
       model.update()
       model.notify(kind: 'updated')
       render json: model.as_json(:allow_nan => true)

@@ -88,6 +88,26 @@ RSpec.describe TimelineController, :type => :controller do
     end
   end
 
+  describe "POST execute" do
+    it "returns a json hash of name and status code 200" do
+      post :create, params: {"scope"=>"DEFAULT", "name" => "test"}
+      expect(response).to have_http_status(:created)
+      json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      expect(json["name"]).to eql("test")
+      expect(json["execute"]).to be true
+      post :execute, params: {"scope"=>"DEFAULT", "name"=>"test", "enable" => "FALSE"}
+      expect(response).to have_http_status(:ok)
+      json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      expect(json["name"]).to eql("test")
+      expect(json["execute"]).to be false
+      post :execute, params: {"scope"=>"DEFAULT", "name"=>"test", "enable" => "true"}
+      expect(response).to have_http_status(:ok)
+      json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      expect(json["name"]).to eql("test")
+      expect(json["execute"]).to be true
+    end
+  end
+
   describe "POST error" do
     it "returns a hash and status code 400" do
       post :create, params: {"scope"=>"DEFAULT"}
