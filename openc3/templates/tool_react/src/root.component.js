@@ -5,7 +5,7 @@ import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
-import { OpenC3Api } from "@openc3/tool-common/src/services/openc3-api";
+import { OpenC3Api } from "@openc3/js-common/services";
 
 export default function Root(props) {
   const [anchorEl, setAnchorEl] = React.useState();

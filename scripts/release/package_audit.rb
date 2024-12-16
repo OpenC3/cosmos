@@ -100,11 +100,15 @@ end
 
 puts "\n\nRun the following:"
 puts "cd openc3-cosmos-init/plugins; yarn install; yarn upgrade-interactive --latest; cd ../.."
-puts "cd openc3/templates/widget; yarn install; yarn upgrade-interactive --latest; cd ../../.."
-puts "cd openc3/templates/tool_vue; yarn install; yarn upgrade-interactive --latest; cd ../../.."
-puts "cd openc3/templates/tool_react; yarn install; yarn upgrade-interactive --latest; cd ../../.."
-puts "cd openc3/templates/tool_angular; yarn install; yarn upgrade-interactive --latest; cd ../../.."
-puts "cd openc3/templates/tool_svelte; yarn install; yarn upgrade-interactive --latest; cd ../../.."
 puts "cd playwright; yarn install; yarn upgrade-interactive --latest; cd .."
 puts "cd docs.openc3.com; yarn install; yarn upgrade-interactive --latest; cd .."
+
+# Commenting this out since the templates don't really need to be updated, and updates broke them over time
+# puts "\n\nYou can run the following, but check that the templates still work if you do:"
+# puts "cd openc3/templates/widget; yarn install; yarn upgrade-interactive --latest; cd ../../.."
+# puts "cd openc3/templates/tool_vue; yarn install; yarn upgrade-interactive --latest; cd ../../.."
+# puts "cd openc3/templates/tool_react; yarn install; yarn upgrade-interactive --latest; cd ../../.."
+# puts "cd openc3/templates/tool_angular; yarn install; yarn upgrade-interactive --latest; cd ../../.."
+# puts "cd openc3/templates/tool_svelte; yarn install; yarn upgrade-interactive --latest; cd ../../.."
+
 puts "\n\n*** If you update #{base_pkgs.join(', ')} then re-run! ***\n\n"
