@@ -422,6 +422,9 @@ def check_tool_base(path, base_pkgs)
         # Handle nuances in individual packages
         # Search here to get the URLs: https://cdnjs.com/
         case package
+        when 'vue'
+          `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/#{package}.global.min.js --output public/js/#{package}.global-#{latest}.min.js`
+          `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/#{package}.global.prod.min.js --output public/js/#{package}.global.prod-#{latest}.min.js`
         when 'single-spa'
           `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/system/#{package}.min.js --output public/js/#{package}-#{latest}.min.js`
           `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/system/#{package}.min.js.map --output public/js/#{package}-#{latest}.min.js.map`
@@ -429,8 +432,8 @@ def check_tool_base(path, base_pkgs)
           `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/system.min.js --output public/js/#{package}-#{latest}.min.js`
         when 'vuetify'
           FileUtils.rm(Dir["public/css/vuetify-*"][0]) # Delete the existing vuetify css
-          `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/#{package}.min.css --output public/css/#{package}-#{latest}.min.css`
-          `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/#{package}.min.js --output public/js/#{package}-#{latest}.min.js`
+          `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/#{package}-labs.min.css --output public/css/#{package}-labs-#{latest}.min.css`
+          `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/#{package}-labs.min.js --output public/js/#{package}-labs-#{latest}.min.js`
         when 'import-map-overrides'
           `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/import-map-overrides.js --output public/js/#{package}-#{latest}.min.js`
           `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/import-map-overrides.js.map --output public/js/#{package}-#{latest}.min.js.map`

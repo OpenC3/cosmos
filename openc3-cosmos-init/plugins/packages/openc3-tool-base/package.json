@@ -30,5 +30,10 @@
     "vite": "5.4.11",
     "vue": "3.5.13",
     "vue-eslint-parser": "9.4.3"
-  }
+  },
+  "peerDependencies": {
+    "single-spa": "6.0.3",
+    "vue-router": "4.4.4",
+    "vuex": "4.1.0"
+  },
 }
