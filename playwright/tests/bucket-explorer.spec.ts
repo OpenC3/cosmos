@@ -155,6 +155,7 @@ test('view file', async ({ page, utils }) => {
   await page.locator('[data-test="search-input"] input').fill('')
   await page.getByText('/ INST').click()
   await utils.sleep(500) // Allow the page to render
+  await page.locator('[data-test="search-input"] input').fill('target.txt')
   await page.locator('[data-test="view-file"]').first().click()
   await expect(page.locator('pre')).toContainText('LANGUAGE ruby')
   await page.getByRole('button', { name: 'Ok' }).click()

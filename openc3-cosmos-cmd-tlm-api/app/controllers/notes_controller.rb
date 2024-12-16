@@ -87,7 +87,7 @@ class NotesController < ApplicationController
       model = @model_class.from_json(hash.symbolize_keys, scope: params[:scope])
       model.create
       OpenC3::Logger.info(
-        "Note created: #{model}",
+        "Note created: #{hash}",
         scope: params[:scope],
         user: username(),
       )
@@ -161,7 +161,7 @@ class NotesController < ApplicationController
         description: hash['description'],
       )
       OpenC3::Logger.info(
-        "Note updated: #{model}",
+        "Note updated: #{hash}",
         scope: params[:scope],
         user: username(),
       )

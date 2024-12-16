@@ -122,7 +122,7 @@
             </v-btn>
           </v-col>
           <v-col cols="auto">
-            <v-tooltip location="bottom">
+            <v-tooltip location="top">
               <template v-slot:activator="{ props }">
                 <span v-bind="props">
                   <v-checkbox

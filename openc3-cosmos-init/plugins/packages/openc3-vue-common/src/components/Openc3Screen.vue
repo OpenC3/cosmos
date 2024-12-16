@@ -133,6 +133,7 @@
             :model-value="errors.length !== 0"
             opacity="0.8"
             absolute
+            attach
           />
           <vertical-widget
             :key="screenKey"

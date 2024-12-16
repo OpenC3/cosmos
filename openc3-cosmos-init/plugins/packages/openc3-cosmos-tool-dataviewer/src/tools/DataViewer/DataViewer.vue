@@ -115,7 +115,7 @@
         >
           {{ tab.tabName }}
         </v-tab>
-        <v-tooltip location="bottom">
+        <v-tooltip location="top">
           <template v-slot:activator="{ props }">
             <v-btn
               icon="mdi-tab-plus"
@@ -145,7 +145,7 @@
               <v-card-title class="pa-3 d-flex align-center">
                 <span v-text="tab.name" />
                 <v-spacer />
-                <v-tooltip location="bottom">
+                <v-tooltip location="top">
                   <template v-slot:activator="{ props }">
                     <v-btn
                       variant="text"

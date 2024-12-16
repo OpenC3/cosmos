@@ -59,7 +59,7 @@
           <v-list-item-title>{{ tool }}</v-list-item-title>
 
           <template v-slot:append>
-            <v-tooltip location="bottom">
+            <v-tooltip location="top">
               <template v-slot:activator="{ props }">
                 <v-icon v-bind="props" @click="showTool(tool)">
                   mdi-eye
@@ -67,7 +67,7 @@
               </template>
               <span>Edit Tool</span>
             </v-tooltip>
-            <v-tooltip location="bottom">
+            <v-tooltip location="top">
               <template v-slot:activator="{ props }">
                 <v-icon v-bind="props" @click="deleteTool(tool)">
                   mdi-delete

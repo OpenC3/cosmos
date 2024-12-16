@@ -17,9 +17,9 @@
 -->
 
 <template>
-  <v-tooltip bottom>
-    <template v-slot:activator="{ attrs }">
-      <div class="limitsbar" :style="[cssProps, computedStyle]" v-bind="attrs">
+  <v-tooltip location="top">
+    <template v-slot:activator="{ props }">
+      <div class="limitsbar" :style="[cssProps, computedStyle]" v-bind="props">
         <div class="limitsbar__container">
           <div class="limitsbar__redlow" />
           <div class="limitsbar__redhigh" />

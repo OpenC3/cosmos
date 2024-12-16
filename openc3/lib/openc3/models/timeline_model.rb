@@ -24,6 +24,7 @@ require 'openc3/models/model'
 require 'openc3/models/activity_model'
 require 'openc3/models/microservice_model'
 require 'openc3/topics/timeline_topic'
+require 'openc3/config/config_parser'
 
 module OpenC3
   class TimelineError < StandardError; end
@@ -31,6 +32,8 @@ module OpenC3
   class TimelineInputError < TimelineError; end
 
   class TimelineModel < Model
+    attr_reader :execute
+
     PRIMARY_KEY = 'openc3_timelines'.freeze # MUST be equal to ActivityModel::PRIMARY_KEY without leading __
     KEY = '__TIMELINE__'.freeze
 
@@ -74,7 +77,7 @@ module OpenC3
       self.new(**json.transform_keys(&:to_sym), name: name, scope: scope)
     end
 
-    def initialize(name:, scope:, updated_at: nil, color: nil, shard: 0)
+    def initialize(name:, scope:, updated_at: nil, color: nil, shard: 0, execute: true)
       if name.nil? || scope.nil?
         raise TimelineInputError.new "name or scope must not be nil"
       end
@@ -83,10 +86,11 @@ module OpenC3
       @updated_at = updated_at
       @timeline_name = name
       @shard = shard.to_i # to_i to handle nil
-      update_color(color: color)
+      self.color = color
+      self.execute = execute
     end
 
-    def update_color(color: nil)
+    def color=(color)
       if color.nil?
         color = '#%06x' % (rand * 0xffffff)
       end
@@ -100,11 +104,16 @@ module OpenC3
       @color = color
     end
 
+    def execute=(value)
+      @execute = ConfigParser.handle_true_false(value)
+    end
+
     # @return [Hash] generated from the TimelineModel
     def as_json(*a)
       {
         'name' => @timeline_name,
         'color' => @color,
+        'execute' => @execute,
         'shard' => @shard,
         'scope' => @scope,
         'updated_at' => @updated_at

@@ -27,7 +27,7 @@
         <v-col cols="4">
           <v-row no-gutters>
             <v-col cols="6">
-              <v-tooltip location="bottom">
+              <v-tooltip location="top">
                 <template v-slot:activator="{ props }">
                   <div v-bind="props">
                     <v-checkbox
@@ -46,7 +46,7 @@
               </v-tooltip>
             </v-col>
             <v-col cols="6">
-              <v-tooltip location="bottom">
+              <v-tooltip location="top">
                 <template v-slot:activator="{ props }">
                   <div v-bind="props">
                     <v-checkbox
@@ -121,7 +121,7 @@
         <v-col cols="4">
           <v-row no-gutters>
             <v-col cols="6">
-              <v-tooltip location="bottom">
+              <v-tooltip location="top">
                 <template v-slot:activator="{ props }">
                   <div v-bind="props">
                     <v-checkbox
@@ -141,7 +141,7 @@
               </v-tooltip>
             </v-col>
             <v-col cols="6">
-              <v-tooltip location="bottom">
+              <v-tooltip location="top">
                 <template v-slot:activator="{ props }">
                   <div v-bind="props">
                     <v-checkbox
@@ -221,7 +221,7 @@
         <v-col cols="4">
           <v-row no-gutters>
             <v-col cols="6">
-              <v-tooltip location="bottom">
+              <v-tooltip location="top">
                 <template v-slot:activator="{ props }">
                   <div v-bind="props">
                     <v-checkbox
@@ -241,7 +241,7 @@
               </v-tooltip>
             </v-col>
             <v-col cols="6">
-              <v-tooltip location="bottom">
+              <v-tooltip location="top">
                 <template v-slot:activator="{ props }">
                   <div v-bind="props">
                     <v-checkbox

@@ -137,7 +137,6 @@ import {
   Openc3Screen,
   OpenConfigDialog,
   SaveConfigDialog,
-  TargetPacketItemChooser,
   TopBar,
 } from '@openc3/vue-common/components'
 import NewScreenDialog from './NewScreenDialog'

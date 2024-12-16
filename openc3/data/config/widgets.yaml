@@ -1387,10 +1387,20 @@ Interactive Widgets:
           required: true
           description: Text displayed next to the checkbox
           values: .+
+        - name: Checked
+          required: false
+          description:
+            Whether the initial state of the checkbox is checked (default = false).
+            Do not give a value to make the checkbox unchecked.
+          values: .+
       example: |
-        NAMED_WIDGET CHECK CHECKBUTTON 'Ignore Hazardous Checks'
+        NAMED_WIDGET UNCHECKED CHECKBUTTON 'Default Unchecked'
+        NAMED_WIDGET CHECK CHECKBUTTON 'Ignore Hazardous Checks' CHECKED
         BUTTON 'Send' 'screen.getNamedWidget("CHECK").checked() ? ' \
           'api.cmd_no_hazardous_check("INST CLEAR") : api.cmd("INST CLEAR")'
+        # You can programmatically check or uncheck the checkbox
+        BUTTON 'Check' 'screen.getNamedWidget("CHECK").value = true'
+        BUTTON 'Uncheck' 'screen.getNamedWidget("CHECK").value = false'
     COMBOBOX:
       summary: Displays a drop down list of text items
       description:

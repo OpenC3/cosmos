@@ -74,8 +74,8 @@
       <div class="pa-3">Status: {{ status }}</div>
     </v-card>
     <div style="height: 15px" />
-    <v-row>
-      <v-col>
+    <v-row no-gutters>
+      <v-col class="pr-4">
         <v-card class="pb-2">
           <v-card-subtitle>
             <v-row>
@@ -100,8 +100,10 @@
               </v-col>
             </v-row>
           </v-card-subtitle>
-          <v-row class="mt-2 mb-2">
-            <pre ref="editor" class="editor" data-test="sender-history"></pre>
+          <v-row no-gutters class="mt-2 mb-2">
+            <v-col>
+              <pre ref="editor" class="editor" data-test="sender-history"></pre>
+            </v-col>
           </v-row>
         </v-card>
       </v-col>

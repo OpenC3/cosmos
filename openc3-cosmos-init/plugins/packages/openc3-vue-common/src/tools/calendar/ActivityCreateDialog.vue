@@ -234,10 +234,7 @@
 
 <script>
 import { Api } from '@openc3/js-common/services'
-import {
-  EnvironmentChooser,
-  ScriptChooser,
-} from '@/components'
+import { EnvironmentChooser, ScriptChooser } from '@/components'
 import { TimeFilters } from '@/util'
 import CreateDialog from './CreateDialog'
 
