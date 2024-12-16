@@ -50,6 +50,9 @@
       <v-data-table
         :search="search"
         :headers="headers"
+        :header-props="{
+          style: 'width: 50%',
+        }"
         :items="rows"
         :custom-filter="filter"
         :sort-by="sortBy"
