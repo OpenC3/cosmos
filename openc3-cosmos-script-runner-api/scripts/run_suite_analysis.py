@@ -46,7 +46,8 @@ def load_utility(procedure_name):
     return False
 
 
-require_utility = load_utility
+setattr(openc3.script, "load_utility", load_utility)
+setattr(openc3.script, "require_utility", load_utility)
 
 data = None
 with open(path) as file:
