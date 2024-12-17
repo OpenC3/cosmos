@@ -134,11 +134,29 @@ package_dot_json_files.each do |rel_path|
     if line =~ /\"version\":/
       mod_data << "  \"version\": \"#{version}\",\n"
     elsif line =~ /\"@openc3\/js-common\":/
-      mod_data << "    \"@openc3/js-common\": \"#{version}\",\n"
+      mod_data << "    \"@openc3/js-common\": \"#{version}\""
+      # Don't assume the line has a comma because it could be at the end
+      if line.include?(',')
+        mod_data << ",\n"
+      else
+        mod_data << "\n"
+      end
     elsif line =~ /\"@openc3\/vue-common\":/
-      mod_data << "    \"@openc3/vue-common\": \"#{version}\",\n"
+      mod_data << "    \"@openc3/vue-common\": \"#{version}\""
+      # Don't assume the line has a comma because it could be at the end
+      if line.include?(',')
+        mod_data << ",\n"
+      else
+        mod_data << "\n"
+      end
     elsif line =~ /\"@openc3\/ace-diff\":/
-      mod_data << "    \"@openc3/ace-diff\": \"#{version}\",\n"
+      mod_data << "    \"@openc3/ace-diff\": \"#{version}\""
+      # Don't assume the line has a comma because it could be at the end
+      if line.include?(',')
+        mod_data << ",\n"
+      else
+        mod_data << "\n"
+      end
     else
       mod_data << line
     end
