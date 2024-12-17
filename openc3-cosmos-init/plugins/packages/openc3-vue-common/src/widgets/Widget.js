@@ -81,8 +81,11 @@ export default {
         this.applyStyleSetting(setting)
       })
 
-      // If nothing has yet defined a width then we add flex to the style
-      if (this.appliedStyle['width'] === undefined) {
+      // If nothing has yet defined a width or height then we add flex to the style
+      if (
+        this.appliedStyle['width'] === undefined &&
+        this.appliedStyle['height'] === undefined
+      ) {
         // This flex allows for alignment in our widgets
         // The value of '0 10 100%' was achieved through trial and error
         // The larger flex-shrink value was critical for success

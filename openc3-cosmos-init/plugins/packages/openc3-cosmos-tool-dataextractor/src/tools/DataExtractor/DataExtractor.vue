@@ -426,7 +426,11 @@ export default {
       this.saveDefaultConfig(this.currentConfig)
     },
     cmdOrTlm: function () {
-      this.saveDefaultConfig(this.currentConfig)
+      if (this.items.length === 0) { // just to prevent the save from happening twice
+        this.saveDefaultConfig(this.currentConfig)
+      } else {
+        this.items = []
+      }
     },
     items: {
       handler: function () {
