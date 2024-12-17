@@ -9,7 +9,7 @@
   "dependencies": {
     "@astrouxds/astro-web-components": "7.24.1",
     "@openc3/js-common": "6.0.0",
-    "@openc3/vue-common": "6.0.0",
+    "@openc3/vue-common": "6.0.0"
   },
   "devDependencies": {
     "@rushstack/eslint-patch": "1.10.4",
