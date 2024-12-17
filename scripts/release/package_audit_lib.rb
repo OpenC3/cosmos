@@ -387,13 +387,13 @@ def check_tool_base(path, base_pkgs)
       FileUtils.rm(existing)
 
       # Now update the files with references to materialdesignicons
-      files = %w(src/index.ejs src/index-allow-http.ejs)
+      files = %w(public/index.html public/index-allow-http.html)
       # The base also has to update index.html in openc3-tool-base
       files << "../packages/openc3-tool-base/public/index.html" unless path.include?('enterprise')
       files.each do |filename|
-        ejs = File.read(filename)
-        ejs.gsub!(/materialdesignicons-.+.min.css/, "materialdesignicons-#{latest}.min.css")
-        File.open(filename, 'w') {|file| file.puts ejs }
+        html = File.read(filename)
+        html.gsub!(/materialdesignicons-.+.min.css/, "materialdesignicons-#{latest}.min.css")
+        File.open(filename, 'w') {|file| file.puts html }
       end
     end
 
@@ -421,7 +421,11 @@ def check_tool_base(path, base_pkgs)
       # This prevents vue- from matching vue-router-
       existing = Dir["public/js/#{alt_package}-[0-9]*"][0]
       if !existing
-        puts "Could not find existing package #{package} in #{Dir.pwd}/public/js"
+        puts "ERROR: Could not find existing package #{alt_package} in #{Dir.pwd}/public/js"
+        next
+      end
+      if !latest
+        puts "ERROR: Could not find latest version for #{package} in #{Dir.pwd}/package.json"
         next
       end
       unless existing.include?(latest)
