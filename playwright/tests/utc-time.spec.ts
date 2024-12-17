@@ -272,8 +272,7 @@ test.describe('Data Viewer', () => {
     await expect
       .poll(async () => {
         return await page
-          .locator('[data-test=history-component-text-area]')
-          .getByLabel('')
+          .locator('[data-test=history-component-text-area] textarea')
           .inputValue()
       })
       .toContain(
