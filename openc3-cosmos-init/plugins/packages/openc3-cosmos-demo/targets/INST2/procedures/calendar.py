@@ -21,7 +21,7 @@ print(
 )  # => {"name":"Mine", "color":"#4287f5", "scope":"DEFAULT", "updated_at":1698763720728596964}
 
 now = datetime.now(timezone.utc)
-start = datetime(now.year, now.month, now.day, now.hour + 1, 30, 00, 00, timezone.utc)
+start = now + timedelta(hours=1)
 stop = start + timedelta(hours=1)  # Stop plus 1hr
 act = create_timeline_activity("Mine", kind="reserve", start=start, stop=stop)
 print(act)  # =>

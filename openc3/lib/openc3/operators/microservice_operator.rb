@@ -43,6 +43,7 @@ module OpenC3
       @changed_microservices = {}
       @removed_microservices = {}
       @shard = ENV['OPENC3_SHARD'] || 0
+      @shard = @shard.to_i
     end
 
     def convert_microservice_to_process_definition(microservice_name, microservice_config)
