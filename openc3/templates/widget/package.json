@@ -1,6 +1,6 @@
 {
   "name": "<%= widget_name %>",
-  "version": "6.0.0",
+  "version": "6.0.1-beta0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "@astrouxds/astro-web-components": "^7.24.0",
-    "@openc3/vue-common": "6.0.0",
+    "@openc3/vue-common": "6.0.1-beta0",
     "vuetify": "^3.7.1"
   },
   "devDependencies": {
