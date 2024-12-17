@@ -125,20 +125,17 @@ test('adds a raw packet to a new tab', async ({ page, utils }) => {
   await utils.sleep(500)
   expect(
     await page
-      .locator('[data-test=history-component-text-area]')
-      .getByLabel('')
+      .locator('[data-test=history-component-text-area] textarea')
       .inputValue(),
   ).toMatch('Received seconds:')
   expect(
     await page
-      .locator('[data-test=history-component-text-area]')
-      .getByLabel('')
+      .locator('[data-test=history-component-text-area] textarea')
       .inputValue(),
   ).toMatch('00000010:')
   expect(
     await page
-      .locator('[data-test=history-component-text-area]')
-      .getByLabel('')
+      .locator('[data-test=history-component-text-area] textarea')
       .inputValue(),
   ).toMatch('00000020:')
 })
@@ -155,26 +152,22 @@ test('adds a decom packet to a new tab', async ({ page, utils }) => {
   await utils.sleep(500)
   expect(
     await page
-      .locator('[data-test=history-component-text-area]')
-      .getByLabel('')
+      .locator('[data-test=history-component-text-area] textarea')
       .inputValue(),
   ).toMatch('POSX:')
   expect(
     await page
-      .locator('[data-test=history-component-text-area]')
-      .getByLabel('')
+      .locator('[data-test=history-component-text-area] textarea')
       .inputValue(),
   ).toMatch('POSY:')
   expect(
     await page
-      .locator('[data-test=history-component-text-area]')
-      .getByLabel('')
+      .locator('[data-test=history-component-text-area] textarea')
       .inputValue(),
   ).toMatch('POSZ:')
   expect(
     await page
-      .locator('[data-test=history-component-text-area]')
-      .getByLabel('')
+      .locator('[data-test=history-component-text-area] textarea')
       .inputValue(),
   ).not.toMatch('00000010:')
 })
@@ -192,8 +185,7 @@ test('adds a custom component to a new tab', async ({ page, utils }) => {
   await utils.sleep(500)
   expect(
     await page
-      .locator('[data-test=history-component-text-area]')
-      .getByLabel('')
+      .locator('[data-test=history-component-text-area] textarea')
       .inputValue(),
   ).toMatch(/(.*\n)+Magnitude:.*/)
   await page
@@ -203,8 +195,7 @@ test('adds a custom component to a new tab', async ({ page, utils }) => {
   await expect
     .poll(async () => {
       return await page
-        .locator('[data-test=history-component-text-area]')
-        .getByLabel('')
+        .locator('[data-test=history-component-text-area] textarea')
         .inputValue()
     })
     .toMatch(/^Magnitude:.*$/)
@@ -244,44 +235,38 @@ test('controls playback', async ({ page, utils }) => {
   await page.locator('[data-test=history-component-play-pause]').click()
   await utils.sleep(500) // Ensure it's stopped and draws the last packet contents
   let content: string = await page
-    .locator('[data-test=history-component-text-area]')
-    .getByLabel('')
+    .locator('[data-test=history-component-text-area] textarea')
     .inputValue()
   // Step back and forth
   await page.getByLabel('prepended action').click()
   expect(content).not.toEqual(
     await page
-      .locator('[data-test=history-component-text-area]')
-      .getByLabel('')
+      .locator('[data-test=history-component-text-area] textarea')
       .inputValue(),
   )
   await page.getByLabel('appended action').click()
   expect(content).toEqual(
     await page
-      .locator('[data-test=history-component-text-area]')
-      .getByLabel('')
+      .locator('[data-test=history-component-text-area] textarea')
       .inputValue(),
   )
   // Resume
   await page.locator('[data-test=history-component-play-pause]').click()
   expect(content).not.toEqual(
     await page
-      .locator('[data-test=history-component-text-area]')
-      .getByLabel('')
+      .locator('[data-test=history-component-text-area] textarea')
       .inputValue(),
   )
   // Stop
   await page.locator('[data-test="stop-button"]').click()
   await utils.sleep(500) // Ensure it's stopped and draws the last packet contents
   content = await page
-    .locator('[data-test=history-component-text-area]')
-    .getByLabel('')
+    .locator('[data-test=history-component-text-area] textarea')
     .inputValue()
   await utils.sleep(500) // Wait for potential changes
   expect(content).toEqual(
     await page
-      .locator('[data-test=history-component-text-area]')
-      .getByLabel('')
+      .locator('[data-test=history-component-text-area] textarea')
       .inputValue(),
   )
 })
@@ -295,22 +280,19 @@ test('changes display settings', async ({ page, utils }) => {
   await page.getByText('Show timestamp').click()
   expect(
     await page
-      .locator('[data-test=history-component-text-area]')
-      .getByLabel('')
+      .locator('[data-test=history-component-text-area] textarea')
       .inputValue(),
   ).not.toMatch('Received seconds:')
   await page.getByText('Show timestamp').click()
   expect(
     await page
-      .locator('[data-test=history-component-text-area]')
-      .getByLabel('')
+      .locator('[data-test=history-component-text-area] textarea')
       .inputValue(),
   ).toMatch('Received seconds:')
   await page.getByText('Show ASCII').click()
   expect(
     await page
-      .locator('[data-test=history-component-text-area]')
-      .getByLabel('')
+      .locator('[data-test=history-component-text-area] textarea')
       .inputValue(),
   ).toMatch(
     /(\s\w\w){16}\s?(?!\s)/, // per https://regex101.com/
@@ -318,8 +300,7 @@ test('changes display settings', async ({ page, utils }) => {
   await page.getByText('Show ASCII').click()
   expect(
     await page
-      .locator('[data-test=history-component-text-area]')
-      .getByLabel('')
+      .locator('[data-test=history-component-text-area] textarea')
       .inputValue(),
   ).toMatch(
     /(\s\w\w){16}\s{4}\S*/, // per https://regex101.com/
@@ -327,15 +308,13 @@ test('changes display settings', async ({ page, utils }) => {
   await page.getByText('Show line address').click()
   expect(
     await page
-      .locator('[data-test=history-component-text-area]')
-      .getByLabel('')
+      .locator('[data-test=history-component-text-area] textarea')
       .inputValue(),
   ).not.toMatch(/00000000:/)
   await page.getByText('Show line address').click()
   expect(
     await page
-      .locator('[data-test=history-component-text-area]')
-      .getByLabel('')
+      .locator('[data-test=history-component-text-area] textarea')
       .inputValue(),
   ).toMatch(/00000000:/)
   await page
@@ -343,8 +322,7 @@ test('changes display settings', async ({ page, utils }) => {
     .fill('8')
   expect(
     await page
-      .locator('[data-test=history-component-text-area]')
-      .getByLabel('')
+      .locator('[data-test=history-component-text-area] textarea')
       .inputValue(),
   ).toMatch(
     /(\s\w\w){8}\s{4}\S*/, // per https://regex101.com/
@@ -352,8 +330,7 @@ test('changes display settings', async ({ page, utils }) => {
 
   expect(
     await page
-      .locator('[data-test=history-component-text-area]')
-      .getByLabel('')
+      .locator('[data-test=history-component-text-area] textarea')
       .inputValue(),
   ).not.toMatch(/Received seconds:(.*\n)+.*Received seconds:/)
   await page
@@ -362,8 +339,7 @@ test('changes display settings', async ({ page, utils }) => {
   await utils.sleep(100)
   expect(
     await page
-      .locator('[data-test=history-component-text-area]')
-      .getByLabel('')
+      .locator('[data-test=history-component-text-area] textarea')
       .inputValue(),
   ).toMatch(
     /Received seconds:(.*\n)+.*Received seconds:/, // per https://regex101.com/
@@ -377,8 +353,7 @@ test('downloads a file', async ({ page, utils }) => {
   await page.locator('[data-test=history-component-play-pause]').click()
 
   const textarea = await page
-    .locator('[data-test=history-component-text-area]')
-    .getByLabel('')
+    .locator('[data-test=history-component-text-area] textarea')
     .inputValue()
   await utils.download(
     page,
@@ -463,8 +438,7 @@ test('adds single packet item', async ({ page, utils }) => {
   await expect
     .poll(async () => {
       return await page
-        .locator('[data-test=history-component-text-area]')
-        .getByLabel('')
+        .locator('[data-test=history-component-text-area] textarea')
         .inputValue()
     })
     // Create regular expression to match the line:
@@ -489,8 +463,7 @@ test('adds multiple packet items', async ({ page, utils }) => {
   await expect
     .poll(async () => {
       return await page
-        .locator('[data-test=history-component-text-area]')
-        .getByLabel('')
+        .locator('[data-test=history-component-text-area] textarea')
         .inputValue()
     })
     // Create regular expression to match the line:

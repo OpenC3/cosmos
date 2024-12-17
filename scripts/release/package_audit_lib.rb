@@ -430,6 +430,7 @@ def check_tool_base(path, base_pkgs)
         # Search here to get the URLs: https://cdnjs.com/
         case package
         when 'vue'
+          `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/#{package}.global.js --output public/js/#{package}.global-#{latest}.js`
           `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/#{package}.global.prod.min.js --output public/js/#{package}.global.prod-#{latest}.min.js`
         when 'single-spa'
           `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/system/#{package}.min.js --output public/js/#{package}-#{latest}.min.js`
