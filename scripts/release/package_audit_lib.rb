@@ -410,9 +410,16 @@ def check_tool_base(path, base_pkgs)
       end
     end
     packages.each do |package, latest|
+      # vue and vuetify are special cases due to the package names
+      alt_package = package
+      if package == 'vue'
+        alt_package = 'vue.global.prod'
+      elsif package == 'vuetify'
+        alt_package = 'vuetify-labs'
+      end
       # Ensure we're only matching package names followed by numbers
       # This prevents vue- from matching vue-router-
-      existing = Dir["public/js/#{package}-[0-9]*"][0]
+      existing = Dir["public/js/#{alt_package}-[0-9]*"][0]
       if !existing
         puts "Could not find existing package #{package} in #{Dir.pwd}/public/js"
         next
@@ -423,7 +430,6 @@ def check_tool_base(path, base_pkgs)
         # Search here to get the URLs: https://cdnjs.com/
         case package
         when 'vue'
-          `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/#{package}.global.min.js --output public/js/#{package}.global-#{latest}.min.js`
           `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/#{package}.global.prod.min.js --output public/js/#{package}.global.prod-#{latest}.min.js`
         when 'single-spa'
           `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/system/#{package}.min.js --output public/js/#{package}-#{latest}.min.js`
@@ -445,11 +451,11 @@ def check_tool_base(path, base_pkgs)
         end
         FileUtils.rm existing
         # Now update the files with references to <package>-<version>.min.js
-        %w(src/index.ejs src/index-allow-http.ejs).each do |filename|
-          ejs = File.read(filename)
-          ejs.gsub!(/#{package}-\d+\.\d+\.\d+\.min\.js/, "#{package}-#{latest}.min.js")
-          ejs.gsub!(/#{package}-\d+\.\d+\.\d+\.min\.css/, "#{package}-#{latest}.min.css")
-          File.open(filename, 'w') {|file| file.puts ejs }
+        %w(public/index.html public/index-allow-http.html).each do |filename|
+          html = File.read(filename)
+          html.gsub!(/#{alt_package}-\d+\.\d+\.\d+\.min\.js/, "#{alt_package}-#{latest}.min.js")
+          html.gsub!(/#{alt_package}-\d+\.\d+\.\d+\.min\.css/, "#{alt_package}-#{latest}.min.css")
+          File.open(filename, 'w') {|file| file.puts html }
         end
       end
     end
