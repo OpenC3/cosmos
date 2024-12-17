@@ -308,10 +308,13 @@ export default {
     },
     computedStyle() {
       let style = {}
+      // note down what the width was in case it was set to AUTO, because absolute positioning will lose that
+      const origWidth = this.width || this.$refs.bar?.clientWidth
       if (this.floated) {
         style['position'] = 'absolute'
         style['top'] = this.top + 'px'
         style['left'] = this.left + 'px'
+        style['width'] = origWidth + 'px'
       }
       return style
     },
