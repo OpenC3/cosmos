@@ -19,7 +19,7 @@
 <template>
   <rux-monitoring-icon
     class="rux-icon"
-    :style="pointerStyle"
+    :style="[pointerStyle, computedStyle]"
     :icon="icon"
     :status="status"
     :label="label"

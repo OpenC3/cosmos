@@ -21,7 +21,7 @@
 -->
 
 <template>
-  <div ref="container" class="d-flex flex-column" :style="computedStyle">
+  <div ref="container" :style="computedStyle">
     <component
       v-bind="listeners"
       v-for="(widget, index) in widgets"

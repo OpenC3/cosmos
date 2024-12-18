@@ -23,7 +23,11 @@
 <template>
   <v-tooltip location="top">
     <template v-slot:activator="{ props }">
-      <div class="led mt-1" :style="cssProps" v-bind="props"></div>
+      <div
+        class="ledwidget mt-1"
+        :style="[cssProps, computedStyle]"
+        v-bind="props"
+      ></div>
     </template>
     <span>{{ fullName }}</span>
   </v-tooltip>
@@ -59,8 +63,6 @@ export default {
         color = 'openc3-black'
       }
       return {
-        '--height': this.height + 'px',
-        '--width': this.width + 'px',
         '--color': color,
       }
     },
@@ -81,6 +83,11 @@ export default {
           break
       }
     })
+    // Throw width and height into the appliedSettings so they are set
+    // and we don't get the default flex value
+    this.appliedSettings.push(['WIDTH', this.width])
+    this.appliedSettings.push(['HEIGHT', this.height])
+
     if (!this.parameters[3]) {
       this.parameters[3] = 'CONVERTED'
     }
@@ -94,9 +101,7 @@ export default {
 </script>
 
 <style scoped>
-.led {
-  height: var(--height);
-  width: var(--width);
+.ledwidget {
   background-color: var(--color);
   border-radius: 50%;
 }
