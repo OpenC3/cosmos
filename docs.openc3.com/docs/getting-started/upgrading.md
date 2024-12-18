@@ -10,6 +10,10 @@ sidebar_custom_props:
 
 COSMOS is released as Docker containers. Since we're using Docker containers and volumes we can simply stop the existing COSMOS application, then download and run the new release.
 
+:::info Release Notes
+Always check the release notes associated with the release on the [releases](https://github.com/OpenC3/cosmos/releases) page. Sometimes there are migration notes.
+:::
+
 This example assumes an existing COSMOS project at C:\cosmos-project.
 
 1. Stop the current COSMOS application
@@ -39,7 +43,7 @@ In general, patch releases (x.y.Z) can be downgraded, minor releases (x.Y.z) _mi
 ## Migrating From COSMOS 5 to COSMOS 6
 
 :::info Developers Only
-If you haven't written any custom tools or widgets, there are no special changes required to upgrade from COSMOS 5 to COSMOS 6. Simply follow the normal upgrade instructions above.
+If you haven't written any custom tools or widgets, there are no special changes required to upgrade from COSMOS 5 to COSMOS 6. Simply follow the normal upgrade instructions above including following the release notes.
 :::
 
 COSMOS 6 introduces some breaking changes for custom tools regarding the Vue framework and our common library code. We've upgraded from Vue 2 (EOL December 31, 2023) to Vue 3. These versions of Vue are not compatible with each other, so any tools written with Vue 2 will need to be updated. Additionally, our `@openc3/tool-common` NPM package has been deprecated with its functionality reorganized into two packages: `@openc3/js-common` and `@openc3/vue-common`. This is to provide a better experience for developers who are building COSMOS tools without the Vue framework.

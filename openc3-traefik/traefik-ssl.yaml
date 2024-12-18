@@ -68,7 +68,7 @@ http:
     # Matches any path with a file extension which is assumed to be
     # a static file
     tools-router:
-      rule: PathRegexp(`/tools/.*/.*[.].*`)
+      rule: PathRegexp(`/tools/.*/.*[.](ttf|otf|woff|woff2|html|js|css|png|jpg|jpeg|gif|svg|ico|json|xml|txt|pdf|zip|tar|gz|tgz|csv|tsv|md|yaml|yml|bin|doc|docx|xls|xlsx|ppt|pptx|mp4|mp3|wav|avi|mov|flv|swf|apk|ipa|deb|rpm|exe|msi|dmg|pkg|sh|bat|cmd|ps1|py|pl|rb|php|java|class|jar|war|ear|so|dll|lib|a|o|obj|pdb|pdb|lib|dylib|framework)`)
       service: service-minio
       priority: 6
       tls: {}
