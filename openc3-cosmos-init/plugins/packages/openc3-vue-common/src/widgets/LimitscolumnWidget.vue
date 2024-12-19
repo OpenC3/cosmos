@@ -52,19 +52,25 @@ export default {
       let limits = this.modifyLimits(
         this.limitsSettings[this.selectedLimitsSet],
       )
-      this.calcLimits(limits)
-      return {
-        '--height': this.height + 'px',
-        '--width': this.width + 'px',
-        '--container-width': this.width - 5 + 'px',
-        '--position': this.calcPosition(value, limits) + '%',
-        '--redlow-height': this.redLow + '%',
-        '--redhigh-height': this.redHigh + '%',
-        '--yellowlow-height': this.yellowLow + '%',
-        '--yellowhigh-height': this.yellowHigh + '%',
-        '--greenlow-height': this.greenLow + '%',
-        '--greenhigh-height': this.greenHigh + '%',
-        '--blue-height': this.blue + '%',
+      if (limits) {
+        this.calcLimits(limits)
+        return {
+          '--height': this.height + 'px',
+          '--width': this.width + 'px',
+          '--container-width': this.width - 5 + 'px',
+          '--position': this.calcPosition(value, limits) + '%',
+          '--redlow-height': this.redLow + '%',
+          '--redhigh-height': this.redHigh + '%',
+          '--yellowlow-height': this.yellowLow + '%',
+          '--yellowhigh-height': this.yellowHigh + '%',
+          '--greenlow-height': this.greenLow + '%',
+          '--greenhigh-height': this.greenHigh + '%',
+          '--blue-height': this.blue + '%',
+        }
+      } else {
+        throw new Error(
+          `Item ${this.parameters.slice(0, 3).join(' ')} has no limits settings`,
+        )
       }
     },
   },

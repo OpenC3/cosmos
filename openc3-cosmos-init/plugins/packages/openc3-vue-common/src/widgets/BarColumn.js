@@ -101,6 +101,9 @@ export default {
   },
   methods: {
     modifyLimits(limitsSettings) {
+      if (!limitsSettings) {
+        return
+      }
       // By default the red bars take 10% of the display
       this.redLow = 10
       this.redHigh = 10
