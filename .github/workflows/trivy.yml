@@ -21,7 +21,6 @@ jobs:
   openc3-scan:
     if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - name: openc3.sh build
@@ -32,7 +31,7 @@ jobs:
         env:
           OPENC3_TAG: ${{ github.sha }}
       - name: Run Trivy on image ruby
-        if: steps.build.outcome == 'success'
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-ruby:${{ github.sha }}"
@@ -44,13 +43,13 @@ jobs:
           scanners: "vuln"
           severity: "CRITICAL,HIGH"
       - name: Upload Trivy scan results
-        if: steps.build.outcome == 'success'
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: github/codeql-action/upload-sarif@v3
         with:
           category: "openc3-ruby"
           sarif_file: "trivy-ruby.sarif"
       - name: Run Trivy on image node
-        if: steps.build.outcome == 'success'
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-node:${{ github.sha }}"
@@ -64,13 +63,13 @@ jobs:
           # On a subsequent call to the action we know trivy is already installed so can skip this
           skip-setup-trivy: true
       - name: Upload Trivy scan results
-        if: steps.build.outcome == 'success'
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: github/codeql-action/upload-sarif@v3
         with:
           category: "openc3-node"
           sarif_file: "trivy-node.sarif"
       - name: Run Trivy on image base
-        if: steps.build.outcome == 'success'
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-base:${{ github.sha }}"
@@ -83,13 +82,13 @@ jobs:
           severity: "CRITICAL,HIGH"
           skip-setup-trivy: true
       - name: Upload Trivy scan results
-        if: steps.build.outcome == 'success'
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: github/codeql-action/upload-sarif@v3
         with:
           category: "openc3-base"
           sarif_file: "trivy-base.sarif"
       - name: Run Trivy on image cosmos-init
-        if: steps.build.outcome == 'success'
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-cosmos-init:${{ github.sha }}"
@@ -102,13 +101,13 @@ jobs:
           severity: "CRITICAL,HIGH"
           skip-setup-trivy: true
       - name: Upload Trivy scan results
-        if: steps.build.outcome == 'success'
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: github/codeql-action/upload-sarif@v3
         with:
           category: "openc3-init"
           sarif_file: "trivy-init.sarif"
       - name: Run Trivy on image redis
-        if: steps.build.outcome == 'success'
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-redis:${{ github.sha }}"
@@ -121,13 +120,13 @@ jobs:
           severity: "CRITICAL,HIGH"
           skip-setup-trivy: true
       - name: Upload Trivy scan results
-        if: steps.build.outcome == 'success'
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: github/codeql-action/upload-sarif@v3
         with:
           category: "openc3-redis"
           sarif_file: "trivy-redis.sarif"
       - name: Run Trivy on image minio
-        if: steps.build.outcome == 'success'
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-minio:${{ github.sha }}"
@@ -140,13 +139,13 @@ jobs:
           severity: "CRITICAL,HIGH"
           skip-setup-trivy: true
       - name: Upload Trivy scan results
-        if: steps.build.outcome == 'success'
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: github/codeql-action/upload-sarif@v3
         with:
           category: "openc3-minio"
           sarif_file: "trivy-minio.sarif"
       - name: Run Trivy on image operator
-        if: steps.build.outcome == 'success'
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-operator:${{ github.sha }}"
@@ -159,13 +158,13 @@ jobs:
           severity: "CRITICAL,HIGH"
           skip-setup-trivy: true
       - name: Upload Trivy scan results
-        if: steps.build.outcome == 'success'
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: github/codeql-action/upload-sarif@v3
         with:
           category: "openc3-operator"
           sarif_file: "trivy-operator.sarif"
       - name: Run Trivy on image cmd-tlm-api
-        if: steps.build.outcome == 'success'
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-cosmos-cmd-tlm-api:${{ github.sha }}"
@@ -178,13 +177,13 @@ jobs:
           severity: "CRITICAL,HIGH"
           skip-setup-trivy: true
       - name: Upload Trivy scan results
-        if: steps.build.outcome == 'success'
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: github/codeql-action/upload-sarif@v3
         with:
           category: "openc3-cmd-tlm-api"
           sarif_file: "trivy-cmd-tlm-api.sarif"
       - name: Run Trivy on image script-runner-api
-        if: steps.build.outcome == 'success'
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-cosmos-script-runner-api:${{ github.sha }}"
@@ -197,13 +196,13 @@ jobs:
           severity: "CRITICAL,HIGH"
           skip-setup-trivy: true
       - name: Upload Trivy scan results
-        if: steps.build.outcome == 'success'
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: github/codeql-action/upload-sarif@v3
         with:
           category: "openc3-script-runner-api"
           sarif_file: "trivy-script-runner-api.sarif"
       - name: Run Trivy on image traefik
-        if: steps.build.outcome == 'success'
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-traefik:${{ github.sha }}"
@@ -216,13 +215,13 @@ jobs:
           severity: "CRITICAL,HIGH"
           skip-setup-trivy: true
       - name: Upload Trivy scan results
-        if: steps.build.outcome == 'success'
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: github/codeql-action/upload-sarif@v3
         with:
           category: "openc3-traefik"
           sarif_file: "trivy-traefik.sarif"
       - name: Run Trivy in GitHub SBOM mode and submit results to Dependency Snapshots
-        if: steps.build.outcome == 'success'
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: "fs"
