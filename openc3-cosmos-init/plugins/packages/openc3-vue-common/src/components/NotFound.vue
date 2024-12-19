@@ -1,5 +1,5 @@
 <!--
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -17,11 +17,47 @@
 -->
 
 <template>
-  <v-card>
-    <v-card-title>404 Not Found Error</v-card-title>
-    <v-card-text
-      >The requested URL <code>{{ $route.fullPath }}</code> was not
-      routable.</v-card-text
-    >
+  <v-card v-if="show">
+    <v-card-title> 404 Not Found </v-card-title>
+    <v-card-text class="d-flex align-center mt-3">
+      The requested URL
+      <code class="mx-1"> {{ $route.fullPath }} </code>
+      was not routable.
+      <span class="text-h3 mx-1"> 🦄 </span>
+    </v-card-text>
   </v-card>
 </template>
+
+<script>
+import { getMountedApps } from 'single-spa'
+
+const SINGLE_SPA_APP_CHANGE_EVENT = 'single-spa:app-change'
+
+// This component is actually always loaded for every route other than /login
+// because of the catch-all path in tool-base's router, so we need logic to
+// hide it when a tool is loaded.
+export default {
+  data() {
+    return {
+      show: false,
+    }
+  },
+  created() {
+    window.addEventListener(SINGLE_SPA_APP_CHANGE_EVENT, this.handleAppChange)
+  },
+  mounted() {
+    // Give single-spa some time to get an app mounted to avoid flashing this
+    setTimeout(() => {
+      this.show = getMountedApps().length === 0
+    }, 150)
+  },
+  beforeDestroy() {
+    window.removeEventListener(SINGLE_SPA_APP_CHANGE_EVENT, this.handleAppChange)
+  },
+  methods: {
+    handleAppChange: function (event) {
+      this.show = !event.detail.appsByNewStatus.MOUNTED
+    },
+  },
+}
+</script>
