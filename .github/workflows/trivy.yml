@@ -21,6 +21,8 @@ jobs:
   openc3-scan:
     if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
     steps:
       - uses: actions/checkout@v4
       - name: openc3.sh build
@@ -34,6 +36,7 @@ jobs:
         with:
           image-ref: "docker.io/openc3inc/openc3-ruby:${{ github.sha }}"
           format: "sarif"
+          exit-code: 1
           output: "trivy-ruby.sarif"
           ignore-unfixed: true
           vuln-type: "os,library"
@@ -49,6 +52,7 @@ jobs:
         with:
           image-ref: "docker.io/openc3inc/openc3-node:${{ github.sha }}"
           format: "sarif"
+          exit-code: 1
           output: "trivy-node.sarif"
           ignore-unfixed: true
           vuln-type: "os,library"
@@ -64,6 +68,7 @@ jobs:
         with:
           image-ref: "docker.io/openc3inc/openc3-base:${{ github.sha }}"
           format: "sarif"
+          exit-code: 1
           output: "trivy-base.sarif"
           ignore-unfixed: true
           vuln-type: "os,library"
@@ -79,6 +84,7 @@ jobs:
         with:
           image-ref: "docker.io/openc3inc/openc3-cosmos-init:${{ github.sha }}"
           format: "sarif"
+          exit-code: 1
           output: "trivy-init.sarif"
           ignore-unfixed: true
           vuln-type: "os,library"
@@ -94,6 +100,7 @@ jobs:
         with:
           image-ref: "docker.io/openc3inc/openc3-redis:${{ github.sha }}"
           format: "sarif"
+          exit-code: 1
           output: "trivy-redis.sarif"
           ignore-unfixed: true
           vuln-type: "os,library"
@@ -109,6 +116,7 @@ jobs:
         with:
           image-ref: "docker.io/openc3inc/openc3-minio:${{ github.sha }}"
           format: "sarif"
+          exit-code: 1
           output: "trivy-minio.sarif"
           ignore-unfixed: true
           vuln-type: "os,library"
@@ -124,6 +132,7 @@ jobs:
         with:
           image-ref: "docker.io/openc3inc/openc3-operator:${{ github.sha }}"
           format: "sarif"
+          exit-code: 1
           output: "trivy-operator.sarif"
           ignore-unfixed: true
           vuln-type: "os,library"
@@ -139,6 +148,7 @@ jobs:
         with:
           image-ref: "docker.io/openc3inc/openc3-cosmos-cmd-tlm-api:${{ github.sha }}"
           format: "sarif"
+          exit-code: 1
           output: "trivy-cmd-tlm-api.sarif"
           ignore-unfixed: true
           vuln-type: "os,library"
@@ -154,6 +164,7 @@ jobs:
         with:
           image-ref: "docker.io/openc3inc/openc3-cosmos-script-runner-api:${{ github.sha }}"
           format: "sarif"
+          exit-code: 1
           output: "trivy-script-runner-api.sarif"
           ignore-unfixed: true
           vuln-type: "os,library"
@@ -169,6 +180,7 @@ jobs:
         with:
           image-ref: "docker.io/openc3inc/openc3-traefik:${{ github.sha }}"
           format: "sarif"
+          exit-code: 1
           output: "trivy-traefik.sarif"
           ignore-unfixed: true
           vuln-type: "os,library"
@@ -184,6 +196,7 @@ jobs:
         with:
           scan-type: "fs"
           format: "github"
+          exit-code: 1
           output: "dependency-results.sbom.json"
           image-ref: "."
           github-pat: ${{ secrets.GITHUB_TOKEN }}
