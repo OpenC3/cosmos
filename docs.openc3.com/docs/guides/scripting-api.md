@@ -3238,7 +3238,7 @@ The local_screen allows you to create a local screen directly from a script whic
 Python / Ruby Syntax:
 
 ```ruby
-local_screen("<Screen Name>" "<Definition>", <X Position (optional)>, <Y Position (optional)>)
+local_screen("<Screen Name>", "<Definition>", <X Position (optional)>, <Y Position (optional)>)
 ```
 
 | Parameter   | Description                                               |
