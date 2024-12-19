@@ -257,6 +257,61 @@ test('test python metadata apis', async ({ page, utils }) => {
   )
 })
 
+async function testScreenApis(page, utils, filename, target) {
+  await openFile(page, utils, filename)
+  await page.locator('[data-test=start-button]').click()
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'Connecting...',
+    {
+      timeout: 5000,
+    },
+  )
+  await expect(page.locator('[data-test=state] input')).toHaveValue('running')
+  // script displays INST ADCS
+  await expect(page.getByText(`${target} ADCS`, { exact: true })).toBeVisible()
+  // script displays INST HS
+  await expect(page.getByText(`${target} HS`, { exact: true })).toBeVisible()
+  // script calls clear_screen("INST", "ADCS")
+  await expect(
+    page.getByText(`${target} ADCS`, { exact: true }),
+  ).not.toBeVisible()
+  // script displays INST IMAGE
+  await expect(page.getByText(`${target} IMAGE`, { exact: true })).toBeVisible()
+  // script calls clear_all_screens()
+  await expect(
+    page.getByText(`${target} HS`, { exact: true }),
+  ).not.toBeVisible()
+  await expect(
+    page.getByText(`${target} IMAGE`, { exact: true }),
+  ).not.toBeVisible()
+  // script creates local screen "TEST"
+  await expect(page.getByText('LOCAL TEST', { exact: true })).toBeVisible()
+  // script calls clear_all_screens()
+  await expect(page.getByText('LOCAL TEST', { exact: true })).not.toBeVisible()
+  // script creates local screen "INST TEST"
+  await expect(page.getByText(`${target} TEST`, { exact: true })).toBeVisible()
+  // script calls clear_all_screens()
+  await expect(
+    page.getByText(`${target} TEST`, { exact: true }),
+  ).not.toBeVisible()
+  // script deletes INST TEST and tries to display it which results in error
+  await expect(page.locator('[data-test=state] input')).toHaveValue('error', {
+    timeout: 20000,
+  })
+  await page.locator('[data-test=go-button]').click()
+  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
+    timeout: 20000,
+  })
+}
+
+test('test ruby screen apis', async ({ page, utils }) => {
+  await testScreenApis(page, utils, 'screens.rb', 'INST')
+})
+
+test('test python screen apis', async ({ page, utils }) => {
+  await testScreenApis(page, utils, 'screens.py', 'INST2')
+})
+
 test('test python numpy import', async ({ page, utils }) => {
   await openFile(page, utils, 'numpy.py')
   await page.locator('[data-test=start-button]').click()

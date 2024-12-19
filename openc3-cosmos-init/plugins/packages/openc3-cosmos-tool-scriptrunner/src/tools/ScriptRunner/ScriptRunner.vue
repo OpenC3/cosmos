@@ -1706,25 +1706,25 @@ export default {
               }
               index += 1
             }
-            this.$set(definition, 'target', data.target_name)
-            this.$set(definition, 'screen', data.screen_name)
-            this.$set(definition, 'definition', data.definition)
+            definition.target = data.target_name
+            definition.screen = data.screen_name
+            definition.definition = data.definition
             if (data.x) {
-              this.$set(definition, 'left', data.x)
+              definition.left = data.x
             } else {
-              this.$set(definition, 'left', 0)
+              definition.left = 0
             }
             if (data.y) {
-              this.$set(definition, 'top', data.y)
+              definition.top = data.y
             } else {
-              this.$set(definition, 'top', 0)
+              definition.top = 0
             }
-            this.$set(definition, 'count', this.updateCounter++)
+            definition.count = this.updateCounter++
             if (!found) {
-              this.$set(definition, 'id', this.idCounter++)
-              this.$set(this.screens, this.screens.length, definition)
+              definition.id = this.idCounter++
+              this.screens[this.screens.length] = definition
             } else {
-              this.$set(this.screens, index, definition)
+              this.screens[index] = definition
             }
             break
           case 'clearscreen':
@@ -2592,6 +2592,10 @@ class TestSuite(Suite):
 .saving {
   z-index: 20;
   opacity: 0.35;
+}
+.ace_gutter {
+  /* Screens have a default z-index of 3 so get below that */
+  z-index: 2;
 }
 .ace_gutter-cell.ace_breakpoint {
   border-radius: 20px 0px 0px 20px;
