@@ -21,7 +21,7 @@
 */
 
 import { createRouter, createWebHistory } from 'vue-router'
-import { Empty } from '@openc3/vue-common/components'
+import { NotFound } from '@openc3/vue-common/components'
 import { Login } from '@openc3/vue-common/tools/base'
 
 export default createRouter({
@@ -33,10 +33,9 @@ export default createRouter({
       component: Login,
     },
     {
-      // Empty component for all other routes to avoid VueRouter warnings, since all other routes are handled by single-spa
       path: '/:pathMatch(.*)*',
       name: '',
-      component: Empty,
+      component: NotFound,
     },
   ],
 })
