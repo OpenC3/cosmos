@@ -257,7 +257,7 @@ test('test python metadata apis', async ({ page, utils }) => {
   )
 })
 
-async function testScreenApis(page, utils, filename) {
+async function testScreenApis(page, utils, filename, target) {
   await openFile(page, utils, filename)
   await page.locator('[data-test=start-button]').click()
   await expect(page.locator('[data-test=state] input')).toHaveValue(
@@ -268,24 +268,32 @@ async function testScreenApis(page, utils, filename) {
   )
   await expect(page.locator('[data-test=state] input')).toHaveValue('running')
   // script displays INST ADCS
-  await page.getByText('INST ADCS', { exact: true }).toBeVisible()
+  await expect(page.getByText(`${target} ADCS`, { exact: true })).toBeVisible()
   // script displays INST HS
-  await page.getByText('INST HS', { exact: true }).toBeVisible()
+  await expect(page.getByText(`${target} HS`, { exact: true })).toBeVisible()
   // script calls clear_screen("INST", "ADCS")
-  await page.getByText('INST ADCS', { exact: true }).not.toBeVisible()
+  await expect(
+    page.getByText(`${target} ADCS`, { exact: true }),
+  ).not.toBeVisible()
   // script displays INST IMAGE
-  await page.getByText('INST IMAGE', { exact: true }).toBeVisible()
+  await expect(page.getByText(`${target} IMAGE`, { exact: true })).toBeVisible()
   // script calls clear_all_screens()
-  await page.getByText('INST HS', { exact: true }).not.toBeVisible()
-  await page.getByText('INST IMAGE', { exact: true }).not.toBeVisible()
+  await expect(
+    page.getByText(`${target} HS`, { exact: true }),
+  ).not.toBeVisible()
+  await expect(
+    page.getByText(`${target} IMAGE`, { exact: true }),
+  ).not.toBeVisible()
   // script creates local screen "TEST"
-  await page.getByText('LOCAL TEST', { exact: true }).toBeVisible()
+  await expect(page.getByText('LOCAL TEST', { exact: true })).toBeVisible()
   // script calls clear_all_screens()
-  await page.getByText('LOCAL TEST', { exact: true }).not.toBeVisible()
+  await expect(page.getByText('LOCAL TEST', { exact: true })).not.toBeVisible()
   // script creates local screen "INST TEST"
-  await page.getByText('INST TEST', { exact: true }).toBeVisible()
+  await expect(page.getByText(`${target} TEST`, { exact: true })).toBeVisible()
   // script calls clear_all_screens()
-  await page.getByText('INST TEST', { exact: true }).not.toBeVisible()
+  await expect(
+    page.getByText(`${target} TEST`, { exact: true }),
+  ).not.toBeVisible()
   // script deletes INST TEST and tries to display it which results in error
   await expect(page.locator('[data-test=state] input')).toHaveValue('error', {
     timeout: 20000,
@@ -296,12 +304,12 @@ async function testScreenApis(page, utils, filename) {
   })
 }
 
-test.only('test ruby screen apis', async ({ page, utils }) => {
-  await testScreenApis(page, utils, 'screens.rb')
+test('test ruby screen apis', async ({ page, utils }) => {
+  await testScreenApis(page, utils, 'screens.rb', 'INST')
 })
 
 test('test python screen apis', async ({ page, utils }) => {
-  await testScreenApis(page, utils, 'screens.py')
+  await testScreenApis(page, utils, 'screens.py', 'INST2')
 })
 
 test('test python numpy import', async ({ page, utils }) => {
