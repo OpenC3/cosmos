@@ -34,10 +34,12 @@
             v-bind="props"
             variant="outlined"
             class="mx-1 menu-button"
+            :text="menu.label"
             :data-test="formatDT(`${title} ${menu.label}`)"
           >
-            <span v-text="menu.label" />
-            <v-icon class="myicon" end> mdi-menu-down </v-icon>
+            <template v-slot:append>
+              <v-icon class="menu-button-icon"> mdi-menu-down </v-icon>
+            </template>
           </v-btn>
         </template>
         <v-list>
@@ -184,22 +186,21 @@ export default {
 .menu-button {
   border-color: var(--color-border-interactive-muted) !important;
   background-color: var(--color-background-base-default) !important;
-  padding-right: 3px !important;
 }
-span.v-btn__content span {
-  padding-right: 5px;
+.menu-button-icon {
+  background-color: var(--color-background-surface-selected);
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  height: calc(var(--v-btn-height));
+  width: calc(var(--v-btn-height));
+  margin-top: -1px;
+  margin-bottom: -1px;
+  margin-left: 3px; /* parent's left margin (4px) - border (1px) */
+  margin-right: -13px; /* parent's right margin (4px) - border (1px) - padding (16px) */
 }
 .list-action :deep(label) {
   color: white;
   padding-left: 20px;
-}
-.myicon {
-  background-color: var(--color-background-surface-selected);
-  border: 1px solid currentColor;
-  border-radius: 3px;
-  height: 36px !important;
-  width: 36px !important;
-  margin-top: -1px;
 }
 .v-list :deep(.v-label) {
   margin-left: 5px;
