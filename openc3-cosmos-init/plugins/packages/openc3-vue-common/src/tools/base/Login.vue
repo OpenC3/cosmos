@@ -64,7 +64,7 @@
           <v-row>
             <v-btn
               type="submit"
-              @click.prevent="verifyPassword"
+              @click.prevent="() => verifyPassword()"
               size="large"
               color="success"
               :disabled="!formValid"
@@ -138,6 +138,11 @@ export default {
       }
     })
   },
+  mounted: function () {
+    if (localStorage.openc3Token) {
+      this.verifyPassword(localStorage.openc3Token, true)
+    }
+  },
   methods: {
     showReset: function () {
       this.reset = true
@@ -147,18 +152,19 @@ export default {
       const redirect = new URLSearchParams(window.location.search).get(
         'redirect',
       )
-      if (redirect.startsWith('/tools/')) {
+      if (redirect?.startsWith('/tools/')) {
         // Valid relative redirect URL
         window.location = decodeURI(redirect)
       } else {
         window.location = '/'
       }
     },
-    verifyPassword: function () {
+    verifyPassword: function (token, noAlert) {
+      token ||= this.password
       this.showAlert = false
       Api.post('/openc3-api/auth/verify', {
         data: {
-          token: this.password,
+          token,
         },
         ...this.options,
       })
@@ -166,9 +172,13 @@ export default {
           this.login(response)
         })
         .catch((error) => {
-          this.alert = 'Incorrect password'
+          if (error?.status === 401) {
+            this.alert = 'Incorrect password'
+          } else {
+            this.alert = error.message || 'Something went wrong...'
+          }
           this.alertType = 'warning'
-          this.showAlert = true
+          this.showAlert = !noAlert
         })
     },
     setPassword: function () {
