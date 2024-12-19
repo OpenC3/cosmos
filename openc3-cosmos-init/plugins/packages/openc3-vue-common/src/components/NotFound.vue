@@ -51,7 +51,7 @@ export default {
       this.show = getMountedApps().length === 0
     }, 150)
   },
-  beforeDestroy() {
+  unmounted() {
     window.removeEventListener(SINGLE_SPA_APP_CHANGE_EVENT, this.handleAppChange)
   },
   methods: {
