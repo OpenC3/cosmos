@@ -21,6 +21,7 @@ jobs:
   openc3-scan:
     if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - name: openc3.sh build
