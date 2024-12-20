@@ -771,9 +771,11 @@ cmd_raw_no_checks("INST COLLECT with DURATION 11, TYPE 1")
 cmd_raw_no_checks("INST", "COLLECT", {"DURATION": 11, "TYPE": 1})
 ```
 
-### build_cmd (since 5.13.0, since 5.8.0 as build_command)
+### build_cmd
 
-Builds a command binary string
+> Since 5.13.0, since 5.8.0 as build_command
+
+Builds a command binary string so you can see the raw bytes for a given command. Use the [get_cmd](#get_cmd) to get information about a command like endianness, description, items, etc.
 
 Ruby Syntax:
 
@@ -828,7 +830,9 @@ Ruby / Python Example:
 send_raw("INST_INT", data)
 ```
 
-### get_all_cmds (since 5.13.0, since 5.0.0 as get_all_commands)
+### get_all_cmds
+
+> Since 5.13.0, since 5.0.0 as get_all_commands
 
 Returns an array of the commands that are available for a particular target. The returned array is an array of hashes which fully describe the command packet.
 
@@ -870,7 +874,9 @@ print(cmd_list)  #=>
 # }]
 ```
 
-### get_all_cmd_names (since 5.13.0, since 5.0.6 as get_all_command_names)
+### get_all_cmd_names
+
+> Since 5.13.0, since 5.0.6 as get_all_command_names
 
 Returns an array of the command names for a particular target.
 
@@ -898,9 +904,11 @@ cmd_list = get_all_cmd_names("INST")
 print(cmd_list)  #=> ['ABORT', 'ARYCMD', 'ASCIICMD', ...]
 ```
 
-### get_cmd (since 5.13.0, since 5.0.0 as get_command)
+### get_cmd
 
-Returns a command hash which fully describes the command packet.
+> Since 5.13.0, since 5.0.0 as get_command
+
+Returns a command hash which fully describes the command packet. To get the binary buffer of an as-built command use [build_cmd](#build_cmd).
 
 Ruby / Python Syntax:
 
@@ -942,7 +950,9 @@ print(abort_cmd)  #=>
 # }]
 ```
 
-### get_param (since 5.13.0, since 5.0.0 as get_parameter)
+### get_param
+
+> Since 5.13.0, since 5.0.0 as get_parameter
 
 Returns a hash of the given command parameter
 
@@ -1350,7 +1360,7 @@ Python Example:
 names_values_and_limits_states = get_tlm_packet("INST HEALTH_STATUS", type='FORMATTED')
 ```
 
-### get_tlm_values (modified in 5.0.0)
+### get_tlm_values
 
 Returns the values and current limits state for a specified set of telemetry items. Items can be in any telemetry packet in the system. They can all be retrieved using the same value type or a specific value type can be specified for each item.
 
@@ -1371,7 +1381,9 @@ values = get_tlm_values(["INST__HEALTH_STATUS__TEMP1__CONVERTED", "INST__HEALTH_
 print(values) # [[-100.0, :RED_LOW], [0, :RED_LOW]]
 ```
 
-### get_all_tlm (since 5.13.0, since 5.0.0 as get_all_telemetry)
+### get_all_tlm
+
+> Since 5.13.0, since 5.0.0 as get_all_telemetry
 
 Returns an array of all target packet hashes.
 
@@ -1402,7 +1414,9 @@ print(packets)
 #     ...
 ```
 
-### get_all_tlm_names (since 5.13.0, since 5.0.6 as get_all_telemetry_names)
+### get_all_tlm_names
+
+> Since 5.13.0, since 5.0.6 as get_all_telemetry_names
 
 Returns an array of all target packet names.
 
@@ -1422,7 +1436,9 @@ Ruby / Python Example:
 get_all_tlm_names("INST")  #=> ["ADCS", "HEALTH_STATUS", ...]
 ```
 
-### get_tlm (since 5.13.0, since 5.0.0 as get_telemetry)
+### get_tlm
+
+> Since 5.13.0, since 5.0.0 as get_telemetry
 
 Returns a packet hash.
 
@@ -1462,7 +1478,7 @@ print(packet)
 #    ...
 ```
 
-### get_item (since 5.0.0)
+### get_item
 
 Returns an item hash.
 
@@ -1680,7 +1696,7 @@ print(get_overrides()) #=>
 
 Methods for subscribing to specific packets of data. This provides an interface to ensure that each telemetry packet is received and handled rather than relying on polling where some data may be missed.
 
-### subscribe_packets (since 5.0.3)
+### subscribe_packets
 
 Allows the user to listen for one or more telemetry packets of data to arrive. A unique id is returned which is used to retrieve the data.
 
@@ -1700,7 +1716,7 @@ Ruby / Python Example:
 id = subscribe_packets([['INST', 'HEALTH_STATUS'], ['INST', 'ADCS']])
 ```
 
-### get_packets (since 5.0.3)
+### get_packets
 
 Streams packet data from a previous subscription.
 
@@ -2478,7 +2494,7 @@ end
 
 These methods allow the user to manipulate COSMOS interfaces.
 
-### get_interface (since 5.0.0)
+### get_interface
 
 Returns an interface status including the as built interface and its current status (cmd/tlm counters, etc).
 
@@ -2776,7 +2792,7 @@ Ruby / Python Syntax / Example:
 router_names = get_router_names() #=> ['ROUTER_INT']
 ```
 
-### get_router (since 5.0.0)
+### get_router
 
 Returns a router status including the as built router and its current status (cmd/tlm counters, etc).
 

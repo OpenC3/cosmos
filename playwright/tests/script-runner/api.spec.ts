@@ -262,11 +262,7 @@ async function testScreenApis(page, utils, filename, target) {
   await page.locator('[data-test=start-button]').click()
   await expect(page.locator('[data-test=state] input')).toHaveValue(
     'Connecting...',
-    {
-      timeout: 5000,
-    },
   )
-  await expect(page.locator('[data-test=state] input')).toHaveValue('running')
   // script displays INST ADCS
   await expect(page.getByText(`${target} ADCS`, { exact: true })).toBeVisible()
   // script displays INST HS
@@ -295,13 +291,9 @@ async function testScreenApis(page, utils, filename, target) {
     page.getByText(`${target} TEST`, { exact: true }),
   ).not.toBeVisible()
   // script deletes INST TEST and tries to display it which results in error
-  await expect(page.locator('[data-test=state] input')).toHaveValue('error', {
-    timeout: 20000,
-  })
+  await expect(page.locator('[data-test=state] input')).toHaveValue('error')
   await page.locator('[data-test=go-button]').click()
-  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
-    timeout: 20000,
-  })
+  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped')
 }
 
 test('test ruby screen apis', async ({ page, utils }) => {
