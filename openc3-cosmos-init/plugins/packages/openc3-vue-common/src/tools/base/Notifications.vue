@@ -171,7 +171,6 @@
 <script>
 import { formatDistanceToNow } from 'date-fns'
 import { Api, Cable } from '@openc3/js-common/services'
-import { Icons } from '@/components'
 import {
   AstroStatusColors,
   AstroStatusIndicator,
