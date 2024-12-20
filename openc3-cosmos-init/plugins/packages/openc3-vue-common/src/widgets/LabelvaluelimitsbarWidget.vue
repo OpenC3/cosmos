@@ -35,6 +35,8 @@
       :settings="[...appliedSettings]"
       :screen-values="screenValues"
       :widget-index="2"
+      :line="line"
+      :lineNumber="lineNumber"
     />
   </div>
 </template>

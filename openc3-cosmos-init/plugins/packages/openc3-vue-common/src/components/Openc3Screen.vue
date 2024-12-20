@@ -163,7 +163,7 @@
     />
 
     <!-- Error dialog -->
-    <v-dialog v-model="errorDialog" max-width="600">
+    <v-dialog v-model="errorDialog" width="60vw">
       <v-toolbar height="24">
         <v-spacer />
         <span> Screen: {{ target }} {{ screen }} Errors </span>

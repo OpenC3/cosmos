@@ -60,11 +60,25 @@ export default {
           return `RL/${values[0]} YL/${values[1]} YH/${values[2]} RH/${values[3]} GL/${values[4]} GH/${values[5]}`
         }
       } else {
-        throw new Error(
-          `Item ${this.parameters.slice(0, 3).join(' ')} has no limits settings`,
-        )
+        // See errorCaptured in Openc3Screen.vue for how this is parsed
+        throw {
+          line: this.line,
+          lineNumber: this.lineNumber,
+          keyword: 'LIMITSBAR',
+          parameters: this.parameters,
+          message: 'Item has no limits settings',
+          usage: 'Only items with limits',
+        }
       }
     },
+  },
+  created() {
+    this.verifyNumParams(
+      'LIMITSBAR',
+      3,
+      6,
+      'LIMITSBAR <TARGET> <PACKET> <ITEM> <TYPE> <WIDTH> <HEIGHT>',
+    )
   },
 }
 </script>

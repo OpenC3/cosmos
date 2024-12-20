@@ -68,11 +68,25 @@ export default {
           '--blue-height': this.blue + '%',
         }
       } else {
-        throw new Error(
-          `Item ${this.parameters.slice(0, 3).join(' ')} has no limits settings`,
-        )
+        // See errorCaptured in Openc3Screen.vue for how this is parsed
+        throw {
+          line: this.line,
+          lineNumber: this.lineNumber,
+          keyword: 'LIMITSCOLUMN',
+          parameters: this.parameters,
+          message: 'Item has no limits settings',
+          usage: 'Only items with limits',
+        }
       }
     },
+  },
+  created() {
+    this.verifyNumParams(
+      'LIMITSCOLUMN',
+      3,
+      6,
+      'LIMITSCOLUMN <TARGET> <PACKET> <ITEM> <TYPE> <WIDTH> <HEIGHT>',
+    )
   },
 }
 </script>
