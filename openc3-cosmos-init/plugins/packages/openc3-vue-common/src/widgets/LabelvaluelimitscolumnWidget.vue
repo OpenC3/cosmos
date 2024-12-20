@@ -34,6 +34,8 @@
       :settings="[...appliedSettings]"
       :screen-values="screenValues"
       :widget-index="2"
+      :line="line"
+      :lineNumber="lineNumber"
     />
     <value-widget
       v-bind="$attrs"

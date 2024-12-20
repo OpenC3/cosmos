@@ -52,21 +52,41 @@ export default {
       let limits = this.modifyLimits(
         this.limitsSettings[this.selectedLimitsSet],
       )
-      this.calcLimits(limits)
-      return {
-        '--height': this.height + 'px',
-        '--width': this.width + 'px',
-        '--container-width': this.width - 5 + 'px',
-        '--position': this.calcPosition(value, limits) + '%',
-        '--redlow-height': this.redLow + '%',
-        '--redhigh-height': this.redHigh + '%',
-        '--yellowlow-height': this.yellowLow + '%',
-        '--yellowhigh-height': this.yellowHigh + '%',
-        '--greenlow-height': this.greenLow + '%',
-        '--greenhigh-height': this.greenHigh + '%',
-        '--blue-height': this.blue + '%',
+      if (limits) {
+        this.calcLimits(limits)
+        return {
+          '--height': this.height + 'px',
+          '--width': this.width + 'px',
+          '--container-width': this.width - 5 + 'px',
+          '--position': this.calcPosition(value, limits) + '%',
+          '--redlow-height': this.redLow + '%',
+          '--redhigh-height': this.redHigh + '%',
+          '--yellowlow-height': this.yellowLow + '%',
+          '--yellowhigh-height': this.yellowHigh + '%',
+          '--greenlow-height': this.greenLow + '%',
+          '--greenhigh-height': this.greenHigh + '%',
+          '--blue-height': this.blue + '%',
+        }
+      } else {
+        // See errorCaptured in Openc3Screen.vue for how this is parsed
+        throw {
+          line: this.line,
+          lineNumber: this.lineNumber,
+          keyword: 'LIMITSCOLUMN',
+          parameters: this.parameters,
+          message: 'Item has no limits settings',
+          usage: 'Only items with limits',
+        }
       }
     },
+  },
+  created() {
+    this.verifyNumParams(
+      'LIMITSCOLUMN',
+      3,
+      6,
+      'LIMITSCOLUMN <TARGET> <PACKET> <ITEM> <TYPE> <WIDTH> <HEIGHT>',
+    )
   },
 }
 </script>

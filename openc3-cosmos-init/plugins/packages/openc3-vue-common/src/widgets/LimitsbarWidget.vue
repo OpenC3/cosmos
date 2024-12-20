@@ -52,13 +52,33 @@ export default {
   computed: {
     limitsRange() {
       let values = this.limitsSettings[this.selectedLimitsSet]
-      // Format like the DetailsDialog formatLimit function
-      if (values.length === 4) {
-        return `RL/${values[0]} YL/${values[1]} YH/${values[2]} RH/${values[3]}`
+      if (values) {
+        // Format like the DetailsDialog formatLimit function
+        if (values.length === 4) {
+          return `RL/${values[0]} YL/${values[1]} YH/${values[2]} RH/${values[3]}`
+        } else {
+          return `RL/${values[0]} YL/${values[1]} YH/${values[2]} RH/${values[3]} GL/${values[4]} GH/${values[5]}`
+        }
       } else {
-        return `RL/${values[0]} YL/${values[1]} YH/${values[2]} RH/${values[3]} GL/${values[4]} GH/${values[5]}`
+        // See errorCaptured in Openc3Screen.vue for how this is parsed
+        throw {
+          line: this.line,
+          lineNumber: this.lineNumber,
+          keyword: 'LIMITSBAR',
+          parameters: this.parameters,
+          message: 'Item has no limits settings',
+          usage: 'Only items with limits',
+        }
       }
     },
+  },
+  created() {
+    this.verifyNumParams(
+      'LIMITSBAR',
+      3,
+      6,
+      'LIMITSBAR <TARGET> <PACKET> <ITEM> <TYPE> <WIDTH> <HEIGHT>',
+    )
   },
 }
 </script>
