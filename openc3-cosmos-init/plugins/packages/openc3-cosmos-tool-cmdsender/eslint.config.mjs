@@ -1,4 +1,5 @@
 import prettier from "eslint-plugin-prettier";
+import prettierConfig from "@vue/eslint-config-prettier";
 import globals from "globals";
 import parser from "vue-eslint-parser";
 import path from "node:path";
@@ -9,50 +10,54 @@ import { FlatCompat } from "@eslint/eslintrc";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const compat = new FlatCompat({
-    baseDirectory: __dirname,
-    recommendedConfig: js.configs.recommended,
-    allConfig: js.configs.all
+  baseDirectory: __dirname,
+  recommendedConfig: js.configs.recommended,
+  allConfig: js.configs.all
 });
 
-export default [...compat.extends(
+export default [
+  ...compat.extends(
     "plugin:vue/vue3-essential",
     "plugin:prettier/recommended",
-    "@vue/prettier",
-), {
+  ),
+  {
     plugins: {
-        prettier,
+      prettier,
     },
 
     languageOptions: {
-        globals: {
-            ...globals.node,
-        },
+      globals: {
+        ...globals.node,
+      },
 
-        parser: parser,
-        ecmaVersion: 2022,
-        sourceType: "module",
+      parser: parser,
+      ecmaVersion: 2022,
+      sourceType: "module",
     },
 
     rules: {
-        "no-console": "error",
-        "no-debugger": "error",
+      "no-console": "error",
+      "no-debugger": "error",
 
-        "prettier/prettier": ["warn", {
-            endOfLine: "auto",
-        }],
+      "prettier/prettier": ["warn", {
+        endOfLine: "auto",
+      }],
 
-        "vue/multi-word-component-names": "off",
+      "vue/multi-word-component-names": "off",
 
-        "vue/valid-v-slot": ["error", {
-            allowModifiers: true,
-        }],
+      "vue/valid-v-slot": ["error", {
+        allowModifiers: true,
+      }],
     },
-}, {
+  },
+  {
     files: ["**/__tests__/*.{j,t}s?(x)", "**/tests/unit/**/*.spec.{j,t}s?(x)"],
 
     languageOptions: {
-        globals: {
-            ...globals.jest,
-        },
+      globals: {
+        ...globals.jest,
+      },
     },
-}];
+  },
+  prettierConfig,
+];
