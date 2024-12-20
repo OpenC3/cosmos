@@ -32,16 +32,12 @@ jobs:
           OPENC3_TAG: ${{ github.sha }}
       - name: Run Trivy on image ruby
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        # See https://github.com/aquasecurity/trivy-action
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-ruby:${{ github.sha }}"
-          format: "sarif"
-          exit-code: 1
           output: "trivy-ruby.sarif"
-          ignore-unfixed: true
-          vuln-type: "os,library"
-          scanners: "vuln"
-          severity: "CRITICAL,HIGH"
+          trivy-config: trivy.yaml
       - name: Upload Trivy scan results
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: github/codeql-action/upload-sarif@v3
@@ -53,13 +49,8 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-node:${{ github.sha }}"
-          format: "sarif"
-          exit-code: 1
           output: "trivy-node.sarif"
-          ignore-unfixed: true
-          vuln-type: "os,library"
-          scanners: "vuln"
-          severity: "CRITICAL,HIGH"
+          trivy-config: trivy.yaml
           # On a subsequent call to the action we know trivy is already installed so can skip this
           skip-setup-trivy: true
       - name: Upload Trivy scan results
@@ -73,13 +64,8 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-base:${{ github.sha }}"
-          format: "sarif"
-          exit-code: 1
           output: "trivy-base.sarif"
-          ignore-unfixed: true
-          vuln-type: "os,library"
-          scanners: "vuln"
-          severity: "CRITICAL,HIGH"
+          trivy-config: trivy.yaml
           skip-setup-trivy: true
       - name: Upload Trivy scan results
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
@@ -92,13 +78,8 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-cosmos-init:${{ github.sha }}"
-          format: "sarif"
-          exit-code: 1
           output: "trivy-init.sarif"
-          ignore-unfixed: true
-          vuln-type: "os,library"
-          scanners: "vuln"
-          severity: "CRITICAL,HIGH"
+          trivy-config: trivy.yaml
           skip-setup-trivy: true
       - name: Upload Trivy scan results
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
@@ -111,13 +92,8 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-redis:${{ github.sha }}"
-          format: "sarif"
-          exit-code: 1
           output: "trivy-redis.sarif"
-          ignore-unfixed: true
-          vuln-type: "os,library"
-          scanners: "vuln"
-          severity: "CRITICAL,HIGH"
+          trivy-config: trivy.yaml
           skip-setup-trivy: true
       - name: Upload Trivy scan results
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
@@ -130,13 +106,8 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-minio:${{ github.sha }}"
-          format: "sarif"
-          exit-code: 1
           output: "trivy-minio.sarif"
-          ignore-unfixed: true
-          vuln-type: "os,library"
-          scanners: "vuln"
-          severity: "CRITICAL,HIGH"
+          trivy-config: trivy.yaml
           skip-setup-trivy: true
       - name: Upload Trivy scan results
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
@@ -149,13 +120,8 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-operator:${{ github.sha }}"
-          format: "sarif"
-          exit-code: 1
           output: "trivy-operator.sarif"
-          ignore-unfixed: true
-          vuln-type: "os,library"
-          scanners: "vuln"
-          severity: "CRITICAL,HIGH"
+          trivy-config: trivy.yaml
           skip-setup-trivy: true
       - name: Upload Trivy scan results
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
@@ -168,13 +134,8 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-cosmos-cmd-tlm-api:${{ github.sha }}"
-          format: "sarif"
-          exit-code: 1
           output: "trivy-cmd-tlm-api.sarif"
-          ignore-unfixed: true
-          vuln-type: "os,library"
-          scanners: "vuln"
-          severity: "CRITICAL,HIGH"
+          trivy-config: trivy.yaml
           skip-setup-trivy: true
       - name: Upload Trivy scan results
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
@@ -187,13 +148,8 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-cosmos-script-runner-api:${{ github.sha }}"
-          format: "sarif"
-          exit-code: 1
           output: "trivy-script-runner-api.sarif"
-          ignore-unfixed: true
-          vuln-type: "os,library"
-          scanners: "vuln"
-          severity: "CRITICAL,HIGH"
+          trivy-config: trivy.yaml
           skip-setup-trivy: true
       - name: Upload Trivy scan results
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
@@ -206,13 +162,8 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-traefik:${{ github.sha }}"
-          format: "sarif"
-          exit-code: 1
           output: "trivy-traefik.sarif"
-          ignore-unfixed: true
-          vuln-type: "os,library"
-          scanners: "vuln"
-          severity: "CRITICAL,HIGH"
+          trivy-config: trivy.yaml
           skip-setup-trivy: true
       - name: Upload Trivy scan results
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
