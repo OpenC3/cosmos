@@ -778,8 +778,6 @@ export default {
 }
 .v-textarea :deep(textarea) {
   padding: 5px;
-}
-.v-textarea .v-field__input {
   -webkit-mask-image: unset;
   mask-image: unset;
 }
