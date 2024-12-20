@@ -47,7 +47,7 @@
           hide-details
           label="Reduced Type"
           :items="reducedTypes"
-          :disabled="currentReduced === 'DECOM'"
+          :disabled="editItem.reduced === 'DECOM'"
           v-model="editItem.reducedType"
           class="mb-2"
         />
@@ -104,10 +104,10 @@ export default {
       valueTypes: ['CONVERTED', 'RAW'],
       reduction: [
         // Map NONE to DECOM for clarity
-        { text: 'NONE', value: 'DECOM' },
-        { text: 'REDUCED_MINUTE', value: 'REDUCED_MINUTE' },
-        { text: 'REDUCED_HOUR', value: 'REDUCED_HOUR' },
-        { text: 'REDUCED_DAY', value: 'REDUCED_DAY' },
+        { title: 'NONE', value: 'DECOM' },
+        { title: 'REDUCED_MINUTE', value: 'REDUCED_MINUTE' },
+        { title: 'REDUCED_HOUR', value: 'REDUCED_HOUR' },
+        { title: 'REDUCED_DAY', value: 'REDUCED_DAY' },
       ],
       reducedTypes: ['MIN', 'MAX', 'AVG', 'STDDEV'],
     }
@@ -127,14 +127,12 @@ export default {
   },
   async created() {
     this.editItem = { ...this.item }
-    await this.api
-    this.api = new OpenC3Api()
+    new OpenC3Api()
       .get_item(this.item.targetName, this.item.packetName, this.item.itemName)
       .then((details) => {
         for (const [key, value] of Object.entries(details.limits)) {
           if (Object.keys(value).includes('red_low')) {
-            // Must call this.$set to allow Vue to make the limits object reactive
-            this.$set(this.limits, key, Object.values(value))
+            this.limits[key] = Object.values(value)
           }
         }
         // Locate the key for the value array that we pass in
