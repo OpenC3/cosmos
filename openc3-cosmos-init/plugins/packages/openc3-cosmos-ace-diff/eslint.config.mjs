@@ -8,31 +8,34 @@ import { FlatCompat } from "@eslint/eslintrc";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const compat = new FlatCompat({
-    baseDirectory: __dirname,
-    recommendedConfig: js.configs.recommended,
-    allConfig: js.configs.all
+  baseDirectory: __dirname,
+  recommendedConfig: js.configs.recommended,
+  allConfig: js.configs.all
 });
 
-export default [...compat.extends("plugin:prettier/recommended"), {
+export default [
+  ...compat.extends("plugin:prettier/recommended"),
+  {
     plugins: {
-        prettier,
+      prettier,
     },
 
     languageOptions: {
-        globals: {
-            ...globals.node,
-        },
+      globals: {
+        ...globals.node,
+      },
 
-        ecmaVersion: 2020,
-        sourceType: "module",
+      ecmaVersion: 2022,
+      sourceType: "module",
     },
 
     rules: {
-        "no-console": "error",
-        "no-debugger": "error",
+      "no-console": "error",
+      "no-debugger": "error",
 
-        "prettier/prettier": ["warn", {
-            endOfLine: "auto",
-        }],
+      "prettier/prettier": ["warn", {
+        endOfLine: "auto",
+      }],
     },
-}];
+  },
+];

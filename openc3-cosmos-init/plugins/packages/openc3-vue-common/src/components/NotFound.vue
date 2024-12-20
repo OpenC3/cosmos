@@ -52,7 +52,10 @@ export default {
     }, 150)
   },
   unmounted() {
-    window.removeEventListener(SINGLE_SPA_APP_CHANGE_EVENT, this.handleAppChange)
+    window.removeEventListener(
+      SINGLE_SPA_APP_CHANGE_EVENT,
+      this.handleAppChange,
+    )
   },
   methods: {
     handleAppChange: function (event) {
