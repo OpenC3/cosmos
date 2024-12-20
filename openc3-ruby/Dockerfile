@@ -79,7 +79,8 @@ RUN apk update \
   && python3 -m venv /openc3/venv \
   && source /openc3/venv/bin/activate \
   && pip3 config --global set global.index $PYPI_URL/pypi \
-  && pip3 config --global set global.index-url $PYPI_URL/simple
+  && pip3 config --global set global.index-url $PYPI_URL/simple \
+  && pip3 install --upgrade pip setuptools
 
 # Set user and group
 ENV IMAGE_USER=openc3
