@@ -235,6 +235,6 @@ It also updates the plugin.txt file to add the new tool. The icon can be changed
 
 ```ruby
 TOOL datavis "DataVis"
-  INLINE_URL js/app.js
+  INLINE_URL main.js
   ICON mdi-file-cad-box
 ```
