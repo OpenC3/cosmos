@@ -114,7 +114,7 @@ localStorage.setItem("devtools", true);
     Click the Default button next to the application (@openc3/tool-scriptrunner)<br/>
     Paste in the development path which is dependent on the port returned by the local yarn serve and the tool name (scriptrunner)
 
-        http://localhost:2914/tools/scriptrunner/js/app.js
+        http://localhost:2914/tools/scriptrunner/main.js
 
 1.  Refresh the page and you should see your local copy of the application (Script Runner in this example). If you dynamically add code (like `console.log`) the yarn window should re-compile and the browser should refresh displaying your new code. It is highly recommended to get familiar with your browser's [development tools](https://developer.chrome.com/docs/devtools/overview/) if you plan to do frontend development.
 

@@ -29,23 +29,37 @@ NOTE: All commands are assumed to be executed from this (openc3-cosmos-init) dir
     Click the Default button next to the application (@openc3/tool-scriptrunner)<br>
     Paste in the development path which is dependent on the port returned by the local yarn serve and the tool name (scriptrunner)
 
-        http://localhost:2914/tools/scriptrunner/js/app.js
+        http://localhost:2914/tools/scriptrunner/main.js
 
-# Developing OpenC3 Base Application
+## Developing OpenC3 Base Application
 
-1.  Run a development version of traefik
+As of COSMOS 6, developing the base application (openc3-tool-base) is the same as developing other frontend
+applications, described in the steps above.
 
-        openc3-cosmos-init> cd ../openc3-traefik
-        traefik> docker ps
-        # Look for the container with name including traefik
-        traefik> docker stop cosmos-openc3-traefik-1
-        traefik> docker build --build-arg TRAEFIK_CONFIG=traefik-dev-base.yaml -t openc3-traefik-dev-base .
-        traefik> docker run --network=openc3-cosmos-network -p 2900:2900 -it --rm openc3-traefik-dev-base
+## Developing OpenC3 Common Packages
 
-1.  Serve a local base application (App, Auth, AppBar, AppFooter, etc)
+There are two packages that contain shared code between OpenC3 frontend applications: openc3-js-common and
+openc3-vue-common. openc3-js-common contains framework-agnostic JavaScript code such as the API and Action Cable 
+adapters, and openc3-vue-common contains Vue components, plugins, and mixins.
 
-        openc3-cosmos-init> cd plugins/openc3-tool-base
-        openc3-tool-base> yarn serve
+In previous versions of COSMOS, this code was in a package called openc3-tool-common, and you would
+test changes by serving a tool such as CmdTlmServer. As of COSMOS 6, you must also serve the common packages as you
+would any other frontend application, alongside the tool.
+
+To see changes while developing one of these common packages, you must serve it alongside a tool that consumes the changes:
+
+1. Start serving the tool, as described in the steps above
+
+1. Open a second terminal and repeat that process for openc3-js-common or openc3-vue-common
+
+    a. You may omit the final single SPA override step, as it will have no affect for the common package
+
+1. If you are making style/layout changes, you must also open a third terminal and repeat the process for openc3-tool-base
+
+    a. **Do** complete the single SPA override step for openc3-tool-common
+
+We are currently working on externalizing the common packages, which will greatly simplify this process (you'd only
+need to serve and override openc3-js-common or openc3-vue-common). This ability will come in a later release of COSMOS.
 
 # API development
 
