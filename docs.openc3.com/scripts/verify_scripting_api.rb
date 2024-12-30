@@ -33,7 +33,6 @@ Dir[File.join(File.dirname(__FILE__),'../../openc3/lib/openc3/script/*.rb')].eac
   next if filename.include?('web_socket_api')
   next if filename.include?('suite_results')
   next if filename.include?('suite_runner')
-  next if filename.include?('script_runner')
   parse_file(filename, ruby_api_methods)
 end
 Dir[File.join(File.dirname(__FILE__),'../../openc3/lib/openc3/api/*.rb')].each do |filename|

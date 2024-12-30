@@ -3170,7 +3170,7 @@ delete_screen("INST", "ADCS")
 
 ### get_screen_list
 
-The get_screen_list returns a list of available telemetry screens.
+Returns a list of available telemetry screens.
 
 Ruby / Python Syntax / Example:
 
@@ -3180,7 +3180,7 @@ get_screen_list() #=> ['INST ADCS', 'INST COMMANDING', ...]
 
 ### get_screen_definition
 
-The get_screen_definition returns the text file contents of a telemetry screen definition.
+Returns the text file contents of a telemetry screen definition.
 
 Syntax:
 
@@ -3201,7 +3201,7 @@ screen_definition = get_screen_definition("INST", "HS")
 
 ### create_screen
 
-The create_screen allows you to create a screen directly from a script. This screen is saved to Telemetry Viewer for future use in that application.
+Allows you to create a screen directly from a script. This screen is saved to Telemetry Viewer for future use in that application.
 
 Python / Ruby Syntax:
 
@@ -3249,7 +3249,7 @@ create_screen("INST", "LOCAL", screen_def)
 
 ### local_screen
 
-The local_screen allows you to create a local screen directly from a script which is not permanently saved to the Telemetry Viewer screen list. This is useful for one off screens that help users interact with scripts.
+Allows you to create a local screen directly from a script which is not permanently saved to the Telemetry Viewer screen list. This is useful for one off screens that help users interact with scripts.
 
 Python / Ruby Syntax:
 
@@ -3296,6 +3296,162 @@ screen_def = """
 """
 # Here we pass in the screen definition as a string
 local_screen("TESTING", screen_def, 600, 75)
+```
+
+## Script Runner Scripts
+
+These methods allow the user to control Script Runner scripts.
+
+### script_list
+
+Returns all the available files in COSMOS as an array / list. This includes configuration files at every directory level to ensure the user has access to every file. You can filter the list client side to just the 'lib' and or 'procedures' directories if you wish.
+
+Ruby Example:
+
+```ruby
+scripts = script_list()
+puts scripts.length #=> 139
+puts scripts.select {|script| script.include?('/lib/') || script.include?('/procedures/')} #=>
+# [EXAMPLE/lib/example_interface.rb, INST/lib/example_limits_response.rb, ...]
+```
+
+Python Example:
+
+```python
+scripts = script_list()
+print(len(scripts))
+print(list(script for script in scripts if '/lib/' in script or '/procedures/' in script)) #=>
+# [EXAMPLE/lib/example_interface.rb, INST/lib/example_limits_response.rb, ...]
+```
+
+### script_create
+
+Creates a new script with the given contents.
+
+Ruby Example:
+
+```ruby
+contents = 'puts "Hello from Ruby"'
+script_create("INST/procedures/new_script.rb", contents)
+```
+
+Python Example:
+
+```python
+contents = 'print("Hello from Python")'
+script_create("INST/procedures/new_script.py", contents)
+```
+
+### script_body
+
+Returns the script contents.
+
+Ruby Example:
+
+```ruby
+script = script_body("INST/procedures/checks.rb")
+puts script #=> # Display all environment variables ...
+```
+
+Python Example:
+
+```python
+script = script_body("INST/procedures/checks.rb")
+print(script) #=> # Display all environment variables ...
+```
+
+### script_delete
+
+Deletes a script from COSMOS. Note, you can only _really_ delete TEMP scripts and modified scripts. Scripts that are part of an installed COSMOS plugin remain as they were installed.
+
+Example:
+
+```ruby
+script_delete("INST/procedures/checks.rb")
+```
+
+### script_run
+
+Runs a script in Script Runner. The script will run in the background and can be opened in Script Runner by selecting Script->Execution Status and then connecting to it.
+
+Ruby Example:
+
+```ruby
+id = script_run("INST/procedures/checks.rb")
+puts id
+```
+
+Python Example:
+
+```python
+id = script_run("INST/procedures/checks.rb")
+print(id)
+```
+
+### script_lock
+
+Locks a script for editing. Subsequent users that open this script will get a warning that the script is currently locked.
+
+Example:
+
+```ruby
+script_lock("INST/procedures/checks.rb")
+```
+
+### script_unlock
+
+Unlocks a script for editing. If the script was not previously locked this does nothing.
+
+Example:
+
+```ruby
+script_unlock("INST/procedures/checks.rb")
+```
+
+### script_syntax_check
+
+Performs a Ruby or Python syntax check on the given script.
+
+Ruby Example:
+
+```ruby
+result = script_syntax_check("INST/procedures/checks.rb")
+puts result #=> {"title"=>"Syntax Check Successful", "description"=>"[\"Syntax OK\\n\"]", "success"=>true}
+```
+
+Python Example:
+
+```python
+result = script_syntax_check("INST/procedures/checks.rb")
+print(result) #=> { 'succes' => true}
+```
+
+### script_instrumented
+
+Returns the instrumented script which allows COSMOS Script Runner to monitor the execution and provide line by line visualization.
+
+Ruby Example:
+
+```ruby
+script = script_instrumented("INST/procedures/checks.rb")
+puts script #=>
+```
+
+Python Example:
+
+```python
+script = script_instrumented("INST/procedures/checks.rb")
+print(script) #=>
+```
+
+### script_delete_all_breakpoints
+
+Delete _all_ breakpoints associated with _all_ scripts.
+
+Example:
+
+```ruby
+script_delete_all_breakpoints()
 ```
 
 ## Script Runner Settings
