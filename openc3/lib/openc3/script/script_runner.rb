@@ -42,7 +42,6 @@ module OpenC3
       endpoint = "/script-api/scripts/temp.rb/syntax"
       # Explicitly set the headers to plain/text so the request.body is set correctly
       headers = {
-        Accept: 'text/plain',
         'Content-Type': 'plain/text',
       }
       response = $script_runner_api_server.request('post', endpoint, headers: headers, data: script, scope: scope)
@@ -130,7 +129,6 @@ module OpenC3
       endpoint = "/script-api/scripts/temp.rb/instrumented"
       # Explicitly set the headers to plain/text so the request.body is set correctly
       headers = {
-        Accept: 'text/plain',
         'Content-Type': 'plain/text',
       }
       response = $script_runner_api_server.request('post', endpoint, headers: headers, data: script, scope: scope)
