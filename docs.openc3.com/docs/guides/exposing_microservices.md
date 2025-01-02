@@ -36,7 +36,7 @@ Note that this is the internal route to your microservice. Determining this rout
 
 OPENC3_OPERATOR_HOSTNAME is used to override the default service name for our regular docker compose operator of "openc3-operator". Usually this is not set.
 
-In OpenC3 Enterprise, KUBERNETES_SERVICE_HOST is used to detect if we are running in a Kubernetes environment (it will be set by Kubernetes), in which case the service is expected to have a Kubernetes service named scope-user-microservicename-service. For example, if you are using the DEFAULT scope and have a microservice named MYMICROSERVICE the service would be found at the hostname: default-user-mymicroservice-service. In double underscores or single underscores are replaced by a dash and the name is all lower case.
+In OpenC3 Enterprise, KUBERNETES_SERVICE_HOST is used to detect if we are running in a Kubernetes environment (it will be set by Kubernetes), in which case the service is expected to have a Kubernetes service named scope-user-microservicename-service. For example, if you are using the DEFAULT scope and have a microservice named MYMICROSERVICE the service would be found at the hostname: default-user-mymicroservice-service. Double underscores or single underscores are replaced by a dash and the name is all lower case.
 
 [ROUTE_PREFIX](../configuration/plugins#route_prefix-1) is used to define the external route. The external route will take the form of http(s)://YOURCOSMOSDOMAIN:PORT/ROUTE_PREFIX. So for example, if you set the [ROUTE_PREFIX](../configuration/plugins#route_prefix-1) to /mymicroservice then on a default local installation, it could be reached at `http://localhost:2900/mymicroservice`. The `http://localhost:2900` part should be substituted by whatever domain you are accessing COSMOS at.
 
@@ -79,7 +79,7 @@ INTERFACE <%= my_interface_name %> http_server_interface.rb <%= my_port %>
 
 :::warning Sharded Operator on Kubernetes (Enterprise)
 
-The sharded operator is expected to be used on Kubernetes whenever the Kubernetes Operator is not used. Typically this will be because the user does not have permission to use the Kubernetes API directly to spawn containers which is required for use of the Kubernetes Operator. In this case, Kubernetes services will NOT be automatically created, and will have to be manually created by a user with permissions in Kubernetes, or through some other authorized method.
+The sharded operator is expected to be used on Kubernetes whenever the Kubernetes Operator is not used. Typically this will be because the user does not have permission to use the Kubernetes API directly to spawn containers which is required for use of the Kubernetes Operator. In this case, Kubernetes services will NOT be automatically created, and will have to be manually created by a user with permissions in Kubernetes, or through some other authorized method (like a custom framework dashboard or config file).
 :::
 
 ## Connecting to microservices from a different INTERFACE in plugin.txt
