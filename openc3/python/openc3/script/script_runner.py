@@ -39,20 +39,26 @@ def script_list(scope=OPENC3_SCOPE):
 
 
 def script_syntax_check(script, scope=OPENC3_SCOPE):
-    endpoint = "/script-api/scripts/syntax"
+    # script = script_body(filename, scope=scope)
+    endpoint = f"/script-api/scripts/temp.py/syntax"
+    print(f"::{script}::")
     response = openc3.script.SCRIPT_RUNNER_API_SERVER.request(
-        "post", endpoint, json=True, data=script, scope=scope
+        "post", endpoint, json=False, data=script, scope=scope
     )
+    print(response)
+    print(response.text)
     if not response or response.status_code != 200:
         _script_response_error(
             response, "Script syntax check request failed", scope=scope
         )
     else:
         result = json.loads(response.text)
-        if result["title"] == "Syntax Check Successful":
-            return True
+        print(result)
+        if result.get("title") == "Syntax Check Successful":
+            result["success"] = True
         else:
-            raise result.inspect
+            result["success"] = False
+        return result
 
 
 def script_body(filename, scope=OPENC3_SCOPE):
@@ -63,8 +69,8 @@ def script_body(filename, scope=OPENC3_SCOPE):
     if not response or response.status_code != 200:
         _script_response_error(response, f"Failed to get {filename}", scope=scope)
     else:
-        script = response.text
-        return script
+        result = json.loads(response.text)
+        return result.get("contents")
 
 
 def script_run(filename, disconnect=False, environment=None, scope=OPENC3_SCOPE):
@@ -124,22 +130,25 @@ def script_unlock(filename, scope=OPENC3_SCOPE):
         return True
 
 
-def script_instrumented(filename, script, scope=OPENC3_SCOPE):
-    endpoint = f"/script-api/scripts/{filename}/instrumented"
+def script_instrumented(script, scope=OPENC3_SCOPE):
+    # script = script_body(filename, scope=scope)
+    endpoint = f"/script-api/scripts/temp.py/instrumented"
     response = openc3.script.SCRIPT_RUNNER_API_SERVER.request(
-        "post", endpoint, json=True, data=script, scope=scope
+        "post", endpoint, json=False, data=script, scope=scope
     )
     if not response or response.status_code != 200:
         _script_response_error(
             response, "Script instrumented request failed", scope=scope
         )
     else:
+        print(response.text)
         result = json.loads(response.text)
-        if result["title"] == "Instrumented Script":
-            parsed = json.loads(result["description"])
-            return parsed.join("\n")
+        print(result)
+        if result.get("title") == "Instrumented Script":
+            parsed = json.loads(result.get("description"))
+            return "\n".join(parsed)
         else:
-            raise result.inspect
+            raise result
 
 
 def script_create(filename, script, breakpoints=[], scope=OPENC3_SCOPE):
