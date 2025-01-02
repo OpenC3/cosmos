@@ -323,6 +323,24 @@ export default {
     },
   },
   watch: {
+    initialTargetName: function (val) {
+      // These three "initial" watchers are here in case the parent component doesn't figure out its inital values
+      // until after this component has already been created. All this logic incl. the "on-set" events could be
+      // simplified with a refactor to use named v-models, but that's probably a significant breaking change.
+      if (val) {
+        this.selectedTargetName = val.toUpperCase()
+      }
+    },
+    initialPacketName: function (val) {
+      if (val) {
+        this.selectedPacketName = val.toUpperCase()
+      }
+    },
+    initialItemName: function (val) {
+      if (val) {
+        this.selectedItemName = val.toUpperCase()
+      }
+    },
     mode: function (newVal, oldVal) {
       this.selectedPacketName = null
       this.selectedItemName = null
