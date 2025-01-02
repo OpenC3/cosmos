@@ -31,6 +31,7 @@ require 'openc3/models/scope_model'
 require 'openc3/models/plugin_model'
 require 'openc3/models/gem_model'
 require 'openc3/models/migration_model'
+require 'openc3/models/python_package_model'
 require 'openc3/models/tool_model'
 require 'openc3/packets/packet_config'
 require 'openc3/bridge/bridge'
@@ -258,6 +259,30 @@ def update_plugin(plugin_file_path, plugin_name, variables: nil, plugin_txt_line
   end
 end
 
+def wait_process_complete_internal(process_name, scope:)
+  STDOUT.flush
+  state = 'Running'
+  status = nil
+  while true
+    status = OpenC3::ProcessStatusModel.get(name: process_name, scope: scope)
+    state = status['state']
+    break if state != 'Running'
+    sleep(5)
+    print '.'
+    STDOUT.flush
+  end
+  puts "\nFinished: #{state}"
+  puts "Output:\n"
+  puts status['output']
+  if state == 'Complete'
+    puts "Success!"
+    exit 0
+  else
+    puts "Failed!"
+    exit 1
+  end
+end
+
 def wait_process_complete(process_name)
   STDOUT.flush
   state = 'Running'
@@ -433,7 +458,9 @@ def cli_pkg_install(filename, scope:)
     if File.extname(filename) == '.gem'
       OpenC3::GemModel.install(filename, scope: scope)
     else
-      OpenC3::PythonPackageModel.install(filename, scope: scope)
+      process_name = OpenC3::PythonPackageModel.install(filename, scope: scope)
+      print "Installing..."
+      wait_process_complete_internal(process_name, scope: scope)
     end
   else
     # Outside Cluster
@@ -451,7 +478,9 @@ def cli_pkg_uninstall(filename, scope:)
     if File.extname(filename) == '.rb'
       OpenC3::GemModel.destroy(filename)
     else
-      OpenC3::PythonPackageModel.destroy(filename, scope: scope)
+      process_name = OpenC3::PythonPackageModel.destroy(filename, scope: scope)
+      print "Uninstalling..."
+      wait_process_complete_internal(process_name, scope: scope)
     end
   else
     # Outside Cluster
