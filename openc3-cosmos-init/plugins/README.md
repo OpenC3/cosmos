@@ -39,7 +39,7 @@ applications, described in the steps above.
 ## Developing OpenC3 Common Packages
 
 There are two packages that contain shared code between OpenC3 frontend applications: openc3-js-common and
-openc3-vue-common. openc3-js-common contains framework-agnostic JavaScript code such as the API and Action Cable 
+openc3-vue-common. openc3-js-common contains framework-agnostic JavaScript code such as the API and Action Cable
 adapters, and openc3-vue-common contains Vue components, plugins, and mixins.
 
 In previous versions of COSMOS, this code was in a package called openc3-tool-common, and you would
@@ -52,11 +52,11 @@ To see changes while developing one of these common packages, you must serve it 
 
 1. Open a second terminal and repeat that process for openc3-js-common or openc3-vue-common
 
-    a. You may omit the final single SPA override step, as it will have no affect for the common package
+   a. You may omit the final single SPA override step, as it will have no affect for the common package
 
 1. If you are making style/layout changes, you must also open a third terminal and repeat the process for openc3-tool-base
 
-    a. **Do** complete the single SPA override step for openc3-tool-common
+   a. **Do** complete the single SPA override step for openc3-tool-base
 
 We are currently working on externalizing the common packages, which will greatly simplify this process (you'd only
 need to serve and override openc3-js-common or openc3-vue-common). This ability will come in a later release of COSMOS.
