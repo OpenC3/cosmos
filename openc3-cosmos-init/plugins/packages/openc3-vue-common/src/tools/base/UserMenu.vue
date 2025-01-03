@@ -37,6 +37,7 @@
           status="off"
           :label="name"
           :sublabel="roles()"
+          :notifications="unreadNews.length"
         ></rux-monitoring-icon>
       </template>
 
@@ -74,6 +75,35 @@
             COSMOS Enterprise Edition
           </div>
         </v-card-text>
+        <div class="news-header">
+          COSMOS News
+          <v-switch
+            v-model="displayNews"
+            color="primary"
+            data-test="display-news"
+            class="news-switch"
+            hide-details
+          />
+        </div>
+        <v-list
+          v-if="displayNews"
+          lines="two"
+          width="420"
+          max-height="80vh"
+          class="overflow-y-auto"
+          data-test="news-list"
+        >
+          <template v-for="(news, index) in news" :key="`news-${index}`">
+            <hr />
+            <v-list-item class="pl-2">
+              <v-list-item-title>
+                <span class="news-title">{{ news.title }}</span
+                ><span class="news-date">{{ formatDate(news.date) }}</span>
+              </v-list-item-title>
+              <div v-html="news.body"></div>
+            </v-list-item>
+          </template>
+        </v-list>
       </v-card>
     </v-menu>
     <upgrade-to-enterprise-dialog
@@ -107,12 +137,27 @@ export default {
       username: user['preferred_username'],
       showUpgradeToEnterpriseDialog: false,
       activeUsers: ['None'],
+      displayNews: true,
+      news: [],
     }
   },
+  computed: {
+    unreadNews: function () {
+      return this.news.filter((news) => !news.read)
+    },
+  },
   watch: {
-    // Whenever we show the user menu, refresh the list of active users
+    displayNews: function (newValue, oldValue) {
+      localStorage.displayNews = newValue
+    },
+    // Whenever we show the user menu, read the news and refresh the list of active users
     showUserMenu: function (newValue, oldValue) {
       if (newValue === true) {
+        this.news.forEach((news) => {
+          news.read = true
+        })
+        localStorage.newsRead = this.news.length
+
         if (this.name !== 'Anonymous') {
           Api.get('/openc3-api/users/active').then((response) => {
             this.activeUsers = response.data.filter(
@@ -126,7 +171,37 @@ export default {
       }
     },
   },
+  created: function () {
+    if (localStorage.displayNews) {
+      this.displayNews = localStorage.displayNews === 'true'
+    }
+    this.fetchNews()
+    // Every 12hrs fetch news from the OpenC3 news site
+    setInterval(this.fetchNews, 12 * 60 * 60 * 1000)
+  },
   methods: {
+    formatDate(date) {
+      // Just show the YYYY-MM-DD part of the date
+      return date.split('T')[0]
+    },
+    fetchNews: function () {
+      Api.get('/openc3-api/news').then((response) => {
+        response.data.forEach((news) => {
+          news.read = false
+          this.news.some((oldNews) => oldNews.date === news.date)
+            ? null
+            : this.news.push(news)
+        })
+        this.news = this.news.sort(
+          (a, b) => Date.parse(b.date) - Date.parse(a.date),
+        )
+        if (localStorage.newsRead) {
+          for (let i = this.news.length - 1; i >= 0; i--) {
+            this.news[i].read = true
+          }
+        }
+      })
+    },
     logout: function () {
       OpenC3Auth.logout()
       Api.put(`/openc3-api/users/logout/${this.username}`)
@@ -151,7 +226,32 @@ export default {
 }
 </script>
 
+<style>
+.v-switch .v-selection-control {
+  min-height: 20px;
+}
+.v-switch .v-selection-control--density-default {
+  --v-selection-control-size: 20px;
+}
+</style>
 <style scoped>
+.news-header {
+  padding: 10px;
+  background-color: var(--color-background-base-default);
+  text-align: center;
+}
+.news-title {
+  font-weight: bold;
+}
+.news-date {
+  font-size: 0.8rem;
+  color: grey;
+  float: right;
+}
+.news-switch {
+  float: right;
+  padding-right: 10px;
+}
 .link {
   cursor: pointer;
 }

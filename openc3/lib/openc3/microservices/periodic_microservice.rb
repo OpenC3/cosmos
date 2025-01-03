@@ -18,6 +18,16 @@
 
 require 'openc3/microservices/microservice'
 require 'openc3/models/offline_access_model'
+require 'openc3/models/news_model'
+begin
+  require 'openc3-enterprise/version'
+  VERSION = OPENC3_ENTERPRISE_VERSION
+  ENTERPRISE = true
+rescue LoadError
+  require 'openc3/version'
+  VERSION = OPENC3_VERSION
+  ENTERPRISE = false
+end
 
 module OpenC3
   class PeriodicMicroservice < Microservice
@@ -27,6 +37,20 @@ module OpenC3
     def initialize(*args)
       super(*args)
       @metric.set(name: 'periodic_total', value: @count, type: 'counter')
+      @conn = Faraday.new(
+        url: 'https://news.openc3.com',
+        params: {version: VERSION, enterprise: ENTERPRISE},
+      )
+      get_news()
+    end
+
+    def get_news
+      response = @conn.get('/news')
+      if response.success?
+        NewsModel.set(response.body)
+      else
+        NewsModel.no_news()
+      end
     end
 
     def run
@@ -52,6 +76,7 @@ module OpenC3
         @metric.set(name: 'periodic_total', value: @count, type: 'counter')
         break if @cancel_thread
         break if @run_sleeper.sleep(SLEEP_PERIOD_SECONDS)
+        get_news()
       end
     end
 
