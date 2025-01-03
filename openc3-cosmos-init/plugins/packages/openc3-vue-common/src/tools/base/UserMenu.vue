@@ -176,8 +176,9 @@ export default {
       this.displayNews = localStorage.displayNews === 'true'
     }
     this.fetchNews()
-    // Every 12hrs fetch news from the OpenC3 news site
-    setInterval(this.fetchNews, 12 * 60 * 60 * 1000)
+    // Every hour fetch news from the backend
+    // Note: the backend updates from news.openc3.org every 12 hours
+    setInterval(this.fetchNews, 60 * 60 * 1000)
   },
   methods: {
     formatDate(date) {
