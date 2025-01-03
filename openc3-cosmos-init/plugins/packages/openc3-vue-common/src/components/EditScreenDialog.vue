@@ -171,8 +171,10 @@ export default {
       if (this.errors.length !== 0) {
         let messages = new Set()
         let result = []
-        this.errors.sort((a, b) => a.lineNumber - b.lineNumber)
-        for (const error of this.errors) {
+        const sortedErrors = this.errors.toSorted(
+          (a, b) => a.lineNumber - b.lineNumber,
+        )
+        for (const error of sortedErrors) {
           let msg = `At ${error.lineNumber}: (${error.line}) ${error.message}.`
           if (error.usage) {
             msg += ` Usage: ${error.usage}`
