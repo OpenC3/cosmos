@@ -21,6 +21,7 @@ RUN bundle config set --local without 'development' \
 RUN ["chown", "-R", "openc3:openc3", "/src/"]
 COPY  --chown=${IMAGE_USER}:${IMAGE_GROUP} ./ ./
 RUN ["chmod", "-R", "777", "/src/"]
+RUN ["chmod", "-R", "555", "/src/scripts"]
 
 EXPOSE 2902
 
