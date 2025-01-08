@@ -291,8 +291,7 @@ test('opens a dialog for prompt', async ({ page, utils }) => {
   await expect(page.locator('[data-test=state] input')).toHaveValue('stopped')
 })
 
-// Opening a file dialog might not be possible in a Github action?
-test.skip('opens a file dialog', async ({ page, utils }) => {
+test('opens a file dialog', async ({ page, utils }) => {
   await page.locator('textarea').fill(`
   file = open_file_dialog("Open a single file", "Choose something interesting")
   puts file.read
@@ -320,15 +319,15 @@ test.skip('opens a file dialog', async ({ page, utils }) => {
     // It is important to call waitForEvent before click to set up waiting.
     page.waitForEvent('filechooser'),
     // Open the file chooser
-    page.locator('text=Choose File').click(),
+    page.getByLabel('Choose File').first().click(),
   ])
-  await fileChooser.setFiles('.env')
+  await fileChooser.setFiles('package.json')
   await page.locator('.v-dialog >> button:has-text("Ok")').click()
   await expect(page.locator('[data-test=state] input')).toHaveValue('stopped')
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'File(s): [".env"]',
+    'File(s): ["package.json"]',
   )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'RUBYGEMS_URL',
+    'devDependencies',
   )
 })
