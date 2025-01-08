@@ -683,6 +683,10 @@ export default class OpenC3Api {
     return this.exec('set_setting', [name, data])
   }
 
+  update_news() {
+    return this.exec('update_news', [])
+  }
+
   // DEPRECATED for set_setting
   save_setting(name, data) {
     return this.exec('set_setting', [name, data])

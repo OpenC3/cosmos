@@ -75,35 +75,39 @@
             COSMOS Enterprise Edition
           </div>
         </v-card-text>
-        <div class="news-header">
-          COSMOS News
-          <v-switch
-            v-model="displayNews"
-            color="primary"
-            data-test="display-news"
-            class="news-switch"
-            hide-details
-          />
+        <div v-if="newsFeed">
+          <v-row no-gutters class="news-header">
+            <v-col cols="auto" class="me-auto">COSMOS News</v-col>
+            <v-col cols="auto">
+              <v-btn
+                @click="refreshNews"
+                color="primary"
+                density="compact"
+                block
+              >
+                Refresh
+              </v-btn>
+            </v-col>
+          </v-row>
+          <v-list
+            lines="two"
+            width="420"
+            max-height="75vh"
+            class="overflow-y-auto"
+            data-test="news-list"
+          >
+            <template v-for="(news, index) in news" :key="`news-${index}`">
+              <hr />
+              <v-list-item class="pl-2">
+                <v-list-item-title>
+                  <span class="news-title">{{ news.title }}</span
+                  ><span class="news-date">{{ formatDate(news.date) }}</span>
+                </v-list-item-title>
+                <div v-html="news.body"></div>
+              </v-list-item>
+            </template>
+          </v-list>
         </div>
-        <v-list
-          v-if="displayNews"
-          lines="two"
-          width="420"
-          max-height="80vh"
-          class="overflow-y-auto"
-          data-test="news-list"
-        >
-          <template v-for="(news, index) in news" :key="`news-${index}`">
-            <hr />
-            <v-list-item class="pl-2">
-              <v-list-item-title>
-                <span class="news-title">{{ news.title }}</span
-                ><span class="news-date">{{ formatDate(news.date) }}</span>
-              </v-list-item-title>
-              <div v-html="news.body"></div>
-            </v-list-item>
-          </template>
-        </v-list>
       </v-card>
     </v-menu>
     <upgrade-to-enterprise-dialog
@@ -115,6 +119,7 @@
 
 <script>
 import { Api } from '@openc3/js-common/services'
+import { OpenC3Api } from '@openc3/js-common/services'
 import { UpgradeToEnterpriseDialog } from '@/components'
 
 export default {
@@ -130,6 +135,7 @@ export default {
   data: function () {
     let user = OpenC3Auth.user()
     return {
+      api: new OpenC3Api(),
       showUserMenu: false,
       authenticated: !!localStorage.openc3Token,
       name: user['name'],
@@ -137,7 +143,7 @@ export default {
       username: user['preferred_username'],
       showUpgradeToEnterpriseDialog: false,
       activeUsers: ['None'],
-      displayNews: true,
+      newsFeed: false,
       news: [],
     }
   },
@@ -147,9 +153,6 @@ export default {
     },
   },
   watch: {
-    displayNews: function (newValue, oldValue) {
-      localStorage.displayNews = newValue
-    },
     // Whenever we show the user menu, read the news and refresh the list of active users
     showUserMenu: function (newValue, oldValue) {
       if (newValue === true) {
@@ -172,15 +175,30 @@ export default {
     },
   },
   created: function () {
-    if (localStorage.displayNews) {
-      this.displayNews = localStorage.displayNews === 'true'
-    }
-    this.fetchNews()
-    // Every hour fetch news from the backend
-    // Note: the backend updates from news.openc3.org every 12 hours
-    setInterval(this.fetchNews, 60 * 60 * 1000)
+    this.api
+      .get_setting('news_feed')
+      .then((response) => {
+        if (response) {
+          this.newsFeed = response
+          if (this.newsFeed) {
+            this.fetchNews()
+            // Every hour fetch news from the backend
+            // Note: the backend updates from news.openc3.org every 12 hours
+            setInterval(this.fetchNews, 60 * 60 * 1000)
+          }
+        }
+      })
+      .catch((error) => {
+        // Do nothing
+      })
   },
   methods: {
+    refreshNews() {
+      // Force the backend to update the news feed
+      this.api.update_news().then(() => {
+        this.fetchNews()
+      })
+    },
     formatDate(date) {
       // Just show the YYYY-MM-DD part of the date
       return date.split('T')[0]
@@ -227,14 +245,6 @@ export default {
 }
 </script>
 
-<style>
-.v-switch .v-selection-control {
-  min-height: 20px;
-}
-.v-switch .v-selection-control--density-default {
-  --v-selection-control-size: 20px;
-}
-</style>
 <style scoped>
 .news-header {
   padding: 10px;
@@ -248,10 +258,6 @@ export default {
   font-size: 0.8rem;
   color: grey;
   float: right;
-}
-.news-switch {
-  float: right;
-  padding-right: 10px;
 }
 .link {
   cursor: pointer;

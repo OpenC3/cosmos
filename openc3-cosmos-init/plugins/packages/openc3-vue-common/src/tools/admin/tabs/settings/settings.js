@@ -29,7 +29,7 @@ export default {
     }
   },
   methods: {
-    loadSetting: function (setting, variable, defaultValue) {
+    loadSetting: function (setting) {
       this.api
         .get_setting(setting)
         .then((response) => {

@@ -26,6 +26,8 @@
     <v-divider />
     <time-zone-settings />
     <v-divider />
+    <news-feed-settings />
+    <v-divider />
     <classification-banner-settings />
     <v-divider />
     <subtitle-settings />
@@ -44,6 +46,7 @@ import DefaultConfigSettings from './settings/DefaultConfigSettings.vue'
 import AstroSettings from './settings/AstroSettings.vue'
 import ClassificationBannerSettings from './settings/ClassificationBannerSettings.vue'
 import TimeZoneSettings from './settings/TimeZoneSettings.vue'
+import NewsFeedSettings from './settings/NewsFeedSettings.vue'
 import SubtitleSettings from './settings/SubtitleSettings.vue'
 import SourceCodeSettings from './settings/SourceCodeSettings.vue'
 import RubyGemsSettings from './settings/RubyGemsSettings.vue'
@@ -56,6 +59,7 @@ export default {
     AstroSettings,
     ClassificationBannerSettings,
     TimeZoneSettings,
+    NewsFeedSettings,
     SubtitleSettings,
     SourceCodeSettings,
     RubyGemsSettings,

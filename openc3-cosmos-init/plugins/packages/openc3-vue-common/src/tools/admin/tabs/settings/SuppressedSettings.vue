@@ -27,7 +27,7 @@
         <v-checkbox
           v-model="selectAllSuppressedWarnings"
           label="Select All Warnings"
-          desity="compact"
+          density="compact"
         />
         <v-checkbox
           v-for="warning in suppressedWarnings"

@@ -400,6 +400,8 @@ module OpenC3
       SettingModel.set({ name: 'rubygems_url', data: ENV['RUBYGEMS_URL'] || 'https://rubygems.org' }, scope: @scope) unless setting
       setting = SettingModel.get(name: 'pypi_url')
       SettingModel.set({ name: 'pypi_url', data: ENV['PYPI_URL'] || 'https://pypi.org' }, scope: @scope) unless setting
+      setting = SettingModel.get(name: 'news_feed')
+      SettingModel.set({ name: 'news_feed', data: true }, scope: @scope) unless setting
     end
   end
 end

@@ -19,17 +19,14 @@
 require 'openc3/microservices/microservice'
 require 'openc3/models/offline_access_model'
 require 'openc3/models/news_model'
-begin
-  require 'openc3-enterprise/version'
-  VERSION = OPENC3_ENTERPRISE_VERSION
-  ENTERPRISE = true
-rescue LoadError
-  require 'openc3/version'
-  VERSION = OPENC3_VERSION
-  ENTERPRISE = false
-end
+# The VERSION and ENTERPRISE constants are set by settings_api.rb
+require 'openc3/api/settings_api'
 
 module OpenC3
+  class LocalApi
+    include Api
+  end
+
   class PeriodicMicroservice < Microservice
     STARTUP_DELAY_SECONDS = 2 * 60 # Two Minutes
     SLEEP_PERIOD_SECONDS = 24 * 60 * 60 # Run once per day
@@ -37,19 +34,24 @@ module OpenC3
     def initialize(*args)
       super(*args)
       @metric.set(name: 'periodic_total', value: @count, type: 'counter')
-      @conn = Faraday.new(
-        url: 'https://news.openc3.com',
-        params: {version: VERSION, enterprise: ENTERPRISE},
-      )
+      @conn = nil # Faraday connection set by get_news
       get_news()
     end
 
     def get_news
-      response = @conn.get('/news')
-      if response.success?
-        NewsModel.set(response.body)
-      else
-        NewsModel.no_news()
+      if LocalApi.new().get_setting('news_feed', scope: @scope)
+        unless @conn
+          @conn = Faraday.new(
+            url: 'https://news.openc3.com',
+            params: {version: VERSION, enterprise: ENTERPRISE},
+          )
+        end
+        response = @conn.get('/news')
+        if response.success?
+          NewsModel.set(response.body)
+        else
+          NewsModel.news_error(response)
+        end
       end
     end
 
