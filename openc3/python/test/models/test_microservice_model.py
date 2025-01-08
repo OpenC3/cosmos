@@ -16,11 +16,9 @@
 
 import inspect
 import unittest
-import tempfile
 from unittest.mock import *
 from test.test_helper import *
 from openc3.models.microservice_model import MicroserviceModel
-from openc3.config.config_parser import ConfigParser
 
 
 class TestMicroserviceModel(unittest.TestCase):

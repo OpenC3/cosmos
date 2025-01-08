@@ -99,6 +99,7 @@ from openc3.io.stdout import Stdout
 from openc3.io.stderr import Stderr
 from openc3.top_level import kill_thread
 from openc3.script.exceptions import StopScript, SkipScript
+from openc3.tools.test_runner.test import SkipTestCase
 from openc3.script.suite import Group
 from script_instrumentor import ScriptInstrumentor
 import openc3.utilities.target_file_importer
@@ -537,6 +538,7 @@ class RunningScript:
         if (
             exc_type == StopScript
             or exc_type == SkipScript
+            or exc_type == SkipTestCase # DEPRECATED but still valid
             or not self.use_instrumentation
         ):
             raise exc_value
