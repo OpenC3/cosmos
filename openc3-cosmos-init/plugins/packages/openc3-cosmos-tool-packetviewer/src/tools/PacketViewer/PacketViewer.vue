@@ -277,6 +277,12 @@ export default {
       },
       deep: true, // Because pinnedItems is an array
     },
+    '$route.params': function ({ target, packet }) {
+      this.packetChanged({
+        targetName: target.toUpperCase(),
+        packetName: packet.toUpperCase(),
+      })
+    },
   },
   computed: {
     menus: function () {
