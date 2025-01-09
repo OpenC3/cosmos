@@ -65,14 +65,12 @@ export default {
   },
   methods: {
     save() {
-      console.log('save news feed', this.newsFeed)
       this.saveSetting(settingName, this.newsFeed)
       if (this.newsFeed) {
         this.api.update_news()
       }
     },
     parseSetting: function (response) {
-      console.log('parseSetting response', response)
       this.newsFeed = response
     },
   },
