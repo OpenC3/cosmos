@@ -23,7 +23,7 @@
 <template>
   <iframe
     title="IFrameWidget"
-    :src="parameters[0]"
+    :src="url"
     :width="width"
     :height="height"
     :style="computedStyle"
@@ -31,6 +31,7 @@
 </template>
 
 <script>
+import { sanitizeUrl } from '@braintree/sanitize-url'
 import Widget from './Widget'
 
 export default {
@@ -39,6 +40,7 @@ export default {
     return {
       width: 800,
       height: 600,
+      url: sanitizeUrl(this.parameters[0]),
     }
   },
   created: function () {

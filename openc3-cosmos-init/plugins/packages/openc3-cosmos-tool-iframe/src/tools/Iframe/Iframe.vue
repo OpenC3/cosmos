@@ -45,6 +45,7 @@
 </template>
 
 <script>
+import { sanitizeUrl } from '@braintree/sanitize-url'
 import { TopBar } from '@openc3/vue-common/components'
 
 export default {
@@ -62,7 +63,7 @@ export default {
       this.title = this.$route.query.title
     }
     if (this.$route.query && this.$route.query.url) {
-      this.url = this.$route.query.url
+      this.url = sanitizeUrl(this.$route.query.url)
     }
   },
 }

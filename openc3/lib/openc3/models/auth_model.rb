@@ -43,6 +43,15 @@ module OpenC3
     end
 
     def self.verify(token)
+      # Handle a service password - Generally only used by ScriptRunner
+      # TODO: Replace this with temporary service tokens
+      service_password = ENV['OPENC3_SERVICE_PASSWORD']
+      return true if service_password and service_password == token
+
+      return verify_no_service(token)
+    end
+
+    def self.verify_no_service(token)
       return false if token.nil? or token.empty?
 
       time = Time.now
@@ -59,11 +68,6 @@ module OpenC3
       @@token_cache = Store.get(PRIMARY_KEY)
       @@token_cache_time = time
       return true if @@token_cache == token_hash
-
-      # Handle a service password - Generally only used by ScriptRunner
-      # TODO: Replace this with temporary service tokens
-      service_password = ENV['OPENC3_SERVICE_PASSWORD']
-      return true if service_password and service_password == token
 
       return false
     end
