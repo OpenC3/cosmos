@@ -5,8 +5,7 @@ require 'openc3/models/setting_model'
 module OpenC3
   class NewsFeed < Migration
     def self.run
-      setting = SettingModel.get(name: 'news_feed')
-      SettingModel.set({ name: 'news_feed', data: true }, scope: 'DEFAULT') unless setting
+      SettingModel.set({ name: 'news_feed', data: true }, scope: 'DEFAULT')
     end
   end
 end

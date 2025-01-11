@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -23,11 +23,9 @@ require 'openc3/models/news_model'
 require 'openc3/api/settings_api'
 
 module OpenC3
-  class LocalApi
-    include Api
-  end
-
   class PeriodicMicroservice < Microservice
+    include Api
+
     STARTUP_DELAY_SECONDS = 2 * 60 # Two Minutes
     SLEEP_PERIOD_SECONDS = 24 * 60 * 60 # Run once per day
 
@@ -39,7 +37,7 @@ module OpenC3
     end
 
     def get_news
-      if LocalApi.new().get_setting('news_feed', scope: @scope)
+      if get_setting('news_feed', scope: @scope)
         unless @conn
           @conn = Faraday.new(
             url: 'https://news.openc3.com',

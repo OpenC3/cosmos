@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -156,10 +156,12 @@ export default {
     // Whenever we show the user menu, read the news and refresh the list of active users
     showUserMenu: function (newValue, oldValue) {
       if (newValue === true) {
-        this.news.forEach((news) => {
-          news.read = true
-        })
-        localStorage.newsRead = this.news.length
+        if (this.news.length > 0) {
+          this.news.forEach((news) => {
+            news.read = true
+          })
+          localStorage.lastNewsRead = this.news[0].date
+        }
 
         if (this.name !== 'Anonymous') {
           Api.get('/openc3-api/users/active').then((response) => {
@@ -205,19 +207,18 @@ export default {
     },
     fetchNews: function () {
       Api.get('/openc3-api/news').then((response) => {
-        response.data.forEach((news) => {
-          news.read = false
-          this.news.some((oldNews) => oldNews.date === news.date)
-            ? null
-            : this.news.push(news)
-        })
-        this.news = this.news.sort(
+        // We always get the full list of news we want to display
+        // At some point we may delete old news items so we don't
+        // want to persist news items in the frontend
+        this.news = response.data.sort(
           (a, b) => Date.parse(b.date) - Date.parse(a.date),
         )
-        if (localStorage.newsRead) {
-          for (let i = this.news.length - 1; i >= 0; i--) {
-            this.news[i].read = true
-          }
+        // If we've previously read the news then mark anything older than that as read
+        if (localStorage.lastNewsRead) {
+          this.news.forEach((news) => {
+            news.read =
+              Date.parse(news.date) <= Date.parse(localStorage.lastNewsRead)
+          })
         }
       })
     },
