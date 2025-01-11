@@ -62,6 +62,8 @@ docker build \
 cd ..
 
 # openc3-minio
+# NOTE: Ensure the release is on IronBank:
+# https://ironbank.dso.mil/repomap/details;registry1Path=opensource%252Fminio%252Fminio
 # NOTE: RELEASE.2023-10-16T04-13-43Z is the last MINIO release to support UBI8
 cd openc3-minio
 docker build \
@@ -133,6 +135,8 @@ docker build \
   --network host \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource/traefik \
   --build-arg TRAEFIK_CONFIG=$TRAEFIK_CONFIG \
+  # NOTE: Ensure the release is on IronBank:
+  # https://ironbank.dso.mil/repomap/details;registry1Path=opensource%252Ftraefik%252Ftraefik
   --build-arg OPENC3_TRAEFIK_RELEASE=v3.3.1 \
   --platform linux/amd64 \
   -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-traefik-ubi:${OPENC3_TAG}" \
