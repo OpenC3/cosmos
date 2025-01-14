@@ -2,3 +2,5 @@ name: COSMOS CodeQL
 paths-ignore:
   # The templates include ERB and therefore aren't scanable
   - openc3/templates
+  # Generated code
+  - docs/assets
