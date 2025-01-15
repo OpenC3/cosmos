@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -37,6 +37,7 @@
           status="off"
           :label="name"
           :sublabel="roles()"
+          :notifications="unreadNews.length"
         ></rux-monitoring-icon>
       </template>
 
@@ -74,6 +75,39 @@
             COSMOS Enterprise Edition
           </div>
         </v-card-text>
+        <div v-if="newsFeed">
+          <v-row no-gutters class="news-header">
+            <v-col cols="auto" class="me-auto">COSMOS News</v-col>
+            <v-col cols="auto">
+              <v-btn
+                @click="refreshNews"
+                color="primary"
+                density="compact"
+                block
+              >
+                Refresh
+              </v-btn>
+            </v-col>
+          </v-row>
+          <v-list
+            lines="two"
+            width="420"
+            max-height="75vh"
+            class="overflow-y-auto"
+            data-test="news-list"
+          >
+            <template v-for="(news, index) in news" :key="`news-${index}`">
+              <hr />
+              <v-list-item class="pl-2">
+                <v-list-item-title>
+                  <span class="news-title">{{ news.title }}</span
+                  ><span class="news-date">{{ formatDate(news.date) }}</span>
+                </v-list-item-title>
+                <div v-html="news.body"></div>
+              </v-list-item>
+            </template>
+          </v-list>
+        </div>
       </v-card>
     </v-menu>
     <upgrade-to-enterprise-dialog
@@ -85,6 +119,7 @@
 
 <script>
 import { Api } from '@openc3/js-common/services'
+import { OpenC3Api } from '@openc3/js-common/services'
 import { UpgradeToEnterpriseDialog } from '@/components'
 
 export default {
@@ -100,6 +135,7 @@ export default {
   data: function () {
     let user = OpenC3Auth.user()
     return {
+      api: new OpenC3Api(),
       showUserMenu: false,
       authenticated: !!localStorage.openc3Token,
       name: user['name'],
@@ -107,12 +143,26 @@ export default {
       username: user['preferred_username'],
       showUpgradeToEnterpriseDialog: false,
       activeUsers: ['None'],
+      newsFeed: false,
+      news: [],
     }
   },
+  computed: {
+    unreadNews: function () {
+      return this.news.filter((news) => !news.read)
+    },
+  },
   watch: {
-    // Whenever we show the user menu, refresh the list of active users
+    // Whenever we show the user menu, read the news and refresh the list of active users
     showUserMenu: function (newValue, oldValue) {
       if (newValue === true) {
+        if (this.news.length > 0) {
+          this.news.forEach((news) => {
+            news.read = true
+          })
+          localStorage.lastNewsRead = this.news[0].date
+        }
+
         if (this.name !== 'Anonymous') {
           Api.get('/openc3-api/users/active').then((response) => {
             this.activeUsers = response.data.filter(
@@ -126,7 +176,52 @@ export default {
       }
     },
   },
+  created: function () {
+    this.api
+      .get_setting('news_feed')
+      .then((response) => {
+        if (response) {
+          this.newsFeed = response
+          if (this.newsFeed) {
+            this.fetchNews()
+            // Every hour fetch news from the backend
+            // Note: the backend updates from news.openc3.org every 12 hours
+            setInterval(this.fetchNews, 60 * 60 * 1000)
+          }
+        }
+      })
+      .catch((error) => {
+        // Do nothing
+      })
+  },
   methods: {
+    refreshNews() {
+      // Force the backend to update the news feed
+      this.api.update_news().then(() => {
+        this.fetchNews()
+      })
+    },
+    formatDate(date) {
+      // Just show the YYYY-MM-DD part of the date
+      return date.split('T')[0]
+    },
+    fetchNews: function () {
+      Api.get('/openc3-api/news').then((response) => {
+        // We always get the full list of news we want to display
+        // At some point we may delete old news items so we don't
+        // want to persist news items in the frontend
+        this.news = response.data.sort(
+          (a, b) => Date.parse(b.date) - Date.parse(a.date),
+        )
+        // If we've previously read the news then mark anything older than that as read
+        if (localStorage.lastNewsRead) {
+          this.news.forEach((news) => {
+            news.read =
+              Date.parse(news.date) <= Date.parse(localStorage.lastNewsRead)
+          })
+        }
+      })
+    },
     logout: function () {
       OpenC3Auth.logout()
       Api.put(`/openc3-api/users/logout/${this.username}`)
@@ -152,6 +247,19 @@ export default {
 </script>
 
 <style scoped>
+.news-header {
+  padding: 10px;
+  background-color: var(--color-background-base-default);
+  text-align: center;
+}
+.news-title {
+  font-weight: bold;
+}
+.news-date {
+  font-size: 0.8rem;
+  color: grey;
+  float: right;
+}
 .link {
   cursor: pointer;
 }

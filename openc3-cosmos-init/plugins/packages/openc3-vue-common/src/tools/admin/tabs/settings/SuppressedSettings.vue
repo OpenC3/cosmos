@@ -1,5 +1,5 @@
 <!--
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -27,7 +27,7 @@
         <v-checkbox
           v-model="selectAllSuppressedWarnings"
           label="Select All Warnings"
-          desity="compact"
+          density="compact"
         />
         <v-checkbox
           v-for="warning in suppressedWarnings"
