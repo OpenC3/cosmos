@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -681,6 +681,10 @@ export default class OpenC3Api {
 
   set_setting(name, data) {
     return this.exec('set_setting', [name, data])
+  }
+
+  update_news() {
+    return this.exec('update_news', [])
   }
 
   // DEPRECATED for set_setting

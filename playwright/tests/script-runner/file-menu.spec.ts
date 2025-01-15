@@ -90,7 +90,7 @@ test('open a file', async ({ page, utils }) => {
   page
     .locator('.v-list-item-title:has-text("INST/procedures/disconnect.rb")')
     .click()
-  expect(await page.locator('#sr-controls')).toContainText(
+  await expect(page.locator('#sr-controls')).toContainText(
     `INST/procedures/disconnect.rb`,
   )
 })

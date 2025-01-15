@@ -23,11 +23,11 @@ TOOL:
           values: .+
     INLINE_URL:
       summary: Internal url to load a tool
-      description: The url of the javascript file used to load the tool into single-SPA. Defaults to "js/app.js".
+      description: The url of the javascript file used to load the tool into single-SPA. Defaults to "main.js".
       parameters:
         - name: Url
           required: true
-          description: The inline url. If not given defaults to js/app.js. Generally should not be given unless using a non-standard filename.
+          description: The inline url. If not given defaults to main.js. Generally should not be given unless using a non-standard filename.
           values: .+
     WINDOW:
       summary: How to display the tool when navigated to

@@ -20,10 +20,8 @@ from .suite_results import SuiteResults
 from openc3.script.exceptions import StopScript
 import inspect
 
-
 class UnassignedSuite(Suite):
     """Placeholder for all Groups discovered without assigned Suites"""
-
     pass
 
 

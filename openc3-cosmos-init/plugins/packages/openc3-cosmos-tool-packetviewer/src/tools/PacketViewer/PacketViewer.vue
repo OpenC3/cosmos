@@ -277,6 +277,12 @@ export default {
       },
       deep: true, // Because pinnedItems is an array
     },
+    '$route.params': function ({ target, packet }) {
+      this.packetChanged({
+        targetName: target.toUpperCase(),
+        packetName: packet.toUpperCase(),
+      })
+    },
   },
   computed: {
     menus: function () {
@@ -491,31 +497,49 @@ export default {
       }
     },
     packetChanged(event) {
-      this.api.get_target(event.targetName).then((target) => {
-        this.ignoredItems = target.ignored_items
-      })
       this.api
-        .get_packet_derived_items(event.targetName, event.packetName)
-        .then((derived) => {
-          this.derivedItems = derived
-        })
+        .get_target(event.targetName)
+        .then((target) => {
+          if (target) {
+            this.ignoredItems = target.ignored_items
 
-      this.targetName = event.targetName
-      this.packetName = event.packetName
-      if (
-        this.$route.params.target !== event.targetName ||
-        this.$route.params.packet !== event.packetName
-      ) {
-        this.saveDefaultConfig(this.currentConfig)
-        this.$router.push({
-          name: 'PackerViewer',
-          params: {
-            target: this.targetName,
-            packet: this.packetName,
-          },
+            return this.api.get_packet_derived_items(
+              event.targetName,
+              event.packetName,
+            )
+          } else {
+            // Probably got here from an old config or URL params that point to something that no longer exists
+            // (e.g. the plugin that defined this target was deleted). Unset these to avoid API errors.
+            this.targetName = null
+            this.packetName = null
+            this.$router.push({
+              name: 'PackerViewer',
+              params: {},
+            })
+          }
         })
-      }
-      this.changeUpdater(true)
+        .then((derived) => {
+          if (derived) {
+            this.derivedItems = derived
+
+            this.targetName = event.targetName
+            this.packetName = event.packetName
+            if (
+              this.$route.params.target !== event.targetName ||
+              this.$route.params.packet !== event.packetName
+            ) {
+              this.saveDefaultConfig(this.currentConfig)
+              this.$router.push({
+                name: 'PackerViewer',
+                params: {
+                  target: this.targetName,
+                  packet: this.packetName,
+                },
+              })
+            }
+            this.changeUpdater(true)
+          }
+        })
     },
     changeUpdater(clearExisting) {
       if (this.updater != null) {
@@ -526,6 +550,9 @@ export default {
         this.rows = []
       }
       this.updater = setInterval(() => {
+        if (!this.targetName || !this.packetName) {
+          return // noop if target/packet aren't set
+        }
         this.api
           .get_tlm_packet(
             this.targetName,

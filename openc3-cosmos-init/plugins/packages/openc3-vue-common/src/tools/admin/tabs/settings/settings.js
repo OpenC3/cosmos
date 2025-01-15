@@ -1,5 +1,5 @@
 /*
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -29,7 +29,7 @@ export default {
     }
   },
   methods: {
-    loadSetting: function (setting, variable, defaultValue) {
+    loadSetting: function (setting) {
       this.api
         .get_setting(setting)
         .then((response) => {

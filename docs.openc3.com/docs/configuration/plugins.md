@@ -785,11 +785,11 @@ The relative url used to access the tool. Defaults to "/tools/ToolFolderName".
 ### INLINE_URL
 **Internal url to load a tool**
 
-The url of the javascript file used to load the tool into single-SPA. Defaults to "js/app.js".
+The url of the javascript file used to load the tool into single-SPA. Defaults to "main.js".
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Url | The inline url. If not given defaults to js/app.js. Generally should not be given unless using a non-standard filename. | True |
+| Url | The inline url. If not given defaults to main.js. Generally should not be given unless using a non-standard filename. | True |
 
 ### WINDOW
 **How to display the tool when navigated to**

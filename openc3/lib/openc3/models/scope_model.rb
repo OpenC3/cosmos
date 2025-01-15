@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -400,6 +400,8 @@ module OpenC3
       SettingModel.set({ name: 'rubygems_url', data: ENV['RUBYGEMS_URL'] || 'https://rubygems.org' }, scope: @scope) unless setting
       setting = SettingModel.get(name: 'pypi_url')
       SettingModel.set({ name: 'pypi_url', data: ENV['PYPI_URL'] || 'https://pypi.org' }, scope: @scope) unless setting
+      # Set the news feed to true by default, don't bother checking if it's already set
+      SettingModel.set({ name: 'news_feed', data: true }, scope: @scope)
     end
   end
 end
