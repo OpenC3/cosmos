@@ -130,14 +130,14 @@ cd ..
 if [[ -z $TRAEFIK_CONFIG ]]; then
   export TRAEFIK_CONFIG=traefik.yaml
 fi
+# NOTE: Ensure OPENC3_TRAEFIK_RELEASE is on IronBank:
+# https://ironbank.dso.mil/repomap/details;registry1Path=opensource%252Ftraefik%252Ftraefik
 cd openc3-traefik
 docker build \
   --network host \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource/traefik \
   --build-arg TRAEFIK_CONFIG=$TRAEFIK_CONFIG \
-  # NOTE: Ensure the release is on IronBank:
-  # https://ironbank.dso.mil/repomap/details;registry1Path=opensource%252Ftraefik%252Ftraefik
-  --build-arg OPENC3_TRAEFIK_RELEASE=v3.3.1 \
+  --build-arg OPENC3_TRAEFIK_RELEASE=v3.3.2 \
   --platform linux/amd64 \
   -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-traefik-ubi:${OPENC3_TAG}" \
   .

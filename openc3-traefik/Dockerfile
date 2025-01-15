@@ -1,7 +1,7 @@
 ARG OPENC3_DEPENDENCY_REGISTRY=docker.io
 ARG TRAEFIK_CONFIG=traefik.yaml
 # Consider updating openc3_build_ubi.sh when changing the release version
-ARG OPENC3_TRAEFIK_RELEASE=v3.3.1
+ARG OPENC3_TRAEFIK_RELEASE=v3.3.2
 FROM ${OPENC3_DEPENDENCY_REGISTRY}/traefik:${OPENC3_TRAEFIK_RELEASE}
 
 # An ARG declared before a FROM is outside of a build stage, so it can’t be

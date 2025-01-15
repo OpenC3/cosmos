@@ -29,8 +29,6 @@ jobs:
         # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'
         run: echo ${{ secrets.IRONBANK_REGISTRY_CLI }} | docker login registry1.dso.mil -u jmthomas --password-stdin
-      - name: install cert
-        run: echo "${{ secrets.IRONBANK_CERT }}" > /tmp/ironbank.crt && sudo cp /tmp/ironbank.crt /etc/ssl/certs/ironbank.crt && sudo update-ca-certificates
       - name: openc3.sh build-ubi
         # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'
