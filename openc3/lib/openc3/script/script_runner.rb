@@ -34,7 +34,9 @@ module OpenC3
       if response.nil? || response.status != 200
         _script_response_error(response, "Script list request failed", scope: scope)
       else
-        return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+        scripts = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+        # Remove the '*' from the script names
+        return scripts.each { |script| script.gsub!(/\*$/, '') }
       end
     end
 

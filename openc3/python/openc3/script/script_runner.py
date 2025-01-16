@@ -35,25 +35,22 @@ def script_list(scope=OPENC3_SCOPE):
     if not response or response.status_code != 200:
         _script_response_error(response, "Script list request failed", scope=scope)
     else:
-        return json.loads(response.text)
-
+        scripts = json.loads(response.text)
+        # Remove the '*' from the script names
+        return [script.rstrip('*') for script in scripts]
 
 def script_syntax_check(script, scope=OPENC3_SCOPE):
     # script = script_body(filename, scope=scope)
     endpoint = f"/script-api/scripts/temp.py/syntax"
-    print(f"::{script}::")
     response = openc3.script.SCRIPT_RUNNER_API_SERVER.request(
         "post", endpoint, json=False, data=script, scope=scope
     )
-    print(response)
-    print(response.text)
     if not response or response.status_code != 200:
         _script_response_error(
             response, "Script syntax check request failed", scope=scope
         )
     else:
         result = json.loads(response.text)
-        print(result)
         if result.get("title") == "Syntax Check Successful":
             result["success"] = True
         else:
@@ -141,9 +138,7 @@ def script_instrumented(script, scope=OPENC3_SCOPE):
             response, "Script instrumented request failed", scope=scope
         )
     else:
-        print(response.text)
         result = json.loads(response.text)
-        print(result)
         if result.get("title") == "Instrumented Script":
             parsed = json.loads(result.get("description"))
             return "\n".join(parsed)

@@ -2222,7 +2222,7 @@ disable_limits_group("SAFE_MODE")
 
 Returns the list of limits groups in the system.
 
-Ruby / Python Syntax / Example:
+Ruby / Python Example:
 
 ```ruby
 limits_groups = get_limits_groups()
@@ -2252,7 +2252,7 @@ set_limits_set("DEFAULT")
 
 Returns the name of the current limits set. The default limits set is DEFAULT.
 
-Ruby / Python Syntax / Example:
+Ruby / Python Example:
 
 ```ruby
 limits_set = get_limits_set()
@@ -2262,7 +2262,7 @@ limits_set = get_limits_set()
 
 Returns the list of limits sets in the system.
 
-Ruby / Python Syntax / Example:
+Ruby / Python Example:
 
 ```ruby
 limits_sets = get_limits_sets()
@@ -2337,7 +2337,7 @@ set_limits('INST', 'HEALTH_STATUS', 'TEMP1', -10.0, 0.0, 50.0, 60.0, 30.0, 40.0,
 
 Returns an array with the target_name, packet_name, item_name, and limits_state of all items that are out of their limits ranges.
 
-Ruby / Python Syntax / Example:
+Ruby / Python Example:
 
 ```ruby
 out_of_limits_items = get_out_of_limits()
@@ -2418,7 +2418,7 @@ Methods for getting knowledge about targets.
 
 Returns a list of the targets in the system in an array.
 
-Ruby Syntax / Example:
+Ruby Example:
 
 ```ruby
 targets = get_target_names() #=> ['INST', 'INST2', 'EXAMPLE', 'TEMPLATED']
@@ -2481,7 +2481,7 @@ print(target)
 
 Returns the interfaces for all targets. The return value is an array of arrays where each subarray contains the target name, and a String of all the interface names.
 
-Syntax / Example:
+Ruby / Python Example:
 
 ```ruby
 target_ints = get_target_interfaces()
@@ -2540,7 +2540,7 @@ print(interface)
 
 Returns a list of the interfaces in the system in an array.
 
-Ruby / Python Syntax / Example:
+Ruby / Python Example:
 
 ```ruby
 interface_names = get_interface_names() #=> ['INST_INT', 'INST2_INT', 'EXAMPLE_INT', 'TEMPLATED_INT']
@@ -2632,7 +2632,7 @@ stop_raw_logging_interface("int1")
 
 Returns information about all interfaces. The return value is an array of arrays where each subarray contains the interface name, connection state, number of connected clients, transmit queue size, receive queue size, bytes transmitted, bytes received, command count, and telemetry count.
 
-Ruby Syntax / Example:
+Ruby Example:
 
 ```ruby
 interface_info = get_all_interface_info()
@@ -2643,7 +2643,7 @@ interface_info.each do |interface_name, connection_state, num_clients, tx_q_size
 end
 ```
 
-Python Syntax / Example:
+Python Example:
 
 ```python
 interface_info = get_all_interface_info()
@@ -2786,7 +2786,7 @@ disconnect_router("INT1_ROUTER")
 
 Returns a list of the routers in the system in an array.
 
-Ruby / Python Syntax / Example:
+Ruby / Python Example:
 
 ```ruby
 router_names = get_router_names() #=> ['ROUTER_INT']
@@ -2838,7 +2838,7 @@ print(router)
 
 Returns information about all routers. The return value is an array of arrays where each subarray contains the router name, connection state, number of connected clients, transmit queue size, receive queue size, bytes transmitted, bytes received, packets received, and packets sent.
 
-Ruby Syntax / Example:
+Ruby Example:
 
 ```ruby
 router_info = get_all_router_info()
@@ -2849,7 +2849,7 @@ router_info.each do |router_name, connection_state, num_clients, tx_q_size, rx_q
 end
 ```
 
-Python Syntax / Example:
+Python Example:
 
 ```python
 router_info = get_all_router_info()
@@ -3002,13 +3002,13 @@ stash_get('run_count')  #=> 5
 
 Returns all the stash items as a Ruby hash or Python dict.
 
-Ruby Syntax / Example:
+Ruby Example:
 
 ```ruby
 stash_all()  #=> ['run_count' => 5, 'setpoint' => 23.4]
 ```
 
-Python Syntax / Example:
+Python Example:
 
 ```ruby
 stash_all()  #=> ['run_count': 5, 'setpoint': 23.4]
@@ -3018,7 +3018,7 @@ stash_all()  #=> ['run_count': 5, 'setpoint': 23.4]
 
 Returns all the stash keys.
 
-Ruby / Python Syntax / Example:
+Ruby / Python Example:
 
 ```ruby
 stash_keys()  #=> ['run_count', 'setpoint']
@@ -3052,7 +3052,7 @@ These methods allow the user to bring in files of subroutines and execute other 
 
 Starts execution of another high level test procedure. No parameters can be given to high level test procedures. If parameters are necessary, then consider using a subroutine.
 
-Syntax:
+Ruby / Python Syntax:
 
 ```ruby
 start("<Procedure Filename>")
@@ -3062,7 +3062,7 @@ start("<Procedure Filename>")
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Procedure Filename | Name of the test procedure file. These files are normally in the procedures folder but may be anywhere in the Ruby search path. Additionally, absolute paths are supported. |
 
-Example:
+Ruby / Python Example:
 
 ```ruby
 start("test1.rb")
@@ -3082,7 +3082,7 @@ load_utility("TARGET/lib/<Utility Filename>")
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Utility Filename | Name of the script file containing subroutines including the .rb or .py extension. You need to include the full target name and path such as TARGET/lib/utility.rb |
 
-Example:
+Ruby / Python Example:
 
 ```ruby
 load_utility("TARGET/lib/mode_changes.rb") # Ruby
@@ -3141,7 +3141,7 @@ clear_screen("INST", "ADCS")
 
 Closes all open screens.
 
-Ruby / Python Syntax / Example:
+Ruby / Python Example:
 
 ```ruby
 clear_all_screens()
@@ -3172,7 +3172,7 @@ delete_screen("INST", "ADCS")
 
 Returns a list of available telemetry screens.
 
-Ruby / Python Syntax / Example:
+Ruby / Python Example:
 
 ```ruby
 get_screen_list() #=> ['INST ADCS', 'INST COMMANDING', ...]
@@ -3203,7 +3203,7 @@ screen_definition = get_screen_definition("INST", "HS")
 
 Allows you to create a screen directly from a script. This screen is saved to Telemetry Viewer for future use in that application.
 
-Python / Ruby Syntax:
+Ruby / Python Syntax:
 
 ```ruby
 create_screen("<Target Name>", "<Screen Name>" "<Definition>")
@@ -3251,7 +3251,7 @@ create_screen("INST", "LOCAL", screen_def)
 
 Allows you to create a local screen directly from a script which is not permanently saved to the Telemetry Viewer screen list. This is useful for one off screens that help users interact with scripts.
 
-Python / Ruby Syntax:
+Ruby / Python Syntax:
 
 ```ruby
 local_screen("<Screen Name>", "<Definition>", <X Position (optional)>, <Y Position (optional)>)
@@ -3304,7 +3304,7 @@ These methods allow the user to control Script Runner scripts.
 
 ### script_list
 
-Returns all the available files in COSMOS as an array / list. This includes configuration files at every directory level to ensure the user has access to every file. You can filter the list client side to just the 'lib' and or 'procedures' directories if you wish.
+Returns all the available files in COSMOS as an array / list. This includes configuration files at every directory level to ensure the user has access to every file. You can filter the list client side to just the 'lib' and or 'procedures' directories if you wish. Note: script names do NOT include '\*' to indicate modified.
 
 Ruby Example:
 
@@ -3328,6 +3328,17 @@ print(list(script for script in scripts if '/lib/' in script or '/procedures/' i
 
 Creates a new script with the given contents.
 
+Ruby / Python Syntax:
+
+```ruby
+script_create("<Script Name>", "<Script Contents>")
+```
+
+| Parameter       | Description                                           |
+| --------------- | ----------------------------------------------------- |
+| Script Name     | Full path name of the script starting with the target |
+| Script Contents | Script contents as text                               |
+
 Ruby Example:
 
 ```ruby
@@ -3339,32 +3350,52 @@ Python Example:
 
 ```python
 contents = 'print("Hello from Python")'
-script_create("INST/procedures/new_script.py", contents)
+script_create("INST2/procedures/new_script.py", contents)
 ```
 
 ### script_body
 
 Returns the script contents.
 
+Ruby / Python Syntax:
+
+```ruby
+script_body("<Script Name>")
+```
+
+| Parameter   | Description                                           |
+| ----------- | ----------------------------------------------------- |
+| Script Name | Full path name of the script starting with the target |
+
 Ruby Example:
 
 ```ruby
 script = script_body("INST/procedures/checks.rb")
-puts script #=> # Display all environment variables ...
+puts script #=> # Display all environment variables\nputs ENV.inspect ...
 ```
 
 Python Example:
 
 ```python
-script = script_body("INST/procedures/checks.rb")
-print(script) #=> # Display all environment variables ...
+script = script_body("INST2/procedures/checks.py")
+print(script) #=> # import os\n\n# Display the environment variables ...
 ```
 
 ### script_delete
 
 Deletes a script from COSMOS. Note, you can only _really_ delete TEMP scripts and modified scripts. Scripts that are part of an installed COSMOS plugin remain as they were installed.
 
-Example:
+Ruby / Python Syntax:
+
+```ruby
+script_delete("<Script Name>")
+```
+
+| Parameter   | Description                                           |
+| ----------- | ----------------------------------------------------- |
+| Script Name | Full path name of the script starting with the target |
+
+Ruby / Python Example:
 
 ```ruby
 script_delete("INST/procedures/checks.rb")
@@ -3373,6 +3404,16 @@ script_delete("INST/procedures/checks.rb")
 ### script_run
 
 Runs a script in Script Runner. The script will run in the background and can be opened in Script Runner by selecting Script->Execution Status and then connecting to it.
+
+Ruby / Python Syntax:
+
+```ruby
+script_run("<Script Name>")
+```
+
+| Parameter   | Description                                           |
+| ----------- | ----------------------------------------------------- |
+| Script Name | Full path name of the script starting with the target |
 
 Ruby Example:
 
@@ -3384,7 +3425,7 @@ puts id
 Python Example:
 
 ```python
-id = script_run("INST/procedures/checks.rb")
+id = script_run("INST2/procedures/checks.py")
 print(id)
 ```
 
@@ -3392,7 +3433,17 @@ print(id)
 
 Locks a script for editing. Subsequent users that open this script will get a warning that the script is currently locked.
 
-Example:
+Ruby / Python Syntax:
+
+```ruby
+script_lock("<Script Name>")
+```
+
+| Parameter   | Description                                           |
+| ----------- | ----------------------------------------------------- |
+| Script Name | Full path name of the script starting with the target |
+
+Ruby / Python Example:
 
 ```ruby
 script_lock("INST/procedures/checks.rb")
@@ -3402,7 +3453,17 @@ script_lock("INST/procedures/checks.rb")
 
 Unlocks a script for editing. If the script was not previously locked this does nothing.
 
-Example:
+Ruby / Python Syntax:
+
+```ruby
+script_unlock("<Script Name>")
+```
+
+| Parameter   | Description                                           |
+| ----------- | ----------------------------------------------------- |
+| Script Name | Full path name of the script starting with the target |
+
+Ruby / Python Example:
 
 ```ruby
 script_unlock("INST/procedures/checks.rb")
@@ -3411,6 +3472,16 @@ script_unlock("INST/procedures/checks.rb")
 ### script_syntax_check
 
 Performs a Ruby or Python syntax check on the given script.
+
+Ruby / Python Syntax:
+
+```ruby
+script_syntax_check("<Script Name>")
+```
+
+| Parameter   | Description                                           |
+| ----------- | ----------------------------------------------------- |
+| Script Name | Full path name of the script starting with the target |
 
 Ruby Example:
 
@@ -3422,36 +3493,224 @@ puts result #=> {"title"=>"Syntax Check Successful", "description"=>"[\"Syntax O
 Python Example:
 
 ```python
-result = script_syntax_check("INST/procedures/checks.rb")
-print(result) #=> { 'succes' => true}
+result = script_syntax_check("INST2/procedures/checks.py")
+print(result) #=> {'title': 'Syntax Check Successful', 'description': '["Syntax OK"]', 'success': True}
 ```
 
 ### script_instrumented
 
-Returns the instrumented script which allows COSMOS Script Runner to monitor the execution and provide line by line visualization.
+Returns the instrumented script which allows COSMOS Script Runner to monitor the execution and provide line by line visualization. This is primarily a low level debugging method used by COSMOS developers.
+
+Ruby / Python Syntax:
+
+```ruby
+script_instrumented("<Script Name>")
+```
+
+| Parameter   | Description                                           |
+| ----------- | ----------------------------------------------------- |
+| Script Name | Full path name of the script starting with the target |
 
 Ruby Example:
 
 ```ruby
 script = script_instrumented("INST/procedures/checks.rb")
-puts script #=>
+puts script #=> private; __return_val = nil; begin; RunningScript.instance.script_binding = binding(); ...
 ```
 
 Python Example:
 
 ```python
-script = script_instrumented("INST/procedures/checks.rb")
-print(script) #=>
+script = script_instrumented("INST2/procedures/checks.py")
+print(script) #=> while True:\ntry:\nRunningScript.instance.pre_line_instrumentation ...
 ```
 
 ### script_delete_all_breakpoints
 
 Delete _all_ breakpoints associated with _all_ scripts.
 
-Example:
+Ruby / Python Example:
 
 ```ruby
 script_delete_all_breakpoints()
+```
+
+### running_script_list
+
+List the currently running scripts. Note, this will also include the script which is calling this method. Thus the list will never be empty but will always contain at least 1 item. Returns an array of hashes / list of dicts (see [running_script_get](#running_script_get) for hash / dict contents).
+
+Ruby Example:
+
+```ruby
+running_script_list() #=> [{"id"=>5, "scope"=>"DEFAULT", "name"=>"__TEMP__/2025_01_15_13_16_26_210_temp.rb", "user"=>"Anonymous", "start_time"=>"2025-01-15 20:16:52 +0000", "disconnect"=>false, "environment"=>[]}]
+```
+
+Python Example:
+
+```python
+running_script_list() #=> [{'id': 15, 'scope': 'DEFAULT', 'name': 'INST2/procedures/scripting.py', 'user': 'Anonymous', 'start_time': '2025-01-16 17:36:22 +0000', 'disconnect': False, 'environment': []}]
+```
+
+### running_script_get
+
+Get the currently running script with the specified ID. The information returned is the script ID, scope, name, user, start time, disconnect state, environment variables, hostname, state, line number, and update time.
+
+Ruby / Python Syntax:
+
+```ruby
+running_script_get("<Script Id>")
+```
+
+| Parameter | Description                                     |
+| --------- | ----------------------------------------------- |
+| Script Id | Script ID returned by [script_run](#script_run) |
+
+Ruby Example:
+
+```ruby
+running_script_get(15) #=> {"id"=>15, "scope"=>"DEFAULT", "name"=>"INST/procedures/new_script.rb", "user"=>"Anonymous", "start_time"=>"2025-01-16 00:28:44 +0000", "disconnect"=>false, "environment"=>[], "hostname"=>"ac9dde3c59c1", "state"=>"spawning", "line_no"=>1, "update_time"=>"2025-01-16 00:28:44 +0000"}
+```
+
+Python Example:
+
+```python
+running_script_get(15) #=> {'id': 15, 'scope': 'DEFAULT', 'name': 'INST2/procedures/new_script.py', 'user': 'Anonymous', 'start_time': '2025-01-16 18:04:03 +0000', 'disconnect': False, 'environment': [], 'hostname': 'b84dbcee54ad', 'state': 'running', 'line_no': 3, 'update_time': '2025-01-16T18:04:05.255638Z'}
+```
+
+### running_script_stop
+
+Stop the running script with the specified ID. This is equivalent to clicking the Stop button in the Script Runner GUI.
+
+Ruby / Python Syntax:
+
+```ruby
+running_script_stop("<Script Id>")
+```
+
+| Parameter | Description                                     |
+| --------- | ----------------------------------------------- |
+| Script Id | Script ID returned by [script_run](#script_run) |
+
+Ruby / Python Example:
+
+```ruby
+running_script_stop(15)
+```
+
+### running_script_pause
+
+Pause the running script with the specified ID. This is equivalent to clicking the Pause button in the Script Runner GUI.
+
+Ruby / Python Syntax:
+
+```ruby
+running_script_pause("<Script Id>")
+```
+
+| Parameter | Description                                     |
+| --------- | ----------------------------------------------- |
+| Script Id | Script ID returned by [script_run](#script_run) |
+
+Ruby / Python Example:
+
+```ruby
+running_script_pause(15)
+```
+
+### running_script_retry
+
+Retry the current line of the running script with the specified ID. This is equivalent to clicking the Retry button in the Script Runner GUI.
+
+Ruby / Python Syntax:
+
+```ruby
+running_script_retry("<Script Id>")
+```
+
+| Parameter | Description                                     |
+| --------- | ----------------------------------------------- |
+| Script Id | Script ID returned by [script_run](#script_run) |
+
+Ruby / Python Example:
+
+```ruby
+running_script_retry(15)
+```
+
+### running_script_go
+
+Unpause the running script with the specified ID. This is equivalent to clicking the Go button in the Script Runner GUI.
+
+Ruby / Python Syntax:
+
+```ruby
+running_script_go("<Script Id>")
+```
+
+| Parameter | Description                                     |
+| --------- | ----------------------------------------------- |
+| Script Id | Script ID returned by [script_run](#script_run) |
+
+Ruby / Python Example:
+
+```ruby
+running_script_go(15)
+```
+
+### running_script_step
+
+Step the running script with the specified ID. This is equivalent to clicking the Step button in the Script Runner GUI's Debug window.
+
+Ruby / Python Syntax:
+
+```ruby
+running_script_step("<Script Id>")
+```
+
+| Parameter | Description                                     |
+| --------- | ----------------------------------------------- |
+| Script Id | Script ID returned by [script_run](#script_run) |
+
+Ruby / Python Example:
+
+```ruby
+running_script_step(15)
+```
+
+### running_script_delete
+
+Force quit the running script with the specified ID. This is equivalent to clicking the Delete button under the Running Scripts in the Script Runner GUI's Script -> Execution Status pane. Note, the 'stop' signal is first sent to the specified script and then the script is forcibly removed. Normally you should use the [running_script_stop](#running_script_stop) method.
+
+Ruby / Python Syntax:
+
+```ruby
+running_script_delete("<Script Id>")
+```
+
+| Parameter | Description                                     |
+| --------- | ----------------------------------------------- |
+| Script Id | Script ID returned by [script_run](#script_run) |
+
+Ruby / Python Example:
+
+```ruby
+running_script_delete(15)
+```
+
+### completed_script_list
+
+List the completed scripts. Returns an array of hashes / list of dicts containing the id, username, scipt name, script log, and start time.
+
+Ruby Example:
+
+```ruby
+completed_script_list() #=> [{"id"=>"15", "user"=>"Anonymous", "name"=>"__TEMP__/2025_01_15_17_07_51_568_temp.rb", "log"=>"DEFAULT/tool_logs/sr/20250116/2025_01_16_00_28_43_sr_2025_01_15_17_07_51_568_temp.txt", "start"=>"2025-01-16 00:28:43 +0000"}, ...]
+```
+
+Python Example:
+
+```ruby
+completed_script_list() #=> [{'id': 16, 'user': 'Anonymous', 'name': 'INST2/procedures/new_script.py', 'log': 'DEFAULT/tool_logs/sr/20250116/2025_01_16_17_46_22_sr_new_script.txt', 'start': '2025-01-16 17:46:22 +0000'}, ...]
 ```
 
 ## Script Runner Settings
@@ -3482,7 +3741,7 @@ set_line_delay(0.0)
 
 The method gets the line delay that script runner is currently using.
 
-Ruby / Python Syntax / Example:
+Ruby / Python Example:
 
 ```ruby
 curr_line_delay = get_line_delay()
@@ -3512,7 +3771,7 @@ set_max_output(100)
 
 The method gets the maximum number of characters to display in Script Runner output before truncating. Default is 50,000 characters.
 
-Ruby / Python Syntax / Example:
+Ruby / Python Example:
 
 ```ruby
 print(get_max_output()) #=> 50000
@@ -3527,7 +3786,7 @@ Consider breaking code like this into a separate file and using either require/l
 Disabling instrumentation will cause any error that occurs while disabled to cause your script to completely stop.
 :::
 
-Ruby Syntax / Example:
+Ruby Example:
 
 ```ruby
 disable_instrumentation do
@@ -3537,7 +3796,7 @@ disable_instrumentation do
 end
 ```
 
-Python Syntax / Example:
+Python Example:
 
 ```python
 with disable_instrumentation():
@@ -3637,7 +3896,7 @@ These methods allow the user to debug scripts with ScriptRunner.
 
 Places ScriptRunner into step mode where Go must be hit to proceed to the next line.
 
-Ruby / Python Syntax / Example:
+Ruby / Python Example:
 
 ```ruby
 step_mode()
@@ -3647,7 +3906,7 @@ step_mode()
 
 Places ScriptRunner into run mode where the next line is run automatically.
 
-Ruby / Python Syntax / Example:
+Ruby / Python Example:
 
 ```ruby
 run_mode()
@@ -3657,7 +3916,7 @@ run_mode()
 
 Puts scripting into disconnect mode. In disconnect mode, commands are not sent to targets, checks are all successful, and waits expire instantly. Requests for telemetry (tlm()) typically return 0. Disconnect mode is useful for dry-running scripts without having connected targets.
 
-Ruby / Python Syntax / Example:
+Ruby / Python Example:
 
 ```ruby
 disconnect_script()
@@ -3781,7 +4040,7 @@ metadata_update({ 'key': 'value' })
 
 Prompts the user to set existing metadata values or create new a new one.
 
-Ruby / Python Syntax / Example:
+Ruby / Python Example:
 
 ```ruby
 metadata_input()
@@ -3795,13 +4054,13 @@ COSMOS has several settings typically accessed through the Admin Settings tab. T
 
 Return all the current COSMOS setting name. These are the names that should be used in the other APIs.
 
-Ruby Syntax / Example:
+Ruby Example:
 
 ```ruby
 puts list_settings() #=> ["pypi_url", "rubygems_url", "source_url", "version"]
 ```
 
-Python Syntax / Example:
+Python Example:
 
 ```python
 print(list_settings()) #=> ['pypi_url', 'rubygems_url', 'source_url', 'version']
@@ -3811,7 +4070,7 @@ print(list_settings()) #=> ['pypi_url', 'rubygems_url', 'source_url', 'version']
 
 Return all the current COSMOS settings along with their values.
 
-Ruby Syntax / Example:
+Ruby Example:
 
 ```ruby
 puts get_all_settings() #=>
@@ -3821,7 +4080,7 @@ puts get_all_settings() #=>
 #   "source_url"=>{"name"=>"source_url", "data"=>"https://github.com/OpenC3/cosmos", "updated_at"=>1698026776573904132} }
 ```
 
-Python Syntax / Example:
+Python Example:
 
 ```python
 print(get_all_settings()) #=>
@@ -3901,14 +4160,14 @@ Many COSMOS tools have the ability to load and save a configuration. These APIs 
 
 List all the configuration tool names which are used as the first parameter in the other APIs.
 
-Ruby Syntax / Example:
+Ruby Example:
 
 ```ruby
 names = config_tool_names()
 pp names #=> ["telemetry_grapher", "data_viewer"]
 ```
 
-Python Syntax / Example:
+Python Example:
 
 ```python
 names = config_tool_names()

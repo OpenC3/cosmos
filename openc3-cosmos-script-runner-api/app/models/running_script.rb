@@ -30,9 +30,10 @@ require 'openc3/io/stderr'
 require 'childprocess'
 require 'openc3/script/suite_runner'
 require 'openc3/utilities/store'
+require 'openc3/utilities/store_queued'
+require 'openc3/utilities/bucket_require'
 require 'openc3/models/offline_access_model'
 require 'openc3/models/environment_model'
-require 'openc3/utilities/bucket_require'
 
 RAILS_ROOT = File.expand_path(File.join(__dir__, '..', '..'))
 SCRIPT_API = 'script-api'
@@ -152,6 +153,7 @@ module OpenC3
       # sleep in a script - returns true if canceled mid sleep
       def openc3_script_sleep(sleep_time = nil)
         return true if $disconnect
+        RunningScript.instance.update_running_script_store(:waiting)
         OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :line, filename: RunningScript.instance.current_filename, line_no: RunningScript.instance.current_line_number, state: :waiting }))
 
         sleep_time = 30000000 unless sleep_time # Handle infinite wait
@@ -446,6 +448,15 @@ class RunningScript
       # Call load_utility to parse the suite and allow for individual methods to be executed
       load_utility(name)
     end
+  end
+
+  # Called to update the running script state every time the @state or @current_line_number changes
+  def update_running_script_store(state = nil)
+    @state = state if state
+    @details[:state] = @state
+    @details[:line_no] = @current_line_number
+    @details[:update_time] = Time.now.to_s
+    OpenC3::StoreQueued.set("running-script:#{@id}", @details.as_json(:allow_nan => true).to_json(:allow_nan => true))
   end
 
   def parse_options(options)
@@ -816,6 +827,7 @@ class RunningScript
         OpenC3::Logger.detail_string = detail_string
       end
 
+      update_running_script_store(:running)
       OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :line, filename: @current_filename, line_no: @current_line_number, state: :running }))
       handle_pause(filename, line_number)
       handle_line_delay()
@@ -1024,31 +1036,37 @@ class RunningScript
 
   def mark_running
     @state = :running
+    update_running_script_store()
     OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :line, filename: @current_filename, line_no: @current_line_number, state: @state }))
   end
 
   def mark_paused
     @state = :paused
+    update_running_script_store()
     OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :line, filename: @current_filename, line_no: @current_line_number, state: @state }))
   end
 
   def mark_waiting
     @state = :waiting
+    update_running_script_store()
     OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :line, filename: @current_filename, line_no: @current_line_number, state: @state }))
   end
 
   def mark_error
     @state = :error
+    update_running_script_store()
     OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :line, filename: @current_filename, line_no: @current_line_number, state: @state }))
   end
 
   def mark_fatal
     @state = :fatal
+    update_running_script_store()
     OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :line, filename: @current_filename, line_no: @current_line_number, state: @state }))
   end
 
   def mark_stopped
     @state = :stopped
+    update_running_script_store()
     OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :line, filename: @current_filename, line_no: @current_line_number, state: @state }))
     if OpenC3::SuiteRunner.suite_results
       OpenC3::SuiteRunner.suite_results.complete
@@ -1096,6 +1114,7 @@ class RunningScript
 
   def mark_breakpoint
     @state = :breakpoint
+    update_running_script_store()
     OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :line, filename: @current_filename, line_no: @current_line_number, state: @state }))
   end
 

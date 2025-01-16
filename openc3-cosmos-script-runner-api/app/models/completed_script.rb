@@ -36,7 +36,7 @@ class CompletedScript
       obj = bucket.get_object(bucket: ENV['OPENC3_LOGS_BUCKET'], key: object.key)
       {
         # These are set by running_script.rb/.py in stop_message_log and mark_stopped
-        'id'    => obj.metadata['id'],
+        'id'    => obj.metadata['id'].to_i,
         'user'  => obj.metadata['user'],
         'name'  => obj.metadata['scriptname'],
         'log'   => log_name,
