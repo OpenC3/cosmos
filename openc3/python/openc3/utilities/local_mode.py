@@ -332,6 +332,8 @@ class LocalMode:
     @classmethod
     def put_target_file(cls, path, io_or_string, scope):
         full_folder_path = f"{cls.LOCAL_MODE_PATH}/{path}"
+        if not os.path.normpath(full_folder_path).startswith(cls.LOCAL_MODE_PATH):
+            return
         os.makedirs(os.path.dirname(full_folder_path), exist_ok=True)
         flags = "w"
         if isinstance(io_or_string, bytes):
@@ -347,7 +349,9 @@ class LocalMode:
     def open_local_file(cls, path, scope):
         try:
             full_path = f"{cls.LOCAL_MODE_PATH}/{scope}/targets_modified/{path}"
-            return open(full_path, "rb")
+            if os.path.normpath(full_path).startswith(cls.LOCAL_MODE_PATH):
+                return open(full_path, "rb")
+            return None
         except OSError:
             return None
 
