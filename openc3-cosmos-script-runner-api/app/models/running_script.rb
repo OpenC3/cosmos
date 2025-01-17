@@ -195,7 +195,7 @@ module OpenC3
       end
 
       def download_file(path, scope: RunningScript.instance.scope)
-        url = get_download_url(path, scope: scope)
+        url = _get_download_url(path, scope: scope)
         OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :downloadfile, filename: File.basename(path), url: url }))
       end
     end

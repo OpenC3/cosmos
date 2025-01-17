@@ -1260,14 +1260,14 @@ openc3.script.RUNNING_SCRIPT = RunningScript
 
 
 def step_mode():
-    RunningScript.instance.step()
+    RunningScript.instance.do_step()
 
 
 setattr(openc3.script, "step_mode", step_mode)
 
 
 def run_mode():
-    RunningScript.instance.go()
+    RunningScript.instance.do_go()
 
 
 setattr(openc3.script, "run_mode", run_mode)
@@ -1455,7 +1455,7 @@ setattr(openc3.script, "local_screen", local_screen)
 
 
 def download_file(path, scope=OPENC3_SCOPE):
-    url = openc3.script.get_download_url(path, scope=scope)
+    url = openc3.script._get_download_url(path, scope=scope)
     Store.publish(
         f"script-api:running-script-channel:{RunningScript.instance.id}",
         json.dumps(

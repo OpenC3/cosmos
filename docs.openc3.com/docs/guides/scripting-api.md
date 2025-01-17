@@ -809,6 +809,54 @@ x = build_cmd("INST COLLECT with DURATION 10, TYPE NORMAL")
 print(x)  #=> {'id': '1697298167748-0', 'result': 'SUCCESS', 'time': '1697298167749155717', 'received_time': '1697298167749155717', 'target_name': 'INST', 'packet_name': 'COLLECT', 'received_count': '2', 'buffer': bytearray(b'\x13\xe7\xc0\x00\x00\x0c\x00\x01\x00\x00A \x00\x00\xab\x00\x00\x00\x00')}
 ```
 
+### enable_cmd
+
+> Since 5.15.1
+
+Enables a disabled command. Sending a disabled command raises `DisabledError` with a message like 'INST ABORT is Disabled'.
+
+Ruby / Python Syntax:
+
+```ruby
+buffer = enable_cmd("<Target Name> <Command Name>")
+buffer = enable_cmd("<Target Name>", "<Command Name>")
+```
+
+| Parameter   | Description                   |
+| ----------- | ----------------------------- |
+| Target Name | Name of the target.           |
+| Packet Name | Name of the command (packet). |
+
+Ruby / Python Example:
+
+```ruby
+enable_cmd("INST ABORT")
+```
+
+### disable_cmd
+
+> Since 5.15.1
+
+Disables a command. Sending a disabled command raises `DisabledError` with a message like 'INST ABORT is Disabled'.
+
+Ruby / Python Syntax:
+
+```ruby
+buffer = disable_cmd("<Target Name> <Command Name>")
+buffer = disable_cmd("<Target Name>", "<Command Name>")
+```
+
+| Parameter   | Description                   |
+| ----------- | ----------------------------- |
+| Target Name | Name of the target.           |
+| Packet Name | Name of the command (packet). |
+
+Ruby / Python Example:
+
+```ruby
+disable_cmd("INST ABORT")
+```
+
 ### send_raw
 
 Sends raw data on an interface.
@@ -1131,6 +1179,115 @@ Ruby / Python Example:
 
 ```ruby
 cmd_cnt = get_cmd_cnt("INST COLLECT") # Number of times the INST COLLECT command has been sent
+```
+
+### get_cmd_cnts
+
+Returns the number of times the specified commands have been sent.
+
+Ruby / Python Syntax:
+
+```ruby
+get_cmd_cnts([["<Target Name>", "<Command Name>"], ["<Target Name>", "<Command Name>"], ...])
+```
+
+| Parameter    | Description          |
+| ------------ | -------------------- |
+| Target Name  | Name of the target.  |
+| Command Name | Name of the command. |
+
+Ruby / Python Example:
+
+```ruby
+cmd_cnt = get_cmd_cnts([['INST', 'COLLECT'], ['INST', 'ABORT']]) # Number of times the INST COLLECT and INST ABORT commands have been sent
+```
+
+### critical_cmd_status
+
+Returns the status of a critical command. One of APPROVED, REJECTED, or WAITING.
+
+> Since 5.20.0
+
+Ruby / Python Syntax:
+
+```ruby
+critical_cmd_status(uuid)
+```
+
+| Parameter | Description                                                 |
+| --------- | ----------------------------------------------------------- |
+| uuid      | UUID for the critical command (displayed in the COSMOS GUI) |
+
+Ruby / Python Example:
+
+```ruby
+status = critical_cmd_status("2fa14183-3148-4399-9a74-a130257118f9") #=> WAITING
+```
+
+### critical_cmd_approve
+
+Approve the critical command as the current user.
+
+> Since 5.20.0
+
+Ruby / Python Syntax:
+
+```ruby
+critical_cmd_approve(uuid)
+```
+
+| Parameter | Description                                                 |
+| --------- | ----------------------------------------------------------- |
+| uuid      | UUID for the critical command (displayed in the COSMOS GUI) |
+
+Ruby / Python Example:
+
+```ruby
+critical_cmd_approve("2fa14183-3148-4399-9a74-a130257118f9")
+```
+
+### critical_cmd_reject
+
+Reject the critical command as the current user.
+
+> Since 5.20.0
+
+Ruby / Python Syntax:
+
+```ruby
+critical_cmd_reject(uuid)
+```
+
+| Parameter | Description                                                 |
+| --------- | ----------------------------------------------------------- |
+| uuid      | UUID for the critical command (displayed in the COSMOS GUI) |
+
+Ruby / Python Example:
+
+```ruby
+critical_cmd_reject("2fa14183-3148-4399-9a74-a130257118f9")
+```
+
+### critical_cmd_can_approve
+
+Returns whether or not the current user can approve the critical command.
+
+> Since 5.20.0
+
+Ruby / Python Syntax:
+
+```ruby
+critical_cmd_can_approve(uuid)
+```
+
+| Parameter | Description                                                 |
+| --------- | ----------------------------------------------------------- |
+| uuid      | UUID for the critical command (displayed in the COSMOS GUI) |
+
+Ruby / Python Example:
+
+```ruby
+status = critical_cmd_can_approve("2fa14183-3148-4399-9a74-a130257118f9") #=> true / false
 ```
 
 ## Handling Telemetry
@@ -2410,6 +2567,78 @@ print(events)
 #   ...
 ```
 
+## Plugins
+
+Methods for getting knowledge about plugins.
+
+### plugin_list
+
+Returns all the installed plugins.
+
+Ruby Syntax:
+
+```ruby
+plugin_list(default: false)
+```
+
+Python Syntax:
+
+```ruby
+plugin_list(default = False)
+```
+
+| Parameter | Description                                                                  |
+| --------- | ---------------------------------------------------------------------------- |
+| default   | Whether to include the default COSMOS plugins (all the regular applications) |
+
+Ruby / Python Example:
+
+```ruby
+plugins = plugin_list() #=> ['openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539']
+plugins = plugin_list(default: true) #=> ['openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539',
+                                     #    'openc3-cosmos-tool-admin-6.0.3.pre.beta0.20250115200004.gem__20250116211504',
+                                     #    'openc3-cosmos-tool-bucketexplorer-6.0.3.pre.beta0.20250115200008.gem__20250116211525',
+                                     #    'openc3-cosmos-tool-cmdsender-6.0.3.pre.beta0.20250115200012.gem__20250116211515',
+                                     #    'openc3-cosmos-tool-cmdtlmserver-6.0.3.pre.beta0.20250115200015.gem__20250116211512',
+                                     #    'openc3-cosmos-tool-dataextractor-6.0.3.pre.beta0.20250115200005.gem__20250116211521',
+                                     #    'openc3-cosmos-tool-dataviewer-6.0.3.pre.beta0.20250115200009.gem__20250116211522',
+                                     #    'openc3-cosmos-tool-docs-6.0.3.pre.beta0.20250117042104.gem__20250117042154',
+                                     #    'openc3-cosmos-tool-handbooks-6.0.3.pre.beta0.20250115200014.gem__20250116211523',
+                                     #    'openc3-cosmos-tool-iframe-6.0.3.pre.beta0.20250115200011.gem__20250116211503',
+                                     #    'openc3-cosmos-tool-limitsmonitor-6.0.3.pre.beta0.20250115200017.gem__20250116211514',
+                                     #    'openc3-cosmos-tool-packetviewer-6.0.3.pre.beta0.20250115200004.gem__20250116211518',
+                                     #    'openc3-cosmos-tool-scriptrunner-6.0.3.pre.beta0.20250115200012.gem__20250116211517',
+                                     #    'openc3-cosmos-tool-tablemanager-6.0.3.pre.beta0.20250115200018.gem__20250116211524',
+                                     #    'openc3-cosmos-tool-tlmgrapher-6.0.3.pre.beta0.20250115200005.gem__20250116211520',
+                                     #    'openc3-cosmos-tool-tlmviewer-6.0.3.pre.beta0.20250115200008.gem__20250116211519',
+                                     #    'openc3-tool-base-6.0.3.pre.beta0.20250115195959.gem__20250116211459']
+```
+
+### plugin_get
+
+Returns information about an installed plugin.
+
+Ruby / Python Syntax:
+
+```ruby
+plugin_get(<Plugin Name>)
+```
+
+| Parameter   | Description                                                  |
+| ----------- | ------------------------------------------------------------ |
+| Plugin Name | Full name of the plugin (typically taken from plugin_list()) |
+
+Ruby / Python Example:
+
+```ruby
+plugin_get('openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539') #=>
+  # { "name"=>"openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539",
+  #   "variables"=>{"inst_target_name"=>"INST", ...},
+  #   "plugin_txt_lines"=>["# Note: This plugin includes 4 targets ..."],
+  #   "needs_dependencies"=>true,
+  #   "updated_at"=>1737063941094624764 }
+```
+
 ## Targets
 
 Methods for getting knowledge about targets.
@@ -3044,52 +3273,7 @@ Ruby / Python Example:
 stash_delete("run_count")
 ```
 
-## Executing Other Procedures
-
-These methods allow the user to bring in files of subroutines and execute other test procedures.
-
-### start
-
-Starts execution of another high level test procedure. No parameters can be given to high level test procedures. If parameters are necessary, then consider using a subroutine.
-
-Ruby / Python Syntax:
-
-```ruby
-start("<Procedure Filename>")
-```
-
-| Parameter          | Description                                                                                                                                                                 |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Procedure Filename | Name of the test procedure file. These files are normally in the procedures folder but may be anywhere in the Ruby search path. Additionally, absolute paths are supported. |
-
-Ruby / Python Example:
-
-```ruby
-start("test1.rb")
-```
-
-### load_utility
-
-Reads in a script file that contains useful subroutines for use in your test procedure. When these subroutines run in ScriptRunner or TestRunner, their lines will be highlighted. If you want to import subroutines but do not want their lines to be highlighted in ScriptRunner or TestRunner, use the standard Ruby 'load' or 'require' statement or Python 'import' statement.
-
-Ruby / Python Syntax:
-
-```ruby
-load_utility("TARGET/lib/<Utility Filename>")
-```
-
-| Parameter        | Description                                                                                                                                                        |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Utility Filename | Name of the script file containing subroutines including the .rb or .py extension. You need to include the full target name and path such as TARGET/lib/utility.rb |
-
-Ruby / Python Example:
-
-```ruby
-load_utility("TARGET/lib/mode_changes.rb") # Ruby
-load_utility("TARGET/lib/mode_changes.py") # Python
-```
-
-## Opening, Closing & Creating Telemetry Screens
+## Telemetry Screens
 
 These methods allow the user to open, close or create unique telemetry screens from within a test procedure.
 
@@ -3301,6 +3485,47 @@ local_screen("TESTING", screen_def, 600, 75)
 ## Script Runner Scripts
 
 These methods allow the user to control Script Runner scripts.
+
+### start
+
+Starts execution of another high level test procedure. Script Runner will load the file and immediately start executing it before jumping back to the calling procedure. No parameters can be given to high level test procedures. If parameters are necessary, then consider using a subroutine.
+
+Ruby / Python Syntax:
+
+```ruby
+start("<Procedure Filename>")
+```
+
+| Parameter          | Description                                                                                                                                                                 |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Procedure Filename | Name of the test procedure file. These files are normally in the procedures folder but may be anywhere in the Ruby search path. Additionally, absolute paths are supported. |
+
+Ruby / Python Example:
+
+```ruby
+start("test1.rb")
+```
+
+### load_utility
+
+Reads in a script file that contains useful subroutines for use in your test procedure. When these subroutines run in ScriptRunner or TestRunner, their lines will be highlighted. If you want to import subroutines but do not want their lines to be highlighted in ScriptRunner or TestRunner, use the standard Ruby 'load' or 'require' statement or Python 'import' statement.
+
+Ruby / Python Syntax:
+
+```ruby
+load_utility("TARGET/lib/<Utility Filename>")
+```
+
+| Parameter        | Description                                                                                                                                                        |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Utility Filename | Name of the script file containing subroutines including the .rb or .py extension. You need to include the full target name and path such as TARGET/lib/utility.rb |
+
+Ruby / Python Example:
+
+```ruby
+load_utility("TARGET/lib/mode_changes.rb") # Ruby
+load_utility("TARGET/lib/mode_changes.py") # Python
+```
 
 ### script_list
 
@@ -3535,6 +3760,36 @@ Ruby / Python Example:
 script_delete_all_breakpoints()
 ```
 
+### step_mode
+
+Places ScriptRunner into step mode where Go must be hit to proceed to the next line.
+
+Ruby / Python Example:
+
+```ruby
+step_mode()
+```
+
+### run_mode
+
+Places ScriptRunner into run mode where the next line is run automatically.
+
+Ruby / Python Example:
+
+```ruby
+run_mode()
+```
+
+### disconnect_script
+
+Puts scripting into disconnect mode. In disconnect mode, commands are not sent to targets, checks are all successful, and waits expire instantly. Requests for telemetry (tlm()) typically return 0. Disconnect mode is useful for dry-running scripts without having connected targets.
+
+Ruby / Python Example:
+
+```ruby
+disconnect_script()
+```
+
 ### running_script_list
 
 List the currently running scripts. Note, this will also include the script which is calling this method. Thus the list will never be empty but will always contain at least 1 item. Returns an array of hashes / list of dicts (see [running_script_get](#running_script_get) for hash / dict contents).
@@ -3699,7 +3954,7 @@ running_script_delete(15)
 
 ### completed_script_list
 
-List the completed scripts. Returns an array of hashes / list of dicts containing the id, username, scipt name, script log, and start time.
+List the completed scripts. Returns an array of hashes / list of dicts containing the id, username, script name, script log, and start time.
 
 Ruby Example:
 
@@ -3886,40 +4141,6 @@ class MySuite(Suite):
         self.add_group_setup(WrapperGroup)
         self.add_script(WrapperGroup, 'my_method')
         self.add_group_teardown(WrapperGroup)
-```
-
-## Script Runner Debugging
-
-These methods allow the user to debug scripts with ScriptRunner.
-
-### step_mode
-
-Places ScriptRunner into step mode where Go must be hit to proceed to the next line.
-
-Ruby / Python Example:
-
-```ruby
-step_mode()
-```
-
-### run_mode
-
-Places ScriptRunner into run mode where the next line is run automatically.
-
-Ruby / Python Example:
-
-```ruby
-run_mode()
-```
-
-### disconnect_script
-
-Puts scripting into disconnect mode. In disconnect mode, commands are not sent to targets, checks are all successful, and waits expire instantly. Requests for telemetry (tlm()) typically return 0. Disconnect mode is useful for dry-running scripts without having connected targets.
-
-Ruby / Python Example:
-
-```ruby
-disconnect_script()
 ```
 
 ## Metadata
@@ -4277,4 +4498,24 @@ Ruby / Python Example:
 
 ```ruby
 delete_config('telemetry_grapher', 'adcs')
+```
+
+## Miscellaneous
+
+### package_list
+
+List all the packages installed in COSMOS.
+
+Ruby Example:
+
+```ruby
+package_list() #=> {"ruby"=>["openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem", ..., "openc3-tool-base-6.0.3.pre.beta0.20250115195959.gem"],
+               #    "python"=>["numpy-2.1.1", "pip-24.0", "setuptools-65.5.0"]}
+```
+
+Python Example:
+
+```python
+package_list() #=> {'ruby': ['openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem', ..., 'openc3-tool-base-6.0.3.pre.beta0.20250115195959.gem'],
+               #    'python': ['numpy-2.1.1', 'pip-24.0', 'setuptools-65.5.0']}
 ```

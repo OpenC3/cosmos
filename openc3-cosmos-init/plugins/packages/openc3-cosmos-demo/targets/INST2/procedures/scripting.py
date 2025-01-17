@@ -10,9 +10,11 @@ def wait_for_action(id, state):
     check_expression(f"'{script['state']}' == '{state}'")
 
 # Ensure it's not already there
+step_mode()
 script_delete("INST2/procedures/new_script.py")
 scripts = script_list()
 check_expression(f"{len(scripts)} > 100")
+run_mode()
 
 contents = "print('bad"
 script_create("INST2/procedures/new_script.py", contents)

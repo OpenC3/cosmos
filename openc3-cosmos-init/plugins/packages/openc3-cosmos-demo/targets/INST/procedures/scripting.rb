@@ -13,9 +13,11 @@ def wait_for_action(id, state)
 end
 
 # Ensure it's not already there
+step_mode()
 script_delete("INST/procedures/new_script.rb")
 scripts = script_list()
 check_expression("#{scripts.length} > 100")
+run_mode()
 
 contents = "puts('bad"
 script_create("INST/procedures/new_script.rb", contents)

@@ -127,6 +127,14 @@ def prompt(
     return input()
 
 
+def step_mode():
+    pass
+
+
+def run_mode():
+    pass
+
+
 ###########################################################################
 # END PUBLIC API
 ###########################################################################
@@ -138,6 +146,8 @@ from .exceptions import *
 from .limits import *
 from .telemetry import *
 from .metadata import *
+from .packages import *
+from .plugins import *
 from .screen import *
 from .script_runner import *
 from .storage import *
