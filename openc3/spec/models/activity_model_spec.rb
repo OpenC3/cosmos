@@ -282,6 +282,54 @@ module OpenC3
       end
     end
 
+    describe "self.score" do
+      it "returns the activity at the score" do
+        name = "foobar"
+        scope = "scope"
+        activity = generate_activity(name: name, scope: scope, start: 1.0)
+        activity.create()
+        model = ActivityModel.score(name: name, scope: scope, score: activity.start)
+        expect(model.fulfillment).to eql(false)
+        expect(model.start).to eql(activity.start)
+        expect(model.stop).to eql(activity.stop)
+        expect(model.data).to include("test")
+        expect(model.events.empty?).to eql(false)
+        expect(model.events.length).to eql(1)
+      end
+
+      it "returns the first activity at the score with overlap and no uuid" do
+        name = "foobar"
+        scope = "scope"
+        activity1 = generate_activity(name: name, scope: scope, start: 1.0, kind: "COMMAND")
+        activity1.create()
+        activity2 = generate_activity(name: name, scope: scope, start: 1.0, kind: "RESERVE")
+        activity2.create()
+        # No uuid means return the first activity
+        model = ActivityModel.score(name: name, scope: scope, score: activity1.start)
+        expect(model.start).to eql(activity1.start)
+        expect(model.stop).to eql(activity1.stop)
+        expect(model.start).to eql(activity2.start)
+        expect(model.stop).to eql(activity2.stop)
+        expect(model.kind).to eql('command')
+      end
+
+      it "returns the specified activity at the score with uuid" do
+        name = "foobar"
+        scope = "scope"
+        activity1 = generate_activity(name: name, scope: scope, start: 1.0, kind: "COMMAND")
+        activity1.create()
+        activity2 = generate_activity(name: name, scope: scope, start: 1.0, kind: "RESERVE")
+        activity2.create()
+        # Specific uuid means return that activity
+        model = ActivityModel.score(name: name, scope: scope, score: activity2.start, uuid: activity2.uuid)
+        expect(model.start).to eql(activity1.start)
+        expect(model.stop).to eql(activity1.stop)
+        expect(model.start).to eql(activity2.start)
+        expect(model.stop).to eql(activity2.stop)
+        expect(model.kind).to eql('reserve')
+      end
+    end
+
     describe "self.start" do
       it "returns a ActivityModel at the start" do
         name = "foobar"
@@ -332,7 +380,7 @@ module OpenC3
     end
 
     describe "self.destroy" do
-      it "removes the activity" do
+      it "removes the activity with a uuid" do
         start = Time.now.to_i + 10
         model1 = ActivityModel.new(
           name: 'timeline',
@@ -359,6 +407,52 @@ module OpenC3
         expect(ActivityModel.count(name: 'timeline', scope: 'DEFAULT')).to eql 1
         ActivityModel.destroy(name: 'timeline', scope: 'DEFAULT', score: start, uuid: model2.uuid)
         # expect(ret).to eql(1) # TODO: mock_redis 0.45 not returning the correct value (Redis v4 vs v5 behavior)
+        expect(ActivityModel.count(name: 'timeline', scope: 'DEFAULT')).to eql 0
+      end
+
+      it "removes the activity without a uuid" do
+        start = Time.now.to_i + 10
+        model1 = ActivityModel.new(
+          name: 'timeline',
+          scope: 'DEFAULT',
+          start: start,
+          stop: start + 10,
+          kind: 'COMMAND',
+          data: {'key' => 'val1'}
+        )
+        model1.create()
+
+        # Grab the model and remove the uuid
+        # model = ActivityModel.score(name: 'timeline', scope: 'DEFAULT', score: start, uuid: model1.uuid)
+        # model.instance_variable_set(:@uuid, nil)
+        json = Store.zrangebyscore("DEFAULT__openc3_timelines__timeline", start, start, :limit => [0, 1])[0]
+        Store.zrem("DEFAULT__openc3_timelines__timeline", json)
+        parsed = JSON.parse(json)
+        parsed.delete("uuid")
+        Store.zadd("DEFAULT__openc3_timelines__timeline", start, JSON.generate(parsed.as_json))
+
+        # Create another activity with the same start time
+        model2 = ActivityModel.new(
+          name: 'timeline',
+          scope: 'DEFAULT',
+          start: start,
+          stop: start + 10,
+          kind: 'COMMAND',
+          data: {'key' => 'val2'}
+        )
+        model2.create()
+        expect(ActivityModel.count(name: 'timeline', scope: 'DEFAULT')).to eql 2
+
+        # Destroy will delete any activities at the start time that do NOT have a uuid
+        ActivityModel.destroy(name: 'timeline', scope: 'DEFAULT', score: start)
+        expect(ActivityModel.count(name: 'timeline', scope: 'DEFAULT')).to eql 1
+        model = ActivityModel.score(name: 'timeline', scope: 'DEFAULT', score: start)
+        expect(model.data).to eql({'key' => 'val2'})
+
+        # Destroy won't remove the activity if the uuid is missing as a parameter but present in the data
+        ActivityModel.destroy(name: 'timeline', scope: 'DEFAULT', score: start)
+        expect(ActivityModel.count(name: 'timeline', scope: 'DEFAULT')).to eql 1
+        ActivityModel.destroy(name: 'timeline', scope: 'DEFAULT', score: start, uuid: model2.uuid)
         expect(ActivityModel.count(name: 'timeline', scope: 'DEFAULT')).to eql 0
       end
     end

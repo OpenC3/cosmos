@@ -296,11 +296,33 @@ test('test python screen apis', async ({ page, utils }) => {
 })
 
 test('test ruby script apis', async ({ page, utils }) => {
-  await runScript(page, utils, 'scripting.rb')
+  await runScript(page, utils, 'scripting.rb', async function () {
+    await expect(page.locator('[data-test=state] input')).toHaveValue(
+      /paused \d+s/,
+    )
+    await page.locator('[data-test=step-button]').click()
+    await utils.sleep(500)
+    await page.locator('[data-test=step-button]').click()
+    await utils.sleep(500)
+    await page.locator('[data-test=step-button]').click()
+    await utils.sleep(500)
+    await page.locator('[data-test=step-button]').click()
+  })
 })
 
 test('test python script apis', async ({ page, utils }) => {
-  await runScript(page, utils, 'scripting.py')
+  await runScript(page, utils, 'scripting.py', async function () {
+    await expect(page.locator('[data-test=state] input')).toHaveValue(
+      /paused \d+s/,
+    )
+    await page.locator('[data-test=step-button]').click()
+    await utils.sleep(500)
+    await page.locator('[data-test=step-button]').click()
+    await utils.sleep(500)
+    await page.locator('[data-test=step-button]').click()
+    await utils.sleep(500)
+    await page.locator('[data-test=step-button]').click()
+  })
 })
 
 test('test python numpy import', async ({ page, utils }) => {

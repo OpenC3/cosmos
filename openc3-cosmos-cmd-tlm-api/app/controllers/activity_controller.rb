@@ -51,6 +51,7 @@ class ActivityController < ApplicationController
       else
         limit = ((stop - start) / 60).to_i # 1 event every minute ... shouldn't ever be more than this!
       end
+      puts "activities index limit:#{limit}"
       model = @model_class.get(name: params[:name], scope: params[:scope], start: start, stop: stop, limit: limit)
       render json: model.as_json(:allow_nan => true)
     rescue ArgumentError => e
@@ -149,6 +150,7 @@ class ActivityController < ApplicationController
   # name [String] the timeline name, `system42`
   # scope [String] the scope of the timeline, `TEST`
   # id [String] the start/id of the activity, `1620248449`
+  # uuid [String] the uuid of the activity, `e8776b54-4c71-41c3-b2fd-309513cf85cf`
   # @return [String] the activity as a object/hash converted into json format
   # Request Headers
   # ```json
@@ -160,7 +162,7 @@ class ActivityController < ApplicationController
   def show
     return unless authorization('system')
     begin
-      model = @model_class.score(name: params[:name], score: params[:id].to_i, scope: params[:scope])
+      model = @model_class.score(name: params[:name], score: params[:id].to_i, uuid: params[:uuid], scope: params[:scope])
       if model.nil?
         render json: { status: 'error', message: NOT_FOUND }, status: 404
       else
@@ -195,7 +197,7 @@ class ActivityController < ApplicationController
   # ```
   def event
     return unless authorization('script_run')
-    model = @model_class.score(name: params[:name], score: params[:id].to_i, scope: params[:scope])
+    model = @model_class.score(name: params[:name], score: params[:id].to_i, uuid: params[:uuid], scope: params[:scope])
     if model.nil?
       render json: { status: 'error', message: NOT_FOUND }, status: 404
       return
@@ -243,7 +245,7 @@ class ActivityController < ApplicationController
   # ```
   def update
     return unless authorization('script_run')
-    model = @model_class.score(name: params[:name], score: params[:id].to_i, scope: params[:scope])
+    model = @model_class.score(name: params[:name], score: params[:id].to_i, uuid: params[:uuid], scope: params[:scope])
     if model.nil?
       render json: { status: 'error', message: NOT_FOUND }, status: 404
       return
@@ -281,6 +283,7 @@ class ActivityController < ApplicationController
   # name [String] the timeline name, `system42`
   # scope [String] the scope of the timeline, `TEST`
   # id [String] the score or id of the activity, `1620248449`
+  # uuid [String] the uuid of the activity, `e8776b54-4c71-41c3-b2fd-309513cf85cf`
   # @return [String] object/hash converted into json format but with a 200 status code
   # Request Headers
   # ```json

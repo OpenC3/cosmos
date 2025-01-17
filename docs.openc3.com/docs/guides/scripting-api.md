@@ -882,7 +882,7 @@ send_raw("INST_INT", data)
 
 > Since 5.13.0, since 5.0.0 as get_all_commands
 
-Returns an array of the commands that are available for a particular target. The returned array is an array of hashes which fully describe the command packet.
+Returns an array of the commands that are available for a particular target. The returned array is an array of hashes / list of dicts which fully describe the command packet.
 
 Ruby / Python Syntax:
 
@@ -1851,7 +1851,7 @@ print(get_overrides()) #=>
 
 ## Packet Data Subscriptions
 
-Methods for subscribing to specific packets of data. This provides an interface to ensure that each telemetry packet is received and handled rather than relying on polling where some data may be missed.
+APIs for subscribing to specific packets of data. This provides an interface to ensure that each telemetry packet is received and handled rather than relying on polling where some data may be missed.
 
 ### subscribe_packets
 
@@ -2567,9 +2567,9 @@ print(events)
 #   ...
 ```
 
-## Plugins
+## Plugins / Packages
 
-Methods for getting knowledge about plugins.
+APIs for getting knowledge about plugins and packages.
 
 ### plugin_list
 
@@ -2595,23 +2595,24 @@ Ruby / Python Example:
 
 ```ruby
 plugins = plugin_list() #=> ['openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539']
-plugins = plugin_list(default: true) #=> ['openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539',
-                                     #    'openc3-cosmos-tool-admin-6.0.3.pre.beta0.20250115200004.gem__20250116211504',
-                                     #    'openc3-cosmos-tool-bucketexplorer-6.0.3.pre.beta0.20250115200008.gem__20250116211525',
-                                     #    'openc3-cosmos-tool-cmdsender-6.0.3.pre.beta0.20250115200012.gem__20250116211515',
-                                     #    'openc3-cosmos-tool-cmdtlmserver-6.0.3.pre.beta0.20250115200015.gem__20250116211512',
-                                     #    'openc3-cosmos-tool-dataextractor-6.0.3.pre.beta0.20250115200005.gem__20250116211521',
-                                     #    'openc3-cosmos-tool-dataviewer-6.0.3.pre.beta0.20250115200009.gem__20250116211522',
-                                     #    'openc3-cosmos-tool-docs-6.0.3.pre.beta0.20250117042104.gem__20250117042154',
-                                     #    'openc3-cosmos-tool-handbooks-6.0.3.pre.beta0.20250115200014.gem__20250116211523',
-                                     #    'openc3-cosmos-tool-iframe-6.0.3.pre.beta0.20250115200011.gem__20250116211503',
-                                     #    'openc3-cosmos-tool-limitsmonitor-6.0.3.pre.beta0.20250115200017.gem__20250116211514',
-                                     #    'openc3-cosmos-tool-packetviewer-6.0.3.pre.beta0.20250115200004.gem__20250116211518',
-                                     #    'openc3-cosmos-tool-scriptrunner-6.0.3.pre.beta0.20250115200012.gem__20250116211517',
-                                     #    'openc3-cosmos-tool-tablemanager-6.0.3.pre.beta0.20250115200018.gem__20250116211524',
-                                     #    'openc3-cosmos-tool-tlmgrapher-6.0.3.pre.beta0.20250115200005.gem__20250116211520',
-                                     #    'openc3-cosmos-tool-tlmviewer-6.0.3.pre.beta0.20250115200008.gem__20250116211519',
-                                     #    'openc3-tool-base-6.0.3.pre.beta0.20250115195959.gem__20250116211459']
+plugins = plugin_list(default: true) #=>
+# ['openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539',
+#  'openc3-cosmos-tool-admin-6.0.3.pre.beta0.20250115200004.gem__20250116211504',
+#  'openc3-cosmos-tool-bucketexplorer-6.0.3.pre.beta0.20250115200008.gem__20250116211525',
+#  'openc3-cosmos-tool-cmdsender-6.0.3.pre.beta0.20250115200012.gem__20250116211515',
+#  'openc3-cosmos-tool-cmdtlmserver-6.0.3.pre.beta0.20250115200015.gem__20250116211512',
+#  'openc3-cosmos-tool-dataextractor-6.0.3.pre.beta0.20250115200005.gem__20250116211521',
+#  'openc3-cosmos-tool-dataviewer-6.0.3.pre.beta0.20250115200009.gem__20250116211522',
+#  'openc3-cosmos-tool-docs-6.0.3.pre.beta0.20250117042104.gem__20250117042154',
+#  'openc3-cosmos-tool-handbooks-6.0.3.pre.beta0.20250115200014.gem__20250116211523',
+#  'openc3-cosmos-tool-iframe-6.0.3.pre.beta0.20250115200011.gem__20250116211503',
+#  'openc3-cosmos-tool-limitsmonitor-6.0.3.pre.beta0.20250115200017.gem__20250116211514',
+#  'openc3-cosmos-tool-packetviewer-6.0.3.pre.beta0.20250115200004.gem__20250116211518',
+#  'openc3-cosmos-tool-scriptrunner-6.0.3.pre.beta0.20250115200012.gem__20250116211517',
+#  'openc3-cosmos-tool-tablemanager-6.0.3.pre.beta0.20250115200018.gem__20250116211524',
+#  'openc3-cosmos-tool-tlmgrapher-6.0.3.pre.beta0.20250115200005.gem__20250116211520',
+#  'openc3-cosmos-tool-tlmviewer-6.0.3.pre.beta0.20250115200008.gem__20250116211519',
+#  'openc3-tool-base-6.0.3.pre.beta0.20250115195959.gem__20250116211459']
 ```
 
 ### plugin_get
@@ -2632,16 +2633,34 @@ Ruby / Python Example:
 
 ```ruby
 plugin_get('openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539') #=>
-  # { "name"=>"openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539",
-  #   "variables"=>{"inst_target_name"=>"INST", ...},
-  #   "plugin_txt_lines"=>["# Note: This plugin includes 4 targets ..."],
-  #   "needs_dependencies"=>true,
-  #   "updated_at"=>1737063941094624764 }
+# { "name"=>"openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539",
+#   "variables"=>{"inst_target_name"=>"INST", ...},
+#   "plugin_txt_lines"=>["# Note: This plugin includes 4 targets ..."],
+#   "needs_dependencies"=>true,
+#   "updated_at"=>1737063941094624764 }
+```
+
+### package_list
+
+List all the packages installed in COSMOS.
+
+Ruby Example:
+
+```ruby
+package_list() #=> {"ruby"=>["openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem", ..., "openc3-tool-base-6.0.3.pre.beta0.20250115195959.gem"],
+               #    "python"=>["numpy-2.1.1", "pip-24.0", "setuptools-65.5.0"]}
+```
+
+Python Example:
+
+```python
+package_list() #=> {'ruby': ['openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem', ..., 'openc3-tool-base-6.0.3.pre.beta0.20250115195959.gem'],
+               #    'python': ['numpy-2.1.1', 'pip-24.0', 'setuptools-65.5.0']}
 ```
 
 ## Targets
 
-Methods for getting knowledge about targets.
+APIs for getting knowledge about targets.
 
 ### get_target_names
 
@@ -2672,38 +2691,38 @@ Ruby Example:
 ```ruby
 target = get_target("INST")
 print(target)
-#{"name"=>"INST",
-# "folder_name"=>"INST",
-# "requires"=>[],
-# "ignored_parameters"=>
-#  ["CCSDSVER",
-#   "CCSDSTYPE",
-#   "CCSDSSHF",
-#   "CCSDSAPID",
-#   "CCSDSSEQFLAGS",
-#   "CCSDSSEQCNT",
-#   "CCSDSLENGTH",
-#   "PKTID"],
-# "ignored_items"=>
-#  ["CCSDSVER",
-#   "CCSDSTYPE",
-#   "CCSDSSHF",
-#   "CCSDSAPID",
-#   "CCSDSSEQFLAGS",
-#   "CCSDSSEQCNT",
-#   "CCSDSLENGTH",
-#   "RECEIVED_COUNT",
-#   "RECEIVED_TIMESECONDS",
-#   "RECEIVED_TIMEFORMATTED"],
-# "limits_groups"=>[],
-# "cmd_tlm_files"=>
-#  [".../targets/INST/cmd_tlm/inst_cmds.txt",
-#   ".../targets/INST/cmd_tlm/inst_tlm.txt"],
-# "cmd_unique_id_mode"=>false,
-# "tlm_unique_id_mode"=>false,
-# "id"=>nil,
-# "updated_at"=>1613077058266815900,
-# "plugin"=>nil}
+# {"name"=>"INST",
+#  "folder_name"=>"INST",
+#  "requires"=>[],
+#  "ignored_parameters"=>
+#   ["CCSDSVER",
+#    "CCSDSTYPE",
+#    "CCSDSSHF",
+#    "CCSDSAPID",
+#    "CCSDSSEQFLAGS",
+#    "CCSDSSEQCNT",
+#    "CCSDSLENGTH",
+#    "PKTID"],
+#  "ignored_items"=>
+#   ["CCSDSVER",
+#    "CCSDSTYPE",
+#    "CCSDSSHF",
+#    "CCSDSAPID",
+#    "CCSDSSEQFLAGS",
+#    "CCSDSSEQCNT",
+#    "CCSDSLENGTH",
+#    "RECEIVED_COUNT",
+#    "RECEIVED_TIMESECONDS",
+#    "RECEIVED_TIMEFORMATTED"],
+#  "limits_groups"=>[],
+#  "cmd_tlm_files"=>
+#   [".../targets/INST/cmd_tlm/inst_cmds.txt",
+#    ".../targets/INST/cmd_tlm/inst_tlm.txt"],
+#  "cmd_unique_id_mode"=>false,
+#  "tlm_unique_id_mode"=>false,
+#  "id"=>nil,
+#  "updated_at"=>1613077058266815900,
+#  "plugin"=>nil}
 ```
 
 ### get_target_interfaces
@@ -2742,27 +2761,27 @@ Ruby / Python Example:
 ```ruby
 interface = get_interface("INST_INT")
 print(interface)
-#{"name"=>"INST_INT",
-# "config_params"=>["interface.rb"],
-# "target_names"=>["INST"],
-# "connect_on_startup"=>true,
-# "auto_reconnect"=>true,
-# "reconnect_delay"=>5.0,
-# "disable_disconnect"=>false,
-# "options"=>[],
-# "protocols"=>[],
-# "log"=>true,
-# "log_raw"=>false,
-# "plugin"=>nil,
-# "updated_at"=>1613076213535979900,
-# "state"=>"CONNECTED",
-# "clients"=>0,
-# "txsize"=>0,
-# "rxsize"=>0,
-# "txbytes"=>0,
-# "rxbytes"=>0,
-# "txcnt"=>0,
-# "rxcnt"=>0}
+# {"name"=>"INST_INT",
+#  "config_params"=>["interface.rb"],
+#  "target_names"=>["INST"],
+#  "connect_on_startup"=>true,
+#  "auto_reconnect"=>true,
+#  "reconnect_delay"=>5.0,
+#  "disable_disconnect"=>false,
+#  "options"=>[],
+#  "protocols"=>[],
+#  "log"=>true,
+#  "log_raw"=>false,
+#  "plugin"=>nil,
+#  "updated_at"=>1613076213535979900,
+#  "state"=>"CONNECTED",
+#  "clients"=>0,
+#  "txsize"=>0,
+#  "rxsize"=>0,
+#  "txbytes"=>0,
+#  "rxbytes"=>0,
+#  "txcnt"=>0,
+#  "rxcnt"=>0}
 ```
 
 ### get_interface_names
@@ -4143,6 +4162,323 @@ class MySuite(Suite):
         self.add_group_teardown(WrapperGroup)
 ```
 
+## Timelines
+
+The Timelines API allows you to manipulate Calendar timelines. Calendar is a COSMOS Enterprise tool.
+
+### list_timelines
+
+Returns all the timelines in an array of hashes / list of dicts.
+
+Ruby Example:
+
+```ruby
+timelines = list_timelines() #=>
+# [{"name"=>"Mine", "color"=>"#e67643", "execute"=>true, "shard"=>0, "scope"=>"DEFAULT", "updated_at"=>1737124024123643504}]
+```
+
+Python Example:
+
+```python
+timelihes = list_timelines() #=>
+# [{'name': 'Mine', 'color': '#e67643', 'execute': True, 'shard': 0, 'scope': 'DEFAULT', 'updated_at': 1737124024123643504}]
+```
+
+### create_timeline
+
+Create a new timeline in Calendar which can hold activities.
+
+Ruby Syntax:
+
+```ruby
+create_timeline(name, color: nil)
+```
+
+Python Syntax:
+
+```python
+create_timeline(name, color=None)
+```
+
+| Parameter | Description                                                                                   |
+| --------- | --------------------------------------------------------------------------------------------- |
+| name      | Name of the timeline                                                                          |
+| color     | Color of the timeline. Must be given as a hex value, e.g. #FF0000. Default is a random color. |
+
+Ruby Example:
+
+```ruby
+tl = create_timeline("Mine") #=>
+# {"name"=>"Mine", "color"=>"#e67643", "execute"=>true, "shard"=>0, "scope"=>"DEFAULT", "updated_at"=>1737124024123643504}
+```
+
+Python Example:
+
+```python
+tl = create_timeline("Other", color="#FF0000") #=>
+# {'name': 'Other', 'color': '#FF0000', 'execute': True, 'shard': 0, 'scope': 'DEFAULT', 'updated_at': 1737126348971941923}
+```
+
+### get_timeline
+
+Get information about an existing timeline.
+
+Ruby / Python Syntax:
+
+```ruby
+get_timeline(name)
+```
+
+| Parameter | Description          |
+| --------- | -------------------- |
+| name      | Name of the timeline |
+
+Ruby Example:
+
+```ruby
+tl = get_timeline("Mine") #=>
+# {"name"=>"Mine", "color"=>"#e67643", "execute"=>true, "shard"=>0, "scope"=>"DEFAULT", "updated_at"=>1737124024123643504}
+```
+
+Python Example:
+
+```python
+tl = get_timeline("Other") #=>
+# {'name': 'Other', 'color': '#FF0000', 'execute': True, 'shard': 0, 'scope': 'DEFAULT', 'updated_at': 1737126348971941923}
+```
+
+### set_timeline_color
+
+Set the displayed color for an existing timeline.
+
+Ruby / Python Syntax:
+
+```ruby
+set_timeline_color(name, color)
+```
+
+| Parameter | Description                                                        |
+| --------- | ------------------------------------------------------------------ |
+| name      | Name of the timeline                                               |
+| color     | Color of the timeline. Must be given as a hex value, e.g. #FF0000. |
+
+Ruby / Python Exmaple:
+
+```ruby
+set_timeline_color("Mine", "#4287f5")
+```
+
+### delete_timeline
+
+Delete an existing timeline. Timelines with activities can only be deleted by passing force = true.
+
+Ruby Syntax:
+
+```ruby
+delete_timeline(name, force: false)
+```
+
+Python Syntax:
+
+```python
+delete_timeline(name, force=False)
+```
+
+| Parameter | Description                                                            |
+| --------- | ---------------------------------------------------------------------- |
+| name      | Name of the timeline                                                   |
+| force     | Whether to delete the timeline if it has activities. Default is false. |
+
+Ruby Example:
+
+```ruby
+delete_timeline("Mine", force: true)
+```
+
+Python Example:
+
+```python
+delete_timeline("Other", force=True)
+```
+
+### create_timeline_activity
+
+Create an activity on an existing timeline. Activities can be one of COMMAND, SCRIPT, or RESERVE. Activities have a start and stop time and commands and scripts take data on the command or script to execute.
+
+Ruby Syntax:
+
+```ruby
+create_timeline_activity(name, kind:, start:, stop:, data: {})
+```
+
+Python Syntax:
+
+```python
+create_timeline_activity(name, kind, start, stop, data={})
+```
+
+| Parameter | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| name      | Name of the timeline                                                          |
+| kind      | Type of the activity. One of COMMAND, SCRIPT, or RESERVE.                     |
+| start     | Start time of the activity. Time / datetime instance.                         |
+| stop      | Stop time of the activity. Time / datetime instance.                          |
+| data      | Hash / dict of data for COMMAND or SCRIPT type. Default is empty hash / dict. |
+
+Ruby Example:
+
+```ruby
+now = Time.now()
+start = now + 3600
+stop = start + 3600
+act = create_timeline_activity("RubyTL", kind: "RESERVE", start: start, stop: stop) #=>
+# { "name"=>"RubyTL", "updated_at"=>1737128705034982375, "start"=>1737132303, "stop"=>1737135903,
+#   "kind"=>"reserve", "data"=>{"username"=>"operator"},
+#   "scope"=>"DEFAULT", "fulfillment"=>false, "uuid"=>"5f373846-eb6c-43cd-97bd-cca19a8ffb04",
+#   "events"=>[{"time"=>1737128705, "event"=>"created"}], "recurring"=>{}}
+act = create_timeline_activity("RubyTL", kind: "COMMAND", start: start, stop: stop,
+    data: {command: "INST COLLECT with TYPE NORMAL, DURATION 5, TEMP 10"}) #=>
+# { "name"=>"RubyTL", "updated_at"=>1737128761316084471, "start"=>1737132303, "stop"=>1737135903,
+#   "kind"=>"command", "data"=>{"command"=>"INST COLLECT with TYPE NORMAL, DURATION 5, TEMP 10", "username"=>"operator"},
+#   "scope"=>"DEFAULT", "fulfillment"=>false, "uuid"=>"cdb661b4-a65b-44e7-95e2-5e1dba80c782",
+#   "events"=>[{"time"=>1737128761, "event"=>"created"}], "recurring"=>{}}
+act = create_timeline_activity("RubyTL", kind: "SCRIPT", start: start, stop: stop,
+  data: {environment: [{key: "USER", value: "JASON"}], script: "INST/procedures/checks.rb"}) #=>
+# { "name"=>"RubyTL", "updated_at"=>1737128791047885970, "start"=>1737135903, "stop"=>1737139503,
+#   "kind"=>"script", "data"=>{"environment"=>[{"key"=>"USER", "value"=>"JASON"}], "script"=>"INST/procedures/checks.rb", "username"=>"operator"},
+#   "scope"=>"DEFAULT", "fulfillment"=>false, "uuid"=>"70426e3d-6313-4897-b159-6e5cd94ace1d",
+#   "events"=>[{"time"=>1737128791, "event"=>"created"}], "recurring"=>{}}
+```
+
+Python Example:
+
+```python
+now = datetime.now(timezone.utc)
+start = now + timedelta(hours=1)
+stop = start + timedelta(hours=1)
+act = create_timeline_activity("PythonTL", kind="RESERVE", start=start, stop=stop) #=>
+# {'name': 'PythonTL', 'updated_at': 1737129305507111708, 'start': 1737132902, 'stop': 1737136502,
+#  'kind': 'reserve', 'data': {'username': 'operator'},
+#  'scope': 'DEFAULT', 'fulfillment': False, 'uuid': '46328378-ed78-4719-ad70-e84951a196fd',
+#  'events': [{'time': 1737129305, 'event': 'created'}], 'recurring': {}}
+act = create_timeline_activity("PythonTL", kind="COMMAND", start=start, stop=stop,
+    data={'command': "INST COLLECT with TYPE NORMAL, DURATION 5, TEMP 10"}) #=>
+# {'name': 'PythonTL', 'updated_at': 1737129508886643928, 'start': 1737133108, 'stop': 1737136708,
+#  'kind': 'command', 'data': {'command': 'INST COLLECT with TYPE NORMAL, DURATION 5, TEMP 10', 'username': 'operator'},
+#  'scope': 'DEFAULT', 'fulfillment': False, 'uuid': 'cddbf034-ccdd-4c36-91c2-2653a39b06a5',
+#  'events': [{'time': 1737129508, 'event': 'created'}], 'recurring': {}}
+start = now + timedelta(hours=2)
+stop = start + timedelta(hours=1)
+act = create_timeline_activity("PythonTL", kind="SCRIPT", start=start, stop=stop,
+  data={'environment': [{'key': "USER", 'value': "JASON"}], 'script': "INST2/procedures/checks.py"}) #=>
+# {'name': 'PythonTL', 'updated_at': 1737129509288571345, 'start': 1737136708, 'stop': 1737140308,
+#  'kind': 'script', 'data': {'environment': [{'key': 'USER', 'value': 'JASON'}], 'script': 'INST2/procedures/checks.py', 'username': 'operator'},
+#  'scope': 'DEFAULT', 'fulfillment': False, 'uuid': '4f8d791b-b138-4383-b5ec-85c28b2bea20',
+#  'events': [{'time': 1737129509, 'event': 'created'}], 'recurring': {}}
+```
+
+### get_timeline_activity
+
+Get an existing timeline activity.
+
+Ruby / Python Syntax:
+
+```ruby
+get_timeline_activity(name, start, uuid)
+```
+
+| Parameter | Description                                           |
+| --------- | ----------------------------------------------------- |
+| name      | Name of the timeline                                  |
+| start     | Start time of the activity. Time / datetime instance. |
+| uuid      | UUID of the activity                                  |
+
+Ruby Example:
+
+```ruby
+act = get_timeline_activity("RubyTL", 1737132303, "cdb661b4-a65b-44e7-95e2-5e1dba80c782") #=>
+# { "name"=>"RubyTL", "updated_at"=>1737128761316084471, "start"=>1737132303, "stop"=>1737135903,
+#   "kind"=>"command", "data"=>{"command"=>"INST COLLECT with TYPE NORMAL, DURATION 5, TEMP 10", "username"=>"operator"},
+#   "scope"=>"DEFAULT", "fulfillment"=>false, "uuid"=>"cdb661b4-a65b-44e7-95e2-5e1dba80c782",
+#   "events"=>[{"time"=>1737128761, "event"=>"created"}], "recurring"=>{}}
+```
+
+Python Example:
+
+```python
+act = get_timeline_activity("PythonTL", 1737133108, "cddbf034-ccdd-4c36-91c2-2653a39b06a5") #=>
+# {'name': 'PythonTL', 'updated_at': 1737129508886643928, 'start': 1737133108, 'stop': 1737136708,
+#  'kind': 'command', 'data': {'command': 'INST COLLECT with TYPE NORMAL, DURATION 5, TEMP 10', 'username': 'operator'},
+#  'scope': 'DEFAULT', 'fulfillment': False, 'uuid': 'cddbf034-ccdd-4c36-91c2-2653a39b06a5',
+#  'events': [{'time': 1737129508, 'event': 'created'}], 'recurring': {}}
+```
+
+### get_timeline_activities
+
+Get a range of timeline activities between start and stop time. If called without a start / stop time it defaults to 1 week before "now" up to 1 week from "now" (2 weeks total).
+
+Ruby Syntax:
+
+```ruby
+get_timeline_activities(name, start: nil, stop: nil, limit: nil)
+```
+
+Python Syntax:
+
+```python
+get_timeline_activities(name, start=None, stop=None, limit=None)
+```
+
+| Parameter | Description                                                                         |
+| --------- | ----------------------------------------------------------------------------------- |
+| name      | Name of the timeline                                                                |
+| start     | Start time of the activities. Time / datetime instance. Defaults to 7 days ago.     |
+| stop      | Stop time of the activities. Time / datetime instance. Defaults to 7 days from now. |
+| limit     | Maximum number of activities to return. Default is 1 per minute of the time range.  |
+
+Ruby Example:
+
+```ruby
+acts = get_timeline_activities("RubyTL", start: Time.now() - 3600, stop: Time.now(), limit: 1000) #=>
+# [{ "name"=>"RubyTL", ... }, { "name"=>"RubyTL", ... }]
+```
+
+Python Example:
+
+```python
+now = datetime.now(timezone.utc)
+acts = get_timeline_activities("PythonTL", start=now - timedelta(hours=2), stop=now, limit=1000) #=>
+# [{ "name"=>"PythonTL", ... }, { "name"=>"PythonTL", ... }]
+```
+
+### delete_timeline_activity
+
+Delete an existing timeline activity.
+
+Ruby / Python Syntax:
+
+```ruby
+delete_timeline_activity(name, start, uuid)
+```
+
+| Parameter | Description                                           |
+| --------- | ----------------------------------------------------- |
+| name      | Name of the timeline                                  |
+| start     | Start time of the activity. Time / datetime instance. |
+| uuid      | UUID of the activity                                  |
+
+Ruby Example:
+
+```ruby
+delete_timeline_activity("RubyTL", 1737132303, "cdb661b4-a65b-44e7-95e2-5e1dba80c782")
+```
+
+Python Example:
+
+```python
+delete_timeline_activity("PythonTL", 1737133108, "cddbf034-ccdd-4c36-91c2-2653a39b06a5")
+```
+
 ## Metadata
 
 Metadata allows you to mark the regular target / packet data logged in COSMOS with your own fields. This metadata can then be searched and used to filter data when using other COSMOS tools.
@@ -4294,7 +4630,7 @@ Return all the current COSMOS settings along with their values.
 Ruby Example:
 
 ```ruby
-puts get_all_settings() #=>
+settings = get_all_settings() #=>
 # { "version"=>{"name"=>"version", "data"=>"5.11.4-beta0", "updated_at"=>1698074299509456507},
 #   "pypi_url"=>{"name"=>"pypi_url", "data"=>"https://pypi.org/simple", "updated_at"=>1698026776574347007},
 #   "rubygems_url"=>{"name"=>"rubygems_url", "data"=>"https://rubygems.org", "updated_at"=>1698026776574105465},
@@ -4304,7 +4640,7 @@ puts get_all_settings() #=>
 Python Example:
 
 ```python
-print(get_all_settings()) #=>
+settings = get_all_settings() #=>
 # { 'version': {'name': 'version', 'data': '5.11.4-beta0', 'updated_at': 1698074299509456507},
 #   'pypi_url': {'name': 'pypi_url', 'data': 'https://pypi.org/simple', 'updated_at': 1698026776574347007},
 #   'rubygems_url': {'name': 'rubygems_url', 'data': 'https://rubygems.org', 'updated_at': 1698026776574105465},
@@ -4329,15 +4665,15 @@ get_settings(<Setting Name1>, <Setting Name2>, ...)
 Ruby Example:
 
 ```ruby
-puts get_setting('version') #=> "5.11.4-beta0"
-puts get_settings('version', 'rubygems_url') #=> ["5.11.4-beta0", "https://rubygems.org"]
+setting = get_setting('version') #=> "5.11.4-beta0"
+setting = get_settings('version', 'rubygems_url') #=> ["5.11.4-beta0", "https://rubygems.org"]
 ```
 
 Python Example:
 
 ```python
-print(get_setting('version')) #=> '5.11.4-beta0'
-print(get_setting('version', 'rubygems_url')) #=> ['5.11.4-beta0', 'https://rubygems.org']
+setting = get_setting('version') #=> '5.11.4-beta0'
+setting = get_setting('version', 'rubygems_url') #=> ['5.11.4-beta0', 'https://rubygems.org']
 ```
 
 ### set_setting
@@ -4363,14 +4699,12 @@ Ruby Example:
 
 ```ruby
 set_setting('rubygems_url', 'https://mygemserver')
-puts get_settings('rubygems_url') #=> "https://mygemserver"
 ```
 
 Python Example:
 
 ```python
 set_setting('pypi_url', 'https://mypypiserver')
-print(get_settings('pypi_url')) #=> 'https://mypypiserver'
 ```
 
 ## Configuration
@@ -4384,15 +4718,13 @@ List all the configuration tool names which are used as the first parameter in t
 Ruby Example:
 
 ```ruby
-names = config_tool_names()
-pp names #=> ["telemetry_grapher", "data_viewer"]
+names = config_tool_names() #=> ["telemetry_grapher", "data_viewer"]
 ```
 
 Python Example:
 
 ```python
-names = config_tool_names()
-print(names) #=> ['telemetry_grapher', 'data_viewer']
+names = config_tool_names() #=> ['telemetry_grapher', 'data_viewer']
 ```
 
 ### list_configs
@@ -4412,15 +4744,13 @@ list_configs(<Tool Name>)
 Ruby Example:
 
 ```ruby
-configs = list_configs('telemetry_grapher')
-pp configs #=> ['adcs', 'temps']
+configs = list_configs('telemetry_grapher') #=> ['adcs', 'temps']
 ```
 
 Python Example:
 
 ```python
-configs = list_configs('telemetry_grapher')
-print(configs) #=> ['adcs', 'temps']
+configs = list_configs('telemetry_grapher') #=> ['adcs', 'temps']
 ```
 
 ### load_config
@@ -4445,8 +4775,7 @@ load_config(<Tool Name>, <Configuration Name>)
 Ruby / Python Example:
 
 ```ruby
-config = load_config('telemetry_grapher', 'adcs')
-print(config) #=>
+config = load_config('telemetry_grapher', 'adcs') #=>
 # [ {
 #   "items": [
 #     {
@@ -4498,24 +4827,4 @@ Ruby / Python Example:
 
 ```ruby
 delete_config('telemetry_grapher', 'adcs')
-```
-
-## Miscellaneous
-
-### package_list
-
-List all the packages installed in COSMOS.
-
-Ruby Example:
-
-```ruby
-package_list() #=> {"ruby"=>["openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem", ..., "openc3-tool-base-6.0.3.pre.beta0.20250115195959.gem"],
-               #    "python"=>["numpy-2.1.1", "pip-24.0", "setuptools-65.5.0"]}
-```
-
-Python Example:
-
-```python
-package_list() #=> {'ruby': ['openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem', ..., 'openc3-tool-base-6.0.3.pre.beta0.20250115195959.gem'],
-               #    'python': ['numpy-2.1.1', 'pip-24.0', 'setuptools-65.5.0']}
 ```

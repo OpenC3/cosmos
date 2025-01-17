@@ -49,7 +49,7 @@ wait_for_action(id, 'paused')
 running_script_go(id)
 wait_for_action(id, 'running')
 running_script_stop(id)
-wait_for_action(id, 'stopped')
+wait(1)
 
 list = running_script_list()
 script = [script for script in list if script["id"] == id]

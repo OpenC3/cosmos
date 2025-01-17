@@ -57,15 +57,6 @@ module OpenC3
       return _handle_response(response, 'Failed to delete timeline')
     end
 
-    def get_timeline_activities(name, start: nil, stop: nil, scope: $openc3_scope, token: $openc3_token)
-      url = "/openc3-api/timeline/#{name}/activities"
-      if start and stop
-        url += "?start=#{start}&stop=#{stop}"
-      end
-      response = $api_server.request('get', url, scope: scope)
-      return _handle_response(response, 'Failed to get timeline activities')
-    end
-
     def create_timeline_activity(name, kind:, start:, stop:, data: {}, scope: $openc3_scope, token: $openc3_token)
       kind = kind.to_s.downcase()
       kinds = %w(command script reserve)
@@ -81,9 +72,21 @@ module OpenC3
       return _handle_response(response, 'Failed to create timeline activity')
     end
 
-    def get_timeline_activity(name, start: nil, scope: $openc3_scope, token: $openc3_token)
-      response = $api_server.request('get', "/openc3-api/timeline/#{name}/activity/#{start}", scope: scope)
+    def get_timeline_activity(name, start, uuid, scope: $openc3_scope, token: $openc3_token)
+      response = $api_server.request('get', "/openc3-api/timeline/#{name}/activity/#{start}/#{uuid}", scope: scope)
       return _handle_response(response, 'Failed to get timeline activity')
+    end
+
+    def get_timeline_activities(name, start: nil, stop: nil, limit: nil, scope: $openc3_scope, token: $openc3_token)
+      url = "/openc3-api/timeline/#{name}/activities"
+      if start and stop
+        url += "?start=#{start}&stop=#{stop}"
+      end
+      if limit
+        url += "?limit=#{limit}"
+      end
+      response = $api_server.request('get', url, scope: scope)
+      return _handle_response(response, 'Failed to get timeline activities')
     end
 
     def delete_timeline_activity(name, start, uuid, scope: $openc3_scope, token: $openc3_token)
