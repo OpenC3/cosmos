@@ -22,7 +22,7 @@
     <v-card-subtitle>
       The time zone to use in all COSMOS tools (graphs, time choosers, log
       messages, etc). Anywhere a date / time is displayed, it will be in the
-      choosen time zone. (Note: All timestamps are UTC in the backend).
+      chosen time zone. (Note: All timestamps are UTC in the backend).
     </v-card-subtitle>
     <v-alert v-model="errorLoading" type="error" closable density="compact">
       Error loading previous configuration due to {{ errorText }}
