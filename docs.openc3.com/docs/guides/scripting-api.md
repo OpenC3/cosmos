@@ -4262,7 +4262,7 @@ set_timeline_color(name, color)
 | name      | Name of the timeline                                               |
 | color     | Color of the timeline. Must be given as a hex value, e.g. #FF0000. |
 
-Ruby / Python Exmaple:
+Ruby / Python Example:
 
 ```ruby
 set_timeline_color("Mine", "#4287f5")
