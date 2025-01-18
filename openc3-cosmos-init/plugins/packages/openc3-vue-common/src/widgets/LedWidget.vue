@@ -24,7 +24,7 @@
   <v-tooltip location="top">
     <template v-slot:activator="{ props }">
       <div
-        class="ledwidget mt-1"
+        :class="getClass"
         :style="[cssProps, computedStyle]"
         v-bind="props"
       ></div>
@@ -71,6 +71,13 @@ export default {
         this.parameters[0] + ' ' + this.parameters[1] + ' ' + this.parameters[2]
       )
     },
+    getClass() {
+      let result = 'ledwidget mt-2'
+      if (this.screenValues[this.valueId][1] === 'STALE') {
+        result += ' stale'
+      }
+      return result
+    },
   },
   // Note Vuejs still treats this synchronously, but this allows us to dispatch
   // the store mutation and return the array index.
@@ -104,5 +111,9 @@ export default {
 .ledwidget {
   background-color: var(--color);
   border-radius: 50%;
+}
+.stale {
+  filter: blur(2px);
+  opacity: 0.6;
 }
 </style>
