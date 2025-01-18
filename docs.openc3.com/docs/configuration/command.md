@@ -214,6 +214,17 @@ takes extra parameters and must always implement the `call` method. The conversi
 factor is applied to the value entered by the user before it is written into
 the binary command packet and sent.
 
+When applying a write_conversion sometimes the data type changes,
+e.g. creating a UINT from an input STRING (for an example of this see
+[ip_write_conversion.rb](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/conversions/ip_write_conversion.rb)
+or [ip_write_conversion.py](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/conversions/ip_write_conversion.py)).
+In this case, the command definition data type is UINT and the min, max values don't matter
+(but must be given) so are typically set to MIN MAX. The default value is important
+and should be specified as a string. For a full example see the IP_ADDRESS parameter
+in the TIME_OFFSET command definition of the COSMOS Demo
+[INST inst_cmds.txt](https://github.com/OpenC3/cosmos/blob/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/targets/INST/cmd_tlm/inst_cmds.txt)
+or [INST2 inst_cmds.txt](https://github.com/OpenC3/cosmos/blob/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/targets/INST2/cmd_tlm/inst_cmds.txt).
+
 :::info Multiple write conversions on command parameters
 When a command is built, each item gets written (and write conversions are run)
 to set the default value. Then items are written (again write conversions are run)

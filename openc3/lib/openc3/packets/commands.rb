@@ -307,8 +307,6 @@ module OpenC3
         item_upcase = item_name.to_s.upcase
         item = command.get_item(item_upcase)
         range_check_value = value
-        # Don't range check a string value
-        range_checking = false if item.default.is_a?(String)
 
         if range_checking
           if item.states
@@ -328,7 +326,8 @@ module OpenC3
           end
 
           range = item.range
-          if range
+          # Don't range check a string default value
+          if range and !item.default.is_a?(String)
             # Perform Range Check on command parameter
             if not range.include?(range_check_value)
               range_check_value = "'#{range_check_value}'" if String === range_check_value

@@ -282,9 +282,6 @@ class Commands:
             item_upcase = item_name.upper()
             item = command.get_item(item_upcase)
             range_check_value = value
-            # Don't range check a string value
-            if isinstance(item.default, str):
-                range_checking = False
 
             if range_checking:
                 if item.states:
@@ -302,9 +299,10 @@ class Commands:
                                 raise RuntimeError(
                                     f"Command parameter '{command.target_name} {command.packet_name} {item_upcase}' = {value} not one of {', '.join(item.states.keys())}")
 
+                # Only range check if we have a min, max and not a string default value
                 minimum = item.minimum
                 maximum = item.maximum
-                if minimum is not None and maximum is not None:
+                if minimum is not None and maximum is not None and not isinstance(item.default, str):
                     # Perform Range Check on command parameter
                     if isinstance(range_check_value, str) or range_check_value < minimum or range_check_value > maximum:
                         if isinstance(range_check_value, str):
