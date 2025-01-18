@@ -282,6 +282,9 @@ class Commands:
             item_upcase = item_name.upper()
             item = command.get_item(item_upcase)
             range_check_value = value
+            # Don't range check a string value
+            if isinstance(item.default, str):
+                range_checking = False
 
             if range_checking:
                 if item.states:
