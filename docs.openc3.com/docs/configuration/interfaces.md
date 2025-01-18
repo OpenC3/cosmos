@@ -74,6 +74,14 @@ INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker
 
 The TCPIP server interface creates a TCPIP server which listens for incoming connections and dynamically creates sockets which communicate with the target. This interface is used for targets which open a socket and try to connect to a server.
 
+NOTE: To receive connections from outside the internal docker network you need to expose the TCP port in the compose.yaml file. For example, to allow connections on port 8080 find the openc3-operator section and modify like the following example:
+
+```yaml
+openc3-operator:
+  ports:
+    - "127.0.0.1:8080:8080" # Open tcp port 8080
+```
+
 | Parameter          | Description                                                                           | Required |
 | ------------------ | ------------------------------------------------------------------------------------- | -------- |
 | Write Port         | Port to write commands to (can be the same as read port)                              | Yes      |
@@ -119,6 +127,14 @@ INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py 8080 8080 1
 ### UDP Interface
 
 The UDP interface uses UDP packets to send and receive telemetry from the target.
+
+NOTE: To receive UDP packets from outside the internal docker network you need to expose the UDP port in the compose.yaml file. For example, to allow UDP packets on port 8081 find the openc3-operator section and modify like the following example:
+
+```yaml
+openc3-operator:
+  ports:
+    - "127.0.0.1:8081:8081/udp" # Open udp port 8081
+```
 
 | Parameter         | Description                                                                                                        | Required | Default                                       |
 | ----------------- | ------------------------------------------------------------------------------------------------------------------ | -------- | --------------------------------------------- |
