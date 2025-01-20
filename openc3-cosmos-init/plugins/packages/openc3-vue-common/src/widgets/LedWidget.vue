@@ -113,7 +113,6 @@ export default {
   border-radius: 50%;
 }
 .stale {
-  filter: blur(2px);
-  opacity: 0.6;
+  filter: blur(2px) brightness(0.6);
 }
 </style>
