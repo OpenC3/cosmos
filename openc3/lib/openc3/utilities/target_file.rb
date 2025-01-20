@@ -94,7 +94,7 @@ module OpenC3
       # First try opening a potentially modified version by looking for the modified target
       if ENV['OPENC3_LOCAL_MODE']
         local_file = OpenC3::LocalMode.open_local_file(name, scope: scope)
-        return local_file.read if local_file
+        return local_file.read.force_encoding('UTF-8') if local_file
       end
 
       bucket = Bucket.getClient()
@@ -107,7 +107,7 @@ module OpenC3
         if File.extname(name) == ".bin"
           resp.body.binmode
         end
-        resp.body.read
+        resp.body.read.force_encoding('UTF-8')
       else
         nil
       end
