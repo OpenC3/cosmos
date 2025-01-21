@@ -489,6 +489,7 @@ class RunningScript:
 
         parsed = ast.parse(text)
         tree = ScriptInstrumentor(filename).visit(parsed)
+        # Normal Python code is run with mode='exec' whose root is ast.Module
         result = compile(tree, filename=filename, mode="exec")
         return result
 
@@ -1158,10 +1159,13 @@ class RunningScript:
             self.mark_error()
             self.wait_for_go_or_stop_or_retry(exc_value)
 
+        # See script_instrumentor.py for how retry is used
         if self.retry_needed:
             self.retry_needed = False
+            # Return True to the instrumented code to retry the line
             return True
         else:
+            # Return False to the instrumented code to break the while loop
             return False
 
     def load_file_into_script(self, filename):

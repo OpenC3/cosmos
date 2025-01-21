@@ -60,7 +60,7 @@ jobs:
           flags: ruby-api # See codecov.yml
           token: ${{ secrets.CODECOV_TOKEN }}
 
-  script-runner-api:
+  script-runner-api-ruby:
     if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     strategy:
@@ -89,4 +89,37 @@ jobs:
         with:
           directory: openc3-cosmos-script-runner-api/coverage
           flags: ruby-api # See codecov.yml
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  script-runner-api-python:
+    if: ${{ github.actor != 'dependabot[bot]' }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11"]
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+        working-directory: openc3-cosmos-script-runner-api
+      - name: Lint with ruff
+        run: |
+          ruff --format=github scripts/*.py
+        working-directory: openc3-cosmos-script-runner-api
+      - name: Run unit tests
+        run: |
+          coverage run -m pytest ./test/
+          coverage xml -i
+        working-directory: openc3-cosmos-script-runner-api
+      - uses: codecov/codecov-action@v5
+        with:
+          working-directory: openc3/python
+          flags: python # See codecov.yml
           token: ${{ secrets.CODECOV_TOKEN }}
