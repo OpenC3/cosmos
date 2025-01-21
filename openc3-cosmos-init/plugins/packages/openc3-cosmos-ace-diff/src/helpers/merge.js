@@ -17,6 +17,7 @@ function isObject(item) {
 export default function merge(target, source) {
   if (isObject(target) && isObject(source)) {
     Object.keys(source).forEach((key) => {
+      if (key === '__proto__' || key === 'constructor') return
       if (isObject(source[key])) {
         if (!target[key] || !isObject(target[key])) {
           target[key] = source[key]

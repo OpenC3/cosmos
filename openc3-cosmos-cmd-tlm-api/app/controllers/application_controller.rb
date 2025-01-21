@@ -57,7 +57,7 @@ class ApplicationController < ActionController::API
     end
   end
 
-  def sanitize_params(param_list, require_params: true, allow_forward_slash: false)
+  def sanitize_params(param_list, require_params: true, allow_forward_slash: false, allow_parent_dir: false)
     if require_params
       result = params.require(param_list)
     else
@@ -77,6 +77,9 @@ class ApplicationController < ActionController::API
           value = arg.encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: "�").strip.tr("\u{202E}%$|:;\t\r\n\\", "-")
         else
           value = arg.encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: "�").strip.tr("\u{202E}%$|:;/\t\r\n\\", "-")
+        end
+        if not allow_parent_dir
+          value = value.gsub(/(\.|%2e){2}/i, "-")
         end
         if value != arg
           render json: { status: 'error', message: "Invalid #{param_list[index]}: #{arg}" }, status: 400

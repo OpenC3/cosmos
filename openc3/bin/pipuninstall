@@ -1,0 +1,10 @@
+#!/bin/sh
+python3 -m venv $PYTHONUSERBASE
+source $PYTHONUSERBASE/bin/activate
+echo "pip3 uninstall $@"
+pip3 uninstall "$@"
+if [ $? -eq 0 ]; then
+    echo "Command succeeded"
+else
+    echo "ERROR: pip3 uninstall failed"
+fi

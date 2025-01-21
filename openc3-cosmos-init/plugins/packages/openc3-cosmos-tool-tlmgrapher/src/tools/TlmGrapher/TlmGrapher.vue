@@ -669,6 +669,7 @@ i.v-icon.mdi-chevron-down {
 .item.muuri-item-hidden {
   z-index: 0;
 }
+/* Graph.vue 'width = width / 2.0 - 12' is based on the margin: 6px */
 .item-content {
   position: relative;
   cursor: pointer;
