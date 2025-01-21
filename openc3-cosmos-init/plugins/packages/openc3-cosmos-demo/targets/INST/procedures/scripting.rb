@@ -12,37 +12,39 @@ def wait_for_action(id, state)
   check_expression("'#{script['state']}' == '#{state}'")
 end
 
+SCRIPT_NAME = "INST/procedures/new_script.rb"
+
 # Ensure it's not already there
 step_mode()
-script_delete("INST/procedures/new_script.rb")
+script_delete(SCRIPT_NAME)
 scripts = script_list()
 check_expression("#{scripts.length} > 100")
 run_mode()
 
 contents = "puts('bad"
-script_create("INST/procedures/new_script.rb", contents)
-body = script_body("INST/procedures/new_script.rb")
+script_create(SCRIPT_NAME, contents)
+body = script_body(SCRIPT_NAME)
 result = script_syntax_check(body)
 check_expression("#{result['success']} == false")
 
 # Create a valid script that doesn't complete
 contents = "set_line_delay(1)\nputs 'Hello from Ruby'\nputs('.')\nputs('.')\nwhile true\nputs Time.now\nwait 0.5\nwait 0.5\nend"
-script_create("INST/procedures/new_script.rb", contents)
+script_create(SCRIPT_NAME, contents)
 scripts = script_list()
-check_expression("#{scripts.include?('INST/procedures/new_script.rb')} == true")
+check_expression("#{scripts.include?(SCRIPT_NAME)} == true")
 
 script = script_instrumented(contents)
 check_expression("#{script.include?('RunningScript')} == true")
 
-id = script_run("INST/procedures/new_script.rb")
+id = script_run(SCRIPT_NAME)
 check_expression("#{id.to_i} > 0")
 wait_for_action(id, 'running')
 
 list = running_script_list()
 started = list.select {|script| script["id"] == id}[0]
-check_expression("'#{started['name']}' == 'INST/procedures/new_script.rb'")
+check_expression("'#{started['name']}' == SCRIPT_NAME")
 script = running_script_get(id)
-check_expression("'#{script['name']}' == 'INST/procedures/new_script.rb'")
+check_expression("'#{script['name']}' == SCRIPT_NAME")
 
 running_script_pause(id)
 wait_for_action(id, 'paused')
@@ -65,7 +67,7 @@ script = list.select {|script| script["id"] == id}[0]
 # Script is completed so it should be in the completed list
 check_expression("#{script.nil?} == false")
 
-id = script_run("INST/procedures/new_script.rb")
+id = script_run(SCRIPT_NAME)
 wait_for_action(id, 'running')
 running_script_delete(id)
 # Can't wait for stopped action because we delete the script so just wait
@@ -80,8 +82,8 @@ list = completed_script_list()
 script = list.select {|script| script["id"] == id}[0]
 check_expression("#{script.nil?} == false")
 
-script_lock("INST/procedures/new_script.rb")
-script_unlock("INST/procedures/new_script.rb")
-script_delete("INST/procedures/new_script.rb")
+script_lock(SCRIPT_NAME)
+script_unlock(SCRIPT_NAME)
+script_delete(SCRIPT_NAME)
 scripts = script_list()
-check_expression("#{scripts.include?('INST/procedures/new_script.rb')} == false")
+check_expression("#{scripts.include?(SCRIPT_NAME)} == false")

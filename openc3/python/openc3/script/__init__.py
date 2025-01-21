@@ -128,10 +128,12 @@ def prompt(
 
 
 def step_mode():
+    # running_script.py implements the real functionality
     pass
 
 
 def run_mode():
+    # running_script.py implements the real functionality
     pass
 
 

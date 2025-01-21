@@ -39,7 +39,6 @@ def script_list(scope=OPENC3_SCOPE):
 
 
 def script_syntax_check(script, scope=OPENC3_SCOPE):
-    # script = script_body(filename, scope=scope)
     endpoint = "/script-api/scripts/temp.py/syntax"
     response = openc3.script.SCRIPT_RUNNER_API_SERVER.request("post", endpoint, json=False, data=script, scope=scope)
     if not response or response.status_code != 200:
@@ -115,7 +114,6 @@ def script_unlock(filename, scope=OPENC3_SCOPE):
 
 
 def script_instrumented(script, scope=OPENC3_SCOPE):
-    # script = script_body(filename, scope=scope)
     endpoint = "/script-api/scripts/temp.py/instrumented"
     response = openc3.script.SCRIPT_RUNNER_API_SERVER.request("post", endpoint, json=False, data=script, scope=scope)
     if not response or response.status_code != 200:
