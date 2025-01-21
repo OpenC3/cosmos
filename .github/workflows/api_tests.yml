@@ -107,11 +107,12 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
+          pip install -r requirements.txt
           pip install -r requirements-dev.txt
-        working-directory: openc3-cosmos-script-runner-api
+        working-directory: openc3/python
       - name: Lint with ruff
         run: |
-          ruff --format=github scripts/*.py
+          ruff --config=../openc3/python/pyproject.toml --format=github scripts/*.py
         working-directory: openc3-cosmos-script-runner-api
       - name: Run unit tests
         run: |

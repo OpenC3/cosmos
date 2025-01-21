@@ -164,7 +164,7 @@ try:
                             | "open_file_dialog"
                             | "open_files_dialog"
                         ):
-                            if running_script.prompt_id != None:
+                            if running_script.prompt_id is not None:
                                 if (
                                     "prompt_id" in parsed_cmd
                                     and running_script.prompt_id
@@ -246,7 +246,7 @@ try:
                     run_script_log(
                         id, f"ERROR: Script command not handled: {msg['data']}", "RED"
                     )
-except Exception as err:
+except Exception:
     tb = traceback.format_exc()
     run_script_log(id, tb, "RED")
 finally:
