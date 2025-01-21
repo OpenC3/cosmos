@@ -111,7 +111,8 @@ module OpenC3
       end
       if resp && resp.body
         if File.extname(name) == ".bin"
-          return resp.body.binmode.read
+          resp.body.binmode
+          return resp.body.read
         else
           return resp.body.read.force_encoding('UTF-8')
         end
