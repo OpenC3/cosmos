@@ -15,6 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 import ast
+import sys
 
 
 # For details on the AST, see https://docs.python.org/3/library/ast.html
@@ -47,6 +48,9 @@ else:
     def __init__(self, filename):
         self.filename = filename
         self.in_try = False
+        self.try_nodes = [ast.Try]
+        if sys.version_info >= (3, 11):
+            self.try_nodes.append(ast.TryStar)
 
     # What we're trying to do is wrap executable statements in a while True try/except block
     # For example if the input code is "print('HI')", we want to transform it to:
@@ -67,11 +71,11 @@ else:
     def track_enter_leave(self, node):
         # Determine if we're in a try block
         in_try = self.in_try
-        if not in_try and type(node) in (ast.Try, ast.TryStar):
+        if not in_try and type(node) in self.try_nodes:
             self.in_try = True
         # Visit the children of the node
         node = self.generic_visit(node)
-        if not in_try and type(node) in (ast.Try, ast.TryStar):
+        if not in_try and type(node) in self.try_nodes:
             self.in_try = False
         # ast.parse returns a module, so we need to extract
         # the first element of the body which is the node
@@ -129,11 +133,11 @@ else:
             ast.copy_location(try_node, node)
             return try_node
 
-    # Call the pre_line_instrumentation ONLY and then exceute the node
+    # Call the pre_line_instrumentation ONLY and then execute the node
     def track_reached(self, node):
         # Determine if we're in a try block, this is used by track_enter_leave
         in_try = self.in_try
-        if not in_try and type(node) in (ast.Try, ast.TryStar):
+        if not in_try and type(node) in self.try_nodes:
             self.in_try = True
 
         # Visit the children of the node
@@ -178,7 +182,8 @@ else:
 
     visit_Raise = track_enter_leave
     visit_Try = track_reached
-    visit_TryStar = track_reached
+    if sys.version_info >= (3, 11):
+        visit_TryStar = track_reached
     visit_Assert = track_enter_leave
 
     visit_Import = track_enter_leave
