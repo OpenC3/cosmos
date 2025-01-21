@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -36,9 +36,6 @@
         <rux-progress :value="progress"></rux-progress>
       </v-col>
     </v-row>
-    <v-alert v-model="showAlert" closable :type="alertType">{{
-      alert
-    }}</v-alert>
     <v-list
       v-if="Object.keys(processes).length > 0"
       class="list"
@@ -148,9 +145,6 @@ export default {
       gems: [],
       python: [],
       processes: {},
-      alert: '',
-      alertType: 'success',
-      showAlert: false,
     }
   },
   mounted() {
@@ -173,10 +167,11 @@ export default {
         (response) => {
           this.processes = response.data
           if (Object.keys(this.processes).length > 0) {
+            // process_manager.rb script operates on a 5 second cycle
             setTimeout(() => {
               this.updateProcesses()
               this.update()
-            }, 10000)
+            }, 2500)
           }
         },
       )
@@ -212,42 +207,45 @@ export default {
         })
         Promise.all(promises)
           .then((responses) => {
-            this.progress = 100
-            this.alert = `Uploaded ${responses.length} package${
-              responses.length > 1 ? 's' : ''
-            }`
-            this.alertType = 'success'
-            this.showAlert = true
+            this.$notify.normal({
+              body: `Uploaded ${responses.length} package${
+                responses.length > 1 ? 's' : ''
+              }`,
+            })
             this.loadingPackage = false
             this.files = []
             setTimeout(() => {
-              this.showAlert = false
               this.updateProcesses()
-            }, 5000)
-            this.update()
+            }, 2500)
           })
           .catch((error) => {
             this.loadingPackage = false
           })
       }
     },
-    deletePackage: function (pkg) {
+    deletePackage(pkg) {
       this.$dialog
         .confirm(`Are you sure you want to remove: ${pkg}`, {
           okText: 'Delete',
           cancelText: 'Cancel',
         })
-        .then(function (dialog) {
+        .then((dialog) => {
           return Api.delete(`/openc3-api/packages/${pkg}`)
         })
         .then((response) => {
-          this.alert = `Removed package ${pkg}`
-          this.alertType = 'success'
-          this.showAlert = true
+          this.$notify.normal({
+            body: `Removed package ${pkg}`,
+          })
           setTimeout(() => {
-            this.showAlert = false
-          }, 5000)
-          this.update()
+            this.updateProcesses()
+          }, 2500)
+        })
+        // Error will probably never happen because we spawn the package removal
+        // and then wait for the response which happens in the background
+        .catch((error) => {
+          this.$notify.serious({
+            body: `Failed to remove package ${pkg}`,
+          })
         })
     },
   },

@@ -144,6 +144,8 @@ docker build \
 cd ..
 
 # openc3-cosmos-init
+# NOTE: Ensure OPENC3_MC_RELEASE is on IronBank:
+# https://ironbank.dso.mil/repomap/details;registry1Path=opensource%252Fminio%252Fmc
 # NOTE: RELEASE.2023-10-14T01-57-03Z is the last MINIO/MC release to support UBI8
 cd openc3-cosmos-init
 docker build \
