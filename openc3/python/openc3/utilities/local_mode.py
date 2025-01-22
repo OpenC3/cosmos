@@ -77,18 +77,22 @@ class LocalMode:
     def save_tool_config(cls, scope, tool, name, data):
         json_data = json.loads(data)
         config_path = f"{cls.LOCAL_MODE_PATH}/{scope}/tool_config/{tool}/{name}.json"
-        os.makedirs(os.path.dirname(config_path), exist_ok=True)
-        with open(config_path, "w") as file:
-            file.write(json.dumps(json_data, indent=2))
+        if os.path.normpath(config_path).startswith(cls.LOCAL_MODE_PATH):
+            os.makedirs(os.path.dirname(config_path), exist_ok=True)
+            with open(config_path, "w") as file:
+                file.write(json.dumps(json_data, indent=2))
 
     @classmethod
     def delete_tool_config(cls, scope, tool, name):
-        os.remove(f"{cls.LOCAL_MODE_PATH}/{scope}/tool_config/{tool}/{name}.json")
+        config_path = f"{cls.LOCAL_MODE_PATH}/{scope}/tool_config/{tool}/{name}.json"
+        if os.path.normpath(config_path).startswith(cls.LOCAL_MODE_PATH):
+            os.remove(config_path)
 
     @classmethod
     def save_setting(cls, scope, name, data):
         config_path = f"{cls.LOCAL_MODE_PATH}/{scope}/settings/{name}.json"
-        os.makedirs(os.path.dirname(config_path), exist_ok=True)
-        # Anything can be stored as a setting so write it out directly
-        with open(config_path, "w") as file:
-            file.write(str(data))
+        if os.path.normpath(config_path).startswith(cls.LOCAL_MODE_PATH):
+            os.makedirs(os.path.dirname(config_path), exist_ok=True)
+            # Anything can be stored as a setting so write it out directly
+            with open(config_path, "w") as file:
+                file.write(str(data))
