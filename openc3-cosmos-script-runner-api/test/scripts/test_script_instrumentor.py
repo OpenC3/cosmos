@@ -147,7 +147,6 @@ print('done')
 """
     parsed = ast.parse(script)
     tree = ScriptInstrumentor("testfile.py").visit(parsed)
-    print(ast.dump(tree, indent=4))
     compiled = compile(tree, filename="testfile.py", mode="exec")
     exec(compiled, {"RunningScript": mock_running_script})
 
@@ -174,7 +173,6 @@ print('done')
 """
     parsed = ast.parse(script)
     tree = ScriptInstrumentor("testfile.py").visit(parsed)
-    print(ast.dump(tree, indent=4))
     compiled = compile(tree, filename="testfile.py", mode="exec")
     exec(compiled, {"RunningScript": mock_running_script})
 
@@ -191,3 +189,19 @@ print('done')
     assert mock_running_script.exceptions == [
         ("testfile.py", 3),
     ]
+
+
+def test_import_future_script(mock_running_script):
+    script = "from __future__ import annotations\nprint('hi')"
+    parsed = ast.parse(script)
+    tree = ScriptInstrumentor("testfile.py").visit(parsed)
+    compiled = compile(tree, filename="testfile.py", mode="exec")
+    exec(compiled, {"RunningScript": mock_running_script})
+
+    assert mock_running_script.pre_lines == [
+        ("testfile.py", 2),
+    ]
+    assert mock_running_script.post_lines == [
+        ("testfile.py", 2),
+    ]
+    assert mock_running_script.exceptions == []

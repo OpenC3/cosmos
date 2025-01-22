@@ -155,6 +155,12 @@ else:
         ast.copy_location(if_node, node)
         return if_node
 
+    def track_import_from(self, node):
+        # Don't tract from __future__ imports because they must come first or:
+        #   SyntaxError: from __future__ imports must occur at the beginning of the file
+        if node.module != '__future__':
+            return self.track_enter_leave(node)
+
     # Notes organized (including newlines) per https://docs.python.org/3/library/ast.html#abstract-grammar
     # Nodes that change control flow are processed by track_reached, otherwise we track_enter_leave
     visit_FunctionDef = track_reached
@@ -187,7 +193,7 @@ else:
     visit_Assert = track_enter_leave
 
     visit_Import = track_enter_leave
-    visit_ImportFrom = track_enter_leave
+    visit_ImportFrom = track_import_from
 
     visit_Global = track_enter_leave
     visit_Nonlocal = track_enter_leave
