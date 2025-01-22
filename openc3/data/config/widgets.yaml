@@ -372,6 +372,7 @@ Telemetry Widgets:
         FORMATVALUE INST LATEST TEMP1 %.2f CONVERTED 20
     LABELLED:
       summary: Displays a LABEL followed by a LED
+      description: See the LED widget for more information
       parameters:
         - name: Target name
           required: true
@@ -688,6 +689,7 @@ Telemetry Widgets:
         Additional values can be added by using the LED_COLOR setting. For example
         LED INST PARAMS VALUE3 RAW can be followed by SETTING LED_COLOR 0 GREEN,
         SETTING LED_COLOR 1 RED, and SETTING LED_COLOR ANY ORANGE.
+        See LIMITSCOLOR for a widget that displays a circle depicting the limits color of an item.
       parameters:
         - name: Target name
           required: true
@@ -791,7 +793,8 @@ Telemetry Widgets:
         LIMITSCOLUMN INST HEALTH_STATUS TEMP1 CONVERTED 50 200
         LIMITSCOLUMN INST HEALTH_STATUS TEMP1
     LIMITSCOLOR:
-      summary: Displays a circle depicting the limits color of an item
+      summary: Displays a circle depicting the limits color of an item.
+        See LED for a widget that displays a circle which changes to an arbitrary color based on telemetry values.
       parameters:
         - name: Target name
           required: true
