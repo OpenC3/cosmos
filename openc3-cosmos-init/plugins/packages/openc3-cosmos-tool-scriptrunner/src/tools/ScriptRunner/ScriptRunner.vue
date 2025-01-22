@@ -1792,7 +1792,7 @@ export default {
       switch (data.method) {
         case 'ask':
         case 'ask_string':
-          // Reset values since this dialog can be re-used
+          // Reset values since this dialog can be reused
           this.ask.default = null
           this.ask.answerRequired = true
           this.ask.password = false
