@@ -41,6 +41,11 @@ RUN sed -i "s|RUBYGEMS_URL|${RUBYGEMS_URL}|g" /root/.gemrc
 RUN cp /root/.gemrc /etc/gemrc
 ENV GEMRC=/etc/gemrc
 
+COPY anycable* /usr/bin
+RUN /usr/bin/anycable_install.sh
+
+COPY shoreman.sh /usr/bin/shoreman
+
 RUN apk update \
   && apk upgrade \
   && apk add --no-cache \
@@ -73,6 +78,11 @@ RUN apk update \
   yaml-dev \
   && gem update --system 3.3.14 \
   && gem install rake \
+  # These need to be installed with the --platform flag to avoid errors on linux-musl
+  # See: https://github.com/protocolbuffers/protobuf/issues/16853#issuecomment-2583135716
+  # Should be fixed April 2025
+  && gem install google-protobuf --platform ruby \
+  && gem install grpc --platform ruby \
   && gem cleanup \
   && bundle config build.nokogiri --use-system-libraries \
   && bundle config git.allow_insecure true \

@@ -39,9 +39,6 @@ if "%1" == "build" (
 if "%1" == "run" (
   GOTO run
 )
-if "%1" == "dev" (
-  GOTO dev
-)
 if "%1" == "test" (
   GOTO test
 )
@@ -105,11 +102,6 @@ GOTO :EOF
   @echo off
 GOTO :EOF
 
-:dev
-  docker compose -f compose.yaml -f compose-dev.yaml up -d
-  @echo off
-GOTO :EOF
-
 :test
   REM Building OpenC3
   CALL scripts\windows\openc3_setup || exit /b
@@ -130,7 +122,7 @@ GOTO :EOF
 GOTO :EOF
 
 :usage
-  @echo Usage: %0 [cli, cliroot, start, stop, cleanup, build, run, dev, test, util] 1>&2
+  @echo Usage: %0 [cli, cliroot, start, stop, cleanup, build, run, test, util] 1>&2
   @echo *  cli: run a cli command as the default user ('cli help' for more info) 1>&2
   @echo *  cliroot: run a cli command as the root user ('cli help' for more info) 1>&2
   @echo *  start: build and run 1>&2
@@ -138,7 +130,6 @@ GOTO :EOF
   @echo *  cleanup [local] [force]: REMOVE volumes / data (compose down -v) 1>&2
   @echo *  build: build the containers (compose build) 1>&2
   @echo *  run: run the containers (compose up) 1>&2
-  @echo *  dev: run using compose-dev 1>&2
   @echo *  test: test openc3 1>&2
   @echo *  util: various helper commands 1>&2
 

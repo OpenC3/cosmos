@@ -45,6 +45,7 @@ export default class Cable {
             encodeURIComponent(window.openc3Scope) +
             '&authorization=' +
             encodeURIComponent(localStorage.openc3Token)
+          final_url = new URL(final_url, document.baseURI).href
           this._cable = createConsumer(final_url)
         }
         return this._cable.subscriptions.create(

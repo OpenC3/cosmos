@@ -32,6 +32,11 @@ ENV GEMRC=/etc/gemrc
 
 COPY *.tar.gz /tmp/
 
+COPY anycable* /usr/bin
+RUN /usr/bin/anycable_install.sh
+
+COPY shoreman.sh /usr/bin/shoreman
+
 ARG PACKAGES="gcc-c++ patch readline zlib zlib-devel libffi-devel libedit \
     openssl-devel make nc bzip2 autoconf automake libtool sqlite-devel libpq-devel \
     python3.11 python3.11-devel python3.11-pip python3.11-numpy	ca-certificates curl less git \
@@ -64,6 +69,11 @@ RUN cd / \
 RUN cd / \
     && gem update --system 3.3.14 \
     && gem install rake \
+    # These need to be installed with the --platform flag to avoid errors on linux-musl
+    # See: https://github.com/protocolbuffers/protobuf/issues/16853#issuecomment-2583135716
+    # Should be fixed April 2025
+    && gem install google-protobuf --platform ruby \
+    && gem install grpc --platform ruby \
     && gem cleanup \
     && bundle config build.nokogiri --use-system-libraries \
     && bundle config git.allow_insecure true \
