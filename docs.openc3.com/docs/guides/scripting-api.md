@@ -1216,17 +1216,25 @@ Now this evaluates to `'yes' == 'yes'` which is true so the check passes.
 Ruby / Python Syntax:
 
 ```ruby
-check_expression("<Expression>")
+check_expression("<Expression>", <Context (optional)>)
 ```
 
-| Parameter  | Description                |
-| ---------- | -------------------------- |
-| Expression | An expression to evaluate. |
+| Parameter  | Description                                                                                                                                                                          |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Expression | An expression to evaluate.                                                                                                                                                           |
+| Context    | The context to call eval against. Context in Ruby is typically binding() while in Python it is globals(). Note that to use COSMOS APIs like tlm() in python you must pass globals(). |
 
-Ruby / Python Example:
+Ruby Example:
 
 ```ruby
 check_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm('INST HEALTH_STATUS TEMP1') > 25.0")
+```
+
+Python Example:
+
+```python
+# Note that for Python we need to pass globals() to be able to use COSMOS API methods like tlm()
+check_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm('INST HEALTH_STATUS TEMP1') > 25.0", globals())
 ```
 
 ### check_exception
@@ -1914,24 +1922,31 @@ success = wait_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, type='RAW
 
 Pauses the script until an expression is evaluated to be true or a timeout occurs. If a timeout occurs the script will continue. This method can be used to perform more complicated comparisons than using wait as shown in the example. Note that on a timeout, wait_expression does not stop the script, usually [wait_check_expression](#wait_check_expression) is a better choice.
 
-Syntax:
+Ruby / Python Syntax:
 
 ```ruby
 # Returns true or false based on the whether the expression is true or false
-success = wait_expression("<Expression>", <Timeout>, <Polling Rate (optional)>, quiet)
+success = wait_expression("<Expression>", <Timeout>, <Polling Rate (optional)>, <Context (optional)>, quiet)
 ```
 
-| Parameter    | Description                                                                                                    |
-| ------------ | -------------------------------------------------------------------------------------------------------------- |
-| Expression   | A ruby expression to evaluate.                                                                                 |
-| Timeout      | Timeout in seconds. Script will proceed if the wait statement times out waiting for the comparison to be true. |
-| Polling Rate | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                           |
-| quiet        | Named parameter indicating whether to log the result. Defaults to true.                                        |
+| Parameter    | Description                                                                                                                                                                          |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Expression   | A ruby expression to evaluate.                                                                                                                                                       |
+| Timeout      | Timeout in seconds. Script will proceed if the wait statement times out waiting for the comparison to be true.                                                                       |
+| Polling Rate | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                                                                                                 |
+| Context      | The context to call eval against. Context in Ruby is typically binding() while in Python it is globals(). Note that to use COSMOS APIs like tlm() in python you must pass globals(). |
+| quiet        | Named parameter indicating whether to log the result. Defaults to false which means to log.                                                                                          |
 
-Ruby / Python Example:
+Ruby Example:
 
 ```ruby
-success = wait_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm('INST HEALTH_STATUS TEMP1') > 25.0", 10)
+success = wait_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm('INST HEALTH_STATUS TEMP1') > 25.0", 10, 0.25, nil, quiet: true)
+```
+
+Python Example:
+
+```python
+success = wait_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm('INST HEALTH_STATUS TEMP1') > 25.0", 10, 0.25, globals(), quiet=True)
 ```
 
 ### wait_packet
@@ -2039,19 +2054,27 @@ Ruby / Python Syntax:
 
 ```ruby
 # Returns the amount of time elapsed waiting for the expression
-elapsed = wait_check_expression("<Expression>", <Timeout>, <Polling Rate (optional)>)
+elapsed = wait_check_expression("<Expression>", <Timeout>, <Polling Rate (optional)>, <Context (optional)>)
 ```
 
-| Parameter    | Description                                                                                                 |
-| ------------ | ----------------------------------------------------------------------------------------------------------- |
-| Expression   | A ruby expression to evaluate.                                                                              |
-| Timeout      | Timeout in seconds. Script will stop if the wait statement times out waiting for the comparison to be true. |
-| Polling Rate | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                        |
+| Parameter    | Description                                                                                                                                                                          |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Expression   | An expression to evaluate.                                                                                                                                                           |
+| Timeout      | Timeout in seconds. Script will stop if the wait statement times out waiting for the comparison to be true.                                                                          |
+| Polling Rate | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                                                                                                 |
+| Context      | The context to call eval against. Context in Ruby is typically binding() while in Python it is globals(). Note that to use COSMOS APIs like tlm() in python you must pass globals(). |
 
-Ruby / Python Example:
+Ruby Example:
 
 ```ruby
 elapsed = wait_check_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm('INST HEALTH_STATUS TEMP1') > 25.0", 10)
+```
+
+Python Example:
+
+```python
+# Note that for Python we need to pass globals() to be able to use COSMOS API methods like tlm()
+elapsed = wait_check_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm('INST HEALTH_STATUS TEMP1') > 25.0", 10, 0.25, globals())
 ```
 
 ### wait_check_packet
