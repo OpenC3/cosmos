@@ -54,7 +54,7 @@ path = File.join(ENV['OPENC3_CONFIG_BUCKET'], scope, 'targets', name)
 def run_script_log(id, message, color = 'BLACK', message_log = true)
   line_to_write = Time.now.sys.formatted + " (SCRIPTRUNNER): " + message
   RunningScript.message_log.write(line_to_write + "\n", true) if message_log
-  OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{id}"].compact.join(":"), JSON.generate({ type: :output, line: line_to_write, color: color }))
+  running_script_anycable_publish("running-script-channel:#{id}", { type: :output, line: line_to_write, color: color })
 end
 
 begin
@@ -85,6 +85,10 @@ begin
   else
     running_script.run
   end
+
+  running = OpenC3::Store.smembers(RUNNING_SCRIPTS)
+  running ||= []
+  running_script_anycable_publish("all-scripts-channel", { type: :start, filename: path, active_scripts: running.length })
 
   # Subscribe to the ActionCable generated topic which is namedspaced with channel_prefix
   # (defined in cable.yml) and then the channel stream. This isn't typically how you see these
@@ -141,7 +145,7 @@ begin
               run_script_log(id, "INFO: Unexpectedly received answer for unknown prompt #{parsed_cmd["prompt_id"]}.")
             end
           when "backtrace"
-            OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{id}"].compact.join(":"), JSON.generate({ type: :script, method: :backtrace, args: running_script.current_backtrace }))
+            running_script_anycable_publish("running-script-channel:#{id}", { type: :script, method: :backtrace, args: running_script.current_backtrace })
           when "debug"
             run_script_log(id, "DEBUG: #{parsed_cmd["args"]}") # Log what we were passed
             running_script.debug(parsed_cmd["args"]) # debug() logs the output of the command
@@ -173,8 +177,8 @@ ensure
     end
     sleep 0.2 # Allow the message queue to be emptied before signaling complete
 
-    OpenC3::Store.publish([SCRIPT_API, "running-script-channel:#{id}"].compact.join(":"), JSON.generate({ type: :complete }))
-    OpenC3::Store.publish([SCRIPT_API, "all-scripts-channel"].compact.join(":"), JSON.generate({ type: :complete, active_scripts: active_scripts }))
+    running_script_anycable_publish("running-script-channel:#{id}", { type: :complete })
+    running_script_anycable_publish("all-scripts-channel", { type: :complete, active_scripts: active_scripts })
   ensure
     running_script.stop_message_log if running_script
   end

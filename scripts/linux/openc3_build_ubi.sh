@@ -37,6 +37,7 @@ cd ..
 # openc3-base
 cd openc3
 docker build \
+  -f Dockerfile-ubi \
   --network host \
   --build-arg OPENC3_REGISTRY=$OPENC3_REGISTRY \
   --build-arg OPENC3_NAMESPACE=$OPENC3_NAMESPACE \
@@ -90,6 +91,7 @@ cd ..
 # openc3-cosmos-cmd-tlm-api
 cd openc3-cosmos-cmd-tlm-api
 docker build \
+  -f Dockerfile-ubi \
   --network host \
   --build-arg OPENC3_REGISTRY=$OPENC3_REGISTRY \
   --build-arg OPENC3_NAMESPACE=$OPENC3_NAMESPACE \
@@ -103,6 +105,7 @@ cd ..
 # openc3-cosmos-script-runner-api
 cd openc3-cosmos-script-runner-api
 docker build \
+  -f Dockerfile-ubi \
   --network host \
   --build-arg OPENC3_REGISTRY=$OPENC3_REGISTRY \
   --build-arg OPENC3_NAMESPACE=$OPENC3_NAMESPACE \
