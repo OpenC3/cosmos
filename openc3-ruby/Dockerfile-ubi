@@ -1,6 +1,6 @@
-ARG OPENC3_UBI_REGISTRY
-ARG OPENC3_UBI_IMAGE
-ARG OPENC3_UBI_TAG
+ARG OPENC3_UBI_REGISTRY=registry1.dso.mil
+ARG OPENC3_UBI_IMAGE=ironbank/redhat/ubi/ubi8-minimal
+ARG OPENC3_UBI_TAG=8.8
 
 FROM ${OPENC3_UBI_REGISTRY}/${OPENC3_UBI_IMAGE}:${OPENC3_UBI_TAG}
 
@@ -69,11 +69,8 @@ RUN cd / \
 RUN cd / \
     && gem update --system 3.3.14 \
     && gem install rake \
-    # These need to be installed with the --platform flag to avoid errors on linux-musl
-    # See: https://github.com/protocolbuffers/protobuf/issues/16853#issuecomment-2583135716
-    # Should be fixed April 2025
-    && gem install google-protobuf --platform ruby \
-    && gem install grpc --platform ruby \
+    && gem install google-protobuf \
+    && gem install grpc \
     && gem cleanup \
     && bundle config build.nokogiri --use-system-libraries \
     && bundle config git.allow_insecure true \
