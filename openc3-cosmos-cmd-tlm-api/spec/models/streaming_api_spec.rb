@@ -126,7 +126,12 @@ RSpec.describe StreamingApi, type: :model do
 
     @messages = []
     @channel = double('channel')
-    allow(@channel).to receive(:transmit) { |msg| @messages << msg }
+    allow(@channel).to receive(:uuid).and_return("abc123")
+
+    allow(ActionCable.server).to receive(:broadcast) do |uuid, message|
+      @messages << message
+    end
+
     @api = StreamingApi.new(123, @channel, scope: 'DEFAULT')
   end
 
