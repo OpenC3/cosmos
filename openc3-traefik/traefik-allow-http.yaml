@@ -40,7 +40,7 @@ http:
       rule: PathPrefix(`/openc3-api/cable`)
       service: service-api-cable
       priority: 10
-    # Route to the openc3 cmd/tlm api websockets
+    # Route to the openc3 script api websockets
     script-cable-router:
       rule: PathPrefix(`/script-api/cable`)
       service: service-script-cable

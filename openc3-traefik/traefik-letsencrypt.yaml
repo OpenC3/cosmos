@@ -61,7 +61,7 @@ http:
         certResolver: myresolver
         domains:
           - main: "mydomain.com"
-    # Route to the openc3 cmd/tlm api websockets
+    # Route to the openc3 script api websockets
     script-cable-router:
       rule: PathPrefix(`/script-api/cable`)
       service: service-script-cable
