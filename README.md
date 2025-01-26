@@ -33,7 +33,7 @@ After configuring OpenC3 COSMOS to talk to your hardware, you immediately can us
 
    - Script Runner allows for running OpenC3 COSMOS test procedures or any other Ruby code from a graphical environment that highlights each line as it executes. At anytime during execution, the script can be paused or stopped. If a telemetry check fails or any other exception occurs, the script is immediately stopped and the user notified.
 
-   - Script Runner also allows you to break your operational or test procedures down into discret test cases that each complete with either SUCCESS or FAILURE. After running, a script report is automatically created for you. Convenient features such as the ability to loop testing help get the kinks out of your system before formal runs.
+   - Script Runner also allows you to break your operational or test procedures down into discrete test cases that each complete with either SUCCESS or FAILURE. After running, a script report is automatically created for you. Convenient features such as the ability to loop testing help get the kinks out of your system before formal runs.
 
 1. **Packet Viewer**
 

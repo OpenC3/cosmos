@@ -104,7 +104,8 @@ module OpenC3
     def self.destroy(name, scope:)
       package_name, version = self.extract_name_and_version(name)
       Logger.info "Uninstalling package: #{name}"
-      result = OpenC3::ProcessManager.instance.spawn(["pip", "uninstall", package_name, "-y"], "package_uninstall", name, Time.now + 3600.0, scope: scope)
+      pip_args = ["-y", package_name]
+      result = OpenC3::ProcessManager.instance.spawn(["/openc3/bin/pipuninstall"] + pip_args, "package_uninstall", name, Time.now + 3600.0, scope: scope)
       return result.name
     end
 

@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 Ball Aerospace & Technologies Corp.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -12,57 +12,9 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
-
-# Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
-# All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
-
-require 'action_cable/channel/streams'
-require 'action_cable/subscription_adapter/redis'
-
-# Monkey Patches to Make ActionCable output synchronous
-# Based on Rails 6.1
-module ActionCable
-  module SubscriptionAdapter
-    class Redis < Base # :nodoc:
-      private
-        class Listener < SubscriberMap
-          def invoke_callback(callback, message)
-            callback.call message
-          end
-        end
-    end
-  end
-
-  module Channel
-    module Streams
-      private
-        def worker_pool_stream_handler(broadcasting, user_handler, coder: nil)
-          handler = stream_handler(broadcasting, user_handler, coder: coder)
-
-          -> message do
-            # Make this synchronous to force in order messaging until we can come up with something
-            # fancier that is asynchronous
-            handler.call(message)
-          end
-        end
-    end
-  end
-
-  module Connection
-    class Base
-      # This enforces order in the incoming messages
-      # This is necessary for TlmGrapher which removes and adds an item back to back
-      # When messages get out of order (add before remove) the streaming_api breaks
-      def receive(websocket_message) # :nodoc:
-        dispatch_websocket_message(websocket_message)
-      end
-    end
-  end
-end
 
 module ApplicationCable
   class Channel < ActionCable::Channel::Base
