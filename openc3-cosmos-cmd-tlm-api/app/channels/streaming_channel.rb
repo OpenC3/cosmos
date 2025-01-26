@@ -21,18 +21,19 @@
 # if purchased from OpenC3, Inc.
 
 class StreamingChannel < ApplicationCable::Channel
+  @@broadcasters = {}
+
   def subscribed
     stream_from uuid
-    @broadcasters ||= {}
-    @broadcasters[uuid] = StreamingApi.new(uuid, self, scope: scope)
+    @@broadcasters[uuid] = StreamingApi.new(uuid, self, scope: scope)
   end
 
   def unsubscribed
-    if @broadcasters[uuid]
+    if @@broadcasters[uuid]
       stop_stream_from uuid
-      @broadcasters[uuid].kill
-      @broadcasters[uuid] = nil
-      @broadcasters.delete(uuid)
+      @@broadcasters[uuid].kill
+      @@broadcasters[uuid] = nil
+      @@broadcasters.delete(uuid)
     end
   end
 
@@ -44,7 +45,7 @@ class StreamingChannel < ApplicationCable::Channel
   def add(data)
     if validate_data(data)
       begin
-        @broadcasters[uuid].add(data)
+        @@broadcasters[uuid].add(data)
       rescue OpenC3::AuthError, OpenC3::ForbiddenError
         transmit({ "error" => "unauthorized" })
         reject() # Sets the rejected state on the connection
@@ -63,7 +64,7 @@ class StreamingChannel < ApplicationCable::Channel
   def remove(data)
     if validate_data(data)
       begin
-        @broadcasters[uuid].remove(data)
+        @@broadcasters[uuid].remove(data)
       rescue OpenC3::AuthError, OpenC3::ForbiddenError
         transmit({ "error" => "unauthorized" })
         reject() # Sets the rejected state on the connection

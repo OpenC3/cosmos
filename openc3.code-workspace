@@ -16,7 +16,7 @@
       "path": "../cosmos-enterprise-plugins"
     },
     {
-      "path": "../openc3-cosmos-cfdp"
+      "path": "../anycable"
     }
   ],
   "settings": {

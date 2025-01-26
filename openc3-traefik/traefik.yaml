@@ -35,6 +35,16 @@ http:
         replacement: "$1.html"
   routers:
     # Note: Priorities control router check order with highest priority evaluated first
+    # Route to the openc3 cmd/tlm api websockets
+    api-cable-router:
+      rule: PathPrefix(`/openc3-api/cable`)
+      service: service-api-cable
+      priority: 10
+    # Route to the openc3 script api websockets
+    script-cable-router:
+      rule: PathPrefix(`/script-api/cable`)
+      service: service-script-cable
+      priority: 9
     # Route to the openc3 cmd/tlm api
     api-router:
       rule: PathPrefix(`/openc3-api`)
@@ -100,6 +110,18 @@ http:
       service: service-minio
       priority: 1
   services:
+    # The OpenC3 cmd/tlm api cable service
+    service-api-cable:
+      loadBalancer:
+        passHostHeader: false
+        servers:
+          - url: "http://openc3-cosmos-cmd-tlm-api:3901"
+    # The OpenC3 script api cable service
+    service-script-cable:
+      loadBalancer:
+        passHostHeader: false
+        servers:
+          - url: "http://openc3-cosmos-script-runner-api:3902"
     # The OpenC3 cmd/tlm api service
     service-api:
       loadBalancer:

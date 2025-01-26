@@ -17,18 +17,19 @@
 # if purchased from OpenC3, Inc.
 
 class SystemEventsChannel < ApplicationCable::Channel
+  @@broadcasters = {}
+
   def subscribed
     stream_from uuid
-    @broadcasters ||= {}
-    @broadcasters[uuid] = SystemEventsApi.new(uuid, self, params['history_count'], scope: scope)
+    @@broadcasters[uuid] = SystemEventsApi.new(uuid, self, params['history_count'], scope: scope)
   end
 
   def unsubscribed
-    if @broadcasters[uuid]
+    if @@broadcasters[uuid]
       stop_stream_from uuid
-      @broadcasters[uuid].kill
-      @broadcasters[uuid] = nil
-      @broadcasters.delete(uuid)
+      @@broadcasters[uuid].kill
+      @@broadcasters[uuid] = nil
+      @@broadcasters.delete(uuid)
     end
   end
 end
