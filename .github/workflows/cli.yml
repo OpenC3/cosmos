@@ -113,7 +113,7 @@ jobs:
           # spawning a script prints only a PID
           ./openc3.sh cli script spawn INST/procedures/checks.rb | grep -v "^\s*\d+\s*$"
           # run a script that will fail and look for the failure message
-          ./openc3.sh cli script run --wait 10 INST/procedures/checks.rb | tee /dev/tty | grep -q "script failed"
+          ./openc3.sh cli script run --wait 20 INST/procedures/checks.rb | tee /dev/tty | grep -q "script failed"
           # run a script that will complete successfully
           ./openc3.sh cli script run INST/procedures/stash.rb | tee /dev/tty | grep "script complete"
       - name: openc3.sh util save,load

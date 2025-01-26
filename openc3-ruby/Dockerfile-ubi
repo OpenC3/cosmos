@@ -1,6 +1,6 @@
-ARG OPENC3_UBI_REGISTRY
-ARG OPENC3_UBI_IMAGE
-ARG OPENC3_UBI_TAG
+ARG OPENC3_UBI_REGISTRY=registry1.dso.mil
+ARG OPENC3_UBI_IMAGE=ironbank/redhat/ubi/ubi8-minimal
+ARG OPENC3_UBI_TAG=8.8
 
 FROM ${OPENC3_UBI_REGISTRY}/${OPENC3_UBI_IMAGE}:${OPENC3_UBI_TAG}
 
@@ -31,6 +31,11 @@ RUN cp /root/.gemrc /usr/local/etc/gemrc
 ENV GEMRC=/etc/gemrc
 
 COPY *.tar.gz /tmp/
+
+COPY anycable* /usr/bin
+RUN /usr/bin/anycable_install.sh
+
+COPY shoreman.sh /usr/bin/shoreman
 
 ARG PACKAGES="gcc-c++ patch readline zlib zlib-devel libffi-devel libedit \
     openssl-devel make nc bzip2 autoconf automake libtool sqlite-devel libpq-devel \
@@ -64,6 +69,8 @@ RUN cd / \
 RUN cd / \
     && gem update --system 3.3.14 \
     && gem install rake \
+    && gem install google-protobuf \
+    && gem install grpc \
     && gem cleanup \
     && bundle config build.nokogiri --use-system-libraries \
     && bundle config git.allow_insecure true \
