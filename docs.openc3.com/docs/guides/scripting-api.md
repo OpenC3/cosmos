@@ -2085,19 +2085,39 @@ elapsed = wait_check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, typ
 
 Pauses the script until an expression is evaluated to be true or a timeout occurs. If a timeout occurs the script will stop. This method can be used to perform more complicated comparisons than using wait as shown in the example. Also see the syntax notes for [check_expression](#check_expression).
 
-Ruby / Python Syntax:
+Ruby Syntax:
 
 ```ruby
-# Returns the amount of time elapsed waiting for the expression
-elapsed = wait_check_expression("<Expression>", <Timeout>, <Polling Rate (optional)>, <Context (optional)>)
+# Return time spent waiting for the expression to evaluate to true
+wait_check_expression(
+  exp_to_eval,
+  timeout,
+  polling_rate = DEFAULT_TLM_POLLING_RATE,
+  context = nil
+) -> int
 ```
 
-| Parameter    | Description                                                                                                                                                                          |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Expression   | An expression to evaluate.                                                                                                                                                           |
-| Timeout      | Timeout in seconds. Script will stop if the wait statement times out waiting for the comparison to be true.                                                                          |
-| Polling Rate | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                                                                                                 |
-| Context      | The context to call eval against. Context in Ruby is typically binding() while in Python it is globals(). Note that to use COSMOS APIs like tlm() in python you must pass globals(). |
+Python Syntax:
+
+```python
+# Return time spent waiting for the expression to evaluate to True
+wait_check_expression(
+    exp_to_eval,
+    timeout,
+    polling_rate=DEFAULT_TLM_POLLING_RATE,
+    globals=None,
+    locals=None
+) -> int
+```
+
+| Parameter             | Description                                                                                                                   |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| expression            | An expression to evaluate.                                                                                                    |
+| timeout               | Timeout in seconds. Script will proceed if the wait statement times out waiting for the comparison to be true.                |
+| polling_rate          | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                                          |
+| context (ruby only)   | The context to call eval with. Defaults to nil. Context in Ruby is typically binding() and is usually not needed.             |
+| globals (python only) | The globals to call eval with. Defaults to None. Note that to use COSMOS APIs like tlm() you must pass globals().             |
+| locals (python only)  | The locals to call eval with. Defaults to None. Note that if you're using local variables in a method you must pass locals(). |
 
 Ruby Example:
 
