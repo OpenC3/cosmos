@@ -114,6 +114,7 @@ services:
       OPENC3_BUCKET_USERNAME: "${OPENC3_BUCKET_USERNAME}"
       OPENC3_BUCKET_PASSWORD: "${OPENC3_BUCKET_PASSWORD}"
       OPENC3_SERVICE_PASSWORD: "${OPENC3_SERVICE_PASSWORD}"
+      ANYCABLE_REDIS_URL: "redis://${OPENC3_REDIS_USERNAME}:${OPENC3_REDIS_PASSWORD}@${OPENC3_REDIS_HOSTNAME}:${OPENC3_REDIS_PORT}"
     env_file:
       - ".env"
 
@@ -147,6 +148,7 @@ services:
       OPENC3_SR_BUCKET_USERNAME: "${OPENC3_SR_BUCKET_USERNAME}"
       OPENC3_SR_BUCKET_PASSWORD: "${OPENC3_SR_BUCKET_PASSWORD}"
       OPENC3_SERVICE_PASSWORD: "${OPENC3_SERVICE_PASSWORD}"
+      ANYCABLE_REDIS_URL: "redis://${OPENC3_REDIS_USERNAME}:${OPENC3_REDIS_PASSWORD}@${OPENC3_REDIS_HOSTNAME}:${OPENC3_REDIS_PORT}"
     env_file:
       - ".env"
 
@@ -155,7 +157,8 @@ services:
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-operator${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
     restart: "unless-stopped"
     # ports:
-    #  - "127.0.0.1:7779:7779" # Open port for the demo router
+    #   - "127.0.0.1:7779:7779" # Open port for the demo router
+    #   - "127.0.0.1:8081:8081/udp" # Open a udp port
     depends_on:
       - "openc3-redis"
       - "openc3-redis-ephemeral"

@@ -35,14 +35,13 @@ fi
 set -e
 
 usage() {
-  echo "Usage: $1 [cli, start, stop, cleanup, build, run, dev, test, util]" >&2
+  echo "Usage: $1 [cli, start, stop, cleanup, build, run, test, util]" >&2
   echo "*  cli: run a cli command as the default user ('cli help' for more info)" 1>&2
   echo "*  start: build and run" >&2
   echo "*  stop: stop the containers (compose stop)" >&2
   echo "*  cleanup [local] [force]: REMOVE volumes / data (compose down -v)" >&2
   echo "*  build: build the containers (compose build)" >&2
   echo "*  run: run the containers (compose up)" >&2
-  echo "*  dev: run using compose-dev" >&2
   echo "*  test: test openc3" >&2
   echo "*  util: various helper commands" >&2
   exit 1
@@ -127,9 +126,6 @@ case $1 in
     ;;
   run-ubi )
     OPENC3_IMAGE_SUFFIX=-ubi OPENC3_REDIS_VOLUME=/home/data ${DOCKER_COMPOSE_COMMAND} -f compose.yaml up -d
-    ;;
-  dev )
-    ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-dev.yaml up -d
     ;;
   test )
     scripts/linux/openc3_setup.sh

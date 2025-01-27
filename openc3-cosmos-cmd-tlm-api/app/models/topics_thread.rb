@@ -70,9 +70,7 @@ class TopicsThread
 
   def transmit_results(results, force: false)
     if results.length > 0 or force
-      # Fortify: This send is intentionally bypassing access control to get to the
-      # private transmit method
-      @channel.send(:transmit, results.as_json(:allow_nan => true))
+      ActionCable.server.broadcast(@channel.uuid, results.as_json(:allow_nan => true))
     end
   end
 

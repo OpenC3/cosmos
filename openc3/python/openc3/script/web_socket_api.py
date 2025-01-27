@@ -195,7 +195,7 @@ class CmdTlmWebSocketApi(WebSocketApi):
         hostname = os.environ.get("OPENC3_API_HOSTNAME") or (
             "127.0.0.1" if os.environ.get("OPENC3_DEVEL") else "openc3-cosmos-cmd-tlm-api"
         )
-        port = os.environ.get("OPENC3_API_PORT") or "2901"
+        port = os.environ.get("OPENC3_API_CABLE_PORT") or os.environ.get("OPENC3_API_PORT") or "3901"
         port = int(port)
         return f"{schema}://{hostname}:{port}/openc3-api/cable"
 
@@ -231,7 +231,7 @@ class ScriptWebSocketApi(WebSocketApi):
         hostname = os.environ.get("OPENC3_SCRIPT_API_HOSTNAME") or (
             "127.0.0.1" if os.environ.get("OPENC3_DEVEL") else "openc3-cosmos-script-runner-api"
         )
-        port = os.environ.get("OPENC3_SCRIPT_API_PORT") or "2902"
+        port = os.environ.get("OPENC3_SCRIPT_API_CABLE_PORT") or os.environ.get("OPENC3_SCRIPT_API_PORT") or "3902"
         port = int(port)
         return f"{schema}://{hostname}:{port}/script-api/cable"
 

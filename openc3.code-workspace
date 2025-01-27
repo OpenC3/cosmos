@@ -16,6 +16,9 @@
       "path": "../cosmos-enterprise-plugins"
     },
     {
+      "path": "../anycable"
+    },
+    {
       "path": "../openc3-schedule"
     }
   ],

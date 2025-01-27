@@ -18,6 +18,6 @@
 
 class AllScriptsChannel < ApplicationCable::Channel
   def subscribed
-    stream_from "all-scripts-channel"
+    stream_from "script-api:all-scripts-channel"
   end
 end

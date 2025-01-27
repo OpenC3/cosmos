@@ -22,6 +22,18 @@ from openc3.utilities.store_queued import StoreQueued
 import re
 import linecache
 
+SCRIPT_API = 'script-api'
+
+def running_script_publish(channel_name, data):
+    stream_name = ":".join([SCRIPT_API, channel_name])
+    Store.publish(stream_name, json.dumps(data))
+
+
+def running_script_anycable_publish(channel_name, data):
+    stream_name = ":".join([SCRIPT_API, channel_name])
+    stream_data = {"stream": stream_name, "data": json.dumps(data)}
+    Store.publish("__anycable__", json.dumps(stream_data))
+
 
 # sleep in a script - returns true if canceled mid sleep
 def _openc3_script_sleep(sleep_time=None):
@@ -29,16 +41,14 @@ def _openc3_script_sleep(sleep_time=None):
         return True
     RunningScript.instance.update_running_script_store('waiting')
 
-    Store.publish(
-        f"script-api:running-script-channel:{RunningScript.instance.id}",
-        json.dumps(
-            {
-                "type": "line",
-                "filename": RunningScript.instance.current_filename,
-                "line_no": RunningScript.instance.current_line_number,
-                "state": "waiting",
-            }
-        ),
+    running_script_anycable_publish(
+        f"running-script-channel:{RunningScript.instance.id}",
+        {
+            "type": "line",
+            "filename": RunningScript.instance.current_filename,
+            "line_no": RunningScript.instance.current_line_number,
+            "state": "waiting",
+        }
     )
 
     if sleep_time is None:  # Handle infinite wait
@@ -50,16 +60,14 @@ def _openc3_script_sleep(sleep_time=None):
             time.sleep(0.01)
             count += 1
             if (count % 100) == 0:  # Approximately Every Second
-                Store.publish(
-                    f"script-api:running-script-channel:{RunningScript.instance.id}",
-                    json.dumps(
-                        {
-                            "type": "line",
-                            "filename": RunningScript.instance.current_filename,
-                            "line_no": RunningScript.instance.current_line_number,
-                            "state": "waiting",
-                        }
-                    ),
+                running_script_anycable_publish(
+                    f"running-script-channel:{RunningScript.instance.id}",
+                    {
+                        "type": "line",
+                        "filename": RunningScript.instance.current_filename,
+                        "line_no": RunningScript.instance.current_line_number,
+                        "state": "waiting",
+                    }
                 )
 
             if RunningScript.instance.pause:
@@ -286,17 +294,15 @@ class RunningScript:
             my_breakpoints = RunningScript.breakpoints[self.filename]
             for key in my_breakpoints:
                 breakpoints.append(key - 1)  # -1 because frontend lines are 0-indexed
-        Store.publish(
-            f"script-api:running-script-channel:{RunningScript.id}",
-            json.dumps(
-                {
-                    "type": "file",
-                    "filename": self.filename,
-                    "scope": self.scope,
-                    "text": self.body,
-                    "breakpoints": breakpoints,
-                }
-            ),
+        running_script_anycable_publish(
+            f"running-script-channel:{RunningScript.id}",
+            {
+                "type": "file",
+                "filename": self.filename,
+                "scope": self.scope,
+                "text": self.body,
+                "breakpoints": breakpoints,
+            }
         )
         if self.PYTHON_SUITE_REGEX.findall(self.body):
             # Call load_utility to parse the suite and allow for individual methods to be executed
@@ -366,16 +372,14 @@ class RunningScript:
 
     # Sets step mode and lets the script continue but with pause set
     def do_step(self):
-        Store.publish(
-            f"script-api:running-script-channel:{RunningScript.id}",
-            json.dumps(
-                {
-                    "type": "step",
-                    "filename": self.current_filename,
-                    "line_no": self.current_line_number,
-                    "state": self.state,
-                }
-            ),
+        running_script_anycable_publish(
+            f"running-script-channel:{RunningScript.id}",
+            {
+                "type": "step",
+                "filename": self.current_filename,
+                "line_no": self.current_line_number,
+                "state": self.state,
+            }
         )
         self.step = True
         self.go = True
@@ -404,9 +408,9 @@ class RunningScript:
 
     def clear_prompt(self):
         # Allow things to continue once the prompt is cleared
-        Store.publish(
-            f"script-api:running-script-channel:{RunningScript.id}",
-            json.dumps({"type": "script", "prompt_complete": self.prompt_id}),
+        running_script_anycable_publish(
+            f"running-script-channel:{RunningScript.id}",
+            {"type": "script", "prompt_complete": self.prompt_id},
         )
         self.prompt_id = None
 
@@ -528,16 +532,14 @@ class RunningScript:
                 Logger.detail_string = detail_string
 
             self.update_running_script_store('running')
-            Store.publish(
-                f"script-api:running-script-channel:{RunningScript.id}",
-                json.dumps(
-                    {
-                        "type": "line",
-                        "filename": self.current_filename,
-                        "line_no": self.current_line_number,
-                        "state": "running",
-                    }
-                ),
+            running_script_anycable_publish(
+                f"running-script-channel:{RunningScript.id}",
+                {
+                    "type": "line",
+                    "filename": self.current_filename,
+                    "line_no": self.current_line_number,
+                    "state": "running",
+                }
             )
             self.handle_pause(filename, line_number)
             self.handle_line_delay()
@@ -647,9 +649,9 @@ class RunningScript:
             + " (SCRIPTRUNNER): "
             + string
         )
-        Store.publish(
-            f"script-api:running-script-channel:{RunningScript.id}",
-            json.dumps({"type": "output", "line": line_to_write, "color": color}),
+        running_script_anycable_publish(
+            f"running-script-channel:{RunningScript.id}",
+            {"type": "output", "line": line_to_write, "color": color},
         )
 
     @classmethod
@@ -728,9 +730,9 @@ class RunningScript:
             else:
                 published_lines = lines_to_write
 
-            Store.publish(
-                f"script-api:running-script-channel:{RunningScript.id}",
-                json.dumps({"type": "output", "line": published_lines, "color": color}),
+            running_script_anycable_publish(
+                f"running-script-channel:{RunningScript.id}",
+                {"type": "output", "line": published_lines, "color": color},
             )
             # Add to the message log
             self.message_log().write(lines_to_write)
@@ -748,29 +750,25 @@ class RunningScript:
             time.sleep(0.01)
             count += 1
             if count % 100 == 0:  # Approximately Every Second
-                Store.publish(
-                    f"script-api:running-script-channel:{RunningScript.id}",
-                    json.dumps(
-                        {
-                            "type": "line",
-                            "filename": self.current_filename,
-                            "line_no": self.current_line_number,
-                            "state": self.state,
-                        }
-                    ),
+                running_script_anycable_publish(
+                    f"running-script-channel:{RunningScript.id}",
+                    {
+                        "type": "line",
+                        "filename": self.current_filename,
+                        "line_no": self.current_line_number,
+                        "state": self.state,
+                    }
                 )
                 if prompt:
-                    Store.publish(
-                        f"script-api:running-script-channel:{RunningScript.id}",
-                        json.dumps(
-                            {
-                                "type": "script",
-                                "method": prompt["method"],
-                                "prompt_id": prompt["id"],
-                                "args": prompt["args"],
-                                "kwargs": prompt["kwargs"],
-                            }
-                        ),
+                    running_script_anycable_publish(
+                        f"running-script-channel:{RunningScript.id}",
+                        {
+                            "type": "script",
+                            "method": prompt["method"],
+                            "prompt_id": prompt["id"],
+                            "args": prompt["args"],
+                            "kwargs": prompt["kwargs"],
+                        }
                     )
         if prompt:
             self.clear_prompt()
@@ -789,16 +787,14 @@ class RunningScript:
             time.sleep(0.01)
             count += 1
             if (count % 100) == 0:  # Approximately Every Second
-                Store.publish(
-                    f"script-api:running-script-channel:{RunningScript.id}",
-                    json.dumps(
-                        {
-                            "type": "line",
-                            "filename": self.current_filename,
-                            "line_no": self.current_line_number,
-                            "state": self.state,
-                        }
-                    ),
+                running_script_anycable_publish(
+                    f"running-script-channel:{RunningScript.id}",
+                    {
+                        "type": "line",
+                        "filename": self.current_filename,
+                        "line_no": self.current_line_number,
+                        "state": self.state,
+                    }
                 )
         self.go = False
         self.mark_running()
@@ -810,91 +806,79 @@ class RunningScript:
     def mark_running(self):
         self.state = "running"
         self.update_running_script_store()
-        Store.publish(
-            f"script-api:running-script-channel:{RunningScript.id}",
-            json.dumps(
-                {
-                    "type": "line",
-                    "filename": self.current_filename,
-                    "line_no": self.current_line_number,
-                    "state": self.state,
-                }
-            ),
+        running_script_anycable_publish(
+            f"running-script-channel:{RunningScript.id}",
+            {
+                "type": "line",
+                "filename": self.current_filename,
+                "line_no": self.current_line_number,
+                "state": self.state,
+            }
         )
 
     def mark_paused(self):
         self.state = "paused"
         self.update_running_script_store()
-        Store.publish(
-            f"script-api:running-script-channel:{RunningScript.id}",
-            json.dumps(
-                {
-                    "type": "line",
-                    "filename": self.current_filename,
-                    "line_no": self.current_line_number,
-                    "state": self.state,
-                }
-            ),
+        running_script_anycable_publish(
+            f"running-script-channel:{RunningScript.id}",
+            {
+                "type": "line",
+                "filename": self.current_filename,
+                "line_no": self.current_line_number,
+                "state": self.state,
+            }
         )
 
     def mark_waiting(self):
         self.state = "waiting"
         self.update_running_script_store()
-        Store.publish(
-            f"script-api:running-script-channel:{RunningScript.id}",
-            json.dumps(
-                {
-                    "type": "line",
-                    "filename": self.current_filename,
-                    "line_no": self.current_line_number,
-                    "state": self.state,
-                }
-            ),
+        running_script_anycable_publish(
+            f"running-script-channel:{RunningScript.id}",
+            {
+                "type": "line",
+                "filename": self.current_filename,
+                "line_no": self.current_line_number,
+                "state": self.state,
+            }
         )
 
     def mark_error(self):
         self.state = "error"
         self.update_running_script_store()
-        Store.publish(
-            f"script-api:running-script-channel:{RunningScript.id}",
-            json.dumps(
-                {
-                    "type": "line",
-                    "filename": self.current_filename,
-                    "line_no": self.current_line_number,
-                    "state": self.state,
-                }
-            ),
+        running_script_anycable_publish(
+            f"running-script-channel:{RunningScript.id}",
+            {
+                "type": "line",
+                "filename": self.current_filename,
+                "line_no": self.current_line_number,
+                "state": self.state,
+            }
         )
 
     def mark_fatal(self):
         self.state = "fatal"
         self.update_running_script_store()
-        Store.publish(
-            f"script-api:running-script-channel:{RunningScript.id}",
-            json.dumps(
-                {
-                    "type": "line",
-                    "filename": self.current_filename,
-                    "line_no": self.current_line_number,
-                    "state": self.state,
-                }
-            ),
+        running_script_anycable_publish(
+            f"running-script-channel:{RunningScript.id}",
+            {
+                "type": "line",
+                "filename": self.current_filename,
+                "line_no": self.current_line_number,
+                "state": self.state,
+            }
         )
 
     def mark_stopped(self):
         self.state = "stopped"
         self.update_running_script_store()
-        Store.publish(
-            f"script-api:running-script-channel:{RunningScript.id}",
-            json.dumps(
-                {
-                    "type": "line",
-                    "filename": self.current_filename,
-                    "line_no": self.current_line_number,
-                    "state": self.state,
-                }
-            ),
+        running_script_anycable_publish(
+            f"running-script-channel:{RunningScript.id}",
+            {
+                "type": "line",
+                "filename": self.current_filename,
+                "line_no": self.current_line_number,
+                "state": self.state,
+            }
         )
         if SuiteRunner.suite_results:
             SuiteRunner.suite_results.complete()
@@ -919,11 +903,9 @@ class RunningScript:
                 parts[1] += f"_{init_split[-1]}"
             elif len(parts) == 1 and len(init_split) > 1:
                 parts[0] += f"_{init_split[-1]}"
-            Store.publish(
-                f"script-api:running-script-channel:{self.id}",
-                json.dumps(
-                    {"type": "report", "report": SuiteRunner.suite_results.report()}
-                ),
+            running_script_anycable_publish(
+                f"running-script-channel:{self.id}",
+                {"type": "report", "report": SuiteRunner.suite_results.report()}
             )
             # Write out the report to a local file
             log_dir = os.path.join(RAILS_ROOT, "log")
@@ -950,24 +932,19 @@ class RunningScript:
             # Wait for the file to get moved to S3 because after this the process will likely die
             thread.join()
 
-        Store.publish(
-            f"script-api:cmd-running-script-channel:{RunningScript.id}",
-            json.dumps("shutdown"),
-        )
+        running_script_publish(f"cmd-running-script-channel:{RunningScript.id}", "shutdown")
 
     def mark_breakpoint(self):
         self.state = "breakpoint"
         self.update_running_script_store()
-        Store.publish(
-            f"script-api:running-script-channel:{RunningScript.id}",
-            json.dumps(
-                {
-                    "type": "line",
-                    "filename": self.current_filename,
-                    "line_no": self.current_line_number,
-                    "state": self.state,
-                }
-            ),
+        running_script_anycable_publish(
+            f"running-script-channel:{RunningScript.id}",
+            {
+                "type": "line",
+                "filename": self.current_filename,
+                "line_no": self.current_line_number,
+                "state": self.state,
+            }
         )
 
     def run_thread_body(
@@ -1088,17 +1065,15 @@ class RunningScript:
         saved_run_thread = RunningScript.run_thread
         RunningScript.instance = self
         if initial_filename:
-            Store.publish(
-                f"script-api:running-script-channel:{RunningScript.id}",
-                json.dumps(
-                    {
-                        "type": "file",
-                        "filename": initial_filename,
-                        "scope": self.scope,
-                        "text": text,
-                        "breakpoints": [],
-                    }
-                ),
+            running_script_anycable_publish(
+                f"running-script-channel:{RunningScript.id}",
+                {
+                    "type": "file",
+                    "filename": initial_filename,
+                    "scope": self.scope,
+                    "text": text,
+                    "breakpoints": [],
+                }
             )
         RunningScript.run_thread = threading.Thread(
             target=self.run_thread_body,
@@ -1207,16 +1182,14 @@ class RunningScript:
                 text = text.decode()
             RunningScript.file_cache[filename] = text
             self.body = text
-        Store.publish(
-            f"script-api:running-script-channel:{RunningScript.id}",
-            json.dumps(
-                {
-                    "type": "file",
-                    "filename": filename,
-                    "text": self.body,
-                    "breakpoints": breakpoints,
-                }
-            ),
+        running_script_anycable_publish(
+            f"running-script-channel:{RunningScript.id}",
+            {
+                "type": "file",
+                "filename": filename,
+                "text": self.body,
+                "breakpoints": breakpoints,
+            }
         )
 
     def mark_breakpoints(self, filename):
@@ -1293,16 +1266,14 @@ def start(procedure_name):
         # Use cached instrumentation
         instrumented_script = instrumented_cache
         cached = True
-        Store.publish(
-            f"script-api:running-script-channel:{RunningScript.instance.id}",
-            json.dumps(
-                {
-                    "type": "file",
-                    "filename": procedure_name,
-                    "text": text,
-                    "breakpoints": breakpoints,
-                }
-            ),
+        running_script_anycable_publish(
+            f"running-script-channel:{RunningScript.instance.id}",
+            {
+                "type": "file",
+                "filename": procedure_name,
+                "text": text,
+                "breakpoints": breakpoints,
+            }
         )
     else:
         # Retrieve file
@@ -1313,16 +1284,14 @@ def start(procedure_name):
             )
         else:
             text = text.decode()
-        Store.publish(
-            f"script-api:running-script-channel:{RunningScript.instance.id}",
-            json.dumps(
-                {
-                    "type": "file",
-                    "filename": procedure_name,
-                    "text": text,
-                    "breakpoints": breakpoints,
-                }
-            ),
+        running_script_anycable_publish(
+            f"running-script-channel:{RunningScript.instance.id}",
+            {
+                "type": "file",
+                "filename": procedure_name,
+                "text": text,
+                "breakpoints": breakpoints,
+            }
         )
 
         # Cache instrumentation into RAM
@@ -1333,15 +1302,13 @@ def start(procedure_name):
     running = Store.smembers("running-scripts")
     if running is None:
         running = []
-    Store.publish(
-        "script-api:all-scripts-channel",
-        json.dumps(
-            {
-                "type": "start",
-                "filename": procedure_name,
-                "active_scripts": len(running),
-            }
-        ),
+    running_script_anycable_publish(
+        "all-scripts-channel",
+        {
+            "type": "start",
+            "filename": procedure_name,
+            "active_scripts": len(running),
+        }
     )
     linecache.cache[path] = (
         len(text),
@@ -1391,18 +1358,16 @@ def display_screen(target_name, screen_name, x=None, y=None, scope=OPENC3_SCOPE)
     definition = openc3.script.get_screen_definition(
         target_name, screen_name, scope=scope
     )
-    Store.publish(
-        f"script-api:running-script-channel:{RunningScript.instance.id}",
-        json.dumps(
-            {
-                "type": "screen",
-                "target_name": target_name,
-                "screen_name": screen_name,
-                "definition": definition,
-                "x": x,
-                "y": y,
-            }
-        ),
+    running_script_anycable_publish(
+        f"running-script-channel:{RunningScript.instance.id}",
+        {
+            "type": "screen",
+            "target_name": target_name,
+            "screen_name": screen_name,
+            "definition": definition,
+            "x": x,
+            "y": y,
+        }
     )
 
 
@@ -1410,15 +1375,13 @@ setattr(openc3.script, "display_screen", display_screen)
 
 
 def clear_screen(target_name, screen_name):
-    Store.publish(
-        f"script-api:running-script-channel:{RunningScript.instance.id}",
-        json.dumps(
-            {
-                "type": "clearscreen",
-                "target_name": target_name,
-                "screen_name": screen_name,
-            }
-        ),
+    running_script_anycable_publish(
+        f"running-script-channel:{RunningScript.instance.id}",
+        {
+            "type": "clearscreen",
+            "target_name": target_name,
+            "screen_name": screen_name,
+        }
     )
 
 
@@ -1426,9 +1389,9 @@ setattr(openc3.script, "clear_screen", clear_screen)
 
 
 def clear_all_screens():
-    Store.publish(
-        f"script-api:running-script-channel:{RunningScript.instance.id}",
-        json.dumps({"type": "clearallscreens"}),
+    running_script_anycable_publish(
+        f"running-script-channel:{RunningScript.instance.id}",
+        {"type": "clearallscreens"},
     )
 
 
@@ -1436,18 +1399,16 @@ setattr(openc3.script, "clear_all_screens", clear_all_screens)
 
 
 def local_screen(screen_name, definition, x=None, y=None):
-    Store.publish(
-        f"script-api:running-script-channel:{RunningScript.instance.id}",
-        json.dumps(
-            {
-                "type": "screen",
-                "target_name": "LOCAL",
-                "screen_name": screen_name,
-                "definition": definition,
-                "x": x,
-                "y": y,
-            }
-        ),
+    running_script_anycable_publish(
+        f"running-script-channel:{RunningScript.instance.id}",
+        {
+            "type": "screen",
+            "target_name": "LOCAL",
+            "screen_name": screen_name,
+            "definition": definition,
+            "x": x,
+            "y": y,
+        }
     )
 
 
@@ -1456,11 +1417,9 @@ setattr(openc3.script, "local_screen", local_screen)
 
 def download_file(path, scope=OPENC3_SCOPE):
     url = openc3.script._get_download_url(path, scope=scope)
-    Store.publish(
-        f"script-api:running-script-channel:{RunningScript.instance.id}",
-        json.dumps(
-            {"type": "downloadfile", "filename": os.path.basename(path), "url": url}
-        ),
+    running_script_anycable_publish(
+        f"running-script-channel:{RunningScript.instance.id}",
+        {"type": "downloadfile", "filename": os.path.basename(path), "url": url}
     )
 
 
