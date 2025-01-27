@@ -774,15 +774,26 @@ export default {
 
       this.progress = 0
       this.processButtonText = 'Cancel'
+      // We're using the ActionCable implementation of AnyCable via mapping of events:
+      // https://github.com/anycable/anycable-client/blob/master/packages/core/create-cable/index.js#L218
+      // Here's the anycable lifecycle: https://github.com/anycable/anycable-client/blob/master/docs/lifecycle.md
       this.cable
         .createSubscription('StreamingChannel', window.openc3Scope, {
           received: (data) => this.received(data),
           connected: () => this.onConnected(),
-          disconnected: () => {
-            this.$notify.caution({
-              body: 'OpenC3 backend connection disconnected.',
-            })
+          // The "disconnect" event is trigger when the connection was lost or the server disconnected the client.
+          // disconnect maps to disconnected with allowReconnect: true
+          // close maps to disconnected with allowReconnect: false
+          disconnected: (data) => {
+            // If allowReconnect is true it means we got a disconnect due to connection lost or server disconnect
+            // If allowReconnect is false this is a normal server close or client close
+            if (data.allowReconnect) {
+              this.$notify.caution({
+                body: 'OpenC3 backend connection disconnected.',
+              })
+            }
           },
+          // close maps to rejected if there is an error
           rejected: () => {
             this.$notify.caution({
               body: 'OpenC3 backend connection rejected.',
