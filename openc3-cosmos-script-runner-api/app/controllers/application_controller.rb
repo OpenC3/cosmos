@@ -100,4 +100,14 @@ class ApplicationController < ActionController::API
     end
     return result
   end
+
+  def log_error(e)
+    if ENV['OPENC3_FULL_BACKTRACE']
+      filtered_backtrace = e.backtrace
+    else
+      # Filter out backtrace to only application code
+      filtered_backtrace = e.backtrace.select { |line| !line.include?('activesupport') && !line.include?('actionpack') && !line.include?('rspec') && !line.include?('bundler') }
+    end
+    logger.error("#{e.message}\n#{filtered_backtrace.join("\n")}")
+  end
 end
