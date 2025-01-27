@@ -179,7 +179,7 @@ module OpenC3
 
     def running_script_get(id, scope: $openc3_scope)
       endpoint = "/script-api/running-script/#{id}"
-      response = $script_runner_api_server.request('get', endpoint, cope: scope)
+      response = $script_runner_api_server.request('get', endpoint, scope: scope)
       if response.nil? || response.status != 200
         _script_response_error(response, "Running script show request failed", scope: scope)
       else
