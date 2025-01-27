@@ -1,3 +1,3 @@
 web: bin/rails s -b 0.0.0.0 -p 2901
-ws: anycable-go --host 0.0.0.0 --port 3901 --path /openc3-api/cable
+ws: anycable-go --host 0.0.0.0 --port 3901 --path /openc3-api/cable --log_level error
 rpc: bundle exec anycable --broadcast_adapter http

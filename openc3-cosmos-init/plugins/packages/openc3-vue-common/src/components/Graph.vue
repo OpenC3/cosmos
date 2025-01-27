@@ -1038,12 +1038,16 @@ export default {
           connected: () => {
             this.addItemsToSubscription(this.items)
           },
-          disconnected: () => {
-            this.errors.push({
-              type: 'disconnected',
-              message: 'OpenC3 backend connection disconnected',
-              time: new Date().getTime(),
-            })
+          disconnected: (data) => {
+            // If allowReconnect is true it means we got a disconnect due to connection lost or server disconnect
+            // If allowReconnect is false this is a normal server close or client close
+            if (data.allowReconnect) {
+              this.errors.push({
+                type: 'disconnected',
+                message: 'OpenC3 backend connection disconnected',
+                time: new Date().getTime(),
+              })
+            }
           },
           rejected: () => {
             this.errors.push({
