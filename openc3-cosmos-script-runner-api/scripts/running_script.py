@@ -18,7 +18,6 @@ from openc3.script.suite_runner import SuiteRunner
 from openc3.utilities.string import build_timestamped_filename
 from openc3.utilities.bucket_utilities import BucketUtilities
 from openc3.script.storage import _get_storage_file
-import re
 import linecache
 
 SCRIPT_API = 'script-api'
@@ -439,7 +438,11 @@ class RunningScript:
             return "Untitled" + str(RunningScript.id)
 
     def stop_message_log(self):
-        metadata = {"id": self.id, "user": self.details["user"], "scriptname": self.unique_filename()}
+        metadata = {
+            "id": self.id,
+            "user": self.details["user"],
+            "scriptname": self.unique_filename(),
+        }
         if RunningScript.my_message_log:
             RunningScript.my_message_log.stop(True, metadata=metadata)
         RunningScript.my_message_log = None
@@ -452,7 +455,7 @@ class RunningScript:
 
         # Deal with breakpoints created under the previous filename.
         bkpt_filename = self.unique_filename()
-        if not bkpt_filename in RunningScript.breakpoints:
+        if bkpt_filename not in RunningScript.breakpoints:
             RunningScript.breakpoints[bkpt_filename] = RunningScript.breakpoints[
                 self.filename
             ]
@@ -493,6 +496,7 @@ class RunningScript:
 
         parsed = ast.parse(text)
         tree = ScriptInstrumentor(filename).visit(parsed)
+        # Normal Python code is run with mode='exec' whose root is ast.Module
         result = compile(tree, filename=filename, mode="exec")
         return result
 
@@ -540,7 +544,7 @@ class RunningScript:
         if (
             exc_type == StopScript
             or exc_type == SkipScript
-            or exc_type == SkipTestCase # DEPRECATED but still valid
+            or exc_type == SkipTestCase  # DEPRECATED but still valid
             or not self.use_instrumentation
         ):
             raise exc_value
@@ -598,20 +602,20 @@ class RunningScript:
 
     @classmethod
     def set_breakpoint(cls, filename, line_number):
-        if not filename in cls.breakpoints:
+        if filename not in cls.breakpoints:
             cls.breakpoints[filename] = {}
         cls.breakpoints[filename][line_number] = True
 
     @classmethod
     def clear_breakpoint(cls, filename, line_number):
-        if not filename in cls.breakpoints:
+        if filename not in cls.breakpoints:
             cls.breakpoints[filename] = {}
         if line_number in cls.breakpoints[filename]:
             del cls.breakpoints[filename][line_number]
 
     @classmethod
     def clear_breakpoints(cls, filename=None):
-        if filename == None or filename == "":
+        if filename is None or filename == "":
             cls.breakpoints = {}
         else:
             if filename in cls.breakpoints:
@@ -680,7 +684,7 @@ class RunningScript:
                         out_line = json_hash["log"]
                     if "message" in json_hash:
                         out_line = json_hash["message"]
-                except:
+                except Exception:
                     # Regular output
                     pass
 
@@ -722,10 +726,6 @@ class RunningScript:
             )
             # Add to the message log
             self.message_log().write(lines_to_write)
-
-    def graceful_kill(self):
-        # Just to avoid warning
-        pass
 
     def wait_for_go_or_stop(self, error=None, prompt=None):
         count = -1
@@ -1072,7 +1072,7 @@ class RunningScript:
     def handle_potential_tab_change(self, filename):
         # Make sure the correct file is shown in script runner
         if self.current_file != filename:
-            if not filename in self.call_stack:
+            if filename not in self.call_stack:
                 self.call_stack.append(filename)
                 self.load_file_into_script(filename)
             self.current_file = filename
@@ -1133,10 +1133,13 @@ class RunningScript:
             self.mark_error()
             self.wait_for_go_or_stop_or_retry(exc_value)
 
+        # See script_instrumentor.py for how retry is used
         if self.retry_needed:
             self.retry_needed = False
+            # Return True to the instrumented code to retry the line
             return True
         else:
+            # Return False to the instrumented code to break the while loop
             return False
 
     def load_file_into_script(self, filename):
