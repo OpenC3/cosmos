@@ -489,7 +489,10 @@ export default {
         return
       }
       // Check for a future End Time
-      if (this.startEndTime.end_time) {
+      if (
+        this.startEndTime.end_time &&
+        this.startEndTime.end_time > new Date().getTime() * 1000000
+      ) {
         this.warningText =
           'Note: End date/time is greater than current date/time. Data will continue to stream in real-time until ' +
           this.endDate +
@@ -513,12 +516,16 @@ export default {
             this.canStart = true
             this.connectionFailure = false
           },
-          disconnected: () => {
-            this.stop()
-            this.canStart = false
-            this.warningText = 'OpenC3 backend connection disconnected.'
-            this.warning = true
-            this.connectionFailure = true
+          disconnected: (data) => {
+            // If allowReconnect is true it means we got a disconnect due to connection lost or server disconnect
+            // If allowReconnect is false this is a normal server close or client close
+            if (data.allowReconnect) {
+              this.stop()
+              this.canStart = false
+              this.warningText = 'OpenC3 backend connection disconnected.'
+              this.warning = true
+              this.connectionFailure = true
+            }
           },
           rejected: () => {
             this.warningText = 'OpenC3 backend connection rejected.'
