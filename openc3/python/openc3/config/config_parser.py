@@ -291,8 +291,10 @@ class ConfigParser:
                     return float("inf")
                 case "NEG_INFINITY":
                     return float("-inf")
-                case _:
-                    raise ValueError(f"Could not convert constant: {value}")
+                # NOTE: No else case because of the following scenario:
+                # If the value type is a UINT but they have a WRITE_CONVERSION that takes a string
+                # then the default value will be a string. In that case we just want to return the string.
+                # For example, the IP_ADDRESS parameter in the TIME_OFFSET command in the Demo plugin.
 
         return value
 

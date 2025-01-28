@@ -582,13 +582,7 @@ class TestConfigParser(unittest.TestCase):
             16,
         )
 
-    def test_complains_about_undefined_strings(self):
-        self.assertRaisesRegex(
-            ValueError,
-            "Could not convert constant: TRUE",
-            ConfigParser.handle_defined_constants,
-            "TRUE",
-        )
+    def test_complains_about_bad_data_types(self):
         self.assertRaisesRegex(
             TypeError,
             "Invalid data type BLAH when calculating range.",

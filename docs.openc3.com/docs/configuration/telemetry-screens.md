@@ -644,6 +644,8 @@ FORMATVALUE INST LATEST TEMP1 %.2f CONVERTED 20
 ### LABELLED
 **Displays a LABEL followed by a LED**
 
+See the LED widget for more information
+
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Target name | The target name | True |
@@ -786,7 +788,7 @@ LABELVALUERANGEBAR INST HEALTH_STATUS TEMP1 -120 120
 ### LED
 **Displays a LED which changes color based on telemetry values**
 
-By default TRUE is green and FALSE is red and all other values are black. Additional values can be added by using the LED_COLOR setting. For example LED INST PARAMS VALUE3 RAW can be followed by SETTING LED_COLOR 0 GREEN, SETTING LED_COLOR 1 RED, and SETTING LED_COLOR ANY ORANGE.
+By default TRUE is green and FALSE is red and all other values are black. Additional values can be added by using the LED_COLOR setting. For example LED INST PARAMS VALUE3 RAW can be followed by SETTING LED_COLOR 0 GREEN, SETTING LED_COLOR 1 RED, and SETTING LED_COLOR ANY ORANGE. See LIMITSCOLOR for a widget that displays a circle depicting the limits color of an item.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -856,7 +858,7 @@ LIMITSCOLUMN INST HEALTH_STATUS TEMP1
 
 
 ### LIMITSCOLOR
-**Displays a circle depicting the limits color of an item**
+**Displays a circle depicting the limits color of an item. See LED for a widget that displays a circle which changes to an arbitrary color based on telemetry values.**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|

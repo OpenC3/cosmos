@@ -584,10 +584,6 @@ module OpenC3
         expect(ConfigParser.handle_defined_constants("NEG_INFINITY")).to eql(-Float::INFINITY)
       end
 
-      it "complains about undefined strings" do
-        expect { ConfigParser.handle_defined_constants("TRUE") }.to raise_error(ArgumentError, "Could not convert constant: TRUE")
-      end
-
       it "passes through numbers" do
         expect(ConfigParser.handle_defined_constants(0)).to eql 0
         expect(ConfigParser.handle_defined_constants(0.0)).to eql 0.0

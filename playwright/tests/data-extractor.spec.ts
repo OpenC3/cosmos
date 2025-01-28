@@ -153,7 +153,7 @@ test('cancels a process', async ({ page, utils }) => {
 
 test('adds an entire target', async ({ page, utils }) => {
   await utils.addTargetPacketItem('INST')
-  await expect(page.getByText('1-20 of 159')).toBeVisible()
+  await expect(page.getByText('1-20 of 161')).toBeVisible()
 })
 
 test('adds an entire packet', async ({ page, utils }) => {

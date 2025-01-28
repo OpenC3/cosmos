@@ -148,6 +148,7 @@ class SimInst(SimulatedTarget):
         self.last_temp2 = 0
         self.quiet = False
         self.time_offset = 0
+        self.ip_address = 0
 
     def set_rates(self):
         self.set_rate("ADCS", 10)
@@ -213,6 +214,7 @@ class SimInst(SimulatedTarget):
             case "TIME_OFFSET":
                 hs_packet.write("cmd_acpt_cnt", hs_packet.read("cmd_acpt_cnt") + 1)
                 self.time_offset = packet.read("seconds")
+                self.ip_address = packet.read("ip_address")
             case "HIDDEN":
                 # Deliberately do not increment cmd_acpt_cnt
                 self.tlm_packets["HIDDEN"].count = packet.read("count")
@@ -382,6 +384,7 @@ class SimInst(SimulatedTarget):
                     packet.write("timesec", int(time - self.time_offset))
                     packet.write("timeus", int((time % 1) * 1000000))
                     packet.write("ccsdsseqcnt", packet.read("ccsdsseqcnt") + 1)
+                    packet.write("ip_address", self.ip_address)
 
                 case "IMAGE":
                     packet.write("timesec", int(time - self.time_offset))

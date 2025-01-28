@@ -326,7 +326,8 @@ module OpenC3
           end
 
           range = item.range
-          if range
+          # Don't range check a string default value
+          if range and !item.default.is_a?(String)
             # Perform Range Check on command parameter
             if not range.include?(range_check_value)
               range_check_value = "'#{range_check_value}'" if String === range_check_value

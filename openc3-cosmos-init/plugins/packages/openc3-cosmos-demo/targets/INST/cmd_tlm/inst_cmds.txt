@@ -97,6 +97,8 @@ COMMAND <%= target_name %> TIME_OFFSET BIG_ENDIAN "Subtract the packet time by t
   VALIDATOR inst_cmd_validator.rb
   <%= render "_ccsds_cmd.txt", locals: {id: 12} %>
   APPEND_PARAMETER SECONDS 32 UINT MIN MAX 0 "Seconds to subtract from packet time"
+  APPEND_PARAMETER IP_ADDRESS 32 UINT MIN MAX "127.0.0.1" "IP address"
+    WRITE_CONVERSION ip_write_conversion.rb
 
 COMMAND <%= target_name %> HIDDEN BIG_ENDIAN "Hidden command to bump the hidden packet"
   VALIDATOR inst_cmd_validator.rb
