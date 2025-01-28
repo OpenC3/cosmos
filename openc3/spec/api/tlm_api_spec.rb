@@ -40,6 +40,7 @@ module OpenC3
     before(:each) do
       mock_redis()
       setup_system()
+      local_s3()
 
       %w(INST SYSTEM).each do |target|
         model = TargetModel.new(folder_name: target, name: target, scope: "DEFAULT")
@@ -57,6 +58,7 @@ module OpenC3
     end
 
     after(:each) do
+      local_s3_unset()
       Thread.list.each do |t|
         t.join if t != Thread.current
       end

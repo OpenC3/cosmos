@@ -424,8 +424,8 @@ class TestLimitsApi(unittest.TestCase):
                 "TEMP2": 0,
                 "TEMP3": 0,
                 "TEMP4": 0,
-                "GROUND1STATUS": 1,
-                "GROUND2STATUS": 1,
+                "GROUND1STATUS": 'CONNECTED',
+                "GROUND2STATUS": 'CONNECTED',
             },
         )
         time.sleep(0.1)

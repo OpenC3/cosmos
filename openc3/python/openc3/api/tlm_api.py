@@ -136,8 +136,8 @@ def inject_tlm(target_name, packet_name, item_hash=None, type="CONVERTED", scope
         if type == 'CONVERTED':
             # If the type is converted, check that the item states are valid
             for item_name, item_value in item_hash.items():
-                item = items.find(lambda i: i['name'] == item_name)
-                if item['states'] and item_value not in item['states']:
+                item = next((i for i in items if i['name'] == item_name.upper()), None)
+                if item and item.get('states') and item_value not in item['states']:
                     raise RuntimeError(
                         f"Unknown state '{item_value}' for {item['name']}, must be one of {', '.join(item['states'].keys())}"
                     )

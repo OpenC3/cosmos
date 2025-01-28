@@ -135,7 +135,7 @@ module OpenC3
         if type == :CONVERTED
           # If the type is converted, check that the item states are valid
           item_hash.each do |item_name, item_value|
-            item = items.find { |i| i['name'] == item_name }
+            item = items.find { |i| i['name'] == item_name.to_s.upcase }
             if item['states'] && !item['states'][item_value]
               raise "Unknown state '#{item_value}' for #{item['name']}, must be one of #{item['states'].keys.join(', ')}"
             end
