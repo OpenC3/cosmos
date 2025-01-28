@@ -51,7 +51,6 @@ class ActivityController < ApplicationController
       else
         limit = ((stop - start) / 60).to_i # 1 event every minute ... shouldn't ever be more than this!
       end
-      puts "activities index limit:#{limit}"
       model = @model_class.get(name: params[:name], scope: params[:scope], start: start, stop: stop, limit: limit)
       render json: model.as_json(:allow_nan => true)
     rescue ArgumentError => e
