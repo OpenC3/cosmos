@@ -69,18 +69,17 @@ check_expression("#{script.nil?} == false")
 
 id = script_run(SCRIPT_NAME)
 wait_for_action(id, 'running')
-running_script_delete(id)
-# Can't wait for stopped action because we delete the script so just wait
+running_script_delete(id) # Stop and completely remove the script
 wait 1
 
 list = running_script_list()
 script = list.select {|script| script["id"] == id}[0]
-# Script is stopped, so it should NOT be in the running list
+# Script is deleted, so it should NOT be in the running list
 check_expression("#{script.nil?} == true")
 list = completed_script_list()
-# Script is completed so it should be in the completed list
+# Script is deleted so it should NOT be in the completed list
 script = list.select {|script| script["id"] == id}[0]
-check_expression("#{script.nil?} == false")
+check_expression("#{script.nil?} == true")
 
 script_lock(SCRIPT_NAME)
 script_unlock(SCRIPT_NAME)

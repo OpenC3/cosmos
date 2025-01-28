@@ -655,6 +655,7 @@ i.v-icon.mdi-chevron-down {
 }
 .grid {
   position: relative;
+  overflow-y: hidden;
 }
 .item {
   position: absolute;
