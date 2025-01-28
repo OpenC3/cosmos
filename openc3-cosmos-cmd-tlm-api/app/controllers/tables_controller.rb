@@ -33,10 +33,10 @@ class TablesController < ApplicationController
 
   def binary
     return unless authorization('system')
-    scope, binary, definition, table = sanitize_params([:scope, :binary, :definition, :table], require_params: false, allow_forward_slash: true)
+    scope, binary, definition, table_name = sanitize_params([:scope, :binary, :definition, :table_name], require_params: false, allow_forward_slash: true)
     return unless scope
     begin
-      file = Table.binary(scope, binary, definition, table)
+      file = Table.binary(scope, binary, definition, table_name)
       results = { filename: file.filename, contents: Base64.encode64(file.contents) }
       render json: results
     rescue Table::NotFound => e
@@ -47,10 +47,10 @@ class TablesController < ApplicationController
 
   def definition
     return unless authorization('system')
-    scope, definition, table = sanitize_params([:scope, :definition, :table], require_params: false, allow_forward_slash: true)
+    scope, definition, table_name = sanitize_params([:scope, :definition, :table_name], require_params: false, allow_forward_slash: true)
     return unless scope
     begin
-      file = Table.definition(scope, definition, table)
+      file = Table.definition(scope, definition, table_name)
       render json: { filename: file.filename, contents: file.contents }
     rescue Table::NotFound => e
       log_error(e)
@@ -60,10 +60,10 @@ class TablesController < ApplicationController
 
   def report
     return unless authorization('system')
-    scope, binary, definition, table = sanitize_params([:scope, :binary, :definition, :table], require_params: false, allow_forward_slash: true)
+    scope, binary, definition, table_name = sanitize_params([:scope, :binary, :definition, :table_name], require_params: false, allow_forward_slash: true)
     return unless scope
     begin
-      file = Table.report(scope, binary, definition, table)
+      file = Table.report(scope, binary, definition, table_name)
       render json: { filename: file.filename, contents: file.contents }
     rescue Table::NotFound => e
       log_error(e)

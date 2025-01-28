@@ -152,14 +152,14 @@ Prompts the user for input with a question. User input is automatically converte
 Ruby / Python Syntax:
 
 ```ruby
-ask("<question>", <blank_or_default>, <password>)
+ask("<question>", <Blank or Default>, <Password>)
 ```
 
 | Parameter        | Description                                                                                                                             |
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | question         | Question to prompt the user with.                                                                                                       |
-| blank_or_default | Whether or not to allow empty responses (optional - defaults to false). If a non-boolean value is passed it is used as a default value. |
-| password         | Whether to treat the entry as a password which is displayed with dots and not logged. Default is false.                                 |
+| Blank or Default | Whether or not to allow empty responses (optional - defaults to false). If a non-boolean value is passed it is used as a default value. |
+| Password         | Whether to treat the entry as a password which is displayed with dots and not logged. Default is false.                                 |
 
 Ruby Example:
 
@@ -186,14 +186,14 @@ Prompts the user for input with a question. User input is always returned as a s
 Ruby / Python Syntax:
 
 ```ruby
-ask_string("<question>", <blank_or_default>, <password>)
+ask_string("<question>", <Blank or Default>, <Password>)
 ```
 
 | Parameter        | Description                                                                                                                             |
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | question         | Question to prompt the user with.                                                                                                       |
-| blank_or_default | Whether or not to allow empty responses (optional - defaults to false). If a non-boolean value is passed it is used as a default value. |
-| password         | Whether to treat the entry as a password which is displayed with dots and not logged. Default is false.                                 |
+| Blank or Default | Whether or not to allow empty responses (optional - defaults to false). If a non-boolean value is passed it is used as a default value. |
+| Password         | Whether to treat the entry as a password which is displayed with dots and not logged. Default is false.                                 |
 
 Ruby Example:
 
@@ -224,15 +224,15 @@ The message_box, vertical_message_box, and combo_box methods create a message bo
 Ruby / Python Syntax:
 
 ```ruby
-message_box("<message>", "<button text 1>", ...)
-vertical_message_box("<message>", "<button text 1>", ...)
-combo_box("<message>", "<selection text 1>", ...)
+message_box("<Message>", "<button text 1>", ...)
+vertical_message_box("<Message>", "<button text 1>", ...)
+combo_box("<Message>", "<selection text 1>", ...)
 ```
 
 | Parameter             | Description                      |
 | --------------------- | -------------------------------- |
-| message               | Message to prompt the user with. |
-| button/selection text | Text for a button or selection   |
+| Message               | Message to prompt the user with. |
+| Button/Selection Text | Text for a button or selection   |
 
 Ruby Example:
 
@@ -279,7 +279,7 @@ get_target_file("<File Path>", original=False)
 
 | Parameter | Description                                                                                                                                                                                                                           |
 | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| path      | The path to the file in the target directory. Should assume to start with a TARGET name, e.g. INST/procedures/proc.rb                                                                                                                 |
+| File Path | The path to the file in the target directory. Should assume to start with a TARGET name, e.g. INST/procedures/proc.rb                                                                                                                 |
 | original  | Whether to get the original file from the plug-in, or any modifications to the file. Default is false which means to grab the modified file. If the modified file does not exist the API will automatically try to pull the original. |
 
 Ruby Example:
@@ -316,10 +316,10 @@ Ruby or Python Syntax:
 put_target_file("<File Path>", "IO or String")
 ```
 
-| Parameter | Description                                                                                                                                                                                                                                                                      |
-| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| path      | The path to the file in the target directory. Should assume to start with a TARGET name, e.g. INST/procedures/proc.rb. The file can previously exist or not. Note: The original file from the plug-in will not be modified, however existing modified files will be overwritten. |
-| data      | The data can be an IO object or String                                                                                                                                                                                                                                           |
+| Parameter    | Description                                                                                                                                                                                                                                                                      |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| File Path    | The path to the file in the target directory. Should assume to start with a TARGET name, e.g. INST/procedures/proc.rb. The file can previously exist or not. Note: The original file from the plug-in will not be modified, however existing modified files will be overwritten. |
+| IO or String | The data can be an IO object or String                                                                                                                                                                                                                                           |
 
 Ruby Example:
 
@@ -355,7 +355,7 @@ delete_target_file("<File Path>")
 
 | Parameter | Description                                                                                                                                                                                                                                   |
 | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| path      | The path to the file in the target directory. Should assume to start with a TARGET name, e.g. INST/procedures/proc.rb. Note: Only files created with put_target_file can be deleted. Original files from the plugin installation will remain. |
+| File Path | The path to the file in the target directory. Should assume to start with a TARGET name, e.g. INST/procedures/proc.rb. Note: Only files created with put_target_file can be deleted. Original files from the plugin installation will remain. |
 
 Ruby / Python Example:
 
@@ -375,15 +375,15 @@ Note: COSMOS 5 has deprecated the save_file_dialog and open_directory_dialog met
 Ruby Syntax:
 
 ```ruby
-open_file_dialog("<title>", "<message>", filter: "<filter>")
-open_files_dialog("<title>", "<message>", filter: "<filter>")
+open_file_dialog("<Title>", "<Message>", filter: "<filter>")
+open_files_dialog("<Title>", "<Message>", filter: "<filter>")
 ```
 
 Python Syntax:
 
 ```python
-open_file_dialog("<title>", "<message>", filter="<filter>")
-open_files_dialog("<title>", "<message>", filter="<filter>")
+open_file_dialog("<Title>", "<Message>", filter="<filter>")
+open_files_dialog("<Title>", "<Message>", filter="<filter>")
 ```
 
 | Parameter | Description                                                                                                                                                                                                                        |
@@ -436,12 +436,12 @@ Displays a message to the user and waits for them to press an ok button.
 Ruby / Python Syntax:
 
 ```ruby
-prompt("<message>")
+prompt("<Message>")
 ```
 
 | Parameter | Description                      |
 | --------- | -------------------------------- |
-| message   | Message to prompt the user with. |
+| Message   | Message to prompt the user with. |
 
 Ruby / Python Example:
 
@@ -1380,20 +1380,38 @@ This evaluates to `yes == 'yes'` which is not valid syntax because the variable 
 
 Now this evaluates to `'yes' == 'yes'` which is true so the check passes.
 
-Ruby / Python Syntax:
+Ruby Syntax:
 
 ```ruby
-check_expression("<Expression>")
+check_expression(exp_to_eval, context = nil)
 ```
 
-| Parameter  | Description                |
-| ---------- | -------------------------- |
-| Expression | An expression to evaluate. |
+Python Syntax:
 
-Ruby / Python Example:
+```python
+check_expression(exp_to_eval, globals=None, locals=None)
+```
+
+| Parameter             | Description                                                                                                                   |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| exp_to_eval           | An expression to evaluate.                                                                                                    |
+| context (ruby only)   | The context to call eval with. Defaults to nil. Context in Ruby is typically binding() and is usually not needed.             |
+| globals (python only) | The globals to call eval with. Defaults to None. Note that to use COSMOS APIs like tlm() you must pass globals().             |
+| locals (python only)  | The locals to call eval with. Defaults to None. Note that if you're using local variables in a method you must pass locals(). |
+
+Ruby Example:
 
 ```ruby
 check_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm('INST HEALTH_STATUS TEMP1') > 25.0")
+```
+
+Python Example:
+
+```python
+def check(value):
+    # Here we using both tlm() and a local 'value' so we need to pass globals() and locals()
+    check_expression("tlm('INST HEALTH_STATUS COLLECTS') > value", 5, 0.25, globals(), locals())
+check(5)
 ```
 
 ### check_exception
@@ -2087,24 +2105,56 @@ success = wait_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, type='RAW
 
 Pauses the script until an expression is evaluated to be true or a timeout occurs. If a timeout occurs the script will continue. This method can be used to perform more complicated comparisons than using wait as shown in the example. Note that on a timeout, wait_expression does not stop the script, usually [wait_check_expression](#wait_check_expression) is a better choice.
 
-Syntax:
+Ruby Syntax:
 
 ```ruby
-# Returns true or false based on the whether the expression is true or false
-success = wait_expression("<Expression>", <Timeout>, <Polling Rate (optional)>, quiet)
+# Return true or false based the expression evaluation
+wait_expression(
+  exp_to_eval,
+  timeout,
+  polling_rate = DEFAULT_TLM_POLLING_RATE,
+  context = nil,
+  quiet: false
+) -> boolean
 ```
 
-| Parameter    | Description                                                                                                    |
-| ------------ | -------------------------------------------------------------------------------------------------------------- |
-| Expression   | A ruby expression to evaluate.                                                                                 |
-| Timeout      | Timeout in seconds. Script will proceed if the wait statement times out waiting for the comparison to be true. |
-| Polling Rate | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                           |
-| quiet        | Named parameter indicating whether to log the result. Defaults to true.                                        |
+Python Syntax:
 
-Ruby / Python Example:
+```python
+# Return True or False based on the expression evaluation
+wait_expression(
+    exp_to_eval,
+    timeout,
+    polling_rate=DEFAULT_TLM_POLLING_RATE,
+    globals=None,
+    locals=None,
+    quiet=False,
+) -> bool
+```
+
+| Parameter             | Description                                                                                                                   |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| expression            | An expression to evaluate.                                                                                                    |
+| timeout               | Timeout in seconds. Script will proceed if the wait statement times out waiting for the comparison to be true.                |
+| polling_rate          | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                                          |
+| context (ruby only)   | The context to call eval with. Defaults to nil. Context in Ruby is typically binding() and is usually not needed.             |
+| globals (python only) | The globals to call eval with. Defaults to None. Note that to use COSMOS APIs like tlm() you must pass globals().             |
+| locals (python only)  | The locals to call eval with. Defaults to None. Note that if you're using local variables in a method you must pass locals(). |
+| quiet                 | Whether to log the result. Defaults to false which means to log.                                                              |
+
+Ruby Example:
 
 ```ruby
-success = wait_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm('INST HEALTH_STATUS TEMP1') > 25.0", 10)
+success = wait_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm('INST HEALTH_STATUS TEMP1') > 25.0", 10, 0.25, nil, quiet: true)
+```
+
+Python Example:
+
+```python
+def check(value):
+    # Here we using both tlm() and a local 'value' so we need to pass globals() and locals()
+    return wait_expression("tlm('INST HEALTH_STATUS COLLECTS') > value", 5, 0.25, globals(), locals(), quiet=True)
+success = check(5)
 ```
 
 ### wait_packet
@@ -2208,23 +2258,51 @@ elapsed = wait_check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, typ
 
 Pauses the script until an expression is evaluated to be true or a timeout occurs. If a timeout occurs the script will stop. This method can be used to perform more complicated comparisons than using wait as shown in the example. Also see the syntax notes for [check_expression](#check_expression).
 
-Ruby / Python Syntax:
+Ruby Syntax:
 
 ```ruby
-# Returns the amount of time elapsed waiting for the expression
-elapsed = wait_check_expression("<Expression>", <Timeout>, <Polling Rate (optional)>)
+# Return time spent waiting for the expression to evaluate to true
+wait_check_expression(
+  exp_to_eval,
+  timeout,
+  polling_rate = DEFAULT_TLM_POLLING_RATE,
+  context = nil
+) -> int
 ```
 
-| Parameter    | Description                                                                                                 |
-| ------------ | ----------------------------------------------------------------------------------------------------------- |
-| Expression   | A ruby expression to evaluate.                                                                              |
-| Timeout      | Timeout in seconds. Script will stop if the wait statement times out waiting for the comparison to be true. |
-| Polling Rate | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                        |
+Python Syntax:
 
-Ruby / Python Example:
+```python
+# Return time spent waiting for the expression to evaluate to True
+wait_check_expression(
+    exp_to_eval,
+    timeout,
+    polling_rate=DEFAULT_TLM_POLLING_RATE,
+    globals=None,
+    locals=None
+) -> int
+```
+
+| Parameter             | Description                                                                                                                   |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| expression            | An expression to evaluate.                                                                                                    |
+| timeout               | Timeout in seconds. Script will proceed if the wait statement times out waiting for the comparison to be true.                |
+| polling_rate          | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                                          |
+| context (ruby only)   | The context to call eval with. Defaults to nil. Context in Ruby is typically binding() and is usually not needed.             |
+| globals (python only) | The globals to call eval with. Defaults to None. Note that to use COSMOS APIs like tlm() you must pass globals().             |
+| locals (python only)  | The locals to call eval with. Defaults to None. Note that if you're using local variables in a method you must pass locals(). |
+
+Ruby Example:
 
 ```ruby
 elapsed = wait_check_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm('INST HEALTH_STATUS TEMP1') > 25.0", 10)
+```
+
+Python Example:
+
+```python
+# Note that for Python we need to pass globals() to be able to use COSMOS API methods like tlm()
+elapsed = wait_check_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm('INST HEALTH_STATUS TEMP1') > 25.0", 10, 0.25, globals())
 ```
 
 ### wait_check_packet
@@ -3198,6 +3276,74 @@ Python Example:
 
 ```python
 router_protocol_cmd("INST", "DISABLE_CRC", read_write='READ_WRITE', index=-1)
+```
+
+## Tables
+
+These methods allow the user to script Table Manager.
+
+### table_create_binary
+
+Creates a table binary based on a table definition file. You can achieve the same result in the Table Manager GUI with File->New File. Returns the path to the binary file created.
+
+Ruby / Python Syntax:
+
+```ruby
+table_create_binary(<Table Definition File>)
+```
+
+| Parameter             | Description                                                                     |
+| --------------------- | ------------------------------------------------------------------------------- |
+| Table Definition File | Path to the table definition file, e.g. INST/tables/config/ConfigTables_def.txt |
+
+Ruby Example:
+
+```ruby
+table = table_create_binary("INST/tables/config/ConfigTables_def.txt") #=>
+# {"filename"=>"INST/tables/bin/ConfigTables.bin"}
+```
+
+Python Example:
+
+```python
+table = table_create_binary("INST/tables/config/ConfigTables_def.txt") #=>
+# {'filename': 'INST/tables/bin/ConfigTables.bin'}
+```
+
+### table_create_report
+
+Creates a table binary based on a table definition file. You can achieve the same result in the Table Manager GUI with File->New File. Returns the path to the binary file created.
+
+Ruby / Python Syntax:
+
+```ruby
+table_create_report(<Table Binary Filename>, <Table Definition File>, <Table Name (optional)>)
+```
+
+filename, definition, table_name
+
+| Parameter             | Description                                                                                                                                                                                                                                                                                                      |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Table Binary File     | Path to the table binary file, e.g. INST/tables/bin/ConfigTables.bin                                                                                                                                                                                                                                             |
+| Table Definition File | Path to the table definition file, e.g. INST/tables/config/ConfigTables_def.txt                                                                                                                                                                                                                                  |
+| Table Name            | Name of the table to create the report. This only applies if the Table Binary and Table Definition consist of multiple tables. By default the report consists of all tables and is named after the binary file. If the table name is given, the report is just the specified table and is named after the table. |
+
+Ruby Example:
+
+```ruby
+table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt") #=>
+# {"filename"=>"INST/tables/bin/ConfigTables.csv", "contents"=>"MC_CONFIGURATION\nLabel, ...
+table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt", table_name: "MC_CONFIGURATION") #=>
+# {"filename"=>"INST/tables/bin/McConfiguration.csv", "contents"=>"MC_CONFIGURATION\nLabel, ...
+```
+
+Python Example:
+
+```python
+table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt") #=>
+# {'filename': 'INST/tables/bin/ConfigTables.csv', 'contents': 'MC_CONFIGURATION\nLabel, ...
+table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt", table_name="MC_CONFIGURATION") #=>
+# {'filename': 'INST/tables/bin/ConfigTables.csv', 'contents': 'MC_CONFIGURATION\nLabel, ...
 ```
 
 ## Stashing Data

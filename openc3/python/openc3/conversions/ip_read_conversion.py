@@ -31,7 +31,7 @@ class IpReadConversion(Conversion):
     #   conversion.
     # @param buffer [String] The packet buffer
     # @return The converted value
-    def call(value, _packet, _buffer):
+    def call(self, value, _packet, _buffer):
         byte4 = value & 0xFF
         value = value >> 8
         byte3 = value & 0xFF

@@ -187,7 +187,7 @@ RSpec.describe Table, :type => :model do
       @get_object.body.read = 'definition'
       allow(OpenC3::TableManagerCore).to receive(:report).and_return('report')
       file = Table.report('DEFAULT', 'INST/tables/bin/table.bin', 'INST/tables/config/table_def.txt')
-      expect(file.filename).to eql 'table.csv'
+      expect(file.filename).to eql 'INST/tables/bin/table.csv'
       expect(file.contents).to eql 'report'
       expect(@put_object['DEFAULT/targets_modified/INST/tables/bin/table.csv']).to eql "report"
     end
@@ -202,9 +202,9 @@ RSpec.describe Table, :type => :model do
       Dir.mkdir(tmp_dir) unless File.exist?(tmp_dir)
       allow(Dir).to receive(:mktmpdir).and_return(tmp_dir)
       file = Table.report('DEFAULT', 'INST/tables/bin/table.bin', 'INST/tables/config/table_def.txt', 'MY_TABLE')
-      expect(file.filename).to eql 'MyTable.csv'
+      expect(file.filename).to eql 'INST/tables/bin/MyTable.csv'
       expect(file.contents).to eql 'report' # Check the simple stub
-      expect(@put_object['DEFAULT/targets_modified/INST/tables/bin/table.csv']).to eql "report"
+      expect(@put_object['DEFAULT/targets_modified/INST/tables/bin/MyTable.csv']).to eql "report"
       # Real test is did we create the definition files
       files = Dir.glob("#{tmp_dir}/**/*").map {|file| File.basename(file) }
       expect(files).to include('table_def.txt')

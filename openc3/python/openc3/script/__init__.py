@@ -142,18 +142,19 @@ def run_mode():
 ###########################################################################
 
 from .api_shared import *
-from .cosmos_calendar import *
 from .commands import *
+from .cosmos_calendar import *
+from .critical_cmd import *
 from .exceptions import *
 from .limits import *
-from .telemetry import *
 from .metadata import *
 from .packages import *
 from .plugins import *
 from .screen import *
 from .script_runner import *
 from .storage import *
-from .critical_cmd import *
+from .tables import *
+from .telemetry import *
 from openc3.api import WHITELIST
 
 

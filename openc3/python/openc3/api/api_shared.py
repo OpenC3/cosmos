@@ -154,10 +154,10 @@ def check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
             raise CheckError(message)
 
 
-def check_expression(exp_to_eval, locals=None):
+def check_expression(exp_to_eval, globals=None, locals=None):
     """Check to see if an expression is true without waiting.  If the expression
     is not true, the script will pause."""
-    success = _openc3_script_wait_expression(exp_to_eval, 0, DEFAULT_TLM_POLLING_RATE, locals)
+    success = _openc3_script_wait_expression(exp_to_eval, 0, DEFAULT_TLM_POLLING_RATE, globals, locals)
     if success:
         print(f"CHECK: {exp_to_eval} is TRUE")
     else:
@@ -331,12 +331,13 @@ def wait_expression(
     exp_to_eval,
     timeout,
     polling_rate=DEFAULT_TLM_POLLING_RATE,
+    globals=None,
     locals=None,
     quiet=False,
 ):
     """Wait on a custom expression to be true"""
     start_time = time.time()
-    success = _openc3_script_wait_expression(exp_to_eval, timeout, polling_rate, locals)
+    success = _openc3_script_wait_expression(exp_to_eval, timeout, polling_rate, globals, locals)
     time_diff = time.time() - start_time
     if not quiet:
         if success:
@@ -465,10 +466,10 @@ def wait_check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
     return time_diff
 
 
-def wait_check_expression(exp_to_eval, timeout, polling_rate=DEFAULT_TLM_POLLING_RATE, context=None):
+def wait_check_expression(exp_to_eval, timeout, polling_rate=DEFAULT_TLM_POLLING_RATE, globals=None, locals=None):
     """Wait on an expression to be true.  On a timeout, the script will pause"""
     start_time = time.time()
-    success = _openc3_script_wait_expression(exp_to_eval, timeout, polling_rate, context)
+    success = _openc3_script_wait_expression(exp_to_eval, timeout, polling_rate, globals, locals)
     time_diff = time.time() - start_time
     if success:
         print(f"CHECK: {exp_to_eval} is TRUE after waiting {time_diff:.3f} seconds")
@@ -913,7 +914,7 @@ def _openc3_script_wait_array_tolerance(
     )
 
 
-def _openc3_script_wait_expression(exp_to_eval, timeout, polling_rate, locals=None):
+def _openc3_script_wait_expression(exp_to_eval, timeout, polling_rate, globals=None, locals=None):
     """Wait on an expression to be true."""
     end_time = time.time() + timeout
     if not exp_to_eval.isascii():
@@ -922,7 +923,7 @@ def _openc3_script_wait_expression(exp_to_eval, timeout, polling_rate, locals=No
     try:
         while True:
             work_start = time.time()
-            if eval(exp_to_eval, locals):
+            if eval(exp_to_eval, globals, locals):
                 return True
             if time.time() >= end_time:
                 break
@@ -937,7 +938,7 @@ def _openc3_script_wait_expression(exp_to_eval, timeout, polling_rate, locals=No
             canceled = openc3_script_sleep(sleep_time)
 
             if canceled:
-                if eval(exp_to_eval, locals):
+                if eval(exp_to_eval, globals, locals):
                     return True
                 else:
                     return None
