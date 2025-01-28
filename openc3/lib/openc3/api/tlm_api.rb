@@ -131,7 +131,16 @@ module OpenC3
       if item_hash
         item_hash = item_hash.transform_keys(&:upcase)
         # Check that the items exist ... exceptions are raised if not
-        TargetModel.packet_items(target_name, packet_name, item_hash.keys, scope: scope)
+        items = TargetModel.packet_items(target_name, packet_name, item_hash.keys, scope: scope)
+        if type == :CONVERTED
+          # If the type is converted, check that the item states are valid
+          item_hash.each do |item_name, item_value|
+            item = items.find { |i| i['name'] == item_name }
+            if item['states'] && !item['states'][item_value]
+              raise "Unknown state '#{item_value}' for #{item['name']}, must be one of #{item['states'].keys.join(', ')}"
+            end
+          end
+        end
       else
         # Check that the packet exists ... exceptions are raised if not
         TargetModel.packet(target_name, packet_name, scope: scope)
