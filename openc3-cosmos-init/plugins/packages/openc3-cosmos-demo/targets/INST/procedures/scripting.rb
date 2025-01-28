@@ -77,9 +77,9 @@ script = list.select {|script| script["id"] == id}[0]
 # Script is deleted, so it should NOT be in the running list
 check_expression("#{script.nil?} == true")
 list = completed_script_list()
-# Script is deleted so it should NOT be in the completed list
+# Script is deleted so it should be in the completed list
 script = list.select {|script| script["id"] == id}[0]
-check_expression("#{script.nil?} == true")
+check_expression("#{script.nil?} == false")
 
 script_lock(SCRIPT_NAME)
 script_unlock(SCRIPT_NAME)

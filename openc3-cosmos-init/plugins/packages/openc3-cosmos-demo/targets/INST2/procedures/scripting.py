@@ -73,9 +73,9 @@ script = [script for script in list if script["id"] == id]
 # Script is deleted, so it should NOT be in the running list
 check_expression(f"{len(script)} == 0")
 list = completed_script_list()
-# Script is deleted so it should NOT be in the completed list
+# Script is deleted so it should be in the completed list
 script = [script for script in list if script["id"] == id]
-check_expression(f"{len(script)} == 0")
+check_expression(f"{len(script)} == 1")
 
 script_lock(SCRIPT_NAME)
 script_unlock(SCRIPT_NAME)
