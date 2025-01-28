@@ -94,13 +94,10 @@ module OpenC3
       if color.nil?
         color = '#%06x' % (rand * 0xffffff)
       end
-      valid_color = color =~ /[0-9a-fA-F]{6}/
-      if valid_color.nil?
-        raise RuntimeError.new "invalid color but in hex format. #FF0000"
+      unless color =~ /#?([0-9a-fA-F]{6})/
+        raise TimelineInputError.new "invalid color, must be in hex format, e.g. #FF0000"
       end
-      unless color.start_with?('#')
-        color = "##{color}"
-      end
+      color = "##{color}" unless color.start_with?('#')
       @color = color
     end
 

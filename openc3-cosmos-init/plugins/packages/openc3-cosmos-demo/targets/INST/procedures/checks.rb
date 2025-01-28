@@ -1,4 +1,4 @@
-# Display all environment variables
+# Display the environment variables
 puts ENV.inspect
 # Print the TYPE env var which is set in the INST COMMANDING screen
 puts "ENV['TYPE']:#{ENV['TYPE']}"

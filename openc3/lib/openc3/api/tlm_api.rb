@@ -35,7 +35,7 @@ module OpenC3
                        'tlm_raw',
                        'tlm_formatted',
                        'tlm_with_units',
-                       'tlm_variable',
+                       'tlm_variable', # DEPRECATED
                        'set_tlm',
                        'inject_tlm',
                        'override_tlm',

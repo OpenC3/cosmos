@@ -66,6 +66,11 @@ module CmdTlmApi
       token: -> request { request.headers['HTTP_AUTHORIZATION'] || request.query_parameters[:authorization] }
     }
     config.rails_semantic_logger.add_file_appender = false
-    config.semantic_logger.add_appender(io: $stdout, formatter: OpenC3::CosmosRailsFormatter.new)
+    config.semantic_logger.add_appender(
+      io: $stdout,
+      formatter: OpenC3::CosmosRailsFormatter.new,
+      # These happen every 5s and clog up the logs
+      filter: -> log { log.message != "Completed #traefik" }
+    )
   end
 end

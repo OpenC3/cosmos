@@ -17,6 +17,9 @@
     },
     {
       "path": "../anycable"
+    },
+    {
+      "path": "../openc3-schedule"
     }
   ],
   "settings": {

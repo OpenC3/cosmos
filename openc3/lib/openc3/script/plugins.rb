@@ -20,7 +20,7 @@ module OpenC3
   module Script
     private
 
-    def plugin_list(scope: $openc3_scope)
+    def plugin_list(default: false, scope: $openc3_scope)
       response_body = nil
       begin
         endpoint = "/openc3-api/plugins?scope=#{scope}"
@@ -35,7 +35,15 @@ module OpenC3
           http.request(request) do |response|
             response_body = response.body
             response.value() # Raises an HTTP error if the response is not 2xx (success)
-            return JSON.parse(response.body, allow_nan: true, create_additions: true)
+            plugins = JSON.parse(response.body, allow_nan: true, create_additions: true)
+            if default
+              return plugins
+            else
+              return plugins.select do |plugin|
+                !plugin.include?('openc3-cosmos-tool-') and !plugin.include?('openc3-tool-base') and
+                !plugin.include?('openc3-cosmos-enterprise-tool-') and !plugin.include?('openc3-enterprise-tool-base')
+              end
+            end
           end
         end
       rescue => e

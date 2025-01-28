@@ -96,9 +96,9 @@ Rails.application.routes.draw do
     get '/timeline/:name/count', to: 'activity#count', name: /[^\/]+/
     get '/timeline/:name/activities', to: 'activity#index', name: /[^\/]+/
     post '/timeline/:name/activities', to: 'activity#create', name: /[^\/]+/
-    get '/timeline/:name/activity/:id', to: 'activity#show', name: /[^\/]+/, id: /[^\/]+/
-    post '/timeline/:name/activity/:id', to: 'activity#event', name: /[^\/]+/, id: /[^\/]+/
-    match '/timeline/:name/activity/:id', to: 'activity#update', name: /[^\/]+/, id: /[^\/]+/, via: [:patch, :put]
+    get '/timeline/:name/activity/:id(/:uuid)', to: 'activity#show', name: /[^\/]+/, id: /[^\/]+/, uuid: /[^\/]+/
+    post '/timeline/:name/activity/:id(/:uuid)', to: 'activity#event', name: /[^\/]+/, id: /[^\/]+/, uuid: /[^\/]+/
+    match '/timeline/:name/activity/:id(/:uuid)', to: 'activity#update', name: /[^\/]+/, id: /[^\/]+/, uuid: /[^\/]+/, via: [:patch, :put]
     # NOTE: uuid is new as of 5.19.0
     delete '/timeline/:name/activity/:id(/:uuid)', to: 'activity#destroy', name: /[^\/]+/, id: /[^\/]+/, uuid: /[^\/]+/
 

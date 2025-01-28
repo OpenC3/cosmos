@@ -54,6 +54,7 @@ class RunningScriptController < ApplicationController
     if running_script
       target_name = running_script['name'].split('/')[0]
       return unless authorization('script_run', target_name: target_name)
+      running_script_publish("cmd-running-script-channel:#{params[:id]}", "stop")
       RunningScript.delete(params[:id].to_i)
       OpenC3::Logger.info("Script deleted: #{running_script}", scope: params[:scope], user: username())
       head :ok
