@@ -48,6 +48,13 @@ module OpenC3
       )
     end
 
+    describe "initialize" do
+      it "only accepts color as hex" do
+        expect { TimelineModel.new(name: "foo", scope: "scope", color: "red") }.to raise_error(TimelineError)
+        expect { TimelineModel.new(name: "foo", scope: "scope", color: "#FF0000") }.to_not raise_error
+      end
+    end
+
     describe "self.get" do
       it "returns a timeline model" do
         scope = "scope"
@@ -163,6 +170,8 @@ module OpenC3
 
     describe "deploy" do
       it "generates a new microservice and topic" do
+        s3 = instance_double("Aws::S3::Client")
+        allow(Aws::S3::Client).to receive(:new).and_return(s3)
         name = "foobar"
         scope = "scope"
         model = TimelineModel.new(name: name, scope: scope)

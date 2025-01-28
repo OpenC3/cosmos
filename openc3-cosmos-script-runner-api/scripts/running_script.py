@@ -18,6 +18,7 @@ from openc3.script.suite_runner import SuiteRunner
 from openc3.utilities.string import build_timestamped_filename
 from openc3.utilities.bucket_utilities import BucketUtilities
 from openc3.script.storage import _get_storage_file
+from openc3.utilities.store_queued import StoreQueued
 import linecache
 
 SCRIPT_API = 'script-api'
@@ -37,6 +38,7 @@ def running_script_anycable_publish(channel_name, data):
 def _openc3_script_sleep(sleep_time=None):
     if RunningScript.disconnect:
         return True
+    RunningScript.instance.update_running_script_store('waiting')
 
     running_script_anycable_publish(
         f"running-script-channel:{RunningScript.instance.id}",
@@ -308,6 +310,17 @@ class RunningScript:
             # Process the suite file in this context so we can load it
             SuiteRunner.build_suites(from_globals=globals())
 
+    # Called to update the running script state every time the state or current_line_number changes
+    def update_running_script_store(self, state = None):
+        if state:
+            self.state = state
+        self.details["state"] = self.state
+        self.details["line_no"] = self.current_line_number
+        self.details["update_time"] = datetime.now(timezone.utc).strftime(
+            RunningScript.STRFTIME_FORMAT
+        )
+        StoreQueued.set(f"running-script:{RunningScript.id}", json.dumps(self.details))
+
     def parse_options(self, options):
         settings = {}
         if "manual" in options:
@@ -522,6 +535,7 @@ class RunningScript:
                 detail_string = os.path.basename(filename) + ":" + str(line_number)
                 Logger.detail_string = detail_string
 
+            self.update_running_script_store('running')
             running_script_anycable_publish(
                 f"running-script-channel:{RunningScript.id}",
                 {
@@ -791,6 +805,7 @@ class RunningScript:
 
     def mark_running(self):
         self.state = "running"
+        self.update_running_script_store()
         running_script_anycable_publish(
             f"running-script-channel:{RunningScript.id}",
             {
@@ -803,6 +818,7 @@ class RunningScript:
 
     def mark_paused(self):
         self.state = "paused"
+        self.update_running_script_store()
         running_script_anycable_publish(
             f"running-script-channel:{RunningScript.id}",
             {
@@ -815,6 +831,7 @@ class RunningScript:
 
     def mark_waiting(self):
         self.state = "waiting"
+        self.update_running_script_store()
         running_script_anycable_publish(
             f"running-script-channel:{RunningScript.id}",
             {
@@ -827,6 +844,7 @@ class RunningScript:
 
     def mark_error(self):
         self.state = "error"
+        self.update_running_script_store()
         running_script_anycable_publish(
             f"running-script-channel:{RunningScript.id}",
             {
@@ -839,6 +857,7 @@ class RunningScript:
 
     def mark_fatal(self):
         self.state = "fatal"
+        self.update_running_script_store()
         running_script_anycable_publish(
             f"running-script-channel:{RunningScript.id}",
             {
@@ -851,6 +870,7 @@ class RunningScript:
 
     def mark_stopped(self):
         self.state = "stopped"
+        self.update_running_script_store()
         running_script_anycable_publish(
             f"running-script-channel:{RunningScript.id}",
             {
@@ -916,6 +936,7 @@ class RunningScript:
 
     def mark_breakpoint(self):
         self.state = "breakpoint"
+        self.update_running_script_store()
         running_script_anycable_publish(
             f"running-script-channel:{RunningScript.id}",
             {
@@ -1215,14 +1236,14 @@ openc3.script.RUNNING_SCRIPT = RunningScript
 
 
 def step_mode():
-    RunningScript.instance.step()
+    RunningScript.instance.do_step()
 
 
 setattr(openc3.script, "step_mode", step_mode)
 
 
 def run_mode():
-    RunningScript.instance.go()
+    RunningScript.instance.do_go()
 
 
 setattr(openc3.script, "run_mode", run_mode)
@@ -1398,7 +1419,7 @@ setattr(openc3.script, "local_screen", local_screen)
 
 
 def download_file(path, scope=OPENC3_SCOPE):
-    url = openc3.script.get_download_url(path, scope=scope)
+    url = openc3.script._get_download_url(path, scope=scope)
     running_script_anycable_publish(
         f"running-script-channel:{RunningScript.instance.id}",
         {"type": "downloadfile", "filename": os.path.basename(path), "url": url}

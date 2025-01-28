@@ -154,7 +154,6 @@ class TargetModel(Model):
     @classmethod
     def limits_groups(cls, scope: str = OPENC3_SCOPE):
         groups = Store.hgetall(f"{scope}__limits_groups")
-        print(f"groups:{groups} type:{type(groups)}")
         if groups:
             return {k.decode(): json.loads(v) for (k, v) in groups.items()}
         else:

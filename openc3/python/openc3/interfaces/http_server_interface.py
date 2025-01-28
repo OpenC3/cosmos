@@ -33,7 +33,6 @@ class Handler(BaseHTTPRequestHandler):
 
     def handle_request(self):
         base = self.path.split("?")[0]
-        print("base:", base)
         if self.server.lookup.get(base):
             packets = self.server.lookup[base]
             status = 200

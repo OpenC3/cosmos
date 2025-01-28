@@ -66,10 +66,17 @@ module OpenC3
     end
 
     # @return [String|nil] String of the saved json or nil if score not found under primary_key
-    def self.score(name:, score:, scope:)
-      value = Store.zrangebyscore("#{scope}#{PRIMARY_KEY}__#{name}", score, score, :limit => [0, 1]).first
-      if value
-        return ActivityModel.from_json(value, name: name, scope: scope)
+    def self.score(name:, score:, scope:, uuid: nil)
+      values = Store.zrangebyscore("#{scope}#{PRIMARY_KEY}__#{name}", score, score)
+      if values and values.length > 0
+        if uuid
+          values.each do |value|
+            activity = ActivityModel.from_json(value, name: name, scope: scope)
+            return activity if activity.uuid == uuid
+          end
+        else
+          return ActivityModel.from_json(values[0], name: name, scope: scope)
+        end
       end
       return nil
     end
