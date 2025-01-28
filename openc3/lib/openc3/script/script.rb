@@ -25,18 +25,23 @@ require 'openc3/api/api'
 require 'openc3/io/json_drb_object'
 require 'openc3/script/api_shared'
 require 'openc3/script/calendar'
-require 'openc3/script/metadata'
 require 'openc3/script/commands'
-require 'openc3/script/telemetry'
-require 'openc3/script/limits'
+require 'openc3/script/critical_cmd'
 require 'openc3/script/exceptions'
+# openc3/script/extract is just helper methods
+require 'openc3/script/limits'
+require 'openc3/script/metadata'
+require 'openc3/script/packages'
+require 'openc3/script/plugins'
 require 'openc3/script/screen'
 require 'openc3/script/script_runner'
 require 'openc3/script/storage'
+# openc3/script/suite_results and suite_runner are used by
+# running_script.rb and the script_runner_api
+# openc3/script/suite is used by end user SR Suites
+require 'openc3/script/tables'
+require 'openc3/script/telemetry'
 require 'openc3/script/web_socket_api'
-require 'openc3/script/packages'
-require 'openc3/script/plugins'
-require 'openc3/script/critical_cmd'
 require 'openc3/utilities/authentication'
 
 $api_server = nil

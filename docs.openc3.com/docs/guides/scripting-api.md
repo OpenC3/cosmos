@@ -2936,6 +2936,74 @@ Python Example:
 router_protocol_cmd("INST", "DISABLE_CRC", read_write='READ_WRITE', index=-1)
 ```
 
+## Tables
+
+These methods allow the user to script Table Manager.
+
+### table_create_binary
+
+Creates a table binary based on a table definition file. You can achieve the same result in the Table Manager GUI with File->New File. Returns the path to the binary file created.
+
+Ruby / Python Syntax:
+
+```ruby
+table_create_binary(<Table Definition File>)
+```
+
+| Parameter             | Description                                                                     |
+| --------------------- | ------------------------------------------------------------------------------- |
+| Table Definition File | Path to the table definition file, e.g. INST/tables/config/ConfigTables_def.txt |
+
+Ruby Example:
+
+```ruby
+table = table_create_binary("INST/tables/config/ConfigTables_def.txt") #=>
+# {"filename"=>"INST/tables/bin/ConfigTables.bin"}
+```
+
+Python Example:
+
+```python
+table = table_create_binary("INST/tables/config/ConfigTables_def.txt") #=>
+# {'filename': 'INST/tables/bin/ConfigTables.bin'}
+```
+
+### table_create_report
+
+Creates a table binary based on a table definition file. You can achieve the same result in the Table Manager GUI with File->New File. Returns the path to the binary file created.
+
+Ruby / Python Syntax:
+
+```ruby
+table_create_report(<Table Binary Filename>, <Table Definition File>, <Table Name (optional)>)
+```
+
+filename, definition, table_name
+
+| Parameter             | Description                                                                                                                                                                                                                                                                                                      |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Table Binary File     | Path to the table binary file, e.g. INST/tables/bin/ConfigTables.bin                                                                                                                                                                                                                                             |
+| Table Definition File | Path to the table definition file, e.g. INST/tables/config/ConfigTables_def.txt                                                                                                                                                                                                                                  |
+| Table Name            | Name of the table to create the report. This only applies if the Table Binary and Table Definition consist of multiple tables. By default the report consists of all tables and is named after the binary file. If the table name is given, the report is just the specified table and is named after the table. |
+
+Ruby Example:
+
+```ruby
+table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt") #=>
+# {"filename"=>"INST/tables/bin/ConfigTables.csv", "contents"=>"MC_CONFIGURATION\nLabel, ...
+table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt", table_name: "MC_CONFIGURATION") #=>
+# {"filename"=>"INST/tables/bin/McConfiguration.csv", "contents"=>"MC_CONFIGURATION\nLabel, ...
+```
+
+Python Example:
+
+```python
+table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt") #=>
+# {'filename': 'INST/tables/bin/ConfigTables.csv', 'contents': 'MC_CONFIGURATION\nLabel, ...
+table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt", table_name="MC_CONFIGURATION") #=>
+# {'filename': 'INST/tables/bin/ConfigTables.csv', 'contents': 'MC_CONFIGURATION\nLabel, ...
+```
+
 ## Stashing Data
 
 These methods allow the user to store temporary data into COSMOS and retrieve it. The storage is implemented as a key / value storage (Ruby hash or Python dict). This can be used in scripts to store information that applies across multiple scripts or multiple runs of a single script.
