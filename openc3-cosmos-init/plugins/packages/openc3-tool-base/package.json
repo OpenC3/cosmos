@@ -16,7 +16,7 @@
     "date-fns": "4.1.0",
     "import-map-overrides": "5.1.0",
     "systemjs": "6.15.1",
-    "vuetify": "3.7.8"
+    "vuetify": "3.7.6"
   },
   "devDependencies": {
     "@babel/plugin-transform-modules-systemjs": "7.25.9",
