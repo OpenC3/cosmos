@@ -193,23 +193,36 @@ export default {
     },
     received: function (data) {
       for (let i = 0; i < data.length; i++) {
+        let xaxis = [] // Declare outside the loop so we can use it for the X axis values
         for (const [key, value] of Object.entries(data[i])) {
+          // We support 2 different kind of data, a simple array of Y values
+          // or an array with both X and Y values, e.g. [[x1,x2,x3...], [y1,y2,y3...]]
           if (key === '__time') {
-            let xaxis = []
+            // Explicitly setting the X axis values always wins
             if (this.xAxis) {
+              xaxis = []
               let x = this.xAxis.start
               for (let i = 0; i < this.data[1].length; i++) {
                 xaxis.push(x)
                 x += this.xAxis.step
               }
             } else {
-              xaxis = Array.from({ length: this.data[1].length }, (_, i) => i)
+              // If we don't have an array of X values we generate them
+              if (xaxis.length === 0) {
+                xaxis = Array.from({ length: this.data[1].length }, (_, i) => i)
+              }
             }
             this.data[0] = xaxis
           }
           let key_index = this.indexes[key]
           if (key_index) {
-            this.data[key_index] = value
+            // Check for the array of arrays case
+            if (Array.isArray(value[0])) {
+              this.data[key_index] = value[1]
+              xaxis = value[0]
+            } else {
+              this.data[key_index] = value
+            }
           }
         }
       }
