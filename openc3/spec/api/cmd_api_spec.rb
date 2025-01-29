@@ -168,7 +168,7 @@ module OpenC3
               expect { @api.send(method, "INST COLLECT with TYPE #{type}, DURATION 10") }.not_to raise_error
             else
               # Non-raw commands still raise because the state parameter is checked during the write
-              expect { @api.send(method, "INST COLLECT with TYPE #{type}, DURATION 10") }.to raise_error("Unknown state OTHER for TYPE, must be one of NORMAL, SPECIAL")
+              expect { @api.send(method, "INST COLLECT with TYPE #{type}, DURATION 10") }.to raise_error("Unknown state 'OTHER' for TYPE, must be one of NORMAL, SPECIAL")
             end
           else
             # cmd(), cmd_raw() and (no_hazardous_check variants) check the state parameter and raise

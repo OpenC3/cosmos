@@ -684,7 +684,7 @@ class PacketWrite(unittest.TestCase):
         self.assertEqual(self.buffer, b"\x01\x00\x00\x00")
         self.p.write_item(i, "FALSE", "CONVERTED", self.buffer)
         self.assertEqual(self.buffer, b"\x02\x00\x00\x00")
-        with self.assertRaisesRegex(ValueError, "Unknown state BLAH for ITEM"):
+        with self.assertRaisesRegex(ValueError, "Unknown state 'BLAH' for ITEM"):
             self.p.write_item(i, "BLAH", "CONVERTED", self.buffer)
         i.write_conversion = GenericConversion("value / 2")
         self.p.write("ITEM", 4, "CONVERTED", self.buffer)

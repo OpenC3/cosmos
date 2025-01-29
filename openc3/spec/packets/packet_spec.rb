@@ -729,7 +729,7 @@ module OpenC3
         expect(@buffer).to eql "\x01\x00\x00\x00"
         @p.write_item(i, "FALSE", :CONVERTED, @buffer)
         expect(@buffer).to eql "\x02\x00\x00\x00"
-        expect { @p.write_item(i, "BLAH", :CONVERTED, @buffer) }.to raise_error(RuntimeError, "Unknown state BLAH for ITEM, must be one of TRUE, FALSE")
+        expect { @p.write_item(i, "BLAH", :CONVERTED, @buffer) }.to raise_error(RuntimeError, "Unknown state 'BLAH' for ITEM, must be one of TRUE, FALSE")
         i.write_conversion = GenericConversion.new("value / 2")
         @p.write("ITEM", 4, :CONVERTED, @buffer)
         expect(@buffer).to eql "\x02\x00\x00\x00"

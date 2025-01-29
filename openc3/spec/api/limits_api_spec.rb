@@ -308,7 +308,7 @@ module OpenC3
     describe "get_overall_limits_state" do
       it "returns the overall system limits state" do
         @api.inject_tlm("INST", "HEALTH_STATUS",
-                        { 'TEMP1' => 0, 'TEMP2' => 0, 'TEMP3' => 0, 'TEMP4' => 0, 'GROUND1STATUS' => 1, 'GROUND2STATUS' => 1 })
+                        { 'TEMP1' => 0, 'TEMP2' => 0, 'TEMP3' => 0, 'TEMP4' => 0, 'GROUND1STATUS' => 'CONNECTED', 'GROUND2STATUS' => 'CONNECTED' })
         sleep 0.1
         expect(@api.get_overall_limits_state).to eql "GREEN"
         # TEMP1 limits: -80.0 -70.0 60.0 80.0 -20.0 20.0
