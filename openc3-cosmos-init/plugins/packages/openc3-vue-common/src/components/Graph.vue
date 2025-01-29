@@ -447,8 +447,8 @@ export default {
       errors: [],
       colorIndex: 0,
       colors: [
-        // These are taken right from the Astro css definitions for
-        // --color-data-visualization-1 through 8
+        // The first 3 are taken from the Astro css definitions for
+        // --color-data-visualization-1 through 3
         '#00c7cb',
         '#938bdb',
         '#4dacff',

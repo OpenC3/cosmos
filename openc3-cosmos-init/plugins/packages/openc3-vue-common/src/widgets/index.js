@@ -16,6 +16,7 @@
 # if purchased from OpenC3, Inc.
 */
 
+import ArrayplotWidget from './ArrayplotWidget.vue'
 import ArrayWidget from './ArrayWidget.vue'
 import BarColumn from './BarColumn'
 import BlockWidget from './BlockWidget.vue'
@@ -82,6 +83,7 @@ import Widget from './Widget'
 import WidgetComponents from './WidgetComponents'
 
 export {
+  ArrayplotWidget,
   ArrayWidget,
   BarColumn,
   BlockWidget,
