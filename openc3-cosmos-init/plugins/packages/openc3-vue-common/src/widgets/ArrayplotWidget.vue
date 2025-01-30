@@ -134,7 +134,12 @@ export default {
           },
         },
       ],
-      series: [{}, ...chartSeries],
+      series: [
+        {
+          label: 'X Value',
+        },
+        ...chartSeries,
+      ],
     }
     this.graph = new uPlot(
       chartOpts,
@@ -191,26 +196,22 @@ export default {
           this.subscription = subscription
         })
     },
-    received: function (data) {
-      for (let i = 0; i < data.length; i++) {
+    received: function (data_array) {
+      for (let data of data_array) {
         let xaxis = [] // Declare outside the loop so we can use it for the X axis values
-        for (const [key, value] of Object.entries(data[i])) {
+        for (const [key, value] of Object.entries(data)) {
           // We support 2 different kind of data, a simple array of Y values
           // or an array with both X and Y values, e.g. [[x1,x2,x3...], [y1,y2,y3...]]
           if (key === '__time') {
             // Explicitly setting the X axis values always wins
             if (this.xAxis) {
-              xaxis = []
-              let x = this.xAxis.start
-              for (let i = 0; i < this.data[1].length; i++) {
-                xaxis.push(x)
-                x += this.xAxis.step
-              }
-            } else {
+              xaxis = Array.from(
+                { length: this.data[1].length },
+                (_, i) => this.xAxis.start + i * this.xAxis.step,
+              )
+            } else if (xaxis.length === 0) {
               // If we don't have an array of X values we generate them
-              if (xaxis.length === 0) {
-                xaxis = Array.from({ length: this.data[1].length }, (_, i) => i)
-              }
+              xaxis = Array.from({ length: this.data[1].length }, (_, i) => i)
             }
             this.data[0] = xaxis
           }
