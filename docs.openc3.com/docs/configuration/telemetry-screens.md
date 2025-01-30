@@ -596,6 +596,92 @@ ARRAY INST HEALTH_STATUS ARY2 200 100 nil 4 WITH_UNITS
 ![ARRAY](/img/telemetry_viewer/widgets/array.png)
 
 
+### ARRAYPLOT
+**Plot an array of values**
+
+
+Example Usage:
+```ruby
+ARRAYPLOT
+  SETTING TITLE "Array Data"
+  SETTING ITEM INST HEALTH_STATUS ARY
+  SETTING ITEM INST HEALTH_STATUS ARY2
+  SETTING SIZE 600 400
+  SETTING X_AXIS 10 10
+```
+![ARRAYPLOT](/img/telemetry_viewer/widgets/arrayplot.png)
+
+The following settings apply to ARRAYPLOT. They are applied using the SETTING keyword.
+#### TITLE
+**Title of the plot**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Title | Title of the plot | True |
+
+#### X_AXIS
+**Define the x-axis parameters for the plot**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Start | Start value for the x-axis | True |
+| Step | Step value for the x-axis | True |
+
+#### ITEM
+**Add a telemetry item to the graph**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Target name | The target name | True |
+| Packet name | The packet name | True |
+| Item name | The item name | True |
+| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED</span> | False |
+| Reduced | Whether to display reduced data. Default is DECOM.<br/><br/>Valid Values: <span class="values">DECOM, REDUCED_MINUTE, REDUCED_HOUR, REDUCED_DAY</span> | False |
+| Reduced Type | The type of reduce data to display. Only applies if Reduced is not DECOM.<br/><br/>Valid Values: <span class="values">MIN, MAX, AVG, STDDEV</span> | False |
+
+#### STARTTIME
+<div class="right">(Since 5.5.1)</div>**Start the graph history at the designated Time**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Start Time | Start time as formatted 'YYYY/MM/DD HH:MM:SS' | True |
+
+#### HISTORY
+<div class="right">(Since 5.5.1)</div>**Display an initial history of data**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Value | Value(d,h,m,s). For example 1d, 2h, 30m, 15s | True |
+
+#### SECONDSGRAPHED
+**Display the specified number of seconds in the graph**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Time | Number of seconds to display | True |
+
+#### POINTSSAVED
+**Save the number of seconds in graph memory**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Time | Number of seconds to save | True |
+
+#### POINTSGRAPHED
+**Number of points to display on the graph**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Time | Number of points to graph | True |
+
+#### SIZE
+**Size of the graph**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Width | Width in pixels | True |
+| Height | Height in pixels | True |
+
 ### BLOCK
 **Displays BLOCK data organized into rows and space separated**
 

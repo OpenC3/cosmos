@@ -245,6 +245,40 @@ Telemetry Widgets:
       example: |
         ARRAY INST HEALTH_STATUS ARY 250 80 "0x%x" 6 FORMATTED
         ARRAY INST HEALTH_STATUS ARY2 200 100 nil 4 WITH_UNITS
+    ARRAYPLOT:
+      summary: Plot an array of values.
+      description:
+        The item can either be a simple array or a 2D array of x values and y values, e.g. [[x1, x2, x3], [y1, y2, y3]].
+        If the X_AXIS setting is not specified, the X axis starts with 0 and increments by 1.
+        If the X_AXIS setting is used the x values of a 2D array will be ignored.
+      settings:
+        TITLE:
+          summary: Title of the plot
+          parameters:
+            - name: Title
+              required: true
+              description: Title of the plot
+              values: .+
+        X_AXIS:
+          summary: Define the x-axis parameters for the plot
+          parameters:
+            - name: Start
+              required: true
+              description: Start value for the x-axis
+              values: .+
+            - name: Step
+              required: true
+              description: Step value for the x-axis
+              values: .+
+        # Inject the graph settings
+        <%= MetaConfigParser.load('graph_settings.yaml').to_meta_config_yaml(8) %>
+      example: |
+        ARRAYPLOT
+          SETTING TITLE "Array Data"
+          SETTING ITEM INST HEALTH_STATUS ARY
+          SETTING ITEM INST HEALTH_STATUS ARY2
+          SETTING SIZE 600 400
+          SETTING X_AXIS 10 10
     BLOCK:
       summary: Displays BLOCK data organized into rows and space separated
       parameters:

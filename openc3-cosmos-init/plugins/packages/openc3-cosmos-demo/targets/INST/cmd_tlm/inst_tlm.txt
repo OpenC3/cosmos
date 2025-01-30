@@ -73,6 +73,14 @@ TELEMETRY <%= target_name %> HEALTH_STATUS BIG_ENDIAN "Health and status from th
     GENERIC_READ_CONVERSION_START FLOAT 32
       packet.read('TEMP1') * 1_000_000
     GENERIC_READ_CONVERSION_END
+  # Enable to test the ARRAYPLOT widget with array of array data [[x1,x2,...],[y1,y2,...]]
+  # ITEM POINTS 0 0 DERIVED
+  #   GENERIC_READ_CONVERSION_START UINT 800
+  #     return [
+  #       Array.new(800) { |i| i * 0.1 },
+  #       (0...800).map { |i| Math.sin(2 * Math::PI * i / 800) }
+  #     ]
+  #   GENERIC_READ_CONVERSION_END
   PROCESSOR TEMP1STAT statistics_processor.rb TEMP1 100
   PROCESSOR TEMP1WATER watermark_processor.rb TEMP1
 
