@@ -58,9 +58,16 @@ module CmdTlmApi
       )
     end
 
+    puts "Starting #{$0} in #{Rails.env} environment"
+
     # Setup structured logging
     require 'openc3/utilities/cosmos_rails_formatter'
-    config.log_level = ENV["LOG_LEVEL"] || :info
+    # Don't set the anycable logger to info because it's way too much output
+    if $0.include?('anycable')
+      config.log_level = ENV["LOG_LEVEL"] || :error
+    else
+      config.log_level = ENV["LOG_LEVEL"] || :info
+    end
     config.log_tags = {
       request_id: :request_id,
       token: -> request { request.headers['HTTP_AUTHORIZATION'] || request.query_parameters[:authorization] }

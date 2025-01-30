@@ -20,7 +20,7 @@
 # if purchased from OpenC3, Inc.
 */
 
-import { createConsumer } from "@anycable/web";
+import { createConsumer } from '@anycable/web'
 
 export default class Cable {
   constructor(url = '/openc3-api/cable') {
@@ -29,7 +29,8 @@ export default class Cable {
   }
   disconnect() {
     if (this._cable) {
-      this._cable.disconnect()
+      this._cable.cable.disconnect()
+      this._cable = null
     }
   }
   createSubscription(channel, scope, callbacks = {}, additionalOptions = {}) {
