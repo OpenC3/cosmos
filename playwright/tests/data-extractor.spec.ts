@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -73,9 +73,9 @@ test('validates dates and times', async ({ page, utils }) => {
   // Firefox doesn't appear to limit at all so you need to enter entire date
   // End result is that in Chromium the date gets entered as the 2 digit year
   // e.g. "22", which is fine because even if you go big it will round down.
-  await page.locator('[data-test=start-date]').type(format(d, 'MM'))
-  await page.locator('[data-test=start-date]').type(format(d, 'dd'))
-  await page.locator('[data-test=start-date]').type(format(d, 'yyyy'))
+  // The 'yyyy-MM-dd' format isn't how the date is displayed, but that's how it's
+  // filled programatically. (https://github.com/microsoft/playwright/pull/1676)
+  await page.locator('[data-test=start-date] input').fill(format(d, 'yyyy-MM-dd'))
   await expect(page.locator('text=Required')).not.toBeVisible()
   // Time validation
   await page.locator('[data-test=start-time] input').fill('')
@@ -216,11 +216,7 @@ test('processes commands', async ({ page, utils }) => {
   await page.goto('/tools/cmdsender/INST/ABORT')
   await expect(page.locator('.v-app-bar')).toContainText('Command Sender')
   await page.locator('[data-test=select-send]').click()
-  await page.locator('text=cmd("INST ABORT") sent')
-  await utils.sleep(1000)
-  await page
-    .locator('[data-test=sender-history] div')
-    .filter({ hasText: 'cmd("INST ABORT")' })
+  await expect(page.locator('text=cmd("INST ABORT") sent')).toBeVisible()
 
   const start = sub(new Date(), { minutes: 1 })
   await page.goto('/tools/dataextractor')
