@@ -78,7 +78,7 @@ export const test = base.extend<{
           await page.locator('input[name="password"]').fill('admin')
           await Promise.all([
             page.waitForURL(`${baseURL}${toolPath}`),
-            page.locator('input:has-text("Sign In")').click(),
+            page.locator('button:has-text("Sign In")').click(),
           ])
           await page.context().storageState({ path: 'adminStorageState.json' })
         } else {
@@ -86,7 +86,7 @@ export const test = base.extend<{
           await page.locator('input[name="password"]').fill('operator')
           await Promise.all([
             page.waitForURL(`${baseURL}${toolPath}`),
-            page.locator('input:has-text("Sign In")').click(),
+            page.locator('button:has-text("Sign In")').click(),
           ])
           await page.context().storageState({ path: 'storageState.json' })
         }
