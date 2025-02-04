@@ -74,7 +74,7 @@ test('validates dates and times', async ({ page, utils }) => {
   // End result is that in Chromium the date gets entered as the 2 digit year
   // e.g. "22", which is fine because even if you go big it will round down.
   // The 'yyyy-MM-dd' format isn't how the date is displayed, but that's how it's
-  // filled programatically. (https://github.com/microsoft/playwright/pull/1676)
+  // filled programmatically. (https://github.com/microsoft/playwright/pull/1676)
   await page.locator('[data-test=start-date] input').fill(format(d, 'yyyy-MM-dd'))
   await expect(page.locator('text=Required')).not.toBeVisible()
   // Time validation
