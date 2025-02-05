@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -131,7 +131,7 @@ test('ask accepts default, password, and required', async ({ page, utils }) => {
   await expect(
     page.locator('.v-dialog >> button:has-text("Ok")'),
   ).toBeDisabled()
-  await page.locator('.v-dialog >> input').type('12345')
+  await page.locator('.v-dialog >> input').fill('12345')
   await page.locator('.v-dialog >> button:has-text("Ok")').click()
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     '12345',
@@ -151,7 +151,7 @@ test('ask accepts default, password, and required', async ({ page, utils }) => {
     '67890',
   )
   // Now type the secret password
-  await page.locator('.v-dialog >> input').type('abc123!')
+  await page.locator('.v-dialog >> input').fill('abc123!')
   await page.locator('.v-dialog >> button:has-text("Ok")').click()
 
   await expect(page.locator('[data-test=state] input')).toHaveValue(
@@ -182,17 +182,17 @@ test('converts value for ask but not ask_string', async ({ page, utils }) => {
   await expect(page.locator('.v-dialog')).toBeVisible({
     timeout: 20000,
   })
-  await page.locator('.v-dialog >> input').type('123')
+  await page.locator('.v-dialog >> input').fill('123')
   await page.locator('.v-dialog >> button:has-text("Ok")').click()
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     'int:123 Integer',
   )
-  await page.locator('.v-dialog >> input').type('5.5')
+  await page.locator('.v-dialog >> input').fill('5.5')
   await page.locator('.v-dialog >> button:has-text("Ok")').click()
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     'float:5.5 Float',
   )
-  await page.locator('.v-dialog >> input').type('5.5')
+  await page.locator('.v-dialog >> input').fill('5.5')
   await page.locator('.v-dialog >> button:has-text("Ok")').click()
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     'string:5.5 String',

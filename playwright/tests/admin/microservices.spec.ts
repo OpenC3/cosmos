@@ -1,5 +1,5 @@
 /*
-# Copyright 2024 OpenC3, Inc
+# Copyright 2025 OpenC3, Inc
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -55,7 +55,7 @@ test('displays microservice names', async ({ page, utils }) => {
 
 test('displays microservice details', async ({ page, utils }) => {
   await page.getByRole('button', { name: '󰈈' }).nth(2).click()
-  expect(await page.locator('.editor')).toContainText(
+  await expect(page.locator('.editor')).toContainText(
     '"name": "DEFAULT__CLEANUP__INST2"',
   )
   await utils.download(page, '[data-test="downloadIcon"]', function (contents) {

@@ -1,5 +1,5 @@
 /*
-# Copyright 2023 OpenC3, Inc
+# Copyright 2025 OpenC3, Inc
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -23,10 +23,10 @@ test.use({
 })
 
 test('displays gem names', async ({ page, utils }) => {
-  expect(await page.locator('[data-test=packageList]')).toContainText(
+  await expect(page.locator('[data-test=packageList]')).toContainText(
     /openc3-cosmos-demo-\d{1,2}\.\d{1,2}\.\d{1,2}.*\.gem/,
   )
-  expect(await page.locator('[data-test=packageList]')).toContainText(
+  await expect(page.locator('[data-test=packageList]')).toContainText(
     /openc3-cosmos-tool-cmdsender-\d{1,2}\.\d{1,2}\.\d{1,2}.*\.gem/,
   )
 })
