@@ -22,6 +22,7 @@ class InstCmdValidator < OpenC3::CommandValidator
   def pre_check(command)
     # Record the current value of CMD_ACPT_CNT for comparison in post_check
     @cmd_acpt_cnt = tlm("<%= target_name %> HEALTH_STATUS CMD_ACPT_CNT")
+    @cmd_acpt_cnt ||= 0 # If the telemetry value is nil, set it to 0
     return [true, nil]
   end
 
