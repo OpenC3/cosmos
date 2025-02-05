@@ -14,7 +14,7 @@
     "@openc3/vue-common": "6.0.3-beta0",
     "axios": "1.7.9",
     "date-fns": "4.1.0",
-    "import-map-overrides": "5.1.0",
+    "import-map-overrides": "5.1.1",
     "systemjs": "6.15.1",
     "vuetify": "3.7.6"
   },
