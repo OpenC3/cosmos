@@ -13,8 +13,6 @@ ARG ALPINE_VERSION
 ARG APK_URL
 ARG RUBYGEMS_URL
 ARG PYPI_URL=https://pypi.org
-ARG TARGETPLATFORM
-ARG BUILDPLATFORM
 
 ENV ALPINE_VERSION=${ALPINE_VERSION}
 ENV APK_URL=${APK_URL}
@@ -83,8 +81,8 @@ RUN apk update \
   # These need to be installed with the --platform flag to avoid errors on linux-musl
   # See: https://github.com/protocolbuffers/protobuf/issues/16853#issuecomment-2583135716
   # Should be fixed April 2025
-  && gem install google-protobuf --platform $TARGETPLATFORM \
-  && gem install grpc --platform $TARGETPLATFORM \
+  && gem install google-protobuf --platform ruby \
+  && gem install grpc --platform ruby \
   && gem cleanup \
   && bundle config build.nokogiri --use-system-libraries \
   && bundle config git.allow_insecure true \
