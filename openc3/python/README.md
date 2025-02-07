@@ -13,6 +13,7 @@ Additional functionality and support will be added over time.
 
 ```
 pip install openc3
+pip install poetry
 ```
 
 See the docs, examples for usage
@@ -38,14 +39,6 @@ Now that we have a virtual environment, we need to activate it.
 ```
 
 After you activate the environment, your command prompt will be modified to reflect the change.
-
-### Development requirements-dev.txt
-
-Although requests is required, when doing development work it is helpful to test with pytest, use black, and coverage. These can be found in `requirements-dev.txt`
-
-```
-> py -m pip install -r requirements-dev.txt
-```
 
 ### Add Libraries and Create a requirements.txt File
 

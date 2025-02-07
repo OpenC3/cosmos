@@ -27,6 +27,7 @@ $overall_apk = []
 $overall_apt = []
 $overall_rpm = []
 $overall_gems = []
+$overall_wheels = []
 $overall_yarn = []
 
 def get_docker_version(path)
@@ -145,6 +146,20 @@ def extract_gems(container)
   make_sorted_hash(name_versions)
 end
 
+def extract_wheels(container)
+  container_name = container[:name]
+  name_versions = []
+  lines = `docker run --rm #{container_name} pip list`
+  lines.each_line do |line|
+    split_line = line.strip.split(' ')
+    name = split_line[0]
+    version = split_line[1]
+    name_versions << [name, version, nil]
+  end
+  $overall_wheels.concat(name_versions)
+  make_sorted_hash(name_versions)
+end
+
 def extract_yarn(container)
   container_name = container[:name]
   name_versions = []
@@ -229,6 +244,10 @@ def build_summary_report(containers)
     report << build_section("Ruby Gems", make_sorted_hash($overall_gems), false)
     report << "\n"
   end
+  if $overall_wheels.length > 0
+    report << build_section("Python Wheels", make_sorted_hash($overall_wheels), false)
+    report << "\n"
+  end
   if $overall_yarn.length > 0
     report << build_section("Node Packages", make_sorted_hash($overall_yarn), false)
     report << "\n"
@@ -244,6 +263,7 @@ def build_container_report(container)
   report << build_section("APT Packages", extract_apt(container), false) if container[:apt]
   report << build_section("RPM Packages", extract_rpm(container), true) if container[:rpm]
   report << build_section("Ruby Gems", extract_gems(container), false) if container[:gems]
+  report << build_section("Python Wheels", extract_wheels(container), false) if container[:python]
   report << build_section("Node Packages", extract_yarn(container), false) if container[:yarn]
   report << "\n"
   report
@@ -434,17 +454,15 @@ def check_tool_base(path, base_pkgs)
         # Search here to get the URLs: https://cdnjs.com/
         case package
         when 'vue'
-          `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/#{package}.global.js --output public/js/#{package}.global-#{latest}.js`
-          `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/#{package}.global.prod.min.js --output public/js/#{package}.global.prod-#{latest}.min.js`
+          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{package}.global.js --output public/js/#{package}.global-#{latest}.js`
+          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{package}.global.prod.js --output public/js/#{package}.global.prod-#{latest}.min.js`
         when 'single-spa'
-          `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/system/#{package}.min.js --output public/js/#{package}-#{latest}.min.js`
-          `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/system/#{package}.min.js.map --output public/js/#{package}-#{latest}.min.js.map`
-        when 'systemjs'
-          `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/system.min.js --output public/js/#{package}-#{latest}.min.js`
+          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/lib/es5/system/#{package}.min.js --output public/js/#{package}-#{latest}.min.js`
+          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/lib/es5/system/#{package}.min.js.map --output public/js/#{package}-#{latest}.min.js.map`
         when 'vuetify'
           FileUtils.rm(Dir["public/css/vuetify-*"][0]) # Delete the existing vuetify css
-          `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/#{package}-labs.min.css --output public/css/#{package}-labs-#{latest}.min.css`
-          `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/#{package}-labs.min.js --output public/js/#{package}-labs-#{latest}.min.js`
+          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{package}-labs.min.css --output public/css/#{package}-labs-#{latest}.min.css`
+          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{package}-labs.min.js --output public/js/#{package}-labs-#{latest}.min.js`
         when 'import-map-overrides'
           `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/import-map-overrides.js --output public/js/#{package}-#{latest}.min.js`
           `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/import-map-overrides.js.map --output public/js/#{package}-#{latest}.min.js.map`
@@ -452,7 +470,7 @@ def check_tool_base(path, base_pkgs)
           `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/keycloak.min.js --output public/js/#{package}-#{latest}.min.js`
           `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/keycloak.min.js.map --output public/js/#{package}-#{latest}.min.js.map`
         else
-          `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/#{package}.min.js --output public/js/#{package}-#{latest}.min.js`
+          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{package}.min.js --output public/js/#{package}-#{latest}.min.js`
         end
         FileUtils.rm existing
         # Now update the files with references to <package>-<version>.min.js
@@ -460,6 +478,11 @@ def check_tool_base(path, base_pkgs)
           html = File.read(filename)
           html.gsub!(/#{alt_package}-\d+\.\d+\.\d+\.min\.js/, "#{alt_package}-#{latest}.min.js")
           html.gsub!(/#{alt_package}-\d+\.\d+\.\d+\.min\.css/, "#{alt_package}-#{latest}.min.css")
+          File.open(filename, 'w') {|file| file.puts html }
+        end
+        if package == 'keycloak-js'
+          html = File.read('public/js/auth.js')
+          html.gsub!(/#{alt_package}-\d+\.\d+\.\d+\.min\.js/, "#{alt_package}-#{latest}.min.js")
           File.open(filename, 'w') {|file| file.puts html }
         end
       end

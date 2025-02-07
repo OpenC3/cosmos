@@ -20,6 +20,12 @@
     },
     {
       "path": "../openc3-schedule"
+    },
+    {
+      "path": "../openc3-news"
+    },
+    {
+      "path": "../openc3-cosmos-cfdp"
     }
   ],
   "settings": {

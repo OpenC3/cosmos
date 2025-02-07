@@ -48,7 +48,7 @@ class TestRouterApi(unittest.TestCase):
 
             def read_interface(self):
                 time.sleep(0.05)
-                return b"", ""
+                return b"\x01\x02\x03\x04", None
 
             def interface_cmd(self, cmd_name, *cmd_params):
                 TestRouterApi.router_cmd_data[cmd_name] = cmd_params
