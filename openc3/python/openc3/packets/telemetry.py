@@ -266,7 +266,7 @@ class Telemetry:
             target = self.system.targets[target_name]
             if target and target.tlm_unique_id_mode:
                 # Iterate through the packets and see if any represent the buffer
-                for _, packet in target_packets:
+                for _, packet in target_packets.items():
                     if packet.identify(packet_data):
                         return packet
             else:
