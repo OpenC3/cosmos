@@ -19,6 +19,9 @@ dependencies = [
     "websockets (>=14.2,<15.0)",
 ]
 
+[tool.poetry.requires-plugins]
+poetry-plugin-export = ">=1.9"
+
 [tool.poetry.group.dev.dependencies]
 black = "^25.1.0"
 coverage = "^7.6.10"

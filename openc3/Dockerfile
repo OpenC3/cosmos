@@ -34,8 +34,8 @@ RUN mkdir -p lib/openc3/ext \
 WORKDIR /openc3/python
 
 RUN . /openc3/venv/bin/activate \
-  && pip3 install poetry \
-  && poetry install
+  && poetry export --without-hashes -f requirements.txt > requirements.txt \
+  && pip3 install -r requirements.txt && pip3 install --pre .
 
 WORKDIR /openc3/
 

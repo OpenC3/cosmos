@@ -46,7 +46,7 @@ class JsonDRbError(JsonApiError):
             if "message" not in hash and "class" in hash:
                 hash["message"] = hash["class"]
         error = None
-        if error_class == RuntimeError and "message" in hash:
+        if error_class is RuntimeError and "message" in hash:
             error = error_class(hash["message"])
         else:
             error = error_class()
