@@ -264,7 +264,7 @@ class TestStateParser(unittest.TestCase):
         tf.write('    STATE WORST 3 HAZARDOUS "Hazardous description"\n')
         tf.seek(0)
         self.pc.process_file(tf.name, "TGT1")
-        self.pc.commands["TGT1"]["PKT1"].buffer = "\x01"
+        self.pc.commands["TGT1"]["PKT1"].buffer = b"\x01"
         self.pc.commands["TGT1"]["PKT1"].check_limits
         self.assertIsNone(
             self.pc.commands["TGT1"]["PKT1"].items["ITEM1"].hazardous.get("GOOD")

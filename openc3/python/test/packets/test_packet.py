@@ -382,7 +382,7 @@ class PacketReadReadItem(unittest.TestCase):
         value += " more things"
         self.assertEqual(self.p.read_item(i, "WITH_UNITS"), "A str with units")
 
-        self.p.buffer = "\x00"
+        self.p.buffer = b"\x00"
         i.read_conversion = GenericConversion("['A', 'B', 'C']")
         value = self.p.read_item(i, "CONVERTED")
         self.assertEqual(value, ["A", "B", "C"])

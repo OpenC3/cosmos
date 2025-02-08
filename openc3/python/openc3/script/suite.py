@@ -47,32 +47,32 @@ class Suite:
 
     # Add a group to the suite
     def add_group(self, group_class):
-        if not isinstance(group_class, Group):
-            raise RuntimeError("add_group must be a Group not a string in Python")
+        if not issubclass(group_class, Group):
+            raise RuntimeError(f"add_group received with {group_class}({group_class.__class__}) but must subclass Group")
         if not self.scripts().get(group_class, None):
             self.scripts()[group_class] = group_class()
         self.plans().append(["GROUP", group_class, None])
 
     # Add a script to the suite
     def add_script(self, group_class, script):
-        if not isinstance(group_class, Group):
-            raise RuntimeError("add_script first param must be a Group not a string in Python")
+        if not issubclass(group_class, Group):
+            raise RuntimeError(f"add_script received with {group_class}({group_class.__class__}) but must subclass Group")
         if not self.scripts().get(group_class, None):
             self.scripts()[group_class] = group_class()
         self.plans().append(["SCRIPT", group_class, script])
 
     # Add a group setup to the suite
     def add_group_setup(self, group_class):
-        if not isinstance(group_class, Group):
-            raise RuntimeError("add_script must be a Group not a string in Python")
+        if not issubclass(group_class, Group):
+            raise RuntimeError(f"add_group_setup received with {group_class}({group_class.__class__}) but must subclass Group")
         if not self.scripts().get(group_class, None):
             self.scripts()[group_class] = group_class()
         self.plans().append(["GROUP_SETUP", group_class, None])
 
     # Add a group teardown to the suite
     def add_group_teardown(self, group_class):
-        if not isinstance(group_class, Group):
-            raise RuntimeError("add_script must be a Group not a string in Python")
+        if not issubclass(group_class, Group):
+            raise RuntimeError(f"add_group_teardown received with {group_class}({group_class.__class__}) but must subclass Group")
         if not self.scripts().get(group_class, None):
             self.scripts()[group_class] = group_class()
         self.plans().append(["GROUP_TEARDOWN", group_class, None])
