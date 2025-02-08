@@ -112,13 +112,13 @@ jobs:
         working-directory: openc3/python
       - name: Lint with ruff
         run: |
-          poetry run ruff --config=../openc3/python/pyproject.toml --output-format=github scripts/*.py
-        working-directory: openc3-cosmos-script-runner-api
+          poetry run ruff check --output-format=github ../../openc3-cosmos-script-runner-api/scripts
+        working-directory: openc3/python
       - name: Run unit tests
         run: |
-          poetry run coverage run -m pytest ./test/
+          poetry run coverage run -m pytest ../../openc3-cosmos-script-runner-api/test/
           poetry run coverage xml -i
-        working-directory: openc3-cosmos-script-runner-api
+        working-directory: openc3/python
       - uses: codecov/codecov-action@v5
         with:
           working-directory: openc3/python

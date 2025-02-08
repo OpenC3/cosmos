@@ -80,7 +80,10 @@ RUN cd / \
     && python3 -m venv /openc3/venv \
     && source /openc3/venv/bin/activate \
     && pip3 config --global set global.index $PYPI_URL/pypi \
-    && pip3 config --global set global.index-url $PYPI_URL/simple
+    && pip3 config --global set global.index-url $PYPI_URL/simple \
+    && pip3 install --upgrade pip setuptools \
+    && pip3 install poetry \
+    && pip3 install poetry-plugin-export
 
 # Begin CVE fix CVE-2023-36617 (update uri 0.12.1 to version 0.12.2 or greater)
 

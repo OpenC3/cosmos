@@ -1214,18 +1214,19 @@ class RunningScript:
         Logger.stdout = True
         Logger.level = Logger.INFO
 
-    def output_thread(self):
-        RunningScript.cancel_output = False
-        RunningScript.output_sleeper = Sleeper()
-        while True:
-            if RunningScript.cancel_output:
-                break
-            if (time.time() - self.output_time) > 5.0:
-                self.handle_output_io()
-            if RunningScript.cancel_output:
-                break
-            if RunningScript.output_sleeper.sleep(1.0):
-                break
+    # TODO: This is defined on 206 ... so this is not called
+    # def output_thread(self):
+    #     RunningScript.cancel_output = False
+    #     RunningScript.output_sleeper = Sleeper()
+    #     while True:
+    #         if RunningScript.cancel_output:
+    #             break
+    #         if (time.time() - self.output_time) > 5.0:
+    #             self.handle_output_io()
+    #         if RunningScript.cancel_output:
+    #             break
+    #         if RunningScript.output_sleeper.sleep(1.0):
+    #             break
 
 
 openc3.script.RUNNING_SCRIPT = RunningScript

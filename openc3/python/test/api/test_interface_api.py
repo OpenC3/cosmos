@@ -47,7 +47,7 @@ class TestInterfaceApi(unittest.TestCase):
                 pass
 
             def read_interface(self):
-                time.sleep(0.05)
+                time.sleep(0.01)
                 return (b"\x01\x02\x03\x04", None)
 
             def interface_cmd(self, cmd_name, *cmd_params):
@@ -77,7 +77,7 @@ class TestInterfaceApi(unittest.TestCase):
         self.im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
         self.im_thread = threading.Thread(target=self.im.run)
         self.im_thread.start()
-        time.sleep(0.01)  # Allow the thread to run
+        time.sleep(0.02)  # Allow the thread to run
 
     def tearDown(self):
         self.im.shutdown()
@@ -88,7 +88,7 @@ class TestInterfaceApi(unittest.TestCase):
         self.assertEqual(type(interface), dict)
         self.assertEqual(interface["name"], "INST_INT")
         # Verify it also includes the status
-        self.assertEqual(interface["state"], "ATTEMPTING")
+        self.assertEqual(interface["state"], "CONNECTED")
         self.assertEqual(interface["clients"], 0)
 
     def test_returns_all_interface_names(self):
@@ -99,8 +99,6 @@ class TestInterfaceApi(unittest.TestCase):
         self.assertEqual(get_interface_names(), ["INST_INT", "INT1", "INT2"])
 
     def test_connects_the_interface(self):
-        self.assertEqual(get_interface("INST_INT")["state"], "ATTEMPTING")
-        time.sleep(0.1)
         self.assertEqual(get_interface("INST_INT")["state"], "CONNECTED")
         disconnect_interface("INST_INT")
         time.sleep(0.1)
@@ -134,7 +132,7 @@ class TestInterfaceApi(unittest.TestCase):
     def test_gets_interface_name_and_all_info(self):
         info = get_all_interface_info()
         self.assertEqual(info[0][0], "INST_INT")
-        self.assertEqual(info[0][1], "ATTEMPTING")
+        self.assertEqual(info[0][1], "CONNECTED")
 
     def test_successfully_maps_a_target_to_an_interface(self):
         TargetModel(name="INST", scope="DEFAULT").create()

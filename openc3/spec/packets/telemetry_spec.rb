@@ -348,6 +348,47 @@ module OpenC3
       end
     end
 
+    describe "identify_and_define_packet" do
+      it "identifies packets" do
+        unknown = Packet.new(nil, nil)
+        unknown.buffer = "\x01\x02\x03\x04"
+        pkt = @tlm.identify_and_define_packet(unknown)
+        expect(pkt.target_name).to eql "TGT1"
+        expect(pkt.packet_name).to eql "PKT1"
+        expect(pkt.read("item1")).to eql 1
+        expect(pkt.read("item2")).to eql 2
+        expect(pkt.read("item3")).to eql 6.0
+        expect(pkt.read("item4")).to eql 8.0
+      end
+
+      it "returns nil for unidentified" do
+        unknown = Packet.new(nil, nil)
+        unknown.buffer = "\xFF\xFF\xFF\xFF"
+        pkt = @tlm.identify_and_define_packet(unknown)
+        expect(pkt).to be_nil
+      end
+
+      it "defines packets" do
+        unknown = Packet.new("TGT1", "PKT1")
+        unknown.buffer = "\x01\x02\x03\x04"
+        pkt = @tlm.identify_and_define_packet(unknown)
+        expect(pkt.read("item1")).to eql 1
+        expect(pkt.read("item2")).to eql 2
+        expect(pkt.read("item3")).to eql 6.0
+        expect(pkt.read("item4")).to eql 8.0
+        # It simply returns the packet if it is already identified and defined
+        pkt2 = @tlm.identify_and_define_packet(pkt)
+        expect(pkt2).to eql pkt
+      end
+
+      it "returns nil for undefined packets" do
+        unknown = Packet.new("TGTX", "PKTX")
+        unknown.buffer = "\x01\x02\x03\x04"
+        pkt = @tlm.identify_and_define_packet(unknown)
+        expect(pkt).to be_nil
+      end
+    end
+
     describe "update!" do
       it "complains about non-existent targets" do
         expect { @tlm.update!("TGTX", "PKT1", "\x00") }.to raise_error(RuntimeError, "Telemetry target 'TGTX' does not exist")
@@ -544,6 +585,24 @@ module OpenC3
     describe "all" do
       it "returns all packets" do
         expect(@tlm.all.keys).to eql %w(UNKNOWN TGT1 TGT2)
+      end
+    end
+
+    describe "reset" do
+      it "resets all packets" do
+        @tlm.packets("TGT1").each do |name, pkt|
+          pkt.received_count = 1
+        end
+        @tlm.packets("TGT2").each do |name, pkt|
+          pkt.received_count = 1
+        end
+        @tlm.reset()
+        @tlm.packets("TGT1").each do |name, pkt|
+          expect(pkt.received_count).to eql 0
+        end
+        @tlm.packets("TGT2").each do |name, pkt|
+          expect(pkt.received_count).to eql 0
+        end
       end
     end
 

@@ -18,20 +18,19 @@ import os
 import time
 import json
 import sys
+import traceback
 from datetime import datetime, timezone
 from openc3.script import get_overrides
 from openc3.utilities.bucket import Bucket
 from openc3.utilities.store import Store, EphemeralStore
 from openc3.utilities.extract import convert_to_value
 from openc3.utilities.logger import Logger
-from openc3.environment import *
-import traceback
+from openc3.environment import OPENC3_CONFIG_BUCKET
+from running_script import RunningScript, running_script_anycable_publish
 
 start_time = time.time()
 
-from running_script import RunningScript, running_script_anycable_publish
-
-# # Load the bucket client code to ensure we authenticate outside ENV vars
+# Load the bucket client code to ensure we authenticate outside ENV vars
 Bucket.getClient()
 
 del os.environ["OPENC3_BUCKET_USERNAME"]
@@ -39,7 +38,7 @@ del os.environ["OPENC3_BUCKET_PASSWORD"]
 os.unsetenv("OPENC3_BUCKET_USERNAME")
 os.unsetenv("OPENC3_BUCKET_PASSWORD")
 
-# # Preload Store and remove Redis secrets from ENV
+# Preload Store and remove Redis secrets from ENV
 Store.instance()
 EphemeralStore.instance()
 
