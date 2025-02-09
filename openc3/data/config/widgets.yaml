@@ -850,9 +850,9 @@ Telemetry Widgets:
           required: false
           description: Radius of the circle (default is 10)
           values: .*
-        - name: Full Item Name
+        - name: Item Name Display
           required: false
-          description: Show the full item name (default is false)
+          description: Show the full item name, e.g. TGT PKT ITEM (true), no item name (nil or none) or just the item name (false). Default is false.
           values: .*
       example: |
         LIMITSCOLOR INST HEALTH_STATUS TEMP1 CONVERTED 30 TRUE

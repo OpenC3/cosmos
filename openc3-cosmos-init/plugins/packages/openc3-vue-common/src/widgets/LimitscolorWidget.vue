@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -21,9 +21,13 @@
 -->
 
 <template>
-  <div ref="container" class="d-flex flex-row" :style="computedStyle">
-    <div class="led align-self-center" :style="cssProps"></div>
+  <div ref="container" class="d-flex flex-row" :style="myComputedStyle">
+    <div
+      :class="`led align-self-center ${this.limitsColor}`"
+      :style="cssProps"
+    ></div>
     <label-widget
+      v-if="displayLabel"
       :parameters="labelName"
       :settings="appliedSettings"
       :style="computedStyle"
@@ -40,14 +44,21 @@ export default {
     return {
       radius: 15,
       fullLabelDisplay: false,
+      displayLabel: true,
     }
   },
   created() {
     if (this.parameters[4]) {
       this.radius = parseInt(this.parameters[4])
     }
-    if (this.parameters[5] && this.parameters[5].toLowerCase() === 'true') {
-      this.fullLabelDisplay = true
+    if (this.parameters[5]) {
+      if (this.parameters[5].toLowerCase() === 'true') {
+        this.fullLabelDisplay = true
+      } else if (this.parameters[5].toLowerCase() === 'nil') {
+        this.displayLabel = false
+      } else if (this.parameters[5].toLowerCase() === 'none') {
+        this.displayLabel = false
+      }
     }
   },
   computed: {
@@ -70,8 +81,14 @@ export default {
       return {
         '--height': this.radius + 'px',
         '--width': this.radius + 'px',
-        '--color': this.limitsColor,
       }
+    },
+    myComputedStyle() {
+      // Remove the flex property from the computedStyle object
+      // because if they choose not to display the label
+      // the flex property makes it difficult to line up a custom LABEL widget
+      delete this.computedStyle.flex
+      return this.computedStyle
     },
   },
   methods: {
@@ -92,5 +109,18 @@ export default {
   width: var(--width);
   background-color: var(--color);
   border-radius: 50%;
+}
+/* The background-colors match the values in LimitsbarWidget.vue */
+.red {
+  background-color: rgb(255, 45, 45);
+}
+.yellow {
+  background-color: rgb(255, 220, 0);
+}
+.green {
+  background-color: rgb(0, 200, 0);
+}
+.blue {
+  background-color: rgb(0, 153, 255);
 }
 </style>

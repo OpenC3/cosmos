@@ -1,5 +1,5 @@
 <!--
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -100,6 +100,7 @@ export default {
   border: 1px solid black;
   background-color: white;
 }
+/* The background-colors match the values in LimitscolorWidget.vue */
 .limitsbar__redlow {
   position: absolute;
   top: -1px;
