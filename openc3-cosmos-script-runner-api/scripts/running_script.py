@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -21,7 +21,8 @@ from openc3.script.storage import _get_storage_file
 from openc3.utilities.store_queued import StoreQueued
 import linecache
 
-SCRIPT_API = 'script-api'
+SCRIPT_API = "script-api"
+
 
 def running_script_publish(channel_name, data):
     stream_name = ":".join([SCRIPT_API, channel_name])
@@ -38,7 +39,7 @@ def running_script_anycable_publish(channel_name, data):
 def _openc3_script_sleep(sleep_time=None):
     if RunningScript.disconnect:
         return True
-    RunningScript.instance.update_running_script_store('waiting')
+    RunningScript.instance.update_running_script_store("waiting")
 
     running_script_anycable_publish(
         f"running-script-channel:{RunningScript.instance.id}",
@@ -47,7 +48,7 @@ def _openc3_script_sleep(sleep_time=None):
             "filename": RunningScript.instance.current_filename,
             "line_no": RunningScript.instance.current_line_number,
             "state": "waiting",
-        }
+        },
     )
 
     if sleep_time is None:  # Handle infinite wait
@@ -66,7 +67,7 @@ def _openc3_script_sleep(sleep_time=None):
                         "filename": RunningScript.instance.current_filename,
                         "line_no": RunningScript.instance.current_line_number,
                         "state": "waiting",
-                    }
+                    },
                 )
 
             if RunningScript.instance.pause:
@@ -301,7 +302,7 @@ class RunningScript:
                 "scope": self.scope,
                 "text": self.body,
                 "breakpoints": breakpoints,
-            }
+            },
         )
         if self.PYTHON_SUITE_REGEX.findall(self.body):
             # Call load_utility to parse the suite and allow for individual methods to be executed
@@ -311,7 +312,7 @@ class RunningScript:
             SuiteRunner.build_suites(from_globals=globals())
 
     # Called to update the running script state every time the state or current_line_number changes
-    def update_running_script_store(self, state = None):
+    def update_running_script_store(self, state=None):
         if state:
             self.state = state
         self.details["state"] = self.state
@@ -378,7 +379,7 @@ class RunningScript:
                 "filename": self.current_filename,
                 "line_no": self.current_line_number,
                 "state": self.state,
-            }
+            },
         )
         self.step = True
         self.go = True
@@ -535,7 +536,7 @@ class RunningScript:
                 detail_string = os.path.basename(filename) + ":" + str(line_number)
                 Logger.detail_string = detail_string
 
-            self.update_running_script_store('running')
+            self.update_running_script_store("running")
             running_script_anycable_publish(
                 f"running-script-channel:{RunningScript.id}",
                 {
@@ -543,7 +544,7 @@ class RunningScript:
                     "filename": self.current_filename,
                     "line_no": self.current_line_number,
                     "state": "running",
-                }
+                },
             )
             self.handle_pause(filename, line_number)
             self.handle_line_delay()
@@ -757,7 +758,7 @@ class RunningScript:
                         "filename": self.current_filename,
                         "line_no": self.current_line_number,
                         "state": self.state,
-                    }
+                    },
                 )
                 if prompt:
                     running_script_anycable_publish(
@@ -768,7 +769,7 @@ class RunningScript:
                             "prompt_id": prompt["id"],
                             "args": prompt["args"],
                             "kwargs": prompt["kwargs"],
-                        }
+                        },
                     )
         if prompt:
             self.clear_prompt()
@@ -794,7 +795,7 @@ class RunningScript:
                         "filename": self.current_filename,
                         "line_no": self.current_line_number,
                         "state": self.state,
-                    }
+                    },
                 )
         self.go = False
         self.mark_running()
@@ -813,7 +814,7 @@ class RunningScript:
                 "filename": self.current_filename,
                 "line_no": self.current_line_number,
                 "state": self.state,
-            }
+            },
         )
 
     def mark_paused(self):
@@ -826,7 +827,7 @@ class RunningScript:
                 "filename": self.current_filename,
                 "line_no": self.current_line_number,
                 "state": self.state,
-            }
+            },
         )
 
     def mark_waiting(self):
@@ -839,7 +840,7 @@ class RunningScript:
                 "filename": self.current_filename,
                 "line_no": self.current_line_number,
                 "state": self.state,
-            }
+            },
         )
 
     def mark_error(self):
@@ -852,7 +853,7 @@ class RunningScript:
                 "filename": self.current_filename,
                 "line_no": self.current_line_number,
                 "state": self.state,
-            }
+            },
         )
 
     def mark_fatal(self):
@@ -865,7 +866,7 @@ class RunningScript:
                 "filename": self.current_filename,
                 "line_no": self.current_line_number,
                 "state": self.state,
-            }
+            },
         )
 
     def mark_stopped(self):
@@ -878,7 +879,7 @@ class RunningScript:
                 "filename": self.current_filename,
                 "line_no": self.current_line_number,
                 "state": self.state,
-            }
+            },
         )
         if SuiteRunner.suite_results:
             SuiteRunner.suite_results.complete()
@@ -905,7 +906,7 @@ class RunningScript:
                 parts[0] += f"_{init_split[-1]}"
             running_script_anycable_publish(
                 f"running-script-channel:{self.id}",
-                {"type": "report", "report": SuiteRunner.suite_results.report()}
+                {"type": "report", "report": SuiteRunner.suite_results.report()},
             )
             # Write out the report to a local file
             log_dir = os.path.join(RAILS_ROOT, "log")
@@ -932,7 +933,9 @@ class RunningScript:
             # Wait for the file to get moved to S3 because after this the process will likely die
             thread.join()
 
-        running_script_publish(f"cmd-running-script-channel:{RunningScript.id}", "shutdown")
+        running_script_publish(
+            f"cmd-running-script-channel:{RunningScript.id}", "shutdown"
+        )
 
     def mark_breakpoint(self):
         self.state = "breakpoint"
@@ -944,7 +947,7 @@ class RunningScript:
                 "filename": self.current_filename,
                 "line_no": self.current_line_number,
                 "state": self.state,
-            }
+            },
         )
 
     def run_thread_body(
@@ -1073,7 +1076,7 @@ class RunningScript:
                     "scope": self.scope,
                     "text": text,
                     "breakpoints": [],
-                }
+                },
             )
         RunningScript.run_thread = threading.Thread(
             target=self.run_thread_body,
@@ -1192,7 +1195,7 @@ class RunningScript:
                 "filename": filename,
                 "text": self.body,
                 "breakpoints": breakpoints,
-            }
+            },
         )
 
     def mark_breakpoints(self, filename):
@@ -1213,20 +1216,6 @@ class RunningScript:
         sys.stderr = Stderr.instance()
         Logger.stdout = True
         Logger.level = Logger.INFO
-
-    # TODO: This is defined on 206 ... so this is not called
-    # def output_thread(self):
-    #     RunningScript.cancel_output = False
-    #     RunningScript.output_sleeper = Sleeper()
-    #     while True:
-    #         if RunningScript.cancel_output:
-    #             break
-    #         if (time.time() - self.output_time) > 5.0:
-    #             self.handle_output_io()
-    #         if RunningScript.cancel_output:
-    #             break
-    #         if RunningScript.output_sleeper.sleep(1.0):
-    #             break
 
 
 openc3.script.RUNNING_SCRIPT = RunningScript
@@ -1277,7 +1266,7 @@ def start(procedure_name):
                 "filename": procedure_name,
                 "text": text,
                 "breakpoints": breakpoints,
-            }
+            },
         )
     else:
         # Retrieve file
@@ -1295,7 +1284,7 @@ def start(procedure_name):
                 "filename": procedure_name,
                 "text": text,
                 "breakpoints": breakpoints,
-            }
+            },
         )
 
         # Cache instrumentation into RAM
@@ -1312,7 +1301,7 @@ def start(procedure_name):
             "type": "start",
             "filename": procedure_name,
             "active_scripts": len(running),
-        }
+        },
     )
     linecache.cache[path] = (
         len(text),
@@ -1371,7 +1360,7 @@ def display_screen(target_name, screen_name, x=None, y=None, scope=OPENC3_SCOPE)
             "definition": definition,
             "x": x,
             "y": y,
-        }
+        },
     )
 
 
@@ -1385,7 +1374,7 @@ def clear_screen(target_name, screen_name):
             "type": "clearscreen",
             "target_name": target_name,
             "screen_name": screen_name,
-        }
+        },
     )
 
 
@@ -1412,7 +1401,7 @@ def local_screen(screen_name, definition, x=None, y=None):
             "definition": definition,
             "x": x,
             "y": y,
-        }
+        },
     )
 
 
@@ -1423,7 +1412,7 @@ def download_file(path, scope=OPENC3_SCOPE):
     url = openc3.script._get_download_url(path, scope=scope)
     running_script_anycable_publish(
         f"running-script-channel:{RunningScript.instance.id}",
-        {"type": "downloadfile", "filename": os.path.basename(path), "url": url}
+        {"type": "downloadfile", "filename": os.path.basename(path), "url": url},
     )
 
 

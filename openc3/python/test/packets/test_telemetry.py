@@ -17,7 +17,7 @@
 import os
 import tempfile
 import unittest
-from unittest.mock import *
+from unittest.mock import Mock
 from test.test_helper import mock_redis, setup_system, capture_io
 from openc3.system.target import Target
 from openc3.system.system import System
@@ -69,7 +69,7 @@ class TestTelemetry(unittest.TestCase):
         self.assertEqual(self.tlm.target_names(), ["TGT1", "TGT2"])
 
     def test_packets_complains_about_non_existent_targets(self):
-        with self.assertRaisesRegex(RuntimeError, f"Telemetry target 'TGTX' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Telemetry target 'TGTX' does not exist"):
             self.tlm.packets("tgtX")
 
     def test_packets_returns_all_packets_target_tgt1(self):
@@ -84,15 +84,15 @@ class TestTelemetry(unittest.TestCase):
         self.assertIn("PKT1", pkts.keys())
 
     def test_packet_complains_about_non_existent_targets(self):
-        with self.assertRaisesRegex(RuntimeError, f"Telemetry target 'TGTX' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Telemetry target 'TGTX' does not exist"):
             self.tlm.packet("tgtX", "pkt1")
 
     def test_packet_complains_about_non_existent_packets(self):
-        with self.assertRaisesRegex(RuntimeError, f"Telemetry packet 'TGT1 PKTX' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Telemetry packet 'TGT1 PKTX' does not exist"):
             self.tlm.packet("TGT1", "PKTX")
 
     def test_packet_complains_about_the_latest_packet(self):
-        with self.assertRaisesRegex(RuntimeError, f"Telemetry packet 'TGT1 LATEST' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Telemetry packet 'TGT1 LATEST' does not exist"):
             self.tlm.packet("TGT1", "LATEST")
 
     def test_packet_returns_the_specified_packet(self):
@@ -209,19 +209,19 @@ class TestTelemetry(unittest.TestCase):
         self.assertIsNone(pkt)
 
     def test_update_complains_about_non_existent_targets(self):
-        with self.assertRaisesRegex(RuntimeError, f"Telemetry target 'TGTX' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Telemetry target 'TGTX' does not exist"):
             self.tlm.update("TGTX", "PKT1", b"\x00")
 
     def test_update_complains_about_non_existent_packets(self):
-        with self.assertRaisesRegex(RuntimeError, f"Telemetry packet 'TGT1 PKTX' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Telemetry packet 'TGT1 PKTX' does not exist"):
             self.tlm.update("TGT1", "PKTX", b"\x00")
 
     def test_update_complains_about_the_latest_packet(self):
-        with self.assertRaisesRegex(RuntimeError, f"Telemetry packet 'TGT1 LATEST' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Telemetry packet 'TGT1 LATEST' does not exist"):
             self.tlm.update("TGT1", "LATEST", b"\x00")
 
     def test_update_complains_with_a_None_buffer(self):
-        with self.assertRaisesRegex(TypeError, f"Buffer class is NoneType but must be bytearray"):
+        with self.assertRaisesRegex(TypeError, "Buffer class is NoneType but must be bytearray"):
             self.tlm.update("TGT1", "PKT1", None)
 
     def test_update_update_logs_an_invalid_sized_buffer(self):

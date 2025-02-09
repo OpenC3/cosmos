@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -72,7 +72,7 @@ def run_script_log(id, message, color="BLACK", message_log=True):
         RunningScript.message_log().write(line_to_write + "\n", True)
     running_script_anycable_publish(
         f"running-script-channel:{id}",
-        {"type": "output", "line": line_to_write, "color": color}
+        {"type": "output", "line": line_to_write, "color": color},
     )
 
 
@@ -127,7 +127,7 @@ try:
             "type": "start",
             "filename": path,
             "active_scripts": len(running),
-        }
+        },
     )
 
     # Subscribe to the ActionCable generated topic which is namedspaced with channel_prefix
@@ -236,7 +236,7 @@ try:
                                     "type": "script",
                                     "method": "backtrace",
                                     "args": running_script.current_backtrace,
-                                }
+                                },
                             )
                         case "debug":
                             run_script_log(
@@ -280,7 +280,7 @@ finally:
         )
         running_script_anycable_publish(
             "all-scripts-channel",
-            {"type": "complete", "active_scripts": active_scripts}
+            {"type": "complete", "active_scripts": active_scripts},
         )
     finally:
         if running_script:

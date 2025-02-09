@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -53,9 +53,7 @@ class TestInterfaceApi(unittest.TestCase):
             def interface_cmd(self, cmd_name, *cmd_params):
                 TestInterfaceApi.interface_cmd_data[cmd_name] = cmd_params
 
-            def protocol_cmd(
-                self, cmd_name, *cmd_params, read_write="READ_WRITE", index=-1
-            ):
+            def protocol_cmd(self, cmd_name, *cmd_params, read_write="READ_WRITE", index=-1):
                 TestInterfaceApi.protocol_cmd_data[cmd_name] = cmd_params
 
             # Allow the stubbed InterfaceModel.get_model to call build()
