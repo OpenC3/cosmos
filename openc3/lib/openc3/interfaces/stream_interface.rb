@@ -40,8 +40,8 @@ module OpenC3
     end
 
     def connect
-      super()
       @stream.connect if @stream
+      super()
     end
 
     def connected?

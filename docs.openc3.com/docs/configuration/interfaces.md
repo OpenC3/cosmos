@@ -32,6 +32,42 @@ COSMOS provides the following interfaces: TCPIP Client, TCPIP Server, UDP, HTTP 
 
 COSMOS Enterprise provides the following interfaces: SNMP, SNMP Trap, GEMS, InfluxDB.
 
+#### All Interface Options
+
+The following options apply to all interfaces. Options are added directly beneath the interface definition as shown in the example.
+
+| Option       | Description                                                                                                                                   |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| PERIODIC_CMD | Command to send at periodic intervals. Takes 3 parameters: LOG/DONT_LOG, the interval in seconds, and the actual command to send as a string. |
+
+Examples:
+
+```ruby
+INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 10.0
+  # Send the 'INST ABORT' command every 5s and don't log in the CmdTlmServer messsages
+  # Note that all commands are logged in the binary logs
+  OPTION PERIODIC_CMD DONT_LOG 5.0 "INST ABORT"
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0
+  # Send the 'INST2 COLLECT with TYPE NORMAL' command every 10s and output to the CmdTlmServer messsages
+  OPTION PERIODIC_CMD LOG 10.0 "INST2 COLLECT with TYPE NORMAL"
+```
+
+| Option      | Description                                                                                                               |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------- |
+| CONNECT_CMD | Command to send when the interface connects. Takes 2 parameters: LOG/DONT_LOG and the actual command to send as a string. |
+
+Examples:
+
+```ruby
+INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 10.0
+  # Send the 'INST ABORT' command on connection and don't log in the CmdTlmServer messsages
+  # Note that all commands are logged in the binary logs
+  OPTION CONNECT_CMD DONT_LOG "INST ABORT"
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0
+  # Send the 'INST2 COLLECT with TYPE NORMAL' on connection and output to the CmdTlmServer messsages
+  OPTION CONNECT_CMD LOG "INST2 COLLECT with TYPE NORMAL"
+```
+
 ### TCPIP Client Interface
 
 The TCPIP client interface connects to a TCPIP socket to send commands and receive telemetry. This interface is used for targets which open a socket and wait for a connection. This is the most common type of interface.
@@ -106,9 +142,9 @@ INTERFACE INTERFACE_NAME tcpip_server_interface.rb 8080 8081 10.0 nil LENGTH 0 1
 INTERFACE INTERFACE_NAME tcpip_server_interface.rb 8080 8080 10.0 nil BURST 4 0xDEADBEEF
 INTERFACE INTERFACE_NAME tcpip_server_interface.rb 8080 8080 10.0 nil FIXED 6 0 nil true
 INTERFACE INTERFACE_NAME tcpip_server_interface.rb 8080 8080 10.0 10.0 TERMINATED 0x0D0A 0x0D0A true 0 0xF005BA11
-INTERFACE INTERFACE_NAME tcpip_client_interface.rb 8080 8080 10.0 10.0 TEMPLATE 0xA 0xA
+INTERFACE INTERFACE_NAME tcpip_server_interface.rb 8080 8080 10.0 10.0 TEMPLATE 0xA 0xA
 INTERFACE INTERFACE_NAME tcpip_server_interface.rb 8080 8080 10.0 nil PREIDENTIFIED 0xCAFEBABE
-INTERFACE INTERFACE_NAME tcpip_client_interface.rb 8080 8080 10.0 10.0 # no built-in protocol
+INTERFACE INTERFACE_NAME tcpip_server_interface.rb 8080 8080 10.0 10.0 # no built-in protocol
   OPTION LISTEN_ADDRESS 127.0.0.1
 ```
 
@@ -119,9 +155,9 @@ INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_server_interface.py 8080 8081 1
 INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_server_interface.py 8080 8080 10.0 None BURST 4 0xDEADBEEF
 INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_server_interface.py 8080 8080 10.0 None FIXED 6 0 None true
 INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_server_interface.py 8080 8080 10.0 10.0 TERMINATED 0x0D0A 0x0D0A true 0 0xF005BA11
-INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py 8080 8080 10.0 10.0 TEMPLATE 0xA 0xA
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_server_interface.py 8080 8080 10.0 10.0 TEMPLATE 0xA 0xA
 INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_server_interface.py 8080 8080 10.0 None PREIDENTIFIED 0xCAFEBABE
-INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py 8080 8080 10.0 10.0 # no built-in protocol
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_server_interface.py 8080 8080 10.0 10.0 # no built-in protocol
 ```
 
 ### UDP Interface

@@ -195,6 +195,17 @@ module OpenC3
     def connect
       (@read_protocols | @write_protocols).each { |protocol| protocol.connect_reset }
 
+      connect_cmds = @options['CONNECT_CMD']
+      if connect_cmds
+        connect_cmds.each do |log_dont_log, cmd_string|
+          if log_dont_log.upcase == 'DONT_LOG'
+            cmd(cmd_string, log_message: false)
+          else
+            cmd(cmd_string)
+          end
+        end
+      end
+
       periodic_cmds = @options['PERIODIC_CMD']
       if periodic_cmds
         if not @scheduler
@@ -499,9 +510,9 @@ module OpenC3
     def set_option(option_name, option_values)
       option_name_upcase = option_name.upcase
 
-      # PERIODIC_CMD is special because there could be more than 1 periodic command
+      # CONNECT_CMD and PERIODIC_CMD are special because there could be more than 1
       # so we store them in an array for processing during connect()
-      if option_name_upcase == 'PERIODIC_CMD'
+      if option_name_upcase == 'PERIODIC_CMD' or option_name_upcase == 'CONNECT_CMD'
         # OPTION PERIODIC_CMD LOG/DONT_LOG 1.0 "INST COLLECT with TYPE NORMAL"
         @options[option_name_upcase] ||= []
         @options[option_name_upcase] << option_values.clone

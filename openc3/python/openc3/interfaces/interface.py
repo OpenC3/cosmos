@@ -101,6 +101,14 @@ class Interface:
         for protocol in self.read_protocols + self.write_protocols:
             protocol.connect_reset()
 
+        connect_cmds = self.options.get("CONNECT_CMD")
+        if connect_cmds:
+            for log_dont_log, cmd_string in connect_cmds:
+                if log_dont_log.upper() == "DONT_LOG":
+                    cmd(cmd_string, log_message=False)
+                else:
+                    cmd(cmd_string)
+
         periodic_cmds = self.options.get("PERIODIC_CMD")
         if periodic_cmds:
             self.scheduler = schedule.Scheduler()
@@ -355,9 +363,9 @@ class Interface:
     def set_option(self, option_name, option_values):
         option_name_upcase = option_name.upper()
 
-        # PERIODIC_CMD is special because there could be more than 1 periodic command
+        # CONNECT_CMD and PERIODIC_CMD are special because there could be more than 1
         # so we store them in an array for processing during connect()
-        if option_name_upcase == "PERIODIC_CMD":
+        if option_name_upcase == "PERIODIC_CMD" or option_name_upcase == "CONNECT_CMD":
             # OPTION PERIODIC_CMD LOG/DONT_LOG 1.0 "INST COLLECT with TYPE NORMAL"
             self.options[option_name_upcase] = self.options.get(option_name_upcase, [])
             self.options[option_name_upcase].append(option_values[:])
