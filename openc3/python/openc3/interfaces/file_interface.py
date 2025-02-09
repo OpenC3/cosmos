@@ -91,8 +91,6 @@ class FileInterface(Interface):
         self.recursive = False
 
     def connect(self):
-        super().connect()
-
         if self.telemetry_read_folder:
             event_handler = NewFileEventHandler(self)
             if self.polling:
@@ -102,6 +100,7 @@ class FileInterface(Interface):
             self.listener.schedule(event_handler, self.telemetry_read_folder, recursive=self.recursive)
             self.listener.start()
 
+        super().connect()
         self._connected = True
 
     def connected(self):

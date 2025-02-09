@@ -72,8 +72,6 @@ module OpenC3
     end
 
     def connect
-      super()
-
       if @telemetry_read_folder
         @listener = Listen.to(@telemetry_read_folder, force_polling: @polling) do |modified, added, removed|
           @queue << added if added
@@ -81,6 +79,7 @@ module OpenC3
         @listener.start # starts a listener thread--does not block
       end
 
+      super()
       @connected = true
     end
 
