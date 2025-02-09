@@ -321,12 +321,3 @@ input {
 .v-list-item-action {
   margin-right: 15px !important;
 }
-
-// Fix the single spa debug panel so the text is readable
-.imo-modal-container form,
-.imo-modal-container input {
-  color: black;
-}
-.imo-module-dialog tr {
-  background-color: white;
-}
