@@ -44,11 +44,11 @@ Examples:
 
 ```ruby
 INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 10.0
-  # Send the 'INST ABORT' command every 5s and don't log in the CmdTlmServer messsages
+  # Send the 'INST ABORT' command every 5s and don't log in the CmdTlmServer messages
   # Note that all commands are logged in the binary logs
   OPTION PERIODIC_CMD DONT_LOG 5.0 "INST ABORT"
 INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0
-  # Send the 'INST2 COLLECT with TYPE NORMAL' command every 10s and output to the CmdTlmServer messsages
+  # Send the 'INST2 COLLECT with TYPE NORMAL' command every 10s and output to the CmdTlmServer messages
   OPTION PERIODIC_CMD LOG 10.0 "INST2 COLLECT with TYPE NORMAL"
 ```
 
@@ -60,11 +60,11 @@ Examples:
 
 ```ruby
 INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 10.0
-  # Send the 'INST ABORT' command on connection and don't log in the CmdTlmServer messsages
+  # Send the 'INST ABORT' command on connection and don't log in the CmdTlmServer messages
   # Note that all commands are logged in the binary logs
   OPTION CONNECT_CMD DONT_LOG "INST ABORT"
 INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0
-  # Send the 'INST2 COLLECT with TYPE NORMAL' on connection and output to the CmdTlmServer messsages
+  # Send the 'INST2 COLLECT with TYPE NORMAL' on connection and output to the CmdTlmServer messages
   OPTION CONNECT_CMD LOG "INST2 COLLECT with TYPE NORMAL"
 ```
 
