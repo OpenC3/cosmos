@@ -14,7 +14,7 @@ dependencies = [
     "lxml (>=5.3.0,<6.0.0)",
     "paho-mqtt (>=2.1.0,<3.0.0)",
     "schedule (>=1.2.2,<2.0.0)",
-    "redis[hiredis] (>=4.6.0,<4.7.0)",
+    "redis[hiredis] (>=5.0.0,<6.0.0)",
     "requests (>=2.32.3,<3.0.0)",
     "websockets (>=14.2,<15.0)",
 ]

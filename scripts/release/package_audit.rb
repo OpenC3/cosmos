@@ -96,11 +96,11 @@ end
 # Check the wheels
 Dir.chdir(File.join(__dir__, '../../openc3/python')) do
   puts "\nChecking outdated wheels in openc3/python:"
-  puts `pip list --outdated`
+  puts `poetry show -o`
 end
 Dir.chdir(File.join(__dir__, '../../openc3-cosmos-init/plugins/packages/openc3-cosmos-demo')) do
   puts "\nChecking outdated wheels in openc3-cosmos-demo:"
-  puts `pip list --outdated`
+  puts `python -m venv venv; source venv/bin/activate; pip install -r requirements.txt; pip list --outdated; deactivate; rm -rf venv`
 end
 
 File.open("openc3_package_report.txt", "w") do |file|
