@@ -238,7 +238,7 @@ class SimInst(SimulatedTarget):
                 self.solar_panel_thread_cancel = False
                 break
 
-    def graceful_kill(self):
+    def graceful_kill(self, timeout):
         self.solar_panel_thread_cancel = True
 
     def read(self, count_100hz, time):

@@ -424,7 +424,7 @@ class RunningScript:
 
     # Private methods
 
-    def graceful_kill(self):
+    def graceful_kill(self, timeout):
         self.stop = True
 
     def initialize_variables(self):

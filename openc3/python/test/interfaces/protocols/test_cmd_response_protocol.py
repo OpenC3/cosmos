@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -79,9 +79,8 @@ class TestCmdResponseProtocol(unittest.TestCase):
         thread = threading.Thread(target=my_write)
         thread.start()
 
-        time.sleep(0.1)
+        time.sleep(0.001)
         self.interface.disconnect()
-        time.sleep(0.1)
         thread.join()
 
     def test_works_without_a_response(self):
@@ -168,13 +167,13 @@ class TestCmdResponseProtocol(unittest.TestCase):
 
         # write blocks waiting for the response so spawn a thread
         def my_read():
-            time.sleep(0.5)
+            time.sleep(0.001)
             self.read_result = self.interface.read()
 
         thread = threading.Thread(target=my_read)
         thread.start()
 
         self.interface.write(packet)
-        time.sleep(0.55)
+        time.sleep(0.003)
         self.assertEqual(TestCmdResponseProtocol.write_buffer, b"SOUR:VOLT 11, (@1)")
         self.assertEqual(self.read_result.read("VOLTAGE"), (10))

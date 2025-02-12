@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -14,17 +14,13 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from openc3.utilities.bucket import Bucket
-
-# from openc3.utilities.target_file import TargetFile
-from openc3.utilities.logger import Logger
-from openc3.models.reducer_model import ReducerModel
-from openc3.environment import OPENC3_LOGS_BUCKET
-import zlib
 import os
+import zlib
 import time
 import threading
-
+from openc3.utilities.bucket import Bucket
+from openc3.utilities.logger import Logger
+from openc3.models.reducer_model import ReducerModel
 
 class BucketUtilities:
     FILE_TIMESTAMP_FORMAT = "%Y%m%d%H%M%S%N"
@@ -66,6 +62,7 @@ class BucketUtilities:
                 filename = cls.compress_file(filename)
                 bucket_key += ".gz"
 
+            bucket_name = os.environ.get('OPENC3_LOGS_BUCKET')
             retry_count = 0
             while retry_count < 3:
                 try:
@@ -74,7 +71,7 @@ class BucketUtilities:
                     # to be held in memory!
                     with open(filename, "rb") as file:
                         client.put_object(
-                            bucket=OPENC3_LOGS_BUCKET,
+                            bucket=bucket_name,
                             key=bucket_key,
                             body=file,
                             metadata=metadata,
@@ -88,7 +85,7 @@ class BucketUtilities:
                     Logger.warn(f"Error saving log file to bucket - retry {retry_count}: {filename}\n{str(err)}")
                     time.sleep(1)
 
-            Logger.debug(f"wrote {OPENC3_LOGS_BUCKET}/{bucket_key}")
+            Logger.debug(f"wrote {bucket_name}/{bucket_key}")
             ReducerModel.add_file(bucket_key)  # Record the new file for data reduction
 
             if orig_filename:

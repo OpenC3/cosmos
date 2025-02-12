@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -81,11 +81,11 @@ class InterfaceCmdHandlerThread:
         self.thread.start()
         return self.thread
 
-    def stop(self):
-        kill_thread(self, self.thread)
+    def stop(self, timeout=1.0):
+        kill_thread(self, self.thread, timeout=timeout)
 
-    def graceful_kill(self):
-        InterfaceTopic.shutdown(self.interface, scope=self.scope)
+    def graceful_kill(self, timeout=1.0):
+        InterfaceTopic.shutdown(self.interface, timeout=timeout, scope=self.scope)
         time.sleep(0.001)  # Allow other threads to run
 
     def run(self):
@@ -356,11 +356,11 @@ class RouterTlmHandlerThread:
         self.thread.start()
         return self.thread
 
-    def stop(self):
-        kill_thread(self, self.thread)
+    def stop(self, timeout=1.0):
+        kill_thread(self, self.thread, timeout=timeout)
 
-    def graceful_kill(self):
-        RouterTopic.shutdown(self.router, scope=self.scope)
+    def graceful_kill(self, timeout=1.0):
+        RouterTopic.shutdown(self.router, timeout=timeout, scope=self.scope)
         time.sleep(0.001)  # Allow other threads to run
 
     def run(self):
@@ -815,7 +815,7 @@ class InterfaceMicroservice(Microservice):
         self.stop()
         super().shutdown()
 
-    def graceful_kill(self):
+    def graceful_kill(self, timeout=1.0):
         pass  # Just to avoid warning
 
 

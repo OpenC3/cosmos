@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -215,7 +215,7 @@ class TcpipServerInterface(StreamInterface):
         super().disconnect()
 
     # Gracefully kill all the threads
-    def graceful_kill(self):
+    def graceful_kill(self, timeout):
         # This method is just here to prevent warnings
         pass
 

@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -23,7 +23,7 @@ from openc3.utilities.json import JsonEncoder, JsonDecoder
 
 class DecomInterfaceTopic(Topic):
     @classmethod
-    def build_cmd(cls, target_name, cmd_name, cmd_params, range_check, raw, scope=OPENC3_SCOPE):
+    def build_cmd(cls, target_name, cmd_name, cmd_params, range_check, raw, timeout=5, scope=OPENC3_SCOPE):
         data = {}
         data["target_name"] = target_name.upper()
         data["cmd_name"] = cmd_name.upper()
@@ -41,7 +41,6 @@ class DecomInterfaceTopic(Topic):
             "*",
             100,
         )
-        timeout = 5  # Arbitrary 5s timeout
         start_time = time.time()
         while (time.time() - start_time) < timeout:
             for _topic, _msg_id, msg_hash, _redis in Topic.read_topics([ack_topic]):

@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -112,7 +112,7 @@ class Metric:
                     kill_thread(self, Metric.update_thread)
                 Metric.update_thread = None
 
-    def graceful_kill(self):
+    def graceful_kill(self, timeout):
         pass
 
     @classmethod

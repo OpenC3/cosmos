@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -125,15 +125,13 @@ class LogWriter:
 
     # Stops all logging and closes the current log file.
     def stop(self):
-        threads = None
         with self.mutex:
-            threads = self.close_file(False)
+            self.close_file(False)
             self.logging_enabled = False
-        return threads
 
     # Stop all logging, close the current log file, and kill the logging threads.
     def shutdown(self):
-        threads = self.stop()
+        self.stop()
         with LogWriter.mutex:
             LogWriter.instances.remove(self)
             if len(LogWriter.instances) <= 0:
@@ -142,13 +140,9 @@ class LogWriter:
                 if LogWriter.cycle_thread:
                     kill_thread(self, LogWriter.cycle_thread)
                 LogWriter.cycle_thread = None
-        # Wait for BucketUtilities to finish move_log_file_to_bucket_thread
-        for thread in threads:
-            thread.join()
         self.tmp_dir.cleanup()
-        return threads
 
-    def graceful_kill(self):
+    def graceful_kill(self, timeout):
         self.cancel_threads = True
 
     # implementation details
@@ -277,7 +271,7 @@ class LogWriter:
                 if allow_new_file:
                     self.start_new_file()
             elif self.cycle_size and ((self.file_size + data_length) > self.cycle_size):
-                Logger.debug("Log writer start new file due to cycle size {self.cycle_size}")
+                Logger.debug(f"Log writer start new file due to cycle size {self.cycle_size}")
                 if allow_new_file:
                     self.start_new_file()
             elif (
@@ -289,7 +283,7 @@ class LogWriter:
                 # Changed to just a error to prevent file thrashing
                 if not self.out_of_order:
                     Logger.error(
-                        "Log writer out of order time detected (increase buffer depth?): {Time.from_nsec_from_epoch(self.previous_time_nsec_since_epoch)} {Time.from_nsec_from_epoch(time_nsec_since_epoch)}"
+                        f"Log writer out of order time detected (increase buffer depth?): {from_nsec_from_epoch(self.previous_time_nsec_since_epoch)} {from_nsec_from_epoch(time_nsec_since_epoch)}"
                     )
                     self.out_of_order = True
         # This is needed for the redis offset marker entry at the end of the log file
@@ -301,7 +295,7 @@ class LogWriter:
     # to keep a full file's worth of data in the stream. This is what prevents continuous stream growth.
     # Returns thread that moves log to bucket
     def close_file(self, take_mutex=True):
-        threads = []
+        thread = None
         if take_mutex:
             self.mutex.acquire()
         try:
@@ -313,7 +307,8 @@ class LogWriter:
                 # Cleanup timestamps here so they are unset for the next file
                 self.first_time = None
                 self.last_time = None
-                threads.append(BucketUtilities.move_log_file_to_bucket(self.filename, bucket_key))
+                thread = BucketUtilities.move_log_file_to_bucket(self.filename, bucket_key)
+                thread.join()
                 # Now that the file is in storage, trim the Redis stream after a delay
                 self.cleanup_offsets.append({})
                 for redis_topic, last_offset in self.last_offsets:
@@ -328,7 +323,6 @@ class LogWriter:
         finally:
             if take_mutex:
                 self.mutex.release()
-        return threads
 
     def bucket_filename(self):
         return f"{self.first_timestamp()}__{self.last_timestamp()}" + self.extension()
