@@ -110,7 +110,7 @@
     <v-list class="list" data-test="plugin-list">
       <v-row class="px-4"><v-col class="text-h6">Plugin List</v-col></v-row>
       <div v-for="(plugin, index) in shownPlugins" :key="index">
-        <v-list-item>
+        <v-list-item data-test="plugin-list-item">
           <v-list-item-title
             ><span v-if="isModified(plugin)">* </span
             >{{ plugin }}</v-list-item-title
