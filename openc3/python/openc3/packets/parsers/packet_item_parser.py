@@ -80,7 +80,7 @@ class PacketItemParser:
                 item.minimum = self._get_minimum()
                 item.maximum = self._get_maximum()
                 item.default = self._get_default()
-            item.id_value = self._get_id_value()
+            item.id_value = self._get_id_value(item)
             item.description = self._get_description()
             if self._append():
                 item = packet.append(item)
@@ -185,6 +185,18 @@ class PacketItemParser:
             self._get_bit_size(),
         )
 
+    def _convert_string_value(self, index):
+        # If the default value is 0x<data> (no quotes), it is treated as
+        # binary data. Otherwise, the default value is considered to be a string.
+        if (
+            self.parser.parameters[index].upper().startswith("0X")
+            and f'"{self.parser.parameters[index]}"' not in self.parser.line
+            and f"'{self.parser.parameters[index]}'" not in self.parser.line
+        ):
+            return hex_to_byte_string(self.parser.parameters[index])
+        else:
+            return self.parser.parameters[index]
+
     def _get_default(self):
         if "ARRAY" in self.parser.keyword:
             return []
@@ -192,16 +204,7 @@ class PacketItemParser:
         index = 3 if self._append() else 4
         data_type = self._get_data_type()
         if data_type == "STRING" or data_type == "BLOCK":
-            # If the default value is 0x<data> (no quotes), it is treated as
-            # binary data. Otherwise, the default value is considered to be a string.
-            if (
-                self.parser.parameters[index].upper().startswith("0X")
-                and f'"{self.parser.parameters[index]}"' not in self.parser.line
-                and f"'{self.parser.parameters[index]}'" not in self.parser.line
-            ):
-                return hex_to_byte_string(self.parser.parameters[index])
-            else:
-                return self.parser.parameters[index]
+            return self._convert_string_value(index)
         else:
             if data_type != "DERIVED":
                 return ConfigParser.handle_defined_constants(
@@ -212,21 +215,25 @@ class PacketItemParser:
             else:
                 return convert_to_value(self.parser.parameters[index + 2])
 
-    def _get_id_value(self):
+    def _get_id_value(self, item):
         if "ID_" not in self.parser.keyword:
             return None
-
         data_type = self._get_data_type()
-        if "ITEM" in self.parser.keyword:
-            index = 3 if self._append() else 4
-        else:  # PARAMETER
-            index = 5 if self._append() else 6
-            # STRING and BLOCK PARAMETERS don't have min and max values
-            if data_type == "STRING" or data_type == "BLOCK":
-                index -= 2
         if data_type == "DERIVED":
             raise self.parser.error("DERIVED data type not allowed for Identifier")
-        return self.parser.parameters[index]
+        # For PARAMETERS the default value is the ID value
+        if "PARAMETER" in self.parser.keyword:
+            return item.default
+
+        index = 3 if self._append() else 4
+        if data_type == "STRING" or data_type == "BLOCK":
+            return self._convert_string_value(index)
+        else:
+            return ConfigParser.handle_defined_constants(
+                convert_to_value(self.parser.parameters[index]),
+                self._get_data_type(),
+                self._get_bit_size(),
+            )
 
     def _get_description(self):
         max_options = self.usage.count("<")
