@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -14,17 +14,14 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import os
+import zlib
+import time
+import threading
 from openc3.utilities.bucket import Bucket
-
-# from openc3.utilities.target_file import TargetFile
 from openc3.utilities.logger import Logger
 from openc3.models.reducer_model import ReducerModel
 from openc3.environment import OPENC3_LOGS_BUCKET
-import zlib
-import os
-import time
-import threading
-
 
 class BucketUtilities:
     FILE_TIMESTAMP_FORMAT = "%Y%m%d%H%M%S%N"

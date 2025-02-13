@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -146,7 +146,6 @@ class LogWriter:
         for thread in threads:
             thread.join()
         self.tmp_dir.cleanup()
-        return threads
 
     def graceful_kill(self):
         self.cancel_threads = True
@@ -277,7 +276,7 @@ class LogWriter:
                 if allow_new_file:
                     self.start_new_file()
             elif self.cycle_size and ((self.file_size + data_length) > self.cycle_size):
-                Logger.debug("Log writer start new file due to cycle size {self.cycle_size}")
+                Logger.debug(f"Log writer start new file due to cycle size {self.cycle_size}")
                 if allow_new_file:
                     self.start_new_file()
             elif (
@@ -289,7 +288,7 @@ class LogWriter:
                 # Changed to just a error to prevent file thrashing
                 if not self.out_of_order:
                     Logger.error(
-                        "Log writer out of order time detected (increase buffer depth?): {Time.from_nsec_from_epoch(self.previous_time_nsec_since_epoch)} {Time.from_nsec_from_epoch(time_nsec_since_epoch)}"
+                        f"Log writer out of order time detected (increase buffer depth?): {from_nsec_from_epoch(self.previous_time_nsec_since_epoch)} {from_nsec_from_epoch(time_nsec_since_epoch)}"
                     )
                     self.out_of_order = True
         # This is needed for the redis offset marker entry at the end of the log file

@@ -50,6 +50,7 @@ if !ENV['OPENC3_NO_SIMPLECOV']
     root.to_s
   end
   SimpleCov.at_exit do
+    require 'openc3/top_level'
     OpenC3.disable_warnings do
       Encoding.default_external = Encoding::UTF_8
       Encoding.default_internal = nil

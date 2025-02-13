@@ -82,7 +82,7 @@ class TestObjectWriteConversion(unittest.TestCase):
     def test_creates_a_reproducable_format(self):
         owc = ObjectWriteConversion("TLM", "INST", "PARAMS")
         json = owc.as_json()
-        self.assertEqual(json["class"], "ObjectWriteConversion")
-        self.assertEqual(json["converted_type"], "OBJECT")
-        self.assertEqual(json["converted_bit_size"], 0)
-        self.assertEqual(json["params"], ["TLM", "INST", "PARAMS"])
+        self.assertEqual(json.get("class"), "ObjectWriteConversion")
+        self.assertEqual(json.get("converted_type"), "OBJECT")
+        self.assertEqual(json.get("converted_bit_size"), 0)
+        self.assertEqual(json.get("params"), ["TLM", "INST", "PARAMS"])

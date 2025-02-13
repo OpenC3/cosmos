@@ -290,7 +290,7 @@ module OpenC3
 
       after(:each) do
         @dm.shutdown
-        sleep(1.01)
+        @dm_thread.join()
       end
 
       it "complains about non-existent targets" do

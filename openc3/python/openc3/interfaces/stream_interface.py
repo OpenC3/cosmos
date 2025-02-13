@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -35,7 +35,7 @@ class StreamInterface(Interface):
             self.add_protocol(klass, protocol_args, "PARAMS")
 
     def connect(self):
-        super().connect()
+        super().connect() # Reset the protocols
         if self.stream:
             self.stream.connect()
 

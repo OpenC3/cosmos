@@ -75,10 +75,10 @@ Code coverage reports can be found at `cosmos/openc3/coverage/index.html`
 1. Navigate to **cosmos/openc3/python** folder. Run the command:
 
    ```bash
-   cosmos/openc3/python % python -m pip install -r requirements-dev.txt
-   cosmos/openc3/python % python -m pip install -r requirements.txt
-   cosmos/openc3/python % coverage run -m pytest
-   cosmos/openc3/python % coverage html
+   cosmos/openc3/python % python -m pip install poetry
+   cosmos/openc3/python % poetry install
+   cosmos/openc3/python % poetry run coverage run -m pytest
+   cosmos/openc3/python % poetry run coverage html
    ```
 
 Code coverage reports can be found at `cosmos/openc3/python/coverage/index.html`

@@ -79,7 +79,7 @@ module OpenC3
       end
 
       @int_thread = Thread.new { @thread.run }
-      sleep 0.01 # Allow thread to spin up
+      sleep 0.001 # Allow thread to spin up
       @api = ApiTest.new
     end
 
@@ -203,8 +203,7 @@ module OpenC3
           expect { @api.send(method, "INST", "ABORT", timeout: "YES") }.to raise_error("Invalid timeout parameter: YES. Must be numeric.")
           begin
             @process = false
-            expect { @api.send(method, "INST", "ABORT") }.to raise_error("Timeout of 30s waiting for cmd ack")
-            expect { @api.send(method, "INST", "ABORT", timeout: 1) }.to raise_error("Timeout of 1s waiting for cmd ack")
+            expect { @api.send(method, "INST", "ABORT", timeout: 0.003) }.to raise_error("Timeout of 0.003s waiting for cmd ack")
           ensure
             @process = true
           end
@@ -252,16 +251,16 @@ module OpenC3
         model.create
         @dm = DecomMicroservice.new("DEFAULT__DECOM__INST_INT")
         @dm_thread = Thread.new { @dm.run }
-        sleep(0.01)
+        sleep 0.001
       end
 
       after(:each) do
         @dm.shutdown
-        sleep(0.01)
+        sleep 0.001
       end
 
       it "complains about unknown targets" do
-        expect { @api.build_cmd("BLAH COLLECT") }.to raise_error(/Timeout of 5s waiting for cmd ack. Does target 'BLAH' exist?/)
+        expect { @api.build_cmd("BLAH COLLECT", timeout: 0.001) }.to raise_error(/Timeout of 0.001s waiting for cmd ack. Does target 'BLAH' exist?/)
       end
 
       it "complains about unknown commands" do
@@ -374,13 +373,13 @@ module OpenC3
 
       it "sends raw data to an interface" do
         @api.send_raw("inst_int", "\x00\x01\x02\x03")
-        sleep 0.01
+        sleep 0.001
         expect(@interface_data).to eql "\x00\x01\x02\x03"
       end
 
       it "sends raw data to an interface" do
         @api.send_raw("inst_int", "\x00\x01\x02\x03")
-        sleep 0.01
+        sleep 0.001
         expect(@interface_data).to eql "\x00\x01\x02\x03"
       end
     end
@@ -502,7 +501,7 @@ module OpenC3
       it "returns command values" do
         time = Time.now
         @api.cmd("INST COLLECT with TYPE NORMAL, DURATION 5")
-        sleep 0.01
+        sleep 0.001
         expect(@api.get_cmd_value("inst collect type")).to eql 'NORMAL'
         expect(@api.get_cmd_value("inst collect type", type: :RAW)).to eql 0
         expect(@api.get_cmd_value("INST COLLECT DURATION")).to eql 5.0
@@ -511,7 +510,7 @@ module OpenC3
         expect(@api.get_cmd_value("INST COLLECT RECEIVED_COUNT")).to eql 1
 
         @api.cmd("INST COLLECT with TYPE NORMAL, DURATION 7")
-        sleep 0.01
+        sleep 0.001
         expect(@api.get_cmd_value("INST COLLECT RECEIVED_COUNT")).to eql 2
         expect(@api.get_cmd_value("INST COLLECT DURATION")).to eql 7.0
       end
@@ -519,7 +518,7 @@ module OpenC3
       it "returns command values (DEPRECATED)" do
         time = Time.now
         @api.cmd("INST COLLECT with TYPE NORMAL, DURATION 5")
-        sleep 0.01
+        sleep 0.001
         expect(@api.get_cmd_value("inst", "collect", "type")).to eql 'NORMAL'
         expect(@api.get_cmd_value("inst", "collect", "type", :RAW)).to eql 0
         expect(@api.get_cmd_value("INST", "COLLECT", "DURATION")).to eql 5.0
@@ -528,7 +527,7 @@ module OpenC3
         expect(@api.get_cmd_value("INST", "COLLECT", "RECEIVED_COUNT")).to eql 1
 
         @api.cmd("INST COLLECT with TYPE NORMAL, DURATION 7")
-        sleep 0.01
+        sleep 0.001
         expect(@api.get_cmd_value("INST", "COLLECT", "RECEIVED_COUNT")).to eql 2
         expect(@api.get_cmd_value("INST", "COLLECT", "DURATION")).to eql 7.0
       end
@@ -538,7 +537,7 @@ module OpenC3
       it "returns command times" do
         time = Time.now
         @api.cmd("INST COLLECT with TYPE NORMAL, DURATION 5")
-        sleep 0.01
+        sleep 0.001
         result = @api.get_cmd_time("inst", "collect")
         expect(result[0]).to eq("INST")
         expect(result[1]).to eq("COLLECT")
@@ -559,7 +558,7 @@ module OpenC3
 
         time = Time.now
         @api.cmd("INST ABORT")
-        sleep 0.01
+        sleep 0.001
         result = @api.get_cmd_time("INST")
         expect(result[0]).to eq("INST")
         expect(result[1]).to eq("ABORT") # New latest is ABORT
@@ -596,7 +595,7 @@ module OpenC3
         # Send unrelated commands to ensure specific command count
         @api.cmd("INST ABORT")
         @api.cmd_no_hazardous_check("INST CLEAR")
-        sleep 0.01
+        sleep 0.001
 
         count = @api.get_cmd_cnt("INST", "COLLECT")
         expect(count).to eql start + 1
@@ -609,13 +608,13 @@ module OpenC3
       it "returns transmit count for commands" do
         @api.cmd("INST ABORT")
         @api.cmd("INST COLLECT with TYPE NORMAL, DURATION 5")
-        sleep 0.01
+        sleep 0.001
         cnts = @api.get_cmd_cnts([['inst','abort'],['INST','COLLECT']])
         expect(cnts).to eql([1, 1])
         @api.cmd("INST ABORT")
         @api.cmd("INST ABORT")
         @api.cmd("INST COLLECT with TYPE NORMAL, DURATION 5")
-        sleep 0.01
+        sleep 0.001
         cnts = @api.get_cmd_cnts([['INST','ABORT'],['INST','COLLECT']])
         expect(cnts).to eql([3, 2])
       end

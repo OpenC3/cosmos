@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -72,12 +72,13 @@ module OpenC3
       end
     end
 
-    def stop
+    def stop()
       OpenC3.kill_thread(self, @thread)
     end
 
     def graceful_kill
       InterfaceTopic.shutdown(@interface, scope: @scope)
+      sleep(0.001) # Allow other threads to run
     end
 
     def run
@@ -104,6 +105,7 @@ module OpenC3
             @metric.set(name: 'interface_directive_total', value: @directive_count, type: 'counter') if @metric
             if msg_hash['shutdown']
               @logger.info "#{@interface.name}: Shutdown requested"
+              InterfaceTopic.clear_topics(InterfaceTopic.topics(@interface, scope: @scope))
               return
             end
             if msg_hash['connect']
@@ -352,6 +354,7 @@ module OpenC3
 
     def graceful_kill
       RouterTopic.shutdown(@router, scope: @scope)
+      sleep(0.001) # Allow other threads to run
     end
 
     def run
@@ -367,6 +370,7 @@ module OpenC3
 
           if msg_hash['shutdown']
             @logger.info "#{@router.name}: Shutdown requested"
+            RouterTopic.clear_topics(RouterTopic.topics(@router, scope: @scope))
             return
           end
           if msg_hash['connect']
@@ -726,6 +730,7 @@ module OpenC3
       @logger.info "#{@interface.name}: Connect #{@interface.connection_string}"
       begin
         @interface.connect
+        @interface.post_connect
       rescue Exception => e
         begin
           @interface.disconnect # Ensure disconnect is called at least once on a partial connect

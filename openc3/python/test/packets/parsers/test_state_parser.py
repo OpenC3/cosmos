@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -43,9 +43,7 @@ class TestStateParser(unittest.TestCase):
         tf.write('ITEM myitem 0 8 UINT "Test Item"\n')
         tf.write("STATE\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "Not enough parameters for STATE"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "Not enough parameters for STATE"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -56,9 +54,7 @@ class TestStateParser(unittest.TestCase):
         tf.write("    LIMITS DEFAULT 3 ENABLED 1 2 6 7 3 5\n")
         tf.write("    STATE ONE 1\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "Items with LIMITS can't define STATE"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "Items with LIMITS can't define STATE"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -69,9 +65,7 @@ class TestStateParser(unittest.TestCase):
         tf.write("    UNITS Kelvin K\n")
         tf.write("    STATE ONE 1\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "Items with UNITS can't define STATE"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "Items with UNITS can't define STATE"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -81,9 +75,7 @@ class TestStateParser(unittest.TestCase):
         tf.write('ITEM myitem 0 8 UINT "Test Item"\n')
         tf.write("STATE mystate 0 RED extra\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "Too many parameters for STATE"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "Too many parameters for STATE"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -110,9 +102,7 @@ class TestStateParser(unittest.TestCase):
         tf.write("    STATE FALSE 2\n")
         tf.seek(0)
         self.pc.process_file(tf.name, "TGT1")
-        self.assertIn(
-            "Duplicate state defined on line 5: STATE FALSE 2", self.pc.warnings
-        )
+        self.assertIn("Duplicate state defined on line 5: STATE FALSE 2", self.pc.warnings)
         self.pc.commands["TGT1"]["PKT1"].buffer = b"\x00"
         self.assertEqual(self.pc.commands["TGT1"]["PKT1"].read("ITEM1"), 0)
         self.pc.commands["TGT1"]["PKT1"].buffer = b"\x02"
@@ -207,9 +197,7 @@ class TestStateParser(unittest.TestCase):
         self.pc.process_file(tf.name, "TGT1")
         index = 1
         colors = ["RED", "YELLOW", "GREEN"]
-        for name, val in (
-            self.pc.telemetry["TGT1"]["PKT1"].items["ITEM1"].states.items()
-        ):
+        for name, val in self.pc.telemetry["TGT1"]["PKT1"].items["ITEM1"].states.items():
             self.assertEqual(name, f"STATE{index}")
             self.assertEqual(val, index)
             if self.pc.telemetry["TGT1"]["PKT1"].items["ITEM1"].state_colors.get(name):
@@ -245,14 +233,8 @@ class TestStateParser(unittest.TestCase):
         tf.write("    STATE BAD 0 DISABLE_MESSAGES\n")
         tf.seek(0)
         self.pc.process_file(tf.name, "TGT1")
-        self.assertFalse(
-            self.pc.commands["TGT1"]["PKT1"]
-            .items["ITEM1"]
-            .messages_disabled.get("GOOD")
-        )
-        self.assertTrue(
-            self.pc.commands["TGT1"]["PKT1"].items["ITEM1"].messages_disabled.get("BAD")
-        )
+        self.assertFalse(self.pc.commands["TGT1"]["PKT1"].items["ITEM1"].messages_disabled.get("GOOD"))
+        self.assertTrue(self.pc.commands["TGT1"]["PKT1"].items["ITEM1"].messages_disabled.get("BAD"))
         tf.close()
 
     def test_allows_hazardous_and_an_optional_description(self):
@@ -264,17 +246,11 @@ class TestStateParser(unittest.TestCase):
         tf.write('    STATE WORST 3 HAZARDOUS "Hazardous description"\n')
         tf.seek(0)
         self.pc.process_file(tf.name, "TGT1")
-        self.pc.commands["TGT1"]["PKT1"].buffer = "\x01"
+        self.pc.commands["TGT1"]["PKT1"].buffer = b"\x01"
         self.pc.commands["TGT1"]["PKT1"].check_limits
-        self.assertIsNone(
-            self.pc.commands["TGT1"]["PKT1"].items["ITEM1"].hazardous.get("GOOD")
-        )
-        self.assertIsNotNone(
-            self.pc.commands["TGT1"]["PKT1"].items["ITEM1"].hazardous.get("BAD")
-        )
-        self.assertIsNotNone(
-            self.pc.commands["TGT1"]["PKT1"].items["ITEM1"].hazardous.get("WORST")
-        )
+        self.assertIsNone(self.pc.commands["TGT1"]["PKT1"].items["ITEM1"].hazardous.get("GOOD"))
+        self.assertIsNotNone(self.pc.commands["TGT1"]["PKT1"].items["ITEM1"].hazardous.get("BAD"))
+        self.assertIsNotNone(self.pc.commands["TGT1"]["PKT1"].items["ITEM1"].hazardous.get("WORST"))
         self.assertEqual(
             self.pc.commands["TGT1"]["PKT1"].items["ITEM1"].hazardous.get("WORST"),
             "Hazardous description",
