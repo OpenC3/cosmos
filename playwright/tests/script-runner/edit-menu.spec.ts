@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -34,7 +34,7 @@ openc3 is everything I thought it could be`
   await page.locator('[data-test=script-runner-edit]').click()
   await page.locator('[data-test=script-runner-edit-find] >> text=Find').click()
   await page.locator('[placeholder="Search for"]').fill('openc3')
-  await page.locator('text=3 of 3')
+  await expect(page.locator('text=1 of 3')).toBeVisible()
   await page.locator('textarea').press('Escape')
 
   await page.locator('[data-test=script-runner-edit]').click()
@@ -51,7 +51,7 @@ openc3 is everything I thought it could be`
     await page.locator('textarea').press('Control+F') // Ctrl-S save
   }
   await page.locator('[placeholder="Search for"]').fill('openc3')
-  await page.locator('text=3 of 3')
+  await expect(page.locator('text=1 of 3')).toBeVisible()
   await page.locator('text=Aa').click()
-  await page.locator('text=0 of 0')
+  await expect(page.locator('text=0 of 0')).toBeVisible()
 })
