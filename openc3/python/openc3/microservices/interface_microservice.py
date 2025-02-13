@@ -743,6 +743,7 @@ class InterfaceMicroservice(Microservice):
 
         try:
             self.interface.connect()
+            self.interface.post_connect()
         except RuntimeError as error:
             try:
                 self.interface.disconnect()  # Ensure disconnect is called at least once on a partial connect

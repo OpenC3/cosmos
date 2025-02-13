@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -730,6 +730,7 @@ module OpenC3
       @logger.info "#{@interface.name}: Connect #{@interface.connection_string}"
       begin
         @interface.connect
+        @interface.post_connect
       rescue Exception => e
         begin
           @interface.disconnect # Ensure disconnect is called at least once on a partial connect

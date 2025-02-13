@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -72,15 +72,14 @@ module OpenC3
     end
 
     def connect
-      super()
+      super() # Reset the protocols
 
       if @telemetry_read_folder
         @listener = Listen.to(@telemetry_read_folder, force_polling: @polling) do |modified, added, removed|
           @queue << added if added
         end
-        @listener.start # starts a listener thread--does not block
+        @listener.start # starts a listener thread - does not block
       end
-
       @connected = true
     end
 
