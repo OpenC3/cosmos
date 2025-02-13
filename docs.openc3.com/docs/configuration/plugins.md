@@ -511,7 +511,7 @@ The following keywords must follow a TARGET keyword.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Time | Number of seconds between runs of the cleanup process (default = 900 = 15 minutes) | True |
+| Time | Number of seconds between runs of the cleanup process (default = 600 = 10 minutes) | True |
 
 ### REDUCER_DISABLE
 **Disables the data reduction microservice for the target**
