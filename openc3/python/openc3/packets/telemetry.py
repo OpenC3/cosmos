@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -41,8 +41,8 @@ class Telemetry:
 
     # @return [Array<String>] The command target names (excluding UNKNOWN)
     def target_names(self):
-        result = self.config.telemetry.keys()
-        result.delete("UNKNOWN")
+        result = list(self.config.telemetry.keys())
+        result.remove("UNKNOWN")
         result.sort()
         return result
 
@@ -69,158 +69,6 @@ class Telemetry:
             upcase_target_name = target_name.upper()
             raise RuntimeError(f"Telemetry packet '{upcase_target_name} {upcase_packet_name}' does not exist")
         return packet
-
-    # # @param target_name (see #packet)
-    # # @param packet_name [String] The packet name. 'LATEST' can also be given
-    # #   to specify the last received (or defined if no packets have been
-    # #   received) packet within the given target that contains the
-    # #   item_name.
-    # # @param item_name [String] The item name
-    # # @return [Packet, PacketItem] The packet and the packet item
-    # def packet_and_item(target_name, packet_name, item_name):
-    #     upcase_packet_name = str(packet_name).upper()
-    #     if upcase_packet_name == "LATEST":
-    #       return_packet = newest_packet(target_name, item_name)
-    #     else:
-    #       return_packet = packet(target_name, packet_name)
-    #     item = return_packet.get_item(item_name)
-    #     return [return_packet, item]
-
-    # # Return a telemetry value from a packet.
-    # #
-    # # @param target_name (see #packet_and_item)
-    # # @param packet_name (see #packet_and_item)
-    # # @param item_name (see #packet_and_item)
-    # # @param value_type [Symbol] How to convert the item before returning.
-    # #   Must be one of {Packet::VALUE_TYPES}
-    # # @return The value. :FORMATTED and :WITH_UNITS values are always returned
-    # #   as Strings. :RAW values will match their data_type. :CONVERTED values
-    # #   can be any type.
-    # def value(target_name, packet_name, item_name, value_type = 'CONVERTED'):
-    #     packet, _ = packet_and_item(target_name, packet_name, item_name) # Handles LATEST
-    #     return packet.read(item_name, value_type)
-
-    # # Reads the specified list of items and returns their values and limits
-    # # state.
-    # #
-    # # @param item_array [Array<Array(String String String)>] An array
-    # #   consisting of [target name, packet name, item name]
-    # # @param value_types [Symbol|Array<Symbol>] How to convert the items before
-    # #   returning. A single symbol of {Packet::VALUE_TYPES}
-    # #   can be passed which will convert all items the same way. Or
-    # #   an array of symbols can be passed to control how each item is
-    # #   converted.
-    # # @return [Array, Array, Array] The first array contains the item values and the
-    # #   second their limits state, and the third their limits settings which includes
-    # #   the red, yellow, and green (if given) limits values.
-    # def values_and_limits_states(item_array, value_types = 'CONVERTED'):
-    #     items = []
-
-    #     # Verify item_array is a nested array
-    #     raise ValueError(f"item_array must be a nested array consisting of [[tgt,pkt,item],[tgt,pkt,item],...]") if not Array === item_array[0]
-
-    #     states = []
-    #     settings = []
-    #     limits_set = System.limits_set()
-
-    #     if (Array === value_types) and len(item_array) != len(value_types):
-    #         raise ValueError(f"Passed {len(item_array)} items but only {len(value_types)} value types")
-
-    #     value_type = value_types if not Array === value_types
-    #     len(item_array).times do |index|
-    #       entry = item_array[index]
-    #       target_name = entry[0]
-    #       packet_name = entry[1]
-    #       item_name = entry[2]
-    #       if Array === value_types:
-    #           value_type = value_types[index]
-
-    #       packet, item = packet_and_item(target_name, packet_name, item_name) # Handles LATEST
-    #       items.append(packet.read(item_name, value_type))
-    #       limits = item.limits
-    #       states.append(limits.state)
-    #       limits_values = limits.values
-    #       if limits_values:
-    #         limits_settings = limits_values[limits_set]
-    #       else:
-    #         limits_settings = None
-    #       settings.append(limits_settings)
-
-    #     return [items, states, settings]
-
-    # # @param target_name (see #packet)
-    # # @param packet_name (see #packet)
-    # # @return [Array<PacketItem>] The telemetry items for the given target and packet name
-    # def items(target_name, packet_name):
-    #   return packet(target_name, packet_name).sorted_items
-
-    # # @param target_name (see #packet)
-    # # @param packet_name (see #packet) The packet name.  LATEST is supported.
-    # # @return [Array<PacketItem>] The telemetry item names for the given target and packet name
-    # def item_names(target_name, packet_name):
-    #   if LATEST_PACKET_NAME.casecmp(packet_name).zero?:
-    #     target_upmatch = str(target_name).upper():
-    #     target_latest_data = self.config.latest_data[target_upcase]
-    #     raise "Telemetry Target '{target_upcase}' does not exist" if not target_latest_data
-
-    #     item_names = target_latest_data.keys
-    #   else:
-    #     tlm_packet = packet(target_name, packet_name)
-    #     item_names = []
-    #     tlm_packet.sorted_items.each { |item| item_names.append(item.name })
-    #   item_names
-
-    # # Set a telemetry value in a packet.
-    # #
-    # # @param target_name (see #packet_and_item)
-    # # @param packet_name (see #packet_and_item)
-    # # @param item_name (see #packet_and_item)
-    # # @param value The value to set in the packet
-    # # @param value_type (see #tlm)
-    # def set_value(target_name, packet_name, item_name, value, value_type = 'CONVERTED'):
-    #   packet, _ = packet_and_item(target_name, packet_name, item_name)
-    #   packet.write(item_name, value, value_type)
-
-    # # @param target_name (see #packet_and_item)
-    # # @param item_name (see #packet_and_item)
-    # # @return [Array<Packet>] The latest (most recently arrived) packets with
-    # #   the specified target and item.
-    # def latest_packets(target_name, item_name):
-    #   target_upmatch = str(target_name).upper():
-    #   item_upmatch = str(item_name).upper():
-    #   target_latest_data = self.config.latest_data[target_upcase]
-    #   raise "Telemetry target '{target_upcase}' does not exist" if not target_latest_data
-
-    #   packets = self.config.latest_data[target_upcase][item_upcase]
-    #   raise "Telemetry item '{target_upcase} {LATEST_PACKET_NAME} {item_upcase}' does not exist" if not packets
-
-    #   return packets
-
-    # # @param target_name (see #packet_and_item)
-    # # @param item_name (see #packet_and_item)
-    # # @return [Packet] The packet with the most recent timestamp that contains
-    # #   the specified target and item.
-    # def newest_packet(target_name, item_name):
-    #   # Handle LATEST_PACKET_NAME - Lookup packets for this target/item
-    #   packets = latest_packets(target_name, item_name)
-
-    #   # Find packet with newest timestamp
-    #   newest_packet = None
-    #   newest_received_time = None
-    #    for packet in packets:
-    #     received_time = packet.received_time
-    #     if newest_received_time:
-    #       # See if the received time from this packet is newer.
-    #       # Having the >= makes this method return the last defined packet
-    #       # whether the timestamps are both nil or both equal.
-    #       if received_time and received_time >= newest_received_time:
-    #         newest_packet = packet
-    #         newest_received_time = newest_packet.received_time
-    #     else:
-    #       # No received time yet so take this packet
-    #       newest_packet = packet
-    #       newest_received_time = newest_packet.received_time
-    #   return newest_packet
 
     # Identifies an unknown buffer of data as a defined packet and sets the
     # packet's data to the given buffer. Identifying a packet uses the fields
@@ -263,7 +111,7 @@ class Telemetry:
                 # No telemetry for this target
                 continue
 
-            target = self.system.targets[target_name]
+            target = self.system.targets.get(target_name)
             if target and target.tlm_unique_id_mode:
                 # Iterate through the packets and see if any represent the buffer
                 for _, packet in target_packets.items():
@@ -338,36 +186,6 @@ class Telemetry:
         for _, packets in self.config.telemetry.items():
             for _, packet in packets.items():
                 packet.reset()
-
-    # # Returns an array with a "TARGET_NAME PACKET_NAME ITEM_NAME" string for every item in the system
-    # def all_item_strings(include_hidden = False, splash = None):
-    #   strings = []
-    #   tnames = target_names()
-    #   total = len(tnames) float()
-    #   tnames.each_with_index do |target_name, index|
-    #     if splash:
-    #       splash.message = "Processing {target_name} telemetry"
-    #       splash.progress = index / total
-
-    #     # Note: System only has declared target structures but telemetry may have more
-    #     system_target = System.targets[target_name]
-    #     if system_target:
-    #       ignored_items = system_target.ignored_items
-    #     else:
-    #       ignored_items = []
-
-    #      for packet_name, packet in packets(target_name):
-    #       # We don't audit against hidden or disabled packets
-    #       if !include_hidden and (packet.hidden or packet.disabled):
-    #           next
-
-    #       packet.items.each_key do |item_name|
-    #         # Skip ignored items
-    #         if !include_hidden and ignored_items.include? item_name:
-    #             next
-
-    #         strings.append("{target_name} {packet_name} {item_name}")
-    #   return strings
 
     # @return [Hash{String=>Hash{String=>Packet}}] Hash of all the telemetry
     #   packets keyed by the target name. The value is another hash keyed by the

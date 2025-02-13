@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -128,6 +128,7 @@ class InterfaceCmdHandlerThread:
                 )
             if msg_hash.get(b"shutdown"):
                 self.logger.info(f"{self.interface.name}: Shutdown requested")
+                InterfaceTopic.clear_topics(InterfaceTopic.topics(self.interface, scope=self.scope))
                 return "SHUTDOWN"
             if msg_hash.get(b"connect"):
                 self.logger.info(f"{self.interface.name}: Connect requested")
@@ -388,6 +389,7 @@ class RouterTlmHandlerThread:
 
                 if msg_hash.get(b"shutdown"):
                     self.logger.info(f"{self.router.name}: Shutdown requested")
+                    RouterTopic.clear_topics(RouterTopic.topics(self.router, scope=self.scope))
                     return
                 if msg_hash.get(b"connect"):
                     self.logger.info(f"{self.router.name}: Connect requested")

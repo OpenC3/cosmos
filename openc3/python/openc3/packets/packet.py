@@ -277,7 +277,10 @@ class Packet(Structure):
         with self.synchronize():
             try:
                 self.internal_buffer_equals(buffer)
-            except Exception:
+            # Catch and re-raise the TypeError thrown by internal_buffer_equals
+            except TypeError as error:
+                raise error
+            except ValueError:
                 Logger.error(
                     f"{self.target_name} {self.packet_name} buffer ({type(buffer)}) received with actual packet length of {len(buffer)} but defined length of {self.defined_length}"
                 )

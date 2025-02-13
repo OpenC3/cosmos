@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -382,7 +382,7 @@ class PacketReadReadItem(unittest.TestCase):
         value += " more things"
         self.assertEqual(self.p.read_item(i, "WITH_UNITS"), "A str with units")
 
-        self.p.buffer = "\x00"
+        self.p.buffer = b"\x00"
         i.read_conversion = GenericConversion("['A', 'B', 'C']")
         value = self.p.read_item(i, "CONVERTED")
         self.assertEqual(value, ["A", "B", "C"])

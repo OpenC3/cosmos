@@ -484,12 +484,12 @@ class Structure:
         struct.accessor.packet = struct
         return struct
 
-    MUTEX = threading.Lock()
+    CLASS_MUTEX = threading.Lock()
 
     def setup_mutex(self):
         if self.mutex:
             return
-        with Structure.MUTEX:
+        with Structure.CLASS_MUTEX:
             self.mutex_allow_reads = False
             self.mutex = threading.Lock()
 

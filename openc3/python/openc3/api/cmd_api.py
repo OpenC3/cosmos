@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -163,7 +163,7 @@ def cmd_raw_no_checks(*args, **kwargs):
 
 
 # Build a command binary
-def build_cmd(*args, range_check=True, raw=False, scope=OPENC3_SCOPE, manual=False):
+def build_cmd(*args, range_check=True, raw=False, timeout=5, scope=OPENC3_SCOPE, manual=False):
     match len(args):
         case 1:
             target_name, cmd_name, cmd_params = extract_fields_from_cmd_text(args[0])
@@ -181,7 +181,7 @@ def build_cmd(*args, range_check=True, raw=False, scope=OPENC3_SCOPE, manual=Fal
     cmd_name = cmd_name.upper()
     cmd_params = {k.upper(): v for k, v in cmd_params.items()}
     authorize(permission="cmd_info", target_name=target_name, scope=scope, manual=manual)
-    return DecomInterfaceTopic.build_cmd(target_name, cmd_name, cmd_params, range_check, raw, scope)
+    return DecomInterfaceTopic.build_cmd(target_name, cmd_name, cmd_params, range_check, raw, timeout, scope)
 
 
 # build_command is DEPRECATED
