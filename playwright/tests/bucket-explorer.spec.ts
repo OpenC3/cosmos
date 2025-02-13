@@ -244,9 +244,11 @@ test('upload and delete', async ({ page, utils }) => {
 test('navigate logs and tools bucket', async ({ page, utils }) => {
   // Keep clicking alternatively on tools and then logs to force a refresh
   // This allows the DEFAULT folder to appear in time
-  await page.getByText('tools', { exact: true }).click()
-  await page.getByText('logs', { exact: true }).click()
-  await expect(page.getByRole('cell', { name: 'DEFAULT' })).toBeVisible()
+  await expect(async () => {
+    await page.getByText('tools', { exact: true }).click()
+    await page.getByText('logs', { exact: true }).click()
+    await expect(page.getByRole('cell', { name: 'DEFAULT' })).toBeVisible()
+  }).toPass()
   await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/logs%2F/)
 
   await page.getByRole('cell', { name: 'DEFAULT' }).click()
