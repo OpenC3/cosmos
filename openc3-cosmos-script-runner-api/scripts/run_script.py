@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -18,20 +18,19 @@ import os
 import time
 import json
 import sys
+import traceback
 from datetime import datetime, timezone
 from openc3.script import get_overrides
 from openc3.utilities.bucket import Bucket
 from openc3.utilities.store import Store, EphemeralStore
 from openc3.utilities.extract import convert_to_value
 from openc3.utilities.logger import Logger
-from openc3.environment import *
-import traceback
+from openc3.environment import OPENC3_CONFIG_BUCKET
+from running_script import RunningScript, running_script_anycable_publish
 
 start_time = time.time()
 
-from running_script import RunningScript, running_script_anycable_publish
-
-# # Load the bucket client code to ensure we authenticate outside ENV vars
+# Load the bucket client code to ensure we authenticate outside ENV vars
 Bucket.getClient()
 
 del os.environ["OPENC3_BUCKET_USERNAME"]
@@ -39,7 +38,7 @@ del os.environ["OPENC3_BUCKET_PASSWORD"]
 os.unsetenv("OPENC3_BUCKET_USERNAME")
 os.unsetenv("OPENC3_BUCKET_PASSWORD")
 
-# # Preload Store and remove Redis secrets from ENV
+# Preload Store and remove Redis secrets from ENV
 Store.instance()
 EphemeralStore.instance()
 
@@ -73,7 +72,7 @@ def run_script_log(id, message, color="BLACK", message_log=True):
         RunningScript.message_log().write(line_to_write + "\n", True)
     running_script_anycable_publish(
         f"running-script-channel:{id}",
-        {"type": "output", "line": line_to_write, "color": color}
+        {"type": "output", "line": line_to_write, "color": color},
     )
 
 
@@ -128,7 +127,7 @@ try:
             "type": "start",
             "filename": path,
             "active_scripts": len(running),
-        }
+        },
     )
 
     # Subscribe to the ActionCable generated topic which is namedspaced with channel_prefix
@@ -237,7 +236,7 @@ try:
                                     "type": "script",
                                     "method": "backtrace",
                                     "args": running_script.current_backtrace,
-                                }
+                                },
                             )
                         case "debug":
                             run_script_log(
@@ -281,7 +280,7 @@ finally:
         )
         running_script_anycable_publish(
             "all-scripts-channel",
-            {"type": "complete", "active_scripts": active_scripts}
+            {"type": "complete", "active_scripts": active_scripts},
         )
     finally:
         if running_script:

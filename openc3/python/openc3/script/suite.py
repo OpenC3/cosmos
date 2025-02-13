@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -47,32 +47,40 @@ class Suite:
 
     # Add a group to the suite
     def add_group(self, group_class):
-        if not group_class.__class__ == type:
-            raise RuntimeError("add_group must be given Class not String in Python")
+        if not issubclass(group_class, Group):
+            raise RuntimeError(
+                f"add_group received with {group_class}({group_class.__class__}) but must subclass Group"
+            )
         if not self.scripts().get(group_class, None):
             self.scripts()[group_class] = group_class()
         self.plans().append(["GROUP", group_class, None])
 
     # Add a script to the suite
     def add_script(self, group_class, script):
-        if not group_class.__class__ == type:
-            raise RuntimeError("add_script must be given Class not String in Python")
+        if not issubclass(group_class, Group):
+            raise RuntimeError(
+                f"add_script received with {group_class}({group_class.__class__}) but must subclass Group"
+            )
         if not self.scripts().get(group_class, None):
             self.scripts()[group_class] = group_class()
         self.plans().append(["SCRIPT", group_class, script])
 
     # Add a group setup to the suite
     def add_group_setup(self, group_class):
-        if not group_class.__class__ == type:
-            raise RuntimeError("add_group_setup must be given Class not String in Python")
+        if not issubclass(group_class, Group):
+            raise RuntimeError(
+                f"add_group_setup received with {group_class}({group_class.__class__}) but must subclass Group"
+            )
         if not self.scripts().get(group_class, None):
             self.scripts()[group_class] = group_class()
         self.plans().append(["GROUP_SETUP", group_class, None])
 
     # Add a group teardown to the suite
     def add_group_teardown(self, group_class):
-        if not group_class.__class__ == type:
-            raise RuntimeError("add_group_teardown must be given Class not String in Python")
+        if not issubclass(group_class, Group):
+            raise RuntimeError(
+                f"add_group_teardown received with {group_class}({group_class.__class__}) but must subclass Group"
+            )
         if not self.scripts().get(group_class, None):
             self.scripts()[group_class] = group_class()
         self.plans().append(["GROUP_TEARDOWN", group_class, None])

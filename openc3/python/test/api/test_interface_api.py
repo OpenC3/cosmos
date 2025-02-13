@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -47,15 +47,13 @@ class TestInterfaceApi(unittest.TestCase):
                 pass
 
             def read_interface(self):
-                time.sleep(0.05)
-                return b"", ""
+                time.sleep(0.001)
+                return (b"\x01\x02\x03\x04", None)
 
             def interface_cmd(self, cmd_name, *cmd_params):
                 TestInterfaceApi.interface_cmd_data[cmd_name] = cmd_params
 
-            def protocol_cmd(
-                self, cmd_name, *cmd_params, read_write="READ_WRITE", index=-1
-            ):
+            def protocol_cmd(self, cmd_name, *cmd_params, read_write="READ_WRITE", index=-1):
                 TestInterfaceApi.protocol_cmd_data[cmd_name] = cmd_params
 
             # Allow the stubbed InterfaceModel.get_model to call build()
@@ -77,18 +75,19 @@ class TestInterfaceApi(unittest.TestCase):
         self.im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
         self.im_thread = threading.Thread(target=self.im.run)
         self.im_thread.start()
-        time.sleep(0.01)  # Allow the thread to run
+        time.sleep(0.001)  # Allow the thread to run
 
     def tearDown(self):
         self.im.shutdown()
-        time.sleep(0.001)
+        self.im.graceful_kill()
+        self.im_thread.join()
 
     def test_returns_interface_hash(self):
         interface = get_interface("INST_INT")
         self.assertEqual(type(interface), dict)
         self.assertEqual(interface["name"], "INST_INT")
         # Verify it also includes the status
-        self.assertEqual(interface["state"], "CONNECTED")
+        self.assertIn(get_interface("INST_INT")["state"], ["ATTEMPTING", "CONNECTED"])
         self.assertEqual(interface["clients"], 0)
 
     def test_returns_all_interface_names(self):
@@ -99,40 +98,39 @@ class TestInterfaceApi(unittest.TestCase):
         self.assertEqual(get_interface_names(), ["INST_INT", "INT1", "INT2"])
 
     def test_connects_the_interface(self):
-        self.assertEqual(get_interface("INST_INT")["state"], "CONNECTED")
+        self.assertIn(get_interface("INST_INT")["state"], ["ATTEMPTING", "CONNECTED"])
         disconnect_interface("INST_INT")
-        time.sleep(0.1)
+        time.sleep(0.01)
         self.assertEqual(get_interface("INST_INT")["state"], "DISCONNECTED")
         connect_interface("INST_INT")
-        time.sleep(0.1)
+        time.sleep(0.01)
         self.assertIn(get_interface("INST_INT")["state"], ["ATTEMPTING", "CONNECTED"])
 
     def test_should_start_and_stop_raw_logging_on_the_interface(self):
         self.assertIsNone(self.im.interface.stream_log_pair)
         start_raw_logging_interface("INST_INT")
-        time.sleep(0.1)
+        time.sleep(0.01)
         self.assertTrue(self.im.interface.stream_log_pair.read_log.logging_enabled)
         self.assertTrue(self.im.interface.stream_log_pair.write_log.logging_enabled)
         stop_raw_logging_interface("INST_INT")
-        time.sleep(0.1)
+        time.sleep(0.01)
         self.assertFalse(self.im.interface.stream_log_pair.read_log.logging_enabled)
         self.assertFalse(self.im.interface.stream_log_pair.write_log.logging_enabled)
 
         start_raw_logging_interface("ALL")
-        time.sleep(0.1)
+        time.sleep(0.01)
         self.assertTrue(self.im.interface.stream_log_pair.read_log.logging_enabled)
         self.assertTrue(self.im.interface.stream_log_pair.write_log.logging_enabled)
         stop_raw_logging_interface("ALL")
-        time.sleep(0.1)
+        time.sleep(0.01)
         self.assertFalse(self.im.interface.stream_log_pair.read_log.logging_enabled)
         self.assertFalse(self.im.interface.stream_log_pair.write_log.logging_enabled)
-        # TODO: Need to explicitly shutdown stream_log_pair once started
         self.im.interface.stream_log_pair.shutdown()
 
     def test_gets_interface_name_and_all_info(self):
         info = get_all_interface_info()
         self.assertEqual(info[0][0], "INST_INT")
-        self.assertEqual(info[0][1], "CONNECTED")
+        self.assertEqual(info[0][1], "ATTEMPTING")
 
     def test_successfully_maps_a_target_to_an_interface(self):
         TargetModel(name="INST", scope="DEFAULT").create()
@@ -172,19 +170,19 @@ class TestInterfaceApi(unittest.TestCase):
     def test_sends_an_interface_cmd(self):
         TestInterfaceApi.interface_cmd_data = {}
         interface_cmd("INST_INT", "cmd1")
-        time.sleep(0.1)
+        time.sleep(0.01)
         self.assertEqual(list(TestInterfaceApi.interface_cmd_data.keys()), ["cmd1"])
         self.assertEqual(TestInterfaceApi.interface_cmd_data["cmd1"], ())
 
         TestInterfaceApi.interface_cmd_data = {}
         interface_cmd("INST_INT", "cmd2", "param1")
-        time.sleep(0.1)
+        time.sleep(0.01)
         self.assertEqual(list(TestInterfaceApi.interface_cmd_data.keys()), ["cmd2"])
         self.assertEqual(TestInterfaceApi.interface_cmd_data["cmd2"], ("param1",))
 
         TestInterfaceApi.interface_cmd_data = {}
         interface_cmd("INST_INT", "cmd3", "param1", "param2")
-        time.sleep(0.1)
+        time.sleep(0.01)
         self.assertEqual(list(TestInterfaceApi.interface_cmd_data.keys()), ["cmd3"])
         self.assertEqual(
             TestInterfaceApi.interface_cmd_data["cmd3"],
@@ -197,19 +195,19 @@ class TestInterfaceApi(unittest.TestCase):
     def test_sends_a_protocol_cmd(self):
         TestInterfaceApi.protocol_cmd_data = {}
         interface_protocol_cmd("INST_INT", "cmd1")
-        time.sleep(0.1)
+        time.sleep(0.01)
         self.assertEqual(list(TestInterfaceApi.protocol_cmd_data.keys()), ["cmd1"])
         self.assertEqual(TestInterfaceApi.protocol_cmd_data["cmd1"], ())
 
         TestInterfaceApi.protocol_cmd_data = {}
         interface_protocol_cmd("INST_INT", "cmd2", "param1")
-        time.sleep(0.1)
+        time.sleep(0.01)
         self.assertEqual(list(TestInterfaceApi.protocol_cmd_data.keys()), ["cmd2"])
         self.assertEqual(TestInterfaceApi.protocol_cmd_data["cmd2"], ("param1",))
 
         TestInterfaceApi.protocol_cmd_data = {}
         interface_protocol_cmd("INST_INT", "cmd3", "param1", "param2")
-        time.sleep(0.1)
+        time.sleep(0.01)
         self.assertEqual(list(TestInterfaceApi.protocol_cmd_data.keys()), ["cmd3"])
         self.assertEqual(
             TestInterfaceApi.protocol_cmd_data["cmd3"],

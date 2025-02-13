@@ -108,7 +108,7 @@ module OpenC3
     # Build a command binary
     #
     # @since 5.8.0
-    def build_cmd(*args, range_check: true, raw: false, manual: false, scope: $openc3_scope, token: $openc3_token, **kwargs)
+    def build_cmd(*args, range_check: true, raw: false, manual: false, timeout: 5, scope: $openc3_scope, token: $openc3_token, **kwargs)
       extract_string_kwargs_to_args(args, kwargs)
       case args.length
       when 1
@@ -129,7 +129,7 @@ module OpenC3
       cmd_name = cmd_name.upcase
       cmd_params = cmd_params.transform_keys(&:upcase)
       authorize(permission: 'cmd_info', target_name: target_name, manual: manual, scope: scope, token: token)
-      DecomInterfaceTopic.build_cmd(target_name, cmd_name, cmd_params, range_check, raw, scope: scope)
+      DecomInterfaceTopic.build_cmd(target_name, cmd_name, cmd_params, range_check, raw, timeout: timeout, scope: scope)
     end
     # build_command is DEPRECATED
     alias build_command build_cmd

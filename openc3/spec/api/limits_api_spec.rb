@@ -55,14 +55,14 @@ module OpenC3
       model.create
       @dm = DecomMicroservice.new("DEFAULT__DECOM__INST_INT")
       @dm_thread = Thread.new { @dm.run }
-      sleep(0.01) # Allow the threads to run
+      sleep 0.01 # Allow the threads to run
 
       @api = ApiTest.new
     end
 
     after(:each) do
       @dm.shutdown
-      sleep(1.01)
+      @dm_thread.join
     end
 
     describe "get_limits" do
@@ -87,7 +87,7 @@ module OpenC3
         packet = System.telemetry.packet('INST', 'HEALTH_STATUS')
         packet.received_time = Time.now.sys
         TelemetryDecomTopic.write_packet(packet, scope: "DEFAULT")
-        sleep(0.01) # Allow the write to happen
+        sleep 0.01 # Allow the write to happen
 
         expect(@api.get_limits("INST", "LATEST", "TEMP1")).to \
           eql({ 'DEFAULT' => [-80.0, -70.0, 60.0, 80.0, -20.0, 20.0], 'TVAC' => [-80.0, -30.0, 30.0, 80.0] })
@@ -272,7 +272,7 @@ module OpenC3
       it "returns all out of limits items" do
         capture_io do |stdout|
           @api.inject_tlm("INST", "HEALTH_STATUS", { TEMP1: 0, TEMP2: 0, TEMP3: 52, TEMP4: 81 }, type: :CONVERTED)
-          sleep 0.1
+          sleep 0.05
           items = @api.get_out_of_limits
           expect(items[0][0]).to eql "INST"
           expect(items[0][1]).to eql "HEALTH_STATUS"
@@ -291,7 +291,7 @@ module OpenC3
           expect(stdout.string).to match(/INST HEALTH_STATUS TEMP4 = .* is RED_HIGH/)
 
           @api.inject_tlm("INST", "HEALTH_STATUS", { TEMP1: 0, TEMP2: 0, TEMP3: 0, TEMP4: 70 }, type: :CONVERTED)
-          sleep 0.1
+          sleep 0.05
           items = @api.get_out_of_limits
           expect(items[0][0]).to eql "INST"
           expect(items[0][1]).to eql "HEALTH_STATUS"
@@ -309,15 +309,15 @@ module OpenC3
       it "returns the overall system limits state" do
         @api.inject_tlm("INST", "HEALTH_STATUS",
                         { 'TEMP1' => 0, 'TEMP2' => 0, 'TEMP3' => 0, 'TEMP4' => 0, 'GROUND1STATUS' => 'CONNECTED', 'GROUND2STATUS' => 'CONNECTED' })
-        sleep 0.1
+        sleep 0.05
         expect(@api.get_overall_limits_state).to eql "GREEN"
         # TEMP1 limits: -80.0 -70.0 60.0 80.0 -20.0 20.0
         # TEMP2 limits: -60.0 -55.0 30.0 35.0
         @api.inject_tlm("INST", "HEALTH_STATUS", { 'TEMP1' => 70, 'TEMP2' => 32, 'TEMP3' => 0, 'TEMP4' => 0 }) # Both YELLOW
-        sleep 0.1
+        sleep 0.05
         expect(@api.get_overall_limits_state).to eql "YELLOW"
         @api.inject_tlm("INST", "HEALTH_STATUS", { 'TEMP1' => -75, 'TEMP2' => 40, 'TEMP3' => 0, 'TEMP4' => 0 })
-        sleep 0.1
+        sleep 0.05
         expect(@api.get_overall_limits_state).to eql "RED"
         expect(@api.get_overall_limits_state([])).to eql "RED"
 

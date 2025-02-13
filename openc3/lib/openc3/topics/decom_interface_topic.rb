@@ -20,7 +20,7 @@ require 'openc3/topics/topic'
 
 module OpenC3
   class DecomInterfaceTopic < Topic
-    def self.build_cmd(target_name, cmd_name, cmd_params, range_check, raw, scope:)
+    def self.build_cmd(target_name, cmd_name, cmd_params, range_check, raw, timeout: 5, scope:)
       data = {}
       data['target_name'] = target_name.to_s.upcase
       data['cmd_name'] = cmd_name.to_s.upcase
@@ -34,7 +34,6 @@ module OpenC3
       Topic.update_topic_offsets([ack_topic])
       decom_id = Topic.write_topic("#{scope}__DECOMINTERFACE__{#{target_name}}",
           { 'build_cmd' => JSON.generate(data, allow_nan: true) }, '*', 100)
-      timeout = 5 # Arbitrary 5s timeout
       time = Time.now
       while (Time.now - time) < timeout
         Topic.read_topics([ack_topic]) do |_topic, _msg_id, msg_hash, _redis|

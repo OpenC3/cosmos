@@ -14,7 +14,6 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import time
 import json
 from openc3.topics.topic import Topic
 from openc3.environment import OPENC3_SCOPE
@@ -103,8 +102,6 @@ class InterfaceTopic(Topic):
             "*",
             100,
         )
-        time.sleep(1)  # Give some time for the interface to shutdown
-        InterfaceTopic.clear_topics(InterfaceTopic.topics(interface, scope=scope))
 
     @classmethod
     def interface_cmd(cls, interface_name, cmd_name, *cmd_params, scope=OPENC3_SCOPE):

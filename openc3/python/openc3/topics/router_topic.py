@@ -15,7 +15,6 @@
 # if purchased from OpenC3, Inc.
 
 import json
-import time
 from openc3.topics.topic import Topic
 from openc3.system.system import System
 from openc3.utilities.json import JsonEncoder
@@ -110,8 +109,6 @@ class RouterTopic(Topic):
     @classmethod
     def shutdown(cls, router, scope=OPENC3_SCOPE):
         Topic.write_topic(f"{{{scope}__CMD}}ROUTER__{router.name}", {"shutdown": "True"}, "*", 100)
-        time.sleep(1)  # Give some time for the interface to shutdown
-        RouterTopic.clear_topics(RouterTopic.topics(router, scope=scope))
 
     @classmethod
     def router_cmd(cls, router_name, cmd_name, *cmd_params, scope=OPENC3_SCOPE):
