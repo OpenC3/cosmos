@@ -824,8 +824,12 @@ Telemetry Widgets:
           description: Height of the range bar (default = 25)
           values: .*
       example: |
-        LIMITSCOLUMN INST HEALTH_STATUS TEMP1 CONVERTED 50 200
-        LIMITSCOLUMN INST HEALTH_STATUS TEMP1
+        HORIZONTAL
+          LIMITSCOLOR INST HEALTH_STATUS TEMP1 CONVERTED 10 NIL # No label
+          LABEL '1st Temp'
+        END
+        LIMITSCOLOR INST HEALTH_STATUS TEMP2 # Default is label with just item name
+        LIMITSCOLOR INST HEALTH_STATUS TEMP3 CONVERTED 20 TRUE # Full TGT/PKT/ITEM label
     LIMITSCOLOR:
       summary: Displays a circle depicting the limits color of an item.
         See LED for a widget that displays a circle which changes to an arbitrary color based on telemetry values.
