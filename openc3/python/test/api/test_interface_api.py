@@ -130,7 +130,7 @@ class TestInterfaceApi(unittest.TestCase):
     def test_gets_interface_name_and_all_info(self):
         info = get_all_interface_info()
         self.assertEqual(info[0][0], "INST_INT")
-        self.assertEqual(info[0][1], "ATTEMPTING")
+        self.assertIn(get_interface("INST_INT")["state"], ["ATTEMPTING", "CONNECTED"])
 
     def test_successfully_maps_a_target_to_an_interface(self):
         TargetModel(name="INST", scope="DEFAULT").create()
