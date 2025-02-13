@@ -195,17 +195,6 @@ module OpenC3
     def connect
       (@read_protocols | @write_protocols).each { |protocol| protocol.connect_reset }
 
-      connect_cmds = @options['CONNECT_CMD']
-      if connect_cmds
-        connect_cmds.each do |log_dont_log, cmd_string|
-          if log_dont_log.upcase == 'DONT_LOG'
-            cmd(cmd_string, log_message: false)
-          else
-            cmd(cmd_string)
-          end
-        end
-      end
-
       periodic_cmds = @options['PERIODIC_CMD']
       if periodic_cmds
         if not @scheduler
@@ -230,6 +219,21 @@ module OpenC3
           end
         else
           @scheduler.resume
+        end
+      end
+    end
+
+    # Called immediately after the interface is connected.
+    # By default this method will run any commands specified by the CONNECT_CMD option
+    def post_connect
+      connect_cmds = @options['CONNECT_CMD']
+      if connect_cmds
+        connect_cmds.each do |log_dont_log, cmd_string|
+          if log_dont_log.upcase == 'DONT_LOG'
+            cmd(cmd_string, log_message: false)
+          else
+            cmd(cmd_string)
+          end
         end
       end
     end

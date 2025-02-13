@@ -35,9 +35,9 @@ class StreamInterface(Interface):
             self.add_protocol(klass, protocol_args, "PARAMS")
 
     def connect(self):
+        super().connect() # Reset the protocols
         if self.stream:
             self.stream.connect()
-        super().connect()
 
     def connected(self):
         if self.stream:

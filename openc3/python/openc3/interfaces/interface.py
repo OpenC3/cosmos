@@ -101,14 +101,6 @@ class Interface:
         for protocol in self.read_protocols + self.write_protocols:
             protocol.connect_reset()
 
-        connect_cmds = self.options.get("CONNECT_CMD")
-        if connect_cmds:
-            for log_dont_log, cmd_string in connect_cmds:
-                if log_dont_log.upper() == "DONT_LOG":
-                    cmd(cmd_string, log_message=False)
-                else:
-                    cmd(cmd_string)
-
         periodic_cmds = self.options.get("PERIODIC_CMD")
         if periodic_cmds:
             self.scheduler = schedule.Scheduler()
@@ -125,6 +117,17 @@ class Interface:
             self.cancel_scheduler_thread = False
             self.scheduler_thread = threading.Thread(target=self.scheduler_thread_body, daemon=True)
             self.scheduler_thread.start()
+
+    # Called immediately after the interface is connected.
+    # By default this method will run any commands specified by the CONNECT_CMD option
+    def post_connect(self):
+        connect_cmds = self.options.get("CONNECT_CMD")
+        if connect_cmds:
+            for log_dont_log, cmd_string in connect_cmds:
+                if log_dont_log.upper() == "DONT_LOG":
+                    cmd(cmd_string, log_message=False)
+                else:
+                    cmd(cmd_string)
 
     # Indicates if the interface is connected to its target(s) or not. Must be:
     # implemented by a subclass.
