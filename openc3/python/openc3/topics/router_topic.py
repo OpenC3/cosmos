@@ -15,7 +15,6 @@
 # if purchased from OpenC3, Inc.
 
 import json
-import time
 from openc3.topics.topic import Topic
 from openc3.system.system import System
 from openc3.utilities.json import JsonEncoder

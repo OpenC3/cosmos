@@ -14,7 +14,6 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import time
 import json
 from openc3.topics.topic import Topic
 from openc3.environment import OPENC3_SCOPE

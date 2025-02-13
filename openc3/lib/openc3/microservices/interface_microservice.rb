@@ -370,7 +370,7 @@ module OpenC3
 
           if msg_hash['shutdown']
             @logger.info "#{@router.name}: Shutdown requested"
-            RouterTopic.clear_topics(RouterTopic.topics(router, scope: scope))
+            RouterTopic.clear_topics(RouterTopic.topics(@router, scope: @scope))
             return
           end
           if msg_hash['connect']
