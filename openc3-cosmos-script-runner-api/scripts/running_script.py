@@ -976,7 +976,7 @@ class RunningScript:
             # Start Output Thread
             if not RunningScript.output_thread:
                 RunningScript.output_thread = threading.Thread(
-                    target=RunningScript.output_thread, daemon=True
+                    target=RunningScript.output_thread_body, daemon=True
                 )
                 RunningScript.output_thread.start()
 
@@ -1217,6 +1217,18 @@ class RunningScript:
         Logger.stdout = True
         Logger.level = Logger.INFO
 
+    def output_thread_body(self):
+        RunningScript.cancel_output = False
+        RunningScript.output_sleeper = Sleeper()
+        while True:
+            if RunningScript.cancel_output:
+                break
+            if (time.time() - self.output_time) > 5.0:
+                self.handle_output_io()
+            if RunningScript.cancel_output:
+                break
+            if RunningScript.output_sleeper.sleep(1.0):
+                break
 
 openc3.script.RUNNING_SCRIPT = RunningScript
 
