@@ -72,8 +72,8 @@ module OpenC3
       end
     end
 
-    def stop(timeout: 5)
-      OpenC3.kill_thread(self, @thread, timeout)
+    def stop()
+      OpenC3.kill_thread(self, @thread)
     end
 
     def graceful_kill

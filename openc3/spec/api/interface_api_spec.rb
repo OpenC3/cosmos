@@ -54,7 +54,7 @@ module OpenC3
       model.create
       @im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
       @im_thread = Thread.new { @im.run }
-      sleep(0.01) # Allow the thread to run
+      sleep 0.01 # Allow the thread to run
 
       @api = ApiTest.new
     end
@@ -62,7 +62,7 @@ module OpenC3
     after(:each) do
       @im_shutdown = true
       @im.shutdown
-      sleep(0.01)
+      sleep 0.01
     end
 
     describe "get_interface" do
@@ -90,10 +90,10 @@ module OpenC3
       it "connects the interface" do
         expect(@api.get_interface("INST_INT")['state']).to eql "CONNECTED"
         @api.disconnect_interface("INST_INT")
-        sleep(0.1)
+        sleep 0.01
         expect(@api.get_interface("INST_INT")['state']).to eql "DISCONNECTED"
         @api.connect_interface("INST_INT")
-        sleep(0.1)
+        sleep 0.01
         expect(@api.get_interface("INST_INT")['state']).to eql "ATTEMPTING"
       end
     end
