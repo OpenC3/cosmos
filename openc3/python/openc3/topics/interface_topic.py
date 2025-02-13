@@ -95,7 +95,7 @@ class InterfaceTopic(Topic):
         )
 
     @classmethod
-    def shutdown(cls, interface, timeout=1.0, scope=OPENC3_SCOPE):
+    def shutdown(cls, interface, scope=OPENC3_SCOPE):
         InterfaceTopic.while_receive_commands = False
         Topic.write_topic(
             f"{{{scope}__CMD}}INTERFACE__{interface.name}",
@@ -103,8 +103,6 @@ class InterfaceTopic(Topic):
             "*",
             100,
         )
-        time.sleep(timeout)  # Give some time for the interface to shutdown
-        InterfaceTopic.clear_topics(InterfaceTopic.topics(interface, scope=scope))
 
     @classmethod
     def interface_cmd(cls, interface_name, cmd_name, *cmd_params, scope=OPENC3_SCOPE):

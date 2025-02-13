@@ -112,7 +112,7 @@ class Metric:
                     kill_thread(self, Metric.update_thread)
                 Metric.update_thread = None
 
-    def graceful_kill(self, timeout):
+    def graceful_kill(self):
         pass
 
     @classmethod

@@ -88,7 +88,7 @@ class TestCmdApi(unittest.TestCase):
         time.sleep(0.001)
 
     def tearDown(self):
-        self.icht.graceful_kill(timeout=0.001)
+        self.icht.graceful_kill()
         self.thread.join()
 
     def test_cmd_complains_about_unknown_targets_commands_and_parameters(self):

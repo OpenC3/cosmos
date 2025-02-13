@@ -32,7 +32,7 @@ def kill_thread(owner, thread, timeout=1.0):
     if thread:
         if owner and hasattr(owner, "graceful_kill"):
             if threading.current_thread() != thread:
-                owner.graceful_kill(timeout=timeout)
+                owner.graceful_kill()
                 thread.join(timeout=timeout)
 
 
@@ -115,7 +115,7 @@ class StoreQueued(metaclass=StoreMeta):
     def store_instance(self):
         return Store.instance()
 
-    def graceful_kill(self, timeout):
+    def graceful_kill(self):
         # Do nothing
         pass
 

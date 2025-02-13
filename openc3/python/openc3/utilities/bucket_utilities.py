@@ -21,6 +21,7 @@ import threading
 from openc3.utilities.bucket import Bucket
 from openc3.utilities.logger import Logger
 from openc3.models.reducer_model import ReducerModel
+from openc3.environment import OPENC3_LOGS_BUCKET
 
 class BucketUtilities:
     FILE_TIMESTAMP_FORMAT = "%Y%m%d%H%M%S%N"
@@ -62,7 +63,6 @@ class BucketUtilities:
                 filename = cls.compress_file(filename)
                 bucket_key += ".gz"
 
-            bucket_name = os.environ.get('OPENC3_LOGS_BUCKET')
             retry_count = 0
             while retry_count < 3:
                 try:
@@ -71,7 +71,7 @@ class BucketUtilities:
                     # to be held in memory!
                     with open(filename, "rb") as file:
                         client.put_object(
-                            bucket=bucket_name,
+                            bucket=OPENC3_LOGS_BUCKET,
                             key=bucket_key,
                             body=file,
                             metadata=metadata,
@@ -85,7 +85,7 @@ class BucketUtilities:
                     Logger.warn(f"Error saving log file to bucket - retry {retry_count}: {filename}\n{str(err)}")
                     time.sleep(1)
 
-            Logger.debug(f"wrote {bucket_name}/{bucket_key}")
+            Logger.debug(f"wrote {OPENC3_LOGS_BUCKET}/{bucket_key}")
             ReducerModel.add_file(bucket_key)  # Record the new file for data reduction
 
             if orig_filename:

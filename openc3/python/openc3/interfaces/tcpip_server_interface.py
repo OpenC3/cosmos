@@ -215,7 +215,7 @@ class TcpipServerInterface(StreamInterface):
         super().disconnect()
 
     # Gracefully kill all the threads
-    def graceful_kill(self, timeout):
+    def graceful_kill(self):
         # This method is just here to prevent warnings
         pass
 

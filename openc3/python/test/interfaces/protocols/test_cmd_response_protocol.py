@@ -99,7 +99,7 @@ class TestCmdResponseProtocol(unittest.TestCase):
 
     def test_logs_an_error_if_it_doesnt_receive_a_response(self):
         self.interface.stream = self.CmdResponseStream()
-        self.interface.add_protocol(CmdResponseProtocol, [1.5, 0.02, True], "READ_WRITE")
+        self.interface.add_protocol(CmdResponseProtocol, [0.03, 0.02, True], "READ_WRITE")
         self.interface.target_names = ["TGT"]
         packet = Packet("TGT", "CMD")
         packet.template = b"GO"
@@ -109,11 +109,11 @@ class TestCmdResponseProtocol(unittest.TestCase):
         start = time.time()
         with self.assertRaisesRegex(RuntimeError, "Timeout waiting for response"):
             self.interface.write(packet)
-        self.assertAlmostEqual(time.time() - start, 1.5, places=1)
+        self.assertAlmostEqual(time.time() - start, 0.03, places=1)
 
     def test_disconnects_if_it_doesnt_receive_a_response(self):
         self.interface.stream = self.CmdResponseStream()
-        self.interface.add_protocol(CmdResponseProtocol, [1.5, 0.02, True], "READ_WRITE")
+        self.interface.add_protocol(CmdResponseProtocol, [0.03, 0.02, True], "READ_WRITE")
         self.interface.target_names = ["TGT"]
         packet = Packet("TGT", "CMD")
         packet.template = b"GO"
@@ -123,7 +123,7 @@ class TestCmdResponseProtocol(unittest.TestCase):
         start = time.time()
         with self.assertRaisesRegex(RuntimeError, "Timeout waiting for response"):
             self.interface.write(packet)
-        self.assertAlmostEqual(time.time() - start, 1.5, places=1)
+        self.assertAlmostEqual(time.time() - start, 0.03, places=1)
 
     def test_doesnt_expect_responses_for_empty_response_fields(self):
         self.interface.stream = self.CmdResponseStream()
@@ -149,7 +149,7 @@ class TestCmdResponseProtocol(unittest.TestCase):
 
         mock_system.telemetry = Telemetry(pc, mock_system)
         self.interface.stream = self.CmdResponseStream()
-        self.interface.add_protocol(CmdResponseProtocol, [1.5, 0.02, True], "READ_WRITE")
+        self.interface.add_protocol(CmdResponseProtocol, [0.03, 0.02, True], "READ_WRITE")
         # Add extra target names to the interface to ensure we grab the correct one
         self.interface.target_names = ["BLAH", "TGT", "OTHER"]
         packet = Packet("TGT", "CMD")

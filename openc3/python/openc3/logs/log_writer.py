@@ -125,13 +125,15 @@ class LogWriter:
 
     # Stops all logging and closes the current log file.
     def stop(self):
+        threads = None
         with self.mutex:
-            self.close_file(False)
+            threads = self.close_file(False)
             self.logging_enabled = False
+        return threads
 
     # Stop all logging, close the current log file, and kill the logging threads.
     def shutdown(self):
-        self.stop()
+        threads = self.stop()
         with LogWriter.mutex:
             LogWriter.instances.remove(self)
             if len(LogWriter.instances) <= 0:
@@ -140,9 +142,12 @@ class LogWriter:
                 if LogWriter.cycle_thread:
                     kill_thread(self, LogWriter.cycle_thread)
                 LogWriter.cycle_thread = None
+        # Wait for BucketUtilities to finish move_log_file_to_bucket_thread
+        for thread in threads:
+            thread.join()
         self.tmp_dir.cleanup()
 
-    def graceful_kill(self, timeout):
+    def graceful_kill(self):
         self.cancel_threads = True
 
     # implementation details
@@ -295,7 +300,7 @@ class LogWriter:
     # to keep a full file's worth of data in the stream. This is what prevents continuous stream growth.
     # Returns thread that moves log to bucket
     def close_file(self, take_mutex=True):
-        thread = None
+        threads = []
         if take_mutex:
             self.mutex.acquire()
         try:
@@ -307,8 +312,7 @@ class LogWriter:
                 # Cleanup timestamps here so they are unset for the next file
                 self.first_time = None
                 self.last_time = None
-                thread = BucketUtilities.move_log_file_to_bucket(self.filename, bucket_key)
-                thread.join()
+                threads.append(BucketUtilities.move_log_file_to_bucket(self.filename, bucket_key))
                 # Now that the file is in storage, trim the Redis stream after a delay
                 self.cleanup_offsets.append({})
                 for redis_topic, last_offset in self.last_offsets:
@@ -323,6 +327,7 @@ class LogWriter:
         finally:
             if take_mutex:
                 self.mutex.release()
+        return threads
 
     def bucket_filename(self):
         return f"{self.first_timestamp()}__{self.last_timestamp()}" + self.extension()

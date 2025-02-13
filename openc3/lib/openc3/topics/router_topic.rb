@@ -85,8 +85,6 @@ module OpenC3
 
     def self.shutdown(router, scope:)
       Topic.write_topic("{#{scope}__CMD}ROUTER__#{router.name}", { 'shutdown' => 'true' }, '*', 100)
-      sleep 1 # Give some time for the interface to shutdown
-      RouterTopic.clear_topics(RouterTopic.topics(router, scope: scope))
     end
 
     def self.router_cmd(router_name, cmd_name, *cmd_params, scope:)

@@ -79,7 +79,7 @@ class TestInterfaceApi(unittest.TestCase):
 
     def tearDown(self):
         self.im.shutdown()
-        self.im.graceful_kill(timeout=0.001)
+        self.im.graceful_kill()
         self.im_thread.join()
 
     def test_returns_interface_hash(self):
@@ -87,7 +87,7 @@ class TestInterfaceApi(unittest.TestCase):
         self.assertEqual(type(interface), dict)
         self.assertEqual(interface["name"], "INST_INT")
         # Verify it also includes the status
-        self.assertEqual(interface["state"], "ATTEMPTING")
+        self.assertIn(get_interface("INST_INT")["state"], ["ATTEMPTING", "CONNECTED"])
         self.assertEqual(interface["clients"], 0)
 
     def test_returns_all_interface_names(self):

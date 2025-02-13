@@ -81,11 +81,11 @@ class InterfaceCmdHandlerThread:
         self.thread.start()
         return self.thread
 
-    def stop(self, timeout=1.0):
-        kill_thread(self, self.thread, timeout=timeout)
+    def stop(self):
+        kill_thread(self, self.thread)
 
-    def graceful_kill(self, timeout=1.0):
-        InterfaceTopic.shutdown(self.interface, timeout=timeout, scope=self.scope)
+    def graceful_kill(self):
+        InterfaceTopic.shutdown(self.interface, scope=self.scope)
         time.sleep(0.001)  # Allow other threads to run
 
     def run(self):
@@ -128,6 +128,7 @@ class InterfaceCmdHandlerThread:
                 )
             if msg_hash.get(b"shutdown"):
                 self.logger.info(f"{self.interface.name}: Shutdown requested")
+                InterfaceTopic.clear_topics(InterfaceTopic.topics(self.interface, scope=self.scope))
                 return "SHUTDOWN"
             if msg_hash.get(b"connect"):
                 self.logger.info(f"{self.interface.name}: Connect requested")
@@ -356,11 +357,11 @@ class RouterTlmHandlerThread:
         self.thread.start()
         return self.thread
 
-    def stop(self, timeout=1.0):
-        kill_thread(self, self.thread, timeout=timeout)
+    def stop(self):
+        kill_thread(self, self.thread)
 
-    def graceful_kill(self, timeout=1.0):
-        RouterTopic.shutdown(self.router, timeout=timeout, scope=self.scope)
+    def graceful_kill(self):
+        RouterTopic.shutdown(self.router, scope=self.scope)
         time.sleep(0.001)  # Allow other threads to run
 
     def run(self):
@@ -388,6 +389,7 @@ class RouterTlmHandlerThread:
 
                 if msg_hash.get(b"shutdown"):
                     self.logger.info(f"{self.router.name}: Shutdown requested")
+                    RouterTopic.clear_topics(RouterTopic.topics(self.router, scope=self.scope))
                     return
                 if msg_hash.get(b"connect"):
                     self.logger.info(f"{self.router.name}: Connect requested")
@@ -815,7 +817,7 @@ class InterfaceMicroservice(Microservice):
         self.stop()
         super().shutdown()
 
-    def graceful_kill(self, timeout=1.0):
+    def graceful_kill(self):
         pass  # Just to avoid warning
 
 
