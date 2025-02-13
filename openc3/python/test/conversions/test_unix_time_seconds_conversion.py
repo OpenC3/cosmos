@@ -49,18 +49,14 @@ class TestUnixTimeSecondsConversion(unittest.TestCase):
     def test_complains_if_the_seconds_item_doesnt_exist(self):
         utsc = UnixTimeSecondsConversion("TIME")
         packet = Packet("TGT", "PKT")
-        with self.assertRaisesRegex(
-            RuntimeError, "Packet item 'TGT PKT TIME' does not exist"
-        ):
+        with self.assertRaisesRegex(RuntimeError, "Packet item 'TGT PKT TIME' does not exist"):
             utsc.call(None, packet, packet.buffer)
 
     def test_complains_if_the_microseconds_item_doesnt_exist(self):
         utsc = UnixTimeSecondsConversion("TIME", "TIME_US")
         packet = Packet("TGT", "PKT")
         packet.append_item("TIME", 32, "UINT")
-        with self.assertRaisesRegex(
-            RuntimeError, "Packet item 'TGT PKT TIME_US' does not exist"
-        ):
+        with self.assertRaisesRegex(RuntimeError, "Packet item 'TGT PKT TIME_US' does not exist"):
             utsc.call(None, packet, packet.buffer)
 
     def test_returns_the_seconds_conversion(self):
@@ -74,11 +70,11 @@ class TestUnixTimeSecondsConversion(unittest.TestCase):
     def test_creates_a_reproducable_format(self):
         utsc = UnixTimeSecondsConversion("TIME", "TIME_US")
         json = utsc.as_json()
-        self.assertEqual(json["class"], "UnixTimeSecondsConversion")
-        self.assertEqual(json['converted_type'], "FLOAT")
-        self.assertEqual(json['converted_bit_size'], 64)
-        self.assertEqual(json['params'], ["TIME", "TIME_US"])
-        new_utsc = UnixTimeSecondsConversion(*json['params'])
+        self.assertEqual(json.get("class"), "UnixTimeSecondsConversion")
+        self.assertEqual(json.get("converted_type"), "FLOAT")
+        self.assertEqual(json.get("converted_bit_size"), 64)
+        self.assertEqual(json.get("params"), ["TIME", "TIME_US"])
+        new_utsc = UnixTimeSecondsConversion(*json.get("params"))
         packet = Packet("TGT", "PKT")
         packet.append_item("TIME", 32, "UINT")
         time = datetime(2020, 1, 31, 12, 15, 30, tzinfo=timezone.utc).timestamp()

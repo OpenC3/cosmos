@@ -87,6 +87,7 @@ export default {
         this.editor.setOptions({
           useWorker: false,
         })
+        break
       case 'py':
       case 'pyi':
         const PythonMode = this.buildPythonMode()

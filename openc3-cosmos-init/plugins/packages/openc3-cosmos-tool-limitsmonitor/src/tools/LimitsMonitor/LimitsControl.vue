@@ -413,8 +413,8 @@ export default {
       }
     },
     handleMessages(messages) {
-      for (let message of messages) {
-        message = JSON.parse(message['event'])
+      for (let json of messages) {
+        let message = JSON.parse(json['event'])
 
         // We only want to handle LIMITS_CHANGE messages
         // NOTE: The channel also sends LIMITS_SETTINGS and LIMITS_SET messages

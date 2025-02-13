@@ -55,7 +55,7 @@ module OpenC3
     # (see OpenC3::Conversion#call)
     def call(value, packet, buffer)
       myself = packet # For backwards compatibility
-      if true or myself # Remove unused variable warning for myself
+      if myself # Remove unused variable warning for myself
         return eval(@code_to_eval)
       end
     end

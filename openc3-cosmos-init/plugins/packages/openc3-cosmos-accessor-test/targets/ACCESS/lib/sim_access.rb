@@ -51,6 +51,8 @@ module OpenC3
         xml_packet.buffer = packet.buffer
       when 'HTMLCMD'
         html_packet.buffer = packet.buffer
+      else
+        raise "Unknown packet name: #{name}"
       end
     end
   end
