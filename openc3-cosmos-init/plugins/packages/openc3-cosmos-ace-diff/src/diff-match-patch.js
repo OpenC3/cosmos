@@ -1696,6 +1696,8 @@ diff_match_patch.prototype.diff_toDelta = function (diffs) {
  * @throws {!Error} If invalid input.
  */
 diff_match_patch.prototype.diff_fromDelta = function (text1, delta) {
+  let n = 0
+  let text = ''
   let diffs = []
   let diffsLength = 0 // Keeping our own length var is faster in JS.
   let pointer = 0 // Cursor in text1
@@ -1719,11 +1721,11 @@ diff_match_patch.prototype.diff_fromDelta = function (text1, delta) {
       case '-':
       // Fall through.
       case '=':
-        let n = parseInt(param, 10)
+        n = parseInt(param, 10)
         if (isNaN(n) || n < 0) {
           throw new Error('Invalid number in diff_fromDelta: ' + param)
         }
-        let text = text1.substring(pointer, (pointer += n))
+        text = text1.substring(pointer, (pointer += n))
         if (tokens[x].charAt(0) == '=') {
           diffs[diffsLength++] = new diff_match_patch.Diff(DIFF_EQUAL, text)
         } else {
@@ -2514,8 +2516,9 @@ diff_match_patch.prototype.patch_fromText = function (textline) {
 
     while (textPointer < text.length) {
       let sign = text[textPointer].charAt(0)
+      let line = ''
       try {
-        let line = decodeURI(text[textPointer].substring(1))
+        line = decodeURI(text[textPointer].substring(1))
       } catch (ex) {
         // Malformed URI sequence.
         throw new Error('Illegal escape in patch_fromText: ' + line)
