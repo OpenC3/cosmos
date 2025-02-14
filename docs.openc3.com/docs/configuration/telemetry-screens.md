@@ -597,7 +597,9 @@ ARRAY INST HEALTH_STATUS ARY2 200 100 nil 4 WITH_UNITS
 
 
 ### ARRAYPLOT
-**Plot an array of values**
+**Plot an array of values.**
+
+The item can either be a simple array or a 2D array of x values and y values, e.g. [[x1, x2, x3], [y1, y2, y3]]. If the X_AXIS setting is not specified, the X axis starts with 0 and increments by 1. If the X_AXIS setting is used the x values of a 2D array will be ignored.
 
 
 Example Usage:
@@ -953,12 +955,16 @@ LIMITSCOLUMN INST HEALTH_STATUS TEMP1
 | Item name | The item name | True |
 | Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
 | Radius | Radius of the circle (default is 10) | False |
-| Full Item Name | Show the full item name (default is false) | False |
+| Item Name Display | Show the full item name, e.g. TGT PKT ITEM (true), no item name (nil or none) or just the item name (false). Default is false. | False |
 
 Example Usage:
 ```ruby
-LIMITSCOLOR INST HEALTH_STATUS TEMP1 CONVERTED 30 TRUE
-LIMITSCOLOR INST HEALTH_STATUS TEMP1
+HORIZONTAL
+  LIMITSCOLOR INST HEALTH_STATUS TEMP1 CONVERTED 10 NIL # No label
+  LABEL '1st Temp'
+END
+LIMITSCOLOR INST HEALTH_STATUS TEMP2 # Default is label with just item name
+LIMITSCOLOR INST HEALTH_STATUS TEMP3 CONVERTED 20 TRUE # Full TGT/PKT/ITEM label
 ```
 ![LIMITSCOLOR](/img/telemetry_viewer/widgets/limitscolor.png)
 

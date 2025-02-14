@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -27,17 +27,13 @@ import atexit
 # Attempt to gracefully kill a thread
 # @param owner Object that owns the thread and may have a graceful_kill method
 # @param thread The thread to gracefully kill
-# @param graceful_timeout Timeout in seconds to wait for it to die gracefully
-# @param timeout_interval How often to poll for aliveness
-# @param hard_timeout Timeout in seconds to wait for it to die ungracefully
-def kill_thread(owner, thread, graceful_timeout=1, timeout_interval=0.01, hard_timeout=1):
+# @param timeout Timeout in seconds to wait for it to die gracefully
+def kill_thread(owner, thread, timeout=1.0):
     if thread:
         if owner and hasattr(owner, "graceful_kill"):
             if threading.current_thread() != thread:
                 owner.graceful_kill()
-                end_time = time.time() + graceful_timeout
-                while thread.is_alive() and ((end_time - time.time()) > 0):
-                    time.sleep(timeout_interval)
+                thread.join(timeout=timeout)
 
 
 class StoreQueued(metaclass=StoreMeta):

@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -26,23 +26,15 @@ test.use({
 })
 
 async function openFile(page, utils, filename) {
-  let half = Math.floor(filename.length / 2)
-  let part1 = filename.substring(0, half)
-  let part2 = filename.substring(half, filename.length)
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Open File').click()
   await expect(
     page.locator('.v-dialog').getByText('INST2', { exact: true }),
   ).toBeVisible()
-  await utils.sleep(200)
-  await page.locator('[data-test=file-open-save-search]').type(part1)
-  await utils.sleep(200)
-  await page.locator('[data-test=file-open-save-search]').type(part2)
-  await utils.sleep(200)
+  await page.locator('[data-test=file-open-save-search] input').fill(filename)
   await page.locator(`text=${filename}`).click()
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   await expect(page.locator('.v-dialog')).not.toBeVisible()
-  await utils.sleep(500)
 
   // Check for potential "<User> is editing this script"
   // This can happen if we had to do a retry on this test

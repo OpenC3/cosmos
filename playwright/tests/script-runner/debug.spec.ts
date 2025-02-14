@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -272,10 +272,10 @@ test('remembers breakpoints and clears all', async ({ page, utils }) => {
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Open File').click()
   await utils.sleep(1000)
-  await page.locator('[data-test=file-open-save-search]').type('checks')
+  await page.locator('[data-test=file-open-save-search] input').fill('checks')
   await page.locator('text=checks >> nth=0').click() // nth=0 because INST, INST2
   await page.locator('[data-test=file-open-save-submit-btn]').click()
-  expect(await page.locator('#sr-controls')).toContainText(
+  await expect(page.locator('#sr-controls')).toContainText(
     `INST/procedures/checks.rb`,
   )
   await utils.sleep(1000) // Clicking on the ace gutters requires a little wait
@@ -287,7 +287,7 @@ test('remembers breakpoints and clears all', async ({ page, utils }) => {
   await page.reload()
   await utils.sleep(1000) // allow page to reload
   // Reloading the page should bring up the previous script
-  expect(await page.locator('#sr-controls')).toContainText(
+  await expect(page.locator('#sr-controls')).toContainText(
     `INST/procedures/checks.rb`,
   )
 

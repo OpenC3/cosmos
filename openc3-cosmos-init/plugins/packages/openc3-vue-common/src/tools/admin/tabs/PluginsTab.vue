@@ -112,7 +112,7 @@
         <v-col class="text-h6"> Plugin List </v-col>
       </v-row>
       <div v-for="(plugin, index) in shownPlugins" :key="index">
-        <v-list-item>
+        <v-list-item data-test="plugin-list-item">
           <v-list-item-title>
             <template v-if="isModified(plugin)"> * </template>
             {{ plugin }}

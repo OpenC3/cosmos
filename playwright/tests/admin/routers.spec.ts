@@ -1,5 +1,5 @@
 /*
-# Copyright 2023 OpenC3, Inc
+# Copyright 2025 OpenC3, Inc
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -23,12 +23,12 @@ test.use({
 })
 
 test('displays router names', async ({ page, utils }) => {
-  expect(await page.getByText('INST_ROUTER')).toBeVisible()
+  await expect(page.getByText('INST_ROUTER')).toBeVisible()
 })
 
 test('displays router details', async ({ page, utils }) => {
   await page.getByRole('button', { name: '󰈈' }).first().click()
-  expect(await page.locator('.editor')).toContainText('"name": "INST_ROUTER"')
+  await expect(page.locator('.editor')).toContainText('"name": "INST_ROUTER"')
   await utils.download(page, '[data-test="downloadIcon"]', function (contents) {
     expect(contents).toContain('"name": "INST_ROUTER"')
   })

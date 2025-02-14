@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -48,14 +48,12 @@ class TestRouterApi(unittest.TestCase):
 
             def read_interface(self):
                 time.sleep(0.05)
-                return b"", ""
+                return b"\x01\x02\x03\x04", None
 
             def interface_cmd(self, cmd_name, *cmd_params):
                 TestRouterApi.router_cmd_data[cmd_name] = cmd_params
 
-            def protocol_cmd(
-                self, cmd_name, *cmd_params, read_write="READ_WRITE", index=-1
-            ):
+            def protocol_cmd(self, cmd_name, *cmd_params, read_write="READ_WRITE", index=-1):
                 TestRouterApi.protocol_cmd_data[cmd_name] = cmd_params
 
             # Allow the stubbed RouterModel.get_model to call build()

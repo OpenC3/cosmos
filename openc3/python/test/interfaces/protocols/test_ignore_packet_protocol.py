@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -46,7 +46,7 @@ class TestIgnorePacketProtocol(unittest.TestCase):
 
         def read(self):
             if self.run:
-                time.sleep(0.01)
+                time.sleep(0.001)
                 return TestIgnorePacketProtocol.buffer
             else:
                 raise RuntimeError("Done")
@@ -112,7 +112,7 @@ class TestIgnorePacketProtocol(unittest.TestCase):
 
         thread = threading.Thread(target=my_read)
         thread.start()
-        time.sleep(0.1)
+        time.sleep(0.001)
         self.interface.disconnect()
         self.interface.stream.disconnect()
         self.assertIsNone(TestIgnorePacketProtocol.packet)
@@ -149,7 +149,7 @@ class TestIgnorePacketProtocol(unittest.TestCase):
 
         thread = threading.Thread(target=my_read)
         thread.start()
-        time.sleep(0.1)
+        time.sleep(0.001)
         self.interface.disconnect()
         self.interface.stream.disconnect()
         thread.join()
@@ -179,7 +179,7 @@ class TestIgnorePacketProtocol(unittest.TestCase):
 
         thread = threading.Thread(target=my_read2)
         thread.start()
-        time.sleep(0.1)
+        time.sleep(0.001)
         self.interface.disconnect()
         self.interface.stream.disconnect()
         thread.join()
@@ -261,7 +261,7 @@ class TestIgnorePacketProtocol(unittest.TestCase):
 
         thread = threading.Thread(target=my_read)
         thread.start()
-        time.sleep(0.1)
+        time.sleep(0.001)
         self.interface.disconnect()
         self.interface.stream.disconnect()
         thread.join()

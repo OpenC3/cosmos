@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -17,9 +17,11 @@
 import time
 import unittest
 import threading
+from unittest.mock import patch
 from openc3.interfaces.interface import Interface
 from openc3.interfaces.protocols.protocol import Protocol
 from openc3.packets.packet import Packet
+from test.test_helper import BucketMock
 
 gvPacket = None
 gvData = None
@@ -122,12 +124,13 @@ class Initialize(unittest.TestCase):
 
 class ReadInterface(unittest.TestCase):
     def setUp(self):
-        pass
-        # TODO: This doesn't seem to do anything ... trying to avoid "Error saving log file to bucket" messages
-        # mock = Mock(spec=BucketUtilities)
-        # patcher = patch("openc3.utilities.bucket_utilities", return_value=mock)
-        # patcher.start()
-        # self.addCleanup(patcher.stop)
+        self.mock_s3 = BucketMock.getClient()
+        self.mock_s3.clear()
+        self.patcher = patch("openc3.utilities.bucket_utilities.Bucket", BucketMock)
+        self.patcher.start()
+
+    def tearDown(self):
+        self.patcher.stop()
 
     def test_connection_string(self):
         class MyInterface(Interface):
@@ -159,11 +162,11 @@ class ReadInterface(unittest.TestCase):
         self.assertEqual(packet.buffer, b"\x01\x02\x03\x04")
         self.assertEqual(interface.read_count, 1)
         self.assertEqual(interface.bytes_read, 4)
-        filename = interface.stream_log_pair.read_log.filename
         interface.stop_raw_logging()
-        file = open(filename, "rb")
-        self.assertEqual(file.read(), b"\x01\x02\x03\x04")
-        file.close()
+        time.sleep(0.001) # Allow file to be transferred
+        filename = self.mock_s3.files()[0]
+        self.assertIn("myinterface_stream_read.bin.gz", filename)
+        self.assertEqual(self.mock_s3.data(filename), b"\x01\x02\x03\x04")
         interface.stream_log_pair.shutdown()
 
     def test_aborts_and_doesnt_log_if_no_data_is_returned_from_read_interface(self):
@@ -248,12 +251,12 @@ class ReadInterface(unittest.TestCase):
         self.assertEqual(packet.buffer, b"\x01\x02\x03\x04\x05\x06")
         self.assertEqual(interface.read_count, 1)
         self.assertEqual(interface.bytes_read, 4)
-        filename = interface.stream_log_pair.read_log.filename
         interface.stop_raw_logging()
+        time.sleep(0.001) # Allow file to be transferred
         # Raw logging is still the original read_data return
-        file = open(filename, "rb")
-        self.assertEqual(file.read(), b"\x01\x02\x03\x04")
-        file.close()
+        filename = self.mock_s3.files()[0]
+        self.assertIn("myinterface_stream_read.bin.gz", filename)
+        self.assertEqual(self.mock_s3.data(filename), b"\x01\x02\x03\x04")
         interface.stream_log_pair.shutdown()
 
     def test_aborts_if_protocol_read_data_returns_disconnect(self):
@@ -273,11 +276,11 @@ class ReadInterface(unittest.TestCase):
         self.assertIsNone(packet)
         self.assertEqual(interface.read_count, 0)
         self.assertEqual(interface.bytes_read, 4)
-        filename = interface.stream_log_pair.read_log.filename
         interface.stop_raw_logging()
-        file = open(filename, "rb")
-        self.assertEqual(file.read(), b"\x01\x02\x03\x04")
-        file.close()
+        time.sleep(0.001) # Allow file to be transferred
+        filename = self.mock_s3.files()[0]
+        self.assertIn("myinterface_stream_read.bin.gz", filename)
+        self.assertEqual(self.mock_s3.data(filename), b"\x01\x02\x03\x04")
         interface.stream_log_pair.shutdown()
 
     def test_gets_more_data_if_a_protocol_read_data_returns_stop(self):
@@ -297,11 +300,11 @@ class ReadInterface(unittest.TestCase):
         self.assertEqual(packet.buffer, b"\x01\x02\x03\x04")
         self.assertEqual(interface.read_count, 1)
         self.assertEqual(interface.bytes_read, 8)
-        filename = interface.stream_log_pair.read_log.filename
         interface.stop_raw_logging()
-        file = open(filename, "rb")
-        self.assertEqual(file.read(), b"\x01\x02\x03\x04\x01\x02\x03\x04")
-        file.close()
+        time.sleep(0.001) # Allow file to be transferred
+        filename = self.mock_s3.files()[0]
+        self.assertIn("myinterface_stream_read.bin.gz", filename)
+        self.assertEqual(self.mock_s3.data(filename), b"\x01\x02\x03\x04\x01\x02\x03\x04")
         interface.stream_log_pair.shutdown()
 
     def test_allows_protocol_read_packet_to_manipulate_packet(self):
@@ -377,6 +380,13 @@ class ReadInterface(unittest.TestCase):
 class WriteInterface(unittest.TestCase):
     def setUp(self):
         self.packet = Packet("TGT", "PKT", "BIG_ENDIAN", "Packet", b"\x01\x02\x03\x04")
+        self.mock_s3 = BucketMock.getClient()
+        self.mock_s3.clear()
+        self.patcher = patch("openc3.utilities.bucket_utilities.Bucket", BucketMock)
+        self.patcher.start()
+
+    def tearDown(self):
+        self.patcher.stop()
 
     def test_raises_an_error_if_not_connected(self):
         class MyInterface(Interface):
@@ -444,11 +454,11 @@ class WriteInterface(unittest.TestCase):
         interface.write(self.packet)
         self.assertEqual(interface.write_count, 1)
         self.assertEqual(interface.bytes_written, 6)
-        filename = interface.stream_log_pair.write_log.filename
         interface.stop_raw_logging()
-        file = open(filename, "rb")
-        self.assertEqual(file.read(), b"\x01\x02\x03\x04\x05\x06")
-        file.close()
+        time.sleep(0.001) # Allow file to be transferred
+        filename = self.mock_s3.files()[0]
+        self.assertIn("myinterface_stream_write.bin.gz", filename)
+        self.assertEqual(self.mock_s3.data(filename), b"\x01\x02\x03\x04\x05\x06")
         interface.stream_log_pair.shutdown()
 
     def test_aborts_if_write_packet_returns_disconnect(self):
@@ -495,11 +505,11 @@ class WriteInterface(unittest.TestCase):
         interface.write(self.packet)
         self.assertEqual(interface.write_count, 1)
         self.assertEqual(interface.bytes_written, 6)
-        filename = interface.stream_log_pair.write_log.filename
         interface.stop_raw_logging()
-        file = open(filename, "rb")
-        self.assertEqual(file.read(), b"\x01\x02\x03\x04\x08\x07")
-        file.close()
+        time.sleep(0.001) # Allow file to be transferred
+        filename = self.mock_s3.files()[0]
+        self.assertIn("myinterface_stream_write.bin.gz", filename)
+        self.assertEqual(self.mock_s3.data(filename), b"\x01\x02\x03\x04\x08\x07")
         interface.stream_log_pair.shutdown()
 
     def test_aborts_if_write_data_returns_disconnect(self):
