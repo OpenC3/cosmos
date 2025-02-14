@@ -36,7 +36,7 @@ class MessagesThread < TopicsThread
     @start_time = start_time
     @end_time = end_time
     @types = types
-    if @types and (Array !== @types)
+    if @types and !(Array === @types)
       @types = [@types]
     end
     @level = level
