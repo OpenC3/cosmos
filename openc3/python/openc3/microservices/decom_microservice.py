@@ -62,7 +62,7 @@ class LimitsResponseThread:
         try:
             while True:
                 packet, item, old_limits_state = self.queue.get()
-                if packet == None:
+                if packet is None:
                     break
 
                 try:
