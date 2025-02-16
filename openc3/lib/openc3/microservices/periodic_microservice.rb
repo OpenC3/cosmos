@@ -87,4 +87,8 @@ module OpenC3
   end
 end
 
-OpenC3::PeriodicMicroservice.run if __FILE__ == $0
+if __FILE__ == $0
+  OpenC3::PeriodicMicroservice.run
+  ThreadManager.instance.shutdown
+  ThreadManager.instance.join
+end

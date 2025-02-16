@@ -27,6 +27,7 @@ from openc3.topics.limits_event_topic import LimitsEventTopic
 from openc3.topics.telemetry_decom_topic import TelemetryDecomTopic
 from openc3.config.config_parser import ConfigParser
 from openc3.utilities.time import to_nsec_from_epoch, from_nsec_from_epoch
+from openc3.utilities.thread_manager import ThreadManager
 from openc3.microservices.interface_decom_common import (
     handle_build_cmd,
     handle_inject_tlm,
@@ -48,6 +49,7 @@ class LimitsResponseThread:
     def start(self):
         self.thread = threading.Thread(target=self.run, daemon=True)
         self.thread.start()
+        ThreadManager.instance().register(self.thread, stop_object=self)
         return self.thread
 
     def stop(self):
@@ -243,3 +245,5 @@ class DecomMicroservice(Microservice):
 
 if os.path.basename(__file__) == os.path.basename(sys.argv[0]):
     DecomMicroservice.class_run()
+    ThreadManager.instance().shutdown()
+    ThreadManager.instance().join()

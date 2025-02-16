@@ -70,6 +70,7 @@ module OpenC3
         @logger.error "#{@interface.name}: Command handler thread died: #{e.formatted}"
         raise e
       end
+      ThreadManager.instance.register(@thread, stop_object: self)
     end
 
     def stop()
@@ -346,6 +347,7 @@ module OpenC3
         @logger.error "#{@router.name}: Telemetry handler thread died: #{e.formatted}"
         raise e
       end
+      ThreadManager.instance.register(@thread, stop_object: self)
     end
 
     def stop
@@ -813,4 +815,8 @@ module OpenC3
   end
 end
 
-OpenC3::InterfaceMicroservice.run if __FILE__ == $0
+if __FILE__ == $0
+  OpenC3::InterfaceMicroservice.run
+  ThreadManager.instance.shutdown
+  ThreadManager.instance.join
+end
