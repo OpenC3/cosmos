@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -48,10 +48,11 @@ class GenericConversion(Conversion):
             self.converted_bit_size = int(converted_bit_size)
         if ConfigParser.handle_none(converted_array_size):
             self.converted_array_size = int(converted_array_size)
+        self.params = [code_to_eval, converted_type, converted_bit_size, converted_array_size]
 
     def call(self, value, packet, buffer):
         myself = packet  # For backwards compatibility
-        if True or myself:  # Remove unused variable warning for myself
+        if myself:  # Remove unused variable warning for myself
             return eval(self.code_to_eval)
 
     # self.return [String] The conversion class followed by the code to evaluate
@@ -62,23 +63,13 @@ class GenericConversion(Conversion):
     # self.return [String] Config fragment for this conversion
     def to_config(self, read_or_write):
         config = f"    GENERIC_{read_or_write}_CONVERSION_START"
-        if self.converted_type:
+        if self.converted_type is not None:
             config += f" {self.converted_type}"
-        if self.converted_bit_size:
+        if self.converted_bit_size is not None:
             config += f" {self.converted_bit_size}"
-        if self.converted_array_size:
+        if self.converted_array_size is not None:
             config += f" {self.converted_array_size}"
         config += "\n"
         config << self.code_to_eval
         config += f"    GENERIC_{read_or_write}_CONVERSION_END\n"
         return config
-
-    def as_json(self):
-        result = super().as_json()
-        result["params"] = [
-            self.code_to_eval,
-            self.converted_type,
-            self.converted_bit_size,
-            self.converted_array_size,
-        ]
-        return result

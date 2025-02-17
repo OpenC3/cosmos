@@ -21,10 +21,11 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/topics/topic'
+require 'openc3/utilities/store_queued'
 
 module OpenC3
   class TelemetryTopic < Topic
-    def self.write_packet(packet, scope:)
+    def self.write_packet(packet, queued: false, scope:)
       msg_hash = {
         :time => packet.packet_time.to_nsec_from_epoch,
         :received_time => packet.received_time.to_nsec_from_epoch,
@@ -35,7 +36,11 @@ module OpenC3
         :buffer => packet.buffer(false)
       }
       msg_hash[:extra] = JSON.generate(packet.extra.as_json, allow_nan: true) if packet.extra
-      Topic.write_topic("#{scope}__TELEMETRY__{#{packet.target_name}}__#{packet.packet_name}", msg_hash)
+      if queued
+        EphemeralStoreQueued.write_topic("#{scope}__TELEMETRY__{#{packet.target_name}}__#{packet.packet_name}", msg_hash)
+      else
+        Topic.write_topic("#{scope}__TELEMETRY__{#{packet.target_name}}__#{packet.packet_name}", msg_hash)
+      end
     end
   end
 end

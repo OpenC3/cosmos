@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -26,22 +26,54 @@ import io
 import sys
 import json
 import fakeredis
+import queue
+
 from unittest.mock import *
 from openc3.models.cvt_model import CvtModel
 from openc3.utilities.logger import Logger
 from openc3.utilities.store import Store, EphemeralStore
+from openc3.utilities.store_queued import StoreQueued, EphemeralStoreQueued
+from openc3.utilities.sleeper import Sleeper
 from openc3.system.system import System
 
 TEST_DIR = os.path.dirname(__file__)
 Logger.no_store = True
 
 
-def setup_system(targets=["SYSTEM", "INST", "EMPTY"]):
+# Record the message for pipelining by the thread
+def my_getattr(self, func):
+    def method(*args, **kwargs):
+        return getattr(self.store, func)(*args, **kwargs)
+
+    return method
+
+
+def my_init(self, update_interval):
+    self.update_interval = update_interval
+    self.store = self.store_instance()
+    # Queue to hold the store requests
+    self.store_queue = queue.Queue()
+    # Sleeper used to delay update thread
+    self.update_sleeper = Sleeper()
+
+    # Thread used to call methods on the store
+    self.update_thread = None
+
+
+import openc3.utilities.store_queued
+
+openc3.utilities.store_queued.StoreQueued.__init__ = my_init
+openc3.utilities.store_queued.StoreQueued.__getattr__ = my_getattr
+
+
+def setup_system(targets=None):
+    if targets is None:
+        targets = ["SYSTEM", "INST", "EMPTY"]
     Logger.stdout = False
     file_path = os.path.realpath(__file__)
-    dir = os.path.abspath(os.path.join(file_path, "..", "install", "config", "targets"))
+    target_config_dir = os.path.abspath(os.path.join(file_path, "..", "install", "config", "targets"))
     System.instance_obj = None
-    System(targets, dir)
+    System(targets, target_config_dir)
 
     # Initialize the packets in Redis
     for target_name in targets:
@@ -86,10 +118,13 @@ def setup_system(targets=["SYSTEM", "INST", "EMPTY"]):
 
 
 def mock_redis(self):
-    # Ensure the store builds a new instance of redis and doesn't
-    # reuse the existing instance which results in a reused FakeRedis
+    """Ensure the store builds a new instance of redis and doesn't
+    reuse the existing instance which results in a reused FakeRedis
+    """
     EphemeralStore.my_instance = None
     Store.my_instance = None
+    EphemeralStoreQueued.my_instance = None
+    StoreQueued.my_instance = None
     redis = fakeredis.FakeRedis()
     patcher = patch("redis.Redis", return_value=redis)
     patcher.start()
@@ -97,39 +132,39 @@ def mock_redis(self):
     return redis
 
 
-class MockS3:
+import zlib
+class BucketMock:
+    instance = None
     def __init__(self):
-        self.clear()
+        self.objs = {}
 
-    def client(self, *args, **kwags):
-        return self
+    @classmethod
+    def getClient(cls):
+        if cls.instance:
+            return cls.instance
+        cls.instance = cls()
+        return cls.instance
 
     def put_object(self, *args, **kwargs):
-        self.files[kwargs["Key"]] = kwargs["Body"].read()
+        self.objs[kwargs["key"]] = kwargs["body"].read()
 
     def clear(self):
-        self.files = {}
+        self.objs = {}
 
+    def files(self):
+        return list(self.objs.keys())
 
-# Create a MockS3 to make this a singleton
-mocks3 = MockS3()
-
-
-def mock_s3(self):
-    # Clear it out everytime it is used
-    mocks3.clear()
-    patcher = patch("boto3.session.Session", return_value=mocks3)
-    patcher.start()
-    self.addCleanup(patcher.stop)
-    return mocks3
+    def data(self, key):
+        data = self.objs[key]
+        return zlib.decompress(data)
 
 
 def capture_io():
     stdout = sys.stdout
-    capturedOutput = io.StringIO()  # Create StringIO object
-    sys.stdout = capturedOutput  #  and redirect stdout.
+    captured_output = io.StringIO()  # Create StringIO object
+    sys.stdout = captured_output  # and redirect stdout.
     Logger.stdout = True
     Logger.level = Logger.INFO
-    yield capturedOutput
+    yield captured_output
     Logger.level = Logger.FATAL
     sys.stdout = stdout

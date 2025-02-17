@@ -67,7 +67,9 @@ module OpenC3
     def read(name, value_type = :CONVERTED, reduced_type = nil)
       value = nil
       array_index = nil
-      if name[-1] == ']'
+      # Check for array index to handle array items but also make sure there
+      # isn't a REAL item that has brackets in the name
+      if name[-1] == ']' and !@json_hash.include?(name)
         open_bracket_index = name.index('[')
         if open_bracket_index
           array_index = name[(open_bracket_index + 1)..-2].to_i
@@ -212,12 +214,12 @@ module OpenC3
         else
           postfix = nil if value_type == :RAW
         end
-        @json_hash.each do |key, value|
+        @json_hash.each do |key, _value|
           key_split = key.split("__")
           result[key_split[0]] = true if key_split[1] == postfix
         end
       else
-        @json_hash.each { |key, value| result[key.split("__")[0]] = true }
+        @json_hash.each { |key, _value| result[key.split("__")[0]] = true }
       end
       return result.keys
     end

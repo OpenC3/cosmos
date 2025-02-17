@@ -27,18 +27,14 @@ class RouterMicroservice(InterfaceMicroservice):
         RouterStatusModel.set(self.interface.as_json(), scope=self.scope)
         if not packet.identified():
             # Need to identify so we can find the target
-            identified_packet = System.commands.identify(
-                packet.buffer_no_copy(), self.interface.cmd_target_names
-            )
+            identified_packet = System.commands.identify(packet.buffer_no_copy(), self.interface.cmd_target_names)
             if identified_packet:
                 packet = identified_packet
 
         if not packet.defined():
             if packet.target_name and packet.packet_name:
                 try:
-                    defined_packet = System.commands.packet(
-                        packet.target_name, packet.packet_name
-                    )
+                    defined_packet = System.commands.packet(packet.target_name, packet.packet_name)
                     defined_packet.received_time = packet.received_time
                     defined_packet.stored = packet.stored
                     defined_packet.buffer = packet.buffer
@@ -46,12 +42,10 @@ class RouterMicroservice(InterfaceMicroservice):
                 except RuntimeError:
                     self.logger.warn(f"Error defining packet of {len(packet)} bytes")
 
-        print(f"packet:{packet} tgt:{packet.target_name} pkt:{packet.packet_name}")
         target_name = packet.target_name
         if not target_name:
             target_name = "UNKNOWN"
         target = System.targets.get(target_name)
-        print(f"int:{self.interface} cmd:{self.interface.cmd_target_names}")
 
         try:
             try:
@@ -69,26 +63,18 @@ class RouterMicroservice(InterfaceMicroservice):
 
                 if log_message:
                     if target and target_name != "UNKNOWN":
-                        self.logger.info(
-                            System.commands.format(packet, target.ignored_parameters)
-                        )
+                        self.logger.info(System.commands.format(packet, target.ignored_parameters))
                     else:
                         self.logger.warn(
                             f"Unidentified packet of {len(packet.buffer_no_copy())} bytes being routed to target {self.interface.cmd_target_names[0]}"
                         )
             except RuntimeError as error:
-                self.logger.error(
-                    f"Problem formatting command from router=\n{repr(error)}"
-                )
+                self.logger.error(f"Problem formatting command from router=\n{repr(error)}")
 
-            RouterTopic.route_command(
-                packet, self.interface.cmd_target_names, scope=self.scope
-            )
+            RouterTopic.route_command(packet, self.interface.cmd_target_names, scope=self.scope)
         except RuntimeError as error:
             self.error = error
-            self.logger.error(
-                f"Error routing command from {self.interface.name}\n{repr(error)}"
-            )
+            self.logger.error(f"Error routing command from {self.interface.name}\n{repr(error)}")
 
 
 if os.path.basename(__file__) == os.path.basename(sys.argv[0]):

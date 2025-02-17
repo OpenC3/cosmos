@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -15,8 +15,6 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
-from unittest.mock import *
-from test.test_helper import *
 from openc3.interfaces.tcpip_client_interface import TcpipClientInterface
 
 
@@ -47,6 +45,19 @@ class TestTcpipClientInterface(unittest.TestCase):
     def test_initially_returns_false(self):
         i = TcpipClientInterface("localhost", "8888", "8889", "5", "5", "burst")
         self.assertFalse(i.connected())
+
+    def test_connection_string(self):
+        i = TcpipClientInterface("localhost", "8889", "8889", "5", "5", "burst")
+        self.assertEqual(i.connection_string(), "localhost:8889 (R/W)")
+
+        i = TcpipClientInterface("localhost", "8889", "8890", "None", "5", "burst")
+        self.assertEqual(i.connection_string(), "localhost:8889 (write) localhost:8890 (read)")
+
+        i = TcpipClientInterface("localhost", "8889", "None", "None", "5", "burst")
+        self.assertEqual(i.connection_string(), "localhost:8889 (write)")
+
+        i = TcpipClientInterface("localhost", "None", "8889", "None", "5", "burst")
+        self.assertEqual(i.connection_string(), "localhost:8889 (read)")
 
     # @patch("socket.socket", return_value=Mock())
     # def test_returns_true_once_connect_succeeds(self, mock_socket):

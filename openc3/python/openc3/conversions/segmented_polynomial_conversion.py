@@ -26,7 +26,7 @@ class SegmentedPolynomialConversion(Conversion):
     # encountered.
     class Segment:
         # Creates a polynomial conversion segment. Multiple Segments are used to
-        # implemnt a {SegmentedPolynomialConversion}.
+        # implement a {SegmentedPolynomialConversion}.
         #
         # @param lower_bound [Integer] The value at which point this polynomial conversion
         #   should apply. All values >= to this value will be converted using the
@@ -50,10 +50,7 @@ class SegmentedPolynomialConversion(Conversion):
         #
         # @param segment [Segment] Other segment
         def __eq__(self, other_segment):
-            return (
-                self.lower_bound == other_segment.lower_bound
-                and self.coeffs == other_segment.coeffs
-            )
+            return self.lower_bound == other_segment.lower_bound and self.coeffs == other_segment.coeffs
 
         # Perform the polynomial conversion
         #
@@ -74,6 +71,7 @@ class SegmentedPolynomialConversion(Conversion):
     def __init__(self, segments=[]):
         super().__init__()
         self.segments = []
+        self.params = []
         for lower_bound, coeffs in segments:
             self.add_segment(lower_bound, *coeffs)
         self.converted_type = "FLOAT"
@@ -87,6 +85,7 @@ class SegmentedPolynomialConversion(Conversion):
     #   given coefficients.
     # @param coeffs [Array<Integer>] The polynomial coefficients
     def add_segment(self, lower_bound, *coeffs):
+        self.params.append([lower_bound, coeffs])
         self.segments.append(SegmentedPolynomialConversion.Segment(lower_bound, coeffs))
         self.segments.sort()
 
@@ -131,11 +130,3 @@ class SegmentedPolynomialConversion(Conversion):
         for segment in self.segments:
             config += f"    SEG_POLY_{read_or_write}_CONVERSION {segment.lower_bound} {' '.join(segment.coeffs)}\n"
         return config
-
-    def as_json(self):
-        params = []
-        for segment in self.segments:
-            params.append([segment.lower_bound, segment.coeffs])
-        result = super().as_json()
-        result["params"] = [params]
-        return result

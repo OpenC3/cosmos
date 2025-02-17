@@ -141,14 +141,12 @@ def map_target_to_interface(
 ):
     authorize(permission="system_set", interface_name=interface_name, scope=scope)
     new_interface = InterfaceModel.get_model(name=interface_name, scope=scope)
-    if type(target_name) is list:
+    if isinstance(target_name, list):
         target_names = target_name
     else:
         target_names = [target_name]
     for name in target_names:
-        new_interface.map_target(
-            name, cmd_only=cmd_only, tlm_only=tlm_only, unmap_old=unmap_old
-        )
+        new_interface.map_target(name, cmd_only=cmd_only, tlm_only=tlm_only, unmap_old=unmap_old)
         Logger.info(f"Target {name} mapped to Interface {interface_name}", scope=scope)
 
 

@@ -1,5 +1,8 @@
 ---
 title: Developing COSMOS
+description: Building COSMOS and developing the frontend and backend
+sidebar_custom_props:
+  myEmoji: 💻
 ---
 
 # Developing COSMOS
@@ -43,7 +46,7 @@ openc3inc/openc3-ruby                       latest   aa158bbb9539   8 days ago  
 If you're building in a offline environment or want to use a private Rubygems, NPM or APK server (e.g. Nexus), you can update the following environment variables: RUBYGEMS_URL, NPM_URL, APK_URL, and more in the [.env](https://github.com/openc3/cosmos/blob/main/.env) file. Example values:
 
     ALPINE_VERSION=3.18<br/>
-    ALPINE_BUILD=5<br/>
+    ALPINE_BUILD=9<br/>
     RUBYGEMS_URL=https://rubygems.org<br/>
     NPM_URL=https://registry.npmjs.org<br/>
     APK_URL=http://dl-cdn.alpinelinux.org<br/>
@@ -111,7 +114,7 @@ localStorage.setItem("devtools", true);
     Click the Default button next to the application (@openc3/tool-scriptrunner)<br/>
     Paste in the development path which is dependent on the port returned by the local yarn serve and the tool name (scriptrunner)
 
-        http://localhost:2914/tools/scriptrunner/js/app.js
+        http://localhost:2914/tools/scriptrunner/main.js
 
 1.  Refresh the page and you should see your local copy of the application (Script Runner in this example). If you dynamically add code (like `console.log`) the yarn window should re-compile and the browser should refresh displaying your new code. It is highly recommended to get familiar with your browser's [development tools](https://developer.chrome.com/docs/devtools/overview/) if you plan to do frontend development.
 
@@ -147,4 +150,4 @@ openc3-cosmos-cmd-tlm-api % bundle install
 openc3-cosmos-cmd-tlm-api % bundle exec rails s
 ```
 
-1.  Once the `bundle exec rails s` command returns you should see API requests coming from interations in the frontend code. If you add code (like Ruby debugging statements) to the cmd-tlm-api code you need to stop the server (CTRL-C) and restart it to see the effect.
+1.  Once the `bundle exec rails s` command returns you should see API requests coming from interactions in the frontend code. If you add code (like Ruby debugging statements) to the cmd-tlm-api code you need to stop the server (CTRL-C) and restart it to see the effect.

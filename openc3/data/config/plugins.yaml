@@ -17,14 +17,14 @@ NEEDS_DEPENDENCIES:
   summary: Indicates the plugin needs dependencies and sets the GEM_HOME environment variable
   description: If the plugin has a top level lib folder or lists runtime dependencies in the gemspec,
     NEEDS_DEPENDENCIES is effectively already set. Note that in Enterprise Edition, having
-    NEEDS_DEPENDENCIES adds the NFS volume mount to the Kuberentes pod.
+    NEEDS_DEPENDENCIES adds the NFS volume mount to the Kubernetes pod.
   since: 5.5.0
 INTERFACE:
   modifiers:
     <%= MetaConfigParser.load('interface_modifiers.yaml').to_meta_config_yaml(4) %>
   summary: Defines a connection to a physical target
   description: Interfaces are what OpenC3 uses to talk to a particular piece
-    of hardware. Interfaces require a Ruby file which implements all the interface
+    of hardware. Interfaces require a Ruby or Python file which implements all the interface
     methods necessary to talk to the hardware. OpenC3 defines many built in interfaces
     or you can define your own as long as it implements the interface protocol.
   parameters:
@@ -37,7 +37,7 @@ INTERFACE:
       values: \D\S*
     - name: Filename
       required: true
-      description: Ruby file to use when instantiating the interface.
+      description: Ruby or Python file to use when instantiating the interface.
       values:
         <%= MetaConfigParser.load('_interfaces.yaml').to_meta_config_yaml(8) %>
       documentation: Additional parameters are required. Please see the [Interfaces](../configuration/interfaces.md)
@@ -57,7 +57,7 @@ ROUTER:
       values: .+
     - name: Filename
       required: true
-      description: Ruby file to use when instantiating the interface.
+      description: Ruby or Python file to use when instantiating the interface.
       values:
         <%= MetaConfigParser.load('_interfaces.yaml').to_meta_config_yaml(8) %>
       documentation: Additional parameters are required. Please see the [Interfaces](../configuration/interfaces.md)
@@ -71,9 +71,13 @@ WIDGET:
   description: Defines a custom widget that can be used in Telemetry Viewer screens.
   parameters:
     - name: Widget Name
-      description: The name of the widget wil be used to build a path to the widget implementation. For example, `WIDGET HELLOWORLD` will find the as-built file tools/widgets/HelloworldWidget/HelloworldWidget.umd.min.js. See the [Custom Widgets](../guides/custom-widgets.md)
+      description: The name of the widget will be used to build a path to the widget implementation. For example, `WIDGET HELLOWORLD` will find the as-built file tools/widgets/HelloworldWidget/HelloworldWidget.umd.min.js. See the [Custom Widgets](../guides/custom-widgets.md)
         guide for more details.
       required: true
+      values: .+
+    - name: Label
+      description: The label for the widget that will appear in the Data Viewer component drop down
+      required: false
       values: .+
   modifiers:
     DISABLE_ERB:

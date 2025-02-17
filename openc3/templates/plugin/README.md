@@ -42,7 +42,7 @@ docker run -it -v %cd%:/openc3/local -w /openc3/local docker.io/openc3inc/openc3
 ## Installing into OpenC3 COSMOS
 
 1. Go to the OpenC3 Admin Tool, Plugins Tab
-1. Click the paperclip icon and choose your plugin.gem file
+1. Click the install button and choose your plugin.gem file
 1. Fill out plugin parameters
 1. Click Install
 

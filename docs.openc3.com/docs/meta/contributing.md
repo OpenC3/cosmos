@@ -1,5 +1,8 @@
 ---
 title: Contributing
+description: Contributing to COSMOS using the github workflow
+sidebar_custom_props:
+  myEmoji: 🙂
 ---
 
 So you've got an awesome idea to throw into COSMOS. Great! This is the basic process:

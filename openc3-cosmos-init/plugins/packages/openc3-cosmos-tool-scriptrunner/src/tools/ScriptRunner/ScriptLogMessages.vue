@@ -24,69 +24,78 @@
   <div>
     <v-card>
       <v-card-title>
-        <v-tooltip top>
-          <template v-slot:activator="{ on, attrs }">
-            <div v-on="on" v-bind="attrs">
-              <v-btn
-                icon
-                class="mx-2"
-                data-test="download-log"
-                @click="downloadLog"
-              >
-                <v-icon> mdi-download </v-icon>
-              </v-btn>
-            </div>
-          </template>
-          <span> Download Log </span>
-        </v-tooltip>
-        Script Messages
-        <v-spacer />
-        <v-select
-          dense
-          hide-details
-          outlined
-          :items="messageOrderOptions"
-          v-model="messageOrder"
-          class="mr-2"
-          style="max-width: 170px"
-          data-test="message-order"
-        />
-        <v-spacer />
-        <v-text-field
-          v-model="search"
-          label="Search"
-          prepend-inner-icon="mdi-magnify"
-          clearable
-          outlined
-          dense
-          single-line
-          hide-details
-          class="search"
-          data-test="search-messages"
-        />
+        <v-row class="pt-2">
+          <v-tooltip location="top">
+            <template v-slot:activator="{ props }">
+              <div v-bind="props">
+                <v-btn
+                  icon="mdi-download"
+                  variant="text"
+                  class="mx-2"
+                  data-test="download-log"
+                  @click="downloadLog"
+                />
+              </div>
+            </template>
+            <span> Download Log </span>
+          </v-tooltip>
+          Script Messages
+          <v-spacer />
+          <v-select
+            density="compact"
+            hide-details
+            variant="outlined"
+            :items="messageOrderOptions"
+            v-model="messageOrder"
+            class="mr-2"
+            style="max-width: 200px"
+            data-test="message-order"
+          />
+          <v-spacer />
+          <v-text-field
+            v-model="search"
+            label="Search"
+            prepend-inner-icon="mdi-magnify"
+            clearable
+            variant="outlined"
+            density="compact"
+            single-line
+            hide-details
+            class="search"
+            data-test="search-messages"
+          />
 
-        <v-tooltip top>
-          <template v-slot:activator="{ on, attrs }">
-            <div v-on="on" v-bind="attrs">
-              <v-btn icon class="mx-2" data-test="clear-log" @click="clearLog">
-                <v-icon> mdi-delete </v-icon>
-              </v-btn>
-            </div>
-          </template>
-          <span> Clear Log </span>
-        </v-tooltip>
+          <v-tooltip location="top">
+            <template v-slot:activator="{ props }">
+              <div v-bind="props">
+                <v-btn
+                  icon="mdi-delete"
+                  variant="text"
+                  class="mx-2"
+                  data-test="clear-log"
+                  @click="clearLog"
+                />
+              </div>
+            </template>
+            <span> Clear Log </span>
+          </v-tooltip></v-row
+        >
       </v-card-title>
       <v-data-table
+        id="script-log-messages"
+        style="overflow: auto"
         :headers="headers"
         :items="messages"
         :search="search"
-        calculate-widths
-        disable-pagination
+        :items-per-page="-1"
         hide-default-footer
-        dense
-        height="45vh"
+        density="compact"
         data-test="output-messages"
-      />
+      >
+        <template v-slot:item.message="{ item }">
+          <div :class="messageClass(item.message)">{{ item.message }}</div>
+        </template>
+      </v-data-table>
     </v-card>
   </div>
 </template>
@@ -96,7 +105,7 @@ import { format } from 'date-fns'
 
 export default {
   props: {
-    value: {
+    modelValue: {
       type: Array,
       required: true,
     },
@@ -104,7 +113,7 @@ export default {
   data() {
     return {
       search: '',
-      headers: [{ text: 'Message', value: 'message', sortable: false }],
+      headers: [{ title: 'Message', value: 'message', sortable: false }],
       messageOrderOptions: ['Newest on Top', 'Newest on Bottom'],
       messageOrder: 'Newest on Top',
     }
@@ -117,14 +126,29 @@ export default {
   computed: {
     messages: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
   },
   methods: {
+    messageClass(message) {
+      if (
+        message.match(/(CHECK|WAIT): .*(success|was within range.*) with value/)
+      ) {
+        return 'openc3-green'
+      } else if (
+        message.match(
+          /(CHECK|WAIT): .*(failed|failed to be within range.*) with value/,
+        )
+      ) {
+        return 'openc3-red'
+      } else {
+        return ''
+      }
+    },
     downloadLog() {
       const output = this.messages.map((message) => message.message).join('\n')
       const blob = new Blob([output], {
@@ -149,7 +173,7 @@ export default {
           this.messages = []
         })
         .catch(function (err) {
-          // Cancelling the dialog forces catch and sets err to true
+          // Canceling the dialog forces catch and sets err to true
         })
     },
   },

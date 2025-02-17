@@ -18,7 +18,17 @@
 
 require 'json'
 require 'jsonpath'
+require 'openc3/io/json_rpc'
 require 'openc3/accessors/accessor'
+
+# Monkey patch JsonPath to enable create_additions and allow_nan to support binary strings, and NaN, Infinity, -Infinity
+OpenC3.disable_warnings do
+  class JsonPath
+    def self.process_object(obj_or_str, opts = {})
+      obj_or_str.is_a?(String) ? MultiJson.decode(obj_or_str, max_nesting: opts[:max_nesting], create_additions: true, allow_nan: true) : obj_or_str
+    end
+  end
+end
 
 module OpenC3
   class JsonAccessor < Accessor
@@ -33,7 +43,7 @@ module OpenC3
 
       # Convert to ruby objects
       if String === buffer
-        decoded = JSON.parse(buffer, :allow_nan => true)
+        decoded = JSON.parse(buffer, :allow_nan => true, :create_additions => true)
       else
         decoded = buffer
       end
@@ -43,7 +53,7 @@ module OpenC3
 
       # Update buffer
       if String === buffer
-        buffer.replace(JSON.generate(decoded, :allow_nan => true))
+        buffer.replace(JSON.generate(decoded.as_json, :allow_nan => true))
       end
 
       return value
@@ -52,7 +62,7 @@ module OpenC3
     def self.read_items(items, buffer)
       # Prevent JsonPath from decoding every call
       if String === buffer
-        decoded = JSON.parse(buffer, :allow_nan => true)
+        decoded = JSON.parse(buffer, :allow_nan => true, :create_additions => true)
       else
         decoded = buffer
       end
@@ -153,7 +163,7 @@ module OpenC3
       return true
     end
 
-    # If this is true it will enfore that COSMOS DERIVED items must have a
+    # If this is true it will enforce that COSMOS DERIVED items must have a
     # write_conversion to be written
     def enforce_derived_write_conversion(_item)
       return true

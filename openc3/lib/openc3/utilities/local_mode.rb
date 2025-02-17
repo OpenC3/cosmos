@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -31,6 +31,7 @@ module OpenC3
       'openc3-cosmos-tool-admin',
       'openc3-cosmos-tool-bucketexplorer',
       'openc3-cosmos-tool-cmdsender',
+      'openc3-cosmos-tool-cmdhistory',
       'openc3-cosmos-tool-cmdtlmserver',
       'openc3-cosmos-tool-dataextractor',
       'openc3-cosmos-tool-dataviewer',
@@ -47,6 +48,7 @@ module OpenC3
       'openc3-enterprise-tool-base',
       'openc3-cosmos-tool-autonomic',
       'openc3-cosmos-tool-calendar',
+      'openc3-cosmos-tool-grafana',
       'openc3-tool-base',
     ]
 
@@ -168,7 +170,7 @@ module OpenC3
               json = JSON.parse(data, :allow_nan => true, :create_additions => true)
 
               found = false
-              found_models.each do |name, model_details|
+              found_models.each do |name, _model_details|
                 if json["name"] == name
                   # Matched pair
                   found = true
@@ -339,7 +341,7 @@ module OpenC3
     def self.modified_targets(scope:)
       targets = {}
       local_catalog = build_local_catalog(scope: scope)
-      local_catalog.each do |key, size|
+      local_catalog.each do |key, _size|
         split_key = key.split('/') # scope/targets_modified/target_name/*
         target_name = split_key[2]
         if target_name
@@ -352,7 +354,7 @@ module OpenC3
     def self.modified_files(target_name, scope:)
       modified = []
       local_catalog = build_local_catalog(scope: scope)
-      local_catalog.each do |key, size|
+      local_catalog.each do |key, _size|
         split_key = key.split('/') # scope/targets_modified/target_name/*
         local_target_name = split_key[2]
         if target_name == local_target_name
@@ -378,6 +380,7 @@ module OpenC3
 
     def self.put_target_file(path, io_or_string, scope:)
       full_folder_path = "#{OPENC3_LOCAL_MODE_PATH}/#{path}"
+      return unless File.expand_path(full_folder_path).start_with?(OPENC3_LOCAL_MODE_PATH)
       FileUtils.mkdir_p(File.dirname(full_folder_path))
       File.open(full_folder_path, 'wb') do |file|
         if String === io_or_string
@@ -391,7 +394,10 @@ module OpenC3
 
     def self.open_local_file(path, scope:)
       full_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/targets_modified/#{path}"
-      return File.open(full_path, 'rb')
+      if File.expand_path(full_path).start_with?(OPENC3_LOCAL_MODE_PATH)
+        return File.open(full_path, 'rb')
+      end
+      nil
     rescue Errno::ENOENT
       nil
     end
@@ -399,7 +405,7 @@ module OpenC3
     def self.local_target_files(scope:, path_matchers:, include_temp: false)
       files = []
       local_catalog = build_local_catalog(scope: scope)
-      local_catalog.each do |key, size|
+      local_catalog.each do |key, _size|
         split_key = key.split('/')
         # DEFAULT/targets_modified/__TEMP__/YYYY_MM_DD_HH_MM_SS_mmm_temp.rb
         # See target_file.rb TEMP_FOLDER
@@ -434,8 +440,8 @@ module OpenC3
             JSON.parse(data, :allow_nan => true, :create_additions => true)
             # Only save if the parse was successful
             ToolConfigModel.save_config(parts[-2], File.basename(config, '.json'), data, scope: scope, local_mode: false)
-          rescue JSON::ParserError => error
-            puts "Unable to initialize tool config due to #{error.message}"
+          rescue JSON::ParserError => e
+            puts "Unable to initialize tool config due to #{e.message}"
           end
         end
       end
@@ -444,6 +450,7 @@ module OpenC3
     def self.save_tool_config(scope, tool, name, data)
       json = JSON.parse(data, :allow_nan => true, :create_additions => true)
       config_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/tool_config/#{tool}/#{name}.json"
+      return unless File.expand_path(config_path).start_with?(OPENC3_LOCAL_MODE_PATH)
       FileUtils.mkdir_p(File.dirname(config_path))
       File.open(config_path, 'w') do |file|
         file.write(JSON.pretty_generate(json, :allow_nan => true))
@@ -451,7 +458,9 @@ module OpenC3
     end
 
     def self.delete_tool_config(scope, tool, name)
-      FileUtils.rm_f("#{OPENC3_LOCAL_MODE_PATH}/#{scope}/tool_config/#{tool}/#{name}.json")
+      config_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/tool_config/#{tool}/#{name}.json"
+      return unless File.expand_path(config_path).start_with?(OPENC3_LOCAL_MODE_PATH)
+      FileUtils.rm_f(config_path)
     end
 
     def self.sync_settings()
@@ -469,6 +478,7 @@ module OpenC3
 
     def self.save_setting(scope, name, data)
       config_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/settings/#{name}.json"
+      return unless File.expand_path(config_path).start_with?(OPENC3_LOCAL_MODE_PATH)
       FileUtils.mkdir_p(File.dirname(config_path))
       # Anything can be stored as a setting so write it out directly
       File.write(config_path, data)
@@ -478,12 +488,14 @@ module OpenC3
 
     def self.sync_remote_to_local(bucket, key)
       local_path = "#{OPENC3_LOCAL_MODE_PATH}/#{key}"
+      return unless File.expand_path(local_path).start_with?(OPENC3_LOCAL_MODE_PATH)
       FileUtils.mkdir_p(File.dirname(local_path))
       bucket.get_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: key, path: local_path)
     end
 
     def self.sync_local_to_remote(bucket, key)
       local_path = "#{OPENC3_LOCAL_MODE_PATH}/#{key}"
+      return unless File.expand_path(local_path).start_with?(OPENC3_LOCAL_MODE_PATH)
       File.open(local_path, 'rb') do |read_file|
         bucket.put_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: key, body: read_file)
       end
@@ -491,6 +503,7 @@ module OpenC3
 
     def self.delete_local(key)
       local_path = "#{OPENC3_LOCAL_MODE_PATH}/#{key}"
+      return unless File.expand_path(local_path).start_with?(OPENC3_LOCAL_MODE_PATH)
       File.delete(local_path) if File.exist?(local_path)
       nil
     end
@@ -555,7 +568,7 @@ module OpenC3
         end
       end
 
-      remote_catalog.each do |key, size|
+      remote_catalog.each do |key, _size|
         local_size = local_catalog[key]
         if local_size
           # Both files exist - Handled earlier

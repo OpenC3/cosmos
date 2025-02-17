@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -52,7 +52,7 @@ module OpenC3
     end
 
     describe "as_json" do
-      it "creates a reproducable format" do
+      it "creates a reproducible format" do
         gc = GenericConversion.new("10.0 / 2", "FLOAT", "32", "64")
         json = gc.as_json(:allow_nan => true)
         expect(json['class']).to eql "OpenC3::GenericConversion"
@@ -60,10 +60,10 @@ module OpenC3
         expect(json['converted_bit_size']).to eql 32
         expect(json['converted_array_size']).to eql 64
         new_gc = OpenC3::const_get(json['class']).new(*json['params'])
-        expect(gc.code_to_eval).to eql (new_gc.code_to_eval)
-        expect(gc.converted_type).to eql (new_gc.converted_type)
-        expect(gc.converted_bit_size).to eql (new_gc.converted_bit_size)
-        expect(gc.converted_array_size).to eql (new_gc.converted_array_size)
+        expect(gc.code_to_eval).to eql(new_gc.code_to_eval)
+        expect(gc.converted_type).to eql(new_gc.converted_type)
+        expect(gc.converted_bit_size).to eql(new_gc.converted_bit_size)
+        expect(gc.converted_array_size).to eql(new_gc.converted_array_size)
         expect(gc.call(0, 0, 0)).to eql 5.0
         expect(new_gc.call(0, 0, 0)).to eql 5.0
       end

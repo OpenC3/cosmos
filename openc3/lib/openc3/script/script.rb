@@ -25,17 +25,23 @@ require 'openc3/api/api'
 require 'openc3/io/json_drb_object'
 require 'openc3/script/api_shared'
 require 'openc3/script/calendar'
-require 'openc3/script/metadata'
 require 'openc3/script/commands'
-require 'openc3/script/telemetry'
-require 'openc3/script/limits'
+require 'openc3/script/critical_cmd'
 require 'openc3/script/exceptions'
+# openc3/script/extract is just helper methods
+require 'openc3/script/limits'
+require 'openc3/script/metadata'
+require 'openc3/script/packages'
+require 'openc3/script/plugins'
 require 'openc3/script/screen'
 require 'openc3/script/script_runner'
 require 'openc3/script/storage'
+# openc3/script/suite_results and suite_runner are used by
+# running_script.rb and the script_runner_api
+# openc3/script/suite is used by end user SR Suites
+require 'openc3/script/tables'
+require 'openc3/script/telemetry'
 require 'openc3/script/web_socket_api'
-require 'openc3/script/packages'
-require 'openc3/script/plugins'
 require 'openc3/utilities/authentication'
 
 $api_server = nil
@@ -108,22 +114,28 @@ module OpenC3
       end
     end
 
+    def prompt_for_critical_cmd(uuid, _username, _target_name, _cmd_name, _cmd_params, cmd_string)
+      puts "Waiting for critical command approval:"
+      puts "  #{cmd_string}"
+      puts "  UUID: #{uuid}"
+      loop do
+        status = critical_cmd_status(uuid)
+        if status == 'APPROVED'
+          return
+        elsif status == 'REJECTED'
+          raise "Critical command rejected"
+        end
+        # Else still waiting
+        wait(0.1)
+      end
+    end
+
     ###########################################################################
     # START PUBLIC API
     ###########################################################################
 
     def disconnect_script
       $disconnect = true
-    end
-
-    # DEPRECATED
-    def play_wav_file(wav_filename)
-      # NOOP
-    end
-
-    # DEPRECATED
-    def status_bar(message)
-      # NOOP
     end
 
     def ask_string(question, blank_or_default = false, password = false)

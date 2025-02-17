@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -28,7 +28,7 @@ class Commands:
 
     This should not be confused with the Api module which implements the JSON
     API that is used by tools when accessing the Server. The Api module always
-    provides Ruby primatives where the PacketConfig class can return actual
+    provides Ruby primitives where the PacketConfig class can return actual
     Packet or PacketItem objects. While there are some overlapping methods between
     the two, these are separate interfaces into the system."""
 
@@ -68,9 +68,7 @@ class Commands:
         target_packets = self.packets(target_name)
         packet = target_packets.get(packet_name.upper(), None)
         if packet is None:
-            raise RuntimeError(
-                f"Command packet '{target_name.upper()} {packet_name.upper()}' does not exist"
-            )
+            raise RuntimeError(f"Command packet '{target_name.upper()} {packet_name.upper()}' does not exist")
         return packet
 
     # @param target_name (see #packet)
@@ -135,7 +133,7 @@ class Commands:
         return identified_packet
 
     # Returns a copy of the specified command packet with the parameters
-    # initialzed to the given params values.
+    # initialized to the given params values.
     #
     # @param target_name (see #packet)
     # @param packet_name (see #packet)
@@ -191,9 +189,7 @@ class Commands:
             items = packet.read_all("FORMATTED")
             raw = False
         items = [item for item in items if item[0] not in ignored_parameters]
-        return self.build_cmd_output_string(
-            packet.target_name, packet.packet_name, items, raw
-        )
+        return self.build_cmd_output_string(packet.target_name, packet.packet_name, items, raw)
 
     def build_cmd_output_string(self, target_name, cmd_name, cmd_params, raw=False):
         if raw:
@@ -208,8 +204,10 @@ class Commands:
         if cmd_params is None or len(cmd_params) == 0:
             output_string += '")'
         else:
-            # TODO: Try except around this?
-            command_items = self.packet(target_name, cmd_name).items
+            try:
+                command_items = self.packet(target_name, cmd_name).items
+            except RuntimeError:
+                command_items = {}
 
             params = []
             for key, value in cmd_params:
@@ -273,14 +271,7 @@ class Commands:
     def cmd_hazardous(self, target_name, packet_name, params={}):
         # Build a command without range checking, perform conversions, and don't
         # check required parameters since we're not actually using the command.
-        return self.cmd_pkt_hazardous(
-            self.build_cmd(target_name, packet_name, params, False, False, False)
-        )
-
-    def clear_counters(self):
-        for target_name, target_packets in self.config.commands.items():
-            for packet_name, packet in target_packets.items():
-                packet.received_count = 0
+        return self.cmd_pkt_hazardous(self.build_cmd(target_name, packet_name, params, False, False, False))
 
     def all(self):
         return self.config.commands
@@ -292,20 +283,29 @@ class Commands:
             item = command.get_item(item_upcase)
             range_check_value = value
 
-            # Convert from state to value if possible
-            if (
-                item.states is not None
-                and item.states.get(str(value).upper()) is not None
-            ):
-                range_check_value = item.states[value.upper()]
-
             if range_checking:
+                if item.states:
+                    if item.states.get(str(value).upper()) is not None:
+                        range_check_value = item.states[str(value).upper()]
+                    else:
+                        if value not in item.states.values():
+                            if command.raw:
+                                # Raw commands report missing value maps
+                                raise RuntimeError(
+                                    f"Command parameter '{command.target_name} {command.packet_name} {item_upcase}' = {value} not one of {', '.join(map(str, item.states.values()))}"
+                                )
+                            else:
+                                # Normal commands report missing state maps
+                                raise RuntimeError(
+                                    f"Command parameter '{command.target_name} {command.packet_name} {item_upcase}' = {value} not one of {', '.join(item.states.keys())}")
+
+                # Only range check if we have a min, max and not a string default value
                 minimum = item.minimum
                 maximum = item.maximum
-                if minimum is not None and maximum is not None:
+                if minimum is not None and maximum is not None and not isinstance(item.default, str):
                     # Perform Range Check on command parameter
-                    if range_check_value < minimum or range_check_value > maximum:
-                        if type(range_check_value) is str:
+                    if isinstance(range_check_value, str) or range_check_value < minimum or range_check_value > maximum:
+                        if isinstance(range_check_value, str):
                             range_check_value = f"'{range_check_value}'"
                         raise RuntimeError(
                             f"Command parameter '{command.target_name} {command.packet_name} {item_upcase}' = {range_check_value} not in valid range of {minimum} to {maximum}"

@@ -1,5 +1,5 @@
 user healthcheck on nopass -@all +cluster|info +ping
 user openc3 on #022bd57403439b2a3ec0c081cdd35d40a199bbd4ee6fc0e5113edd4fe1c10071 allkeys allchannels -@all +@read +@write +@pubsub +@connection +@transaction +info
-user scriptrunner on #e808c74e210256ee7cf3ec165271544167de776d526f7fa94243e5cdcc08b0c1 resetkeys resetchannels ~running-script* ~*script-locks ~*script-breakpoints ~*openc3_log_messages &_action_cable_internal &script-api:* -@all +@read +@write +@pubsub +@hash +@connection
+user scriptrunner on #e808c74e210256ee7cf3ec165271544167de776d526f7fa94243e5cdcc08b0c1 resetkeys resetchannels ~running-script* ~*script-locks ~*script-breakpoints ~*openc3_log_messages &__anycable__ &_action_cable_internal &script-api:* -@all +@read +@write +@pubsub +@hash +@connection
 user admin on #749f09bade8aca755660eeb17792da880218d4fbdc4e25fbec279d7fe9f65d70 +@admin
 user default off

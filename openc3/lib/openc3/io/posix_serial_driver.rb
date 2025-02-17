@@ -14,10 +14,10 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'fcntl'
@@ -82,12 +82,17 @@ module OpenC3
       tio.ospeed = baud_rate
       @handle.tcflush(Termios::TCIOFLUSH)
       @handle.tcsetattr(Termios::TCSANOW, tio)
+
+      @pipe_reader, @pipe_writer = IO.pipe
+      @readers = [@handle, @pipe_reader]
     end
 
     # (see SerialDriver#close)
     def close
       if @handle
         # Close the serial Port
+        @pipe_writer.write('.')
+        @pipe_writer.close
         @handle.close
         @handle = nil
       end
@@ -132,9 +137,19 @@ module OpenC3
       begin
         data = @handle.read_nonblock(65535)
       rescue Errno::EAGAIN, Errno::EWOULDBLOCK
-        result = IO.fast_select([@handle], nil, nil, @read_timeout)
-        if result
-          retry
+        begin
+          read_ready, _ = IO.fast_select(@readers, nil, nil, @read_timeout)
+        rescue IOError
+          @pipe_reader.close unless @pipe_reader.closed?
+          return ""
+        end
+        if read_ready
+          if read_ready.include?(@pipe_reader)
+            @pipe_reader.close unless @pipe_reader.closed?
+            return ""
+          else
+            retry
+          end
         else
           raise Timeout::Error, "Read Timeout"
         end

@@ -14,13 +14,14 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/topics/topic'
+require 'openc3/utilities/store_queued'
 
 module OpenC3
   class CommandDecomTopic < Topic
@@ -38,20 +39,14 @@ module OpenC3
         json_hash[item.name + "__F"] = packet.read_item(item, :FORMATTED) if item.format_string
         json_hash[item.name + "__U"] = packet.read_item(item, :WITH_UNITS) if item.units
       end
+      json_hash['extra'] = JSON.generate(packet.extra.as_json(:allow_nan => true))
       msg_hash['json_data'] = JSON.generate(json_hash.as_json(:allow_nan => true))
-      Topic.write_topic(topic, msg_hash)
+      EphemeralStoreQueued.write_topic(topic, msg_hash)
     end
 
     def self.get_cmd_item(target_name, packet_name, param_name, type: :WITH_UNITS, scope: $openc3_scope)
       msg_id, msg_hash = Topic.get_newest_message("#{scope}__DECOMCMD__{#{target_name}}__#{packet_name}")
       if msg_id
-        # TODO: We now have these reserved items directly on command packets
-        # Do we still calculate from msg_hash['time'] or use the times directly?
-        #
-        # if param_name == 'RECEIVED_TIMESECONDS' || param_name == 'PACKET_TIMESECONDS'
-        #   Time.from_nsec_from_epoch(msg_hash['time'].to_i).to_f
-        # elsif param_name == 'RECEIVED_TIMEFORMATTED' || param_name == 'PACKET_TIMEFORMATTED'
-        #   Time.from_nsec_from_epoch(msg_hash['time'].to_i).formatted
         if param_name == 'RECEIVED_COUNT'
           msg_hash['received_count'].to_i
         else

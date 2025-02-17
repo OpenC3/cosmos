@@ -50,7 +50,7 @@ module OpenC3
       end
     end
 
-    def openc3_script_sleep(sleep_time = nil)
+    def openc3_script_sleep(_sleep_time = nil)
       @sleep_cancel
     end
 
@@ -148,7 +148,7 @@ module OpenC3
         expect { check("INST HEALTH_STATUS TEMP1 == \xFF") }.to raise_error(/ERROR: Invalid comparison to non-ascii value/)
       end
 
-      it "prints the value with no comparision" do
+      it "prints the value with no comparison" do
         capture_io do |stdout|
           check("INST", "HEALTH_STATUS", "TEMP1")
           expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS TEMP1 == 1/)
@@ -344,14 +344,16 @@ module OpenC3
     describe "wait" do
       it "waits for an indefinite time" do
         capture_io do |stdout|
-          wait()
+          result = wait()
+          expect(result).to be_a Float
           expect(stdout.string).to match(/WAIT: Indefinite for actual time of .* seconds/)
         end
       end
 
       it "waits for a relative time" do
         capture_io do |stdout|
-          wait(5)
+          result = wait(5)
+          expect(result).to be_a Float
           expect(stdout.string).to match(/WAIT: 5 seconds with actual time of .* seconds/)
         end
       end
@@ -362,16 +364,20 @@ module OpenC3
 
       it "waits for a TGT PKT ITEM" do
         capture_io do |stdout|
-          wait("INST HEALTH_STATUS TEMP1 > 0", 5)
+          result = wait("INST HEALTH_STATUS TEMP1 > 0", 5)
+          expect(result).to be true
           expect(stdout.string).to match(/WAIT: INST HEALTH_STATUS TEMP1 > 0 success with value == 10 after waiting .* seconds/)
 
-          wait("INST HEALTH_STATUS TEMP1 < 0", 0.1, 0.1) # Last param is polling rate
+          result = wait("INST HEALTH_STATUS TEMP1 < 0", 0.1, 0.1) # Last param is polling rate
+          expect(result).to be false
           expect(stdout.string).to match(/WAIT: INST HEALTH_STATUS TEMP1 < 0 failed with value == 10 after waiting .* seconds/)
 
-          wait("INST", "HEALTH_STATUS", "TEMP1", "> 0", 5)
+          result = wait("INST", "HEALTH_STATUS", "TEMP1", "> 0", 5)
+          expect(result).to be true
           expect(stdout.string).to match(/WAIT: INST HEALTH_STATUS TEMP1 > 0 success with value == 10 after waiting .* seconds/)
 
-          wait("INST", "HEALTH_STATUS", "TEMP1", "== 0", 0.1, 0.1) # Last param is polling rate
+          result = wait("INST", "HEALTH_STATUS", "TEMP1", "== 0", 0.1, 0.1) # Last param is polling rate
+          expect(result).to be false
           expect(stdout.string).to match(/WAIT: INST HEALTH_STATUS TEMP1 == 0 failed with value == 10 after waiting .* seconds/)
         end
 
@@ -393,22 +399,27 @@ module OpenC3
 
       it "waits for a value to be within a tolerance" do
         capture_io do |stdout|
-          wait_tolerance("INST", "HEALTH_STATUS", "TEMP2", 1.55, 0.1, 5, type: :RAW)
+          result = wait_tolerance("INST", "HEALTH_STATUS", "TEMP2", 1.55, 0.1, 5, type: :RAW)
+          expect(result).to be true
           expect(stdout.string).to match(/WAIT: INST HEALTH_STATUS TEMP2 was within range 1.45 to 1.65\d+ with value == 1.5/)
-          wait_tolerance("INST HEALTH_STATUS TEMP2", 10.5, 0.01, 5)
+          result = wait_tolerance("INST HEALTH_STATUS TEMP2", 10.5, 0.01, 5)
+          expect(result).to be true
           expect(stdout.string).to include("WAIT: INST HEALTH_STATUS TEMP2 was within range 10.49 to 10.51 with value == 10.5")
-          wait_tolerance("INST HEALTH_STATUS TEMP2", 11, 0.1, 0.1)
+          result = wait_tolerance("INST HEALTH_STATUS TEMP2", 11, 0.1, 0.1)
+          expect(result).to be false
           expect(stdout.string).to include("WAIT: INST HEALTH_STATUS TEMP2 failed to be within range 10.9 to 11.1 with value == 10.5")
         end
       end
 
       it "checks that an array value is within a single tolerance" do
         capture_io do |stdout|
-          wait_tolerance("INST", "HEALTH_STATUS", "ARY", 3, 1, 5)
+          result = wait_tolerance("INST", "HEALTH_STATUS", "ARY", 3, 1, 5)
+          expect(result).to be true
           expect(stdout.string).to include("WAIT: INST HEALTH_STATUS ARY[0] was within range 2 to 4 with value == 2")
           expect(stdout.string).to include("WAIT: INST HEALTH_STATUS ARY[1] was within range 2 to 4 with value == 3")
           expect(stdout.string).to include("WAIT: INST HEALTH_STATUS ARY[2] was within range 2 to 4 with value == 4")
-          wait_tolerance("INST HEALTH_STATUS ARY", 3, 0.1, 0.1)
+          result = wait_tolerance("INST HEALTH_STATUS ARY", 3, 0.1, 0.1)
+          expect(result).to be false
           expect(stdout.string).to include("INST HEALTH_STATUS ARY[0] failed to be within range 2.9 to 3.1 with value == 2")
           expect(stdout.string).to include("INST HEALTH_STATUS ARY[1] was within range 2.9 to 3.1 with value == 3")
           expect(stdout.string).to include("INST HEALTH_STATUS ARY[2] failed to be within range 2.9 to 3.1 with value == 4")
@@ -417,12 +428,14 @@ module OpenC3
 
       it "checks that multiple array values are within tolerance" do
         capture_io do |stdout|
-          wait_tolerance("INST", "HEALTH_STATUS", "ARY", [2, 3, 4], 0.1, 5)
+          result = wait_tolerance("INST", "HEALTH_STATUS", "ARY", [2, 3, 4], 0.1, 5)
+          expect(result).to be true
           expect(stdout.string).to include("WAIT: INST HEALTH_STATUS ARY[0] was within range 1.9 to 2.1 with value == 2")
           expect(stdout.string).to include("WAIT: INST HEALTH_STATUS ARY[1] was within range 2.9 to 3.1 with value == 3")
           expect(stdout.string).to include("WAIT: INST HEALTH_STATUS ARY[2] was within range 3.9 to 4.1 with value == 4")
 
-          wait_tolerance("INST HEALTH_STATUS ARY", [2, 3, 4], 0.1, 5)
+          result = wait_tolerance("INST HEALTH_STATUS ARY", [2, 3, 4], 0.1, 5)
+          expect(result).to be true
           expect(stdout.string).to include("WAIT: INST HEALTH_STATUS ARY[0] was within range 1.9 to 2.1 with value == 2")
           expect(stdout.string).to include("WAIT: INST HEALTH_STATUS ARY[1] was within range 2.9 to 3.1 with value == 3")
           expect(stdout.string).to include("WAIT: INST HEALTH_STATUS ARY[2] was within range 3.9 to 4.1 with value == 4")
@@ -431,12 +444,14 @@ module OpenC3
 
       it "checks that an array value is within multiple tolerances" do
         capture_io do |stdout|
-          wait_tolerance("INST", "HEALTH_STATUS", "ARY", 3, [1, 0.1, 2], 5)
+          result = wait_tolerance("INST", "HEALTH_STATUS", "ARY", 3, [1, 0.1, 2], 5)
+          expect(result).to be true
           expect(stdout.string).to include("WAIT: INST HEALTH_STATUS ARY[0] was within range 2 to 4 with value == 2")
           expect(stdout.string).to include("WAIT: INST HEALTH_STATUS ARY[1] was within range 2.9 to 3.1 with value == 3")
           expect(stdout.string).to include("WAIT: INST HEALTH_STATUS ARY[2] was within range 1 to 5 with value == 4")
 
-          wait_tolerance("INST HEALTH_STATUS ARY", 3, [1, 0.1, 2], 5)
+          result = wait_tolerance("INST HEALTH_STATUS ARY", 3, [1, 0.1, 2], 5)
+          expect(result).to be true
           expect(stdout.string).to include("WAIT: INST HEALTH_STATUS ARY[0] was within range 2 to 4 with value == 2")
           expect(stdout.string).to include("WAIT: INST HEALTH_STATUS ARY[1] was within range 2.9 to 3.1 with value == 3")
           expect(stdout.string).to include("WAIT: INST HEALTH_STATUS ARY[2] was within range 1 to 5 with value == 4")
@@ -450,9 +465,11 @@ module OpenC3
           it "waits for an expression" do
             @sleep_cancel = cancel
             capture_io do |stdout|
-              wait_expression("true == true", 5)
+              result = wait_expression("true == true", 5)
+              expect(result).to be true
               expect(stdout.string).to match(/WAIT: true == true is TRUE after waiting .* seconds/)
-              wait_expression("true == false", 0.1)
+              result = wait_expression("true == false", 0.1)
+              expect(result).to be false
               expect(stdout.string).to match(/WAIT: true == false is FALSE after waiting .* seconds/)
             end
           end
@@ -461,9 +478,11 @@ module OpenC3
 
       it "checks a logical expression" do
         capture_io do |stdout|
-          wait_expression("'STRING' == 'STRING'", 5)
+          result = wait_expression("'STRING' == 'STRING'", 5)
+          expect(result).to be true
           expect(stdout.string).to match(/WAIT: 'STRING' == 'STRING' is TRUE after waiting .* seconds/)
-          wait_expression("1 == 2", 0.1)
+          result = wait_expression("1 == 2", 0.1)
+          expect(result).to be false
           expect(stdout.string).to match(/WAIT: 1 == 2 is FALSE after waiting .* seconds/)
         end
         expect { wait_expression("'STRING' == STRING", 5) }.to raise_error(NameError, "Uninitialized constant STRING. Did you mean 'STRING' as a string?")
@@ -477,9 +496,11 @@ module OpenC3
 
       it "checks a telemetry item against a value" do
         capture_io do |stdout|
-          wait_check("INST", "HEALTH_STATUS", "TEMP1", "> 1", 0.01, 0.1) # Last param is polling rate
+          result = wait_check("INST", "HEALTH_STATUS", "TEMP1", "> 1", 0.01, 0.1) # Last param is polling rate
+          expect(result).to be_a Float
           expect(stdout.string).to include('CHECK: INST HEALTH_STATUS TEMP1 > 1 success with value == 10')
-          wait_check("INST HEALTH_STATUS TEMP1 == 1", 0.01, 0.1, type: :RAW)
+          result = wait_check("INST HEALTH_STATUS TEMP1 == 1", 0.01, 0.1, type: :RAW)
+          expect(result).to be_a Float
           expect(stdout.string).to include('CHECK: INST HEALTH_STATUS TEMP1 == 1 success with value == 1')
         end
         expect { wait_check("INST HEALTH_STATUS TEMP1 > 100", 0.01) }.to raise_error(/CHECK: INST HEALTH_STATUS TEMP1 > 100 failed with value == 10/)
@@ -491,9 +512,10 @@ module OpenC3
             @sleep_cancel = cancel
 
             capture_io do |stdout|
-              wait_check("INST HEALTH_STATUS TEMP1", 0.01) do |value|
+              result = wait_check("INST HEALTH_STATUS TEMP1", 0.01) do |value|
                 value == 10
               end
+              expect(result).to be_a Float
               expect(stdout.string).to include('CHECK: INST HEALTH_STATUS TEMP1 success with value == 10')
             end
 
@@ -509,7 +531,8 @@ module OpenC3
       it "logs instead of raises when disconnected" do
         $disconnect = true
         capture_io do |stdout|
-          wait_check("INST HEALTH_STATUS TEMP1 > 100", 0.01)
+          result = wait_check("INST HEALTH_STATUS TEMP1 > 100", 0.01)
+          expect(result).to be_a Float
           expect(stdout.string).to include('CHECK: INST HEALTH_STATUS TEMP1 > 100 failed with value == 10')
         end
         $disconnect = false
@@ -522,7 +545,8 @@ module OpenC3
 
       it "warns when checking a state against a constant" do
         capture_io do |stdout|
-          wait_check("INST HEALTH_STATUS CCSDSSHF == 'FALSE'", 0.01)
+          result = wait_check("INST HEALTH_STATUS CCSDSSHF == 'FALSE'", 0.01)
+          expect(result).to be_a Float
           expect(stdout.string).to include("CHECK: INST HEALTH_STATUS CCSDSSHF == 'FALSE' success with value == 'FALSE'")
         end
         expect { wait_check("INST HEALTH_STATUS CCSDSSHF == FALSE", 0.01) }.to raise_error(NameError, "Uninitialized constant FALSE. Did you mean 'FALSE' as a string?")
@@ -537,9 +561,11 @@ module OpenC3
 
       it "checks that a value is within a tolerance" do
         capture_io do |stdout|
-          wait_check_tolerance("INST", "HEALTH_STATUS", "TEMP2", 1.55, 0.1, 5, type: :RAW)
+          result = wait_check_tolerance("INST", "HEALTH_STATUS", "TEMP2", 1.55, 0.1, 5, type: :RAW)
+          expect(result).to be_a Float
           expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS TEMP2 was within range 1.45 to 1.65\d+ with value == 1.5/)
-          wait_check_tolerance("INST HEALTH_STATUS TEMP2", 10.5, 0.01, 5)
+          result = wait_check_tolerance("INST HEALTH_STATUS TEMP2", 10.5, 0.01, 5)
+          expect(result).to be_a Float
           expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS TEMP2 was within range 10.49 to 10.51 with value == 10.5/)
         end
         expect { wait_check_tolerance("INST HEALTH_STATUS TEMP2", 11, 0.1, 0.1) }.to raise_error(CheckError, /CHECK: INST HEALTH_STATUS TEMP2 failed to be within range 10.9 to 11.1 with value == 10.5/)
@@ -547,7 +573,8 @@ module OpenC3
 
       it "checks that an array value is within a single tolerance" do
         capture_io do |stdout|
-          wait_check_tolerance("INST", "HEALTH_STATUS", "ARY", 3, 1, 5)
+          result = wait_check_tolerance("INST", "HEALTH_STATUS", "ARY", 3, 1, 5)
+          expect(result).to be_a Float
           expect(stdout.string).to include("CHECK: INST HEALTH_STATUS ARY[0] was within range 2 to 4 with value == 2")
           expect(stdout.string).to include("CHECK: INST HEALTH_STATUS ARY[1] was within range 2 to 4 with value == 3")
           expect(stdout.string).to include("CHECK: INST HEALTH_STATUS ARY[2] was within range 2 to 4 with value == 4")
@@ -560,11 +587,13 @@ module OpenC3
       it "logs instead of raises when disconnected" do
         $disconnect = true
         capture_io do |stdout|
-          wait_check_tolerance("INST HEALTH_STATUS TEMP2", 11, 0.1, 0.1)
+          result = wait_check_tolerance("INST HEALTH_STATUS TEMP2", 11, 0.1, 0.1)
+          expect(result).to be_a Float
           expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS TEMP2 failed to be within range 10.9 to 11.1 with value == 10.5/)
         end
         capture_io do |stdout|
-          wait_check_tolerance("INST HEALTH_STATUS ARY", 3, 0.1, 0.1)
+          result = wait_check_tolerance("INST HEALTH_STATUS ARY", 3, 0.1, 0.1)
+          expect(result).to be_a Float
           expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS ARY\[0\] failed to be within range 2.9 to 3.1 with value == 2/)
         end
         $disconnect = false
@@ -572,7 +601,8 @@ module OpenC3
 
       it "checks that multiple array values are within tolerance" do
         capture_io do |stdout|
-          wait_check_tolerance("INST", "HEALTH_STATUS", "ARY", [2, 3, 4], 0.1, 5)
+          result = wait_check_tolerance("INST", "HEALTH_STATUS", "ARY", [2, 3, 4], 0.1, 5)
+          expect(result).to be_a Float
           expect(stdout.string).to include("CHECK: INST HEALTH_STATUS ARY[0] was within range 1.9 to 2.1 with value == 2")
           expect(stdout.string).to include("CHECK: INST HEALTH_STATUS ARY[1] was within range 2.9 to 3.1 with value == 3")
           expect(stdout.string).to include("CHECK: INST HEALTH_STATUS ARY[2] was within range 3.9 to 4.1 with value == 4")
@@ -581,7 +611,8 @@ module OpenC3
 
       it "checks that an array value is within multiple tolerances" do
         capture_io do |stdout|
-          wait_check_tolerance("INST", "HEALTH_STATUS", "ARY", 3, [1, 0.1, 2], 5)
+          result = wait_check_tolerance("INST", "HEALTH_STATUS", "ARY", 3, [1, 0.1, 2], 5)
+          expect(result).to be_a Float
           expect(stdout.string).to include("CHECK: INST HEALTH_STATUS ARY[0] was within range 2 to 4 with value == 2")
           expect(stdout.string).to include("CHECK: INST HEALTH_STATUS ARY[1] was within range 2.9 to 3.1 with value == 3")
           expect(stdout.string).to include("CHECK: INST HEALTH_STATUS ARY[2] was within range 1 to 5 with value == 4")
@@ -592,7 +623,8 @@ module OpenC3
     describe "wait_check_expression" do
       it "waits and checks that an expression is true" do
         capture_io do |stdout|
-          wait_check_expression("true == true", 5)
+          result = wait_check_expression("true == true", 5)
+          expect(result).to be_a Float
           expect(stdout.string).to match(/CHECK: true == true is TRUE/)
         end
         expect { wait_check_expression("true == false", 0.1) }.to raise_error(/CHECK: true == false is FALSE/)
@@ -601,7 +633,8 @@ module OpenC3
       it "logs instead of raises when disconnected" do
         $disconnect = true
         capture_io do |stdout|
-          wait_check_expression("true == false", 5)
+          result = wait_check_expression("true == false", 5)
+          expect(result).to be_a Float
           expect(stdout.string).to match(/CHECK: true == false is FALSE/)
         end
         $disconnect = false
@@ -609,7 +642,8 @@ module OpenC3
 
       it "waits and checks a logical expression" do
         capture_io do |stdout|
-          wait_check_expression("'STRING' == 'STRING'", 5)
+          result = wait_check_expression("'STRING' == 'STRING'", 5)
+          expect(result).to be_a Float
           expect(stdout.string).to match(/CHECK: 'STRING' == 'STRING' is TRUE/)
         end
         expect { wait_check_expression("1 == 2", 0.1) }.to raise_error(/CHECK: 1 == 2 is FALSE/)
@@ -628,7 +662,8 @@ module OpenC3
           it "prints warning if packet not received" do
             @count = false
             capture_io do |stdout|
-              wait_packet("INST", "HEALTH_STATUS", 1, 0.5)
+              result = wait_packet("INST", "HEALTH_STATUS", 1, 0.5)
+              expect(result).to be false
               expect(stdout.string).to match(/WAIT: INST HEALTH_STATUS expected to be received 1 times but only received 0 times/)
             end
           end
@@ -636,10 +671,12 @@ module OpenC3
           it "prints success if the packet is received" do
             @count = true
             capture_io do |stdout|
-              wait_packet("INST", "HEALTH_STATUS", 5, 0.5)
+              result = wait_packet("INST", "HEALTH_STATUS", 5, 0.5)
               if cancel
+                expect(result).to be false
                 expect(stdout.string).to match(/WAIT: INST HEALTH_STATUS expected to be received 5 times/)
               else
+                expect(result).to be true
                 expect(stdout.string).to match(/WAIT: INST HEALTH_STATUS received 5 times after waiting/)
               end
             end
@@ -660,7 +697,8 @@ module OpenC3
             $disconnect = true
             @count = false
             capture_io do |stdout|
-              wait_check_packet("INST", "HEALTH_STATUS", 1, 0.5)
+              result = wait_check_packet("INST", "HEALTH_STATUS", 1, 0.5)
+              expect(result).to be_a Float
               expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS expected to be received 1 times but only received 0 times/)
             end
             $disconnect = false
@@ -672,7 +710,8 @@ module OpenC3
               if cancel
                 expect { wait_check_packet("INST", "HEALTH_STATUS", 5, 0.5) }.to raise_error(/CHECK: INST HEALTH_STATUS expected to be received 5 times/)
               else
-                wait_check_packet("INST", "HEALTH_STATUS", 5, 0.5)
+                result = wait_check_packet("INST", "HEALTH_STATUS", 5, 0.5)
+                expect(result).to be_a Float
                 expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS received 5 times after waiting/)
               end
             end

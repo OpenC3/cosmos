@@ -1,6 +1,9 @@
 ---
 sidebar_position: 3
 title: Targets
+description: Target definition file format and keywords
+sidebar_custom_props:
+  myEmoji: 🛰️
 ---
 
 <!-- Be sure to edit _target.md because target.md is a generated file -->

@@ -1,5 +1,5 @@
 /*
-# Copyright 2023 OpenC3, Inc
+# Copyright 2025 OpenC3, Inc
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -23,23 +23,19 @@ test.use({
 })
 
 test('displays interface names', async ({ page, utils }) => {
-  expect(await page.getByRole('list')).toContainText('INST_INT')
-  expect(await page.getByRole('list')).toContainText('INST2_INT')
-  expect(await page.getByRole('list')).toContainText('EXAMPLE_INT')
-  expect(await page.getByRole('list')).toContainText('TEMPLATED_INT')
+  await expect(page.getByText('INST_INT')).toBeVisible()
+  await expect(page.getByText('INST2_INT')).toBeVisible()
+  await expect(page.getByText('EXAMPLE_INT')).toBeVisible()
+  await expect(page.getByText('TEMPLATED_INT')).toBeVisible()
   // SYSTEM has no interface
-  expect(await page.getByRole('list')).not.toContainText('SYSTEM')
+  await expect(page.getByText('SYSTEM')).not.toBeVisible()
 })
 
 test('displays interface details', async ({ page, utils }) => {
-  await page
-    .getByRole('listitem')
-    .filter({ hasText: 'INST_INT' })
-    .getByRole('button')
-    .click()
-  expect(await page.locator('.editor')).toContainText('"name": "INST_INT"')
+  await page.getByRole('button', { name: '󰈈' }).first().click()
+  await expect(page.locator('.editor')).toContainText('"name": "EXAMPLE_INT"')
   await utils.download(page, '[data-test="downloadIcon"]', function (contents) {
-    expect(contents).toContain('"name": "INST_INT"')
+    expect(contents).toContain('"name": "EXAMPLE_INT"')
   })
-  await page.locator('[data-test="editCancelBtn"]').click()
+  await page.getByRole('button', { name: 'Ok' }).click()
 })

@@ -14,17 +14,20 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-require 'openc3/models/activity_model'
 require 'openc3/topics/timeline_topic'
+require 'openc3/models/activity_model'
 
 class ActivityController < ApplicationController
+  NOT_FOUND = 'not found'
+
   def initialize
+    super()
     @model_class = OpenC3::ActivityModel
   end
 
@@ -49,13 +52,13 @@ class ActivityController < ApplicationController
         limit = ((stop - start) / 60).to_i # 1 event every minute ... shouldn't ever be more than this!
       end
       model = @model_class.get(name: params[:name], scope: params[:scope], start: start, stop: stop, limit: limit)
-      render :json => model.as_json(:allow_nan => true), :status => 200
-    rescue ArgumentError
-      render :json => { :status => 'error', :message => 'Invalid date provided. Recommend ISO format' }, :status => 400
-    rescue OpenC3::ActivityInputError => e
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400
-    rescue StandardError => e
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400
+      render json: model.as_json(:allow_nan => true)
+    rescue ArgumentError => e
+      log_error(e)
+      render json: { status: 'error', message: 'Invalid date provided. Recommend ISO format' }, status: 400
+    rescue StandardError => e # includes ActivityInputError
+      log_error(e)
+      render json: { status: 'error', message: e.message, type: e.class }, status: 400
     end
   end
 
@@ -84,15 +87,17 @@ class ActivityController < ApplicationController
   def create
     return unless authorization('script_run')
     begin
-      hash = params.to_unsafe_h.slice(:start, :stop, :kind, :data).to_h
+      hash = params.to_unsafe_h.slice(:start, :stop, :kind, :data, :recurring).to_h
       hash['data'] ||= {}
       hash['data']['username'] = username()
       if hash['start'].nil? || hash['stop'].nil?
         raise ArgumentError.new 'post body must contain start and stop'
       end
-
       hash['start'] = DateTime.parse(hash['start']).strftime('%s').to_i
       hash['stop'] = DateTime.parse(hash['stop']).strftime('%s').to_i
+      if hash['recurring'] and hash['recurring']['end']
+        hash['recurring']['end'] = DateTime.parse(hash['recurring']['end']).strftime('%s').to_i
+      end
       model = @model_class.from_json(hash.symbolize_keys, name: params[:name], scope: params[:scope])
       model.create()
       OpenC3::Logger.info(
@@ -100,18 +105,19 @@ class ActivityController < ApplicationController
         scope: params[:scope],
         user: hash['data']['username']
       )
-      render :json => model.as_json(:allow_nan => true), :status => 201
+      render json: model.as_json(:allow_nan => true), status: 201
     rescue ArgumentError, TypeError => e
-      message = "Invalid input: #{JSON.parse(hash, :allow_nan => true, :create_additions => true)}"
-      render :json => { :status => 'error', :message => message, :type => e.class, :e => e.to_s }, :status => 400
-    rescue OpenC3::ActivityInputError => e
-      render :json => { :status => 'error', :message => e.message, :type => e.class, :e => e.to_s }, :status => 400
+      log_error(e)
+      render json: { status: 'error', message: "Invalid input: #{hash}", type: e.class, e: e.to_s }, status: 400
+    rescue StandardError => e # includes ActivityInputError
+      log_error(e)
+      render json: { status: 'error', message: e.message, type: e.class, e: e.to_s }, status: 400
     rescue OpenC3::ActivityOverlapError => e
-      render :json => { :status => 'error', :message => e.message, :type => e.class, :e => e.to_s }, :status => 409
+      log_error(e)
+      render json: { status: 'error', message: e.message, type: e.class, e: e.to_s }, status: 409
     rescue OpenC3::ActivityError => e
-      render :json => { :status => 'error', :message => e.message, :type => e.class, :e => e.to_s }, :status => 418
-    rescue StandardError => e
-      render :json => { :status => 'error', :message => e.message, :type => e.class, :e => e.to_s }, :status => 400
+      log_error(e)
+      render json: { status: 'error', message: e.message, type: e.class, e: e.to_s }, status: 418
     end
   end
 
@@ -131,9 +137,10 @@ class ActivityController < ApplicationController
     return unless authorization('system')
     begin
       count = @model_class.count(name: params[:name], scope: params[:scope])
-      render :json => { :name => params[:name], :count => count }, :status => 200
+      render json: { name: params[:name], count: count }
     rescue StandardError => e
-      render :json => { :status => 'error', :message => e.message, :type => e.class, :e => e.to_s }, :status => 400
+      log_error(e)
+      render json: { status: 'error', message: e.message, type: e.class, e: e.to_s }, status: 400
     end
   end
 
@@ -142,6 +149,7 @@ class ActivityController < ApplicationController
   # name [String] the timeline name, `system42`
   # scope [String] the scope of the timeline, `TEST`
   # id [String] the start/id of the activity, `1620248449`
+  # uuid [String] the uuid of the activity, `e8776b54-4c71-41c3-b2fd-309513cf85cf`
   # @return [String] the activity as a object/hash converted into json format
   # Request Headers
   # ```json
@@ -153,14 +161,15 @@ class ActivityController < ApplicationController
   def show
     return unless authorization('system')
     begin
-      model = @model_class.score(name: params[:name], score: params[:id].to_i, scope: params[:scope])
+      model = @model_class.score(name: params[:name], score: params[:id].to_i, uuid: params[:uuid], scope: params[:scope])
       if model.nil?
-        render :json => { :status => 'error', :message => 'not found' }, :status => 404
+        render json: { status: 'error', message: NOT_FOUND }, status: 404
       else
-        render :json => model.as_json(:allow_nan => true), :status => 200
+        render json: model.as_json(:allow_nan => true)
       end
     rescue StandardError => e
-      render :json => { :status => 'error', :message => e.message, :type => e.class, :e => e.to_s }, :status => 400
+      log_error(e)
+      render json: { status: 'error', message: e.message, type: e.class, e: e.to_s }, status: 400
     end
   end
 
@@ -187,9 +196,9 @@ class ActivityController < ApplicationController
   # ```
   def event
     return unless authorization('script_run')
-    model = @model_class.score(name: params[:name], score: params[:id].to_i, scope: params[:scope])
+    model = @model_class.score(name: params[:name], score: params[:id].to_i, uuid: params[:uuid], scope: params[:scope])
     if model.nil?
-      render :json => { :status => 'error', :message => 'not found' }, :status => 404
+      render json: { status: 'error', message: NOT_FOUND }, status: 404
       return
     end
     begin
@@ -200,13 +209,13 @@ class ActivityController < ApplicationController
         scope: params[:scope],
         user: username()
       )
-      render :json => model.as_json(:allow_nan => true), :status => 200
-    rescue ArgumentError => e
-      render :json => { :status => 'error', :message => e.message, :type => e.class, :e => e.to_s }, :status => 400
+      render json: model.as_json(:allow_nan => true)
     rescue OpenC3::ActivityError => e
-      render :json => { :status => 'error', :message => e.message, :type => e.class, :e => e.to_s }, :status => 418
+      log_error(e)
+      render json: { status: 'error', message: e.message, type: e.class, e: e.to_s }, status: 418
     rescue StandardError => e
-      render :json => { :status => 'error', :message => e.message, :type => e.class, :e => e.to_s }, :status => 400
+      log_error(e)
+      render json: { status: 'error', message: e.message, type: e.class, e: e.to_s }, status: 400
     end
   end
 
@@ -235,9 +244,9 @@ class ActivityController < ApplicationController
   # ```
   def update
     return unless authorization('script_run')
-    model = @model_class.score(name: params[:name], score: params[:id].to_i, scope: params[:scope])
+    model = @model_class.score(name: params[:name], score: params[:id].to_i, uuid: params[:uuid], scope: params[:scope])
     if model.nil?
-      render :json => { :status => 'error', :message => 'not found' }, :status => 404
+      render json: { status: 'error', message: NOT_FOUND }, status: 404
       return
     end
     begin
@@ -252,18 +261,19 @@ class ActivityController < ApplicationController
         scope: params[:scope],
         user: hash['data']['username']
       )
-      render :json => model.as_json(:allow_nan => true), :status => 200
+      render json: model.as_json(:allow_nan => true)
     rescue ArgumentError, TypeError => e
-      message = "Invalid input: #{JSON.parse(hash, :allow_nan => true, :create_additions => true)}"
-      render :json => { :status => 'error', :message => message, :type => e.class, :e => e.to_s }, :status => 400
-    rescue OpenC3::ActivityInputError => e
-      render :json => { :status => 'error', :message => e.message, :type => e.class, :e => e.to_s }, :status => 400
+      log_error(e)
+      render json: { status: 'error', message: "Invalid input: #{hash}", type: e.class, e: e.to_s }, status: 400
     rescue OpenC3::ActivityOverlapError => e
-      render :json => { :status => 'error', :message => e.message, :type => e.class, :e => e.to_s }, :status => 409
+      log_error(e)
+      render json: { status: 'error', message: e.message, type: e.class, e: e.to_s }, status: 409
     rescue OpenC3::ActivityError => e
-      render :json => { :status => 'error', :message => e.message, :type => e.class, :e => e.to_s }, :status => 418
-    rescue StandardError => e
-      render :json => { :status => 'error', :message => e.message, :type => e.class, :e => e.to_s }, :status => 400
+      log_error(e)
+      render json: { status: 'error', message: e.message, type: e.class, e: e.to_s }, status: 418
+    rescue StandardError => e # includes OpenC3::ActivityInputError
+      log_error(e)
+      render json: { status: 'error', message: e.message, type: e.class, e: e.to_s }, status: 400
     end
   end
 
@@ -272,7 +282,8 @@ class ActivityController < ApplicationController
   # name [String] the timeline name, `system42`
   # scope [String] the scope of the timeline, `TEST`
   # id [String] the score or id of the activity, `1620248449`
-  # @return [String] object/hash converted into json format but with a 204 no-content status code
+  # uuid [String] the uuid of the activity, `e8776b54-4c71-41c3-b2fd-309513cf85cf`
+  # @return [String] object/hash converted into json format but with a 200 status code
   # Request Headers
   # ```json
   #  {
@@ -283,22 +294,20 @@ class ActivityController < ApplicationController
   def destroy
     return unless authorization('script_run')
     begin
-      model = @model_class.score(name: params[:name], score: params[:id].to_i, scope: params[:scope])
-      if model.nil?
-        render :json => { :status => 'error', :message => 'not found' }, :status => 404
-        return
+      ret = @model_class.destroy(name: params[:name], scope: params[:scope], score: params[:id].to_i, uuid: params[:uuid], recurring: params[:recurring])
+      if ret == 0
+        render json: { status: 'error', message: NOT_FOUND }, status: 404
+      else
+        OpenC3::Logger.info(
+          "Activity destroyed name: #{params[:name]} id:#{params[:id]} recurring:#{params[:recurring]}",
+          scope: params[:scope],
+          user: username()
+        )
+        render json: { status: ret }
       end
-      ret = model.destroy()
-      OpenC3::Logger.info(
-        "Activity destroyed: #{params[:name]}",
-        scope: params[:scope],
-        user: username()
-      )
-      render :json => { "status" => ret }, :status => 204
-    rescue OpenC3::ActivityError => e
-      render :json => { :status => 'error', :message => e.message, :type => e.class }, :status => 400
     rescue StandardError => e
-      render :json => { :status => 'error', :message => e.message, :type => e.class, :e => e.to_s }, :status => 400
+      log_error(e)
+      render json: { status: 'error', message: e.message, type: e.class, e: e.to_s }, status: 400
     end
   end
 
@@ -332,7 +341,8 @@ class ActivityController < ApplicationController
     return unless authorization('script_run')
     input_activities = params.to_unsafe_h.slice(:multi).to_h['multi']
     unless input_activities.is_a?(Array)
-      render(:json => { :status => 'error', :message => 'invalid input, must be json list/array' }, :status => 400) and return
+      render json: { status: 'error', message: 'invalid input, must be json list/array' }, status: 400
+      return
     end
 
     ret = Array.new
@@ -355,18 +365,20 @@ class ActivityController < ApplicationController
         )
         ret << model.as_json(:allow_nan => true)
       rescue ArgumentError, TypeError => e
-        ret << { :status => 'error', :message => "Invalid input, #{e.message}", 'input' => input, 'type' => e.class, status => 400 }
-      rescue OpenC3::ActivityInputError => e
-        ret << { :status => 'error', :message => e.message, :input => input, :type => e.class, :err => 400 }
+        log_error(e)
+        ret << { status: 'error', message: "Invalid input, #{e.message}", input: input, type: e.class, err: 400 }
       rescue OpenC3::ActivityOverlapError => e
-        ret << { :status => 'error', :message => e.message, :input => input, :type => e.class, :err => 409 }
+        log_error(e)
+        ret << { status: 'error', message: e.message, input: input, type: e.class, err: 409 }
       rescue OpenC3::ActivityError => e
-        ret << { :status => 'error', :message => e.message, :input => input, :type => e.class, :err => 418 }
-      rescue StandardError => e
-        ret << { :status => 'error', :message => e.message, :input => input, :type => e.class, :err => 400 }
+        log_error(e)
+        ret << { status: 'error', message: e.message, input: input, type: e.class, err: 418 }
+      rescue StandardError => e # includes OpenC3::ActivityInputError
+        log_error(e)
+        ret << { status: 'error', message: e.message, input: input, type: e.class, err: 400 }
       end
     end
-    render :json => ret, :status => 200
+    render json: ret
   end
 
   # Removes multiple activities by score/start/id.
@@ -396,26 +408,23 @@ class ActivityController < ApplicationController
     return unless authorization('script_run')
     input_activities = params.to_unsafe_h.slice(:multi).to_h['multi']
     unless input_activities.is_a?(Array)
-      render(:json => { :status => 'error', :message => 'invalid input' }, :status => 400) and return
+      render json: { status: 'error', message: 'invalid input' }, status: 400
+      return
     end
 
     ret = Array.new
     input_activities.each do |input|
-      next if input.is_a?(Hash) == false || input['id'].nil? || input['name'].nil?
-
-      model = @model_class.score(name: input['name'], score: input['id'], scope: params[:scope])
-      next if model.nil?
+      next if input.is_a?(Hash) == false || input['id'].nil? || input['name'].nil? || input['uuid'].nil?
 
       begin
-        check = model.destroy()
+        result = @model_class.destroy(name: input[:name], score: input[:id].to_i, uuid: input[:uuid], scope: params[:scope])
         OpenC3::Logger.info("Activity destroyed: #{input['name']}", scope: params[:scope], user: username())
-        ret << { 'status' => 'removed', 'removed' => check, 'input' => input, 'type' => e.class }
-      rescue OpenC3::ActivityError => e
-        ret << { :status => 'error', :message => e.message, :input => input, :type => e.class, :err => 400 }
-      rescue StandardError => e
-        ret << { :status => 'error', :message => e.message, :input => input, :type => e.class, :err => 400 }
+        ret << { status: 'removed', removed: result, input: input, type: e.class }
+      rescue StandardError => e # includes OpenC3::ActivityInputError
+        log_error(e)
+        ret << { status: 'error', message: e.message, input: input, type: e.class, err: 400 }
       end
     end
-    render :json => ret, :status => 200
+    render json: ret
   end
 end

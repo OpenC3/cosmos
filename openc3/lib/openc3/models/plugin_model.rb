@@ -44,11 +44,12 @@ module OpenC3
   # microservices and tools. The PluginModel installs all these pieces as well
   # as destroys them all when the plugin is removed.
   class PluginModel < Model
-    include Api
+    extend Api
 
     PRIMARY_KEY = 'openc3_plugins'
     # Reserved VARIABLE names. See local_mode.rb: update_local_plugin()
     RESERVED_VARIABLE_NAMES = ['target_name', 'microservice_name', 'scope']
+    PLUGIN_TXT = 'plugin.txt'
 
     attr_accessor :variables
     attr_accessor :plugin_txt_lines
@@ -69,7 +70,7 @@ module OpenC3
     end
 
     # Called by the PluginsController to parse the plugin variables
-    # Doesn't actaully create the plugin during the phase
+    # Doesn't actually create the plugin during the phase
     def self.install_phase1(gem_file_path, existing_variables: nil, existing_plugin_txt_lines: nil, process_existing: false, scope:, validate_only: false)
       gem_name = File.basename(gem_file_path).split("__")[0]
 
@@ -90,14 +91,14 @@ module OpenC3
           # This is only used in openc3cli load when everything is known
           plugin_txt_lines = existing_plugin_txt_lines
           file_data = existing_plugin_txt_lines.join("\n")
-          tf = Tempfile.new("plugin.txt")
+          tf = Tempfile.new(PLUGIN_TXT)
           tf.write(file_data)
           tf.close
           plugin_txt_path = tf.path
         else
           # Otherwise we always process the new and return both
           pkg.extract_files(temp_dir)
-          plugin_txt_path = File.join(temp_dir, 'plugin.txt')
+          plugin_txt_path = File.join(temp_dir, PLUGIN_TXT)
           plugin_text = File.read(plugin_txt_path)
           plugin_txt_lines = []
           plugin_text.each_line do |line|
@@ -113,8 +114,7 @@ module OpenC3
                           false,
                           true,
                           false) do |keyword, params|
-          case keyword
-          when 'VARIABLE'
+          if keyword == 'VARIABLE'
             usage = "#{keyword} <Variable Name> <Default Value>"
             parser.verify_num_parameters(2, nil, usage)
             variable_name = params[0]
@@ -140,8 +140,8 @@ module OpenC3
     end
 
     # Called by the PluginsController to create the plugin
-    # Because this uses ERB it must be run in a seperate process from the API to
-    # prevent corruption and single require problems in the current proces
+    # Because this uses ERB it must be run in a separate process from the API to
+    # prevent corruption and single require problems in the current process
     def self.install_phase2(plugin_hash, scope:, gem_file_path: nil, validate_only: false)
       # Register plugin to aid in uninstall if install fails
       plugin_hash.delete("existing_plugin_txt_lines")
@@ -183,17 +183,30 @@ module OpenC3
         if File.exist?(File.join(gem_path, 'requirements.txt'))
           begin
             pypi_url = get_setting('pypi_url', scope: scope)
+            if pypi_url
+              pypi_url += '/simple'
+            end
           rescue => e
             Logger.error("Failed to retrieve pypi_url: #{e.formatted}")
           ensure
             if pypi_url.nil?
               # If Redis isn't running try the ENV, then simply pypi.org/simple
               pypi_url = ENV['PYPI_URL']
+              if pypi_url
+                pypi_url += '/simple'
+              end
               pypi_url ||= 'https://pypi.org/simple'
             end
           end
-          Logger.info "Installing python packages from requirements.txt with pypi_url=#{pypi_url}"
-          puts `/openc3/bin/pipinstall --user -i #{pypi_url} -r #{File.join(gem_path, 'requirements.txt')}`
+          unless validate_only
+            Logger.info "Installing python packages from requirements.txt with pypi_url=#{pypi_url}"
+            if ENV['PIP_ENABLE_TRUSTED_HOST'].nil?
+              pip_args = "--no-warn-script-location -i #{pypi_url} -r #{File.join(gem_path, 'requirements.txt')}"
+            else
+              pip_args = "--no-warn-script-location -i #{pypi_url} --trusted-host #{URI.parse(pypi_url).host} -r #{File.join(gem_path, 'requirements.txt')}"
+            end
+            puts `/openc3/bin/pipinstall #{pip_args}`
+          end
           needs_dependencies = true
         end
 
@@ -221,7 +234,7 @@ module OpenC3
 
           # Process plugin.txt file
           file_data = plugin_hash['plugin_txt_lines'].join("\n")
-          tf = Tempfile.new("plugin.txt")
+          tf = Tempfile.new(PLUGIN_TXT)
           tf.write(file_data)
           tf.close
           plugin_txt_path = tf.path
@@ -237,13 +250,19 @@ module OpenC3
               when 'VARIABLE', 'NEEDS_DEPENDENCIES'
                 # Ignore during phase 2
               when 'TARGET', 'INTERFACE', 'ROUTER', 'MICROSERVICE', 'TOOL', 'WIDGET'
-                if current_model
-                  current_model.create unless validate_only
-                  current_model.deploy(gem_path, variables, validate_only: validate_only)
+                begin
+                  if current_model
+                    current_model.create unless validate_only
+                    current_model.deploy(gem_path, variables, validate_only: validate_only)
+                  end
+                # If something goes wrong in create, or more likely in deploy,
+                # we want to clear the current_model and try to instantiate the next
+                # Otherwise we're stuck constantly iterating on the last model
+                ensure
                   current_model = nil
+                  current_model = OpenC3.const_get((keyword.capitalize + 'Model').intern).handle_config(parser,
+                    keyword, params, plugin: plugin_model.name, needs_dependencies: needs_dependencies, scope: scope)
                 end
-                current_model = OpenC3.const_get((keyword.capitalize + 'Model').intern).handle_config(parser,
-                  keyword, params, plugin: plugin_model.name, needs_dependencies: needs_dependencies, scope: scope)
               else
                 if current_model
                   current_model.handle_config(parser, keyword, params)
@@ -263,10 +282,10 @@ module OpenC3
             $LOAD_PATH.delete(load_dir)
           end
         end
-      rescue => err
+      rescue => e
         # Install failed - need to cleanup
         plugin_model.destroy unless validate_only
-        raise err
+        raise e
       ensure
         FileUtils.remove_entry(temp_dir) if temp_dir and File.exist?(temp_dir)
         tf.unlink if tf
@@ -288,12 +307,12 @@ module OpenC3
       @needs_dependencies = ConfigParser.handle_true_false(needs_dependencies)
     end
 
-    def create(update: false, force: false)
+    def create(update: false, force: false, queued: false)
       @name = @name + "__#{Time.now.utc.strftime("%Y%m%d%H%M%S")}" if not update and not @name.index("__")
-      super(update: update, force: force)
+      super(update: update, force: force, queued: queued)
     end
 
-    def as_json(*a)
+    def as_json(*_a)
       {
         'name' => @name,
         'variables' => @variables,
@@ -308,11 +327,11 @@ module OpenC3
       errors = []
       microservice_count = 0
       microservices = MicroserviceModel.find_all_by_plugin(plugin: @name, scope: @scope)
-      microservices.each do |name, model_instance|
+      microservices.each do |_name, model_instance|
         begin
           model_instance.destroy
-        rescue Exception => error
-          errors << error
+        rescue Exception => e
+          errors << e
         end
         microservice_count += 1
       end
@@ -321,20 +340,20 @@ module OpenC3
       # Remove all the other models now that the processes have stopped
       # Save TargetModel for last as it has the most to cleanup
       [InterfaceModel, RouterModel, ToolModel, WidgetModel, TargetModel].each do |model|
-        model.find_all_by_plugin(plugin: @name, scope: @scope).each do |name, model_instance|
+        model.find_all_by_plugin(plugin: @name, scope: @scope).each do |_name, model_instance|
           begin
             model_instance.destroy
-          rescue Exception => error
-            errors << error
+          rescue Exception => e
+            errors << e
           end
         end
       end
       # Cleanup Redis stuff that might have been left by microservices
-      microservices.each do |name, model_instance|
+      microservices.each do |_name, model_instance|
         begin
           model_instance.cleanup
-        rescue Exception => error
-          errors << error
+        rescue Exception => e
+          errors << e
         end
       end
       # Raise all the errors at once
@@ -345,13 +364,13 @@ module OpenC3
         end
         raise message
       end
-    rescue Exception => error
-      Logger.error("Error undeploying plugin model #{@name} in scope #{@scope} due to: #{error.formatted}")
+    rescue Exception => e
+      Logger.error("Error undeploying plugin model #{@name} in scope #{@scope} due to: #{e.formatted}")
     ensure
       # Double check everything is gone
       found = []
       [MicroserviceModel, InterfaceModel, RouterModel, ToolModel, WidgetModel, TargetModel].each do |model|
-        model.find_all_by_plugin(plugin: @name, scope: @scope).each do |name, model_instance|
+        model.find_all_by_plugin(plugin: @name, scope: @scope).each do |_name, model_instance|
           found << model_instance
         end
       end

@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -30,7 +30,7 @@ module OpenC3
   #
   # This should not be confused with the Api module which implements the JSON
   # API that is used by tools when accessing the Server. The Api module always
-  # provides Ruby primatives where the PacketConfig class can return actual
+  # provides Ruby primitives where the PacketConfig class can return actual
   # Packet or PacketItem objects. While there are some overlapping methods between
   # the two, these are separate interfaces into the system.
   class Commands
@@ -115,7 +115,7 @@ module OpenC3
         target = System.targets[target_name]
         if target and target.cmd_unique_id_mode
           # Iterate through the packets and see if any represent the buffer
-          target_packets.each do |packet_name, packet|
+          target_packets.each do |_packet_name, packet|
             if packet.identify?(packet_data)
               identified_packet = packet
               break
@@ -147,7 +147,7 @@ module OpenC3
     end
 
     # Returns a copy of the specified command packet with the parameters
-    # initialzed to the given params values.
+    # initialized to the given params values.
     #
     # @param target_name (see #packet)
     # @param packet_name (see #packet)
@@ -195,7 +195,7 @@ module OpenC3
         items = packet.read_all(:FORMATTED)
         raw = false
       end
-      items.delete_if { |item_name, item_value| ignored_parameters.include?(item_name) }
+      items.delete_if { |item_name, _item_value| ignored_parameters.include?(item_name) }
       return build_cmd_output_string(packet.target_name, packet.packet_name, items, raw)
     end
 
@@ -207,7 +207,7 @@ module OpenC3
       end
       target_name = 'UNKNOWN' unless target_name
       cmd_name = 'UNKNOWN' unless cmd_name
-      output_string << target_name + ' ' + cmd_name
+      output_string << (target_name + ' ' + cmd_name)
       if cmd_params.nil? or cmd_params.empty?
         output_string << '")'
       else
@@ -247,7 +247,7 @@ module OpenC3
           params << "#{key} #{value}"
         end
         params = params.join(", ")
-        output_string << ' with ' + params + '")'
+        output_string << (' with ' + params + '")')
       end
       return output_string
     end
@@ -291,14 +291,6 @@ module OpenC3
       cmd_pkt_hazardous?(build_cmd(target_name, packet_name, params, false, false, false))
     end
 
-    def clear_counters
-      @config.commands.each do |target_name, target_packets|
-        target_packets.each do |packet_name, packet|
-          packet.received_count = 0
-        end
-      end
-    end
-
     def all
       @config.commands
     end
@@ -316,14 +308,26 @@ module OpenC3
         item = command.get_item(item_upcase)
         range_check_value = value
 
-        # Convert from state to value if possible
-        if item.states and item.states[value.to_s.upcase]
-          range_check_value = item.states[value.to_s.upcase]
-        end
-
         if range_checking
+          if item.states
+            if item.states[value.to_s.upcase]
+              range_check_value = item.states[value.to_s.upcase]
+            else
+              unless item.states.values.include?(value)
+                if command.raw
+                  # Raw commands report missing value maps
+                  raise "Command parameter '#{command.target_name} #{command.packet_name} #{item_upcase}' = #{value.to_s.upcase} not one of #{item.states.values.join(', ')}"
+                else
+                  # Normal commands report missing state maps
+                  raise "Command parameter '#{command.target_name} #{command.packet_name} #{item_upcase}' = #{value.to_s.upcase} not one of #{item.states.keys.join(', ')}"
+                end
+              end
+            end
+          end
+
           range = item.range
-          if range
+          # Don't range check a string default value
+          if range and !item.default.is_a?(String)
             # Perform Range Check on command parameter
             if not range.include?(range_check_value)
               range_check_value = "'#{range_check_value}'" if String === range_check_value

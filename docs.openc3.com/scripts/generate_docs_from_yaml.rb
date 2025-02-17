@@ -109,6 +109,22 @@ class CosmosMetaTag
         page << "```ruby\n"
         page << "#{data['example'].strip}\n"
         page << "```\n"
+        # If this is a screen, check to see if there is an image for the widget
+        if File.basename(@yaml_file) == 'screen.yaml' and File.exist?("../static/img/telemetry_viewer/widgets/#{keyword.downcase}.png")
+          page << "![#{keyword}](/img/telemetry_viewer/widgets/#{keyword.downcase}.png)\n\n"
+        end
+      end
+      if data['ruby_example']
+        page << "\nRuby Example:\n"
+        page << "```ruby\n"
+        page << "#{data['ruby_example'].strip}\n"
+        page << "```\n"
+      end
+      if data['python_example']
+        page << "\nPython Example:\n"
+        page << "```python\n"
+        page << "#{data['python_example'].strip}\n"
+        page << "```\n"
       end
       saved_level = @level
       if data['modifiers']
@@ -215,7 +231,7 @@ end
 docs.each do |partial, yaml_file|
   tag = CosmosMetaTag.new(yaml_file)
   content = tag.render
-  partial_contents = File.read(partial)
+  partial_contents = File.open(partial, "r:UTF-8", &:read)
   partial_contents.gsub!("COSMOS_META", content)
   dirname = File.dirname(partial)
   basename = File.basename(partial)

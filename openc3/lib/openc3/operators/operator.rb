@@ -105,7 +105,7 @@ module OpenC3
     def cmd_line
       # In ProcessManager processes, the process_definition is the actual thing run
       # e.g. OpenC3::ProcessManager.instance.spawn(["ruby", "/openc3/bin/openc3cli", "load", ...])
-      # However, if the MicroserviceOperator is spawning the proceses it sets
+      # However, if the MicroserviceOperator is spawning the processes it sets
       # process_definition = ["ruby", "plugin_microservice.rb"]
       # which then calls exec(*@config["cmd"]) to actually run
       # So check if the @config['cmd'] is defined to give the user more info in the log
@@ -127,7 +127,7 @@ module OpenC3
       # @process.io.inherit!
       @process.cwd = @work_dir
       # Spawned process should not be controlled by same Bundler constraints as spawning process
-      ENV.each do |key, value|
+      ENV.each do |key, _value|
         if key =~ /^BUNDLER/
           @process.environment[key] = nil
         end
@@ -195,12 +195,14 @@ module OpenC3
       if @process
         stdout = @process.io.stdout.extract
         if stdout.length > 0
-          STDOUT.puts "STDOUT #{stdout.length} bytes from #{cmd_line()}:"
+          message = "STDOUT #{stdout.length} bytes from #{cmd_line()}:"
+          STDOUT.puts Logger.build_log_data(Logger::INFO_LEVEL, message, user: nil, type: OpenC3::Logger::LOG, url: nil).as_json(:allow_nan => true).to_json(:allow_nan => true)
           STDOUT.puts stdout
         end
         stderr = @process.io.stderr.extract
         if stderr.length > 0
-          STDERR.puts "STDERR #{stderr.length} bytes from #{cmd_line()}:"
+          message = "STDERR #{stderr.length} bytes from #{cmd_line()}:"
+          STDERR.puts Logger.build_log_data(Logger::ERROR_LEVEL, message, user: nil, type: OpenC3::Logger::LOG, url: nil).as_json(:allow_nan => true).to_json(:allow_nan => true)
           STDERR.puts stderr
         end
       end
@@ -265,7 +267,7 @@ module OpenC3
         if @new_processes.length > 0
           # Start all the processes
           Logger.info("#{self.class} starting each new process...")
-          @new_processes.each { |name, p| p.start }
+          @new_processes.each { |_name, p| p.start }
           @new_processes = {}
         end
       end
@@ -278,7 +280,7 @@ module OpenC3
           shutdown_processes(@changed_processes)
           break if @shutdown
 
-          @changed_processes.each { |name, p| p.start }
+          @changed_processes.each { |_name, p| p.start }
           @changed_processes = {}
         end
       end
@@ -296,7 +298,7 @@ module OpenC3
 
     def respawn_dead
       @mutex.synchronize do
-        @processes.each do |name, p|
+        @processes.each do |_name, p|
           break if @shutdown
           p.output_increment
           unless p.alive?
@@ -314,7 +316,7 @@ module OpenC3
       processes = processes.dup
 
       Logger.info("Commanding soft stops...")
-      processes.each { |name, p| p.soft_stop }
+      processes.each { |_name, p| p.soft_stop }
       start_time = Time.now
       # Allow sufficient time for processes to shutdown cleanly
       while (Time.now - start_time) < PROCESS_SHUTDOWN_SECONDS
@@ -322,21 +324,21 @@ module OpenC3
         processes.each do |name, p|
           unless p.alive?
             processes_to_remove << name
-            Logger.info("Soft stop process successful: #{p.cmd_line}", scope: p.scope)
+            Logger.debug("Soft stop process successful: #{p.cmd_line}", scope: p.scope)
           end
         end
         processes_to_remove.each do |name|
           processes.delete(name)
         end
         if processes.length <= 0
-          Logger.info("Soft stop all successful")
+          Logger.debug("Soft stop all successful")
           break
         end
         sleep(0.1)
       end
       if processes.length > 0
-        Logger.info("Commanding hard stops...")
-        processes.each { |name, p| p.hard_stop }
+        Logger.debug("Commanding hard stops...")
+        processes.each { |_name, p| p.hard_stop }
       end
     end
 

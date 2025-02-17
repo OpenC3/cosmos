@@ -52,9 +52,7 @@ class SuiteResults:
             self.context = f"{test_suite_class.__name__}:{test_class.__name__}:{test_case} {test_type}"
         elif test_class:
             # Executing a group
-            self.context = (
-                f"{test_suite_class.__name__}:{test_class.__name__} {test_type}"
-            )
+            self.context = f"{test_suite_class.__name__}:{test_class.__name__} {test_type}"
         else:
             # Executing a suite
             self.context = f"{test_suite_class.__name__} {test_type}"
@@ -64,7 +62,7 @@ class SuiteResults:
     # or a single OpenC3TestResult object
     def process_result(self, results):
         # If we were passed an array we concat it to the results global
-        if type(results) == list:
+        if isinstance(results, list):
             self.results.append(results)
         # A single result is appended and then turned into an array
         else:
@@ -83,20 +81,8 @@ class SuiteResults:
 
             if result.exceptions:
                 self._report.append("  Exceptions:")
-                for index, error in enumerate(result.exceptions):
-                    self._report.extend(traceback.format_exception(error))
-                    # for line in repr(error):
-                    #   next if /in run_text/.match?(line)
-                    #   next if /running_script.rb/.match?(line)
-                    #   next if line&.match?(openc3_lib)
-
-                    #   if /[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F-\xFF]/.match?(line)
-                    #     line.chomp!
-                    #     line = line.inspect.remove_quotes
-
-                    #   self._report += '    ' + line.rstrip()
-                    # if index != (result.exceptions.length - 1):
-                    #   self._report += ''
+                for _, error in enumerate(result.exceptions):
+                    self._report.append("".join(traceback.format_exception(error)))
 
     def complete(self):
         self.stop_time = time.time()
@@ -151,9 +137,7 @@ class SuiteResults:
 
     def write(self, string):
         # Can't use isoformat because it appends "+00:00" instead of "Z"
-        self._report.append(
-            datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ") + ": " + string
-        )
+        self._report.append(datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ") + ": " + string)
 
     # Define a few aliases
     puts = write

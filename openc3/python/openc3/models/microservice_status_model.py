@@ -14,6 +14,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+from openc3.environment import OPENC3_SCOPE
 from openc3.models.model import Model
 
 
@@ -23,15 +24,15 @@ class MicroserviceStatusModel(Model):
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
     @classmethod
-    def get(cls, name, scope=None):
+    def get(cls, name: str, scope: str = OPENC3_SCOPE):
         return super().get(f"{scope}__{MicroserviceStatusModel.PRIMARY_KEY}", name=name)
 
     @classmethod
-    def names(cls, scope=None):
+    def names(cls, scope: str = OPENC3_SCOPE):
         return super().names(f"{scope}__{MicroserviceStatusModel.PRIMARY_KEY}")
 
     @classmethod
-    def all(cls, scope=None):
+    def all(cls, scope: str = OPENC3_SCOPE):
         return super().all(f"{scope}__{MicroserviceStatusModel.PRIMARY_KEY}")
 
     def __init__(

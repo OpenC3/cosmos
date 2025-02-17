@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -38,30 +38,28 @@ test('show started scripts', async ({ page, utils }) => {
 
   // Start the script
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('waiting', {
-    timeout: 20000,
-  })
-  // Traverse up to get the name of the running script
-  const filename = await page
-    .locator('[data-test=filename]')
-    .locator('xpath=../div')
-    .textContent()
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    /waiting \d+s/,
+    {
+      timeout: 20000,
+    },
+  )
+  // Get the name of the running script
+  let filename = await page.locator('[data-test=filename] input').inputValue()
 
   await page.locator('[data-test=script-runner-script]').click()
   await page.locator('text="Execution Status"').click()
   await utils.sleep(1000)
   // Each section has a Refresh button so click the first one
-  await page.locator('button:has-text("Refresh")').first().click()
+  await page.getByRole('button', { name: 'Refresh' }).first().click()
   await expect(page.locator('[data-test=running-scripts]')).toContainText(
     format(new Date(), 'yyyy_MM_dd'),
   )
 
   // Get out of the Running Scripts sheet
-  await page
-    .locator('#openc3-menu >> text=Script Runner')
-    .click({ force: true })
+  await page.keyboard.press('Escape')
   await page.locator('[data-test=go-button]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('stopped')
+  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped')
   await page.locator('[data-test=script-runner-script]').click()
   await page.locator('text="Execution Status"').click()
   await utils.sleep(1000)
@@ -79,32 +77,35 @@ test('sets environment variables', async ({ page, utils }) => {
   await page.locator('textarea').fill(`puts ENV.inspect`)
   await page.locator('[data-test=script-runner-script]').click()
   await page.locator('text=Global Environment').click()
-  await page.locator('[data-test=env-key]').fill('KEY')
-  await page.locator('[data-test=env-value]').fill('VALUE')
+  await page.locator('[data-test=env-key] input').fill('KEY')
+  await page.locator('[data-test=env-value] input').fill('VALUE')
   await page.locator('[data-test=add-env]').click()
-  await page.locator('[data-test=env-key]').fill('USER')
-  await page.locator('[data-test=env-value]').fill('RYAN')
+  await page.locator('[data-test=env-key] input').fill('USER')
+  await page.locator('[data-test=env-value] input').fill('RYAN')
   await page.locator('[data-test=add-env]').click()
   await page.locator('.v-dialog').press('Escape')
 
   await page.locator('[data-test="env-button"]').click()
   await page.locator('[data-test="new-metadata-icon"]').click()
-  await page.locator('[data-test="key-0"]').fill('USER')
-  await page.locator('[data-test="value-0"]').fill('JASON')
+  await page.locator('[data-test="key-0"] input').fill('USER')
+  await page.locator('[data-test="value-0"] input').fill('JASON')
   await page.locator('[data-test="environment-dialog-save"]').click()
 
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('Connecting...', {
-    timeout: 5000,
-  })
-  await expect(page.locator('[data-test=state]')).toHaveValue('stopped', {
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'Connecting...',
+    {
+      timeout: 5000,
+    },
+  )
+  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
     timeout: 20000,
   })
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     '"KEY"=>"VALUE"',
   )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    '"USER"=>"JASON"', // JASON not RYAN because it was overriden locally
+    '"USER"=>"JASON"', // JASON not RYAN because it was overridden locally
   )
   await page.locator('[data-test=clear-log]').click()
   await page.locator('button:has-text("Clear")').click()
@@ -116,10 +117,13 @@ test('sets environment variables', async ({ page, utils }) => {
 
   // Re-run and verify the global is output
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('Connecting...', {
-    timeout: 5000,
-  })
-  await expect(page.locator('[data-test=state]')).toHaveValue('stopped', {
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'Connecting...',
+    {
+      timeout: 5000,
+    },
+  )
+  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
     timeout: 20000,
   })
   await expect(page.locator('[data-test=output-messages]')).toContainText(
@@ -151,18 +155,24 @@ test('show overrides', async ({ page, utils }) => {
   override_tlm("INST", "HEALTH_STATUS", "DURATION", "10", type: :CONVERTED)
   `)
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('Connecting...', {
-    timeout: 5000,
-  })
-  await expect(page.locator('[data-test=state]')).toHaveValue('stopped', {
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'Connecting...',
+    {
+      timeout: 5000,
+    },
+  )
+  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
     timeout: 20000,
   })
   // Run twice to view the overrides in the output messages
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('Connecting...', {
-    timeout: 5000,
-  })
-  await expect(page.locator('[data-test=state]')).toHaveValue('stopped', {
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'Connecting...',
+    {
+      timeout: 5000,
+    },
+  )
+  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
     timeout: 20000,
   })
   await expect(page.locator('[data-test=output-messages]')).toContainText(
@@ -202,11 +212,14 @@ test('show overrides', async ({ page, utils }) => {
   await expect(page.locator('.v-dialog >> tbody > tr').nth(4)).toContainText(
     'INSTHEALTH_STATUSDURATIONCONVERTED10',
   )
-  // Click the delete button on the first item
-  await page.locator('.v-dialog >> tbody > tr >> nth=0 >> button').click()
+  await page
+    .locator('.v-dialog >> tbody > tr')
+    .nth(0)
+    .getByRole('button')
+    .click()
   await expect(page.locator('.v-dialog >> tbody > tr')).toHaveCount(4)
   // Clear all overrides
-  await page.locator('[data-test=overrides-dialog-clear-all]').click()
+  await page.locator('[data-test="overrides-dialog-clear-all"]').click()
   await expect(
     page.getByRole('cell', { name: 'No data available' }),
   ).toBeVisible()

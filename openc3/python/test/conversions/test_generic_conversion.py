@@ -15,8 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
-from unittest.mock import *
-from test.test_helper import *
+from openc3.packets.packet import Packet
 from openc3.conversions.generic_conversion import GenericConversion
 
 
@@ -33,12 +32,13 @@ class TestGenericConversion(unittest.TestCase):
 
     def test_calls_the_code_to_eval_and_return_the_result(self):
         gc = GenericConversion("10 / 2", "UINT", 8)
-        self.assertEqual(gc.call(0, 0, 0), 5)
+        self.assertEqual(gc.call(0, Packet(None, None), 0), 5)
 
     def test_returns_the_code_to_eval(self):
         self.assertEqual(str(GenericConversion("10 / 2")), "10 / 2")
 
     def test_creates_a_reproducable_format(self):
+        pkt = Packet(None, None)
         gc = GenericConversion("10.0 / 2", "FLOAT", "32", "64")
         json = gc.as_json()
         self.assertEqual(json["class"], "GenericConversion")
@@ -50,5 +50,5 @@ class TestGenericConversion(unittest.TestCase):
         self.assertEqual(gc.converted_type, (new_gc.converted_type))
         self.assertEqual(gc.converted_bit_size, (new_gc.converted_bit_size))
         self.assertEqual(gc.converted_array_size, (new_gc.converted_array_size))
-        self.assertEqual(gc.call(0, 0, 0), 5.0)
-        self.assertEqual(new_gc.call(0, 0, 0), 5.0)
+        self.assertEqual(gc.call(0, pkt, 0), 5.0)
+        self.assertEqual(new_gc.call(0, pkt, 0), 5.0)

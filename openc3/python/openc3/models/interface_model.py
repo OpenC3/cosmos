@@ -14,14 +14,17 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import os
+from pathlib import Path
+from typing import Optional
+
+from openc3.environment import OPENC3_SCOPE
 from openc3.models.model import Model
+from openc3.models.secret_model import SecretModel
 from openc3.models.target_model import TargetModel
 from openc3.models.microservice_model import MicroserviceModel
 from openc3.logs.stream_log_pair import StreamLogPair
 from openc3.top_level import get_class_from_module
 from openc3.utilities.string import filename_to_module, filename_to_class_name
-from openc3.utilities.secrets import Secrets
 
 
 class InterfaceModel(Model):
@@ -31,15 +34,15 @@ class InterfaceModel(Model):
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
     @classmethod
-    def get(cls, name, scope):
+    def get(cls, name: str, scope: str):
         return super().get(f"{scope}__{cls._get_key()}", name)
 
     @classmethod
-    def names(cls, scope):
+    def names(cls, scope: str):
         return super().names(f"{scope}__{cls._get_key()}")
 
     @classmethod
-    def all(cls, scope):
+    def all(cls, scope: str):
         return super().all(f"{scope}__{cls._get_key()}")
 
     # END NOTE
@@ -64,29 +67,30 @@ class InterfaceModel(Model):
     def __init__(
         self,
         name,
-        config_params=[],
-        target_names=[],
-        cmd_target_names=[],
-        tlm_target_names=[],
-        connect_on_startup=True,
-        auto_reconnect=True,
-        reconnect_delay=5.0,
-        disable_disconnect=False,
-        options=[],
-        secret_options=[],
-        protocols=[],
+        config_params: Optional[list] = None,
+        target_names: Optional[list] = None,
+        cmd_target_names: Optional[list] = None,
+        tlm_target_names: Optional[list] = None,
+        connect_on_startup: bool = True,
+        auto_reconnect: bool = True,
+        reconnect_delay: float = 5.0,
+        disable_disconnect: bool = False,
+        options: Optional[list] = None,
+        secret_options: Optional[list] = None,
+        protocols: Optional[list] = None,
         log_stream=None,
-        updated_at=None,
-        plugin=None,
-        needs_dependencies=False,
-        secrets=[],
-        cmd=None,
-        work_dir="/openc3/lib/openc3/microservices",
-        ports=[],
-        env={},
+        updated_at: Optional[float] = None,
+        plugin: Optional[str] = None,
+        needs_dependencies: bool = False,
+        secrets: Optional[list] = None,
+        cmd: str = None,
+        work_dir: str = "/openc3/lib/openc3/microservices",
+        ports: Optional[list] = None,
+        env: Optional[dict] = None,
         container=None,
         prefix=None,
-        scope=None,
+        shard=0,
+        scope: str = OPENC3_SCOPE,
     ):
         type = self.__class__._get_type()
         if type == "INTERFACE":
@@ -105,26 +109,23 @@ class InterfaceModel(Model):
                 plugin=plugin,
                 scope=scope,
             )
-        self.config_params = config_params
-        self.target_names = target_names
-        self.cmd_target_names = cmd_target_names
-        self.tlm_target_names = tlm_target_names
+        self.config_params = [] if config_params is None else config_params
+        self.target_names = [] if target_names is None else target_names
+        self.cmd_target_names = [] if cmd_target_names is None else cmd_target_names
+        self.tlm_target_names = [] if tlm_target_names is None else tlm_target_names
         self.connect_on_startup = connect_on_startup
         self.auto_reconnect = auto_reconnect
         self.reconnect_delay = reconnect_delay
         self.disable_disconnect = disable_disconnect
-        self.options = options
-        self.secret_options = secret_options
-        self.protocols = protocols
+        self.options = [] if options is None else options
+        self.secret_options = [] if secret_options is None else secret_options
+        self.protocols = [] if protocols is None else protocols
         self.log_stream = log_stream
         self.needs_dependencies = needs_dependencies
         self.cmd = cmd
         if self.cmd is None:
             microservice_name = f"{self.scope}__{type}__{self.name}"
-            if (
-                len(config_params) == 0
-                or os.path.splitext(config_params[0])[1] == ".py"
-            ):
+            if len(self.config_params) == 0 or Path(config_params[0]).suffix == ".py":
                 work_dir = work_dir.replace("openc3/lib", "openc3/python")
                 self.cmd = [
                     "python",
@@ -134,11 +135,14 @@ class InterfaceModel(Model):
             else:
                 raise RuntimeError(f"Unknown file type {config_params[0]}")
         self.work_dir = work_dir
-        self.ports = ports
-        self.env = env
+        self.ports = [] if ports is None else ports
+        self.env = {} if env is None else env
         self.container = container
         self.prefix = prefix
-        self.secrets = secrets
+        self.shard = shard
+        if self.shard is None:
+            self.shard = 0
+        self.secrets = [] if secrets is None else secrets
 
     # Called by InterfaceMicroservice to instantiate the Interface defined
     # by the model configuration. Must be called after get_model which
@@ -164,9 +168,7 @@ class InterfaceModel(Model):
             interface_or_router.set_option(option[0], option[1:])
         for option in self.secret_options:
             secret_name = option[1]
-            secret_value = interface_or_router.secrets.get(
-                secret_name, scope=self.scope
-            )
+            secret_value = interface_or_router.secrets.get(secret_name, scope=self.scope)
             interface_or_router.set_option(option[0], [secret_value])
         for protocol in self.protocols:
             klass = get_class_from_module(
@@ -175,17 +177,11 @@ class InterfaceModel(Model):
             )
             interface_or_router.add_protocol(klass, protocol[2:], protocol[0].upper())
         if self.log_stream:
-            interface_or_router.stream_log_pair = StreamLogPair(
-                interface_or_router.name, self.log_stream
-            )
+            interface_or_router.stream_log_pair = StreamLogPair(interface_or_router.name, self.log_stream)
             interface_or_router.start_raw_logging
         return interface_or_router
 
     def as_json(self):
-        if type(self.secrets) == Secrets:
-            secrets_json = self.secrets.as_json()
-        else:
-            secrets_json = self.secrets
         return {
             "name": self.name,
             "config_params": self.config_params,
@@ -202,13 +198,14 @@ class InterfaceModel(Model):
             "log_stream": self.log_stream,
             "plugin": self.plugin,
             "needs_dependencies": self.needs_dependencies,
-            "secrets": secrets_json,
+            "secrets": (self.secrets.as_json() if isinstance(self.secrets, SecretModel) else self.secrets),
             "cmd": self.cmd,
             "work_dir": self.work_dir,
             "ports": self.ports,
             "env": self.env,
             "container": self.container,
             "prefix": self.prefix,
+            "shard": self.shard,
             "updated_at": self.updated_at,
         }
 
@@ -242,9 +239,7 @@ class InterfaceModel(Model):
         # Respawn the microservice
         type = self.__class__.__name__.split("Model")[0].upper()
         microservice_name = f"{self.scope}__{type}__{self.name}"
-        microservice = MicroserviceModel.get_model(
-            name=microservice_name, scope=self.scope
-        )
+        microservice = MicroserviceModel.get_model(name=microservice_name, scope=self.scope)
         if target_name not in self.target_names:
             microservice.target_names.remove(target_name)
         microservice.update()
@@ -262,13 +257,9 @@ class InterfaceModel(Model):
             old_interface = None
             for _, old_interface_details in all_interfaces.items():
                 if target_name in old_interface_details["target_names"]:
-                    old_interface = InterfaceModel.from_json(
-                        old_interface_details, scope=self.scope
-                    )
+                    old_interface = InterfaceModel.from_json(old_interface_details, scope=self.scope)
                     if old_interface:
-                        old_interface.unmap_target(
-                            target_name, cmd_only=cmd_only, tlm_only=tlm_only
-                        )
+                        old_interface.unmap_target(target_name, cmd_only=cmd_only, tlm_only=tlm_only)
 
         # Add to this interface
         if target_name not in self.target_names:
@@ -282,9 +273,7 @@ class InterfaceModel(Model):
         # Respawn the microservice
         type = self.__class__.__name__.split("Model")[0].upper()
         microservice_name = f"{self.scope}__{type}__{self.name}"
-        microservice = MicroserviceModel.get_model(
-            name=microservice_name, scope=self.scope
-        )
+        microservice = MicroserviceModel.get_model(name=microservice_name, scope=self.scope)
         if target_name not in microservice.target_names:
             microservice.target_names.append(target_name)
         microservice.update()

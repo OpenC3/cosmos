@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -71,24 +71,19 @@
         </v-row>
         <v-row no-gutters>
           <v-col>
-            <v-radio-group v-model="cmdOrTlm" row hide-details class="mt-0">
+            <v-radio-group v-model="cmdOrTlm" inline hide-details class="mt-0">
               <v-radio label="Command" value="cmd" data-test="cmd-radio" />
               <v-radio label="Telemetry" value="tlm" data-test="tlm-radio" />
-            </v-radio-group>
-          </v-col>
-          <v-col>
-            <v-radio-group v-model="utcOrLocal" row hide-details class="mt-0">
-              <v-radio label="LST" value="loc" data-test="lst-radio" />
-              <v-radio label="UTC" value="utc" data-test="utc-radio" />
             </v-radio-group>
           </v-col>
         </v-row>
         <v-row>
           <v-col>
             <target-packet-item-chooser
-              @click="addItem($event)"
+              @add-item="addItem($event)"
               button-text="Add Item"
               :mode="cmdOrTlm"
+              :hidden="true"
               choose-item
               allow-all
             />
@@ -96,44 +91,41 @@
         </v-row>
       </v-container>
       <v-toolbar class="pl-3">
-        <v-progress-circular :value="progress" />
+        <v-progress-circular :model-value="progress" />
         &nbsp; Processed: {{ totalPacketsReceived }} packets,
         {{ totalItemsReceived }} items
         <v-spacer />
         <v-btn
-          class="primary"
+          class="bg-primary"
           @click="processItems"
           :disabled="items.length < 1"
-          >{{ processButtonText }}</v-btn
         >
+          {{ processButtonText }}
+        </v-btn>
         <v-spacer />
-        <v-tooltip bottom>
-          <template v-slot:activator="{ on, attrs }">
+        <v-tooltip location="top">
+          <template v-slot:activator="{ props }">
             <v-btn
-              icon
+              icon="mdi-pencil"
+              variant="text"
               @click="editAll = true"
-              v-bind="attrs"
-              v-on="on"
+              v-bind="props"
               :disabled="items.length < 1"
               data-test="editAll"
-            >
-              <v-icon> mdi-pencil </v-icon>
-            </v-btn>
+            />
           </template>
-          <span>Edit All Items</span>
+          <span> Edit All Items </span>
         </v-tooltip>
-        <v-tooltip bottom>
-          <template v-slot:activator="{ on, attrs }">
+        <v-tooltip location="top">
+          <template v-slot:activator="{ props }">
             <v-btn
-              icon
+              icon="mdi-delete"
+              variant="text"
               @click="deleteAll"
-              v-bind="attrs"
-              v-on="on"
+              v-bind="props"
               :disabled="items.length < 1"
               data-test="delete-all"
-            >
-              <v-icon>mdi-delete</v-icon>
-            </v-btn>
+            />
           </template>
           <span>Delete All Items</span>
         </v-tooltip>
@@ -148,8 +140,8 @@
             label="Search"
             prepend-inner-icon="mdi-magnify"
             clearable
-            outlined
-            dense
+            variant="outlined"
+            density="compact"
             single-line
             hide-details
             class="search"
@@ -159,24 +151,19 @@
           :headers="headers"
           :items="items"
           :search="search"
-          :items-per-page="itemsPerPage"
-          @update:items-per-page="itemsPerPage = $event"
-          :footer-props="{
-            itemsPerPageOptions: [10, 20, 50, 100, 500, 1000],
-            showFirstLastPage: true,
-            firstIcon: 'mdi-page-first',
-            lastIcon: 'mdi-page-last',
-            prevIcon: 'mdi-chevron-left',
-            nextIcon: 'mdi-chevron-right',
-          }"
-          calculate-widths
+          v-model:items-per-page="itemsPerPage"
+          :items-per-page-options="[10, 20, 50, 100, -1]"
           multi-sort
-          dense
+          density="compact"
         >
           <template v-slot:item.edit="{ item }">
-            <v-tooltip bottom>
-              <template v-slot:activator="{ on, attrs }">
-                <v-icon @click.stop="item.edit = true" v-bind="attrs" v-on="on">
+            <v-tooltip location="top">
+              <template v-slot:activator="{ props }">
+                <v-icon
+                  @click.stop="item.edit = true"
+                  v-bind="props"
+                  data-test="edit-row"
+                >
                   mdi-pencil
                 </v-icon>
               </template>
@@ -188,53 +175,54 @@
               max-width="600"
             >
               <v-card>
-                <v-system-bar>
+                <v-toolbar height="24">
                   <v-spacer />
                   <span> DataExtractor: Edit Item Mode </span>
                   <v-spacer />
-                </v-system-bar>
+                </v-toolbar>
                 <v-card-text>
                   <v-row class="mt-3 title-font">
                     <v-col>
                       {{ getItemLabel(item) }}
-                    </v-col></v-row
-                  >
+                    </v-col>
+                  </v-row>
                   <v-row>
                     <v-col>
                       <v-select
                         hide-details
                         :items="modes"
                         label="Mode"
-                        outlined
-                        v-model="item.mode" /></v-col
-                  ></v-row>
-                  <v-row
-                    ><v-col>
+                        variant="outlined"
+                        v-model="item.mode"
+                      />
+                    </v-col>
+                  </v-row>
+                  <v-row>
+                    <v-col>
                       <v-select
                         hide-details
                         :items="valueTypes"
                         label="Value Type"
-                        outlined
-                        v-model="item.valueType" /></v-col
-                  ></v-row>
-                  <v-row
-                    ><v-col>
+                        variant="outlined"
+                        v-model="item.valueType"
+                      />
+                    </v-col>
+                  </v-row>
+                  <v-row>
+                    <v-col>
                       <v-select
                         hide-details
                         :items="reducedTypes"
                         label="Reduced Type"
-                        outlined
+                        variant="outlined"
                         v-model="item.reducedType"
-                      /> </v-col
-                  ></v-row>
+                      />
+                    </v-col>
+                  </v-row>
                 </v-card-text>
-                <v-card-actions>
+                <v-card-actions class="px-2">
                   <v-spacer />
-                  <v-btn
-                    color="primary"
-                    class="mx-2"
-                    @click="item.edit = false"
-                  >
+                  <v-btn variant="flat" @click="item.edit = false">
                     Close
                   </v-btn>
                 </v-card-actions>
@@ -242,69 +230,79 @@
             </v-dialog>
           </template>
           <template v-slot:item.delete="{ item }">
-            <v-tooltip bottom>
-              <template v-slot:activator="{ on, attrs }">
-                <v-icon @click="deleteItem(item)" v-bind="attrs" v-on="on">
+            <v-tooltip location="top">
+              <template v-slot:activator="{ props }">
+                <v-icon
+                  @click="deleteItem(item)"
+                  v-bind="props"
+                  data-test="delete-row"
+                >
                   mdi-delete
                 </v-icon>
               </template>
-              <span>Delete Item</span>
+              <span> Delete Item </span>
             </v-tooltip>
           </template>
         </v-data-table>
       </v-card>
     </v-card>
-    <v-dialog v-model="editAll" @keydown.esc="cancelEditAll" max-width="600">
+    <v-dialog
+      v-model="editAll"
+      @keydown.esc="editAll = !editAll"
+      max-width="600"
+    >
       <v-card>
-        <v-system-bar>
+        <v-toolbar height="24">
           <v-spacer />
           <span> DataExtractor: Edit All Items</span>
           <v-spacer />
-        </v-system-bar>
+        </v-toolbar>
         <v-card-text>
           <v-row class="mt-3">
             <v-col>
               This will change all items to the following data type!
-            </v-col></v-row
-          >
-          <v-row
-            ><v-col>
+            </v-col>
+          </v-row>
+          <v-row>
+            <v-col>
               <v-select
                 hide-details
                 :items="modes"
                 label="Mode"
-                outlined
-                v-model="allItemMode" /></v-col
-          ></v-row>
-          <v-row
-            ><v-col>
+                variant="outlined"
+                v-model="allItemMode"
+              />
+            </v-col>
+          </v-row>
+          <v-row>
+            <v-col>
               <v-select
                 hide-details
                 :items="valueTypes"
                 label="Value Type"
-                outlined
-                v-model="allItemValueType" /></v-col
-          ></v-row>
-          <v-row
-            ><v-col>
+                variant="outlined"
+                v-model="allItemValueType"
+              />
+            </v-col>
+          </v-row>
+          <v-row>
+            <v-col>
               <v-select
                 hide-details
                 :items="reducedTypes"
                 label="Reduced Type"
-                outlined
+                variant="outlined"
                 v-model="allItemReducedType"
-              /> </v-col
-          ></v-row>
+              />
+            </v-col>
+          </v-row>
         </v-card-text>
-        <v-card-actions>
+        <v-card-actions class="px-2">
           <v-spacer />
-          <v-btn outlined class="mx-2" @click="editAll = !editAll">
-            Cancel
-          </v-btn>
+          <v-btn variant="outlined" @click="editAll = !editAll"> Cancel </v-btn>
           <v-btn
+            variant="flat"
             :disabled="!allItemValueType"
-            color="primary"
-            class="mx-2"
             @click="editAllItems()"
           >
             Ok
@@ -331,16 +329,17 @@
 
 <script>
 // Putting large data into Vue data section causes lots of overhead
-var dataExtractorRawData = []
+let dataExtractorRawData = []
 
-import Config from '@openc3/tool-common/src/components/config/Config'
-import OpenConfigDialog from '@openc3/tool-common/src/components/config/OpenConfigDialog'
-import SaveConfigDialog from '@openc3/tool-common/src/components/config/SaveConfigDialog'
-import TargetPacketItemChooser from '@openc3/tool-common/src/components/TargetPacketItemChooser'
-import Cable from '@openc3/tool-common/src/services/cable.js'
-import { format } from 'date-fns'
-import TopBar from '@openc3/tool-common/src/components/TopBar'
-import TimeFilters from '@/tools/DataExtractor/Filters/timeFilters.js'
+import { Cable, OpenC3Api } from '@openc3/js-common/services'
+import {
+  Config,
+  OpenConfigDialog,
+  SaveConfigDialog,
+  TargetPacketItemChooser,
+  TopBar,
+} from '@openc3/vue-common/components'
+import { TimeFilters } from '@openc3/vue-common/util'
 
 export default {
   components: {
@@ -356,17 +355,19 @@ export default {
       configKey: 'data_extractor',
       openConfig: false,
       saveConfig: false,
+      api: null,
+      timeZone: 'local',
       progress: 0,
       packetsReceived: 0,
       totalPacketsReceived: 0,
       itemsReceived: 0,
       totalItemsReceived: 0,
       processButtonText: 'Process',
-      todaysDate: format(new Date(), 'yyyy-MM-dd'),
-      startDate: format(new Date(), 'yyyy-MM-dd'),
-      startTime: format(new Date() - 3600000, 'HH:mm:ss'), // last hr data
-      endTime: format(new Date(), 'HH:mm:ss'),
-      endDate: format(new Date(), 'yyyy-MM-dd'),
+      todaysDate: null,
+      startDate: null,
+      startTime: null,
+      endTime: null,
+      endDate: null,
       startDateTime: null,
       endDateTime: null,
       startDateTimeFilename: '',
@@ -374,18 +375,17 @@ export default {
         required: (value) => !!value || 'Required',
       },
       cmdOrTlm: 'tlm',
-      utcOrLocal: 'loc',
       items: [],
       search: '',
       headers: [
-        { text: 'Target', value: 'targetName' },
-        { text: 'Packet', value: 'packetName' },
-        { text: 'Item', value: 'itemName' },
-        { text: 'Mode', value: 'mode' },
-        { text: 'ValueType', value: 'valueType' },
-        { text: 'ReducedType', value: 'reducedType' },
-        { text: 'Edit', value: 'edit' },
-        { text: 'Delete', value: 'delete' },
+        { title: 'Target', value: 'targetName' },
+        { title: 'Packet', value: 'packetName' },
+        { title: 'Item', value: 'itemName' },
+        { title: 'Mode', value: 'mode' },
+        { title: 'ValueType', value: 'valueType' },
+        { title: 'ReducedType', value: 'reducedType' },
+        { title: 'Edit', value: 'edit' },
+        { title: 'Delete', value: 'delete' },
       ],
       itemsPerPage: 20,
       columnMap: {},
@@ -407,10 +407,47 @@ export default {
       // uniqueIgnoreOptions: ['NO', 'YES'],
       cable: new Cable(),
       subscription: null,
-      menus: [
+    }
+  },
+  watch: {
+    delimiter: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    fillDown: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    matlabHeader: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    uniqueOnly: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    columnNode: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    cmdOrTlm: function () {
+      if (this.items.length === 0) {
+        this.saveDefaultConfig(this.currentConfig)
+      } else {
+        // Setting this.items will trigger a saveDefaultConfig() in the handler below
+        this.items = []
+      }
+    },
+    items: {
+      handler: function () {
+        this.saveDefaultConfig(this.currentConfig)
+      },
+      deep: true,
+    },
+    itemsPerPage: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+  },
+  computed: {
+    menus: function () {
+      return [
         {
           label: 'File',
-          radioGroup: 'Comma Delimited', // Default radio selected
           items: [
             {
               label: 'Open Configuration',
@@ -438,24 +475,27 @@ export default {
               divider: true,
             },
             {
-              label: 'Comma Delimited',
-              radio: true,
-              command: () => {
-                this.delimiter = ','
+              radioGroup: true,
+              value: this.delimiter,
+              command: (value) => {
+                this.delimiter = value
               },
-            },
-            {
-              label: 'Tab Delimited',
-              radio: true,
-              command: () => {
-                this.delimiter = '\t'
-              },
+              choices: [
+                {
+                  label: 'Comma Delimited',
+                  value: ',',
+                },
+                {
+                  label: 'Tab Delimited',
+                  value: '\t',
+                },
+              ],
             },
           ],
         },
         {
           label: 'Mode',
-          radioGroup: 'Normal Columns', // Default radio selected
+          // radioGroup: 'Normal Columns', // Default radio selected
           items: [
             // TODO: Currently unimplemented
             // {
@@ -472,82 +512,51 @@ export default {
             {
               label: 'Fill Down',
               checkbox: true,
-              checked: false,
-              command: (item) => {
-                this.fillDown = item.checked
+              checked: this.fillDown,
+              command: () => {
+                this.fillDown = !this.fillDown
               },
             },
             {
               label: 'Matlab Header',
               checkbox: true,
-              checked: false,
+              checked: this.matlabHeader,
               command: (item) => {
-                this.matlabHeader = item.checked
+                this.matlabHeader = !this.matlabHeader
               },
             },
             {
               label: 'Unique Only',
               checkbox: true,
-              checked: false,
+              checked: this.uniqueOnly,
               command: (item) => {
-                this.uniqueOnly = item.checked
+                this.uniqueOnly = !this.uniqueOnly
               },
             },
             {
               divider: true,
             },
             {
-              label: 'Normal Columns',
-              radio: true,
-              command: () => {
-                this.columnMode = 'normal'
+              radioGroup: true,
+              value: this.columnMode,
+              command: (value) => {
+                this.columnMode = value
               },
-            },
-            {
-              label: 'Full Column Names',
-              radio: true,
-              command: () => {
-                this.columnMode = 'full'
-              },
+              choices: [
+                {
+                  label: 'Normal Columns',
+                  value: 'normal',
+                },
+                {
+                  label: 'Full Column Names',
+                  value: 'full',
+                },
+              ],
             },
           ],
         },
-      ],
-    }
-  },
-  watch: {
-    delimiter: function () {
-      this.saveDefaultConfig(this.currentConfig)
+      ]
     },
-    fillDown: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    matlabHeader: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    uniqueOnly: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    columnNode: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    cmdOrTlm: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    utcOrLocal: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    items: {
-      handler: function () {
-        this.saveDefaultConfig(this.currentConfig)
-      },
-      deep: true,
-    },
-    itemsPerPage: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-  },
-  computed: {
     currentConfig: function () {
       return {
         delimiter: this.delimiter,
@@ -556,11 +565,29 @@ export default {
         uniqueOnly: this.uniqueOnly,
         columnMode: this.columnMode,
         cmdOrTlm: this.cmdOrTlm,
-        utcOrLocal: this.utcOrLocal,
         items: this.items,
         itemsPerPage: this.itemsPerPage,
       }
     },
+  },
+  async created() {
+    this.api = new OpenC3Api()
+    await this.api
+      .get_setting('time_zone')
+      .then((response) => {
+        if (response) {
+          this.timeZone = response
+        }
+      })
+      .catch((error) => {
+        // Do nothing
+      })
+    let now = new Date()
+    this.todaysDate = this.formatDate(now, this.timeZone)
+    this.startDate = this.formatDate(now - 3600000, this.timeZone) // last hr data
+    this.startTime = this.formatTimeHMS(now - 3600000, this.timeZone) // last hr data
+    this.endTime = this.formatTimeHMS(now, this.timeZone)
+    this.endDate = this.formatDate(now, this.timeZone)
   },
   mounted: function () {
     // Called like /tools/dataextractor?config=config
@@ -574,7 +601,7 @@ export default {
       }
     }
   },
-  destroyed: function () {
+  unmounted: function () {
     if (this.subscription) {
       this.subscription.unsubscribe()
     }
@@ -587,12 +614,12 @@ export default {
       this.matlabHeader = false
       this.uniqueOnly = false
       this.columnMode = 'normal'
-      this.startDate = format(new Date(), 'yyyy-MM-dd')
-      this.startTime = format(new Date() - 3600000, 'HH:mm:ss')
-      this.endTime = format(new Date(), 'HH:mm:ss')
-      this.endDate = format(new Date(), 'yyyy-MM-dd')
+      let now = new Date()
+      this.startDate = this.formatDate(now - 3600000, this.timeZone) // last hr data
+      this.startTime = this.formatTimeHMS(now - 3600000, this.timeZone) // last hr data
+      this.endTime = this.formatTimeHMS(now, this.timeZone)
+      this.endDate = this.formatDate(now, this.timeZone)
       this.cmdOrTlm = 'tlm'
-      this.utcOrLocal = 'loc'
       this.items = []
       this.itemsPerPage = 20
       this.applyConfig(this.currentConfig)
@@ -611,7 +638,6 @@ export default {
       this.menus[1].radioGroup =
         this.columnMode === 'normal' ? 'Normal Columns' : 'Full Column Names'
       this.cmdOrTlm = config.cmdOrTlm
-      this.utcOrLocal = config.utcOrLocal
       this.items = config.items
       this.itemsPerPage = config.itemsPerPage
     },
@@ -659,7 +685,7 @@ export default {
       this.items.push(item)
     },
     deleteItem: function (item) {
-      var index = this.items.indexOf(item)
+      let index = this.items.indexOf(item)
       this.items.splice(index, 1)
     },
     deleteAll: function () {
@@ -688,26 +714,27 @@ export default {
     },
     setTimestamps: function () {
       this.startDateTimeFilename = this.startDate + '_' + this.startTime
-      // Replace the colons and dashes with underscores in the filename
+      // Replace the colons, dashes and periods with underscores in the filename
       this.startDateTimeFilename = this.startDateTimeFilename.replace(
-        /(:|-)\s*/g,
+        /(:|-|\.)\s*/g,
         '_',
       )
       let startTemp
       let endTemp
       try {
-        if (this.utcOrLocal === 'utc') {
-          startTemp = new Date(this.startDate + ' ' + this.startTime + 'Z')
-          endTemp = new Date(this.endDate + ' ' + this.endTime + 'Z')
-        } else {
+        if (this.timeZone === 'local') {
           startTemp = new Date(this.startDate + ' ' + this.startTime)
           endTemp = new Date(this.endDate + ' ' + this.endTime)
+        } else {
+          startTemp = new Date(this.startDate + ' ' + this.startTime + 'Z')
+          endTemp = new Date(this.endDate + ' ' + this.endTime + 'Z')
+          this.startDateTimeFilename += '_UTC'
         }
       } catch (e) {
         return
       }
-      this.startDateTime = startTemp.getTime() * 1_000_000
-      this.endDateTime = endTemp.getTime() * 1_000_000
+      this.startDateTime = startTemp.getTime() * 1000000 // TODO: eslint parser doesn't like 1_000_000
+      this.endDateTime = endTemp.getTime() * 1000000
     },
     processItems: function () {
       // Check for a process in progress
@@ -736,28 +763,37 @@ export default {
         return
       }
       // Check for a future End Time
-      if (new Date(this.endDateTime / 1_000_000) > Date.now()) {
+      if (new Date(this.endDateTime / 1000000) > Date.now()) {
         this.$notify.caution({
           title: 'Note',
           body: `End date/time is greater than current date/time. Data will
             continue to stream in real-time until
-            ${new Date(
-              this.endDateTime / 1_000_000,
-            ).toISOString()} is reached.`,
+            ${new Date(this.endDateTime / 1000000).toISOString()} is reached.`,
         })
       }
 
       this.progress = 0
       this.processButtonText = 'Cancel'
+      // We're using the ActionCable implementation of AnyCable via mapping of events:
+      // https://github.com/anycable/anycable-client/blob/master/packages/core/create-cable/index.js#L218
+      // Here's the anycable lifecycle: https://github.com/anycable/anycable-client/blob/master/docs/lifecycle.md
       this.cable
         .createSubscription('StreamingChannel', window.openc3Scope, {
           received: (data) => this.received(data),
           connected: () => this.onConnected(),
-          disconnected: () => {
-            this.$notify.caution({
-              body: 'OpenC3 backend connection disconnected.',
-            })
+          // The "disconnect" event is trigger when the connection was lost or the server disconnected the client.
+          // disconnect maps to disconnected with allowReconnect: true
+          // close maps to disconnected with allowReconnect: false
+          disconnected: (data) => {
+            // If allowReconnect is true it means we got a disconnect due to connection lost or server disconnect
+            // If allowReconnect is false this is a normal server close or client close
+            if (data.allowReconnect) {
+              this.$notify.caution({
+                body: 'OpenC3 backend connection disconnected.',
+              })
+            }
           },
+          // close maps to rejected if there is an error
           rejected: () => {
             this.$notify.caution({
               body: 'OpenC3 backend connection rejected.',
@@ -784,7 +820,7 @@ export default {
     },
     onConnected: function () {
       this.resetAllVars()
-      var items = []
+      let items = []
       this.items.forEach((item, index) => {
         let key = `${item.mode}__${item.cmdOrTlm}__${item.targetName}__${item.packetName}__${item.itemName}__${item.valueType}`
         if (item.reducedType !== 'SAMPLE') {
@@ -823,7 +859,7 @@ export default {
       if (data.length > 0) {
         // Get all the items present in the data to pass to buildHeaders
         let keys = new Set()
-        for (var packet of data) {
+        for (let packet of data) {
           let packetKeys = Object.keys(packet)
           packetKeys.forEach(keys.add, keys)
           this.itemsReceived += packetKeys.length - 2 // Don't count __type and __time
@@ -904,13 +940,13 @@ export default {
       rawData.sort((a, b) => a.__time - b.__time)
       await this.yieldToMain()
 
-      var currentValues = []
-      var row = []
-      var previousRow = null
-      var count = 0
-      for (var packet of rawData) {
+      let currentValues = []
+      let row = []
+      let previousRow = null
+      let count = 0
+      for (let packet of rawData) {
         // Flag tracks if anything has changed for uniqueOnly mode
-        var changed = false
+        let changed = false
 
         // Start a new row with either the previous row data (fillDown) or a blank row
         if (this.fillDown && previousRow) {
@@ -939,7 +975,11 @@ export default {
             } else {
               let rawVal = packet[key]['raw']
               if (Array.isArray(rawVal)) {
-                row[columnIndex] = 'BINARY'
+                let hexString = ''
+                rawVal.forEach((val) => {
+                  hexString += val.toString(16)
+                })
+                row[columnIndex] = hexString
               } else {
                 row[columnIndex] = "'" + rawVal + "'"
               }
@@ -974,7 +1014,7 @@ export default {
               valueType,
               reducedType,
             ] = regularKey.split('__')
-            row[0] = new Date(packet['__time'] / 1_000_000).toISOString()
+            row[0] = new Date(packet['__time'] / 1000000).toISOString()
             row[1] = targetName
             row[2] = packetName
           }
@@ -1003,7 +1043,7 @@ export default {
       link.setAttribute(
         'download',
         this.startDateTimeFilename +
-          '.' +
+          '_' +
           this.fileCount +
           downloadFileExtension,
       )
@@ -1023,8 +1063,8 @@ export default {
       if (dataExtractorRawData.length !== 0) {
         await this.createFile()
       } else if (this.fileCount === 0) {
-        let start = new Date(this.startDateTime / 1_000_000).toISOString()
-        let end = new Date(this.endDateTime / 1_000_000).toISOString()
+        let start = new Date(this.startDateTime / 1000000).toISOString()
+        let end = new Date(this.endDateTime / 1000000).toISOString()
         this.$notify.caution({
           body: `No data found for the items in the requested time range of ${start} to ${end}`,
         })

@@ -20,7 +20,7 @@ from openc3.utilities.store import Store
 
 
 # Tracks the files which are being stored in buckets for data reduction purposes.
-# Files are stored in a Redis set by spliting their filenames and storing in
+# Files are stored in a Redis set by splitting their filenames and storing in
 # a set named SCOPE__TARGET__reducer__TYPE, e.g. DEFAULT__INST__reducer__decom
 # Where TYPE can be 'decom', 'minute', or 'hour'. 'day' is not necessary because
 # day is the final reduction state. As files are reduced they are removed from
@@ -31,7 +31,7 @@ class ReducerModel:
     REDUCED_HOUR_BIN_GZ = re.compile(r"__reduced_hour\.bin.gz$")
 
     @classmethod
-    def add_file(cls, bucket_key):
+    def add_file(cls, bucket_key: str):
         # Only reduce tlm files
         bucket_key_split = bucket_key.split("/")
         if bucket_key_split[2] == "tlm":
@@ -47,7 +47,7 @@ class ReducerModel:
             # No else clause because add_file is called with raw files which are ignored
 
     @classmethod
-    def rm_file(cls, bucket_key):
+    def rm_file(cls, bucket_key: str):
         _, _, scope, target, _ = bucket_key.split("__")
         if cls.DECOM_BIN_GZ.match(bucket_key):
             return Store.srem(f"{scope}__{target}__reducer__decom", bucket_key)
@@ -61,5 +61,5 @@ class ReducerModel:
             raise RuntimeError(f"Unknown file {bucket_key}")
 
     @classmethod
-    def all_files(cls, type, target, scope):
-        return Store.smembers(f"{scope}__{target}__reducer__{type.lower()}").sort()
+    def all_files(cls, type_: str, target: str, scope: str):
+        return Store.smembers(f"{scope}__{target}__reducer__{type_.lower()}").sort()

@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/packets/packet'
@@ -30,7 +30,7 @@ module OpenC3
     #   used instead of this parameter.
     # @param commands [Hash] Hash of the currently defined commands
     # @param warnings [Array<String>] Any warning strings generated while
-    #   parsing this command will be appened to this array
+    #   parsing this command will be appended to this array
     def self.parse_command(parser, target_name, commands, warnings)
       parser = PacketParser.new(parser)
       parser.verify_parameters()
@@ -48,7 +48,7 @@ module OpenC3
     #   used to perform lookups when the packet and item are known but the
     #   packet is not.
     # @param warnings [Array<String>] Any warning strings generated while
-    #   parsing this command will be appened to this array
+    #   parsing this command will be appended to this array
     def self.parse_telemetry(parser, target_name, telemetry, latest_data, warnings)
       parser = PacketParser.new(parser)
       parser.verify_parameters()

@@ -45,7 +45,7 @@ spec = Gem::Specification.new do |s|
     s.platform = Gem::Platform::CURRENT
   end
 
-  s.version = '5.14.3.pre.beta0'
+  s.version = '6.1.1.pre.beta0'
   s.licenses = ['AGPL-3.0-only', 'Nonstandard']
 
   # Executables
@@ -57,6 +57,7 @@ spec = Gem::Specification.new do |s|
     # Ruby C Extensions - MRI Only
     s.extensions << 'ext/openc3/ext/array/extconf.rb'
     s.extensions << 'ext/openc3/ext/buffered_file/extconf.rb'
+    s.extensions << 'ext/openc3/ext/burst_protocol/extconf.rb'
     s.extensions << 'ext/openc3/ext/config_parser/extconf.rb'
     s.extensions << 'ext/openc3/ext/openc3_io/extconf.rb'
     s.extensions << 'ext/openc3/ext/crc/extconf.rb'
@@ -78,6 +79,7 @@ spec = Gem::Specification.new do |s|
   # Runtime Dependencies
   # IRB version is highly coupled to the openc3/utilities/ruby_lex_utils.rb
   s.add_runtime_dependency 'bundler',   '~> 2.3'
+  s.add_runtime_dependency 'hiredis-client', '~> 0.22'
   s.add_runtime_dependency 'irb',       '1.6.2'
   s.add_runtime_dependency 'json',      '~> 2.6'
   s.add_runtime_dependency 'matrix',    '~> 0.4'
@@ -92,12 +94,10 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'rubyzip',   '~> 2.3'
   s.add_runtime_dependency 'uuidtools', '~> 2.2'
   s.add_runtime_dependency 'yard',      '~> 0.9'
-  # NOTE: httpclient is now deprecated ... remove in future release
-  s.add_runtime_dependency 'httpclient', '~> 2.8'
   # faraday includes faraday-net_http as the default adapter
   s.add_runtime_dependency 'aws-sdk-s3', '< 2'
   s.add_runtime_dependency 'cbor', '~> 0.5.9.6'
-  s.add_runtime_dependency 'childprocess', '~> 4.1'
+  s.add_runtime_dependency 'childprocess', '~> 5.0'
   s.add_runtime_dependency 'connection_pool', '~> 2.4'
   s.add_runtime_dependency 'faraday',   '~> 2.7'
   s.add_runtime_dependency 'faraday-follow_redirects', '~> 0.3'
@@ -112,11 +112,13 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'opentelemetry-instrumentation-rack', '~> 0.21'
   s.add_runtime_dependency 'opentelemetry-instrumentation-redis', '~> 0.24'
   s.add_runtime_dependency 'opentelemetry-sdk', '~> 1.2'
+  s.add_runtime_dependency 'resolv-replace', '~> 0.1.1'
   s.add_runtime_dependency 'rufus-scheduler', '~> 3.8'
   s.add_runtime_dependency 'tzinfo-data', '~> 1.2023'
   s.add_runtime_dependency 'webrick', '~> 1.8'
   s.add_runtime_dependency 'websocket', '~> 1.2'
   s.add_runtime_dependency 'websocket-native', '~> 1.0'
+  s.add_runtime_dependency 'listen', '~> 3.9'
 
   # Development Dependencies
   s.add_development_dependency 'benchmark-ips', '~> 2.9'
@@ -128,6 +130,7 @@ spec = Gem::Specification.new do |s|
   s.add_development_dependency 'mock_redis', '~> 0.41'
   s.add_development_dependency 'reek', '~> 6.0'
   s.add_development_dependency 'rspec', '~> 3.10'
+  s.add_development_dependency 'rspec-rails', '~> 7.0'
   s.add_development_dependency 'rspec_junit_formatter', '~> 0.4'
   s.add_development_dependency 'ruby-prof', '~> 1.4' if RUBY_ENGINE == 'ruby' # MRI Only
   s.add_development_dependency 'simplecov', '~> 0.21'

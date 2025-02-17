@@ -1,4 +1,5 @@
 TELEMETRY INST HEALTH_STATUS BIG_ENDIAN "Health and status from the instrument"
+  META TOPIC HEALTH_STATUS
   ITEM CCSDSVER           0  3 UINT     "CCSDS packet version number (See CCSDS 133.0-B-1)"
   ITEM CCSDSTYPE          3  1 UINT     "CCSDS packet type (command or telemetry)"
     STATE TLM 0
@@ -80,6 +81,7 @@ TELEMETRY INST HEALTH_STATUS BIG_ENDIAN "Health and status from the instrument"
   PROCESSOR TEMP1WATER watermark_processor.rb TEMP1
 
 TELEMETRY INST ADCS BIG_ENDIAN "Position and attitude data"
+  META TOPIC ADCS
   ITEM CCSDSVER           0  3 UINT     "CCSDS packet version number (See CCSDS 133.0-B-1)"
   ITEM CCSDSTYPE          3  1 UINT     "CCSDS packet type (command or telemetry)"
     STATE TLM 0
@@ -231,3 +233,4 @@ TELEMETRY INST HIDDEN BIG_ENDIAN "Hidden"
   ITEM TIMEUS            80 32 UINT     "Microseconds of second"
   ID_ITEM PKTID         112 16 UINT   1 "Packet id (The combination of CCSDS_APID and PACKET_ID identify the packet)"
   APPEND_ITEM COUNT 16 UINT
+  APPEND_ITEM BRACKET[0] 16 UINT

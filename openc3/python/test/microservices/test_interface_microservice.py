@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -44,11 +44,14 @@ class MyInterface(Interface):
         self.hostname = hostname
         self.port = port
         self._connected = False
+        self.connect_count = 0
         self.disconnect_count = 0
         self.disconnect_delay = 0
+        self.connect_calls = 0
         super().__init__()
 
     def connect(self):
+        self.connect_count += 1
         time.sleep(0.001)
         super().connect()
         self.data = b"\x00"
@@ -71,8 +74,8 @@ class MyInterface(Interface):
         time.sleep(0.001)
         if MyInterface.read_interface_raise:
             raise RuntimeError("test-error")
-        time.sleep(0.1)
-        return (self.data, None)
+        time.sleep(0.01)
+        return self.data, None
 
     def interface_cmd(self, cmd_name, *cmd_args):
         self.interface_cmd_name = cmd_name
@@ -86,7 +89,7 @@ class MyInterface(Interface):
 
 
 class TestInterfaceMicroservice(unittest.TestCase):
-    CONNECTING_MSG = "Connecting"
+    CONNECTING_MSG = "Connect"
     CONN_SUCCESS_MSG = "Connection Success"
 
     def setUp(self):
@@ -105,9 +108,7 @@ class TestInterfaceMicroservice(unittest.TestCase):
         time.sleep(0.01)  # Allow the write to happen
 
         mock_system = Mock(System)
-        self.patch_system = patch(
-            "openc3.system.system.System", return_value=mock_system
-        )
+        self.patch_system = patch("openc3.system.system.System", return_value=mock_system)
         self.mock_system = self.patch_system.start()
         self.addCleanup(self.patch_system.stop)
 
@@ -200,12 +201,12 @@ class TestInterfaceMicroservice(unittest.TestCase):
                 stdout.getvalue(),
             )
             self.assertIn(
-                "Connection Failed: RuntimeError('test-error')",
+                "Connection INST_INT failed due to RuntimeError('test-error')",
                 stdout.getvalue(),
             )
 
             MyInterface.connect_raise = False
-            time.sleep(0.5)
+            time.sleep(0.2)
             all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
             self.assertEqual(all_interfaces["INST_INT"]["state"], "CONNECTED")
 
@@ -227,9 +228,7 @@ class TestInterfaceMicroservice(unittest.TestCase):
             time.sleep(0.1)
             self.assertIn(TestInterfaceMicroservice.CONNECTING_MSG, stdout.getvalue())
             self.assertIn(TestInterfaceMicroservice.CONN_SUCCESS_MSG, stdout.getvalue())
-            self.assertIn(
-                "Connection Lost: RuntimeError('test-error')", stdout.getvalue()
-            )
+            self.assertIn("Connection Lost: RuntimeError('test-error')", stdout.getvalue())
 
             MyInterface.read_interface_raise = False
             time.sleep(0.1)  # Allow to reconnect
@@ -253,12 +252,11 @@ class TestInterfaceMicroservice(unittest.TestCase):
             self.assertIn(TestInterfaceMicroservice.CONN_SUCCESS_MSG, stdout.getvalue())
             all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
             self.assertEqual(all_interfaces["INST_INT"]["state"], "CONNECTED")
+            self.assertEqual(im.interface.connect_count, 1)
 
         for stdout in capture_io():
-            InterfaceTopic.connect_interface(
-                "INST_INT", "test-host", 54321, scope="DEFAULT"
-            )
-            time.sleep(0.5)
+            InterfaceTopic.connect_interface("INST_INT", "test-host", 54321, scope="DEFAULT")
+            time.sleep(0.2)
             self.assertIn("Connection Lost", stdout.getvalue())
             self.assertIn(TestInterfaceMicroservice.CONNECTING_MSG, stdout.getvalue())
             self.assertIn(TestInterfaceMicroservice.CONN_SUCCESS_MSG, stdout.getvalue())
@@ -308,7 +306,7 @@ class TestInterfaceMicroservice(unittest.TestCase):
             self.assertIn("Connection Lost", stdout.getvalue())
 
             # Wait and verify still DISCONNECTED and not ATTEMPTING
-            time.sleep(0.5)
+            time.sleep(0.1)
             all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
             self.assertEqual(all_interfaces["INST_INT"]["state"], "DISCONNECTED")
             self.assertEqual(im.interface.disconnect_count, 1)
@@ -371,14 +369,10 @@ class TestInterfaceMicroservice(unittest.TestCase):
             scope="DEFAULT",
         )
         time.sleep(0.1)
-        for _, _, msg_hash, _ in Topic.read_topics(
-            ["DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS"]
-        ):
+        for _, _, msg_hash, _ in Topic.read_topics(["DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS"]):
             packet = System.telemetry.packet("INST", "HEALTH_STATUS")
             packet.stored = ConfigParser.handle_true_false(msg_hash[b"stored"].decode())
-            packet.received_time = from_nsec_from_epoch(
-                int(msg_hash[b"received_time"].decode())
-            )
+            packet.received_time = from_nsec_from_epoch(int(msg_hash[b"received_time"].decode()))
             packet.received_count = int(msg_hash[b"received_count"].decode())
             packet.buffer = msg_hash[b"buffer"]
             self.assertEqual(packet.read("TEMP1", "RAW"), 10)
@@ -396,10 +390,8 @@ class TestInterfaceMicroservice(unittest.TestCase):
         all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
         self.assertEqual(all_interfaces["INST_INT"]["state"], "CONNECTED")
 
-        InterfaceTopic.interface_cmd(
-            "INST_INT", "DO_THE_THING", "PARAM1", 2, scope="DEFAULT"
-        )
-        time.sleep(0.5)
+        InterfaceTopic.interface_cmd("INST_INT", "DO_THE_THING", "PARAM1", 2, scope="DEFAULT")
+        time.sleep(0.1)
         self.assertEqual("DO_THE_THING", im.interface.interface_cmd_name)
         self.assertEqual(("PARAM1", 2), im.interface.interface_cmd_args)
         im.shutdown()
@@ -424,7 +416,7 @@ class TestInterfaceMicroservice(unittest.TestCase):
             index=3,
             scope="DEFAULT",
         )
-        time.sleep(0.5)
+        time.sleep(0.1)
         self.assertEqual("DO_THE_OTHER_THING", im.interface.protocol_cmd_name)
         self.assertEqual(("PARAM2", 3), im.interface.protocol_cmd_args)
         self.assertEqual("READ", im.interface.protocol_read_write)

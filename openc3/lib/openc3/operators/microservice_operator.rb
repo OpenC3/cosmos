@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -42,6 +42,8 @@ module OpenC3
       @new_microservices = {}
       @changed_microservices = {}
       @removed_microservices = {}
+      @shard = ENV['OPENC3_SHARD'] || 0
+      @shard = @shard.to_i
     end
 
     def convert_microservice_to_process_definition(microservice_name, microservice_config)
@@ -65,10 +67,9 @@ module OpenC3
         secrets.each do |type, secret_name, env_name_or_path, secret_store|
           secret_value = @secrets.get(secret_name, secret_store: secret_store, scope: scope)
           if secret_value
-            case type
-            when 'ENV'
+            if type == 'ENV'
               env[env_name_or_path] = secret_value
-            when 'FILE'
+            elsif type == 'FILE'
               FileUtils.mkdir_p(File.dirname(env_name_or_path))
               File.open(env_name_or_path, 'wb') do |file|
                 file.write(secret_value)
@@ -83,75 +84,127 @@ module OpenC3
       return process_definition, work_dir, env, scope, container
     end
 
+    # Handle the detection of a new microservice model
+    def handle_new_microservice(microservice_name, microservice_config)
+      parent = microservice_config['parent']
+      enabled = microservice_config['enabled']
+      enabled = true if enabled.nil?
+      scope = microservice_name.split("__")[0]
+
+      if enabled
+        Logger.info("New microservice detected: #{microservice_name}", scope: scope)
+        if parent
+          # Respawn parent if it exists and isn't new
+          if @microservices[parent] and @previous_microservices[parent]
+            @changed_microservices[parent] = @microservices[parent]
+          end
+        else
+          # New process be spawned
+          @new_microservices[microservice_name] = microservice_config
+        end
+      end
+    end
+
+    # Handle a change detected in a microservice model
+    def handle_changed_microservice(microservice_name, microservice_config)
+      parent = microservice_config['parent']
+      enabled = microservice_config['enabled']
+      enabled = true if enabled.nil?
+      scope = microservice_name.split("__")[0]
+      previous_parent = @previous_microservices[microservice_name]['parent']
+      previous_enabled = @previous_microservices[microservice_name]["enabled"]
+      previous_enabled = true if previous_enabled.nil?
+
+      Logger.info("Changed microservice detected: #{microservice_name}\nWas: #{@previous_microservices[microservice_name]}\nIs: #{microservice_config}", scope: scope)
+
+      if parent or previous_parent
+        if parent == previous_parent
+          # Same Parent - Respawn parent
+          @changed_microservices[parent] = @microservices[parent] if @microservices[parent] and @previous_microservices[parent]
+        elsif parent and previous_parent
+          # Parent changed - Respawn both parents
+          @changed_microservices[parent] = @microservices[parent] if @microservices[parent] and @previous_microservices[parent]
+          @changed_microservices[previous_parent] = @microservices[previous_parent] if @microservices[previous_parent] and @previous_microservices[previous_parent]
+        elsif parent
+          # Moved under a parent - Respawn parent and kill standalone (if previously enabled)
+          @changed_microservices[parent] = @microservices[parent] if @microservices[parent] and @previous_microservices[parent]
+          if previous_enabled
+            @removed_microservices[microservice_name] = microservice_config
+          end
+        else # previous_parent
+          # Moved to standalone - Respawn previous parent and make new (if enabled)
+          @changed_microservices[previous_parent] = @microservices[previous_parent] if @microservices[previous_parent] and @previous_microservices[previous_parent]
+          if enabled
+            @new_microservices[microservice_name] = microservice_config
+          end
+        end
+      else
+        if previous_enabled
+          if enabled
+            # Respawn regular microservice
+            @changed_microservices[microservice_name] = microservice_config
+          else
+            # Remove regular microservice
+            @removed_microservices[microservice_name] = microservice_config
+          end
+        else
+          # Newly enabled microservice
+          @new_microservices[microservice_name] = microservice_config
+        end
+      end
+    end
+
+    # Handle the detection of a removed microservice model
+    def handle_removed_microservice(microservice_name, microservice_config)
+      previous_parent = @previous_microservices[microservice_name]['parent']
+      scope = microservice_name.split("__")[0]
+
+      Logger.info("Removed microservice detected: #{microservice_name}", scope: scope)
+
+      if previous_parent
+        # Respawn previous parent
+        @changed_microservices[previous_parent] = @microservices[previous_parent] if @microservices[previous_parent] and @previous_microservices[previous_parent]
+      else
+        previous_enabled = @previous_microservices[microservice_name]["enabled"]
+        previous_enabled = true if previous_enabled.nil?
+        if previous_enabled
+          # Regular process to be removed
+          @removed_microservices[microservice_name] = microservice_config
+        end
+      end
+    end
+
     def update
       @previous_microservices = @microservices.dup
       # Get all the microservice configuration
       @microservices = MicroserviceModel.all
+
+      # Filter to just this shard
+      @microservices = @microservices.select do |microservice_name, microservice_config|
+        microservice_shard = microservice_config['shard'] || 0
+        microservice_shard == @shard
+      end
 
       # Detect new and changed microservices
       @new_microservices = {}
       @changed_microservices = {}
       @removed_microservices = {}
       @microservices.each do |microservice_name, microservice_config|
-        parent = microservice_config['parent']
         if @previous_microservices[microservice_name]
-          previous_parent = @previous_microservices[microservice_name]['parent']
           if @previous_microservices[microservice_name] != microservice_config
-            # CHANGED
             if not microservice_config['ignore_changes']
-              scope = microservice_name.split("__")[0]
-              Logger.info("Changed microservice detected: #{microservice_name}\nWas: #{@previous_microservices[microservice_name]}\nIs: #{microservice_config}", scope: scope)
-              if parent or previous_parent
-                if parent == previous_parent
-                  # Same Parent - Respawn parent
-                  @changed_microservices[parent] = @microservices[parent] if @microservices[parent] and @previous_microservices[parent]
-                elsif parent and previous_parent
-                  # Parent changed - Respawn both parents
-                  @changed_microservices[parent] = @microservices[parent] if @microservices[parent] and @previous_microservices[parent]
-                  @changed_microservices[previous_parent] = @microservices[previous_parent] if @microservices[previous_parent] and @previous_microservices[previous_parent]
-                elsif parent
-                  # Moved under a parent - Respawn parent and kill standalone
-                  @changed_microservices[parent] = @microservices[parent] if @microservices[parent] and @previous_microservices[parent]
-                  @removed_microservices[microservice_name] = microservice_config
-                else # previous_parent
-                  # Moved to standalone - Respawn previous parent and make new
-                  @changed_microservices[previous_parent] = @microservices[previous_parent] if @microservices[previous_parent] and @previous_microservices[previous_parent]
-                  @new_microservices[microservice_name] = microservice_config
-                end
-              else
-                # Respawn regular microservice
-                @changed_microservices[microservice_name] = microservice_config
-              end
+              handle_changed_microservice(microservice_name, microservice_config)
             end
           end
         else
-          # NEW
-          scope = microservice_name.split("__")[0]
-          Logger.info("New microservice detected: #{microservice_name}", scope: scope)
-          if parent
-            # Respawn parent
-            @changed_microservices[parent] = @microservices[parent] if @microservices[parent] and @previous_microservices[parent]
-          else
-            # New process be spawned
-            @new_microservices[microservice_name] = microservice_config
-          end
+          handle_new_microservice(microservice_name, microservice_config)
         end
       end
 
       # Detect removed microservices
       @previous_microservices.each do |microservice_name, microservice_config|
-        previous_parent = microservice_config['parent']
         unless @microservices[microservice_name]
-          # REMOVED
-          scope = microservice_name.split("__")[0]
-          Logger.info("Removed microservice detected: #{microservice_name}", scope: scope)
-          if previous_parent
-            # Respawn previous parent
-            @changed_microservices[previous_parent] = @microservices[previous_parent] if @microservices[previous_parent] and @previous_microservices[previous_parent]
-          else
-            # Regular process to be removed
-            @removed_microservices[microservice_name] = microservice_config
-          end
+          handle_removed_microservice(microservice_name, microservice_config)
         end
       end
 
@@ -186,7 +239,7 @@ module OpenC3
           end
         end
 
-        @removed_microservices.each do |microservice_name, microservice_config|
+        @removed_microservices.each do |microservice_name, _microservice_config|
           process = @processes[microservice_name]
           @processes.delete(microservice_name)
           @removed_processes[microservice_name] = process

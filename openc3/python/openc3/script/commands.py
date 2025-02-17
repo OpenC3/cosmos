@@ -17,7 +17,7 @@
 from datetime import datetime
 import openc3.script
 from openc3.environment import OPENC3_SCOPE
-from openc3.top_level import HazardousError
+from openc3.top_level import HazardousError, CriticalCmdError
 from openc3.utilities.extract import *
 from openc3.packets.packet import Packet
 
@@ -123,9 +123,7 @@ def get_cmd_hazardous(*args, **kwargs):
 
 # Returns the time the most recent command was sent
 def get_cmd_time(target_name=None, command_name=None, scope=OPENC3_SCOPE):
-    results = getattr(openc3.script.API_SERVER, "get_cmd_time")(
-        target_name, command_name, scope=scope
-    )
+    results = getattr(openc3.script.API_SERVER, "get_cmd_time")(target_name, command_name, scope=scope)
     results = list(results)
     if results[2] and results[3]:
         results[2] = datetime.fromtimestamp(results[2] + results[3] / 1000000)
@@ -150,15 +148,14 @@ def _cmd_string(target_name, cmd_name, cmd_params, raw):
         for key, value in cmd_params.items():
             if key in Packet.RESERVED_ITEM_NAMES:
                 continue
-            if type(value) == str:
-                value = convert_to_value(value)
-                if len(value) > 256:
-                    value = value[:255] + "...'"
+            if isinstance(value, str):
                 if not value.isascii():
                     value = "BINARY"
+                elif len(value) > 256:
+                    value = value[:255] + "...'"
                 value = value.replace('"', "'")
-            elif type(value) == list:
-                value = f"[{', '.join(value)}]"
+            elif isinstance(value, list):
+                value = str(value)
             params.append(f"{key} {value}")
         params = ", ".join(params)
         output_string += " with " + params + '")'
@@ -169,13 +166,9 @@ def _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous):
     """Log any warnings about disabling checks and log the command itself
     NOTE: This is a helper method and should not be called directly"""
     if no_range:
-        print(
-            f"WARN: Command {target_name} {cmd_name} being sent ignoring range checks"
-        )
+        print(f"WARN: Command {target_name} {cmd_name} being sent ignoring range checks")
     if no_hazardous:
-        print(
-            f"WARN: Command {target_name} {cmd_name} being sent ignoring hazardous warnings"
-        )
+        print(f"WARN: Command {target_name} {cmd_name} being sent ignoring hazardous warnings")
     print(_cmd_string(target_name, cmd_name, cmd_params, raw))
 
 
@@ -192,9 +185,7 @@ def _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope):
                 cmd_params = args[2]
         case _:
             # Invalid number of arguments
-            raise RuntimeError(
-                f"ERROR: Invalid number of arguments ({len(args)}) passed to {cmd}()"
-            )
+            raise RuntimeError(f"ERROR: Invalid number of arguments ({len(args)}) passed to {cmd}()")
 
     # Get the command and validate the parameters
     command = openc3.script.API_SERVER.get_cmd(target_name, cmd_name, scope=scope)
@@ -207,9 +198,7 @@ def _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope):
                         found = item
                         break
             if not found:
-                raise RuntimeError(
-                    f"Packet item '{target_name} {cmd_name} {param_name}' does not exist"
-                )
+                raise RuntimeError(f"Packet item '{target_name} {cmd_name} {param_name}' does not exist")
     _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
 
 
@@ -219,6 +208,7 @@ def _cmd(
     *args,
     timeout=None,
     log_message=None,
+    validate=True,
     scope=OPENC3_SCOPE,
 ):
     """Send the command and log the results
@@ -233,25 +223,40 @@ def _cmd(
         _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope=scope)
     else:
         try:
-            target_name, cmd_name, cmd_params = getattr(openc3.script.API_SERVER, cmd)(
-                *args, timeout=timeout, log_message=log_message, scope=scope
-            )
-            if log_message is None or log_message:
-                _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
-        except HazardousError as error:
-            # Need to reimport here to pick up changes from running_script
-            from openc3.script import prompt_for_hazardous
+            try:
+                target_name, cmd_name, cmd_params = getattr(openc3.script.API_SERVER, cmd)(
+                    *args, timeout=timeout, log_message=log_message, validate=validate, scope=scope
+                )
+                if log_message is None or log_message:
+                    _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
+            except HazardousError as error:
+                # Need to reimport here to pick up changes from running_script
+                from openc3.script import prompt_for_hazardous
 
-            ok_to_proceed = prompt_for_hazardous(
+                # This opens a prompt at which point they can cancel and stop the script
+                # or say Yes and send the command. Thus we don't care about the return value.
+                prompt_for_hazardous(
+                    error.target_name,
+                    error.cmd_name,
+                    error.hazardous_description,
+                )
+                target_name, cmd_name, cmd_params = getattr(openc3.script.API_SERVER, cmd_no_hazardous)(
+                    *args, timeout=timeout, log_message=log_message, validate=validate, scope=scope
+                )
+                if log_message is None or log_message:
+                    _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
+        except CriticalCmdError as error:
+            # Need to reimport here to pick up changes from running_script
+            from openc3.script import prompt_for_critical_cmd
+
+            # This should not return until the critical command has been approved
+            prompt_for_critical_cmd(
+                error.uuid,
+                error.username,
                 error.target_name,
                 error.cmd_name,
-                error.hazardous_description,
+                error.cmd_params,
+                error.cmd_string,
             )
-            if ok_to_proceed:
-                target_name, cmd_name, cmd_params = getattr(
-                    openc3.script.API_SERVER, cmd_no_hazardous
-                )(*args, scope=scope, timeout=timeout)
-                if log_message is None or log_message:
-                    _log_cmd(
-                        target_name, cmd_name, cmd_params, raw, no_range, no_hazardous
-                    )
+            if log_message is None or log_message:
+                _log_cmd(error.target_name, error.cmd_name, error.cmd_params, raw, no_range, no_hazardous)

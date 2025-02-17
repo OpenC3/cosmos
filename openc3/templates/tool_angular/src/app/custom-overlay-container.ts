@@ -9,7 +9,7 @@ export class AppOverlayContainer extends OverlayContainer {
 
     let elem = document.querySelector('#openc3-tool');
     if (!elem) {
-      elem = new HTMLElement();
+      elem = document.createElement('div')
     }
     elem.appendChild(container);
     this._containerElement = container;

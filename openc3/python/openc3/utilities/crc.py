@@ -337,9 +337,7 @@ class Crc:
         return Crc.BIT_REVERSE_TABLE[value & 0xFF]
 
     def bit_reverse_16(self, value):
-        return (Crc.BIT_REVERSE_TABLE[value & 0xFF] << 8) | (
-            Crc.BIT_REVERSE_TABLE[(value >> 8) & 0xFF]
-        )
+        return (Crc.BIT_REVERSE_TABLE[value & 0xFF] << 8) | (Crc.BIT_REVERSE_TABLE[(value >> 8) & 0xFF])
 
     def bit_reverse_32(self, value):
         return (
@@ -386,11 +384,9 @@ class Crc:
 
         if self.reflect:
             for byte in data:
-                if type(byte) is str:
+                if isinstance(byte, str):
                     byte = ord(byte)
-                crc = (crc << 8 & filter_mask) ^ self.table[
-                    (crc >> right_shift) ^ self.bit_reverse_8(byte)
-                ]
+                crc = (crc << 8 & filter_mask) ^ self.table[(crc >> right_shift) ^ self.bit_reverse_8(byte)]
 
             final_bit_reverse(crc ^ filter_mask)
             if self.xor:
@@ -399,11 +395,9 @@ class Crc:
                 return final_bit_reverse(crc)
         else:
             for byte in data:
-                if type(byte) is str:
+                if isinstance(byte, str):
                     byte = ord(byte)
-                crc = ((crc << 8) & filter_mask) ^ self.table[
-                    (crc >> right_shift) ^ byte
-                ]
+                crc = ((crc << 8) & filter_mask) ^ self.table[(crc >> right_shift) ^ byte]
 
             if self.xor:
                 return crc ^ filter_mask
@@ -436,7 +430,7 @@ class Crc8(Crc):
     # Seed for 8-bit CRC
     DEFAULT_SEED = 0x00
 
-    # Creates a 8 bit CRC algorithm instance. By default it is initialzed to
+    # Creates a 8 bit CRC algorithm instance. By default it is initialized to
     # use the CRC-8-DVB-S2 algorithm.
     #
     # self.param poly [Integer] Polynomial to use when calculating the CRC
@@ -455,7 +449,7 @@ class Crc16(Crc):
     # Seed for 16-bit CRC
     DEFAULT_SEED = 0xFFFF
 
-    # Creates a 16 bit CRC algorithm instance. By default it is initialzed to
+    # Creates a 16 bit CRC algorithm instance. By default it is initialized to
     # use the CRC-16-CCITT algorithm.
     #
     # self.param poly [Integer] Polynomial to use when calculating the CRC
@@ -474,7 +468,7 @@ class Crc32(Crc):
     # Default Seed for 32-bit CRC
     DEFAULT_SEED = 0xFFFFFFFF
 
-    # Creates a 32 bit CRC algorithm instance. By default it is initialzed to
+    # Creates a 32 bit CRC algorithm instance. By default it is initialized to
     # use the CRC-32 algorithm.
     #
     # self.param poly [Integer] Polynomial to use when calculating the CRC
@@ -493,7 +487,7 @@ class Crc64(Crc):
     # Default Seed for 64-bit CRC
     DEFAULT_SEED = 0xFFFFFFFFFFFFFFFF
 
-    # Creates a 64 bit CRC algorithm instance. By default it is initialzed to
+    # Creates a 64 bit CRC algorithm instance. By default it is initialized to
     # use the algorithm.
     #
     # self.param poly [Integer] Polynomial to use when calculating the CRC

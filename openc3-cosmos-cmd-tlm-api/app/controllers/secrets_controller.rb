@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -21,7 +21,7 @@ require 'openc3/utilities/secrets'
 class SecretsController < ApplicationController
   def index
     return unless authorization('admin')
-    render :json => OpenC3::Secrets.getClient.keys(scope: params[:scope])
+    render json: OpenC3::Secrets.getClient.keys(scope: params[:scope])
   end
 
   def create
@@ -38,7 +38,8 @@ class SecretsController < ApplicationController
     OpenC3::Logger.info("Secret set: #{params[:key]}", scope: params[:scope], user: username())
     head :ok
   rescue => e
-    render(json: { status: 'error', message: e.message }, status: 500)
+    log_error(e)
+    render json: { status: 'error', message: e.message }, status: 500
   end
 
   def destroy
@@ -47,6 +48,7 @@ class SecretsController < ApplicationController
     OpenC3::Logger.info("Secret deleted: #{params[:key]}", scope: params[:scope], user: username())
     head :ok
   rescue => e
-    render(json: { status: 'error', message: e.message }, status: 500)
+    log_error(e)
+    render json: { status: 'error', message: e.message }, status: 500
   end
 end

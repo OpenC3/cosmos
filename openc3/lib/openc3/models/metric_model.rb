@@ -42,6 +42,14 @@ module OpenC3
       super("#{scope}#{PRIMARY_KEY}")
     end
 
+    # Sets (updates) the redis hash of this model
+    # Queued defaults to true for MetricModel
+    def self.set(json, scope:, queued: true)
+      json[:scope] = scope
+      json.transform_keys!(&:to_sym)
+      self.new(**json).create(force: true, queued: queued)
+    end
+
     def self.destroy(scope:, name:)
       EphemeralStore.hdel("#{scope}#{PRIMARY_KEY}", name)
     end

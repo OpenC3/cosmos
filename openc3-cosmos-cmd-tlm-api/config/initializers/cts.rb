@@ -27,6 +27,10 @@ require 'openc3/version'
 
 module OpenC3
   class Cts
+    # This sets a global flag $openc3_authorize = true
+    # which is used by authorization.rb to enable the
+    # role and permission checks. This is because the Cts
+    # is an internal microservice inside the trust zone.
     include AuthorizedApi
 
     attr_accessor :json_drb
@@ -35,7 +39,7 @@ module OpenC3
 
     def initialize
       @json_drb = JsonDRb.new
-      @json_drb.method_whitelist = Api::WHITELIST
+      @json_drb.method_whitelist = Api::WHITELIST.to_set
       @json_drb.object = self
     end
 
@@ -45,6 +49,9 @@ module OpenC3
   end
 end
 
+# Create the single Cts instance which instantiates the JsonDRb
+# This is used by openc3-cosmos-cmd-tlm-api/app/controllers/api_controller.rb
+# to process API requests
 OpenC3::Cts.instance
 
 # Accessing Redis early can break specs

@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -39,7 +39,7 @@ module OpenC3
           tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  ITEM ITEM1 8 0 DERIVED'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /ITEM types are only valid with TELEMETRY/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /ITEM types are only valid with TELEMETRY/)
           tf.unlink
         end
 
@@ -48,28 +48,28 @@ module OpenC3
           tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  ITEM ITEM1 8 0'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Not enough parameters/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Not enough parameters/)
           tf.unlink
 
           tf = Tempfile.new('unittest')
           tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  ITEM ITEM1 8'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Not enough parameters/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Not enough parameters/)
           tf.unlink
 
           tf = Tempfile.new('unittest')
           tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  ITEM ITEM1'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Not enough parameters/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Not enough parameters/)
           tf.unlink
 
           tf = Tempfile.new('unittest')
           tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  ITEM'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Not enough parameters/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Not enough parameters/)
           tf.unlink
         end
 
@@ -78,7 +78,7 @@ module OpenC3
           tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  ITEM ITEM1 EIGHT 0 DERIVED'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /invalid value for Integer/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /invalid value for Integer/)
           tf.unlink
         end
 
@@ -87,7 +87,7 @@ module OpenC3
           tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  ITEM ITEM1 8 ZERO DERIVED'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /invalid value for Integer/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /invalid value for Integer/)
           tf.unlink
         end
 
@@ -96,7 +96,7 @@ module OpenC3
           tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  ARRAY_ITEM ITEM3 0 32 FLOAT EIGHT'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /invalid value for Integer/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /invalid value for Integer/)
           tf.unlink
         end
 
@@ -105,14 +105,14 @@ module OpenC3
           tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  ITEM ITEM1 8 0 DERIVED'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /DERIVED items must have bit_offset of zero/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /DERIVED items must have bit_offset of zero/)
           tf.unlink
 
           tf = Tempfile.new('unittest')
           tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  ITEM ITEM1 0 8 DERIVED'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /DERIVED items must have bit_size of zero/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /DERIVED items must have bit_size of zero/)
           tf.unlink
 
           tf = Tempfile.new('unittest')
@@ -127,18 +127,23 @@ module OpenC3
         it "accepts types INT UINT FLOAT STRING BLOCK" do
           tf = Tempfile.new('unittest')
           tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
-          tf.puts '  ID_ITEM ITEM1 0 32 INT 0'
+          tf.puts '  ID_ITEM ITEM1 0 32 INT 0x42'
           tf.puts '  ITEM ITEM2 0 32 UINT'
           tf.puts '  ARRAY_ITEM ITEM3 0 32 FLOAT 64'
-          tf.puts '  APPEND_ID_ITEM ITEM4 32 STRING "ABCD"'
-          tf.puts '  APPEND_ITEM ITEM5 32 BLOCK'
-          tf.puts '  APPEND_ARRAY_ITEM ITEM6 32 BLOCK 64'
+          tf.puts '  APPEND_ID_ITEM ITEM4 32 STRING "0xABCD"'
+          tf.puts '  APPEND_ID_ITEM ITEM5 32 BLOCK 0xABCD'
+          tf.puts '  APPEND_ITEM ITEM6 32 BLOCK'
+          tf.puts '  APPEND_ARRAY_ITEM ITEM7 32 BLOCK 64'
           tf.close
           @pc.process_file(tf.path, "TGT1")
-          expect(@pc.telemetry["TGT1"]["PKT1"].items.keys).to include('ITEM1', 'ITEM2', 'ITEM3', 'ITEM4', 'ITEM5', 'ITEM6')
+          expect(@pc.telemetry["TGT1"]["PKT1"].items.keys).to include('ITEM1', 'ITEM2', 'ITEM3', 'ITEM4', 'ITEM5', 'ITEM6', 'ITEM7')
+          expect(@pc.telemetry["TGT1"]["PKT1"].items["ITEM1"].id_value).to eql 0x42
+          expect(@pc.telemetry["TGT1"]["PKT1"].items["ITEM4"].id_value).to eql '0xABCD'
+          expect(@pc.telemetry["TGT1"]["PKT1"].items["ITEM5"].id_value).to eql "\xAB\xCD"
           id_items = []
           id_items << @pc.telemetry["TGT1"]["PKT1"].items["ITEM1"]
           id_items << @pc.telemetry["TGT1"]["PKT1"].items["ITEM4"]
+          id_items << @pc.telemetry["TGT1"]["PKT1"].items["ITEM5"]
           expect(@pc.telemetry["TGT1"]["PKT1"].id_items).to eql id_items
           tf.unlink
         end
@@ -190,6 +195,22 @@ module OpenC3
           expect(@pc.warnings).to include("TGT1 PKT1 ITEM1 redefined.")
           tf.unlink
         end
+
+        it "works with 0 sized items" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY TGT1 PKT1 BIG_ENDIAN "Description"'
+          tf.puts '  APPEND_ITEM ITEM1 16 UINT "Item 1"'
+          tf.puts '  APPEND_ITEM ITEM2 40 BLOCK "block"'
+          tf.puts '  APPEND_ITEM ITEM3 0 BLOCK "zero size"'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          packet = @pc.telemetry["TGT1"]["PKT1"]
+          packet.buffer = "\xBE\xEF\x01\x02\x03\x04\x05\x0a\x0b\x0b\x0a"
+          expect(packet.read("ITEM1")).to eql 0xBEEF
+          expect(packet.read("ITEM2")).to eql "\x01\x02\x03\x04\x05"
+          expect(packet.read("ITEM3")).to eql "\x0a\x0b\x0b\x0a"
+          tf.unlink
+        end
       end
 
       context "with keywords including PARAMETER" do
@@ -198,7 +219,7 @@ module OpenC3
           tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  PARAMETER ITEM1 8 0 DERIVED 0 0 0'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /PARAMETER types are only valid with COMMAND/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /PARAMETER types are only valid with COMMAND/)
           tf.unlink
         end
 
@@ -207,28 +228,28 @@ module OpenC3
           tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  PARAMETER ITEM1 8 0'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Not enough parameters/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Not enough parameters/)
           tf.unlink
 
           tf = Tempfile.new('unittest')
           tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  PARAMETER ITEM1 8'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Not enough parameters/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Not enough parameters/)
           tf.unlink
 
           tf = Tempfile.new('unittest')
           tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  PARAMETER ITEM1'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Not enough parameters/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Not enough parameters/)
           tf.unlink
 
           tf = Tempfile.new('unittest')
           tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  PARAMETER'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Not enough parameters/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Not enough parameters/)
           tf.unlink
         end
 
@@ -237,14 +258,14 @@ module OpenC3
           tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  PARAMETER ITEM1 8 0 DERIVED 0 0 0'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /DERIVED items must have bit_offset of zero/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /DERIVED items must have bit_offset of zero/)
           tf.unlink
 
           tf = Tempfile.new('unittest')
           tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  PARAMETER ITEM1 0 8 DERIVED 0 0 0'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /DERIVED items must have bit_size of zero/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /DERIVED items must have bit_size of zero/)
           tf.unlink
 
           tf = Tempfile.new('unittest')
@@ -261,7 +282,7 @@ module OpenC3
           tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  ID_PARAMETER ITEM1 0 0 DERIVED 0 0 0'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /DERIVED data type not allowed/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /DERIVED data type not allowed/)
           tf.unlink
         end
 
@@ -270,14 +291,14 @@ module OpenC3
           tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  APPEND_ID_PARAMETER ITEM1 0 DERIVED 0 0 0'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /DERIVED data type not allowed/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /DERIVED data type not allowed/)
           tf.unlink
         end
 
         it "accepts types INT UINT FLOAT STRING BLOCK" do
           tf = Tempfile.new('unittest')
           tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"'
-          tf.puts '  ID_PARAMETER ITEM1 0 32 INT 0 0 0'
+          tf.puts '  ID_PARAMETER ITEM1 0 32 INT 0 0xFF 0x42'
           tf.puts '  ID_PARAMETER ITEM2 32 32 STRING "ABCD"'
           tf.puts '  PARAMETER ITEM3 64 32 UINT 0 0 0'
           tf.puts '  ARRAY_PARAMETER ITEM4 96 32 FLOAT 64'
@@ -310,11 +331,11 @@ module OpenC3
           @pc.process_file(tf.path, "TGT1")
           packet = @pc.commands["TGT1"]["PKT1"]
           packet.buffer = "\x00\x00\x00\x01" * 16
-          expect(packet.get_item("ITEM1").range).to eql (1..2)
+          expect(packet.get_item("ITEM1").range).to eql(1..2)
           expect(packet.get_item("ITEM1").default).to eql 3
           expect(packet.get_item("ITEM1").id_value).to eql 3
           expect(packet.read("ITEM1")).to eql 0x01000000
-          expect(packet.get_item("ITEM2").range).to eql (4..5)
+          expect(packet.get_item("ITEM2").range).to eql(4..5)
           expect(packet.get_item("ITEM2").default).to eql 6
           expect(packet.get_item("ITEM2").id_value).to eql nil
           expect(packet.read("ITEM2")).to eql 0x01000000
@@ -322,11 +343,11 @@ module OpenC3
           expect(packet.get_item("ITEM3").default).to eql []
           expect(packet.get_item("ITEM3").id_value).to eql nil
           expect(packet.read("ITEM3")).to eql [0x01000000, 0x01000000]
-          expect(packet.get_item("ITEM4").range).to eql (7..8)
+          expect(packet.get_item("ITEM4").range).to eql(7..8)
           expect(packet.get_item("ITEM4").default).to eql 9
           expect(packet.get_item("ITEM4").id_value).to eql 9
           expect(packet.read("ITEM4")).to eql 0x01000000
-          expect(packet.get_item("ITEM5").range).to eql (10..11)
+          expect(packet.get_item("ITEM5").range).to eql(10..11)
           expect(packet.get_item("ITEM5").default).to eql 12
           expect(packet.get_item("ITEM5").id_value).to eql nil
           expect(packet.read("ITEM5")).to eql 0x01000000
@@ -334,11 +355,11 @@ module OpenC3
           expect(packet.get_item("ITEM6").default).to eql []
           expect(packet.get_item("ITEM6").id_value).to eql nil
           expect(packet.read("ITEM6")).to eql [0x01000000, 0x01000000]
-          expect(packet.get_item("ITEM10").range).to eql (13..14)
+          expect(packet.get_item("ITEM10").range).to eql(13..14)
           expect(packet.get_item("ITEM10").default).to eql 15
           expect(packet.get_item("ITEM10").id_value).to eql 15
           expect(packet.read("ITEM10")).to eql 0x00000001
-          expect(packet.get_item("ITEM20").range).to eql (16..17)
+          expect(packet.get_item("ITEM20").range).to eql(16..17)
           expect(packet.get_item("ITEM20").default).to eql 18
           expect(packet.get_item("ITEM20").id_value).to eql nil
           expect(packet.read("ITEM20")).to eql 0x00000001
@@ -346,11 +367,11 @@ module OpenC3
           expect(packet.get_item("ITEM30").default).to eql []
           expect(packet.get_item("ITEM30").id_value).to eql nil
           expect(packet.read("ITEM30")).to eql [0x00000001, 0x00000001]
-          expect(packet.get_item("ITEM40").range).to eql (19..20)
+          expect(packet.get_item("ITEM40").range).to eql(19..20)
           expect(packet.get_item("ITEM40").default).to eql 21
           expect(packet.get_item("ITEM40").id_value).to eql 21
           expect(packet.read("ITEM40")).to eql 0x00000001
-          expect(packet.get_item("ITEM50").range).to eql (22..23)
+          expect(packet.get_item("ITEM50").range).to eql(22..23)
           expect(packet.get_item("ITEM50").default).to eql 24
           expect(packet.get_item("ITEM50").id_value).to eql nil
           expect(packet.read("ITEM50")).to eql 0x00000001
@@ -366,7 +387,7 @@ module OpenC3
           tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  ID_PARAMETER ITEM1 0 32 UINT 0 0 0 "" MIDDLE_ENDIAN'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Invalid endianness MIDDLE_ENDIAN/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Invalid endianness MIDDLE_ENDIAN/)
           tf.unlink
         end
 

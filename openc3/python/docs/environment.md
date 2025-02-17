@@ -138,7 +138,7 @@ OPENC3_API_PASSWORD=password
 
 > BASE, ENTERPRISE
 
-The libary can log much more of what is happening in the library. If you wish to enable this you can set the environment variable `OPENC3_LOG_LEVEL` to equal "DEBUG". If this is not set you will not get log messages if this is an incorrect log level you will get a ValueError.
+The library can log much more of what is happening in the library. If you wish to enable this you can set the environment variable `OPENC3_LOG_LEVEL` to equal "DEBUG". If this is not set you will not get log messages if this is an incorrect log level you will get a ValueError.
 
 Example:
 

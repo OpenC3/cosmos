@@ -29,6 +29,8 @@ jobs:
     environment: Release
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.QA_PAT }}
       - name: Set up Ruby 3.2
         uses: ruby/setup-ruby@v1
         with:
@@ -37,7 +39,7 @@ jobs:
           working-directory: openc3
       - uses: actions/setup-node@v4
         with:
-          node-version: "16.x"
+          node-version: 22
           registry-url: "https://registry.npmjs.org"
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -48,11 +50,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install build
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-      - name: Set up Docker Buildx
-        id: buildx
-        uses: docker/setup-buildx-action@v3
       - name: Login to DockerHub
         uses: docker/login-action@v3
         with:
@@ -64,6 +61,12 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: cloud
+          endpoint: "openc3inc/github-builder"
+          install: true
       - name: Update version to desired
         run: ruby openc3_set_versions.rb
         working-directory: scripts/release
@@ -73,6 +76,7 @@ jobs:
         with:
           commit_message: "[Github Action] Update version to ${{ github.event.inputs.version }}"
           tagging_message: "v${{ github.event.inputs.version }}"
+          push_options: --force
       - name: Build Python Package
         working-directory: openc3/python
         run: python -m build
@@ -107,21 +111,33 @@ jobs:
         env:
           GEM_HOST_API_KEY: ${{ secrets.GEM_HOST_API_KEY }}
       - name: Publish python package
-        uses: pypa/gh-action-pypi-publish@2f6f737ca5f74c637829c0f5c3acd0e29ea5e8bf
+        uses: pypa/gh-action-pypi-publish@76f52bc884231f62b9a034ebfe128415bbaabdfc
         with:
           user: __token__
           password: ${{ secrets.PYPI_API_TOKEN }}
           packages-dir: openc3/python/dist
-      - name: publish npm packages
+      - name: publish npm js package
         if: ${{ github.event.inputs.update_latest == 'true' }}
         run: npm publish --access public
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-tool-common
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-js-common
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - name: publish npm packages pre
+      - name: publish npm js package pre
         if: ${{ github.event.inputs.update_latest != 'true' }}
         run: npm publish --tag pre --access public
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-tool-common
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-js-common
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: publish npm vue package
+        if: ${{ github.event.inputs.update_latest == 'true' }}
+        run: npm publish --access public
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-vue-common
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: publish npm vue package pre
+        if: ${{ github.event.inputs.update_latest != 'true' }}
+        run: npm publish --tag pre --access public
+        working-directory: openc3-cosmos-init/plugins/packages/openc3-vue-common
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Update version to next
@@ -132,3 +148,4 @@ jobs:
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "[Github Action] Update version to ${{ github.event.inputs.next_version }}"
+          push_options: --force

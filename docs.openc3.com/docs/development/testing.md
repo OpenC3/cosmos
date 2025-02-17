@@ -1,5 +1,8 @@
 ---
 title: Testing COSMOS
+description: Running the Playwright integration tests and unit tests
+sidebar_custom_props:
+  myEmoji: 📋
 ---
 
 ## Playwright
@@ -56,7 +59,7 @@ title: Testing COSMOS
 
 Code coverage reports can be viewed at `openc3-playwright/coverage/index.html`
 
-## Unit Tests
+## Ruby Unit Tests
 
 1. Navigate to **cosmos/openc3** folder. Run the command:
 
@@ -66,3 +69,16 @@ Code coverage reports can be viewed at `openc3-playwright/coverage/index.html`
    ```
 
 Code coverage reports can be found at `cosmos/openc3/coverage/index.html`
+
+## Python Unit Tests
+
+1. Navigate to **cosmos/openc3/python** folder. Run the command:
+
+   ```bash
+   cosmos/openc3/python % python -m pip install poetry
+   cosmos/openc3/python % poetry install
+   cosmos/openc3/python % poetry run coverage run -m pytest
+   cosmos/openc3/python % poetry run coverage html
+   ```
+
+Code coverage reports can be found at `cosmos/openc3/python/coverage/index.html`

@@ -20,7 +20,7 @@
 # if purchased from OpenC3, Inc.
 */
 
-import Api from '@openc3/tool-common/src/services/api'
+import { Api } from '@openc3/js-common/services'
 
 const getKeywords = (type) => {
   return Api.get(`/openc3-api/autocomplete/keywords/${type}`)

@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -29,6 +29,8 @@
 #   Kernel.load(file, wrap)
 # end
 
+require 'rspec'
+
 # NOTE: You MUST require simplecov before anything else!
 if !ENV['OPENC3_NO_SIMPLECOV']
   require 'simplecov'
@@ -38,6 +40,13 @@ if !ENV['OPENC3_NO_SIMPLECOV']
   else
     SimpleCov.formatter = SimpleCov::Formatter::HTMLFormatter
   end
+  # Explicitly set the command_name so we don't clobber the results
+  # of the regular run with the '--tag no_ext' run
+  name = "test:unit"
+  if RSpec.configuration.filter_manager.inclusions.rules[:no_ext]
+    name += ':no_ext'
+  end
+  SimpleCov.command_name name
   SimpleCov.start do
     merge_timeout 60 * 60 # merge the last hour of results
     add_filter '/spec/' # no coverage on spec files
@@ -52,7 +61,6 @@ if !ENV['OPENC3_NO_SIMPLECOV']
     SimpleCov.result.format!
   end
 end
-require 'rspec'
 
 # Disable Redis and Fluentd in the Logger
 ENV['OPENC3_NO_STORE'] = 'true'
@@ -60,7 +68,7 @@ ENV['OPENC3_LOGS_BUCKET'] = 'logs'
 ENV['OPENC3_TOOLS_BUCKET'] = 'tools'
 ENV['OPENC3_CONFIG_BUCKET'] = 'config'
 # Set some usernames / passwords
-ENV['OPENC3_API_PASSWORD'] = 'openc3'
+ENV['OPENC3_API_PASSWORD'] = 'password'
 ENV['OPENC3_SERVICE_PASSWORD'] = 'openc3service'
 ENV['OPENC3_REDIS_USERNAME'] = 'openc3'
 ENV['OPENC3_REDIS_PASSWORD'] = 'openc3password'
@@ -81,6 +89,33 @@ SPEC_DIR = File.dirname(__FILE__)
 $openc3_scope = ENV['OPENC3_SCOPE']
 $openc3_token = ENV['OPENC3_API_PASSWORD']
 $openc3_authorize = false
+
+require 'openc3/utilities/store_queued'
+
+# Make StoreQueued not queue for unit tests
+$store_queued = false
+module OpenC3
+  class StoreQueued
+    alias old_initialize initialize
+    def initialize(update_interval)
+      if $store_queued
+        old_initialize(update_interval)
+      else
+        @update_interval = update_interval
+        @store = store_instance()
+      end
+    end
+
+    alias old_method_missing method_missing
+    def method_missing(message, *args, **kwargs, &)
+      if $store_queued
+        old_method_missing(message, *args, **kwargs, &)
+      else
+        @store.public_send(message, *args, **kwargs, &)
+      end
+    end
+  end
+end
 
 def setup_system(targets = %w[SYSTEM INST EMPTY])
   result = nil
@@ -113,10 +148,10 @@ OpenC3.disable_warnings do
     module StreamMethods
       private
 
-      def with_stream_at(key, &blk)
+      def with_stream_at(key, &)
         @mutex ||= Mutex.new
         @mutex.synchronize do
-          return with_thing_at(key, :assert_streamy, proc { Stream.new }, &blk)
+          return with_thing_at(key, :assert_streamy, proc { Stream.new }, &)
         end
       end
 
@@ -177,12 +212,30 @@ def mock_redis
   # allow(ConnectionPool).to receive(:new).and_return(pool)
   OpenC3::Store.instance_variable_set(:@instance, nil)
   OpenC3::EphemeralStore.instance_variable_set(:@instance, nil)
+  OpenC3::StoreQueued.instance_variable_set(:@instance, nil)
+  OpenC3::EphemeralStoreQueued.instance_variable_set(:@instance, nil)
   require 'openc3/models/auth_model'
   OpenC3::AuthModel.set($openc3_token, nil)
   redis
 end
 
-# Set the logger to output everthing and capture it all in a StringIO object
+OpenC3.disable_warnings do
+  require 'aws-sdk-s3'
+
+  def local_s3
+    require 'openc3/utilities/s3_autoload.rb'
+    require 'local_s3'
+    require 'rspec/mocks/standalone'
+    local_filesystem_client = LocalS3::ClientLocal.new
+    allow(Aws::S3::Client).to receive(:new).and_return(local_filesystem_client)
+  end
+
+  def local_s3_unset
+    RSpec::Mocks.space.proxy_for(Aws::S3::Client).reset
+  end
+end
+
+# Set the logger to output everything and capture it all in a StringIO object
 # which is yielded back to the block. Then restore everything.
 def capture_io(output = false)
   # Set the logger level to DEBUG so we see all output
@@ -252,13 +305,6 @@ def kill_leftover_threads
   end
 end
 
-$system_exit_count = 0
-# Overload exit so we know when it is called
-alias old_exit exit
-def exit(*args)
-  $system_exit_count += 1
-end
-
 RSpec.configure do |config|
   # Enforce the new expect() syntax instead of the old should syntax
   config.expect_with :rspec do |c|
@@ -270,14 +316,6 @@ RSpec.configure do |config|
   config.before(:all) do
     $saved_stdout_global = $stdout
     $saved_stdout_const = Object.const_get(:STDOUT)
-  end
-
-  config.after(:all) do
-    OpenC3.disable_warnings do
-      def Object.exit(*args)
-        old_exit(*args)
-      end
-    end
   end
 
   # Before each test make sure $stdout and STDOUT are set. They might be messed
@@ -294,7 +332,7 @@ RSpec.configure do |config|
     threads = running_threads
     thread_count = threads.size
     running_threads_str = threads.join("\n")
-
+    #Thread.list.each {|thr| thr.kill if thr.status == 'sleep_forever'}
     expect(thread_count).to eql(1),
     "At end of test expect 1 remaining thread but found #{thread_count}.\nEnsure you kill all spawned threads before the test finishes.\nThreads:\n#{running_threads_str}"
   end

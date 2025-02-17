@@ -21,6 +21,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/utilities/store'
+require 'openc3/utilities/store_queued'
 require 'openc3/models/target_model'
 
 module OpenC3
@@ -42,12 +43,16 @@ module OpenC3
     end
 
     # Set the current value table for a target, packet
-    def self.set(hash, target_name:, packet_name:, scope: $openc3_scope)
+    def self.set(hash, target_name:, packet_name:, queued: false, scope: $openc3_scope)
       packet_json = JSON.generate(hash.as_json(:allow_nan => true))
       key = "#{scope}__tlm__#{target_name}"
       tgt_pkt_key = key + "__#{packet_name}"
       @@packet_cache[tgt_pkt_key] = [Time.now, hash]
-      Store.hset(key, packet_name, packet_json)
+      if queued
+        StoreQueued.hset(key, packet_name, packet_json)
+      else
+        Store.hset(key, packet_name, packet_json)
+      end
     end
 
     # Get the hash for packet in the CVT
@@ -68,7 +73,7 @@ module OpenC3
     end
 
     # Set an item in the current value table
-    def self.set_item(target_name, packet_name, item_name, value, type:, scope: $openc3_scope)
+    def self.set_item(target_name, packet_name, item_name, value, type:, queued: false, scope: $openc3_scope)
       hash = get(target_name: target_name, packet_name: packet_name, cache_timeout: nil, scope: scope)
       case type
       when :WITH_UNITS
@@ -87,7 +92,7 @@ module OpenC3
       else
         raise "Unknown type '#{type}' for #{target_name} #{packet_name} #{item_name}"
       end
-      set(hash, target_name: target_name, packet_name: packet_name, scope: scope)
+      set(hash, target_name: target_name, packet_name: packet_name, queued: queued, scope: scope)
     end
 
     # Get an item from the current value table
@@ -95,15 +100,21 @@ module OpenC3
       result, types = self._handle_item_override(target_name, packet_name, item_name, type: type, cache_timeout: cache_timeout, scope: scope)
       return result if result
       hash = get(target_name: target_name, packet_name: packet_name, cache_timeout: cache_timeout, scope: scope)
-      hash.values_at(*types).each do |result|
-        if result
+      hash.values_at(*types).each do |cvt_value|
+        if cvt_value
           if type == :FORMATTED or type == :WITH_UNITS
-            return result.to_s
+            return cvt_value.to_s
           end
-          return result
+          return cvt_value
         end
       end
-      return nil
+      # RECEIVED_COUNT is a special case where it is 0 if it doesn't exist
+      # This allows scripts to check against the value to see if the packet was ever received
+      if item_name == "RECEIVED_COUNT"
+        return 0
+      else
+        return nil
+      end
     end
 
     # Return all item values and limit state from the CVT
@@ -145,7 +156,13 @@ module OpenC3
               item_result[1] = item_result[1].intern if item_result[1] # Convert to symbol
             end
           else
-            raise "Item '#{target_name} #{packet_name} #{value_keys[-1]}' does not exist" unless hash.key?(value_keys[-1])
+            # We didn't find a value but the packet hash contains the key so the item exists
+            # Thus set the result to nil so it comes back like a normal item
+            if hash.key?(value_keys[-1])
+              item_result[1] = nil
+            else
+              raise "Item '#{target_name} #{packet_name} #{value_keys[-1]}' does not exist"
+            end
           end
         end
         results << item_result

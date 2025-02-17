@@ -36,7 +36,7 @@ module OpenC3
   # and destroy to allow interaction with gem files from the PluginModel and
   # the GemsController.
   class GemModel
-    include Api
+    extend Api
 
     def self.names
       if Dir.exist?("#{ENV['GEM_HOME']}/gems")
@@ -90,31 +90,33 @@ module OpenC3
       Gem.sources = [rubygems_url] if rubygems_url
       Gem.done_installing_hooks.clear
       begin
-        # Look for local gems only first, this avoids lengthly timeouts when checking rubygems in airgap env
+        # Look for local gems only first, this avoids lengthy timeouts when checking rubygems in airgap env
         Gem.install(gem_file_path, "> 0.pre", build_args: ['--no-document'], prerelease: true, domain: :local)
-      rescue Gem::Exception => err
+      rescue Gem::Exception => e
         # If there is a failure look for both local and remote gems
         Gem.install(gem_file_path, "> 0.pre", build_args: ['--no-document'], prerelease: true, domain: :both)
       end
-    rescue => err
-      message = "Gem file #{gem_file_path} error installing to #{ENV['GEM_HOME']}\n#{err.formatted}"
+    rescue => e
+      message = "Gem file #{gem_file_path} error installing to #{ENV['GEM_HOME']}\n#{e.formatted}"
       Logger.error message
-      raise err
+      raise e
     end
 
-    def self.destroy(name)
+    def self.destroy(name, log_and_raise_needed_errors: true)
       gem_name, version = self.extract_name_and_version(name)
       plugin_gem_names = PluginModel.gem_names
       if plugin_gem_names.include?(name)
-        message = "Gem file #{name} can't be uninstalled because needed by installed plugin"
-        Logger.error message
-        raise message
+        if log_and_raise_needed_errors
+          message = "Gem file #{name} can't be uninstalled because needed by installed plugin"
+          Logger.error message
+          raise message
+        end
       else
         begin
           Gem::Uninstaller.new(gem_name, {:version => version, :force => true}).uninstall
-        rescue => err
-          Logger.error "Gem file #{name} error uninstalling\n#{err.formatted}"
-          raise err
+        rescue => e
+          Logger.error "Gem file #{name} error uninstalling\n#{e.formatted}"
+          raise e
         end
       end
     end
@@ -131,7 +133,7 @@ module OpenC3
       GemModel.names.each do |gem_full_name|
         gem_name, gem_version = GemModel.extract_name_and_version(gem_full_name)
         if gem_name == keep_gem_name and gem_version != keep_gem_version
-          GemModel.destroy(gem_full_name)
+          GemModel.destroy(gem_full_name, log_and_raise_needed_errors: false)
         end
       end
     end

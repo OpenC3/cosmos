@@ -25,7 +25,7 @@ require 'openc3/utilities/local_mode'
 module OpenC3
   class ToolConfigModel
     def self.config_tool_names(scope: $openc3_scope)
-      cursor, keys = Store.scan(0, match: "#{scope}__config__*", type: 'hash', count: 100)
+      _, keys = Store.scan(0, match: "#{scope}__config__*", type: 'hash', count: 100)
       # Just return the tool name that is used in the other APIs
       return keys.map! { |key| key.split('__')[2] }.sort
     end

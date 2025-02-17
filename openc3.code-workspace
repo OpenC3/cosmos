@@ -2,16 +2,41 @@
   "folders": [
     {
       "path": "."
+    },
+    {
+      "path": "../cosmos-project"
+    },
+    {
+      "path": "../cosmos-enterprise"
+    },
+    {
+      "path": "../cosmos-enterprise-project"
+    },
+    {
+      "path": "../cosmos-enterprise-plugins"
+    },
+    {
+      "path": "../anycable"
+    },
+    {
+      "path": "../openc3-schedule"
+    },
+    {
+      "path": "../openc3-news"
+    },
+    {
+      "path": "../openc3-cosmos-cfdp"
     }
   ],
   "settings": {
+    "rubyLsp.bundleGemfile": "openc3/Gemfile",
     "vetur.validation.template": false,
     "eslint.validate": ["vue", "html", "javascript"],
     "eslint.workingDirectories": ["./openc3-cosmos-init/plugins"],
     "eslint.packageManager": "yarn",
     "editor.formatOnSave": true,
     "editor.codeActionsOnSave": {
-      "source.fixAll.eslint": true
+      "source.fixAll.eslint": "explicit"
     },
     "explorer.confirmDragAndDrop": true,
     "editor.tabSize": 2,

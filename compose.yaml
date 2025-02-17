@@ -20,12 +20,6 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-version: "3.5"
-
-networks:
-  default:
-    name: openc3-cosmos-network
-
 services:
   openc3-minio:
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
@@ -120,6 +114,7 @@ services:
       OPENC3_BUCKET_USERNAME: "${OPENC3_BUCKET_USERNAME}"
       OPENC3_BUCKET_PASSWORD: "${OPENC3_BUCKET_PASSWORD}"
       OPENC3_SERVICE_PASSWORD: "${OPENC3_SERVICE_PASSWORD}"
+      ANYCABLE_REDIS_URL: "redis://${OPENC3_REDIS_USERNAME}:${OPENC3_REDIS_PASSWORD}@${OPENC3_REDIS_HOSTNAME}:${OPENC3_REDIS_PORT}"
     env_file:
       - ".env"
 
@@ -153,6 +148,7 @@ services:
       OPENC3_SR_BUCKET_USERNAME: "${OPENC3_SR_BUCKET_USERNAME}"
       OPENC3_SR_BUCKET_PASSWORD: "${OPENC3_SR_BUCKET_PASSWORD}"
       OPENC3_SERVICE_PASSWORD: "${OPENC3_SERVICE_PASSWORD}"
+      ANYCABLE_REDIS_URL: "redis://${OPENC3_REDIS_USERNAME}:${OPENC3_REDIS_PASSWORD}@${OPENC3_REDIS_HOSTNAME}:${OPENC3_REDIS_PORT}"
     env_file:
       - ".env"
 
@@ -161,7 +157,8 @@ services:
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-operator${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
     restart: "unless-stopped"
     # ports:
-    #  - "127.0.0.1:7779:7779" # Open port for the demo router
+    #   - "127.0.0.1:7779:7779" # Open port for the demo router
+    #   - "127.0.0.1:8081:8081/udp" # Open a udp port
     depends_on:
       - "openc3-redis"
       - "openc3-redis-ephemeral"
@@ -178,6 +175,7 @@ services:
         max-size: "10m"
         max-file: "3"
     environment:
+      CI: "${CI}" # Set in Github actions, changes the Demo TLM_LOG_CYCLE_TIME
       GEM_HOME: "/gems"
       PYTHONUSERBASE: "/gems/python_packages"
       OPENC3_REDIS_USERNAME: "${OPENC3_REDIS_USERNAME}"
@@ -241,6 +239,7 @@ services:
         max-size: "10m"
         max-file: "3"
     environment:
+      CI: "${CI}" # Set in Github actions, changes the Demo TLM_LOG_CYCLE_TIME
       GEM_HOME: "/gems"
       PYTHONUSERBASE: "/gems/python_packages"
       OPENC3_REDIS_USERNAME: "${OPENC3_REDIS_USERNAME}"

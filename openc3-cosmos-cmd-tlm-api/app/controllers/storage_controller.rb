@@ -25,16 +25,18 @@ require 'openc3/utilities/bucket'
 
 class StorageController < ApplicationController
   def buckets
+    return unless authorization('system')
     # ENV.map returns a big array of mostly nils which is why we compact
     # The non-nil are MatchData objects due to the regex match
     matches = ENV.map { |key, _value| key.match(/^OPENC3_(.+)_BUCKET$/) }.compact
     # MatchData [0] is the full text, [1] is the captured group
     # downcase to make it look nicer, BucketExplorer.vue calls toUpperCase on the API requests
     buckets = matches.map { |match| match[1].downcase }.sort
-    render :json => buckets, :status => 200
+    render json: buckets
   end
 
   def volumes
+    return unless authorization('system')
     # ENV.map returns a big array of mostly nils which is why we compact
     # The non-nil are MatchData objects due to the regex match
     matches = ENV.map { |key, _value| key.match(/^OPENC3_(.+)_VOLUME$/) }.compact
@@ -43,7 +45,7 @@ class StorageController < ApplicationController
     volumes = matches.map { |match| match[1].downcase }.sort
     # Add a slash prefix to identify volumes separately from buckets
     volumes.map! {|volume| "/#{volume}" }
-    render :json => volumes, :status => 200
+    render json: volumes
   end
 
   def files
@@ -76,12 +78,14 @@ class StorageController < ApplicationController
     else
       raise "Unknown root #{params[:root]}"
     end
-    render :json => results, :status => 200
+    render json: results
   rescue OpenC3::Bucket::NotFound => e
-    render :json => { :status => 'error', :message => e.message }, :status => 404
+    log_error(e)
+    render json: { status: 'error', message: e.message }, status: 404
   rescue Exception => e
+    log_error(e)
     OpenC3::Logger.error("File listing failed: #{e.message}", user: username())
-    render :json => { status: 'error', message: e.message }, status: 500
+    render json: { status: 'error', message: e.message }, status: 500
   end
 
   def exists
@@ -90,26 +94,48 @@ class StorageController < ApplicationController
     raise "Unknown bucket #{params[:bucket]}" unless bucket_name
     path = sanitize_path(params[:object_id])
     bucket = OpenC3::Bucket.getClient()
+    # Returns true or false if the object is found
     result = bucket.check_object(bucket: bucket_name,
                                  key: path,
                                  retries: false)
-    render :json => result, :status => 201
+    if result
+      render json: result
+    else
+      render json: result, status: 404
+    end
   rescue Exception => e
+    log_error(e)
     OpenC3::Logger.error("File exists request failed: #{e.message}", user: username())
-    render :json => { status: 'error', message: e.message }, status: 500
+    render json: { status: 'error', message: e.message }, status: 500
   end
 
   def download_file
     return unless authorization('system')
-    volume = ENV[params[:volume]] # Get the actual volume name
-    raise "Unknown volume #{params[:volume]}" unless volume
-    filename = "/#{volume}/#{params[:object_id]}"
-    filename = sanitize_path(filename)
+    tmp_dir = nil
+    if params[:volume]
+      volume = ENV[params[:volume]] # Get the actual volume name
+      raise "Unknown volume #{params[:volume]}" unless volume
+      filename = "/#{volume}/#{params[:object_id]}"
+      filename = sanitize_path(filename)
+    elsif params[:bucket]
+      tmp_dir = Dir.mktmpdir
+      bucket_name = ENV[params[:bucket]] # Get the actual bucket name
+      raise "Unknown bucket #{params[:bucket]}" unless bucket_name
+      path = sanitize_path(params[:object_id])
+      filename = File.join(tmp_dir, path)
+      # Ensure dir structure exists, get_object fails if not
+      FileUtils.mkdir_p(File.dirname(filename))
+      OpenC3::Bucket.getClient().get_object(bucket: bucket_name, key: path, path: filename)
+    else
+      raise "No volume or bucket given"
+    end
     file = File.read(filename, mode: 'rb')
-    render :json => { filename: params[:object_id], contents: Base64.encode64(file) }
+    FileUtils.rm_rf(tmp_dir) if tmp_dir
+    render json: { filename: params[:object_id], contents: Base64.encode64(file) }
   rescue Exception => e
+    log_error(e)
     OpenC3::Logger.error("Download failed: #{e.message}", user: username())
-    render :json => { status: 'error', message: e.message }, status: 500
+    render json: { status: 'error', message: e.message }, status: 500
   end
 
   def get_download_presigned_request
@@ -122,10 +148,11 @@ class StorageController < ApplicationController
                                       key: path,
                                       method: :get_object,
                                       internal: params[:internal])
-    render :json => result, :status => 201
+    render json: result, status: 201
   rescue Exception => e
+    log_error(e)
     OpenC3::Logger.error("Download request failed: #{e.message}", user: username())
-    render :json => { status: 'error', message: e.message }, status: 500
+    render json: { status: 'error', message: e.message }, status: 500
   end
 
   def get_upload_presigned_request
@@ -134,8 +161,8 @@ class StorageController < ApplicationController
     raise "Unknown bucket #{params[:bucket]}" unless bucket_name
     path = sanitize_path(params[:object_id])
     key_split = path.split('/')
-    # Anywhere other than config/SCOPE/targets_modified requires admin
-    if !(params[:bucket] == 'OPENC3_CONFIG_BUCKET' && key_split[1] == 'targets_modified')
+    # Anywhere other than config/SCOPE/targets_modified or config/SCOPE/tmp requires admin
+    if !(params[:bucket] == 'OPENC3_CONFIG_BUCKET' && (key_split[1] == 'targets_modified' || key_split[1] == 'tmp'))
       return unless authorization('admin')
     end
 
@@ -146,25 +173,27 @@ class StorageController < ApplicationController
                                       internal: params[:internal])
     OpenC3::Logger.info("S3 upload presigned request generated: #{bucket_name}/#{path}",
         scope: params[:scope], user: username())
-    render :json => result, :status => 201
+    render json: result, status: 201
   rescue Exception => e
+    log_error(e)
     OpenC3::Logger.error("Upload request failed: #{e.message}", user: username())
-    render :json => { status: 'error', message: e.message }, status: 500
+    render json: { status: 'error', message: e.message }, status: 500
   end
 
   def delete
     return unless authorization('system_set')
     if params[:bucket].presence
-      delete_bucket_item(params)
+      return unless delete_bucket_item(params)
     elsif params[:volume].presence
-      delete_volume_item(params)
+      return unless delete_volume_item(params)
     else
       raise "Must pass bucket or volume parameter!"
     end
     head :ok
   rescue Exception => e
+    log_error(e)
     OpenC3::Logger.error("Delete failed: #{e.message}", user: username())
-    render :json => { status: 'error', message: e.message }, status: 500
+    render json: { status: 'error', message: e.message }, status: 500
   end
 
   private
@@ -188,27 +217,37 @@ class StorageController < ApplicationController
     raise "Unknown bucket #{params[:bucket]}" unless bucket_name
     path = sanitize_path(params[:object_id])
     key_split = path.split('/')
-    # Anywhere other than config/SCOPE/targets_modified requires admin
-    if !(params[:bucket] == 'OPENC3_CONFIG_BUCKET' && key_split[1] == 'targets_modified')
-      return unless authorization('admin')
+    # Anywhere other than config/SCOPE/targets_modified or config/SCOPE/tmp requires admin
+    authorized = true
+    if !(params[:bucket] == 'OPENC3_CONFIG_BUCKET' && (key_split[1] == 'targets_modified' || key_split[1] == 'tmp'))
+      authorized = false unless authorization('admin')
     end
 
-    if ENV['OPENC3_LOCAL_MODE']
-      OpenC3::LocalMode.delete_local(path)
-    end
+    if authorized
+      if ENV['OPENC3_LOCAL_MODE']
+        OpenC3::LocalMode.delete_local(path)
+      end
 
-    OpenC3::Bucket.getClient().delete_object(bucket: bucket_name, key: path)
-    OpenC3::Logger.info("Deleted: #{bucket_name}/#{path}", scope: params[:scope], user: username())
+      OpenC3::Bucket.getClient().delete_object(bucket: bucket_name, key: path)
+      OpenC3::Logger.info("Deleted: #{bucket_name}/#{path}", scope: params[:scope], user: username())
+      return true
+    else
+      return false
+    end
   end
 
   def delete_volume_item(params)
     # Deleting requires admin
-    return unless authorization('admin')
-    volume = ENV[params[:volume]] # Get the actual volume name
-    raise "Unknown volume #{params[:volume]}" unless volume
-    filename = "/#{volume}/#{params[:object_id]}"
-    filename = sanitize_path(filename)
-    FileUtils.rm filename
-    OpenC3::Logger.info("Deleted: #{filename}", scope: params[:scope], user: username())
+    if authorization('admin')
+      volume = ENV[params[:volume]] # Get the actual volume name
+      raise "Unknown volume #{params[:volume]}" unless volume
+      filename = "/#{volume}/#{params[:object_id]}"
+      filename = sanitize_path(filename)
+      FileUtils.rm filename
+      OpenC3::Logger.info("Deleted: #{filename}", scope: params[:scope], user: username())
+      return true
+    else
+      return false
+    end
   end
 end

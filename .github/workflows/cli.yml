@@ -12,6 +12,9 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  OPENC3_API_PASSWORD: password
+
 jobs:
   openc3-cli:
     if: ${{ github.actor != 'dependabot[bot]' }}
@@ -70,66 +73,79 @@ jobs:
         run: |
           set -e
           ### PLUGIN ###
-          ./openc3.sh cliroot generate | grep "Unknown generator" || true
-          ./openc3.sh cliroot generate plugin | grep "Usage" || true
-          ./openc3.sh cliroot generate plugin cli-test
-          ./openc3.sh cliroot generate plugin cli-test | grep "already exists" || true
+          ./openc3.sh cli generate plugin | grep "Usage" || true
+          ./openc3.sh cli generate plugin cli-test --ruby
+          ./openc3.sh cli generate plugin cli-test --ruby | grep "already exists" || true
           cd openc3-cosmos-cli-test
-          ../openc3.sh cliroot rake build VERSION=1.0.0
-          ../openc3.sh cliroot validate openc3-cosmos-cli-test-1.0.0.gem
+          ../openc3.sh cli rake build VERSION=1.0.0
+          ../openc3.sh cli validate openc3-cosmos-cli-test-1.0.0.gem
           ### TARGET ###
-          ../openc3.sh cliroot generate target MY-cli
+          ../openc3.sh cli generate target MY-cli --ruby
           # Verify the target name 'MY_CLI' and lib filename 'my_cli.rb'
           ls targets/MY_CLI/lib | grep my_cli.rb
-          ../openc3.sh cliroot rake build VERSION=1.0.1
-          ../openc3.sh cliroot validate openc3-cosmos-cli-test-1.0.1.gem
+          ../openc3.sh cli rake build VERSION=1.0.1
+          ../openc3.sh cli validate openc3-cosmos-cli-test-1.0.1.gem
           ### MICROSERVICE ###
-          ../openc3.sh cliroot generate microservice background
+          ../openc3.sh cli generate microservice background --ruby
           # Verify the microservice name 'BACKGROUND' and filename 'background.rb'
           ls microservices/BACKGROUND | grep background.rb
-          ../openc3.sh cliroot rake build VERSION=1.0.2
-          ../openc3.sh cliroot validate openc3-cosmos-cli-test-1.0.2.gem
+          ../openc3.sh cli rake build VERSION=1.0.2
+          ../openc3.sh cli validate openc3-cosmos-cli-test-1.0.2.gem
           ### CONVERSION ###
-          ../openc3.sh cliroot generate conversion MY_CLI upcase
+          ../openc3.sh cli generate conversion MY_CLI upcase --ruby
           # Verify the conversion filename 'upcase_conversion.rb'
           ls targets/MY_CLI/lib | grep upcase_conversion.rb
-          ../openc3.sh cliroot rake build VERSION=1.0.3
-          ../openc3.sh cliroot validate openc3-cosmos-cli-test-1.0.3.gem
+          ../openc3.sh cli rake build VERSION=1.0.3
+          ../openc3.sh cli validate openc3-cosmos-cli-test-1.0.3.gem
           ### LIMITS_RESPONSE ###
-          ../openc3.sh cliroot generate limits_response MY_CLI example
+          ../openc3.sh cli generate limits_response MY_CLI example --ruby
           # Verify the conversion filename 'example_limits_response.rb'
           ls targets/MY_CLI/lib | grep example_limits_response.rb
-          ../openc3.sh cliroot rake build VERSION=1.0.3
-          ../openc3.sh cliroot validate openc3-cosmos-cli-test-1.0.3.gem
-      - name: openc3.sh util save,load
+          ../openc3.sh cli rake build VERSION=1.0.3
+          ../openc3.sh cli validate openc3-cosmos-cli-test-1.0.3.gem
+      - name: openc3.sh cli script list, run, spawn
         shell: 'script -q -e -c "bash {0}"'
         run: |
           set -e
-          ./openc3.sh util save docker.io openc3inc latest
-          # Verify the images were saved
-          ls tmp | grep openc3-cosmos-cmd-tlm-api-latest.tar
-          ls tmp | grep openc3-cosmos-script-runner-api-latest.tar
-          ls tmp | grep openc3-cosmos-init-latest.tar
-          ls tmp | grep openc3-operator-latest.tar
-          ls tmp | grep openc3-minio-latest.tar
-          ls tmp | grep openc3-redis-latest.tar
-          ls tmp | grep openc3-traefik-latest.tar
-          docker image rm openc3inc/openc3-cosmos-cmd-tlm-api:latest
-          docker image rm openc3inc/openc3-cosmos-script-runner-api:latest
-          docker image rm openc3inc/openc3-cosmos-init:latest
-          docker image rm openc3inc/openc3-operator:latest
-          docker image rm openc3inc/openc3-minio:latest
-          docker image rm openc3inc/openc3-redis:latest
-          docker image rm openc3inc/openc3-traefik:latest
-          ./openc3.sh util load
-          # Verify the images were loaded
-          docker image ls | grep openc3-cosmos-cmd-tlm-api
-          docker image ls | grep openc3-cosmos-script-runner-api
-          docker image ls | grep openc3-cosmos-init
-          docker image ls | grep openc3-operator
-          docker image ls | grep openc3-minio
-          docker image ls | grep openc3-redis
-          docker image ls | grep openc3-traefik
+          docker exec -it cosmos-openc3-redis-1 sh -c "echo -e 'AUTH openc3 openc3password\nset OPENC3__TOKEN 5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8' | redis-cli"
+          # list shows all the available file names
+          ./openc3.sh cli script list | tee /dev/tty | grep "INST/procedures/stash.rb"
+          # spawning a script prints only a PID
+          ./openc3.sh cli script spawn INST/procedures/checks.rb | grep -v "^\s*\d+\s*$"
+          # run a script that will fail and look for the failure message
+          ./openc3.sh cli script run --wait 20 INST/procedures/checks.rb | tee /dev/tty | grep -q "script failed"
+          # run a script that will complete successfully
+          ./openc3.sh cli script run INST/procedures/stash.rb | tee /dev/tty | grep "script complete"
+      # Removing due to write tmp/.docker_temp_3200699358: no space left on device
+      # - name: openc3.sh util save,load
+      #   shell: 'script -q -e -c "bash {0}"'
+      #   run: |
+      #     set -e
+      #     ./openc3.sh util save docker.io openc3inc latest
+      #     # Verify the images were saved
+      #     ls tmp | grep openc3-cosmos-cmd-tlm-api-latest.tar
+      #     ls tmp | grep openc3-cosmos-script-runner-api-latest.tar
+      #     ls tmp | grep openc3-cosmos-init-latest.tar
+      #     ls tmp | grep openc3-operator-latest.tar
+      #     ls tmp | grep openc3-minio-latest.tar
+      #     ls tmp | grep openc3-redis-latest.tar
+      #     ls tmp | grep openc3-traefik-latest.tar
+      #     docker image rm openc3inc/openc3-cosmos-cmd-tlm-api:latest
+      #     docker image rm openc3inc/openc3-cosmos-script-runner-api:latest
+      #     docker image rm openc3inc/openc3-cosmos-init:latest
+      #     docker image rm openc3inc/openc3-operator:latest
+      #     docker image rm openc3inc/openc3-minio:latest
+      #     docker image rm openc3inc/openc3-redis:latest
+      #     docker image rm openc3inc/openc3-traefik:latest
+      #     ./openc3.sh util load
+      #     # Verify the images were loaded
+      #     docker image ls | grep openc3-cosmos-cmd-tlm-api
+      #     docker image ls | grep openc3-cosmos-script-runner-api
+      #     docker image ls | grep openc3-cosmos-init
+      #     docker image ls | grep openc3-operator
+      #     docker image ls | grep openc3-minio
+      #     docker image ls | grep openc3-redis
+      #     docker image ls | grep openc3-traefik
       - name: Cleanup volumes
         shell: 'script -q -e -c "bash {0}"'
         run: |

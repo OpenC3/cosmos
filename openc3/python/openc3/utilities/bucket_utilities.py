@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -14,17 +14,14 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import os
+import zlib
+import time
+import threading
 from openc3.utilities.bucket import Bucket
-
-# from openc3.utilities.target_file import TargetFile
 from openc3.utilities.logger import Logger
 from openc3.models.reducer_model import ReducerModel
 from openc3.environment import OPENC3_LOGS_BUCKET
-import zlib
-import os
-import time
-import threading
-
 
 class BucketUtilities:
     FILE_TIMESTAMP_FORMAT = "%Y%m%d%H%M%S%N"
@@ -85,9 +82,7 @@ class BucketUtilities:
                     retry_count += 1
                     if retry_count >= 3:
                         raise err
-                    Logger.warn(
-                        f"Error saving log file to bucket - retry {retry_count}: {filename}\n{str(err)}"
-                    )
+                    Logger.warn(f"Error saving log file to bucket - retry {retry_count}: {filename}\n{str(err)}")
                     time.sleep(1)
 
             Logger.debug(f"wrote {OPENC3_LOGS_BUCKET}/{bucket_key}")
@@ -104,6 +99,7 @@ class BucketUtilities:
         thread = threading.Thread(
             target=cls.move_log_file_to_bucket_thread,
             args=[filename, bucket_key, metadata],
+            daemon=True,
         )
         thread.start()
         return thread

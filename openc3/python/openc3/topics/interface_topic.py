@@ -14,7 +14,6 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import time
 import json
 from openc3.topics.topic import Topic
 from openc3.environment import OPENC3_SCOPE
@@ -31,15 +30,14 @@ class InterfaceTopic(Topic):
         topics.append(f"{{{scope}__CMD}}INTERFACE__{interface.name}")
         for target_name in interface.cmd_target_names:
             topics.append(f"{{{scope}__CMD}}TARGET__{target_name}")
+        topics.append("OPENC3__SYSTEM__EVENTS")  # Add System Events
         return topics
 
     @classmethod
     def receive_commands(cls, method, interface, scope=OPENC3_SCOPE):
         InterfaceTopic.while_receive_commands = True
         while InterfaceTopic.while_receive_commands:
-            for topic, msg_id, msg_hash, redis in Topic.read_topics(
-                InterfaceTopic.topics(interface, scope)
-            ):
+            for topic, msg_id, msg_hash, redis in Topic.read_topics(InterfaceTopic.topics(interface, scope)):
                 result = method(topic, msg_id, msg_hash, redis)
                 ack_topic = topic.split("__")
                 ack_topic[1] = "ACK" + ack_topic[1]
@@ -48,9 +46,8 @@ class InterfaceTopic(Topic):
 
     @classmethod
     def write_raw(cls, interface_name, data, scope):
-        Topic.write_topic(
-            f"{{{scope}__CMD}}INTERFACE__{interface_name}", {"raw": data}, "*", 100
-        )
+        Topic.write_topic(f"{{{scope}__CMD}}INTERFACE__{interface_name}", {"raw": data}, "*", 100)
+        # TODO: This should wait for the ack
 
     @classmethod
     def connect_interface(cls, interface_name, *interface_params, scope=OPENC3_SCOPE):
@@ -105,8 +102,6 @@ class InterfaceTopic(Topic):
             "*",
             100,
         )
-        time.sleep(1)  # Give some time for the interface to shutdown
-        InterfaceTopic.clear_topics(InterfaceTopic.topics(interface, scope=scope))
 
     @classmethod
     def interface_cmd(cls, interface_name, cmd_name, *cmd_params, scope=OPENC3_SCOPE):

@@ -29,17 +29,25 @@ class MicroservicesController < ModelController
   end
 
   def start
-    return unless authorization('system')
+    return unless authorization('admin')
     microservice = @model_class.get_model(name: params[:id], scope: params[:scope])
-    OpenC3::Logger.info("#{params[:id]} started", scope: params[:scope], user: username())
-    # TODO: How to access operator and start microservice?
+    if microservice
+      OpenC3::Logger.info("#{params[:id]} started", scope: params[:scope], user: username())
+      microservice.enabled = true
+      microservice.update
+    end
+    head :ok
   end
 
   def stop
-    return unless authorization('system')
+    return unless authorization('admin')
     microservice = @model_class.get_model(name: params[:id], scope: params[:scope])
-    OpenC3::Logger.info("#{params[:id]} stopped", scope: params[:scope], user: username())
-    # TODO: How to access operator and stop microservice?
+    if microservice
+      OpenC3::Logger.info("#{params[:id]} stopped", scope: params[:scope], user: username())
+      microservice.enabled = false
+      microservice.update
+    end
+    head :ok
   end
 
   def traefik
@@ -57,10 +65,14 @@ class MicroservicesController < ModelController
       if prefix and ports[0][0]
         port = ports[0][0].to_i
         prefix = '/' + prefix unless prefix[0] == '/'
-        if ENV['KUBERNETES_SERVICE_HOST']
-          url = "http://#{microservice_name.downcase.gsub('__', '-').gsub('_', '-')}-service:#{port}"
+        if ENV['OPENC3_OPERATOR_HOSTNAME']
+          url = "http://#{ENV['OPENC3_OPERATOR_HOSTNAME']}:#{port}"
         else
-          url = "http://openc3-operator:#{port}"
+          if ENV['KUBERNETES_SERVICE_HOST']
+            url = "http://#{microservice_name.downcase.gsub('__', '-').gsub('_', '-')}-service:#{port}"
+          else
+            url = "http://openc3-operator:#{port}"
+          end
         end
         service_name = microservice_name
         router_name = microservice_name
@@ -75,6 +87,6 @@ class MicroservicesController < ModelController
         routers[router_name]['priority'] = 20
       end
     end
-    render :json => result
+    render json: result
   end
 end

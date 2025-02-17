@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -50,12 +50,13 @@ class Metric:
         with Metric.mutex:
             Metric.instances.append(self)
             if Metric.update_thread is None:
-                Metric.update_thread = threading.Thread(target=self.update_thread_body)
+                Metric.update_thread = threading.Thread(
+                    target=self.update_thread_body,
+                    daemon=True,
+                )
                 Metric.update_thread.start()
 
-    def set(
-        self, name, value, type=None, unit=None, help=None, labels=None, time_ms=None
-    ):
+    def set(self, name, value, type=None, unit=None, help=None, labels=None, time_ms=None):
         with self.mutex:
             if self.data.get(name) is None:
                 self.data[name] = {}

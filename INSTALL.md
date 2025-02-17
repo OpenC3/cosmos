@@ -22,12 +22,12 @@ The most commands can also take arguments. The current argument options when run
 
 ## Setup
 
-To build you can use an environment variable `SSL_CERT_FILE` or it will default to use a public curl ca file. When you run setup it copys the `SSL_CERT_FILE` and will place a copy in the root of the openc3 repo as `cacert.pem`. These are needed to build the docker containers.
+To build you can use an environment variable `SSL_CERT_FILE` or it will default to use a public curl ca file. When you run setup it copies the `SSL_CERT_FILE` and will place a copy in the root of the openc3 repo as `cacert.pem`. These are needed to build the docker containers.
 
 If you're building and want to use a private Rubygems, NPM or APK server (e.g. Nexus) you can update the following environment variables: RUBYGEMS_URL, NPM_URL, APK_URL, and more in the .env file. Example values:
 
 - ALPINE_VERSION=3.18
-- ALPINE_BUILD=5
+- ALPINE_BUILD=9
 - RUBYGEMS_URL=https://rubygems.org
 - NPM_URL=https://registry.npmjs.org
 - APK_URL=http://dl-cdn.alpinelinux.org

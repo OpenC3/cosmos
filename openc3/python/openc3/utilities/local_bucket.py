@@ -16,5 +16,6 @@
 
 from openc3.utilities.aws_bucket import AwsBucket
 
+
 class LocalBucket(AwsBucket):
     pass

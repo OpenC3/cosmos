@@ -35,15 +35,13 @@ fi
 set -e
 
 usage() {
-  echo "Usage: $1 [cli, cliroot, start, stop, cleanup, build, run, dev, test, util]" >&2
+  echo "Usage: $1 [cli, start, stop, cleanup, build, run, test, util]" >&2
   echo "*  cli: run a cli command as the default user ('cli help' for more info)" 1>&2
-  echo "*  cliroot: run a cli command as the root user ('cli help' for more info)" 1>&2
-  echo "*  start: start the docker compose openc3" >&2
-  echo "*  stop: stop the running dockers for openc3" >&2
-  echo "*  cleanup: cleanup network and volumes for openc3" >&2
-  echo "*  build: build the containers for openc3" >&2
-  echo "*  run: run the prebuilt containers for openc3" >&2
-  echo "*  dev: run openc3 in a dev mode" >&2
+  echo "*  start: build and run" >&2
+  echo "*  stop: stop the containers (compose stop)" >&2
+  echo "*  cleanup [local] [force]: REMOVE volumes / data (compose down -v)" >&2
+  echo "*  build: build the containers (compose build)" >&2
+  echo "*  run: run the containers (compose up)" >&2
   echo "*  test: test openc3" >&2
   echo "*  util: various helper commands" >&2
   exit 1
@@ -58,22 +56,12 @@ case $1 in
     # Source the .env file to setup environment variables
     set -a
     . "$(dirname -- "$0")/.env"
-    # Start (and remove when done --rm) the openc3-operator container with the current working directory
+    # Start (and remove when done --rm) the openc3-cosmos-cmd-tlm-api container with the current working directory
     # mapped as volume (-v) /openc3/local and container working directory (-w) also set to /openc3/local.
     # This allows tools running in the container to have a consistent path to the current working directory.
     # Run the command "ruby /openc3/bin/openc3cli" with all parameters starting at 2 since the first is 'openc3'
     args=`echo $@ | { read _ args; echo $args; }`
-    # Make sure the network exists
-    (docker network create openc3-cosmos-network || true) &> /dev/null
-    docker run -it --rm --env-file "$(dirname -- "$0")/.env" --user=$OPENC3_USER_ID:$OPENC3_GROUP_ID --network openc3-cosmos-network -v `pwd`:/openc3/local:z -w /openc3/local $OPENC3_REGISTRY/$OPENC3_NAMESPACE/openc3-operator$OPENC3_IMAGE_SUFFIX:$OPENC3_TAG ruby /openc3/bin/openc3cli $args
-    set +a
-    ;;
-  cliroot )
-    set -a
-    . "$(dirname -- "$0")/.env"
-    args=`echo $@ | { read _ args; echo $args; }`
-    (docker network create openc3-cosmos-network || true) &> /dev/null
-    docker run -it --rm --env-file "$(dirname -- "$0")/.env" --user=root --network openc3-cosmos-network -v `pwd`:/openc3/local:z -w /openc3/local $OPENC3_REGISTRY/$OPENC3_NAMESPACE/openc3-operator$OPENC3_IMAGE_SUFFIX:$OPENC3_TAG ruby /openc3/bin/openc3cli $args
+    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" run -it --rm -v `pwd`:/openc3/local:z -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli $args
     set +a
     ;;
   start )
@@ -92,7 +80,8 @@ case $1 in
     ${DOCKER_COMPOSE_COMMAND} -f compose.yaml down -t 30
     ;;
   cleanup )
-    if [ "$2" == "force" ]
+    # They can specify 'cleanup force' or 'cleanup local force'
+    if [ "$2" == "force" ] || [ "$3" == "force" ]
     then
       ${DOCKER_COMPOSE_COMMAND} -f compose.yaml down -t 30 -v
     else
@@ -103,6 +92,12 @@ case $1 in
           No ) exit;;
         esac
       done
+    fi
+    if [ "$2" == "local" ]
+    then
+      cd plugins/DEFAULT
+      ls | grep -xv "README.md" | xargs rm -r
+      cd ../..
     fi
     ;;
   build )
@@ -132,13 +127,10 @@ case $1 in
   run-ubi )
     OPENC3_IMAGE_SUFFIX=-ubi OPENC3_REDIS_VOLUME=/home/data ${DOCKER_COMPOSE_COMMAND} -f compose.yaml up -d
     ;;
-  dev )
-    ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-dev.yaml up -d
-    ;;
   test )
     scripts/linux/openc3_setup.sh
     ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-build.yaml build
-    scripts/linux/openc3_test.sh $2
+    scripts/linux/openc3_test.sh "${@:2}"
     ;;
   util )
     set -a

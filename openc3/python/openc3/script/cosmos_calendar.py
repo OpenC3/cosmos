@@ -20,9 +20,7 @@ from openc3.environment import OPENC3_SCOPE
 
 
 def list_timelines(scope=OPENC3_SCOPE):
-    response = openc3.script.API_SERVER.request(
-        "get", "/openc3-api/timeline", scope=scope
-    )
+    response = openc3.script.API_SERVER.request("get", "/openc3-api/timeline", scope=scope)
     return _handle_response(response, "Failed to list timelines")
 
 
@@ -31,16 +29,12 @@ def create_timeline(name, color=None, scope=OPENC3_SCOPE):
     data["name"] = name
     if color:
         data["color"] = color
-    response = openc3.script.API_SERVER.request(
-        "post", "/openc3-api/timeline", data=data, json=True, scope=scope
-    )
+    response = openc3.script.API_SERVER.request("post", "/openc3-api/timeline", data=data, json=True, scope=scope)
     return _handle_response(response, "Failed to create timeline")
 
 
 def get_timeline(name, scope=OPENC3_SCOPE):
-    response = openc3.script.API_SERVER.request(
-        "get", f"/openc3-api/timeline/{name}", scope=scope
-    )
+    response = openc3.script.API_SERVER.request("get", f"/openc3-api/timeline/{name}", scope=scope)
     return _handle_response(response, "Failed to get timeline")
 
 
@@ -65,14 +59,6 @@ def delete_timeline(name, force=False, scope=OPENC3_SCOPE):
     return _handle_response(response, "Failed to delete timeline")
 
 
-def get_timeline_activities(name, start=None, stop=None, scope=OPENC3_SCOPE):
-    url = f"/openc3-api/timeline/{name}/activities"
-    if start and stop:
-        url += f"?start={start}&stop={stop}"
-    response = openc3.script.API_SERVER.request("get", url, scope=scope)
-    return _handle_response(response, "Failed to get timeline activities")
-
-
 def create_timeline_activity(name, kind, start, stop, data={}, scope=OPENC3_SCOPE):
     kind = kind.lower()
     kinds = ["command", "script", "reserve"]
@@ -93,16 +79,24 @@ def create_timeline_activity(name, kind, start, stop, data={}, scope=OPENC3_SCOP
     return _handle_response(response, "Failed to create timeline activity")
 
 
-def get_timeline_activity(name, start=None, scope=OPENC3_SCOPE):
-    response = openc3.script.API_SERVER.request(
-        "get", f"/openc3-api/timeline/{name}/activity/{start}", scope=scope
-    )
+def get_timeline_activity(name, start, uuid, scope=OPENC3_SCOPE):
+    response = openc3.script.API_SERVER.request("get", f"/openc3-api/timeline/{name}/activity/{start}/{uuid}", scope=scope)
     return _handle_response(response, "Failed to get timeline activity")
 
 
-def delete_timeline_activity(name, start, scope=OPENC3_SCOPE):
+def get_timeline_activities(name, start=None, stop=None, limit=None, scope=OPENC3_SCOPE):
+    url = f"/openc3-api/timeline/{name}/activities"
+    if start and stop:
+        url += f"?start={start}&stop={stop}"
+    if limit:
+        url += f"?limit={limit}"
+    response = openc3.script.API_SERVER.request("get", url, scope=scope)
+    return _handle_response(response, "Failed to get timeline activities")
+
+
+def delete_timeline_activity(name, start, uuid, scope=OPENC3_SCOPE):
     response = openc3.script.API_SERVER.request(
-        "delete", f"/openc3-api/timeline/{name}/activity/{start}", scope=scope
+        "delete", f"/openc3-api/timeline/{name}/activity/{start}/{uuid}", scope=scope
     )
     return _handle_response(response, "Failed to delete timeline activity")
 

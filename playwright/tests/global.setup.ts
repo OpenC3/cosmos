@@ -1,5 +1,5 @@
 /*
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -20,7 +20,7 @@ setup('global setup', async ({ page }) => {
   await page.goto('/tools/cmdtlmserver')
   if (process.env.ENTERPRISE === '1') {
     await page.getByLabel('Username or email').fill('operator')
-    await page.getByLabel('Password').fill('operator')
+    await page.getByLabel('Password', { exact: true }).fill('operator')
     await page.getByRole('button', { name: 'Sign In' }).click()
     await page.waitForURL('**/tools/cmdtlmserver')
     await expect(page.locator('nav:has-text("CmdTlmServer")')).toBeVisible()
@@ -34,11 +34,11 @@ setup('global setup', async ({ page }) => {
     }
 
     // Logout and log back in as admin
-    await page.getByRole('button', { name: 'The Operator' }).click()
+    await page.getByText('The Operator', { exact: true }).click()
     await page.getByRole('button', { name: 'Logout' }).click()
     await page.waitForURL('**/auth/**')
     await page.getByLabel('Username or email').fill('admin')
-    await page.getByLabel('Password').fill('admin')
+    await page.getByLabel('Password', { exact: true }).fill('admin')
     await page.getByRole('button', { name: 'Sign In' }).click()
     await page.waitForURL('**/tools/cmdtlmserver')
     await expect(page.locator('nav:has-text("CmdTlmServer")')).toBeVisible()
@@ -57,11 +57,11 @@ setup('global setup', async ({ page }) => {
       }
     }
     if (await page.getByText('Enter the password').isVisible()) {
-      await page.fill('data-test=new-password', 'password')
+      await page.getByLabel('Password').fill('password')
       await page.locator('button:has-text("Login")').click()
     } else {
-      await page.fill('data-test=new-password', 'password')
-      await page.fill('data-test=confirm-password', 'password')
+      await page.getByLabel('New Password').fill('password')
+      await page.getByLabel('Confirm Password').fill('password')
       await page.click('data-test=set-password')
     }
     await new Promise((resolve) => setTimeout(resolve, 500))

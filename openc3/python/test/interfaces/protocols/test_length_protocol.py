@@ -61,13 +61,9 @@ class TestLengthProtocol(unittest.TestCase):
         self.assertEqual(self.interface.read_protocols[0].length_bit_size, 32)
         self.assertEqual(self.interface.read_protocols[0].length_value_offset, 16)
         self.assertEqual(self.interface.read_protocols[0].length_bytes_per_count, 2)
-        self.assertEqual(
-            self.interface.read_protocols[0].length_endianness, "LITTLE_ENDIAN"
-        )
+        self.assertEqual(self.interface.read_protocols[0].length_endianness, "LITTLE_ENDIAN")
         self.assertEqual(self.interface.read_protocols[0].discard_leading_bytes, 2)
-        self.assertEqual(
-            self.interface.read_protocols[0].sync_pattern, b"\xDE\xAD\xBE\xEF"
-        )
+        self.assertEqual(self.interface.read_protocols[0].sync_pattern, b"\xDE\xAD\xBE\xEF")
         self.assertEqual(self.interface.read_protocols[0].max_length, 100)
         self.assertTrue(self.interface.read_protocols[0].fill_fields)
 
@@ -95,12 +91,8 @@ class TestLengthProtocol(unittest.TestCase):
             self.interface.read_protocols[0].read_data(b"\x03\x01\x02\x03\x04\x05"),
             (b"\x03\x01\x02", None),
         )
-        self.assertEqual(
-            self.interface.read_protocols[0].read_data(b""), (b"\x03\x04\x05", None)
-        )
-        self.assertEqual(
-            self.interface.read_protocols[0].read_data(b""), ("STOP", None)
-        )
+        self.assertEqual(self.interface.read_protocols[0].read_data(b""), (b"\x03\x04\x05", None))
+        self.assertEqual(self.interface.read_protocols[0].read_data(b""), ("STOP", None))
 
     # This test match uses two length protocols to verify that data flows correctly between the two protocols and that earlier data
     # is removed correctly using discard leading bytes.  In general it is not typical to use two different length protocols, but it could
@@ -239,9 +231,7 @@ class TestLengthProtocol(unittest.TestCase):
             "READ_WRITE",
         )
         TestLengthProtocol.buffer = b"\x00\x01\x00\x00\x03\x04\x05\x06\x07\x08\x09"
-        with self.assertRaisesRegex(
-            AttributeError, "Calculated packet length of 0 bits"
-        ):
+        with self.assertRaisesRegex(ValueError, "Calculated packet length of 0 bits"):
             self.interface.read()
 
     def test_raises_an_error_if_packet_length_not_enough_to_support_offset_and_size(
@@ -260,9 +250,7 @@ class TestLengthProtocol(unittest.TestCase):
             "READ_WRITE",
         )
         TestLengthProtocol.buffer = b"\x00\x01\x00\x00\x03\x04\x05\x06\x07\x08\x09"
-        with self.assertRaisesRegex(
-            AttributeError, "Calculated packet length of 24 bits"
-        ):
+        with self.assertRaisesRegex(ValueError, "Calculated packet length of 24 bits"):
             self.interface.read()
 
     def test_processes_a_0_length_with_a_non_zero_length_offset(self):
@@ -301,9 +289,7 @@ class TestLengthProtocol(unittest.TestCase):
             "READ_WRITE",
         )  # max_length
         TestLengthProtocol.buffer = b"\x00\x01\xFF\xFF\x03\x04"
-        with self.assertRaisesRegex(
-            AttributeError, "Length value received larger than max_length= 65535 > 50"
-        ):
+        with self.assertRaisesRegex(ValueError, "Length value received larger than max_length= 65535 > 50"):
             self.interface.read()
 
     def test_handles_a_sync_value_in_the_packet(self):
@@ -340,9 +326,7 @@ class TestLengthProtocol(unittest.TestCase):
             ],
             "READ_WRITE",
         )  # sync
-        TestLengthProtocol.buffer = (
-            b"\x00\xDE\xAD\x00\x08\x01\x02\x03\x04\x05\x06\x07\x08"
-        )
+        TestLengthProtocol.buffer = b"\x00\xDE\xAD\x00\x08\x01\x02\x03\x04\x05\x06\x07\x08"
         packet = self.interface.read()
         self.assertEqual(packet.buffer, b"\x00\x08\x01\x02\x03\x04")
 
@@ -380,9 +364,7 @@ class TestLengthProtocol(unittest.TestCase):
             ],
             "READ_WRITE",
         )  # sync
-        TestLengthProtocol.buffer = (
-            b"\x00\xDE\xAD\x0A\x00\x01\x02\x03\x04\x05\x06\x07\x08"
-        )
+        TestLengthProtocol.buffer = b"\x00\xDE\xAD\x0A\x00\x01\x02\x03\x04\x05\x06\x07\x08"
         packet = self.interface.read()
         self.assertEqual(packet.buffer, b"\x01\x02\x03\x04\x05\x06")
 
@@ -428,7 +410,7 @@ class TestLengthProtocol(unittest.TestCase):
         packet = Packet(None, None)
         packet.buffer = b"\x01\x02\x03\x04"
         # 4 bytes are not enough since we expect the length field at offset 32
-        with self.assertRaisesRegex(AttributeError, "buffer insufficient"):
+        with self.assertRaisesRegex(ValueError, "buffer insufficient"):
             self.interface.write(packet)
 
     def test_write_adjusts_length_by_offset(self):
@@ -522,9 +504,7 @@ class TestLengthProtocol(unittest.TestCase):
         )  # fill fields
         packet = Packet(None, None)
         packet.buffer = b"\x01\x02\x03\x04\x05\x06"
-        with self.assertRaisesRegex(
-            AttributeError, "Calculated length 6 larger than max_length 4"
-        ):
+        with self.assertRaisesRegex(ValueError, "Calculated length 6 larger than max_length 4"):
             packet = self.interface.write(packet)
 
     def test_validates_length_against_the_maximum_length_2(self):
@@ -547,9 +527,7 @@ class TestLengthProtocol(unittest.TestCase):
         )  # fill fields
         packet = Packet(None, None)
         packet.buffer = b"\x01\x02\x03\x04\x05\x06"
-        with self.assertRaisesRegex(
-            AttributeError, "Calculated length 8 larger than max_length 4"
-        ):
+        with self.assertRaisesRegex(ValueError, "Calculated length 8 larger than max_length 4"):
             packet = self.interface.write(packet)
 
     def test_inserts_the_sync_and_length_fields_into_the_packet_1(self):
@@ -594,9 +572,7 @@ class TestLengthProtocol(unittest.TestCase):
         )
         packet = Packet(None, None)
         # The packet buffer contains the sync and length fields which are overwritten by the write call
-        packet.buffer = (
-            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x02\x03\x04"
-        )
+        packet.buffer = b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x02\x03\x04"
         self.interface.write(packet)
         # Since we discarded 0 leading bytes, they are simply written over by the write call
         self.assertEqual(
@@ -652,9 +628,7 @@ class TestLengthProtocol(unittest.TestCase):
         packet.buffer = b"\x01\x02\x03\x04\x05\x06"
         self.interface.write(packet)
         self.assertEqual(packet.buffer, b"\x00\x0A\x03\x04\x05\x06")
-        self.assertEqual(
-            TestLengthProtocol.buffer, b"\xBA\x5E\xBA\x11\x00\x0A\x03\x04\x05\x06"
-        )
+        self.assertEqual(TestLengthProtocol.buffer, b"\xBA\x5E\xBA\x11\x00\x0A\x03\x04\x05\x06")
 
     def test_inserts_the_length_field_into_the_packet_and_sync_into_data_stream_3(self):
         self.interface.stream = TestLengthProtocol.LengthStream()
@@ -754,9 +728,7 @@ class TestLengthProtocol(unittest.TestCase):
         packet.buffer = b"\x01\x02\x03\x04\x05\x06"
         self.interface.write(packet)
         self.assertEqual(packet.buffer, b"\x01\x02\x03\x04\x05\x06")
-        self.assertEqual(
-            TestLengthProtocol.buffer, b"\xDE\xAD\x0A\x00\x01\x02\x03\x04\x05\x06"
-        )
+        self.assertEqual(TestLengthProtocol.buffer, b"\xDE\xAD\x0A\x00\x01\x02\x03\x04\x05\x06")
 
     def test_inserts_the_sync_and_length_fields_into_the_data_stream_2(self):
         TestLengthProtocol.buffer = ""
@@ -780,6 +752,4 @@ class TestLengthProtocol(unittest.TestCase):
         packet.buffer = b"\x01\x02\x03\x04"
         self.interface.write(packet)
         self.assertEqual(packet.buffer, b"\x01\x02\x03\x04")
-        self.assertEqual(
-            TestLengthProtocol.buffer, b"\xBA\x5E\xBA\x11\x09\x01\x02\x03\x04"
-        )
+        self.assertEqual(TestLengthProtocol.buffer, b"\xBA\x5E\xBA\x11\x09\x01\x02\x03\x04")

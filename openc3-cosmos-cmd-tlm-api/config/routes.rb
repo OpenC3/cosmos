@@ -70,11 +70,6 @@ Rails.application.routes.draw do
     match '/scopes/:id', to: 'scopes#update', id: /[^\/]+/, via: [:patch, :put]
     delete '/scopes/:id', to: 'scopes#destroy', id: /[^\/]+/
 
-    resources :roles, only: [:index, :create]
-    get '/roles/:id', to: 'roles#show', id: /[^\/]+/
-    match '/roles/:id', to: 'roles#update', id: /[^\/]+/, via: [:patch, :put]
-    delete '/roles/:id', to: 'roles#destroy', id: /[^\/]+/
-
     resources :widgets, only: [:index, :create]
     get '/widgets/:id', to: 'widgets#show', id: /[^\/]+/
     match '/widgets/:id', to: 'widgets#update', id: /[^\/]+/, via: [:patch, :put]
@@ -94,6 +89,7 @@ Rails.application.routes.draw do
     resources :timeline, only: [:index, :create]
     get '/timeline/:name', to: 'timeline#show', name: /[^\/]+/
     post '/timeline/:name/color', to: 'timeline#color', name: /[^\/]+/
+    post '/timeline/:name/execute', to: 'timeline#execute', name: /[^\/]+/
     delete '/timeline/:name', to: 'timeline#destroy', name: /[^\/]+/
 
     post '/timeline/activities/create', to: 'activity#multi_create'
@@ -102,10 +98,11 @@ Rails.application.routes.draw do
     get '/timeline/:name/count', to: 'activity#count', name: /[^\/]+/
     get '/timeline/:name/activities', to: 'activity#index', name: /[^\/]+/
     post '/timeline/:name/activities', to: 'activity#create', name: /[^\/]+/
-    get '/timeline/:name/activity/:id', to: 'activity#show', name: /[^\/]+/, id: /[^\/]+/
-    post '/timeline/:name/activity/:id', to: 'activity#event', name: /[^\/]+/, id: /[^\/]+/
-    match '/timeline/:name/activity/:id', to: 'activity#update', name: /[^\/]+/, id: /[^\/]+/, via: [:patch, :put]
-    delete '/timeline/:name/activity/:id', to: 'activity#destroy', name: /[^\/]+/, id: /[^\/]+/
+    get '/timeline/:name/activity/:id(/:uuid)', to: 'activity#show', name: /[^\/]+/, id: /[^\/]+/, uuid: /[^\/]+/
+    post '/timeline/:name/activity/:id(/:uuid)', to: 'activity#event', name: /[^\/]+/, id: /[^\/]+/, uuid: /[^\/]+/
+    match '/timeline/:name/activity/:id(/:uuid)', to: 'activity#update', name: /[^\/]+/, id: /[^\/]+/, uuid: /[^\/]+/, via: [:patch, :put]
+    # NOTE: uuid is new as of 5.19.0
+    delete '/timeline/:name/activity/:id(/:uuid)', to: 'activity#destroy', name: /[^\/]+/, id: /[^\/]+/, uuid: /[^\/]+/
 
     get '/autonomic/group', to: 'trigger_group#index'
     post '/autonomic/group', to: 'trigger_group#create'
@@ -130,6 +127,13 @@ Rails.application.routes.draw do
     match '/autonomic/reaction/:name', to: 'reaction#update', name: /[^\/]+/, via: [:patch, :put]
     delete '/autonomic/reaction/:name', to: 'reaction#destroy', name: /[^\/]+/
 
+    get '/notes', to: 'notes#index'
+    post '/notes', to: 'notes#create'
+    # get '/note/_search', to: 'note#search'
+    get '/notes/:id', to: 'notes#show', id: /[^\/]+/
+    match '/notes/:id', to: 'notes#update', id: /[^\/]+/, via: [:patch, :put]
+    delete '/notes/:id', to: 'notes#destroy', id: /[^\/]+/
+
     get '/metadata', to: 'metadata#index'
     post '/metadata', to: 'metadata#create'
     get '/metadata/latest', to: 'metadata#latest', name: /[^\/]+/
@@ -137,13 +141,6 @@ Rails.application.routes.draw do
     get '/metadata/:id', to: 'metadata#show', id: /[^\/]+/
     match '/metadata/:id', to: 'metadata#update', id: /[^\/]+/, via: [:patch, :put]
     delete '/metadata/:id', to: 'metadata#destroy', id: /[^\/]+/
-
-    get '/notes', to: 'notes#index'
-    post '/notes', to: 'notes#create'
-    # get '/note/_search', to: 'note#search'
-    get '/notes/:id', to: 'notes#show', id: /[^\/]+/
-    match '/notes/:id', to: 'notes#update', id: /[^\/]+/, via: [:patch, :put]
-    delete '/notes/:id', to: 'notes#destroy', id: /[^\/]+/
 
     get '/autocomplete/reserved-item-names', to: 'script_autocomplete#reserved_item_names'
     get '/autocomplete/keywords/:type', to: 'script_autocomplete#keywords', type: /[^\/]+/
@@ -186,6 +183,10 @@ Rails.application.routes.draw do
     post "/secrets/:key", to: "secrets#create", key: /[^\/]+/
     delete '/secrets/:key', to: 'secrets#destroy', key: /[^\/]+/
 
+    # This route handles all the JSON DRB requests
+    # It gets routed to the api_controller.rb api method which
+    # ultimately calls OpenC3::Cts.instance.json_drb.process_request
+    # to do the remote procedure call
     post "/api" => "api#api"
     get "/ping" => "api#ping"
 
@@ -193,20 +194,40 @@ Rails.application.routes.draw do
     post "/auth/verify" => "auth#verify"
     post "/auth/set" => "auth#set"
 
-    get "/users/active" => "users#active"
-    match "/users/logout/:user", to: "users#logout", id: /[^\/]+/, via: [:patch, :put]
-
-    get "/info" => "info#info"
-
     get "/internal/health" => "internal_health#health"
     get "/internal/metrics" => "internal_metrics#index"
     get "/internal/status" => "internal_status#status"
 
+    get "/news" => "news#index"
     get "/time" => "time#get_current"
     get "map.json" => "tools#importmap"
     get "auth.js" => "tools#auth"
     get "/traefik" => "microservices#traefik"
 
     post "/redis/exec" => "redis#execute_raw"
+
+    ##########################
+    # COSMOS Enterprise Routes
+    ##########################
+    get "/users/active" => "users#active"
+    match "/users/logout/:user", to: "users#logout", id: /[^\/]+/, via: [:patch, :put]
+
+    get "/info" => "info#info"
+
+    resources :roles, only: [:index, :create]
+    get '/roles/:id', to: 'roles#show', id: /[^\/]+/
+    match '/roles/:id', to: 'roles#update', id: /[^\/]+/, via: [:patch, :put]
+    delete '/roles/:id', to: 'roles#destroy', id: /[^\/]+/
+
+    get '/cmdauth', to: 'cmd_authority#index'
+    post '/cmdauth/take', to: 'cmd_authority#take'
+    post '/cmdauth/release', to: 'cmd_authority#release'
+    post '/cmdauth/take-all', to: 'cmd_authority#take_all'
+    post '/cmdauth/release-all', to: 'cmd_authority#release_all'
+
+    get '/criticalcmd/status/:id', to: 'critical_cmd#status'
+    post '/criticalcmd/approve/:id', to: 'critical_cmd#approve'
+    post '/criticalcmd/reject/:id', to: 'critical_cmd#reject'
+    get '/criticalcmd/canapprove/:id', to: 'critical_cmd#canapprove'
   end
 end

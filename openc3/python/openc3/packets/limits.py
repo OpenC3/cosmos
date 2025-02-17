@@ -38,14 +38,6 @@ class Limits:
     def sets(self):
         return self.config.limits_sets
 
-    # (see OpenC3::Packet#out_of_limits)
-    def out_of_limits(self):
-        items = []
-        for _, target_packets in self.config.telemetry:
-            for _, packet in target_packets:
-                items += packet.out_of_limits()
-        return items
-
     # @return [Hash(String, Array)] The defined limits groups
     def groups(self):
         return self.config.limits_groups
@@ -56,11 +48,7 @@ class Limits:
     # @param packet_name [String] The packet name. Must be a defined packet name and not 'LATEST'.
     # @param item_name [String] The item name
     def enabled(self, target_name, packet_name, item_name):
-        return (
-            self._get_packet(target_name, packet_name)
-            .get_item(item_name)
-            .limits.enabled
-        )
+        return self._get_packet(target_name, packet_name).get_item(item_name).limits.enabled
 
     # Enables limit checking for the specified item
     #
@@ -87,9 +75,14 @@ class Limits:
             if limits_set:
                 limits_set = str(limits_set).upper()
             else:
-                limits_set = self.system.limits_set
+                limits_set = self.system.limits_set()
             limits_for_set = limits.values.get(limits_set)
             if limits_for_set is not None:
+                gl = None
+                gh = None
+                if len(limits_for_set) > 4:
+                    gl = limits_for_set[4]
+                    gh = limits_for_set[5]
                 return [
                     limits_set,
                     limits.persistence_setting,
@@ -98,8 +91,7 @@ class Limits:
                     limits_for_set[1],
                     limits_for_set[2],
                     limits_for_set[3],
-                    limits_for_set[4],
-                    limits_for_set[5],
+                    gl, gh,
                 ]
             else:
                 return [None, None, None, None, None, None, None, None, None]
@@ -142,7 +134,7 @@ class Limits:
         if limits_set:
             limits_set = str(limits_set).upper()
         else:
-            limits_set = self.system.limits_set
+            limits_set = self.system.limits_set()
         if limits.values is None:
             if limits_set == "DEFAULT":
                 limits.values = {"DEFAULT": []}
@@ -163,6 +155,9 @@ class Limits:
         if green_low and green_high:
             limits_for_set[4] = float(green_low)
             limits_for_set[5] = float(green_high)
+        else:
+            limits_for_set[4] = None
+            limits_for_set[5] = None
         if enabled is not None:
             limits.enabled = enabled
         if persistence is not None:
@@ -188,14 +183,10 @@ class Limits:
 
         packets = self.config.telemetry.get(target_name.upper())
         if packets is None:
-            raise RuntimeError(
-                f"Telemetry target '{target_name.upper()}' does not exist"
-            )
+            raise RuntimeError(f"Telemetry target '{target_name.upper()}' does not exist")
 
         packet = packets.get(packet_name.upper())
         if packet is None:
-            raise RuntimeError(
-                f"Telemetry packet '{target_name.upper()} { packet_name.upper()}' does not exist"
-            )
+            raise RuntimeError(f"Telemetry packet '{target_name.upper()} { packet_name.upper()}' does not exist")
 
         return packet

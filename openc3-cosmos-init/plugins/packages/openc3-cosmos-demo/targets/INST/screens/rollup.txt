@@ -1,0 +1,29 @@
+SCREEN AUTO AUTO 1.0
+
+HORIZONTAL
+  ROLLUP antenna "GND 1" "transmitter"
+    SETTING SCREEN <%= target_name %> GROUND
+    SETTING TLM <%= target_name %> HEALTH_STATUS GROUND1STATUS
+  ROLLUP netcom "Network"
+    SETTING SCREEN <%= target_name %> GROUND
+    SETTING TLM <%= target_name %> HEALTH_STATUS GROUND2STATUS
+  ROLLUP thermal "TEMP1"
+    SETTING SCREEN <%= target_name %> LIMITS
+    SETTING TLM <%= target_name %> HEALTH_STATUS TEMP1
+  ROLLUP equipment "Processor" "CPU"
+    # No SCREEN should display without pointer cursor
+    SETTING TLM <%= target_name %> HEALTH_STATUS TEMP4
+  ROLLUP satellite-transmit "Satellite" "all temps"
+    SETTING SCREEN <%= target_name %> HS
+    SETTING TLM <%= target_name %> HEALTH_STATUS TEMP1
+    SETTING TLM <%= target_name %> HEALTH_STATUS TEMP2
+    SETTING TLM <%= target_name %> HEALTH_STATUS TEMP3
+    SETTING TLM <%= target_name %> HEALTH_STATUS TEMP4
+END
+
+HORIZONTAL
+  LABELVALUE <%= target_name %> HEALTH_STATUS TEMP1
+  SIGNAL <%= target_name %> HEALTH_STATUS TEMP1
+    SETTING VALUES -50 0 50
+    SETTING SCREEN <%= target_name %> HS
+END

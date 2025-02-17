@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -31,6 +31,7 @@ require 'openc3/utilities/local_mode'
 require 'openc3/utilities/bucket'
 require 'openc3/utilities/zip'
 require 'fileutils'
+require 'ostruct'
 require 'tmpdir'
 
 module OpenC3
@@ -79,6 +80,7 @@ module OpenC3
     attr_accessor :target_microservices
     attr_accessor :children
     attr_accessor :disable_erb
+    attr_accessor :shard
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -108,7 +110,7 @@ module OpenC3
         modified_targets = Bucket.getClient().list_files(bucket: ENV['OPENC3_CONFIG_BUCKET'], path: "DEFAULT/targets_modified/", only_directories: true)
         modified_targets.each do |target_name|
           # A target could have been deleted without removing the modified files
-          # Thus we have to check for the existance of the target_name key
+          # Thus we have to check for the existence of the target_name key
           if targets.has_key?(target_name)
             targets[target_name]['modified'] = true
           end
@@ -249,7 +251,7 @@ module OpenC3
         (items - found_items).each do |item|
           not_found << "'#{target_name} #{packet_name} #{item}'"
         end
-        # 'does not exist' not gramatically correct but we use it in every other exception
+        # 'does not exist' not grammatically correct but we use it in every other exception
         raise "Item(s) #{not_found.join(', ')} does not exist"
       end
       found
@@ -338,12 +340,13 @@ module OpenC3
       reduced_minute_log_retain_time: nil,
       reduced_hour_log_retain_time: nil,
       reduced_day_log_retain_time: nil,
-      cleanup_poll_time: 900,
+      cleanup_poll_time: 600,
       needs_dependencies: false,
       target_microservices: {'REDUCER' => [[]]},
       reducer_disable: false,
       reducer_max_cpu_utilization: 30.0,
       disable_erb: nil,
+      shard: 0,
       scope:
     )
       super("#{scope}__#{PRIMARY_KEY}", name: name, plugin: plugin, updated_at: updated_at,
@@ -392,6 +395,7 @@ module OpenC3
       @reducer_disable = reducer_disable
       @reducer_max_cpu_utilization = reducer_max_cpu_utilization
       @disable_erb = disable_erb
+      @shard = shard.to_i # to_i to handle nil
       @bucket = Bucket.getClient()
       @children = []
     end
@@ -405,7 +409,7 @@ module OpenC3
         'ignored_items' => @ignored_items,
         'limits_groups' => @limits_groups,
         'cmd_tlm_files' => @cmd_tlm_files,
-        'cmd_unique_id_mode' => cmd_unique_id_mode,
+        'cmd_unique_id_mode' => @cmd_unique_id_mode,
         'tlm_unique_id_mode' => @tlm_unique_id_mode,
         'id' => @id,
         'updated_at' => @updated_at,
@@ -432,7 +436,8 @@ module OpenC3
         'target_microservices' => @target_microservices.as_json(:allow_nan => true),
         'reducer_disable' => @reducer_disable,
         'reducer_max_cpu_utilization' => @reducer_max_cpu_utilization,
-        'disable_erb' => @disable_erb
+        'disable_erb' => @disable_erb,
+        'shard' => @shard,
       }
     end
 
@@ -547,6 +552,10 @@ module OpenC3
         if parameters
           @disable_erb.concat(parameters)
         end
+      when 'SHARD'
+        parser.verify_num_parameters(1, 1, "#{keyword} <Shard Number Starting from 0>")
+        @shard = Integer(parameters[0])
+
       else
         raise ConfigParser::Error.new(parser, "Unknown keyword and parameters for Target: #{keyword} #{parameters.join(" ")}")
       end
@@ -659,7 +668,10 @@ module OpenC3
       Store.del(item_map_key)
       @@item_map_cache[@name] = nil
 
-      ConfigTopic.write({ kind: 'deleted', type: 'target', name: @name, plugin: @plugin }, scope: @scope)
+      topic = { kind: 'deleted', type: 'target', name: @name }
+      # The UNKNOWN target doesn't have an associated plugin
+      topic[:plugin] = @plugin if @plugin
+      ConfigTopic.write(topic, scope: @scope)
     rescue Exception => e
       Logger.error("Error undeploying target model #{@name} in scope #{@scope} due to #{e}")
     end
@@ -753,7 +765,7 @@ module OpenC3
       packet_hash.each do |target_name, packets|
         Store.del("#{@scope}__openc3tlm__#{target_name}") if clear_old
         packets.each do |packet_name, packet|
-          Logger.info "Configuring tlm packet: #{target_name} #{packet_name}"
+          Logger.debug "Configuring tlm packet: #{target_name} #{packet_name}"
           begin
             Store.hset("#{@scope}__openc3tlm__#{target_name}", packet_name, JSON.generate(packet.as_json(:allow_nan => true)))
           rescue JSON::GeneratorError => e
@@ -773,7 +785,7 @@ module OpenC3
       packet_hash.each do |target_name, packets|
         Store.del("#{@scope}__openc3cmd__#{target_name}") if clear_old
         packets.each do |packet_name, packet|
-          Logger.info "Configuring cmd packet: #{target_name} #{packet_name}"
+          Logger.debug "Configuring cmd packet: #{target_name} #{packet_name}"
           begin
             Store.hset("#{@scope}__openc3cmd__#{target_name}", packet_name, JSON.generate(packet.as_json(:allow_nan => true)))
           rescue JSON::GeneratorError => e
@@ -918,6 +930,7 @@ module OpenC3
         plugin: @plugin,
         parent: parent,
         needs_dependencies: @needs_dependencies,
+        shard: @shard,
         scope: @scope
       )
       microservice.create
@@ -944,6 +957,7 @@ module OpenC3
         plugin: @plugin,
         parent: parent,
         needs_dependencies: @needs_dependencies,
+        shard: @shard,
         scope: @scope
       )
       microservice.create
@@ -970,6 +984,7 @@ module OpenC3
         plugin: @plugin,
         parent: parent,
         needs_dependencies: @needs_dependencies,
+        shard: @shard,
         scope: @scope
       )
       microservice.create
@@ -996,6 +1011,7 @@ module OpenC3
         plugin: @plugin,
         parent: parent,
         needs_dependencies: @needs_dependencies,
+        shard: @shard,
         scope: @scope
       )
       microservice.create
@@ -1024,6 +1040,7 @@ module OpenC3
         plugin: @plugin,
         parent: parent,
         needs_dependencies: @needs_dependencies,
+        shard: @shard,
         scope: @scope
       )
       microservice.create
@@ -1047,6 +1064,7 @@ module OpenC3
         plugin: @plugin,
         parent: parent,
         needs_dependencies: @needs_dependencies,
+        shard: @shard,
         scope: @scope
       )
       microservice.create
@@ -1063,6 +1081,7 @@ module OpenC3
         work_dir: '/openc3/lib/openc3/microservices',
         plugin: @plugin,
         parent: parent,
+        shard: @shard,
         scope: @scope
       )
       microservice.create
@@ -1080,6 +1099,7 @@ module OpenC3
           work_dir: '/openc3/lib/openc3/microservices',
           plugin: @plugin,
           needs_dependencies: @needs_dependencies,
+          shard: @shard,
           scope: @scope
         )
         microservice.create
@@ -1117,7 +1137,7 @@ module OpenC3
             end
           end
           # If there are any topics (packets) left over that haven't been
-          # explictly handled above, spawn another microservice
+          # explicitly handled above, spawn another microservice
           if all_topics.length > 0
             instance = nil
             instance = deploy_count unless deploy_count == 0

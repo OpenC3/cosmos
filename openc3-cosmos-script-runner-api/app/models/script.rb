@@ -115,7 +115,11 @@ class Script < OpenC3::TargetFile
         if ENV['OPENC3_SERVICE_PASSWORD']
           process.environment['OPENC3_API_PASSWORD'] = ENV['OPENC3_SERVICE_PASSWORD']
         else
-          raise "No authentication available for script"
+          # The viewer user doesn't have an offline access token (because they can't run scripts)
+          # but they still want to be able to view suite files
+          # Since processing a suite file requires running it they won't get the Suite chrome
+          # so return nothing here and allow Script Runner to simply view the suite file
+          return '', '', false
         end
       end
       process.environment['GEM_HOME'] = ENV['GEM_HOME']
@@ -196,9 +200,10 @@ class Script < OpenC3::TargetFile
     suite_runner = nil,
     disconnect = false,
     environment = nil,
-    username: ''
+    user_full_name = nil,
+    username = nil
   )
-    RunningScript.spawn(scope, name, suite_runner, disconnect, environment, username: username)
+    RunningScript.spawn(scope, name, suite_runner, disconnect, environment, user_full_name, username)
   end
 
   def self.instrumented(filename, text)
@@ -279,6 +284,11 @@ class Script < OpenC3::TargetFile
   end
 
   def self.syntax(filename, text)
+    if text.nil?
+      return(
+        { 'title' => 'Syntax Check Failed', 'description' => 'no text passed' }
+      )
+    end
     language = detect_language(text, filename)
     if language == 'ruby'
       check_process = IO.popen('ruby -c -rubygems 2>&1', 'r+')
@@ -315,10 +325,10 @@ class Script < OpenC3::TargetFile
       # Python
       tf = nil
       begin
-        tf = Tempfile.new("test_script.py")
+        tf = Tempfile.new((['syntax', '.py']))
         tf.write(text)
-        tf.close
-        results, _ = Open3.capture2e("python -m py_compile #{tf.path}")
+        tf.close()
+        results, status = Open3.capture2e("python -m py_compile #{tf.path}")
         lines = []
         if results and results.length > 0
           results.each_line do |line|

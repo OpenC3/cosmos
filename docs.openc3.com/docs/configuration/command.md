@@ -1,13 +1,16 @@
 ---
 sidebar_position: 4
 title: Commands
+description: Command definition file format and keywords
+sidebar_custom_props:
+  myEmoji: 📡
 ---
 
 <!-- Be sure to edit _command.md because command.md is a generated file -->
 
 ## Command Definition Files
 
-Command definition files define the command packets that can be sent to COSMOS targets. One large file can be used to define the command packets, or multiple files can be used at the user's discretion. Command definition files are placed in the target's cmd_tlm directory and are processed alphabetically. Therefore if you have some command files that depend on others, e.g. they override or extend existing commands, they must be named last. The easist way to do this is to add an extension to an existing file name. For example, if you already have cmd.txt you can create cmd_override.txt for commands that depends on the definitions in cmd.txt. Also note that due to the way the [ASCII Table](http://www.asciitable.com/) is structured, files beginning with capital letters are processed before lower case letters.
+Command definition files define the command packets that can be sent to COSMOS targets. One large file can be used to define the command packets, or multiple files can be used at the user's discretion. Command definition files are placed in the target's cmd_tlm directory and are processed alphabetically. Therefore if you have some command files that depend on others, e.g. they override or extend existing commands, they must be named last. The easiest way to do this is to add an extension to an existing file name. For example, if you already have cmd.txt you can create cmd_override.txt for commands that depends on the definitions in cmd.txt. Also note that due to the way the [ASCII Table](http://www.asciitable.com/) is structured, files beginning with capital letters are processed before lower case letters.
 
 When defining command parameters you can choose from the following data types: INT, UINT, FLOAT, STRING, BLOCK. These correspond to integers, unsigned integers, floating point numbers, strings and binary blocks of data. The only difference between a STRING and BLOCK is when COSMOS reads the binary command log it stops reading a STRING type when it encounters a null byte (0). This shows up in the text log produced by Data Extractor. Note that this does NOT affect the data COSMOS writes as it's still legal to pass null bytes (0) in STRING parameters.
 
@@ -125,13 +128,13 @@ META TEST "This parameter is for test purposes only"
 #### OVERLAP
 <div class="right">(Since 4.4.1)</div>**This item is allowed to overlap other items in the packet**
 
-If an item's bit offset overlaps another item, OpenC3 issues a warning. This keyword explicitly allows an item to overlap another and supresses the warning message.
+If an item's bit offset overlaps another item, OpenC3 issues a warning. This keyword explicitly allows an item to overlap another and suppresses the warning message.
 
 
 #### KEY
 <div class="right">(Since 5.0.10)</div>**Defines the key used to access this raw value in the packet.**
 
-Keys are often JsonPath or XPath strings
+Keys are often [JSONPath](https://en.wikipedia.org/wiki/JSONPath) or [XPath](https://en.wikipedia.org/wiki/XPath) strings
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -141,6 +144,15 @@ Example Usage:
 ```ruby
 KEY $.book.title
 ```
+
+#### VARIABLE_BIT_SIZE
+<div class="right">(Since 5.18.0)</div>**Marks an item as having its bit size defined by another length item**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Length Item Name | The name of the associated length item | True |
+| Length Bits Per Count | Bits per count of the length item. Defaults to 8 | False |
+| Length Value Bit Offset | Offset in Bits to Apply to Length Field Value. Defaults to 0 | False |
 
 #### REQUIRED
 **Parameter is required to be populated in scripts**
@@ -195,12 +207,23 @@ APPEND_PARAMETER STRING 1024 STRING "NOOP" "String parameter"
 #### WRITE_CONVERSION
 **Applies a conversion when writing the current command parameter**
 
-Conversions are implemented in a custom Ruby file which should be
-located in the target's lib folder. The class must require 'openc3/conversions/conversion'
-and inherit from Conversion. It must implement the initialize method if it
-takes extra parameters and must always implement the call method. The conversion
+Conversions are implemented in a custom Ruby or Python file which should be
+located in the target's lib folder. The class must inherit from Conversion.
+It must implement the `initialize` (Ruby) or `__init__` (Python) method if it
+takes extra parameters and must always implement the `call` method. The conversion
 factor is applied to the value entered by the user before it is written into
 the binary command packet and sent.
+
+When applying a write_conversion sometimes the data type changes,
+e.g. creating a UINT from an input STRING (for an example of this see
+[ip_write_conversion.rb](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/conversions/ip_write_conversion.rb)
+or [ip_write_conversion.py](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/conversions/ip_write_conversion.py)).
+In this case, the command definition data type is UINT and the min, max values don't matter
+(but must be given) so are typically set to MIN MAX. The default value is important
+and should be specified as a string. For a full example see the IP_ADDRESS parameter
+in the TIME_OFFSET command definition of the COSMOS Demo
+[INST inst_cmds.txt](https://github.com/OpenC3/cosmos/blob/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/targets/INST/cmd_tlm/inst_cmds.txt)
+or [INST2 inst_cmds.txt](https://github.com/OpenC3/cosmos/blob/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/targets/INST2/cmd_tlm/inst_cmds.txt).
 
 :::info Multiple write conversions on command parameters
 When a command is built, each item gets written (and write conversions are run)
@@ -214,10 +237,10 @@ values to the command. That can be used to check parameter values passed in.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Class Filename | The filename which contains the Ruby class. The filename must be named after the class such that the class is a CamelCase version of the underscored filename. For example, 'the_great_conversion.rb' should contain 'class TheGreatConversion'. | True |
+| Class Filename | The filename which contains the Ruby or Python class. The filename must be named after the class such that the class is a CamelCase version of the underscored filename. For example, 'the_great_conversion.rb' should contain 'class TheGreatConversion'. | True |
 | Parameter | Additional parameter values for the conversion which are passed to the class constructor. | False |
 
-Example Usage:
+Ruby Example:
 ```ruby
 WRITE_CONVERSION the_great_conversion.rb 1000
 
@@ -235,6 +258,21 @@ module OpenC3
     end
   end
 end
+```
+
+Python Example:
+```python
+WRITE_CONVERSION the_great_conversion.py 1000
+
+Defined in the_great_conversion.py:
+
+from openc3.conversions.conversion import Conversion
+class TheGreatConversion(Conversion):
+    def __init__(self, multiplier):
+        super().__init__()
+        self.multiplier = float(multiplier)
+    def call(self, value, packet, buffer):
+        return value * self.multiplier
 ```
 
 #### POLY_WRITE_CONVERSION
@@ -276,12 +314,12 @@ SEG_POLY_WRITE_CONVERSION 100 12 0.5 0.3 # Apply the conversion to all values >=
 Adds a generic conversion function to the current command parameter.
 This conversion factor is applied to the value entered by the user before it
 is written into the binary command packet and sent. The conversion is specified
-as ruby code that receives two implied parameters. 'value' which is the raw
+as Ruby or Python code that receives two implied parameters. 'value' which is the raw
 value being written and 'packet' which is a reference to the command packet
 class (Note, referencing the packet as 'myself' is still supported for backwards
-compatibility). The last line of ruby code given should return the converted
+compatibility). The last line of code should return the converted
 value. The GENERIC_WRITE_CONVERSION_END keyword specifies that all lines of
-ruby code for the conversion have been given.
+code for the conversion have been given.
 
 :::info Multiple write conversions on command parameters
 When a command is built, each item gets written (and write conversions are run)
@@ -298,11 +336,19 @@ Generic conversions are not a good long term solution. Consider creating a conve
 :::
 
 
-Example Usage:
+Ruby Example:
 ```ruby
 APPEND_PARAMETER ITEM1 32 UINT 0 0xFFFFFFFF 0
   GENERIC_WRITE_CONVERSION_START
-    (value * 1.5).to_i # Convert the value by a scale factor
+    return (value * 1.5).to_i # Convert the value by a scale factor
+  GENERIC_WRITE_CONVERSION_END
+```
+
+Python Example:
+```python
+APPEND_PARAMETER ITEM1 32 UINT 0 0xFFFFFFFF 0
+  GENERIC_WRITE_CONVERSION_START
+    return int(value * 1.5) # Convert the value by a scale factor
   GENERIC_WRITE_CONVERSION_END
 ```
 
@@ -313,7 +359,7 @@ APPEND_PARAMETER ITEM1 32 UINT 0 0xFFFFFFFF 0
 #### OVERFLOW
 **Set the behavior when writing a value overflows the type**
 
-By default OpenC3 throws an error if you try to write a value which overflows its specified type, e.g. writing 255 to a 8 bit signed value. Setting the overflow behavior also allows for OpenC3 to 'TRUNCATE' the value by eliminating any high order bits. You can also set 'SATURATE' which causes OpenC3 to replace the value with the maximum or minimum allowable value for that type. Finally you can specify 'ERROR_ALLOW_HEX' which will allow for a maximum hex value to be writen, e.g. you can successfully write 255 to a 8 bit signed value.
+By default OpenC3 throws an error if you try to write a value which overflows its specified type, e.g. writing 255 to a 8 bit signed value. Setting the overflow behavior also allows for OpenC3 to 'TRUNCATE' the value by eliminating any high order bits. You can also set 'SATURATE' which causes OpenC3 to replace the value with the maximum or minimum allowable value for that type. Finally you can specify 'ERROR_ALLOW_HEX' which will allow for a maximum hex value to be written, e.g. you can successfully write 255 to a 8 bit signed value.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -366,7 +412,7 @@ ID parameters are used to identify the binary block of data as a particular comm
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Name | Name of the parameter. Must be unique within the command. | True |
-| Bit Offset | Bit offset into the command packet of the Most Significant Bit of this parameter. May be negative to indicate on offset from the end of the packet. Always use a bit offset of 0 for derived parameters. | True |
+| Bit Offset | Bit offset into the command packet of the Most Significant Bit of this parameter. May be negative to indicate on offset from the end of the packet. | True |
 | Bit Size | Bit size of this parameter. Zero or Negative values may be used to indicate that a string fills the packet up to the offset from the end of the packet specified by this value. If Bit Offset is 0 and Bit Size is 0 then this is a derived parameter and the Data Type must be set to 'DERIVED'. | True |
 | Data Type | Data Type of this parameter<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, DERIVED, STRING, BLOCK</span> | True |
 
@@ -537,11 +583,12 @@ Sending a hazardous command causes a dialog asking for confirmation before sendi
 ### ACCESSOR
 <div class="right">(Since 5.0.10)</div>**Defines the class used to read and write raw values from the packet**
 
-Defines the class that is used too read raw values from the packet. Defaults to BinaryAccessor. Provided accessors also include JsonAccessor, CborAccessor, HtmlAccessor, and XmlAccessor.
+Defines the class that is used too read raw values from the packet. Defaults to BinaryAccessor. For more information see [Accessors](accessors).
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Accessor Class Name | The name of the accessor class | True |
+| Argument | Additional argument passed to the accessor class constructor | False |
 
 ### TEMPLATE
 <div class="right">(Since 5.0.10)</div>**Defines a template string used to initialize the command before default values are filled in**
@@ -594,6 +641,80 @@ Generally the template file is formatted in JSON or HTML and then values are fil
 | Target Name | Target Name of related telemetry screen | True |
 | Screen Name | Screen Name of related telemetry screen | True |
 
+### VIRTUAL
+<div class="right">(Since 5.18.0)</div>**Marks this packet as virtual and not participating in identification**
+
+Used for packet definitions that can be used as structures for items with a given packet.
+
+
+### RESTRICTED
+<div class="right">(Since 5.20.0)</div>**Marks this packet as restricted and will require approval if critical commanding is enabled**
+
+Used as one of the two types of critical commands (HAZARDOUS and RESTRICTED)
+
+
+### VALIDATOR
+<div class="right">(Since 5.19.0)</div>**Defines a validator class for a command**
+
+Validator class is used to validate the command success or failure with both a pre_check and post_check method.
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Class Filename | The filename which contains the Ruby or Python class. The filename must be named after the class such that the class is a CamelCase version of the underscored filename. For example, 'command_validator.rb' should contain 'class CommandValidator'. | True |
+| Argument | Additional argument passed to the validator class constructor | False |
+
+Ruby Example:
+```ruby
+VALIDATOR custom_validator.rb
+
+Defined in custom_validator.rb:
+
+require 'openc3/packets/command_validator'
+class CustomValidator < OpenC3::CommandValidator
+  # Both the pre_check and post_check are passed the command packet that was sent
+  # You can inspect the command in your checks as follows:
+  #   packet.target_name => target name
+  #   packet.packet_name => packet name (command name)
+  #   packet.read("ITEM") => converted value
+  #   packet.read("ITEM", :RAW) => raw value
+  def pre_check(packet)
+    if tlm("TGT PKT ITEM") == 0
+      return [false, "TGT PKT ITEM is 0"]
+    end
+    @cmd_acpt_cnt = tlm("TGT PKT CMD_ACPT_CNT")
+    return [true, nil]
+  end
+  def post_check(packet)
+    wait_check("TGT PKT CMD_ACPT_CNT > #{@cmd_acpt_cnt}", 10)
+    return [true, nil]
+  end
+end
+```
+
+Python Example:
+```python
+VALIDATOR custom_validator.rb
+
+Defined in custom_validator.py:
+
+class CustomValidator(CommandValidator):
+    # Both the pre_check and post_check are passed the command packet that was sent
+    # You can inspect the command in your checks as follows:
+    #   packet.target_name => target name
+    #   packet.packet_name => packet name (command name)
+    #   packet.read("ITEM") => converted value
+    #   packet.read("ITEM", :RAW) => raw value
+    def pre_check(self, command):
+        if tlm("TGT PKT ITEM") == 0:
+            return [False, "TGT PKT ITEM is 0"]
+        self.cmd_acpt_cnt = tlm("INST HEALTH_STATUS CMD_ACPT_CNT")
+        return [True, None]
+
+    def post_check(self, command):
+        wait_check(f"INST HEALTH_STATUS CMD_ACPT_CNT > {self.cmd_acpt_cnt}", 10)
+        return [True, None]
+```
+
 ## SELECT_COMMAND
 **Selects an existing command packet for editing**
 
@@ -628,7 +749,7 @@ COMMAND TARGET COLLECT_DATA BIG_ENDIAN "Commands my target to collect data"
   PARAMETER CCSDSSEQCNT 18 14 UINT 0 16383 0 "CCSDS PRIMARY HEADER SEQUENCE COUNT"
   PARAMETER CCSDSLENGTH 32 16 UINT 4 4 4 "CCSDS PRIMARY HEADER PACKET LENGTH"
   PARAMETER ANGLE 48 32 FLOAT -180.0 180.0 0.0 "ANGLE OF INSTRUMENT IN DEGREES"
-  POLY_WRITE_CONVERSION 0 0.01745 0 0
+    POLY_WRITE_CONVERSION 0 0.01745 0 0
   PARAMETER MODE 80 8 UINT 0 1 0 "DATA COLLECTION MODE"
     STATE NORMAL 0
     STATE DIAG 1

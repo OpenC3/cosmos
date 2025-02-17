@@ -118,5 +118,5 @@ module OpenC3
     rescue IOError, Errno::ENOTSOCK
       raise "Connect canceled"
     end
-  end # class TcpipClientStream
+  end
 end

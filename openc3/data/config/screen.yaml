@@ -60,8 +60,8 @@ GLOBAL_SUBSETTING:
     made up of more than one subwidget. For example, LABELVALUE is made up of a LABEL
     at subwidget index 0 and a VALUE at subwidget index 1. This allows for passing
     settings to specific subwidgets. Some widgets are made up of multiple subwidgets,
-    e.g. LABELVALUELIMITSBAR. To set the label text color, pass '0:0' as the Subwidget
-    Index to first index the LABELVALUE and then the LABEL.
+    e.g. LABELVALUELIMITSBAR. To set the Label widget, pass 0 as the Subwidget
+    Index, pass 1 for the Value widget, and 2 for the LimitsBar widget.
   parameters:
     - name: Widget Class Name
       required: true
@@ -82,7 +82,7 @@ GLOBAL_SUBSETTING:
       values: .*
   example: |
     # Set all text color to white for labelvaluelimitsbars
-    GLOBAL_SUBSETTING LABELVALUELIMITSBAR 0:0 TEXTCOLOR white
+    GLOBAL_SUBSETTING LABELVALUELIMITSBAR 0 TEXTCOLOR white
 SETTING:
   summary: Applies a widget setting to the previously defined widget
   description: |
@@ -93,7 +93,7 @@ SETTING:
     GLOBAL_SETTING and GLOBAL_SUBSETTING applies to all widgets.
 
     Common wiget settings are defined here. Some widgets define their own
-    unqiue settings which are documented under that specific widget.
+    unique settings which are documented under that specific widget.
   collection:
     <%= MetaConfigParser.load('settings.yaml').to_meta_config_yaml(4) %>
 SUBSETTING:
@@ -102,8 +102,8 @@ SUBSETTING:
     made up of more than one subwidget. For example, LABELVALUE is made up of a LABEL
     at subwidget index 0 and a VALUE at subwidget index 1. This allows for passing
     settings to specific subwidgets. Some widgets are made up of multiple subwidgets,
-    e.g. LABELVALUELIMITSBAR. To set the label text color, pass '0:0' as the Subwidget
-    Index to first index the LABELVALUE and then the LABEL.
+    e.g. LABELVALUELIMITSBAR. To set the Label widget, pass 0 as the Subwidget
+    Index, pass 1 for the Value widget, and 2 for the LimitsBar widget.
   parameters:
     - name: Subwidget Index
       required: true
@@ -121,13 +121,13 @@ SUBSETTING:
   example: |
     VERTICALBOX
       LABELVALUE INST HEALTH_STATUS TEMP1
-      SUBSETTING 0 TEXTCOLOR blue # Change the label's text to blue
+        SUBSETTING 0 TEXTCOLOR blue # Change the label's text to blue
       LABELVALUELIMITSBAR INST HEALTH_STATUS TEMP1
-      SUBSETTING 0:0 TEXTCOLOR green # Change the label's text to green
+        SUBSETTING 0 TEXTCOLOR green # Change the label's text to green
     END
 NAMED_WIDGET:
   summary: Name a widget to allow access to it via the getNamedWidget method
-  description: To programatically access parts of a telemetry screen you need
+  description: To programmatically access parts of a telemetry screen you need
     to name the widget. This is useful when creating screens with buttons that
     read values from other widgets.
   warning: getNamedWidget returns the widget itself and thus must be operated

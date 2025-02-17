@@ -1,5 +1,5 @@
 /*
-# Copyright 2023 OpenC3, Inc
+# Copyright 2025 OpenC3, Inc
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -22,19 +22,15 @@ test.use({
   storageState: 'adminStorageState.json',
 })
 
-test('displays interface names', async ({ page, utils }) => {
-  expect(await page.getByRole('list')).toContainText('INST_ROUTER')
+test('displays router names', async ({ page, utils }) => {
+  await expect(page.getByText('INST_ROUTER')).toBeVisible()
 })
 
-test('displays interface details', async ({ page, utils }) => {
-  await page
-    .getByRole('listitem')
-    .filter({ hasText: 'INST_ROUTER' })
-    .getByRole('button')
-    .click()
-  expect(await page.locator('.editor')).toContainText('"name": "INST_ROUTER"')
+test('displays router details', async ({ page, utils }) => {
+  await page.getByRole('button', { name: '󰈈' }).first().click()
+  await expect(page.locator('.editor')).toContainText('"name": "INST_ROUTER"')
   await utils.download(page, '[data-test="downloadIcon"]', function (contents) {
     expect(contents).toContain('"name": "INST_ROUTER"')
   })
-  await page.locator('[data-test="editCancelBtn"]').click()
+  await page.getByRole('button', { name: 'Ok' }).click()
 })

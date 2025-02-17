@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -74,11 +74,13 @@ class Accessor:
 
     @classmethod
     def convert_to_type(cls, value, item):
+        if value is None:
+            return None
         match item.data_type:
-            case "OBJECT":
+            case "OBJECT" | "ARRAY":
                 pass  # No conversion on complex OBJECT types
             case "STRING" | "BLOCK":
-                if item.array_size:
+                if item.array_size is not None:
                     if isinstance(value, str):
                         # Thought about using json.loads here but it doesn't
                         # support basic examples like "[2.2, '3', 4]"
@@ -88,20 +90,20 @@ class Accessor:
                 else:
                     value = str(value)
             case "INT" | "UINT":
-                if item.array_size:
+                if item.array_size is not None:
                     if isinstance(value, str):
                         value = literal_eval(value)
                     value = [int(float(x)) for x in value]
                 else:
                     value = int(float(value))
             case "FLOAT":
-                if item.array_size:
+                if item.array_size is not None:
                     if isinstance(value, str):
                         value = literal_eval(value)
                     value = [float(x) for x in value]
                 else:
                     value = float(value)
             case _:
-                raise AttributeError(f"data_type {item.data_type} is not recognized")
+                raise TypeError(f"data_type {item.data_type} is not recognized")
 
         return value

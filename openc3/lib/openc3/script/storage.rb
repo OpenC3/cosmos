@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -43,8 +43,8 @@ module OpenC3
         if response.nil? || response.status != 200
           raise "Failed to delete #{delete_path}"
         end
-      rescue => error
-        raise "Failed deleting #{path} due to #{error.message}"
+      rescue => e
+        raise "Failed deleting #{path} due to #{e.message}"
       end
       nil
     end
@@ -84,8 +84,8 @@ module OpenC3
             end
           end
         end
-      rescue => error
-        raise "Failed to write #{upload_path} due to #{error.message}"
+      rescue => e
+        raise "Failed to write #{upload_path} due to #{e.message}"
       end
       nil
     end
@@ -115,21 +115,35 @@ module OpenC3
           end
 
           return _get_storage_file("#{part}/#{path}", scope: scope)
-        rescue => error
+        rescue => e
           if part == "targets_modified"
             part = "targets"
             redo
           else
-            raise error
+            raise e
           end
         end
         break
       end
     end
 
-    # download_file(path_or_file) is implemented by running_script to download a file
-
     # These are helper methods ... should not be used directly
+
+    def _get_download_url(path, scope: $openc3_scope)
+      targets = "targets_modified" # First try targets_modified
+      response = $api_server.request('get', "/openc3-api/storage/exists/#{scope}/#{targets}/#{path}", query: { bucket: 'OPENC3_CONFIG_BUCKET' }, scope: scope)
+      if response.status != 200
+        targets = "targets" # Next try targets
+        response = $api_server.request('get', "/openc3-api/storage/exists/#{scope}/#{targets}/#{path}", query: { bucket: 'OPENC3_CONFIG_BUCKET' }, scope: scope)
+        if response.status != 200
+          raise "File not found: #{path} in scope: #{scope}"
+        end
+      end
+      endpoint = "/openc3-api/storage/download/#{scope}/#{targets}/#{path}"
+      # external must be true because we're using this URL from the frontend
+      result = _get_presigned_request(endpoint, external: true, scope: scope)
+      return result['url']
+    end
 
     def _get_storage_file(path, scope: $openc3_scope)
       # Create Tempfile to store data
@@ -161,7 +175,8 @@ module OpenC3
       if $openc3_in_cluster
         case ENV['OPENC3_CLOUD']
         when 'local'
-          URI.parse("http://openc3-minio:9000" + url)
+          bucket_url = ENV["OPENC3_BUCKET_URL"] || "http://openc3-minio:9000"
+          URI.parse("#{bucket_url}#{url}")
         when 'aws'
           URI.parse("https://s3.#{ENV['AWS_REGION']}.amazonaws.com" + url)
         when 'gcp'
@@ -175,11 +190,11 @@ module OpenC3
       end
     end
 
-    def _get_presigned_request(endpoint, scope: $openc3_scope)
-      if $openc3_in_cluster
-        response = $api_server.request('get', endpoint, query: { bucket: 'OPENC3_CONFIG_BUCKET', internal: true }, scope: scope)
-      else
+    def _get_presigned_request(endpoint, external: nil, scope: $openc3_scope)
+      if external or !$openc3_in_cluster
         response = $api_server.request('get', endpoint, query: { bucket: 'OPENC3_CONFIG_BUCKET' }, scope: scope)
+      else
+        response = $api_server.request('get', endpoint, query: { bucket: 'OPENC3_CONFIG_BUCKET', internal: true }, scope: scope)
       end
       if response.nil? || response.status != 201
         raise "Failed to get presigned URL for #{endpoint}"

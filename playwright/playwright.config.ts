@@ -28,14 +28,15 @@ export default defineConfig({
   globalTimeout: 60 * 60 * 1000,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
-  /* Retry on CI only */
+  /* Retry once on CI */
   retries: process.env.CI ? 1 : 0,
-  /* See if explict WORKERS count was given, otherwise allow parallelism on CI/CD */
-  workers: process.env.WORKERS
-    ? parseInt(process.env.WORKERS)
-    : process.env.CI
-    ? 3
-    : 1,
+  workers: 1,
+  /* See if explicit WORKERS count was given, otherwise allow parallelism on CI/CD */
+  // workers: process.env.WORKERS
+  //   ? parseInt(process.env.WORKERS)
+  //   : process.env.CI
+  //   ? 3
+  //   : 1,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: process.env.CI ? 'github' : 'list',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */

@@ -54,7 +54,7 @@ module OpenC3
       model.create
       @im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
       @im_thread = Thread.new { @im.run }
-      sleep(0.01) # Allow the thread to run
+      sleep 0.01 # Allow the thread to run
 
       @api = ApiTest.new
     end
@@ -62,7 +62,7 @@ module OpenC3
     after(:each) do
       @im_shutdown = true
       @im.shutdown
-      sleep(0.01)
+      sleep 0.01
     end
 
     describe "get_interface" do
@@ -90,10 +90,10 @@ module OpenC3
       it "connects the interface" do
         expect(@api.get_interface("INST_INT")['state']).to eql "CONNECTED"
         @api.disconnect_interface("INST_INT")
-        sleep(0.1)
+        sleep 0.01
         expect(@api.get_interface("INST_INT")['state']).to eql "DISCONNECTED"
         @api.connect_interface("INST_INT")
-        sleep(0.1)
+        sleep 0.01
         expect(@api.get_interface("INST_INT")['state']).to eql "ATTEMPTING"
       end
     end
@@ -154,7 +154,7 @@ module OpenC3
     end
 
     describe "interface_cmd" do
-      it "sends a comamnd to an interface" do
+      it "sends a command to an interface" do
         expect_any_instance_of(OpenC3::Interface).to receive(:interface_cmd).with("cmd1")
         @api.interface_cmd("INST_INT", "cmd1")
 
@@ -164,7 +164,7 @@ module OpenC3
     end
 
     describe "interface_protocol_cmd" do
-      it "sends a comamnd to an interface" do
+      it "sends a command to an interface" do
         expect_any_instance_of(OpenC3::Interface).to receive(:protocol_cmd).with("cmd1", {index: -1, read_write: "READ_WRITE"})
         @api.interface_protocol_cmd("INST_INT", "cmd1")
 

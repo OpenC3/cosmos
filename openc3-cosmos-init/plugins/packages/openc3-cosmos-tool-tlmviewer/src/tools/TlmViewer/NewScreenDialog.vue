@@ -20,62 +20,69 @@
   <!-- Dialog for creating new screen -->
   <v-dialog v-model="show" width="600">
     <v-card>
-      <v-system-bar>
+      <v-toolbar height="24">
         <v-spacer />
         <span>Create New Screen</span>
         <v-spacer />
-        <v-tooltip top>
-          <template v-slot:activator="{ on, attrs }">
-            <div v-on="on" v-bind="attrs">
+        <v-tooltip location="top">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
               <v-icon data-test="new-screen-close-icon" @click="show = false">
                 mdi-close-box
               </v-icon>
             </div>
           </template>
-          <span>Close</span>
+          <span> Close </span>
         </v-tooltip>
-      </v-system-bar>
+      </v-toolbar>
       <v-card-text>
-        <v-alert v-model="duplicateScreenAlert" type="error" dismissible dense>
+        <v-alert
+          v-model="duplicateScreenAlert"
+          type="error"
+          closable
+          density="compact"
+        >
           Screen {{ newScreenName.toUpperCase() }} already exists!
         </v-alert>
         <v-row class="pt-3">
-          <v-col> Screens must belong to a target. Select a target:</v-col>
+          <v-col> Screens must belong to a target. Select a target: </v-col>
         </v-row>
-        <v-row dense
-          ><v-col>
+        <v-row dense>
+          <v-col>
             <v-select
               label="Select Target"
               :items="targets"
-              item-text="label"
+              item-title="label"
               item-value="value"
               v-model="selectedTarget"
-              @change="targetSelect" /></v-col
-        ></v-row>
+              @update:model-value="targetSelect"
+            />
+          </v-col>
+        </v-row>
 
         <v-row dense>
-          <v-col
-            >Screens can be auto-generated based on an existing Packet. This
+          <v-col>
+            Screens can be auto-generated based on an existing Packet. This
             creates a LABELVALUE line for every item in the packet. The screen
-            can then be edited and customized.</v-col
-          >
+            can then be edited and customized.
+          </v-col>
         </v-row>
         <v-row dense>
-          <v-col>Leave this blank to start with a blank screen.</v-col>
+          <v-col> Leave this blank to start with a blank screen. </v-col>
         </v-row>
         <v-row dense>
           <v-col>
             <v-autocomplete
               label="New screen packet"
               hide-details
-              dense
-              @change="packetNameChanged"
+              density="compact"
               :items="packetNames"
-              item-text="label"
+              item-title="label"
               item-value="value"
               v-model="selectedPacketName"
               data-test="new-screen-packet"
-          /></v-col>
+            />
+          </v-col>
         </v-row>
         <v-row dense>
           <v-col>
@@ -87,30 +94,30 @@
               label="Screen Name (without .txt)"
               :rules="[rules.required]"
               data-test="new-screen-name"
-              @keyup="newScreenKeyup($event)" />
+              @keyup="newScreenKeyup($event)"
+            />
             <div class="pl-2" v-if="newScreenSaving">
-              <v-progress-circular indeterminate color="primary" /></div
-          ></v-col>
+              <v-progress-circular indeterminate color="primary" />
+            </div>
+          </v-col>
         </v-row>
       </v-card-text>
       <v-divider />
-      <v-card-actions>
+      <v-card-actions class="px-2">
         <v-spacer />
-        <v-btn outlined class="mx-2" @click="show = false"> Cancel </v-btn>
-        <v-btn color="primary" class="mx-2" @click="saveNewScreen">
-          Save
-        </v-btn>
+        <v-btn variant="outlined" @click="show = false"> Cancel </v-btn>
+        <v-btn variant="flat" @click="saveNewScreen"> Save </v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
 </template>
 
 <script>
-import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
+import { OpenC3Api } from '@openc3/js-common/services'
 
 export default {
   props: {
-    value: Boolean, // value is the default prop when using v-model
+    modelValue: Boolean,
     target: {
       type: String,
     },
@@ -148,10 +155,10 @@ export default {
   computed: {
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
     existingScreens() {
@@ -159,6 +166,36 @@ export default {
         return this.screens[this.selectedTarget].join(', ')
       } else {
         return 'None'
+      }
+    },
+  },
+  watch: {
+    selectedPacketName: function (value) {
+      if (value === 'BLANK') {
+        this.newScreenName = ''
+        this.duplicateScreenAlert = false
+      } else {
+        this.newScreenName = value.toLowerCase()
+        if (
+          this.screens[this.selectedTarget] &&
+          this.screens[this.selectedTarget].indexOf(
+            this.newScreenName.toUpperCase(),
+          ) !== -1
+        ) {
+          this.duplicateScreenAlert = true
+        } else {
+          this.duplicateScreenAlert = false
+        }
+      }
+    },
+    newScreenName: function (value) {
+      if (
+        this.screens[this.selectedTarget] &&
+        this.screens[this.selectedTarget].indexOf(value.toUpperCase()) !== -1
+      ) {
+        this.duplicateScreenAlert = true
+      } else {
+        this.duplicateScreenAlert = false
       }
     },
   },
@@ -178,37 +215,9 @@ export default {
         })
       })
     },
-    packetNameChanged(value) {
-      if (value === 'BLANK') {
-        this.newScreenName = ''
-        this.duplicateScreenAlert = false
-      } else {
-        this.newScreenName = value.toLowerCase()
-        if (
-          this.screens[this.selectedTarget] &&
-          this.screens[this.selectedTarget].indexOf(
-            this.newScreenName.toUpperCase(),
-          ) !== -1
-        ) {
-          this.duplicateScreenAlert = true
-        } else {
-          this.duplicateScreenAlert = false
-        }
-      }
-    },
     newScreenKeyup(event) {
-      if (
-        this.screens[this.selectedTarget] &&
-        this.screens[this.selectedTarget].indexOf(
-          this.newScreenName.toUpperCase(),
-        ) !== -1
-      ) {
-        this.duplicateScreenAlert = true
-      } else {
-        this.duplicateScreenAlert = false
-        if (event.key === 'Enter') {
-          this.saveNewScreen()
-        }
+      if (event.key === 'Enter') {
+        this.saveNewScreen()
       }
     },
     saveNewScreen() {

@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -20,7 +20,7 @@ module OpenC3
   module Script
     private
 
-    def plugin_list(scope: $openc3_scope)
+    def plugin_list(default: false, scope: $openc3_scope)
       response_body = nil
       begin
         endpoint = "/openc3-api/plugins?scope=#{scope}"
@@ -35,11 +35,19 @@ module OpenC3
           http.request(request) do |response|
             response_body = response.body
             response.value() # Raises an HTTP error if the response is not 2xx (success)
-            return JSON.parse(response.body, allow_nan: true, create_additions: true)
+            plugins = JSON.parse(response.body, allow_nan: true, create_additions: true)
+            if default
+              return plugins
+            else
+              return plugins.select do |plugin|
+                !plugin.include?('openc3-cosmos-tool-') and !plugin.include?('openc3-tool-base') and
+                !plugin.include?('openc3-cosmos-enterprise-tool-') and !plugin.include?('openc3-enterprise-tool-base')
+              end
+            end
           end
         end
-      rescue => error
-        raise "get_plugin_list failed due to #{error.formatted}\nResponse:\n#{response_body}"
+      rescue => e
+        raise "get_plugin_list failed due to #{e.formatted}\nURI:#{uri}\nResponse:\n#{response_body}"
       end
     end
 
@@ -61,8 +69,8 @@ module OpenC3
             return JSON.parse(response.body, allow_nan: true, create_additions: true)
           end
         end
-      rescue => error
-        raise "get_plugin failed due to #{error.formatted}\nResponse:\n#{response_body}"
+      rescue => e
+        raise "get_plugin failed due to #{e.formatted}\nURI:#{uri}\nResponse:\n#{response_body}"
       end
     end
 
@@ -95,8 +103,8 @@ module OpenC3
             end
           end
         end
-      rescue => error
-        raise "plugin_install_phase1 failed due to #{error.formatted}\nResponse:\n#{response_body}"
+      rescue => e
+        raise "plugin_install_phase1 failed due to #{e.formatted}\nURI:#{uri}\nResponse:\n#{response_body}"
       end
     end
 
@@ -129,8 +137,8 @@ module OpenC3
             return response_body.remove_quotes
           end
         end
-      rescue => error
-        raise "plugin_install_phase2 failed due to #{error.formatted}\nResponse:\n#{response_body}"
+      rescue => e
+        raise "plugin_install_phase2 failed due to #{e.formatted}\nURI:#{uri}\nResponse:\n#{response_body}"
       end
     end
 
@@ -154,8 +162,8 @@ module OpenC3
             return response_body.remove_quotes
           end
         end
-      rescue => error
-        raise "plugin_uninstall failed due to #{error.formatted}\nResponse:\n#{response_body}"
+      rescue => e
+        raise "plugin_uninstall failed due to #{e.formatted}\nURI:#{uri}\nResponse:\n#{response_body}"
       end
     end
 
@@ -177,8 +185,8 @@ module OpenC3
             return JSON.parse(response.body, allow_nan: true, create_additions: true)
           end
         end
-      rescue => error
-        raise "plugin_status failed due to #{error.formatted}\nResponse:\n#{response_body}"
+      rescue => e
+        raise "plugin_status failed due to #{e.formatted}\nURI:#{uri}\nResponse:\n#{response_body}"
       end
     end
 

@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -29,7 +29,7 @@ async function saveAs(page, filename: string) {
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Save As...').click()
   await page
-    .locator('[data-test=file-open-save-filename]')
+    .locator('[data-test=file-open-save-filename] input')
     .fill(`INST/procedures/${filename}`)
   await page.locator('[data-test=file-open-save-submit-btn]').click()
 
@@ -65,12 +65,9 @@ async function runAndCheckResults(
 ) {
   await page.locator(startLocator).click()
   // Wait for the results ... allow for additional time
-  await expect(page.locator('.v-dialog.v-dialog--active')).toContainText(
-    'Script Results',
-    {
-      timeout: 30000,
-    },
-  )
+  await expect(page.locator('.v-dialog')).toContainText('Script Results', {
+    timeout: 30000,
+  })
   // Allow the caller to validate the results
   validator(await page.inputValue('.v-dialog >> textarea'))
 
@@ -79,7 +76,7 @@ async function runAndCheckResults(
     await utils.download(
       page,
       'button:has-text("Download")',
-      function (contents) {
+      function (contents: string) {
         expect(contents).toContain('Script Report')
         validator(contents)
       },
@@ -87,22 +84,23 @@ async function runAndCheckResults(
   }
   await page.locator('button:has-text("Ok")').click()
   await expect(page.locator('.v-dialog')).not.toBeVisible()
+
+  // Verify we're ready to run again
+  await expect(page.locator('[data-test=start-suite]')).toBeEnabled()
+  await expect(page.locator('[data-test=start-group]')).toBeEnabled()
+  await expect(page.locator('[data-test=start-script]')).toBeEnabled()
 }
 
 async function suiteTemplate(page, utils, type) {
   await page.locator('[data-test=script-runner-file]').click()
-  await page.getByText('New Test Suite').hover()
+  await page.getByText('New Suite').hover()
   await page.getByText(type).click()
   await utils.sleep(1000)
   // Verify the drop downs are populated
-  await expect(
-    page.locator('role=button[name="Suite: TestSuite"]'),
-  ).toBeEnabled()
-  await expect(page.locator('role=button[name="Group: Power"]')).toBeEnabled()
-  await expect(
-    page.locator('role=button[name="Script: script_power_on"]'),
-  ).toBeEnabled()
-  // // Verify Suite Start buttons are enabled
+  await expect(page.getByText('Suite:TestSuiteSuite:')).toBeEnabled()
+  await expect(page.getByText('Group:PowerGroup:')).toBeEnabled()
+  await expect(page.getByText('Script:power_onScript:')).toBeEnabled()
+  // Verify Suite Start buttons are enabled
   await expect(page.locator('[data-test=start-suite]')).toBeEnabled()
   await expect(page.locator('[data-test=start-group]')).toBeEnabled()
   await expect(page.locator('[data-test=start-script]')).toBeEnabled()
@@ -110,16 +108,21 @@ async function suiteTemplate(page, utils, type) {
 
 test('generates a ruby suite template', async ({ page, utils }) => {
   await suiteTemplate(page, utils, 'Ruby')
-  await page
-    .locator('textarea')
+  await expect(
+    page
+    .locator('pre')
     .filter({ hasText: "require 'openc3/script/suite.rb'" })
+    .first()
+  ).toBeVisible()
 })
 
 test('generates a python suite template', async ({ page, utils }) => {
   await suiteTemplate(page, utils, 'Python')
-  await page
-    .locator('textarea')
+  await expect(page
+    .locator('pre')
     .filter({ hasText: 'from openc3.script.suite import Suite, Group' })
+    .first()
+  ).toBeVisible()
 })
 
 test('loads Suite controls when opening a suite', async ({ page, utils }) => {
@@ -127,29 +130,31 @@ test('loads Suite controls when opening a suite', async ({ page, utils }) => {
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Open File').click()
   await utils.sleep(1000)
-  await page.locator('[data-test=file-open-save-search]').type('my_script_')
+  await page.locator('[data-test=file-open-save-search] input').fill('my_script_')
   await utils.sleep(500)
-  await page.locator('[data-test=file-open-save-search]').type('suite')
+  await page.locator('[data-test=file-open-save-search] input').fill('suite')
   await page.locator('text=script_suite >> nth=0').click() // nth=0 because INST, INST2
   await page.locator('[data-test=file-open-save-submit-btn]').click()
-  expect(await page.locator('#sr-controls')).toContainText(
+  await expect(page.locator('#sr-controls')).toContainText(
     `INST/procedures/my_script_suite.rb`,
   )
   // Verify defaults in the Suite options
-  await expect(page.locator('[data-test=pause-on-error]')).toBeChecked()
-  await expect(page.locator('[data-test=manual]')).toBeChecked()
-  await expect(page.locator('[data-test=continue-after-error]')).toBeChecked()
-  await expect(page.locator('[data-test=loop]')).not.toBeChecked()
-  await expect(page.locator('[data-test=abort-after-error]')).not.toBeChecked()
-  await expect(page.locator('[data-test=break-loop-on-error]')).toBeDisabled()
+  await expect(page.locator('[data-test=pause-on-error] input')).toBeChecked()
+  await expect(page.locator('[data-test=manual] input')).toBeChecked()
+  await expect(
+    page.locator('[data-test=continue-after-error] input'),
+  ).toBeChecked()
+  await expect(page.locator('[data-test=loop] input')).not.toBeChecked()
+  await expect(
+    page.locator('[data-test=abort-after-error] input'),
+  ).not.toBeChecked()
+  await expect(
+    page.locator('[data-test=break-loop-on-error] input'),
+  ).toBeDisabled()
   // Verify the drop downs are populated
-  await expect(page.locator('role=button[name="Suite: MySuite"]')).toBeEnabled()
-  await expect(
-    page.locator('role=button[name="Group: ExampleGroup"]'),
-  ).toBeEnabled()
-  await expect(
-    page.locator('role=button[name="Script: script_2"]'),
-  ).toBeEnabled()
+  await expect(page.getByText('Suite:MySuiteSuite:')).toBeEnabled()
+  await expect(page.getByText('Group:ExampleGroupGroup:')).toBeEnabled()
+  await expect(page.getByText('Script:2Script:')).toBeEnabled()
   // // Verify Suite Start buttons are enabled
   await expect(page.locator('[data-test=start-suite]')).toBeEnabled()
   await expect(page.locator('[data-test=start-group]')).toBeEnabled()
@@ -161,12 +166,12 @@ test('loads Suite controls when opening a suite', async ({ page, utils }) => {
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Open File').click()
   await utils.sleep(1000)
-  await page.locator('[data-test=file-open-save-search]').type('dis')
+  await page.locator('[data-test=file-open-save-search] input').fill('dis')
   await utils.sleep(500)
-  await page.locator('[data-test=file-open-save-search]').type('connect')
+  await page.locator('[data-test=file-open-save-search] input').fill('connect')
   await page.locator('text=disconnect >> nth=0').click() // nth=0 because INST, INST2
   await page.locator('[data-test=file-open-save-submit-btn]').click()
-  expect(await page.locator('#sr-controls')).toContainText(
+  await expect(page.locator('#sr-controls')).toContainText(
     `INST/procedures/disconnect.rb`,
   )
   await expect(page.locator('[data-test=start-suite]')).not.toBeVisible()
@@ -194,9 +199,12 @@ test('disables all suite buttons when running', async ({ page, utils }) => {
   await saveAs(page, 'test_suite_buttons.rb')
 
   await page.locator('[data-test=start-script]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('waiting', {
-    timeout: 20000,
-  })
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    /waiting \d+s/,
+    {
+      timeout: 20000,
+    },
+  )
   // After script starts the Script Start/Go and all Suite buttons should be disabled
   await expect(page.locator('[data-test=start-suite]')).toBeDisabled()
   await expect(page.locator('[data-test=start-group]')).toBeDisabled()
@@ -237,7 +245,7 @@ test('starts a suite', async ({ page, utils }) => {
     page,
     utils,
     '[data-test=setup-suite]',
-    function (textarea) {
+    function (textarea: string) {
       expect(textarea).toMatch('setup:PASS')
       expect(textarea).toMatch('Total Tests: 1')
       expect(textarea).toMatch('Pass: 1')
@@ -249,7 +257,7 @@ test('starts a suite', async ({ page, utils }) => {
     page,
     utils,
     '[data-test=teardown-suite]',
-    function (textarea) {
+    function (textarea: string) {
       expect(textarea).toMatch('teardown:PASS')
       expect(textarea).toMatch('Total Tests: 1')
       expect(textarea).toMatch('Pass: 1')
@@ -261,7 +269,7 @@ test('starts a suite', async ({ page, utils }) => {
     page,
     utils,
     '[data-test=start-suite]',
-    function (textarea) {
+    function (textarea: string) {
       expect(textarea).toMatch('setup:PASS')
       expect(textarea).toMatch('teardown:PASS')
       expect(textarea).toMatch('Total Tests: 3')
@@ -269,8 +277,6 @@ test('starts a suite', async ({ page, utils }) => {
     },
     true,
   )
-  // Allow the ScriptRunner reload to resolve and enable saving
-  await utils.sleep(1000)
 
   // Rewrite the script but remove setup and teardown
   await page.locator('.ace_content').click()
@@ -279,7 +285,9 @@ test('starts a suite', async ({ page, utils }) => {
   } else {
     await page.keyboard.press('Control+A')
   }
+  await utils.sleep(1000)
   await page.keyboard.press('Backspace')
+  await utils.sleep(1000)
   await page.locator('textarea').fill(`
   require "openc3/script/suite.rb"
   class TestGroup < OpenC3::Group
@@ -292,14 +300,16 @@ test('starts a suite', async ({ page, utils }) => {
     end
   end
   `)
+  await utils.sleep(1000)
   // Verify filename is marked as edited
-  expect(await page.locator('#sr-controls')).toContainText('*')
+  await expect(page.locator('#sr-controls')).toContainText('*')
   // Save the new values which should refresh the controls
   if (process.platform === 'darwin') {
     await page.keyboard.press('Meta+S')
   } else {
     await page.keyboard.press('Control+S')
   }
+  await utils.sleep(1000)
 
   // Verify the suite startup, teardown buttons are disabled
   await expect(page.locator('[data-test=setup-suite]')).toBeDisabled()
@@ -336,7 +346,7 @@ test('starts a group', async ({ page, utils }) => {
     page,
     utils,
     '[data-test=setup-group]',
-    function (textarea) {
+    function (textarea: string) {
       expect(textarea).toMatch('setup:PASS')
       expect(textarea).toMatch('Total Tests: 1')
       expect(textarea).toMatch('Pass: 1')
@@ -348,7 +358,7 @@ test('starts a group', async ({ page, utils }) => {
     page,
     utils,
     '[data-test=teardown-group]',
-    function (textarea) {
+    function (textarea: string) {
       expect(textarea).toMatch('teardown:PASS')
       expect(textarea).toMatch('Total Tests: 1')
       expect(textarea).toMatch('Pass: 1')
@@ -360,15 +370,13 @@ test('starts a group', async ({ page, utils }) => {
     page,
     utils,
     '[data-test=start-group]',
-    function (textarea) {
+    function (textarea: string) {
       expect(textarea).toMatch('setup:PASS')
       expect(textarea).toMatch('teardown:PASS')
       expect(textarea).toMatch('Total Tests: 3')
       expect(textarea).toMatch('Pass: 3')
     },
   )
-  // Allow the ScriptRunner reload to resolve and enable saving
-  await utils.sleep(1000)
 
   // Rewrite the script but remove setup and teardown
   await page.locator('.ace_content').click()
@@ -377,7 +385,9 @@ test('starts a group', async ({ page, utils }) => {
   } else {
     await page.keyboard.press('Control+A')
   }
+  await utils.sleep(1000)
   await page.keyboard.press('Backspace')
+  await utils.sleep(1000)
   await page.locator('textarea').fill(`
   require "openc3/script/suite.rb"
   class TestGroup1 < OpenC3::Group
@@ -394,14 +404,16 @@ test('starts a group', async ({ page, utils }) => {
     end
   end
   `)
+  await utils.sleep(1000)
   // Verify filename is marked as edited
-  expect(await page.locator('#sr-controls')).toContainText('*')
+  await expect(page.locator('#sr-controls')).toContainText('*')
   // Save the new values which should refresh the controls
   if (process.platform === 'darwin') {
     await page.keyboard.press('Meta+S')
   } else {
     await page.keyboard.press('Control+S')
   }
+  await utils.sleep(1000)
 
   // Verify the group startup, teardown buttons are disabled
   await expect(page.locator('[data-test=setup-group]')).toBeDisabled()
@@ -430,7 +442,7 @@ test('starts a script', async ({ page, utils }) => {
     page,
     utils,
     '[data-test=start-script]',
-    function (textarea) {
+    function (textarea: string) {
       expect(textarea).toMatch('test1')
       expect(textarea).toMatch('Total Tests: 1')
       expect(textarea).toMatch('Pass: 1')
@@ -460,7 +472,7 @@ test('handles manual mode', async ({ page, utils }) => {
     page,
     utils,
     '[data-test=start-group]',
-    function (textarea) {
+    function (textarea: string) {
       expect(textarea).toMatch('Manual = true')
       expect(textarea).toMatch('manual1')
       expect(textarea).not.toMatch('manual2')
@@ -474,7 +486,7 @@ test('handles manual mode', async ({ page, utils }) => {
     page,
     utils,
     '[data-test=start-group]',
-    function (textarea) {
+    function (textarea: string) {
       expect(textarea).toMatch('Manual = false')
       expect(textarea).not.toMatch('manual1')
       expect(textarea).toMatch('manual2')

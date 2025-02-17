@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -38,9 +38,7 @@ class TcpipSocketStream(Stream):
         if self.write_timeout:
             self.write_timeout = float(write_timeout)
         else:
-            Logger.warn(
-                "Warning: To avoid interface lock, write_timeout can not be None. Setting to 10 seconds."
-            )
+            Logger.warn("Warning: To avoid interface lock, write_timeout can not be None. Setting to 10 seconds.")
             self.write_timeout = 10.0
         self.read_timeout = ConfigParser.handle_none(read_timeout)
         if self.read_timeout:
@@ -50,7 +48,7 @@ class TcpipSocketStream(Stream):
         # than one tool
         self.write_mutex = threading.Lock()
         self.pipe_reader, self.pipe_writer = multiprocessing.Pipe()
-        self.connected = False
+        self._connected = False
 
     # self.return [String] Returns a binary string of data from the socket
     def read(self):
@@ -63,7 +61,7 @@ class TcpipSocketStream(Stream):
             try:
                 data = self.read_socket.recv(4096, socket.MSG_DONTWAIT)
             # Non-blocking sockets return an errno EAGAIN or EWOULDBLOCK
-            # if there is no data avilable
+            # if there is no data available
             except socket.error as error:
                 if error.errno == socket.EAGAIN or error.errno == socket.EWOULDBLOCK:
                     # If select returns something it means the socket is now available for
@@ -95,20 +93,13 @@ class TcpipSocketStream(Stream):
 
             while True:
                 try:
-                    bytes_sent = self.write_socket.send(
-                        data_to_send, socket.MSG_DONTWAIT
-                    )
+                    bytes_sent = self.write_socket.send(data_to_send, socket.MSG_DONTWAIT)
                 # Non-blocking sockets return an errno EAGAIN or EWOULDBLOCK
                 # if the write would block
                 except socket.error as error:
-                    if (
-                        error.errno == socket.EAGAIN
-                        or error.errno == socket.EWOULDBLOCK
-                    ):
+                    if error.errno == socket.EAGAIN or error.errno == socket.EWOULDBLOCK:
                         # Wait for the socket to be ready for writing or for the timeout
-                        _, writeable, _ = select.select(
-                            [], [self.write_socket], [], self.write_timeout
-                        )
+                        _, writeable, _ = select.select([], [self.write_socket], [], self.write_timeout)
                         # If select returns something it means the socket is now available for
                         # writing so retry the write. If it returns None it means we timed out.
                         if writeable:
@@ -124,13 +115,16 @@ class TcpipSocketStream(Stream):
     # Connect the stream
     def connect(self):
         # If called directly this class is acting as a server and does not need to connect the sockets
-        self.connected = True
+        self._connected = True
+
+    def connected(self):
+        return self._connected
 
     # Disconnect by closing the sockets
     def disconnect(self):
-        if not self.connected:
+        if not self._connected:
             return
         close_socket(self.write_socket)
         close_socket(self.read_socket)
         self.pipe_writer.send(".")
-        self.connected = False
+        self._connected = False

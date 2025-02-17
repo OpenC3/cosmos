@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -65,6 +65,21 @@ module OpenC3
       @data_bits = 8
     end
 
+    def connection_string
+      type = ''
+      if @write_port_name and @read_port_name
+        port = @write_port_name
+        type = 'R/W'
+      elsif @write_port_name
+        port = @write_port_name
+        type = 'write only'
+      else
+        port = @read_port_name
+        type = 'read only'
+      end
+      return "#{port} (#{type}) #{@baud_rate} #{@parity} #{@stop_bits}"
+    end
+
     # Creates a new {SerialStream} using the parameters passed in the constructor
     def connect
       @stream = SerialStream.new(
@@ -83,6 +98,7 @@ module OpenC3
 
     # Supported Options
     # FLOW_CONTROL - Flow control method NONE or RTSCTS. Defaults to NONE
+    # DATA_BITS - Number of data bits 5, 6, 7, or 8. Defaults to 8
     def set_option(option_name, option_values)
       super(option_name, option_values)
       case option_name.upcase

@@ -31,9 +31,12 @@ class Bucket:
             raise RuntimeError("OPENC3_CLOUD environment variable is required")
         # Base is AwsBucket which works with MINIO, Enterprise implements additional
         bucket_class = OPENC3_CLOUD.capitalize() + "Bucket"
-        my_module = importlib.import_module(
-            "." + OPENC3_CLOUD.lower() + "_bucket", "openc3.utilities"
-        )
+        my_module = None
+        try:
+            my_module = importlib.import_module("." + OPENC3_CLOUD.lower() + "_bucket", "openc3.utilities")
+        # If the file doesn't exist try the Enterprise module
+        except ModuleNotFoundError:
+            my_module = importlib.import_module("." + OPENC3_CLOUD.lower() + "_bucket", "openc3enterprise.utilities")
         return getattr(my_module, bucket_class)()
 
     def create(self, bucket):
@@ -71,9 +74,7 @@ class Bucket:
             f"{self.__class__.__name__} has not implemented method '{inspect.currentframe().f_code.co_name}'"
         )
 
-    def put_object(
-        self, bucket, key, body, content_type=None, cache_control=None, metadata=None
-    ):
+    def put_object(self, bucket, key, body, content_type=None, cache_control=None, metadata=None):
         raise NotImplementedError(
             f"{self.__class__.__name__} has not implemented method '{inspect.currentframe().f_code.co_name}'"
         )

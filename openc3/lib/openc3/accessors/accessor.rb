@@ -74,18 +74,18 @@ module OpenC3
       return false
     end
 
-    # If this is true it will enfore that COSMOS DERIVED items must have a
+    # If this is true it will enforce that COSMOS DERIVED items must have a
     # write_conversion to be written
     def enforce_derived_write_conversion(_item)
       return true
     end
 
     def self.read_item(_item, _buffer)
-      raise "Must be defined by subclass"
+      raise "Must be defined by subclass if needed"
     end
 
     def self.write_item(_item, _value, _buffer)
-      raise "Must be defined by subclass"
+      raise "Must be defined by subclass if needed"
     end
 
     def self.read_items(items, buffer)
@@ -104,8 +104,9 @@ module OpenC3
     end
 
     def self.convert_to_type(value, item)
+      return value if value.nil?
       case item.data_type
-      when :OBJECT
+      when :OBJECT, :ARRAY
         # Do nothing for complex object types
       when :STRING, :BLOCK
         if item.array_size

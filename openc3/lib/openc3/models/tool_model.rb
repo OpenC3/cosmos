@@ -40,6 +40,7 @@ module OpenC3
     attr_accessor :position
     attr_accessor :needs_dependencies
     attr_accessor :disable_erb
+    attr_accessor :import_map_items
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -96,7 +97,7 @@ module OpenC3
     def self.set_position(name:, position:, scope:)
       moving = from_json(get(name: name, scope: scope), scope: scope)
       old_pos = moving.position
-      new_pos = Integer(position)
+      new_pos = position
       direction = :down
       if (old_pos == new_pos)
         return # we're not doing anything
@@ -126,7 +127,7 @@ module OpenC3
     def initialize(
       name:,
       folder_name: nil,
-      icon: '$astro-caution',
+      icon: 'astro:warning',
       url: nil,
       inline_url: nil,
       window: 'INLINE',
@@ -137,6 +138,7 @@ module OpenC3
       plugin: nil,
       needs_dependencies: false,
       disable_erb: nil,
+      import_map_items: nil,
       scope:
     )
       super("#{scope}__#{PRIMARY_KEY}", name: name, plugin: plugin, updated_at: updated_at, scope: scope)
@@ -150,14 +152,15 @@ module OpenC3
       @position = position
 
       if @shown and @window == 'INLINE'
-        @inline_url = 'js/app.js' unless @inline_url
+        @inline_url = 'main.js' unless @inline_url
         @url = "/tools/#{folder_name}" unless @url
       end
       @needs_dependencies = needs_dependencies
       @disable_erb = disable_erb
+      @import_map_items = import_map_items
     end
 
-    def create(update: false, force: false)
+    def create(update: false, force: false, queued: false)
       tools = self.class.all(scope: @scope)
 
       # Make sure a tool with this folder_name doesn't already exist
@@ -181,7 +184,11 @@ module OpenC3
         end
       end
 
-      super(update: update, force: force)
+      if @url and !@url.start_with?('/') and !@url.start_with?('http')
+        raise "URL must be a full URL (http://domain.com/path) or a relative path (/path)"
+      end
+
+      super(update: update, force: force, queued: queued)
     end
 
     def as_json(*a)
@@ -198,7 +205,8 @@ module OpenC3
         'updated_at' => @updated_at,
         'plugin' => @plugin,
         'needs_dependencies' => @needs_dependencies,
-        'disable_erb' => @disable_erb
+        'disable_erb' => @disable_erb,
+        'import_map_items' => @import_map_items,
       }
     end
 
@@ -225,13 +233,17 @@ module OpenC3
         @shown = ConfigParser.handle_true_false(parameters[0])
       when 'POSITION'
         parser.verify_num_parameters(1, 1, "POSITION <value>")
-        @position = parameters[0].to_i
+        @position = parameters[0].to_f
       when 'DISABLE_ERB'
         # 0 to unlimited parameters
         @disable_erb ||= []
         if parameters
           @disable_erb.concat(parameters)
         end
+      when 'IMPORT_MAP_ITEM'
+        parser.verify_num_parameters(2, 2, "IMPORT_MAP_ITEM <key> <value>")
+        @import_map_items ||= []
+        @import_map_items << [parameters[0], parameters[1]]
       else
         raise ConfigParser::Error.new(parser, "Unknown keyword and parameters for Tool: #{keyword} #{parameters.join(" ")}")
       end
@@ -274,8 +286,8 @@ module OpenC3
           ConfigTopic.write({ kind: 'deleted', type: 'tool', name: @folder_name, plugin: @plugin }, scope: @scope)
         end
       end
-    rescue Exception => error
-      Logger.error("Error undeploying tool model #{@name} in scope #{@scope} due to #{error}")
+    rescue Exception => e
+      Logger.error("Error undeploying tool model #{@name} in scope #{@scope} due to #{e}")
     end
 
     ##################################################

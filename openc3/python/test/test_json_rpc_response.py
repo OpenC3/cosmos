@@ -77,9 +77,8 @@ class TestJsonRpc(unittest.TestCase):
         Test json request
         """
         json_response_example = b"foobar"
-        with self.assertRaises(Exception) as context:
-            JsonRpcResponse.from_bytes(json_response_example)
-            self.assertTrue("msg" in context.exception)
+        json = JsonRpcResponse.from_json(json_response_example)
+        self.assertIsNone(json)
 
 
 if __name__ == "__main__":

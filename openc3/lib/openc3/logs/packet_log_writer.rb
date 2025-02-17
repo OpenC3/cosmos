@@ -26,7 +26,7 @@ require 'openc3/models/target_model'
 require 'cbor'
 
 module OpenC3
-  # Creates a packet log. Can automatically cycle the log based on an elasped
+  # Creates a packet log. Can automatically cycle the log based on an elapsed
   # time period or when the log file reaches a predefined size.
   class PacketLogWriter < LogWriter
     include PacketLogConstants
@@ -112,9 +112,9 @@ module OpenC3
       ensure
         @mutex.unlock if take_mutex
       end
-    rescue => err
-      Logger.instance.error "Error writing #{@filename} : #{err.formatted}"
-      OpenC3.handle_critical_exception(err)
+    rescue => e
+      Logger.instance.error "Error writing #{@filename} : #{e.formatted}"
+      OpenC3.handle_critical_exception(e)
     end
 
     # Starting a new file is a critical operation so the entire method is
@@ -133,10 +133,10 @@ module OpenC3
       @next_target_index = 0
       @target_dec_entries = []
       @packet_dec_entries = []
-    rescue => err
-      Logger.error "Error starting new log file: #{err.formatted}"
+    rescue => e
+      Logger.error "Error starting new log file: #{e.formatted}"
       @logging_enabled = false
-      OpenC3.handle_critical_exception(err)
+      OpenC3.handle_critical_exception(e)
     end
 
     # Closing a log file isn't critical so we just log an error
@@ -331,7 +331,7 @@ module OpenC3
         @entry << [length, flags, packet_index, time_nsec_since_epoch].pack(OPENC3_PACKET_PACK_DIRECTIVE)
         @entry << [received_time_nsec_since_epoch].pack(OPENC3_RECEIVED_TIME_PACK_DIRECTIVE) if received_time_nsec_since_epoch
         @entry << [extra_encoded.length].pack(OPENC3_EXTRA_LENGTH_PACK_DIRECTIVE) << extra_encoded if extra_encoded
-        @entry << data
+        @entry << data.force_encoding('ASCII-8BIT')
         @first_time = time_nsec_since_epoch if !@first_time or time_nsec_since_epoch < @first_time
         @last_time = time_nsec_since_epoch if !@last_time or time_nsec_since_epoch > @last_time
       else

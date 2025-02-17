@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -18,8 +18,7 @@ import time
 import socket
 import threading
 import unittest
-from unittest.mock import *
-from test.test_helper import *
+from unittest.mock import patch
 from openc3.interfaces.udp_interface import UdpInterface
 from openc3.io.udp_sockets import UdpReadSocket, UdpWriteSocket
 from openc3.packets.packet import Packet
@@ -71,6 +70,19 @@ class TestUdpInterface(unittest.TestCase):
         self.assertTrue(i.write_allowed)
         self.assertTrue(i.write_raw_allowed)
         self.assertFalse(i.read_allowed)
+
+    def test_connection_string(self):
+        i = UdpInterface("123.4.5.6", "8888", "8889", "8890", "456.7.8.9", "64", "5", "5", "1.2.3.4")
+        self.assertEqual(
+            i.connection_string(),
+            "123.4.5.6:8888 (write dest port) 8890 (write src port) 123.4.5.6:8889 (read) 456.7.8.9 (interface addr) 1.2.3.4 (bind addr)",
+        )
+
+        i = UdpInterface("localhost", "None", "8889")
+        self.assertEqual(i.connection_string(), "127.0.0.1:8889 (read)")
+
+        i = UdpInterface("localhost", "8888", "None")
+        self.assertEqual(i.connection_string(), "127.0.0.1:8888 (write dest port)")
 
     def test_creates_a_udpwritesocket_and_udpreadsocket_if_both_given(self):
         i = UdpInterface("localhost", "8888", "8889")
@@ -129,7 +141,7 @@ class TestUdpInterface(unittest.TestCase):
         i.connect()
         thread = threading.Thread(target=i.read)
         thread.start()
-        time.sleep(0.1)
+        time.sleep(0.001)
         self.assertFalse(thread.is_alive())
 
     def test_counts_the_packets_received(self):
@@ -183,7 +195,6 @@ class TestUdpInterface(unittest.TestCase):
         i.disconnect()
         close_socket(write)
         i.stream_log_pair.shutdown()
-        time.sleep(0.01)
 
     def test_write_complains_if_write_dest_not_given(self):
         i = UdpInterface("localhost", "None", "8889")
@@ -244,4 +255,3 @@ class TestUdpInterface(unittest.TestCase):
         i.disconnect()
         close_socket(read)
         i.stream_log_pair.shutdown()
-        time.sleep(0.01)

@@ -32,6 +32,7 @@ module OpenC3
       interface.cmd_target_names.each do |target_name|
         topics << "{#{scope}__CMD}TARGET__#{target_name}"
       end
+      topics << "OPENC3__SYSTEM__EVENTS" # Add System Events
       topics
     end
 
@@ -49,6 +50,7 @@ module OpenC3
 
     def self.write_raw(interface_name, data, scope:)
       Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'raw' => data }, '*', 100)
+      # Todo: This should wait for the ack
     end
 
     def self.connect_interface(interface_name, *interface_params, scope:)
@@ -73,8 +75,6 @@ module OpenC3
 
     def self.shutdown(interface, scope:)
       Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface.name}", { 'shutdown' => 'true' }, '*', 100)
-      sleep 1 # Give some time for the interface to shutdown
-      InterfaceTopic.clear_topics(InterfaceTopic.topics(interface, scope: scope))
     end
 
     def self.interface_cmd(interface_name, cmd_name, *cmd_params, scope:)

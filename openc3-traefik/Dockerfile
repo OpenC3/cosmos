@@ -1,6 +1,8 @@
 ARG OPENC3_DEPENDENCY_REGISTRY=docker.io
 ARG TRAEFIK_CONFIG=traefik.yaml
-FROM ${OPENC3_DEPENDENCY_REGISTRY}/traefik:v2.10.7
+# Consider updating openc3_build_ubi.sh when changing the release version
+ARG OPENC3_TRAEFIK_RELEASE=v3.3.2
+FROM ${OPENC3_DEPENDENCY_REGISTRY}/traefik:${OPENC3_TRAEFIK_RELEASE}
 
 # An ARG declared before a FROM is outside of a build stage, so it can’t be
 # used in any instruction after a FROM. So we need to re-ARG.
@@ -35,3 +37,4 @@ RUN if [[ $OPENC3_DEPENDENCY_REGISTRY == 'docker.io' ]]; then \
 
 # Switch to user
 USER ${USER_ID}
+COPY --chown=1001:1001  --chmod=755 ./entrypoint.sh /entrypoint.sh

@@ -40,7 +40,7 @@ module OpenC3
         tf = Tempfile.new('unittest')
         tf.puts("BLAH")
         tf.close
-        expect { @pc.process_file(tf.path, 'SYSTEM') }.to raise_error(RuntimeError, /Unknown keyword 'BLAH'/)
+        expect { @pc.process_file(tf.path, 'SYSTEM') }.to raise_error(ConfigParser::Error, /Unknown keyword 'BLAH'/)
         tf.unlink
       end
 
@@ -51,6 +51,32 @@ module OpenC3
         # Only one cmd/tlm packet called "UNKNOWN"
         expect(@pc.commands["UNKNOWN"].keys).to eql ["UNKNOWN"]
         expect(@pc.telemetry["UNKNOWN"].keys).to eql ["UNKNOWN"]
+      end
+
+      it "dynamically adds packets" do
+        tf = Tempfile.new('unittest')
+        tf.puts 'TELEMETRY tgt1 pkt1 BIG_ENDIAN "Packet"'
+        tf.puts 'ID_ITEM myitem 0 8 UINT 1 "Test Item id=1"'
+        tf.puts 'COMMAND tgt1 pkt10 BIG_ENDIAN "Packet"'
+        tf.puts 'ID_PARAMETER myitem 0 8 UINT 10 10 10 "Test Item id=1"'
+        tf.close
+        @pc.process_file(tf.path, "TGT1")
+        tf.unlink
+
+        expect(@pc.tlm_id_value_hash["TGT1"].keys).to eql([[1]])
+        expect(@pc.cmd_id_value_hash["TGT1"].keys).to eql([[10]])
+
+        pkt = Packet.new("TGT1", "PKT2")
+        pkt.append_item("item2", 32, :UINT, nil, :BIG_ENDIAN, :ERROR, nil, nil, nil, 2)
+        @pc.dynamic_add_packet(pkt, :TELEMETRY, affect_ids: true)
+        expect(@pc.telemetry["TGT1"]["PKT2"]).to eql pkt
+        expect(@pc.tlm_id_value_hash["TGT1"].keys).to eql([[1], [2]])
+
+        pkt = Packet.new("TGT1", "PKT11")
+        pkt.append_item("item12", 32, :UINT, nil, :BIG_ENDIAN, :ERROR, nil, nil, nil, 11)
+        @pc.dynamic_add_packet(pkt, :COMMAND, affect_ids: true)
+        expect(@pc.commands["TGT1"]["PKT11"]).to eql pkt
+        expect(@pc.cmd_id_value_hash["TGT1"].keys).to eql([[10], [11]])
       end
 
       it "outputs parsed definitions back to a file" do
@@ -83,7 +109,11 @@ module OpenC3
           # Keywords that require a current packet from TELEMETRY keyword
           @tlm_keywords = %w(SELECT_ITEM ITEM ID_ITEM ARRAY_ITEM APPEND_ITEM APPEND_ID_ITEM APPEND_ARRAY_ITEM PROCESSOR META)
           # Keywords that require both a current packet and current item
-          @item_keywords = %w(STATE READ_CONVERSION WRITE_CONVERSION POLY_READ_CONVERSION POLY_WRITE_CONVERSION SEG_POLY_READ_CONVERSION SEG_POLY_WRITE_CONVERSION GENERIC_READ_CONVERSION_START GENERIC_WRITE_CONVERSION_START LIMITS LIMITS_RESPONSE UNITS FORMAT_STRING DESCRIPTION META)
+          @item_keywords = %w(STATE READ_CONVERSION WRITE_CONVERSION POLY_READ_CONVERSION)
+          @item_keywords += %w(POLY_WRITE_CONVERSION SEG_POLY_READ_CONVERSION SEG_POLY_WRITE_CONVERSION)
+          @item_keywords += %w(GENERIC_READ_CONVERSION_START GENERIC_WRITE_CONVERSION_START REQUIRED)
+          @item_keywords += %w(LIMITS LIMITS_RESPONSE UNITS FORMAT_STRING DESCRIPTION)
+          @item_keywords += %w(MINIMUM_VALUE MAXIMUM_VALUE DEFAULT_VALUE OVERFLOW OVERLAP KEY VARIABLE_BIT_SIZE)
         end
 
         it "complains if a current packet is not defined" do
@@ -92,7 +122,7 @@ module OpenC3
             tf = Tempfile.new('unittest')
             tf.puts(keyword)
             tf.close
-            expect { @pc.process_file(tf.path, "SYSTEM") }.to raise_error(RuntimeError, /No current packet for #{keyword}/)
+            expect { @pc.process_file(tf.path, "SYSTEM") }.to raise_error(ConfigParser::Error, /No current packet for #{keyword}/)
             tf.unlink
           end # end for each tlm_keywords
         end
@@ -106,7 +136,7 @@ module OpenC3
             tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"'
             tf.puts keyword
             tf.close
-            expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /No current item for #{keyword}/)
+            expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /No current item for #{keyword}/)
             tf.unlink
           end
         end
@@ -116,7 +146,7 @@ module OpenC3
             tf = Tempfile.new('unittest')
             tf.puts(keyword)
             tf.close
-            expect { @pc.process_file(tf.path, "SYSTEM") }.to raise_error(RuntimeError, /Not enough parameters for #{keyword}/)
+            expect { @pc.process_file(tf.path, "SYSTEM") }.to raise_error(ConfigParser::Error, /Not enough parameters for #{keyword}/)
             tf.unlink
           end
 
@@ -125,19 +155,24 @@ module OpenC3
             tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"'
             tf.puts keyword
             tf.close
-            expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Not enough parameters for #{keyword}/)
+            expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Not enough parameters for #{keyword}/)
             tf.unlink
           end
 
           @item_keywords.each do |keyword|
-            next if %w(GENERIC_READ_CONVERSION_START GENERIC_WRITE_CONVERSION_START).include? keyword
+            ignore = %w(GENERIC_READ_CONVERSION_START GENERIC_WRITE_CONVERSION_START)
+            # The following have 0 parameters
+            ignore += %w(OVERLAP)
+            # The following are command only
+            ignore += %w(REQUIRED MINIMUM_VALUE MAXIMUM_VALUE DEFAULT_VALUE)
+            next if ignore.include? keyword
 
             tf = Tempfile.new('unittest')
             tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"'
             tf.puts 'ITEM myitem 0 8 UINT "Test Item"'
             tf.puts keyword
             tf.close
-            expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Not enough parameters for #{keyword}/)
+            expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Not enough parameters for #{keyword}/)
             tf.unlink
           end
         end
@@ -181,7 +216,7 @@ module OpenC3
               tf.puts "LIMITS_GROUP_ITEM target packet item extra"
             end
             tf.close
-            expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Too many parameters for #{keyword}/)
+            expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Too many parameters for #{keyword}/)
             tf.unlink
           end
 
@@ -208,13 +243,17 @@ module OpenC3
               tf.puts 'SELECT_ITEM myitem extra'
             end
             tf.close
-            expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Too many parameters for #{keyword}/)
+            expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Too many parameters for #{keyword}/)
             tf.unlink
           end
 
           @item_keywords.each do |keyword|
             # The following can have an "unlimited" number of arguments
-            next if %w(POLY_READ_CONVERSION POLY_WRITE_CONVERSION READ_CONVERSION WRITE_CONVERSION SEG_POLY_READ_CONVERSION SEG_POLY_WRITE_CONVERSION LIMITS_RESPONSE META).include? keyword
+            ignore = %w(POLY_READ_CONVERSION POLY_WRITE_CONVERSION READ_CONVERSION WRITE_CONVERSION)
+            ignore += %w(SEG_POLY_READ_CONVERSION SEG_POLY_WRITE_CONVERSION LIMITS_RESPONSE META)
+            # The following are command only
+            ignore += %w(REQUIRED MINIMUM_VALUE MAXIMUM_VALUE DEFAULT_VALUE)
+            next if ignore.include? keyword
 
             tf = Tempfile.new('unittest')
             tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"'
@@ -228,11 +267,15 @@ module OpenC3
               tf.puts 'LIMITS mylimits 1 ENABLED 0 10 20 30 12 18 20'
             when "UNITS"
               tf.puts 'UNITS degrees deg extra'
-            when "FORMAT_STRING", "DESCRIPTION"
+            when "FORMAT_STRING", "DESCRIPTION", "OVERFLOW", "KEY"
               tf.puts "#{keyword} 'string' extra"
+            when "VARIABLE_BIT_SIZE"
+              tf.puts "#{keyword} LEN 8 0 extra"
+            else
+              tf.puts "#{keyword} extra"
             end
             tf.close
-            expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Too many parameters for #{keyword}/)
+            expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Too many parameters for #{keyword}/)
             tf.unlink
           end
         end
@@ -246,7 +289,7 @@ module OpenC3
             tf.puts 'SELECT_ITEM ITEM1'
             tf.puts '  DESCRIPTION "New description"'
             tf.close
-            expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Packet not found/)
+            expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Packet not found/)
             tf.unlink
           end
         end
@@ -316,7 +359,7 @@ module OpenC3
           tf.puts 'SELECT_TELEMETRY TGT PKT'
           tf.puts '  SELECT_PARAMETER ITEM'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT") }.to raise_error(RuntimeError, /SELECT_PARAMETER only applies to command packets/)
+          expect { @pc.process_file(tf.path, "TGT") }.to raise_error(ConfigParser::Error, /SELECT_PARAMETER only applies to command packets/)
         end
 
         it "complains if the parameter is not found" do
@@ -334,7 +377,7 @@ module OpenC3
           tf.puts '  SELECT_PARAMETER PARAMX'
           tf.puts '    DESCRIPTION "New description"'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT") }.to raise_error(RuntimeError, /PARAMX not found in command packet TGT PKT/)
+          expect { @pc.process_file(tf.path, "TGT") }.to raise_error(ConfigParser::Error, /PARAMX not found in command packet TGT PKT/)
         end
       end
 
@@ -346,7 +389,7 @@ module OpenC3
           tf.puts 'SELECT_COMMAND TGT PKT'
           tf.puts '  SELECT_ITEM PARAM'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT") }.to raise_error(RuntimeError, /SELECT_ITEM only applies to telemetry packets/)
+          expect { @pc.process_file(tf.path, "TGT") }.to raise_error(ConfigParser::Error, /SELECT_ITEM only applies to telemetry packets/)
         end
 
         it "complains if the item is not found" do
@@ -364,7 +407,7 @@ module OpenC3
           tf.puts '  SELECT_ITEM ITEMX'
           tf.puts '    DESCRIPTION "New description"'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT") }.to raise_error(RuntimeError, /ITEMX not found in telemetry packet TGT PKT/)
+          expect { @pc.process_file(tf.path, "TGT") }.to raise_error(ConfigParser::Error, /ITEMX not found in telemetry packet TGT PKT/)
         end
       end
 
@@ -478,6 +521,20 @@ module OpenC3
         end
       end
 
+      context "with VIRTUAL" do
+        it "marks the packet as a virtual packet" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
+          tf.puts 'VIRTUAL'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.telemetry["TGT1"]["PKT1"].hidden).to be true
+          expect(@pc.telemetry["TGT1"]["PKT1"].disabled).to be true
+          expect(@pc.telemetry["TGT1"]["PKT1"].virtual).to be true
+          tf.unlink
+        end
+      end
+
       context "with ACCESSOR" do
         it "sets the accessor for the packet" do
           tf = Tempfile.new('unittest')
@@ -493,8 +550,178 @@ module OpenC3
         end
       end
 
+      context "with RESPONSE" do
+        it "only applies to commands" do
+          tf = Tempfile.new('unittest')
+          tf.puts('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"')
+          tf.puts("  ITEM item1 0 8 UINT")
+          tf.puts("  RESPONSE TGT1 PKT1")
+          tf.close
+          expect { @pc.process_file(tf.path, "TGT") }.to raise_error(/RESPONSE only applies to command packets/)
+          tf.unlink
+        end
+
+        it "requires two params" do
+          tf = Tempfile.new('unittest')
+          tf.puts('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"')
+          tf.puts("  RESPONSE TGT1")
+          tf.close
+          expect { @pc.process_file(tf.path, "TGT") }.to raise_error(/Not enough parameters for RESPONSE/)
+          tf.unlink
+        end
+
+        it "can't have extra params" do
+          tf = Tempfile.new('unittest')
+          tf.puts('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"')
+          tf.puts("  RESPONSE TGT1 PKT1 ITEM1")
+          tf.close
+          expect { @pc.process_file(tf.path, "TGT") }.to raise_error(/Too many parameters for RESPONSE/)
+          tf.unlink
+        end
+
+        it "sets the packet response" do
+          tf = Tempfile.new('unittest')
+          tf.puts('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"')
+          tf.puts("  RESPONSE TGT2 PKT2")
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.commands["TGT1"]["PKT1"].response).to eql ["TGT2", "PKT2"]
+          expect(@pc.commands["TGT1"]["PKT1"].error_response).to be_nil
+          tf.unlink
+        end
+      end
+
+      context "with ERROR_RESPONSE" do
+        it "only applies to commands" do
+          tf = Tempfile.new('unittest')
+          tf.puts('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"')
+          tf.puts("  ITEM item1 0 8 UINT")
+          tf.puts("  ERROR_RESPONSE TGT1 PKT1")
+          tf.close
+          expect { @pc.process_file(tf.path, "TGT") }.to raise_error(/ERROR_RESPONSE only applies to command packets/)
+          tf.unlink
+        end
+
+        it "requires two params" do
+          tf = Tempfile.new('unittest')
+          tf.puts('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"')
+          tf.puts("  ERROR_RESPONSE TGT1")
+          tf.close
+          expect { @pc.process_file(tf.path, "TGT") }.to raise_error(/Not enough parameters for ERROR_RESPONSE/)
+          tf.unlink
+        end
+
+        it "can't have extra params" do
+          tf = Tempfile.new('unittest')
+          tf.puts('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"')
+          tf.puts("  ERROR_RESPONSE TGT1 PKT1 ITEM1")
+          tf.close
+          expect { @pc.process_file(tf.path, "TGT") }.to raise_error(/Too many parameters for ERROR_RESPONSE/)
+          tf.unlink
+        end
+
+        it "sets the packet error response" do
+          tf = Tempfile.new('unittest')
+          tf.puts('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"')
+          tf.puts("  ERROR_RESPONSE TGT2 PKT2")
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.commands["TGT1"]["PKT1"].error_response).to eql ["TGT2", "PKT2"]
+          expect(@pc.commands["TGT1"]["PKT1"].response).to be_nil
+          tf.unlink
+        end
+      end
+
+      context "with SCREEN" do
+        it "only applies to commands" do
+          tf = Tempfile.new('unittest')
+          tf.puts('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"')
+          tf.puts("  ITEM item1 0 8 UINT")
+          tf.puts("  SCREEN TGT1 SCREEN")
+          tf.close
+          expect { @pc.process_file(tf.path, "TGT") }.to raise_error(/SCREEN only applies to command packets/)
+          tf.unlink
+        end
+
+        it "requires two params" do
+          tf = Tempfile.new('unittest')
+          tf.puts('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"')
+          tf.puts("  SCREEN TGT1")
+          tf.close
+          expect { @pc.process_file(tf.path, "TGT") }.to raise_error(/Not enough parameters for SCREEN/)
+          tf.unlink
+        end
+
+        it "can't have extra params" do
+          tf = Tempfile.new('unittest')
+          tf.puts('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"')
+          tf.puts("  SCREEN TGT1 SCREEN ANOTHER")
+          tf.close
+          expect { @pc.process_file(tf.path, "TGT") }.to raise_error(/Too many parameters for SCREEN/)
+          tf.unlink
+        end
+
+        it "sets the command screen" do
+          tf = Tempfile.new('unittest')
+          tf.puts('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"')
+          tf.puts("  SCREEN TGT1 SCREEN")
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.commands["TGT1"]["PKT1"].screen).to eql ["TGT1", "SCREEN"]
+          tf.unlink
+        end
+      end
+
+      context "with RELATED_ITEM" do
+        it "only applies to commands" do
+          tf = Tempfile.new('unittest')
+          tf.puts('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"')
+          tf.puts("  ITEM item1 0 8 UINT")
+          tf.puts("  RELATED_ITEM TGT1 PKT1 ITEM1")
+          tf.close
+          expect { @pc.process_file(tf.path, "TGT") }.to raise_error(/RELATED_ITEM only applies to command packets/)
+          tf.unlink
+        end
+
+        it "requires three params" do
+          tf = Tempfile.new('unittest')
+          tf.puts('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"')
+          tf.puts("  RELATED_ITEM TGT1")
+          tf.close
+          expect { @pc.process_file(tf.path, "TGT") }.to raise_error(/Not enough parameters for RELATED_ITEM/)
+          tf.unlink
+
+          tf = Tempfile.new('unittest')
+          tf.puts('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"')
+          tf.puts("  RELATED_ITEM TGT1 PKT1")
+          tf.close
+          expect { @pc.process_file(tf.path, "TGT") }.to raise_error(/Not enough parameters for RELATED_ITEM/)
+          tf.unlink
+        end
+
+        it "can't have extra params" do
+          tf = Tempfile.new('unittest')
+          tf.puts('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"')
+          tf.puts("  RELATED_ITEM TGT1 PKT1 ITEM1 ITEM2")
+          tf.close
+          expect { @pc.process_file(tf.path, "TGT") }.to raise_error(/Too many parameters for RELATED_ITEM/)
+          tf.unlink
+        end
+
+        it "sets the related items" do
+          tf = Tempfile.new('unittest')
+          tf.puts('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"')
+          tf.puts("  RELATED_ITEM TGT1 PKT1 ITEM1")
+          tf.puts("  RELATED_ITEM TGT2 PKT2 ITEM2")
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.commands["TGT1"]["PKT1"].related_items).to eql [["TGT1", "PKT1", "ITEM1"], ["TGT2", "PKT2", "ITEM2"]]
+          tf.unlink
+        end
+      end
+
       context "with TEMPLATE" do
-        it "sets the accessor for the packet" do
+        it "sets the template" do
           tf = Tempfile.new('unittest')
           tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts 'TEMPLATE "This is a template"'
@@ -509,7 +736,7 @@ module OpenC3
       end
 
       context "with TEMPLATE_FILE" do
-        it "sets the accessor for the packet" do
+        it "sets the template via file" do
           data_file = Tempfile.new('unittest')
           data_file.write("File data")
           data_file.close
@@ -562,7 +789,7 @@ module OpenC3
         end
       end
 
-      context "with READ_CONVERSION and WRITE_CONVERSION" do
+      context "with READ_CONVERSION and WRITE_CONVERSION", no_ext: true do
         it "complains about missing conversion file" do
           filename = File.join(File.dirname(__FILE__), "../test_only.rb")
           File.delete(filename) if File.exist?(filename)
@@ -573,7 +800,7 @@ module OpenC3
           tf.puts '  ITEM item1 0 16 INT "Integer Item"'
           tf.puts '  READ_CONVERSION test_only.rb'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Unable to require test_only.rb due to cannot load such file -- test_only.rb. Ensure test_only.rb is in the OpenC3 lib directory./)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(/Unable to require test_only.rb due to cannot load such file -- test_only.rb. Ensure test_only.rb is in the OpenC3 lib directory./)
           tf.unlink
 
           tf = Tempfile.new('unittest')
@@ -581,7 +808,7 @@ module OpenC3
           tf.puts '  PARAMETER item1 0 16 INT 0 0 0'
           tf.puts '  WRITE_CONVERSION test_only.rb'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Unable to require test_only.rb due to cannot load such file -- test_only.rb. Ensure test_only.rb is in the OpenC3 lib directory./)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(/Unable to require test_only.rb due to cannot load such file -- test_only.rb. Ensure test_only.rb is in the OpenC3 lib directory./)
           tf.unlink
         end
 
@@ -601,7 +828,7 @@ module OpenC3
           tf.puts '  ITEM item1 0 16 INT "Integer Item"'
           tf.puts '  READ_CONVERSION conversion1.rb'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /read_conversion must be a OpenC3::Conversion but is a Conversion1/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /read_conversion must be a OpenC3::Conversion but is a Conversion1/)
           tf.unlink
 
           tf = Tempfile.new('unittest')
@@ -609,7 +836,7 @@ module OpenC3
           tf.puts '  PARAMETER item1 0 16 INT 0 0 0'
           tf.puts '  WRITE_CONVERSION conversion1.rb'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /write_conversion must be a OpenC3::Conversion but is a Conversion1/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /write_conversion must be a OpenC3::Conversion but is a Conversion1/)
           tf.unlink
         end
 
@@ -832,6 +1059,45 @@ module OpenC3
         end
       end
 
+      context "with VARIABLE_BIT_SIZE" do
+        it "sets the variable bit size variables" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"'
+          tf.puts '  ITEM item1 0 8 UINT'
+          tf.puts '    VARIABLE_BIT_SIZE LEN 16 8'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          vbs = {"length_item_name"=>"LEN", "length_bits_per_count"=>16, "length_value_bit_offset"=>8}
+          expect(@pc.telemetry["TGT1"]["PKT1"].get_item('item1').variable_bit_size).to eql vbs
+          tf.unlink
+        end
+      end
+
+      context "with OVERLAP" do
+        it "allows item overlap" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 pkt2 LITTLE_ENDIAN "Packet"'
+          tf.puts "  ITEM item1 0 8 UINT"
+          tf.puts "    OVERLAP"
+          tf.puts "  ITEM item2 0 2 UINT"
+          tf.puts "    OVERLAP"
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          puts @pc.warnings
+          expect(@pc.warnings.length).to eql 0
+          tf.unlink
+
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"'
+          tf.puts "  ITEM item1 0 8 UINT"
+          tf.puts "  ITEM item2 0 2 UINT"
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.warnings[0]).to eql "Bit definition overlap at bit offset 0 for packet TGT1 PKT1 items ITEM2 and ITEM1"
+          tf.unlink
+        end
+      end
+
       context "with REQUIRED" do
         it "only applies to a command parameter" do
           tf = Tempfile.new('unittest')
@@ -839,14 +1105,14 @@ module OpenC3
           tf.puts '  ITEM item1 0 8 UINT'
           tf.puts '    REQUIRED'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /REQUIRED only applies to command parameters/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /REQUIRED only applies to command parameters/)
           tf.unlink
 
           tf = Tempfile.new('unittest')
           tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"'
           tf.puts '  REQUIRED'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /No current item for REQUIRED/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /No current item for REQUIRED/)
           tf.unlink
         end
 
@@ -871,7 +1137,7 @@ module OpenC3
           tf.puts '  APPEND_ITEM item1 16 UINT'
           tf.puts '    MINIMUM_VALUE 1'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /MINIMUM_VALUE only applies to command parameters/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /MINIMUM_VALUE only applies to command parameters/)
           tf.unlink
 
           tf = Tempfile.new('unittest')
@@ -879,7 +1145,7 @@ module OpenC3
           tf.puts '  APPEND_ITEM item1 16 UINT'
           tf.puts '    MAXIMUM_VALUE 3'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /MAXIMUM_VALUE only applies to command parameters/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /MAXIMUM_VALUE only applies to command parameters/)
           tf.unlink
 
           tf = Tempfile.new('unittest')
@@ -887,7 +1153,7 @@ module OpenC3
           tf.puts '  APPEND_ITEM item1 16 UINT'
           tf.puts '    DEFAULT_VALUE 2'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /DEFAULT_VALUE only applies to command parameters/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /DEFAULT_VALUE only applies to command parameters/)
           tf.unlink
         end
 
@@ -900,7 +1166,7 @@ module OpenC3
           @pc.process_file(tf.path, "TGT1")
           @pc.commands["TGT1"]["PKT1"].restore_defaults
           expect(@pc.commands["TGT1"]["PKT1"].read("ITEM1")).to eql 1
-          expect(@pc.commands["TGT1"]["PKT1"].items["ITEM1"].range).to eql (0..1)
+          expect(@pc.commands["TGT1"]["PKT1"].items["ITEM1"].range).to eql(0..1)
           expect(@pc.commands["TGT1"]["PKT1"].read("ITEM2")).to eql "HI"
           tf.unlink
 
@@ -917,7 +1183,7 @@ module OpenC3
           @pc.process_file(tf.path, "TGT1")
           @pc.commands["TGT1"]["PKT1"].restore_defaults
           expect(@pc.commands["TGT1"]["PKT1"].read("ITEM1")).to eql 2
-          expect(@pc.commands["TGT1"]["PKT1"].items["ITEM1"].range).to eql (1..3)
+          expect(@pc.commands["TGT1"]["PKT1"].items["ITEM1"].range).to eql(1..3)
           expect(@pc.commands["TGT1"]["PKT1"].read("ITEM2")).to eql "NO"
           tf.unlink
         end
@@ -931,6 +1197,31 @@ module OpenC3
           tf.close
           @pc.process_file(tf.path, "TGT1")
           expect(@pc.telemetry["TGT1"]["PKT1"].items["ITEM1"].data_type).to be :DERIVED
+          tf.unlink
+        end
+      end
+
+      context "with IGNORE_OVERLAP" do
+        it "detects overlapping items without IGNORE_OVERLAP" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"'
+          tf.puts '  ITEM item1 0 8 UINT'
+          tf.puts '  ITEM item2 4 4 UINT'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.warnings).to include("Bit definition overlap at bit offset 4 for packet TGT1 PKT1 items ITEM2 and ITEM1")
+          tf.unlink
+        end
+
+        it "ignores overlapping items with IGNORE_OVERLAP" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"'
+          tf.puts '  IGNORE_OVERLAP'
+          tf.puts '  ITEM item1 0 8 UINT'
+          tf.puts '  ITEM item2 4 4 UINT'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.warnings).to be_empty
           tf.unlink
         end
       end

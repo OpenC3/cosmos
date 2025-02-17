@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -25,7 +25,10 @@ require 'openc3/models/gem_model'
 class ModelController < ApplicationController
   def index
     return unless authorization('system')
-    render :json => @model_class.names(scope: params[:scope])
+    render json: @model_class.names(scope: params[:scope])
+  rescue StandardError => error
+    render json: { status: 'error', message: error.message }, status: 500
+    logger.error(error.formatted)
   end
 
   def create(update_model = false)
@@ -39,15 +42,21 @@ class ModelController < ApplicationController
       OpenC3::Logger.info("#{@model_class.name} created: #{params[:json]}", scope: params[:scope], user: username())
     end
     head :ok
+  rescue StandardError => error
+    render json: { status: 'error', message: error.message }, status: 500
+    logger.error(error.formatted)
   end
 
   def show
     return unless authorization('system')
     if params[:id].downcase == 'all'
-      render :json => @model_class.all(scope: params[:scope])
+      render json: @model_class.all(scope: params[:scope])
     else
-      render :json => @model_class.get(name: params[:id], scope: params[:scope])
+      render json: @model_class.get(name: params[:id], scope: params[:scope])
     end
+  rescue StandardError => error
+    render json: { status: 'error', message: error.message }, status: 500
+    logger.error(error.formatted)
   end
 
   def update
@@ -58,5 +67,9 @@ class ModelController < ApplicationController
     return unless authorization('admin')
     @model_class.new(name: params[:id], scope: params[:scope]).destroy
     OpenC3::Logger.info("#{@model_class.name} destroyed: #{params[:id]}", scope: params[:scope], user: username())
+    head :ok
+  rescue StandardError => error
+    render json: { status: 'error', message: error.message }, status: 500
+    logger.error(error.formatted)
   end
 end

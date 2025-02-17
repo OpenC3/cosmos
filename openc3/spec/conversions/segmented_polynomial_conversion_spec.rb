@@ -14,10 +14,10 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -58,20 +58,20 @@ module OpenC3
     end
 
     describe "as_json" do
-      it "creates a reproducable format" do
+      it "creates a reproducible format" do
         spc = SegmentedPolynomialConversion.new()
         spc.add_segment(10, 1, 2)
         spc.add_segment(5,  2, 2)
         spc.add_segment(15, 3, 2)
         json = spc.as_json(:allow_nan => true)
         expect(json['class']).to eql "OpenC3::SegmentedPolynomialConversion"
-        new_spc = OpenC3::const_get(json['class']).new(*json['params'])
+        new_spc = OpenC3::const_get(json['class']).new(json['params'])
         spc.segments.each_with_index do |segment, index|
           expect(segment).to be == new_spc.segments[index]
         end
-        expect(spc.converted_type).to eql (new_spc.converted_type)
-        expect(spc.converted_bit_size).to eql (new_spc.converted_bit_size)
-        expect(spc.converted_array_size).to eql (new_spc.converted_array_size)
+        expect(spc.converted_type).to eql(new_spc.converted_type)
+        expect(spc.converted_bit_size).to eql(new_spc.converted_bit_size)
+        expect(spc.converted_array_size).to eql(new_spc.converted_array_size)
         expect(spc.call(1, nil, nil)).to eql new_spc.call(1, nil, nil)
         expect(spc.call(5, nil, nil)).to eql new_spc.call(5, nil, nil)
         expect(spc.call(11, nil, nil)).to eql new_spc.call(11, nil, nil)

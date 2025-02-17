@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -23,13 +23,21 @@ require 'openc3/accessors/json_accessor'
 module OpenC3
   describe JsonAccessor do
     before(:each) do
-      @data1 = '{ "packet": {"item1": 1, "item2": 1.234, "item3": "a string", "item4": [1, 2, 3, 4], "item5": {"another": "object"}} }'
+      @data1 = '{ "packet": {"item1": 1, "item2": 1.234, "item3": "a string", "item4": [1, 2, 3, 4], "item5": {"another": "object"}, "item6": {"json_class": "String", "raw": [195, 40]}, "item7": {"json_class":"Float","raw":"NaN"}, "item8": {"json_class":"Float","raw":"Infinity"}, "item9": {"json_class":"Float","raw":"-Infinity"} } }'
       @data2 = '[ { "packet": {"item1": 1, "item2": 1.234, "item3": "a string", "item4": [1, 2, 3, 4], "item5": {"another": "object"}} }, { "packet": {"item1": 2, "item2": 2.234, "item3": "another string", "item4": [5, 6, 7, 8], "item5": {"another": "packet"}} }]'
       @hash_data = '{"test":"one"}'
       @array_data = '[4, 3, 2, 1]'
     end
 
     describe "read_item" do
+      it "should return nil for an item that does not exist" do
+        item = OpenStruct.new
+        item.key = "$.packet.nope"
+        item.data_type = :INT
+        item.array_size = nil
+        expect(JsonAccessor.read_item(item, @hash_data)).to eq(nil)
+      end
+
       it "should read a top level hash" do
         item = OpenStruct.new
         item.key = "$"
@@ -92,6 +100,30 @@ module OpenC3
         item.data_type = :INT
         item.array_size = nil
         expect(JsonAccessor.read_item(item, @data1)).to eq 4
+
+        item = OpenStruct.new
+        item.key = '$.packet.item6'
+        item.data_type = :BLOCK
+        item.array_size = nil
+        expect(JsonAccessor.read_item(item, @data1)).to eq "\xC3\x28"
+
+        item = OpenStruct.new
+        item.key = '$.packet.item7'
+        item.data_type = :FLOAT
+        item.array_size = nil
+        expect(JsonAccessor.read_item(item, @data1).nan?).to eq true
+
+        item = OpenStruct.new
+        item.key = '$.packet.item8'
+        item.data_type = :FLOAT
+        item.array_size = nil
+        expect(JsonAccessor.read_item(item, @data1)).to eq Float::INFINITY
+
+        item = OpenStruct.new
+        item.key = '$.packet.item9'
+        item.data_type = :FLOAT
+        item.array_size = nil
+        expect(JsonAccessor.read_item(item, @data1)).to eq(-Float::INFINITY)
 
         item = OpenStruct.new
         item.key = '$[0].packet.item1'
@@ -365,11 +397,39 @@ module OpenC3
         expect(JsonAccessor.read_item(item, @data1)).to eq 3.14
 
         item = OpenStruct.new
+        item.key = '$.packet.item2'
+        item.data_type = :FLOAT
+        item.array_size = nil
+        JsonAccessor.write_item(item, Float::NAN, @data1)
+        expect(JsonAccessor.read_item(item, @data1).nan?).to be true
+
+        item = OpenStruct.new
+        item.key = '$.packet.item2'
+        item.data_type = :FLOAT
+        item.array_size = nil
+        JsonAccessor.write_item(item, Float::INFINITY, @data1)
+        expect(JsonAccessor.read_item(item, @data1)).to eq Float::INFINITY
+
+        item = OpenStruct.new
+        item.key = '$.packet.item2'
+        item.data_type = :FLOAT
+        item.array_size = nil
+        JsonAccessor.write_item(item, -Float::INFINITY, @data1)
+        expect(JsonAccessor.read_item(item, @data1)).to eq(-Float::INFINITY)
+
+        item = OpenStruct.new
         item.key = '$.packet.item3'
         item.data_type = :STRING
         item.array_size = nil
         JsonAccessor.write_item(item, "something different", @data1)
         expect(JsonAccessor.read_item(item, @data1)).to eq "something different"
+
+        item = OpenStruct.new
+        item.key = '$.packet.item3'
+        item.data_type = :BLOCK
+        item.array_size = nil
+        JsonAccessor.write_item(item, "\xC3\x28", @data1)
+        expect(JsonAccessor.read_item(item, @data1)).to eq "\xC3\x28"
 
         item = OpenStruct.new
         item.key = '$.packet.item4'

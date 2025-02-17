@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -15,6 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 from .accessor import Accessor
+# HtmlAccessor uses lxml.html
 import lxml.etree as ET
 
 
@@ -24,7 +25,12 @@ class XmlAccessor(Accessor):
         if item.data_type == "DERIVED":
             return None
         doc = cls._buffer_to_doc(buffer)
-        return cls.convert_to_type(doc.xpath(item.key)[0], item)
+        doc_value = doc.xpath(item.key)
+        # The xpath method returns a boolean, float, string, or list of items
+        # If it's a list then just grab the first value to convert
+        if isinstance(doc_value, list):
+            doc_value = doc_value[0]
+        return cls.convert_to_type(doc_value, item)
 
     @classmethod
     def class_write_item(cls, item, value, buffer):
@@ -42,7 +48,12 @@ class XmlAccessor(Accessor):
             if item.data_type == "DERIVED":
                 result[item.name] = None
             else:
-                result[item.name] = cls.convert_to_type(doc.xpath(item.key)[0], item)
+                doc_value = doc.xpath(item.key)
+                # The xpath method returns a boolean, float, string, or list of items
+                # If it's a list then just grab the first value to convert
+                if isinstance(doc_value, list):
+                    doc_value = doc_value[0]
+                result[item.name] = cls.convert_to_type(doc_value, item)
         return result
 
     @classmethod
@@ -70,7 +81,7 @@ class XmlAccessor(Accessor):
         node = doc.xpath(path)[0]
         # Determine what the selector was trying to set
         if "@" in parts[-1]:
-            node.attrib[parts[-1][1:]] = value
+            node.attrib[parts[-1][1:]] = str(value)
         elif "text()" == parts[-1]:
             node.text = str(value)
         else:

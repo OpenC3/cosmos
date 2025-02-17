@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -31,19 +31,17 @@ class StreamInterface(Interface):
         if self.protocol_type:
             protocol_class_name = str(protocol_type).capitalize() + "Protocol"
             filename = class_name_to_filename(protocol_class_name)
-            klass = get_class_from_module(
-                f"openc3.interfaces.protocols.{filename}", protocol_class_name
-            )
+            klass = get_class_from_module(f"openc3.interfaces.protocols.{filename}", protocol_class_name)
             self.add_protocol(klass, protocol_args, "PARAMS")
 
     def connect(self):
-        super().connect()
+        super().connect() # Reset the protocols
         if self.stream:
             self.stream.connect()
 
     def connected(self):
         if self.stream:
-            return self.stream.connected
+            return self.stream.connected()
         else:
             return False
 
@@ -62,20 +60,16 @@ class StreamInterface(Interface):
             data = None
         if data is None or len(data) <= 0:
             if data is None and not timeout:
-                Logger.info(
-                    f"{self.name}: {self.stream.__class__.__name__} read returned None"
-                )
+                Logger.info(f"{self.name}: {self.stream.__class__.__name__} read returned None")
             if data is not None and len(data) <= 0:
-                Logger.info(
-                    f"{self.name}: {self.stream.__class__.__name__} read returned 0 bytes (stream closed)"
-                )
-            return (None, None)
+                Logger.info(f"{self.name}: {self.stream.__class__.__name__} read returned 0 bytes (stream closed)")
+            return None, None
 
         extra = None
         self.read_interface_base(data, extra)
-        return (data, extra)
+        return data, extra
 
     def write_interface(self, data, extra=None):
         self.write_interface_base(data, extra)
         self.stream.write(data)
-        return (data, extra)
+        return data, extra

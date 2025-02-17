@@ -17,6 +17,7 @@
 import tempfile
 import importlib
 import sys
+import os
 from openc3.utilities.bucket import Bucket
 from openc3.utilities.target_file import TargetFile
 from openc3.environment import OPENC3_SCOPE, OPENC3_CONFIG_BUCKET
@@ -96,6 +97,8 @@ class MyFinder(type(_real_pathfinder)):
             # Try to read the filename based on the last bit of the path
             # NOTE: This handles the target_modified vs target directory
             body = TargetFile.body(OPENC3_SCOPE, f"{path_name}.py")
+            if body is None:
+                body = TargetFile.body(OPENC3_SCOPE, os.path.join(path_name, "__init__.py"))
             if body is not None:
                 # If a file was actually there we assign it to loader_state
                 # so the loader can parse it into a real module

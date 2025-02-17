@@ -34,22 +34,29 @@ module OpenC3
       if response.nil? || response.status != 200
         _script_response_error(response, "Script list request failed", scope: scope)
       else
-        return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+        scripts = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+        # Remove the '*' from the script names
+        return scripts.each { |script| script.gsub!(/\*$/, '') }
       end
     end
 
     def script_syntax_check(script, scope: $openc3_scope)
-      endpoint = "/script-api/scripts/syntax"
-      response = $script_runner_api_server.request('post', endpoint, json: true, data: script, scope: scope)
+      endpoint = "/script-api/scripts/temp.rb/syntax"
+      # Explicitly set the headers to plain/text so the request.body is set correctly
+      headers = {
+        'Content-Type': 'plain/text',
+      }
+      response = $script_runner_api_server.request('post', endpoint, headers: headers, data: script, scope: scope)
       if response.nil? || response.status != 200
         _script_response_error(response, "Script syntax check request failed", scope: scope)
       else
         result = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
         if result['title'] == "Syntax Check Successful"
-          return true
+          result['success'] = true
         else
-          raise result.inspect
+          result['success'] = false
         end
+        return result
       end
     end
 
@@ -59,8 +66,8 @@ module OpenC3
       if response.nil? || response.status != 200
         _script_response_error(response, "Failed to get #{filename}", scope: scope)
       else
-        script = response.body
-        return script
+        result = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+        return result['contents']
       end
     end
 
@@ -120,9 +127,13 @@ module OpenC3
       end
     end
 
-    def script_instrumented(filename, script, scope: $openc3_scope)
-      endpoint = "/script-api/scripts/#{filename}/instrumented"
-      response = $script_runner_api_server.request('post', endpoint, json: true, data: script, scope: scope)
+    def script_instrumented(script, scope: $openc3_scope)
+      endpoint = "/script-api/scripts/temp.rb/instrumented"
+      # Explicitly set the headers to plain/text so the request.body is set correctly
+      headers = {
+        'Content-Type': 'plain/text',
+      }
+      response = $script_runner_api_server.request('post', endpoint, headers: headers, data: script, scope: scope)
       if response.nil? || response.status != 200
         _script_response_error(response, "Script instrumented request failed", scope: scope)
       else
@@ -178,7 +189,7 @@ module OpenC3
 
     def _running_script_action(id, action_name, scope: $openc3_scope)
       endpoint = "/script-api/running-script/#{id}/#{action_name}"
-      response = $script_runner_api_server.request('post', endpoint, scope: scope)
+      response = $script_runner_api_server.request('post', endpoint, json: true, scope: scope)
       if response.nil? || response.status != 200
         _script_response_error(response, "Running script #{action_name} request failed", scope: scope)
       else

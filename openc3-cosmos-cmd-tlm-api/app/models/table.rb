@@ -21,6 +21,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3'
+require 'ostruct'
 require 'tempfile'
 require 'openc3/utilities/target_file'
 OpenC3.require_file 'openc3/utilities/store'
@@ -78,12 +79,12 @@ class Table < OpenC3::TargetFile
       # Convert the typical table naming convention of all caps with underscores
       # to the typical binary convention of camelcase, e.g. MC_CONFIG => McConfig.bin
       filename = table_name.split('_').map { |part| part.capitalize }.join()
-      report.filename = "#{filename}.csv"
+      report.filename = "#{File.dirname(binary_filename)}/#{filename}.csv"
     else
-      report.filename = File.basename(binary_filename).sub('.bin', '.csv')
+      report.filename = binary_filename.sub('.bin', '.csv')
     end
     report.contents = OpenC3::TableManagerCore.report(binary, root_definition, table_name)
-    create(scope, binary_filename.sub('.bin', '.csv'), report.contents)
+    create(scope, report.filename, report.contents)
     return report
   end
 

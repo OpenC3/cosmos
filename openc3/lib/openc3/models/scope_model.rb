@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -26,6 +26,23 @@ require 'openc3/models/plugin_model'
 require 'openc3/models/microservice_model'
 require 'openc3/models/setting_model'
 require 'openc3/models/trigger_group_model'
+require 'openc3/topics/system_events_topic'
+
+begin
+  require 'openc3-enterprise/models/cmd_authority_model'
+  require 'openc3-enterprise/models/critical_cmd_model'
+  module OpenC3
+    class ScopeModel < Model
+      ENTERPRISE = true
+    end
+  end
+rescue LoadError
+  module OpenC3
+    class ScopeModel < Model
+      ENTERPRISE = false
+    end
+  end
+end
 
 module OpenC3
   class ScopeModel < Model
@@ -37,9 +54,15 @@ module OpenC3
     attr_accessor :text_log_retain_time
     attr_accessor :tool_log_retain_time
     attr_accessor :cleanup_poll_time
+    attr_accessor :command_authority
+    attr_accessor :critical_commanding
+    attr_accessor :shard
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
+    #
+    # The scope keyword is given to support the ModelController method signature
+    # even though it is not used
     def self.get(name:, scope: nil)
       super(PRIMARY_KEY, name: name)
     end
@@ -55,7 +78,7 @@ module OpenC3
     def self.from_json(json, scope: nil)
       json = JSON.parse(json, :allow_nan => true, :create_additions => true) if String === json
       raise "json data is nil" if json.nil?
-      self.new(**json.transform_keys(&:to_sym), scope: scope)
+      self.new(**json.transform_keys(&:to_sym))
     end
 
     def self.get_model(name:, scope: nil)
@@ -72,19 +95,18 @@ module OpenC3
       text_log_cycle_size: 50_000_000,
       text_log_retain_time: nil,
       tool_log_retain_time: nil,
-      cleanup_poll_time: 900,
-      updated_at: nil,
-      scope: nil
+      cleanup_poll_time: 600,
+      command_authority: false,
+      critical_commanding: "OFF",
+      shard: 0,
+      updated_at: nil
     )
       super(
         PRIMARY_KEY,
         name: name,
-        text_log_cycle_time: text_log_cycle_time,
-        text_log_cycle_size: text_log_cycle_size,
-        text_log_retain_time: text_log_retain_time,
-        tool_log_retain_time: tool_log_retain_time,
-        cleanup_poll_time: cleanup_poll_time,
         updated_at: updated_at,
+        # This sets the @scope variable which is sort of redundant for the ScopeModel
+        # (since its the same as @name) but every model has a @scope
         scope: name
       )
       @text_log_cycle_time = text_log_cycle_time
@@ -92,21 +114,57 @@ module OpenC3
       @text_log_retain_time = text_log_retain_time
       @tool_log_retain_time = tool_log_retain_time
       @cleanup_poll_time = cleanup_poll_time
+      @command_authority = command_authority
+      @critical_commanding = critical_commanding.to_s.upcase
+      @critical_commanding = "OFF" if @critical_commanding.length == 0
+      if not ["OFF", "NORMAL", "ALL"].include?(@critical_commanding)
+        raise "Invalid value for critical_commanding: #{@critical_commanding}"
+      end
+      @shard = shard.to_i # to_i to handle nil
       @children = []
     end
 
-    def create(update: false, force: false)
-      # Ensure there are no "." in the scope name - prevents gems accidently becoming scope names
+    def create(update: false, force: false, queued: false)
+      # Ensure there are no "." in the scope name - prevents gems accidentally becoming scope names
       raise "Invalid scope name: #{@name}" if @name !~ /^[a-zA-Z0-9_-]+$/
       @name = @name.upcase
-      super(update: update, force: force)
+      @scope = @name # Ensure @scope matches @name
+      # Ensure the various cycle and retain times are integers
+      @text_log_cycle_time = @text_log_cycle_time.to_i
+      @text_log_cycle_size = @text_log_cycle_size.to_i
+      @text_log_retain_time = @text_log_retain_time.to_i if @text_log_retain_time
+      @tool_log_retain_time = @tool_log_retain_time.to_i if @tool_log_retain_time
+      @cleanup_poll_time = @cleanup_poll_time.to_i
+      super(update: update, force: force, queued: queued)
+
+      if ENTERPRISE
+        # If we're updating the scope and disabling command_authority
+        # then we clear out all the existing values so it comes up fresh
+        if update and @command_authority == false
+          CmdAuthorityModel.names(scope: @name).each do |auth_name|
+            model = CmdAuthorityModel.get_model(name: auth_name, scope: @name)
+            model.destroy if model
+          end
+        end
+
+        # If we're updating the scope and disabling critical_commanding
+        # then we clear out all the pending critical commands
+        if update and @critical_commanding == "OFF"
+          CriticalCmdModel.names(scope: @name).each do |name|
+            model = CriticalCmdModel.get_model(name: name, scope: @name)
+            model.destroy if model
+          end
+        end
+      end
+
+      SystemEventsTopic.write(:scope, as_json())
     end
 
     def destroy
       if @name != 'DEFAULT'
         # Remove all the plugins for this scope
         plugins = PluginModel.get_all_models(scope: @name)
-        plugins.each do |plugin_name, plugin|
+        plugins.each do |_plugin_name, plugin|
           plugin.destroy
         end
         super()
@@ -115,7 +173,7 @@ module OpenC3
       end
     end
 
-    def as_json(*a)
+    def as_json(*_a)
       { 'name' => @name,
         'updated_at' => @updated_at,
         'text_log_cycle_time' => @text_log_cycle_time,
@@ -123,6 +181,9 @@ module OpenC3
         'text_log_retain_time' => @text_log_retain_time,
         'tool_log_retain_time' => @tool_log_retain_time,
         'cleanup_poll_time' => @cleanup_poll_time,
+        'command_authority' => @command_authority,
+        'critical_commanding' => @critical_commanding,
+        'shard' => @shard,
        }
     end
 
@@ -143,6 +204,7 @@ module OpenC3
         ],
         topics: topics,
         parent: parent,
+        shard: @shard,
         scope: @scope
       )
       microservice.create
@@ -165,6 +227,7 @@ module OpenC3
         topics: ["#{@scope}__COMMAND__{UNKNOWN}__UNKNOWN"],
         target_names: [],
         parent: parent,
+        shard: @shard,
         scope: @scope
       )
       microservice.create
@@ -187,6 +250,7 @@ module OpenC3
         topics: ["#{@scope}__TELEMETRY__{UNKNOWN}__UNKNOWN"],
         target_names: [],
         parent: parent,
+        shard: @shard,
         scope: @scope
       )
       microservice.create
@@ -202,6 +266,7 @@ module OpenC3
         cmd: ["ruby", "periodic_microservice.rb", microservice_name],
         work_dir: '/openc3/lib/openc3/microservices',
         parent: parent,
+        shard: @shard,
         scope: @scope
       )
       microservice.create
@@ -217,6 +282,23 @@ module OpenC3
         cmd: ["ruby", "scope_cleanup_microservice.rb", microservice_name],
         work_dir: '/openc3/lib/openc3/microservices',
         parent: parent,
+        shard: @shard,
+        scope: @scope
+      )
+      microservice.create
+      microservice.deploy(gem_path, variables)
+      @children << microservice_name if parent
+      Logger.info "Configured microservice #{microservice_name}"
+    end
+
+    def deploy_critical_cmd_microservice(gem_path, variables, parent)
+      microservice_name = "#{@scope}__CRITICALCMD__#{@scope}"
+      microservice = MicroserviceModel.new(
+        name: microservice_name,
+        cmd: ["ruby", "critical_cmd_microservice.rb", microservice_name],
+        work_dir: '/openc3-enterprise/lib/openc3-enterprise/microservices',
+        parent: parent,
+        shard: @shard,
         scope: @scope
       )
       microservice.create
@@ -232,6 +314,7 @@ module OpenC3
         cmd: ["ruby", "multi_microservice.rb", *@children],
         work_dir: '/openc3/lib/openc3/microservices',
         target_names: [],
+        shard: @shard,
         scope: @scope
       )
       microservice.create
@@ -242,16 +325,18 @@ module OpenC3
     def deploy(gem_path, variables)
       seed_database()
 
-      # Create DEFAULT trigger group model
-      model = TriggerGroupModel.get(name: 'DEFAULT', scope: @scope)
-      unless model
-        model = TriggerGroupModel.new(name: 'DEFAULT', scope: @scope)
-        model.create()
-        model.deploy()
+      if ENTERPRISE
+        # Create DEFAULT trigger group model
+        model = TriggerGroupModel.get(name: 'DEFAULT', scope: @scope)
+        unless model
+          model = TriggerGroupModel.new(name: 'DEFAULT', shard: @shard, scope: @scope)
+          model.create()
+          model.deploy()
+        end
       end
 
       # Create UNKNOWN target for display of unknown data
-      model = TargetModel.new(name: "UNKNOWN", scope: @scope)
+      model = TargetModel.new(name: "UNKNOWN", shard: @shard, scope: @scope)
       model.create
 
       @parent = "#{@scope}__SCOPEMULTI__#{@scope}"
@@ -271,11 +356,20 @@ module OpenC3
       # Scope Cleanup Microservice
       deploy_scopecleanup_microservice(gem_path, variables, @parent)
 
+      if ENTERPRISE
+        # Critical Cmd Microservice
+        deploy_critical_cmd_microservice(gem_path, variables, @parent)
+      end
+
       # Multi Microservice to parent other scope microservices
       deploy_scopemulti_microservice(gem_path, variables)
     end
 
     def undeploy
+      # Delete UNKNOWN target
+      target = TargetModel.get_model(name: "UNKNOWN", scope: @scope)
+      target.destroy
+
       model = MicroserviceModel.get_model(name: "#{@scope}__SCOPEMULTI__#{@scope}", scope: @scope)
       model.destroy if model
       model = MicroserviceModel.get_model(name: "#{@scope}__SCOPECLEANUP__#{@scope}", scope: @scope)
@@ -288,25 +382,32 @@ module OpenC3
       model.destroy if model
       model = MicroserviceModel.get_model(name: "#{@scope}__PERIODIC__#{@scope}", scope: @scope)
       model.destroy if model
-      model = MicroserviceModel.get_model(name: "#{@scope}__TRIGGER_GROUP__DEFAULT", scope: @scope)
-      model.destroy if model
+      if ENTERPRISE
+        model = MicroserviceModel.get_model(name: "#{@scope}__TRIGGER_GROUP__DEFAULT", scope: @scope)
+        model.destroy if model
+        model = MicroserviceModel.get_model(name: "#{@scope}__CRITICALCMD__#{@scope}", scope: @scope)
+        model.destroy if model
+
+        Topic.del("#{@scope}__openc3_autonomic")
+        Topic.del("#{@scope}__TRIGGER__GROUP")
+      end
 
       # Delete the topics we created for the scope
       Topic.del("#{@scope}__COMMAND__{UNKNOWN}__UNKNOWN")
       Topic.del("#{@scope}__TELEMETRY__{UNKNOWN}__UNKNOWN")
       Topic.del("#{@scope}__openc3_targets")
       Topic.del("#{@scope}__CONFIG")
-      Topic.del("#{@scope}__openc3_autonomic")
-      Topic.del("#{@scope}__TRIGGER__GROUP")
     end
 
     def seed_database
       setting = SettingModel.get(name: 'source_url')
       SettingModel.set({ name: 'source_url', data: 'https://github.com/OpenC3/cosmos' }, scope: @scope) unless setting
       setting = SettingModel.get(name: 'rubygems_url')
-      SettingModel.set({ name: 'rubygems_url', data: 'https://rubygems.org' }, scope: @scope) unless setting
+      SettingModel.set({ name: 'rubygems_url', data: ENV['RUBYGEMS_URL'] || 'https://rubygems.org' }, scope: @scope) unless setting
       setting = SettingModel.get(name: 'pypi_url')
-      SettingModel.set({ name: 'pypi_url', data: 'https://pypi.org/simple' }, scope: @scope) unless setting
+      SettingModel.set({ name: 'pypi_url', data: ENV['PYPI_URL'] || 'https://pypi.org' }, scope: @scope) unless setting
+      # Set the news feed to true by default, don't bother checking if it's already set
+      SettingModel.set({ name: 'news_feed', data: true }, scope: @scope)
     end
   end
 end

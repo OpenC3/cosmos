@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -27,10 +27,12 @@ $overall_apk = []
 $overall_apt = []
 $overall_rpm = []
 $overall_gems = []
+$overall_wheels = []
 $overall_yarn = []
 
 def get_docker_version(path)
   args = {}
+  version = ''
   File.open(path) do |file|
     file.each do |line|
       if line.include?("ARG")
@@ -45,10 +47,12 @@ def get_docker_version(path)
         if version.include?("${")
           version = args[version[2..-2]]
         end
-        return version
+        # Stop at the first FROM
+        break
       end
     end
   end
+  return version
 end
 
 def make_sorted_hash(name_versions)
@@ -142,6 +146,20 @@ def extract_gems(container)
   make_sorted_hash(name_versions)
 end
 
+def extract_wheels(container)
+  container_name = container[:name]
+  name_versions = []
+  lines = `docker run --rm #{container_name} pip list`
+  lines.each_line do |line|
+    split_line = line.strip.split(' ')
+    name = split_line[0]
+    version = split_line[1]
+    name_versions << [name, version, nil]
+  end
+  $overall_wheels.concat(name_versions)
+  make_sorted_hash(name_versions)
+end
+
 def extract_yarn(container)
   container_name = container[:name]
   name_versions = []
@@ -226,6 +244,10 @@ def build_summary_report(containers)
     report << build_section("Ruby Gems", make_sorted_hash($overall_gems), false)
     report << "\n"
   end
+  if $overall_wheels.length > 0
+    report << build_section("Python Wheels", make_sorted_hash($overall_wheels), false)
+    report << "\n"
+  end
   if $overall_yarn.length > 0
     report << build_section("Node Packages", make_sorted_hash($overall_yarn), false)
     report << "\n"
@@ -241,6 +263,7 @@ def build_container_report(container)
   report << build_section("APT Packages", extract_apt(container), false) if container[:apt]
   report << build_section("RPM Packages", extract_rpm(container), true) if container[:rpm]
   report << build_section("Ruby Gems", extract_gems(container), false) if container[:gems]
+  report << build_section("Python Wheels", extract_wheels(container), false) if container[:python]
   report << build_section("Node Packages", extract_yarn(container), false) if container[:yarn]
   report << "\n"
   report
@@ -350,11 +373,10 @@ def check_keycloak(client, containers)
   validate_versions(versions, version, 'keycloak')
 end
 
-def check_container_version(client, containers, repo_path)
-  name = repo_path.split('/')[-1]
+def check_container_version(client, containers, name)
   container = containers.select { |val| val[:name].include?(name) }[0]
   version = container[:base_image].split(':')[-1]
-  resp = client.get("https://registry.hub.docker.com/v2/repositories/#{repo_path}/tags?page_size=1024").body
+  resp = client.get("https://registry.hub.docker.com/v2/repositories/library/#{name}/tags?page_size=1024").body
   images = JSON.parse(resp)['results']
   versions = []
   images.each do |image|
@@ -385,13 +407,13 @@ def check_tool_base(path, base_pkgs)
       FileUtils.rm(existing)
 
       # Now update the files with references to materialdesignicons
-      files = %w(src/index.ejs src/index-allow-http.ejs)
-      # The base also has to update index.html in openc3-tool-common
-      files << "../packages/openc3-tool-common/public/index.html" unless path.include?('enterprise')
+      files = %w(public/index.html public/index-allow-http.html)
+      # The base also has to update index.html in openc3-tool-base
+      files << "../packages/openc3-tool-base/public/index.html" unless path.include?('enterprise')
       files.each do |filename|
-        ejs = File.read(filename)
-        ejs.gsub!(/materialdesignicons-.+.min.css/, "materialdesignicons-#{latest}.min.css")
-        File.open(filename, 'w') {|file| file.puts ejs }
+        html = File.read(filename)
+        html.gsub!(/materialdesignicons-.+.min.css/, "materialdesignicons-#{latest}.min.css")
+        File.open(filename, 'w') {|file| file.puts html }
       end
     end
 
@@ -408,30 +430,39 @@ def check_tool_base(path, base_pkgs)
       end
     end
     packages.each do |package, latest|
+      # vue and vuetify are special cases due to the package names
+      alt_package = package
+      if package == 'vue'
+        alt_package = 'vue.global.prod'
+      elsif package == 'vuetify'
+        alt_package = 'vuetify-labs'
+      end
       # Ensure we're only matching package names followed by numbers
       # This prevents vue- from matching vue-router-
-      existing = Dir["public/js/#{package}-[0-9]*"][0]
+      existing = Dir["public/js/#{alt_package}-[0-9]*"][0]
       if !existing
-        puts "Could not find existing package #{package} in #{Dir.pwd}/public/js"
+        puts "ERROR: Could not find existing package #{alt_package} in #{Dir.pwd}/public/js"
+        next
+      end
+      if !latest
+        puts "ERROR: Could not find latest version for #{package} in #{Dir.pwd}/package.json"
         next
       end
       unless existing.include?(latest)
         puts "Existing #{package}: #{existing}, doesn't match latest: #{latest}. Upgrading..."
-        additional = ''
         # Handle nuances in individual packages
         # Search here to get the URLs: https://cdnjs.com/
         case package
+        when 'vue'
+          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{package}.global.js --output public/js/#{package}.global-#{latest}.js`
+          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{package}.global.prod.js --output public/js/#{package}.global.prod-#{latest}.min.js`
         when 'single-spa'
-          `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/system/#{package}.min.js --output public/js/#{package}-#{latest}.min.js`
-          `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/system/#{package}.min.js.map --output public/js/#{package}-#{latest}.min.js.map`
-        when 'systemjs'
-          `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/system.min.js --output public/js/#{package}-#{latest}.min.js`
+          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/lib/es5/system/#{package}.min.js --output public/js/#{package}-#{latest}.min.js`
+          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/lib/es5/system/#{package}.min.js.map --output public/js/#{package}-#{latest}.min.js.map`
         when 'vuetify'
           FileUtils.rm(Dir["public/css/vuetify-*"][0]) # Delete the existing vuetify css
-          `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/#{package}.min.css --output public/css/#{package}-#{latest}.min.css`
-          `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/#{package}.min.js --output public/js/#{package}-#{latest}.min.js`
-        when 'regenerator-runtime'
-          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/runtime.min.js --output public/js/#{package}-#{latest}.min.js`
+          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{package}-labs.min.css --output public/css/#{package}-labs-#{latest}.min.css`
+          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{package}-labs.min.js --output public/js/#{package}-labs-#{latest}.min.js`
         when 'import-map-overrides'
           `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/import-map-overrides.js --output public/js/#{package}-#{latest}.min.js`
           `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/import-map-overrides.js.map --output public/js/#{package}-#{latest}.min.js.map`
@@ -439,15 +470,20 @@ def check_tool_base(path, base_pkgs)
           `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/keycloak.min.js --output public/js/#{package}-#{latest}.min.js`
           `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/keycloak.min.js.map --output public/js/#{package}-#{latest}.min.js.map`
         else
-          `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/#{package}.min.js --output public/js/#{package}-#{latest}.min.js`
+          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{package}.min.js --output public/js/#{package}-#{latest}.min.js`
         end
         FileUtils.rm existing
-        # Now update the files with references to <package>-<verison>.min.js
-        %w(src/index.ejs src/index-allow-http.ejs).each do |filename|
-          ejs = File.read(filename)
-          ejs.gsub!(/#{package}-\d+\.\d+\.\d+\.min\.js/, "#{package}-#{latest}.min.js")
-          ejs.gsub!(/#{package}-\d+\.\d+\.\d+\.min\.css/, "#{package}-#{latest}.min.css")
-          File.open(filename, 'w') {|file| file.puts ejs }
+        # Now update the files with references to <package>-<version>.min.js
+        %w(public/index.html public/index-allow-http.html).each do |filename|
+          html = File.read(filename)
+          html.gsub!(/#{alt_package}-\d+\.\d+\.\d+\.min\.js/, "#{alt_package}-#{latest}.min.js")
+          html.gsub!(/#{alt_package}-\d+\.\d+\.\d+\.min\.css/, "#{alt_package}-#{latest}.min.css")
+          File.open(filename, 'w') {|file| file.puts html }
+        end
+        if package == 'keycloak-js'
+          html = File.read('public/js/auth.js')
+          html.gsub!(/#{alt_package}-\d+\.\d+\.\d+\.min\.js/, "#{alt_package}-#{latest}.min.js")
+          File.open(filename, 'w') {|file| file.puts html }
         end
       end
     end

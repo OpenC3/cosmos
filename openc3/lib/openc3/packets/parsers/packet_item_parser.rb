@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -80,7 +80,7 @@ module OpenC3
         item.range = get_range()
         item.default = get_default()
       end
-      item.id_value = get_id_value()
+      item.id_value = get_id_value(item)
       item.description = get_description()
       if append?
         item = packet.append(item)
@@ -88,8 +88,6 @@ module OpenC3
         item = packet.define(item)
       end
       item
-    rescue => err
-      raise @parser.error(err, @usage)
     end
 
     private
@@ -105,17 +103,16 @@ module OpenC3
 
     def get_bit_offset
       return 0 if append?
-
       Integer(@parser.parameters[1])
-    rescue => err # In case Integer fails
-      raise @parser.error(err, @usage)
+    rescue => e
+      raise @parser.error(e, @usage)
     end
 
     def get_bit_size
       index = append? ? 1 : 2
       Integer(@parser.parameters[index])
-    rescue => err
-      raise @parser.error(err, @usage)
+    rescue => e
+      raise @parser.error(e, @usage)
     end
 
     def get_array_size
@@ -133,8 +130,8 @@ module OpenC3
         @warnings << warning
       end
       array_bit_size
-    rescue => err
-      raise @parser.error(err, @usage)
+    rescue => e
+      raise @parser.error(e, @usage)
     end
 
     def get_endianness(packet)
@@ -168,21 +165,27 @@ module OpenC3
       min..max
     end
 
+    def convert_string_value(index)
+      # If the default value is 0x<data> (no quotes), it is treated as
+      # binary data.  Otherwise, the default value is considered to be a string.
+      if @parser.parameters[index].upcase.start_with?("0X") and
+        !@parser.line.include?("\"#{@parser.parameters[index]}\"") and
+        !@parser.line.include?("\'#{@parser.parameters[index]}\'")
+        return @parser.parameters[index].hex_to_byte_string
+      else
+        return @parser.parameters[index]
+      end
+    end
+
     def get_default
       return [] if @parser.keyword.include?('ARRAY')
 
       index = append? ? 3 : 4
       data_type = get_data_type()
+      return [] if data_type == :ARRAY
+      return {} if data_type == :OBJECT
       if data_type == :STRING or data_type == :BLOCK
-        # If the default value is 0x<data> (no quotes), it is treated as
-        # binary data.  Otherwise, the default value is considered to be a string.
-        if @parser.parameters[index].upcase.start_with?("0X") and
-           !@parser.line.include?("\"#{@parser.parameters[index]}\"") and
-           !@parser.line.include?("\'#{@parser.parameters[index]}\'")
-          return @parser.parameters[index].hex_to_byte_string
-        else
-          return @parser.parameters[index]
-        end
+        return convert_string_value(index)
       else
         if data_type != :DERIVED
           return ConfigParser.handle_defined_constants(
@@ -194,22 +197,25 @@ module OpenC3
       end
     end
 
-    def get_id_value
+    def get_id_value(item)
       return nil unless @parser.keyword.include?('ID_')
-
       data_type = get_data_type
-      if @parser.keyword.include?('ITEM')
-        index = append? ? 3 : 4
-      else # PARAMETER
-        index = append? ? 5 : 6
-        # STRING and BLOCK PARAMETERS don't have min and max values
-        index -= 2 if data_type == :STRING || data_type == :BLOCK
-      end
       if data_type == :DERIVED
         raise @parser.error("DERIVED data type not allowed for Identifier")
       end
+      # For PARAMETERS the default value is the ID value
+      if @parser.keyword.include?("PARAMETER")
+        return item.default
+      end
 
-      @parser.parameters[index]
+      index = append? ? 3 : 4
+      if data_type == :STRING or data_type == :BLOCK
+        return convert_string_value(index)
+      else
+        return ConfigParser.handle_defined_constants(
+          @parser.parameters[index].convert_to_value, data_type, get_bit_size()
+        )
+      end
     end
 
     def get_description
@@ -241,13 +247,13 @@ module OpenC3
     def type_usage
       keyword = @parser.keyword
       # Item type usage is simple so just return it
-      return "<TYPE: INT/UINT/FLOAT/STRING/BLOCK/DERIVED> " if keyword.include?("ITEM")
+      return "<TYPE: INT/UINT/FLOAT/STRING/BLOCK/DERIVED/ARRAY/OBJECT> " if keyword.include?("ITEM")
 
       # Build up the parameter type usage based on the keyword
       usage = "<TYPE: "
       # ARRAY types don't have min or max or default values
       if keyword.include?("ARRAY")
-        usage << "INT/UINT/FLOAT/STRING/BLOCK> "
+        usage << "INT/UINT/FLOAT/STRING/BLOCK/OBJECT> "
       else
         begin
           data_type = get_data_type()
@@ -255,14 +261,16 @@ module OpenC3
           # If the data type could not be determined set something
           data_type = :INT
         end
-        # STRING and BLOCK types do not have min or max values
+        # STRING, BLOCK, ARRAY, OBJECT types do not have min or max values
         if data_type == :STRING || data_type == :BLOCK
-          usage << "STRING/BLOCK> "
+          usage << "STRING/BLOCK/ARRAY/OBJECT> "
         else
           usage << "INT/UINT/FLOAT> <MIN VALUE> <MAX VALUE> "
         end
-        # ID Values do not have default values
-        usage << "<DEFAULT_VALUE> " unless keyword.include?("ID")
+        # ID Values do not have default values (or ARRAY/OBJECT)
+        unless keyword.include?("ID") or data_type == :ARRAY or data_type == :OBJECT
+          usage << "<DEFAULT_VALUE> "
+        end
       end
       usage
     end

@@ -36,6 +36,10 @@ module OpenC3
       packet.received_count += 1
       packet.received_time = Time.now.sys
       TelemetryTopic.write_packet(packet, scope: @scope)
+    # If the inject_tlm parameters are bad we rescue so
+    # interface_microservice and decom_microservice can continue
+    rescue => e
+      @logger.error "inject_tlm error due to #{e.message}"
     end
 
     def handle_build_cmd(build_cmd_json, msg_id)

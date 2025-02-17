@@ -17,6 +17,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/utilities/store'
+require 'openc3/utilities/sleeper'
 
 module OpenC3
   class StoreQueued
@@ -60,19 +61,29 @@ module OpenC3
       end
     end
 
+    def set_update_interval(interval)
+      if interval < @update_interval and interval > 0.0
+        @update_interval = interval
+      end
+    end
+
+    def process_queue
+      unless @store_queue.empty?
+        # Pipeline the requests to redis to improve performance
+        @store.redis_pool.pipelined do
+          while !@store_queue.empty?
+            action = @store_queue.pop()
+            @store.public_send(action.message, *action.args, **action.kwargs, &action.block)
+          end
+        end
+      end
+    end
+
     def store_thread_body
       while true
         start_time = Time.now
 
-        unless @store_queue.empty?
-          # Pipeline the requests to redis to improve performance
-          @store.pipelined do
-            while !@store_queue.empty?
-              action = @store_queue.pop()
-              @store.method_missing(action.message, *action.args, **action.kwargs, &action.block)
-            end
-          end
-        end
+        process_queue()
 
         # Only check whether to update at a set interval
         run_time = Time.now - start_time
@@ -87,25 +98,14 @@ module OpenC3
       OpenC3.kill_thread(self, @update_thread) if @update_thread
       @update_thread = nil
       # Drain the queue before shutdown
-      unless @store_queue.empty?
-        # Pipeline the requests to redis to improve performance
-        @store.pipelined do
-          while !@store_queue.empty?
-            action = @store_queue.pop()
-            @store.method_missing(action.message, *action.args, **action.kwargs, &action.block)
-          end
-        end
-      end
+      process_queue()
     end
+
+    MessageStruct = Struct.new(:message, :args, :kwargs, :block)
 
     # Record the message for pipelining by the thread
     def method_missing(message, *args, **kwargs, &block)
-      o = OpenStruct.new
-      o.message = message
-      o.args = args
-      o.kwargs = kwargs
-      o.block = block
-      @store_queue.push(o)
+      @store_queue.push(MessageStruct.new(message, args, kwargs, block))
     end
 
     # Returns the store we're working with

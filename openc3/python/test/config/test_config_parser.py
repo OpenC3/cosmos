@@ -52,6 +52,27 @@ class TestConfigParser(unittest.TestCase):
         self.assertEqual(results["KEYWORD2"], ["PARAM1"])
         tf.close()
 
+    def test_parse_file_reads_an_absolute_file(self):
+        tf = tempfile.NamedTemporaryFile(mode="w+t")
+        tf.writelines("EXAMPLE DATA")
+        tf.seek(0)
+
+        data = self.cp.read_file(tf.name)
+        self.assertEqual(data, b"EXAMPLE DATA")
+        tf.close()
+
+    def test_parse_file_reads_a_relative_file(self):
+        tf = tempfile.NamedTemporaryFile(mode="w+b")
+        tf.write(b"\x01\x02")
+        tf.seek(0)
+
+        # Set the instance filename so we can't get the relative path
+        self.cp.filename = tf.name
+        # Now only pass the filename itself (basename) and not the path
+        data = self.cp.read_file(os.path.basename(tf.name))
+        self.assertEqual(data, b"\x01\x02")
+        tf.close()
+
     # TODO:
     #   def test_supports ERB syntax(self):
     #     tf = tempfile.NamedTemporaryFile(mode="w+t")
@@ -233,7 +254,7 @@ class TestConfigParser(unittest.TestCase):
         tf = tempfile.NamedTemporaryFile(mode="w+t")
         tf.writelines("KEYWORD PARAM1 'continues ' \\\n")
         tf.writelines("next line\n")  # Forgot quotes
-        tf.writelines("KEYWORD2 PARAM2")  # Ensure we proces the next line
+        tf.writelines("KEYWORD2 PARAM2")  # Ensure we process the next line
         tf.seek(0)
         for keyword, params in self.cp.parse_file(tf.name):
             if keyword == "KEYWORD":
@@ -277,7 +298,7 @@ class TestConfigParser(unittest.TestCase):
         tf.seek(0)
 
         lines = []
-        for keyword, params in self.cp.parse_file(tf.name, True):
+        for _, _ in self.cp.parse_file(tf.name, True):
             lines.append(self.cp.line)
 
         self.assertIn("# This is a comment", lines)
@@ -323,7 +344,7 @@ class TestConfigParser(unittest.TestCase):
         tf.writelines(line)
         tf.seek(0)
 
-        for keyword, params in self.cp.parse_file(tf.name):
+        for keyword, _ in self.cp.parse_file(tf.name):
             self.assertEqual(keyword, "KEYWORD")
             self.assertRaisesRegex(
                 ConfigParser.Error,
@@ -340,7 +361,7 @@ class TestConfigParser(unittest.TestCase):
         tf.writelines(line)
         tf.seek(0)
 
-        for keyword, params in self.cp.parse_file(tf.name):
+        for keyword, _ in self.cp.parse_file(tf.name):
             self.assertEqual(keyword, "KEYWORD")
             self.assertRaisesRegex(
                 ConfigParser.Error,
@@ -351,13 +372,23 @@ class TestConfigParser(unittest.TestCase):
             )
         tf.close()
 
-    def test_verifies_parameters_do_not_have_bad_characters(self):
+    def test_allows_parameters_with_most_characters(self):
         tf = tempfile.NamedTemporaryFile(mode="w+t")
-        line = "KEYWORD BAD1_ BAD__2 'BAD 3' }BAD_4"
+        line = "KEYWORD P[1] P_2.2,2 P-3+3=3 P4!@#$%^&*? P</5|> P(:6;)"
         tf.writelines(line)
         tf.seek(0)
 
         for keyword, params in self.cp.parse_file(tf.name):
+            self.assertEqual(keyword, "KEYWORD")
+            self.assertListEqual(params, ["P[1]", "P_2.2,2", "P-3+3=3", "P4!@#$%^&*?", "P</5|>", "P(:6;)"])
+
+    def test_verifies_parameters_do_not_have_bad_characters(self):
+        tf = tempfile.NamedTemporaryFile(mode="w+t")
+        line = "KEYWORD BAD1_ BAD__2 'BAD 3' BAD{4 BAD}4 BAD[[6]] BAD'7 BAD\"8"
+        tf.writelines(line)
+        tf.seek(0)
+
+        for _, _ in self.cp.parse_file(tf.name):
             self.assertRaisesRegex(
                 ConfigParser.Error,
                 "cannot end with an underscore",
@@ -378,9 +409,33 @@ class TestConfigParser(unittest.TestCase):
             )
             self.assertRaisesRegex(
                 ConfigParser.Error,
-                "cannot start with a close bracket",
+                "cannot contain a curly bracket",
                 self.cp.verify_parameter_naming,
                 4,
+            )
+            self.assertRaisesRegex(
+                ConfigParser.Error,
+                "cannot contain a curly bracket",
+                self.cp.verify_parameter_naming,
+                5,
+            )
+            self.assertRaisesRegex(
+                ConfigParser.Error,
+                "cannot contain double brackets",
+                self.cp.verify_parameter_naming,
+                6,
+            )
+            self.assertRaisesRegex(
+                ConfigParser.Error,
+                "cannot contain a quote",
+                self.cp.verify_parameter_naming,
+                7,
+            )
+            self.assertRaisesRegex(
+                ConfigParser.Error,
+                "cannot contain a quote",
+                self.cp.verify_parameter_naming,
+                8,
             )
         tf.close()
 
@@ -390,7 +445,7 @@ class TestConfigParser(unittest.TestCase):
         tf.writelines(line)
         tf.seek(0)
 
-        for keyword, params in self.cp.parse_file(tf.name):
+        for _, _ in self.cp.parse_file(tf.name):
             error = self.cp.error("Hello")
             self.assertIn("Hello", repr(error))
             self.assertEqual(error.keyword, "KEYWORD")
@@ -405,7 +460,7 @@ class TestConfigParser(unittest.TestCase):
         tf.seek(0)
 
         try:
-            for keyword, params in self.cp.parse_file(tf.name):
+            for keyword, _ in self.cp.parse_file(tf.name):
                 if keyword == "KEYWORD1":
                     raise self.cp.error("Invalid KEYWORD1")
                 # TODO: This doesn't work in Python like Ruby
@@ -472,9 +527,7 @@ class TestConfigParser(unittest.TestCase):
     def test_converts_string_constants_to_numbers(self):
         for val in range(1, 65):
             # Unsigned
-            self.assertEqual(
-                ConfigParser.handle_defined_constants("MIN", "UINT", val), 0
-            )
+            self.assertEqual(ConfigParser.handle_defined_constants("MIN", "UINT", val), 0)
             self.assertEqual(
                 ConfigParser.handle_defined_constants("MAX", "UINT", val),
                 (2**val - 1),
@@ -492,9 +545,7 @@ class TestConfigParser(unittest.TestCase):
         for val in [8, 16, 32, 64]:
             # Unsigned
             self.assertEqual(ConfigParser.handle_defined_constants(f"MIN_UINT{val}"), 0)
-            self.assertEqual(
-                ConfigParser.handle_defined_constants(f"MAX_UINT{val}"), (2**val - 1)
-            )
+            self.assertEqual(ConfigParser.handle_defined_constants(f"MAX_UINT{val}"), (2**val - 1))
             # Signed
             self.assertEqual(
                 ConfigParser.handle_defined_constants(f"MIN_INT{val}"),
@@ -506,40 +557,24 @@ class TestConfigParser(unittest.TestCase):
             )
 
         # Float
-        self.assertLess(
-            ConfigParser.handle_defined_constants("MIN", "FLOAT", 32), -3.4 * 10**38
-        )
-        self.assertLess(
-            ConfigParser.handle_defined_constants("MIN_FLOAT32"), -3.4 * 10**38
-        )
-        self.assertGreater(
-            ConfigParser.handle_defined_constants("MAX", "FLOAT", 32), 3.4 * 10**38
-        )
-        self.assertGreater(
-            ConfigParser.handle_defined_constants("MAX_FLOAT32"), 3.4 * 10**38
-        )
+        self.assertLess(ConfigParser.handle_defined_constants("MIN", "FLOAT", 32), -3.4 * 10**38)
+        self.assertLess(ConfigParser.handle_defined_constants("MIN_FLOAT32"), -3.4 * 10**38)
+        self.assertGreater(ConfigParser.handle_defined_constants("MAX", "FLOAT", 32), 3.4 * 10**38)
+        self.assertGreater(ConfigParser.handle_defined_constants("MAX_FLOAT32"), 3.4 * 10**38)
         self.assertEqual(
             ConfigParser.handle_defined_constants("MIN", "FLOAT", 64),
             -sys.float_info.max,
         )
-        self.assertEqual(
-            ConfigParser.handle_defined_constants("MIN_FLOAT64"), -sys.float_info.max
-        )
+        self.assertEqual(ConfigParser.handle_defined_constants("MIN_FLOAT64"), -sys.float_info.max)
         self.assertEqual(
             ConfigParser.handle_defined_constants("MAX", "FLOAT", 64),
             sys.float_info.max,
         )
-        self.assertEqual(
-            ConfigParser.handle_defined_constants("MAX_FLOAT64"), sys.float_info.max
-        )
-        self.assertEqual(
-            ConfigParser.handle_defined_constants("POS_INFINITY"), float("inf")
-        )
-        self.assertEqual(
-            ConfigParser.handle_defined_constants("NEG_INFINITY"), float("-inf")
-        )
+        self.assertEqual(ConfigParser.handle_defined_constants("MAX_FLOAT64"), sys.float_info.max)
+        self.assertEqual(ConfigParser.handle_defined_constants("POS_INFINITY"), float("inf"))
+        self.assertEqual(ConfigParser.handle_defined_constants("NEG_INFINITY"), float("-inf"))
         self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "Invalid bit size 16 for FLOAT type.",
             ConfigParser.handle_defined_constants,
             "MIN",
@@ -547,15 +582,9 @@ class TestConfigParser(unittest.TestCase):
             16,
         )
 
-    def test_complains_about_undefined_strings(self):
+    def test_complains_about_bad_data_types(self):
         self.assertRaisesRegex(
-            AttributeError,
-            "Could not convert constant: TRUE",
-            ConfigParser.handle_defined_constants,
-            "TRUE",
-        )
-        self.assertRaisesRegex(
-            AttributeError,
+            TypeError,
             "Invalid data type BLAH when calculating range.",
             ConfigParser.handle_defined_constants,
             "MIN",

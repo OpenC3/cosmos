@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -25,15 +25,13 @@ module OpenC3
   autoload(:HttpClientInterface, 'openc3/interfaces/http_client_interface.rb')
   autoload(:HttpServerInterface, 'openc3/interfaces/http_server_interface.rb')
   autoload(:MqttInterface, 'openc3/interfaces/mqtt_interface.rb')
+  autoload(:MqttStreamInterface, 'openc3/interfaces/mqtt_stream_interface.rb')
   autoload(:StreamInterface, 'openc3/interfaces/stream_interface.rb')
   autoload(:SerialInterface, 'openc3/interfaces/serial_interface.rb')
   autoload(:SimulatedTargetInterface, 'openc3/interfaces/simulated_target_interface.rb')
   autoload(:TcpipClientInterface, 'openc3/interfaces/tcpip_client_interface.rb')
   autoload(:TcpipServerInterface, 'openc3/interfaces/tcpip_server_interface.rb')
   autoload(:UdpInterface, 'openc3/interfaces/udp_interface.rb')
-  autoload(:LincInterface, 'openc3/interfaces/linc_interface.rb')
-  autoload(:LincHandshakeCommand, 'openc3/interfaces/linc_interface.rb')
-  autoload(:LincHandshake, 'openc3/interfaces/linc_interface.rb')
 
   autoload(:Protocol, 'openc3/interfaces/protocols/protocol.rb')
   autoload(:BurstProtocol, 'openc3/interfaces/protocols/burst_protocol.rb')

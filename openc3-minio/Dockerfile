@@ -1,10 +1,7 @@
 ARG OPENC3_DEPENDENCY_REGISTRY=docker.io
-ARG OPENC3_MINIO_RELEASE=RELEASE.2024-01-05T22-17-24Z
+# Consider updating openc3_build_ubi.sh when changing the release version
+ARG OPENC3_MINIO_RELEASE=RELEASE.2025-01-20T14-49-07Z
 FROM ${OPENC3_DEPENDENCY_REGISTRY}/minio/minio:${OPENC3_MINIO_RELEASE}
-
-# An ARG declared before a FROM is outside of a build stage, so it can’t be
-# used in any instruction after a FROM. So we need to re-ARG OPENC3_DEPENDENCY_REGISTRY
-ARG OPENC3_DEPENDENCY_REGISTRY
 
 COPY cacert.pem /devel/cacert.pem
 ENV SSL_CERT_FILE=/devel/cacert.pem

@@ -22,10 +22,11 @@ begin
 rescue LoadError
   class UsersController < ApplicationController
     def active()
-      render :json => [], :status => 200
+      render json: []
     end
 
     def logout()
+      OpenC3::AuthModel.logout
       head :ok
     end
   end

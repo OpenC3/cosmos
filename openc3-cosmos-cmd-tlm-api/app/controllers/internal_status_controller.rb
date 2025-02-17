@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -29,9 +29,10 @@ require 'openc3/models/ping_model'
 class InternalStatusController < ApplicationController
   def status
     begin
-      render :json => { :status => OpenC3::PingModel.get() }, :status => 200
+      render json: { status: OpenC3::PingModel.get() }
     rescue => e
-      render :json => { :status => 'error', :message => e.message, :type => e.class }, :status => 500
+      log_error(e)
+      render json: { status: 'error', message: e.message, type: e.class }, status: 500
     end
   end
 end

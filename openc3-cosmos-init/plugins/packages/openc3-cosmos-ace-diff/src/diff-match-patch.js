@@ -323,7 +323,7 @@ diff_match_patch.prototype.diff_lineMode_ = function (text1, text2, deadline) {
 /**
  * Find the 'middle snake' of a diff, split the problem in two
  * and return the recursively constructed diff.
- * See Myers 1986 paper: An O(ND) Difference Algorithm and Its Variations.
+ * See Myers 1986 paper: An O(N) Difference Algorithm and Its Variations.
  * @param {string} text1 Old string to be diffed.
  * @param {string} text2 New string to be diffed.
  * @param {number} deadline Time at which to bail if not yet complete.
@@ -1785,7 +1785,7 @@ diff_match_patch.prototype.match_main = function (text, pattern, loc) {
 
 /**
  * Locate the best instance of 'pattern' in 'text' near 'loc' using the
- * Bitap algorithm.
+ * Bitmap algorithm.
  * @param {string} text The text to search.
  * @param {string} pattern The pattern to search for.
  * @param {number} loc The location to search around.
@@ -1906,7 +1906,7 @@ diff_match_patch.prototype.match_bitap_ = function (text, pattern, loc) {
 }
 
 /**
- * Initialise the alphabet for the Bitap algorithm.
+ * Initialise the alphabet for the Bitmap algorithm.
  * @param {string} pattern The text to encode.
  * @return {!Object} Hash of character locations.
  * @private

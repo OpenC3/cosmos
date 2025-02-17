@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -54,13 +54,13 @@ module OpenC3
         microservice.state = 'RUNNING'
         microservice.run
         microservice.state = 'FINISHED'
-      rescue Exception => err
-        if SystemExit === err or SignalException === err
+      rescue Exception => e
+        if SystemExit === e or SignalException === e
           microservice.state = 'KILLED'
         else
-          microservice.error = err
+          microservice.error = e
           microservice.state = 'DIED_ERROR'
-          Logger.fatal("Microservice #{name} dying from exception\n#{err.formatted}")
+          Logger.fatal("Microservice #{name} dying from exception\n#{e.formatted}")
         end
       ensure
         MicroserviceStatusModel.set(microservice.as_json(:allow_nan => true), scope: microservice.scope)
@@ -171,7 +171,7 @@ module OpenC3
               # Run ruby syntax so we can log those
               syntax_check, _ = Open3.capture2e("ruby -c #{ruby_filename}")
               if /Syntax OK/.match?(syntax_check)
-                @logger.info("Ruby microservice #{@name} file #{ruby_filename} passed syntax check\n", scope: @scope)
+                @logger.debug("Ruby microservice #{@name} file #{ruby_filename} passed syntax check\n", scope: @scope)
               else
                 @logger.error("Ruby microservice #{@name} file #{ruby_filename} failed syntax check\n#{syntax_check}", scope: @scope)
               end
@@ -188,9 +188,9 @@ module OpenC3
             MicroserviceStatusModel.set(as_json(:allow_nan => true), scope: @scope) unless @cancel_thread
             break if @microservice_status_sleeper.sleep(@microservice_status_period_seconds)
           end
-        rescue Exception => err
-          @logger.error "#{@name} status thread died: #{err.formatted}"
-          raise err
+        rescue Exception => e
+          @logger.error "#{@name} status thread died: #{e.formatted}"
+          raise e
         end
       end
     end
@@ -208,7 +208,7 @@ module OpenC3
       MicroserviceStatusModel.set(as_json(:allow_nan => true), scope: @scope)
       FileUtils.remove_entry(@temp_dir) if File.exist?(@temp_dir)
       @metric.shutdown
-      @logger.info("Shutting down microservice complete: #{@name}")
+      @logger.debug("Shutting down microservice complete: #{@name}")
       @shutdown_complete = true
     end
 
@@ -220,10 +220,9 @@ module OpenC3
     end
 
     # Returns if the command was handled
-    def microservice_cmd(topic, msg_id, msg_hash, redis)
+    def microservice_cmd(topic, msg_id, msg_hash, _redis)
       command = msg_hash['command']
-      case command
-      when 'ADD_TOPICS'
+      if command == 'ADD_TOPICS'
         topics = JSON.parse(msg_hash['topics'])
         if topics and Array === topics
           topics.each do |new_topic|

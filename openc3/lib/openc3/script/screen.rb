@@ -70,7 +70,7 @@ module OpenC3
         response = $api_server.request('post', endpoint, :data => data, :json => true, scope: scope)
         if response.nil? || response.status != 200
           if response
-            parsed = JSON.parse(response)
+            parsed = JSON.parse(response.body)
             raise "create_screen error: #{parsed['error']}"
           else
             raise "create_screen failed"
@@ -88,7 +88,7 @@ module OpenC3
         response = $api_server.request('delete', endpoint, scope: scope)
         if response.nil? || response.status != 200
           if response
-            parsed = JSON.parse(response)
+            parsed = JSON.parse(response.body)
             raise "delete_screen error: #{parsed['error']}"
           else
             raise "delete_screen failed"

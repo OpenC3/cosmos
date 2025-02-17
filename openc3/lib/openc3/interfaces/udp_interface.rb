@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -27,6 +27,8 @@ require 'openc3/config/config_parser'
 module OpenC3
   # Base class for interfaces that send and receive messages over UDP
   class UdpInterface < Interface
+    HOST_127_0_0_1 = '127.0.0.1'
+
     # @param hostname [String] Machine to connect to
     # @param write_dest_port [Integer] Port to write commands to
     # @param read_port [Integer] Port to read telemetry from
@@ -56,7 +58,7 @@ module OpenC3
       @hostname = ConfigParser.handle_nil(hostname)
       if @hostname
         @hostname = @hostname.to_s
-        @hostname = '127.0.0.1' if @hostname.casecmp('LOCALHOST').zero?
+        @hostname = HOST_127_0_0_1 if @hostname.casecmp('LOCALHOST').zero?
       end
       @write_dest_port = ConfigParser.handle_nil(write_dest_port)
       @write_dest_port = write_dest_port.to_i if @write_dest_port
@@ -66,7 +68,7 @@ module OpenC3
       @write_src_port = @write_src_port.to_i if @write_src_port
       @interface_address = ConfigParser.handle_nil(interface_address)
       if @interface_address && @interface_address.casecmp('LOCALHOST').zero?
-        @interface_address = '127.0.0.1'
+        @interface_address = HOST_127_0_0_1
       end
       @ttl = ttl.to_i
       @ttl = 1 if @ttl < 1
@@ -81,13 +83,23 @@ module OpenC3
       @read_timeout = @read_timeout.to_f if @read_timeout
       @bind_address = ConfigParser.handle_nil(bind_address)
       if @bind_address && @bind_address.casecmp('LOCALHOST').zero?
-        @bind_address = '127.0.0.1'
+        @bind_address = HOST_127_0_0_1
       end
       @write_socket = nil
       @read_socket = nil
       @read_allowed = false unless @read_port
       @write_allowed = false unless @write_dest_port
       @write_raw_allowed = false unless @write_dest_port
+    end
+
+    def connection_string
+      result = ''
+      result += " #{@hostname}:#{@write_dest_port} (write dest port)" if @write_dest_port
+      result += " #{@write_src_port} (write src port)" if @write_src_port
+      result += " #{@hostname}:#{@read_port} (read)" if @read_port
+      result += " #{@interface_address} (interface addr)" if @interface_address
+      result += " #{@bind_address} (bind addr)" if @bind_address != '0.0.0.0'
+      return result.strip
     end
 
     # Creates a new {UdpWriteSocket} if the the write_dest_port was given in

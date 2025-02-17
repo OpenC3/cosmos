@@ -24,6 +24,7 @@ from openc3.api.tlm_api import *
 from openc3.topics.telemetry_decom_topic import TelemetryDecomTopic
 from openc3.topics.telemetry_topic import TelemetryTopic
 from openc3.models.microservice_model import MicroserviceModel
+from openc3.models.interface_model import InterfaceModel
 from openc3.microservices.decom_microservice import DecomMicroservice
 from openc3.utilities.time import formatted
 
@@ -237,6 +238,20 @@ class TestTlmApi(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "Unknown type 'BLAH'"):
             inject_tlm("INST", "HEALTH_STATUS", {"TEMP1": 0}, type="BLAH")
 
+    @patch("openc3.api.tlm_api.InterfaceTopic")
+    def test_inject_tlm_uses_the_interface(self, obj):
+        model = InterfaceModel(
+            name="INST_INT",
+            scope="DEFAULT",
+            target_names=["INST"],
+            cmd_target_names=["INST"],
+            tlm_target_names=["INST"],
+        )
+        model.create()
+        inject_tlm("INST", "HEALTH_STATUS", {"TEMP1": 5})
+        time.sleep(0.5)
+        obj.inject_tlm.assert_called_once()
+
     @patch("openc3.microservices.microservice.System")
     def test_inject_tlm_injects_a_packet_into_target_without_an_interface(
         self, mock_system
@@ -246,12 +261,12 @@ class TestTlmApi(unittest.TestCase):
         inject_tlm(
             "inst", "Health_Status", {"temp1": 10, "Temp2": 20}, type="CONVERTED"
         )
-        time.sleep(0.01)
+        time.sleep(0.5)
         self.assertAlmostEqual(tlm("INST HEALTH_STATUS TEMP1"), 10.0, delta=0.1)
         self.assertAlmostEqual(tlm("INST HEALTH_STATUS TEMP2"), 20.0, delta=0.1)
 
         inject_tlm("INST", "HEALTH_STATUS", {"TEMP1": 0, "TEMP2": 0}, type="RAW")
-        time.sleep(0.01)
+        time.sleep(0.5)
         self.assertEqual(tlm("INST HEALTH_STATUS TEMP1"), (-100.0))
         self.assertEqual(tlm("INST HEALTH_STATUS TEMP2"), (-100.0))
 
@@ -262,13 +277,13 @@ class TestTlmApi(unittest.TestCase):
         self.decom_stuff()
 
         inject_tlm("INST", "HEALTH_STATUS")
-        time.sleep(0.01)
+        time.sleep(0.5)
         self.assertEqual(tlm("INST HEALTH_STATUS RECEIVED_COUNT"), 1)
         inject_tlm("INST", "HEALTH_STATUS")
-        time.sleep(0.01)
+        time.sleep(0.5)
         self.assertEqual(tlm("INST HEALTH_STATUS RECEIVED_COUNT"), 2)
         inject_tlm("INST", "HEALTH_STATUS")
-        time.sleep(0.01)
+        time.sleep(0.5)
         self.assertEqual(tlm("INST HEALTH_STATUS RECEIVED_COUNT"), 3)
 
         self.dm.shutdown()
@@ -622,6 +637,27 @@ class TestTlmApi(unittest.TestCase):
         ):
             get_item("INST HEALTH_STATUS", scope="DEFAULT")
 
+    def test_get_item_complains_about_only_target(self):
+        with self.assertRaisesRegex(
+            RuntimeError,
+            re.escape("Target name, packet name and item name required"),
+        ):
+            get_item("INST")
+
+    def test_get_item_complains_about_only_target_packet(self):
+        with self.assertRaisesRegex(
+            RuntimeError,
+            re.escape("Invalid number of arguments (2) passed to get_item"),
+        ):
+            get_item("INST", "HEALTH_STATUS")
+
+    def test_get_item_complains_about_extra_params(self):
+        with self.assertRaisesRegex(
+            RuntimeError,
+            re.escape("Invalid number of arguments (4) passed to get_item"),
+        ):
+            get_item("INST", "HEALTH_STATUS", "TEMP1", "TEMP2")
+
     def test_get_item_returns_an_item_hash(self):
         item = get_item("inst", "Health_Status", "CcsdsVER", scope="DEFAULT")
         self.assertEqual(type(item), dict)
@@ -649,7 +685,7 @@ class TestTlmApi(unittest.TestCase):
 
     def test_complains_about_non_existant_value_types(self):
         with self.assertRaisesRegex(
-            AttributeError, "Unknown type 'MINE' for INST HEALTH_STATUS"
+            TypeError, "Unknown type 'MINE' for INST HEALTH_STATUS"
         ):
             get_tlm_packet("INST HEALTH_STATUS", type="MINE")
 
@@ -797,15 +833,15 @@ class TestTlmApi(unittest.TestCase):
             get_tlm_values(["INST__LATEST__BLAH__CONVERTED"])
 
     def test_get_tlm_values_complains_about_non_existant_value_types(self):
-        with self.assertRaisesRegex(RuntimeError, "Unknown value type 'MINE'"):
+        with self.assertRaisesRegex(ValueError, "Unknown value type 'MINE'"):
             get_tlm_values(["INST__HEALTH_STATUS__TEMP1__MINE"])
 
     def test_get_tlm_values_complains_about_bad_arguments(self):
-        with self.assertRaisesRegex(AttributeError, "items must be array of strings"):
+        with self.assertRaisesRegex(TypeError, "items must be array of strings"):
             get_tlm_values([])
-        with self.assertRaisesRegex(AttributeError, "items must be array of strings"):
+        with self.assertRaisesRegex(TypeError, "items must be array of strings"):
             get_tlm_values([["INST", "HEALTH_STATUS", "TEMP1"]])
-        with self.assertRaisesRegex(AttributeError, "items must be formatted"):
+        with self.assertRaisesRegex(ValueError, "items must be formatted"):
             get_tlm_values(["INST", "HEALTH_STATUS", "TEMP1"])
 
     def test_get_tlm_values_reads_all_the_specified_items(self):
@@ -925,6 +961,10 @@ class TestTlmApi(unittest.TestCase):
         self.assertEqual(vals[3][1], "RED_LOW")
         self.assertIsNone(vals[4][1])
 
+    def test_subscribe_packets_with_bad_input(self):
+        with self.assertRaisesRegex(RuntimeError, "packets must be nested array"):
+            subscribe_packets(["inst", "Health_Status"], ["INST", "ADCS"])
+
     def test_streams_packets_since_the_subscription_was_created(self):
         # Write an initial packet that should not be returned
         packet = System.telemetry.packet("INST", "HEALTH_STATUS")
@@ -972,6 +1012,20 @@ class TestTlmApi(unittest.TestCase):
     def test_get_tlm_cnt_complains_about_non_existant_packets(self):
         with self.assertRaisesRegex(RuntimeError, "Packet 'INST BLAH' does not exist"):
             get_tlm_cnt("INST", "BLAH")
+
+    def test_get_tlm_cnt_complains_about_missing_packet(self):
+        with self.assertRaisesRegex(
+            RuntimeError,
+            re.escape("Both target name and packet name required"),
+        ):
+            get_tlm_cnt("INST")
+
+    def test_get_tlm_cnt_complains_about_extra_params(self):
+        with self.assertRaisesRegex(
+            RuntimeError,
+            re.escape("Invalid number of arguments (3) passed to get_tlm_cnt"),
+        ):
+            get_tlm_cnt("INST", "HEALTH_STATUS", "TEMP1")
 
     def test_get_tlm_cnt_returns_the_receive_count(self):
         start = get_tlm_cnt("inst", "Health_Status")

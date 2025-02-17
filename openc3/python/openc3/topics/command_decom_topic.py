@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -16,6 +16,7 @@
 
 import json
 from openc3.topics.topic import Topic
+from openc3.utilities.store_queued import EphemeralStoreQueued
 from openc3.environment import OPENC3_SCOPE
 from openc3.utilities.json import JsonEncoder
 from openc3.utilities.time import to_nsec_from_epoch
@@ -45,24 +46,14 @@ class CommandDecomTopic(Topic):
                 json_hash[item.name + "__F"] = packet.read_item(item, "FORMATTED")
             if item.units:
                 json_hash[item.name + "__U"] = packet.read_item(item, "WITH_UNITS")
+        json_hash["extra"] = json.dumps(packet.extra, cls=JsonEncoder)
         msg_hash["json_data"] = json.dumps(json_hash, cls=JsonEncoder)
-        Topic.write_topic(topic, msg_hash)
+        EphemeralStoreQueued.write_topic(topic, msg_hash)
 
     @classmethod
-    def get_cmd_item(
-        cls, target_name, packet_name, param_name, type="WITH_UNITS", scope=OPENC3_SCOPE
-    ):
-        msg_id, msg_hash = Topic.get_newest_message(
-            f"{scope}__DECOMCMD__{{{target_name}}}__{packet_name}"
-        )
+    def get_cmd_item(cls, target_name, packet_name, param_name, type="WITH_UNITS", scope=OPENC3_SCOPE):
+        msg_id, msg_hash = Topic.get_newest_message(f"{scope}__DECOMCMD__{{{target_name}}}__{packet_name}")
         if msg_id:
-            # TODO: We now have these reserved items directly on command packets
-            # Do we still calculate from msg_hash['time'] or use the times directly?
-            #
-            # if param_name == 'RECEIVED_TIMESECONDS' || param_name == 'PACKET_TIMESECONDS'
-            #   Time.from_nsec_from_epoch(msg_hash['time'].to_i).to_f
-            # elsif param_name == 'RECEIVED_TIMEFORMATTED' || param_name == 'PACKET_TIMEFORMATTED'
-            #   Time.from_nsec_from_epoch(msg_hash['time'].to_i).formatted
             if param_name == "RECEIVED_COUNT":
                 return int(msg_hash[b"received_count"])
             else:
@@ -77,9 +68,7 @@ class CommandDecomTopic(Topic):
                     return value
 
                 value = hash.get(f"{param_name}__C")
-                if value is not None and (
-                    type == "WITH_UNITS" or type == "FORMATTED" or type == "CONVERTED"
-                ):
+                if value is not None and (type == "WITH_UNITS" or type == "FORMATTED" or type == "CONVERTED"):
                     return value
 
                 return hash[param_name]

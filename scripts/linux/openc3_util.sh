@@ -31,30 +31,40 @@ usage() {
 
 saveTar() {
   if [ "$#" -lt 3 ]; then
-    echo "Usage: save <REPO> <NAMESPACE> <TAG>" >&2
+    echo "Usage: save <REPO> <NAMESPACE> <TAG> <SUFFIX>" >&2
     echo "e.g. save docker.io openc3inc 5.1.0" >&2
   fi
   repo=$1
   namespace=$2
   tag=$3
+  suffix=""
+  if [[ -n "$4" ]]; then
+    suffix=$4
+  fi
   mkdir -p tmp
 
   set -x
-  docker pull $repo/$namespace/openc3-operator:$tag
-  docker pull $repo/$namespace/openc3-cosmos-cmd-tlm-api:$tag
-  docker pull $repo/$namespace/openc3-cosmos-script-runner-api:$tag
-  docker pull $repo/$namespace/openc3-traefik:$tag
-  docker pull $repo/$namespace/openc3-redis:$tag
-  docker pull $repo/$namespace/openc3-minio:$tag
-  docker pull $repo/$namespace/openc3-cosmos-init:$tag
+  docker pull $repo/$namespace/openc3-ruby$suffix:$tag
+  docker pull $repo/$namespace/openc3-node$suffix:$tag
+  docker pull $repo/$namespace/openc3-base$suffix:$tag
+  docker pull $repo/$namespace/openc3-operator$suffix:$tag
+  docker pull $repo/$namespace/openc3-cosmos-cmd-tlm-api$suffix:$tag
+  docker pull $repo/$namespace/openc3-cosmos-script-runner-api$suffix:$tag
+  docker pull $repo/$namespace/openc3-traefik$suffix:$tag
+  docker pull $repo/$namespace/openc3-redis$suffix:$tag
+  docker pull $repo/$namespace/openc3-minio$suffix:$tag
+  docker pull $repo/$namespace/openc3-cosmos-init$suffix:$tag
 
-  docker save $repo/$namespace/openc3-operator:$tag -o tmp/openc3-operator-$tag.tar
-  docker save $repo/$namespace/openc3-cosmos-cmd-tlm-api:$tag -o tmp/openc3-cosmos-cmd-tlm-api-$tag.tar
-  docker save $repo/$namespace/openc3-cosmos-script-runner-api:$tag -o tmp/openc3-cosmos-script-runner-api-$tag.tar
-  docker save $repo/$namespace/openc3-traefik:$tag -o tmp/openc3-traefik-$tag.tar
-  docker save $repo/$namespace/openc3-redis:$tag -o tmp/openc3-redis-$tag.tar
-  docker save $repo/$namespace/openc3-minio:$tag -o tmp/openc3-minio-$tag.tar
-  docker save $repo/$namespace/openc3-cosmos-init:$tag -o tmp/openc3-cosmos-init-$tag.tar
+  docker save $repo/$namespace/openc3-ruby$suffix:$tag -o tmp/openc3-ruby$suffix-$tag.tar
+  docker save $repo/$namespace/openc3-node$suffix:$tag -o tmp/openc3-node$suffix-$tag.tar
+  docker save $repo/$namespace/openc3-base$suffix:$tag -o tmp/openc3-base$suffix-$tag.tar
+  docker save $repo/$namespace/openc3-operator$suffix:$tag -o tmp/openc3-operator$suffix-$tag.tar
+  docker save $repo/$namespace/openc3-cosmos-cmd-tlm-api$suffix:$tag -o tmp/openc3-cosmos-cmd-tlm-api$suffix-$tag.tar
+  docker save $repo/$namespace/openc3-cosmos-script-runner-api$suffix:$tag -o tmp/openc3-cosmos-script-runner-api$suffix-$tag.tar
+  docker save $repo/$namespace/openc3-traefik$suffix:$tag -o tmp/openc3-traefik$suffix-$tag.tar
+  docker save $repo/$namespace/openc3-redis$suffix:$tag -o tmp/openc3-redis$suffix-$tag.tar
+  docker save $repo/$namespace/openc3-minio$suffix:$tag -o tmp/openc3-minio$suffix-$tag.tar
+  docker save $repo/$namespace/openc3-cosmos-init$suffix:$tag -o tmp/openc3-cosmos-init$suffix-$tag.tar
   set +x
 }
 
@@ -64,20 +74,27 @@ loadTar() {
   else
     tag=$1
   fi
+  suffix=""
+  if [[ -n "$2" ]]; then
+    suffix=$2
+  fi
   set -x
-  docker load -i tmp/openc3-operator-$tag.tar
-  docker load -i tmp/openc3-cosmos-cmd-tlm-api-$tag.tar
-  docker load -i tmp/openc3-cosmos-script-runner-api-$tag.tar
-  docker load -i tmp/openc3-traefik-$tag.tar
-  docker load -i tmp/openc3-redis-$tag.tar
-  docker load -i tmp/openc3-minio-$tag.tar
-  docker load -i tmp/openc3-cosmos-init-$tag.tar
+  docker load -i tmp/openc3-ruby$suffix-$tag.tar
+  docker load -i tmp/openc3-node$suffix-$tag.tar
+  docker load -i tmp/openc3-base$suffix-$tag.tar
+  docker load -i tmp/openc3-operator$suffix-$tag.tar
+  docker load -i tmp/openc3-cosmos-cmd-tlm-api$suffix-$tag.tar
+  docker load -i tmp/openc3-cosmos-script-runner-api$suffix-$tag.tar
+  docker load -i tmp/openc3-traefik$suffix-$tag.tar
+  docker load -i tmp/openc3-redis$suffix-$tag.tar
+  docker load -i tmp/openc3-minio$suffix-$tag.tar
+  docker load -i tmp/openc3-cosmos-init$suffix-$tag.tar
   set +x
 }
 
 tag() {
   if [ "$#" -lt 4 ]; then
-    echo "Usage: tag <REPO1> <REPO2> <NAMESPACE1> <TAG1> <NAMESPACE2> <TAG2>" >&2
+    echo "Usage: tag <REPO1> <REPO2> <NAMESPACE1> <TAG1> <NAMESPACE2> <TAG2> <SUFFIX>" >&2
     echo "e.g. tag docker.io localhost:12345 openc3 latest" >&2
     echo "Note: NAMESPACE2 and TAG2 default to NAMESPACE1 and TAG1 if not given" >&2
     exit 1
@@ -95,36 +112,50 @@ tag() {
   if [[ -n "$6" ]]; then
     tag2=$6
   fi
+  suffix=""
+  if [[ -n "$7" ]]; then
+    suffix=$7
+  fi
 
   set -x
-  docker tag $repo1/$namespace1/openc3-operator:$tag1 $repo2/$namespace2/openc3-operator:$tag2
-  docker tag $repo1/$namespace1/openc3-cosmos-cmd-tlm-api:$tag1 $repo2/$namespace2/openc3-cosmos-cmd-tlm-api:$tag2
-  docker tag $repo1/$namespace1/openc3-cosmos-script-runner-api:$tag1 $repo2/$namespace2/openc3-cosmos-script-runner-api:$tag2
-  docker tag $repo1/$namespace1/openc3-traefik:$tag1 $repo2/$namespace2/openc3-traefik:$tag2
-  docker tag $repo1/$namespace1/openc3-redis:$tag1 $repo2/$namespace2/openc3-redis:$tag2
-  docker tag $repo1/$namespace1/openc3-minio:$tag1 $repo2/$namespace2/openc3-minio:$tag2
-  docker tag $repo1/$namespace1/openc3-cosmos-init:$tag1 $repo2/$namespace2/openc3-cosmos-init:$tag2
+  docker tag $repo1/$namespace1/openc3-ruby$suffix:$tag1 $repo2/$namespace2/openc3-ruby$suffix:$tag2
+  docker tag $repo1/$namespace1/openc3-node$suffix:$tag1 $repo2/$namespace2/openc3-node$suffix:$tag2
+  docker tag $repo1/$namespace1/openc3-base$suffix:$tag1 $repo2/$namespace2/openc3-base$suffix:$tag2
+  docker tag $repo1/$namespace1/openc3-operator$suffix:$tag1 $repo2/$namespace2/openc3-operator$suffix:$tag2
+  docker tag $repo1/$namespace1/openc3-cosmos-cmd-tlm-api$suffix:$tag1 $repo2/$namespace2/openc3-cosmos-cmd-tlm-api$suffix:$tag2
+  docker tag $repo1/$namespace1/openc3-cosmos-script-runner-api$suffix:$tag1 $repo2/$namespace2/openc3-cosmos-script-runner-api$suffix:$tag2
+  docker tag $repo1/$namespace1/openc3-traefik$suffix:$tag1 $repo2/$namespace2/openc3-traefik$suffix:$tag2
+  docker tag $repo1/$namespace1/openc3-redis$suffix:$tag1 $repo2/$namespace2/openc3-redis$suffix:$tag2
+  docker tag $repo1/$namespace1/openc3-minio$suffix:$tag1 $repo2/$namespace2/openc3-minio$suffix:$tag2
+  docker tag $repo1/$namespace1/openc3-cosmos-init$suffix:$tag1 $repo2/$namespace2/openc3-cosmos-init$suffix:$tag2
   set +x
 }
 
 push() {
-  if [ "$#" -ne 3 ]; then
-    echo "Usage: push <REPO> <NAMESPACE> <TAG>" >&2
+  if [ "$#" -lt 3 ]; then
+    echo "Usage: push <REPO> <NAMESPACE> <TAG> <SUFFIX>" >&2
     echo "e.g. push localhost:12345 openc3 latest" >&2
     exit 1
   fi
   repo=$1
   namespace=$2
   tag=$3
+  suffix=""
+  if [[ -n "$4" ]]; then
+    suffix=$4
+  fi
 
   set -x
-  docker push $repo/$namespace/openc3-operator:$tag
-  docker push $repo/$namespace/openc3-cosmos-cmd-tlm-api:$tag
-  docker push $repo/$namespace/openc3-cosmos-script-runner-api:$tag
-  docker push $repo/$namespace/openc3-traefik:$tag
-  docker push $repo/$namespace/openc3-redis:$tag
-  docker push $repo/$namespace/openc3-minio:$tag
-  docker push $repo/$namespace/openc3-cosmos-init:$tag
+  docker push $repo/$namespace/openc3-ruby$suffix:$tag
+  docker push $repo/$namespace/openc3-node$suffix:$tag
+  docker push $repo/$namespace/openc3-base$suffix:$tag
+  docker push $repo/$namespace/openc3-operator$suffix:$tag
+  docker push $repo/$namespace/openc3-cosmos-cmd-tlm-api$suffix:$tag
+  docker push $repo/$namespace/openc3-cosmos-script-runner-api$suffix:$tag
+  docker push $repo/$namespace/openc3-traefik$suffix:$tag
+  docker push $repo/$namespace/openc3-redis$suffix:$tag
+  docker push $repo/$namespace/openc3-minio$suffix:$tag
+  docker push $repo/$namespace/openc3-cosmos-init$suffix:$tag
   set +x
 }
 

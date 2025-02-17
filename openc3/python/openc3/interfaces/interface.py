@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -25,9 +25,6 @@ from openc3.api import *
 from openc3.utilities.logger import Logger
 from openc3.utilities.secrets import Secrets
 from openc3.logs.stream_log_pair import StreamLogPair
-
-# TODO:
-# require 'openc3/api/api'
 
 
 class WriteRejectError(RuntimeError):
@@ -93,6 +90,11 @@ class Interface:
     def write_queue_size(self):
         return self._write_queue_size
 
+    # Should be implemented by subclass to return human readable connection string
+    # which will be placed in log messages when connecting and during connection failures
+    def connection_string(self):
+        return self.name
+
     # Connects the interface to its target(s). Must be implemented by a
     # subclass.
     def connect(self):
@@ -113,8 +115,19 @@ class Interface:
                 )
 
             self.cancel_scheduler_thread = False
-            self.scheduler_thread = threading.Thread(target=self.scheduler_thread_body)
+            self.scheduler_thread = threading.Thread(target=self.scheduler_thread_body, daemon=True)
             self.scheduler_thread.start()
+
+    # Called immediately after the interface is connected.
+    # By default this method will run any commands specified by the CONNECT_CMD option
+    def post_connect(self):
+        connect_cmds = self.options.get("CONNECT_CMD")
+        if connect_cmds:
+            for log_dont_log, cmd_string in connect_cmds:
+                if log_dont_log.upper() == "DONT_LOG":
+                    cmd(cmd_string, log_message=False)
+                else:
+                    cmd(cmd_string)
 
     # Indicates if the interface is connected to its target(s) or not. Must be:
     # implemented by a subclass.
@@ -149,8 +162,9 @@ class Interface:
         try:
             first = True
             while True:
+                extra = None
                 # Protocols may have cached data for a packet, so initially just inject a blank string
-                # Otherwise we can hold off outputing other packets where all the data has already
+                # Otherwise we can hold off outputting other packets where all the data has already
                 # been received
                 if not first or len(self.read_protocols) <= 0:
                     # Read data for a packet
@@ -162,7 +176,6 @@ class Interface:
                     data = b""
                     first = False
 
-                extra = None
                 for protocol in self.read_protocols:
                     data, extra = protocol.read_data(data, extra)
                     if data == "DISCONNECT":
@@ -193,9 +206,7 @@ class Interface:
                 # Return packet
                 self.read_count += 1
                 if not packet:
-                    Logger.warn(
-                        f"{self.name}: Interface unexpectedly requested disconnect"
-                    )
+                    Logger.warn(f"{self.name}: Interface unexpectedly requested disconnect")
                 return packet
         except RuntimeError as error:
             Logger.error(f"{self.name}: Error reading from interface")
@@ -231,9 +242,7 @@ class Interface:
             for protocol in self.write_protocols:
                 data, extra = protocol.write_data(data, extra)
                 if data == "DISCONNECT":
-                    Logger.info(
-                        f"{self.name}: Protocol {protocol.__class__.__name__} write_data requested disconnect"
-                    )
+                    Logger.info(f"{self.name}: Protocol {protocol.__class__.__name__} write_data requested disconnect")
                     self.disconnect()
                     return
                 if data == "STOP":
@@ -274,7 +283,7 @@ class Interface:
         try:
             yield
         except WriteRejectError as error:
-            Logger.error(f"{self.name}: Write rejected by interface {error.message}")
+            Logger.error(f"{self.name}: Write rejected by interface {repr(error)}")
             raise error
         except RuntimeError as error:
             Logger.error(f"{self.name}: Error writing to interface")
@@ -357,10 +366,12 @@ class Interface:
     def set_option(self, option_name, option_values):
         option_name_upcase = option_name.upper()
 
-        if option_name_upcase == "PERIODIC_CMD":
+        # CONNECT_CMD and PERIODIC_CMD are special because there could be more than 1
+        # so we store them in an array for processing during connect()
+        if option_name_upcase == "PERIODIC_CMD" or option_name_upcase == "CONNECT_CMD":
             # OPTION PERIODIC_CMD LOG/DONT_LOG 1.0 "INST COLLECT with TYPE NORMAL"
-            self.options[option_name_upcase] = self.options[option_name_upcase] or []
-            self.options[option_name_upcase].push(option_values[:])
+            self.options[option_name_upcase] = self.options.get(option_name_upcase, [])
+            self.options[option_name_upcase].append(option_values[:])
         else:
             self.options[option_name_upcase] = option_values[:]
 
@@ -443,9 +454,7 @@ class Interface:
     def protocol_cmd(self, cmd_name, *cmd_args, read_write="READ_WRITE", index=-1):
         read_write = str(read_write).upper()
         if read_write not in ["READ", "WRITE", "READ_WRITE"]:
-            raise RuntimeError(
-                f"Unknown protocol descriptor {read_write}. Must be 'READ', 'WRITE', or 'READ_WRITE'."
-            )
+            raise RuntimeError(f"Unknown protocol descriptor {read_write}. Must be 'READ', 'WRITE', or 'READ_WRITE'.")
         handled = False
 
         if index >= 0 or read_write == "READ_WRITE":
@@ -499,10 +508,8 @@ class Interface:
                     cmd(cmd_string, log_message=False)
                 else:
                     cmd(cmd_string)
-            except Exception as error:
-                Logger.error(
-                    f"Error sending periodic cmd({cmd_string}):\n{traceback.format_exception(error)}"
-                )
+            except Exception:
+                Logger.error(f"Error sending periodic cmd({cmd_string}):\n{traceback.format_exc()}")
 
     def scheduler_thread_body(self):
         next_time = time.time()

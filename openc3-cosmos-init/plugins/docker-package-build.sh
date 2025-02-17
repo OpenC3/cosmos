@@ -4,15 +4,24 @@ set -e
 PLUGINS="/openc3/plugins"
 GEMS="/openc3/plugins/gems/"
 PACKAGES="packages"
-OPENC3_RELEASE_VERSION=5.14.3-beta0
+OPENC3_RELEASE_VERSION=6.1.1-beta0
+
+# 2nd argument provides an override for the workspace name,
+# but that can be inferred from the 1st argument for most tools
+WORKSPACE_NAME=$2
+if [ -z "${WORKSPACE_NAME}" ]; then # if WORKSPACE_NAME is unset or empty string
+  # "openc3-cosmos-tool-admin" -> "@openc3/cosmos-tool-admin"
+  WORKSPACE_NAME=$(echo $1 | sed -e '1s/\-/\//' | awk '{print "@"$0}')
+fi
 
 mkdir -p ${GEMS}
 
 echo "<<< packageBuild $1"
-cd ${PLUGINS}/${PACKAGES}/${1}/
-echo "--- packageBuild $1 yarn run build"
-yarn run build
-echo "=== packageBuild $1 yarn run build complete"
+cd ${PLUGINS}/
+echo "--- packageBuild $1 yarn workspace $WORKSPACE_NAME build"
+yarn workspace $WORKSPACE_NAME build
+echo "=== packageBuild $1 yarn build complete"
+cd ${PACKAGES}/${1}/
 echo "--- packageBuild $1 rake build"
 rake build VERSION=${OPENC3_RELEASE_VERSION}
 echo "=== packageBuild $1 rake build complete"

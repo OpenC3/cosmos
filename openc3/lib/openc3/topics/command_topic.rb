@@ -14,18 +14,19 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/topics/topic'
+require 'openc3/utilities/store_queued'
 require 'openc3/utilities/open_telemetry'
 
 module OpenC3
   class CommandTopic < Topic
-    COMMAND_ACK_TIMEOUT_S = 5
+    COMMAND_ACK_TIMEOUT_S = 30
 
     def self.write_packet(packet, scope:)
       topic = "#{scope}__COMMAND__{#{packet.target_name}}__#{packet.packet_name}"
@@ -36,7 +37,7 @@ module OpenC3
                    received_count: packet.received_count,
                    stored: packet.stored.to_s,
                    buffer: packet.buffer(false) }
-      Topic.write_topic(topic, msg_hash)
+      EphemeralStoreQueued.write_topic(topic, msg_hash)
     end
 
     # @param command [Hash] Command hash structure read to be written to a topic
@@ -51,13 +52,15 @@ module OpenC3
       cmd_id = Topic.write_topic("{#{scope}__CMD}TARGET__#{command['target_name']}", command, '*', 100)
       time = Time.now
       while (Time.now - time) < timeout
-        Topic.read_topics([ack_topic]) do |topic, msg_id, msg_hash, redis|
+        Topic.read_topics([ack_topic]) do |_topic, _msg_id, msg_hash, _redis|
           if msg_hash["id"] == cmd_id
             if msg_hash["result"] == "SUCCESS"
               return [command['target_name'], command['cmd_name'], cmd_params]
             # Check for HazardousError which is a special case
             elsif msg_hash["result"].include?("HazardousError")
               raise_hazardous_error(msg_hash, command['target_name'], command['cmd_name'], cmd_params)
+            elsif msg_hash["result"].include?("CriticalCmdError")
+              raise_critical_cmd_error(msg_hash, command['username'], command['target_name'], command['cmd_name'], cmd_params, command['cmd_string'])
             else
               raise msg_hash["result"]
             end
@@ -83,6 +86,20 @@ module OpenC3
       error.formatted = formatted
 
       # No Logger.info because the error is already logged by the Logger.info "Ack Received ...
+      raise error
+    end
+
+    def self.raise_critical_cmd_error(msg_hash, username, target_name, cmd_name, cmd_params, cmd_string)
+      _, uuid = msg_hash["result"].split("\n")
+      # Create and populate a new CriticalCmdError and raise it up
+      # The _cmd method in script/commands.rb rescues this and calls prompt_for_critical_cmd
+      error = CriticalCmdError.new
+      error.uuid = uuid
+      error.username = username
+      error.target_name = target_name
+      error.cmd_name = cmd_name
+      error.cmd_params = cmd_params
+      error.cmd_string = cmd_string
       raise error
     end
   end

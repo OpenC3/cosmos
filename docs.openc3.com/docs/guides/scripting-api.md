@@ -1,5 +1,8 @@
 ---
 title: Scripting API Guide
+description: Scripting API methods, deprecations and migrations
+sidebar_custom_props:
+  myEmoji: 📝
 ---
 
 This document provides the information necessary to write test procedures using the COSMOS scripting API. Scripting in COSMOS is designed to be simple and intuitive. The code completion ability for command and telemetry mnemonics makes Script Runner the ideal place to write your procedures, however any text editor will do. If there is functionality that you don't see here or perhaps an easier syntax for doing something, please submit a ticket.
@@ -35,7 +38,17 @@ There are four different ways that telemetry values can be retrieved in COSMOS. 
 
 The following methods are designed to be used in Script Runner procedures. Many can also be used in custom built COSMOS tools. Please see the COSMOS Tool API section for methods that are more efficient to use in custom tools.
 
-### Migration from COSMOS v4
+### Migration from COSMOS v5 to v6
+
+The following API methods have been removed from COSMOS v6. Most of the deprecated API methods still remain for backwards compatibility.
+
+| Method              | Tool                         | Status                             |
+| ------------------- | ---------------------------- | ---------------------------------- |
+| get_all_target_info | Command and Telemetry Server | Removed, use get_target_interfaces |
+| play_wav_file       | Script Runner                | Removed                            |
+| status_bar          | Script Runner                | Removed                            |
+
+### Migration from COSMOS v4 to v5
 
 The following API methods are either deprecated (will not be ported to COSMOS 5) or currently unimplemented (eventually will be ported to COSMOS 5):
 
@@ -83,6 +96,7 @@ The following API methods are either deprecated (will not be ported to COSMOS 5)
 | interface_state                       | Command and Telemetry Server | Deprecated, use get_interface                                       |
 | override_tlm_raw                      | Command and Telemetry Server | Deprecated, use override_tlm                                        |
 | open_directory_dialog                 | Script Runner                | Deprecated                                                          |
+| play_wav_file                         | Script Runner                | Deprecated                                                          |
 | replay_move_end                       | Replay                       | Deprecated                                                          |
 | replay_move_index                     | Replay                       | Deprecated                                                          |
 | replay_move_start                     | Replay                       | Deprecated                                                          |
@@ -104,6 +118,7 @@ The following API methods are either deprecated (will not be ported to COSMOS 5)
 | set_stdout_max_lines                  | Script Runner                | Deprecated                                                          |
 | set_tlm_raw                           | Script Runner                | Deprecated, use set_tlm                                             |
 | show_backtrace                        | Script Runner                | Deprecated, backtrace always shown                                  |
+| status_bar                            | Script Runner                | Deprecated                                                          |
 | shutdown_cmd_tlm                      | Command and Telemetry Server | Deprecated                                                          |
 | start_cmd_log                         | Command and Telemetry Server | Deprecated                                                          |
 | start_logging                         | Command and Telemetry Server | Deprecated                                                          |
@@ -137,14 +152,14 @@ Prompts the user for input with a question. User input is automatically converte
 Ruby / Python Syntax:
 
 ```ruby
-ask("<question>", <blank_or_default>, <password>)
+ask("<question>", <Blank or Default>, <Password>)
 ```
 
 | Parameter        | Description                                                                                                                             |
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | question         | Question to prompt the user with.                                                                                                       |
-| blank_or_default | Whether or not to allow empty responses (optional - defaults to false). If a non-boolean value is passed it is used as a default value. |
-| password         | Whether to treat the entry as a password which is displayed with dots and not logged. Default is false.                                 |
+| Blank or Default | Whether or not to allow empty responses (optional - defaults to false). If a non-boolean value is passed it is used as a default value. |
+| Password         | Whether to treat the entry as a password which is displayed with dots and not logged. Default is false.                                 |
 
 Ruby Example:
 
@@ -166,19 +181,19 @@ password = ask("Enter your password", False, True)
 
 ### ask_string
 
-Prompts the user for input with a question. User input is always returned as a string. For exampe if the user enters "1", the string "1" will be returned.
+Prompts the user for input with a question. User input is always returned as a string. For example if the user enters "1", the string "1" will be returned.
 
 Ruby / Python Syntax:
 
 ```ruby
-ask_string("<question>", <blank_or_default>, <password>)
+ask_string("<question>", <Blank or Default>, <Password>)
 ```
 
 | Parameter        | Description                                                                                                                             |
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | question         | Question to prompt the user with.                                                                                                       |
-| blank_or_default | Whether or not to allow empty responses (optional - defaults to false). If a non-boolean value is passed it is used as a default value. |
-| password         | Whether to treat the entry as a password which is displayed with dots and not logged. Default is false.                                 |
+| Blank or Default | Whether or not to allow empty responses (optional - defaults to false). If a non-boolean value is passed it is used as a default value. |
+| Password         | Whether to treat the entry as a password which is displayed with dots and not logged. Default is false.                                 |
 
 Ruby Example:
 
@@ -209,15 +224,15 @@ The message_box, vertical_message_box, and combo_box methods create a message bo
 Ruby / Python Syntax:
 
 ```ruby
-message_box("<message>", "<button text 1>", ...)
-vertical_message_box("<message>", "<button text 1>", ...)
-combo_box("<message>", "<selection text 1>", ...)
+message_box("<Message>", "<button text 1>", ...)
+vertical_message_box("<Message>", "<button text 1>", ...)
+combo_box("<Message>", "<selection text 1>", ...)
 ```
 
 | Parameter             | Description                      |
 | --------------------- | -------------------------------- |
-| message               | Message to prompt the user with. |
-| button/selection text | Text for a button or selection   |
+| Message               | Message to prompt the user with. |
+| Button/Selection Text | Text for a button or selection   |
 
 Ruby Example:
 
@@ -264,7 +279,7 @@ get_target_file("<File Path>", original=False)
 
 | Parameter | Description                                                                                                                                                                                                                           |
 | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| path      | The path to the file in the target directory. Should assume to start with a TARGET name, e.g. INST/procedures/proc.rb                                                                                                                 |
+| File Path | The path to the file in the target directory. Should assume to start with a TARGET name, e.g. INST/procedures/proc.rb                                                                                                                 |
 | original  | Whether to get the original file from the plug-in, or any modifications to the file. Default is false which means to grab the modified file. If the modified file does not exist the API will automatically try to pull the original. |
 
 Ruby Example:
@@ -301,10 +316,10 @@ Ruby or Python Syntax:
 put_target_file("<File Path>", "IO or String")
 ```
 
-| Parameter | Description                                                                                                                                                                                                                                                                      |
-| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| path      | The path to the file in the target directory. Should assume to start with a TARGET name, e.g. INST/procedures/proc.rb. The file can previously exist or not. Note: The original file from the plug-in will not be modified, however existing modified files will be overwritten. |
-| data      | The data can be an IO object or String                                                                                                                                                                                                                                           |
+| Parameter    | Description                                                                                                                                                                                                                                                                      |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| File Path    | The path to the file in the target directory. Should assume to start with a TARGET name, e.g. INST/procedures/proc.rb. The file can previously exist or not. Note: The original file from the plug-in will not be modified, however existing modified files will be overwritten. |
+| IO or String | The data can be an IO object or String                                                                                                                                                                                                                                           |
 
 Ruby Example:
 
@@ -340,7 +355,7 @@ delete_target_file("<File Path>")
 
 | Parameter | Description                                                                                                                                                                                                                                   |
 | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| path      | The path to the file in the target directory. Should assume to start with a TARGET name, e.g. INST/procedures/proc.rb. Note: Only files created with put_target_file can be deleted. Original files from the plugin installation will remain. |
+| File Path | The path to the file in the target directory. Should assume to start with a TARGET name, e.g. INST/procedures/proc.rb. Note: Only files created with put_target_file can be deleted. Original files from the plugin installation will remain. |
 
 Ruby / Python Example:
 
@@ -360,15 +375,15 @@ Note: COSMOS 5 has deprecated the save_file_dialog and open_directory_dialog met
 Ruby Syntax:
 
 ```ruby
-open_file_dialog("<title>", "<message>", filter: "<filter>")
-open_files_dialog("<title>", "<message>", filter: "<filter>")
+open_file_dialog("<Title>", "<Message>", filter: "<filter>")
+open_files_dialog("<Title>", "<Message>", filter: "<filter>")
 ```
 
 Python Syntax:
 
 ```python
-open_file_dialog("<title>", "<message>", filter="<filter>")
-open_files_dialog("<title>", "<message>", filter="<filter>")
+open_file_dialog("<Title>", "<Message>", filter="<filter>")
+open_files_dialog("<Title>", "<Message>", filter="<filter>")
 ```
 
 | Parameter | Description                                                                                                                                                                                                                        |
@@ -421,12 +436,12 @@ Displays a message to the user and waits for them to press an ok button.
 Ruby / Python Syntax:
 
 ```ruby
-prompt("<message>")
+prompt("<Message>")
 ```
 
 | Parameter | Description                      |
 | --------- | -------------------------------- |
-| message   | Message to prompt the user with. |
+| Message   | Message to prompt the user with. |
 
 Ruby / Python Example:
 
@@ -560,7 +575,7 @@ cmd_no_hazardous_check("INST", "CLEAR")
 
 ### cmd_no_checks
 
-Sends a specified command without performing the parameter range checks or notification if it is a hazardous command. This should only be used when it is necessary to fully automate testing involving hazardous commands that intentially have invalid parameters.
+Sends a specified command without performing the parameter range checks or notification if it is a hazardous command. This should only be used when it is necessary to fully automate testing involving hazardous commands that intentionally have invalid parameters.
 
 Ruby Syntax:
 
@@ -717,7 +732,7 @@ cmd_raw_no_hazardous_check("INST", "CLEAR")
 
 ### cmd_raw_no_checks
 
-Sends a specified command without running conversions or performing the parameter range checks or notification if it is a hazardous command. This should only be used when it is necessary to fully automate testing involving hazardous commands that intentially have invalid parameters.
+Sends a specified command without running conversions or performing the parameter range checks or notification if it is a hazardous command. This should only be used when it is necessary to fully automate testing involving hazardous commands that intentionally have invalid parameters.
 
 Ruby Syntax:
 
@@ -756,9 +771,11 @@ cmd_raw_no_checks("INST COLLECT with DURATION 11, TYPE 1")
 cmd_raw_no_checks("INST", "COLLECT", {"DURATION": 11, "TYPE": 1})
 ```
 
-### build_cmd (since 5.13.0, since 5.8.0 as build_command)
+### build_cmd
 
-Builds a command binary string
+> Since 5.13.0, since 5.8.0 as build_command
+
+Builds a command binary string so you can see the raw bytes for a given command. Use the [get_cmd](#get_cmd) to get information about a command like endianness, description, items, etc.
 
 Ruby Syntax:
 
@@ -792,6 +809,54 @@ x = build_cmd("INST COLLECT with DURATION 10, TYPE NORMAL")
 print(x)  #=> {'id': '1697298167748-0', 'result': 'SUCCESS', 'time': '1697298167749155717', 'received_time': '1697298167749155717', 'target_name': 'INST', 'packet_name': 'COLLECT', 'received_count': '2', 'buffer': bytearray(b'\x13\xe7\xc0\x00\x00\x0c\x00\x01\x00\x00A \x00\x00\xab\x00\x00\x00\x00')}
 ```
 
+### enable_cmd
+
+> Since 5.15.1
+
+Enables a disabled command. Sending a disabled command raises `DisabledError` with a message like 'INST ABORT is Disabled'.
+
+Ruby / Python Syntax:
+
+```ruby
+buffer = enable_cmd("<Target Name> <Command Name>")
+buffer = enable_cmd("<Target Name>", "<Command Name>")
+```
+
+| Parameter   | Description                   |
+| ----------- | ----------------------------- |
+| Target Name | Name of the target.           |
+| Packet Name | Name of the command (packet). |
+
+Ruby / Python Example:
+
+```ruby
+enable_cmd("INST ABORT")
+```
+
+### disable_cmd
+
+> Since 5.15.1
+
+Disables a command. Sending a disabled command raises `DisabledError` with a message like 'INST ABORT is Disabled'.
+
+Ruby / Python Syntax:
+
+```ruby
+buffer = disable_cmd("<Target Name> <Command Name>")
+buffer = disable_cmd("<Target Name>", "<Command Name>")
+```
+
+| Parameter   | Description                   |
+| ----------- | ----------------------------- |
+| Target Name | Name of the target.           |
+| Packet Name | Name of the command (packet). |
+
+Ruby / Python Example:
+
+```ruby
+disable_cmd("INST ABORT")
+```
+
 ### send_raw
 
 Sends raw data on an interface.
@@ -813,9 +878,11 @@ Ruby / Python Example:
 send_raw("INST_INT", data)
 ```
 
-### get_all_cmds (since 5.13.0, since 5.0.0 as get_all_commands)
+### get_all_cmds
 
-Returns an array of the commands that are available for a particular target. The returned array is an array of hashes which fully describe the command packet.
+> Since 5.13.0, since 5.0.0 as get_all_commands
+
+Returns an array of the commands that are available for a particular target. The returned array is an array of hashes / list of dicts which fully describe the command packet.
 
 Ruby / Python Syntax:
 
@@ -855,7 +922,9 @@ print(cmd_list)  #=>
 # }]
 ```
 
-### get_all_cmd_names (since 5.13.0, since 5.0.6 as get_all_command_names)
+### get_all_cmd_names
+
+> Since 5.13.0, since 5.0.6 as get_all_command_names
 
 Returns an array of the command names for a particular target.
 
@@ -883,9 +952,11 @@ cmd_list = get_all_cmd_names("INST")
 print(cmd_list)  #=> ['ABORT', 'ARYCMD', 'ASCIICMD', ...]
 ```
 
-### get_cmd (since 5.13.0, since 5.0.0 as get_command)
+### get_cmd
 
-Returns a command hash which fully describes the command packet.
+> Since 5.13.0, since 5.0.0 as get_command
+
+Returns a command hash which fully describes the command packet. To get the binary buffer of an as-built command use [build_cmd](#build_cmd).
 
 Ruby / Python Syntax:
 
@@ -927,7 +998,9 @@ print(abort_cmd)  #=>
 # }]
 ```
 
-### get_param (since 5.13.0, since 5.0.0 as get_parameter)
+### get_param
+
+> Since 5.13.0, since 5.0.0 as get_parameter
 
 Returns a hash of the given command parameter
 
@@ -1108,13 +1181,122 @@ Ruby / Python Example:
 cmd_cnt = get_cmd_cnt("INST COLLECT") # Number of times the INST COLLECT command has been sent
 ```
 
+### get_cmd_cnts
+
+Returns the number of times the specified commands have been sent.
+
+Ruby / Python Syntax:
+
+```ruby
+get_cmd_cnts([["<Target Name>", "<Command Name>"], ["<Target Name>", "<Command Name>"], ...])
+```
+
+| Parameter    | Description          |
+| ------------ | -------------------- |
+| Target Name  | Name of the target.  |
+| Command Name | Name of the command. |
+
+Ruby / Python Example:
+
+```ruby
+cmd_cnt = get_cmd_cnts([['INST', 'COLLECT'], ['INST', 'ABORT']]) # Number of times the INST COLLECT and INST ABORT commands have been sent
+```
+
+### critical_cmd_status
+
+Returns the status of a critical command. One of APPROVED, REJECTED, or WAITING.
+
+> Since 5.20.0
+
+Ruby / Python Syntax:
+
+```ruby
+critical_cmd_status(uuid)
+```
+
+| Parameter | Description                                                 |
+| --------- | ----------------------------------------------------------- |
+| uuid      | UUID for the critical command (displayed in the COSMOS GUI) |
+
+Ruby / Python Example:
+
+```ruby
+status = critical_cmd_status("2fa14183-3148-4399-9a74-a130257118f9") #=> WAITING
+```
+
+### critical_cmd_approve
+
+Approve the critical command as the current user.
+
+> Since 5.20.0
+
+Ruby / Python Syntax:
+
+```ruby
+critical_cmd_approve(uuid)
+```
+
+| Parameter | Description                                                 |
+| --------- | ----------------------------------------------------------- |
+| uuid      | UUID for the critical command (displayed in the COSMOS GUI) |
+
+Ruby / Python Example:
+
+```ruby
+critical_cmd_approve("2fa14183-3148-4399-9a74-a130257118f9")
+```
+
+### critical_cmd_reject
+
+Reject the critical command as the current user.
+
+> Since 5.20.0
+
+Ruby / Python Syntax:
+
+```ruby
+critical_cmd_reject(uuid)
+```
+
+| Parameter | Description                                                 |
+| --------- | ----------------------------------------------------------- |
+| uuid      | UUID for the critical command (displayed in the COSMOS GUI) |
+
+Ruby / Python Example:
+
+```ruby
+critical_cmd_reject("2fa14183-3148-4399-9a74-a130257118f9")
+```
+
+### critical_cmd_can_approve
+
+Returns whether or not the current user can approve the critical command.
+
+> Since 5.20.0
+
+Ruby / Python Syntax:
+
+```ruby
+critical_cmd_can_approve(uuid)
+```
+
+| Parameter | Description                                                 |
+| --------- | ----------------------------------------------------------- |
+| uuid      | UUID for the critical command (displayed in the COSMOS GUI) |
+
+Ruby / Python Example:
+
+```ruby
+status = critical_cmd_can_approve("2fa14183-3148-4399-9a74-a130257118f9") #=> true / false
+```
+
 ## Handling Telemetry
 
 These methods allow the user to interact with telemetry items.
 
 ### check, check_raw, check_formatted, check_with_units
 
-Performs a verification of a telemetry item using its specified telemetry type. If the verification fails then the script will be paused with an error. If no comparision is given to check then the telemetry item is simply printed to the script output. Note: In most cases using wait_check is a better choice than using check.
+Performs a verification of a telemetry item using its specified telemetry type. If the verification fails then the script will be paused with an error. If no comparison is given to check then the telemetry item is simply printed to the script output. Note: In most cases using wait_check is a better choice than using check.
 
 Ruby / Python Syntax:
 
@@ -1186,7 +1368,7 @@ check_tolerance("INST HEALTH_STATUS TEMP1", 50000, 20000, type='RAW')
 
 ### check_expression
 
-Evaluates an expression. If the expression evaluates to false the script will be paused with an error. This method can be used to perform more complicated comparisons than using check as shown in the example. Note: In most cases using [wait_check_expression](#waitcheckexpression) is a better choice than using check_expression.
+Evaluates an expression. If the expression evaluates to false the script will be paused with an error. This method can be used to perform more complicated comparisons than using check as shown in the example. Note: In most cases using [wait_check_expression](#wait_check_expression) is a better choice than using check_expression.
 
 Remember that everything inside the check_expression string will be evaluated directly and thus must be valid syntax. A common mistake is to check a variable like so (Ruby variable interpolation):
 
@@ -1198,20 +1380,38 @@ This evaluates to `yes == 'yes'` which is not valid syntax because the variable 
 
 Now this evaluates to `'yes' == 'yes'` which is true so the check passes.
 
-Ruby / Python Syntax:
+Ruby Syntax:
 
 ```ruby
-check_expression("<Expression>")
+check_expression(exp_to_eval, context = nil)
 ```
 
-| Parameter  | Description                |
-| ---------- | -------------------------- |
-| Expression | An expression to evaluate. |
+Python Syntax:
 
-Ruby / Python Example:
+```python
+check_expression(exp_to_eval, globals=None, locals=None)
+```
+
+| Parameter             | Description                                                                                                                   |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| exp_to_eval           | An expression to evaluate.                                                                                                    |
+| context (ruby only)   | The context to call eval with. Defaults to nil. Context in Ruby is typically binding() and is usually not needed.             |
+| globals (python only) | The globals to call eval with. Defaults to None. Note that to use COSMOS APIs like tlm() you must pass globals().             |
+| locals (python only)  | The locals to call eval with. Defaults to None. Note that if you're using local variables in a method you must pass locals(). |
+
+Ruby Example:
 
 ```ruby
 check_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm('INST HEALTH_STATUS TEMP1') > 25.0")
+```
+
+Python Example:
+
+```python
+def check(value):
+    # Here we using both tlm() and a local 'value' so we need to pass globals() and locals()
+    check_expression("tlm('INST HEALTH_STATUS COLLECTS') > value", 5, 0.25, globals(), locals())
+check(5)
 ```
 
 ### check_exception
@@ -1335,7 +1535,7 @@ Python Example:
 names_values_and_limits_states = get_tlm_packet("INST HEALTH_STATUS", type='FORMATTED')
 ```
 
-### get_tlm_values (modified in 5.0.0)
+### get_tlm_values
 
 Returns the values and current limits state for a specified set of telemetry items. Items can be in any telemetry packet in the system. They can all be retrieved using the same value type or a specific value type can be specified for each item.
 
@@ -1356,7 +1556,9 @@ values = get_tlm_values(["INST__HEALTH_STATUS__TEMP1__CONVERTED", "INST__HEALTH_
 print(values) # [[-100.0, :RED_LOW], [0, :RED_LOW]]
 ```
 
-### get_all_tlm (since 5.13.0, since 5.0.0 as get_all_telemetry)
+### get_all_tlm
+
+> Since 5.13.0, since 5.0.0 as get_all_telemetry
 
 Returns an array of all target packet hashes.
 
@@ -1387,7 +1589,9 @@ print(packets)
 #     ...
 ```
 
-### get_all_tlm_names (since 5.13.0, since 5.0.6 as get_all_telemetry_names)
+### get_all_tlm_names
+
+> Since 5.13.0, since 5.0.6 as get_all_telemetry_names
 
 Returns an array of all target packet names.
 
@@ -1407,7 +1611,9 @@ Ruby / Python Example:
 get_all_tlm_names("INST")  #=> ["ADCS", "HEALTH_STATUS", ...]
 ```
 
-### get_tlm (since 5.13.0, since 5.0.0 as get_telemetry)
+### get_tlm
+
+> Since 5.13.0, since 5.0.0 as get_telemetry
 
 Returns a packet hash.
 
@@ -1447,7 +1653,7 @@ print(packet)
 #    ...
 ```
 
-### get_item (since 5.0.0)
+### get_item
 
 Returns an item hash.
 
@@ -1631,7 +1837,7 @@ normalize_tlm("INST HEALTH_STATUS TEMP1", type='RAW') # clear only the RAW overr
 
 ### get_overrides
 
-Returns an array of the the currently overriden values set by override_tlm. NOTE: This returns all the value types that are overriden which by default is all 4 values types when using override_tlm.
+Returns an array of the the currently overridden values set by override_tlm. NOTE: This returns all the value types that are overridden which by default is all 4 values types when using override_tlm.
 
 Ruby / Python Syntax:
 
@@ -1663,9 +1869,9 @@ print(get_overrides()) #=>
 
 ## Packet Data Subscriptions
 
-Methods for subscribing to specific packets of data. This provides an interface to ensure that each telemetry packet is received and handled rather than relying on polling where some data may be missed.
+APIs for subscribing to specific packets of data. This provides an interface to ensure that each telemetry packet is received and handled rather than relying on polling where some data may be missed.
 
-### subscribe_packets (since 5.0.3)
+### subscribe_packets
 
 Allows the user to listen for one or more telemetry packets of data to arrive. A unique id is returned which is used to retrieve the data.
 
@@ -1685,7 +1891,7 @@ Ruby / Python Example:
 id = subscribe_packets([['INST', 'HEALTH_STATUS'], ['INST', 'ADCS']])
 ```
 
-### get_packets (since 5.0.3)
+### get_packets
 
 Streams packet data from a previous subscription.
 
@@ -1814,8 +2020,8 @@ Pauses the script for a configurable amount of time (minimum 10ms) or until a co
 Ruby / Python Syntax:
 
 ```ruby
-wait()
-wait(<Time>)
+elapsed = wait() #=> Returns the actual time waited
+elapsed = wait(<Time>) #=> Returns the actual time waited
 ```
 
 | Parameter | Description                   |
@@ -1825,7 +2031,8 @@ wait(<Time>)
 Ruby / Python Syntax:
 
 ```ruby
-wait("<Target Name> <Packet Name> <Item Name> <Comparison>", <Timeout>, <Polling Rate (optional)>, type, quiet)
+# Returns true or false based on the whether the expression is true or false
+success = wait("<Target Name> <Packet Name> <Item Name> <Comparison>", <Timeout>, <Polling Rate (optional)>, type, quiet)
 ```
 
 | Parameter    | Description                                                                                                        |
@@ -1842,19 +2049,19 @@ wait("<Target Name> <Packet Name> <Item Name> <Comparison>", <Timeout>, <Polling
 Ruby Example:
 
 ```ruby
-wait
-wait 5
-wait("INST HEALTH_STATUS COLLECTS == 3", 10)
-wait("INST HEALTH_STATUS COLLECTS == 3", 10, type: :RAW, quiet: false)
+elapsed = wait
+elapsed = wait 5
+success = wait("INST HEALTH_STATUS COLLECTS == 3", 10)
+success = wait("INST HEALTH_STATUS COLLECTS == 3", 10, type: :RAW, quiet: false)
 ```
 
 Python Example:
 
 ```python
-wait()
-wait(5)
-wait("INST HEALTH_STATUS COLLECTS == 3", 10)
-wait("INST HEALTH_STATUS COLLECTS == 3", 10, type='RAW', quiet=False)
+elapsed = wait()
+elapsed = wait(5)
+success = wait("INST HEALTH_STATUS COLLECTS == 3", 10)
+success = wait("INST HEALTH_STATUS COLLECTS == 3", 10, type='RAW', quiet=False)
 ```
 
 ### wait_tolerance
@@ -1864,7 +2071,8 @@ Pauses the script for a configurable amount of time or until a converted telemet
 Ruby Python Syntax:
 
 ```ruby
-wait_tolerance("<Target Name> <Packet Name> <Item Name>", <Expected Value>, <Tolerance>, <Timeout>, <Polling Rate (optional), type, quiet>)
+# Returns true or false based on the whether the expression is true or false
+success = wait_tolerance("<Target Name> <Packet Name> <Item Name>", <Expected Value>, <Tolerance>, <Timeout>, <Polling Rate (optional), type, quiet>)
 ```
 
 | Parameter      | Description                                                                                                        |
@@ -1882,38 +2090,71 @@ wait_tolerance("<Target Name> <Packet Name> <Item Name>", <Expected Value>, <Tol
 Ruby Examples:
 
 ```ruby
-wait_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10)
-wait_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, type: :RAW, quiet: true)
+success = wait_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10)
+success = wait_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, type: :RAW, quiet: true)
 ```
 
 Python Examples:
 
 ```python
-wait_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10)
-wait_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, type='RAW', quiet=True)
+success = wait_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10)
+success = wait_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, type='RAW', quiet=True)
 ```
 
 ### wait_expression
 
-Pauses the script until an expression is evaluated to be true or a timeout occurs. If a timeout occurs the script will continue. This method can be used to perform more complicated comparisons than using wait as shown in the example. Note that on a timeout, wait_expression does not stop the script, usually [wait_check_expression](#waitcheckexpression) is a better choice.
+Pauses the script until an expression is evaluated to be true or a timeout occurs. If a timeout occurs the script will continue. This method can be used to perform more complicated comparisons than using wait as shown in the example. Note that on a timeout, wait_expression does not stop the script, usually [wait_check_expression](#wait_check_expression) is a better choice.
 
-Syntax:
+Ruby Syntax:
 
 ```ruby
-wait_expression("<Expression>", <Timeout>, <Polling Rate (optional)>, quiet)
+# Return true or false based the expression evaluation
+wait_expression(
+  exp_to_eval,
+  timeout,
+  polling_rate = DEFAULT_TLM_POLLING_RATE,
+  context = nil,
+  quiet: false
+) -> boolean
 ```
 
-| Parameter    | Description                                                                                                    |
-| ------------ | -------------------------------------------------------------------------------------------------------------- |
-| Expression   | A ruby expression to evaluate.                                                                                 |
-| Timeout      | Timeout in seconds. Script will proceed if the wait statement times out waiting for the comparison to be true. |
-| Polling Rate | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                           |
-| quiet        | Named parameter indicating whether to log the result. Defaults to true.                                        |
+Python Syntax:
 
-Ruby / Python Example:
+```python
+# Return True or False based on the expression evaluation
+wait_expression(
+    exp_to_eval,
+    timeout,
+    polling_rate=DEFAULT_TLM_POLLING_RATE,
+    globals=None,
+    locals=None,
+    quiet=False,
+) -> bool
+```
+
+| Parameter             | Description                                                                                                                   |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| expression            | An expression to evaluate.                                                                                                    |
+| timeout               | Timeout in seconds. Script will proceed if the wait statement times out waiting for the comparison to be true.                |
+| polling_rate          | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                                          |
+| context (ruby only)   | The context to call eval with. Defaults to nil. Context in Ruby is typically binding() and is usually not needed.             |
+| globals (python only) | The globals to call eval with. Defaults to None. Note that to use COSMOS APIs like tlm() you must pass globals().             |
+| locals (python only)  | The locals to call eval with. Defaults to None. Note that if you're using local variables in a method you must pass locals(). |
+| quiet                 | Whether to log the result. Defaults to false which means to log.                                                              |
+
+Ruby Example:
 
 ```ruby
-wait_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm('INST HEALTH_STATUS TEMP1') > 25.0", 10)
+success = wait_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm('INST HEALTH_STATUS TEMP1') > 25.0", 10, 0.25, nil, quiet: true)
+```
+
+Python Example:
+
+```python
+def check(value):
+    # Here we using both tlm() and a local 'value' so we need to pass globals() and locals()
+    return wait_expression("tlm('INST HEALTH_STATUS COLLECTS') > value", 5, 0.25, globals(), locals(), quiet=True)
+success = check(5)
 ```
 
 ### wait_packet
@@ -1923,7 +2164,8 @@ Pauses the script until a certain number of packets have been received. If a tim
 Ruby / Python Syntax:
 
 ```ruby
-wait_packet("<Target>", "<Packet>", <Num Packets>, <Timeout>, <Polling Rate (optional)>, quiet)
+# Returns true or false based on the whether the packet was received
+success = wait_packet("<Target>", "<Packet>", <Num Packets>, <Timeout>, <Polling Rate (optional)>, quiet)
 ```
 
 | Parameter    | Description                                                                          |
@@ -1938,7 +2180,7 @@ wait_packet("<Target>", "<Packet>", <Num Packets>, <Timeout>, <Polling Rate (opt
 Ruby / Python Example:
 
 ```ruby
-wait_packet('INST', 'HEALTH_STATUS', 5, 10) # Wait for 5 INST HEALTH_STATUS packets over 10s
+success = wait_packet('INST', 'HEALTH_STATUS', 5, 10) # Wait for 5 INST HEALTH_STATUS packets over 10s
 ```
 
 ### wait_check
@@ -1948,7 +2190,8 @@ Combines the wait and check keywords into one. This pauses the script until the 
 Ruby / Python Syntax:
 
 ```ruby
-wait_check("<Target Name> <Packet Name> <Item Name> <Comparison>", <Timeout>, <Polling Rate (optional)>, type)
+# Returns the amount of time elapsed waiting for the expression
+elapsed = wait_check("<Target Name> <Packet Name> <Item Name> <Comparison>", <Timeout>, <Polling Rate (optional)>, type)
 ```
 
 | Parameter    | Description                                                                                                        |
@@ -1964,15 +2207,15 @@ wait_check("<Target Name> <Packet Name> <Item Name> <Comparison>", <Timeout>, <P
 Ruby Example:
 
 ```ruby
-wait_check("INST HEALTH_STATUS COLLECTS > 5", 10)
-wait_check("INST HEALTH_STATUS COLLECTS > 5", 10, type: :RAW)
+elapsed = wait_check("INST HEALTH_STATUS COLLECTS > 5", 10)
+elapsed = wait_check("INST HEALTH_STATUS COLLECTS > 5", 10, type: :RAW)
 ```
 
 Python Example:
 
 ```python
-wait_check("INST HEALTH_STATUS COLLECTS > 5", 10)
-wait_check("INST HEALTH_STATUS COLLECTS > 5", 10, type='RAW')
+elapsed = wait_check("INST HEALTH_STATUS COLLECTS > 5", 10)
+elapsed = wait_check("INST HEALTH_STATUS COLLECTS > 5", 10, type='RAW')
 ```
 
 ### wait_check_tolerance
@@ -1982,7 +2225,8 @@ Pauses the script for a configurable amount of time or until a converted telemet
 Ruby / Python Syntax:
 
 ```ruby
-wait_check_tolerance("<Target Name> <Packet Name> <Item Name>", <Expected Value>, <Tolerance>, <Timeout>, <Polling Rate (optional)>, type)
+# Returns the amount of time elapsed waiting for the expression
+elapsed = wait_check_tolerance("<Target Name> <Packet Name> <Item Name>", <Expected Value>, <Tolerance>, <Timeout>, <Polling Rate (optional)>, type)
 ```
 
 | Parameter      | Description                                                                                                        |
@@ -1999,37 +2243,66 @@ wait_check_tolerance("<Target Name> <Packet Name> <Item Name>", <Expected Value>
 Ruby Example:
 
 ```ruby
-wait_check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10)
-wait_check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, type: :RAW)
+elapsed = wait_check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10)
+elapsed = wait_check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, type: :RAW)
 ```
 
 Python Example:
 
 ```python
-wait_check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10)
-wait_check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, type='RAW')
+elapsed = wait_check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10)
+elapsed = wait_check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, type='RAW')
 ```
 
 ### wait_check_expression
 
-Pauses the script until an expression is evaluated to be true or a timeout occurs. If a timeout occurs the script will stop. This method can be used to perform more complicated comparisons than using wait as shown in the example. Also see the syntax notes for [check_expression](#checkexpression).
+Pauses the script until an expression is evaluated to be true or a timeout occurs. If a timeout occurs the script will stop. This method can be used to perform more complicated comparisons than using wait as shown in the example. Also see the syntax notes for [check_expression](#check_expression).
 
-Ruby / Python Syntax:
+Ruby Syntax:
 
 ```ruby
-wait_check_expression("<Expression>", <Timeout>, <Polling Rate (optional)>)
+# Return time spent waiting for the expression to evaluate to true
+wait_check_expression(
+  exp_to_eval,
+  timeout,
+  polling_rate = DEFAULT_TLM_POLLING_RATE,
+  context = nil
+) -> int
 ```
 
-| Parameter    | Description                                                                                                 |
-| ------------ | ----------------------------------------------------------------------------------------------------------- |
-| Expression   | A ruby expression to evaluate.                                                                              |
-| Timeout      | Timeout in seconds. Script will stop if the wait statement times out waiting for the comparison to be true. |
-| Polling Rate | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                        |
+Python Syntax:
 
-Ruby / Python Example:
+```python
+# Return time spent waiting for the expression to evaluate to True
+wait_check_expression(
+    exp_to_eval,
+    timeout,
+    polling_rate=DEFAULT_TLM_POLLING_RATE,
+    globals=None,
+    locals=None
+) -> int
+```
+
+| Parameter             | Description                                                                                                                   |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| expression            | An expression to evaluate.                                                                                                    |
+| timeout               | Timeout in seconds. Script will proceed if the wait statement times out waiting for the comparison to be true.                |
+| polling_rate          | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                                          |
+| context (ruby only)   | The context to call eval with. Defaults to nil. Context in Ruby is typically binding() and is usually not needed.             |
+| globals (python only) | The globals to call eval with. Defaults to None. Note that to use COSMOS APIs like tlm() you must pass globals().             |
+| locals (python only)  | The locals to call eval with. Defaults to None. Note that if you're using local variables in a method you must pass locals(). |
+
+Ruby Example:
 
 ```ruby
-wait_check_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm('INST HEALTH_STATUS TEMP1') > 25.0", 10)
+elapsed = wait_check_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm('INST HEALTH_STATUS TEMP1') > 25.0", 10)
+```
+
+Python Example:
+
+```python
+# Note that for Python we need to pass globals() to be able to use COSMOS API methods like tlm()
+elapsed = wait_check_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm('INST HEALTH_STATUS TEMP1') > 25.0", 10, 0.25, globals())
 ```
 
 ### wait_check_packet
@@ -2039,7 +2312,8 @@ Pauses the script until a certain number of packets have been received. If a tim
 Ruby / Python Syntax:
 
 ```ruby
-wait_check_packet("<Target>", "<Packet>", <Num Packets>, <Timeout>, <Polling Rate (optional)>, quiet)
+# Returns the amount of time elapsed waiting for the packets
+elapsed = wait_check_packet("<Target>", "<Packet>", <Num Packets>, <Timeout>, <Polling Rate (optional)>, quiet)
 ```
 
 | Parameter    | Description                                                                                               |
@@ -2054,7 +2328,7 @@ wait_check_packet("<Target>", "<Packet>", <Num Packets>, <Timeout>, <Polling Rat
 Ruby / Python Example:
 
 ```ruby
-wait_check_packet('INST', 'HEALTH_STATUS', 5, 10) # Wait for 5 INST HEALTH_STATUS packets over 10s
+elapsed = wait_check_packet('INST', 'HEALTH_STATUS', 5, 10) # Wait for 5 INST HEALTH_STATUS packets over 10s
 ```
 
 ## Limits
@@ -2183,7 +2457,7 @@ disable_limits_group("SAFE_MODE")
 
 Returns the list of limits groups in the system.
 
-Ruby / Python Syntax / Example:
+Ruby / Python Example:
 
 ```ruby
 limits_groups = get_limits_groups()
@@ -2213,7 +2487,7 @@ set_limits_set("DEFAULT")
 
 Returns the name of the current limits set. The default limits set is DEFAULT.
 
-Ruby / Python Syntax / Example:
+Ruby / Python Example:
 
 ```ruby
 limits_set = get_limits_set()
@@ -2223,7 +2497,7 @@ limits_set = get_limits_set()
 
 Returns the list of limits sets in the system.
 
-Ruby / Python Syntax / Example:
+Ruby / Python Example:
 
 ```ruby
 limits_sets = get_limits_sets()
@@ -2231,25 +2505,36 @@ limits_sets = get_limits_sets()
 
 ### get_limits
 
-Returns limits settings for a telemetry point.
+Returns hash / dict of all the limits settings for a telemetry point.
 
 Ruby / Python Syntax:
 
 ```ruby
-get_limits(<Target Name>, <Packet Name>, <Item Name>, <Limits Set (optional)>)
+get_limits(<Target Name>, <Packet Name>, <Item Name>)
 ```
 
-| Parameter   | Description                                                                                                                   |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Target Name | Name of the target of the telemetry item.                                                                                     |
-| Packet Name | Name of the telemetry packet of the telemetry item.                                                                           |
-| Item Name   | Name of the telemetry item.                                                                                                   |
-| Limits Set  | Get the limits for a specific limits set. If not given then it defaults to returning the settings for the current limits set. |
+| Parameter   | Description                                        |
+| ----------- | -------------------------------------------------- |
+| Target Name | Name of the target of the telemetry item           |
+| Packet Name | Name of the telemetry packet of the telemetry item |
+| Item Name   | Name of the telemetry item                         |
 
-Ruby / Python Example:
+Ruby Example:
 
 ```ruby
-limits_set, persistence_setting, enabled, red_low, yellow_low, yellow_high, red_high, green_low, green_high = get_limits('INST', 'HEALTH_STATUS', 'TEMP1')
+result = get_limits('INST', 'HEALTH_STATUS', 'TEMP1')
+puts result #=> {"DEFAULT"=>[-80.0, -70.0, 60.0, 80.0, -20.0, 20.0], "TVAC"=>[-80.0, -30.0, 30.0, 80.0]}
+puts result.keys #=> ['DEFAULT', 'TVAC']
+puts result['DEFAULT'] #=> [-80.0, -70.0, 60.0, 80.0, -20.0, 20.0]
+```
+
+Python Example:
+
+```python
+result = get_limits('INST', 'HEALTH_STATUS', 'TEMP1')
+print(result) #=> {'DEFAULT'=>[-80.0, -70.0, 60.0, 80.0, -20.0, 20.0], 'TVAC'=>[-80.0, -30.0, 30.0, 80.0]}
+print(result.keys()) #=> dict_keys(['DEFAULT', 'TVAC'])
+print(result['DEFAULT']) #=> [-80.0, -70.0, 60.0, 80.0, -20.0, 20.0]
 ```
 
 ### set_limits
@@ -2273,7 +2558,7 @@ set_limits(<Target Name>, <Packet Name>, <Item Name>, <Red Low>, <Yellow Low>, <
 | Red High    | Red High setting for this limits set. Any value above this value will be make the item red.                                                                                         |
 | Green Low   | Optional. If given, any value greater than Green Low and less than Green_High will make the item blue indicating a good operational value.                                          |
 | Green High  | Optional. If given, any value greater than Green Low and less than Green_High will make the item blue indicating a good operational value.                                          |
-| Limits Set  | Optional. Set the limits for a specific limits set. If not given then it defaults to setting limts for the CUSTOM limits set.                                                       |
+| Limits Set  | Optional. Set the limits for a specific limits set. If not given then it defaults to setting limits for the CUSTOM limits set.                                                      |
 | Persistence | Optional. Set the number of samples this item must be out of limits before changing limits state. Defaults to no change. Note: This affects all limits settings across limits sets. |
 | Enabled     | Optional. Whether or not limits are enabled for this item. Defaults to true. Note: This affects all limits settings across limits sets.                                             |
 
@@ -2287,7 +2572,7 @@ set_limits('INST', 'HEALTH_STATUS', 'TEMP1', -10.0, 0.0, 50.0, 60.0, 30.0, 40.0,
 
 Returns an array with the target_name, packet_name, item_name, and limits_state of all items that are out of their limits ranges.
 
-Ruby / Python Syntax / Example:
+Ruby / Python Example:
 
 ```ruby
 out_of_limits_items = get_out_of_limits()
@@ -2360,15 +2645,106 @@ print(events)
 #   ...
 ```
 
+## Plugins / Packages
+
+APIs for getting knowledge about plugins and packages.
+
+### plugin_list
+
+Returns all the installed plugins.
+
+Ruby Syntax:
+
+```ruby
+plugin_list(default: false)
+```
+
+Python Syntax:
+
+```ruby
+plugin_list(default = False)
+```
+
+| Parameter | Description                                                                  |
+| --------- | ---------------------------------------------------------------------------- |
+| default   | Whether to include the default COSMOS plugins (all the regular applications) |
+
+Ruby / Python Example:
+
+```ruby
+plugins = plugin_list() #=> ['openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539']
+plugins = plugin_list(default: true) #=>
+# ['openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539',
+#  'openc3-cosmos-tool-admin-6.0.3.pre.beta0.20250115200004.gem__20250116211504',
+#  'openc3-cosmos-tool-bucketexplorer-6.0.3.pre.beta0.20250115200008.gem__20250116211525',
+#  'openc3-cosmos-tool-cmdsender-6.0.3.pre.beta0.20250115200012.gem__20250116211515',
+#  'openc3-cosmos-tool-cmdtlmserver-6.0.3.pre.beta0.20250115200015.gem__20250116211512',
+#  'openc3-cosmos-tool-dataextractor-6.0.3.pre.beta0.20250115200005.gem__20250116211521',
+#  'openc3-cosmos-tool-dataviewer-6.0.3.pre.beta0.20250115200009.gem__20250116211522',
+#  'openc3-cosmos-tool-docs-6.0.3.pre.beta0.20250117042104.gem__20250117042154',
+#  'openc3-cosmos-tool-handbooks-6.0.3.pre.beta0.20250115200014.gem__20250116211523',
+#  'openc3-cosmos-tool-iframe-6.0.3.pre.beta0.20250115200011.gem__20250116211503',
+#  'openc3-cosmos-tool-limitsmonitor-6.0.3.pre.beta0.20250115200017.gem__20250116211514',
+#  'openc3-cosmos-tool-packetviewer-6.0.3.pre.beta0.20250115200004.gem__20250116211518',
+#  'openc3-cosmos-tool-scriptrunner-6.0.3.pre.beta0.20250115200012.gem__20250116211517',
+#  'openc3-cosmos-tool-tablemanager-6.0.3.pre.beta0.20250115200018.gem__20250116211524',
+#  'openc3-cosmos-tool-tlmgrapher-6.0.3.pre.beta0.20250115200005.gem__20250116211520',
+#  'openc3-cosmos-tool-tlmviewer-6.0.3.pre.beta0.20250115200008.gem__20250116211519',
+#  'openc3-tool-base-6.0.3.pre.beta0.20250115195959.gem__20250116211459']
+```
+
+### plugin_get
+
+Returns information about an installed plugin.
+
+Ruby / Python Syntax:
+
+```ruby
+plugin_get(<Plugin Name>)
+```
+
+| Parameter   | Description                                                  |
+| ----------- | ------------------------------------------------------------ |
+| Plugin Name | Full name of the plugin (typically taken from plugin_list()) |
+
+Ruby / Python Example:
+
+```ruby
+plugin_get('openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539') #=>
+# { "name"=>"openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539",
+#   "variables"=>{"inst_target_name"=>"INST", ...},
+#   "plugin_txt_lines"=>["# Note: This plugin includes 4 targets ..."],
+#   "needs_dependencies"=>true,
+#   "updated_at"=>1737063941094624764 }
+```
+
+### package_list
+
+List all the packages installed in COSMOS.
+
+Ruby Example:
+
+```ruby
+package_list() #=> {"ruby"=>["openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem", ..., "openc3-tool-base-6.0.3.pre.beta0.20250115195959.gem"],
+               #    "python"=>["numpy-2.1.1", "pip-24.0", "setuptools-65.5.0"]}
+```
+
+Python Example:
+
+```python
+package_list() #=> {'ruby': ['openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem', ..., 'openc3-tool-base-6.0.3.pre.beta0.20250115195959.gem'],
+               #    'python': ['numpy-2.1.1', 'pip-24.0', 'setuptools-65.5.0']}
+```
+
 ## Targets
 
-Methods for getting knowledge about targets.
+APIs for getting knowledge about targets.
 
 ### get_target_names
 
 Returns a list of the targets in the system in an array.
 
-Ruby Syntax / Example:
+Ruby Example:
 
 ```ruby
 targets = get_target_names() #=> ['INST', 'INST2', 'EXAMPLE', 'TEMPLATED']
@@ -2393,45 +2769,45 @@ Ruby Example:
 ```ruby
 target = get_target("INST")
 print(target)
-#{"name"=>"INST",
-# "folder_name"=>"INST",
-# "requires"=>[],
-# "ignored_parameters"=>
-#  ["CCSDSVER",
-#   "CCSDSTYPE",
-#   "CCSDSSHF",
-#   "CCSDSAPID",
-#   "CCSDSSEQFLAGS",
-#   "CCSDSSEQCNT",
-#   "CCSDSLENGTH",
-#   "PKTID"],
-# "ignored_items"=>
-#  ["CCSDSVER",
-#   "CCSDSTYPE",
-#   "CCSDSSHF",
-#   "CCSDSAPID",
-#   "CCSDSSEQFLAGS",
-#   "CCSDSSEQCNT",
-#   "CCSDSLENGTH",
-#   "RECEIVED_COUNT",
-#   "RECEIVED_TIMESECONDS",
-#   "RECEIVED_TIMEFORMATTED"],
-# "limits_groups"=>[],
-# "cmd_tlm_files"=>
-#  [".../targets/INST/cmd_tlm/inst_cmds.txt",
-#   ".../targets/INST/cmd_tlm/inst_tlm.txt"],
-# "cmd_unique_id_mode"=>false,
-# "tlm_unique_id_mode"=>false,
-# "id"=>nil,
-# "updated_at"=>1613077058266815900,
-# "plugin"=>nil}
+# {"name"=>"INST",
+#  "folder_name"=>"INST",
+#  "requires"=>[],
+#  "ignored_parameters"=>
+#   ["CCSDSVER",
+#    "CCSDSTYPE",
+#    "CCSDSSHF",
+#    "CCSDSAPID",
+#    "CCSDSSEQFLAGS",
+#    "CCSDSSEQCNT",
+#    "CCSDSLENGTH",
+#    "PKTID"],
+#  "ignored_items"=>
+#   ["CCSDSVER",
+#    "CCSDSTYPE",
+#    "CCSDSSHF",
+#    "CCSDSAPID",
+#    "CCSDSSEQFLAGS",
+#    "CCSDSSEQCNT",
+#    "CCSDSLENGTH",
+#    "RECEIVED_COUNT",
+#    "RECEIVED_TIMESECONDS",
+#    "RECEIVED_TIMEFORMATTED"],
+#  "limits_groups"=>[],
+#  "cmd_tlm_files"=>
+#   [".../targets/INST/cmd_tlm/inst_cmds.txt",
+#    ".../targets/INST/cmd_tlm/inst_tlm.txt"],
+#  "cmd_unique_id_mode"=>false,
+#  "tlm_unique_id_mode"=>false,
+#  "id"=>nil,
+#  "updated_at"=>1613077058266815900,
+#  "plugin"=>nil}
 ```
 
 ### get_target_interfaces
 
 Returns the interfaces for all targets. The return value is an array of arrays where each subarray contains the target name, and a String of all the interface names.
 
-Syntax / Example:
+Ruby / Python Example:
 
 ```ruby
 target_ints = get_target_interfaces()
@@ -2444,7 +2820,7 @@ end
 
 These methods allow the user to manipulate COSMOS interfaces.
 
-### get_interface (since 5.0.0)
+### get_interface
 
 Returns an interface status including the as built interface and its current status (cmd/tlm counters, etc).
 
@@ -2463,34 +2839,34 @@ Ruby / Python Example:
 ```ruby
 interface = get_interface("INST_INT")
 print(interface)
-#{"name"=>"INST_INT",
-# "config_params"=>["interface.rb"],
-# "target_names"=>["INST"],
-# "connect_on_startup"=>true,
-# "auto_reconnect"=>true,
-# "reconnect_delay"=>5.0,
-# "disable_disconnect"=>false,
-# "options"=>[],
-# "protocols"=>[],
-# "log"=>true,
-# "log_raw"=>false,
-# "plugin"=>nil,
-# "updated_at"=>1613076213535979900,
-# "state"=>"CONNECTED",
-# "clients"=>0,
-# "txsize"=>0,
-# "rxsize"=>0,
-# "txbytes"=>0,
-# "rxbytes"=>0,
-# "txcnt"=>0,
-# "rxcnt"=>0}
+# {"name"=>"INST_INT",
+#  "config_params"=>["interface.rb"],
+#  "target_names"=>["INST"],
+#  "connect_on_startup"=>true,
+#  "auto_reconnect"=>true,
+#  "reconnect_delay"=>5.0,
+#  "disable_disconnect"=>false,
+#  "options"=>[],
+#  "protocols"=>[],
+#  "log"=>true,
+#  "log_raw"=>false,
+#  "plugin"=>nil,
+#  "updated_at"=>1613076213535979900,
+#  "state"=>"CONNECTED",
+#  "clients"=>0,
+#  "txsize"=>0,
+#  "rxsize"=>0,
+#  "txbytes"=>0,
+#  "rxbytes"=>0,
+#  "txcnt"=>0,
+#  "rxcnt"=>0}
 ```
 
 ### get_interface_names
 
 Returns a list of the interfaces in the system in an array.
 
-Ruby / Python Syntax / Example:
+Ruby / Python Example:
 
 ```ruby
 interface_names = get_interface_names() #=> ['INST_INT', 'INST2_INT', 'EXAMPLE_INT', 'TEMPLATED_INT']
@@ -2582,7 +2958,7 @@ stop_raw_logging_interface("int1")
 
 Returns information about all interfaces. The return value is an array of arrays where each subarray contains the interface name, connection state, number of connected clients, transmit queue size, receive queue size, bytes transmitted, bytes received, command count, and telemetry count.
 
-Ruby Syntax / Example:
+Ruby Example:
 
 ```ruby
 interface_info = get_all_interface_info()
@@ -2593,7 +2969,7 @@ interface_info.each do |interface_name, connection_state, num_clients, tx_q_size
 end
 ```
 
-Python Syntax / Example:
+Python Example:
 
 ```python
 interface_info = get_all_interface_info()
@@ -2736,13 +3112,13 @@ disconnect_router("INT1_ROUTER")
 
 Returns a list of the routers in the system in an array.
 
-Ruby / Python Syntax / Example:
+Ruby / Python Example:
 
 ```ruby
 router_names = get_router_names() #=> ['ROUTER_INT']
 ```
 
-### get_router (since 5.0.0)
+### get_router
 
 Returns a router status including the as built router and its current status (cmd/tlm counters, etc).
 
@@ -2788,7 +3164,7 @@ print(router)
 
 Returns information about all routers. The return value is an array of arrays where each subarray contains the router name, connection state, number of connected clients, transmit queue size, receive queue size, bytes transmitted, bytes received, packets received, and packets sent.
 
-Ruby Syntax / Example:
+Ruby Example:
 
 ```ruby
 router_info = get_all_router_info()
@@ -2799,7 +3175,7 @@ router_info.each do |router_name, connection_state, num_clients, tx_q_size, rx_q
 end
 ```
 
-Python Syntax / Example:
+Python Example:
 
 ```python
 router_info = get_all_router_info()
@@ -2902,6 +3278,74 @@ Python Example:
 router_protocol_cmd("INST", "DISABLE_CRC", read_write='READ_WRITE', index=-1)
 ```
 
+## Tables
+
+These methods allow the user to script Table Manager.
+
+### table_create_binary
+
+Creates a table binary based on a table definition file. You can achieve the same result in the Table Manager GUI with File->New File. Returns the path to the binary file created.
+
+Ruby / Python Syntax:
+
+```ruby
+table_create_binary(<Table Definition File>)
+```
+
+| Parameter             | Description                                                                     |
+| --------------------- | ------------------------------------------------------------------------------- |
+| Table Definition File | Path to the table definition file, e.g. INST/tables/config/ConfigTables_def.txt |
+
+Ruby Example:
+
+```ruby
+table = table_create_binary("INST/tables/config/ConfigTables_def.txt") #=>
+# {"filename"=>"INST/tables/bin/ConfigTables.bin"}
+```
+
+Python Example:
+
+```python
+table = table_create_binary("INST/tables/config/ConfigTables_def.txt") #=>
+# {'filename': 'INST/tables/bin/ConfigTables.bin'}
+```
+
+### table_create_report
+
+Creates a table binary based on a table definition file. You can achieve the same result in the Table Manager GUI with File->New File. Returns the path to the binary file created.
+
+Ruby / Python Syntax:
+
+```ruby
+table_create_report(<Table Binary Filename>, <Table Definition File>, <Table Name (optional)>)
+```
+
+filename, definition, table_name
+
+| Parameter             | Description                                                                                                                                                                                                                                                                                                      |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Table Binary File     | Path to the table binary file, e.g. INST/tables/bin/ConfigTables.bin                                                                                                                                                                                                                                             |
+| Table Definition File | Path to the table definition file, e.g. INST/tables/config/ConfigTables_def.txt                                                                                                                                                                                                                                  |
+| Table Name            | Name of the table to create the report. This only applies if the Table Binary and Table Definition consist of multiple tables. By default the report consists of all tables and is named after the binary file. If the table name is given, the report is just the specified table and is named after the table. |
+
+Ruby Example:
+
+```ruby
+table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt") #=>
+# {"filename"=>"INST/tables/bin/ConfigTables.csv", "contents"=>"MC_CONFIGURATION\nLabel, ...
+table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt", table_name: "MC_CONFIGURATION") #=>
+# {"filename"=>"INST/tables/bin/McConfiguration.csv", "contents"=>"MC_CONFIGURATION\nLabel, ...
+```
+
+Python Example:
+
+```python
+table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt") #=>
+# {'filename': 'INST/tables/bin/ConfigTables.csv', 'contents': 'MC_CONFIGURATION\nLabel, ...
+table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt", table_name="MC_CONFIGURATION") #=>
+# {'filename': 'INST/tables/bin/ConfigTables.csv', 'contents': 'MC_CONFIGURATION\nLabel, ...
+```
+
 ## Stashing Data
 
 These methods allow the user to store temporary data into COSMOS and retrieve it. The storage is implemented as a key / value storage (Ruby hash or Python dict). This can be used in scripts to store information that applies across multiple scripts or multiple runs of a single script.
@@ -2952,13 +3396,13 @@ stash_get('run_count')  #=> 5
 
 Returns all the stash items as a Ruby hash or Python dict.
 
-Ruby Syntax / Example:
+Ruby Example:
 
 ```ruby
 stash_all()  #=> ['run_count' => 5, 'setpoint' => 23.4]
 ```
 
-Python Syntax / Example:
+Python Example:
 
 ```ruby
 stash_all()  #=> ['run_count': 5, 'setpoint': 23.4]
@@ -2968,7 +3412,7 @@ stash_all()  #=> ['run_count': 5, 'setpoint': 23.4]
 
 Returns all the stash keys.
 
-Ruby / Python Syntax / Example:
+Ruby / Python Example:
 
 ```ruby
 stash_keys()  #=> ['run_count', 'setpoint']
@@ -2994,52 +3438,7 @@ Ruby / Python Example:
 stash_delete("run_count")
 ```
 
-## Executing Other Procedures
-
-These methods allow the user to bring in files of subroutines and execute other test procedures.
-
-### start
-
-Starts execution of another high level test procedure. No parameters can be given to high level test procedures. If parameters are necessary, then consider using a subroutine.
-
-Syntax:
-
-```ruby
-start("<Procedure Filename>")
-```
-
-| Parameter          | Description                                                                                                                                                                 |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Procedure Filename | Name of the test procedure file. These files are normally in the procedures folder but may be anywhere in the Ruby search path. Additionally, absolute paths are supported. |
-
-Example:
-
-```ruby
-start("test1.rb")
-```
-
-### load_utility
-
-Reads in a script file that contains useful subroutines for use in your test procedure. When these subroutines run in ScriptRunner or TestRunner, their lines will be highlighted. If you want to import subroutines but do not want their lines to be highlighted in ScriptRunner or TestRunner, use the standard Ruby 'load' or 'require' statement or Python 'import' statement.
-
-Ruby / Python Syntax:
-
-```ruby
-load_utility("TARGET/lib/<Utility Filename>")
-```
-
-| Parameter        | Description                                                                                                                                                        |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Utility Filename | Name of the script file containing subroutines including the .rb or .py extension. You need to include the full target name and path such as TARGET/lib/utility.rb |
-
-Example:
-
-```ruby
-load_utility("TARGET/lib/mode_changes.rb") # Ruby
-load_utility("TARGET/lib/mode_changes.py") # Python
-```
-
-## Opening, Closing & Creating Telemetry Screens
+## Telemetry Screens
 
 These methods allow the user to open, close or create unique telemetry screens from within a test procedure.
 
@@ -3091,7 +3490,7 @@ clear_screen("INST", "ADCS")
 
 Closes all open screens.
 
-Ruby / Python Syntax / Example:
+Ruby / Python Example:
 
 ```ruby
 clear_all_screens()
@@ -3120,9 +3519,9 @@ delete_screen("INST", "ADCS")
 
 ### get_screen_list
 
-The get_screen_list returns a list of available telemetry screens.
+Returns a list of available telemetry screens.
 
-Ruby / Python Syntax / Example:
+Ruby / Python Example:
 
 ```ruby
 get_screen_list() #=> ['INST ADCS', 'INST COMMANDING', ...]
@@ -3130,7 +3529,7 @@ get_screen_list() #=> ['INST ADCS', 'INST COMMANDING', ...]
 
 ### get_screen_definition
 
-The get_screen_definition returns the text file contents of a telemetry screen definition.
+Returns the text file contents of a telemetry screen definition.
 
 Syntax:
 
@@ -3151,9 +3550,9 @@ screen_definition = get_screen_definition("INST", "HS")
 
 ### create_screen
 
-The create_screen allows you to create a screen directly from a script. This screen is saved to Telemetry Viewer for future use in that application.
+Allows you to create a screen directly from a script. This screen is saved to Telemetry Viewer for future use in that application.
 
-Python / Ruby Syntax:
+Ruby / Python Syntax:
 
 ```ruby
 create_screen("<Target Name>", "<Screen Name>" "<Definition>")
@@ -3199,12 +3598,12 @@ create_screen("INST", "LOCAL", screen_def)
 
 ### local_screen
 
-The local_screen allows you to create a local screen directly from a script which is not permanently saved to the Telemetry Viewer screen list. This is useful for one off screens that help users interact with scripts.
+Allows you to create a local screen directly from a script which is not permanently saved to the Telemetry Viewer screen list. This is useful for one off screens that help users interact with scripts.
 
-Python / Ruby Syntax:
+Ruby / Python Syntax:
 
 ```ruby
-local_screen("<Screen Name>" "<Definition>", <X Position (optional)>, <Y Position (optional)>)
+local_screen("<Screen Name>", "<Definition>", <X Position (optional)>, <Y Position (optional)>)
 ```
 
 | Parameter   | Description                                               |
@@ -3235,7 +3634,7 @@ local_screen("TESTING", screen_def, 600, 75)
 Python Example:
 
 ```python
-screen_def = '
+screen_def = """
   SCREEN AUTO AUTO 0.1 FIXED
   VERTICAL
     TITLE "Local Screen"
@@ -3243,9 +3642,495 @@ screen_def = '
       LABELVALUE INST HEALTH_STATUS TEMP1
     END
   END
-'
+"""
 # Here we pass in the screen definition as a string
 local_screen("TESTING", screen_def, 600, 75)
+```
+
+## Script Runner Scripts
+
+These methods allow the user to control Script Runner scripts.
+
+### start
+
+Starts execution of another high level test procedure. Script Runner will load the file and immediately start executing it before jumping back to the calling procedure. No parameters can be given to high level test procedures. If parameters are necessary, then consider using a subroutine.
+
+Ruby / Python Syntax:
+
+```ruby
+start("<Procedure Filename>")
+```
+
+| Parameter          | Description                                                                                                                                                                 |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Procedure Filename | Name of the test procedure file. These files are normally in the procedures folder but may be anywhere in the Ruby search path. Additionally, absolute paths are supported. |
+
+Ruby / Python Example:
+
+```ruby
+start("test1.rb")
+```
+
+### load_utility
+
+Reads in a script file that contains useful subroutines for use in your test procedure. When these subroutines run in ScriptRunner or TestRunner, their lines will be highlighted. If you want to import subroutines but do not want their lines to be highlighted in ScriptRunner or TestRunner, use the standard Ruby 'load' or 'require' statement or Python 'import' statement.
+
+Ruby / Python Syntax:
+
+```ruby
+load_utility("TARGET/lib/<Utility Filename>")
+```
+
+| Parameter        | Description                                                                                                                                                        |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Utility Filename | Name of the script file containing subroutines including the .rb or .py extension. You need to include the full target name and path such as TARGET/lib/utility.rb |
+
+Ruby / Python Example:
+
+```ruby
+load_utility("TARGET/lib/mode_changes.rb") # Ruby
+load_utility("TARGET/lib/mode_changes.py") # Python
+```
+
+### script_list
+
+Returns all the available files in COSMOS as an array / list. This includes configuration files at every directory level to ensure the user has access to every file. You can filter the list client side to just the 'lib' and or 'procedures' directories if you wish. Note: script names do NOT include '\*' to indicate modified.
+
+Ruby Example:
+
+```ruby
+scripts = script_list()
+puts scripts.length #=> 139
+puts scripts.select {|script| script.include?('/lib/') || script.include?('/procedures/')} #=>
+# [EXAMPLE/lib/example_interface.rb, INST/lib/example_limits_response.rb, ...]
+```
+
+Python Example:
+
+```python
+scripts = script_list()
+print(len(scripts))
+print(list(script for script in scripts if '/lib/' in script or '/procedures/' in script)) #=>
+# [EXAMPLE/lib/example_interface.rb, INST/lib/example_limits_response.rb, ...]
+```
+
+### script_create
+
+Creates a new script with the given contents.
+
+Ruby / Python Syntax:
+
+```ruby
+script_create("<Script Name>", "<Script Contents>")
+```
+
+| Parameter       | Description                                           |
+| --------------- | ----------------------------------------------------- |
+| Script Name     | Full path name of the script starting with the target |
+| Script Contents | Script contents as text                               |
+
+Ruby Example:
+
+```ruby
+contents = 'puts "Hello from Ruby"'
+script_create("INST/procedures/new_script.rb", contents)
+```
+
+Python Example:
+
+```python
+contents = 'print("Hello from Python")'
+script_create("INST2/procedures/new_script.py", contents)
+```
+
+### script_body
+
+Returns the script contents.
+
+Ruby / Python Syntax:
+
+```ruby
+script_body("<Script Name>")
+```
+
+| Parameter   | Description                                           |
+| ----------- | ----------------------------------------------------- |
+| Script Name | Full path name of the script starting with the target |
+
+Ruby Example:
+
+```ruby
+script = script_body("INST/procedures/checks.rb")
+puts script #=> # Display all environment variables\nputs ENV.inspect ...
+```
+
+Python Example:
+
+```python
+script = script_body("INST2/procedures/checks.py")
+print(script) #=> # import os\n\n# Display the environment variables ...
+```
+
+### script_delete
+
+Deletes a script from COSMOS. Note, you can only _really_ delete TEMP scripts and modified scripts. Scripts that are part of an installed COSMOS plugin remain as they were installed.
+
+Ruby / Python Syntax:
+
+```ruby
+script_delete("<Script Name>")
+```
+
+| Parameter   | Description                                           |
+| ----------- | ----------------------------------------------------- |
+| Script Name | Full path name of the script starting with the target |
+
+Ruby / Python Example:
+
+```ruby
+script_delete("INST/procedures/checks.rb")
+```
+
+### script_run
+
+Runs a script in Script Runner. The script will run in the background and can be opened in Script Runner by selecting Script->Execution Status and then connecting to it.
+
+Ruby / Python Syntax:
+
+```ruby
+script_run("<Script Name>")
+```
+
+| Parameter   | Description                                           |
+| ----------- | ----------------------------------------------------- |
+| Script Name | Full path name of the script starting with the target |
+
+Ruby Example:
+
+```ruby
+id = script_run("INST/procedures/checks.rb")
+puts id
+```
+
+Python Example:
+
+```python
+id = script_run("INST2/procedures/checks.py")
+print(id)
+```
+
+### script_lock
+
+Locks a script for editing. Subsequent users that open this script will get a warning that the script is currently locked.
+
+Ruby / Python Syntax:
+
+```ruby
+script_lock("<Script Name>")
+```
+
+| Parameter   | Description                                           |
+| ----------- | ----------------------------------------------------- |
+| Script Name | Full path name of the script starting with the target |
+
+Ruby / Python Example:
+
+```ruby
+script_lock("INST/procedures/checks.rb")
+```
+
+### script_unlock
+
+Unlocks a script for editing. If the script was not previously locked this does nothing.
+
+Ruby / Python Syntax:
+
+```ruby
+script_unlock("<Script Name>")
+```
+
+| Parameter   | Description                                           |
+| ----------- | ----------------------------------------------------- |
+| Script Name | Full path name of the script starting with the target |
+
+Ruby / Python Example:
+
+```ruby
+script_unlock("INST/procedures/checks.rb")
+```
+
+### script_syntax_check
+
+Performs a Ruby or Python syntax check on the given script.
+
+Ruby / Python Syntax:
+
+```ruby
+script_syntax_check("<Script Name>")
+```
+
+| Parameter   | Description                                           |
+| ----------- | ----------------------------------------------------- |
+| Script Name | Full path name of the script starting with the target |
+
+Ruby Example:
+
+```ruby
+result = script_syntax_check("INST/procedures/checks.rb")
+puts result #=> {"title"=>"Syntax Check Successful", "description"=>"[\"Syntax OK\\n\"]", "success"=>true}
+```
+
+Python Example:
+
+```python
+result = script_syntax_check("INST2/procedures/checks.py")
+print(result) #=> {'title': 'Syntax Check Successful', 'description': '["Syntax OK"]', 'success': True}
+```
+
+### script_instrumented
+
+Returns the instrumented script which allows COSMOS Script Runner to monitor the execution and provide line by line visualization. This is primarily a low level debugging method used by COSMOS developers.
+
+Ruby / Python Syntax:
+
+```ruby
+script_instrumented("<Script Name>")
+```
+
+| Parameter   | Description                                           |
+| ----------- | ----------------------------------------------------- |
+| Script Name | Full path name of the script starting with the target |
+
+Ruby Example:
+
+```ruby
+script = script_instrumented("INST/procedures/checks.rb")
+puts script #=> private; __return_val = nil; begin; RunningScript.instance.script_binding = binding(); ...
+```
+
+Python Example:
+
+```python
+script = script_instrumented("INST2/procedures/checks.py")
+print(script) #=> while True:\ntry:\nRunningScript.instance.pre_line_instrumentation ...
+```
+
+### script_delete_all_breakpoints
+
+Delete _all_ breakpoints associated with _all_ scripts.
+
+Ruby / Python Example:
+
+```ruby
+script_delete_all_breakpoints()
+```
+
+### step_mode
+
+Places ScriptRunner into step mode where Go must be hit to proceed to the next line.
+
+Ruby / Python Example:
+
+```ruby
+step_mode()
+```
+
+### run_mode
+
+Places ScriptRunner into run mode where the next line is run automatically.
+
+Ruby / Python Example:
+
+```ruby
+run_mode()
+```
+
+### disconnect_script
+
+Puts scripting into disconnect mode. In disconnect mode, commands are not sent to targets, checks are all successful, and waits expire instantly. Requests for telemetry (tlm()) typically return 0. Disconnect mode is useful for dry-running scripts without having connected targets.
+
+Ruby / Python Example:
+
+```ruby
+disconnect_script()
+```
+
+### running_script_list
+
+List the currently running scripts. Note, this will also include the script which is calling this method. Thus the list will never be empty but will always contain at least 1 item. Returns an array of hashes / list of dicts (see [running_script_get](#running_script_get) for hash / dict contents).
+
+Ruby Example:
+
+```ruby
+running_script_list() #=> [{"id"=>5, "scope"=>"DEFAULT", "name"=>"__TEMP__/2025_01_15_13_16_26_210_temp.rb", "user"=>"Anonymous", "start_time"=>"2025-01-15 20:16:52 +0000", "disconnect"=>false, "environment"=>[]}]
+```
+
+Python Example:
+
+```python
+running_script_list() #=> [{'id': 15, 'scope': 'DEFAULT', 'name': 'INST2/procedures/scripting.py', 'user': 'Anonymous', 'start_time': '2025-01-16 17:36:22 +0000', 'disconnect': False, 'environment': []}]
+```
+
+### running_script_get
+
+Get the currently running script with the specified ID. The information returned is the script ID, scope, name, user, start time, disconnect state, environment variables, hostname, state, line number, and update time.
+
+Ruby / Python Syntax:
+
+```ruby
+running_script_get("<Script Id>")
+```
+
+| Parameter | Description                                     |
+| --------- | ----------------------------------------------- |
+| Script Id | Script ID returned by [script_run](#script_run) |
+
+Ruby Example:
+
+```ruby
+running_script_get(15) #=> {"id"=>15, "scope"=>"DEFAULT", "name"=>"INST/procedures/new_script.rb", "user"=>"Anonymous", "start_time"=>"2025-01-16 00:28:44 +0000", "disconnect"=>false, "environment"=>[], "hostname"=>"ac9dde3c59c1", "state"=>"spawning", "line_no"=>1, "update_time"=>"2025-01-16 00:28:44 +0000"}
+```
+
+Python Example:
+
+```python
+running_script_get(15) #=> {'id': 15, 'scope': 'DEFAULT', 'name': 'INST2/procedures/new_script.py', 'user': 'Anonymous', 'start_time': '2025-01-16 18:04:03 +0000', 'disconnect': False, 'environment': [], 'hostname': 'b84dbcee54ad', 'state': 'running', 'line_no': 3, 'update_time': '2025-01-16T18:04:05.255638Z'}
+```
+
+### running_script_stop
+
+Stop the running script with the specified ID. This is equivalent to clicking the Stop button in the Script Runner GUI.
+
+Ruby / Python Syntax:
+
+```ruby
+running_script_stop("<Script Id>")
+```
+
+| Parameter | Description                                     |
+| --------- | ----------------------------------------------- |
+| Script Id | Script ID returned by [script_run](#script_run) |
+
+Ruby / Python Example:
+
+```ruby
+running_script_stop(15)
+```
+
+### running_script_pause
+
+Pause the running script with the specified ID. This is equivalent to clicking the Pause button in the Script Runner GUI.
+
+Ruby / Python Syntax:
+
+```ruby
+running_script_pause("<Script Id>")
+```
+
+| Parameter | Description                                     |
+| --------- | ----------------------------------------------- |
+| Script Id | Script ID returned by [script_run](#script_run) |
+
+Ruby / Python Example:
+
+```ruby
+running_script_pause(15)
+```
+
+### running_script_retry
+
+Retry the current line of the running script with the specified ID. This is equivalent to clicking the Retry button in the Script Runner GUI.
+
+Ruby / Python Syntax:
+
+```ruby
+running_script_retry("<Script Id>")
+```
+
+| Parameter | Description                                     |
+| --------- | ----------------------------------------------- |
+| Script Id | Script ID returned by [script_run](#script_run) |
+
+Ruby / Python Example:
+
+```ruby
+running_script_retry(15)
+```
+
+### running_script_go
+
+Unpause the running script with the specified ID. This is equivalent to clicking the Go button in the Script Runner GUI.
+
+Ruby / Python Syntax:
+
+```ruby
+running_script_go("<Script Id>")
+```
+
+| Parameter | Description                                     |
+| --------- | ----------------------------------------------- |
+| Script Id | Script ID returned by [script_run](#script_run) |
+
+Ruby / Python Example:
+
+```ruby
+running_script_go(15)
+```
+
+### running_script_step
+
+Step the running script with the specified ID. This is equivalent to clicking the Step button in the Script Runner GUI's Debug window.
+
+Ruby / Python Syntax:
+
+```ruby
+running_script_step("<Script Id>")
+```
+
+| Parameter | Description                                     |
+| --------- | ----------------------------------------------- |
+| Script Id | Script ID returned by [script_run](#script_run) |
+
+Ruby / Python Example:
+
+```ruby
+running_script_step(15)
+```
+
+### running_script_delete
+
+Force quit the running script with the specified ID. This is equivalent to clicking the Delete button under the Running Scripts in the Script Runner GUI's Script -> Execution Status pane. Note, the 'stop' signal is first sent to the specified script and then the script is forcibly removed. Normally you should use the [running_script_stop](#running_script_stop) method.
+
+Ruby / Python Syntax:
+
+```ruby
+running_script_delete("<Script Id>")
+```
+
+| Parameter | Description                                     |
+| --------- | ----------------------------------------------- |
+| Script Id | Script ID returned by [script_run](#script_run) |
+
+Ruby / Python Example:
+
+```ruby
+running_script_delete(15)
+```
+
+### completed_script_list
+
+List the completed scripts. Returns an array of hashes / list of dicts containing the id, username, script name, script log, and start time.
+
+Ruby Example:
+
+```ruby
+completed_script_list() #=> [{"id"=>"15", "user"=>"Anonymous", "name"=>"__TEMP__/2025_01_15_17_07_51_568_temp.rb", "log"=>"DEFAULT/tool_logs/sr/20250116/2025_01_16_00_28_43_sr_2025_01_15_17_07_51_568_temp.txt", "start"=>"2025-01-16 00:28:43 +0000"}, ...]
+```
+
+Python Example:
+
+```ruby
+completed_script_list() #=> [{'id': 16, 'user': 'Anonymous', 'name': 'INST2/procedures/new_script.py', 'log': 'DEFAULT/tool_logs/sr/20250116/2025_01_16_17_46_22_sr_new_script.txt', 'start': '2025-01-16 17:46:22 +0000'}, ...]
 ```
 
 ## Script Runner Settings
@@ -3276,7 +4161,7 @@ set_line_delay(0.0)
 
 The method gets the line delay that script runner is currently using.
 
-Ruby / Python Syntax / Example:
+Ruby / Python Example:
 
 ```ruby
 curr_line_delay = get_line_delay()
@@ -3306,7 +4191,7 @@ set_max_output(100)
 
 The method gets the maximum number of characters to display in Script Runner output before truncating. Default is 50,000 characters.
 
-Ruby / Python Syntax / Example:
+Ruby / Python Example:
 
 ```ruby
 print(get_max_output()) #=> 50000
@@ -3315,13 +4200,13 @@ print(get_max_output()) #=> 50000
 ### disable_instrumentation
 
 Disables instrumentation for a block of code (line highlighting and exception catching). This is especially useful for speeding up loops that are very slow if lines are instrumented.
-Consider breaking code like this into a seperate file and using either require/load to read the file for the same effect while still allowing errors to be caught by your script.
+Consider breaking code like this into a separate file and using either require/load to read the file for the same effect while still allowing errors to be caught by your script.
 
 :::warning Use with Caution
 Disabling instrumentation will cause any error that occurs while disabled to cause your script to completely stop.
 :::
 
-Ruby Syntax / Example:
+Ruby Example:
 
 ```ruby
 disable_instrumentation do
@@ -3331,7 +4216,7 @@ disable_instrumentation do
 end
 ```
 
-Python Syntax / Example:
+Python Example:
 
 ```python
 with disable_instrumentation():
@@ -3423,38 +4308,321 @@ class MySuite(Suite):
         self.add_group_teardown(WrapperGroup)
 ```
 
-## Script Runner Debugging
+## Timelines
 
-These methods allow the user to debug scripts with ScriptRunner.
+The Timelines API allows you to manipulate Calendar timelines. Calendar is a COSMOS Enterprise tool.
 
-### step_mode
+### list_timelines
 
-Places ScriptRunner into step mode where Go must be hit to proceed to the next line.
+Returns all the timelines in an array of hashes / list of dicts.
 
-Ruby / Python Syntax / Example:
+Ruby Example:
 
 ```ruby
-step_mode()
+timelines = list_timelines() #=>
+# [{"name"=>"Mine", "color"=>"#e67643", "execute"=>true, "shard"=>0, "scope"=>"DEFAULT", "updated_at"=>1737124024123643504}]
 ```
 
-### run_mode
+Python Example:
 
-Places ScriptRunner into run mode where the next line is run automatically.
-
-Ruby / Python Syntax / Example:
-
-```ruby
-run_mode()
+```python
+timelihes = list_timelines() #=>
+# [{'name': 'Mine', 'color': '#e67643', 'execute': True, 'shard': 0, 'scope': 'DEFAULT', 'updated_at': 1737124024123643504}]
 ```
 
-### disconnect_script
+### create_timeline
 
-Puts scripting into disconnect mode. In disconnect mode, commands are not sent to targets, checks are all successful, and waits expire instantly. Requests for telemetry (tlm()) typically return 0. Disconnect mode is useful for dry-running scripts without having connected targets.
+Create a new timeline in Calendar which can hold activities.
 
-Ruby / Python Syntax / Example:
+Ruby Syntax:
 
 ```ruby
-disconnect_script()
+create_timeline(name, color: nil)
+```
+
+Python Syntax:
+
+```python
+create_timeline(name, color=None)
+```
+
+| Parameter | Description                                                                                   |
+| --------- | --------------------------------------------------------------------------------------------- |
+| name      | Name of the timeline                                                                          |
+| color     | Color of the timeline. Must be given as a hex value, e.g. #FF0000. Default is a random color. |
+
+Ruby Example:
+
+```ruby
+tl = create_timeline("Mine") #=>
+# {"name"=>"Mine", "color"=>"#e67643", "execute"=>true, "shard"=>0, "scope"=>"DEFAULT", "updated_at"=>1737124024123643504}
+```
+
+Python Example:
+
+```python
+tl = create_timeline("Other", color="#FF0000") #=>
+# {'name': 'Other', 'color': '#FF0000', 'execute': True, 'shard': 0, 'scope': 'DEFAULT', 'updated_at': 1737126348971941923}
+```
+
+### get_timeline
+
+Get information about an existing timeline.
+
+Ruby / Python Syntax:
+
+```ruby
+get_timeline(name)
+```
+
+| Parameter | Description          |
+| --------- | -------------------- |
+| name      | Name of the timeline |
+
+Ruby Example:
+
+```ruby
+tl = get_timeline("Mine") #=>
+# {"name"=>"Mine", "color"=>"#e67643", "execute"=>true, "shard"=>0, "scope"=>"DEFAULT", "updated_at"=>1737124024123643504}
+```
+
+Python Example:
+
+```python
+tl = get_timeline("Other") #=>
+# {'name': 'Other', 'color': '#FF0000', 'execute': True, 'shard': 0, 'scope': 'DEFAULT', 'updated_at': 1737126348971941923}
+```
+
+### set_timeline_color
+
+Set the displayed color for an existing timeline.
+
+Ruby / Python Syntax:
+
+```ruby
+set_timeline_color(name, color)
+```
+
+| Parameter | Description                                                        |
+| --------- | ------------------------------------------------------------------ |
+| name      | Name of the timeline                                               |
+| color     | Color of the timeline. Must be given as a hex value, e.g. #FF0000. |
+
+Ruby / Python Example:
+
+```ruby
+set_timeline_color("Mine", "#4287f5")
+```
+
+### delete_timeline
+
+Delete an existing timeline. Timelines with activities can only be deleted by passing force = true.
+
+Ruby Syntax:
+
+```ruby
+delete_timeline(name, force: false)
+```
+
+Python Syntax:
+
+```python
+delete_timeline(name, force=False)
+```
+
+| Parameter | Description                                                            |
+| --------- | ---------------------------------------------------------------------- |
+| name      | Name of the timeline                                                   |
+| force     | Whether to delete the timeline if it has activities. Default is false. |
+
+Ruby Example:
+
+```ruby
+delete_timeline("Mine", force: true)
+```
+
+Python Example:
+
+```python
+delete_timeline("Other", force=True)
+```
+
+### create_timeline_activity
+
+Create an activity on an existing timeline. Activities can be one of COMMAND, SCRIPT, or RESERVE. Activities have a start and stop time and commands and scripts take data on the command or script to execute.
+
+Ruby Syntax:
+
+```ruby
+create_timeline_activity(name, kind:, start:, stop:, data: {})
+```
+
+Python Syntax:
+
+```python
+create_timeline_activity(name, kind, start, stop, data={})
+```
+
+| Parameter | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| name      | Name of the timeline                                                          |
+| kind      | Type of the activity. One of COMMAND, SCRIPT, or RESERVE.                     |
+| start     | Start time of the activity. Time / datetime instance.                         |
+| stop      | Stop time of the activity. Time / datetime instance.                          |
+| data      | Hash / dict of data for COMMAND or SCRIPT type. Default is empty hash / dict. |
+
+Ruby Example:
+
+```ruby
+now = Time.now()
+start = now + 3600
+stop = start + 3600
+act = create_timeline_activity("RubyTL", kind: "RESERVE", start: start, stop: stop) #=>
+# { "name"=>"RubyTL", "updated_at"=>1737128705034982375, "start"=>1737132303, "stop"=>1737135903,
+#   "kind"=>"reserve", "data"=>{"username"=>"operator"},
+#   "scope"=>"DEFAULT", "fulfillment"=>false, "uuid"=>"5f373846-eb6c-43cd-97bd-cca19a8ffb04",
+#   "events"=>[{"time"=>1737128705, "event"=>"created"}], "recurring"=>{}}
+act = create_timeline_activity("RubyTL", kind: "COMMAND", start: start, stop: stop,
+    data: {command: "INST COLLECT with TYPE NORMAL, DURATION 5, TEMP 10"}) #=>
+# { "name"=>"RubyTL", "updated_at"=>1737128761316084471, "start"=>1737132303, "stop"=>1737135903,
+#   "kind"=>"command", "data"=>{"command"=>"INST COLLECT with TYPE NORMAL, DURATION 5, TEMP 10", "username"=>"operator"},
+#   "scope"=>"DEFAULT", "fulfillment"=>false, "uuid"=>"cdb661b4-a65b-44e7-95e2-5e1dba80c782",
+#   "events"=>[{"time"=>1737128761, "event"=>"created"}], "recurring"=>{}}
+act = create_timeline_activity("RubyTL", kind: "SCRIPT", start: start, stop: stop,
+  data: {environment: [{key: "USER", value: "JASON"}], script: "INST/procedures/checks.rb"}) #=>
+# { "name"=>"RubyTL", "updated_at"=>1737128791047885970, "start"=>1737135903, "stop"=>1737139503,
+#   "kind"=>"script", "data"=>{"environment"=>[{"key"=>"USER", "value"=>"JASON"}], "script"=>"INST/procedures/checks.rb", "username"=>"operator"},
+#   "scope"=>"DEFAULT", "fulfillment"=>false, "uuid"=>"70426e3d-6313-4897-b159-6e5cd94ace1d",
+#   "events"=>[{"time"=>1737128791, "event"=>"created"}], "recurring"=>{}}
+```
+
+Python Example:
+
+```python
+now = datetime.now(timezone.utc)
+start = now + timedelta(hours=1)
+stop = start + timedelta(hours=1)
+act = create_timeline_activity("PythonTL", kind="RESERVE", start=start, stop=stop) #=>
+# {'name': 'PythonTL', 'updated_at': 1737129305507111708, 'start': 1737132902, 'stop': 1737136502,
+#  'kind': 'reserve', 'data': {'username': 'operator'},
+#  'scope': 'DEFAULT', 'fulfillment': False, 'uuid': '46328378-ed78-4719-ad70-e84951a196fd',
+#  'events': [{'time': 1737129305, 'event': 'created'}], 'recurring': {}}
+act = create_timeline_activity("PythonTL", kind="COMMAND", start=start, stop=stop,
+    data={'command': "INST COLLECT with TYPE NORMAL, DURATION 5, TEMP 10"}) #=>
+# {'name': 'PythonTL', 'updated_at': 1737129508886643928, 'start': 1737133108, 'stop': 1737136708,
+#  'kind': 'command', 'data': {'command': 'INST COLLECT with TYPE NORMAL, DURATION 5, TEMP 10', 'username': 'operator'},
+#  'scope': 'DEFAULT', 'fulfillment': False, 'uuid': 'cddbf034-ccdd-4c36-91c2-2653a39b06a5',
+#  'events': [{'time': 1737129508, 'event': 'created'}], 'recurring': {}}
+start = now + timedelta(hours=2)
+stop = start + timedelta(hours=1)
+act = create_timeline_activity("PythonTL", kind="SCRIPT", start=start, stop=stop,
+  data={'environment': [{'key': "USER", 'value': "JASON"}], 'script': "INST2/procedures/checks.py"}) #=>
+# {'name': 'PythonTL', 'updated_at': 1737129509288571345, 'start': 1737136708, 'stop': 1737140308,
+#  'kind': 'script', 'data': {'environment': [{'key': 'USER', 'value': 'JASON'}], 'script': 'INST2/procedures/checks.py', 'username': 'operator'},
+#  'scope': 'DEFAULT', 'fulfillment': False, 'uuid': '4f8d791b-b138-4383-b5ec-85c28b2bea20',
+#  'events': [{'time': 1737129509, 'event': 'created'}], 'recurring': {}}
+```
+
+### get_timeline_activity
+
+Get an existing timeline activity.
+
+Ruby / Python Syntax:
+
+```ruby
+get_timeline_activity(name, start, uuid)
+```
+
+| Parameter | Description                                           |
+| --------- | ----------------------------------------------------- |
+| name      | Name of the timeline                                  |
+| start     | Start time of the activity. Time / datetime instance. |
+| uuid      | UUID of the activity                                  |
+
+Ruby Example:
+
+```ruby
+act = get_timeline_activity("RubyTL", 1737132303, "cdb661b4-a65b-44e7-95e2-5e1dba80c782") #=>
+# { "name"=>"RubyTL", "updated_at"=>1737128761316084471, "start"=>1737132303, "stop"=>1737135903,
+#   "kind"=>"command", "data"=>{"command"=>"INST COLLECT with TYPE NORMAL, DURATION 5, TEMP 10", "username"=>"operator"},
+#   "scope"=>"DEFAULT", "fulfillment"=>false, "uuid"=>"cdb661b4-a65b-44e7-95e2-5e1dba80c782",
+#   "events"=>[{"time"=>1737128761, "event"=>"created"}], "recurring"=>{}}
+```
+
+Python Example:
+
+```python
+act = get_timeline_activity("PythonTL", 1737133108, "cddbf034-ccdd-4c36-91c2-2653a39b06a5") #=>
+# {'name': 'PythonTL', 'updated_at': 1737129508886643928, 'start': 1737133108, 'stop': 1737136708,
+#  'kind': 'command', 'data': {'command': 'INST COLLECT with TYPE NORMAL, DURATION 5, TEMP 10', 'username': 'operator'},
+#  'scope': 'DEFAULT', 'fulfillment': False, 'uuid': 'cddbf034-ccdd-4c36-91c2-2653a39b06a5',
+#  'events': [{'time': 1737129508, 'event': 'created'}], 'recurring': {}}
+```
+
+### get_timeline_activities
+
+Get a range of timeline activities between start and stop time. If called without a start / stop time it defaults to 1 week before "now" up to 1 week from "now" (2 weeks total).
+
+Ruby Syntax:
+
+```ruby
+get_timeline_activities(name, start: nil, stop: nil, limit: nil)
+```
+
+Python Syntax:
+
+```python
+get_timeline_activities(name, start=None, stop=None, limit=None)
+```
+
+| Parameter | Description                                                                         |
+| --------- | ----------------------------------------------------------------------------------- |
+| name      | Name of the timeline                                                                |
+| start     | Start time of the activities. Time / datetime instance. Defaults to 7 days ago.     |
+| stop      | Stop time of the activities. Time / datetime instance. Defaults to 7 days from now. |
+| limit     | Maximum number of activities to return. Default is 1 per minute of the time range.  |
+
+Ruby Example:
+
+```ruby
+acts = get_timeline_activities("RubyTL", start: Time.now() - 3600, stop: Time.now(), limit: 1000) #=>
+# [{ "name"=>"RubyTL", ... }, { "name"=>"RubyTL", ... }]
+```
+
+Python Example:
+
+```python
+now = datetime.now(timezone.utc)
+acts = get_timeline_activities("PythonTL", start=now - timedelta(hours=2), stop=now, limit=1000) #=>
+# [{ "name"=>"PythonTL", ... }, { "name"=>"PythonTL", ... }]
+```
+
+### delete_timeline_activity
+
+Delete an existing timeline activity.
+
+Ruby / Python Syntax:
+
+```ruby
+delete_timeline_activity(name, start, uuid)
+```
+
+| Parameter | Description                                           |
+| --------- | ----------------------------------------------------- |
+| name      | Name of the timeline                                  |
+| start     | Start time of the activity. Time / datetime instance. |
+| uuid      | UUID of the activity                                  |
+
+Ruby Example:
+
+```ruby
+delete_timeline_activity("RubyTL", 1737132303, "cdb661b4-a65b-44e7-95e2-5e1dba80c782")
+```
+
+Python Example:
+
+```python
+delete_timeline_activity("PythonTL", 1737133108, "cddbf034-ccdd-4c36-91c2-2653a39b06a5")
 ```
 
 ## Metadata
@@ -3523,11 +4691,11 @@ Ruby / Python Syntax:
 metadata_set(<Metadata>, start, color)
 ```
 
-| Parameter | Description                                                                    |
-| --------- | ------------------------------------------------------------------------------ |
-| Metadata  | Hash or dict of key value pairs to store as metadata.                          |
-| start     | Named parameter, time at which to store metadata. Default is now.              |
-| color     | Named parameter, color to display metadat in the calendar. Default is #003784. |
+| Parameter | Description                                                                     |
+| --------- | ------------------------------------------------------------------------------- |
+| Metadata  | Hash or dict of key value pairs to store as metadata.                           |
+| start     | Named parameter, time at which to store metadata. Default is now.               |
+| color     | Named parameter, color to display metadata in the calendar. Default is #003784. |
 
 Ruby Example:
 
@@ -3553,11 +4721,11 @@ Ruby / Python Syntax:
 metadata_update(<Metadata>, start, color)
 ```
 
-| Parameter | Description                                                                    |
-| --------- | ------------------------------------------------------------------------------ |
-| Metadata  | Hash or dict of key value pairs to update as metadata.                         |
-| start     | Named parameter, time at which to update metadata. Default is latest metadata. |
-| color     | Named parameter, color to display metadat in the calendar. Default is #003784. |
+| Parameter | Description                                                                     |
+| --------- | ------------------------------------------------------------------------------- |
+| Metadata  | Hash or dict of key value pairs to update as metadata.                          |
+| start     | Named parameter, time at which to update metadata. Default is latest metadata.  |
+| color     | Named parameter, color to display metadata in the calendar. Default is #003784. |
 
 Ruby Example:
 
@@ -3575,7 +4743,7 @@ metadata_update({ 'key': 'value' })
 
 Prompts the user to set existing metadata values or create new a new one.
 
-Ruby / Python Syntax / Example:
+Ruby / Python Example:
 
 ```ruby
 metadata_input()
@@ -3589,13 +4757,13 @@ COSMOS has several settings typically accessed through the Admin Settings tab. T
 
 Return all the current COSMOS setting name. These are the names that should be used in the other APIs.
 
-Ruby Syntax / Example:
+Ruby Example:
 
 ```ruby
 puts list_settings() #=> ["pypi_url", "rubygems_url", "source_url", "version"]
 ```
 
-Python Syntax / Example:
+Python Example:
 
 ```python
 print(list_settings()) #=> ['pypi_url', 'rubygems_url', 'source_url', 'version']
@@ -3605,20 +4773,20 @@ print(list_settings()) #=> ['pypi_url', 'rubygems_url', 'source_url', 'version']
 
 Return all the current COSMOS settings along with their values.
 
-Ruby Syntax / Example:
+Ruby Example:
 
 ```ruby
-puts get_all_settings() #=>
+settings = get_all_settings() #=>
 # { "version"=>{"name"=>"version", "data"=>"5.11.4-beta0", "updated_at"=>1698074299509456507},
 #   "pypi_url"=>{"name"=>"pypi_url", "data"=>"https://pypi.org/simple", "updated_at"=>1698026776574347007},
 #   "rubygems_url"=>{"name"=>"rubygems_url", "data"=>"https://rubygems.org", "updated_at"=>1698026776574105465},
 #   "source_url"=>{"name"=>"source_url", "data"=>"https://github.com/OpenC3/cosmos", "updated_at"=>1698026776573904132} }
 ```
 
-Python Syntax / Example:
+Python Example:
 
 ```python
-print(get_all_settings()) #=>
+settings = get_all_settings() #=>
 # { 'version': {'name': 'version', 'data': '5.11.4-beta0', 'updated_at': 1698074299509456507},
 #   'pypi_url': {'name': 'pypi_url', 'data': 'https://pypi.org/simple', 'updated_at': 1698026776574347007},
 #   'rubygems_url': {'name': 'rubygems_url', 'data': 'https://rubygems.org', 'updated_at': 1698026776574105465},
@@ -3643,15 +4811,15 @@ get_settings(<Setting Name1>, <Setting Name2>, ...)
 Ruby Example:
 
 ```ruby
-puts get_setting('version') #=> "5.11.4-beta0"
-puts get_settings('version', 'rubygems_url') #=> ["5.11.4-beta0", "https://rubygems.org"]
+setting = get_setting('version') #=> "5.11.4-beta0"
+setting = get_settings('version', 'rubygems_url') #=> ["5.11.4-beta0", "https://rubygems.org"]
 ```
 
 Python Example:
 
 ```python
-print(get_setting('version')) #=> '5.11.4-beta0'
-print(get_setting('version', 'rubygems_url')) #=> ['5.11.4-beta0', 'https://rubygems.org']
+setting = get_setting('version') #=> '5.11.4-beta0'
+setting = get_setting('version', 'rubygems_url') #=> ['5.11.4-beta0', 'https://rubygems.org']
 ```
 
 ### set_setting
@@ -3677,36 +4845,32 @@ Ruby Example:
 
 ```ruby
 set_setting('rubygems_url', 'https://mygemserver')
-puts get_settings('rubygems_url') #=> "https://mygemserver"
 ```
 
 Python Example:
 
 ```python
 set_setting('pypi_url', 'https://mypypiserver')
-print(get_settings('pypi_url')) #=> 'https://mypypiserver'
 ```
 
 ## Configuration
 
-Many COSMOS tools have the ability to load and save a configuration. These APIs allow you to programatically load and save the configuration.
+Many COSMOS tools have the ability to load and save a configuration. These APIs allow you to programmatically load and save the configuration.
 
 ### config_tool_names
 
 List all the configuration tool names which are used as the first parameter in the other APIs.
 
-Ruby Syntax / Example:
+Ruby Example:
 
 ```ruby
-names = config_tool_names()
-pp names #=> ["telemetry_grapher", "data_viewer"]
+names = config_tool_names() #=> ["telemetry_grapher", "data_viewer"]
 ```
 
-Python Syntax / Example:
+Python Example:
 
 ```python
-names = config_tool_names()
-print(names) #=> ['telemetry_grapher', 'data_viewer']
+names = config_tool_names() #=> ['telemetry_grapher', 'data_viewer']
 ```
 
 ### list_configs
@@ -3726,15 +4890,13 @@ list_configs(<Tool Name>)
 Ruby Example:
 
 ```ruby
-configs = list_configs('telemetry_grapher')
-pp configs #=> ['adcs', 'temps']
+configs = list_configs('telemetry_grapher') #=> ['adcs', 'temps']
 ```
 
 Python Example:
 
 ```python
-configs = list_configs('telemetry_grapher')
-print(configs) #=> ['adcs', 'temps']
+configs = list_configs('telemetry_grapher') #=> ['adcs', 'temps']
 ```
 
 ### load_config
@@ -3759,8 +4921,7 @@ load_config(<Tool Name>, <Configuration Name>)
 Ruby / Python Example:
 
 ```ruby
-config = load_config('telemetry_grapher', 'adcs')
-print(config) #=>
+config = load_config('telemetry_grapher', 'adcs') #=>
 # [ {
 #   "items": [
 #     {

@@ -561,15 +561,15 @@ function computeDiff(acediff, diffType, offsetLeft, offsetRight, diffText) {
 
   if (diffType === C.DIFF_INSERT) {
     // pretty confident this returns the right stuff for the left editor: start & end line & char
-    var info = getSingleDiffInfo(acediff.editors.left, offsetLeft, diffText)
+    let info = getSingleDiffInfo(acediff.editors.left, offsetLeft, diffText)
 
     // this is the ACTUAL undoctored current line in the other editor. It's always right. Doesn't mean it's
     // going to be used as the start line for the diff though.
-    var currentLineOtherEditor = getLineForCharPosition(
+    let currentLineOtherEditor = getLineForCharPosition(
       acediff.editors.right,
       offsetRight,
     )
-    var numCharsOnLineOtherEditor = getCharsOnLine(
+    let numCharsOnLineOtherEditor = getCharsOnLine(
       acediff.editors.right,
       currentLineOtherEditor,
     )
@@ -579,11 +579,11 @@ function computeDiff(acediff, diffType, offsetLeft, offsetRight, diffText) {
     )
 
     let rightStartLine = currentLineOtherEditor
-    var sameLineInsert = info.startLine === info.endLine
+    let sameLineInsert = info.startLine === info.endLine
 
     // whether or not this diff is a plain INSERT into the other editor, or overwrites a line take a little work to
     // figure out. This feels like the hardest part of the entire script.
-    var numRows = 0
+    let numRows = 0
     if (
       // dense, but this accommodates two scenarios:
       // 1. where a completely fresh new line is being inserted in left editor, we want the line on right to stay a 1px line
@@ -606,13 +606,13 @@ function computeDiff(acediff, diffType, offsetLeft, offsetRight, diffText) {
       rightEndLine: rightStartLine + numRows,
     }
   } else {
-    var info = getSingleDiffInfo(acediff.editors.right, offsetRight, diffText)
+    let info = getSingleDiffInfo(acediff.editors.right, offsetRight, diffText)
 
-    var currentLineOtherEditor = getLineForCharPosition(
+    let currentLineOtherEditor = getLineForCharPosition(
       acediff.editors.left,
       offsetLeft,
     )
-    var numCharsOnLineOtherEditor = getCharsOnLine(
+    let numCharsOnLineOtherEditor = getCharsOnLine(
       acediff.editors.left,
       currentLineOtherEditor,
     )
@@ -622,8 +622,8 @@ function computeDiff(acediff, diffType, offsetLeft, offsetRight, diffText) {
     )
 
     let leftStartLine = currentLineOtherEditor
-    var sameLineInsert = info.startLine === info.endLine
-    var numRows = 0
+    let sameLineInsert = info.startLine === info.endLine
+    let numRows = 0
     if (
       // dense, but this accommodates two scenarios:
       // 1. where a completely fresh new line is being inserted in left editor, we want the line on right to stay a 1px line

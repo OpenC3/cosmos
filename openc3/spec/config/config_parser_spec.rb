@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -30,6 +30,11 @@ module OpenC3
   describe ConfigParser do
     before(:each) do
       @cp = ConfigParser.new
+      ConfigParser.message_callback = nil
+      ConfigParser.progress_callback = nil
+    end
+
+    after(:each) do
       ConfigParser.message_callback = nil
       ConfigParser.progress_callback = nil
     end
@@ -116,7 +121,7 @@ module OpenC3
           tf.puts "<%= render '#{subdir_path}' %>"
           tf.close
 
-          @cp.parse_file(tf.path) do |keyword, params|
+          @cp.parse_file(tf.path) do |keyword, _params|
             expect(keyword).to eql "SUBDIR"
           end
           tf.unlink
@@ -133,7 +138,7 @@ module OpenC3
           tf.puts "<%= render '#{tf2.path}' %>"
           tf.close
 
-          @cp.parse_file(tf.path) do |keyword, params|
+          @cp.parse_file(tf.path) do |keyword, _params|
             expect(keyword).to eql "ABSOLUTE"
           end
           tf.unlink
@@ -287,7 +292,7 @@ module OpenC3
         tf = Tempfile.new('unittest')
         tf.puts "KEYWORD PARAM1 'continues ' \\"
         tf.puts "next line" # Forgot quotes
-        tf.puts "KEYWORD2 PARAM2" # Ensure we proces the next line
+        tf.puts "KEYWORD2 PARAM2" # Ensure we process the next line
         tf.close
         @cp.parse_file(tf.path) do |keyword, params|
           if keyword == 'KEYWORD'
@@ -337,7 +342,7 @@ module OpenC3
         tf.close
 
         lines = []
-        @cp.parse_file(tf.path, true) do |keyword, params|
+        @cp.parse_file(tf.path, true) do |_keyword, _params|
           lines << @cp.line
         end
         expect(lines).to include("# This is a comment")
@@ -389,7 +394,7 @@ module OpenC3
         tf.puts line
         tf.close
 
-        @cp.parse_file(tf.path) do |keyword, params|
+        @cp.parse_file(tf.path) do |keyword, _params|
           expect(keyword).to eql "KEYWORD"
           expect { @cp.verify_num_parameters(1, 1) }.to raise_error(ConfigParser::Error, "Not enough parameters for KEYWORD.")
         end
@@ -402,7 +407,7 @@ module OpenC3
         tf.puts line
         tf.close
 
-        @cp.parse_file(tf.path) do |keyword, params|
+        @cp.parse_file(tf.path) do |keyword, _params|
           expect(keyword).to eql "KEYWORD"
           expect { @cp.verify_num_parameters(1, 1) }.to raise_error(ConfigParser::Error, "Too many parameters for KEYWORD.")
         end
@@ -411,17 +416,34 @@ module OpenC3
     end
 
     describe "verify_parameter_naming" do
-      it "verifies parameters do not have bad characters" do
+      it "allows most characters in parameters" do
         tf = Tempfile.new('unittest')
-        line = "KEYWORD BAD1_ BAD__2 'BAD 3' }BAD_4"
+        line = "KEYWORD P[1] P_2.2,2 P-3+3=3 P4!@#$%^&*? P</5|> P(:6;)"
         tf.puts line
         tf.close
 
         @cp.parse_file(tf.path) do |keyword, params|
+          expect(keyword).to eql "KEYWORD"
+          expect(params).to eql ["P[1]", "P_2.2,2", "P-3+3=3", "P4!@#$%^&*?", "P</5|>", "P(:6;)"]
+        end
+        tf.unlink
+      end
+
+      it "verifies parameters do not have bad characters" do
+        tf = Tempfile.new('unittest')
+        line = "KEYWORD BAD1_ BAD__2 'BAD 3' BAD{4 BAD}4 BAD[[6]] BAD'7 BAD\"8"
+        tf.puts line
+        tf.close
+
+        @cp.parse_file(tf.path) do |_keyword, _params|
           expect { @cp.verify_parameter_naming(1) }.to raise_error(ConfigParser::Error, /cannot end with an underscore/)
           expect { @cp.verify_parameter_naming(2) }.to raise_error(ConfigParser::Error, /cannot contain a double underscore/)
           expect { @cp.verify_parameter_naming(3) }.to raise_error(ConfigParser::Error, /cannot contain a space/)
-          expect { @cp.verify_parameter_naming(4) }.to raise_error(ConfigParser::Error, /cannot start with a close bracket/)
+          expect { @cp.verify_parameter_naming(4) }.to raise_error(ConfigParser::Error, /cannot contain a curly bracket/)
+          expect { @cp.verify_parameter_naming(5) }.to raise_error(ConfigParser::Error, /cannot contain a curly bracket/)
+          expect { @cp.verify_parameter_naming(6) }.to raise_error(ConfigParser::Error, /cannot contain double brackets/)
+          expect { @cp.verify_parameter_naming(7) }.to raise_error(ConfigParser::Error, /cannot contain a quote/)
+          expect { @cp.verify_parameter_naming(8) }.to raise_error(ConfigParser::Error, /cannot contain a quote/)
         end
         tf.unlink
       end
@@ -434,7 +456,7 @@ module OpenC3
         tf.puts line
         tf.close
 
-        @cp.parse_file(tf.path) do |keyword, params|
+        @cp.parse_file(tf.path) do |_keyword, _params|
           error = @cp.error("Hello")
           expect(error.message).to eql "Hello"
           expect(error.keyword).to eql "KEYWORD"
@@ -453,7 +475,7 @@ module OpenC3
         tf.close
 
         expect {
-          @cp.parse_file(tf.path) do |keyword, params|
+          @cp.parse_file(tf.path) do |keyword, _params|
             if keyword == "KEYWORD1"
               raise @cp.error("Invalid KEYWORD1")
             end
@@ -540,30 +562,26 @@ module OpenC3
         (1..64).each do |val|
           # Unsigned
           expect(ConfigParser.handle_defined_constants("MIN", :UINT, val)).to eql 0
-          expect(ConfigParser.handle_defined_constants("MAX", :UINT, val)).to eql (2**val - 1)
+          expect(ConfigParser.handle_defined_constants("MAX", :UINT, val)).to eql((2**val) - 1)
           # Signed
-          expect(ConfigParser.handle_defined_constants("MIN", :INT, val)).to eql (-(2**val) / 2)
-          expect(ConfigParser.handle_defined_constants("MAX", :INT, val)).to eql ((2**val) / 2 - 1)
+          expect(ConfigParser.handle_defined_constants("MIN", :INT, val)).to eql(-(2**val) / 2)
+          expect(ConfigParser.handle_defined_constants("MAX", :INT, val)).to eql(((2**val) / 2) - 1)
         end
         [8, 16, 32, 64].each do |val|
           # Unsigned
           expect(ConfigParser.handle_defined_constants("MIN_UINT#{val}")).to eql 0
-          expect(ConfigParser.handle_defined_constants("MAX_UINT#{val}")).to eql (2**val - 1)
+          expect(ConfigParser.handle_defined_constants("MAX_UINT#{val}")).to eql((2**val) - 1)
           # Signed
-          expect(ConfigParser.handle_defined_constants("MIN_INT#{val}")).to eql (-(2**val) / 2)
-          expect(ConfigParser.handle_defined_constants("MAX_INT#{val}")).to eql ((2**val) / 2 - 1)
+          expect(ConfigParser.handle_defined_constants("MIN_INT#{val}")).to eql(-(2**val) / 2)
+          expect(ConfigParser.handle_defined_constants("MAX_INT#{val}")).to eql(((2**val) / 2) - 1)
         end
         # Float
-        expect(ConfigParser.handle_defined_constants("MIN_FLOAT32")).to be <= -3.4 * 10**38
-        expect(ConfigParser.handle_defined_constants("MAX_FLOAT32")).to be >= 3.4 * 10**38
-        expect(ConfigParser.handle_defined_constants("MIN_FLOAT64")).to eql (-Float::MAX)
+        expect(ConfigParser.handle_defined_constants("MIN_FLOAT32")).to be <= -3.4 * (10**38)
+        expect(ConfigParser.handle_defined_constants("MAX_FLOAT32")).to be >= 3.4 * (10**38)
+        expect(ConfigParser.handle_defined_constants("MIN_FLOAT64")).to eql(-Float::MAX)
         expect(ConfigParser.handle_defined_constants("MAX_FLOAT64")).to eql Float::MAX
         expect(ConfigParser.handle_defined_constants("POS_INFINITY")).to eql Float::INFINITY
-        expect(ConfigParser.handle_defined_constants("NEG_INFINITY")).to eql (-Float::INFINITY)
-      end
-
-      it "complains about undefined strings" do
-        expect { ConfigParser.handle_defined_constants("TRUE") }.to raise_error(ArgumentError, "Could not convert constant: TRUE")
+        expect(ConfigParser.handle_defined_constants("NEG_INFINITY")).to eql(-Float::INFINITY)
       end
 
       it "passes through numbers" do

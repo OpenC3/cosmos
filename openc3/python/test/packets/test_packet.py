@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -23,6 +23,7 @@ from openc3.packets.packet_item import PacketItem
 from openc3.processors.processor import Processor
 from openc3.conversions.generic_conversion import GenericConversion
 from openc3.accessors.binary_accessor import BinaryAccessor
+from openc3.accessors.json_accessor import JsonAccessor
 from openc3.conversions.packet_time_seconds_conversion import (
     PacketTimeSecondsConversion,
 )
@@ -43,9 +44,7 @@ class TestPacket(unittest.TestCase):
 
     def test_complains_if_the_given_template_is_not_a_string(self):
         p = Packet("tgt", "pkt")
-        with self.assertRaisesRegex(
-            AttributeError, "template must be bytes but is a int"
-        ):
+        with self.assertRaisesRegex(TypeError, "template must be bytes but is a int"):
             p.template = 1
 
 
@@ -78,9 +77,7 @@ class Buffer(unittest.TestCase):
         self.assertIsNone(p.target_name)
 
     def test_complains_about_non_string_target_names(self):
-        with self.assertRaisesRegex(
-            AttributeError, "target_name must be a str but is a float"
-        ):
+        with self.assertRaisesRegex(TypeError, "target_name must be a str but is a float"):
             Packet(5.1, "pkt")
 
     def test_sets_the_packet_name_to_an_uppermatch_string(self):
@@ -92,9 +89,7 @@ class Buffer(unittest.TestCase):
         self.assertIsNone(p.packet_name)
 
     def test_complains_about_non_string_packet_names(self):
-        with self.assertRaisesRegex(
-            AttributeError, "packet_name must be a str but is a float"
-        ):
+        with self.assertRaisesRegex(TypeError, "packet_name must be a str but is a float"):
             Packet("tgt", 5.1)
 
     def test_sets_the_description_to_a_string(self):
@@ -108,9 +103,7 @@ class Buffer(unittest.TestCase):
 
     def test_complains_about_non_string_descriptions(self):
         p = Packet("tgt", "pkt")
-        with self.assertRaisesRegex(
-            AttributeError, "description must be a str but is a float"
-        ):
+        with self.assertRaisesRegex(TypeError, "description must be a str but is a float"):
             p.description = 5.1
 
     def test_sets_the_received_time_fast_to_a_time(self):
@@ -132,9 +125,7 @@ class Buffer(unittest.TestCase):
 
     def test_complains_about_non_time_received_times(self):
         p = Packet("tgt", "pkt")
-        with self.assertRaisesRegex(
-            AttributeError, "received_time must be a datetime but is a str"
-        ):
+        with self.assertRaisesRegex(TypeError, "received_time must be a datetime but is a str"):
             p.received_time = "1pm"
 
     def test_sets_the_received_count_to_a_fixnum(self):
@@ -144,16 +135,12 @@ class Buffer(unittest.TestCase):
 
     def test_complains_about_none_received_count(self):
         p = Packet("tgt", "pkt")
-        with self.assertRaisesRegex(
-            AttributeError, "received_count must be an int but is a NoneType"
-        ):
+        with self.assertRaisesRegex(TypeError, "received_count must be an int but is a NoneType"):
             p.received_count = None
 
     def test_complains_about_non_fixnum_received_counts(self):
         p = Packet("tgt", "pkt")
-        with self.assertRaisesRegex(
-            AttributeError, "received_count must be an int but is a str"
-        ):
+        with self.assertRaisesRegex(TypeError, "received_count must be an int but is a str"):
             p.received_count = "5"
 
     def test_sets_the_hazardous_description_to_a_string(self):
@@ -168,9 +155,7 @@ class Buffer(unittest.TestCase):
 
     def test_complains_about_non_string_hazardous_descriptions(self):
         p = Packet("tgt", "pkt")
-        with self.assertRaisesRegex(
-            AttributeError, "hazardous_description must be a str but is a float"
-        ):
+        with self.assertRaisesRegex(TypeError, "hazardous_description must be a str but is a float"):
             p.hazardous_description = 5.1
 
     def test_sets_the_given_values_to_a_hash(self):
@@ -186,9 +171,7 @@ class Buffer(unittest.TestCase):
 
     def test_complains_about_non_hash_given_valuess(self):
         p = Packet("tgt", "pkt")
-        with self.assertRaisesRegex(
-            AttributeError, "given_values must be a dict but is a list"
-        ):
+        with self.assertRaisesRegex(TypeError, "given_values must be a dict but is a list"):
             p.given_values = []
 
     def test_allows_adding_items_to_the_meta_hash(self):
@@ -212,9 +195,7 @@ class Buffer(unittest.TestCase):
         p = Packet("tgt", "pkt")
         rc = GenericConversion("value / 2")
         wc = GenericConversion("value * 2")
-        p.define_item(
-            "item", 0, 32, "FLOAT", None, "BIG_ENDIAN", "ERROR", "%5.1f", rc, wc, 5
-        )
+        p.define_item("item", 0, 32, "FLOAT", None, "BIG_ENDIAN", "ERROR", "%5.1f", rc, wc, 5)
         i = p.get_item("ITEM")
         self.assertEqual(i.format_string, "%5.1f")
         self.assertEqual(str(i.read_conversion), str(rc))
@@ -270,9 +251,7 @@ class Buffer(unittest.TestCase):
         p = Packet("tgt", "pkt")
         rc = GenericConversion("value / 2")
         wc = GenericConversion("value * 2")
-        p.append_item(
-            "item", 32, "FLOAT", None, "BIG_ENDIAN", "ERROR", "%5.1f", rc, wc, 5
-        )
+        p.append_item("item", 32, "FLOAT", None, "BIG_ENDIAN", "ERROR", "%5.1f", rc, wc, 5)
         i = p.get_item("ITEM")
         self.assertEqual(i.format_string, "%5.1f")
         self.assertEqual(str(i.read_conversion), str(rc))
@@ -318,9 +297,7 @@ class Buffer(unittest.TestCase):
 
     def test_complains_if_an_item_doesnt_exist(self):
         p = Packet("tgt", "pkt")
-        with self.assertRaisesRegex(
-            AttributeError, "Packet item 'TGT PKT TEST' does not exist"
-        ):
+        with self.assertRaisesRegex(RuntimeError, "Packet item 'TGT PKT TEST' does not exist"):
             p.get_item("test")
 
 
@@ -332,27 +309,27 @@ class PacketReadReadItem(unittest.TestCase):
         self.p.append_item("item", 32, "UINT")
         i = self.p.get_item("ITEM")
         with self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
         ):
             self.p.read("ITEM", "MINE", b"\x01\x02\x03\x04")
         with self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
         ):
             self.p.read("ITEM", "MINE", b"\x01\x02\x03\x04")
         with self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
         ):
             self.p.read_item(i, "MINE", b"\x01\x02\x03\x04")
         with self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "Unknown value type 'ABCDEFGHIJ...', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
         ):
             self.p.read_item(i, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", b"\x01\x02\x03\x04")
         with self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "Unknown value type '.*', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
         ):
             self.p.read("ITEM", b"\00")
@@ -405,7 +382,7 @@ class PacketReadReadItem(unittest.TestCase):
         value += " more things"
         self.assertEqual(self.p.read_item(i, "WITH_UNITS"), "A str with units")
 
-        self.p.buffer = "\x00"
+        self.p.buffer = b"\x00"
         i.read_conversion = GenericConversion("['A', 'B', 'C']")
         value = self.p.read_item(i, "CONVERTED")
         self.assertEqual(value, ["A", "B", "C"])
@@ -495,55 +472,31 @@ class PacketReadReadItem(unittest.TestCase):
         self.assertEqual(self.p.read("ITEM", "WITH_UNITS", b"\x01\x02"), ["1 V", "2 V"])
         self.assertEqual(self.p.read_item(i, "WITH_UNITS", b"\x01\x02"), ["1 V", "2 V"])
         i.format_string = "0x%x"
-        self.assertEqual(
-            self.p.read("ITEM", "WITH_UNITS", b"\x01\x02"), ["0x1 V", "0x2 V"]
-        )
-        self.assertEqual(
-            self.p.read_item(i, "WITH_UNITS", b"\x01\x02"), ["0x1 V", "0x2 V"]
-        )
+        self.assertEqual(self.p.read("ITEM", "WITH_UNITS", b"\x01\x02"), ["0x1 V", "0x2 V"])
+        self.assertEqual(self.p.read_item(i, "WITH_UNITS", b"\x01\x02"), ["0x1 V", "0x2 V"])
         i.states = {"TRUE": 1, "FALSE": 2}
-        self.assertEqual(
-            self.p.read("ITEM", "WITH_UNITS", b"\x01\x02"), ["TRUE", "FALSE"]
-        )
-        self.assertEqual(
-            self.p.read_item(i, "WITH_UNITS", b"\x01\x02"), ["TRUE", "FALSE"]
-        )
-        self.assertEqual(
-            self.p.read("ITEM", "WITH_UNITS", b"\x00\x01"), ["0x0 V", "TRUE"]
-        )
-        self.assertEqual(
-            self.p.read_item(i, "WITH_UNITS", b"\x00\x01"), ["0x0 V", "TRUE"]
-        )
-        self.assertEqual(
-            self.p.read("ITEM", "WITH_UNITS", b"\x02\x03"), ["FALSE", "0x3 V"]
-        )
-        self.assertEqual(
-            self.p.read_item(i, "WITH_UNITS", b"\x02\x03"), ["FALSE", "0x3 V"]
-        )
+        self.assertEqual(self.p.read("ITEM", "WITH_UNITS", b"\x01\x02"), ["TRUE", "FALSE"])
+        self.assertEqual(self.p.read_item(i, "WITH_UNITS", b"\x01\x02"), ["TRUE", "FALSE"])
+        self.assertEqual(self.p.read("ITEM", "WITH_UNITS", b"\x00\x01"), ["0x0 V", "TRUE"])
+        self.assertEqual(self.p.read_item(i, "WITH_UNITS", b"\x00\x01"), ["0x0 V", "TRUE"])
+        self.assertEqual(self.p.read("ITEM", "WITH_UNITS", b"\x02\x03"), ["FALSE", "0x3 V"])
+        self.assertEqual(self.p.read_item(i, "WITH_UNITS", b"\x02\x03"), ["FALSE", "0x3 V"])
         # Python doesn't support reading 1 byte when two are defined
         # self.assertEqual(self.p.read("ITEM", "WITH_UNITS", b"\x04"), ["0x4 V"])
         # self.assertEqual(self.p.read_item(i, "WITH_UNITS", b"\x04"), ["0x4 V"])
         # self.assertEqual(self.p.read("ITEM", "WITH_UNITS", b"\x04"), ["0x4 V"])
         # self.assertEqual(self.p.read_item(i, "WITH_UNITS", b"\x04"), ["0x4 V"])
         i.read_conversion = GenericConversion("value / 2")
-        self.assertEqual(
-            self.p.read("ITEM", "WITH_UNITS", b"\x02\x04"), ["TRUE", "FALSE"]
-        )
-        self.assertEqual(
-            self.p.read_item(i, "WITH_UNITS", b"\x02\x04"), ["TRUE", "FALSE"]
-        )
+        self.assertEqual(self.p.read("ITEM", "WITH_UNITS", b"\x02\x04"), ["TRUE", "FALSE"])
+        self.assertEqual(self.p.read_item(i, "WITH_UNITS", b"\x02\x04"), ["TRUE", "FALSE"])
         # self.assertEqual(self.p.read("ITEM", "WITH_UNITS", b"\x08"), ["0x4 V"])
         # self.assertEqual(self.p.read_item(i, "WITH_UNITS", b"\x08"), ["0x4 V"])
         self.p.define_item("item2", 0, 0, "DERIVED")
         i = self.p.get_item("ITEM2")
         i.units = "V"
         i.read_conversion = GenericConversion("[1,2,3,4,5]")
-        self.assertEqual(
-            self.p.read("ITEM2", "FORMATTED", ""), ["1", "2", "3", "4", "5"]
-        )
-        self.assertEqual(
-            self.p.read("ITEM2", "WITH_UNITS", ""), ["1 V", "2 V", "3 V", "4 V", "5 V"]
-        )
+        self.assertEqual(self.p.read("ITEM2", "FORMATTED", ""), ["1", "2", "3", "4", "5"])
+        self.assertEqual(self.p.read("ITEM2", "WITH_UNITS", ""), ["1 V", "2 V", "3 V", "4 V", "5 V"])
 
 
 class PacketReadDerived(unittest.TestCase):
@@ -656,27 +609,27 @@ class PacketWrite(unittest.TestCase):
         self.p.append_item("item", 32, "UINT")
         i = self.p.get_item("ITEM")
         with self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
         ):
             self.p.write("ITEM", 0, "MINE")
         with self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
         ):
             self.p.write("ITEM", 0, "MINE")
         with self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
         ):
             self.p.write_item(i, 0, "MINE")
         with self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "Unknown value type 'ABCDEFGHIJ...', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
         ):
             self.p.write_item(i, 0, "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
         with self.assertRaisesRegex(
-            AttributeError,
+            ValueError,
             "Unknown value type '.*', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
         ):
             self.p.write("ITEM", 0x01020304, "\x00")
@@ -731,7 +684,7 @@ class PacketWrite(unittest.TestCase):
         self.assertEqual(self.buffer, b"\x01\x00\x00\x00")
         self.p.write_item(i, "FALSE", "CONVERTED", self.buffer)
         self.assertEqual(self.buffer, b"\x02\x00\x00\x00")
-        with self.assertRaisesRegex(ValueError, "Unknown state BLAH for ITEM"):
+        with self.assertRaisesRegex(ValueError, "Unknown state 'BLAH' for ITEM"):
             self.p.write_item(i, "BLAH", "CONVERTED", self.buffer)
         i.write_conversion = GenericConversion("value / 2")
         self.p.write("ITEM", 4, "CONVERTED", self.buffer)
@@ -775,25 +728,17 @@ class PacketWrite(unittest.TestCase):
     def test_complains_about_the_formatted_value_type(self):
         self.p.append_item("item", 8, "UINT")
         i = self.p.get_item("ITEM")
-        with self.assertRaisesRegex(
-            AttributeError, "Invalid value type on write= FORMATTED"
-        ):
+        with self.assertRaisesRegex(ValueError, "Invalid value type on write: FORMATTED"):
             self.p.write("ITEM", 3, "FORMATTED", self.buffer)
-        with self.assertRaisesRegex(
-            AttributeError, "Invalid value type on write= FORMATTED"
-        ):
+        with self.assertRaisesRegex(ValueError, "Invalid value type on write: FORMATTED"):
             self.p.write_item(i, 3, "FORMATTED", self.buffer)
 
     def test_complains_about_the_with_units_value_type(self):
         self.p.append_item("item", 8, "UINT")
         i = self.p.get_item("ITEM")
-        with self.assertRaisesRegex(
-            AttributeError, "Invalid value type on write= WITH_UNITS"
-        ):
+        with self.assertRaisesRegex(ValueError, "Invalid value type on write: WITH_UNITS"):
             self.p.write("ITEM", 3, "WITH_UNITS", self.buffer)
-        with self.assertRaisesRegex(
-            AttributeError, "Invalid value type on write= WITH_UNITS"
-        ):
+        with self.assertRaisesRegex(ValueError, "Invalid value type on write: WITH_UNITS"):
             self.p.write_item(i, 3, "WITH_UNITS", self.buffer)
 
 
@@ -1109,18 +1054,10 @@ class PacketReadIdValues(unittest.TestCase):
     def test_to_read_the_right_values(self):
         buffer = b"\x00\x00\x00\x04\x00\x00\x00\x03\x00\x00\x00\x02\x00\x00\x00\x01"
         p = Packet("tgt", "pkt")
-        p.define_item(
-            "item1", 0, 32, "UINT", None, "BIG_ENDIAN", "ERROR", None, None, None, None
-        )
-        p.define_item(
-            "item2", 64, 32, "UINT", None, "BIG_ENDIAN", "ERROR", None, None, None, 0
-        )
-        p.define_item(
-            "item3", 96, 32, "UINT", None, "BIG_ENDIAN", "ERROR", None, None, None, None
-        )
-        p.define_item(
-            "item4", 32, 32, "UINT", None, "BIG_ENDIAN", "ERROR", None, None, None, 6
-        )
+        p.define_item("item1", 0, 32, "UINT", None, "BIG_ENDIAN", "ERROR", None, None, None, None)
+        p.define_item("item2", 64, 32, "UINT", None, "BIG_ENDIAN", "ERROR", None, None, None, 0)
+        p.define_item("item3", 96, 32, "UINT", None, "BIG_ENDIAN", "ERROR", None, None, None, None)
+        p.define_item("item4", 32, 32, "UINT", None, "BIG_ENDIAN", "ERROR", None, None, None, 6)
         values = p.read_id_values(buffer)
         self.assertEqual(values[0], 3)
         self.assertEqual(values[1], 2)
@@ -1130,9 +1067,7 @@ class PacketIdentify(unittest.TestCase):
     def test_identifies_a_buffer_based_on_id_items(self):
         p = Packet("tgt", "pkt")
         p.append_item("item1", 8, "UINT")
-        p.append_item(
-            "item2", 16, "UINT", None, "BIG_ENDIAN", "ERROR", None, None, None, 5
-        )
+        p.append_item("item2", 16, "UINT", None, "BIG_ENDIAN", "ERROR", None, None, None, 5)
         p.append_item("item3", 32, "UINT")
         self.assertTrue(p.identify(b"\x00\x00\x05\x01\x02\x03\x04"))
         self.assertFalse(p.identify(b"\x00\x00\x04\x01\x02\x03\x04"))
@@ -1141,18 +1076,14 @@ class PacketIdentify(unittest.TestCase):
     def test_identifies_if_the_buffer_is_too_short(self):
         p = Packet("tgt", "pkt")
         p.append_item("item1", 8, "UINT")
-        p.append_item(
-            "item2", 16, "UINT", None, "BIG_ENDIAN", "ERROR", None, None, None, 5
-        )
+        p.append_item("item2", 16, "UINT", None, "BIG_ENDIAN", "ERROR", None, None, None, 5)
         p.append_item("item3", 32, "UINT")
         self.assertTrue(p.identify(b"\x00\x00\x05\x01\x02\x03"))
 
     def test_identifies_if_the_buffer_is_too_long(self):
         p = Packet("tgt", "pkt")
         p.append_item("item1", 8, "UINT")
-        p.append_item(
-            "item2", 16, "UINT", None, "BIG_ENDIAN", "ERROR", None, None, None, 5
-        )
+        p.append_item("item2", 16, "UINT", None, "BIG_ENDIAN", "ERROR", None, None, None, 5)
         p.append_item("item3", 32, "UINT")
         self.assertTrue(p.identify(b"\x00\x00\x05\x01\x02\x03\x04\x05"))
 
@@ -1402,9 +1333,7 @@ class PacketCheckLimitsValues(unittest.TestCase):
 
         self.test2 = self.p.get_item("TEST2")
         self.assertFalse(self.test2.limits.enabled)
-        self.test2.limits.values = {
-            "DEFAULT": [1, 2, 6, 7, 3, 5]
-        }  # red yellow and blue
+        self.test2.limits.values = {"DEFAULT": [1, 2, 6, 7, 3, 5]}  # red yellow and blue
         self.p.update_limits_items_cache(self.test2)
         self.p.enable_limits("TEST2")
 
@@ -1680,9 +1609,7 @@ class Clone(unittest.TestCase):
         # No comparison operator
         # self.assertEqual(p2.processors['PROCESSOR'], p.processors['PROCESSOR'])
         self.assertIsNot(p2.processors["PROCESSOR"], p.processors["PROCESSOR"])
-        self.assertEqual(
-            p2.processors["PROCESSOR"].name, p.processors["PROCESSOR"].name
-        )
+        self.assertEqual(p2.processors["PROCESSOR"].name, p.processors["PROCESSOR"].name)
 
 
 class Reset(unittest.TestCase):
@@ -1800,27 +1727,27 @@ class PacketDecom(unittest.TestCase):
 
         self.assertEqual(vals["TEST3__L"], "RED")
 
-        # p.accessor = JsonAccessor
-        # p.buffer = '{"test1": [1, 2], "test2": 5, "test3": 104}'
-        # vals = p.decom()
-        # self.assertEqual(vals["TEST1"], [1, 2])
-        # self.assertEqual(vals["TEST2"], 5)
-        # self.assertEqual(vals["TEST3"], 104)
-        # self.assertEqual(vals["TEST4"], [1, 2])
+        p.accessor = JsonAccessor(p)
+        p.buffer = b'{"test1": [1, 2], "test2": 5, "test3": 104}'
+        vals = p.decom()
+        self.assertEqual(vals.get("TEST1"), [1, 2])
+        self.assertEqual(vals.get("TEST2"), 5)
+        self.assertEqual(vals.get("TEST3"), 104)
+        self.assertEqual(vals.get("TEST4"), [1, 2])
 
-        # self.assertEqual(vals["TEST1__C"], None)
-        # self.assertEqual(vals["TEST2__C"], 5)
-        # self.assertEqual(vals["TEST3__C"], 52)
-        # self.assertEqual(vals["TEST4__C"], None)
+        self.assertEqual(vals.get("TEST1__C"), None)
+        self.assertEqual(vals.get("TEST2__C"), 5)
+        self.assertEqual(vals.get("TEST3__C"), 52)
+        self.assertEqual(vals.get("TEST4__C"), None)
 
-        # self.assertEqual(vals["TEST1__F"], ["0x1", "0x2"])
-        # self.assertEqual(vals["TEST2__F"], None)
-        # self.assertEqual(vals["TEST3__F"], None)
-        # self.assertEqual(vals["TEST4__F"], None)
+        self.assertEqual(vals.get("TEST1__F"), ["0x1", "0x2"])
+        self.assertEqual(vals.get("TEST2__F"), None)
+        self.assertEqual(vals.get("TEST3__F"), None)
+        self.assertEqual(vals.get("TEST4__F"), None)
 
-        # self.assertEqual(vals["TEST1__U"], ["0x1 C", "0x2 C"])
-        # self.assertEqual(vals["TEST2__U"], None)
-        # self.assertEqual(vals["TEST3__U"], None)
-        # self.assertEqual(vals["TEST4__U"], None)
+        self.assertEqual(vals.get("TEST1__U"), ["0x1 C", "0x2 C"])
+        self.assertEqual(vals.get("TEST2__U"), None)
+        self.assertEqual(vals.get("TEST3__U"), None)
+        self.assertEqual(vals.get("TEST4__U"), None)
 
-        # self.assertEqual(vals["TEST3__L"], "RED")
+        self.assertEqual(vals.get("TEST3__L"), "RED")

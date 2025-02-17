@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -30,9 +30,9 @@ class ToolsController < ModelController
   def show
     # No authorization required
     if params[:id].downcase == 'all'
-      render :json => @model_class.all(scope: params[:scope])
+      render json: @model_class.all(scope: params[:scope])
     else
-      render :json => @model_class.get(name: params[:id], scope: params[:scope])
+      render json: @model_class.get(name: params[:id], scope: params[:scope])
     end
   end
 
@@ -45,18 +45,22 @@ class ToolsController < ModelController
   end
 
   def importmap
-    result = ""
+    result = Hash.new
+    result["imports"] = Hash.new
+
     tools = @model_class.all_scopes
     inline_tools = {}
     tools.each do |key, tool|
-      inline_tools[key] = tool if tool['inline_url'] and tool['window'] == 'INLINE'
+      if tool['import_map_items']
+        tool['import_map_items'].each do |item_key, item|
+          result["imports"][item_key] = item
+        end
+      end
+      if tool['inline_url'] and tool['window'] == 'INLINE'
+        result["imports"]["@openc3/tool-#{tool['folder_name']}"] = "/tools/#{tool['folder_name']}/#{tool['inline_url']}"
+      end
     end
-    result = Hash.new
-    result["imports"] = Hash.new
-    inline_tools.each do |key, tool|
-      result["imports"]["@openc3/tool-#{tool['folder_name']}"] = "/tools/#{tool['folder_name']}/#{tool['inline_url']}"
-    end
-    render :json => result
+    render json: result
   end
 
   def auth
@@ -70,6 +74,6 @@ class ToolsController < ModelController
     end
     realm = ENV['OPENC3_KEYCLOAK_REALM']
     realm = "openc3" unless realm
-    render :js => "var openc3_keycloak_url = \"#{url}\"; var openc3_keycloak_realm = \"#{realm}\"; var openc3_keycloak_client_id = \"#{ENV['OPENC3_API_CLIENT']}\""
+    render js: "var openc3_keycloak_url = \"#{url}\"; var openc3_keycloak_realm = \"#{realm}\"; var openc3_keycloak_client_id = \"#{ENV['OPENC3_API_CLIENT']}\""
   end
 end

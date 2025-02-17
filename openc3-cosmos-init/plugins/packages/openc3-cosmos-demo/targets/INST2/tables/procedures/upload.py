@@ -2,9 +2,9 @@ import os
 from openc3.utilities.string import formatted
 
 # TBL_FILENAME is set to the name of the table file
-print(f"file:{os.environ['TBL_FILENAME']}")
+print(f"file:{os.getenv('TBL_FILENAME')}")
 # Open the file
-file = get_target_file(os.environ["TBL_FILENAME"])
+file = get_target_file(os.getenv("TBL_FILENAME"))
 buffer = file.read()
 # Implement custom commanding logic to upload the table
 # Note that buffer is a Ruby string of bytes

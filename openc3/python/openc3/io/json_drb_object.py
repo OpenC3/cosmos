@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -22,7 +22,7 @@ from .json_rpc import (
     JsonRpcSuccessResponse,
     JsonRpcErrorResponse,
 )
-from openc3.top_level import HazardousError  # noqa: F401
+from openc3.top_level import HazardousError, CriticalCmdError, DisabledError  # noqa: F401
 
 
 class JsonDrbUnknownError(Exception):
@@ -46,7 +46,7 @@ class JsonDRbError(JsonApiError):
             if "message" not in hash and "class" in hash:
                 hash["message"] = hash["class"]
         error = None
-        if error_class == RuntimeError and "message" in hash:
+        if error_class is RuntimeError and "message" in hash:
             error = error_class(hash["message"])
         else:
             error = error_class()
@@ -141,7 +141,7 @@ class JsonDRbObject(JsonApiObject):
 
     def handle_response(self, response: JsonRpcSuccessResponse | JsonRpcErrorResponse):
         # The code below will always either raise or return breaking out of the loop
-        if type(response) == JsonRpcErrorResponse:
+        if isinstance(response, JsonRpcErrorResponse):
             if response.error.data:
                 error = JsonDRbError.from_hash(response.error.data)
                 raise error

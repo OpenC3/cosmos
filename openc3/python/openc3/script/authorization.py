@@ -12,7 +12,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -133,10 +133,10 @@ class CosmosKeycloakAuthorization(CosmosAuthorization):
 
     @request_wrapper
     def _make_token_request(self):
-        """Use the python requests libary to request a token from Cosmos Keycloak.
+        """Use the python requests library to request a token from Cosmos Keycloak.
 
         This is an internal method that uses two decorators. request_wrapper
-        captures errors from the request libary.
+        captures errors from the request library.
         return -- request.Response
             https://docs.python-requests.org/en/master/user/quickstart/#json-response-content
         """
@@ -148,7 +148,6 @@ class CosmosKeycloakAuthorization(CosmosAuthorization):
                 "Content-Type": "application/x-www-form-urlencoded",
             },
         }
-        LOGGER.debug("calling with %s", request_kwargs)
         resp = requests.post(**request_kwargs)
         LOGGER.debug(
             "resp: %s total_seconds: %f content: %s",
@@ -181,10 +180,10 @@ class CosmosKeycloakAuthorization(CosmosAuthorization):
 
     @request_wrapper
     def _make_refresh_request(self):
-        """Use the python requests libary to refresh the token.
+        """Use the python requests library to refresh the token.
 
         This is an internal method that uses two decorators. request_wrapper
-        captures errors from the request libary.
+        captures errors from the request library.
         return -- request.Response
             https://docs.python-requests.org/en/master/user/quickstart/#json-response-content
         """

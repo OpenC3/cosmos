@@ -70,14 +70,14 @@ class TopicsThread
 
   def transmit_results(results, force: false)
     if results.length > 0 or force
-      # Fortify: This send is intentionally bypassing access control to get to the
-      # private transmit method
-      @channel.send(:transmit, results.as_json(:allow_nan => true))
+      ActionCable.server.broadcast(@channel.uuid, results.as_json(:allow_nan => true))
     end
   end
 
   def thread_setup
     @topics.each do |topic|
+      topic_split = topic.split('__')
+      next if topic_split[1] == 'openc3_ephemeral_messages' # No history
       results = OpenC3::Topic.xrevrange(topic, '+', '-', count: [1, @history_count].max) # Always get at least 1, because 0 breaks redis-rb
       batch = []
       results.reverse_each do |msg_id, msg_hash|

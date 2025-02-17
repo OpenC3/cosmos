@@ -66,8 +66,6 @@ module OpenC3
           item.limits.response = PythonProxy.new('LimitsResponse', @parser.parameters[0], [])
         end
       end
-    rescue Exception => e
-      raise @parser.error(e, @usage)
     end
   end
 end

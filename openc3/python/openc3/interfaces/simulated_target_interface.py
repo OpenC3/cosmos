@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -37,6 +37,9 @@ class SimulatedTargetInterface(Interface):
         )
         self.sim_target = None
         self.write_raw_allowed = False
+
+    def connection_string(self):
+        return self.sim_target_class.__name__
 
     # Initialize the simulated target object and "connect" to the target
     def connect(self):
@@ -94,9 +97,7 @@ class SimulatedTargetInterface(Interface):
                     # Fell way behind - jump next tick time
                     self.next_tick_time = time.time()
 
-                self.pending_packets = self.sim_target.read(
-                    self.count_100hz, self.next_tick_time
-                )
+                self.pending_packets = self.sim_target.read(self.count_100hz, self.next_tick_time)
                 self.next_tick_time += self.sim_target.tick_period_seconds()
                 self.count_100hz += self.sim_target.tick_increment()
 

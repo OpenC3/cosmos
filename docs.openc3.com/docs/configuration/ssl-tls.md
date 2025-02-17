@@ -1,6 +1,9 @@
 ---
-sidebar_position: 10
+sidebar_position: 11
 title: SSL-TLS
+description: How to configure SSL and TLS
+sidebar_custom_props:
+  myEmoji: 🔐
 ---
 
 COSMOS 5 is a container based service which does not use SSL/TLS out of the box. This guide will help you configure SSL and TLS. Learn more at the Traefik [docs](https://doc.traefik.io/traefik/routing/entrypoints/#tls).

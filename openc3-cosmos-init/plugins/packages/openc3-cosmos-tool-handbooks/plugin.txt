@@ -1,5 +1,5 @@
 TOOL handbooks "Handbooks"
-  INLINE_URL js/app.js
+  INLINE_URL main.js
   ICON mdi-file-document-multiple
   POSITION 15
   CATEGORY Utilities

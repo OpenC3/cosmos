@@ -24,17 +24,15 @@
   <v-dialog persistent v-model="show" width="600">
     <v-card>
       <v-form v-model="valid" v-on:submit.prevent="submitHandler">
-        <v-system-bar>
+        <v-toolbar height="24">
           <v-spacer />
           <span> File Dialog </span>
           <v-spacer />
-        </v-system-bar>
+        </v-toolbar>
         <div class="pa-2">
           <v-card-text>
             <v-row>
-              <v-card-title style="white-space: pre-line">{{
-                title
-              }}</v-card-title>
+              <span class="title">{{ title }}</span>
             </v-row>
             <v-row v-if="message">
               <span
@@ -47,6 +45,7 @@
               <v-file-input
                 label="Choose File"
                 v-model="inputValue"
+                :rules="fileInputRules"
                 autofocus
                 data-test="file-input"
                 :accept="filter"
@@ -56,20 +55,18 @@
             </v-row>
           </v-card-text>
         </div>
-        <v-card-actions>
+        <v-card-actions class="px-2">
           <v-spacer />
           <v-btn
             @click="cancelHandler"
-            outlined
-            class="mx-1"
+            variant="outlined"
             data-test="file-cancel"
           >
             Cancel
           </v-btn>
           <v-btn
             @click.prevent="submitHandler"
-            class="mx-1"
-            color="primary"
+            variant="flat"
             type="submit"
             data-test="file-ok"
             :disabled="!valid"
@@ -101,20 +98,22 @@ export default {
       type: Boolean,
       default: false,
     },
-    value: Boolean, // value is the default prop when using v-model
+    modelValue: Boolean,
   },
   data() {
     return {
       inputValue: null,
+      valid: null,
+      fileInputRules: [(value) => !!value?.length || 'Required'],
     }
   },
   computed: {
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
   },
@@ -133,3 +132,11 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+.title {
+  font-size: 1.125rem;
+  font-weight: bold;
+  padding-bottom: 5px;
+}
+</style>

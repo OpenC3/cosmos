@@ -24,7 +24,7 @@
   <div>
     <!-- Use a container here so we can do cols="auto" to resize v-select -->
     <v-card>
-      <v-card-title>
+      <v-card-title class="d-flex align-center justify-content-space-between">
         {{ data.length }} Metrics
         <v-spacer />
         <v-text-field
@@ -32,8 +32,8 @@
           label="Search"
           prepend-inner-icon="mdi-magnify"
           clearable
-          outlined
-          dense
+          variant="outlined"
+          density="compact"
           single-line
           hide-details
           class="search"
@@ -44,11 +44,7 @@
         :items="data"
         :search="search"
         :items-per-page="10"
-        :footer-props="{
-          itemsPerPageOptions: [10, 20, 50, 100, 1000],
-          showFirstLastPage: true,
-        }"
-        calculate-widths
+        :items-per-page-options="[10, 20, 50, 100, -1]"
         multi-sort
         data-test="metrics-table"
       >
@@ -58,8 +54,8 @@
 </template>
 
 <script>
+import { OpenC3Api } from '@openc3/js-common/services'
 import Updater from './Updater'
-import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 
 export default {
   mixins: [Updater],
@@ -72,24 +68,24 @@ export default {
       api: new OpenC3Api(),
       apiStatus: [],
       apiHeaders: [
-        { text: 'Port', value: 'port' },
-        { text: 'Clients', value: 'clients' },
-        { text: 'Requests', value: 'requests' },
-        { text: 'Avg Request Time', value: 'avgTime' },
-        { text: 'Server Threads', value: 'threads' },
+        { title: 'Port', value: 'port' },
+        { title: 'Clients', value: 'clients' },
+        { title: 'Requests', value: 'requests' },
+        { title: 'Avg Request Time', value: 'avgTime' },
+        { title: 'Server Threads', value: 'threads' },
       ],
       backgroundTasks: [],
       backgroundHeaders: [
-        { text: 'Name', value: 'name' },
-        { text: 'State', value: 'state' },
-        { text: 'Status', value: 'status' },
-        { text: 'Control', value: 'control' },
+        { title: 'Name', value: 'name' },
+        { title: 'State', value: 'state' },
+        { title: 'Status', value: 'status' },
+        { title: 'Control', value: 'control' },
       ],
       search: '',
       data: [],
       headers: [
-        { text: 'Metric', value: 'metric_name' },
-        { text: 'Value', value: 'value' },
+        { title: 'Metric', key: 'metric_name' },
+        { title: 'Value', key: 'value' },
       ],
     }
   },

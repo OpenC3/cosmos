@@ -15,6 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 import os
+import tempfile
 from openc3.config.config_parser import ConfigParser
 from openc3.packets.packet import Packet
 from openc3.packets.parsers.packet_parser import PacketParser
@@ -24,10 +25,12 @@ from openc3.packets.parsers.limits_parser import LimitsParser
 from openc3.packets.parsers.limits_response_parser import LimitsResponseParser
 from openc3.packets.parsers.format_string_parser import FormatStringParser
 from openc3.packets.parsers.processor_parser import ProcessorParser
+from openc3.conversions.generic_conversion import GenericConversion
 from openc3.conversions.polynomial_conversion import PolynomialConversion
 from openc3.conversions.segmented_polynomial_conversion import (
     SegmentedPolynomialConversion,
 )
+from openc3.utilities.extract import convert_to_value
 from openc3.utilities.logger import Logger
 from openc3.utilities.string import (
     filename_to_module,
@@ -58,9 +61,7 @@ class PacketConfig:
         self.commands["UNKNOWN"] = {}
         self.commands["UNKNOWN"]["UNKNOWN"] = Packet("UNKNOWN", "UNKNOWN", "BIG_ENDIAN")
         self.telemetry["UNKNOWN"] = {}
-        self.telemetry["UNKNOWN"]["UNKNOWN"] = Packet(
-            "UNKNOWN", "UNKNOWN", "BIG_ENDIAN"
-        )
+        self.telemetry["UNKNOWN"]["UNKNOWN"] = Packet("UNKNOWN", "UNKNOWN", "BIG_ENDIAN")
 
         self.reset_processing_variables()
 
@@ -93,147 +94,175 @@ class PacketConfig:
         parser = ConfigParser("https://docs.openc3.com/docs")
         setattr(parser, "target_name", process_target_name)
         for keyword, params in parser.parse_file(filename):
-            match keyword:
-                # Start a new packet
-                case "COMMAND":
-                    self.finish_packet()
-                    self.current_packet = PacketParser.parse_command(
-                        parser, process_target_name, self.commands, self.warnings
-                    )
-                    self.current_cmd_or_tlm = PacketConfig.COMMAND
+            if self.building_generic_conversion:
+                match keyword:
+                    # Complete a generic conversion
+                    case "GENERIC_READ_CONVERSION_END" | "GENERIC_WRITE_CONVERSION_END":
+                        parser.verify_num_parameters(0, 0, keyword)
+                        if "READ" in keyword:
+                            self.current_item.read_conversion = GenericConversion(
+                                self.proc_text,
+                                self.converted_type,
+                                self.converted_bit_size,
+                            )
+                        if "WRITE" in keyword:
+                            self.current_item.write_conversion = GenericConversion(
+                                self.proc_text,
+                                self.converted_type,
+                                self.converted_bit_size,
+                            )
+                        self.building_generic_conversion = False
+                    # Add the current config.line to the conversion being built
+                    case _:
+                        self.proc_text += parser.line + "\n"
 
-                case "TELEMETRY":
-                    self.finish_packet()
-                    self.current_packet = PacketParser.parse_telemetry(
-                        parser,
-                        process_target_name,
-                        self.telemetry,
-                        self.latest_data,
-                        self.warnings,
-                    )
-                    self.current_cmd_or_tlm = PacketConfig.TELEMETRY
-
-                # Select an existing packet for editing
-                case "SELECT_COMMAND" | "SELECT_TELEMETRY":
-                    usage = f"{keyword} <TARGET NAME> <PACKET NAME>"
-                    self.finish_packet()
-                    parser.verify_num_parameters(2, 2, usage)
-                    target_name = process_target_name
-                    if target_name == "SYSTEM":
-                        target_name = params[0].upper()
-                    packet_name = params[1].upper()
-
-                    self.current_packet = None
-                    if "COMMAND" in keyword:
-                        self.current_cmd_or_tlm = PacketConfig.COMMAND
-                        if self.commands.get(target_name):
-                            self.current_packet = self.commands[target_name][
-                                packet_name
-                            ]
-                    else:
-                        self.current_cmd_or_tlm = PacketConfig.TELEMETRY
-                        if self.telemetry.get(target_name):
-                            self.current_packet = self.telemetry[target_name][
-                                packet_name
-                            ]
-
-                    if not self.current_packet:
-                        raise parser.error("Packet not found", usage)
-
-                # Start the creation of a new limits group
-                case "LIMITS_GROUP":
-                    usage = "LIMITS_GROUP <GROUP NAME>"
-                    parser.verify_num_parameters(1, 1, usage)
-                    self.current_limits_group = params[0].upper()
-                    if self.current_limits_group not in self.limits_groups:
-                        self.limits_groups[self.current_limits_group] = []
-
-                # Add a telemetry item to the limits group
-                case "LIMITS_GROUP_ITEM":
-                    usage = "LIMITS_GROUP_ITEM <TARGET NAME> <PACKET NAME> <ITEM NAME>"
-                    parser.verify_num_parameters(3, 3, usage)
-                    if self.current_limits_group:
-                        self.limits_groups[self.current_limits_group].append(
-                            [params[0].upper(), params[1].upper(), params[2].upper()]
+            else:  # not building generic conversion
+                match keyword:
+                    # Start a new packet
+                    case "COMMAND":
+                        self.finish_packet()
+                        self.current_packet = PacketParser.parse_command(
+                            parser, process_target_name, self.commands, self.warnings
                         )
+                        self.current_cmd_or_tlm = PacketConfig.COMMAND
 
-                #######################################################################
-                # All the following keywords must have a current packet defined
-                #######################################################################
-                case (
-                    "SELECT_ITEM"
-                    | "SELECT_PARAMETER"
-                    | "DELETE_ITEM"
-                    | "DELETE_PARAMETER"
-                    | "ITEM"
-                    | "PARAMETER"
-                    | "ID_ITEM"
-                    | "ID_PARAMETER"
-                    | "ARRAY_ITEM"
-                    | "ARRAY_PARAMETER"
-                    | "APPEND_ITEM"
-                    | "APPEND_PARAMETER"
-                    | "APPEND_ID_ITEM"
-                    | "APPEND_ID_PARAMETER"
-                    | "APPEND_ARRAY_ITEM"
-                    | "APPEND_ARRAY_PARAMETER"
-                    | "ALLOW_SHORT"
-                    | "HAZARDOUS"
-                    | "PROCESSOR"
-                    | "META"
-                    | "DISABLE_MESSAGES"
-                    | "HIDDEN"
-                    | "DISABLED"
-                    | "ACCESSOR"
-                    | "TEMPLATE"
-                    | "TEMPLATE_FILE"
-                    | "RESPONSE"
-                    | "ERROR_RESPONSE"
-                    | "SCREEN"
-                    | "RELATED_ITEM"
-                ):
-                    if not self.current_packet:
-                        raise parser.error(f"No current packet for {keyword}")
-                    self.process_current_packet(parser, keyword, params)
+                    case "TELEMETRY":
+                        self.finish_packet()
+                        self.current_packet = PacketParser.parse_telemetry(
+                            parser,
+                            process_target_name,
+                            self.telemetry,
+                            self.latest_data,
+                            self.warnings,
+                        )
+                        self.current_cmd_or_tlm = PacketConfig.TELEMETRY
 
-                #######################################################################
-                # All the following keywords must have a current item defined
-                #######################################################################
-                case (
-                    "STATE"
-                    | "READ_CONVERSION"
-                    | "WRITE_CONVERSION"
-                    | "POLY_READ_CONVERSION"
-                    | "POLY_WRITE_CONVERSION"
-                    | "SEG_POLY_READ_CONVERSION"
-                    | "SEG_POLY_WRITE_CONVERSION"
-                    | "GENERIC_READ_CONVERSION_START"
-                    | "GENERIC_WRITE_CONVERSION_START"
-                    | "REQUIRED"
-                    | "LIMITS"
-                    | "LIMITS_RESPONSE"
-                    | "UNITS"
-                    | "FORMAT_STRING"
-                    | "DESCRIPTION"
-                    | "MINIMUM_VALUE"
-                    | "MAXIMUM_VALUE"
-                    | "DEFAULT_VALUE"
-                    | "OVERFLOW"
-                    | "OVERLAP"
-                    | "KEY"
-                ):
-                    if not self.current_item:
-                        raise parser.error(f"No current item for {keyword}")
-                    self.process_current_item(parser, keyword, params)
+                    # Select an existing packet for editing
+                    case "SELECT_COMMAND" | "SELECT_TELEMETRY":
+                        usage = f"{keyword} <TARGET NAME> <PACKET NAME>"
+                        self.finish_packet()
+                        parser.verify_num_parameters(2, 2, usage)
+                        target_name = process_target_name
+                        if target_name == "SYSTEM":
+                            target_name = params[0].upper()
+                        packet_name = params[1].upper()
 
-                case _:
-                    # blank config.lines will have a None keyword and should not raise an exception
-                    if keyword:
-                        raise parser.error(f"Unknown keyword '{keyword}'")
+                        self.current_packet = None
+                        if "COMMAND" in keyword:
+                            self.current_cmd_or_tlm = PacketConfig.COMMAND
+                            if self.commands.get(target_name):
+                                self.current_packet = self.commands[target_name][packet_name]
+                        else:
+                            self.current_cmd_or_tlm = PacketConfig.TELEMETRY
+                            if self.telemetry.get(target_name):
+                                self.current_packet = self.telemetry[target_name][packet_name]
+
+                        if not self.current_packet:
+                            raise parser.error("Packet not found", usage)
+
+                    # Start the creation of a new limits group
+                    case "LIMITS_GROUP":
+                        usage = "LIMITS_GROUP <GROUP NAME>"
+                        parser.verify_num_parameters(1, 1, usage)
+                        self.current_limits_group = params[0].upper()
+                        if self.current_limits_group not in self.limits_groups:
+                            self.limits_groups[self.current_limits_group] = []
+
+                    # Add a telemetry item to the limits group
+                    case "LIMITS_GROUP_ITEM":
+                        usage = "LIMITS_GROUP_ITEM <TARGET NAME> <PACKET NAME> <ITEM NAME>"
+                        parser.verify_num_parameters(3, 3, usage)
+                        if self.current_limits_group:
+                            self.limits_groups[self.current_limits_group].append(
+                                [
+                                    params[0].upper(),
+                                    params[1].upper(),
+                                    params[2].upper(),
+                                ]
+                            )
+
+                    #######################################################################
+                    # All the following keywords must have a current packet defined
+                    #######################################################################
+                    case (
+                        "SELECT_ITEM"
+                        | "SELECT_PARAMETER"
+                        | "DELETE_ITEM"
+                        | "DELETE_PARAMETER"
+                        | "ITEM"
+                        | "PARAMETER"
+                        | "ID_ITEM"
+                        | "ID_PARAMETER"
+                        | "ARRAY_ITEM"
+                        | "ARRAY_PARAMETER"
+                        | "APPEND_ITEM"
+                        | "APPEND_PARAMETER"
+                        | "APPEND_ID_ITEM"
+                        | "APPEND_ID_PARAMETER"
+                        | "APPEND_ARRAY_ITEM"
+                        | "APPEND_ARRAY_PARAMETER"
+                        | "ALLOW_SHORT"
+                        | "HAZARDOUS"
+                        | "PROCESSOR"
+                        | "META"
+                        | "DISABLE_MESSAGES"
+                        | "HIDDEN"
+                        | "DISABLED"
+                        | "VIRTUAL"
+                        | "ACCESSOR"
+                        | "VALIDATOR"
+                        | "TEMPLATE"
+                        | "TEMPLATE_FILE"
+                        | "RESPONSE"
+                        | "ERROR_RESPONSE"
+                        | "SCREEN"
+                        | "RELATED_ITEM"
+                        | "IGNORE_OVERLAP"
+                    ):
+                        if not self.current_packet:
+                            raise parser.error(f"No current packet for {keyword}")
+                        self.process_current_packet(parser, keyword, params)
+
+                    #######################################################################
+                    # All the following keywords must have a current item defined
+                    #######################################################################
+                    case (
+                        "STATE"
+                        | "READ_CONVERSION"
+                        | "WRITE_CONVERSION"
+                        | "POLY_READ_CONVERSION"
+                        | "POLY_WRITE_CONVERSION"
+                        | "SEG_POLY_READ_CONVERSION"
+                        | "SEG_POLY_WRITE_CONVERSION"
+                        | "GENERIC_READ_CONVERSION_START"
+                        | "GENERIC_WRITE_CONVERSION_START"
+                        | "REQUIRED"
+                        | "LIMITS"
+                        | "LIMITS_RESPONSE"
+                        | "UNITS"
+                        | "FORMAT_STRING"
+                        | "DESCRIPTION"
+                        | "MINIMUM_VALUE"
+                        | "MAXIMUM_VALUE"
+                        | "DEFAULT_VALUE"
+                        | "OVERFLOW"
+                        | "OVERLAP"
+                        | "KEY"
+                        | "VARIABLE_BIT_SIZE"
+                    ):
+                        if not self.current_item:
+                            raise parser.error(f"No current item for {keyword}")
+                        self.process_current_item(parser, keyword, params)
+
+                    case _:
+                        # blank config.lines will have a None keyword and should not raise an exception
+                        if keyword:
+                            raise parser.error(f"Unknown keyword '{keyword}'")
 
         # Complete the last defined packet
         self.finish_packet()
 
+    # TODO: Used in xtce conversion
     # # Convert the PacketConfig back to OpenC3 configuration files for each target
     # def to_config(output_dir)
     #   FileUtils.mkdir_p(output_dir)
@@ -294,26 +323,46 @@ class PacketConfig:
                 self.warnings += warnings
             if self.current_cmd_or_tlm == PacketConfig.COMMAND:
                 PacketParser.check_item_data_types(self.current_packet)
-                self.commands[self.current_packet.target_name][
-                    self.current_packet.packet_name
-                ] = self.current_packet
-                hash = self.cmd_id_value_hash.get(self.current_packet.target_name)
-                if not hash:
-                    hash = {}
-                self.cmd_id_value_hash[self.current_packet.target_name] = hash
-                self.update_id_value_hash(hash)
+                self.commands[self.current_packet.target_name][self.current_packet.packet_name] = self.current_packet
+                if not self.current_packet.virtual:
+                    hash = self.cmd_id_value_hash.get(self.current_packet.target_name)
+                    if not hash:
+                        hash = {}
+                    self.cmd_id_value_hash[self.current_packet.target_name] = hash
+                    self.update_id_value_hash(hash)
             else:
-                self.telemetry[self.current_packet.target_name][
-                    self.current_packet.packet_name
-                ] = self.current_packet
-                hash = self.tlm_id_value_hash.get(self.current_packet.target_name)
-                if not hash:
-                    hash = {}
-                self.tlm_id_value_hash[self.current_packet.target_name] = hash
-                self.update_id_value_hash(hash)
+                self.telemetry[self.current_packet.target_name][self.current_packet.packet_name] = self.current_packet
+                if not self.current_packet.virtual:
+                    hash = self.tlm_id_value_hash.get(self.current_packet.target_name)
+                    if not hash:
+                        hash = {}
+                    self.tlm_id_value_hash[self.current_packet.target_name] = hash
+                    self.update_id_value_hash(hash)
 
             self.current_packet = None
             self.current_item = None
+
+    # This method provides way to quickly test packet configs
+    #
+    # from openc3.packets.packet_config import PacketConfig
+    #
+    # config = """
+    #   ...
+    # """
+    #
+    # pc = PacketConfig.from_config(config, "MYTARGET")
+    # c = pc.commands['CMDADCS']['SET_POINTING_CMD']
+    # c.restore_defaults()
+    # c.write("MYITEM", 5)
+    # print(c.buffer)
+    @classmethod
+    def from_config(cls, config, process_target_name):
+        pc = cls()
+        with tempfile.NamedTemporaryFile(mode="w+t", suffix=".txt") as tf:
+            tf.write(config)
+            tf.seek(0)
+            pc.process_file(tf.name, process_target_name)
+        return pc
 
     def update_id_value_hash(self, hash):
         if self.current_packet.id_items and len(self.current_packet.id_items) > 0:
@@ -335,13 +384,9 @@ class PacketConfig:
         match keyword:
             # Select or delete an item in the current packet
             case "SELECT_PARAMETER" | "SELECT_ITEM" | "DELETE_PARAMETER" | "DELETE_ITEM":
-                if (self.current_cmd_or_tlm == PacketConfig.COMMAND) and (
-                    keyword.split("_")[1] == "ITEM"
-                ):
+                if (self.current_cmd_or_tlm == PacketConfig.COMMAND) and (keyword.split("_")[1] == "ITEM"):
                     raise parser.error(f"{keyword} only applies to telemetry packets")
-                if (self.current_cmd_or_tlm == PacketConfig.TELEMETRY) and (
-                    keyword.split("_")[1] == "PARAMETER"
-                ):
+                if (self.current_cmd_or_tlm == PacketConfig.TELEMETRY) and (keyword.split("_")[1] == "PARAMETER"):
                     raise parser.error(f"{keyword} only applies to command packets")
 
                 usage = f"{keyword} <{keyword.split('_')[1]} NAME>"
@@ -352,12 +397,10 @@ class PacketConfig:
                         self.current_item = self.current_packet.get_item(params[0])
                     else:  # DELETE
                         self.current_packet.delete_item(params[0])
-                except (
-                    AttributeError
-                ):  # Rescue the default execption to provide a nicer error message
+                except Exception:  # Rescue the default exception to provide a nicer error message
                     raise parser.error(
-                        f"{params[0]} not found in {self.current_cmd_or_tlm.lower()} packet {self.current_packet.target_name} {self.current_packet.packet_name}"
-                        | usage,
+                        f"{params[0]} not found in {self.current_cmd_or_tlm.lower()} packet {self.current_packet.target_name} {self.current_packet.packet_name}",
+                        usage,
                     )
 
             # Start a new telemetry item in the current packet
@@ -387,14 +430,12 @@ class PacketConfig:
                 usage = "HAZARDOUS <HAZARDOUS DESCRIPTION (Optional)>"
                 parser.verify_num_parameters(0, 1, usage)
                 self.current_packet.hazardous = True
-                if params[0]:
+                if len(params) == 1:
                     self.current_packet.hazardous_description = params[0]
 
             # Define a processor class that will be called once case a packet is received
             case "PROCESSOR":
-                ProcessorParser.parse(
-                    parser, self.current_packet, self.current_cmd_or_tlm
-                )
+                ProcessorParser.parse(parser, self.current_packet, self.current_cmd_or_tlm)
 
             case "DISABLE_MESSAGES":
                 usage = keyword
@@ -410,7 +451,7 @@ class PacketConfig:
                 else:
                     meta_values = []
                 for index, value in enumerate(meta_values):
-                    if type(value) is str:
+                    if isinstance(value, str):
                         meta_values[index] = value
                 if self.current_item:
                     # Item META
@@ -430,27 +471,50 @@ class PacketConfig:
                 self.current_packet.hidden = True
                 self.current_packet.disabled = True
 
+            case "VIRTUAL":
+                usage = keyword
+                parser.verify_num_parameters(0, 0, usage)
+                self.current_packet.hidden = True
+                self.current_packet.disabled = True
+                self.current_packet.virtual = True
+
+            case "RESTRICTED":
+                usage = keyword
+                parser.verify_num_parameters(0, 0, usage)
+                self.current_packet.restricted = True
+
             case "ACCESSOR":
-                usage = f"{keyword} <Accessor class name>"
+                usage = f"{keyword} <Class name> <Optional parameters> ..."
                 parser.verify_num_parameters(1, None, usage)
                 try:
                     filename = class_name_to_filename(params[0])
-                    klass = get_class_from_module(
-                        f"openc3.accessors.{filename}", params[0]
-                    )
-                    if params.length > 1:
-                        self.current_packet.accessor = klass(
-                            self.current_packet, *params[1:]
-                        )
+                    klass = get_class_from_module(f"openc3.accessors.{filename}", params[0])
+                    if len(params) > 1:
+                        self.current_packet.accessor = klass(self.current_packet, *params[1:])
                     else:
                         self.current_packet.accessor = klass(self.current_packet)
-                except RuntimeError as error:
+                except ModuleNotFoundError as error:
+                    raise parser.error(error)
+
+            case "VALIDATOR":
+                usage = f"{keyword} <Class name> <Optional parameters> ..."
+                parser.verify_num_parameters(1, None, usage)
+                try:
+                    klass = get_class_from_module(
+                        filename_to_module(params[0]),
+                        filename_to_class_name(params[0]),
+                    )
+                    if len(params) > 1:
+                        self.current_packet.validator = klass(self.current_packet, *params[1:])
+                    else:
+                        self.current_packet.validator = klass(self.current_packet)
+                except ModuleNotFoundError as error:
                     raise parser.error(error)
 
             case "TEMPLATE":
                 usage = f"{keyword} <Template string>"
                 parser.verify_num_parameters(1, 1, usage)
-                self.current_packet.template = params[0]
+                self.current_packet.template = bytearray(params[0], "ascii")
 
             case "TEMPLATE_FILE":
                 usage = f"{keyword} <Template file path>"
@@ -458,17 +522,21 @@ class PacketConfig:
 
                 try:
                     self.current_packet.template = parser.read_file(params[0])
-                except RuntimeError as error:
+                except OSError as error:
                     raise parser.error(error)
 
             case "RESPONSE":
                 usage = f"{keyword} <Target Name> <Packet Name>"
                 parser.verify_num_parameters(2, 2, usage)
+                if self.current_cmd_or_tlm == PacketConfig.TELEMETRY:
+                    raise parser.error(f"{keyword} only applies to command packets")
                 self.current_packet.response = [params[0].upper(), params[1].upper()]
 
             case "ERROR_RESPONSE":
                 usage = f"{keyword} <Target Name> <Packet Name>"
                 parser.verify_num_parameters(2, 2, usage)
+                if self.current_cmd_or_tlm == PacketConfig.TELEMETRY:
+                    raise parser.error(f"{keyword} only applies to command packets")
                 self.current_packet.error_response = [
                     params[0].upper(),
                     params[1].upper(),
@@ -477,16 +545,23 @@ class PacketConfig:
             case "SCREEN":
                 usage = f"{keyword} <Target Name> <Screen Name>"
                 parser.verify_num_parameters(2, 2, usage)
+                if self.current_cmd_or_tlm == PacketConfig.TELEMETRY:
+                    raise parser.error(f"{keyword} only applies to command packets")
                 self.current_packet.screen = [params[0].upper(), params[1].upper()]
 
             case "RELATED_ITEM":
                 usage = f"{keyword} <Target Name> <Packet Name> <Item Name>"
                 parser.verify_num_parameters(3, 3, usage)
+                if self.current_cmd_or_tlm == PacketConfig.TELEMETRY:
+                    raise parser.error(f"{keyword} only applies to command packets")
                 if not self.current_packet.related_items:
                     self.current_packet.related_items = []
-                self.current_packet.related_items.append(
-                    [params[0].upper(), params[1].upper(), params[2].upper()]
-                )
+                self.current_packet.related_items.append([params[0].upper(), params[1].upper(), params[2].upper()])
+
+            case "IGNORE_OVERLAP":
+                usage = f"{keyword}"
+                parser.verify_num_parameters(0, 0, usage)
+                self.current_packet.ignore_overlap = True
 
     def process_current_item(self, parser, keyword, params):
         match keyword:
@@ -536,20 +611,24 @@ class PacketConfig:
             case "SEG_POLY_READ_CONVERSION":
                 usage = "SEG_POLY_READ_CONVERSION <Lower Bound> <C0> <C1> <C2> ..."
                 parser.verify_num_parameters(2, None, usage)
-                self.current_item.read_conversion = SegmentedPolynomialConversion()
-                self.current_item.read_conversion.add_segment(
-                    float(params[0]), *params[1:]
-                )
+                if (
+                    self.current_item.read_conversion is None
+                    or self.current_item.read_conversion.__class__ != SegmentedPolynomialConversion
+                ):
+                    self.current_item.read_conversion = SegmentedPolynomialConversion()
+                self.current_item.read_conversion.add_segment(float(params[0]), *params[1:])
 
             # Apply a segmented polynomial conversion to the current item
             # before it is written to the telemetry packet
             case "SEG_POLY_WRITE_CONVERSION":
                 usage = "SEG_POLY_WRITE_CONVERSION <Lower Bound> <C0> <C1> <C2> ..."
                 parser.verify_num_parameters(2, None, usage)
-                self.current_item.write_conversion = SegmentedPolynomialConversion()
-                self.current_item.write_conversion.add_segment(
-                    float(params[0]), *params[1:]
-                )
+                if (
+                    self.current_item.write_conversion is None
+                    or self.current_item.write_conversion.__class__ != SegmentedPolynomialConversion
+                ):
+                    self.current_item.write_conversion = SegmentedPolynomialConversion()
+                self.current_item.write_conversion.add_segment(float(params[0]), *params[1:])
 
             # Start the definition of a generic conversion.
             # All config.lines following this config.line are considered part
@@ -561,7 +640,7 @@ class PacketConfig:
                 self.building_generic_conversion = True
                 self.converted_type = None
                 self.converted_bit_size = None
-                if params[0]:
+                if len(params) == 2:
                     self.converted_type = params[0].upper()
                     if self.converted_type not in [
                         "INT",
@@ -570,10 +649,7 @@ class PacketConfig:
                         "STRING",
                         "BLOCK",
                     ]:
-                        raise parser.error(
-                            f"Invalid converted_type: {self.converted_type}."
-                        )
-                if params[1]:
+                        raise parser.error(f"Invalid converted_type: {self.converted_type}.")
                     self.converted_bit_size = int(params[1])
                 if self.converted_type is None or self.converted_bit_size is None:
                     msg = f"Generic Conversion on item {self.current_item.name} does not specify converted type or bit size"
@@ -596,9 +672,7 @@ class PacketConfig:
             # Define a response class that will be called case the limits state of the:
             # current item changes.
             case "LIMITS_RESPONSE":
-                LimitsResponseParser.parse(
-                    parser, self.current_item, self.current_cmd_or_tlm
-                )
+                LimitsResponseParser.parse(parser, self.current_item, self.current_cmd_or_tlm)
 
             # Define a printf style formatting string for the current telemetry item
             case "FORMAT_STRING":
@@ -627,15 +701,15 @@ class PacketConfig:
                 else:
                     raise parser.error(f"{keyword} only applies to command parameters")
 
-            # Update the mimimum value for the current command parameter
+            # Update the minimum value for the current command parameter
             case "MINIMUM_VALUE":
                 if self.current_cmd_or_tlm == PacketConfig.TELEMETRY:
-                    raise parser.error("{keyword} only applies to command parameters")
+                    raise parser.error(f"{keyword} only applies to command parameters")
 
                 usage = "MINIMUM_VALUE <MINIMUM VALUE>"
                 parser.verify_num_parameters(1, 1, usage)
                 min = ConfigParser.handle_defined_constants(
-                    params[0].convert_to_value,
+                    convert_to_value(params[0]),
                     self.current_item.data_type,
                     self.current_item.bit_size,
                 )
@@ -644,12 +718,12 @@ class PacketConfig:
             # Update the maximum value for the current command parameter
             case "MAXIMUM_VALUE":
                 if self.current_cmd_or_tlm == PacketConfig.TELEMETRY:
-                    raise parser.error("{keyword} only applies to command parameters")
+                    raise parser.error(f"{keyword} only applies to command parameters")
 
                 usage = "MAXIMUM_VALUE <MAXIMUM VALUE>"
                 parser.verify_num_parameters(1, 1, usage)
                 max = ConfigParser.handle_defined_constants(
-                    params[0].convert_to_value,
+                    convert_to_value(params[0]),
                     self.current_item.data_type,
                     self.current_item.bit_size,
                 )
@@ -657,18 +731,16 @@ class PacketConfig:
 
             # Update the default value for the current command parameter
             case "DEFAULT_VALUE":
-                if self.current_cmd_or_tlm == ConfigParser.TELEMETRY:
+                if self.current_cmd_or_tlm == PacketConfig.TELEMETRY:
                     raise parser.error(f"{keyword} only applies to command parameters")
 
                 usage = "DEFAULT_VALUE <DEFAULT VALUE>"
                 parser.verify_num_parameters(1, 1, usage)
-                if (self.current_item.data_type == "STRING") or (
-                    self.current_item.data_type == "BLOCK"
-                ):
+                if (self.current_item.data_type == "STRING") or (self.current_item.data_type == "BLOCK"):
                     self.current_item.default = params[0]
                 else:
                     self.current_item.default = ConfigParser.handle_defined_constants(
-                        params[0].convert_to_value,
+                        convert_to_value(params[0]),
                         self.current_item.data_type,
                         self.current_item.bit_size,
                     )
@@ -687,11 +759,24 @@ class PacketConfig:
                 parser.verify_num_parameters(1, 1, "KEY <key or path into data>")
                 self.current_item.key = params[0]
 
+            case "VARIABLE_BIT_SIZE":
+                parser.verify_num_parameters(
+                    1,
+                    3,
+                    "VARIABLE_BIT_SIZE <length_item_name> <length_bits_per_count = 8> <length_value_bit_offset = 0>",
+                )
+
+                variable_bit_size = {"length_bits_per_count": 8, "length_value_bit_offset": 0}
+                variable_bit_size["length_item_name"] = params[0].upper()
+                if len(params) > 1:
+                    variable_bit_size["length_bits_per_count"] = int(params[1])
+                if len(params) > 2:
+                    variable_bit_size["length_value_bit_offset"] = int(params[2])
+                self.current_item.variable_bit_size = variable_bit_size
+
     def start_item(self, parser):
         self.finish_item()
-        self.current_item = PacketItemParser.parse(
-            parser, self.current_packet, self.current_cmd_or_tlm, self.warnings
-        )
+        self.current_item = PacketItemParser.parse(parser, self.current_packet, self.current_cmd_or_tlm, self.warnings)
 
     # Finish updating packet item
     def finish_item(self):

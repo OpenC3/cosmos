@@ -1,10 +1,13 @@
 ---
 title: Command and Telemetry Server
+description: Status about interfaces, targets and log messages
+sidebar_custom_props:
+  myEmoji: 🛠️
 ---
 
 ## Introduction
 
-The Command and Telemetry Server application provides status about the [interfaces](../configuration/interfaces.md) and targets instantiated in your COSMOS installation. Intefaces can be connected or disconnected and raw byte counts are returned. The application also provides quick shortcuts to view
+The Command and Telemetry Server application provides status about the [interfaces](../configuration/interfaces.md) and targets instantiated in your COSMOS installation. Interfaces can be connected or disconnected and raw byte counts are returned. The application also provides quick shortcuts to view
 both raw and formatted command and telemetry packets as they go through the COSMOS system. At the bottom of the Command and Telemetry Server is the Log Messages showing server messages.
 
 ![Cmd Tlm Server](/img/cmd_tlm_server/cmd_tlm_server.png)
@@ -27,9 +30,19 @@ The Interfaces tab displays all the interfaces defined by your COSMOS installati
 
 ## Targets Tab
 
-The Targets tab displays all the targets and their mapped interfaces.
+The Targets tab displays all the targets and their mapped interfaces along with the Command Authority status (Enterprise Only).
 
 ![Targets](/img/cmd_tlm_server/targets.png)
+
+Command Authority is enabled in the Admin Console and is enabled scope wide. Once Command Authority is enabled, individual users can give and take Command Authority which enables exclusive command and script access to that target. Without Command Authority, users can not send a command or start a script under that target. Note, commands or scripts scheduled with Calendar or Autonomic are not affected by Command Authority.
+
+![Command Authority](/img/cmd_tlm_server/cmd_authority.png)
+
+The other option shown in the Scope List is the Critical Command Mode. Critical commanding requires a different user to approve each command. It can either be enabled on just HAZARDOUS and RESTRICTED commands or on all manual commanding.
+
+Here is an example of sending a HAZARDOUS command in Command Sender when Critical Command Mode is set to NORMAL.
+
+![Critical Command](/img/cmd_tlm_server/critical_cmd_sender.png)
 
 ## Command Packets Tab
 

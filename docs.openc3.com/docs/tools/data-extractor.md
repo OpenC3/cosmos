@@ -1,5 +1,8 @@
 ---
 title: Data Extractor
+description: Extract command or telemetry data into files
+sidebar_custom_props:
+  myEmoji: 🛠️
 ---
 
 ## Introduction
@@ -88,7 +91,7 @@ This allows you to change the data type of all items in the list. Clicking the p
 
 ## Processing Items
 
-Clicking the Process button starts the processing of the items list. A progress wheel is shown on the left side of the table and the Process button changes to Cancel to allow cancelling the process.
+Clicking the Process button starts the processing of the items list. A progress wheel is shown on the left side of the table and the Process button changes to Cancel to allow canceling the process.
 
 ![Processing](/img/data_extractor/processing.png)
 

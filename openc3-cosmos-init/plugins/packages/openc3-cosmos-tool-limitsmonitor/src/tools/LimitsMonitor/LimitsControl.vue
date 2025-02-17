@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -25,139 +25,154 @@
     <v-card class="pa-5">
       <v-row class="ma-1">
         <v-text-field
-          dense
-          outlined
+          density="compact"
+          variant="outlined"
           readonly
           hide-details
           label="Overall Limits State"
-          :prepend-inner-icon="astroIcon"
-          :value="overallStateFormatted"
+          :model-value="overallStateFormatted"
           :class="textFieldClass"
           style="margin-right: 10px; max-width: 280px"
           data-test="overall-state"
-        />
+        >
+          <template v-slot:prepend-inner v-if="astroStatus">
+            <rux-status :status="astroStatus" />
+          </template>
+        </v-text-field>
         <v-text-field
-          dense
-          outlined
+          density="compact"
+          variant="outlined"
           readonly
           hide-details
           label="Current Limits Set"
-          :value="currentLimitsSet"
+          :model-value="currentLimitsSet"
           style="max-width: 200px"
           data-test="limits-set"
         />
       </v-row>
 
+      <v-row data-test="limits-row" class="my-0 ml-1 mr-1">
+        <div class="pa-1 mt-1 mr-2 label" style="width: 200px">Timestamp</div>
+        <div class="pa-1 mt-1 mr-2 label" style="width: 200px">Item Name</div>
+        <div class="pa-1 mt-1 mr-2 label" style="width: 200px">Value</div>
+        <div class="pa-1 mt-1 mr-2 label" style="width: 180px">Limits Bar</div>
+        <div class="pa-1 mt-1 mr-2 label">Controls</div>
+      </v-row>
       <div v-for="(item, index) in items" :key="item.key">
-        <v-row data-test="limits-row" class="my-0 ml-1 mr-1">
+        <v-row data-test="limits-row" class="align-center my-0 mx-1">
+          <div class="pa-1 mt-1 mr-2 label" style="width: 200px">
+            {{ item.timestamp }}
+          </div>
           <labelvaluelimitsbar-widget
             v-if="item.limits"
             :parameters="item.parameters"
             :settings="widgetSettings"
+            :screen-values="screenValues"
+            :screen-time-zone="timeZone"
+            v-on:add-item="addItem"
+            v-on:delete-item="deleteItem"
           />
           <labelvalue-widget
             v-else
             :parameters="item.parameters"
             :settings="widgetSettings"
+            :screen-values="screenValues"
+            :screen-time-zone="timeZone"
+            v-on:add-item="addItem"
+            v-on:delete-item="deleteItem"
           />
-          <v-tooltip bottom>
-            <template v-slot:activator="{ on, attrs }">
+          <v-tooltip location="top">
+            <template v-slot:activator="{ props }">
               <v-btn
-                icon
+                icon="mdi-close-circle-multiple"
+                variant="text"
+                density="compact"
                 class="mr-2"
                 @click="ignorePacket(item.key)"
-                v-bind="attrs"
-                v-on="on"
-              >
-                <v-icon> mdi-close-circle-multiple </v-icon>
-              </v-btn>
+                v-bind="props"
+              />
             </template>
             <span>Ignore Entire Packet</span>
           </v-tooltip>
-          <v-tooltip bottom>
-            <template v-slot:activator="{ on, attrs }">
+          <v-tooltip location="top">
+            <template v-slot:activator="{ props }">
               <v-btn
-                icon
+                icon="mdi-close-circle"
+                variant="text"
+                density="compact"
                 class="mr-2"
                 @click="ignoreItem(item.key)"
-                v-bind="attrs"
-                v-on="on"
-              >
-                <v-icon> mdi-close-circle </v-icon>
-              </v-btn>
+                v-bind="props"
+              />
             </template>
             <span>Ignore Item</span>
           </v-tooltip>
-          <v-tooltip bottom>
-            <template v-slot:activator="{ on, attrs }">
+          <v-tooltip location="top">
+            <template v-slot:activator="{ props }">
               <v-btn
-                icon
+                icon="mdi-eye-off"
+                variant="text"
+                density="compact"
                 class="mr-2"
                 @click="removeItem(item.key)"
-                v-bind="attrs"
-                v-on="on"
-              >
-                <v-icon> mdi-eye-off </v-icon>
-              </v-btn>
+                v-bind="props"
+              />
             </template>
             <span>Temporarily Hide Item</span>
           </v-tooltip>
         </v-row>
-        <v-divider v-if="index < items.length - 1" :key="index" />
+        <v-divider v-if="index < items.length" :key="index" />
+      </div>
+      <div class="footer">
+        Note: Timestamp is "now" for items currently out of limits when the page
+        is loaded.
       </div>
     </v-card>
     <v-dialog v-model="ignoredItemsDialog" max-width="600">
-      <v-divider v-if="index < items.length - 1" :key="index" />
       <v-card>
-        <v-system-bar>
+        <v-toolbar height="24">
           <v-spacer />
           <span>Ignored Items</span>
           <v-spacer />
-        </v-system-bar>
-        <v-card-text>
-          <div class="my-2">
+        </v-toolbar>
+        <v-card-text class="mt-2">
+          <div>
             <div v-for="(item, index) in ignoredFormatted" :key="index">
-              <v-row class="ma-1">
+              <v-row class="ma-1 align-center">
                 <span class="font-weight-black"> {{ item }} </span>
                 <v-spacer />
                 <v-btn
-                  @click="restoreItem(item, index)"
-                  small
-                  icon
+                  @click="restoreItem(index)"
+                  icon="mdi-delete"
+                  density="compact"
+                  variant="text"
                   :data-test="`remove-ignore-${index}`"
-                >
-                  <v-icon> mdi-delete </v-icon>
-                </v-btn>
+                />
               </v-row>
               <v-divider
                 v-if="index < ignoredFormatted.length - 1"
                 :key="index"
               />
             </div>
-            <v-row class="mt-2">
-              <v-spacer />
-              <v-btn
-                @click="ignoredItemsDialog = false"
-                class="mx-2"
-                color="primary"
-              >
-                Ok
-              </v-btn>
-            </v-row>
-            <v-divider v-if="index < items.length - 1" :key="index" />
           </div>
         </v-card-text>
+        <v-card-actions class="px-2">
+          <v-btn variant="outlined" @click="clearAll"> Clear All </v-btn>
+          <v-spacer />
+          <v-btn variant="flat" @click="ignoredItemsDialog = false"> Ok </v-btn>
+        </v-card-actions>
       </v-card>
     </v-dialog>
   </div>
 </template>
 
 <script>
-import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
-import Cable from '@openc3/tool-common/src/services/cable.js'
-import LabelvalueWidget from '@openc3/tool-common/src/components/widgets/LabelvalueWidget'
-import LabelvaluelimitsbarWidget from '@openc3/tool-common/src/components/widgets/LabelvaluelimitsbarWidget'
-import Vue from 'vue'
+import { Cable, OpenC3Api } from '@openc3/js-common/services'
+import { TimeFilters } from '@openc3/vue-common/util'
+import {
+  LabelvalueWidget,
+  LabelvaluelimitsbarWidget,
+} from '@openc3/vue-common/widgets'
 
 export default {
   components: {
@@ -165,11 +180,16 @@ export default {
     LabelvaluelimitsbarWidget,
   },
   props: {
-    value: {
+    modelValue: {
       type: Array,
       default: () => [],
     },
+    timeZone: {
+      type: String,
+      default: 'local',
+    },
   },
+  mixins: [TimeFilters],
   data() {
     return {
       api: null,
@@ -184,11 +204,10 @@ export default {
       screenValues: {},
       updateCounter: 0,
       widgetSettings: [
-        ['WIDTH', '520px'], // Total of three subwidgets
-        ['0', 'WIDTH', '180px'],
-        ['1', 'WIDTH', '180px'],
-        ['2', 'WIDTH', '160px'],
-        ['__SCREEN__', this],
+        ['WIDTH', '580px'], // Total of three subwidgets
+        ['0', 'WIDTH', '200px'],
+        ['1', 'WIDTH', '200px'],
+        ['2', 'WIDTH', '180px'],
       ],
     }
   },
@@ -210,17 +229,17 @@ export default {
     ignoredFormatted() {
       return this.ignored.map((x) => x.split('__').join(' '))
     },
-    astroIcon() {
+    astroStatus() {
       switch (this.overallState) {
         case 'GREEN':
-          return '$vuetify.icons.astro-status-normal'
+          return 'normal'
         case 'YELLOW':
-          return '$vuetify.icons.astro-status-caution'
+          return 'caution'
         case 'RED':
-          return '$vuetify.icons.astro-status-critical'
+          return 'critical'
         case 'BLUE':
           // This one is a little weird but it matches our color scheme
-          return '$vuetify.icons.astro-status-standby'
+          return 'standby'
         default:
           return null
       }
@@ -229,7 +248,7 @@ export default {
   created() {
     this.api = new OpenC3Api()
     // Value is passed in as the list of ignored items
-    for (let item of this.value) {
+    for (let item of this.modelValue) {
       if (item.match(/.+__.+__.+/)) {
         // TARGET__PACKET__ITEM
         this.ignoreItem(item, true)
@@ -272,7 +291,7 @@ export default {
       this.update()
     }, 1000)
   },
-  destroyed() {
+  unmounted() {
     if (this.updater != null) {
       clearInterval(this.updater)
       this.updater = null
@@ -307,6 +326,7 @@ export default {
           let itemInfo = {
             key: item.slice(0, 3).join('__'),
             parameters: item.slice(0, 3),
+            timestamp: this.formatDateTime(new Date(), this.timeZone),
           }
           if (item[3].includes('YELLOW') && this.overallState !== 'RED') {
             this.overallState = 'YELLOW'
@@ -364,7 +384,7 @@ export default {
       this.removeItem(item)
       this.calcOverallState()
     },
-    restoreItem(item, index) {
+    restoreItem(index) {
       this.ignored.splice(index, 1)
       this.updateIgnored()
       this.updateOutOfLimits()
@@ -376,8 +396,13 @@ export default {
       this.items.splice(index, 1)
       this.itemList.splice(index, 1)
     },
+    clearAll() {
+      this.ignored = []
+      this.updateIgnored()
+      this.updateOutOfLimits()
+    },
     updateIgnored() {
-      this.$emit('input', this.ignored)
+      this.$emit('update:modelValue', this.ignored)
     },
     handleConfigEvents(config) {
       for (let event of config) {
@@ -423,6 +448,7 @@ export default {
         }
         let itemInfo = {
           key: itemName,
+          timestamp: this.formatNanoseconds(message.time_nsec, this.timeZone),
           parameters: [
             message.target_name,
             message.packet_name,
@@ -453,12 +479,12 @@ export default {
       this.updateCounter += 1
       for (let i = 0; i < values.length; i++) {
         values[i].push(this.updateCounter)
-        Vue.set(this.screenValues, this.screenItems[i], values[i])
+        this.screenValues[this.screenItems[i]] = values[i]
       }
     },
     addItem: function (valueId) {
       this.screenItems.push(valueId)
-      Vue.set(this.screenValues, valueId, [null, null, 0])
+      this.screenValues[valueId] = [null, null, 0]
     },
     deleteItem: function (valueId) {
       let index = this.screenItems.indexOf(valueId)
@@ -474,26 +500,22 @@ export default {
 </script>
 
 <style scoped>
-:deep(.ignored-dialog) {
-  position: absolute;
-  top: 50px;
+.footer {
+  padding-top: 5px;
 }
 .v-input {
   background-color: var(--color-background-base-default);
 }
-/* TODO: Color the border */
-.textfield-green :deep(.v-text-field__slot) input,
-.textfield-green :deep(.v-text-field__slot) label {
+
+.textfield-green {
   color: rgb(0, 200, 0);
 }
 
-.textfield-yellow :deep(.v-text-field__slot) input,
-.textfield-yellow :deep(.v-text-field__slot) label {
+.textfield-yellow {
   color: rgb(255, 220, 0);
 }
 
-.textfield-red :deep(.v-text-field__slot) input,
-.textfield-red :deep(.v-text-field__slot) label {
+.textfield-red {
   color: rgb(255, 45, 45);
 }
 </style>

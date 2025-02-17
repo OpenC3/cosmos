@@ -20,7 +20,7 @@
 # if purchased from OpenC3, Inc.
 */
 
-import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
+import { OpenC3Api } from '@openc3/js-common/services'
 
 export default {
   props: {
@@ -40,14 +40,13 @@ export default {
   mounted() {
     this.changeUpdater()
   },
-  beforeDestroy() {
+  beforeUnmount() {
     if (this.updater != null) {
       clearInterval(this.updater)
       this.updater = null
     }
   },
   watch: {
-    // eslint-disable-next-line no-unused-vars
     refreshInterval: function (newVal, oldVal) {
       this.changeUpdater()
     },

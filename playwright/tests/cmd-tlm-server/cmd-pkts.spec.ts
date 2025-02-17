@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -27,10 +27,18 @@ test.use({
 
 test('displays the list of command', async ({ page, utils }) => {
   // When we ask for just text there are no spaces
-  await expect(page.locator('text=INSTABORT')).toBeVisible()
-  await expect(page.locator('text=INSTCLEAR')).toBeVisible()
-  await expect(page.locator('text=INSTCOLLECT')).toBeVisible()
-  await expect(page.locator('text=EXAMPLESTART')).toBeVisible()
+  await expect(
+    page.locator('[data-test=cmd-packets-table]').locator('text=INSTABORT'),
+  ).toBeVisible()
+  await expect(
+    page.locator('[data-test=cmd-packets-table]').locator('text=INSTCLEAR'),
+  ).toBeVisible()
+  await expect(
+    page.locator('[data-test=cmd-packets-table]').locator('text=INSTCOLLECT'),
+  ).toBeVisible()
+  await expect(
+    page.locator('[data-test=cmd-packets-table]').locator('text=EXAMPLESTART'),
+  ).toBeVisible()
 })
 
 test('displays the command count', async ({ page, utils }) => {
@@ -42,7 +50,7 @@ test('displays the command count', async ({ page, utils }) => {
   await utils.sleep(1500) // Allow API to fetch counts
   await page
     .locator(
-      'div.v-card__title:has-text("Command Packets") >> input[type="text"]',
+      'div.v-card-title:has-text("Command Packets") >> input[type="text"]',
     )
     .fill('abort')
   await expect
@@ -50,24 +58,25 @@ test('displays the command count', async ({ page, utils }) => {
       page.locator('[data-test=cmd-packets-table] >> tbody > tr').count(),
     )
     .toEqual(2)
-  const count = parseInt(
-    await page
-      .locator('[data-test=cmd-packets-table] >> tr td >> nth=2')
-      .textContent(),
-  )
+  const countStr = await page
+    .locator('[data-test=cmd-packets-table] >> tr td >> nth=2')
+    .textContent()
+  if (countStr === null) {
+    throw new Error("Unable to get packet count")
+  }
+  const count = parseInt(countStr)
   // Send an ABORT command
   await page.goto('/tools/cmdsender/INST/ABORT', {
     waitUntil: 'domcontentloaded',
   })
+  await expect(page.locator('.v-app-bar')).toContainText('Command Sender')
   await page.locator('[data-test=select-send]').click()
   await expect(page.locator('main')).toContainText('cmd("INST ABORT") sent')
-  await page
-    .locator('[data-test="sender-history"] div')
-    .filter({ hasText: 'cmd("INST ABORT")' })
 
   await page.goto('/tools/cmdtlmserver/cmd-packets', {
     waitUntil: 'domcontentloaded',
   })
+  await expect(page.locator('.v-app-bar')).toContainText('CmdTlmServer')
   await expect
     .poll(() =>
       page.locator('[data-test=cmd-packets-table] >> tbody > tr').count(),
@@ -76,7 +85,7 @@ test('displays the command count', async ({ page, utils }) => {
   await utils.sleep(1500) // Allow API to fetch counts
   await page
     .locator(
-      'div.v-card__title:has-text("Command Packets") >> input[type="text"]',
+      'div.v-card-title:has-text("Command Packets") >> input[type="text"]',
     )
     .fill('abort')
   await expect
@@ -85,14 +94,12 @@ test('displays the command count', async ({ page, utils }) => {
     )
     .toEqual(2)
   await expect
-    .poll(async () =>
-      parseInt(
-        await page
-          .locator('[data-test=cmd-packets-table] >> tr td >> nth=2')
-          .textContent(),
-      ),
+    .poll(async () => 
+      await page
+        .locator('[data-test=cmd-packets-table] >> tr td >> nth=2')
+        .textContent()
     )
-    .toEqual(count + 1)
+    .toEqual(`${count + 1}`)
 })
 
 test('displays a raw command', async ({ page, utils }) => {

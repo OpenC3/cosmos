@@ -1,6 +1,9 @@
 ---
 sidebar_position: 2
 title: Plugins
+description: Plugin definition file format and keywords
+sidebar_custom_props:
+  myEmoji: 🔌
 ---
 
 <!-- Be sure to edit _plugins.md because plugins.md is a generated file -->
@@ -58,18 +61,18 @@ The VARIABLE keyword defines a variable that will be requested for the user to e
 ## NEEDS_DEPENDENCIES
 <div class="right">(Since 5.5.0)</div>**Indicates the plugin needs dependencies and sets the GEM_HOME environment variable**
 
-If the plugin has a top level lib folder or lists runtime dependencies in the gemspec, NEEDS_DEPENDENCIES is effectively already set. Note that in Enterprise Edition, having NEEDS_DEPENDENCIES adds the NFS volume mount to the Kuberentes pod.
+If the plugin has a top level lib folder or lists runtime dependencies in the gemspec, NEEDS_DEPENDENCIES is effectively already set. Note that in Enterprise Edition, having NEEDS_DEPENDENCIES adds the NFS volume mount to the Kubernetes pod.
 
 
 ## INTERFACE
 **Defines a connection to a physical target**
 
-Interfaces are what OpenC3 uses to talk to a particular piece of hardware. Interfaces require a Ruby file which implements all the interface methods necessary to talk to the hardware. OpenC3 defines many built in interfaces or you can define your own as long as it implements the interface protocol.
+Interfaces are what OpenC3 uses to talk to a particular piece of hardware. Interfaces require a Ruby or Python file which implements all the interface methods necessary to talk to the hardware. OpenC3 defines many built in interfaces or you can define your own as long as it implements the interface protocol.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Interface Name | Name of the interface. This name will appear in the Interfaces tab of the Server and is also referenced by other keywords. The OpenC3 convention is to name interfaces after their targets with '_INT' appended to the name, e.g. INST_INT for the INST target. | True |
-| Filename | Ruby file to use when instantiating the interface.<br/><br/>Valid Values: <span class="values">tcpip_client_interface.rb, tcpip_server_interface.rb, udp_interface.rb, serial_interface.rb</span> | True |
+| Filename | Ruby or Python file to use when instantiating the interface.<br/><br/>Valid Values: <span class="values">tcpip_client_interface, tcpip_server_interface, udp_interface, serial_interface</span> | True |
 
 Additional parameters are required. Please see the [Interfaces](../configuration/interfaces.md) documentation for more details.
 
@@ -83,9 +86,15 @@ The following keywords must follow a INTERFACE keyword.
 |-----------|-------------|----------|
 | Target Name | Target name to map to this interface | True |
 
-Example Usage:
+Ruby Example:
 ```ruby
 INTERFACE DATA_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil BURST
+  MAP_TARGET DATA
+```
+
+Python Example:
+```python
+INTERFACE DATA_INT openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8081 10.0 nil BURST
   MAP_TARGET DATA
 ```
 
@@ -96,9 +105,15 @@ INTERFACE DATA_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0
 |-----------|-------------|----------|
 | Target Name | Command target name to map to this interface | True |
 
-Example Usage:
+Ruby Example:
 ```ruby
 INTERFACE CMD_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil BURST
+  MAP_CMD_TARGET DATA # Only DATA commands go on the CMD_INT interface
+```
+
+Python Example:
+```python
+INTERFACE CMD_INT openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8081 10.0 nil BURST
   MAP_CMD_TARGET DATA # Only DATA commands go on the CMD_INT interface
 ```
 
@@ -109,9 +124,15 @@ INTERFACE CMD_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 
 |-----------|-------------|----------|
 | Target Name | Telemetry target name to map to this interface | True |
 
-Example Usage:
+Ruby Example:
 ```ruby
 INTERFACE TLM_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil BURST
+  MAP_TLM_TARGET DATA # Only DATA telemetry received on TLM_INT interface
+```
+
+Python Example:
+```python
+INTERFACE TLM_INT openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8081 10.0 nil BURST
   MAP_TLM_TARGET DATA # Only DATA telemetry received on TLM_INT interface
 ```
 
@@ -135,7 +156,7 @@ If DONT_RECONNECT is not present the Server will try to reconnect to an interfac
 ### DISABLE_DISCONNECT
 **Disable the Disconnect button on the Interfaces tab in the Server**
 
-Use this keyword to prevent the user from disconnecting from the interface. This is typically used in a 'production' environment where you would not want the user to inadvertantly disconnect from a target.
+Use this keyword to prevent the user from disconnecting from the interface. This is typically used in a 'production' environment where you would not want the user to inadvertently disconnect from a target.
 
 
 ### LOG_RAW
@@ -169,16 +190,20 @@ Protocols can be either READ, WRITE, or READ_WRITE. READ protocols act on the da
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Type | Whether to apply the protocol on incoming data, outgoing data, or both<br/><br/>Valid Values: <span class="values">READ, WRITE, READ_WRITE</span> | True |
-| Protocol Filename or Classname | Ruby filename or class name which implements the protocol | True |
+| Protocol Filename or Classname | Ruby or Python filename or class name which implements the protocol | True |
 | Protocol specific parameters | Additional parameters used by the protocol | False |
 
-Example Usage:
+Ruby Example:
 ```ruby
 INTERFACE DATA_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil nil
   MAP_TARGET DATA
   # Rather than defining the LENGTH protocol on the INTERFACE line we define it here
   PROTOCOL READ LengthProtocol 0 16 0 1 BIG_ENDIAN 4 0xBA5EBA11
-INTERFACE DATA_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil BURST
+```
+
+Python Example:
+```python
+INTERFACE DATA_INT openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8081 10.0 nil BURST
   MAP_TARGET DATA
   PROTOCOL READ IgnorePacketProtocol INST IMAGE # Drop all INST IMAGE packets
 ```
@@ -190,7 +215,7 @@ When an option is set the interface class calls the set_option method. Custom in
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Name | The option to set. OpenC3 defines several options on the core provided interfaces. The SerialInterface defines FLOW_CONTROL which can be NONE (default) or RTSCTS and DATA_BITS which changes the data bits of the serial interface. The TcpipServerInterface defines LISTEN_ADDRESS which is the IP address to accept connections on (default 0.0.0.0). | True |
+| Name | The option to set. OpenC3 defines several options on the core provided interfaces. The SerialInterface defines FLOW_CONTROL which can be NONE (default) or RTSCTS and DATA_BITS which changes the data bits of the serial interface. The TcpipServerInterface and HttpServerInterface define LISTEN_ADDRESS which is the IP address to accept connections on (default 0.0.0.0). | True |
 | Parameters | Parameters to pass to the option | False |
 
 Example Usage:
@@ -198,19 +223,22 @@ Example Usage:
 INTERFACE SERIAL_INT serial_interface.rb COM1 COM1 115200 NONE 1 10.0 nil
   OPTION FLOW_CONTROL RTSCTS
   OPTION DATA_BITS 8
+ROUTER SERIAL_ROUTER tcpip_server_interface.rb 2950 2950 10.0 nil BURST
+  ROUTE SERIAL_INT
+  OPTION LISTEN_ADDRESS 127.0.0.1
 ```
 
 ### SECRET
 <div class="right">(Since 5.3.0)</div>**Define a secret needed by this interface**
 
-Defines a secret for this interface and optionally assigns its value to an option
+Defines a secret for this interface and optionally assigns its value to an option. For more information see [Admin Secrets](/docs/tools/admin#secrets).
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Type | ENV or FILE.  ENV will mount the secret into an environment variable. FILE mounts the secret into a file. | True |
-| Secret Name | The name of the secret to retrieve | True |
-| Environment Variable or File Path | Environment variable name or file path to store secret | True |
-| Option Name | Interface option to pass the secret value | False |
+| Secret Name | The name of the secret to retrieve from the Admin / Secrets tab. For more information see [Admin Secrets](/docs/tools/admin#secrets). | True |
+| Environment Variable or File Path | Environment variable name or file path to store secret. Note that if you use the Option Name to set an option to the secret value, this value doesn't really matter as long as it is unique. | True |
+| Option Name | Interface option to pass the secret value. This is the primary way to pass secrets to interfaces. | False |
 | Secret Store Name | Name of the secret store for stores with multipart keys | False |
 
 Example Usage:
@@ -270,9 +298,14 @@ Command line to execute to run the microservice.
 |-----------|-------------|----------|
 | Args | One or more arguments to exec to run the microservice. | True |
 
-Example Usage:
+Ruby Example:
 ```ruby
 CMD ruby interface_microservice.rb DEFAULT__INTERFACE__INT1
+```
+
+Python Example:
+```python
+CMD python interface_microservice.py DEFAULT__INTERFACE__INT1
 ```
 
 ### CONTAINER
@@ -298,6 +331,20 @@ Example Usage:
 ROUTE_PREFIX /interface
 ```
 
+### SHARD
+<div class="right">(Since 6.0.0)</div>**Operator shard to run target microservices on**
+
+Operator Shard. Only used if running multiple operator containers typically in Kubernetes
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Shard | Shard number starting from 0 | False |
+
+Example Usage:
+```ruby
+SHARD 0
+```
+
 ## ROUTER
 **Create router to receive commands and output telemetry packets from one or more interfaces**
 
@@ -306,7 +353,7 @@ Creates an router which receives command packets from their remote clients and s
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Name | Name of the router | True |
-| Filename | Ruby file to use when instantiating the interface.<br/><br/>Valid Values: <span class="values">tcpip_client_interface.rb, tcpip_server_interface.rb, udp_interface.rb, serial_interface.rb</span> | True |
+| Filename | Ruby or Python file to use when instantiating the interface.<br/><br/>Valid Values: <span class="values">tcpip_client_interface, tcpip_server_interface, udp_interface, serial_interface</span> | True |
 
 Additional parameters are required. Please see the [Interfaces](../configuration/interfaces.md) documentation for more details.
 
@@ -464,7 +511,7 @@ The following keywords must follow a TARGET keyword.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Time | Number of seconds between runs of the cleanup process (default = 900 = 15 minutes) | True |
+| Time | Number of seconds between runs of the cleanup process (default = 600 = 10 minutes) | True |
 
 ### REDUCER_DISABLE
 **Disables the data reduction microservice for the target**
@@ -501,6 +548,20 @@ Disable ERB processing for the entire target or a set of regular expressions ove
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Regex | Regex to match against filenames. If match, then no ERB processing | False |
+
+### SHARD
+<div class="right">(Since 6.0.0)</div>**Operator shard to run target microservices on**
+
+Operator Shard. Only used if running multiple operator containers typically in Kubernetes
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Shard | Shard number starting from 0 | False |
+
+Example Usage:
+```ruby
+SHARD 0
+```
 
 ## MICROSERVICE
 **Defines a new microservice**
@@ -607,10 +668,16 @@ Command line to execute to run the microservice.
 |-----------|-------------|----------|
 | Args | One or more arguments to exec to run the microservice. | True |
 
-Example Usage:
+Ruby Example:
 ```ruby
 MICROSERVICE EXAMPLE openc3-example
   CMD ruby example_target.rb
+```
+
+Python Example:
+```python
+MICROSERVICE EXAMPLE openc3-example
+  CMD python example_target.py
 ```
 
 ### OPTION
@@ -635,12 +702,12 @@ Container to execute and run the microservice in. Only used in COSMOS Enterprise
 ### SECRET
 <div class="right">(Since 5.3.0)</div>**Define a secret needed by this microservice**
 
-Defines a secret for this microservice
+Defines a secret for this microservice. For more information see [Admin Secrets](/docs/tools/admin#secrets).
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Type | ENV or FILE.  ENV will mount the secret into an environment variable. FILE mounts the secret into a file. | True |
-| Secret Name | The name of the secret to retrieve | True |
+| Secret Name | The name of the secret to retrieve from the Admin / Secrets tab. For more information see [Admin Secrets](/docs/tools/admin#secrets). | True |
 | Environment Variable or File Path | Environment variable name or file path to store secret | True |
 | Secret Store Name | Name of the secret store for stores with multipart keys | False |
 
@@ -674,6 +741,20 @@ Disable ERB processing for the entire microservice or a set of regular expressio
 |-----------|-------------|----------|
 | Regex | Regex to match against filenames. If match, then no ERB processing | False |
 
+### SHARD
+<div class="right">(Since 6.0.0)</div>**Operator shard to run target microservices on**
+
+Operator Shard. Only used if running multiple operator containers typically in Kubernetes
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Shard | Shard number starting from 0 | False |
+
+Example Usage:
+```ruby
+SHARD 0
+```
+
 ## TOOL
 **Define a tool**
 
@@ -704,11 +785,11 @@ The relative url used to access the tool. Defaults to "/tools/ToolFolderName".
 ### INLINE_URL
 **Internal url to load a tool**
 
-The url of the javascript file used to load the tool into single-SPA. Defaults to "js/app.js".
+The url of the javascript file used to load the tool into single-SPA. Defaults to "main.js".
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Url | The inline url. If not given defaults to js/app.js. Generally should not be given unless using a non-standard filename. | True |
+| Url | The inline url. If not given defaults to main.js. Generally should not be given unless using a non-standard filename. | True |
 
 ### WINDOW
 **How to display the tool when navigated to**
@@ -749,7 +830,7 @@ Whether or not the tool is shown in the Navigation menu. Should generally be tru
 ### POSITION
 <div class="right">(Since 5.0.8)</div>**Position of the tool in the nav bar**
 
-Position of the tool as an integer starting at 1. Tools without a position are appended to the end as they are installed.
+Position of the tool starting at 2 (1 is reserved for Admin Console). Tools without a position are appended to the end as they are installed. All COSMOS open source tools have consecutive integer values for position.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -764,6 +845,14 @@ Disable ERB processing for the entire tool or a set of regular expressions over 
 |-----------|-------------|----------|
 | Regex | Regex to match against filenames. If match, then no ERB processing | False |
 
+### IMPORT_MAP_ITEM
+<div class="right">(Since 6.0.0)</div>**Add an item to the import map**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| key | Import Map Key | True |
+| value | Import Map Value | True |
+
 ## WIDGET
 **Define a custom widget**
 
@@ -771,7 +860,8 @@ Defines a custom widget that can be used in Telemetry Viewer screens.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Widget Name | The name of the widget wil be used to build a path to the widget implementation. For example, `WIDGET HELLOWORLD` will find the as-built file tools/widgets/HelloworldWidget/HelloworldWidget.umd.min.js. See the [Custom Widgets](../guides/custom-widgets.md) guide for more details. | True |
+| Widget Name | The name of the widget will be used to build a path to the widget implementation. For example, `WIDGET HELLOWORLD` will find the as-built file tools/widgets/HelloworldWidget/HelloworldWidget.umd.min.js. See the [Custom Widgets](../guides/custom-widgets.md) guide for more details. | True |
+| Label | The label for the widget that will appear in the Data Viewer component drop down | False |
 
 Example Usage:
 ```ruby

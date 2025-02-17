@@ -2,9 +2,9 @@ SCREEN AUTO AUTO 1
 
 TITLE 'Screen Launcher'
 HORIZONTAL
-  BUTTON 'HS' "screen.open('INST', 'HS')"
-  BUTTON 'CMD' "screen.open('INST', 'COMMANDING')"
-  BUTTON 'GROUND' "screen.open('INST', 'GROUND')"
+  BUTTON 'HS' "screen.open('<%= target_name %>', 'HS')"
+  BUTTON 'CMD' "screen.open('<%= target_name %>', 'COMMANDING')"
+  BUTTON 'GROUND' "screen.open('<%= target_name %>', 'GROUND')"
 END
-BUTTON 'Close HS & CMD' "screen.close('INST', 'HS');; screen.close('INST', 'COMMANDING')"
+BUTTON 'Close HS & CMD' "screen.close('<%= target_name %>', 'HS');; screen.close('<%= target_name %>', 'COMMANDING')"
 BUTTON 'Close All' "screen.closeAll()" # including this screen!

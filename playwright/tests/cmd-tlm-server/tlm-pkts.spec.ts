@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -35,14 +35,16 @@ test('displays the list of telemetry', async ({ page, utils }) => {
 test('displays the packet count', async ({ page, utils }) => {
   await expect(page.locator('text=INSTHEALTH_STATUS')).toBeVisible()
   await utils.sleep(2000) // Allow the telemetry to be fetched
-  expect(
-    parseInt(
-      await page.locator('text=INSTHEALTH_STATUS >> td >> nth=2').textContent(),
-    ),
-  ).toBeGreaterThan(50)
-  expect(
-    parseInt(await page.locator('text=INSTADCS >> td >> nth=2').textContent()),
-  ).toBeGreaterThan(500)
+  const hsCountStr = await page.locator('text=INSTHEALTH_STATUS >> td >> nth=2').textContent()
+  if (hsCountStr === null) {
+    throw new Error("Unable to get HEALTH_STATUS packet count")
+  }
+  expect(parseInt(hsCountStr)).toBeGreaterThan(50)
+  const adcsCountStr = await page.locator('text=INSTADCS >> td >> nth=2').textContent()
+  if (adcsCountStr === null) {
+    throw new Error("Unable to get HEALTH_STATUS packet count")
+  }
+  expect(parseInt(adcsCountStr)).toBeGreaterThan(500)
 })
 
 test('displays raw packets', async ({ page, utils }) => {

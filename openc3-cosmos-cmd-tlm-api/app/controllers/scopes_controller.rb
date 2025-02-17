@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -30,21 +30,35 @@ class ScopesController < ModelController
 
   def index
     # No authorization required
-    render :json => @model_class.names(scope: params[:scope])
+    render json: @model_class.names()
   end
 
   def create(update_model = false)
     return unless authorization('superadmin')
-    super(update_model)
+    model = @model_class.from_json(params[:json])
+    if update_model
+      model.update
+      # Scopes are global so the scope is always 'DEFAULT'
+      OpenC3::Logger.info("#{@model_class.name} updated: #{params[:json]}", scope: 'DEFAULT', user: username())
+    else
+      model.create
+      model.deploy(".", {})
+      # Scopes are global so the scope is always 'DEFAULT'
+      OpenC3::Logger.info("#{@model_class.name} created: #{params[:json]}", scope: 'DEFAULT', user: username())
+    end
+    head :ok
   rescue Exception => e
-    render(:json => { :status => 'error', :message => e.message }, :status => 500) and return
+    log_error(e)
+    render json: { status: 'error', message: e.message }, status: 500
   end
 
   def destroy
     return unless authorization('superadmin')
+    # Scopes are global so the scope is always 'DEFAULT'
     result = OpenC3::ProcessManager.instance.spawn(["ruby", "/openc3/bin/openc3cli", "destroyscope", params[:id]], "scope_uninstall", params[:id], Time.now + 2.hours, scope: 'DEFAULT')
-    render :json => result
+    render json: result
   rescue Exception => e
-    render(:json => { :status => 'error', :message => e.message }, :status => 500) and return
+    log_error(e)
+    render json: { status: 'error', message: e.message }, status: 500
   end
 end

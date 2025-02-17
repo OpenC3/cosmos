@@ -13,7 +13,7 @@ class ExampleTest(Test):
         raise RuntimeError("error")
         print("continue past raise")  # NOSONAR
 
-    def test_2(self):
+    def test_req2(self):
         print(
             f"Running {Test.current_test_suite()}:{Test.current_test()}:{Test.current_test_case()}"
         )
@@ -21,14 +21,14 @@ class ExampleTest(Test):
         self.helper()
         wait(2)
 
-    def test_3(self):
+    def test_req3(self):
         print(
             f"Running {Test.current_test_suite()}:{Test.current_test()}:{Test.current_test_case()}"
         )
         raise SkipTestCase
 
     def helper(self):
-        if openc3.script.RUNNING_SCRIPT and openc3.script.RUNNING_SCRIPT.manual:
+        if RunningScript.manual:
             answer = ask("Are you sure?")
         else:
             answer = "y"

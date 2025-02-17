@@ -23,32 +23,6 @@
 <template>
   <div>
     <top-bar :menus="menus" :title="title" />
-    <v-snackbar v-model="showReadOnlyToast" top :timeout="-1" color="orange">
-      <v-icon> mdi-pencil-off </v-icon>
-      {{ lockedBy }} is editing this script. Editor is in read-only mode
-      <template v-slot:action="{ attrs }">
-        <v-btn
-          text
-          v-bind="attrs"
-          color="danger"
-          @click="confirmLocalUnlock"
-          data-test="unlock-button"
-        >
-          Unlock
-        </v-btn>
-        <v-btn
-          text
-          v-bind="attrs"
-          @click="
-            () => {
-              showReadOnlyToast = false
-            }
-          "
-        >
-          dismiss
-        </v-btn>
-      </template>
-    </v-snackbar>
     <v-file-input
       show-size
       v-model="fileInput"
@@ -62,8 +36,8 @@
         <v-row dense>
           <v-col cols="6">
             <v-text-field
-              outlined
-              dense
+              variant="outlined"
+              density="compact"
               readonly
               hide-details
               label="Filename"
@@ -75,8 +49,8 @@
           </v-col>
           <v-col cols="6">
             <v-text-field
-              outlined
-              dense
+              variant="outlined"
+              density="compact"
               readonly
               hide-details
               label="Definition"
@@ -99,7 +73,7 @@
               data-test="download-file-binary"
             >
               Binary
-              <v-icon right dark> mdi-file-code </v-icon>
+              <v-icon end theme="dark"> mdi-file-code </v-icon>
             </v-btn>
             <v-btn
               dense
@@ -110,7 +84,7 @@
               data-test="download-file-definition"
             >
               Definition
-              <v-icon right dark> mdi-file-document-edit </v-icon>
+              <v-icon end theme="dark"> mdi-file-document-edit </v-icon>
             </v-btn>
             <v-btn
               dense
@@ -120,7 +94,7 @@
               data-test="download-file-report"
             >
               Report
-              <v-icon right dark> mdi-file-document </v-icon>
+              <v-icon end theme="dark"> mdi-file-document </v-icon>
             </v-btn>
           </v-col>
           <v-col cols="auto">
@@ -132,7 +106,7 @@
               data-test="upload-file"
             >
               Upload
-              <v-icon right dark> mdi-file-upload </v-icon>
+              <v-icon end theme="dark"> mdi-file-upload </v-icon>
             </v-btn>
           </v-col>
           <v-col cols="auto">
@@ -144,13 +118,13 @@
               data-test="download-file"
             >
               Download
-              <v-icon right dark> mdi-file-download </v-icon>
+              <v-icon end theme="dark"> mdi-file-download </v-icon>
             </v-btn>
           </v-col>
           <v-col cols="auto">
-            <v-tooltip bottom>
-              <template v-slot:activator="{ on, attrs }">
-                <span v-bind="attrs" v-on="on">
+            <v-tooltip location="top">
+              <template v-slot:activator="{ props }">
+                <span v-bind="props">
                   <v-checkbox
                     v-model="scriptBackground"
                     label="B/G"
@@ -164,7 +138,7 @@
           </v-col>
         </v-row>
       </v-card-text>
-      <v-card-title style="padding-top: 0px">
+      <v-card-title class="d-flex align-center">
         Items
         <v-spacer />
         <v-text-field
@@ -172,20 +146,20 @@
           label="Search"
           prepend-inner-icon="mdi-magnify"
           clearable
-          outlined
-          dense
+          variant="outlined"
+          density="compact"
           single-line
           hide-details
           class="search"
         />
       </v-card-title>
-      <v-tabs v-model="curTab">
+      <v-tabs v-model="curTab" :key="`v-tabs_${tables.length}`">
         <v-tab v-for="(table, index) in tables" :key="index">
           {{ table.name }}
         </v-tab>
       </v-tabs>
-      <v-tabs-items v-model="curTab">
-        <v-tab-item
+      <v-tabs-window v-model="curTab" :key="`v-tabs-window_${tables.length}`">
+        <v-tabs-window-item
           v-for="(table, index) in tables"
           :key="`${filename}${index}`"
         >
@@ -194,22 +168,19 @@
             :items="table.rows"
             :search="search"
             :items-per-page="20"
-            :footer-props="{
-              itemsPerPageOptions: [10, 20, 50, 100, -1],
-            }"
-            calculate-widths
+            :items-per-page-options="[10, 20, 50, 100, -1]"
             multi-sort
-            dense
+            density="compact"
             :data-test="table.name"
           >
             <template v-slot:item="{ item }">
               <table-row
                 :items="item"
                 :key="item[0].name"
-                @change="onChange(item, $event)"
+                @change.self="onChange(item, $event)"
               />
             </template>
-            <template v-slot:footer v-if="tables.length > 1">
+            <template v-slot:tfoot v-if="tables.length > 1">
               <div style="position: absolute" class="ma-3">
                 <span class="text-body-1 mr-3">Table Download:</span>
                 <v-btn
@@ -221,7 +192,7 @@
                   data-test="download-table-binary"
                 >
                   Binary
-                  <v-icon right dark> mdi-file-code </v-icon>
+                  <v-icon end theme="dark"> mdi-file-code </v-icon>
                 </v-btn>
                 <v-btn
                   dense
@@ -232,7 +203,7 @@
                   data-test="download-table-definition"
                 >
                   Definition
-                  <v-icon right dark> mdi-file-document-edit </v-icon>
+                  <v-icon end theme="dark"> mdi-file-document-edit </v-icon>
                 </v-btn>
                 <v-btn
                   dense
@@ -242,13 +213,13 @@
                   data-test="download-table-report"
                 >
                   Report
-                  <v-icon right dark> mdi-file-document </v-icon>
+                  <v-icon end theme="dark"> mdi-file-document </v-icon>
                 </v-btn>
               </div>
             </template>
           </v-data-table>
-        </v-tab-item>
-      </v-tabs-items>
+        </v-tabs-window-item>
+      </v-tabs-window>
     </v-card>
     <file-open-save-dialog
       v-if="fileOpen"
@@ -277,12 +248,13 @@
 </template>
 
 <script>
-import Api from '@openc3/tool-common/src/services/api'
-import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
-import TopBar from '@openc3/tool-common/src/components/TopBar'
-import TableRow from '@/tools/TableManager/TableRow'
-import FileOpenSaveDialog from '@openc3/tool-common/src/components/FileOpenSaveDialog'
-import SimpleTextDialog from '@openc3/tool-common/src/components/SimpleTextDialog'
+import { Api, OpenC3Api } from '@openc3/js-common/services'
+import {
+  FileOpenSaveDialog,
+  SimpleTextDialog,
+  TopBar,
+} from '@openc3/vue-common/components'
+import TableRow from './TableRow'
 
 export default {
   components: {
@@ -299,7 +271,7 @@ export default {
       tables: [],
       api: null,
       definition: null,
-      fileInput: '',
+      fileInput: null,
       definitionFilename: '',
       fileNew: false,
       filename: '',
@@ -385,7 +357,7 @@ export default {
     },
   },
   watch: {
-    // Everytime the filename changes we figure out if there is an associated upload & download script
+    // Every time the filename changes we figure out if there is an associated upload & download script
     filename: function (val) {
       let upload =
         this.filename.split('/').slice(0, 2).join('/') + '/procedures/upload'
@@ -395,7 +367,7 @@ export default {
       Api.get(`/openc3-api/tables/${upload}.rb`, {
         headers: {
           Accept: 'application/json',
-          // Since we're just checking for existance, 404 is possible so ignore it
+          // Since we're just checking for existence, 404 is possible so ignore it
           'Ignore-Errors': '404',
         },
       })
@@ -407,7 +379,7 @@ export default {
           Api.get(`/openc3-api/tables/${upload}.py`, {
             headers: {
               Accept: 'application/json',
-              // Since we're just checking for existance, 404 is possible so ignore it
+              // Since we're just checking for existence, 404 is possible so ignore it
               'Ignore-Errors': '404',
             },
           })
@@ -422,7 +394,7 @@ export default {
       Api.get(`/openc3-api/tables/${download}.rb`, {
         headers: {
           Accept: 'application/json',
-          // Since we're just checking for existance, 404 is possible so ignore it
+          // Since we're just checking for existence, 404 is possible so ignore it
           'Ignore-Errors': '404',
         },
       })
@@ -434,7 +406,7 @@ export default {
           Api.get(`/openc3-api/tables/${download}.py`, {
             headers: {
               Accept: 'application/json',
-              // Since we're just checking for existance, 404 is possible so ignore it
+              // Since we're just checking for existence, 404 is possible so ignore it
               'Ignore-Errors': '404',
             },
           })
@@ -552,7 +524,7 @@ export default {
       formData.append('binary', this.filename)
       formData.append('definition', this.definitionFilename)
       if (tableName !== null) {
-        formData.append('table', tableName)
+        formData.append('table_name', tableName)
       }
       Api.post(`/openc3-api/tables/binary`, {
         data: formData,
@@ -581,7 +553,7 @@ export default {
       const formData = new FormData()
       formData.append('definition', this.definitionFilename)
       if (tableName !== null) {
-        formData.append('table', tableName)
+        formData.append('table_name', tableName)
       }
       Api.post(`/openc3-api/tables/definition`, {
         data: formData,
@@ -602,7 +574,7 @@ export default {
       formData.append('binary', this.filename)
       formData.append('definition', this.definitionFilename)
       if (tableName !== null) {
-        formData.append('table', tableName)
+        formData.append('table_name', tableName)
       }
       Api.post(`/openc3-api/tables/report`, {
         data: formData,
@@ -716,7 +688,7 @@ export default {
               // Build up the headers for proper searching
               headers: table.headers.map((text, i) => {
                 const header = {
-                  text,
+                  title: text,
                   filterable: text !== 'INDEX',
                 }
                 if (table.numColumns === 1) {

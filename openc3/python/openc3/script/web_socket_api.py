@@ -75,9 +75,7 @@ class WebSocketApi:
                 json_hash = json.loads(message)
                 if ignore_protocol_messages:
                     msg_type = json_hash.get("type")
-                    if (
-                        msg_type
-                    ):  # ping, welcome, confirm_subscription, reject_subscription, disconnect
+                    if msg_type:  # ping, welcome, confirm_subscription, reject_subscription, disconnect
                         if msg_type == "disconnect":
                             if json_hash["reason"] == "unauthorized":
                                 raise RuntimeError("Unauthorized")
@@ -128,16 +126,17 @@ class WebSocketApi:
     # Connect to the websocket with authorization in query params
     def connect(self):
         self.disconnect()
-        final_url = (
-            self.url
-            + f"?scope={self.scope}&authorization={self.authentication.token()}"
-        )
-        self.stream = WebSocketClientStream(
-            final_url, self.write_timeout, self.read_timeout, self.connect_timeout
-        )
+        # Add the token directly in the URL since adding it to the header doesn't seem to work
+        # Note in the this case we remove the "Bearer " string which is part of the token
+        final_url = self.url + f"?scope={self.scope}&authorization={self.authentication.token(include_bearer=False)}"
+        self.stream = WebSocketClientStream(final_url, self.write_timeout, self.read_timeout, self.connect_timeout)
         self.stream.headers = {
             "Sec-WebSocket-Protocol": "actioncable-v1-json, actioncable-unsupported",
             "User-Agent": WebSocketApi.USER_AGENT,
+            # Adding the authorization token to the header is supposed to work
+            # We add it directly with "Bearer <token>"
+            # But for some reason it doesn't so we add it directly to the URL above
+            # "Authorization": self.authentication.token(include_bearer=False),
         }
         return self.stream.connect()
 
@@ -156,13 +155,13 @@ class WebSocketApi:
 
     # Generate the appropriate token for OpenC3
     def _generate_auth(self):
-        if os.environ.get("OPENC3_API_TOKEN") and os.environ.get("OPENC3_API_USER"):
-            return OpenC3KeycloakAuthentication(os.environ.get("OPENC3_KEYCLOAK_URL"))
-        else:
+        if os.environ.get("OPENC3_API_TOKEN") is None and os.environ.get("OPENC3_API_USER") is None:
             if os.environ.get("OPENC3_API_PASSWORD"):
                 return OpenC3Authentication()
             else:
-                raise RuntimeError("Environment Variables Not Set for Authentication")
+                return None
+        else:
+            return OpenC3KeycloakAuthentication(os.environ.get("OPENC3_KEYCLOAK_URL"))
 
 
 # Base class for cmd-tlm-api websockets - Do not use directly
@@ -194,11 +193,9 @@ class CmdTlmWebSocketApi(WebSocketApi):
         if schema == "https":
             schema = "wss"
         hostname = os.environ.get("OPENC3_API_HOSTNAME") or (
-            "127.0.0.1"
-            if os.environ.get("OPENC3_DEVEL")
-            else "openc3-cosmos-cmd-tlm-api"
+            "127.0.0.1" if os.environ.get("OPENC3_DEVEL") else "openc3-cosmos-cmd-tlm-api"
         )
-        port = os.environ.get("OPENC3_API_PORT") or "2901"
+        port = os.environ.get("OPENC3_API_CABLE_PORT") or os.environ.get("OPENC3_API_PORT") or "3901"
         port = int(port)
         return f"{schema}://{hostname}:{port}/openc3-api/cable"
 
@@ -232,11 +229,9 @@ class ScriptWebSocketApi(WebSocketApi):
         if schema == "https":
             schema = "wss"
         hostname = os.environ.get("OPENC3_SCRIPT_API_HOSTNAME") or (
-            "127.0.0.1"
-            if os.environ.get("OPENC3_DEVEL")
-            else "openc3-cosmos-script-runner-api"
+            "127.0.0.1" if os.environ.get("OPENC3_DEVEL") else "openc3-cosmos-script-runner-api"
         )
-        port = os.environ.get("OPENC3_SCRIPT_API_PORT") or "2902"
+        port = os.environ.get("OPENC3_SCRIPT_API_CABLE_PORT") or os.environ.get("OPENC3_SCRIPT_API_PORT") or "3902"
         port = int(port)
         return f"{schema}://{hostname}:{port}/script-api/cable"
 
@@ -254,6 +249,28 @@ class RunningScriptWebSocketApi(ScriptWebSocketApi):
         scope=OPENC3_SCOPE,
     ):
         self.identifier = {"channel": "RunningScriptChannel", "id": id}
+        super().__init__(
+            url=url,
+            write_timeout=write_timeout,
+            read_timeout=read_timeout,
+            connect_timeout=connect_timeout,
+            authentication=authentication,
+            scope=scope,
+        )
+
+
+# All Scripts WebSocket
+class AllScriptsWebSocketApi(ScriptWebSocketApi):
+    def __init__(
+        self,
+        url=None,
+        write_timeout=10.0,
+        read_timeout=10.0,
+        connect_timeout=5.0,
+        authentication=None,
+        scope=OPENC3_SCOPE,
+    ):
+        self.identifier = {"channel": "AllScriptsChannel"}
         super().__init__(
             url=url,
             write_timeout=write_timeout,
@@ -299,7 +316,7 @@ class MessagesWebSocketApi(CmdTlmWebSocketApi):
         )
 
 
-# Autonomic Events WebSocket
+# Autonomic Events WebSocket (Enterprise Only)
 class AutonomicEventsWebSocketApi(CmdTlmWebSocketApi):
     def __init__(
         self,
@@ -325,7 +342,7 @@ class AutonomicEventsWebSocketApi(CmdTlmWebSocketApi):
         )
 
 
-# Calendar Events WebSocket
+# Calendar Events WebSocket (Enterprise Only)
 class CalendarEventsWebSocketApi(CmdTlmWebSocketApi):
     def __init__(
         self,
@@ -491,7 +508,7 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
         if packets:
             data_hash["packets"] = packets
         data_hash["scope"] = scope
-        data_hash["token"] = self.authentication.token()
+        data_hash["token"] = self.authentication.token(include_bearer=False)
         self.write_action(data_hash)
 
     # Request to remove data from the stream
@@ -521,7 +538,7 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
         if packets:
             data_hash["packets"] = packets
         data_hash["scope"] = scope
-        data_hash["token"] = self.authentication.token()
+        data_hash["token"] = self.authentication.token(include_bearer=False)
         self.write_action(data_hash)
 
     # Convenience method to read all data until end marker is received.

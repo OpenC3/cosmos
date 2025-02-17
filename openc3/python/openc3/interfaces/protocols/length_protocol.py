@@ -73,9 +73,7 @@ class LengthProtocol(BurstProtocol):
             self.length_endianness = "BIG_ENDIAN"
 
         # Derive number of bytes required to contain entire length field
-        if self.length_endianness == "BIG_ENDIAN" or (
-            (self.length_bit_offset % 8) == 0
-        ):
+        if self.length_endianness == "BIG_ENDIAN" or ((self.length_bit_offset % 8) == 0):
             length_bits_needed = self.length_bit_offset + self.length_bit_size
             if (length_bits_needed % 8) != 0:
                 length_bits_needed += 8
@@ -97,9 +95,7 @@ class LengthProtocol(BurstProtocol):
             # If the start of the length field is past what we discard, then the
             # length field is inside the packet
             if self.length_bit_offset >= (self.discard_leading_bytes * 8):
-                length = self.calculate_length(
-                    len(packet.buffer_no_copy()) + self.discard_leading_bytes
-                )
+                length = self.calculate_length(len(packet.buffer_no_copy()) + self.discard_leading_bytes)
                 # Subtract off the discarded bytes since they haven't been added yet
                 # Adding bytes happens in the write_data method
                 offset = self.length_bit_offset - (self.discard_leading_bytes * 8)
@@ -113,9 +109,7 @@ class LengthProtocol(BurstProtocol):
                     self.length_endianness,
                     "ERROR",
                 )
-        return super().write_packet(
-            packet
-        )  # Allow burst_protocol to set the sync if needed:
+        return super().write_packet(packet)  # Allow burst_protocol to set the sync if needed:
 
     # Called to perform modifications on write data before making it into a packet
     #
@@ -139,13 +133,9 @@ class LengthProtocol(BurstProtocol):
         return (data, extra)
 
     def calculate_length(self, buffer_length):
-        length = (
-            int(buffer_length / self.length_bytes_per_count) - self.length_value_offset
-        )
+        length = int(buffer_length / self.length_bytes_per_count) - self.length_value_offset
         if self.max_length and length > self.max_length:
-            raise AttributeError(
-                f"Calculated length {length} larger than max_length {self.max_length}"
-            )
+            raise ValueError(f"Calculated length {length} larger than max_length {self.max_length}")
         return length
 
     def reduce_to_single_packet(self, extra=None):
@@ -162,17 +152,13 @@ class LengthProtocol(BurstProtocol):
             self.length_endianness,
         )
         if self.max_length and length > self.max_length:
-            raise AttributeError(
-                f"Length value received larger than max_length= {length} > {self.max_length}"
-            )
+            raise ValueError(f"Length value received larger than max_length= {length} > {self.max_length}")
 
-        packet_length = (
-            length * self.length_bytes_per_count
-        ) + self.length_value_offset
+        packet_length = (length * self.length_bytes_per_count) + self.length_value_offset
         # Ensure the calculated packet length is long enough to support the location of the length field
         # without overlap into the next packet
         if (packet_length * 8) < (self.length_bit_offset + self.length_bit_size):
-            raise AttributeError(
+            raise ValueError(
                 f"Calculated packet length of {packet_length * 8} bits < (offset={self.length_bit_offset} + size={self.length_bit_size})"
             )
 

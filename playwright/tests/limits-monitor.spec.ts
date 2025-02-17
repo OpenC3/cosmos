@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -26,6 +26,8 @@ test.use({
   toolName: 'Limits Monitor',
 })
 
+// await page.getByRole('cell', { name: 'playwright' }).click();
+
 test('changes the limits set', async ({ page, utils }) => {
   expect(await page.getByLabel('Current Limits Set').inputValue()).toBe(
     'DEFAULT',
@@ -34,10 +36,16 @@ test('changes the limits set', async ({ page, utils }) => {
   await page
     .locator('[data-test="limits-monitor-file-change-limits-set"]')
     .click()
-  await page.getByRole('button', { name: 'Limits Set' }).click()
+  await page.getByRole('dialog').locator('[data-test="limits-set"]').click()
   await page.getByRole('option', { name: 'TVAC' }).click()
   await page.getByRole('button', { name: 'Ok' }).click()
-  expect(await page.getByLabel('Current Limits Set').inputValue()).toBe('TVAC')
+  // Poll since inputValue is immediate
+  await expect
+    .poll(async () => page.getByLabel('Current Limits Set').inputValue(), {
+      timeout: 15000,
+    })
+    .toBe('TVAC')
+
   await expect(page.locator('[data-test=limits-events]')).toContainText(
     'Setting Limits Set: TVAC',
   )
@@ -45,18 +53,21 @@ test('changes the limits set', async ({ page, utils }) => {
   await page
     .locator('[data-test="limits-monitor-file-change-limits-set"]')
     .click()
-  await page.getByRole('button', { name: 'Limits Set' }).click()
+  await page.getByRole('dialog').locator('[data-test="limits-set"]').click()
   await page.getByRole('option', { name: 'DEFAULT' }).click()
   await page.getByRole('button', { name: 'Ok' }).click()
-  expect(await page.getByLabel('Current Limits Set').inputValue()).toBe(
-    'DEFAULT',
-  )
+  // Poll since inputValue is immediate
+  await expect
+    .poll(async () => page.getByLabel('Current Limits Set').inputValue(), {
+      timeout: 15000,
+    })
+    .toBe('DEFAULT')
   await expect(page.locator('[data-test=limits-events]')).toContainText(
     'Setting Limits Set: DEFAULT',
   )
 })
 
-test('saves the configuration', async ({ page, utils }) => {
+test('saves, opens, and resets the configuration', async ({ page, utils }) => {
   await expect
     .poll(
       () =>
@@ -87,19 +98,17 @@ test('saves the configuration', async ({ page, utils }) => {
   await page
     .locator('[data-test=limits-row]:has-text("GROUND2STATUS") button >> nth=1')
     .click()
-  expect(await page.inputValue('[data-test=overall-state]')).toMatch(
+  expect(await page.inputValue('[data-test=overall-state] input')).toMatch(
     'Some items ignored',
   )
 
   await page.locator('[data-test=limits-monitor-file]').click()
   await page.locator('text=Save Configuration').click()
   await page
-    .locator('[data-test=name-input-save-config-dialog]')
+    .getByLabel('Configuration Name')
     .fill('playwright')
   await page.locator('button:has-text("Ok")').click()
-})
 
-test('opens and resets the configuration', async ({ page, utils }) => {
   await page.locator('[data-test=limits-monitor-file]').click()
   await page.locator('text=Open Configuration').click()
   await page.locator(`td:has-text("playwright")`).click()
@@ -116,15 +125,15 @@ test('opens and resets the configuration', async ({ page, utils }) => {
   ).toContainText('GROUND2STATUS')
   await page.locator('button:has-text("Ok")').click()
 
-  // Reset this test configuation
+  // Reset this test configuration
   await page.locator('[data-test=limits-monitor-file]').click()
   await page.locator('text=Reset Configuration').click()
   await utils.sleep(200) // Allow menu to close
-  expect(await page.inputValue('[data-test=overall-state]')).not.toMatch(
+  expect(await page.inputValue('[data-test=overall-state] input')).not.toMatch(
     'Some items ignored',
   )
 
-  // Delete this test configuation
+  // Delete this test configuration
   await page.locator('[data-test=limits-monitor-file]').click()
   await page.locator('text=Open Configuration').click()
   await page
@@ -138,26 +147,26 @@ test('temporarily hides items', async ({ page, utils }) => {
   // Since we're checking count() which is instant we need to poll
   await expect
     .poll(
-      () => page.locator('[data-test=limits-row]:has-text("TEMP2")').count(),
+      () => page.locator('[data-test=limits-row]:has-text("TEMP1")').count(),
       {
         timeout: 60000,
       },
     )
     .toBe(2)
 
-  // Hide both TEMP2s
+  // Hide both TEMP1s
   await page
-    .locator('[data-test=limits-row]:has-text("TEMP2") button >> nth=2')
+    .locator('[data-test=limits-row]:has-text("TEMP1") button >> nth=2')
     .click()
   await page
-    .locator('[data-test=limits-row]:has-text("TEMP2") button >> nth=2')
+    .locator('[data-test=limits-row]:has-text("TEMP1") button >> nth=2')
     .click()
 
   // Now wait for them to come back
   // Since we're checking count() which is instant we need to poll
   await expect
     .poll(
-      () => page.locator('[data-test=limits-row]:has-text("TEMP2")').count(),
+      () => page.locator('[data-test=limits-row]:has-text("TEMP1")').count(),
       {
         timeout: 60000,
       },
@@ -169,48 +178,45 @@ test('ignores items', async ({ page, utils }) => {
   test.setTimeout(300000) // 5 min
   await expect
     .poll(
-      () => page.locator('[data-test=limits-row]:has-text("TEMP2")').count(),
+      () => page.locator('[data-test=limits-row]:has-text("TEMP1")').count(),
       {
         timeout: 60000,
       },
     )
     .toBe(2)
 
-  // Ignore both TEMP2s
+  // Ignore both TEMP1s
   await page
-    .locator('[data-test=limits-row]:has-text("TEMP2") button >> nth=1')
+    .locator('[data-test=limits-row]:has-text("TEMP1") button >> nth=1')
     .click()
   await page
-    .locator('[data-test=limits-row]:has-text("TEMP2") button >> nth=1')
+    .locator('[data-test=limits-row]:has-text("TEMP1") button >> nth=1')
     .click()
   await expect(
-    page.locator('[data-test=limits-row]:has-text("TEMP2")'),
+    page.locator('[data-test=limits-row]:has-text("TEMP1")'),
   ).not.toBeVisible()
-  expect(await page.inputValue('[data-test=overall-state]')).toMatch(
+  expect(await page.inputValue('[data-test=overall-state] input')).toMatch(
     'Some items ignored',
   )
 
   // Check the menu
   await page.locator('[data-test=limits-monitor-file]').click()
   await page.locator('text=Show Ignored').click()
-  await expect(page.locator('.v-dialog')).toContainText('TEMP2')
-  // Find the items and delete them to restore them
-  await page.locator('[data-test=remove-ignore-0]').click()
-  await utils.sleep(1000) // Allow menu to refresh
-  await page.locator('[data-test=remove-ignore-0]').click()
-  await utils.sleep(1000) // Allow menu to refresh
+  await expect(page.locator('.v-dialog')).toContainText('TEMP1')
+  // Clear all ignored
+  await page.locator('button:has-text("Clear All")').click()
   await page.locator('button:has-text("Ok")').click()
-  await expect(page.locator('.v-dialog')).not.toBeVisible()
+  await expect(page.locator('.v-dialog')).not.toBeInViewport()
 
   await page.locator('[data-test=limits-monitor-file]').click()
   await page.locator('text=Show Ignored').click()
-  await expect(page.locator('.v-dialog')).not.toContainText('TEMP2')
+  await expect(page.locator('.v-dialog')).not.toContainText('TEMP1')
   await page.locator('button:has-text("Ok")').click()
   await expect(page.locator('.v-dialog')).not.toBeVisible()
-  // Wait for the TEMP2 to show up again
+  // Wait for the TEMP1 to show up again
   await expect
     .poll(
-      () => page.locator('[data-test=limits-row]:has-text("TEMP2")').count(),
+      () => page.locator('[data-test=limits-row]:has-text("TEMP1")').count(),
       {
         timeout: 60000,
       },
@@ -220,22 +226,22 @@ test('ignores items', async ({ page, utils }) => {
 
 test('ignores entire packets', async ({ page, utils }) => {
   // The INST and INST2 targets both have VALUE2 and VALUE4 as red
-  expect(
-    await page.locator('[data-test=limits-row]:has-text("VALUE2")'),
+  await expect(
+    page.locator('[data-test=limits-row]:has-text("VALUE2")'),
   ).toHaveCount(2)
-  expect(
-    await page.locator('[data-test=limits-row]:has-text("VALUE4")'),
+  await expect(
+    page.locator('[data-test=limits-row]:has-text("VALUE4")'),
   ).toHaveCount(2)
 
   // Ignore the entire VALUE2 packet
   await page
     .locator('[data-test=limits-row]:has-text("VALUE2") button >> nth=0')
     .click()
-  expect(
-    await page.locator('[data-test=limits-row]:has-text("VALUE2")'),
+  await expect(
+    page.locator('[data-test=limits-row]:has-text("VALUE2")'),
   ).toHaveCount(1)
-  expect(
-    await page.locator('[data-test=limits-row]:has-text("VALUE4")'),
+  await expect(
+    page.locator('[data-test=limits-row]:has-text("VALUE4")'),
   ).toHaveCount(1)
 
   // Check the menu
@@ -271,9 +277,17 @@ test('displays the limits log', async ({ page, utils }) => {
   await expect(page.locator('[data-test=limits-events]')).toContainText(
     format(new Date(), 'yyyy-MM-dd'),
   )
-  await expect(page.locator('[data-test=limits-events]')).toContainText('RED')
+  // These have long timeouts just to allow the demo to hit another limit
+  await expect(page.locator('[data-test=limits-events]')).toContainText(
+    'RED',
+    { timeout: 15000 },
+  )
   await expect(page.locator('[data-test=limits-events]')).toContainText(
     'YELLOW',
+    { timeout: 15000 },
   )
-  await expect(page.locator('[data-test=limits-events]')).toContainText('GREEN')
+  await expect(page.locator('[data-test=limits-events]')).toContainText(
+    'GREEN',
+    { timeout: 15000 },
+  )
 })
