@@ -3284,6 +3284,8 @@ These methods allow the user to script Table Manager.
 
 ### table_create_binary
 
+> Since 6.1.0
+
 Creates a table binary based on a table definition file. You can achieve the same result in the Table Manager GUI with File->New File. Returns the path to the binary file created.
 
 Ruby / Python Syntax:
@@ -3311,6 +3313,8 @@ table = table_create_binary("INST/tables/config/ConfigTables_def.txt") #=>
 ```
 
 ### table_create_report
+
+> Since 6.1.0
 
 Creates a table binary based on a table definition file. You can achieve the same result in the Table Manager GUI with File->New File. Returns the path to the binary file created.
 

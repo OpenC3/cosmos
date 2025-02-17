@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -51,6 +51,8 @@ module OpenC3
         xml_packet.buffer = packet.buffer
       when 'HTMLCMD'
         html_packet.buffer = packet.buffer
+      else
+        raise "Unknown packet name: #{name}"
       end
     end
   end

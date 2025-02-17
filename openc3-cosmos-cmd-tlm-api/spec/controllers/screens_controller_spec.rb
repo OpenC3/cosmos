@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -63,9 +63,9 @@ RSpec.describe ScreensController, :type => :controller do
 
   describe "index" do
     it "lists all screens for a target" do
-      # Override Screen.all to return a fake list of files
       class Screen < OpenC3::TargetFile
         def self.all(scope)
+          # Override Screen.all to return a fake list of files
           ['INST/screens/screen1.txt','INST/screens/screen2.txt']
         end
       end
@@ -78,9 +78,9 @@ RSpec.describe ScreensController, :type => :controller do
 
   describe "show" do
     it "returns 404 if not found" do
-      # Override Screen.find to return nothing
       class Screen < OpenC3::TargetFile
         def self.find(scope, target, screen)
+          # Override Screen.find to return nothing
           nil
         end
       end
@@ -89,9 +89,9 @@ RSpec.describe ScreensController, :type => :controller do
     end
 
     it "returns the screen" do
-      # Override Screen.find to return a screen
       class Screen < OpenC3::TargetFile
         def self.find(scope, target, screen)
+          # Override Screen.find to return a screen
           "SCREEN"
         end
       end
@@ -103,9 +103,9 @@ RSpec.describe ScreensController, :type => :controller do
 
   describe "destroy" do
     it "returns ok" do
-      # Override Screen.all to return a fake list of files
       class Screen < OpenC3::TargetFile
         def self.destroy(scope, target, screen)
+          # Override Screen.destroy to do nothing
         end
       end
       delete :destroy, params: { scope: 'DEFAULT', target: 'INST', screen: 'TEST' }
@@ -113,9 +113,9 @@ RSpec.describe ScreensController, :type => :controller do
     end
 
     it "handles exceptions" do
-      # Override Screen.all to return a fake list of files
       class Screen < OpenC3::TargetFile
         def self.destroy(scope, target, screen)
+          # Override Screen.destroy to raise an exception
           raise 'whoops'
         end
       end

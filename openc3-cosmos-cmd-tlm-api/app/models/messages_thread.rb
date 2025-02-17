@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -36,8 +36,8 @@ class MessagesThread < TopicsThread
     @start_time = start_time
     @end_time = end_time
     @types = types
-    if @types
-      @types = [@types] unless Array === @types
+    if @types and !(Array === @types)
+      @types = [@types]
     end
     @level = level
     @redis_offset = nil # Redis offset to transition from files
@@ -190,8 +190,8 @@ class MessagesThread < TopicsThread
     end
 
     # Filter based on type
-    if @types
-      return nil unless @types.include?(type)
+    if @types and !@types.include?(type)
+      return nil
     end
 
     # Filter based on level
