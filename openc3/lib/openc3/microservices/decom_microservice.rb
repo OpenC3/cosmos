@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2025 Ball Aerospace & Technologies Corp.
+# Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -182,8 +182,9 @@ module OpenC3
         # but that is rescued separately in the limits_change_callback
         packet.check_limits(System.limits_set)
 
-        # This is what updates the CVT
+        # This is what actually decommutates the packet and updates the CVT
         TelemetryDecomTopic.write_packet(packet, scope: @scope)
+
         diff = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start # seconds as a float
         @metric.set(name: 'decom_duration_seconds', value: diff, type: 'gauge', unit: 'seconds')
       end

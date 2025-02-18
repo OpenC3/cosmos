@@ -660,3 +660,21 @@ class TestStructureBuffer(unittest.TestCase):
         self.assertEqual(s2.read("test1"), [0, 0])
         # Ensure we didn't change the original
         self.assertEqual(s.read("test1"), [1, 2])
+
+    def test_deep_copy(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("test1", 8, "UINT", 16)
+        s.write("test1", [1, 2])
+        s.append_item("test2", 16, "UINT")
+        s.write("test2", 0x0304)
+        s.append_item("test3", 32, "UINT")
+        s.write("test3", 0x05060708)
+
+        s2 = s.deep_copy()
+        self.assertEqual(s.items["TEST1"].overflow, 'ERROR')
+        self.assertEqual(s2.items["TEST1"].overflow, 'ERROR')
+        # Change something about the item in the original
+        s.items["TEST1"].overflow = 'SATURATE'
+        self.assertEqual(s.items["TEST1"].overflow, 'SATURATE')
+        # Verify the deep_copy didn't change
+        self.assertEqual(s2.items["TEST1"].overflow, 'ERROR')

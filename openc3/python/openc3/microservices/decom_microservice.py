@@ -196,7 +196,7 @@ class DecomMicroservice(Microservice):
             if item.limits.values:
                 values = item.limits.values[System.limits_set()]
                 # Check if the state is RED_LOW, YELLOW_LOW, YELLOW_HIGH, RED_HIGH, GREEN_LOW, GREEN_HIGH
-                if DecomMicroservice.LIMITS_STATE_INDEX.get(item.limits.state):
+                if DecomMicroservice.LIMITS_STATE_INDEX.get(item.limits.state, None) != None:
                     # Directly index into the values and return the value
                     message += f" ({values[DecomMicroservice.LIMITS_STATE_INDEX[item.limits.state]]})"
                 elif item.limits.state == "GREEN":
