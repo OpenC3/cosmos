@@ -20,7 +20,7 @@ import unittest
 import threading
 from unittest.mock import patch
 from datetime import datetime, timezone
-from test.test_helper import *
+from test.test_helper import Mock, mock_redis, setup_system, capture_io
 from openc3.api.tlm_api import tlm
 from openc3.system.system import System
 from openc3.packets.limits_response import LimitsResponse
@@ -170,16 +170,15 @@ class TestDecomMicroservice(unittest.TestCase):
 
     def test_handles_limits_responses_in_another_thread(self):
         class DelayedLimitsResponse(LimitsResponse):
-            def call(packet, item, old_limits_state):
+            def call(self, packet, item, old_limits_state):
                 time.sleep(0.1)
 
         packet = System.telemetry.packet("INST", "HEALTH_STATUS")
         temp1 = packet.get_item("TEMP1")
         temp1.limits.response = DelayedLimitsResponse()
         packet.received_time = datetime.now(timezone.utc)
-        for stdout in capture_io():
-            TelemetryTopic.write_packet(packet, scope="DEFAULT")
-            time.sleep(0.01)
+        TelemetryTopic.write_packet(packet, scope="DEFAULT")
+        time.sleep(0.01)
 
         # Verify that even though the limits response sleeps for 0.1s, the decom thread is not blocked
         self.assertLess(self.dm.metric.data["decom_duration_seconds"]["value"], 0.01)
@@ -187,7 +186,7 @@ class TestDecomMicroservice(unittest.TestCase):
     def test_handles_exceptions_in_limits_responses(self):
         class BadLimitsResponse(LimitsResponse):
             def call(self, packet, item, old_limits_state):
-                raise Exception("Bad response")
+                raise RuntimeError("Bad response")
 
         packet = System.telemetry.packet("INST", "HEALTH_STATUS")
         temp1 = packet.get_item("TEMP1")
