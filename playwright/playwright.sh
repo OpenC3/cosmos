@@ -1,11 +1,12 @@
 #!/bin/bash
 
 usage() {
-  echo "Usage: $1 [install-playwright, build-plugin, reset-storage-state, run-local, run-chromium]" >&2
+  echo "Usage: $1 [install-playwright, build-plugin, reset-storage-state, run-chromium, run-aws]" >&2
   echo "*  install-playwright: installs playwright and its dependencies" >&2
   echo "*  build-plugin: builds the plugin to be used in the playwright tests" >&2
   echo "*  reset-storage-state: clear out cached data" >&2
   echo "*  run-chromium: runs the playwright tests against a locally running version of Cosmos using Chrome" >&2
+  echo "*  run-aws: runs the playwright tests against a remotely running version of Cosmos using Chrome" >&2
   exit 1
 }
 
@@ -43,6 +44,12 @@ case $1 in
         ;;
 
     run-chromium )
+        yarn playwright test "${@:2}" --project=chromium
+        ;;
+
+    run-aws )
+        sed -i 's#http://localhost:2900#https://aws.openc3.com#' playwright.config.ts
+        KEYCLOAK_URL=https://aws.openc3.com/auth REDIRECT_URL=https://aws.openc3.com/* yarn playwright test --project=keycloak
         yarn playwright test "${@:2}" --project=chromium
         ;;
 esac
