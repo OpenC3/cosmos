@@ -14,19 +14,74 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'time'
+require 'thread'
 require 'openc3/microservices/microservice'
 require 'openc3/microservices/interface_decom_common'
 require 'openc3/topics/telemetry_decom_topic'
 require 'openc3/topics/limits_event_topic'
 
 module OpenC3
+  class LimitsResponseThread
+    def initialize(microservice_name:, queue:, logger:, metric:, scope:)
+      @microservice_name = microservice_name
+      @queue = queue
+      @logger = logger
+      @metric = metric
+      @scope = scope
+      @count = 0
+      @error_count = 0
+      @metric.set(name: 'limits_response_total', value: @count, type: 'counter')
+      @metric.set(name: 'limits_response_error_total', value: @error_count, type: 'counter')
+    end
+
+    def start
+      @thread = Thread.new do
+        run()
+      rescue Exception => e
+        @logger.error "#{@microservice_name}: Limits Response thread died: #{e.formatted}"
+        raise e
+      end
+    end
+
+    def stop
+      if @thread
+        OpenC3.kill_thread(self, @thread)
+        @thread = nil
+      end
+    end
+
+    def graceful_kill
+      @queue << [nil, nil, nil]
+    end
+
+    def run
+      while true
+        packet, item, old_limits_state = @queue.pop()
+        break if packet.nil?
+
+        begin
+          item.limits.response.call(packet, item, old_limits_state)
+        rescue Exception => e
+          @error_count += 1
+          @metric.set(name: 'limits_response_error_total', value: @error_count, type: 'counter')
+          @logger.error "#{packet.target_name} #{packet.packet_name} #{item.name} Limits Response Exception!"
+          @logger.error "Called with old_state = #{old_limits_state}, new_state = #{item.limits.state}"
+          @logger.error e.filtered
+        end
+
+        @count += 1
+        @metric.set(name: 'limits_response_total', value: @count, type: 'counter')
+      end
+    end
+  end
+
   class DecomMicroservice < Microservice
     include InterfaceDecomCommon
     LIMITS_STATE_INDEX = { RED_LOW: 0, YELLOW_LOW: 1, YELLOW_HIGH: 2, RED_HIGH: 3, GREEN_LOW: 4, GREEN_HIGH: 5 }
@@ -44,9 +99,14 @@ module OpenC3
       @error_count = 0
       @metric.set(name: 'decom_total', value: @count, type: 'counter')
       @metric.set(name: 'decom_error_total', value: @error_count, type: 'counter')
+      @limits_response_queue = Queue.new
+      @limits_response_thread = nil
     end
 
     def run
+      @limits_response_thread = LimitsResponseThread.new(microservice_name: @name, queue: @limits_response_queue, logger: @logger, metric: @metric, scope: @scope)
+      @limits_response_thread.start()
+
       setup_microservice_topic()
       while true
         break if @cancel_thread
@@ -81,6 +141,9 @@ module OpenC3
           @logger.error("Decom error: #{e.formatted}")
         end
       end
+
+      @limits_response_thread.stop()
+      @limits_response_thread = nil
     end
 
     def decom_packet(_topic, msg_id, msg_hash, _redis)
@@ -119,8 +182,9 @@ module OpenC3
         # but that is rescued separately in the limits_change_callback
         packet.check_limits(System.limits_set)
 
-        # This is what updates the CVT
+        # This is what actually decommutates the packet and updates the CVT
         TelemetryDecomTopic.write_packet(packet, scope: @scope)
+
         diff = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start # seconds as a float
         @metric.set(name: 'decom_duration_seconds', value: diff, type: 'gauge', unit: 'seconds')
       end
@@ -179,16 +243,9 @@ module OpenC3
       LimitsEventTopic.write(event, scope: @scope)
 
       if item.limits.response
-        begin
-          # TODO: The limits response is user code and should be run as a separate thread / process
-          # If this code blocks it will delay TelemetryDecomTopic.write_packet
-          item.limits.response.call(packet, item, old_limits_state)
-        rescue Exception => e
-          @error = e
-          @logger.error "#{packet.target_name} #{packet.packet_name} #{item.name} Limits Response Exception!"
-          @logger.error "Called with old_state = #{old_limits_state}, new_state = #{item.limits.state}"
-          @logger.error e.filtered
-        end
+        copied_packet = packet.deep_copy
+        copied_item = packet.items[item.name]
+        @limits_response_queue << [copied_packet, copied_item, old_limits_state]
       end
     end
   end

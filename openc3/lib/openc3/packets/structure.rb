@@ -35,10 +35,10 @@ module OpenC3
 
     # @return [Hash] Items that make up the structure.
     #   Hash key is the item's name in uppercase
-    attr_reader :items
+    attr_accessor :items
 
     # @return [Array] Items sorted by bit_offset.
-    attr_reader :sorted_items
+    attr_accessor :sorted_items
 
     # @return [Integer] Defined length in bytes (not bits) of the structure
     attr_reader :defined_length
@@ -511,10 +511,27 @@ module OpenC3
       # additional work that isn't necessary here
       structure.instance_variable_set("@buffer".freeze, @buffer.clone) if @buffer
       # Need to update reference packet in the Accessor
+      structure.accessor = @accessor.clone
       structure.accessor.packet = structure
       return structure
     end
     alias dup clone
+
+    # Clone that also deep copies items
+    # @return [Structure] A deep copy of the structure
+    def deep_copy
+      cloned = clone()
+      cloned_items = []
+      cloned.sorted_items.each do |item|
+        cloned_items << item.clone()
+      end
+      cloned.sorted_items = cloned_items
+      cloned.items = {}
+      cloned_items.each do |item|
+        cloned.items[item.name] = item
+      end
+      return cloned
+    end
 
     # Enable the ability to read and write item values as if they were methods
     # to the class
