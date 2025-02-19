@@ -21,6 +21,7 @@ import unittest
 from unittest.mock import Mock
 from openc3.utilities.thread_manager import ThreadManager
 
+
 class TestThreadManager(unittest.TestCase):
     def setUp(self):
         ThreadManager.MONITOR_SLEEP_SECONDS = 0.01
@@ -40,16 +41,21 @@ class TestThreadManager(unittest.TestCase):
 
         def thread1_body():
             time.sleep(0.1)
+
         thread1 = threading.Thread(target=thread1_body)
         thread1.start()
+
         def thread2_body():
             while self.continue2:
                 time.sleep(0.01)
+
         thread2 = threading.Thread(target=thread2_body)
         thread2.start()
+
         def thread3_body():
             while self.continue3:
                 time.sleep(0.01)
+
         thread3 = threading.Thread(target=thread3_body)
         thread3.start()
         # Register all the threads with the ThreadManager
@@ -63,6 +69,7 @@ class TestThreadManager(unittest.TestCase):
         def monitor_and_shutdown():
             ThreadManager.instance().monitor()
             ThreadManager.instance().shutdown()
+
         manager_thread = threading.Thread(target=monitor_and_shutdown)
         manager_thread.start()
         # Wait for the first thread to finish as the second and third spin
@@ -79,6 +86,7 @@ class TestThreadManager(unittest.TestCase):
     def test_joins_threads(self):
         def task(duration):
             time.sleep(duration)
+
         thread1 = threading.Thread(target=task, args=[0.01])
         thread2 = threading.Thread(target=task, args=[0.1])
         thread3 = threading.Thread(target=task, args=[0.05])

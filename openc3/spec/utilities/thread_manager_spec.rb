@@ -22,11 +22,13 @@ require "openc3/utilities/thread_manager"
 module OpenC3
   describe ThreadManager do
     before(:all) do
+      ThreadManager.class_variable_set("@@instance", nil)
       @sleep_seconds = ThreadManager::MONITOR_SLEEP_SECONDS
       OpenC3.disable_warnings { ThreadManager::MONITOR_SLEEP_SECONDS = 0.01 }
     end
     after(:all) do
       OpenC3.disable_warnings { ThreadManager::MONITOR_SLEEP_SECONDS = @sleep_seconds }
+      ThreadManager.class_variable_set("@@instance", nil)
     end
 
     it "monitors threads until 1 dies then stops and shutdowns" do
@@ -54,12 +56,14 @@ module OpenC3
       ThreadManager.instance.register(thread1)
       ThreadManager.instance.register(thread2, stop_object: stop_object)
       ThreadManager.instance.register(thread3, shutdown_object: shutdown_object)
-      Thread.new do
+      manager_thread = Thread.new do
         ThreadManager.instance.monitor()
         ThreadManager.instance.shutdown()
       end
       thread1.join()
-      sleep 0.03
+      sleep 0.01
+      manager_thread.join()
+      sleep 0.02 # Allow the other threads to finish
       expect(thread1.alive?).to be false
       expect(thread2.alive?).to be false
       expect(thread3.alive?).to be false

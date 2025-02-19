@@ -14,6 +14,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import os
 import unittest
 from unittest.mock import *
 from test.test_helper import *
@@ -855,6 +856,7 @@ class TestApiShared(unittest.TestCase):
         for stdout in capture_io():
             start("tester.py")
             self.assertIn("Hello World", stdout.getvalue())
+        os.remove("tester.py")
 
     def test_load_utility_raises(self):
         with self.assertRaisesRegex(
