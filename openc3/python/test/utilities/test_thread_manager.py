@@ -25,6 +25,11 @@ class TestThreadManager(unittest.TestCase):
     def setUp(self):
         ThreadManager.MONITOR_SLEEP_SECONDS = 0.01
 
+    def tearDown(self):
+        ThreadManager.MONITOR_SLEEP_SECONDS = 0.25
+        # Critical to set this to None to clean up the singleton instance
+        ThreadManager.instance_obj = None
+
     def test_monitors_threads(self):
         self.continue2 = True
         self.continue3 = True
@@ -33,43 +38,50 @@ class TestThreadManager(unittest.TestCase):
         shutdown_object = Mock()
         shutdown_object.shutdown = Mock(side_effect=lambda: setattr(self, "continue3", False))
 
-        def thread1_body(name, duration):
-            time.sleep(duration)
-        thread1 = threading.Thread(target=thread1_body, args=('thread 1', 0.05))
+        def thread1_body():
+            time.sleep(0.1)
+        thread1 = threading.Thread(target=thread1_body)
         thread1.start()
-        def thread2_body(name, duration):
+        def thread2_body():
             while self.continue2:
-                time.sleep(duration)
-        thread2 = threading.Thread(target=thread2_body, args=('thread 1', 0.01))
+                time.sleep(0.01)
+        thread2 = threading.Thread(target=thread2_body)
         thread2.start()
-        def thread3_body(name, duration):
+        def thread3_body():
             while self.continue3:
-                time.sleep(duration)
-        thread3 = threading.Thread(target=thread3_body, args=('thread 1', 0.01))
+                time.sleep(0.01)
+        thread3 = threading.Thread(target=thread3_body)
         thread3.start()
+        # Register all the threads with the ThreadManager
+        # We add stop_object and shutdown_object to the second and third threads
+        # so they can be stopped when the ThreadManager monitor detects the first thread has stopped
         ThreadManager.instance().register(thread1)
         ThreadManager.instance().register(thread2, stop_object=stop_object)
         ThreadManager.instance().register(thread3, shutdown_object=shutdown_object)
+
+        # Create a new thread to monitor and shutdown the threads
         def monitor_and_shutdown():
             ThreadManager.instance().monitor()
             ThreadManager.instance().shutdown()
         manager_thread = threading.Thread(target=monitor_and_shutdown)
         manager_thread.start()
-        time.sleep(0.001)
+        # Wait for the first thread to finish as the second and third spin
         thread1.join()
-        time.sleep(0.001)
+        # The monitor should detect the first thread has finished
+        # shutdown will stop the second and third threads
         manager_thread.join()
-        time.sleep(0.1)
+        # Allow time for the threads to sleep and stop
+        time.sleep(0.02)
         self.assertFalse(thread1.is_alive())
         self.assertFalse(thread2.is_alive())
         self.assertFalse(thread3.is_alive())
 
     def test_joins_threads(self):
-        def task(name, duration):
+        def task(duration):
             time.sleep(duration)
-        thread1 = threading.Thread(target=task, args=('thread 1', 0.01))
-        thread2 = threading.Thread(target=task, args=('thread 2', 0.1))
-        thread3 = threading.Thread(target=task, args=('thread 3', 0.05))
+        thread1 = threading.Thread(target=task, args=[0.01])
+        thread2 = threading.Thread(target=task, args=[0.1])
+        thread3 = threading.Thread(target=task, args=[0.05])
         ThreadManager.instance().register(thread1)
         ThreadManager.instance().register(thread2)
         ThreadManager.instance().register(thread3)
@@ -82,7 +94,9 @@ class TestThreadManager(unittest.TestCase):
         start_time = perf_counter()
         ThreadManager.instance().join()
         stop_time = perf_counter()
+        # The join should wait for the longest running thread (0.1 seconds)
         self.assertAlmostEqual(stop_time - start_time, 0.1, delta=0.01)
+        # All threads should be stopped
         self.assertFalse(thread1.is_alive())
         self.assertFalse(thread2.is_alive())
         self.assertFalse(thread3.is_alive())

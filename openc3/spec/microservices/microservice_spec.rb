@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -50,7 +50,7 @@ module OpenC3
         expect { Microservice.run }.to raise_error(/Name DEFAULT_TYPE_NAME doesn't match convention/)
         ENV['OPENC3_MICROSERVICE_NAME'] = "DEFAULT__TYPE__NAME"
         Microservice.run
-        sleep 0.1
+        sleep 0.3 # Allow the ThreadManager to shut down the microservice
       end
     end
   end
