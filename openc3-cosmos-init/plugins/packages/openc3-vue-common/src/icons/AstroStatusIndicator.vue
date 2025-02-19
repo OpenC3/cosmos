@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -26,8 +26,7 @@
 
 <script>
 import { AstroStatuses, UnknownToAstroStatus } from '.'
-import dark from '/icons/status-dark.png'
-import light from '/icons/status-light.png'
+import dark from '../../public/icons/status-dark.png'
 
 export default {
   props: {

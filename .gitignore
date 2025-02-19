@@ -22,6 +22,7 @@ openc3/spec/examples.txt
 coverage/
 profile/
 plugins/DEFAULT/
+**/python/prof/
 
 # local env files
 .env.local

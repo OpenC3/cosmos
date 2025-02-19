@@ -34,6 +34,7 @@ from openc3.microservices.interface_decom_common import (
 )
 from openc3.top_level import kill_thread
 
+
 class LimitsResponseThread:
     def __init__(self, microservice_name, queue, logger, metric, scope):
         self.microservice_name = microservice_name
@@ -71,19 +72,29 @@ class LimitsResponseThread:
                     item.limits.response.call(packet, item, old_limits_state)
                 except Exception as error:
                     self.error_count += 1
-                    self.metric.set(name='limits_response_error_total', value=self.error_count, type='counter')
-                    self.logger.error(f"{packet.target_name} {packet.packet_name} {item.name} Limits Response Exception!")
+                    self.metric.set(name="limits_response_error_total", value=self.error_count, type="counter")
+                    self.logger.error(
+                        f"{packet.target_name} {packet.packet_name} {item.name} Limits Response Exception!"
+                    )
                     self.logger.error(f"Called with old_state = {old_limits_state}, new_state = {item.limits.state}")
                     self.logger.error(repr(error))
 
                 self.count += 1
-                self.metric.set(name='limits_response_total', value=self.count, type='counter')
+                self.metric.set(name="limits_response_total", value=self.count, type="counter")
         except Exception as error:
             self.logger.error(f"{self.microservice_name}: Limits Response thread died: {repr(error)}")
             raise error
 
+
 class DecomMicroservice(Microservice):
-    LIMITS_STATE_INDEX = { "RED_LOW": 0, "YELLOW_LOW": 1, "YELLOW_HIGH": 2, "RED_HIGH": 3, "GREEN_LOW": 4, "GREEN_HIGH": 5 }
+    LIMITS_STATE_INDEX = {
+        "RED_LOW": 0,
+        "YELLOW_LOW": 1,
+        "YELLOW_HIGH": 2,
+        "RED_HIGH": 3,
+        "GREEN_LOW": 4,
+        "GREEN_HIGH": 5,
+    }
 
     def __init__(self, *args):
         super().__init__(*args)
@@ -101,7 +112,13 @@ class DecomMicroservice(Microservice):
         self.limits_response_thread = None
 
     def run(self):
-        self.limits_response_thread = LimitsResponseThread(microservice_name=self.name, queue=self.limits_response_queue, logger=self.logger, metric=self.metric, scope=self.scope)
+        self.limits_response_thread = LimitsResponseThread(
+            microservice_name=self.name,
+            queue=self.limits_response_queue,
+            logger=self.logger,
+            metric=self.metric,
+            scope=self.scope,
+        )
         self.limits_response_thread.start()
 
         self.setup_microservice_topic()
@@ -198,7 +215,7 @@ class DecomMicroservice(Microservice):
             if item.limits.values:
                 values = item.limits.values[System.limits_set()]
                 # Check if the state is RED_LOW, YELLOW_LOW, YELLOW_HIGH, RED_HIGH, GREEN_LOW, GREEN_HIGH
-                if DecomMicroservice.LIMITS_STATE_INDEX.get(item.limits.state):
+                if DecomMicroservice.LIMITS_STATE_INDEX.get(item.limits.state, None) is not None:
                     # Directly index into the values and return the value
                     message += f" ({values[DecomMicroservice.LIMITS_STATE_INDEX[item.limits.state]]})"
                 elif item.limits.state == "GREEN":
@@ -212,7 +229,7 @@ class DecomMicroservice(Microservice):
 
         # Include the packet_time in the log json but not the log message
         # Can't use isoformat because it appends "+00:00" instead of "Z"
-        time = { 'packet_time': packet_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ") }
+        time = {"packet_time": packet_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")}
         if log_change:
             match item.limits.state:
                 case "BLUE" | "GREEN" | "GREEN_LOW" | "GREEN_HIGH":

@@ -3284,6 +3284,8 @@ These methods allow the user to script Table Manager.
 
 ### table_create_binary
 
+> Since 6.1.0
+
 Creates a table binary based on a table definition file. You can achieve the same result in the Table Manager GUI with File->New File. Returns the path to the binary file created.
 
 Ruby / Python Syntax:
@@ -3299,18 +3301,38 @@ table_create_binary(<Table Definition File>)
 Ruby Example:
 
 ```ruby
-table = table_create_binary("INST/tables/config/ConfigTables_def.txt") #=>
-# {"filename"=>"INST/tables/bin/ConfigTables.bin"}
+# Full example of using table_create_binary and then editing the binary
+require 'openc3/tools/table_manager/table_config'
+# This returns a hash: {"filename"=>"INST/tables/bin/MCConfigurationTable.bin"}
+table = table_create_binary("INST/tables/config/MCConfigurationTable_def.txt")
+file = get_target_file(table['filename'])
+table_binary = file.read()
+
+# Get the definition file so we can process the binary
+def_file = get_target_file("INST/tables/config/MCConfigurationTable_def.txt")
+# Access the internal TableConfig to process the definition
+config = OpenC3::TableConfig.process_file(def_file.path())
+# Grab the table by the definition name, e.g. TABLE "MC_Configuration"
+table = config.table('MC_CONFIGURATION')
+# Now you can read or write individual items in the table
+table.write("MEMORY_SCRUBBING", "DISABLE")
+# Finally write the table.buffer (the binary) back to storage
+put_target_file("INST/tables/bin/MCConfigurationTable_NoScrub.bin", table.buffer)
 ```
 
 Python Example:
 
 ```python
-table = table_create_binary("INST/tables/config/ConfigTables_def.txt") #=>
-# {'filename': 'INST/tables/bin/ConfigTables.bin'}
+# NOTE: TableConfig and other TableManager classes do not yet exist in Python
+# So editing like the above Ruby example is not yet possible
+
+# Returns a dict: {'filename': 'INST/tables/bin/ConfigTables.bin'}
+table = table_create_binary("INST/tables/config/ConfigTables_def.txt")
 ```
 
 ### table_create_report
+
+> Since 6.1.0
 
 Creates a table binary based on a table definition file. You can achieve the same result in the Table Manager GUI with File->New File. Returns the path to the binary file created.
 

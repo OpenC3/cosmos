@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -55,7 +55,7 @@ module OpenC3
     # (see OpenC3::Conversion#call)
     def call(value, packet, buffer)
       myself = packet # For backwards compatibility
-      if true or myself # Remove unused variable warning for myself
+      if myself # Remove unused variable warning for myself
         return eval(@code_to_eval)
       end
     end
