@@ -45,7 +45,7 @@ class ThreadManager:
 
     def monitor(self):
         while True:
-            for thread, stop_object, shutdown_object in self.threads:
+            for thread, _, _ in self.threads:
                 if not thread.is_alive():
                     return
             time.sleep(self.MONITOR_SLEEP_SECONDS)
@@ -63,5 +63,5 @@ class ThreadManager:
                     shutdown_object.shutdown()
 
     def join(self):
-        for thread, stop_object, shutdown_object in self.threads:
+        for thread, _, _ in self.threads:
             thread.join()
