@@ -43,6 +43,7 @@ from openc3.utilities.sleeper import Sleeper
 from openc3.utilities.time import from_nsec_from_epoch
 from openc3.utilities.json import JsonDecoder
 from openc3.utilities.store_queued import StoreQueued, EphemeralStoreQueued
+from openc3.utilities.thread_manager import ThreadManager
 from openc3.top_level import kill_thread
 
 try:
@@ -79,6 +80,7 @@ class InterfaceCmdHandlerThread:
     def start(self):
         self.thread = threading.Thread(target=self.run, daemon=True)
         self.thread.start()
+        ThreadManager.instance().register(self.thread, stop_object=self)
         return self.thread
 
     def stop(self):
@@ -355,6 +357,7 @@ class RouterTlmHandlerThread:
     def start(self):
         self.thread = threading.Thread(target=self.run, daemon=True)
         self.thread.start()
+        ThreadManager.instance().register(self.thread, stop_object=self)
         return self.thread
 
     def stop(self):
@@ -461,6 +464,7 @@ class RouterTlmHandlerThread:
 
 class InterfaceMicroservice(Microservice):
     UNKNOWN_BYTES_TO_PRINT = 16
+    DISCONNECT_WAIT_TIME = 1
 
     def __init__(self, name):
         self.mutex = threading.Lock()
@@ -582,7 +586,7 @@ class InterfaceMicroservice(Microservice):
                 match self.interface.state:
                     case "DISCONNECTED":
                         # Just wait to see if we should connect later
-                        self.interface_thread_sleeper.sleep(1)
+                        self.interface_thread_sleeper.sleep(InterfaceMicroservice.DISCONNECT_WAIT_TIME)
                     case "ATTEMPTING":
                         try:
                             with self.mutex:
@@ -824,3 +828,5 @@ class InterfaceMicroservice(Microservice):
 
 if os.path.basename(__file__) == os.path.basename(sys.argv[0]):
     InterfaceMicroservice.class_run()
+    ThreadManager.instance().shutdown()
+    ThreadManager.instance().join()
