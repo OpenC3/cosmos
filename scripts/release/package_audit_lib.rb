@@ -484,10 +484,7 @@ def check_tool_base(path, base_pkgs)
           validate_outfile(outfile, package, latest)
         when 'keycloak-js'
           outfile = "public/js/#{package}-#{latest}.min.js"
-          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/keycloak.min.js --output #{outfile}`
-          validate_outfile(outfile, package, latest)
-          outfile = "public/js/#{package}-#{latest}.min.js.map"
-          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/keycloak.min.js.map --output #{outfile}`
+          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/lib/keycloak.min.js --output #{outfile}`
           validate_outfile(outfile, package, latest)
         else
           outfile = "public/js/#{package}-#{latest}.min.js"
@@ -515,7 +512,8 @@ end
 def validate_outfile(outfile, package, latest)
   data = File.read(outfile)
   if data.length < 100
-    puts "ERROR: While updating #{package} to #{latest} got #{data}. Check the package and version."
+    puts "ERROR: While updating #{package} to #{latest} got the following:\n#{data}\n\nCheck the package and version."
+    FileUtils.rm outfile
     exit 1
   end
 end
