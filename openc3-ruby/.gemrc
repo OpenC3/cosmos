@@ -1,5 +1,4 @@
 ---
-gem: --no-ri --no-rdoc --no-document --suggestions
 install: --no-document
 update: --no-document
 
