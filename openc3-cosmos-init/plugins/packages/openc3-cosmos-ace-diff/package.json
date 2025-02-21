@@ -16,9 +16,9 @@
   "author": "Ben Keen, Jason Thomas",
   "license": "MIT",
   "devDependencies": {
-    "eslint": "9.19.0",
-    "prettier": "3.4.2",
-    "sass": "1.83.4",
-    "vite": "6.0.11"
+    "eslint": "9.20.1",
+    "prettier": "3.5.1",
+    "sass": "1.85.0",
+    "vite": "6.1.1"
   }
 }
