@@ -21,6 +21,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/version'
+require 'openc3/io/json_drb'
 require 'faraday'
 
 module OpenC3
@@ -38,7 +39,7 @@ module OpenC3
     end
 
     # Load the token from the environment
-    def token()
+    def token(include_bearer: true)
       @token
     end
   end
@@ -74,7 +75,7 @@ module OpenC3
     end
 
     # Load the token from the environment
-    def token
+    def token(include_bearer: true)
       @auth_mutex.synchronize do
         @log = [nil, nil]
         current_time = Time.now.to_i
@@ -86,7 +87,11 @@ module OpenC3
           _refresh_token(current_time)
         end
       end
-      "Bearer #{@token}"
+      if include_bearer
+        return "Bearer #{@token}"
+      else
+        return @token
+      end
     end
 
     def get_token_from_refresh_token(refresh_token)
@@ -145,7 +150,7 @@ module OpenC3
     def _make_request(headers, data)
       realm = ENV['OPENC3_KEYCLOAK_REALM'] || 'openc3'
       uri = URI("#{@url}/realms/#{realm}/protocol/openid-connect/token")
-      @log[0] = "request uri: #{uri.to_s} header: #{headers.to_s} body: #{data.to_s}"
+      @log[0] = "request uri: #{uri} header: #{headers} body: #{data}"
       STDOUT.puts @log[0] if JsonDRb.debug?
       saved_verbose = $VERBOSE; $VERBOSE = nil
       begin

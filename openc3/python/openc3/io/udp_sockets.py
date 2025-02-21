@@ -124,7 +124,8 @@ class UdpReadWriteSocket:
     def multicast(cls, host, port):
         if host is None or port is None:
             return False
-        return ipaddress.ip_address(host) in ipaddress.ip_network("224.0.0.0/4")
+        host_ip = socket.gethostbyname(host)
+        return ipaddress.ip_address(host_ip) in ipaddress.ip_network("224.0.0.0/4")
 
 
 # Creates a UDPSocket and implements a non-blocking write.

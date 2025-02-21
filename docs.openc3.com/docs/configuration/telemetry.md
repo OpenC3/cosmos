@@ -1,19 +1,22 @@
 ---
 sidebar_position: 5
 title: Telemetry
+description: Telemetry definition file format and keywords
+sidebar_custom_props:
+  myEmoji: 📡
 ---
 
 <!-- Be sure to edit _telemetry.md because telemetry.md is a generated file -->
 
 ## Telemetry Definition Files
 
-Telemetry definition files define the telemetry packets that can be received and processed from COSMOS targets. One large file can be used to define the telemetry packets, or multiple files can be used at the user's discretion. Telemetry definition files are placed in the target's cmd_tlm directory and are processed alphabetically. Therefore if you have some telemetry files that depend on others, e.g. they override or extend existing telemetry, they must be named last. The easist way to do this is to add an extension to an existing file name. For example, if you already have tlm.txt you can create tlm_override.txt for telemetry that depends on the definitions in tlm.txt. Note that due to the way the [ASCII Table](http://www.asciitable.com/) is structured, files beginning with capital letters are processed before lower case letters.
+Telemetry definition files define the telemetry packets that can be received and processed from COSMOS targets. One large file can be used to define the telemetry packets, or multiple files can be used at the user's discretion. Telemetry definition files are placed in the target's cmd_tlm directory and are processed alphabetically. Therefore if you have some telemetry files that depend on others, e.g. they override or extend existing telemetry, they must be named last. The easiest way to do this is to add an extension to an existing file name. For example, if you already have tlm.txt you can create tlm_override.txt for telemetry that depends on the definitions in tlm.txt. Note that due to the way the [ASCII Table](http://www.asciitable.com/) is structured, files beginning with capital letters are processed before lower case letters.
 
 When defining telemetry items you can choose from the following data types: INT, UINT, FLOAT, STRING, BLOCK. These correspond to integers, unsigned integers, floating point numbers, strings and binary blocks of data. Within COSMOS, the only difference between a STRING and BLOCK is when COSMOS reads a STRING type it stops reading when it encounters a null byte (0). This shows up when displaying the value in Packet Viewer or Tlm Viewer and in the output of Data Extractor. You should strive to store non-ASCII data inside BLOCK items and ASCII strings in STRING items.
 
 :::info Printing Data
 
-Most data types can be printed in a COSMOS script simply by doing <code>puts tlm("TGT PKT ITEM")</code>. However, if the ITEM is a BLOCK data type and contains binary (non-ASCII) data then that won't work. COSMOS comes with a built-in method called <code>formatted</code> to help you view binary data. If ITEM is a BLOCK type containing binary try <code>puts tlm("TGT PKT ITEM").formatted</code> which will print the bytes out as hex.
+Most data types can be printed in a COSMOS script simply by doing <code>print(tlm("TGT PKT ITEM"))</code>. However, if the ITEM is a BLOCK data type and contains binary (non-ASCII) data then that won't work. COSMOS comes with a built-in method called <code>formatted</code> to help you view binary data. If ITEM is a BLOCK type containing binary try <code>puts tlm("TGT PKT ITEM").formatted</code> (Ruby) and <code>print(formatted(tlm("TGT PKT ITEM")))</code> (Python) which will print the bytes out as hex.
 :::
 
 ### ID Items
@@ -42,18 +45,27 @@ RECEIVED_TIME is the time that COSMOS receives the packet. This is set by the in
 
 PACKET_TIME defaults to RECEIVED_TIME, but can be set as a derived item with a time object in the telemetry configuration file. This helps support stored telemetry packets so that they can be more reasonably handled by other COSMOS tools such as Telemetry Grapher and Data Extractor. You can set the 'stored' flag in your interface and the current value table is unaffected.
 
-The \_TIMEFORMATTED items returns the date and time in a YYYY/MM/DD HH:MM:SS.sss format and the \_TIMESECONDS returns the Unix seconds of the time.
+The \_TIMEFORMATTED items returns the date and time in a YYYY/MM/DD HH:MM:SS.sss format and the \_TIMESECONDS returns the Unix seconds of the time. Internally these are both stored as either a Ruby Time object or Python date object.
 
 #### Example
 
-COSMOS provides a Unix time conversion class which returns a Ruby time object based on the number of seconds and (optionally) microseconds since the Unix epoch. Note: This returns a Ruby Time object and not a float or string!
+COSMOS provides a Unix time conversion class which returns a Ruby Time object or Python date object based on the number of seconds and (optionally) microseconds since the Unix epoch. Note: This returns a native object and not a float or string!
 
-```
+Ruby Example:
+
+```ruby
 ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
     READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
 ```
 
-Definining PACKET_TIME allows the PACKET_TIMESECONDS and PACKET_TIMEFORMATTED to be calculated against an internal Packet time rather than the time COSMOS receives the packet.
+Python Example:
+
+```python
+ITEM PACKET_TIME 0 0 DERIVED "Python time based on TIMESEC and TIMEUS"
+    READ_CONVERSION openc3/conversions/unix_time_conversion.py TIMESEC TIMEUS
+```
+
+Defining PACKET_TIME allows the PACKET_TIMESECONDS and PACKET_TIMEFORMATTED to be calculated against an internal Packet time rather than the time COSMOS receives the packet.
 
 <div style={{"clear": 'both'}}></div>
 
@@ -150,13 +162,13 @@ META TEST "This parameter is for test purposes only"
 #### OVERLAP
 <div class="right">(Since 4.4.1)</div>**This item is allowed to overlap other items in the packet**
 
-If an item's bit offset overlaps another item, OpenC3 issues a warning. This keyword explicitly allows an item to overlap another and supresses the warning message.
+If an item's bit offset overlaps another item, OpenC3 issues a warning. This keyword explicitly allows an item to overlap another and suppresses the warning message.
 
 
 #### KEY
 <div class="right">(Since 5.0.10)</div>**Defines the key used to access this raw value in the packet.**
 
-Keys are often JsonPath or XPath strings
+Keys are often [JSONPath](https://en.wikipedia.org/wiki/JSONPath) or [XPath](https://en.wikipedia.org/wiki/XPath) strings
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -166,6 +178,15 @@ Example Usage:
 ```ruby
 KEY $.book.title
 ```
+
+#### VARIABLE_BIT_SIZE
+<div class="right">(Since 5.18.0)</div>**Marks an item as having its bit size defined by another length item**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Length Item Name | The name of the associated length item | True |
+| Length Bits Per Count | Bits per count of the length item. Defaults to 8 | False |
+| Length Value Bit Offset | Offset in Bits to Apply to Length Field Value. Defaults to 0 | False |
 
 #### STATE
 **Defines a key/value pair for the current item**
@@ -193,14 +214,14 @@ APPEND_ITEM STRING 1024 STRING "String"
 #### READ_CONVERSION
 **Applies a conversion to the current telemetry item**
 
-Conversions are implemented in a custom Ruby file which should be located in the target's lib folder. The class must require 'openc3/conversions/conversion' and inherit from Conversion. It must implement the initialize method if it takes extra parameters and must always implement the call method. The conversion factor is applied to the raw value in the telemetry packet before it is displayed to the user. The user still has the ability to see the raw unconverted value in a details dialog.
+Conversions are implemented in a custom Ruby or Python file which should be located in the target's lib folder. The class must inherit from Conversion. It must implement the `initialize` (Ruby) or `__init__` (Python) method if it takes extra parameters and must always implement the `call` method. The conversion factor is applied to the raw value in the telemetry packet before it is displayed to the user. The user still has the ability to see the raw unconverted value in a details dialog.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Class Filename | The filename which contains the Ruby class. The filename must be named after the class such that the class is a CamelCase version of the underscored filename. For example, 'the_great_conversion.rb' should contain 'class TheGreatConversion'. | True |
+| Class Filename | The filename which contains the Ruby or Python class. The filename must be named after the class such that the class is a CamelCase version of the underscored filename. For example, 'the_great_conversion.rb' should contain 'class TheGreatConversion'. | True |
 | Parameter | Additional parameter values for the conversion which are passed to the class constructor. | False |
 
-Example Usage:
+Ruby Example:
 ```ruby
 READ_CONVERSION the_great_conversion.rb 1000
 
@@ -218,6 +239,21 @@ module OpenC3
     end
   end
 end
+```
+
+Python Example:
+```python
+READ_CONVERSION the_great_conversion.py 1000
+
+Defined in the_great_conversion.py:
+
+from openc3.conversions.conversion import Conversion
+class TheGreatConversion(Conversion):
+    def __init__(self, multiplier):
+        super().__init__()
+        self.multiplier = float(multiplier)
+    def call(self, value, packet, buffer):
+        return value * self.multiplier
 ```
 
 #### POLY_READ_CONVERSION
@@ -256,10 +292,10 @@ SEG_POLY_READ_CONVERSION 100 12 0.5 0.3 # Apply the conversion to all values >= 
 #### GENERIC_READ_CONVERSION_START
 **Start a generic read conversion**
 
-Adds a generic conversion function to the current telemetry item. This conversion factor is applied to the raw value in the telemetry packet before it is displayed to the user. The user still has the ability to see the raw unconverted value in a details dialog. The conversion is specified as ruby code that receives two implied parameters. 'value' which is the raw value being read and 'packet' which is a reference to the telemetry packet class (Note, referencing the packet as 'myself' is still supported for backwards compatibility). The last line of ruby code given should return the converted value. The GENERIC_READ_CONVERSION_END keyword specifies that all lines of ruby code for the conversion have been given.
+Adds a generic conversion function to the current telemetry item. This conversion factor is applied to the raw value in the telemetry packet before it is displayed to the user. The user still has the ability to see the raw unconverted value in a details dialog. The conversion is specified as Ruby or Python code that receives two implied parameters. 'value' which is the raw value being read and 'packet' which is a reference to the telemetry packet class (Note, referencing the packet as 'myself' is still supported for backwards compatibility). The last line of code should return the converted value. The GENERIC_READ_CONVERSION_END keyword specifies that all lines of code for the conversion have been given.
 
 :::warning
-Generic conversions are not a good long term solution. Consider creating a conversion class and using READ_CONVERSION instead. READ_CONVERSION is easier to debug and higher performance.
+Generic conversions are not a good long term solution. Consider creating a conversion class and using READ_CONVERSION instead. READ_CONVERSION is easier to debug and has higher performance.
 :::
 
 | Parameter | Description | Required |
@@ -267,11 +303,19 @@ Generic conversions are not a good long term solution. Consider creating a conve
 | Converted Type | Type of the converted value<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, STRING, BLOCK</span> | False |
 | Converted Bit Size | Bit size of converted value | False |
 
-Example Usage:
+Ruby Example:
 ```ruby
 APPEND_ITEM ITEM1 32 UINT
   GENERIC_READ_CONVERSION_START
-    value * 1.5  # Convert the value by a scale factor
+    return (value * 1.5).to_i # Convert the value by a scale factor
+  GENERIC_READ_CONVERSION_END
+```
+
+Python Example:
+```python
+APPEND_ITEM ITEM1 32 UINT
+  GENERIC_READ_CONVERSION_START
+    return int(value * 1.5) # Convert the value by a scale factor
   GENERIC_READ_CONVERSION_END
 ```
 
@@ -307,12 +351,17 @@ LIMITS TVAC 3 ENABLED -80.0 -30.0 30.0 80.0
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Response Class Filename | Name of the Ruby file which implements the limits response. This file should be in the config/TARGET/lib directory so it can be found by OpenC3. | True |
+| Response Class Filename | Name of the Ruby or Python file which implements the limits response. This file should be in the target's lib directory. | True |
 | Response Specific Options | Variable length number of options that will be passed to the class constructor | False |
 
-Example Usage:
+Ruby Example:
 ```ruby
 LIMITS_RESPONSE example_limits_response.rb 10
+```
+
+Python Example:
+```python
+LIMITS_RESPONSE example_limits_response.py 10
 ```
 
 ### APPEND_ITEM
@@ -454,12 +503,17 @@ META FSW_TYPE "struct tlm_packet"
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Processor Name | The name of the processor | True |
-| Processor Class Filename | Name of the Ruby file which implements the processor. This file should be in the config/TARGET/lib directory so it can be found by OpenC3. | True |
+| Processor Class Filename | Name of the Ruby or Python file which implements the processor. This file should be in the target's lib directory. | True |
 | Processor Specific Options | Variable length number of options that will be passed to the class constructor. | False |
 
-Example Usage:
+Ruby Example:
 ```ruby
 PROCESSOR TEMP1HIGH watermark_processor.rb TEMP1
+```
+
+Python Example:
+```python
+PROCESSOR TEMP1HIGH watermark_processor.py TEMP1
 ```
 
 ### ALLOW_SHORT
@@ -477,16 +531,36 @@ This packet will not appear in Packet Viewer, Telemetry Grapher and Handbook Cre
 ### ACCESSOR
 <div class="right">(Since 5.0.10)</div>**Defines the class used to read and write raw values from the packet**
 
-Defines the class that is used too read raw values from the packet. Defaults to BinaryAccessor. Provided accessors also include JsonAccessor, CborAccessor, HtmlAccessor, and XmlAccessor.
+Defines the class that is used too read raw values from the packet. Defaults to BinaryAccessor. For more information see [Accessors](accessors).
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Accessor Class Name | The name of the accessor class | True |
 
+### TEMPLATE
+<div class="right">(Since 5.0.10)</div>**Defines a template string used to pull telemetry values from a string buffer**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Template | The template string which should be enclosed in quotes | True |
+
+### TEMPLATE_FILE
+<div class="right">(Since 5.0.10)</div>**Defines a template file used to pull telemetry values from a string buffer**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Template File Path | The relative path to the template file. Filename should generally start with an underscore. | True |
+
 ### IGNORE_OVERLAP
 <div class="right">(Since 5.16.0)</div>**Ignores any packet items which overlap**
 
 Packet items which overlap normally generate a warning unless each individual item has the OVERLAP keyword. This ignores overlaps across the entire packet.
+
+
+### VIRTUAL
+<div class="right">(Since 5.18.0)</div>**Marks this packet as virtual and not participating in identification**
+
+Used for packet definitions that can be used as structures for items with a given packet.
 
 
 ## SELECT_TELEMETRY

@@ -106,28 +106,16 @@ module OpenC3
       end
     end
 
-    describe "out_of_limits" do
-      it "returns all out of limits telemetry items" do
-        @tlm.update!("TGT1", "PKT1", "\x00\x03\x03\x04\x05")
-        @tlm.packet("TGT1", "PKT1").check_limits
-        items = @limits.out_of_limits
-        expect(items[0][0]).to eql "TGT1"
-        expect(items[0][1]).to eql "PKT1"
-        expect(items[0][2]).to eql "ITEM1"
-        expect(items[0][3]).to eql :RED_LOW
-      end
-    end
-
     describe "enabled?" do
-      it "complains about non-existant targets" do
+      it "complains about non-existent targets" do
         expect { @limits.enabled?("TGTX", "PKT1", "ITEM1") }.to raise_error(RuntimeError, "Telemetry target 'TGTX' does not exist")
       end
 
-      it "complains about non-existant packets" do
+      it "complains about non-existent packets" do
         expect { @limits.enabled?("TGT1", "PKTX", "ITEM1") }.to raise_error(RuntimeError, "Telemetry packet 'TGT1 PKTX' does not exist")
       end
 
-      it "complains about non-existant items" do
+      it "complains about non-existent items" do
         expect { @limits.enabled?("TGT1", "PKT1", "ITEMX") }.to raise_error(RuntimeError, "Packet item 'TGT1 PKT1 ITEMX' does not exist")
       end
 
@@ -140,15 +128,15 @@ module OpenC3
     end
 
     describe "enable" do
-      it "complains about non-existant targets" do
+      it "complains about non-existent targets" do
         expect { @limits.enable("TGTX", "PKT1", "ITEM1") }.to raise_error(RuntimeError, "Telemetry target 'TGTX' does not exist")
       end
 
-      it "complains about non-existant packets" do
+      it "complains about non-existent packets" do
         expect { @limits.enable("TGT1", "PKTX", "ITEM1") }.to raise_error(RuntimeError, "Telemetry packet 'TGT1 PKTX' does not exist")
       end
 
-      it "complains about non-existant items" do
+      it "complains about non-existent items" do
         expect { @limits.enable("TGT1", "PKT1", "ITEMX") }.to raise_error(RuntimeError, "Packet item 'TGT1 PKT1 ITEMX' does not exist")
       end
 
@@ -161,15 +149,15 @@ module OpenC3
     end
 
     describe "disable" do
-      it "complains about non-existant targets" do
+      it "complains about non-existent targets" do
         expect { @limits.disable("TGTX", "PKT1", "ITEM1") }.to raise_error(RuntimeError, "Telemetry target 'TGTX' does not exist")
       end
 
-      it "complains about non-existant packets" do
+      it "complains about non-existent packets" do
         expect { @limits.disable("TGT1", "PKTX", "ITEM1") }.to raise_error(RuntimeError, "Telemetry packet 'TGT1 PKTX' does not exist")
       end
 
-      it "complains about non-existant items" do
+      it "complains about non-existent items" do
         expect { @limits.disable("TGT1", "PKT1", "ITEMX") }.to raise_error(RuntimeError, "Packet item 'TGT1 PKT1 ITEMX' does not exist")
       end
 

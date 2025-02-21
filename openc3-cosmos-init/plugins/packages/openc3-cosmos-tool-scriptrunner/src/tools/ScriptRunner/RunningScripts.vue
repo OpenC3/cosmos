@@ -37,8 +37,8 @@
             label="Search"
             prepend-inner-icon="mdi-magnify"
             clearable
-            outlined
-            dense
+            variant="outlined"
+            density="compact"
             single-line
             hide-details
             data-test="running-search" /></v-row
@@ -47,34 +47,27 @@
         :headers="runningHeaders"
         :items="runningScripts"
         :search="runningSearch"
-        dense
-        calculate-widths
-        multi-sort
-        sort-by="start_time"
-        sort-desc
+        density="compact"
         data-test="running-scripts"
-        :footer-props="{
-          itemsPerPageOptions: [3],
-          showFirstLastPage: true,
-        }"
+        :items-per-page-options="[3]"
         max-height="400"
       >
         <template v-slot:item.connect="{ item }">
           <v-btn color="primary" @click="connectScript(item)">
             <span>Connect</span>
-            <v-icon right v-show="connectInNewTab"> mdi-open-in-new </v-icon>
+            <v-icon end v-show="connectInNewTab"> mdi-open-in-new </v-icon>
           </v-btn>
         </template>
         <template v-slot:item.stop="{ item }">
           <v-btn color="primary" @click="stopScript(item)">
             <span>Stop</span>
-            <v-icon right> mdi-close-circle-outline </v-icon>
+            <v-icon end> mdi-close-circle-outline </v-icon>
           </v-btn>
         </template>
         <template v-slot:item.delete="{ item }">
           <v-btn color="primary" @click="deleteScript(item)">
             <span>Delete</span>
-            <v-icon right> mdi-alert-octagon-outline </v-icon>
+            <v-icon end> mdi-alert-octagon-outline </v-icon>
           </v-btn>
         </template>
       </v-data-table>
@@ -92,8 +85,8 @@
             label="Search"
             prepend-inner-icon="mdi-magnify"
             clearable
-            outlined
-            dense
+            variant="outlined"
+            density="compact"
             single-line
             hide-details
           />
@@ -104,41 +97,52 @@
         :headers="completedHeaders"
         :items="completedScripts"
         :search="completedSearch"
-        dense
-        calculate-widths
-        multi-sort
-        sort-by="start"
-        sort-desc
+        density="compact"
         data-test="completed-scripts"
-        :footer-props="{
-          itemsPerPageOptions: [5],
-          showFirstLastPage: true,
-        }"
+        :items-per-page-options="[5]"
       >
+        <template v-slot:item.view="{ item }">
+          <v-btn color="primary" @click="viewScriptLog(item)">
+            <span v-if="item.name.includes('(') && item.name.includes(')')">
+              Script Report
+            </span>
+            <span v-else> Script Log </span>
+            <v-icon right> mdi-eye </v-icon>
+          </v-btn>
+        </template>
         <template v-slot:item.download="{ item }">
           <v-btn
-            color="primary"
             :disabled="downloadScript"
             :loading="downloadScript && downloadScript.name === item.name"
             @click="downloadScriptLog(item)"
           >
-            <span v-if="item.name.includes('(') && item.name.includes(')')"
-              >Script Report</span
-            >
-            <span v-else>Script Log</span>
-            <v-icon right> mdi-file-download-outline </v-icon>
+            <span v-if="item.name.includes('(') && item.name.includes(')')">
+              Script Report
+            </span>
+            <span v-else> Script Log </span>
+            <v-icon end> mdi-file-download-outline </v-icon>
             <template v-slot:loader>
-              <span>Loading...</span>
+              <span> Loading... </span>
             </template>
           </v-btn>
         </template>
       </v-data-table>
     </v-card>
+    <output-dialog
+      :content="dialogContent"
+      type="Script"
+      :name="dialogName"
+      :filename="dialogFilename"
+      v-model="showDialog"
+      v-if="showDialog"
+      @submit="showDialog = false"
+    />
   </div>
 </template>
 
 <script>
-import Api from '@openc3/tool-common/src/services/api'
+import { Api } from '@openc3/js-common/services'
+import { OutputDialog } from '@openc3/vue-common/components'
 
 export default {
   props: {
@@ -146,6 +150,7 @@ export default {
     curTab: Number,
     connectInNewTab: Boolean,
   },
+  components: { OutputDialog },
   data() {
     return {
       downloadScript: null,
@@ -153,24 +158,24 @@ export default {
       runningScripts: [],
       runningHeaders: [
         {
-          text: 'Connect',
-          value: 'connect',
+          title: 'Connect',
+          key: 'connect',
           sortable: false,
           filterable: false,
         },
-        { text: 'Id', value: 'id' },
-        { text: 'User', value: 'user' },
-        { text: 'Name', value: 'name' },
-        { text: 'Start Time', value: 'start_time' },
+        { title: 'Id', key: 'id' },
+        { title: 'User', key: 'user' },
+        { title: 'Name', key: 'name' },
+        { title: 'Start Time', key: 'start_time' },
         {
-          text: 'Stop',
-          value: 'stop',
+          title: 'Stop',
+          key: 'stop',
           sortable: false,
           filterable: false,
         },
         {
-          text: 'Force Quit',
-          value: 'delete',
+          title: 'Force Quit',
+          key: 'delete',
           sortable: false,
           filterable: false,
         },
@@ -178,16 +183,27 @@ export default {
       completedSearch: '',
       completedScripts: [],
       completedHeaders: [
-        { text: 'User', value: 'user' },
-        { text: 'Name', value: 'name' },
-        { text: 'Start Time', value: 'start' },
+        { title: 'Id', value: 'id' },
+        { title: 'User', value: 'user' },
+        { title: 'Name', value: 'name' },
+        { title: 'Start Time', value: 'start' },
         {
-          text: 'Download',
-          value: 'download',
+          title: 'View',
+          value: 'view',
+          sortable: false,
+          filterable: false,
+        },
+        {
+          title: 'Download',
+          key: 'download',
           sortable: false,
           filterable: false,
         },
       ],
+      showDialog: false,
+      dialogName: '',
+      dialogContent: '',
+      dialogFilename: '',
     }
   },
   created() {
@@ -240,7 +256,7 @@ export default {
           this.getRunningScripts()
         })
         .catch((error) => {
-          if (error) {
+          if (error !== true) {
             this.$notify.caution({
               body: `Failed to stop script: ${script.id} ${script.name}`,
             })
@@ -267,12 +283,30 @@ export default {
           this.getRunningScripts()
         })
         .catch((error) => {
-          if (error) {
+          if (error !== true) {
             this.$notify.caution({
               body: `Failed to stop script: ${script.id} ${script.name}`,
             })
           }
         })
+    },
+    viewScriptLog: function (script) {
+      if (script.name.includes('(') && script.name.includes(')')) {
+        this.dialogName = 'Report'
+      } else {
+        this.dialogName = 'Log'
+      }
+      Api.get(
+        `/openc3-api/storage/download_file/${encodeURIComponent(
+          script.log,
+        )}?bucket=OPENC3_LOGS_BUCKET`,
+      ).then((response) => {
+        const filenameParts = script.log.split('/')
+        this.dialogFilename = filenameParts[filenameParts.length - 1]
+        // Decode Base64 string
+        this.dialogContent = window.atob(response.data.contents)
+        this.showDialog = true
+      })
     },
     downloadScriptLog: function (script) {
       this.downloadScript = script
@@ -301,3 +335,8 @@ export default {
   },
 }
 </script>
+<style>
+.v-sheet {
+  background-color: var(--color-background-base-default);
+}
+</style>

@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -43,36 +43,44 @@ class Suite:
     # START PUBLIC API
     ###########################################################################
 
-    # Explictly avoid creating an initialize method which forces users to call super()
+    # Explicitly avoid creating an initialize method which forces users to call super()
 
     # Add a group to the suite
     def add_group(self, group_class):
-        if not group_class.__class__ == type:
-            raise RuntimeError("add_group must be given Class not String in Python")
+        if not issubclass(group_class, Group):
+            raise RuntimeError(
+                f"add_group received with {group_class}({group_class.__class__}) but must subclass Group"
+            )
         if not self.scripts().get(group_class, None):
             self.scripts()[group_class] = group_class()
         self.plans().append(["GROUP", group_class, None])
 
     # Add a script to the suite
     def add_script(self, group_class, script):
-        if not group_class.__class__ == type:
-            raise RuntimeError("add_script must be given Class not String in Python")
+        if not issubclass(group_class, Group):
+            raise RuntimeError(
+                f"add_script received with {group_class}({group_class.__class__}) but must subclass Group"
+            )
         if not self.scripts().get(group_class, None):
             self.scripts()[group_class] = group_class()
         self.plans().append(["SCRIPT", group_class, script])
 
     # Add a group setup to the suite
     def add_group_setup(self, group_class):
-        if not group_class.__class__ == type:
-            raise RuntimeError("add_group_setup must be given Class not String in Python")
+        if not issubclass(group_class, Group):
+            raise RuntimeError(
+                f"add_group_setup received with {group_class}({group_class.__class__}) but must subclass Group"
+            )
         if not self.scripts().get(group_class, None):
             self.scripts()[group_class] = group_class()
         self.plans().append(["GROUP_SETUP", group_class, None])
 
     # Add a group teardown to the suite
     def add_group_teardown(self, group_class):
-        if not group_class.__class__ == type:
-            raise RuntimeError("add_group_teardown must be given Class not String in Python")
+        if not issubclass(group_class, Group):
+            raise RuntimeError(
+                f"add_group_teardown received with {group_class}({group_class.__class__}) but must subclass Group"
+            )
         if not self.scripts().get(group_class, None):
             self.scripts()[group_class] = group_class()
         self.plans().append(["GROUP_TEARDOWN", group_class, None])
@@ -287,7 +295,7 @@ class Group:
     abort_on_exception = False
     current_result = None
 
-    # Explictly avoid creating an initialize method which forces users to call super()
+    # Explicitly avoid creating an initialize method which forces users to call super()
 
     @classmethod
     def scripts(cls):
@@ -373,18 +381,16 @@ class Group:
                     openc3.script.RUNNING_SCRIPT.instance.exceptions = None
 
             except Exception as error:
-                # Check that the error belongs to the StopScript inheritance chain
-                if issubclass(error.__class__, StopScript):
+                if isinstance(error, StopScript):
                     result.stopped = True
                     result.result = "STOP"
-                # Check that the error belongs to the SkipScript inheritance chain
-                if issubclass(error.__class__, SkipScript):
+                if isinstance(error, SkipScript):
                     result.result = "SKIP"
                     if hasattr(error, "message"):
                         result.message = result.message or ""
                         result.message += error.message + "\n"
                 else:
-                    if not issubclass(error.__class__, StopScript) and (
+                    if not isinstance(error, StopScript) and (
                         not openc3.script.RUNNING_SCRIPT
                         or not openc3.script.RUNNING_SCRIPT.instance
                         or not openc3.script.RUNNING_SCRIPT.instance.exceptions

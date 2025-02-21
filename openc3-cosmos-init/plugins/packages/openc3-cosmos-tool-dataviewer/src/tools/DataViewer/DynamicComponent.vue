@@ -27,10 +27,10 @@
 </template>
 
 <script>
-import Component from '@openc3/tool-common/src/components/dataviewer/Component'
+import { DataViewerComponent } from '@openc3/vue-common/components'
 
 export default {
-  mixins: [Component],
+  mixins: [DataViewerComponent],
   data() {
     return {
       widgetType: null,
@@ -46,13 +46,14 @@ export default {
   },
   watch: {
     latestData: function (data) {
-      this.$refs['dynamic'].receive(data)
+      if (typeof this.$refs['dynamic'].receive === 'function') {
+        this.$refs['dynamic'].receive(data)
+      }
     },
   },
   async mounted() {
     try {
-      /* eslint-disable-next-line */
-      this.widgetType = await System.import(/* webpackIgnore: true */ this.url)
+      this.widgetType = await System.import(this.url)
     } catch (e) {
       throw new Error(`Unknown widget: ${this.name}`)
     }

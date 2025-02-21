@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -26,6 +26,8 @@ test.use({
   toolName: 'Limits Monitor',
 })
 
+// await page.getByRole('cell', { name: 'playwright' }).click();
+
 test('changes the limits set', async ({ page, utils }) => {
   expect(await page.getByLabel('Current Limits Set').inputValue()).toBe(
     'DEFAULT',
@@ -34,7 +36,7 @@ test('changes the limits set', async ({ page, utils }) => {
   await page
     .locator('[data-test="limits-monitor-file-change-limits-set"]')
     .click()
-  await page.getByRole('button', { name: 'Limits Set' }).click()
+  await page.getByRole('dialog').locator('[data-test="limits-set"]').click()
   await page.getByRole('option', { name: 'TVAC' }).click()
   await page.getByRole('button', { name: 'Ok' }).click()
   // Poll since inputValue is immediate
@@ -51,7 +53,7 @@ test('changes the limits set', async ({ page, utils }) => {
   await page
     .locator('[data-test="limits-monitor-file-change-limits-set"]')
     .click()
-  await page.getByRole('button', { name: 'Limits Set' }).click()
+  await page.getByRole('dialog').locator('[data-test="limits-set"]').click()
   await page.getByRole('option', { name: 'DEFAULT' }).click()
   await page.getByRole('button', { name: 'Ok' }).click()
   // Poll since inputValue is immediate
@@ -65,7 +67,7 @@ test('changes the limits set', async ({ page, utils }) => {
   )
 })
 
-test('saves the configuration', async ({ page, utils }) => {
+test('saves, opens, and resets the configuration', async ({ page, utils }) => {
   await expect
     .poll(
       () =>
@@ -96,19 +98,17 @@ test('saves the configuration', async ({ page, utils }) => {
   await page
     .locator('[data-test=limits-row]:has-text("GROUND2STATUS") button >> nth=1')
     .click()
-  expect(await page.inputValue('[data-test=overall-state]')).toMatch(
+  expect(await page.inputValue('[data-test=overall-state] input')).toMatch(
     'Some items ignored',
   )
 
   await page.locator('[data-test=limits-monitor-file]').click()
   await page.locator('text=Save Configuration').click()
   await page
-    .locator('[data-test=name-input-save-config-dialog]')
+    .getByLabel('Configuration Name')
     .fill('playwright')
   await page.locator('button:has-text("Ok")').click()
-})
 
-test('opens and resets the configuration', async ({ page, utils }) => {
   await page.locator('[data-test=limits-monitor-file]').click()
   await page.locator('text=Open Configuration').click()
   await page.locator(`td:has-text("playwright")`).click()
@@ -125,15 +125,15 @@ test('opens and resets the configuration', async ({ page, utils }) => {
   ).toContainText('GROUND2STATUS')
   await page.locator('button:has-text("Ok")').click()
 
-  // Reset this test configuation
+  // Reset this test configuration
   await page.locator('[data-test=limits-monitor-file]').click()
   await page.locator('text=Reset Configuration').click()
   await utils.sleep(200) // Allow menu to close
-  expect(await page.inputValue('[data-test=overall-state]')).not.toMatch(
+  expect(await page.inputValue('[data-test=overall-state] input')).not.toMatch(
     'Some items ignored',
   )
 
-  // Delete this test configuation
+  // Delete this test configuration
   await page.locator('[data-test=limits-monitor-file]').click()
   await page.locator('text=Open Configuration').click()
   await page
@@ -195,7 +195,7 @@ test('ignores items', async ({ page, utils }) => {
   await expect(
     page.locator('[data-test=limits-row]:has-text("TEMP1")'),
   ).not.toBeVisible()
-  expect(await page.inputValue('[data-test=overall-state]')).toMatch(
+  expect(await page.inputValue('[data-test=overall-state] input')).toMatch(
     'Some items ignored',
   )
 
@@ -206,7 +206,7 @@ test('ignores items', async ({ page, utils }) => {
   // Clear all ignored
   await page.locator('button:has-text("Clear All")').click()
   await page.locator('button:has-text("Ok")').click()
-  await expect(page.locator('.v-dialog')).not.toBeVisible()
+  await expect(page.locator('.v-dialog')).not.toBeInViewport()
 
   await page.locator('[data-test=limits-monitor-file]').click()
   await page.locator('text=Show Ignored').click()
@@ -226,22 +226,22 @@ test('ignores items', async ({ page, utils }) => {
 
 test('ignores entire packets', async ({ page, utils }) => {
   // The INST and INST2 targets both have VALUE2 and VALUE4 as red
-  expect(
-    await page.locator('[data-test=limits-row]:has-text("VALUE2")'),
+  await expect(
+    page.locator('[data-test=limits-row]:has-text("VALUE2")'),
   ).toHaveCount(2)
-  expect(
-    await page.locator('[data-test=limits-row]:has-text("VALUE4")'),
+  await expect(
+    page.locator('[data-test=limits-row]:has-text("VALUE4")'),
   ).toHaveCount(2)
 
   // Ignore the entire VALUE2 packet
   await page
     .locator('[data-test=limits-row]:has-text("VALUE2") button >> nth=0')
     .click()
-  expect(
-    await page.locator('[data-test=limits-row]:has-text("VALUE2")'),
+  await expect(
+    page.locator('[data-test=limits-row]:has-text("VALUE2")'),
   ).toHaveCount(1)
-  expect(
-    await page.locator('[data-test=limits-row]:has-text("VALUE4")'),
+  await expect(
+    page.locator('[data-test=limits-row]:has-text("VALUE4")'),
   ).toHaveCount(1)
 
   // Check the menu
@@ -277,9 +277,17 @@ test('displays the limits log', async ({ page, utils }) => {
   await expect(page.locator('[data-test=limits-events]')).toContainText(
     format(new Date(), 'yyyy-MM-dd'),
   )
-  await expect(page.locator('[data-test=limits-events]')).toContainText('RED')
+  // These have long timeouts just to allow the demo to hit another limit
+  await expect(page.locator('[data-test=limits-events]')).toContainText(
+    'RED',
+    { timeout: 15000 },
+  )
   await expect(page.locator('[data-test=limits-events]')).toContainText(
     'YELLOW',
+    { timeout: 15000 },
   )
-  await expect(page.locator('[data-test=limits-events]')).toContainText('GREEN')
+  await expect(page.locator('[data-test=limits-events]')).toContainText(
+    'GREEN',
+    { timeout: 15000 },
+  )
 })

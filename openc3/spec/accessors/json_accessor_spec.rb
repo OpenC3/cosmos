@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -30,6 +30,14 @@ module OpenC3
     end
 
     describe "read_item" do
+      it "should return nil for an item that does not exist" do
+        item = OpenStruct.new
+        item.key = "$.packet.nope"
+        item.data_type = :INT
+        item.array_size = nil
+        expect(JsonAccessor.read_item(item, @hash_data)).to eq(nil)
+      end
+
       it "should read a top level hash" do
         item = OpenStruct.new
         item.key = "$"
@@ -115,7 +123,7 @@ module OpenC3
         item.key = '$.packet.item9'
         item.data_type = :FLOAT
         item.array_size = nil
-        expect(JsonAccessor.read_item(item, @data1)).to eq -Float::INFINITY
+        expect(JsonAccessor.read_item(item, @data1)).to eq(-Float::INFINITY)
 
         item = OpenStruct.new
         item.key = '$[0].packet.item1'
@@ -407,7 +415,7 @@ module OpenC3
         item.data_type = :FLOAT
         item.array_size = nil
         JsonAccessor.write_item(item, -Float::INFINITY, @data1)
-        expect(JsonAccessor.read_item(item, @data1)).to eq -Float::INFINITY
+        expect(JsonAccessor.read_item(item, @data1)).to eq(-Float::INFINITY)
 
         item = OpenStruct.new
         item.key = '$.packet.item3'

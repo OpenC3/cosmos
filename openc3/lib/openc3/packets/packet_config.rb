@@ -34,9 +34,11 @@ require 'openc3/packets/parsers/xtce_converter'
 require 'openc3/utilities/python_proxy'
 require 'openc3/conversions'
 require 'openc3/processors'
+require 'openc3/accessors'
 require 'nokogiri'
 require 'ostruct'
 require 'fileutils'
+require 'tempfile'
 
 module OpenC3
   # Reads a command or telemetry configuration file and builds a hash of packets.
@@ -74,13 +76,13 @@ module OpenC3
     attr_reader :latest_data
 
     # @return [Hash<String>=>Hash<Array>=>Packet] Hash keyed by target name
-    # that returns a hash keyed by an array of id values.  The id values resolve to the packet
-    # defined by that identification.  Command version
+    # that returns a hash keyed by an array of id values. The id values resolve to the packet
+    # defined by that identification. Command version
     attr_reader :cmd_id_value_hash
 
     # @return [Hash<String>=>Hash<Array>=>Packet] Hash keyed by target name
-    # that returns a hash keyed by an array of id values.  The id values resolve to the packet
-    # defined by that identification.  Telemetry version
+    # that returns a hash keyed by an array of id values. The id values resolve to the packet
+    # defined by that identification. Telemetry version
     attr_reader :tlm_id_value_hash
 
     # @return [String] Language of current target (ruby or python)
@@ -219,8 +221,8 @@ module OpenC3
               'PARAMETER', 'ID_ITEM', 'ID_PARAMETER', 'ARRAY_ITEM', 'ARRAY_PARAMETER', 'APPEND_ITEM',\
               'APPEND_PARAMETER', 'APPEND_ID_ITEM', 'APPEND_ID_PARAMETER', 'APPEND_ARRAY_ITEM',\
               'APPEND_ARRAY_PARAMETER', 'ALLOW_SHORT', 'HAZARDOUS', 'PROCESSOR', 'META',\
-              'DISABLE_MESSAGES', 'HIDDEN', 'DISABLED', 'ACCESSOR', 'TEMPLATE', 'TEMPLATE_FILE',\
-              'RESPONSE', 'ERROR_RESPONSE', 'SCREEN', 'RELATED_ITEM', 'IGNORE_OVERLAP'
+              'DISABLE_MESSAGES', 'HIDDEN', 'DISABLED', 'VIRTUAL', 'RESTRICTED', 'ACCESSOR', 'TEMPLATE', 'TEMPLATE_FILE',\
+              'RESPONSE', 'ERROR_RESPONSE', 'SCREEN', 'RELATED_ITEM', 'IGNORE_OVERLAP', 'VALIDATOR'
             raise parser.error("No current packet for #{keyword}") unless @current_packet
 
             process_current_packet(parser, keyword, params)
@@ -232,7 +234,7 @@ module OpenC3
               'POLY_WRITE_CONVERSION', 'SEG_POLY_READ_CONVERSION', 'SEG_POLY_WRITE_CONVERSION',\
               'GENERIC_READ_CONVERSION_START', 'GENERIC_WRITE_CONVERSION_START', 'REQUIRED',\
               'LIMITS', 'LIMITS_RESPONSE', 'UNITS', 'FORMAT_STRING', 'DESCRIPTION',\
-              'MINIMUM_VALUE', 'MAXIMUM_VALUE', 'DEFAULT_VALUE', 'OVERFLOW', 'OVERLAP', 'KEY'
+              'MINIMUM_VALUE', 'MAXIMUM_VALUE', 'DEFAULT_VALUE', 'OVERFLOW', 'OVERLAP', 'KEY', 'VARIABLE_BIT_SIZE'
             raise parser.error("No current item for #{keyword}") unless @current_item
 
             process_current_item(parser, keyword, params)
@@ -317,16 +319,20 @@ module OpenC3
         if @current_cmd_or_tlm == COMMAND
           PacketParser.check_item_data_types(@current_packet)
           @commands[@current_packet.target_name][@current_packet.packet_name] = @current_packet
-          hash = @cmd_id_value_hash[@current_packet.target_name]
-          hash = {} unless hash
-          @cmd_id_value_hash[@current_packet.target_name] = hash
-          update_id_value_hash(@current_packet, hash)
+          unless @current_packet.virtual
+            hash = @cmd_id_value_hash[@current_packet.target_name]
+            hash = {} unless hash
+            @cmd_id_value_hash[@current_packet.target_name] = hash
+            update_id_value_hash(@current_packet, hash)
+          end
         else
           @telemetry[@current_packet.target_name][@current_packet.packet_name] = @current_packet
-          hash = @tlm_id_value_hash[@current_packet.target_name]
-          hash = {} unless hash
-          @tlm_id_value_hash[@current_packet.target_name] = hash
-          update_id_value_hash(@current_packet, hash)
+          unless @current_packet.virtual
+            hash = @tlm_id_value_hash[@current_packet.target_name]
+            hash = {} unless hash
+            @tlm_id_value_hash[@current_packet.target_name] = hash
+            update_id_value_hash(@current_packet, hash)
+          end
         end
         @current_packet = nil
         @current_item = nil
@@ -337,7 +343,7 @@ module OpenC3
       if cmd_or_tlm == :COMMAND
         @commands[packet.target_name][packet.packet_name] = packet
 
-        if affect_ids
+        if affect_ids and not packet.virtual
           hash = @cmd_id_value_hash[packet.target_name]
           hash = {} unless hash
           @cmd_id_value_hash[packet.target_name] = hash
@@ -354,13 +360,39 @@ module OpenC3
           latest_data_packets << packet unless latest_data_packets.include?(packet)
         end
 
-        if affect_ids
+        if affect_ids and not packet.virtual
           hash = @tlm_id_value_hash[packet.target_name]
           hash = {} unless hash
           @tlm_id_value_hash[packet.target_name] = hash
           update_id_value_hash(packet, hash)
         end
       end
+    end
+
+    # This method provides way to quickly test packet configs
+    #
+    # require 'openc3/packets/packet_config'
+    #
+    # config = <<END
+    #   ...
+    # END
+    #
+    # pc = PacketConfig.from_config(config, "MYTARGET")
+    # c = pc.commands['CMDADCS']['SET_POINTING_CMD']
+    # c.restore_defaults()
+    # c.write("MYITEM", 5)
+    # puts c.buffer.formatted
+    def self.from_config(config, process_target_name, language = 'ruby')
+      pc = self.new
+      tf = Tempfile.new("pc.txt")
+      tf.write(config)
+      tf.close
+      begin
+        pc.process_file(tf.path, process_target_name, language)
+      ensure
+        tf.unlink
+      end
+      return pc
     end
 
     protected
@@ -405,7 +437,7 @@ module OpenC3
           else # DELETE
             @current_packet.delete_item(params[0])
           end
-        rescue # Rescue the default execption to provide a nicer error message
+        rescue # Rescue the default exception to provide a nicer error message
           raise parser.error("#{params[0]} not found in #{@current_cmd_or_tlm.downcase} packet #{@current_packet.target_name} #{@current_packet.packet_name}", usage)
         end
 
@@ -469,22 +501,35 @@ module OpenC3
         @current_packet.hidden = true
         @current_packet.disabled = true
 
-      when 'ACCESSOR'
-        usage = "#{keyword} <Accessor class name>"
+      when 'VIRTUAL'
+        usage = "#{keyword}"
+        parser.verify_num_parameters(0, 0, usage)
+        @current_packet.hidden = true
+        @current_packet.disabled = true
+        @current_packet.virtual = true
+
+      when 'RESTRICTED'
+        usage = "#{keyword}"
+        parser.verify_num_parameters(0, 0, usage)
+        @current_packet.restricted = true
+
+      when 'ACCESSOR', 'VALIDATOR'
+        usage = "#{keyword} <Class name> <Optional parameters> ..."
         parser.verify_num_parameters(1, nil, usage)
         begin
+          keyword_equals = "#{keyword.downcase}=".to_sym
           if @language == 'ruby'
             klass = OpenC3.require_class(params[0])
             if params.length > 1
-              @current_packet.accessor = klass.new(@current_packet, *params[1..-1])
+              @current_packet.public_send(keyword_equals, klass.new(@current_packet, *params[1..-1]))
             else
-              @current_packet.accessor = klass.new(@current_packet)
+              @current_packet.public_send(keyword_equals, klass.new(@current_packet))
             end
           else
             if params.length > 1
-              @current_packet.accessor = PythonProxy.new('Accessor', params[0], @current_packet, *params[1..-1])
+              @current_packet.public_send(keyword_equals, PythonProxy.new(keyword.capitalize, params[0], @current_packet, *params[1..-1]))
             else
-              @current_packet.accessor = PythonProxy.new('Accessor', params[0], @current_packet)
+              @current_packet.public_send(keyword_equals, PythonProxy.new(keyword.capitalize, params[0], @current_packet))
             end
           end
         rescue Exception => e
@@ -664,7 +709,7 @@ module OpenC3
           raise parser.error("#{keyword} only applies to command parameters")
         end
 
-      # Update the mimimum value for the current command parameter
+      # Update the minimum value for the current command parameter
       when 'MINIMUM_VALUE'
         if @current_cmd_or_tlm == TELEMETRY
           raise parser.error("#{keyword} only applies to command parameters")
@@ -720,6 +765,16 @@ module OpenC3
       when 'KEY'
         parser.verify_num_parameters(1, 1, 'KEY <key or path into data>')
         @current_item.key = params[0]
+
+      when 'VARIABLE_BIT_SIZE'
+        parser.verify_num_parameters(1, 3, 'VARIABLE_BIT_SIZE <length_item_name> <length_bits_per_count = 8> <length_value_bit_offset = 0>')
+
+        variable_bit_size = {'length_bits_per_count' => 8, 'length_value_bit_offset' => 0}
+        variable_bit_size['length_item_name'] = params[0].upcase
+        variable_bit_size['length_bits_per_count'] = Integer(params[1]) if params[1]
+        variable_bit_size['length_value_bit_offset'] = Integer(params[2]) if params[2]
+
+        @current_item.variable_bit_size = variable_bit_size
       end
     end
 

@@ -98,6 +98,7 @@ module OpenC3
 
     # Supported Options
     # FLOW_CONTROL - Flow control method NONE or RTSCTS. Defaults to NONE
+    # DATA_BITS - Number of data bits 5, 6, 7, or 8. Defaults to 8
     def set_option(option_name, option_values)
       super(option_name, option_values)
       case option_name.upcase

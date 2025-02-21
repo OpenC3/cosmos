@@ -1,5 +1,6 @@
 TELEMETRY <%= target_name %> HEALTH_STATUS BIG_ENDIAN "Health and status from the <%= target_name %> target"
   <%= render "_ccsds_tlm.txt", locals: {apid: 1} %>
+  APPEND_ITEM CMD_ACPT_CNT     32 UINT     "Command accept count"
   APPEND_ITEM COLLECTS         16 UINT     "Number of collects"
   APPEND_ITEM TEMP1            16 UINT     "Temperature #1"
     POLY_READ_CONVERSION  -100.0 0.00305
@@ -49,6 +50,7 @@ TELEMETRY <%= target_name %> HEALTH_STATUS BIG_ENDIAN "Health and status from th
     STATE CONNECTED 1 GREEN
     STATE UNAVAILABLE 0 YELLOW
   APPEND_ITEM BLOCKTEST 80 BLOCK "Block data"
+  APPEND_ITEM BRACKET[0] 8 UINT "Regular item with brackets in the name"
   ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
     READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
   ITEM TEMP1HIGH 0 0 DERIVED "High-water mark for TEMP1"
@@ -71,6 +73,14 @@ TELEMETRY <%= target_name %> HEALTH_STATUS BIG_ENDIAN "Health and status from th
     GENERIC_READ_CONVERSION_START FLOAT 32
       packet.read('TEMP1') * 1_000_000
     GENERIC_READ_CONVERSION_END
+  # Enable to test the ARRAYPLOT widget with array of array data [[x1,x2,...],[y1,y2,...]]
+  # ITEM POINTS 0 0 DERIVED
+  #   GENERIC_READ_CONVERSION_START UINT 800
+  #     return [
+  #       Array.new(800) { |i| i * 0.1 },
+  #       (0...800).map { |i| Math.sin(2 * Math::PI * i / 800) }
+  #     ]
+  #   GENERIC_READ_CONVERSION_END
   PROCESSOR TEMP1STAT statistics_processor.rb TEMP1 100
   PROCESSOR TEMP1WATER watermark_processor.rb TEMP1
 
@@ -125,6 +135,12 @@ TELEMETRY <%= target_name %> PARAMS BIG_ENDIAN "Params set by SETPARAMS command"
       STATE GOOD 0 GREEN
       STATE BAD 1 RED
   <% end %>
+  APPEND_ITEM IP_ADDRESS   32 UINT "Encoded IP Address"
+  APPEND_ITEM P_2.2,2      32 UINT "Test weird characters"
+  APPEND_ITEM P-3+3=3      32 UINT "Test weird characters"
+  APPEND_ITEM P4!@#$%^&*?  32 UINT "Test weird characters"
+  APPEND_ITEM P</5|\>      32 UINT "Test weird characters"
+  APPEND_ITEM P(:6;)       32 UINT "Test weird characters"
   ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
     READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
 
@@ -153,6 +169,7 @@ TELEMETRY <%= target_name %> MECH BIG_ENDIAN "Mechanism status ©®"
     UNITS DEGREES DEG
   APPEND_ITEM CURRENT       32 FLOAT    "Device current"
     UNITS micro-Ampères µA
+  APPEND_ITEM STRING       0 STRING     "String"
   ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
     READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
 

@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -46,7 +46,7 @@ class TestIgnorePacketProtocol(unittest.TestCase):
 
         def read(self):
             if self.run:
-                time.sleep(0.01)
+                time.sleep(0.001)
                 return TestIgnorePacketProtocol.buffer
             else:
                 raise RuntimeError("Done")
@@ -76,17 +76,11 @@ class TestIgnorePacketProtocol(unittest.TestCase):
 
     def test_complains_if_the_target_is_not_found(self):
         with self.assertRaisesRegex(RuntimeError, "target 'BLAH' does not exist"):
-            self.interface.add_protocol(
-                IgnorePacketProtocol, ["BLAH", "META"], "READ_WRITE"
-            )
+            self.interface.add_protocol(IgnorePacketProtocol, ["BLAH", "META"], "READ_WRITE")
 
     def test_complains_if_the_packet_is_not_found(self):
-        with self.assertRaisesRegex(
-            RuntimeError, "packet 'SYSTEM BLAH' does not exist"
-        ):
-            self.interface.add_protocol(
-                IgnorePacketProtocol, ["SYSTEM", "BLAH"], "READ_WRITE"
-            )
+        with self.assertRaisesRegex(RuntimeError, "packet 'SYSTEM BLAH' does not exist"):
+            self.interface.add_protocol(IgnorePacketProtocol, ["SYSTEM", "BLAH"], "READ_WRITE")
 
     def test_read_ignores_the_packet_specified(self):
         self.interface.stream = TestIgnorePacketProtocol.IgnorePreStream()
@@ -118,7 +112,7 @@ class TestIgnorePacketProtocol(unittest.TestCase):
 
         thread = threading.Thread(target=my_read)
         thread.start()
-        time.sleep(0.1)
+        time.sleep(0.001)
         self.interface.disconnect()
         self.interface.stream.disconnect()
         self.assertIsNone(TestIgnorePacketProtocol.packet)
@@ -140,9 +134,7 @@ class TestIgnorePacketProtocol(unittest.TestCase):
         self.assertEqual(packet.buffer, TestIgnorePacketProtocol.buffer)
 
         # Now add the protocol to ignore the packet
-        self.interface.add_protocol(
-            IgnorePacketProtocol, ["INST", "HEALTH_STATUS"], "READ"
-        )
+        self.interface.add_protocol(IgnorePacketProtocol, ["INST", "HEALTH_STATUS"], "READ")
         TestIgnorePacketProtocol.buffer = None
         self.interface.write(pkt)
         self.assertEqual(TestIgnorePacketProtocol.buffer, pkt.buffer)
@@ -157,7 +149,7 @@ class TestIgnorePacketProtocol(unittest.TestCase):
 
         thread = threading.Thread(target=my_read)
         thread.start()
-        time.sleep(0.1)
+        time.sleep(0.001)
         self.interface.disconnect()
         self.interface.stream.disconnect()
         thread.join()
@@ -187,7 +179,7 @@ class TestIgnorePacketProtocol(unittest.TestCase):
 
         thread = threading.Thread(target=my_read2)
         thread.start()
-        time.sleep(0.1)
+        time.sleep(0.001)
         self.interface.disconnect()
         self.interface.stream.disconnect()
         thread.join()
@@ -226,9 +218,7 @@ class TestIgnorePacketProtocol(unittest.TestCase):
 
     def test_write_can_be_added_multiple_times_to_ignore_different_packets(self):
         self.interface.stream = TestIgnorePacketProtocol.IgnorePreStream()
-        self.interface.add_protocol(
-            IgnorePacketProtocol, ["INST", "HEALTH_STATUS"], "WRITE"
-        )
+        self.interface.add_protocol(IgnorePacketProtocol, ["INST", "HEALTH_STATUS"], "WRITE")
         self.interface.add_protocol(IgnorePacketProtocol, ["INST", "ADCS"], "WRITE")
 
         pkt = System.telemetry.packet("INST", "HEALTH_STATUS")
@@ -254,9 +244,7 @@ class TestIgnorePacketProtocol(unittest.TestCase):
 
     def test_read_write_ignores_the_packet_specified(self):
         self.interface.stream = TestIgnorePacketProtocol.IgnorePreStream()
-        self.interface.add_protocol(
-            IgnorePacketProtocol, ["SYSTEM", "META"], "READ_WRITE"
-        )
+        self.interface.add_protocol(IgnorePacketProtocol, ["SYSTEM", "META"], "READ_WRITE")
         pkt = System.telemetry.packet("SYSTEM", "META")
         pkt.write("OPENC3_VERSION", "TEST")
         pkt.received_time = datetime.now(timezone.utc)
@@ -273,7 +261,7 @@ class TestIgnorePacketProtocol(unittest.TestCase):
 
         thread = threading.Thread(target=my_read)
         thread.start()
-        time.sleep(0.1)
+        time.sleep(0.001)
         self.interface.disconnect()
         self.interface.stream.disconnect()
         thread.join()
@@ -281,9 +269,7 @@ class TestIgnorePacketProtocol(unittest.TestCase):
 
     def test_reads_and_writes_unknown_packets(self):
         self.interface.stream = TestIgnorePacketProtocol.IgnorePreStream()
-        self.interface.add_protocol(
-            IgnorePacketProtocol, ["SYSTEM", "META"], "READ_WRITE"
-        )
+        self.interface.add_protocol(IgnorePacketProtocol, ["SYSTEM", "META"], "READ_WRITE")
         TestIgnorePacketProtocol.buffer = None
         pkt = Packet("TGT", "PTK")
         pkt.append_item("ITEM", 8, "INT")

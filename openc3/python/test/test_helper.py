@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -132,32 +132,31 @@ def mock_redis(self):
     return redis
 
 
-class MockS3:
+import zlib
+class BucketMock:
+    instance = None
     def __init__(self):
-        self.clear()
-        self.files = {}
+        self.objs = {}
 
-    def client(self, *args, **kwags):
-        return self
+    @classmethod
+    def getClient(cls):
+        if cls.instance:
+            return cls.instance
+        cls.instance = cls()
+        return cls.instance
 
     def put_object(self, *args, **kwargs):
-        self.files[kwargs["Key"]] = kwargs["Body"].read()
+        self.objs[kwargs["key"]] = kwargs["body"].read()
 
     def clear(self):
-        self.files = {}
+        self.objs = {}
 
+    def files(self):
+        return list(self.objs.keys())
 
-# Create a MockS3 to make this a singleton
-mocks3 = MockS3()
-
-
-def mock_s3(self):
-    """Clear it out everytime it is used"""
-    mocks3.clear()
-    patcher = patch("boto3.session.Session", return_value=mocks3)
-    patcher.start()
-    self.addCleanup(patcher.stop)
-    return mocks3
+    def data(self, key):
+        data = self.objs[key]
+        return zlib.decompress(data)
 
 
 def capture_io():

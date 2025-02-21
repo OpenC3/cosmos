@@ -39,6 +39,7 @@ module OpenC3
     before(:each) do
       @redis = mock_redis()
       setup_system()
+      local_s3()
 
       %w(INST SYSTEM).each do |target|
         model = TargetModel.new(folder_name: target, name: target, scope: "DEFAULT")
@@ -46,10 +47,6 @@ module OpenC3
         model.update_store(System.new([target], File.join(SPEC_DIR, 'install', 'config', 'targets')))
       end
 
-      # Mock out some stuff in Microservice initialize()
-      dbl = double("AwsS3Client").as_null_object
-      allow(Aws::S3::Client).to receive(:new).and_return(dbl)
-      allow(Zip::File).to receive(:open).and_return(true)
       allow_any_instance_of(OpenC3::Interface).to receive(:connected?).and_return(true)
       @im_shutdown = false
       allow_any_instance_of(OpenC3::Interface).to receive(:read_interface) { sleep(0.01) until @im_shutdown }
@@ -58,26 +55,26 @@ module OpenC3
       model.create
       @dm = DecomMicroservice.new("DEFAULT__DECOM__INST_INT")
       @dm_thread = Thread.new { @dm.run }
-      sleep(0.01) # Allow the threads to run
+      sleep 0.01 # Allow the threads to run
 
       @api = ApiTest.new
     end
 
     after(:each) do
       @dm.shutdown
-      sleep(1.01)
+      @dm_thread.join
     end
 
     describe "get_limits" do
-      it "complains about non-existant targets" do
+      it "complains about non-existent targets" do
         expect { @api.get_limits("BLAH", "HEALTH_STATUS", "TEMP1") }.to raise_error(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist")
       end
 
-      it "complains about non-existant packets" do
+      it "complains about non-existent packets" do
         expect { @api.get_limits("INST", "BLAH", "TEMP1") }.to raise_error(RuntimeError, "Packet 'INST BLAH' does not exist")
       end
 
-      it "complains about non-existant items" do
+      it "complains about non-existent items" do
         expect { @api.get_limits("INST", "HEALTH_STATUS", "BLAH") }.to raise_error(RuntimeError, "Item 'INST HEALTH_STATUS BLAH' does not exist")
       end
 
@@ -90,7 +87,7 @@ module OpenC3
         packet = System.telemetry.packet('INST', 'HEALTH_STATUS')
         packet.received_time = Time.now.sys
         TelemetryDecomTopic.write_packet(packet, scope: "DEFAULT")
-        sleep(0.01) # Allow the write to happen
+        sleep 0.01 # Allow the write to happen
 
         expect(@api.get_limits("INST", "LATEST", "TEMP1")).to \
           eql({ 'DEFAULT' => [-80.0, -70.0, 60.0, 80.0, -20.0, 20.0], 'TVAC' => [-80.0, -30.0, 30.0, 80.0] })
@@ -98,15 +95,15 @@ module OpenC3
     end
 
     describe "set_limits" do
-      it "complains about non-existant targets" do
+      it "complains about non-existent targets" do
         expect { @api.set_limits("BLAH", "HEALTH_STATUS", "TEMP1", 0.0, 10.0, 20.0, 30.0) }.to raise_error(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist")
       end
 
-      it "complains about non-existant packets" do
+      it "complains about non-existent packets" do
         expect { @api.set_limits("INST", "BLAH", "TEMP1", 0.0, 10.0, 20.0, 30.0) }.to raise_error(RuntimeError, "Packet 'INST BLAH' does not exist")
       end
 
-      it "complains about non-existant items" do
+      it "complains about non-existent items" do
         expect { @api.set_limits("INST", "HEALTH_STATUS", "BLAH", 0.0, 10.0, 20.0, 30.0) }.to raise_error(RuntimeError, "Item 'INST HEALTH_STATUS BLAH' does not exist")
       end
 
@@ -127,14 +124,14 @@ module OpenC3
         @api.set_limits("INST", "HEALTH_STATUS", "TEMP1", 0.0, 1.0, 4.0, 5.0, 2.0, 3.0, 'DEFAULT', 10, false)
         item = @api.get_item("INST", "HEALTH_STATUS", "TEMP1")
         expect(item['limits']['persistence_setting']).to eql(10)
-        expect(item['limits']['enabled']).to be_nil
+        expect(item['limits']['enabled']).to be false
         expect(item['limits']['DEFAULT']).to eql({ 'red_low' => 0.0, 'yellow_low' => 1.0, 'yellow_high' => 4.0,
                                                    'red_high' => 5.0, 'green_low' => 2.0, 'green_high' => 3.0 })
         # Verify it also works with symbols for the set
         @api.set_limits("INST", "HEALTH_STATUS", "TEMP1", 1.0, 2.0, 5.0, 6.0, 3.0, 4.0, :DEFAULT, 10, false)
         item = @api.get_item("INST", "HEALTH_STATUS", "TEMP1")
         expect(item['limits']['persistence_setting']).to eql(10)
-        expect(item['limits']['enabled']).to be_nil
+        expect(item['limits']['enabled']).to be false
         expect(item['limits']['DEFAULT']).to eql({ 'red_low' => 1.0, 'yellow_low' => 2.0, 'yellow_high' => 5.0,
                                                   'red_high' => 6.0, 'green_low' => 3.0, 'green_high' => 4.0 })
       end
@@ -275,7 +272,7 @@ module OpenC3
       it "returns all out of limits items" do
         capture_io do |stdout|
           @api.inject_tlm("INST", "HEALTH_STATUS", { TEMP1: 0, TEMP2: 0, TEMP3: 52, TEMP4: 81 }, type: :CONVERTED)
-          sleep 0.1
+          sleep 0.05
           items = @api.get_out_of_limits
           expect(items[0][0]).to eql "INST"
           expect(items[0][1]).to eql "HEALTH_STATUS"
@@ -294,7 +291,7 @@ module OpenC3
           expect(stdout.string).to match(/INST HEALTH_STATUS TEMP4 = .* is RED_HIGH/)
 
           @api.inject_tlm("INST", "HEALTH_STATUS", { TEMP1: 0, TEMP2: 0, TEMP3: 0, TEMP4: 70 }, type: :CONVERTED)
-          sleep 0.1
+          sleep 0.05
           items = @api.get_out_of_limits
           expect(items[0][0]).to eql "INST"
           expect(items[0][1]).to eql "HEALTH_STATUS"
@@ -311,16 +308,16 @@ module OpenC3
     describe "get_overall_limits_state" do
       it "returns the overall system limits state" do
         @api.inject_tlm("INST", "HEALTH_STATUS",
-                        { 'TEMP1' => 0, 'TEMP2' => 0, 'TEMP3' => 0, 'TEMP4' => 0, 'GROUND1STATUS' => 1, 'GROUND2STATUS' => 1 })
-        sleep 0.1
+                        { 'TEMP1' => 0, 'TEMP2' => 0, 'TEMP3' => 0, 'TEMP4' => 0, 'GROUND1STATUS' => 'CONNECTED', 'GROUND2STATUS' => 'CONNECTED' })
+        sleep 0.05
         expect(@api.get_overall_limits_state).to eql "GREEN"
         # TEMP1 limits: -80.0 -70.0 60.0 80.0 -20.0 20.0
         # TEMP2 limits: -60.0 -55.0 30.0 35.0
         @api.inject_tlm("INST", "HEALTH_STATUS", { 'TEMP1' => 70, 'TEMP2' => 32, 'TEMP3' => 0, 'TEMP4' => 0 }) # Both YELLOW
-        sleep 0.1
+        sleep 0.05
         expect(@api.get_overall_limits_state).to eql "YELLOW"
         @api.inject_tlm("INST", "HEALTH_STATUS", { 'TEMP1' => -75, 'TEMP2' => 40, 'TEMP3' => 0, 'TEMP4' => 0 })
-        sleep 0.1
+        sleep 0.05
         expect(@api.get_overall_limits_state).to eql "RED"
         expect(@api.get_overall_limits_state([])).to eql "RED"
 
@@ -337,15 +334,15 @@ module OpenC3
     end
 
     describe "limits_enabled?" do
-      it "complains about non-existant targets" do
+      it "complains about non-existent targets" do
         expect { @api.limits_enabled?("BLAH", "HEALTH_STATUS", "TEMP1") }.to raise_error(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist")
       end
 
-      it "complains about non-existant packets" do
+      it "complains about non-existent packets" do
         expect { @api.limits_enabled?("INST", "BLAH", "TEMP1") }.to raise_error(RuntimeError, "Packet 'INST BLAH' does not exist")
       end
 
-      it "complains about non-existant items" do
+      it "complains about non-existent items" do
         expect { @api.limits_enabled?("INST", "HEALTH_STATUS", "BLAH") }.to raise_error(RuntimeError, "Item 'INST HEALTH_STATUS BLAH' does not exist")
       end
 
@@ -355,15 +352,15 @@ module OpenC3
     end
 
     describe "enable_limits" do
-      it "complains about non-existant targets" do
+      it "complains about non-existent targets" do
         expect { @api.enable_limits("BLAH", "HEALTH_STATUS", "TEMP1") }.to raise_error(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist")
       end
 
-      it "complains about non-existant packets" do
+      it "complains about non-existent packets" do
         expect { @api.enable_limits("INST", "BLAH", "TEMP1") }.to raise_error(RuntimeError, "Packet 'INST BLAH' does not exist")
       end
 
-      it "complains about non-existant items" do
+      it "complains about non-existent items" do
         expect { @api.enable_limits("INST", "HEALTH_STATUS", "BLAH") }.to raise_error(RuntimeError, "Item 'INST HEALTH_STATUS BLAH' does not exist")
       end
 
@@ -377,23 +374,29 @@ module OpenC3
     end
 
     describe "disable_limits" do
-      it "complains about non-existant targets" do
+      it "complains about non-existent targets" do
         expect { @api.disable_limits("BLAH", "HEALTH_STATUS", "TEMP1") }.to raise_error(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist")
       end
 
-      it "complains about non-existant packets" do
+      it "complains about non-existent packets" do
         expect { @api.disable_limits("INST", "BLAH", "TEMP1") }.to raise_error(RuntimeError, "Packet 'INST BLAH' does not exist")
       end
 
-      it "complains about non-existant items" do
+      it "complains about non-existent items" do
         expect { @api.disable_limits("INST", "HEALTH_STATUS", "BLAH") }.to raise_error(RuntimeError, "Item 'INST HEALTH_STATUS BLAH' does not exist")
       end
 
       it "disables limits for an item" do
         expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be true
+        item = @api.get_item("INST", "HEALTH_STATUS", "TEMP1")
+        expect(item['limits']['enabled']).to be true
         @api.disable_limits("INST", "HEALTH_STATUS", "TEMP1")
         expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be false
+        item = @api.get_item("INST", "HEALTH_STATUS", "TEMP1")
+        expect(item['limits']['enabled']).to be false
         @api.enable_limits("INST", "HEALTH_STATUS", "TEMP1")
+        item = @api.get_item("INST", "HEALTH_STATUS", "TEMP1")
+        expect(item['limits']['enabled']).to be true
       end
     end
   end

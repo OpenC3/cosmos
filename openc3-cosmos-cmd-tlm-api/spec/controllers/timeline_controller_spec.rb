@@ -14,10 +14,10 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'rails_helper'
@@ -88,6 +88,26 @@ RSpec.describe TimelineController, :type => :controller do
     end
   end
 
+  describe "POST execute" do
+    it "returns a json hash of name and status code 200" do
+      post :create, params: {"scope"=>"DEFAULT", "name" => "test"}
+      expect(response).to have_http_status(:created)
+      json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      expect(json["name"]).to eql("test")
+      expect(json["execute"]).to be true
+      post :execute, params: {"scope"=>"DEFAULT", "name"=>"test", "enable" => "FALSE"}
+      expect(response).to have_http_status(:ok)
+      json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      expect(json["name"]).to eql("test")
+      expect(json["execute"]).to be false
+      post :execute, params: {"scope"=>"DEFAULT", "name"=>"test", "enable" => "true"}
+      expect(response).to have_http_status(:ok)
+      json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      expect(json["name"]).to eql("test")
+      expect(json["execute"]).to be true
+    end
+  end
+
   describe "POST error" do
     it "returns a hash and status code 400" do
       post :create, params: {"scope"=>"DEFAULT"}
@@ -131,7 +151,7 @@ RSpec.describe TimelineController, :type => :controller do
       delete :destroy, params: {"scope"=>"DEFAULT", "name"=>"test"}
       json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
       expect(json["name"]).to eql("test")
-      expect(response).to have_http_status(:no_content)
+      expect(response).to have_http_status(:success)
     end
   end
 end

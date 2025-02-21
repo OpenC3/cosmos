@@ -1,6 +1,8 @@
 from openc3.script.suite import Group, Suite
 
 load_utility("INST2/procedures/utilities/clear.py")
+# Load a target file library (not instrumented)
+from INST2.lib.helper import Helper
 
 
 class ExampleGroup(Group):
@@ -30,6 +32,8 @@ class ExampleGroup(Group):
         raise SkipScript
 
     def helper(self):
+        helper = Helper()
+        helper.print_help()
         if RunningScript.manual:
             answer = ask("Are you sure?")
         else:
@@ -43,7 +47,3 @@ class MySuite(Suite):
     def __init__(self):
         super().__init__()
         self.add_group(ExampleGroup)
-
-
-print("Running")
-MySuite().run()

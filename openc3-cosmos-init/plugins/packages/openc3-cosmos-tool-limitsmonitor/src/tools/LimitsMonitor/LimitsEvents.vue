@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -22,7 +22,7 @@
 
 <template>
   <v-card class="card-height">
-    <v-card-title>
+    <v-card-title class="d-flex align-center">
       Limits Events
       <v-spacer />
       <v-text-field
@@ -30,8 +30,8 @@
         label="Search"
         prepend-inner-icon="mdi-magnify"
         clearable
-        outlined
-        dense
+        variant="outlined"
+        density="compact"
         single-line
         hide-details
         class="search"
@@ -41,16 +41,16 @@
       :headers="headers"
       :items="data"
       :search="search"
-      calculate-widths
-      disable-pagination
+      :items-per-page="-1"
       hide-default-footer
       multi-sort
-      dense
+      density="compact"
       :height="calcTableHeight()"
+      hover
       data-test="limits-events"
     >
       <template v-slot:item.time_nsec="{ item }">
-        <span>{{ formatDate(item.time_nsec) }}</span>
+        <span>{{ formatNanoseconds(item.time_nsec, timeZone) }}</span>
       </template>
       <template v-slot:item.level="{ item }">
         <rux-status :status="getStatus(item.message)"></rux-status>
@@ -63,25 +63,30 @@
 </template>
 
 <script>
-import { toDate, format } from 'date-fns'
-import Cable from '@openc3/tool-common/src/services/cable.js'
+import { Cable } from '@openc3/js-common/services'
+import { TimeFilters } from '@openc3/vue-common/util'
 
 export default {
   props: {
-    history_count: {
+    historyCount: {
       type: Number,
       default: 1000,
     },
+    timeZone: {
+      type: String,
+      default: 'local',
+    },
   },
+  mixins: [TimeFilters],
   data() {
     return {
       data: [],
       cable: new Cable(),
       search: '',
       headers: [
-        { text: 'Time', value: 'time_nsec', width: 250 },
-        { text: 'Level', value: 'level', sortable: false },
-        { text: 'Message', value: 'message' },
+        { title: 'Time', value: 'time_nsec', width: 250 },
+        { title: 'Level', value: 'level', sortable: false },
+        { title: 'Message', value: 'message' },
       ],
     }
   },
@@ -97,14 +102,14 @@ export default {
           },
         },
         {
-          history_count: 1000,
+          historyCount: 1000,
         },
       )
       .then((limitsSubscription) => {
         this.limitsSubscription = limitsSubscription
       })
   },
-  destroyed() {
+  unmounted() {
     if (this.limitsSubscription) {
       this.limitsSubscription.unsubscribe()
     }
@@ -116,15 +121,9 @@ export default {
         let event = JSON.parse(messages[i]['event'])
         this.data.unshift(event)
       }
-      if (this.data.length > this.history_count) {
-        this.data.length = this.history_count
+      if (this.data.length > this.historyCount) {
+        this.data.length = this.historyCount
       }
-    },
-    formatDate(nanoSecs) {
-      return format(
-        toDate(parseInt(nanoSecs) / 1_000_000),
-        'yyyy-MM-dd HH:mm:ss.SSS',
-      )
     },
     getStatus(message) {
       if (message.includes('GREEN')) {

@@ -121,7 +121,7 @@ Layout Widgets:
       parameters:
         - name: Tab text
           required: true
-          description: Text to diplay in the tab
+          description: Text to display in the tab
           values: .*
       example: |
         TABBOOK
@@ -173,14 +173,6 @@ Decoration Widgets:
         LABEL Over
         HORIZONTALLINE
         LABEL Under
-    SECTIONHEADER:
-      summary: DEPRECATED - Displays a label that is underlined with a horizontal line
-      description: Use a VERTICALBOX or HORIZONTALBOX with title parameter instead of SECTIONHEADER
-      parameters:
-        - name: Text
-          required: true
-          description: Text to display
-          values: .*
     TITLE:
       summary: Displays a large centered title on the screen
       parameters:
@@ -253,6 +245,40 @@ Telemetry Widgets:
       example: |
         ARRAY INST HEALTH_STATUS ARY 250 80 "0x%x" 6 FORMATTED
         ARRAY INST HEALTH_STATUS ARY2 200 100 nil 4 WITH_UNITS
+    ARRAYPLOT:
+      summary: Plot an array of values.
+      description:
+        The item can either be a simple array or a 2D array of x values and y values, e.g. [[x1, x2, x3], [y1, y2, y3]].
+        If the X_AXIS setting is not specified, the X axis starts with 0 and increments by 1.
+        If the X_AXIS setting is used the x values of a 2D array will be ignored.
+      settings:
+        TITLE:
+          summary: Title of the plot
+          parameters:
+            - name: Title
+              required: true
+              description: Title of the plot
+              values: .+
+        X_AXIS:
+          summary: Define the x-axis parameters for the plot
+          parameters:
+            - name: Start
+              required: true
+              description: Start value for the x-axis
+              values: .+
+            - name: Step
+              required: true
+              description: Step value for the x-axis
+              values: .+
+        # Inject the graph settings
+        <%= MetaConfigParser.load('graph_settings.yaml').to_meta_config_yaml(8) %>
+      example: |
+        ARRAYPLOT
+          SETTING TITLE "Array Data"
+          SETTING ITEM INST HEALTH_STATUS ARY
+          SETTING ITEM INST HEALTH_STATUS ARY2
+          SETTING SIZE 600 400
+          SETTING X_AXIS 10 10
     BLOCK:
       summary: Displays BLOCK data organized into rows and space separated
       parameters:
@@ -299,7 +325,7 @@ Telemetry Widgets:
           description: The type of the value to display. Default is CONVERTED.
           values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
       example: |
-        BLOCK INST IMAGE IMAGE 400 130 "%02X" 4 4 "0x%08X:"
+        BLOCK INST IMAGE IMAGE 620 200 "%02X" 4 4 "0x%08X:"
     # FORMATFONTVALUE:
     #   summary: Displays a box with a value printed inside
     #     that is formatted by the specified string rather than by a format string given
@@ -377,8 +403,10 @@ Telemetry Widgets:
           values: .*
       example: |
         FORMATVALUE INST LATEST TIMESEC %012u CONVERTED 20
+        FORMATVALUE INST LATEST TEMP1 %.2f CONVERTED 20
     LABELLED:
       summary: Displays a LABEL followed by a LED
+      description: See the LED widget for more information
       parameters:
         - name: Target name
           required: true
@@ -695,6 +723,7 @@ Telemetry Widgets:
         Additional values can be added by using the LED_COLOR setting. For example
         LED INST PARAMS VALUE3 RAW can be followed by SETTING LED_COLOR 0 GREEN,
         SETTING LED_COLOR 1 RED, and SETTING LED_COLOR ANY ORANGE.
+        See LIMITSCOLOR for a widget that displays a circle depicting the limits color of an item.
       parameters:
         - name: Target name
           required: true
@@ -798,7 +827,8 @@ Telemetry Widgets:
         LIMITSCOLUMN INST HEALTH_STATUS TEMP1 CONVERTED 50 200
         LIMITSCOLUMN INST HEALTH_STATUS TEMP1
     LIMITSCOLOR:
-      summary: Displays a circle depicting the limits color of an item
+      summary: Displays a circle depicting the limits color of an item.
+        See LED for a widget that displays a circle which changes to an arbitrary color based on telemetry values.
       parameters:
         - name: Target name
           required: true
@@ -820,13 +850,17 @@ Telemetry Widgets:
           required: false
           description: Radius of the circle (default is 10)
           values: .*
-        - name: Full Item Name
+        - name: Item Name Display
           required: false
-          description: Show the full item name (default is false)
+          description: Show the full item name, e.g. TGT PKT ITEM (true), no item name (nil or none) or just the item name (false). Default is false.
           values: .*
       example: |
-        LIMITSCOLOR INST HEALTH_STATUS TEMP1 CONVERTED 30 TRUE
-        LIMITSCOLOR INST HEALTH_STATUS TEMP1
+        HORIZONTAL
+          LIMITSCOLOR INST HEALTH_STATUS TEMP1 CONVERTED 10 NIL # No label
+          LABEL '1st Temp'
+        END
+        LIMITSCOLOR INST HEALTH_STATUS TEMP2 # Default is label with just item name
+        LIMITSCOLOR INST HEALTH_STATUS TEMP3 CONVERTED 20 TRUE # Full TGT/PKT/ITEM label
     VALUELIMITSBAR:
       summary: Displays an item VALUE followed by LIMITSBAR
       parameters:
@@ -978,12 +1012,6 @@ Telemetry Widgets:
       example: |
         LINEGRAPH INST HEALTH_STATUS TEMP1
           SETTING ITEM INST ADCS Q1 # Add additional item to graph
-        LINEGRAPH INST HEALTH_STATUS TEMP2 RAW
-        LINEGRAPH INST HEALTH_STATUS TEMP3 CONVERTED REDUCED_MINUTE MIN
-          SETTING SIZE 600 500 # width height
-          SETTING HISTORY 1h # load 1 hour of data into graph
-        LINEGRAPH INST HEALTH_STATUS TEMP4
-          SETTING HISTORY 30m # load 30 minutes of data into graph
       settings:
         # Inject the graph settings
         <%= MetaConfigParser.load('graph_settings.yaml').to_meta_config_yaml(8) %>
@@ -1023,25 +1051,18 @@ Telemetry Widgets:
           values: .+
         - name: Item name
           required: true
-          description: The item name
+          description: The item name to pull the CONVERTED value from.
+            If additional processing (base64 encoding) is needed consider using a DERIVED item.
           values: .+
         - name: Format
           required: true
           description: The image format of the base64 data (e.g. jpg, png, etc)
           values: .+
-        - name: Width
-          required: false
-          description: Width of the widget
-          values: .*
-        - name: Height
-          required: false
-          description: Height of the widget
-          values: .*
       example: |
         IMAGEVIEWER INST IMAGE IMAGE jpg
     PROGRESSBAR:
       summary: Displays a progress bar that is useful for displaying percentages
-      parmeters:
+      parameters:
         - name: Target name
           required: true
           description: The target name
@@ -1115,7 +1136,7 @@ Telemetry Widgets:
         RANGEBAR INST HEALTH_STATUS TEMP1 -100 100
     # RANGECOLUMN:
     #   summary: Displays a graphical representation of where
-    #     an item's value falls withing a range vertically
+    #     an item's value falls within a range vertically
     #   parameters:
     #     - name: Target name
     #       required: true
@@ -1156,12 +1177,11 @@ Telemetry Widgets:
     #   RANGECOLUMN INST HEALTH_STATUS TEMP1 -100 100
     ROLLUP:
       summary: Displays a notification icon which changes color based on a rollup telemetry
+      since: 5.17.1
       parameters:
         - name: Icon name
           required: true
-          description: |
-            The astro UX icon to display. Valid choices are 'astro' icons taken from
-            https://github.com/RocketCommunicationsInc/astro-components/blob/master/static/json/rux-icons.json
+          description: The astro UX icon to display. Valid choices are 'astro' icons taken from https://github.com/RocketCommunicationsInc/astro-components/blob/master/static/json/rux-icons.json.
           values: .+
         - name: Icon label
           required: false
@@ -1173,13 +1193,48 @@ Telemetry Widgets:
           values: .+
       example: |
         ROLLUP satellite-transmit "SAT 1" "Details"
+          # Screen to open on click
           SETTING SCREEN INST HS
+          # Telemetry items to rollup status
           SETTING TLM INST HEALTH_STATUS TEMP1
           SETTING TLM INST HEALTH_STATUS TEMP2
         ROLLUP antenna "GND 2" "Location"
+          # Screen to open on click
           SETTING SCREEN INST HS
+          # Telemetry items to rollup status
           SETTING TLM INST HEALTH_STATUS TEMP3
           SETTING TLM INST HEALTH_STATUS TEMP4
+    SIGNAL:
+      summary: Displays a cellular signal icon which changes based on telemetry value
+      since: 5.17.2
+      parameters:
+        - name: Target name
+          required: true
+          description: The target name
+          values: .+
+        - name: Packet name
+          required: true
+          description: The packet name
+          values: .+
+        - name: Item name
+          required: true
+          description: The item name
+          values: .+
+        - name: Value type
+          required: false
+          description: The type of the value to display. Default is CONVERTED.
+          values: <%= %w(RAW CONVERTED) %>
+      example: |
+        SIGNAL INST HEALTH_STATUS TEMP1
+          # Screen to open on click
+          SETTING SCREEN INST HS
+          # Values to compare when setting the 1-bar, 2-bar and 3-bar icons
+          # Default is 30, 60, 90 (e.g. 0 to 100 range)
+          # Value < -50 display no bars
+          # Value >= -50 and < 0 displays 1 bar
+          # Value >= 0 and < 50 displays 2 bars
+          # Value >= 50 displays 5 bars
+          SETTING RANGE -50 0 50
     TEXTBOX:
       summary: Provides a large box for multiline text
       parameters:
@@ -1205,7 +1260,6 @@ Telemetry Widgets:
           values: .*
       example: |
         TEXTBOX INST HEALTH_STATUS PACKET_TIMEFORMATTED 150 70
-        TEXTBOX INST HEALTH_STATUS PACKET_TIMEFORMATTED
     # TRENDBAR:
     #   summary: Provides the same functionality as the LIMITSBAR
     #     widget except that it also keeps a history of the telemetry item and
@@ -1320,7 +1374,7 @@ Interactive Widgets:
     BUTTON:
       summary: Displays a rectangular clickable button
       description: |
-        Upon clicking, the button executes the Ruby code assigned. Buttons
+        Upon clicking, the button executes the Javascript code assigned. Buttons
         can be used to send commands and perform other tasks. If you want your button
         to use values from other widgets, define them as named widgets and read their
         values using the `screen.getNamedWidget("WIDGET_NAME").text()` method.
@@ -1334,7 +1388,7 @@ Interactive Widgets:
         separated by `;;`.
 
         You can send commands with buttons using api.cmd(). The cmd() syntax looks exactly
-        like the standard COSMOS Ruby scripting syntax. You can also request and use
+        like the standard COSMOS scripting syntax. You can also request and use
         telemetry in screens using Javascript Promises.
 
         `api.tlm('INST PARAMS VALUE3', 'RAW').then(dur => api.cmd('INST COLLECT with TYPE NORMAL, DURATION '+dur))"`
@@ -1374,10 +1428,20 @@ Interactive Widgets:
           required: true
           description: Text displayed next to the checkbox
           values: .+
+        - name: Checked
+          required: false
+          description:
+            Whether the initial state of the checkbox is checked (default = false).
+            Do not give a value to make the checkbox unchecked.
+          values: .+
       example: |
-        NAMED_WIDGET CHECK CHECKBUTTON 'Ignore Hazardous Checks'
+        NAMED_WIDGET UNCHECKED CHECKBUTTON 'Default Unchecked'
+        NAMED_WIDGET CHECK CHECKBUTTON 'Ignore Hazardous Checks' CHECKED
         BUTTON 'Send' 'screen.getNamedWidget("CHECK").checked() ? ' \
           'api.cmd_no_hazardous_check("INST CLEAR") : api.cmd("INST CLEAR")'
+        # You can programmatically check or uncheck the checkbox
+        BUTTON 'Check' 'screen.getNamedWidget("CHECK").value = true'
+        BUTTON 'Uncheck' 'screen.getNamedWidget("CHECK").value = false'
     COMBOBOX:
       summary: Displays a drop down list of text items
       description:
@@ -1396,6 +1460,20 @@ Interactive Widgets:
         BUTTON 'Start Collect' 'var type = screen.getNamedWidget("COLLECT_TYPE").text();' +
           'api.cmd("INST COLLECT with TYPE "+type+", DURATION 10.0")'
         NAMED_WIDGET COLLECT_TYPE COMBOBOX NORMAL SPECIAL
+    DATE:
+      summary: Displays a date picker
+      description:
+        Note this is of limited use by itself and is primarily used in
+        conjunction with NAMED_WIDGET.
+      parameters:
+        - name: Date label
+          required: false
+          description: Text to label the data selection ('Date' by default)
+          values: .+
+      example: |
+        BUTTON 'Alert Date' 'var date = screen.getNamedWidget("DATE").text();' +
+          'alert("Date:"+date)'
+        NAMED_WIDGET DATE DATE
     RADIOGROUP:
       summary: Creates a group of RADIOBUTTONs
       description: RADIOBUTTONs must be part of a group to enable selection logic
@@ -1437,6 +1515,20 @@ Interactive Widgets:
         NAMED_WIDGET DURATION TEXTFIELD 12 "10.0"
         BUTTON 'Start Collect' 'var dur = screen.getNamedWidget("DURATION").text();' +
               'api.cmd("INST COLLECT with TYPE NORMAL, DURATION "+dur+"")'
+    TIME:
+      summary: Displays a time picker
+      description:
+        Note this is of limited use by itself and is primarily used in
+        conjunction with NAMED_WIDGET.
+      parameters:
+        - name: Time label
+          required: false
+          description: Text to label the time selection ('Time' by default)
+          values: .+
+      example: |
+        BUTTON 'Alert Time' 'var time = screen.getNamedWidget("TIME").text();' +
+          'alert("Time:"+time)'
+        NAMED_WIDGET TIME TIME
 Canvas Widgets:
   description:
     Canvas Widgets are used to draw custom displays into telemetry screens.

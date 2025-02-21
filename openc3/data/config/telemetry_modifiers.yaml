@@ -135,7 +135,8 @@ META:
       values: .*
 PROCESSOR:
   summary: Defines a processor class that executes code every time a packet is received
-  example: PROCESSOR TEMP1HIGH watermark_processor.rb TEMP1
+  ruby_example: PROCESSOR TEMP1HIGH watermark_processor.rb TEMP1
+  python_example: PROCESSOR TEMP1HIGH watermark_processor.py TEMP1
   parameters:
     - name: Processor Name
       required: true
@@ -143,9 +144,9 @@ PROCESSOR:
       values: .+
     - name: Processor Class Filename
       required: true
-      description: Name of the Ruby file which implements the processor.
-        This file should be in the config/TARGET/lib directory so it can be found by OpenC3.
-      values: '.+\.rb'
+      description: Name of the Ruby or Python file which implements the processor.
+        This file should be in the target's lib directory.
+      values: '.+'
     - name: Processor Specific Options
       required: false
       description: Variable length number of options that will be passed to the class constructor.
@@ -164,11 +165,27 @@ HIDDEN:
 ACCESSOR:
   summary: Defines the class used to read and write raw values from the packet
   description: Defines the class that is used too read raw values from the packet. Defaults to BinaryAccessor.
-    Provided accessors also include JsonAccessor, CborAccessor, HtmlAccessor, and XmlAccessor.
+    For more information see [Accessors](accessors).
   parameters:
     - name: Accessor Class Name
       required: true
       description: The name of the accessor class
+      values: .+
+  since: 5.0.10
+TEMPLATE:
+  summary: Defines a template string used to pull telemetry values from a string buffer
+  parameters:
+    - name: Template
+      required: true
+      description: The template string which should be enclosed in quotes
+      values: "['\"].*['\"]"
+  since: 5.0.10
+TEMPLATE_FILE:
+  summary: Defines a template file used to pull telemetry values from a string buffer
+  parameters:
+    - name: Template File Path
+      required: true
+      description: The relative path to the template file. Filename should generally start with an underscore.
       values: .+
   since: 5.0.10
 IGNORE_OVERLAP:
@@ -176,3 +193,7 @@ IGNORE_OVERLAP:
   description: Packet items which overlap normally generate a warning unless each individual item has the OVERLAP keyword.
     This ignores overlaps across the entire packet.
   since: 5.16.0
+VIRTUAL:
+  summary: Marks this packet as virtual and not participating in identification
+  description: Used for packet definitions that can be used as structures for items with a given packet.
+  since: 5.18.0

@@ -1,3 +1,6 @@
+# Changle language and edit plugin.txt to test either language
+LANGUAGE ruby
+
 IGNORE_PARAMETER ID_ITEM
 
 CMD_UNIQUE_ID_MODE

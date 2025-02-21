@@ -101,6 +101,7 @@ class Logger(metaclass=LoggerMeta):
     LOG = "log"
     NOTIFICATION = "notification"
     ALERT = "alert"
+    EPHEMERAL = "ephemeral"
 
     # @param level [Integer] The initial logging level
     def __init__(self, level=INFO):
@@ -128,7 +129,7 @@ class Logger(metaclass=LoggerMeta):
     #   below the method name log level.
     # @param block [Proc] Block to call which should return a string to append
     #   to the log message
-    def debug(self, message=None, scope=None, user=None, type=LOG, url=None):
+    def debug(self, message=None, scope=None, user=None, type=LOG, url=None, other=None):
         scope = scope or self.scope
         if self.level <= self.DEBUG:
             self.log_message(
@@ -138,10 +139,11 @@ class Logger(metaclass=LoggerMeta):
                 user=user,
                 type=type,
                 url=url,
+                other=other,
             )
 
     # (see #debug)
-    def info(self, message=None, scope=None, user=None, type=LOG, url=None):
+    def info(self, message=None, scope=None, user=None, type=LOG, url=None, other=None):
         scope = scope or self.scope
         if self.level <= self.INFO:
             self.log_message(
@@ -151,10 +153,11 @@ class Logger(metaclass=LoggerMeta):
                 user=user,
                 type=type,
                 url=url,
+                other=other,
             )
 
     # (see #debug)
-    def warn(self, message=None, scope=None, user=None, type=LOG, url=None):
+    def warn(self, message=None, scope=None, user=None, type=LOG, url=None, other=None):
         scope = scope or self.scope
         if self.level <= self.WARN:
             self.log_message(
@@ -164,10 +167,11 @@ class Logger(metaclass=LoggerMeta):
                 user=user,
                 type=type,
                 url=url,
+                other=other,
             )
 
     # (see #debug)
-    def error(self, message=None, scope=None, user=None, type=LOG, url=None):
+    def error(self, message=None, scope=None, user=None, type=LOG, url=None, other=None):
         scope = scope or self.scope
         if self.level <= self.ERROR:
             self.log_message(
@@ -177,10 +181,11 @@ class Logger(metaclass=LoggerMeta):
                 user=user,
                 type=type,
                 url=url,
+                other=other,
             )
 
     # (see #debug)
-    def fatal(self, message=None, scope=None, user=None, type=LOG, url=None):
+    def fatal(self, message=None, scope=None, user=None, type=LOG, url=None, other=None):
         scope = scope or self.scope
         if self.level <= self.FATAL:
             self.log_message(
@@ -190,29 +195,38 @@ class Logger(metaclass=LoggerMeta):
                 user=user,
                 type=type,
                 url=url,
+                other=other,
             )
 
-    def log_message(self, log_level, message, scope, user, type, url):
-        with self.instance_mutex:
-            now_time = datetime.now(timezone.utc)
-            data = {
-                "time": int(now_time.timestamp() * 1000000000),
-                # Can't use isoformat because it appends "+00:00" instead of "Z"
-                "@timestamp": now_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
-                "level": log_level,
-            }
-            if self.microservice_name:
-                data["microservice_name"] = self.microservice_name
-            if self.detail_string:
-                data["detail"] = self.detail_string
-            # EE: If a user is passed, put its name. Don't include user data if no user was passed.
-            if user:
-                data["user"] = user
-            data["container_name"] = self.container_name
+    def build_log_data(self, log_level, message, user=None, type=None, url=None, other=None):
+        now_time = datetime.now(timezone.utc)
+        data = {
+            "time": int(now_time.timestamp() * 1000000000),
+            # Can't use isoformat because it appends "+00:00" instead of "Z"
+            "@timestamp": now_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+            "level": log_level,
+        }
+        if self.microservice_name is not None:
+            data["microservice_name"] = self.microservice_name
+        if self.detail_string is not None:
+            data["detail"] = self.detail_string
+        # EE: If a user is passed, put its name. Don't include user data if no user was passed.
+        if user is not None:
+            data["user"] = user
+        data["container_name"] = self.container_name
+        if message is not None:
             data["message"] = message
+        if type is not None:
             data["type"] = type
-            if url:
-                data["url"] = url
+        if url is not None:
+            data["url"] = url
+        if other is not None:
+            data = data | other
+        return data
+
+    def log_message(self, log_level, message, scope, user, type, url, other=None):
+        with self.instance_mutex:
+            data = self.build_log_data(log_level, message, user, type, url, other)
             if self.stdout:
                 match log_level:
                     case "WARN" | "ERROR" | "FATAL":

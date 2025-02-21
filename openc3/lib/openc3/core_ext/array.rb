@@ -17,29 +17,13 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/ext/array' if RUBY_ENGINE == 'ruby' and !ENV['OPENC3_NO_EXT']
 
 # OpenC3 specific additions to the Ruby Array class
 class Array
-  # Redefine inspect to only print for small numbers of
-  # items. Prevents exceptions taking forever to be raise with
-  # large objects. See http://blade.nagaokaut.ac.jp/cgi-bin/scat.rb/ruby/ruby-talk/105145
-  alias old_inspect inspect
-
-  # @param max_elements [Integer] The maximum number of elements in the array to
-  #   print out before simply displaying the array class and object id
-  # @return [String] String representation of the array
-  def inspect(max_elements = 10)
-    if self.length <= max_elements
-      old_inspect()
-    else
-      '#<' + self.class.to_s + ':' + self.object_id.to_s + '>'
-    end
-  end
-
   # @return [Array] Cloned array after all elements called to_f
   def clone_to_f
     new_array = self.class.new(0)
@@ -306,10 +290,10 @@ class Array
   #   which are arrays containing the first value that is found in the bucket,
   #   the last value found in the bucket, and the total number of values in the
   #   bucket.
-  def histogram(num_buckets = nil, numeric = false, &block)
+  def histogram(num_buckets = nil, numeric = false, &)
     buckets = {}
 
-    # Count the occurance of each value
+    # Count the occurrence of each value
     self.each do |value|
       buckets[value] ||= 0
       buckets[value] += 1
@@ -338,7 +322,7 @@ class Array
         integers      = true if first_value.kind_of?(Integer) and last_value.kind_of?(Integer)
         if integers
           bucket_size = bucket_size.ceil
-          last_value = first_value + bucket_size * num_buckets - 1
+          last_value = first_value + (bucket_size * num_buckets) - 1
           delta = last_value - first_value
           (delta + 1).times do |index|
             buckets[first_value + index] ||= 0
@@ -406,7 +390,7 @@ class Array
             last_index = sorted_buckets.length - 1 if last_index > (sorted_buckets.length - 1)
           end
           sum = 0
-          sorted_buckets[first_index..last_index].each { |key, value| sum += value }
+          sorted_buckets[first_index..last_index].each { |_key, value| sum += value }
           reduced_buckets[bucket_index] = [sorted_buckets[first_index][0], sorted_buckets[last_index][0], sum]
           first_index = first_index + bucket_sizes[bucket_index]
         end

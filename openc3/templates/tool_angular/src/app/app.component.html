@@ -1,13 +1,4 @@
-<!-- This menu position hack should only be necessary in the portal -->
 <style>
-::ng-deep .mat-mdc-menu-panel.myMenu {
-  background-color:white;
-  color:black;
-  position:absolute !important;
-  top:0px;
-  left:60px;
-}
-
 .mat-mdc-card {
   background: white;
 }
@@ -20,11 +11,11 @@
   </mat-card>
 
   <ng-template cdk-portal>
-    <button mat-raised-button [matMenuTriggerFor]="menu">File</button>
-    <mat-menu #menu="matMenu" class="myMenu">
-      <button mat-menu-item (click)="clickHandler()">Send Command</button>
+    <div style="display: inline-block; width: 80%; text-align: center; font-size: 32px"><%= tool_name_display %></div>
+    <button mat-raised-button [matMenuTriggerFor]="menu" style="background-color: rgb(33, 150, 243)">File</button>
+    <mat-menu #menu="matMenu" class="myMenu" style="background-color: white">
+      <button mat-menu-item (click)="clickHandler()" style="background-color: rgb(33, 150, 243)">Send Command</button>
     </mat-menu>
-    <div style="display: inline-block; width: 80%; text-align: center"><%= tool_name_display %></div>
   </ng-template>
 </div>
 

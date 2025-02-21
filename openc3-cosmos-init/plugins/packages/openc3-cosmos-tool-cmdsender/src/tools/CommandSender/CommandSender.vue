@@ -23,13 +23,13 @@
 <template>
   <div>
     <top-bar :menus="menus" :title="title" />
-    <v-card
-      ><div style="padding: 10px">
+    <v-card>
+      <div style="padding: 10px">
         <target-packet-item-chooser
           :initial-target-name="this.$route.params.target"
           :initial-packet-name="this.$route.params.packet"
           @on-set="commandChanged($event)"
-          @click="buildCmd($event)"
+          @addItem="buildCmd($event)"
           :disabled="sendDisabled"
           button-text="Send"
           mode="cmd"
@@ -37,7 +37,7 @@
       </div>
 
       <v-card v-if="rows.length !== 0">
-        <v-card-title>
+        <v-card-title class="d-flex align-center justify-content-space-between">
           Parameters
           <v-spacer />
           <v-text-field
@@ -45,8 +45,8 @@
             label="Search"
             prepend-inner-icon="mdi-magnify"
             clearable
-            outlined
-            dense
+            variant="outlined"
+            density="compact"
             single-line
             hide-details
             class="search"
@@ -56,16 +56,16 @@
           :headers="headers"
           :items="rows"
           :search="search"
-          calculate-widths
-          disable-pagination
+          :items-per-page="-1"
           hide-default-footer
           multi-sort
-          dense
+          density="compact"
           @contextmenu:row="showContextMenu"
         >
-          <template v-slot:item.val_and_states="{ item }">
+          <template v-slot:item.val="{ item }">
             <command-parameter-editor
-              v-model="item.val_and_states"
+              v-model="item.val"
+              :states="item.states"
               :states-in-hex="statesInHex"
             />
           </template>
@@ -74,55 +74,53 @@
       <div class="pa-3">Status: {{ status }}</div>
     </v-card>
     <div style="height: 15px" />
-    <multipane
-      class="horizontal-panes"
-      layout="horizontal"
-      @paneResize="editor.resize()"
-    >
-      <v-row>
-        <v-col>
-          <v-card class="pb-2">
-            <v-card-subtitle>
-              Editable Command History: (Pressing Enter on the line re-executes
-              the command)
-              <v-tooltip top>
-                <template v-slot:activator="{ on, attrs }">
-                  <div v-on="on" v-bind="attrs" class="float-right">
-                    <v-btn icon data-test="clear-history" @click="clearHistory">
-                      <v-icon> mdi-delete </v-icon>
-                    </v-btn>
-                  </div>
-                </template>
-                <span> Clear History </span>
-              </v-tooltip>
-            </v-card-subtitle>
-            <v-row class="mt-2 mb-2">
-              <pre ref="editor" class="editor" data-test="sender-history"></pre>
+    <v-row no-gutters>
+      <v-col class="pr-4">
+        <v-card class="pb-2">
+          <v-card-subtitle>
+            <v-row>
+              <v-col class="pt-6">
+                Editable Command History: (Pressing Enter on the line
+                re-executes the command)
+              </v-col>
+              <v-col>
+                <v-tooltip location="top">
+                  <template v-slot:activator="{ props }">
+                    <div v-bind="props" class="float-right">
+                      <v-btn
+                        icon="mdi-delete"
+                        variant="text"
+                        data-test="clear-history"
+                        @click="clearHistory"
+                      />
+                    </div>
+                  </template>
+                  <span> Clear History </span>
+                </v-tooltip>
+              </v-col>
             </v-row>
-          </v-card>
-        </v-col>
-        <v-col v-if="screenDefinition" md="auto">
-          <openc3-screen
-            v-if="screenDefinition"
-            :target="screenTarget"
-            :screen="screenName"
-            :definition="screenDefinition"
-            :keywords="keywords"
-            :count="screenCount"
-            :showClose="false"
-          />
-        </v-col>
-      </v-row>
-    </multipane>
+          </v-card-subtitle>
+          <v-row no-gutters class="mt-2 mb-2">
+            <v-col>
+              <pre ref="editor" class="editor" data-test="sender-history"></pre>
+            </v-col>
+          </v-row>
+        </v-card>
+      </v-col>
+      <v-col v-if="screenDefinition" md="auto">
+        <openc3-screen
+          :target="screenTarget"
+          :screen="screenName"
+          :definition="screenDefinition"
+          :keywords="keywords"
+          :count="screenCount"
+          :showClose="false"
+        />
+      </v-col>
+    </v-row>
     <div style="height: 15px" />
 
-    <v-menu
-      v-model="contextMenuShown"
-      :position-x="x"
-      :position-y="y"
-      absolute
-      offset-y
-    >
+    <v-menu v-model="contextMenuShown" :target="[x, y]">
       <v-list>
         <v-list-item
           v-for="(item, index) in contextMenuOptions"
@@ -140,14 +138,20 @@
       :type="'cmd'"
       v-model="viewDetails"
     />
+    <critical-cmd-dialog
+      :uuid="criticalCmdUuid"
+      :cmdString="criticalCmdString"
+      :cmdUser="criticalCmdUser"
+      v-model="displayCriticalCmd"
+    />
 
     <v-dialog v-model="displayErrorDialog" max-width="600">
       <v-card>
-        <v-system-bar>
+        <v-toolbar height="24">
           <v-spacer />
           <span> Error </span>
           <v-spacer />
-        </v-system-bar>
+        </v-toolbar>
         <v-card-text>
           <div class="mx-1">
             <v-row class="my-2">
@@ -172,48 +176,42 @@
 
     <v-dialog v-model="displaySendHazardous" max-width="600">
       <v-card>
-        <v-system-bar>
+        <v-toolbar height="24">
           <v-spacer />
           <span> Hazardous Warning </span>
           <v-spacer />
-        </v-system-bar>
-        <v-card-text>
-          <div class="mx-1">
-            <v-row class="my-2">
-              <span>
-                Warning: Command {{ hazardousCommand }} is Hazardous. Send?
-              </span>
-            </v-row>
-            <v-row>
-              <v-spacer />
-              <v-btn @click="cancelHazardousCmd" outlined> Cancel </v-btn>
-              <v-btn @click="sendHazardousCmd" class="primary mx-1">
-                Send
-              </v-btn>
-            </v-row>
-          </div>
+        </v-toolbar>
+        <v-card-text class="mt-6">
+          Warning: Command {{ hazardousCommand }} is Hazardous. Send?
+          <br />
+          <span class="openc3-yellow"> Description: {{ commandDescription }} </span>
         </v-card-text>
+        <v-card-actions class="px-2">
+          <v-spacer />
+          <v-btn @click="cancelHazardousCmd" variant="outlined"> Cancel </v-btn>
+          <v-btn @click="sendHazardousCmd" variant="flat"> Send </v-btn>
+        </v-card-actions>
       </v-card>
     </v-dialog>
 
     <v-dialog v-model="displaySendRaw" max-width="600">
       <v-card>
-        <v-system-bar>
+        <v-toolbar height="24">
           <v-spacer />
           <span> Send Raw </span>
           <v-spacer />
-        </v-system-bar>
+        </v-toolbar>
         <v-card-text>
           <div class="mx-1">
             <v-row class="my-2">
               <v-col>Interface:</v-col>
               <v-col>
                 <v-select
-                  solo
+                  variant="solo"
                   hide-details
-                  dense
+                  density="compact"
                   :items="interfaces"
-                  item-text="label"
+                  item-title="label"
                   item-value="value"
                   v-model="selectedInterface"
                 />
@@ -227,10 +225,14 @@
             </v-row>
             <v-row>
               <v-spacer />
-              <v-btn @click="cancelRawCmd" outlined data-test="raw-cancel">
+              <v-btn
+                @click="cancelRawCmd"
+                variant="outlined"
+                data-test="raw-cancel"
+              >
                 Cancel
               </v-btn>
-              <v-btn @click="sendRawCmd" class="primary" data-test="raw-ok">
+              <v-btn @click="sendRawCmd" class="bg-primary" data-test="raw-ok">
                 Ok
               </v-btn>
             </v-row>
@@ -242,23 +244,26 @@
 </template>
 
 <script>
+import 'sprintf-js'
 import * as ace from 'ace-builds'
 import 'ace-builds/src-min-noconflict/mode-ruby'
 import 'ace-builds/src-min-noconflict/theme-twilight'
-import Api from '@openc3/tool-common/src/services/api'
-import TargetPacketItemChooser from '@openc3/tool-common/src/components/TargetPacketItemChooser'
-import CommandParameterEditor from '@/tools/CommandSender/CommandParameterEditor'
-import Utilities from '@/tools/CommandSender/utilities'
-import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
-import DetailsDialog from '@openc3/tool-common/src/components/DetailsDialog'
-import TopBar from '@openc3/tool-common/src/components/TopBar'
-import Openc3Screen from '@openc3/tool-common/src/components/Openc3Screen'
-import 'sprintf-js'
+import { Api, OpenC3Api } from '@openc3/js-common/services'
+import {
+  DetailsDialog,
+  CriticalCmdDialog,
+  Openc3Screen,
+  TargetPacketItemChooser,
+  TopBar,
+} from '@openc3/vue-common/components'
+import CommandParameterEditor from './CommandParameterEditor'
+import Utilities from './utilities'
 
 export default {
   mixins: [Utilities],
   components: {
     DetailsDialog,
+    CriticalCmdDialog,
     TargetPacketItemChooser,
     CommandParameterEditor,
     TopBar,
@@ -269,15 +274,16 @@ export default {
       title: 'Command Sender',
       search: '',
       headers: [
-        { text: 'Name', value: 'parameter_name' },
-        { text: 'Value or State', value: 'val_and_states' },
-        { text: 'Units', value: 'units' },
-        { text: 'Range', value: 'range' },
-        { text: 'Description', value: 'description' },
+        { title: 'Name', value: 'parameter_name' },
+        { title: 'Value or State', value: 'val' },
+        { title: 'Units', value: 'units' },
+        { title: 'Range', value: 'range' },
+        { title: 'Description', value: 'description' },
       ],
       editor: null,
       targetName: '',
       commandName: '',
+      commandDescription: '',
       paramList: '',
       lastTargetName: '',
       lastCommandName: '',
@@ -297,6 +303,10 @@ export default {
       displaySendHazardous: false,
       displayErrorDialog: false,
       displaySendRaw: false,
+      displayCriticalCmd: false,
+      criticalCmdUuid: null,
+      criticalCmdString: null,
+      criticalCmdUser: null,
       sendDisabled: false,
       api: null,
       viewDetails: false,
@@ -319,7 +329,11 @@ export default {
       screenName: null,
       screenDefinition: null,
       screenCount: 0,
-      menus: [
+    }
+  },
+  computed: {
+    menus: function () {
+      return [
         // TODO: Implement send raw
         // {
         //   label: 'File',
@@ -328,9 +342,9 @@ export default {
         //       label: 'Send Raw',
         //       command: () => {
         //         this.setupRawCmd()
-        //       }
-        //     }
-        //   ]
+        //       },
+        //     },
+        //   ],
         // },
         {
           label: 'Mode',
@@ -338,6 +352,7 @@ export default {
             {
               label: 'Ignore Range Checks',
               checkbox: true,
+              checked: this.ignoreRangeChecks,
               command: () => {
                 this.ignoreRangeChecks = !this.ignoreRangeChecks
               },
@@ -345,6 +360,7 @@ export default {
             {
               label: 'Display State Values in Hex',
               checkbox: true,
+              checked: this.statesInHex,
               command: () => {
                 this.statesInHex = !this.statesInHex
               },
@@ -352,6 +368,7 @@ export default {
             {
               label: 'Show Ignored Parameters',
               checkbox: true,
+              checked: this.showIgnoredParams,
               command: () => {
                 this.showIgnoredParams = !this.showIgnoredParams
                 // TODO: Maybe we don't need to do this if the data-table
@@ -362,14 +379,15 @@ export default {
             {
               label: 'Disable Parameter Conversions',
               checkbox: true,
+              checked: this.cmdRaw,
               command: () => {
-                this.cmdRaw = !this.cmdRaw
+                this.cmdRaw = !this.cmdRaw.checked
               },
             },
           ],
         },
-      ],
-    }
+      ]
+    },
   },
   created() {
     Api.get(`/openc3-api/autocomplete/reserved-item-names`).then((response) => {
@@ -420,7 +438,7 @@ export default {
       }
     })
   },
-  beforeDestroy() {
+  beforeUnmount() {
     this.editor.destroy()
     this.editor.container.remove()
   },
@@ -436,32 +454,30 @@ export default {
       })
     },
     convertToValue(param) {
-      if (
-        param.val_and_states.selected_state !== null &&
-        param.val_and_states.selected_state !== 'MANUALLY ENTERED' &&
-        this.cmdRaw === false
-      ) {
-        return param.val_and_states.selected_state_label
+      if (param.val !== undefined && param.states && !this.cmdRaw) {
+        return Object.keys(param.states).find(
+          (state) => param.states[state].value === param.val,
+        )
       }
-      if (typeof param.val_and_states.val !== 'string') {
-        return param.val_and_states.val
+      if (typeof param.val !== 'string') {
+        return param.val
       }
 
-      var str = param.val_and_states.val
-      var quotesRemoved = this.removeQuotes(str)
+      let str = param.val
+      let quotesRemoved = this.removeQuotes(str)
       if (str === quotesRemoved) {
-        var upcaseStr = str.toUpperCase()
+        let upcaseStr = str.toUpperCase()
         if (
           (param.type === 'STRING' || param.type === 'BLOCK') &&
           upcaseStr.startsWith('0X')
         ) {
-          var hexStr = upcaseStr.slice(2)
+          let hexStr = upcaseStr.slice(2)
           if (hexStr.length % 2 !== 0) {
             hexStr = '0' + hexStr
           }
-          var jstr = { json_class: 'String', raw: [] }
-          for (var i = 0; i < hexStr.length; i += 2) {
-            var nibble = hexStr.charAt(i) + hexStr.charAt(i + 1)
+          let jstr = { json_class: 'String', raw: [] }
+          for (let i = 0; i < hexStr.length; i += 2) {
+            let nibble = hexStr.charAt(i) + hexStr.charAt(i + 1)
             jstr.raw.push(parseInt(nibble, 16))
           }
           return jstr
@@ -570,10 +586,8 @@ export default {
                 }
                 this.rows.push({
                   parameter_name: parameter.name,
-                  val_and_states: {
-                    val: val,
-                    states: parameter.states,
-                  },
+                  val: val,
+                  states: parameter.states,
                   description: parameter.description,
                   range: range,
                   units: parameter.units,
@@ -595,8 +609,8 @@ export default {
                 this.screenTarget = 'LOCAL'
                 this.screenName = 'CMDSENDER'
                 let screenDefinition = 'SCREEN AUTO AUTO 1.0\n'
-                for (var i = 0; i < command.related_items.length; i++) {
-                  screenDefinition += `LABELVALUE '${command.related_items[i][0]}' '${command.related_items[i][1]}' '${command.related_items[i][2]}' WITH_UNITS 20\n`
+                for (const item of command.related_items) {
+                  screenDefinition += `LABELVALUE '${item[0]}' '${item[1]}' '${item[2]}' WITH_UNITS 20\n`
                 }
                 this.screenDefinition = screenDefinition
               } else {
@@ -606,6 +620,7 @@ export default {
               }
               this.screenCount += 1
             }
+            this.commandDescription = command.description
             this.sendDisabled = false
             this.status = ''
           },
@@ -618,10 +633,8 @@ export default {
 
     createParamList() {
       let paramList = {}
-      for (var i = 0; i < this.rows.length; i++) {
-        paramList[this.rows[i].parameter_name] = this.convertToValue(
-          this.rows[i],
-        )
+      for (const row of this.rows) {
+        paramList[row.parameter_name] = this.convertToValue(row)
       }
       return paramList
     },
@@ -667,13 +680,16 @@ export default {
                   targetName,
                   commandName,
                   paramList,
+                  {
+                    'Ignore-Errors': '428',
+                  },
                 )
               } else {
                 cmd = 'cmd_raw'
                 obs = this.api.cmd_raw(targetName, commandName, paramList, {
                   // This request could be denied due to out of range but since
                   // we're explicitly handling it we don't want the interceptor to fire
-                  'Ignore-Errors': '500',
+                  'Ignore-Errors': '428 500',
                 })
               }
             } else {
@@ -683,29 +699,44 @@ export default {
                   targetName,
                   commandName,
                   paramList,
+                  {
+                    'Ignore-Errors': '428',
+                  },
                 )
               } else {
                 cmd = 'cmd'
                 obs = this.api.cmd(targetName, commandName, paramList, {
                   // This request could be denied due to out of range but since
                   // we're explicitly handling it we don't want the interceptor to fire
-                  'Ignore-Errors': '500',
+                  'Ignore-Errors': '428 500',
                 })
               }
             }
 
             obs.then(
               (response) => {
-                this.processCmdResponse(cmd, response)
+                this.processCmdResponse(
+                  true,
+                  targetName,
+                  commandName,
+                  cmd,
+                  response,
+                )
               },
               (error) => {
-                this.processCmdResponse(false, error)
+                this.processCmdResponse(
+                  false,
+                  targetName,
+                  commandName,
+                  cmd,
+                  error,
+                )
               },
             )
           }
         },
         (error) => {
-          this.processCmdResponse(false, error)
+          this.processCmdResponse(false, targetName, commandName, cmd, error)
         },
       )
     },
@@ -721,6 +752,9 @@ export default {
             this.lastTargetName,
             this.lastCommandName,
             this.lastParamList,
+            {
+              'Ignore-Errors': '428',
+            },
           )
         } else {
           cmd = 'cmd_raw'
@@ -731,7 +765,7 @@ export default {
             {
               // This request could be denied due to out of range but since
               // we're explicitly handling it we don't want the interceptor to fire
-              'Ignore-Errors': '500',
+              'Ignore-Errors': '428 500',
             },
           )
         }
@@ -742,6 +776,9 @@ export default {
             this.lastTargetName,
             this.lastCommandName,
             this.lastParamList,
+            {
+              'Ignore-Errors': '428',
+            },
           )
         } else {
           cmd = 'cmd'
@@ -752,7 +789,7 @@ export default {
             {
               // This request could be denied due to out of range but since
               // we're explicitly handling it we don't want the interceptor to fire
-              'Ignore-Errors': '500',
+              'Ignore-Errors': '428 500',
             },
           )
         }
@@ -760,10 +797,22 @@ export default {
 
       obs.then(
         (response) => {
-          this.processCmdResponse(cmd, response)
+          this.processCmdResponse(
+            true,
+            this.lastTargetName,
+            this.lastCommandName,
+            cmd,
+            response,
+          )
         },
         (error) => {
-          this.processCmdResponse(false, error)
+          this.processCmdResponse(
+            false,
+            this.lastTargetName,
+            this.lastCommandName,
+            cmd,
+            error,
+          )
         },
       )
     },
@@ -774,16 +823,20 @@ export default {
       this.sendDisabled = false
     },
 
-    processCmdResponse(cmd_sent, response) {
-      var msg = ''
-      if (cmd_sent) {
+    processCmdResponse(success, targetName, commandName, cmd_sent, response) {
+      // If it was sent from history it's all in targetName, see sendCmd for details
+      if (commandName === undefined) {
+        ;[targetName, commandName] = targetName.split(' ').slice(0, 2)
+      }
+      let msg = ''
+      if (success) {
         msg = `${cmd_sent}("${response[0]} ${response[1]}`
-        var keys = Object.keys(response[2])
+        let keys = Object.keys(response[2])
         if (keys.length > 0) {
           msg += ' with '
-          for (var i = 0; i < keys.length; i++) {
-            var key = keys[i]
-            var value = this.convertToString(response[2][key])
+          for (let i = 0; i < keys.length; i++) {
+            let key = keys[i]
+            let value = this.convertToString(response[2][key])
             // If the response has unquoted string data we add quotes
             if (
               typeof response[2][key] === 'string' &&
@@ -800,7 +853,7 @@ export default {
         }
         msg += '")'
         if (!this.history.includes(msg)) {
-          value = msg
+          let value = msg
           if (this.history.length !== 0) {
             value += `\n${this.history}`
           }
@@ -820,7 +873,7 @@ export default {
         }
         this.status = msg
       } else {
-        var context = 'sending ' + this.targetName + ' ' + this.commandName
+        let context = 'sending ' + targetName + ' ' + commandName
         this.displayError(context, response, true)
       }
       // Make a copy of the history
@@ -841,8 +894,20 @@ export default {
         this.status += ': '
         this.status += error.message
       }
+      if (this.status.includes('CriticalCmdError')) {
+        this.status = `Critical Command Queued For Approval`
+      }
       if (showDialog) {
-        this.displayErrorDialog = true
+        if (error.message.includes('CriticalCmdError')) {
+          this.criticalCmdUuid = error.object.data.instance_variables['@uuid']
+          this.criticalCmdString =
+            error.object.data.instance_variables['@cmd_string']
+          this.criticalCmdUser =
+            error.object.data.instance_variables['@username']
+          this.displayCriticalCmd = true
+        } else {
+          this.displayErrorDialog = true
+        }
       }
     },
 
@@ -857,8 +922,8 @@ export default {
     // setupRawCmd() {
     //   this.api.get_interface_names().then(
     //     (response) => {
-    //       var interfaces = []
-    //       for (var i = 0; i < response.length; i++) {
+    //       let interfaces = []
+    //       for (let i = 0; i < response.length; i++) {
     //         interfaces.push({ label: response[i], value: response[i] })
     //       }
     //       this.interfaces = interfaces
@@ -877,9 +942,9 @@ export default {
     // },
 
     // onLoad(event) {
-    //   var bufView = new Uint8Array(event.target.result)
-    //   var jstr = { json_class: 'String', raw: [] }
-    //   for (var i = 0; i < bufView.length; i++) {
+    //   let bufView = new Uint8Array(event.target.result)
+    //   let jstr = { json_class: 'String', raw: [] }
+    //   for (let i = 0; i < bufView.length; i++) {
     //     jstr.raw.push(bufView[i])
     //   }
 
@@ -900,14 +965,14 @@ export default {
     // },
 
     // sendRawCmd() {
-    //   var self = this
-    //   var reader = new FileReader()
+    //   let self = this
+    //   let reader = new FileReader()
     //   reader.onload = function (e) {
     //     self.onLoad(e)
     //   }
     //   reader.onerror = function (e) {
     //     self.displaySendRaw = false
-    //     var target = e.target
+    //     let target = e.target
     //     self.displayError('sending raw data', target.error, true)
     //   }
     //   // TBD - use the other event handlers to implement a progress bar for the

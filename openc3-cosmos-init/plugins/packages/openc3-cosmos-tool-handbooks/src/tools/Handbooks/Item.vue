@@ -21,7 +21,7 @@
 -->
 
 <template>
-  <v-card class="mx-auto" outlined>
+  <v-card class="mx-auto" border>
     <v-card-title class="justify-center">
       {{ item.name }}
     </v-card-title>
@@ -42,9 +42,9 @@
         Default: {{ item.default }}
       </div>
       <div v-if="item.id_value">
-        <strong
-          >ID Value: 0x{{ item.id_value.toString(16).toUpperCase() }}</strong
-        >
+        <strong>
+          ID Value: 0x{{ item.id_value.toString(16).toUpperCase() }}
+        </strong>
       </div>
       <div v-if="readConversion">Read Conversion: {{ readConversion }}</div>
       <div v-if="writeConversion">Write Conversion: {{ writeConversion }}</div>

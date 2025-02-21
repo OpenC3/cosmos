@@ -1,0 +1,18 @@
+# See https://trivy.dev/latest/docs/references/configuration/config-file/
+format: "sarif"
+exit-code: 1
+vulnerability:
+  ignore-unfixed: true
+  # See https://trivy.dev/latest/docs/supply-chain/vex/repo/
+  vex:
+    - repo
+pkg:
+  types:
+    - os
+    - library
+scan:
+  scanners:
+    - vuln
+severity:
+  - CRITICAL
+  - HIGH

@@ -87,9 +87,12 @@ MICROSERVICE:
           required: true
           description: One or more arguments to exec to run the microservice.
           values: .+
-      example: |
+      ruby_example: |
         MICROSERVICE EXAMPLE openc3-example
           CMD ruby example_target.rb
+      python_example: |
+        MICROSERVICE EXAMPLE openc3-example
+          CMD python example_target.py
     OPTION:
       summary: Pass an option to the microservice
       description: Generic key/value(s) options to pass to the microservice. These take the form of KEYWORD/PARAMS like a line in a OpenC3 configuration file. Multiple OPTION keywords can be used to pass multiple options to the microservice.
@@ -112,7 +115,7 @@ MICROSERVICE:
           values: .+
     SECRET:
       summary: Define a secret needed by this microservice
-      description: Defines a secret for this microservice
+      description: Defines a secret for this microservice. For more information see [Admin Secrets](/docs/tools/admin#secrets).
       since: 5.3.0
       parameters:
         - name: Type
@@ -123,7 +126,9 @@ MICROSERVICE:
           values: .*
         - name: Secret Name
           required: true
-          description: The name of the secret to retrieve
+          description:
+            The name of the secret to retrieve from the Admin / Secrets tab.
+            For more information see [Admin Secrets](/docs/tools/admin#secrets).
           values: .*
         - name: Environment Variable or File Path
           required: true
@@ -157,3 +162,14 @@ MICROSERVICE:
           required: false
           description: Regex to match against filenames. If match, then no ERB processing
           values: .+
+    SHARD:
+      summary: Operator shard to run target microservices on
+      description: Operator Shard. Only used if running multiple operator containers typically in Kubernetes
+      since: 6.0.0
+      parameters:
+        - name: Shard
+          required: false
+          description: Shard number starting from 0
+          values: \d+
+      example: |
+        SHARD 0

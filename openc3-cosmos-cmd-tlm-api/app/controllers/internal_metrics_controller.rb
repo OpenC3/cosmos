@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -25,10 +25,10 @@ require 'openc3/models/metric_model'
 
 # This Controller is designed to output metrics from the openc3/utilities/metric.rb
 # Find all scopes currently active in the openc3 system, we use the openc3/models/scope_model
-# then seach redis for the #{scope}__openc3__metrics key. This key uses subkeys that are the name
+# then search redis for the #{scope}__openc3__metrics key. This key uses subkeys that are the name
 # the metrics. The value of the metric is a list of prometheus labels these are hashes with key
 # value pairs. The value for the metric is contained in this hash in the metric__value key. These
-# hashes are converted into a string with key="value" and wraped in {} to make up the labels.
+# hashes are converted into a string with key="value" and wrapped in {} to make up the labels.
 # examples:
 #    TYPE foobar histogram",
 #    HELP foobar internal metric generated from openc3/utilities/metric.rb."
@@ -40,9 +40,10 @@ class InternalMetricsController < ApplicationController
     OpenC3::Logger.debug("request for aggregator metrics")
     begin
       scopes = OpenC3::ScopeModel.names()
-    rescue RuntimeError
+    rescue RuntimeError => e
+      log_error(e)
       OpenC3::Logger.error("failed to connect to redis to pull scopes")
-      render plain: "failed to access datastore", :status => 500
+      render plain: "failed to access datastore", status: 500
     end
     OpenC3::Logger.debug("ScopeModels: #{scopes}")
     data_hash = {}
@@ -50,12 +51,13 @@ class InternalMetricsController < ApplicationController
       OpenC3::Logger.debug("search metrics for scope: #{scope}")
       begin
         scope_resp = OpenC3::MetricModel.all(scope: scope)
-      rescue RuntimeError
+      rescue RuntimeError => e
+        log_error(e)
         OpenC3::Logger.error("failed to connect to redis to pull metrics")
-        render plain: "failed to access datastore", :status => 500
+        render plain: "failed to access datastore", status: 500
       end
       OpenC3::Logger.debug("metrics search for scope: #{scope}, returned: #{scope_resp}")
-      scope_resp.each do |key, label_json|
+      scope_resp.each do |_key, label_json|
         name = label_json.delete("metric_name")
         if not data_hash.has_key?(name)
           data_hash[name] = [

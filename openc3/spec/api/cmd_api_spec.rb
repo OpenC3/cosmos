@@ -42,6 +42,7 @@ module OpenC3
     before(:each) do
       redis = mock_redis()
       setup_system()
+      local_s3()
 
       require 'openc3/models/target_model'
       model = TargetModel.new(folder_name: 'INST', name: 'INST', scope: "DEFAULT")
@@ -78,11 +79,12 @@ module OpenC3
       end
 
       @int_thread = Thread.new { @thread.run }
-      sleep 0.01 # Allow thread to spin up
+      sleep 0.001 # Allow thread to spin up
       @api = ApiTest.new
     end
 
     after(:each) do
+      local_s3_unset()
       InterfaceTopic.shutdown(@interface, scope: 'DEFAULT')
       count = 0
       while @int_thread.alive? or count < 100 do
@@ -94,10 +96,8 @@ module OpenC3
     def test_cmd_unknown(method)
       expect { @api.send(method, "BLAH COLLECT with TYPE NORMAL") }.to raise_error(/does not exist/)
       expect { @api.send(method, "INST UNKNOWN with TYPE NORMAL") }.to raise_error(/does not exist/)
-      # expect { @api.send(method, "INST COLLECT with BLAH NORMAL") }.to raise_error(/does not exist/)
       expect { @api.send(method, "BLAH", "COLLECT", "TYPE" => "NORMAL") }.to raise_error(/does not exist/)
       expect { @api.send(method, "INST", "UNKNOWN", "TYPE" => "NORMAL") }.to raise_error(/does not exist/)
-      # expect { @api.send(method, "INST", "COLLECT", "BLAH"=>"NORMAL") }.to raise_error(/does not exist/)
     end
 
     %w(cmd cmd_no_checks cmd_no_range_check cmd_no_hazardous_check cmd_raw cmd_raw_no_checks cmd_raw_no_range_check cmd_raw_no_hazardous_check).each do |method|
@@ -154,6 +154,28 @@ module OpenC3
           end
         end
 
+        it "warns about bad state parameters" do
+          if method.include?('raw')
+            type = 2
+            check = '0, 1'
+          else
+            type = 'OTHER'
+            check = 'NORMAL, SPECIAL'
+          end
+          if method.include?('no_checks') or method.include?('no_range')
+            if method.include?('raw')
+              # If we're using raw commands, we can set any state parameter because it's numeric
+              expect { @api.send(method, "INST COLLECT with TYPE #{type}, DURATION 10") }.not_to raise_error
+            else
+              # Non-raw commands still raise because the state parameter is checked during the write
+              expect { @api.send(method, "INST COLLECT with TYPE #{type}, DURATION 10") }.to raise_error("Unknown state 'OTHER' for TYPE, must be one of NORMAL, SPECIAL")
+            end
+          else
+            # cmd(), cmd_raw() and (no_hazardous_check variants) check the state parameter and raise
+            expect { @api.send(method, "INST COLLECT with TYPE #{type}, DURATION 10") }.to raise_error("Command parameter 'INST COLLECT TYPE' = #{type} not one of #{check}")
+          end
+        end
+
         it "warns about hazardous parameters" do
           type = method.include?('raw') ? 1 : 'SPECIAL'
           if method.include?('no_checks') or method.include?('no_hazard')
@@ -181,8 +203,7 @@ module OpenC3
           expect { @api.send(method, "INST", "ABORT", timeout: "YES") }.to raise_error("Invalid timeout parameter: YES. Must be numeric.")
           begin
             @process = false
-            expect { @api.send(method, "INST", "ABORT") }.to raise_error("Timeout of 5s waiting for cmd ack")
-            expect { @api.send(method, "INST", "ABORT", timeout: 1) }.to raise_error("Timeout of 1s waiting for cmd ack")
+            expect { @api.send(method, "INST", "ABORT", timeout: 0.003) }.to raise_error("Timeout of 0.003s waiting for cmd ack")
           ensure
             @process = true
           end
@@ -230,16 +251,16 @@ module OpenC3
         model.create
         @dm = DecomMicroservice.new("DEFAULT__DECOM__INST_INT")
         @dm_thread = Thread.new { @dm.run }
-        sleep(0.01)
+        sleep 0.001
       end
 
       after(:each) do
         @dm.shutdown
-        sleep(0.01)
+        sleep 0.001
       end
 
       it "complains about unknown targets" do
-        expect { @api.build_cmd("BLAH COLLECT") }.to raise_error(/Timeout of 5s waiting for cmd ack. Does target 'BLAH' exist?/)
+        expect { @api.build_cmd("BLAH COLLECT", timeout: 0.001) }.to raise_error(/Timeout of 0.001s waiting for cmd ack. Does target 'BLAH' exist?/)
       end
 
       it "complains about unknown commands" do
@@ -352,7 +373,13 @@ module OpenC3
 
       it "sends raw data to an interface" do
         @api.send_raw("inst_int", "\x00\x01\x02\x03")
-        sleep 0.01
+        sleep 0.001
+        expect(@interface_data).to eql "\x00\x01\x02\x03"
+      end
+
+      it "sends raw data to an interface" do
+        @api.send_raw("inst_int", "\x00\x01\x02\x03")
+        sleep 0.001
         expect(@interface_data).to eql "\x00\x01\x02\x03"
       end
     end
@@ -464,13 +491,17 @@ module OpenC3
       it "raises with the wrong number of arguments" do
         expect { @api.get_cmd_hazardous("INST", "COLLECT", "TYPE", "SPECIAL") }.to raise_error(/Invalid number of arguments/)
       end
+
+      it "ignores the manual keyword" do
+        @api.get_cmd_hazardous("INST CLEAR", manual: true)
+      end
     end
 
     describe "get_cmd_value" do
       it "returns command values" do
         time = Time.now
         @api.cmd("INST COLLECT with TYPE NORMAL, DURATION 5")
-        sleep 0.01
+        sleep 0.001
         expect(@api.get_cmd_value("inst collect type")).to eql 'NORMAL'
         expect(@api.get_cmd_value("inst collect type", type: :RAW)).to eql 0
         expect(@api.get_cmd_value("INST COLLECT DURATION")).to eql 5.0
@@ -479,7 +510,7 @@ module OpenC3
         expect(@api.get_cmd_value("INST COLLECT RECEIVED_COUNT")).to eql 1
 
         @api.cmd("INST COLLECT with TYPE NORMAL, DURATION 7")
-        sleep 0.01
+        sleep 0.001
         expect(@api.get_cmd_value("INST COLLECT RECEIVED_COUNT")).to eql 2
         expect(@api.get_cmd_value("INST COLLECT DURATION")).to eql 7.0
       end
@@ -487,7 +518,7 @@ module OpenC3
       it "returns command values (DEPRECATED)" do
         time = Time.now
         @api.cmd("INST COLLECT with TYPE NORMAL, DURATION 5")
-        sleep 0.01
+        sleep 0.001
         expect(@api.get_cmd_value("inst", "collect", "type")).to eql 'NORMAL'
         expect(@api.get_cmd_value("inst", "collect", "type", :RAW)).to eql 0
         expect(@api.get_cmd_value("INST", "COLLECT", "DURATION")).to eql 5.0
@@ -496,7 +527,7 @@ module OpenC3
         expect(@api.get_cmd_value("INST", "COLLECT", "RECEIVED_COUNT")).to eql 1
 
         @api.cmd("INST COLLECT with TYPE NORMAL, DURATION 7")
-        sleep 0.01
+        sleep 0.001
         expect(@api.get_cmd_value("INST", "COLLECT", "RECEIVED_COUNT")).to eql 2
         expect(@api.get_cmd_value("INST", "COLLECT", "DURATION")).to eql 7.0
       end
@@ -506,7 +537,7 @@ module OpenC3
       it "returns command times" do
         time = Time.now
         @api.cmd("INST COLLECT with TYPE NORMAL, DURATION 5")
-        sleep 0.01
+        sleep 0.001
         result = @api.get_cmd_time("inst", "collect")
         expect(result[0]).to eq("INST")
         expect(result[1]).to eq("COLLECT")
@@ -527,7 +558,7 @@ module OpenC3
 
         time = Time.now
         @api.cmd("INST ABORT")
-        sleep 0.01
+        sleep 0.001
         result = @api.get_cmd_time("INST")
         expect(result[0]).to eq("INST")
         expect(result[1]).to eq("ABORT") # New latest is ABORT
@@ -549,12 +580,12 @@ module OpenC3
     end
 
     describe "get_cmd_cnt" do
-      it "complains about non-existant targets" do
+      it "complains about non-existent targets" do
         expect { @api.get_cmd_cnt("BLAH", "ABORT") }.to raise_error("Packet 'BLAH ABORT' does not exist")
         expect { @api.get_cmd_cnt("BLAH ABORT") }.to raise_error("Packet 'BLAH ABORT' does not exist")
       end
 
-      it "complains about non-existant packets" do
+      it "complains about non-existent packets" do
         expect { @api.get_cmd_cnt("INST", "BLAH") }.to raise_error("Packet 'INST BLAH' does not exist")
       end
 
@@ -564,7 +595,7 @@ module OpenC3
         # Send unrelated commands to ensure specific command count
         @api.cmd("INST ABORT")
         @api.cmd_no_hazardous_check("INST CLEAR")
-        sleep 0.01
+        sleep 0.001
 
         count = @api.get_cmd_cnt("INST", "COLLECT")
         expect(count).to eql start + 1
@@ -577,13 +608,13 @@ module OpenC3
       it "returns transmit count for commands" do
         @api.cmd("INST ABORT")
         @api.cmd("INST COLLECT with TYPE NORMAL, DURATION 5")
-        sleep 0.01
+        sleep 0.001
         cnts = @api.get_cmd_cnts([['inst','abort'],['INST','COLLECT']])
         expect(cnts).to eql([1, 1])
         @api.cmd("INST ABORT")
         @api.cmd("INST ABORT")
         @api.cmd("INST COLLECT with TYPE NORMAL, DURATION 5")
-        sleep 0.01
+        sleep 0.001
         cnts = @api.get_cmd_cnts([['INST','ABORT'],['INST','COLLECT']])
         expect(cnts).to eql([3, 2])
       end

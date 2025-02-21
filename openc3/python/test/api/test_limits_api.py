@@ -371,7 +371,7 @@ class TestLimitsApi(unittest.TestCase):
                 {"TEMP1": 0, "TEMP2": 0, "TEMP3": 52, "TEMP4": 81},
                 type="CONVERTED",
             )
-            time.sleep(0.01)
+            time.sleep(0.1)
 
             items = get_out_of_limits()
             self.assertEqual(items[0][0], "INST")
@@ -399,7 +399,7 @@ class TestLimitsApi(unittest.TestCase):
                 {"TEMP1": 0, "TEMP2": 0, "TEMP3": 0, "TEMP4": 70},
                 type="CONVERTED",
             )
-            time.sleep(0.01)
+            time.sleep(0.1)
 
             items = get_out_of_limits()
             self.assertEqual(items[0][0], "INST")
@@ -424,8 +424,8 @@ class TestLimitsApi(unittest.TestCase):
                 "TEMP2": 0,
                 "TEMP3": 0,
                 "TEMP4": 0,
-                "GROUND1STATUS": 1,
-                "GROUND2STATUS": 1,
+                "GROUND1STATUS": 'CONNECTED',
+                "GROUND2STATUS": 'CONNECTED',
             },
         )
         time.sleep(0.1)

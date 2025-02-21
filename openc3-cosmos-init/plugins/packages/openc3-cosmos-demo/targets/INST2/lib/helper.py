@@ -1,3 +1,3 @@
 class Helper:
-    def help(self):
+    def print_help(self):
         print("help")

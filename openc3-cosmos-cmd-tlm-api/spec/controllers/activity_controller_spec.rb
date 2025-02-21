@@ -14,13 +14,14 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'rails_helper'
+require 'openc3/utilities/store_autoload'
 
 RSpec.describe ActivityController, :type => :controller do
   before(:each) do
@@ -85,7 +86,7 @@ RSpec.describe ActivityController, :type => :controller do
       expect(response).to have_http_status(:created)
     end
 
-    xit "returns a hash and status code 400 with missing values" do
+    it "returns a hash and status code 400 with missing values" do
       post :create, params: { 'scope'=>'DEFAULT', 'name'=>'test' }
       ret = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
       expect(ret['status']).to eql('error')
@@ -125,9 +126,8 @@ RSpec.describe ActivityController, :type => :controller do
       expect(response).to have_http_status(:created)
       post :create, params: hash.merge({ 'scope'=>'DEFAULT', 'name'=>'test' })
       ret = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
-      expect(ret['status']).to eql('error')
-      expect(ret['message']).not_to be_nil
-      expect(response).to have_http_status(409)
+      expect(ret['name']).to eql('test')
+      expect(response).to have_http_status(201)
     end
   end
 
@@ -196,9 +196,8 @@ RSpec.describe ActivityController, :type => :controller do
       hash = generate_activity_hash(2.0)
       put :update, params: hash.merge({ 'scope'=>'DEFAULT', 'name'=>'test', 'id'=>created['start'] })
       ret = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
-      expect(ret['status']).to eql('error')
-      expect(ret['message']).not_to be_nil
-      expect(response).to have_http_status(409)
+      expect(ret['name']).to eql 'test'
+      expect(response).to have_http_status(200)
     end
 
     it "returns a hash and status code 404 with invalid start" do
@@ -209,7 +208,7 @@ RSpec.describe ActivityController, :type => :controller do
       expect(response).to have_http_status(:not_found)
     end
 
-    xit "returns a hash and status code 400 with valid params" do
+    it "returns a hash and status code 400 with valid params" do
       hash = generate_activity_hash(1.0)
       post :create, params: hash.merge({'scope'=>'DEFAULT', 'name'=>'test' })
       created = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
@@ -221,7 +220,7 @@ RSpec.describe ActivityController, :type => :controller do
       expect(response).to have_http_status(400)
     end
 
-    xit "returns a hash and status code 400 with negative time" do
+    it "returns a hash and status code 400 with negative time" do
       hash = generate_activity_hash(1.0)
       post :create, params: hash.merge({ 'scope'=>'DEFAULT', 'name'=>'test' })
       expect(response).to have_http_status(:created)
@@ -235,7 +234,7 @@ RSpec.describe ActivityController, :type => :controller do
       expect(response).to have_http_status(400)
     end
 
-    xit "returns a hash and status code 400 with invalid json" do
+    it "returns a hash and status code 400 with invalid json" do
       hash = generate_activity_hash(1.0)
       post :create, params: hash.merge({ 'scope'=>'DEFAULT', 'name'=>'test' })
       expect(response).to have_http_status(:created)
@@ -250,21 +249,35 @@ RSpec.describe ActivityController, :type => :controller do
   end
 
   describe "DELETE destroy" do
-    it "returns a status code 204" do
+    it "returns a status code 200" do
       hash = generate_activity_hash(1.0)
       post :create, params: hash.merge({ 'scope'=>'DEFAULT', 'name'=>'test' })
       expect(response).to have_http_status(:created)
       created = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
       expect(created['start']).not_to be_nil
+      delete :destroy, params: {'scope'=>'DEFAULT', 'name'=>'test', 'id'=>created['start'], 'uuid'=>created['uuid']}
+      expect(response).to have_http_status(:success)
+    end
+
+    it "deletes items without uuids if uuid is not given" do
+      hash = generate_activity_hash(1.0)
+      post :create, params: hash.merge({ 'scope'=>'DEFAULT', 'name'=>'test' })
+      expect(response).to have_http_status(:created)
+      created = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      expect(created['start']).not_to be_nil
+      # We have to manually delete the uuid because it's always added
+      created.delete('uuid')
+      # Now add it back to the store and write over the existing activity
+      OpenC3::Store.zadd('DEFAULT__openc3_timelines__test', created['start'], JSON.generate(created))
       delete :destroy, params: {'scope'=>'DEFAULT', 'name'=>'test', 'id'=>created['start']}
-      expect(response).to have_http_status(:no_content)
+      expect(response).to have_http_status(:success)
     end
 
     it "returns a status code 404" do
-      delete :destroy, params: {'scope'=>'DEFAULT', 'name'=>'test', "id"=>"200"}
+      delete :destroy, params: {'scope'=>'DEFAULT', 'name'=>'test', "id"=>"200", "uuid"=>"123456"}
       ret = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
       expect(ret['status']).to eql('error')
-      expect(ret['message']).not_to be_nil
+      expect(ret['message']).to eql("not found")
       expect(response).to have_http_status(:not_found)
     end
   end
@@ -344,7 +357,7 @@ RSpec.describe ActivityController, :type => :controller do
       json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
       destroy_post_array = []
       json.each do |hash|
-        destroy_post_array << {"name" => hash["name"], "id" => hash['start']}
+        destroy_post_array << {"name" => hash["name"], "id" => hash['start'], "uuid" => hash['uuid']}
       end
       post :multi_destroy, params: {'scope'=>'DEFAULT', 'multi'=>destroy_post_array}
       expect(response).to have_http_status(:ok)
@@ -355,7 +368,6 @@ RSpec.describe ActivityController, :type => :controller do
     end
 
     it "returns an array and status code 200 with errors" do
-      dt = DateTime.now.new_offset(0)
       destroy_post_array = [
         {'id'=>'123456'},
         'Test',

@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -27,53 +27,56 @@
     class="raw-dialog"
     ref="rawDialog"
   >
+    <div ref="bar" class="toolbar-wrapper">
+      <v-toolbar height="24">
+        <v-tooltip location="top">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
+              <v-icon data-test="copy-icon" @click="copyRawData">
+                mdi-content-copy
+              </v-icon>
+            </div>
+          </template>
+          <span> Copy </span>
+        </v-tooltip>
+        <v-tooltip location="top">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
+              <v-icon data-test="download" @click="downloadRawData">
+                mdi-download
+              </v-icon>
+            </div>
+          </template>
+          <span> Download </span>
+        </v-tooltip>
+        <v-spacer />
+        <span> {{ type }} </span>
+        <v-spacer />
+        <v-tooltip location="top">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
+              <v-icon data-test="close" @click="$emit('close')">
+                mdi-close-box
+              </v-icon>
+            </div>
+          </template>
+          <span> Close </span>
+        </v-tooltip>
+      </v-toolbar>
+    </div>
     <v-card>
-      <div ref="bar">
-        <v-system-bar>
-          <v-tooltip top>
-            <template v-slot:activator="{ on, attrs }">
-              <div v-on="on" v-bind="attrs">
-                <v-icon data-test="copy-icon" @click="copyRawData">
-                  mdi-content-copy
-                </v-icon>
-              </div>
-            </template>
-            <span> Copy </span>
-          </v-tooltip>
-          <v-tooltip top>
-            <template v-slot:activator="{ on, attrs }">
-              <div v-on="on" v-bind="attrs">
-                <v-icon data-test="download" @click="downloadRawData">
-                  mdi-download
-                </v-icon>
-              </div>
-            </template>
-            <span> Download </span>
-          </v-tooltip>
-          <v-spacer />
-          <span> {{ type }} </span>
-          <v-spacer />
-          <v-tooltip top>
-            <template v-slot:activator="{ on, attrs }">
-              <div v-on="on" v-bind="attrs">
-                <v-icon data-test="close" @click="$emit('close')">
-                  mdi-close-box
-                </v-icon>
-              </div>
-            </template>
-            <span> Close </span>
-          </v-tooltip>
-        </v-system-bar>
-      </div>
-      <v-card-title>
+      <v-card-title class="d-flex align-center justify-content-space-between">
         <span> {{ header }} </span>
         <v-spacer />
-        <v-tooltip top>
-          <template v-slot:activator="{ on, attrs }">
-            <div v-on="on" v-bind="attrs">
-              <v-btn icon data-test="pause" @click="pause">
-                <v-icon> {{ buttonIcon }} </v-icon>
-              </v-btn>
+        <v-tooltip location="top">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
+              <v-btn
+                :icon="buttonIcon"
+                variant="text"
+                data-test="pause"
+                @click="pause"
+              />
             </div>
           </template>
           <span> {{ buttonLabel }} </span>
@@ -96,7 +99,13 @@
             <span> {{ receivedCount }} </span>
           </v-col>
         </v-row>
-        <v-textarea v-model="rawData" class="pa-0 ma-0" auto-grow readonly />
+        <v-textarea
+          class="pa-0 ma-0"
+          v-model="rawData"
+          :rows="numRows"
+          no-resize
+          readonly
+        />
       </v-card-text>
     </v-card>
   </div>
@@ -169,6 +178,12 @@ export default {
       style['z-index'] = this.zIndex
       return style
     },
+    numRows() {
+      // This is because v-textarea doesn't behave correctly with really long monospace text
+      let lines = this.rawData.split('\n').length
+      // Add a small fudge factor every 2000 lines to prevent clipping at the bottom
+      return lines + Math.floor(lines / 2000)
+    },
   },
   mounted() {
     this.$refs.bar.onmousedown = this.dragMouseDown
@@ -197,9 +212,8 @@ export default {
       this.dragX = e.clientX
       this.dragY = e.clientY
       // set the element's new position:
-      this.top = this.$refs.bar.parentElement.parentElement.offsetTop - yOffset
-      this.left =
-        this.$refs.bar.parentElement.parentElement.offsetLeft - xOffset
+      this.top = this.$refs.bar.parentElement.offsetTop - yOffset
+      this.left = this.$refs.bar.parentElement.offsetLeft - xOffset
     },
     closeDragElement: function () {
       // stop moving when mouse button is released
@@ -279,9 +293,9 @@ export default {
     },
     // TODO: Perhaps move this to a utility library
     formatBuffer: function (buffer) {
-      var string = ''
-      var index = 0
-      var ascii = ''
+      let string = ''
+      let index = 0
+      let ascii = ''
       buffer.forEach((byte) => {
         if (index % 16 === 0) {
           string += this.numHex(index, 8) + ': '
@@ -309,16 +323,16 @@ export default {
       // middle of a line. If so we have to print out the final ASCII if
       // requested.
       if (index % 16 != 0) {
-        var existing_length = (index % 16) - 1 + (index % 16) * 2
+        let existing_length = (index % 16) - 1 + (index % 16) * 2
         // 47 is (16 * 2) + 15 separator spaces
-        var filler = ' '.repeat(47 - existing_length)
-        var ascii_filler = ' '.repeat(16 - ascii.length)
+        let filler = ' '.repeat(47 - existing_length)
+        let ascii_filler = ' '.repeat(16 - ascii.length)
         string += filler + '  ' + ascii + ascii_filler
       }
       return string
     },
     numHex(num, width = 2) {
-      var hex = num.toString(16)
+      let hex = num.toString(16)
       return '0'.repeat(width - hex.length) + hex
     },
   },
@@ -333,22 +347,24 @@ export default {
   border: solid;
   border-width: 1px;
   border-color: white;
-  resize: both;
+  resize: vertical;
   overflow: auto;
+  min-height: 28px;
   max-height: 85vh;
+  width: 815px;
   background-color: var(--color-background-base-selected);
 }
-.raw-dialog :deep(.v-card) {
-  height: 100%;
-  min-width: 800px;
+.raw-dialog .toolbar-wrapper {
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
-.raw-dialog :deep(.v-card__text) {
-  height: 100%;
+.raw-dialog :deep(.v-card-text) {
   background-color: var(--color-background-base-selected);
 }
 .v-textarea :deep(textarea) {
   margin-top: 10px;
   font-family: 'Courier New', Courier, monospace;
-  overflow-y: scroll;
+  overflow-y: hidden;
 }
 </style>

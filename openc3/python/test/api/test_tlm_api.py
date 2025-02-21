@@ -249,7 +249,7 @@ class TestTlmApi(unittest.TestCase):
         )
         model.create()
         inject_tlm("INST", "HEALTH_STATUS", {"TEMP1": 5})
-        time.sleep(0.01)
+        time.sleep(0.5)
         obj.inject_tlm.assert_called_once()
 
     @patch("openc3.microservices.microservice.System")
@@ -261,12 +261,12 @@ class TestTlmApi(unittest.TestCase):
         inject_tlm(
             "inst", "Health_Status", {"temp1": 10, "Temp2": 20}, type="CONVERTED"
         )
-        time.sleep(0.01)
+        time.sleep(0.5)
         self.assertAlmostEqual(tlm("INST HEALTH_STATUS TEMP1"), 10.0, delta=0.1)
         self.assertAlmostEqual(tlm("INST HEALTH_STATUS TEMP2"), 20.0, delta=0.1)
 
         inject_tlm("INST", "HEALTH_STATUS", {"TEMP1": 0, "TEMP2": 0}, type="RAW")
-        time.sleep(0.01)
+        time.sleep(0.5)
         self.assertEqual(tlm("INST HEALTH_STATUS TEMP1"), (-100.0))
         self.assertEqual(tlm("INST HEALTH_STATUS TEMP2"), (-100.0))
 
@@ -277,13 +277,13 @@ class TestTlmApi(unittest.TestCase):
         self.decom_stuff()
 
         inject_tlm("INST", "HEALTH_STATUS")
-        time.sleep(0.01)
+        time.sleep(0.5)
         self.assertEqual(tlm("INST HEALTH_STATUS RECEIVED_COUNT"), 1)
         inject_tlm("INST", "HEALTH_STATUS")
-        time.sleep(0.01)
+        time.sleep(0.5)
         self.assertEqual(tlm("INST HEALTH_STATUS RECEIVED_COUNT"), 2)
         inject_tlm("INST", "HEALTH_STATUS")
-        time.sleep(0.01)
+        time.sleep(0.5)
         self.assertEqual(tlm("INST HEALTH_STATUS RECEIVED_COUNT"), 3)
 
         self.dm.shutdown()
@@ -685,7 +685,7 @@ class TestTlmApi(unittest.TestCase):
 
     def test_complains_about_non_existant_value_types(self):
         with self.assertRaisesRegex(
-            AttributeError, "Unknown type 'MINE' for INST HEALTH_STATUS"
+            TypeError, "Unknown type 'MINE' for INST HEALTH_STATUS"
         ):
             get_tlm_packet("INST HEALTH_STATUS", type="MINE")
 
@@ -833,15 +833,15 @@ class TestTlmApi(unittest.TestCase):
             get_tlm_values(["INST__LATEST__BLAH__CONVERTED"])
 
     def test_get_tlm_values_complains_about_non_existant_value_types(self):
-        with self.assertRaisesRegex(RuntimeError, "Unknown value type 'MINE'"):
+        with self.assertRaisesRegex(ValueError, "Unknown value type 'MINE'"):
             get_tlm_values(["INST__HEALTH_STATUS__TEMP1__MINE"])
 
     def test_get_tlm_values_complains_about_bad_arguments(self):
-        with self.assertRaisesRegex(AttributeError, "items must be array of strings"):
+        with self.assertRaisesRegex(TypeError, "items must be array of strings"):
             get_tlm_values([])
-        with self.assertRaisesRegex(AttributeError, "items must be array of strings"):
+        with self.assertRaisesRegex(TypeError, "items must be array of strings"):
             get_tlm_values([["INST", "HEALTH_STATUS", "TEMP1"]])
-        with self.assertRaisesRegex(AttributeError, "items must be formatted"):
+        with self.assertRaisesRegex(ValueError, "items must be formatted"):
             get_tlm_values(["INST", "HEALTH_STATUS", "TEMP1"])
 
     def test_get_tlm_values_reads_all_the_specified_items(self):

@@ -76,6 +76,11 @@ module OpenC3
           sleep 0.1
           @data
         end
+
+        def write_interface(data, extra = nil)
+          sleep 0.001
+          @data = data
+        end
       end
 
       mock_redis()
@@ -122,11 +127,12 @@ module OpenC3
       $read_interface_raise = false
       $disconnect_delay = 0
       $disconnect_count = 0
+      sleep 0.01
     end
 
     after(:each) do
       sleep 0.1
-      kill_leftover_threads
+      kill_leftover_threads()
     end
 
     describe "initialize" do
@@ -177,11 +183,11 @@ module OpenC3
         all = InterfaceStatusModel.all(scope: "DEFAULT")
         expect(all["INST_INT"]["state"]).to eql "ATTEMPTING"
         interface = im.instance_variable_get(:@interface)
-        interface.reconnect_delay = 0.1 # Override the reconnect delay to be quick
+        interface.reconnect_delay = 0.01 # Override the reconnect delay to be quick
 
         capture_io do |stdout|
           Thread.new { im.run }
-          sleep 1
+          sleep 0.01
           expect(stdout.string).to include("Connect default:12345")
           expect(stdout.string).to_not include("Connection Success")
           expect(stdout.string).to include("Connection default:12345 failed due to RuntimeError : test-error")
@@ -189,7 +195,7 @@ module OpenC3
           expect(all["INST_INT"]["state"]).to eql "ATTEMPTING"
 
           $connect_raise = false
-          sleep 1 # Allow it to reconnect successfully
+          sleep 0.01 # Allow it to reconnect successfully
           all = InterfaceStatusModel.all(scope: "DEFAULT")
           expect(all["INST_INT"]["state"]).to eql "CONNECTED"
           im.shutdown
@@ -202,20 +208,40 @@ module OpenC3
         all = InterfaceStatusModel.all(scope: "DEFAULT")
         expect(all["INST_INT"]["state"]).to eql("ATTEMPTING")
         interface = im.instance_variable_get(:@interface)
-        interface.reconnect_delay = 0.1 # Override the reconnect delay to be quick
+        interface.reconnect_delay = 0.01 # Override the reconnect delay to be quick
         capture_io do |stdout|
           Thread.new { im.run }
-          sleep 1
+          sleep 0.01
           expect(stdout.string).to include("Connect default:12345")
           expect(stdout.string).to include("Connection Success")
           expect(stdout.string).to include("Connection Lost: RuntimeError : test-error")
 
           $read_interface_raise = false
-          sleep 1 # Allow to reconnect
+          sleep 0.01 # Allow to reconnect
           all = InterfaceStatusModel.all(scope: "DEFAULT")
           expect(all["INST_INT"]["state"]).to eql "CONNECTED"
           im.shutdown
         end
+      end
+
+      it "sends a command to the interface" do
+        im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        all = InterfaceStatusModel.all(scope: "DEFAULT")
+        expect(all["INST_INT"]["state"]).to eql("ATTEMPTING")
+
+        expect(CommandDecomTopic).to receive(:write_packet) do |command, scope|
+          expect(command.target_name).to eql("INST")
+          expect(command.packet_name).to eql("ABORT")
+          expect(scope).to eql({:scope => "DEFAULT"})
+        end
+        Thread.new { im.run }
+        sleep 0.01
+        all = InterfaceStatusModel.all(scope: "DEFAULT")
+        expect(all["INST_INT"]["state"]).to eql "CONNECTED"
+
+        @api.cmd("INST", "ABORT")
+        sleep 0.01
+        im.shutdown
       end
     end
 
@@ -224,15 +250,15 @@ module OpenC3
         im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
         all = InterfaceStatusModel.all(scope: "DEFAULT")
         expect(all["INST_INT"]["state"]).to eql "ATTEMPTING"
-        sleep 0.1
+        sleep 0.01
         interface = im.instance_variable_get(:@interface)
-        interface.reconnect_delay = 0.1 # Override the reconnect delay to be quick
+        interface.reconnect_delay = 0.01 # Override the reconnect delay to be quick
         expect(interface.instance_variable_get(:@hostname)).to eql 'default'
         expect(interface.instance_variable_get(:@port)).to eql 12345
 
         capture_io do |stdout|
           Thread.new { im.run }
-          sleep 1
+          sleep 0.01
           expect(stdout.string).to include("Connect default:12345")
           expect(stdout.string).to include("Connection Success")
           all = InterfaceStatusModel.all(scope: "DEFAULT")
@@ -243,7 +269,7 @@ module OpenC3
         expect(@interface).to receive(:interface=)
         capture_io do |stdout|
           InterfaceTopic.connect_interface("INST_INT", 'test-host', 54321, scope: 'DEFAULT')
-          sleep 1
+          sleep 0.2
           expect(stdout.string).to include("Connection Lost")
           expect(stdout.string).to include("Connect test-host:54321")
           expect(stdout.string).to include("Connection Success")
@@ -264,14 +290,20 @@ module OpenC3
       all = InterfaceStatusModel.all(scope: "DEFAULT")
       expect(all["INST_INT"]["state"]).to eql "ATTEMPTING"
       interface = im.instance_variable_get(:@interface)
-      interface.reconnect_delay = 0.1 # Override the reconnect delay to be quick
+      interface.reconnect_delay = 0.01 # Override the reconnect delay to be quick
+
+      # Mock this because it calls exit which breaks SimpleCov
+      allow(OpenC3).to receive(:handle_fatal_exception) do |exception, _message|
+        expect(exception.message).to eql "test-error"
+      end
 
       capture_io do |stdout|
         Thread.new { im.run }
+
         sleep 0.1 # Allow to start and immediately crash
         expect(stdout.string).to include("RuntimeError")
 
-        sleep 1 # Give it time but it shouldn't connect
+        sleep 0.2 # Give it time but it shouldn't connect
         all = InterfaceStatusModel.all(scope: "DEFAULT")
         expect(all["INST_INT"]["state"]).to match(/DISCONNECTED|ATTEMPTING/)
         im.shutdown
@@ -283,25 +315,25 @@ module OpenC3
       all = InterfaceStatusModel.all(scope: "DEFAULT")
       expect(all["INST_INT"]["state"]).to eql "ATTEMPTING"
       interface = im.instance_variable_get(:@interface)
-      interface.reconnect_delay = 0.1 # Override the reconnect delay to be quick
+      interface.reconnect_delay = 0.01 # Override the reconnect delay to be quick
 
       capture_io do |stdout|
         Thread.new { im.run }
-        sleep 0.5 # Allow to start
+        sleep 0.01 # Allow to start
         all = InterfaceStatusModel.all(scope: "DEFAULT")
         expect(all["INST_INT"]["state"]).to eql "CONNECTED"
         expect(stdout.string).to include("Connect default:12345")
         expect(stdout.string).to include("Connection Success")
 
         @api.disconnect_interface("INST_INT")
-        sleep 1 # Allow disconnect
+        sleep 0.1 # Allow disconnect
         all = InterfaceStatusModel.all(scope: "DEFAULT")
         expect(all["INST_INT"]["state"]).to eql "DISCONNECTED"
         expect(stdout.string).to include("Disconnect requested")
         expect(stdout.string).to include("Connection Lost")
 
         # Wait and verify still DISCONNECTED and not ATTEMPTING
-        sleep 0.5
+        sleep 0.2
         all = InterfaceStatusModel.all(scope: "DEFAULT")
         expect(all["INST_INT"]["state"]).to eql "DISCONNECTED"
         expect($disconnect_count).to eql 1
@@ -315,26 +347,26 @@ module OpenC3
       all = InterfaceStatusModel.all(scope: "DEFAULT")
       expect(all["INST_INT"]["state"]).to eql "ATTEMPTING"
       interface = im.instance_variable_get(:@interface)
-      interface.reconnect_delay = 0.1 # Override the reconnect delay to be quick
+      interface.reconnect_delay = 0.01 # Override the reconnect delay to be quick
 
       capture_io do |stdout|
         Thread.new { im.run }
-        sleep 0.5 # Allow to start
+        sleep 0.01 # Allow to start
         all = InterfaceStatusModel.all(scope: "DEFAULT")
         expect(all["INST_INT"]["state"]).to eql "CONNECTED"
         expect(stdout.string).to include("Connect default:12345")
         expect(stdout.string).to include("Connection Success")
 
-        $disconnect_delay = 0.5
+        $disconnect_delay = 0.01
         @api.disconnect_interface("INST_INT")
-        sleep 1 # Allow disconnect
+        sleep 0.1 # Allow disconnect
         all = InterfaceStatusModel.all(scope: "DEFAULT")
         expect(all["INST_INT"]["state"]).to eql "DISCONNECTED"
         expect(stdout.string).to include("Disconnect requested")
         expect(stdout.string).to include("Connection Lost")
 
         # Wait and verify still DISCONNECTED and not ATTEMPTING
-        sleep 0.5
+        sleep 0.2
         all = InterfaceStatusModel.all(scope: "DEFAULT")
         expect(all["INST_INT"]["state"]).to eql "DISCONNECTED"
         expect($disconnect_count).to eql 1
@@ -354,7 +386,7 @@ module OpenC3
         # Shouldn't cause error because read_interface shouldn't be called
         $read_interface_raise = true
         Thread.new { im.run }
-        sleep 0.5 # Allow to start
+        sleep 0.01 # Allow to start
         all = InterfaceStatusModel.all(scope: "DEFAULT")
         expect(all["INST_INT"]["state"]).to eql "CONNECTED"
         expect(stdout.string).to include("Connect default:12345")
@@ -362,14 +394,14 @@ module OpenC3
         expect(stdout.string).to include("Starting connection maintenance")
 
         @api.disconnect_interface("INST_INT")
-        sleep 2 # Allow disconnect and wait for @interface_thread_sleeper.sleep(1)
+        sleep 1.1 # Allow disconnect and wait for @interface_thread_sleeper.sleep(1)
         all = InterfaceStatusModel.all(scope: "DEFAULT")
         expect(all["INST_INT"]["state"]).to eql "DISCONNECTED"
         expect(stdout.string).to match(/Disconnect requested/m)
         expect(stdout.string).to match(/Connection Lost/m)
 
         # Wait and verify still DISCONNECTED and not ATTEMPTING
-        sleep 0.5
+        sleep 0.2
         all = InterfaceStatusModel.all(scope: "DEFAULT")
         expect(all["INST_INT"]["state"]).to eql "DISCONNECTED"
         expect($disconnect_count).to eql 1
@@ -384,13 +416,13 @@ module OpenC3
       expect(all["INST_INT"]["state"]).to eql "ATTEMPTING"
 
       Thread.new { im.run }
-      sleep 0.5 # Allow to start
+      sleep 0.01 # Allow to start
       all = InterfaceStatusModel.all(scope: "DEFAULT")
       expect(all["INST_INT"]["state"]).to eql "CONNECTED"
 
       Topic.update_topic_offsets(["DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS"])
       @api.inject_tlm("INST", "HEALTH_STATUS", { TEMP1: 10 }, type: :RAW)
-      sleep 2
+      sleep 0.1
       packets = Topic.read_topics(["DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS"])
       expect(packets.length).to eql 1
       msg_hash = packets["DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS"][0][1]
@@ -411,7 +443,7 @@ module OpenC3
       expect(interface).to receive(:interface_cmd).with("DO_THE_THING", "PARAM1", 2)
 
       Thread.new { im.run }
-      sleep 0.5 # Allow to start
+      sleep 0.01 # Allow to start
       all = InterfaceStatusModel.all(scope: "DEFAULT")
       expect(all["INST_INT"]["state"]).to eql "CONNECTED"
 
@@ -427,7 +459,7 @@ module OpenC3
       expect(interface).to receive(:protocol_cmd).with("DO_THE_OTHER_THING", "PARAM1", 2, {:index => -1, :read_write => "READ_WRITE"})
 
       Thread.new { im.run }
-      sleep 0.5 # Allow to start
+      sleep 0.01 # Allow to start
       all = InterfaceStatusModel.all(scope: "DEFAULT")
       expect(all["INST_INT"]["state"]).to eql "CONNECTED"
 

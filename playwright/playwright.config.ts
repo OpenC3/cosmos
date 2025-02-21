@@ -28,10 +28,10 @@ export default defineConfig({
   globalTimeout: 60 * 60 * 1000,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
-  /* Retry on CI only */
+  /* Retry once on CI */
   retries: process.env.CI ? 1 : 0,
   workers: 1,
-  /* See if explict WORKERS count was given, otherwise allow parallelism on CI/CD */
+  /* See if explicit WORKERS count was given, otherwise allow parallelism on CI/CD */
   // workers: process.env.WORKERS
   //   ? parseInt(process.env.WORKERS)
   //   : process.env.CI
@@ -55,6 +55,10 @@ export default defineConfig({
   },
 
   projects: [
+    {
+      name: 'keycloak',
+      testMatch: /keycloak.setup\.ts/,
+    },
     {
       name: 'setup',
       testMatch: /global.setup\.ts/,

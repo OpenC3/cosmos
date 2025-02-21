@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -80,7 +80,7 @@ module OpenC3
         item.range = get_range()
         item.default = get_default()
       end
-      item.id_value = get_id_value()
+      item.id_value = get_id_value(item)
       item.description = get_description()
       if append?
         item = packet.append(item)
@@ -165,6 +165,18 @@ module OpenC3
       min..max
     end
 
+    def convert_string_value(index)
+      # If the default value is 0x<data> (no quotes), it is treated as
+      # binary data.  Otherwise, the default value is considered to be a string.
+      if @parser.parameters[index].upcase.start_with?("0X") and
+        !@parser.line.include?("\"#{@parser.parameters[index]}\"") and
+        !@parser.line.include?("\'#{@parser.parameters[index]}\'")
+        return @parser.parameters[index].hex_to_byte_string
+      else
+        return @parser.parameters[index]
+      end
+    end
+
     def get_default
       return [] if @parser.keyword.include?('ARRAY')
 
@@ -173,15 +185,7 @@ module OpenC3
       return [] if data_type == :ARRAY
       return {} if data_type == :OBJECT
       if data_type == :STRING or data_type == :BLOCK
-        # If the default value is 0x<data> (no quotes), it is treated as
-        # binary data.  Otherwise, the default value is considered to be a string.
-        if @parser.parameters[index].upcase.start_with?("0X") and
-           !@parser.line.include?("\"#{@parser.parameters[index]}\"") and
-           !@parser.line.include?("\'#{@parser.parameters[index]}\'")
-          return @parser.parameters[index].hex_to_byte_string
-        else
-          return @parser.parameters[index]
-        end
+        return convert_string_value(index)
       else
         if data_type != :DERIVED
           return ConfigParser.handle_defined_constants(
@@ -193,22 +197,25 @@ module OpenC3
       end
     end
 
-    def get_id_value
+    def get_id_value(item)
       return nil unless @parser.keyword.include?('ID_')
-
       data_type = get_data_type
-      if @parser.keyword.include?('ITEM')
-        index = append? ? 3 : 4
-      else # PARAMETER
-        index = append? ? 5 : 6
-        # STRING and BLOCK PARAMETERS don't have min and max values
-        index -= 2 if data_type == :STRING || data_type == :BLOCK
-      end
       if data_type == :DERIVED
         raise @parser.error("DERIVED data type not allowed for Identifier")
       end
+      # For PARAMETERS the default value is the ID value
+      if @parser.keyword.include?("PARAMETER")
+        return item.default
+      end
 
-      @parser.parameters[index]
+      index = append? ? 3 : 4
+      if data_type == :STRING or data_type == :BLOCK
+        return convert_string_value(index)
+      else
+        return ConfigParser.handle_defined_constants(
+          @parser.parameters[index].convert_to_value, data_type, get_bit_size()
+        )
+      end
     end
 
     def get_description

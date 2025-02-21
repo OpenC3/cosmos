@@ -54,7 +54,7 @@ export default class TlmCompleter extends PacketCompleter {
   }
 
   // Override the parent's getCompletions to take advantage of the grouping by packet done in the constructor
-  getCompletions = function (editor, session, position, prefix, callback) {
+  getCompletions(_editor, session, position, _prefix, callback) {
     let matches = []
     const lineBeforeCursor = session.doc.$lines[position.row].slice(
       0,

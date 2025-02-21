@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -44,6 +44,17 @@ class HazardousError(Exception):
         return string
 
 
+class CriticalCmdError(Exception):
+    def __init__(self):
+        self.uuid = ""
+        self.username = ""
+        self.target_name = ""
+        self.cmd_name = ""
+        self.cmd_params = {}
+        self.cmd_string = ""
+        super().__init__()
+
+
 class DisabledError(Exception):
     def __init__(self):
         self.target_name = ""
@@ -82,39 +93,37 @@ def set_working_dir(working_dir):
 # Attempt to gracefully kill a thread
 # @param owner Object that owns the thread and may have a graceful_kill method
 # @param thread The thread to gracefully kill
-# @param graceful_timeout Timeout in seconds to wait for it to die gracefully
-# @param timeout_interval How often to poll for aliveness
-# @param hard_timeout Timeout in seconds to wait for it to die ungracefully
-def kill_thread(owner, thread, graceful_timeout=1, timeout_interval=0.01, hard_timeout=1):
-    if thread:
-        if owner and hasattr(owner, "graceful_kill"):
-            if threading.current_thread() != thread:
-                owner.graceful_kill()
-                end_time = time.time() + graceful_timeout
-                while thread.is_alive() and ((end_time - time.time()) > 0):
-                    time.sleep(timeout_interval)
-            else:
-                Logger.warn("Threads cannot graceful_kill themselves")
-        elif owner:
-            Logger.info(f"Thread owner {owner.__class__.__name__} does not support graceful_kill")
-        if thread.is_alive():
-            # If the thread dies after alive? but before backtrace, bt will be nil.
-            trace = []
-            for filename, lineno, name, line in traceback.extract_stack(sys._current_frames()[thread.ident]):
-                trace.append(f"{filename}:{lineno}:{name}:{line}")
-            caller_trace = []
-            for filename, lineno, name, line in traceback.extract_stack(
-                sys._current_frames()[threading.current_thread().ident]
-            ):
-                caller_trace.append(f"{filename}:{lineno}:{name}:{line}")
+# @param timeout Timeout in seconds to wait for it to die
+def kill_thread(owner, thread, timeout=1.0):
+    if not thread:
+        return
 
-            # Graceful failed
-            caller_trace_string = "\n  ".join(caller_trace)
-            trace_string = "\n  ".join(trace)
-            msg = "Failed to gracefully kill thread:\n"
-            msg = msg + f"  Caller Backtrace:\n  {caller_trace_string}\n"
-            msg = msg + f"  \n  Thread Backtrace:\n  {trace_string}\n\n"
-            Logger.warn(msg)
+    if owner and hasattr(owner, "graceful_kill"):
+        if threading.current_thread() != thread:
+            owner.graceful_kill()
+            thread.join(timeout=timeout)
+        else:
+            Logger.warn("Threads cannot graceful_kill themselves")
+    elif owner:
+        Logger.info(f"Thread owner {owner.__class__.__name__} does not support graceful_kill")
+    if thread.is_alive():
+        # If the thread dies after alive? but before backtrace, bt will be nil.
+        trace = []
+        for filename, lineno, name, line in traceback.extract_stack(sys._current_frames()[thread.ident]):
+            trace.append(f"{filename}:{lineno}:{name}:{line}")
+        caller_trace = []
+        for filename, lineno, name, line in traceback.extract_stack(
+            sys._current_frames()[threading.current_thread().ident]
+        ):
+            caller_trace.append(f"{filename}:{lineno}:{name}:{line}")
+
+        # Graceful failed
+        caller_trace_string = "\n  ".join(caller_trace)
+        trace_string = "\n  ".join(trace)
+        msg = "Failed to gracefully kill thread:\n"
+        msg = msg + f"  Caller Backtrace:\n  {caller_trace_string}\n"
+        msg = msg + f"  \n  Thread Backtrace:\n  {trace_string}\n\n"
+        Logger.warn(msg)
 
 
 # Close a socket in a manner that ensures that any reads blocked in select

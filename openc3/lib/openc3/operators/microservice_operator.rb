@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -42,6 +42,8 @@ module OpenC3
       @new_microservices = {}
       @changed_microservices = {}
       @removed_microservices = {}
+      @shard = ENV['OPENC3_SHARD'] || 0
+      @shard = @shard.to_i
     end
 
     def convert_microservice_to_process_definition(microservice_name, microservice_config)
@@ -65,10 +67,9 @@ module OpenC3
         secrets.each do |type, secret_name, env_name_or_path, secret_store|
           secret_value = @secrets.get(secret_name, secret_store: secret_store, scope: scope)
           if secret_value
-            case type
-            when 'ENV'
+            if type == 'ENV'
               env[env_name_or_path] = secret_value
-            when 'FILE'
+            elsif type == 'FILE'
               FileUtils.mkdir_p(File.dirname(env_name_or_path))
               File.open(env_name_or_path, 'wb') do |file|
                 file.write(secret_value)
@@ -87,6 +88,12 @@ module OpenC3
       @previous_microservices = @microservices.dup
       # Get all the microservice configuration
       @microservices = MicroserviceModel.all
+
+      # Filter to just this shard
+      @microservices = @microservices.select do |microservice_name, microservice_config|
+        microservice_shard = microservice_config['shard'] || 0
+        microservice_shard == @shard
+      end
 
       # Detect new and changed microservices
       @new_microservices = {}
@@ -186,7 +193,7 @@ module OpenC3
           end
         end
 
-        @removed_microservices.each do |microservice_name, microservice_config|
+        @removed_microservices.each do |microservice_name, _microservice_config|
           process = @processes[microservice_name]
           @processes.delete(microservice_name)
           @removed_processes[microservice_name] = process

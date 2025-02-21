@@ -89,7 +89,7 @@ module OpenC3
         FileUtils.mkdir_p("#{base_dir}/targets")
         bucket = Bucket.getClient()
         target_names.each do |target_name|
-          # Retrieve bucket/targets/target_name/target_id.zip
+          # Retrieve bucket/targets/target_name/<TARGET>_current.zip
           zip_path = "#{base_dir}/targets/#{target_name}_current.zip"
           FileUtils.mkdir_p(File.dirname(zip_path))
           bucket_key = "#{scope}/target_archives/#{target_name}/#{target_name}_current.zip"

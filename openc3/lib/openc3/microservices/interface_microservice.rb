@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -26,11 +26,19 @@ require 'openc3/models/interface_model'
 require 'openc3/models/router_model'
 require 'openc3/models/interface_status_model'
 require 'openc3/models/router_status_model'
+require 'openc3/models/scope_model'
 require 'openc3/topics/telemetry_topic'
 require 'openc3/topics/command_topic'
 require 'openc3/topics/command_decom_topic'
 require 'openc3/topics/interface_topic'
 require 'openc3/topics/router_topic'
+require 'openc3/interfaces/interface'
+
+begin
+  require 'openc3-enterprise/models/critical_cmd_model'
+rescue LoadError
+  # Should never actual be used in Open Source
+end
 
 module OpenC3
   class InterfaceCmdHandlerThread
@@ -40,6 +48,12 @@ module OpenC3
       @interface = interface
       @tlm = tlm
       @scope = scope
+      scope_model = ScopeModel.get_model(name: @scope)
+      if scope_model
+        @critical_commanding = scope_model.critical_commanding
+      else
+        @critical_commanding = 'OFF'
+      end
       @logger = logger
       @logger = Logger unless @logger
       @metric = metric
@@ -56,22 +70,35 @@ module OpenC3
         @logger.error "#{@interface.name}: Command handler thread died: #{e.formatted}"
         raise e
       end
+      ThreadManager.instance.register(@thread, stop_object: self)
     end
 
-    def stop
+    def stop()
       OpenC3.kill_thread(self, @thread)
     end
 
     def graceful_kill
       InterfaceTopic.shutdown(@interface, scope: @scope)
+      sleep(0.001) # Allow other threads to run
     end
 
     def run
       InterfaceTopic.receive_commands(@interface, scope: @scope) do |topic, msg_id, msg_hash, _redis|
         OpenC3.with_context(msg_hash) do
+          release_critical = false
           msgid_seconds_from_epoch = msg_id.split('-')[0].to_i / 1000.0
           delta = Time.now.to_f - msgid_seconds_from_epoch
           @metric.set(name: 'interface_topic_delta_seconds', value: delta, type: 'gauge', unit: 'seconds', help: 'Delta time between data written to stream and interface cmd start') if @metric
+
+          if topic == "OPENC3__SYSTEM__EVENTS"
+            msg = JSON.parse(msg_hash['event'])
+            if msg['type'] == 'scope'
+              if msg['name'] == @scope
+                @critical_commanding = msg['critical_commanding']
+              end
+            end
+            next 'SUCCESS'
+          end
 
           # Check for a raw write to the interface
           if topic =~ /CMD}INTERFACE/
@@ -79,6 +106,7 @@ module OpenC3
             @metric.set(name: 'interface_directive_total', value: @directive_count, type: 'counter') if @metric
             if msg_hash['shutdown']
               @logger.info "#{@interface.name}: Shutdown requested"
+              InterfaceTopic.clear_topics(InterfaceTopic.topics(@interface, scope: @scope))
               return
             end
             if msg_hash['connect']
@@ -149,10 +177,21 @@ module OpenC3
               handle_inject_tlm(msg_hash['inject_tlm'])
               next 'SUCCESS'
             end
+            if msg_hash.key?('release_critical')
+              # Note: intentional fall through below this point
+              model = CriticalCmdModel.get_model(name: msg_hash['release_critical'], scope: @scope)
+              if model
+                msg_hash = model.cmd_hash
+                release_critical = true
+              else
+                next "Critical command #{msg_hash['release_critical']} not found"
+              end
+            end
           end
 
           target_name = msg_hash['target_name']
           cmd_name = msg_hash['cmd_name']
+          manual = ConfigParser.handle_true_false(msg_hash['manual'])
           cmd_params = nil
           cmd_buffer = nil
           hazardous_check = nil
@@ -191,22 +230,83 @@ module OpenC3
               next e.message
             end
 
-            if hazardous_check
-              hazardous, hazardous_description = System.commands.cmd_pkt_hazardous?(command)
-              # Return back the error, description, and the formatted command
-              # This allows the error handler to simply re-send the command
-              next "HazardousError\n#{hazardous_description}\n#{System.commands.format(command)}" if hazardous
+            command.extra ||= {}
+            command.extra['cmd_string'] = msg_hash['cmd_string']
+            command.extra['username'] = msg_hash['username']
+            hazardous, hazardous_description = System.commands.cmd_pkt_hazardous?(command)
+
+            # Initial Are you sure? Hazardous check
+            # Return back the error, description, and the formatted command
+            # This allows the error handler to simply re-send the command
+            next "HazardousError\n#{hazardous_description}\n#{msg_hash['cmd_string']}" if hazardous_check and hazardous and not release_critical
+
+            # Check for Critical Command
+            if @critical_commanding and @critical_commanding != 'OFF' and not release_critical
+              restricted = command.restricted
+              if hazardous or restricted or (@critical_commanding == 'ALL' and manual)
+                if hazardous
+                  type = 'HAZARDOUS'
+                elsif restricted
+                  type = 'RESTRICTED'
+                else
+                  type = 'NORMAL'
+                end
+                model = CriticalCmdModel.new(name: SecureRandom.uuid, type: type, interface_name: @interface.name, username: msg_hash['username'], cmd_hash: msg_hash, scope: @scope)
+                model.create
+                @logger.info("Critical Cmd Pending: #{msg_hash['cmd_string']}", user: msg_hash['username'], scope: @scope)
+                next "CriticalCmdError\n#{model.name}"
+              end
             end
 
+            validate = ConfigParser.handle_true_false(msg_hash['validate'])
             begin
               if @interface.connected?
+                result = true
+                reason = nil
+                if command.validator and validate
+                  begin
+                    result, reason = command.validator.pre_check(command)
+                  rescue => e
+                    result = false
+                    reason = e.message
+                  end
+                  # Explicitly check for false to allow nil to represent unknown
+                  if result == false
+                    message = "pre_check returned false for #{msg_hash['cmd_string']} due to #{reason}"
+                    raise WriteRejectError.new(message)
+                  end
+                end
+
                 @count += 1
                 @metric.set(name: 'interface_cmd_total', value: @count, type: 'counter') if @metric
 
+                log_message = ConfigParser.handle_true_false(msg_hash['log_message'])
+                if log_message
+                  @logger.info(msg_hash['cmd_string'], user: msg_hash['username'], scope: @scope)
+                end
+
                 @interface.write(command)
-                CommandTopic.write_packet(command, scope: @scope)
+
+                if command.validator and validate
+                  begin
+                    result, reason = command.validator.post_check(command)
+                  rescue => e
+                    result = false
+                    reason = e.message
+                  end
+                  command.extra['cmd_success'] = result
+                  command.extra['cmd_reason'] = reason if reason
+                end
+
                 CommandDecomTopic.write_packet(command, scope: @scope)
+                CommandTopic.write_packet(command, scope: @scope)
                 InterfaceStatusModel.set(@interface.as_json(:allow_nan => true), queued: true, scope: @scope)
+
+                # Explicitly check for false to allow nil to represent unknown
+                if result == false
+                  message = "post_check returned false for #{msg_hash['cmd_string']} due to #{reason}"
+                  raise WriteRejectError.new(message)
+                end
                 next 'SUCCESS'
               else
                 next "Interface not connected: #{@interface.name}"
@@ -247,6 +347,7 @@ module OpenC3
         @logger.error "#{@router.name}: Telemetry handler thread died: #{e.formatted}"
         raise e
       end
+      ThreadManager.instance.register(@thread, stop_object: self)
     end
 
     def stop
@@ -255,6 +356,7 @@ module OpenC3
 
     def graceful_kill
       RouterTopic.shutdown(@router, scope: @scope)
+      sleep(0.001) # Allow other threads to run
     end
 
     def run
@@ -270,6 +372,7 @@ module OpenC3
 
           if msg_hash['shutdown']
             @logger.info "#{@router.name}: Shutdown requested"
+            RouterTopic.clear_topics(RouterTopic.topics(@router, scope: @scope))
             return
           end
           if msg_hash['connect']
@@ -402,8 +505,7 @@ module OpenC3
 
       @queued = false
       @interface.options.each do |option_name, option_values|
-        case option_name.upcase
-        when 'OPTIMIZE_THROUGHPUT'
+        if option_name.upcase == 'OPTIMIZE_THROUGHPUT'
           @queued = true
           update_interval = option_values[0].to_f
           EphemeralStoreQueued.instance.set_update_interval(update_interval)
@@ -630,6 +732,7 @@ module OpenC3
       @logger.info "#{@interface.name}: Connect #{@interface.connection_string}"
       begin
         @interface.connect
+        @interface.post_connect
       rescue Exception => e
         begin
           @interface.disconnect # Ensure disconnect is called at least once on a partial connect
@@ -712,4 +815,8 @@ module OpenC3
   end
 end
 
-OpenC3::InterfaceMicroservice.run if __FILE__ == $0
+if __FILE__ == $0
+  OpenC3::InterfaceMicroservice.run
+  ThreadManager.instance.shutdown
+  ThreadManager.instance.join
+end

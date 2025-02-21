@@ -10,6 +10,10 @@ os.environ["OPENC3_API_HOSTNAME"] = "127.0.0.1"
 os.environ["OPENC3_API_PORT"] = "2900"
 os.environ["OPENC3_SCRIPT_API_HOSTNAME"] = "127.0.0.1"
 os.environ["OPENC3_SCRIPT_API_PORT"] = "2900"
+# Define these for Enterprise
+# os.environ["OPENC3_KEYCLOAK_URL"] = "http://localhost:2900/auth"
+# os.environ["OPENC3_API_USER"] = "operator"
+# Change this password for Enterprise
 os.environ["OPENC3_API_PASSWORD"] = "password"
 # END OUTSIDE OF DOCKER ONLY
 

@@ -20,10 +20,8 @@ from .suite_results import SuiteResults
 from openc3.script.exceptions import StopScript
 import inspect
 
-
 class UnassignedSuite(Suite):
     """Placeholder for all Groups discovered without assigned Suites"""
-
     pass
 
 
@@ -59,9 +57,7 @@ class SuiteRunner:
             if script:
                 result = suite.run_script(group_class, script)
                 SuiteRunner.suite_results.process_result(result)
-                if (
-                    result.exceptions and SuiteRunner.settings["Abort After Error"]
-                ) or result.stopped:
+                if (result.exceptions and SuiteRunner.settings["Abort After Error"]) or result.stopped:
                     raise StopScript
             elif group_class:
                 for result in suite.run_group(group_class):
@@ -80,7 +76,7 @@ class SuiteRunner:
             if group_class:
                 result = suite.run_group_setup(group_class)
             else:
-                result = suite.run_setup
+                result = suite.run_setup()
 
             if result:
                 SuiteRunner.suite_results.process_result(result)
@@ -93,7 +89,7 @@ class SuiteRunner:
             if group_class:
                 result = suite.run_group_teardown(group_class)
             else:
-                result = suite.run_teardown
+                result = suite.run_teardown()
 
             if result:
                 SuiteRunner.suite_results.process_result(result)

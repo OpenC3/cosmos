@@ -17,11 +17,11 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 class RunningScriptChannel < ApplicationCable::Channel
   def subscribed
-    stream_from "running-script-channel:#{params[:id]}"
+    stream_from "script-api:running-script-channel:#{params[:id]}"
   end
 end

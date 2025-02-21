@@ -1,6 +1,9 @@
 ---
 sidebar_position: 1
 title: Installation
+description: Installing OpenC3 COSMOS
+sidebar_custom_props:
+  myEmoji: 💾
 ---
 
 ## Installing OpenC3 COSMOS
@@ -11,7 +14,7 @@ The following sections describe how to get OpenC3 COSMOS installed on various op
 
 ### PREREQUISITES
 
-Install [Docker](https://docs.docker.com/get-docker/) and install [Docker Compose](https://docs.docker.com/compose/install/).
+If you're on Linux (recommended for production), we recommend installing Docker using the [Install Docker Engine](https://docs.docker.com/engine/install/) instructions (do not use Docker Desktop on Linux). Note: Red Hat users should read the [Podman](podman) documentation. If you're on Windows or Mac, install [Docker Desktop](https://docs.docker.com/get-docker/). All platforms also need to install [Docker Compose](https://docs.docker.com/compose/install/).
 
 - Minimum Resources allocated to Docker: 8GB RAM, 1 CPU, 80GB Disk
 - Recommended Resources allocated to Docker: 16GB RAM, 2+ CPUs, 100GB Disk
@@ -25,14 +28,14 @@ Install [Docker](https://docs.docker.com/get-docker/) and install [Docker Compos
         swap=0
 
 :::warning Important: Modify Docker Connection Timeouts
-Docker by default will break idle (no data) connections after a period of 5 minutes. This "feature" will eventually cause you problems if you don't adjust the Docker settings. This may manifest as idle connections dropping or simplying failing to resume after data should have started flowing again. Find the file at C:\\Users\\username\\AppData\\Roaming\\Docker\\settings.json on Windows or ~/Library/Group Containers/group.com.docker/settings.json on MacOS. Modify the value `vpnKitMaxPortIdleTime` to change the timeout (recommend setting to 0). **Note:** 0 means no timeout (idle connections not dropped)
+Docker by default will break idle (no data) connections after a period of 5 minutes. This "feature" will eventually cause you problems if you don't adjust the Docker settings. This may manifest as idle connections dropping or simply failing to resume after data should have started flowing again. Find the file at C:\\Users\\username\\AppData\\Roaming\\Docker\\settings.json on Windows or ~/Library/Group Containers/group.com.docker/settings.json on MacOS. Modify the value `vpnKitMaxPortIdleTime` to change the timeout (recommend setting to 0). **Note:** 0 means no timeout (idle connections not dropped)
 :::
 
 **Note:** As of December 2021 the COSMOS Docker containers are based on the Alpine Docker image.
 
 ### CLONE PROJECT
 
-Since the COSMOS 5.0.9 release we recommend using the project template to get started.
+We recommend using the COSMOS [project template](key_concepts#projects) to get started.
 
 ```bash
 git clone https://github.com/OpenC3/cosmos-project.git
@@ -87,7 +90,7 @@ Running `docker ps` can help show the running containers.
 
 `openc3.*` takes multiple arguments. Run with no arguments for help. An example run of openc3.sh with no arguments will show a usage guide.
 
-```
+```bash
 ./openc3.sh
 Usage: ./openc3.sh [cli, cliroot, start, stop, cleanup, run, util]
 *  cli: run a cli command as the default user ('cli help' for more info)
@@ -105,7 +108,7 @@ Connect a web browser to http://localhost:2900. Set the password to whatever you
 
 ### NEXT STEPS
 
-Continue to [Getting Started](gettingstarted.md).
+Continue to [Getting Started](gettingstarted).
 
 ---
 
@@ -113,7 +116,7 @@ Continue to [Getting Started](gettingstarted.md).
 
 :::note Find a problem in the documentation?
 
-    Please [create an issue](https://github.com/OpenC3/cosmos/issues/new/choose">create an issue) on
-    GitHub describing what we can do to make it better.
+Please [create an issue](https://github.com/OpenC3/cosmos/issues/new/choose) on
+GitHub describing what we can do to make it better.
 
 :::

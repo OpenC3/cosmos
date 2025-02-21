@@ -46,12 +46,27 @@ class TestProcessorConversion(unittest.TestCase):
         self.assertEqual(c.call(2, packet, None), 0)
         proc.results = {}
         packet.processors["TEST"] = proc
-        # TODO: We could maybe rescue this but I don't want to hide typos
         with self.assertRaisesRegex(KeyError, "RESULT"):
-            self.assertEqual(c.call(2, packet, None), 0)
+            c.call(2, packet, None)
 
     def test_returns_the_equation(self):
         self.assertEqual(
             str(ProcessorConversion("TEST1", "TEST2", "FLOAT", "64", "128")),
             "ProcessorConversion TEST1 TEST2",
         )
+
+    def test_as_json_creates_a_reproducible_format(self):
+        pc = ProcessorConversion('TEST1', 'TEST2', 'FLOAT', '64', '128')
+        json = pc.as_json()
+        self.assertEqual(json['class'], "ProcessorConversion")
+        self.assertEqual(json['converted_type'], "FLOAT")
+        self.assertEqual(json['converted_bit_size'], 64)
+        self.assertEqual(json['converted_array_size'], 128)
+        self.assertEqual(json['params'], ['TEST1', 'TEST2', "FLOAT", 64, 128])
+        new_pc = ProcessorConversion(*json['params'])
+        packet = Packet("tgt", "pkt")
+        packet.append_item('ITEM1', 64, "FLOAT")
+        proc = Processor()
+        proc.results = {"TEST2": 6.0}
+        packet.processors['TEST1'] = proc
+        self.assertEqual(pc.call(1, packet, None), new_pc.call(1, packet, None))

@@ -20,7 +20,7 @@ from openc3.microservices.interface_microservice import InterfaceMicroservice
 from openc3.system.system import System
 from openc3.models.router_status_model import RouterStatusModel
 from openc3.topics.router_topic import RouterTopic
-
+from openc3.utilities.thread_manager import ThreadManager
 
 class RouterMicroservice(InterfaceMicroservice):
     def handle_packet(self, packet):
@@ -42,12 +42,10 @@ class RouterMicroservice(InterfaceMicroservice):
                 except RuntimeError:
                     self.logger.warn(f"Error defining packet of {len(packet)} bytes")
 
-        print(f"packet:{packet} tgt:{packet.target_name} pkt:{packet.packet_name}")
         target_name = packet.target_name
         if not target_name:
             target_name = "UNKNOWN"
         target = System.targets.get(target_name)
-        print(f"int:{self.interface} cmd:{self.interface.cmd_target_names}")
 
         try:
             try:
@@ -81,3 +79,5 @@ class RouterMicroservice(InterfaceMicroservice):
 
 if os.path.basename(__file__) == os.path.basename(sys.argv[0]):
     RouterMicroservice.class_run()
+    ThreadManager.instance().shutdown()
+    ThreadManager.instance().join()

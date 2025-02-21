@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -129,7 +129,10 @@ class TcpipServerInterface(StreamInterface):
         if not ConfigParser.handle_none(write_port):
             self.write_raw_allowed = False
 
-        self.connected = False
+        self._connected = False
+
+    def connected(self):
+        return self._connected
 
     def connection_string(self):
         if self.write_port == self.read_port:
@@ -146,7 +149,8 @@ class TcpipServerInterface(StreamInterface):
     def connect(self):
         self.cancel_threads = False
         if self.read_queue:
-            self.read_queue.empty()
+            while not self.read_queue.empty():
+                self.read_queue.get_nowait()
         if self.write_port == self.read_port:  # One socket
             self._start_listen_thread(self.read_port, True, True)
         else:
@@ -165,7 +169,7 @@ class TcpipServerInterface(StreamInterface):
             self.write_thread = None
             self.write_raw_thread = None
         super().connect()
-        self.connected = True
+        self._connected = True
 
     # Shutdowns the listener threads for both the read and write ports as well
     # as any client connections.
@@ -207,7 +211,7 @@ class TcpipServerInterface(StreamInterface):
             self.write_raw_thread = None
 
         self._shutdown_interfaces(self.write_interface_infos)
-        self.connected = False
+        self._connected = False
         super().disconnect()
 
     # Gracefully kill all the threads
@@ -218,13 +222,13 @@ class TcpipServerInterface(StreamInterface):
     # @return [Packet] Latest packet read from any of the connected clients.
     #   Note this method blocks until data is available.
     def read(self):
-        if not self.connected:
+        if not self.connected():
             raise RuntimeError(f"Interface not connected for read: {self.name}")
         if not self.read_allowed:
             raise RuntimeError(f"Interface not readable: {self.name}")
 
         try:
-            packet = self.read_queue.get_nowait()
+            packet = self.read_queue.get(block=True)
         except queue.Empty:
             return None
 
@@ -235,7 +239,7 @@ class TcpipServerInterface(StreamInterface):
     # @param packet [Packet] Packet to write to all clients connected to the
     #   write port.
     def write(self, packet):
-        if not self.connected:
+        if not self.connected():
             raise RuntimeError(f"Interface not connected for write: {self.name}")
         if not self.write_allowed:
             raise RuntimeError(f"Interface not writeable: {self.name}")
@@ -253,7 +257,7 @@ class TcpipServerInterface(StreamInterface):
     # @param data [String] Data to write to all clients connected to the
     #   write port.
     def write_raw(self, data):
-        if not self.connected:
+        if not self.connected():
             raise RuntimeError(f"Interface not connected for write_raw: {self.name}")
         if not self.write_raw_allowed:
             raise RuntimeError(f"Interface not write-rawable: {self.name}")
@@ -610,4 +614,4 @@ class TcpipServerInterface(StreamInterface):
 
             # Delete any dead sockets
             for index_to_delete in indexes_to_delete:
-                self.write_interface_infos.delete_at(index_to_delete)
+                del self.write_interface_infos[index_to_delete]

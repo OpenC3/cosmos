@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -79,12 +79,12 @@ class Table < OpenC3::TargetFile
       # Convert the typical table naming convention of all caps with underscores
       # to the typical binary convention of camelcase, e.g. MC_CONFIG => McConfig.bin
       filename = table_name.split('_').map { |part| part.capitalize }.join()
-      report.filename = "#{filename}.csv"
+      report.filename = "#{File.dirname(binary_filename)}/#{filename}.csv"
     else
-      report.filename = File.basename(binary_filename).sub('.bin', '.csv')
+      report.filename = binary_filename.sub('.bin', '.csv')
     end
     report.contents = OpenC3::TableManagerCore.report(binary, root_definition, table_name)
-    create(scope, binary_filename.sub('.bin', '.csv'), report.contents)
+    create(scope, report.filename, report.contents)
     return report
   end
 
@@ -153,17 +153,20 @@ class Table < OpenC3::TargetFile
       target = definition_filename.split('/')[0]
       all = OpenC3::TargetFile.all(scope, ['tables'], target: target)
       found = false
-      base_binary = File.basename(binary_filename)
+      base_binary = File.basename(binary_filename, File.extname(binary_filename))
       all.each do |filename|
-        if filename.include?('config/')
-          # Config filenames are named like SomethingConfigTable_def.txt
-          # So strip the _def.txt and see if the binary includes that for a simple match.
-          # This gets simple things but anything more complex
-          # and the frontend will have to ask the user to select it.
-          if base_binary.include?(File.basename(filename).split('_')[0])
-            found = true
-            definition_filename = filename
-          end
+        next unless filename.include?('config/')
+        base_def = File.basename(filename, File.extname(filename))
+        base_def = base_def.sub('_def', '')
+        if base_binary == base_def
+          found = true
+          definition_filename = filename
+          break # We found an exact match
+        end
+        if base_binary.include?(base_def)
+          found = true
+          definition_filename = filename
+          # Don't break because we might find an exact match
         end
       end
       if found

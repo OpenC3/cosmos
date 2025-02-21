@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -18,15 +18,39 @@
 
 require 'openc3/microservices/microservice'
 require 'openc3/models/offline_access_model'
+require 'openc3/models/news_model'
+# The VERSION and ENTERPRISE constants are set by settings_api.rb
+require 'openc3/api/settings_api'
 
 module OpenC3
   class PeriodicMicroservice < Microservice
+    include Api
+
     STARTUP_DELAY_SECONDS = 2 * 60 # Two Minutes
     SLEEP_PERIOD_SECONDS = 24 * 60 * 60 # Run once per day
 
     def initialize(*args)
       super(*args)
       @metric.set(name: 'periodic_total', value: @count, type: 'counter')
+      @conn = nil # Faraday connection set by get_news
+      get_news()
+    end
+
+    def get_news
+      if get_setting('news_feed', scope: @scope)
+        unless @conn
+          @conn = Faraday.new(
+            url: 'https://news.openc3.com',
+            params: {version: VERSION, enterprise: ENTERPRISE},
+          )
+        end
+        response = @conn.get('/news')
+        if response.success?
+          NewsModel.set(response.body)
+        else
+          NewsModel.news_error(response)
+        end
+      end
     end
 
     def run
@@ -52,6 +76,7 @@ module OpenC3
         @metric.set(name: 'periodic_total', value: @count, type: 'counter')
         break if @cancel_thread
         break if @run_sleeper.sleep(SLEEP_PERIOD_SECONDS)
+        get_news()
       end
     end
 
@@ -62,4 +87,8 @@ module OpenC3
   end
 end
 
-OpenC3::PeriodicMicroservice.run if __FILE__ == $0
+if __FILE__ == $0
+  OpenC3::PeriodicMicroservice.run
+  ThreadManager.instance.shutdown
+  ThreadManager.instance.join
+end

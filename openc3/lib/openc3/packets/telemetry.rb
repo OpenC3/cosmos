@@ -31,7 +31,7 @@ module OpenC3
   #
   # This should not be confused with the Api module which implements the JSON
   # API that is used by tools when accessing the Server. The Api module always
-  # provides Ruby primatives where the Telemetry class can return actual
+  # provides Ruby primitives where the Telemetry class can return actual
   # Packet or PacketItem objects. While there are some overlapping methods between
   # the two, these are separate interfaces into the system.
   class Telemetry
@@ -295,7 +295,7 @@ module OpenC3
         target = System.targets[target_name]
         if target and target.tlm_unique_id_mode
           # Iterate through the packets and see if any represent the buffer
-          target_packets.each do |packet_name, packet|
+          target_packets.each do |_packet_name, packet|
             return packet if packet.identify?(packet_data)
           end
         else
@@ -365,41 +365,20 @@ module OpenC3
     #
     # @param limits_change_callback
     def limits_change_callback=(limits_change_callback)
-      @config.telemetry.each do |target_name, packets|
-        packets.each do |packet_name, packet|
+      @config.telemetry.each do |_target_name, packets|
+        packets.each do |_packet_name, packet|
           packet.limits_change_callback = limits_change_callback
-        end
-      end
-    end
-
-    # Clears the received_count value on every packet in every target
-    def clear_counters
-      @config.telemetry.each do |target_name, target_packets|
-        target_packets.each do |packet_name, packet|
-          packet.received_count = 0
         end
       end
     end
 
     # Resets metadata on every packet in every target
     def reset
-      @config.telemetry.each do |target_name, target_packets|
-        target_packets.each do |packet_name, packet|
+      @config.telemetry.each do |_target_name, target_packets|
+        target_packets.each do |_packet_name, packet|
           packet.reset
         end
       end
-    end
-
-    # Returns the first non-hidden packet
-    def first_non_hidden
-      @config.telemetry.each do |target_name, target_packets|
-        next if target_name == 'UNKNOWN'
-
-        target_packets.each do |packet_name, packet|
-          return packet unless packet.hidden
-        end
-      end
-      nil
     end
 
     # Returns an array with a "TARGET_NAME PACKET_NAME ITEM_NAME" string for every item in the system

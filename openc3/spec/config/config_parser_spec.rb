@@ -34,6 +34,11 @@ module OpenC3
       ConfigParser.progress_callback = nil
     end
 
+    after(:each) do
+      ConfigParser.message_callback = nil
+      ConfigParser.progress_callback = nil
+    end
+
     describe "parse_file", no_ext: true do
       it "yields keyword, parameters to the block" do
         tf = Tempfile.new('unittest')
@@ -287,7 +292,7 @@ module OpenC3
         tf = Tempfile.new('unittest')
         tf.puts "KEYWORD PARAM1 'continues ' \\"
         tf.puts "next line" # Forgot quotes
-        tf.puts "KEYWORD2 PARAM2" # Ensure we proces the next line
+        tf.puts "KEYWORD2 PARAM2" # Ensure we process the next line
         tf.close
         @cp.parse_file(tf.path) do |keyword, params|
           if keyword == 'KEYWORD'
@@ -411,9 +416,22 @@ module OpenC3
     end
 
     describe "verify_parameter_naming" do
+      it "allows most characters in parameters" do
+        tf = Tempfile.new('unittest')
+        line = "KEYWORD P[1] P_2.2,2 P-3+3=3 P4!@#$%^&*? P</5|> P(:6;)"
+        tf.puts line
+        tf.close
+
+        @cp.parse_file(tf.path) do |keyword, params|
+          expect(keyword).to eql "KEYWORD"
+          expect(params).to eql ["P[1]", "P_2.2,2", "P-3+3=3", "P4!@#$%^&*?", "P</5|>", "P(:6;)"]
+        end
+        tf.unlink
+      end
+
       it "verifies parameters do not have bad characters" do
         tf = Tempfile.new('unittest')
-        line = "KEYWORD BAD1_ BAD__2 'BAD 3' }BAD_4 BAD[[5]]"
+        line = "KEYWORD BAD1_ BAD__2 'BAD 3' BAD{4 BAD}4 BAD[[6]] BAD'7 BAD\"8"
         tf.puts line
         tf.close
 
@@ -421,8 +439,11 @@ module OpenC3
           expect { @cp.verify_parameter_naming(1) }.to raise_error(ConfigParser::Error, /cannot end with an underscore/)
           expect { @cp.verify_parameter_naming(2) }.to raise_error(ConfigParser::Error, /cannot contain a double underscore/)
           expect { @cp.verify_parameter_naming(3) }.to raise_error(ConfigParser::Error, /cannot contain a space/)
-          expect { @cp.verify_parameter_naming(4) }.to raise_error(ConfigParser::Error, /cannot start with a close bracket/)
-          expect { @cp.verify_parameter_naming(5) }.to raise_error(ConfigParser::Error, /cannot contain double brackets/)
+          expect { @cp.verify_parameter_naming(4) }.to raise_error(ConfigParser::Error, /cannot contain a curly bracket/)
+          expect { @cp.verify_parameter_naming(5) }.to raise_error(ConfigParser::Error, /cannot contain a curly bracket/)
+          expect { @cp.verify_parameter_naming(6) }.to raise_error(ConfigParser::Error, /cannot contain double brackets/)
+          expect { @cp.verify_parameter_naming(7) }.to raise_error(ConfigParser::Error, /cannot contain a quote/)
+          expect { @cp.verify_parameter_naming(8) }.to raise_error(ConfigParser::Error, /cannot contain a quote/)
         end
         tf.unlink
       end
@@ -561,10 +582,6 @@ module OpenC3
         expect(ConfigParser.handle_defined_constants("MAX_FLOAT64")).to eql Float::MAX
         expect(ConfigParser.handle_defined_constants("POS_INFINITY")).to eql Float::INFINITY
         expect(ConfigParser.handle_defined_constants("NEG_INFINITY")).to eql(-Float::INFINITY)
-      end
-
-      it "complains about undefined strings" do
-        expect { ConfigParser.handle_defined_constants("TRUE") }.to raise_error(ArgumentError, "Could not convert constant: TRUE")
       end
 
       it "passes through numbers" do

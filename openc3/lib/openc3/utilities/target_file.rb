@@ -64,8 +64,8 @@ module OpenC3
       end
 
       # Concat any remaining modified files (new files not in original target)
-      result.concat(modified)
-      result.concat(temp.uniq)
+      result = result.merge(modified)
+      result = result.merge(temp.uniq)
       result.sort
     end
 
@@ -94,7 +94,13 @@ module OpenC3
       # First try opening a potentially modified version by looking for the modified target
       if ENV['OPENC3_LOCAL_MODE']
         local_file = OpenC3::LocalMode.open_local_file(name, scope: scope)
-        return local_file.read if local_file
+        if local_file
+          if File.extname(name) == ".bin"
+            return local_file.read
+          else
+            return local_file.read.force_encoding('UTF-8')
+          end
+        end
       end
 
       bucket = Bucket.getClient()
@@ -106,8 +112,10 @@ module OpenC3
       if resp && resp.body
         if File.extname(name) == ".bin"
           resp.body.binmode
+          return resp.body.read
+        else
+          return resp.body.read.force_encoding('UTF-8')
         end
-        resp.body.read
       else
         nil
       end
@@ -154,8 +162,8 @@ module OpenC3
     # protected
 
     def self.remote_target_files(bucket_client:, prefix:, include_temp: false, path_matchers: nil)
-      result = []
-      temp = []
+      result = Set.new
+      temp = Set.new
       resp = bucket_client.list_objects(
         bucket: ENV['OPENC3_CONFIG_BUCKET'],
         prefix: prefix,

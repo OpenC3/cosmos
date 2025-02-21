@@ -23,11 +23,11 @@ TOOL:
           values: .+
     INLINE_URL:
       summary: Internal url to load a tool
-      description: The url of the javascript file used to load the tool into single-SPA. Defaults to "js/app.js".
+      description: The url of the javascript file used to load the tool into single-SPA. Defaults to "main.js".
       parameters:
         - name: Url
           required: true
-          description: The inline url. If not given defaults to js/app.js. Generally should not be given unless using a non-standard filename.
+          description: The inline url. If not given defaults to main.js. Generally should not be given unless using a non-standard filename.
           values: .+
     WINDOW:
       summary: How to display the tool when navigated to
@@ -63,7 +63,10 @@ TOOL:
           values: ["true", "false"]
     POSITION:
       summary: Position of the tool in the nav bar
-      description: Position of the tool as an integer starting at 1. Tools without a position are appended to the end as they are installed.
+      description:
+        Position of the tool starting at 2 (1 is reserved for Admin Console).
+        Tools without a position are appended to the end as they are installed.
+        All COSMOS open source tools have consecutive integer values for position.
       since: 5.0.8
       parameters:
         - name: Position
@@ -78,4 +81,16 @@ TOOL:
         - name: Regex
           required: false
           description: Regex to match against filenames. If match, then no ERB processing
+          values: .+
+    IMPORT_MAP_ITEM:
+      summary: Add an item to the import map
+      since: 6.0.0
+      parameters:
+        - name: key
+          required: true
+          description: Import Map Key
+          values: .+
+        - name: value
+          required: true
+          description: Import Map Value
           values: .+

@@ -97,7 +97,7 @@ gemspec_files.each do |rel_path|
 end
 
 package_dot_json_files = [
-  'openc3-cosmos-init/plugins/openc3-tool-base/package.json',
+  'openc3-cosmos-init/plugins/packages/openc3-tool-base/package.json',
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-ace-diff/package.json',
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/package.json',
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-admin/package.json',
@@ -114,7 +114,8 @@ package_dot_json_files = [
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tablemanager/package.json',
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tlmgrapher/package.json',
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tlmviewer/package.json',
-  'openc3-cosmos-init/plugins/packages/openc3-tool-common/package.json',
+  'openc3-cosmos-init/plugins/packages/openc3-js-common/package.json',
+  'openc3-cosmos-init/plugins/packages/openc3-vue-common/package.json',
   'openc3/templates/widget/package.json',
   'openc3/templates/tool_vue/package.json',
   'openc3/templates/tool_react/package.json',
@@ -132,10 +133,30 @@ package_dot_json_files.each do |rel_path|
   data.each_line do |line|
     if line =~ /\"version\":/
       mod_data << "  \"version\": \"#{version}\",\n"
-    elsif line =~ /\"@openc3\/tool-common\":/
-      mod_data << "    \"@openc3/tool-common\": \"#{version}\",\n"
+    elsif line =~ /\"@openc3\/js-common\":/
+      mod_data << "    \"@openc3/js-common\": \"#{version}\""
+      # Don't assume the line has a comma because it could be at the end
+      if line.include?(',')
+        mod_data << ",\n"
+      else
+        mod_data << "\n"
+      end
+    elsif line =~ /\"@openc3\/vue-common\":/
+      mod_data << "    \"@openc3/vue-common\": \"#{version}\""
+      # Don't assume the line has a comma because it could be at the end
+      if line.include?(',')
+        mod_data << ",\n"
+      else
+        mod_data << "\n"
+      end
     elsif line =~ /\"@openc3\/ace-diff\":/
-      mod_data << "    \"@openc3/ace-diff\": \"#{version}\",\n"
+      mod_data << "    \"@openc3/ace-diff\": \"#{version}\""
+      # Don't assume the line has a comma because it could be at the end
+      if line.include?(',')
+        mod_data << ",\n"
+      else
+        mod_data << "\n"
+      end
     else
       mod_data << line
     end
@@ -148,8 +169,6 @@ end
 
 shell_scripts = [
   'openc3-cosmos-init/plugins/docker-package-build.sh',
-  'openc3-cosmos-init/plugins/docker-package-install.sh',
-  'examples/hostinstall/centos7/openc3_install_openc3.sh',
 ]
 
 shell_scripts.each do |rel_path|

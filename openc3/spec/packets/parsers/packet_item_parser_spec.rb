@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -127,18 +127,23 @@ module OpenC3
         it "accepts types INT UINT FLOAT STRING BLOCK" do
           tf = Tempfile.new('unittest')
           tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
-          tf.puts '  ID_ITEM ITEM1 0 32 INT 0'
+          tf.puts '  ID_ITEM ITEM1 0 32 INT 0x42'
           tf.puts '  ITEM ITEM2 0 32 UINT'
           tf.puts '  ARRAY_ITEM ITEM3 0 32 FLOAT 64'
-          tf.puts '  APPEND_ID_ITEM ITEM4 32 STRING "ABCD"'
-          tf.puts '  APPEND_ITEM ITEM5 32 BLOCK'
-          tf.puts '  APPEND_ARRAY_ITEM ITEM6 32 BLOCK 64'
+          tf.puts '  APPEND_ID_ITEM ITEM4 32 STRING "0xABCD"'
+          tf.puts '  APPEND_ID_ITEM ITEM5 32 BLOCK 0xABCD'
+          tf.puts '  APPEND_ITEM ITEM6 32 BLOCK'
+          tf.puts '  APPEND_ARRAY_ITEM ITEM7 32 BLOCK 64'
           tf.close
           @pc.process_file(tf.path, "TGT1")
-          expect(@pc.telemetry["TGT1"]["PKT1"].items.keys).to include('ITEM1', 'ITEM2', 'ITEM3', 'ITEM4', 'ITEM5', 'ITEM6')
+          expect(@pc.telemetry["TGT1"]["PKT1"].items.keys).to include('ITEM1', 'ITEM2', 'ITEM3', 'ITEM4', 'ITEM5', 'ITEM6', 'ITEM7')
+          expect(@pc.telemetry["TGT1"]["PKT1"].items["ITEM1"].id_value).to eql 0x42
+          expect(@pc.telemetry["TGT1"]["PKT1"].items["ITEM4"].id_value).to eql '0xABCD'
+          expect(@pc.telemetry["TGT1"]["PKT1"].items["ITEM5"].id_value).to eql "\xAB\xCD"
           id_items = []
           id_items << @pc.telemetry["TGT1"]["PKT1"].items["ITEM1"]
           id_items << @pc.telemetry["TGT1"]["PKT1"].items["ITEM4"]
+          id_items << @pc.telemetry["TGT1"]["PKT1"].items["ITEM5"]
           expect(@pc.telemetry["TGT1"]["PKT1"].id_items).to eql id_items
           tf.unlink
         end
@@ -188,6 +193,22 @@ module OpenC3
           packet.buffer = "\xDE\xAD\xBE\xEF"
           expect(packet.read("ITEM1")).to eql 0xBEEF
           expect(@pc.warnings).to include("TGT1 PKT1 ITEM1 redefined.")
+          tf.unlink
+        end
+
+        it "works with 0 sized items" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY TGT1 PKT1 BIG_ENDIAN "Description"'
+          tf.puts '  APPEND_ITEM ITEM1 16 UINT "Item 1"'
+          tf.puts '  APPEND_ITEM ITEM2 40 BLOCK "block"'
+          tf.puts '  APPEND_ITEM ITEM3 0 BLOCK "zero size"'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          packet = @pc.telemetry["TGT1"]["PKT1"]
+          packet.buffer = "\xBE\xEF\x01\x02\x03\x04\x05\x0a\x0b\x0b\x0a"
+          expect(packet.read("ITEM1")).to eql 0xBEEF
+          expect(packet.read("ITEM2")).to eql "\x01\x02\x03\x04\x05"
+          expect(packet.read("ITEM3")).to eql "\x0a\x0b\x0b\x0a"
           tf.unlink
         end
       end
@@ -277,7 +298,7 @@ module OpenC3
         it "accepts types INT UINT FLOAT STRING BLOCK" do
           tf = Tempfile.new('unittest')
           tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"'
-          tf.puts '  ID_PARAMETER ITEM1 0 32 INT 0 0 0'
+          tf.puts '  ID_PARAMETER ITEM1 0 32 INT 0 0xFF 0x42'
           tf.puts '  ID_PARAMETER ITEM2 32 32 STRING "ABCD"'
           tf.puts '  PARAMETER ITEM3 64 32 UINT 0 0 0'
           tf.puts '  ARRAY_PARAMETER ITEM4 96 32 FLOAT 64'

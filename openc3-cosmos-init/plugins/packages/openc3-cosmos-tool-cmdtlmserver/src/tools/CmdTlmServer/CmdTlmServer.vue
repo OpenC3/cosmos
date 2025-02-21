@@ -21,58 +21,55 @@
 -->
 
 <template>
-  <div>
-    <top-bar :menus="menus" :title="title" />
+  <top-bar :menus="menus" :title="title" />
+  <v-card style="z-index: 2 !important">
+    <v-expansion-panels v-model="panel">
+      <v-expansion-panel>
+        <v-expansion-panel-title>
+          <v-tabs v-model="curTab" fixed-tabs grow align-tabs="start">
+            <v-tab
+              v-for="(tab, index) in tabs"
+              :key="index"
+              :to="tab.path"
+              :text="tab.name"
+              @click.stop
+            />
+          </v-tabs>
+        </v-expansion-panel-title>
+        <v-expansion-panel-text>
+          <router-view :refresh-interval="refreshInterval" />
+        </v-expansion-panel-text>
+      </v-expansion-panel>
+    </v-expansion-panels>
+  </v-card>
+  <div style="height: 15px" />
+  <log-messages :time-zone="timeZone" />
+  <v-dialog v-model="optionsDialog" max-width="300">
     <v-card>
-      <v-expansion-panels v-model="panel">
-        <v-expansion-panel>
-          <v-expansion-panel-header>
-            <v-tabs v-model="curTab" fixed-tabs>
-              <v-tab
-                v-for="(tab, index) in tabs"
-                :key="index"
-                :to="tab.url"
-                @click.native.stop
-              >
-                {{ tab.name }}
-              </v-tab>
-            </v-tabs>
-          </v-expansion-panel-header>
-          <v-expansion-panel-content>
-            <router-view :refresh-interval="refreshInterval" />
-          </v-expansion-panel-content>
-        </v-expansion-panel>
-      </v-expansion-panels>
+      <v-toolbar height="24">
+        <v-spacer />
+        <span>Options</span>
+        <v-spacer />
+      </v-toolbar>
+      <div class="mt-6 pa-3">
+        <v-text-field
+          min="0"
+          max="10000"
+          step="100"
+          type="number"
+          label="Refresh Interval (ms)"
+          :model-value="refreshInterval"
+          @update:model-value="refreshInterval = $event"
+        />
+      </div>
     </v-card>
-    <div style="height: 15px" />
-    <log-messages />
-    <v-dialog v-model="optionsDialog" max-width="300">
-      <v-card>
-        <v-system-bar>
-          <v-spacer />
-          <span>Options</span>
-          <v-spacer />
-        </v-system-bar>
-        <div class="pa-3">
-          <v-text-field
-            min="0"
-            max="10000"
-            step="100"
-            type="number"
-            label="Refresh Interval (ms)"
-            :value="refreshInterval"
-            @change="refreshInterval = $event"
-          />
-        </div>
-      </v-card>
-    </v-dialog>
-  </div>
+  </v-dialog>
 </template>
 
 <script>
-import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
-import LogMessages from '@openc3/tool-common/src/components/LogMessages'
-import TopBar from '@openc3/tool-common/src/components/TopBar'
+import { OpenC3Api } from '@openc3/js-common/services'
+import { LogMessages, TopBar } from '@openc3/vue-common/components'
+
 export default {
   components: {
     LogMessages,
@@ -82,32 +79,33 @@ export default {
     return {
       api: null,
       title: 'CmdTlmServer',
+      timeZone: 'local',
       panel: 0,
       curTab: null,
       tabs: [
         {
           name: 'Interfaces',
-          url: '/interfaces',
+          path: { name: 'InterfacesTab' },
         },
         {
           name: 'Targets',
-          url: '/targets',
+          path: { name: 'TargetsTab' },
         },
         {
           name: 'Cmd packets',
-          url: '/cmd-packets',
+          path: { name: 'CmdPacketsTab' },
         },
         {
           name: 'Tlm packets',
-          url: '/tlm-packets',
+          path: { name: 'TlmPacketsTab' },
         },
         {
           name: 'Routers',
-          url: '/routers',
+          path: { name: 'RoutersTab' },
         },
         {
           name: 'Status',
-          url: '/status',
+          path: { name: 'StatusTab' },
         },
       ],
       updater: null,
@@ -138,12 +136,22 @@ export default {
   },
   created() {
     this.api = new OpenC3Api()
+    this.api
+      .get_setting('time_zone')
+      .then((response) => {
+        if (response) {
+          this.timeZone = response
+        }
+      })
+      .catch((error) => {
+        // Do nothing
+      })
   },
   methods: {
     clearCounters() {
       this.api.get_interface_names().then((response) => {
-        for (var i = 0; i < response.length; i++) {
-          this.api.interface_cmd(response[i], 'clear_counters')
+        for (const name of response) {
+          this.api.interface_cmd(name, 'clear_counters')
         }
       })
     },
@@ -152,7 +160,7 @@ export default {
 </script>
 
 <style scoped>
-.v-expansion-panel-content :deep(.v-expansion-panel-content__wrap) {
+.v-expansion-panel-text :deep(.v-expansion-panel-text__wrapper) {
   padding: 0px;
 }
 .v-list :deep(.v-label) {
@@ -165,7 +173,7 @@ export default {
 .v-list-item__title {
   color: white;
 }
-.v-expansion-panel-header {
+.v-expansion-panel-title {
   min-height: initial;
   padding: 0px;
 }

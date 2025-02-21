@@ -20,6 +20,7 @@ import os
 from openc3.script.suite_runner import SuiteRunner
 from openc3.utilities.target_file import TargetFile
 from openc3.script import *
+import openc3.utilities.target_file_importer
 
 openc3_scope = sys.argv[1]  # argv[0] is the script name
 path = sys.argv[2]
@@ -45,7 +46,8 @@ def load_utility(procedure_name):
     return False
 
 
-require_utility = load_utility
+setattr(openc3.script, "load_utility", load_utility)
+setattr(openc3.script, "require_utility", load_utility)
 
 data = None
 with open(path) as file:

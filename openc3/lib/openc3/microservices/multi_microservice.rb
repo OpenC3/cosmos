@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 OpenC3 Inc.
+# Copyright 2024 OpenC3 Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -18,6 +18,7 @@
 
 require 'openc3/microservices/microservice'
 require 'openc3/topics/topic'
+require 'openc3/utilities/thread_manager'
 
 module OpenC3
   class MultiMicroservice < Microservice
@@ -25,7 +26,7 @@ module OpenC3
       @threads = []
       ARGV.each do |microservice_name|
         microservice_model = MicroserviceModel.get_model(name: microservice_name, scope: @scope)
-        @threads << Thread.new do
+        thread = Thread.new do
           cmd_line = microservice_model.cmd.join(' ')
           split_cmd_line = cmd_line.split(' ')
           filename = nil
@@ -36,27 +37,21 @@ module OpenC3
             end
           end
           raise "Could not determine class filename from '#{cmd_line}'" unless filename
-          OpenC3.set_working_dir(@work_dir) do
-            require_relative filename
+          OpenC3.set_working_dir(microservice_model.work_dir) do
+            require File.join(microservice_model.work_dir, filename)
           end
           klass = filename.filename_to_class_name.to_class
           klass.run(microservice_model.name)
         end
+        ThreadManager.instance.register(thread)
       end
-      @threads.each do |thread|
-        thread.join
-      end
-    end
-
-    def shutdown
-      super()
-      if @threads
-        @threads.each do |thread|
-          thread.join
-        end
-      end
+      ThreadManager.instance.monitor
+      ThreadManager.instance.shutdown
     end
   end
 end
-
-OpenC3::MultiMicroservice.run if __FILE__ == $0
+if __FILE__ == $0
+  OpenC3::MultiMicroservice.run
+  ThreadManager.instance.shutdown
+  ThreadManager.instance.join
+end

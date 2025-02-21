@@ -27,18 +27,18 @@ class TestMicroservice(unittest.TestCase):
 
     def test_expects_scope__type__name_parameter_as_env(self):
         # These exceptions all get caught and logged now
-        # with self.assertRaisesRegex(RuntimeError, "Microservice must be named"):
-        Microservice.class_run()
+        with self.assertRaisesRegex(RuntimeError, "Microservice must be named"):
+            Microservice.class_run()
         os.environ["OPENC3_MICROSERVICE_NAME"] = "DEFAULT"
-        # with self.assertRaisesRegex(
-        #    RuntimeError, "Name DEFAULT doesn't match convention"
-        # ):
-        Microservice.class_run()
+        with self.assertRaisesRegex(
+           RuntimeError, "Name DEFAULT doesn't match convention"
+        ):
+            Microservice.class_run()
         os.environ["OPENC3_MICROSERVICE_NAME"] = "DEFAULT_TYPE_NAME"
-        # with self.assertRaisesRegex(
-        #    RuntimeError, "Name DEFAULT_TYPE_NAME doesn't match convention"
-        # ):
-        Microservice.class_run()
+        with self.assertRaisesRegex(
+           RuntimeError, "Name DEFAULT_TYPE_NAME doesn't match convention"
+        ):
+            Microservice.class_run()
         os.environ["OPENC3_MICROSERVICE_NAME"] = "DEFAULT__TYPE__NAME"
         Microservice.class_run()
         time.sleep(0.1)

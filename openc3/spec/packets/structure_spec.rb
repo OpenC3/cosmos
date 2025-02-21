@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -97,6 +97,12 @@ module OpenC3
         @s.define_item("test5", -16, 8, :UINT)
         expect(@s.defined_length).to eql 4
         expect(@s.fixed_size).to be false
+        @s.buffer = "\x12\x34\x56\x78"
+        expect(@s.read("test1")).to eql 0x78
+        expect(@s.read("test2")).to eql 0x1
+        expect(@s.read("test3")).to eql 0x2
+        expect(@s.read("test4")).to eql "\x56\x78"
+        expect(@s.read("test5")).to eql 0x56
       end
 
       it "adds item with negative offset" do
@@ -117,6 +123,12 @@ module OpenC3
         @s.define_item("test4", 8, 0, :BLOCK)
         expect(@s.defined_length).to eql 3
         expect(@s.fixed_size).to be false
+        @s.buffer = "\x12\x34\x56\x78\x90"
+        expect(@s.read("test1")).to eql 0x90
+        expect(@s.read("test2")).to eql 0x1
+        expect(@s.read("test3")).to eql 0x2
+        expect(@s.read("test4")).to eql "\x34\x56\x78\x90"
+        expect(@s.read("test5")).to eql 0x78
       end
 
       it "recalulates sorted_items when adding multiple items" do
@@ -144,6 +156,87 @@ module OpenC3
         expect(@s.items["TEST1"].data_type).to eql :INT
         expect(@s.defined_length).to eql 2
         expect(@s.fixed_size).to be true
+      end
+
+      it "recalculates the bit offsets for 0 size" do
+        s = Structure.new(:BIG_ENDIAN)
+        s.append_item("test1", 40, :BLOCK)
+        s.append_item("test2", 0, :BLOCK)
+        s.define_item("test3", -32, 16, :UINT)
+        s.define_item("test4", -16, 16, :UINT)
+        s.buffer = "\x01\x02\x03\x04\x05\x0a\x0b\x0b\x0a\xAA\x55\xBB\x66"
+        expect(s.read("test1")).to eql "\x01\x02\x03\x04\x05"
+        expect(s.read("test2")).to eql "\x0a\x0b\x0b\x0a\xAA\x55\xBB\x66"
+        expect(s.read("test3")).to eql 0xAA55
+        expect(s.read("test4")).to eql 0xBB66
+      end
+
+      it "correctly recalculates bit offsets" do
+        s = Structure.new(:BIG_ENDIAN)
+        s.append_item("item1", 8, :UINT)
+        s.append_item("item2", 2, :UINT)
+        item = s.append_item("item3", 6, :UINT)
+        item.variable_bit_size = {'length_item_name' => "item2", 'length_bits_per_count' => 8, 'length_value_bit_offset' => 0}
+        s.append_item("item4", 32, :UINT)
+        s.append_item("item5", 32, :UINT)
+        s.append_item("item6", 8, :UINT)
+        item = s.append_item("item7", 0, :STRING)
+        item.variable_bit_size = {'length_item_name' => "item6", 'length_bits_per_count' => 8, 'length_value_bit_offset' => 0}
+        s.append_item("item8", 16, :UINT)
+
+        bit_offsets = s.sorted_items.map {|si| si.bit_offset}
+        expect(bit_offsets).to eql [0, 8, 10, 16, 48, 80, 88, 88]
+
+        s.buffer = "\x00" * s.defined_length
+
+        bit_offsets = s.sorted_items.map {|si| si.bit_offset}
+        expect(bit_offsets).to eql [0, 8, 10, 16, 48, 80, 88, 88]
+
+        s.buffer = "\x00\x80\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00\x00\x00"
+
+        bit_offsets = s.sorted_items.map {|si| si.bit_offset}
+        expect(bit_offsets).to eql [0, 8, 10, 40, 72, 104, 112, 128]
+
+        s.buffer = "\x00" * 13
+
+        bit_offsets = s.sorted_items.map {|si| si.bit_offset}
+        expect(bit_offsets).to eql [0, 8, 10, 16, 48, 80, 88, 88]
+      end
+
+      it "handles blocks" do
+        s = Structure.new(:BIG_ENDIAN)
+        s.append_item("ccsdsheader", 32, :UINT)
+        s.append_item("ccsdslength", 16, :UINT)
+        s.append_item("timesec", 32, :UINT)
+        s.append_item("timeus", 32, :UINT)
+        s.append_item("pktid", 16, :UINT)
+        s.append_item("block", 8000, :BLOCK)
+        s.append_item("image", 0, :BLOCK)
+        s.define_item("bytes", 128, 32, :UINT)
+        s.define_item("derived", 0, 0, :DERIVED)
+        data = "\xDE\xAD\xBE\xEF\x55\x55\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09"
+        data += Array.new(1000) { Array(0..15).sample }.pack("C*")
+        data += Array.new(10) { 10 }.pack("C*")
+
+        s.buffer = data
+        expect(s.read("ccsdsheader")).to eql 0xDEADBEEF
+        expect(s.read("ccsdslength")).to eql 0x5555
+        expect(s.read("timesec")).to eql 0x00010203
+        expect(s.read("timeus")).to eql 0x04050607
+        expect(s.read("pktid")).to eql 0x0809
+        expect(s.read("block").length).to eql 1000
+        expect(s.read("image")).to eql "\x0A\x0A\x0A\x0A\x0A\x0A\x0A\x0A\x0A\x0A"
+
+        s.enable_method_missing
+        s.block = Array.new(1000) { Array(0..15).sample }.pack("C*")
+        s.image = Array.new(10) { 5 }.pack("C*")
+        expect(s.read("ccsdsheader")).to eql 0xDEADBEEF
+        expect(s.read("ccsdslength")).to eql 0x5555
+        expect(s.read("timesec")).to eql 0x00010203
+        expect(s.read("timeus")).to eql 0x04050607
+        expect(s.read("pktid")).to eql 0x0809
+        expect(s.read("block").length).to eql 1000
+        expect(s.read("image")).to eql ([5]*10).pack("C*")
       end
     end # describe "define_item"
 
@@ -231,16 +324,6 @@ module OpenC3
         expect(@s.sorted_items[1].name).to eql "TEST2"
         expect(@s.defined_length).to eql 4
       end
-
-      it "complains if appending after a variably sized item" do
-        @s.define_item("test1", 0, 0, :BLOCK)
-        expect { @s.append_item("test2", 8, :UINT) }.to raise_error(ArgumentError, "Can't append an item after a variably sized item")
-      end
-
-      it "complains if appending after a variably sized array" do
-        @s.define_item("test1", 0, 8, :UINT, -8)
-        expect { @s.append_item("test2", 8, :UINT) }.to raise_error(ArgumentError, "Can't append an item after a variably sized item")
-      end
     end
 
     describe "append" do
@@ -257,12 +340,6 @@ module OpenC3
         expect(@s.sorted_items[0].name).to eql "TEST1"
         expect(@s.sorted_items[1].name).to eql "TEST2"
         expect(@s.defined_length).to eql 3
-      end
-
-      it "complains if appending after a variably sized item" do
-        @s.define_item("test1", 0, 0, :BLOCK)
-        item = StructureItem.new("test2", 0, 16, :UINT, :BIG_ENDIAN)
-        expect { @s.append(item) }.to raise_error(ArgumentError, "Can't append an item after a variably sized item")
       end
     end
 
@@ -532,7 +609,7 @@ module OpenC3
         s.write("test3", "\x07\x08\x09\x0A")
         buffer = "\x0A\x0B\x0C\x0D\xDE\xAD\xBE\xEF"
         expect(s.formatted(:CONVERTED, 0, buffer)).to include("TEST1: [10, 11]")
-        expect(s.formatted(:CONVERTED, 0, buffer)).to include("TEST2: #{0x0C0D}")
+        expect(s.formatted(:CONVERTED, 0, buffer)).to include("TEST2: 3085")
         expect(s.formatted(:CONVERTED, 0, buffer)).to include("TEST3")
         expect(s.formatted(:CONVERTED, 0, buffer)).to include("00000000: DE AD BE EF")
       end
@@ -603,6 +680,18 @@ module OpenC3
         expect(s.read("test2")).to eql 0x0203
         expect(s.read("test3")).to eql 0x04050607
       end
+
+      it "recalculates the bit offsets for 0 size" do
+        s = Structure.new(:BIG_ENDIAN)
+        s.append_item("test1", 80, :BLOCK)
+        s.append_item("test2", 0, :BLOCK)
+        s.define_item("test3", -16, 16, :UINT)
+        s.buffer = "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09" +
+          "\x0a\x0b\x0c\x0d\x0e\x0f\x0f\x0e\x0d\x0c\x0b\x0a\xAA\x55"
+        expect(s.read("test1")).to eql "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09"
+        expect(s.read("test2")).to eql "\x0a\x0b\x0c\x0d\x0e\x0f\x0f\x0e\x0d\x0c\x0b\x0a\xaa\x55"
+        expect(s.read("test3")).to eql 0xAA55
+      end
     end
 
     describe "clone" do
@@ -631,6 +720,27 @@ module OpenC3
         expect(s2.read("test1")).to eql [0, 0]
         # Ensure we didn't change the original
         expect(s.read("test1")).to eql [1, 2]
+      end
+    end
+
+    describe "deep_copy" do
+      it "duplicates the structure and items" do
+        s = Structure.new(:BIG_ENDIAN)
+        s.append_item("test1", 8, :UINT, 16)
+        s.write("test1", [1, 2])
+        s.append_item("test2", 16, :UINT)
+        s.write("test2", 0x0304)
+        s.append_item("test3", 32, :UINT)
+        s.write("test3", 0x05060708)
+
+        s2 = s.deep_copy()
+        expect(s.items["TEST1"].overflow).to eql :ERROR
+        expect(s2.items["TEST1"].overflow).to eql :ERROR
+        # Change something about the item in the original
+        s.items["TEST1"].overflow = :SATURATE
+        expect(s.items["TEST1"].overflow).to eql :SATURATE
+        # Verify the deep_copy didn't change
+        expect(s2.items["TEST1"].overflow).to eql :ERROR
       end
     end
 

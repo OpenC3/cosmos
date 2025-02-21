@@ -38,21 +38,18 @@ module OpenC3
       # Convert the template into a Regexp for reading each item
       template = @packet.template.dup
       template_items = template.scan(Regexp.new("#{escaped_left_char}.*?#{escaped_right_char}"))
-      escaped_read_template = template
-      if @left_char != '('
-        escaped_read_template = escaped_read_template.gsub('(', '\(')
-      end
-      if @right_char != ')'
-        escaped_read_template = escaped_read_template.gsub(')', '\)')
-      end
+      escaped_read_template = Regexp.escape(template)
 
       @item_keys = []
       template_items.each do |item|
         @item_keys << item[1..-2]
+        # If they're using parens we have to escape them
+        # since we're working with the already escaped template
+        item = "\\#{item}" if @left_char == '('
+        item = "#{item[0..-2]}\\)" if @right_char == ')'
         escaped_read_template.gsub!(item, "(.*)")
       end
       @read_regexp = Regexp.new(escaped_read_template)
-
       @configured = true
     end
 
@@ -141,7 +138,7 @@ module OpenC3
       return true
     end
 
-    # If this is true it will enfore that COSMOS DERIVED items must have a
+    # If this is true it will enforce that COSMOS DERIVED items must have a
     # write_conversion to be written
     def enforce_derived_write_conversion(_item)
       return true

@@ -1,0 +1,323 @@
+// This is for global overrides only. If it's contained to a component put it there.
+// Also use the variables created by vuetify and astro like var(--v-primary-darken2)
+// or var(--color-background-base-default) rather than something absolute.
+// See vuetify.js and https://www.astrouxds.com/design-tokens/system/ for the colors
+// and note the variations are: base, lighten[1-5], and darken[1-4]
+
+.openc3-green {
+  color: #56f000 !important;
+}
+.openc3-yellow {
+  color: #fce83a !important;
+}
+.openc3-red {
+  color: #ff3838 !important;
+}
+.openc3-blue {
+  color: #2dccff !important;
+}
+.openc3-purple {
+  color: rgb(200, 0, 200) !important;
+}
+.openc3-black {
+  color: black !important;
+}
+.openc3-white {
+  color: white !important;
+}
+
+// The naming convention for Astro background colors is as follows:
+// --color-background-<TYPE>-<ACTION> where TYPE is base, surface, interactive
+// and ACTION is default, header, hover, selected
+
+// .v-application .primary {
+//   background-color: var(--color-background-interactive-default) !important;
+// }
+.v-theme--cosmosDark.v-btn:not(
+    .v-btn--variant-outlined,
+    .v-btn--icon,
+    .v-btn--round,
+    .v-btn--variant-text,
+    .v-tab
+  ) {
+  background-color: var(--button-color-background-primary-default) !important;
+  color: var(--color-text-inverse) !important;
+}
+.v-theme--cosmosDark.v-btn:not(
+    .v-btn--variant-outlined,
+    .v-btn--icon,
+    .v-btn--round,
+    .v-btn--variant-text
+  ):hover {
+  background-color: var(--button-color-background-primary-hover) !important;
+}
+.v-theme--cosmosDark.v-btn--variant-outlined:not(
+    .v-btn--icon,
+    .v-btn--round,
+    .v-btn--variant-text
+  ) {
+  border-color: var(--button-color-border-primary-default) !important;
+  color: var(--color-text-interactive-default) !important;
+}
+.theme--dark.v-btn--outlined.v-btn--disabled {
+  border-color: var(--button-color-border-primary-default) !important;
+  color: var(--color-text-interactive-default) !important;
+  opacity: 0.4 !important;
+}
+.v-theme--cosmosDark.v-btn--variant-outlined:not(
+    .v-btn--icon,
+    .v-btn--round,
+    .v-btn--variant-text
+  ):hover {
+  border-color: var(--button-color-border-primary-hover) !important;
+}
+
+.v-btn {
+  text-transform: inherit !important;
+}
+
+body,
+.v-theme--cosmosDark.v-application,
+.v-theme--cosmosDark.v-main,
+.v-theme--cosmosDark.v-content {
+  background-color: var(--color-background-base-default);
+}
+.single-spa-container {
+  height: 100%;
+}
+.v-application__wrap {
+  min-height: 0 !important; // Vuetify's `:full-height="false"` prop seems to not be working
+}
+
+.v-theme--cosmosDark .v-tabs > .v-slide-group__container .v-tab--disabled,
+.v-theme--cosmosDark
+  .v-tabs
+  > .v-slide-group__container
+  .v-tab:not(.v-tab--selected),
+.v-theme--cosmosDark
+  .v-tabs
+  > .v-slide-group__container
+  .v-tab:not(.v-tab--selected).v-btn,
+.v-theme--cosmosDark
+  .v-tabs
+  > .v-slide-group__container
+  .v-tab:not(.v-tab--selected).v-icon {
+  color: var(--color-text-interactive-default) !important;
+}
+.v-tab--selected {
+  background-color: var(--color-background-surface-selected) !important;
+  color: var(--color-text-interactive-default) !important;
+}
+.v-theme--cosmosDark.v-tabs .v-tab:hover {
+  background-color: var(--color-background-surface-hover) !important;
+}
+
+.v-card-title,
+.v-card-subtitle,
+.v-theme--cosmosDark.v-tab,
+.v-theme--cosmosDark.v-tabs-bar,
+.v-expansion-panel-title,
+.v-navigation-drawer,
+.v-theme--cosmosDark.v-toolbar,
+.v-theme--cosmosDark.v-date-picker-header {
+  background-color: var(--color-background-surface-header) !important;
+}
+
+.v-navigation-drawer .v-treeview-item {
+  font-size: 1rem;
+}
+
+.v-calendar-header {
+  background-color: var(--color-background-base-default) !important;
+}
+.v-calendar,
+// Lighten the background color of numbered days
+.v-calendar-weekly__day-label,
+.v-calendar-weekly__day-label button:not(.v-calendar-weekly__day-label__today) {
+  background-color: #303030 !important;
+}
+// Style the calendar day header: S M T W T F S
+.v-calendar-weekly__head-weekday {
+  border-left: 1px solid #9e9e9e !important;
+  border-right: 1px solid #9e9e9e !important;
+  border-top: 1px solid #9e9e9e !important;
+}
+// If the mini calendar isn't a day then darken the background
+.v-calendar-month__day {
+  background-color: #202020 !important;
+  border-left: 1px solid #9e9e9e !important;
+  border-right: 1px solid #9e9e9e !important;
+  border-bottom: 1px solid #9e9e9e !important;
+}
+
+.v-expansion-panel-title,
+.v-expansion-panel-text__wrapper {
+  padding: 0 !important;
+  min-height: unset !important;
+}
+
+.v-field__prepend-inner .mdi-magnify {
+  color: var(--color-text-interactive-default) !important;
+}
+
+table,
+.v-stepper,
+.v-expansion-panel-text,
+.v-theme--cosmosDark.v-banner,
+.v-theme--cosmosDark.v-data-table,
+.v-theme--cosmosDark.v-card,
+.v-theme--cosmosDark.v-date-picker-table,
+.v-theme--cosmosDark.v-time-picker-clock__container,
+.v-theme--cosmosDark.v-expansion-panel,
+.v-theme--cosmosDark.v-expansion-panels,
+.v-theme--cosmosDark.p-menubar {
+  background-color: var(--color-background-surface-default) !important;
+}
+.v-theme--cosmosDark.v-list {
+  background-color: var(--color-background-base-default);
+}
+.v-list {
+  color: white !important;
+}
+
+.v-menu > .v-overlay__content > .v-theme--cosmosDark.v-list {
+  background-color: var(--color-background-surface-selected);
+}
+.v-menu > .v-overlay__content > .v-theme--cosmosDark.v-list .v-list-item:hover {
+  background-color: var(--color-background-interactive-muted) !important;
+}
+
+.v-theme--cosmosDark.v-overlay--active:not([role='tooltip']):not(
+    :has([role='listbox'])
+  ) {
+  backdrop-filter: blur(2px) !important;
+  --v-overlay-opacity: 0.1 !important;
+}
+
+.v-theme--cosmosDark.v-list-item:hover,
+.v-theme--cosmosDark.v-treeview--hoverable .v-treeview-node__root:hover,
+.v-theme--cosmosDark.v-treeview
+  .v-treeview-node--click
+  > .v-treeview-node__root:hover,
+.v-theme--cosmosDark.v-data-table
+  > .v-data-table__wrapper
+  > table
+  > tbody
+  > tr:hover:not(.v-data-table__expanded__content):not(
+    .v-data-table__empty-wrapper
+  ) {
+  background-color: var(--color-background-surface-hover) !important;
+}
+.v-data-table__th {
+  background-color: var(--color-background-surface-default) !important;
+}
+
+// Most tables have a search box
+.search {
+  max-width: 350px;
+  border-color: var(--color-border-interactive-muted);
+  background-color: var(--color-background-base-default);
+}
+
+// The next several styles effectively styles like an Astro select
+.v-theme--cosmosDark.v-autocomplete {
+  border-color: var(--button-color-border-interactive-default) !important;
+  color: var(--color-text-interactive-default) !important;
+  background-color: var(--color-background-base-default) !important;
+}
+.v-theme--cosmosDark.v-select [role='combobox'] {
+  border-color: var(--button-color-border-interactive-default) !important;
+  color: var(--color-text-interactive-default) !important;
+  background-color: var(--color-background-base-default) !important;
+}
+
+.v-theme--cosmosDark.v-autocomplete label,
+.v-theme--cosmosDark.v-select label {
+  color: whitesmoke !important;
+}
+
+.v-theme--cosmosDark.v-select fieldset {
+  border: 1px solid var(--color-border-interactive-muted);
+  background-color: var(--color-background-base-default);
+}
+.v-theme--cosmosDark.v-select input {
+  color: var(--color-background-interactive-default) !important;
+}
+.v-theme--cosmosDark.v-select input:disabled {
+  color: var(--color-background-interactive-muted) !important;
+}
+.v-theme--cosmosDark.v-select .v-select__selection-text {
+  color: var(--color-text-interactive-default) !important;
+}
+
+// This formats the icon with a box around it but I don't really like it
+// .v-select .v-input__slot {
+//   padding-right: 0px !important;
+// }
+// .v-select .v-input__icon {
+//   width: auto;
+// }
+// .v-select i {
+//   background-color: var(--color-background-surface-selected) !important;
+//   border: 1px solid var(--color-border-interactive-muted) !important;
+//   border-radius: 3px !important;
+//   height: 40px !important;
+//   width: 40px !important;
+// }
+
+// Astro has a much higher app-bar
+.v-main {
+  padding-top: 96px !important;
+}
+.v-app-bar,
+.v-app-bar > .v-toolbar__content {
+  height: 96px !important;
+}
+
+// Astro underlines links but I don't like it
+body a:hover {
+  text-decoration: none;
+}
+// Astro recommends sentence case on tabs
+.v-tab,
+.v-btn.v-size--default,
+.v-btn.v-size--large {
+  text-transform: none;
+  font-size: 1rem;
+}
+// Astro recommends their Heading 5 for card titles
+.v-card-title {
+  font-size: 1.125rem;
+}
+// Astro recommends 1rem for text and table items
+.v-card,
+.v-data-table > .v-table__wrapper > table > tbody > tr > th,
+.v-data-table > .v-table__wrapper > table > tfoot > tr > th,
+.v-data-table > .v-table__wrapper > table > thead > tr > th,
+.v-data-table > .v-table__wrapper > table > tbody > tr > td,
+.v-data-table > .v-table__wrapper > table > tfoot > tr > td,
+.v-data-table > .v-table__wrapper > table > thead > tr > td {
+  font-size: 1rem;
+}
+
+input {
+  // This causes the browser to style input icons for a dark background
+  color-scheme: dark;
+  // Make the caret color be white instead of a dark blue
+  caret-color: auto;
+}
+
+// Revert card behavior to Vuetify2 to allow components such as RawDialog to float correctly
+.v-card {
+  overflow: initial !important;
+  z-index: initial !important;
+}
+
+// Allow tooltips to be clickable (Packet Viewer uses this)
+.v-tooltip > .v-overlay__content {
+  pointer-events: auto !important;
+}
+
+.v-list-item-action {
+  margin-right: 15px !important;
+}

@@ -20,6 +20,7 @@ from unittest.mock import *
 from test.test_helper import *
 from openc3.config.config_parser import ConfigParser
 from openc3.packets.packet_config import PacketConfig
+from cbor2 import dump, loads
 
 
 class TestPacketConfig(unittest.TestCase):
@@ -110,12 +111,19 @@ class TestPacketConfig(unittest.TestCase):
         "SEG_POLY_WRITE_CONVERSION",
         "GENERIC_READ_CONVERSION_START",
         "GENERIC_WRITE_CONVERSION_START",
+        "REQUIRED",
         "LIMITS",
         "LIMITS_RESPONSE",
         "UNITS",
         "FORMAT_STRING",
         "DESCRIPTION",
-        "META",
+        "MINIMUM_VALUE",
+        "MAXIMUM_VALUE",
+        "DEFAULT_VALUE",
+        "OVERFLOW",
+        "OVERLAP",
+        "KEY",
+        "VARIABLE_BIT_SIZE",
     ]
 
     def test_complains_if_a_current_packet_is_not_defined(self):
@@ -124,25 +132,18 @@ class TestPacketConfig(unittest.TestCase):
             tf = tempfile.NamedTemporaryFile(mode="w")
             tf.write(keyword)
             tf.seek(0)
-            with self.assertRaisesRegex(
-                ConfigParser.Error, f"No current packet for {keyword}"
-            ):
+            with self.assertRaisesRegex(ConfigParser.Error, f"No current packet for {keyword}"):
                 self.pc.process_file(tf.name, "SYSTEM")
             tf.close()
 
     def test_complains_if_a_current_item_is_not_defined(self):
         # Check for missing ITEM definitions
         for keyword in TestPacketConfig.item_keywords:
-            if keyword == "META":
-                continue
-
             tf = tempfile.NamedTemporaryFile(mode="w")
             tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
             tf.write(keyword)
             tf.seek(0)
-            with self.assertRaisesRegex(
-                ConfigParser.Error, f"No current item for {keyword}"
-            ):
+            with self.assertRaisesRegex(ConfigParser.Error, f"No current item for {keyword}"):
                 self.pc.process_file(tf.name, "TGT1")
             tf.close()
 
@@ -151,9 +152,7 @@ class TestPacketConfig(unittest.TestCase):
             tf = tempfile.NamedTemporaryFile(mode="w")
             tf.write(keyword)
             tf.seek(0)
-            with self.assertRaisesRegex(
-                ConfigParser.Error, f"Not enough parameters for {keyword}"
-            ):
+            with self.assertRaisesRegex(ConfigParser.Error, f"Not enough parameters for {keyword}"):
                 self.pc.process_file(tf.name, "SYSTEM")
             tf.close()
 
@@ -162,17 +161,17 @@ class TestPacketConfig(unittest.TestCase):
             tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
             tf.write(keyword)
             tf.seek(0)
-            with self.assertRaisesRegex(
-                ConfigParser.Error, f"Not enough parameters for {keyword}"
-            ):
+            with self.assertRaisesRegex(ConfigParser.Error, f"Not enough parameters for {keyword}"):
                 self.pc.process_file(tf.name, "TGT1")
             tf.close()
 
         for keyword in TestPacketConfig.item_keywords:
-            if (
-                keyword == "GENERIC_READ_CONVERSION_START"
-                or keyword == "GENERIC_WRITE_CONVERSION_START"
-            ):
+            ignore = ["GENERIC_READ_CONVERSION_START", "GENERIC_WRITE_CONVERSION_START"]
+            # The following have 0 parameters
+            ignore.append("OVERLAP")
+            # The following are command only
+            ignore.extend(["REQUIRED", "MINIMUM_VALUE", "MAXIMUM_VALUE", "DEFAULT_VALUE"])
+            if keyword in ignore:
                 continue
 
             tf = tempfile.NamedTemporaryFile(mode="w")
@@ -180,9 +179,7 @@ class TestPacketConfig(unittest.TestCase):
             tf.write('ITEM myitem 0 8 UINT "Test Item"\n')
             tf.write(keyword)
             tf.seek(0)
-            with self.assertRaisesRegex(
-                ConfigParser.Error, f"Not enough parameters for {keyword}"
-            ):
+            with self.assertRaisesRegex(ConfigParser.Error, f"Not enough parameters for {keyword}"):
                 self.pc.process_file(tf.name, "TGT1")
             tf.close()
 
@@ -223,9 +220,7 @@ class TestPacketConfig(unittest.TestCase):
                 case "LIMITS_GROUP_ITEM":
                     tf.write("LIMITS_GROUP_ITEM target packet item extra")
             tf.seek(0)
-            with self.assertRaisesRegex(
-                ConfigParser.Error, f"Too many parameters for {keyword}"
-            ):
+            with self.assertRaisesRegex(ConfigParser.Error, f"Too many parameters for {keyword}"):
                 self.pc.process_file(tf.name, "TGT1")
             tf.close()
 
@@ -241,28 +236,18 @@ class TestPacketConfig(unittest.TestCase):
                 case "APPEND_ITEM":
                     tf.write('APPEND_ITEM myitem 8 UINT "Test Item" BIG_ENDIAN extra\n')
                 case "ID_ITEM":
-                    tf.write(
-                        'ID_ITEM myitem 0 8 UINT 1 "Test Item id=1" LITTLE_ENDIAN extra\n'
-                    )
+                    tf.write('ID_ITEM myitem 0 8 UINT 1 "Test Item id=1" LITTLE_ENDIAN extra\n')
                 case "APPEND_ID_ITEM":
-                    tf.write(
-                        'APPEND_ID_ITEM myitem 8 UINT 1 "Test Item id=1" BIG_ENDIAN extra\n'
-                    )
+                    tf.write('APPEND_ID_ITEM myitem 8 UINT 1 "Test Item id=1" BIG_ENDIAN extra\n')
                 case "ARRAY_ITEM":
-                    tf.write(
-                        'ARRAY_ITEM myitem 0 8 UINT 24 "Test Item array" LITTLE_ENDIAN extra\n'
-                    )
+                    tf.write('ARRAY_ITEM myitem 0 8 UINT 24 "Test Item array" LITTLE_ENDIAN extra\n')
                 case "APPEND_ARRAY_ITEM":
-                    tf.write(
-                        'APPEND_ARRAY_ITEM myitem 0 8 UINT 24 "Test Item array" BIG_ENDIAN extra\n'
-                    )
+                    tf.write('APPEND_ARRAY_ITEM myitem 0 8 UINT 24 "Test Item array" BIG_ENDIAN extra\n')
                 case "SELECT_ITEM":
                     tf.write("ITEM myitem 0 8 UINT\n")
                     tf.write("SELECT_ITEM myitem extra\n")
             tf.seek(0)
-            with self.assertRaisesRegex(
-                ConfigParser.Error, f"Too many parameters for {keyword}"
-            ):
+            with self.assertRaisesRegex(ConfigParser.Error, f"Too many parameters for {keyword}"):
                 self.pc.process_file(tf.name, "TGT1")
             tf.close()
 
@@ -277,6 +262,11 @@ class TestPacketConfig(unittest.TestCase):
                 "SEG_POLY_WRITE_CONVERSION",
                 "LIMITS_RESPONSE",
                 "META",
+                # The following are command only
+                "REQUIRED",
+                "MINIMUM_VALUE",
+                "MAXIMUM_VALUE",
+                "DEFAULT_VALUE",
             ]:
                 continue
 
@@ -287,17 +277,19 @@ class TestPacketConfig(unittest.TestCase):
                 case "STATE":
                     tf.write("STATE mystate 0 RED extra\n")
                 case "GENERIC_READ_CONVERSION_START" | "GENERIC_WRITE_CONVERSION_START":
-                    tf.write(f"{keyword} FLOAT 64 extra")
+                    tf.write(f"{keyword} FLOAT 64 extra\n")
                 case "LIMITS":
                     tf.write("LIMITS mylimits 1 ENABLED 0 10 20 30 12 18 20\n")
                 case "UNITS":
                     tf.write("UNITS degrees deg extra\n")
-                case "FORMAT_STRING" | "DESCRIPTION":
-                    tf.write(f"{keyword} 'string' extra")
+                case "FORMAT_STRING" | "DESCRIPTION" | "OVERFLOW" | "KEY":
+                    tf.write(f"{keyword} 'string' extra\n")
+                case "VARIABLE_BIT_SIZE":
+                    tf.write(f"{keyword} LEN 8 0 extra\n")
+                case _:
+                    tf.write(f"{keyword} extra\n")
             tf.seek(0)
-            with self.assertRaisesRegex(
-                ConfigParser.Error, f"Too many parameters for {keyword}"
-            ):
+            with self.assertRaisesRegex(ConfigParser.Error, f"Too many parameters for {keyword}"):
                 self.pc.process_file(tf.name, "TGT1")
             tf.close()
 
@@ -383,9 +375,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("SELECT_TELEMETRY TGT PKT\n")
         tf.write("  SELECT_PARAMETER ITEM\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "SELECT_PARAMETER only applies to command packets"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "SELECT_PARAMETER only applies to command packets"):
             self.pc.process_file(tf.name, "TGT")
 
     def test_complains_if_the_parameter_is_not_found(self):
@@ -403,9 +393,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("  SELECT_PARAMETER PARAMX\n")
         tf.write('    DESCRIPTION "New description"\n')
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "PARAMX not found in command packet TGT PKT"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "PARAMX not found in command packet TGT PKT"):
             self.pc.process_file(tf.name, "TGT")
 
     def test_select_item_complains_if_used_with_select_command(self):
@@ -415,9 +403,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("SELECT_COMMAND TGT PKT\n")
         tf.write("  SELECT_ITEM PARAM\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "SELECT_ITEM only applies to telemetry packets"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "SELECT_ITEM only applies to telemetry packets"):
             self.pc.process_file(tf.name, "TGT")
 
     def test_select_item_complains_if_the_item_is_not_found(self):
@@ -435,9 +421,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("  SELECT_ITEM ITEMX\n")
         tf.write('    DESCRIPTION "New description"\n')
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "ITEMX not found in telemetry packet TGT PKT"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "ITEMX not found in telemetry packet TGT PKT"):
             self.pc.process_file(tf.name, "TGT")
 
     def test_delete_item_removes_an_item(self):
@@ -503,12 +487,8 @@ class TestPacketConfig(unittest.TestCase):
         tf.write('META TYPE "struct packet2"\n')
         tf.seek(0)
         self.pc.process_file(tf.name, "TGT1")
-        self.assertEqual(
-            self.pc.telemetry["TGT1"]["PKT1"].meta["TYPE"], ["struct packet"]
-        )
-        self.assertEqual(
-            self.pc.telemetry["TGT1"]["PKT2"].meta["TYPE"], ["struct packet2"]
-        )
+        self.assertEqual(self.pc.telemetry["TGT1"]["PKT1"].meta["TYPE"], ["struct packet"])
+        self.assertEqual(self.pc.telemetry["TGT1"]["PKT2"].meta["TYPE"], ["struct packet2"])
         tf.close()
 
     def test_marks_the_packet_as_messages_disabled(self):
@@ -548,6 +528,17 @@ class TestPacketConfig(unittest.TestCase):
         self.assertFalse(self.pc.commands["TGT1"]["PKT2"].disabled)
         tf.close()
 
+    def test_marks_the_packet_as_a_virtual_packet(self):
+        tf = tempfile.NamedTemporaryFile(mode="w")
+        tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
+        tf.write("VIRTUAL\n")
+        tf.seek(0)
+        self.pc.process_file(tf.name, "TGT1")
+        self.assertTrue(self.pc.telemetry["TGT1"]["PKT1"].hidden)
+        self.assertTrue(self.pc.telemetry["TGT1"]["PKT1"].disabled)
+        self.assertTrue(self.pc.telemetry["TGT1"]["PKT1"].virtual)
+        tf.close()
+
     def test_sets_the_accessor_for_the_packet(self):
         tf = tempfile.NamedTemporaryFile(mode="w")
         tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
@@ -556,12 +547,8 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("ACCESSOR CborAccessor\n")
         tf.seek(0)
         self.pc.process_file(tf.name, "SYSTEM")
-        self.assertEqual(
-            self.pc.telemetry["TGT1"]["PKT1"].accessor.__class__.__name__, "XmlAccessor"
-        )
-        self.assertEqual(
-            self.pc.commands["TGT2"]["PKT1"].accessor.__class__.__name__, "CborAccessor"
-        )
+        self.assertEqual(self.pc.telemetry["TGT1"]["PKT1"].accessor.__class__.__name__, "XmlAccessor")
+        self.assertEqual(self.pc.commands["TGT2"]["PKT1"].accessor.__class__.__name__, "CborAccessor")
         tf.close()
 
     def test_handles_bad_accessors(self):
@@ -569,9 +556,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
         tf.write("ACCESSOR NopeAccessor\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "No module named 'openc3.accessors.nope_accessor"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "No module named 'openc3.accessors.nope_accessor"):
             self.pc.process_file(tf.name, "SYSTEM")
         tf.close()
 
@@ -581,9 +566,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("  ITEM item1 0 8 UINT\n")
         tf.write("  RESPONSE TGT1 PKT1\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "RESPONSE only applies to command packets"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "RESPONSE only applies to command packets"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -593,9 +576,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("  ITEM item1 0 8 UINT\n")
         tf.write("  RESPONSE TGT1\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "Not enough parameters for RESPONSE"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "Not enough parameters for RESPONSE"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -604,9 +585,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("  ITEM item1 0 8 UINT\n")
         tf.write("  RESPONSE TGT1 PKT1 ITEM1\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "Too many parameters for RESPONSE"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "Too many parameters for RESPONSE"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -626,9 +605,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("  ITEM item1 0 8 UINT\n")
         tf.write("  ERROR_RESPONSE TGT1 PKT1\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "ERROR_RESPONSE only applies to command packets"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "ERROR_RESPONSE only applies to command packets"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -638,9 +615,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("ERROR_RESPONSE TGT2 PKT2\n")
         tf.seek(0)
         self.pc.process_file(tf.name, "TGT1")
-        self.assertEqual(
-            ["TGT2", "PKT2"], self.pc.commands["TGT1"]["PKT1"].error_response
-        )
+        self.assertEqual(["TGT2", "PKT2"], self.pc.commands["TGT1"]["PKT1"].error_response)
         self.assertIsNone(self.pc.commands["TGT1"]["PKT1"].response)
         tf.close()
 
@@ -650,9 +625,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("  ITEM item1 0 8 UINT\n")
         tf.write("  SCREEN TGT1 screen\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "SCREEN only applies to command packets"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "SCREEN only applies to command packets"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -662,9 +635,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("  ITEM item1 0 8 UINT\n")
         tf.write("  SCREEN TGT1\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "Not enough parameters for SCREEN"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "Not enough parameters for SCREEN"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -673,9 +644,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("  ITEM item1 0 8 UINT\n")
         tf.write("  SCREEN TGT1 SCREEN ANOTHER\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "Too many parameters for SCREEN"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "Too many parameters for SCREEN"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -694,9 +663,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("  ITEM item1 0 8 UINT\n")
         tf.write("  RELATED_ITEM TGT1 PKT1 ITEM1\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "RELATED_ITEM only applies to command packets"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "RELATED_ITEM only applies to command packets"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -706,9 +673,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("  ITEM item1 0 8 UINT\n")
         tf.write("  RELATED_ITEM TGT1\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "Not enough parameters for RELATED_ITEM"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "Not enough parameters for RELATED_ITEM"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -717,9 +682,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("  ITEM item1 0 8 UINT\n")
         tf.write("  RELATED_ITEM TGT1 PKT1\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "Not enough parameters for RELATED_ITEM"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "Not enough parameters for RELATED_ITEM"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -728,9 +691,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("  ITEM item1 0 8 UINT\n")
         tf.write("  RELATED_ITEM TGT1 PKT1 ITEM1 RAW\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "Too many parameters for RELATED_ITEM"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "Too many parameters for RELATED_ITEM"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -747,39 +708,125 @@ class TestPacketConfig(unittest.TestCase):
         )
         tf.close()
 
-    # def test_sets_the_template(self):
-    #     tf = tempfile.NamedTemporaryFile(mode="w")
-    #     tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
-    #     tf.write('TEMPLATE "This is a template"\n')
-    #     tf.write('COMMAND tgt2 pkt1 LITTLE_ENDIAN "Description"\n')
-    #     tf.write('TEMPLATE "Another Template"\n')
-    #     tf.seek(0)
-    #     self.pc.process_file(tf.name, "SYSTEM")
-    #     self.assertEqual(
-    #         self.pc.telemetry["TGT1"]["PKT1"].template, "This is a template"
-    #     )
-    #     self.assertEqual(self.pc.commands["TGT2"]["PKT1"].template, "Another Template")
-    #     tf.close()
+    def test_sets_the_template(self):
+        tf = tempfile.NamedTemporaryFile(mode="w")
+        tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
+        tf.write('TEMPLATE "This is a template"\n')
+        tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
+        tf.write('TEMPLATE "Another Template"\n')
+        tf.seek(0)
+        self.pc.process_file(tf.name, "TGT1")
+        self.assertEqual(self.pc.telemetry["TGT1"]["PKT1"].template, b"This is a template")
+        self.assertEqual(self.pc.commands["TGT1"]["PKT1"].template, b"Another Template")
+        tf.close()
 
-    # def test_sets_the_template_via_file(self):
-    #       data_file = Tempfile('unittest')
-    #       data_file.write("File data")
-    #       data_file.close
-    #       tf = tempfile.NamedTemporaryFile(mode="w")
-    #       filename = "datafile2.txt"
-    #       File.open(File.dirname(tf.name) + '/' + filename, 'wb') do |file|
-    #         file.write("relative file")
-    #       tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
-    #       tf.write "TEMPLATE_FILE {data_file.path}"
-    #       tf.write('COMMAND tgt2 pkt1 LITTLE_ENDIAN "Description"\n')
-    #       tf.write "TEMPLATE_FILE {filename}"
-    #       tf.seek(0)
-    #       self.pc.process_file(tf.name, "SYSTEM")
-    #       self.assertEqual(self.pc.telemetry["TGT1"]["PKT1"].template,  "File data")
-    #       self.assertEqual(self.pc.commands["TGT2"]["PKT1"].template,  "relative file")
-    #       File.delete(File.dirname(tf.name) + '/' + filename)
-    #       data_file.unlink
-    #       tf.close()
+    def test_uses_json_template(self):
+        tf = tempfile.NamedTemporaryFile(mode="w")
+        tf.write('COMMAND tgt1 pkt99 LITTLE_ENDIAN "Description"\n')
+        tf.write("ACCESSOR JsonAccessor\n")
+        tf.write(
+            'TEMPLATE \'{"id_item":1, "item1":101, "more": { "item2":12, "item3":3.14, "item4":"Example", "item5":[4, 3, 2, 1] } }\'\n'
+        )
+        tf.write('APPEND_ID_PARAMETER ID_ITEM 32 INT 1 1 1 "Int Item"\n')
+        tf.write("  KEY $.id_item\n")
+        tf.write('APPEND_PARAMETER ITEM1 16 UINT MIN MAX 101 "Int Item 2"\n')
+        tf.write("  KEY $.item1\n")
+        tf.write("  UNITS CELSIUS C\n")
+        tf.write('APPEND_PARAMETER ITEM2 16 UINT MIN MAX 12 "Int Item 3"\n')
+        tf.write("  KEY $.more.item2\n")
+        tf.write('  FORMAT_STRING "0x%X"\n')
+        tf.write('APPEND_PARAMETER ITEM3 64 FLOAT MIN MAX 3.14 "Float Item"\n')
+        tf.write("  KEY $.more.item3\n")
+        tf.write('APPEND_PARAMETER ITEM4 128 STRING "Example" "String Item"\n')
+        tf.write("  KEY $.more.item4\n")
+        tf.write('APPEND_ARRAY_PARAMETER ITEM5 8 UINT 0 "Array Item"\n')
+        tf.write("  KEY $.more.item5\n")
+        tf.seek(0)
+        self.pc.process_file(tf.name, "TGT1")
+
+        self.pc.commands["TGT1"]["PKT99"].restore_defaults()
+        self.assertEqual(
+            self.pc.commands["TGT1"]["PKT99"].buffer,
+            # The formatting of this string has to be precise
+            # These are all the defaults from the above definition (note array is [] by definition)
+            bytearray(
+                b'{"id_item": 1, "item1": 101, "more": {"item2": 12, "item3": 3.14, "item4": "Example", "item5": []}}'
+            ),
+        )
+        self.pc.commands["TGT1"]["PKT99"].write("item1", 202)
+        self.pc.commands["TGT1"]["PKT99"].write("item2", 333)
+        self.pc.commands["TGT1"]["PKT99"].write("item3", 7.89)
+        self.pc.commands["TGT1"]["PKT99"].write("item4", "TEST")
+        self.pc.commands["TGT1"]["PKT99"].write("item5", [6, 7, 8, 9])
+        self.assertEqual(
+            self.pc.commands["TGT1"]["PKT99"].buffer,
+            # The formatting of this string has to be precise
+            bytearray(
+                b'{"id_item": 1, "item1": 202, "more": {"item2": 333, "item3": 7.89, "item4": "TEST", "item5": [6, 7, 8, 9]}}'
+            ),
+        )
+        tf.close()
+
+    def test_sets_the_template_via_file(self):
+        with open("unittest.txt", "t+w") as data_file:
+            data_file.write("File data")
+        tf = tempfile.NamedTemporaryFile(mode="w")
+        filename = "datafile2.txt"
+        with open(os.path.dirname(tf.name) + "/" + filename, "wb") as fp:
+            data = {
+                "id_item": 2,
+                "item1": 101,
+                "more": {"item2": 12, "item3": 3.14, "item4": "Example", "item5": [4, 3, 2, 1]},
+            }
+            dump(data, fp)
+        tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
+        tf.write(f"TEMPLATE_FILE {os.path.join(os.getcwd(), 'unittest.txt')}\n")
+        tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
+        tf.write("ACCESSOR CborAccessor\n")
+        tf.write(f"TEMPLATE_FILE {filename}\n")
+        tf.write('APPEND_ID_PARAMETER ID_ITEM 32 INT 1 1 1 "Int Item"\n')
+        tf.write("  KEY $.id_item\n")
+        tf.write('APPEND_PARAMETER ITEM1 16 UINT MIN MAX 101 "Int Item 2"\n')
+        tf.write("  KEY $.item1\n")
+        tf.write("  UNITS CELSIUS C\n")
+        tf.write('APPEND_PARAMETER ITEM2 16 UINT MIN MAX 12 "Int Item 3"\n')
+        tf.write("  KEY $.more.item2\n")
+        tf.write('  FORMAT_STRING "0x%X"\n')
+        tf.write('APPEND_PARAMETER ITEM3 64 FLOAT MIN MAX 3.14 "Float Item"\n')
+        tf.write("  KEY $.more.item3\n")
+        tf.write('APPEND_PARAMETER ITEM4 128 STRING "Example" "String Item"\n')
+        tf.write("  KEY $.more.item4\n")
+        tf.write('APPEND_ARRAY_PARAMETER ITEM5 8 UINT 0 "Array Item"\n')
+        tf.write("  KEY $.more.item5\n")
+        tf.seek(0)
+        self.pc.process_file(tf.name, "TGT1")
+        self.assertEqual(self.pc.telemetry["TGT1"]["PKT1"].template, b"File data")
+        self.pc.commands["TGT1"]["PKT1"].restore_defaults()
+        self.assertEqual(
+            loads(self.pc.commands["TGT1"]["PKT1"].buffer),
+            # These are all the defaults from the above definition (note array is [] by definition)
+            {"id_item": 1, "item1": 101, "more": {"item2": 12, "item3": 3.14, "item4": "Example", "item5": []}},
+        )
+        self.pc.commands["TGT1"]["PKT1"].write("item1", 202)
+        self.pc.commands["TGT1"]["PKT1"].write("item2", 333)
+        self.pc.commands["TGT1"]["PKT1"].write("item3", 7.89)
+        self.pc.commands["TGT1"]["PKT1"].write("item4", "TEST")
+        self.pc.commands["TGT1"]["PKT1"].write("item5", [6, 7, 8, 9])
+        self.assertEqual(
+            loads(self.pc.commands["TGT1"]["PKT1"].buffer),
+            {"id_item": 1, "item1": 202, "more": {"item2": 333, "item3": 7.89, "item4": "TEST", "item5": [6, 7, 8, 9]}},
+        )
+        os.remove(os.path.join(os.getcwd(), "unittest.txt"))
+        tf.close()
+
+    def test_handles_bad_tesmplate_files(self):
+        tf = tempfile.NamedTemporaryFile(mode="w")
+        tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
+        tf.write("TEMPLATE_FILE nope.txt\n")
+        tf.seek(0)
+        with self.assertRaisesRegex(ConfigParser.Error, "No such file or directory"):
+            self.pc.process_file(tf.name, "TGT1")
+        tf.close()
 
     def test_marks_the_packet_as_hazardous(self):
         tf = tempfile.NamedTemporaryFile(mode="w")
@@ -838,9 +885,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.close()
 
     def test_complains_about_a_non_openc3_conversion_class(self):
-        filename = os.path.join(
-            os.path.dirname(__file__), "../../openc3/test_convert.py"
-        )
+        filename = os.path.join(os.path.dirname(__file__), "../../openc3/test_convert.py")
         if os.path.isfile(filename):
             os.remove(filename)
         with open(filename, "a") as file:
@@ -872,9 +917,7 @@ class TestPacketConfig(unittest.TestCase):
         os.remove(filename)
 
     def test_parses_the_conversion(self):
-        filename = os.path.join(
-            os.path.dirname(__file__), "../../openc3/test_real_conversion.py"
-        )
+        filename = os.path.join(os.path.dirname(__file__), "../../openc3/test_real_conversion.py")
         if os.path.isfile(filename):
             os.remove(filename)
         with open(filename, "a") as file:
@@ -1032,9 +1075,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("    UNITS Volts V\n")
         tf.seek(0)
         self.pc.process_file(tf.name, "TGT1")
-        self.assertEqual(
-            self.pc.telemetry["TGT1"]["PKT1"].read("ITEM1", "WITH_UNITS"), "0 V"
-        )
+        self.assertEqual(self.pc.telemetry["TGT1"]["PKT1"].read("ITEM1", "WITH_UNITS"), "0 V")
         tf.close()
 
     def test_saves_key(self):
@@ -1044,9 +1085,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("    KEY mykey\n")
         tf.seek(0)
         self.pc.process_file(tf.name, "TGT1")
-        self.assertEqual(
-            self.pc.telemetry["TGT1"]["PKT1"].get_item("ITEM1").key, "mykey"
-        )
+        self.assertEqual(self.pc.telemetry["TGT1"]["PKT1"].get_item("ITEM1").key, "mykey")
         tf.close()
 
     def test_saves_metadata_for_items(self):
@@ -1061,9 +1100,7 @@ class TestPacketConfig(unittest.TestCase):
             self.pc.telemetry["TGT1"]["PKT1"].get_item("item1").meta["TYPE"],
             ["unsigned int"],
         )
-        self.assertEqual(
-            self.pc.telemetry["TGT1"]["PKT1"].get_item("item1").meta["OTHER"], []
-        )
+        self.assertEqual(self.pc.telemetry["TGT1"]["PKT1"].get_item("item1").meta["OTHER"], [])
         tf.close()
 
     def test_sets_the_overflow_type_for_items(self):
@@ -1079,19 +1116,24 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("    OVERFLOW ERROR_ALLOW_HEX\n")
         tf.seek(0)
         self.pc.process_file(tf.name, "TGT1")
-        self.assertEqual(
-            self.pc.telemetry["TGT1"]["PKT1"].get_item("item1").overflow, "TRUNCATE"
-        )
-        self.assertEqual(
-            self.pc.telemetry["TGT1"]["PKT1"].get_item("item2").overflow, "SATURATE"
-        )
-        self.assertEqual(
-            self.pc.telemetry["TGT1"]["PKT1"].get_item("item3").overflow, "ERROR"
-        )
+        self.assertEqual(self.pc.telemetry["TGT1"]["PKT1"].get_item("item1").overflow, "TRUNCATE")
+        self.assertEqual(self.pc.telemetry["TGT1"]["PKT1"].get_item("item2").overflow, "SATURATE")
+        self.assertEqual(self.pc.telemetry["TGT1"]["PKT1"].get_item("item3").overflow, "ERROR")
         self.assertEqual(
             self.pc.telemetry["TGT1"]["PKT1"].get_item("item4").overflow,
             "ERROR_ALLOW_HEX",
         )
+        tf.close()
+
+    def test_sets_the_variable_bit_size_variables(self):
+        tf = tempfile.NamedTemporaryFile(mode="w")
+        tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
+        tf.write("  ITEM item1 0 8 UINT\n")
+        tf.write("    VARIABLE_BIT_SIZE LEN 16 8\n")
+        tf.seek(0)
+        self.pc.process_file(tf.name, "TGT1")
+        vbs = {"length_item_name": "LEN", "length_bits_per_count": 16, "length_value_bit_offset": 8}
+        self.assertEqual(self.pc.telemetry["TGT1"]["PKT1"].get_item("item1").variable_bit_size, vbs)
         tf.close()
 
     def test_allows_item_overlap(self):
@@ -1124,9 +1166,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("  ITEM item1 0 8 UINT\n")
         tf.write("    REQUIRED\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "REQUIRED only applies to command parameters"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "REQUIRED only applies to command parameters"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -1156,9 +1196,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("  APPEND_ITEM item1 16 UINT\n")
         tf.write("    MINIMUM_VALUE 1\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "MINIMUM_VALUE only applies to command parameters"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "MINIMUM_VALUE only applies to command parameters"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -1167,9 +1205,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("  APPEND_ITEM item1 16 UINT\n")
         tf.write("    MAXIMUM_VALUE 3\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "MAXIMUM_VALUE only applies to command parameters"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "MAXIMUM_VALUE only applies to command parameters"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -1178,9 +1214,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("  APPEND_ITEM item1 16 UINT\n")
         tf.write("    DEFAULT_VALUE 2\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "DEFAULT_VALUE only applies to command parameters"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "DEFAULT_VALUE only applies to command parameters"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -1222,9 +1256,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("  APPEND_ITEM item1 0 DERIVED\n")
         tf.seek(0)
         self.pc.process_file(tf.name, "TGT1")
-        self.assertEqual(
-            self.pc.telemetry["TGT1"]["PKT1"].items["ITEM1"].data_type, "DERIVED"
-        )
+        self.assertEqual(self.pc.telemetry["TGT1"]["PKT1"].items["ITEM1"].data_type, "DERIVED")
         tf.close()
 
     def test_detects_overlapping_items_without_IGNORE_OVERLAP(self):

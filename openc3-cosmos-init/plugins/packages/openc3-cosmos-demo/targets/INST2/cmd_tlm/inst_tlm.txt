@@ -1,5 +1,6 @@
 TELEMETRY <%= target_name %> HEALTH_STATUS BIG_ENDIAN "Health and status from the <%= target_name %> target"
   <%= render "_ccsds_tlm.txt", locals: {apid: 1} %>
+  APPEND_ITEM CMD_ACPT_CNT     32 UINT     "Command accept count"
   APPEND_ITEM COLLECTS         16 UINT     "Number of collects"
   APPEND_ITEM TEMP1            16 UINT     "Temperature #1"
     POLY_READ_CONVERSION  -100.0 0.00305
@@ -49,7 +50,8 @@ TELEMETRY <%= target_name %> HEALTH_STATUS BIG_ENDIAN "Health and status from th
     STATE CONNECTED 1 GREEN
     STATE UNAVAILABLE 0 YELLOW
   APPEND_ITEM BLOCKTEST 80 BLOCK "Block data"
-  ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
+  APPEND_ITEM BRACKET[0] 8 UINT "Regular item with brackets in the name"
+  ITEM PACKET_TIME 0 0 DERIVED "Python time based on TIMESEC and TIMEUS"
     READ_CONVERSION openc3/conversions/unix_time_conversion.py TIMESEC TIMEUS
   ITEM TEMP1HIGH 0 0 DERIVED "High-water mark for TEMP1"
     READ_CONVERSION openc3/conversions/processor_conversion.py TEMP1WATER HIGH_WATER
@@ -63,6 +65,14 @@ TELEMETRY <%= target_name %> HEALTH_STATUS BIG_ENDIAN "Health and status from th
     READ_CONVERSION openc3/conversions/processor_conversion.py TEMP1STAT MEAN
   ITEM TEMP1STDDEV 0 0 DERIVED "Stddev of most recent 100 samples for TEMP1"
     READ_CONVERSION openc3/conversions/processor_conversion.py TEMP1STAT STDDEV
+  ITEM TEMP1_MICRO 0 0 DERIVED
+    GENERIC_READ_CONVERSION_START FLOAT 32
+      packet.read('TEMP1') / 1_000_000
+    GENERIC_READ_CONVERSION_END
+  ITEM TEMP1_MEGA 0 0 DERIVED
+    GENERIC_READ_CONVERSION_START FLOAT 32
+      packet.read('TEMP1') * 1_000_000
+    GENERIC_READ_CONVERSION_END
   PROCESSOR TEMP1STAT openc3/processors/statistics_processor.py TEMP1 100
   PROCESSOR TEMP1WATER openc3/processors/watermark_processor.py TEMP1
 
@@ -106,7 +116,7 @@ TELEMETRY <%= target_name %> ADCS BIG_ENDIAN "Position and attitude data"
     FORMAT_STRING "%0.2f"
   ITEM ATTPROGRESS      656 32 FLOAT "Attitude file progress"
     FORMAT_STRING "%0.2f"
-  ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
+  ITEM PACKET_TIME 0 0 DERIVED "Python time based on TIMESEC and TIMEUS"
     READ_CONVERSION openc3/conversions/unix_time_conversion.py TIMESEC TIMEUS
 
 TELEMETRY <%= target_name %> PARAMS BIG_ENDIAN "Params set by SETPARAMS command"
@@ -117,7 +127,13 @@ TELEMETRY <%= target_name %> PARAMS BIG_ENDIAN "Params set by SETPARAMS command"
       STATE GOOD 0 GREEN
       STATE BAD 1 RED
   <% end %>
-  ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
+  APPEND_ITEM IP_ADDRESS   32 UINT "Encoded IP Address"
+  APPEND_ITEM P_2.2,2      32 UINT "Test weird characters"
+  APPEND_ITEM P-3+3=3      32 UINT "Test weird characters"
+  APPEND_ITEM P4!@#$%^&*?  32 UINT "Test weird characters"
+  APPEND_ITEM P</5|\>      32 UINT "Test weird characters"
+  APPEND_ITEM P(:6;)       32 UINT "Test weird characters"
+  ITEM PACKET_TIME 0 0 DERIVED "Python time based on TIMESEC and TIMEUS"
     READ_CONVERSION openc3/conversions/unix_time_conversion.py TIMESEC TIMEUS
 
 TELEMETRY <%= target_name %> IMAGE BIG_ENDIAN "Packet with image data"
@@ -127,10 +143,10 @@ TELEMETRY <%= target_name %> IMAGE BIG_ENDIAN "Packet with image data"
   ITEM BYTES 128 32 UINT "First bytes"
     FORMAT_STRING '0x%08x'
     OVERLAP # Notify OpenC3 that this is intentionally overlapping the BLOCK field
-  ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
+  ITEM PACKET_TIME 0 0 DERIVED "Python time based on TIMESEC and TIMEUS"
     READ_CONVERSION openc3/conversions/unix_time_conversion.py TIMESEC TIMEUS
 
-TELEMETRY <%= target_name %> MECH BIG_ENDIAN "Mechanism status"
+TELEMETRY <%= target_name %> MECH BIG_ENDIAN "Mechanism status ©®"
   <%= render "_ccsds_tlm.txt", locals: {apid: 5} %>
   APPEND_ITEM EXTRA         32 FLOAT    "Extra item to be deleted"
   APPEND_ITEM SLRPNL1       32 FLOAT    "Solar panel 1 angle"
@@ -146,5 +162,12 @@ TELEMETRY <%= target_name %> MECH BIG_ENDIAN "Mechanism status"
   APPEND_ITEM CURRENT       32 FLOAT    "Device current"
     UNITS micro-Ampères µA
   APPEND_ITEM STRING       0 STRING     "String"
-  ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
+  ITEM PACKET_TIME 0 0 DERIVED "Python time based on TIMESEC and TIMEUS"
+    READ_CONVERSION openc3/conversions/unix_time_conversion.py TIMESEC TIMEUS
+
+TELEMETRY <%= target_name %> HIDDEN BIG_ENDIAN "Hidden packet"
+  HIDDEN
+  <%= render "_ccsds_tlm.txt", locals: {apid: 6} %>
+  APPEND_ITEM COUNT 32 UINT "Count for hidden command"
+  ITEM PACKET_TIME 0 0 DERIVED "Python time based on TIMESEC and TIMEUS"
     READ_CONVERSION openc3/conversions/unix_time_conversion.py TIMESEC TIMEUS

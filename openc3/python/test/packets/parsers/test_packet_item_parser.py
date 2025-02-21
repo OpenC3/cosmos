@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -129,22 +129,27 @@ class TestPacketItemParserTlm(unittest.TestCase):
     def test_accepts_types_int_uint_float_string_block(self):
         tf = tempfile.NamedTemporaryFile(mode="w")
         tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
-        tf.write("  ID_ITEM ITEM1 0 32 INT 0\n")
+        tf.write("  ID_ITEM ITEM1 0 32 INT 0x42\n")
         tf.write("  ITEM ITEM2 0 32 UINT\n")
         tf.write("  ARRAY_ITEM ITEM3 0 32 FLOAT 64\n")
-        tf.write('  APPEND_ID_ITEM ITEM4 32 STRING "ABCD"\n')
-        tf.write("  APPEND_ITEM ITEM5 32 BLOCK\n")
-        tf.write("  APPEND_ARRAY_ITEM ITEM6 32 BLOCK 64\n")
+        tf.write('  APPEND_ID_ITEM ITEM4 32 STRING "0xABCD"\n')
+        tf.write('  APPEND_ID_ITEM ITEM5 32 BLOCK 0xABCD\n')
+        tf.write("  APPEND_ITEM ITEM6 32 BLOCK\n")
+        tf.write("  APPEND_ARRAY_ITEM ITEM7 32 BLOCK 64\n")
         tf.seek(0)
         self.pc.process_file(tf.name, "TGT1")
         self.assertTrue(
-            set(["ITEM1", "ITEM2", "ITEM3", "ITEM4", "ITEM5", "ITEM6"]).issubset(
+            set(["ITEM1", "ITEM2", "ITEM3", "ITEM4", "ITEM5", "ITEM6", "ITEM7"]).issubset(
                 set(self.pc.telemetry["TGT1"]["PKT1"].items.keys())
             ),
         )
+        self.assertEqual(self.pc.telemetry["TGT1"]["PKT1"].items["ITEM1"].id_value, 0x42)
+        self.assertEqual(self.pc.telemetry["TGT1"]["PKT1"].items["ITEM4"].id_value, "0xABCD")
+        self.assertEqual(self.pc.telemetry["TGT1"]["PKT1"].items["ITEM5"].id_value, b"\xAB\xCD")
         id_items = []
         id_items.append(self.pc.telemetry["TGT1"]["PKT1"].items["ITEM1"])
         id_items.append(self.pc.telemetry["TGT1"]["PKT1"].items["ITEM4"])
+        id_items.append(self.pc.telemetry["TGT1"]["PKT1"].items["ITEM5"])
         self.assertEqual(self.pc.telemetry["TGT1"]["PKT1"].id_items, id_items)
         tf.close()
 
@@ -297,17 +302,22 @@ class TestPacketItemParserCmd(unittest.TestCase):
     def test_accepts_types_int_uint_float_string_block(self):
         tf = tempfile.NamedTemporaryFile(mode="w")
         tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
-        tf.write("  ID_PARAMETER ITEM1 0 32 INT 0 0 0\n")
-        tf.write('  ID_PARAMETER ITEM2 32 32 STRING "ABCD"\n')
+        tf.write("  ID_PARAMETER ITEM1 0 32 INT MIN MAX 0x42\n")
+        tf.write('  ID_PARAMETER ITEM2 32 32 STRING "0xABCD"\n')
         tf.write("  PARAMETER ITEM3 64 32 UINT 0 0 0\n")
         tf.write("  ARRAY_PARAMETER ITEM4 96 32 FLOAT 64\n")
-        tf.write("  APPEND_ID_PARAMETER ITEM5 32 UINT 0 0 0\n")
-        tf.write('  APPEND_ID_PARAMETER ITEM6 32 STRING "ABCD"\n')
+        tf.write("  APPEND_ID_PARAMETER ITEM5 32 UINT 0x0 0xFFFFFFFF 0xDEADBEEF\n")
+        tf.write('  APPEND_ID_PARAMETER ITEM6 32 BLOCK 0xABCD\n')
         tf.write('  APPEND_PARAMETER ITEM7 32 BLOCK "1234"\n')
         tf.write("  APPEND_ARRAY_PARAMETER ITEM8 32 BLOCK 64\n")
         tf.seek(0)
         self.pc.process_file(tf.name, "TGT1")
-        self.assertIn("ITEM1", self.pc.commands["TGT1"]["PKT1"].items.keys())
+        packet = self.pc.commands["TGT1"]["PKT1"]
+        self.assertIn("ITEM1", packet.items.keys())
+        self.assertEqual(packet.get_item("ITEM1").id_value, 0x42)
+        self.assertEqual(packet.get_item("ITEM2").id_value, '0xABCD')
+        self.assertEqual(packet.get_item("ITEM5").id_value, 0xDEADBEEF)
+        self.assertEqual(packet.get_item("ITEM6").id_value, b'\xAB\xCD')
         tf.close()
 
     def test_supports_arbitrary_range_default_and_endianness_per_item(self):
@@ -419,7 +429,7 @@ class TestPacketItemParserCmd(unittest.TestCase):
         tf.write('  PARAMETER ITEM1 0 32 UINT 4.5 5.5 6.5 "" LITTLE_ENDIAN\n')
         tf.seek(0)
         with self.assertRaisesRegex(
-            AttributeError,
+            TypeError,
             "TGT1 PKT1 ITEM1: default must be a int but is a float",
         ):
             self.pc.process_file(tf.name, "TGT1")

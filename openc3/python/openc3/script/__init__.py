@@ -14,9 +14,9 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from openc3.api import WHITELIST
 from openc3.script.server_proxy import ApiServerProxy, ScriptServerProxy
 from openc3.utilities.extract import convert_to_value
+import threading
 
 API_SERVER = ApiServerProxy()
 SCRIPT_RUNNER_API_SERVER = ScriptServerProxy()
@@ -105,11 +105,6 @@ def combo_box(string, *buttons, **options):
     return message_box(string, *buttons, **options)
 
 
-def metadata_input():
-    # TODO: Not currently implemented
-    pass
-
-
 def open_file_dialog(title, message="Open File", filter=None):
     _file_dialog(title, message, filter)
 
@@ -132,20 +127,49 @@ def prompt(
     return input()
 
 
+def step_mode():
+    # running_script.py implements the real functionality
+    pass
+
+
+def run_mode():
+    # running_script.py implements the real functionality
+    pass
+
+
 ###########################################################################
 # END PUBLIC API
 ###########################################################################
 
 from .api_shared import *
-from .cosmos_calendar import *
 from .commands import *
+from .cosmos_calendar import *
+from .critical_cmd import *
 from .exceptions import *
 from .limits import *
-from .telemetry import *
 from .metadata import *
+from .packages import *
+from .plugins import *
 from .screen import *
 from .script_runner import *
 from .storage import *
+from .tables import *
+from .telemetry import *
+from openc3.api import WHITELIST
+
+
+def prompt_for_critical_cmd(uuid, _username, _target_name, _cmd_name, _cmd_params, cmd_string):
+    print("Waiting for critical command approval:")
+    print(f"  {cmd_string}")
+    print(f"  UUID: {uuid}")
+    while True:
+        status = critical_cmd_status(uuid)
+        if status == "APPROVED":
+            return
+        elif status == "REJECTED":
+            raise RuntimeError("Critical command rejected")
+        threading.sleep(0.1)
+
 
 # Define all the WHITELIST methods
 current_functions = dir()

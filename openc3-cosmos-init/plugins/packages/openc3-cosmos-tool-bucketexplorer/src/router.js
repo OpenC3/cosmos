@@ -16,20 +16,20 @@
 # if purchased from OpenC3, Inc.
 */
 
-import Vue from 'vue'
-import Router from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router'
+import { prependBasePath } from '@openc3/js-common/utils'
 
-Vue.use(Router)
+const routes = [
+  {
+    path: '/:path*',
+    name: 'Bucket Explorer',
+    component: () => import('./tools/BucketExplorer/BucketExplorer.vue'),
+  },
+  // No NotFound component because we're matching everything with :path*
+]
+routes.forEach(prependBasePath)
 
-export default new Router({
-  mode: 'history',
-  base: process.env.BASE_URL,
-  routes: [
-    {
-      path: '/:path*',
-      name: 'Bucket Explorer',
-      component: () => import('./tools/BucketExplorer/BucketExplorer.vue'),
-    },
-    // No NotFound component because we're matching everything with :path*
-  ],
+export default createRouter({
+  history: createWebHistory(),
+  routes,
 })

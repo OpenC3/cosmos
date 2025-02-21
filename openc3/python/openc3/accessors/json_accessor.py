@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -24,40 +24,52 @@ class JsonAccessor(Accessor):
     def class_read_item(cls, item, buffer):
         if item.data_type == "DERIVED":
             return None
-        if type(buffer) is bytearray:
+        if isinstance(buffer, bytearray):
             buffer = json.loads(buffer.decode())
         result = parse(item.key).find(buffer)
+        if len(result) == 0:
+            return None
         return cls.convert_to_type(result[0].value, item)
 
     @classmethod
     def class_write_item(cls, item, value, buffer):
         if item.data_type == "DERIVED":
             return None
-        if type(buffer) is bytearray:
+        if isinstance(buffer, bytearray):
             decoded = json.loads(buffer.decode())
         else:
             decoded = buffer
 
         value = cls.convert_to_type(value, item)
-        result = parse(item.key).update(decoded, value)
+        jsonpath = parse(item.key)
+        # update_or_create doesn't always work if the item is there
+        # so first find the item before updating
+        matches = jsonpath.find(decoded)
+        if len(matches) == 0:
+            jsonpath.update_or_create(decoded, value)
+        else:
+            jsonpath.update(decoded, value)
 
-        if type(buffer) is bytearray:
-            buffer[0:] = bytearray(json.dumps(result), encoding="utf-8")
+        if isinstance(buffer, bytearray):
+            # buffer[0:] syntax so we copy into the buffer
+            buffer[0:] = bytearray(json.dumps(decoded), encoding="utf-8")
 
     @classmethod
     def class_read_items(cls, items, buffer):
-        if type(buffer) is bytearray:
+        if isinstance(buffer, bytearray):
             buffer = json.loads(buffer.decode())
         return super().class_read_items(items, buffer)
 
     @classmethod
     def class_write_items(cls, items, values, buffer):
-        if type(buffer) is bytearray:
+        if isinstance(buffer, bytearray):
             decoded = json.loads(buffer.decode())
         else:
             decoded = buffer
+
         super().class_write_items(items, values, decoded)
-        if type(buffer) is bytearray:
+        if isinstance(buffer, bytearray):
+            # buffer[0:] syntax so we copy into the buffer
             buffer[0:] = bytearray(json.dumps(decoded), encoding="utf-8")
 
     def enforce_encoding(self):

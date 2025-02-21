@@ -14,13 +14,12 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-require 'thread' # For Mutex
 require 'openc3/streams/stream'
 require 'openc3/config/config_parser'
 require 'openc3/io/serial_driver'
@@ -40,11 +39,11 @@ module OpenC3
     # @param parity [Symbol] Must be :NONE, :EVEN, or :ODD
     # @param stop_bits [Integer] Stop bits. Must be 1 or 2.
     # @param write_timeout [Integer] Seconds to wait for the write to complete.
-    #   The {SerialDriver} will continously try to send the data until
+    #   The {SerialDriver} will continuously try to send the data until
     #   it has been sent or an error occurs.
     # @param read_timeout [Integer] Seconds to wait for the read to complete.
     #   Pass nil to block until the read is complete. The {SerialDriver} will
-    #   continously try to read data until it has received data or an error occurs.
+    #   continuously try to read data until it has received data or an error occurs.
     # @param flow_control [Symbol] Currently supported :NONE and :RTSCTS (default :NONE)
     # @param data_bits [Integer] Number of data bits (default 8)
     def initialize(write_port_name,
@@ -116,31 +115,6 @@ module OpenC3
       @write_mutex = Mutex.new
     end
 
-    # @return [String] Returns a binary string of data from the serial port
-    def read
-      raise "Attempt to read from write only stream" unless @read_serial_port
-
-      # No read mutex is needed because reads happen serially
-      @read_serial_port.read
-    end
-
-    # @return [String] Returns a binary string of data from the serial port without blocking
-    def read_nonblock
-      raise "Attempt to read from write only stream" unless @read_serial_port
-
-      # No read mutex is needed because reads happen serially
-      @read_serial_port.read_nonblock
-    end
-
-    # @param data [String] A binary string of data to write to the serial port
-    def write(data)
-      raise "Attempt to write to read only stream" unless @write_serial_port
-
-      @write_mutex.synchronize do
-        @write_serial_port.write(data)
-      end
-    end
-
     # Connect the stream
     def connect
       # N/A - Serial streams 'connect' on creation
@@ -169,5 +143,30 @@ module OpenC3
         @connected = false
       end
     end
-  end # class SerialStream
+
+    # @return [String] Returns a binary string of data from the serial port
+    def read
+      raise "Attempt to read from write only stream" unless @read_serial_port
+
+      # No read mutex is needed because reads happen serially
+      @read_serial_port.read
+    end
+
+    # @return [String] Returns a binary string of data from the serial port without blocking
+    def read_nonblock
+      raise "Attempt to read from write only stream" unless @read_serial_port
+
+      # No read mutex is needed because reads happen serially
+      @read_serial_port.read_nonblock
+    end
+
+    # @param data [String] A binary string of data to write to the serial port
+    def write(data)
+      raise "Attempt to write to read only stream" unless @write_serial_port
+
+      @write_mutex.synchronize do
+        @write_serial_port.write(data)
+      end
+    end
+  end
 end

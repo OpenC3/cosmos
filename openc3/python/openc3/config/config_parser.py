@@ -57,6 +57,11 @@ class ConfigParser:
     # self.param url [String] The url to link to in error messages
     def __init__(self, url="https://docs.openc3.com/docs"):
         self.url = url
+        self.keyword = None
+        self.parameters = None
+        self.filename = None
+        self.line = None
+        self.line_number = None
 
     # self.param message [String] The string to set the Exception message to
     # self.param usage [String] The usage message
@@ -67,6 +72,18 @@ class ConfigParser:
             url = self.url
         return self.Error(self, message, usage, url)
 
+    # Can be called during parsing to read a referenced file
+    def read_file(self, filename):
+        # Assume the file is there. If not we raise a pretty obvious error
+        if os.path.abspath(filename) == filename:  # absolute path
+            path = filename
+        else:  # relative to the current @filename
+            path = os.path.join(os.path.dirname(self.filename), filename)
+        data = ""
+        with open(path, "rb") as file:
+            data = file.read()
+        return data
+
     # Processes a file and yields |config| to the given block
     #
     # self.param filename [String] The full name and path of the configuration file
@@ -75,7 +92,7 @@ class ConfigParser:
     # self.param remove_quotes [Boolean] Whether to remove beginning and ending single
     #   or double quote characters from parameters.
     # self.param run_erb [Boolean] Whether or not to run ERB on the file - Has no effect in Python
-    # self.param variables [Hash] variables to pash to ERB context
+    # self.param variables [Hash] variables to push to ERB context
     # self.param block [Block] The block to yield to
     # self.yieldparam keyword [String] The keyword in the current parsed line
     # self.yieldparam parameters [Array<String>] The parameters in the current parsed line
@@ -116,12 +133,12 @@ class ConfigParser:
                 raise ConfigParser.Error(self, f"Not enough parameters for {self.keyword}.", usage, self.url)
 
         # If they pass None for max_params we don't check for a maximum number
-        if max_num_params and self.parameters[max_num_params : max_num_params + 1]:
+        if max_num_params is not None and self.parameters[max_num_params : max_num_params + 1]:
             raise ConfigParser.Error(self, f"Too many parameters for {self.keyword}.", usage, self.url)
 
     # Verifies the indicated parameter in the config doesn't start or end
     # with an underscore, doesn't contain a double underscore or double bracket,
-    # doesn't contain spaces and doesn't start with a close bracket.
+    # doesn't contain spaces, quotes or brackets.
     #
     # self.param [Integer] index The index of the parameter to check
     def verify_parameter_naming(self, index, usage=""):
@@ -158,10 +175,18 @@ class ConfigParser:
                 self.url,
             )
 
-        if param[0] == "}":
+        if "'" in param or '"' in param:
             raise ConfigParser.Error(
                 self,
-                f"Parameter {index} ({param}) for {self.keyword} cannot start with a close bracket ('}}').",
+                f"Parameter {index} ({param}) for {self.keyword} cannot contain a quote (' or \").",
+                usage,
+                self.url,
+            )
+
+        if "{" in param or "}" in param:
+            raise ConfigParser.Error(
+                self,
+                f"Parameter {index} ({param}) for {self.keyword} cannot contain a curly bracket ('{{' or '}}').",
                 usage,
                 self.url,
             )
@@ -173,7 +198,7 @@ class ConfigParser:
     # self.return [None|Object]
     @classmethod
     def handle_none(cls, value):
-        if type(value) == str:
+        if isinstance(value, str):
             match value.upper():
                 case "" | "NONE" | "NULL":
                     return None
@@ -187,7 +212,7 @@ class ConfigParser:
     # self.return [True|False|Object]
     @classmethod
     def handle_true_false(cls, value):
-        if type(value) == str:
+        if isinstance(value, str):
             match value.upper():
                 case "TRUE":
                     return True
@@ -202,7 +227,7 @@ class ConfigParser:
     # self.return [True|False|None|Object]
     @classmethod
     def handle_true_false_none(cls, value):
-        if type(value) == str:
+        if isinstance(value, str):
             match value.upper():
                 case "TRUE":
                     return True
@@ -224,7 +249,7 @@ class ConfigParser:
     # self.return [Numeric] The converted value. Either a Fixnum or Float.
     @classmethod
     def handle_defined_constants(cls, value, data_type=None, bit_size=None):
-        if type(value) == str:
+        if isinstance(value, str):
             match value.upper():
                 case "MIN" | "MAX":
                     return ConfigParser.calculate_range_value(value.upper(), data_type, bit_size)
@@ -266,8 +291,10 @@ class ConfigParser:
                     return float("inf")
                 case "NEG_INFINITY":
                     return float("-inf")
-                case _:
-                    raise AttributeError(f"Could not convert constant: {value}")
+                # NOTE: No else case because of the following scenario:
+                # If the value type is a UINT but they have a WRITE_CONVERSION that takes a string
+                # then the default value will be a string. In that case we just want to return the string.
+                # For example, the IP_ADDRESS parameter in the TIME_OFFSET command in the Demo plugin.
 
         return value
 
@@ -298,10 +325,10 @@ class ConfigParser:
                         if type == "MIN":
                             value *= -1
                     case _:
-                        raise AttributeError(f"Invalid bit size {bit_size} for FLOAT type.")
+                        raise ValueError(f"Invalid bit size {bit_size} for FLOAT type.")
 
             case _:
-                raise AttributeError(f"Invalid data type {data_type} when calculating range.")
+                raise TypeError(f"Invalid data type {data_type} when calculating range.")
 
         return value
 

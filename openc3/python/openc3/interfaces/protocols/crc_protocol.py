@@ -18,7 +18,7 @@ from openc3.config.config_parser import ConfigParser
 from openc3.interfaces.protocols.protocol import Protocol
 from openc3.accessors.binary_accessor import BinaryAccessor
 from openc3.utilities.logger import Logger
-from openc3.utilities.crc import Crc16, Crc32, Crc64
+from openc3.utilities.crc import Crc8, Crc16, Crc32, Crc64
 
 
 # Creates a CRC on write and verifies a CRC on read
@@ -80,14 +80,14 @@ class CrcProtocol(Protocol):
 
         poly = ConfigParser.handle_none(poly)
         try:
-            if type(poly) is str:
+            if isinstance(poly, str):
                 poly = int(poly, 0)
         except (ValueError, TypeError):
             raise ValueError(f"Invalid polynomial of {poly}. Must be a number.")
 
         seed = ConfigParser.handle_none(seed)
         try:
-            if type(seed) is str:
+            if isinstance(seed, str):
                 seed = int(seed, 0)
         except ValueError:
             raise ValueError(f"Invalid seed of {seed}. Must be a number.")
@@ -120,6 +120,12 @@ class CrcProtocol(Protocol):
         if self.endianness == "BIG_ENDIAN":
             endianness = ">"
         match self.bit_size:
+            case 8:
+                self.pack = f"{endianness}B"
+                if len(args) == 0:
+                    self.crc = Crc8()
+                else:
+                    self.crc = Crc8(*args)
             case 16:
                 self.pack = f"{endianness}H"
                 if len(args) == 0:

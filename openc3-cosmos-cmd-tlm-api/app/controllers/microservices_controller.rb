@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -42,10 +42,14 @@ class MicroservicesController < ModelController
       if prefix and ports[0][0]
         port = ports[0][0].to_i
         prefix = '/' + prefix unless prefix[0] == '/'
-        if ENV['KUBERNETES_SERVICE_HOST']
-          url = "http://#{microservice_name.downcase.gsub('__', '-').gsub('_', '-')}-service:#{port}"
+        if ENV['OPENC3_OPERATOR_HOSTNAME']
+          url = "http://#{ENV['OPENC3_OPERATOR_HOSTNAME']}:#{port}"
         else
-          url = "http://openc3-operator:#{port}"
+          if ENV['KUBERNETES_SERVICE_HOST']
+            url = "http://#{microservice_name.downcase.gsub('__', '-').gsub('_', '-')}-service:#{port}"
+          else
+            url = "http://openc3-operator:#{port}"
+          end
         end
         service_name = microservice_name
         router_name = microservice_name
@@ -60,6 +64,6 @@ class MicroservicesController < ModelController
         routers[router_name]['priority'] = 20
       end
     end
-    render :json => result
+    render json: result
   end
 end

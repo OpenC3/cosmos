@@ -28,9 +28,7 @@ require 'securerandom'
 
 module OpenC3
   class ActivityError < StandardError; end
-
   class ActivityInputError < ActivityError; end
-
   class ActivityOverlapError < ActivityError; end
 
   class ActivityModel < Model
@@ -45,46 +43,40 @@ module OpenC3
     # with 15 slots to make sure we don't miss a planned task.
     # @return [Array|nil] Array of the next hour in the sorted set
     def self.activities(name:, scope:)
-      now = Time.now.to_i
+      now = Time.now.to_f
       start_score = now - 15
       stop_score = (now + 3660)
       array = Store.zrangebyscore("#{scope}#{PRIMARY_KEY}__#{name}", start_score, stop_score)
-      ret_array = Array.new
-      array.each do |value|
-        ret_array << ActivityModel.from_json(value, name: name, scope: scope)
-      end
-      return ret_array
+      return array.map { |value| ActivityModel.from_json(value, name: name, scope: scope) }
     end
 
     # @return [Array|nil] Array up to 100 of this model or empty array if name not found under primary_key
     def self.get(name:, start:, stop:, scope:, limit: 100)
       if start > stop
-        raise ActivityInputError.new "start: #{start} must be before stop: #{stop}"
+        raise ActivityInputError.new "start: #{start} must be <= stop: #{stop}"
       end
-
       array = Store.zrangebyscore("#{scope}#{PRIMARY_KEY}__#{name}", start, stop, :limit => [0, limit])
-      ret_array = Array.new
-      array.each do |value|
-        ret_array << JSON.parse(value, :allow_nan => true, :create_additions => true)
-      end
-      return ret_array
+      return array.map { |value| JSON.parse(value, :allow_nan => true, :create_additions => true) }
     end
 
     # @return [Array<Hash>] Array up to the limit of the models (as Hash objects) stored under the primary key
     def self.all(name:, scope:, limit: 100)
       array = Store.zrange("#{scope}#{PRIMARY_KEY}__#{name}", 0, -1, :limit => [0, limit])
-      ret_array = Array.new
-      array.each do |value|
-        ret_array << JSON.parse(value, :allow_nan => true, :create_additions => true)
-      end
-      return ret_array
+      return array.map { |value| JSON.parse(value, :allow_nan => true, :create_additions => true) }
     end
 
     # @return [String|nil] String of the saved json or nil if score not found under primary_key
-    def self.score(name:, score:, scope:)
-      array = Store.zrangebyscore("#{scope}#{PRIMARY_KEY}__#{name}", score, score, :limit => [0, 1])
-      array.each do |value|
-        return ActivityModel.from_json(value, name: name, scope: scope)
+    def self.score(name:, score:, scope:, uuid: nil)
+      values = Store.zrangebyscore("#{scope}#{PRIMARY_KEY}__#{name}", score, score)
+      if values and values.length > 0
+        if uuid
+          values.each do |value|
+            activity = ActivityModel.from_json(value, name: name, scope: scope)
+            return activity if activity.uuid == uuid
+          end
+        else
+          return ActivityModel.from_json(values[0], name: name, scope: scope)
+        end
       end
       return nil
     end
@@ -95,12 +87,48 @@ module OpenC3
     end
 
     # Remove one member from a sorted set.
-    # @return [Integer] count of the members removed
-    def self.destroy(name:, scope:, score:)
-      result = Store.zremrangebyscore("#{scope}#{PRIMARY_KEY}__#{name}", score, score)
+    # @return [Integer] count of the members removed, 0 indicates the member was not found
+    def self.destroy(name:, scope:, score:, uuid: nil, recurring: nil)
+      result = 0
+
+      # Delete all recurring activities
+      if recurring
+        activity = self.score(name: name, score: score, scope: scope)
+        if activity and activity.recurring['end'] and activity.recurring['uuid']
+          json = Store.zrangebyscore("#{scope}#{PRIMARY_KEY}__#{name}", activity.recurring['start'], activity.recurring['end'])
+          parsed = json.map { |value| ActivityModel.from_json(value, name: name, scope: scope) }
+          parsed.each_with_index do |value, index|
+            if value.recurring['uuid'] == uuid
+              Store.zrem("#{scope}#{PRIMARY_KEY}__#{name}", json[index])
+              result += 1
+            end
+          end
+        end
+      end
+
+      # First find all the activities at the score
+      json = Store.zrangebyscore("#{scope}#{PRIMARY_KEY}__#{name}", score, score, :limit => [0, 100])
+      parsed = json.map { |value| JSON.parse(value, :allow_nan => true, :create_additions => true) }
+      parsed.each_with_index do |value, index|
+        if uuid
+          # If the uuid is given then only delete activities that match the uuid
+          if value['uuid'] == uuid
+            Store.zrem("#{scope}#{PRIMARY_KEY}__#{name}", json[index])
+            result += 1
+            break
+          end
+        else
+          # If the uuid is not given (backwards compatibility) then delete all activities
+          # at the score that do NOT have a uuid
+          next if value['uuid']
+          Store.zrem("#{scope}#{PRIMARY_KEY}__#{name}", json[index])
+          result += 1
+        end
+      end
+
       notification = {
         # start / stop to match SortedModel
-        'data' => JSON.generate({'start' => score}),
+        'data' => JSON.generate({'start' => score, 'uuid' => uuid}),
         'kind' => 'deleted',
         'type' => 'activity',
         'timeline' => name
@@ -131,51 +159,55 @@ module OpenC3
       self.new(**json.transform_keys(&:to_sym), name: name, scope: scope)
     end
 
-    attr_reader :start, :stop, :kind, :data, :events, :fulfillment, :recurring
+    attr_reader :start, :stop, :kind, :data, :fulfillment, :uuid, :events, :recurring
 
     def initialize(
-      name:,
+      name:, # part of Model
       start:,
       stop:,
       kind:,
       data:,
-      scope:,
-      updated_at: 0,
+      scope:, # part of Model
+      updated_at: 0, # part of Model
       fulfillment: nil,
+      uuid: nil,
       events: nil,
       recurring: {}
     )
       super("#{scope}#{PRIMARY_KEY}__#{name}", name: name, scope: scope)
+      # Validate everything that isn't already in Model
       set_input(
-        fulfillment: fulfillment,
         start: start,
         stop: stop,
         kind: kind,
         data: data,
+        fulfillment: fulfillment,
+        uuid: uuid,
         events: events,
         recurring: recurring,
       )
       @updated_at = updated_at
     end
 
-    # validate_time searches from the current activity @stop - 1 (because we allow overlap of stop with start)
+    # validate_time searches from the current activity @stop (exclusive because we allow overlap of stop with start)
     # back through @start - MAX_DURATION. The method is trying to validate that this new activity does not
     # overlap with anything else. The reason we search back past @start through MAX_DURATION is because we
     # need to return all the activities that may start before us and verify that we don't overlap them.
     # Activities are only inserted by @start time so we need to go back to verify we don't overlap existing @stop.
     # Note: Score is the Seconds since the Unix Epoch: (%s) Number of seconds since 1970-01-01 00:00:00 UTC.
-    # zrange rev byscore finds activites from in reverse order so the first task is the closest task to the current score.
+    # zrange rev byscore finds activities from in reverse order so the first task is the closest task to the current score.
     # In this case a parameter ignore_score allows the request to ignore that time and skip to the next time
     # but if nothing is found in the time range we can return nil.
     #
     # @param [Integer] ignore_score - should be nil unless you want to ignore a time when doing an update
-    def validate_time(ignore_score = nil)
-      array = Store.zrevrangebyscore(@primary_key, @stop - 1, @start - MAX_DURATION)
+    def validate_time(start, stop, ignore_score: nil)
+      # Adding a '(' makes the max value exclusive
+      array = Store.zrevrangebyscore(@primary_key, "(#{stop}", start - MAX_DURATION)
       array.each do |value|
         activity = JSON.parse(value, :allow_nan => true, :create_additions => true)
         if ignore_score == activity['start']
           next
-        elsif activity['stop'] > @start
+        elsif activity['stop'] > start
           return activity['start']
         else
           return nil
@@ -197,15 +229,15 @@ module OpenC3
       rescue Date::Error
         raise ActivityInputError.new "start and stop must be seconds: #{start}, #{stop}"
       end
-      now_i = Time.now.to_i
+      now_f = Time.now.to_f
       begin
         duration = stop - start
       rescue NoMethodError
         raise ActivityInputError.new "start and stop must be seconds: #{start}, #{stop}"
       end
-      if now_i >= start and kind != 'expire'
-        raise ActivityInputError.new "activity must be in the future, current_time: #{now_i} vs #{start}"
-      elsif duration >= MAX_DURATION and kind != 'expire'
+      if now_f >= start and kind != 'expire'
+        raise ActivityInputError.new "activity must be in the future, current_time: #{now_f} vs #{start}"
+      elsif duration > MAX_DURATION and kind != 'expire'
         raise ActivityInputError.new "activity can not be longer than #{MAX_DURATION} seconds"
       elsif duration <= 0
         raise ActivityInputError.new "start: #{start} must be before stop: #{stop}"
@@ -219,7 +251,7 @@ module OpenC3
     end
 
     # Set the values of the instance, @start, @kind, @data, @events...
-    def set_input(start:, stop:, kind: nil, data: nil, events: nil, fulfillment: nil, recurring: nil)
+    def set_input(start:, stop:, kind: nil, data: nil, uuid: nil, events: nil, fulfillment: nil, recurring: nil)
       kind = kind.to_s.downcase
       validate_input(start: start, stop: stop, kind: kind, data: data)
       @start = start
@@ -227,13 +259,14 @@ module OpenC3
       @fulfillment = fulfillment.nil? ? false : fulfillment
       @kind = kind
       @data = data.nil? ? @data : data
+      @uuid = uuid.nil? ? SecureRandom.uuid : uuid
       @events = events.nil? ? Array.new : events
       @recurring = recurring.nil? ? @recurring : recurring
     end
 
     # Update the Redis hash at primary_key and set the score equal to the start Epoch time
     # the member is set to the JSON generated via calling as_json
-    def create
+    def create(overlap: true)
       if @recurring['end'] and @recurring['frequency'] and @recurring['span']
         # First validate the initial recurring activity ... all others are just offsets
         validate_input(start: @start, stop: @stop, kind: @kind, data: @data)
@@ -242,20 +275,22 @@ module OpenC3
         @recurring['uuid'] = SecureRandom.uuid
         @recurring['start'] = @start
         duration = @stop - @start
-        recurrance = 0
+        recurrence = 0
         case @recurring['span']
         when 'minutes'
-          recurrance = @recurring['frequency'].to_i * 60
+          recurrence = @recurring['frequency'].to_i * 60
         when 'hours'
-          recurrance = @recurring['frequency'].to_i * 3600
+          recurrence = @recurring['frequency'].to_i * 3600
         when 'days'
-          recurrance = @recurring['frequency'].to_i * 86400
+          recurrence = @recurring['frequency'].to_i * 86400
         end
 
-        # Get all the existing events in the recurring time range as well as those before
-        # the start of the recurring time range to ensure we don't start inside an existing event
-        existing = Store.zrevrangebyscore(@primary_key, @recurring['end'] - 1, @recurring['start'] - MAX_DURATION)
-        existing.map! {|value| JSON.parse(value, :allow_nan => true, :create_additions => true) }
+        unless overlap
+          # Get all the existing events in the recurring time range as well as those before
+          # the start of the recurring time range to ensure we don't start inside an existing event
+          existing = Store.zrevrangebyscore(@primary_key, @recurring['end'] - 1, @recurring['start'] - MAX_DURATION)
+          existing.map! {|value| JSON.parse(value, :allow_nan => true, :create_additions => true) }
+        end
         last_stop = nil
 
         # Update @updated_at and add an event assuming it all completes ok
@@ -263,19 +298,21 @@ module OpenC3
         add_event(status: 'created')
 
         Store.multi do |multi|
-          (@start..@recurring['end']).step(recurrance).each do |start_time|
+          (@start..@recurring['end']).step(recurrence).each do |start_time|
             @start = start_time
             @stop = start_time + duration
 
             if last_stop and @start < last_stop
               @events.pop # Remove previously created event
-              raise ActivityOverlapError.new "Recurring activity overlap. Increase recurrance delta or decrease activity duration."
+              raise ActivityOverlapError.new "Recurring activity overlap. Increase recurrence delta or decrease activity duration."
             end
-            existing.each do |value|
-              if (@start >= value['start'] and @start < value['stop']) ||
-                (@stop > value['start'] and @stop <= value['stop'])
-                @events.pop # Remove previously created event
-                raise ActivityOverlapError.new "activity overlaps existing at #{value['start']}"
+            unless overlap
+              existing.each do |value|
+                if (@start >= value['start'] and @start < value['stop']) ||
+                  (@stop > value['start'] and @stop <= value['stop'])
+                  @events.pop # Remove previously created event
+                  raise ActivityOverlapError.new "activity overlaps existing at #{value['start']}"
+                end
               end
             end
             multi.zadd(@primary_key, @start, JSON.generate(self.as_json(:allow_nan => true)))
@@ -285,11 +322,13 @@ module OpenC3
         notify(kind: 'created')
       else
         validate_input(start: @start, stop: @stop, kind: @kind, data: @data)
-        collision = validate_time()
-        unless collision.nil?
-          raise ActivityOverlapError.new "activity overlaps existing at #{collision}"
+        unless overlap
+          # If we don't allow overlap we need to validate the time
+          collision = validate_time(@start, @stop)
+          unless collision.nil?
+            raise ActivityOverlapError.new "activity overlaps existing at #{collision}"
+          end
         end
-
         @updated_at = Time.now.to_nsec_from_epoch
         add_event(status: 'created')
         Store.zadd(@primary_key, @start, JSON.generate(self.as_json(:allow_nan => true)))
@@ -300,27 +339,36 @@ module OpenC3
     # Update the Redis hash at primary_key and remove the current activity at the current score
     # and update the score to the new score equal to the start Epoch time this uses a multi
     # to execute both the remove and create.
-    def update(start:, stop:, kind:, data:)
+    def update(start:, stop:, kind:, data:, overlap: true)
       array = Store.zrangebyscore(@primary_key, @start, @start)
       if array.length == 0
         raise ActivityError.new "failed to find activity at: #{@start}"
       end
 
       old_start = @start
+      old_uuid = @uuid
+      unless overlap
+        # If we don't allow overlap we need to validate the time
+        collision = validate_time(start, stop, ignore_score: old_start)
+        unless collision.nil?
+          raise ActivityOverlapError.new "failed to update #{old_start}, no activities can overlap, collision: #{collision}"
+        end
+      end
       set_input(start: start, stop: stop, kind: kind, data: data, events: @events)
       @updated_at = Time.now.to_nsec_from_epoch
-      # copy of create
-      collision = validate_time(old_start)
-      unless collision.nil?
-        raise ActivityOverlapError.new "failed to update #{old_start}, no activities can overlap, collision: #{collision}"
-      end
 
       add_event(status: 'updated')
-      Store.multi do |multi|
-        multi.zremrangebyscore(@primary_key, old_start, old_start)
-        multi.zadd(@primary_key, @start, JSON.generate(self.as_json(:allow_nan => true)))
+      json = Store.zrangebyscore(@primary_key, old_start, old_start)
+      parsed = json.map { |value| JSON.parse(value, :allow_nan => true, :create_additions => true) }
+      parsed.each_with_index do |value, index|
+        if value['uuid'] == old_uuid
+          Store.multi do |multi|
+            multi.zrem(@primary_key, json[index])
+            multi.zadd(@primary_key, @start, JSON.generate(self.as_json(:allow_nan => true)))
+          end
+        end
       end
-      notify(kind: 'updated', extra: old_start)
+      notify(kind: 'updated', extra: {old_start: old_start, old_uuid: old_uuid})
       return @start
     end
 
@@ -336,9 +384,16 @@ module OpenC3
       event['message'] = message unless message.nil?
       @fulfillment = fulfillment.nil? ? @fulfillment : fulfillment
       @events << event
-      Store.multi do |multi|
-        multi.zremrangebyscore(@primary_key, @start, @start)
-        multi.zadd(@primary_key, @start, JSON.generate(self.as_json(:allow_nan => true)))
+
+      json = Store.zrangebyscore(@primary_key, @start, @start)
+      parsed = json.map { |value| JSON.parse(value, :allow_nan => true, :create_additions => true) }
+      parsed.each_with_index do |value, index|
+        if value['uuid'] == @uuid
+          Store.multi do |multi|
+            multi.zrem(@primary_key, json[index])
+            multi.zadd(@primary_key, @start, JSON.generate(self.as_json(:allow_nan => true)))
+          end
+        end
       end
       notify(kind: 'event')
     end
@@ -353,24 +408,6 @@ module OpenC3
       @events << event
     end
 
-    # destroy the activity from the redis database
-    def destroy(recurring: false)
-      # Delete all recurring activities
-      if recurring and @recurring['end'] and @recurring['uuid']
-        uuid = @recurring['uuid']
-        array = Store.zrangebyscore("#{scope}#{PRIMARY_KEY}__#{@name}", @recurring['start'], @recurring['end'])
-        array.each do |value|
-          model = ActivityModel.from_json(value, name: @name, scope: @scope)
-          if model.recurring['uuid'] == uuid
-            Store.zremrangebyscore(@primary_key, model.start, model.start)
-          end
-        end
-      else
-        Store.zremrangebyscore(@primary_key, @start, @start)
-      end
-      notify(kind: 'deleted')
-    end
-
     # update the redis stream / timeline topic that something has changed
     def notify(kind:, extra: nil)
       notification = {
@@ -379,7 +416,11 @@ module OpenC3
         'type' => 'activity',
         'timeline' => @name
       }
-      notification['extra'] = extra unless extra.nil?
+      if extra
+        extra.each do |key, value|
+          notification[key.to_s] = value
+        end
+      end
       begin
         TimelineTopic.write_activity(notification, scope: @scope)
       rescue StandardError => e
@@ -392,12 +433,14 @@ module OpenC3
       {
         'name' => @name,
         'updated_at' => @updated_at,
-        'fulfillment' => @fulfillment,
         'start' => @start,
         'stop' => @stop,
         'kind' => @kind,
-        'events' => @events,
         'data' => @data.as_json(*a),
+        'scope' => @scope,
+        'fulfillment' => @fulfillment,
+        'uuid' => @uuid,
+        'events' => @events,
         'recurring' => @recurring.as_json(*a)
       }
     end

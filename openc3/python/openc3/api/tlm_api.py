@@ -132,7 +132,15 @@ def inject_tlm(target_name, packet_name, item_hash=None, type="CONVERTED", scope
     if item_hash:
         item_hash = {k.upper(): v for k, v in item_hash.items()}
         # Check that the items exist ... exceptions are raised if not
-        TargetModel.packet_items(target_name, packet_name, item_hash.keys(), scope=scope)
+        items = TargetModel.packet_items(target_name, packet_name, item_hash.keys(), scope=scope)
+        if type == 'CONVERTED':
+            # If the type is converted, check that the item states are valid
+            for item_name, item_value in item_hash.items():
+                item = next((i for i in items if i['name'] == item_name.upper()), None)
+                if item and item.get('states') and item_value not in item['states']:
+                    raise RuntimeError(
+                        f"Unknown state '{item_value}' for {item['name']}, must be one of {', '.join(item['states'].keys())}"
+                    )
     else:
         # Check that the packet exists ... exceptions are raised if not
         TargetModel.packet(target_name, packet_name, scope=scope)
@@ -242,9 +250,9 @@ def get_tlm_packet(*args, stale_time: int = 30, type: str = "CONVERTED", scope: 
     packet = TargetModel.packet(target_name, packet_name, scope=scope)
     t = _validate_tlm_type(type)
     if t is None:
-        raise AttributeError(f"Unknown type '{type}' for {target_name} {packet_name}")
+        raise TypeError(f"Unknown type '{type}' for {target_name} {packet_name}")
     cvt_items = [[target_name, packet_name, item["name"].upper(), type] for item in packet["items"]]
-    # This returns an array of arrays containin the value and the limits state:
+    # This returns an array of arrays containing the value and the limits state:
     # [[0, None], [0, 'RED_LOW'], ... ]
     current_values = CvtModel.get_tlm_values(cvt_items, stale_time=stale_time, scope=scope)
     return [[cvt_items[index][2], item[0], item[1]] for index, item in enumerate(current_values)]
@@ -260,15 +268,15 @@ def get_tlm_packet(*args, stale_time: int = 30, type: str = "CONVERTED", scope: 
 #   Array consisting of the item value and limits state
 #   given as symbols such as :RED, :YELLOW, :STALE
 def get_tlm_values(items, stale_time=30, cache_timeout=0.1, scope=OPENC3_SCOPE):
-    if type(items) is not list or len(items) == 0 or type(items[0]) is not str:
-        raise AttributeError("items must be array of strings: ['TGT__PKT__ITEM__TYPE', ...]")
+    if not isinstance(items, list) or len(items) == 0 or not isinstance(items[0], str):
+        raise TypeError("items must be array of strings: ['TGT__PKT__ITEM__TYPE', ...]")
     packets = []
     cvt_items = []
     for item in items:
         try:
             target_name, packet_name, item_name, value_type = item.upper().split("__")
         except ValueError:
-            raise AttributeError("items must be formatted as TGT__PKT__ITEM__TYPE")
+            raise ValueError("items must be formatted as TGT__PKT__ITEM__TYPE")
         if packet_name == "LATEST":
             packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout, scope)
         # Change packet_name in case of LATEST and ensure upcase
@@ -373,7 +381,7 @@ def subscribe_packets(packets, scope=OPENC3_SCOPE):
     Return:
         (str) ID which should be passed to get_packets
     """
-    if type(packets) is not list or type(packets[0]) is not list:
+    if not isinstance(packets, list) or not isinstance(packets[0], list):
         raise RuntimeError("packets must be nested array: [['TGT','PKT'],...]")
 
     result = {}

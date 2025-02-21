@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -23,7 +23,7 @@ from openc3.utilities.json import JsonEncoder, JsonDecoder
 
 class DecomInterfaceTopic(Topic):
     @classmethod
-    def build_cmd(cls, target_name, cmd_name, cmd_params, range_check, raw, scope=OPENC3_SCOPE):
+    def build_cmd(cls, target_name, cmd_name, cmd_params, range_check, raw, timeout=5, scope=OPENC3_SCOPE):
         data = {}
         data["target_name"] = target_name.upper()
         data["cmd_name"] = cmd_name.upper()
@@ -33,17 +33,17 @@ class DecomInterfaceTopic(Topic):
         # DecomMicroservice is listening to the DECOMINTERFACE topic and is responsible
         # for actually building the command. This was deliberate to allow this to work
         # with or without an interface.
+        ack_topic = f"{{{scope}__ACKCMD}}TARGET__{target_name}"
+        Topic.update_topic_offsets([ack_topic])
         decom_id = Topic.write_topic(
             f"{scope}__DECOMINTERFACE__{{{target_name}}}",
             {"build_cmd": json.dumps(data, cls=JsonEncoder)},
             "*",
             100,
         )
-        timeout = 5  # Arbitrary 5s timeout
-        ack_topic = f"{{{scope}__ACKCMD}}TARGET__{target_name}"
         start_time = time.time()
         while (time.time() - start_time) < timeout:
-            for topic, msg_id, msg_hash, redis in Topic.read_topics([ack_topic]):
+            for _topic, _msg_id, msg_hash, _redis in Topic.read_topics([ack_topic]):
                 if msg_hash[b"id"] == decom_id:
                     if msg_hash[b"result"] == b"SUCCESS":
                         msg_hash = {k.decode(): v.decode() for (k, v) in msg_hash.items()}

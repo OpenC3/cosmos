@@ -11,11 +11,14 @@
     "clean": "rm -rf .nyc_output || rmdir /s /q .nyc_output; rm -rf coverage || rmdir /s /q coverage; rm -rf test-results || rmdir /s /q test-results"
   },
   "dependencies": {
-    "@playwright/test": "1.45.0",
-    "date-fns": "^3.2.0",
+    "@playwright/test": "1.50.1",
+    "date-fns": "4.1.0",
     "jszip": "^3.10.1",
-    "nyc": "^15.1.0",
-    "prettier": "^3.1.1"
+    "nyc": "^17.1.0",
+    "prettier": "^3.4.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.1"
   },
   "nyc": {
     "excludeAfterRemap": false,
@@ -26,5 +29,6 @@
       ".ts",
       ".vue"
     ]
-  }
+  },
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }

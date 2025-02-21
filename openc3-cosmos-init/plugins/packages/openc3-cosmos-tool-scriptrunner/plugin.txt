@@ -1,4 +1,4 @@
 TOOL scriptrunner "Script Runner"
-  INLINE_URL js/app.js
+  INLINE_URL main.js
   ICON mdi-run-fast
   POSITION 5

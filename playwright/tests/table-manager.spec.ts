@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -33,17 +33,17 @@ test('creates a single binary file', async ({ page, utils }) => {
   await page.locator('text=New').click()
   await expect(page.locator('.v-dialog')).toBeVisible()
   await utils.sleep(500) // Allow file dialog to fully render
-  await page.locator('[data-test=file-open-save-search]').type('MCCon')
+  await page.locator('[data-test=file-open-save-search] input').fill('MCCon')
   await utils.sleep(500)
-  await page.locator('[data-test=file-open-save-search]').type('fig')
+  await page.locator('[data-test=file-open-save-search] input').fill('fig')
   await page.locator('text=MCConfig >> nth=0').click() // nth=0 because INST, INST2
   await page.locator('[data-test="file-open-save-submit-btn"]').click()
   await expect(page.locator('id=openc3-tool')).toContainText('MC_CONFIGURATION')
-  expect(await page.locator('.v-tab')).toHaveCount(1)
-  expect(await page.inputValue('[data-test=definition-filename]')).toMatch(
+  await expect(page.locator('.v-tab')).toHaveCount(1)
+  await expect(page.locator('[data-test=definition-filename] input')).toHaveValue(
     'INST/tables/config/MCConfigurationTable_def.txt',
   )
-  expect(await page.inputValue('[data-test=filename]')).toMatch(
+  expect(await page.inputValue('[data-test=filename] input')).toMatch(
     'INST/tables/bin/MCConfigurationTable.bin',
   )
 })
@@ -53,17 +53,17 @@ test('edits a binary file', async ({ page, utils }) => {
   await page.locator('text=New').click() // Create new since we're editing
   await expect(page.locator('.v-dialog')).toBeVisible()
   await utils.sleep(500) // Allow file dialog to fully render
-  await page.locator('[data-test=file-open-save-search]').type('ConfigTables_')
+  await page.locator('[data-test=file-open-save-search] input').fill('ConfigTables_')
   await page.locator('text=ConfigTables_ >> nth=0').click() // nth=0 because INST, INST2
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   await expect(page.locator('id=openc3-tool')).toContainText('MC_CONFIGURATION')
   await expect(page.locator('id=openc3-tool')).toContainText('TLM_MONITORING')
   await expect(page.locator('id=openc3-tool')).toContainText('PPS_SELECTION')
-  expect(await page.locator('.v-tab')).toHaveCount(3)
+  await expect(page.locator('.v-tab')).toHaveCount(3)
   expect(
-    await page.locator('[data-test=definition-filename]').inputValue(),
+    await page.locator('[data-test=definition-filename] input').inputValue(),
   ).toMatch('INST/tables/config/ConfigTables_def.txt')
-  expect(await page.locator('[data-test=filename]').inputValue()).toMatch(
+  expect(await page.locator('[data-test=filename] input').inputValue()).toMatch(
     'INST/tables/bin/ConfigTables.bin',
   )
 
@@ -88,24 +88,25 @@ test('edits a binary file', async ({ page, utils }) => {
   await page.locator('text=MC_CONFIGURATION').click()
   await page
     .getByRole('row', { name: '1 SCRUB_REGION_1_START_ADDR' })
-    .locator('[data-test="table-item-text-field"]')
+    .locator('[data-test="table-item-text-field"] input')
     .fill('0xabcdef')
 
   await page.locator('text=TLM_MONITORING').click()
   await expect(page.locator('id=openc3-tool')).toContainText('THRESHOLD')
   await page
     .locator(
-      '[data-test=TLM_MONITORING] tr:nth-child(1) td:nth-child(2) [data-test=table-item-text-field]',
+      '[data-test=TLM_MONITORING] tr:nth-child(1) td:nth-child(2) [data-test=table-item-text-field] input',
     )
     .fill('1')
   await page
     .locator(
-      '[data-test=TLM_MONITORING] tr:nth-child(1) td:nth-child(3) [data-test=table-item-text-field]',
+      '[data-test=TLM_MONITORING] tr:nth-child(1) td:nth-child(3) [data-test=table-item-text-field] input',
     )
     .fill('2')
   await page
     .locator('[data-test=TLM_MONITORING] tr:nth-child(1)')
-    .getByRole('button', { name: 'BITS' })
+    .getByRole('combobox')
+    .filter({ hasText: 'BITS' })
     .click()
   await page.locator('text=BYTE').click()
   await expect(
@@ -113,17 +114,18 @@ test('edits a binary file', async ({ page, utils }) => {
   ).toContainText('BYTE')
   await page
     .locator(
-      '[data-test=TLM_MONITORING] tr:nth-child(1) td:nth-child(5) [data-test=table-item-text-field]',
+      '[data-test=TLM_MONITORING] tr:nth-child(1) td:nth-child(5) [data-test=table-item-text-field] input',
     )
     .fill('3')
   await page
     .locator(
-      '[data-test=TLM_MONITORING] tr:nth-child(1) td:nth-child(6) [data-test=table-item-text-field]',
+      '[data-test=TLM_MONITORING] tr:nth-child(1) td:nth-child(6) [data-test=table-item-text-field] input',
     )
     .fill('4')
   await page
     .locator('[data-test=TLM_MONITORING] tr:nth-child(1)')
-    .getByRole('button', { name: 'LESS_THAN' })
+    .getByRole('combobox')
+    .filter({ hasText: 'LESS_THAN' })
     .click()
   await page.locator('text=GREATER_THAN').click()
   await expect(
@@ -131,7 +133,8 @@ test('edits a binary file', async ({ page, utils }) => {
   ).toContainText('GREATER_THAN')
   await page
     .locator('[data-test=TLM_MONITORING] tr:nth-child(1)')
-    .getByRole('button', { name: 'NO_ACTION_REQUIRED' })
+    .getByRole('combobox')
+    .filter({ hasText: 'NO_ACTION_REQUIRED' })
     .click()
   await page.locator('text=INITIATE_RESET').click()
   await expect(
@@ -139,7 +142,8 @@ test('edits a binary file', async ({ page, utils }) => {
   ).toContainText('INITIATE_RESET')
   await page
     .locator('[data-test=TLM_MONITORING] tr:nth-child(1)')
-    .getByRole('button', { name: 'ALL_MODES' })
+    .getByRole('combobox')
+    .filter({ hasText: 'ALL_MODES' })
     .click()
   await page.locator('text=SAFE_MODE').click()
   await expect(
@@ -149,13 +153,11 @@ test('edits a binary file', async ({ page, utils }) => {
   await page.locator('text=PPS_SELECTION').click()
   await page
     .getByRole('row', { name: '1 PRIMARY_PPS' })
-    .getByRole('cell')
-    .nth(2)
+    .locator('[type="checkbox"]')
     .click()
   await page
     .getByRole('row', { name: '2 REDUNDANT_PPS' })
-    .getByRole('cell')
-    .nth(2)
+    .locator('[type="checkbox"]')
     .click()
 
   await page.locator('[data-test=table-manager-file]').click()
@@ -186,37 +188,34 @@ test('opens and searches file', async ({ page, utils }) => {
   await page.locator('text=Open File').click()
   await utils.sleep(500) // Allow file dialog to fully render
   await page
-    .locator('[data-test=file-open-save-search]')
-    .type('ConfigTables.bin')
+    .locator('[data-test=file-open-save-search] input')
+    .fill('ConfigTables.bin')
   await page.locator('text=ConfigTables >> nth=0').click()
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   await expect(page.locator('id=openc3-tool')).toContainText('MC_CONFIGURATION')
   await expect(page.locator('id=openc3-tool')).toContainText('TLM_MONITORING')
   await expect(page.locator('id=openc3-tool')).toContainText('PPS_SELECTION')
-  expect(await page.locator('.v-tab')).toHaveCount(3)
+  await expect(page.locator('.v-tab')).toHaveCount(3)
   expect(
-    await page.locator('[data-test=definition-filename]').inputValue(),
+    await page.locator('[data-test=definition-filename] input').inputValue(),
   ).toMatch('INST/tables/config/ConfigTables_def.txt')
-  expect(await page.locator('[data-test=filename]').inputValue()).toMatch(
+  expect(await page.locator('[data-test=filename] input').inputValue()).toMatch(
     'INST/tables/bin/ConfigTables.bin',
   )
 
   // Test searching
-  expect(await page.locator('tr')).toHaveCount(12)
+  await expect(page.locator('tr')).toHaveCount(12)
   await page.locator('text=Items >> input').fill('UNEDIT')
   await expect.poll(() => page.locator('tr').count()).toBe(4)
-  // Vuetify sets the disabled attribute to disabled so just check for that
-  // Checking for toBeDisabled() does not work since the aria-disabled is not set
-  // See https://github.com/microsoft/playwright/issues/13583
   await expect(
-    page.locator('tr >> input[disabled=disabled] >> nth=0'),
-  ).toBeVisible()
+    page.locator('tr >> input >> nth=0'),
+  ).toBeDisabled()
   await expect(
-    page.locator('tr >> input[disabled=disabled] >> nth=1'),
-  ).toBeVisible()
+    page.locator('tr >> input >> nth=1'),
+  ).toBeDisabled()
   await expect(
-    page.locator('tr >> input[disabled=disabled] >> nth=2'),
-  ).toBeVisible()
+    page.locator('tr >> input >> nth=2'),
+  ).toBeDisabled()
   await page.locator('text=Items >> input').fill('')
   await expect.poll(() => page.locator('tr').count()).toBe(12)
 })
@@ -226,8 +225,8 @@ test('downloads binary, definition, report', async ({ page, utils }) => {
   await page.locator('text=Open File').click()
   await utils.sleep(500) // Allow file dialog to fully render
   await page
-    .locator('[data-test=file-open-save-search]')
-    .type('ConfigTables.bin')
+    .locator('[data-test=file-open-save-search] input')
+    .fill('ConfigTables.bin')
   await page.locator('text=ConfigTables >> nth=0').click()
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   await utils.download(page, '[data-test=download-file-binary]')
@@ -270,117 +269,121 @@ test('downloads binary, definition, report', async ({ page, utils }) => {
   )
 })
 
-test('save as', async ({ page, utils }) => {
+test('save as and delete', async ({ page, utils }) => {
   await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=Open File').click()
   await expect(page.locator('.v-dialog')).toBeVisible()
-  await utils.sleep(500) // Allow file dialog to fully render
   await page
-    .locator('[data-test=file-open-save-search]')
-    .type('ConfigTables.bin')
-  await page.locator('text=ConfigTables >> nth=0').click()
+    .locator('[data-test=file-open-save-search] input')
+    .fill('ConfigTables.bin')
+  await page.locator('.v-list-item').filter({ hasText: 'ConfigTables.bin' }).first().click()
   await page.locator('[data-test=file-open-save-submit-btn]').click()
+  if (await page.locator('[data-test=confirm-dialog-overwrite]').isVisible()) {
+    await page.locator('[data-test=confirm-dialog-overwrite]').click()
+  }
   await expect(page.locator('id=openc3-tool')).toContainText('MC_CONFIGURATION')
-  expect(await page.locator('[data-test=filename]').inputValue()).toMatch(
-    'INST/tables/bin/ConfigTables.bin',
-  )
-  expect(
-    await page.locator('[data-test=definition-filename]').inputValue(),
-  ).toMatch('INST/tables/config/ConfigTables_def.txt')
+  // These checks are all with regex because sometimes the file will be edited and have a * at the end
+  await expect(page.locator('[data-test=filename] input'))
+    .toHaveValue(/INST\/tables\/bin\/ConfigTables\.bin/)
+  await expect(page.locator('[data-test=definition-filename] input'))
+    .toHaveValue(/INST\/tables\/config\/ConfigTables_def\.txt/)
 
   await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=Save As').click()
   await expect(page.locator('.v-dialog')).toBeVisible()
-  await utils.sleep(500) // Allow file dialog to fully render
   await page
-    .locator('[data-test=file-open-save-filename]')
+    .locator('[data-test=file-open-save-filename] input')
     .fill('INST/tables/bin/ConfigTables2.bin')
   await page.locator('[data-test=file-open-save-submit-btn]').click()
-  await utils.sleep(1000)
-  expect(await page.locator('[data-test=filename]').inputValue()).toMatch(
-    'INST/tables/bin/ConfigTables2.bin',
-  )
-  expect(
-    await page.locator('[data-test=definition-filename]').inputValue(),
-  ).toMatch('INST/tables/config/ConfigTables_def.txt')
+  if (await page.locator('[data-test=confirm-dialog-overwrite]').isVisible()) {
+    await page.locator('[data-test=confirm-dialog-overwrite]').click()
+  }
+  await expect(page.locator('[data-test=filename] input'))
+    .toHaveValue(/INST\/tables\/bin\/ConfigTables2\.bin/)
+  await expect(page.locator('[data-test=definition-filename] input'))
+    .toHaveValue(/INST\/tables\/config\/ConfigTables_def\.txt/)
 
   // Verify we can open it cleanly
   await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=Open File').click()
   await expect(page.locator('.v-dialog')).toBeVisible()
-  await utils.sleep(500) // Allow file dialog to fully render
   await page
-    .locator('[data-test=file-open-save-search]')
-    .type('ConfigTables2.bin')
-  await page.locator('text=ConfigTables >> nth=0').click()
+    .locator('[data-test=file-open-save-search] input')
+    .fill('ConfigTables2.bin')
+  await page.getByRole('listbox')
+    .getByText('ConfigTables2.bin')
+    .click()
   await page.locator('[data-test=file-open-save-submit-btn]').click()
+  if (await page.locator('[data-test=confirm-dialog-overwrite]').isVisible()) {
+    await page.locator('[data-test=confirm-dialog-overwrite]').click()
+  }
   await expect(page.locator('id=openc3-tool')).toContainText('MC_CONFIGURATION')
-  expect(await page.locator('[data-test=filename]').inputValue()).toMatch(
-    'INST/tables/bin/ConfigTables2.bin',
-  )
-  expect(
-    await page.locator('[data-test=definition-filename]').inputValue(),
-  ).toMatch('INST/tables/config/ConfigTables_def.txt')
+  await expect(page.locator('[data-test=filename] input'))
+    .toHaveValue(/INST\/tables\/bin\/ConfigTables2\.bin/)
+  await expect(page.locator('[data-test=definition-filename] input'))
+    .toHaveValue(/INST\/tables\/config\/ConfigTables_def\.txt/)
 
   // Save As to something that doesn't match the definition file convention
   await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=Save As').click()
   await expect(page.locator('.v-dialog')).toBeVisible()
-  await utils.sleep(500) // Allow file dialog to fully render
   await page
-    .locator('[data-test=file-open-save-filename]')
+    .locator('[data-test=file-open-save-filename] input')
     .fill('INST/tables/bin/Binary.bin')
   await page.locator('[data-test=file-open-save-submit-btn]').click()
-  await utils.sleep(1000)
-  expect(await page.locator('[data-test=filename]').inputValue()).toMatch(
-    'INST/tables/bin/Binary.bin',
-  )
-  expect(
-    await page.locator('[data-test=definition-filename]').inputValue(),
-  ).toMatch('INST/tables/config/ConfigTables_def.txt')
+  if (await page.locator('[data-test=confirm-dialog-overwrite]').isVisible()) {
+    await page.locator('[data-test=confirm-dialog-overwrite]').click()
+  }
+  await expect(page.locator('[data-test=filename] input'))
+    .toHaveValue(/INST\/tables\/bin\/Binary\.bin/)
+  await expect(page.locator('[data-test=definition-filename] input'))
+    .toHaveValue(/INST\/tables\/config\/ConfigTables_def\.txt/)
 
   // Now try to open it and be required to select the definition file
   await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=Open File').click()
   await expect(page.locator('.v-dialog')).toBeVisible()
-  await utils.sleep(500) // Allow file dialog to fully render
-  await page.locator('[data-test=file-open-save-search]').type('Binary.bin')
+  await page.locator('[data-test=file-open-save-search] input').fill('Binary.bin')
   await page.locator('text=Binary.bin').click()
   await page.locator('[data-test=file-open-save-submit-btn]').click()
-  await utils.sleep(1000) // Allow new file dialog to fully render
+  if (await page.locator('[data-test=confirm-dialog-overwrite]').isVisible()) {
+    await page.locator('[data-test=confirm-dialog-overwrite]').click()
+  }
   await page
-    .locator('[data-test=file-open-save-search]')
-    .type('ConfigTables_def')
+    .locator('[data-test=file-open-save-search] input')
+    .fill('ConfigTables_def')
   await page.locator('text=ConfigTables_def >> nth=0').click()
   await page.locator('[data-test=file-open-save-submit-btn]').click()
+  if (await page.locator('[data-test=confirm-dialog-overwrite]').isVisible()) {
+    await page.locator('[data-test=confirm-dialog-overwrite]').click()
+  }
   await expect(page.locator('id=openc3-tool')).toContainText('MC_CONFIGURATION')
-  expect(await page.locator('[data-test=filename]').inputValue()).toMatch(
-    'INST/tables/bin/Binary.bin',
-  )
-  expect(
-    await page.locator('[data-test=definition-filename]').inputValue(),
-  ).toMatch('INST/tables/config/ConfigTables_def.txt')
-})
+  await expect(page.locator('[data-test=filename] input'))
+    .toHaveValue(/INST\/tables\/bin\/Binary\.bin/)
+  await expect(page.locator('[data-test=definition-filename] input'))
+    .toHaveValue(/INST\/tables\/config\/ConfigTables_def\.txt/)
 
-test('delete', async ({ page, utils }) => {
+  // Now delete the file
   await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=Open File').click()
-  await utils.sleep(500) // Allow file dialog to fully render
   await page
-    .locator('[data-test=file-open-save-search]')
-    .type('ConfigTables2.bin')
-  await page.locator('text=ConfigTables >> nth=0').click()
+    .locator('[data-test=file-open-save-search] input')
+    .fill('ConfigTables2.bin')
+  await page.getByRole('listbox')
+    .getByText('ConfigTables2.bin')
+    .click()
   await page.locator('[data-test=file-open-save-submit-btn]').click()
+  if (await page.locator('[data-test=confirm-dialog-overwrite]').isVisible()) {
+    await page.locator('[data-test=confirm-dialog-overwrite]').click()
+  }
   await expect(page.locator('id=openc3-tool')).toContainText('MC_CONFIGURATION')
-  expect(await page.locator('[data-test=filename]').inputValue()).toMatch(
-    'INST/tables/bin/ConfigTables2.bin',
-  )
-  expect(
-    await page.locator('[data-test=definition-filename]').inputValue(),
-  ).toMatch('INST/tables/config/ConfigTables_def.txt')
+  await expect(page.locator('[data-test=filename] input'))
+    .toHaveValue(/INST\/tables\/bin\/ConfigTables2\.bin/)
+  await expect(page.locator('[data-test=definition-filename] input'))
+    .toHaveValue(/INST\/tables\/config\/ConfigTables_def\.txt/)
 
   await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=Delete File').click()
-  await page.locator('text=Permanently delete file')
+  await expect(page.locator('text=Permanently delete file')).toBeVisible()
   await page.locator('button:has-text("Delete")').click()
 })

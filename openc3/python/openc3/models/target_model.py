@@ -146,7 +146,7 @@ class TargetModel(Model):
             not_found = []
             for item in items - found_items:
                 not_found.append(f"'{target_name} {packet_name} {item}'")
-            # 'does not exist' not gramatically correct but we use it in every other exception
+            # 'does not exist' not grammatically correct but we use it in every other exception
             raise RuntimeError(f"Item(s) {', '.join(not_found)} does not exist")
         return found
 
@@ -154,7 +154,6 @@ class TargetModel(Model):
     @classmethod
     def limits_groups(cls, scope: str = OPENC3_SCOPE):
         groups = Store.hgetall(f"{scope}__limits_groups")
-        print(f"groups:{groups} type:{type(groups)}")
         if groups:
             return {k.decode(): json.loads(v) for (k, v) in groups.items()}
         else:
@@ -189,7 +188,6 @@ class TargetModel(Model):
                 item_map[item_name].append(packet["packet_name"])
         return item_map
 
-    # TODO: Not nearly complete ... see target_model.rb
     def __init__(
         self,
         name: str,

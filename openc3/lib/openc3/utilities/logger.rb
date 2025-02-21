@@ -69,6 +69,7 @@ module OpenC3
     LOG = 'log'
     NOTIFICATION = 'notification'
     ALERT = 'alert'
+    EPHEMERAL = 'ephemeral'
 
     # @param level [Integer] The initial logging level
     def initialize(level = Logger::INFO)
@@ -97,53 +98,53 @@ module OpenC3
     #   below the method name log level.
     # @param block [Proc] Block to call which should return a string to append
     #   to the log message
-    def debug(message = nil, scope: @@scope, user: nil, type: LOG, url: nil, &block)
-      log_message(DEBUG_LEVEL, message, scope: scope, user: user, type: type, url: url, &block) if @level <= DEBUG
+    def debug(message = nil, scope: @@scope, user: nil, type: LOG, url: nil, other: nil, &block)
+      log_message(DEBUG_LEVEL, message, scope: scope, user: user, type: type, url: url, other: other, &block) if @level <= DEBUG
     end
 
     # (see #debug)
-    def info(message = nil, scope: @@scope, user: nil, type: LOG, url: nil, &block)
-      log_message(INFO_LEVEL, message, scope: scope, user: user, type: type, url: url, &block) if @level <= INFO
+    def info(message = nil, scope: @@scope, user: nil, type: LOG, url: nil, other: nil, &block)
+      log_message(INFO_LEVEL, message, scope: scope, user: user, type: type, url: url, other: other, &block) if @level <= INFO
     end
 
     # (see #debug)
-    def warn(message = nil, scope: @@scope, user: nil, type: LOG, url: nil, &block)
-      log_message(WARN_LEVEL, message, scope: scope, user: user, type: type, url: url, &block) if @level <= WARN
+    def warn(message = nil, scope: @@scope, user: nil, type: LOG, url: nil, other: nil, &block)
+      log_message(WARN_LEVEL, message, scope: scope, user: user, type: type, url: url, other: other, &block) if @level <= WARN
     end
 
     # (see #debug)
-    def error(message = nil, scope: @@scope, user: nil, type: LOG, url: nil, &block)
-      log_message(ERROR_LEVEL, message, scope: scope, user: user, type: type, url: url, &block) if @level <= ERROR
+    def error(message = nil, scope: @@scope, user: nil, type: LOG, url: nil, other: nil, &block)
+      log_message(ERROR_LEVEL, message, scope: scope, user: user, type: type, url: url, other: other, &block) if @level <= ERROR
     end
 
     # (see #debug)
-    def fatal(message = nil, scope: @@scope, user: nil, type: LOG, url: nil, &block)
-      log_message(FATAL_LEVEL, message, scope: scope, user: user, type: type, url: url, &block) if @level <= FATAL
+    def fatal(message = nil, scope: @@scope, user: nil, type: LOG, url: nil, other: nil, &block)
+      log_message(FATAL_LEVEL, message, scope: scope, user: user, type: type, url: url, other: other, &block) if @level <= FATAL
     end
 
     # (see #debug)
-    def self.debug(message = nil, scope: @@scope, user: nil, type: LOG, url: nil, &block)
-      self.instance.debug(message, scope: scope, user: user, type: type, url: url, &block)
+    def self.debug(message = nil, scope: @@scope, user: nil, type: LOG, url: nil, other: nil, &block)
+      self.instance.debug(message, scope: scope, user: user, type: type, url: url, other: other, &block)
     end
 
     # (see #debug)
-    def self.info(message = nil, scope: @@scope, user: nil, type: LOG, url: nil, &block)
-      self.instance.info(message, scope: scope, user: user, type: type, url: url, &block)
+    def self.info(message = nil, scope: @@scope, user: nil, type: LOG, url: nil, other: nil, &block)
+      self.instance.info(message, scope: scope, user: user, type: type, url: url, other: other, &block)
     end
 
     # (see #debug)
-    def self.warn(message = nil, scope: @@scope, user: nil, type: LOG, url: nil, &block)
-      self.instance.warn(message, scope: scope, user: user, type: type, url: url, &block)
+    def self.warn(message = nil, scope: @@scope, user: nil, type: LOG, url: nil, other: nil, &block)
+      self.instance.warn(message, scope: scope, user: user, type: type, url: url, other: other, &block)
     end
 
     # (see #debug)
-    def self.error(message = nil, scope: @@scope, user: nil, type: LOG, url: nil, &block)
-      self.instance.error(message, scope: scope, user: user, type: type, url: url, &block)
+    def self.error(message = nil, scope: @@scope, user: nil, type: LOG, url: nil, other: nil, &block)
+      self.instance.error(message, scope: scope, user: user, type: type, url: url, other: other, &block)
     end
 
     # (see #debug)
-    def self.fatal(message = nil, scope: @@scope, user: nil, type: LOG, url: nil, &block)
-      self.instance.fatal(message, scope: scope, user: user, type: type, url: url, &block)
+    def self.fatal(message = nil, scope: @@scope, user: nil, type: LOG, url: nil, other: nil, &block)
+      self.instance.fatal(message, scope: scope, user: user, type: type, url: url, other: other, &block)
     end
 
     # @return [Logger] The logger instance
@@ -172,23 +173,33 @@ module OpenC3
       @@scope = scope
     end
 
+    def build_log_data(log_level, message, user: nil, type: nil, url: nil, other: nil, &block)
+      time = Time.now.utc
+      # timestamp iso8601 with 6 decimal places to match the python output format
+      data = { time: time.to_nsec_from_epoch, '@timestamp' => time.iso8601(6), level: log_level }
+      data[:microservice_name] = @microservice_name if @microservice_name
+      data[:detail] = @detail_string if @detail_string
+      data[:user] = user if user # EE: If a user is passed, put its name. Don't include user data if no user was passed.
+      if block_given?
+        message = yield
+      end
+      data[:container_name] = @container_name
+      data[:message] = message if message
+      data[:type] = type if type
+      data[:url] = url if url
+      data = data.merge(other) if other
+      return data
+    end
+
+    def self.build_log_data(log_level, message, user: nil, type: nil, url: nil, other: nil)
+      self.instance.build_log_data(log_level, message, user: user, type: type, url: url, other: other)
+    end
+
     protected
 
-    def log_message(log_level, message, scope:, user:, type:, url:)
+    def log_message(log_level, message, scope:, user:, type:, url:, other: nil, &block)
       @@mutex.synchronize do
-        time = Time.now.utc
-        # timestamp iso8601 with 6 decimal places to match the python output format
-        data = { time: time.to_nsec_from_epoch, '@timestamp' => time.iso8601(6), level: log_level }
-        data[:microservice_name] = @microservice_name if @microservice_name
-        data[:detail] = @detail_string if @detail_string
-        data[:user] = user if user # EE: If a user is passed, put its name. Don't include user data if no user was passed.
-        if block_given?
-          message = yield
-        end
-        data[:container_name] = @container_name
-        data[:message] = message
-        data[:type] = type
-        data[:url] = url if url
+        data = build_log_data(log_level, message, user: user, type: type, url: url, other: other, &block)
         if @stdout
           case log_level
           when WARN_LEVEL, ERROR_LEVEL, FATAL_LEVEL

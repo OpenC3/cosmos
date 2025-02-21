@@ -27,6 +27,7 @@ from openc3.utilities.metric import Metric
 from openc3.utilities.secrets import Secrets
 from openc3.utilities.sleeper import Sleeper
 from openc3.utilities.store import EphemeralStore
+from openc3.utilities.thread_manager import ThreadManager
 from openc3.topics.topic import Topic
 from openc3.environment import OPENC3_CONFIG_BUCKET
 from openc3.models.microservice_model import MicroserviceModel
@@ -40,12 +41,8 @@ openc3_scope = "DEFAULT"
 
 class Microservice:
     @classmethod
-    def class_run(cls, name=None):
-        microservice = None
+    def class_run_body(cls, microservice):
         try:
-            if name is None:
-                name = os.environ.get("OPENC3_MICROSERVICE_NAME")
-            microservice = cls(name)
             MicroserviceStatusModel.set(microservice.as_json(), scope=microservice.scope)
             microservice.state = "RUNNING"
             microservice.run()
@@ -58,11 +55,22 @@ class Microservice:
             if microservice:
                 microservice.error = err
                 microservice.state = "DIED_ERROR"
-            Logger.fatal(f"Microservice {name} dying from exception\n{traceback.format_exception(err)}")
-
+            Logger.fatal(f"Microservice {microservice.name} dying from exception\n{traceback.format_exc()}")
         finally:
             if microservice:
                 MicroserviceStatusModel.set(microservice.as_json(), scope=microservice.scope)
+
+    @classmethod
+    def class_run(cls, name=None):
+        microservice = None
+        if name is None:
+            name = os.environ.get("OPENC3_MICROSERVICE_NAME")
+        microservice = cls(name)
+        thread = threading.Thread(target=cls.class_run_body, args=[microservice], daemon=True)
+        thread.start()
+        ThreadManager.instance().register(thread, shutdown_object=microservice)
+        ThreadManager.instance().monitor()
+        ThreadManager.instance().shutdown()
 
     def as_json(self):
         json = {
@@ -176,8 +184,8 @@ class Microservice:
             self.microservice_status_sleeper = Sleeper()
             self.microservice_status_period_seconds = 5
             self.microservice_status_thread = threading.Thread(target=self._status_thread, daemon=True)
-
             self.microservice_status_thread.start()
+            ThreadManager.instance().register(self.microservice_status_thread)
 
     # Must be implemented by a subclass
     def run(self):
@@ -194,7 +202,7 @@ class Microservice:
         if self.temp_dir is not None:
             self.temp_dir.cleanup()
         self.metric.shutdown()
-        self.logger.info(f"Shutting down microservice complete: {self.name}")
+        self.logger.debug(f"Shutting down microservice complete: {self.name}")
         self.shutdown_complete = True
 
     def setup_microservice_topic(self):

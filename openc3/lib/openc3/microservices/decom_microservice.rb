@@ -14,20 +14,78 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+require 'time'
+require 'thread'
 require 'openc3/microservices/microservice'
 require 'openc3/microservices/interface_decom_common'
 require 'openc3/topics/telemetry_decom_topic'
 require 'openc3/topics/limits_event_topic'
 
 module OpenC3
+  class LimitsResponseThread
+    def initialize(microservice_name:, queue:, logger:, metric:, scope:)
+      @microservice_name = microservice_name
+      @queue = queue
+      @logger = logger
+      @metric = metric
+      @scope = scope
+      @count = 0
+      @error_count = 0
+      @metric.set(name: 'limits_response_total', value: @count, type: 'counter')
+      @metric.set(name: 'limits_response_error_total', value: @error_count, type: 'counter')
+    end
+
+    def start
+      @thread = Thread.new do
+        run()
+      rescue Exception => e
+        @logger.error "#{@microservice_name}: Limits Response thread died: #{e.formatted}"
+        raise e
+      end
+      ThreadManager.instance.register(@thread, stop_object: self)
+    end
+
+    def stop
+      if @thread
+        OpenC3.kill_thread(self, @thread)
+        @thread = nil
+      end
+    end
+
+    def graceful_kill
+      @queue << [nil, nil, nil]
+    end
+
+    def run
+      while true
+        packet, item, old_limits_state = @queue.pop()
+        break if packet.nil?
+
+        begin
+          item.limits.response.call(packet, item, old_limits_state)
+        rescue Exception => e
+          @error_count += 1
+          @metric.set(name: 'limits_response_error_total', value: @error_count, type: 'counter')
+          @logger.error "#{packet.target_name} #{packet.packet_name} #{item.name} Limits Response Exception!"
+          @logger.error "Called with old_state = #{old_limits_state}, new_state = #{item.limits.state}"
+          @logger.error e.filtered
+        end
+
+        @count += 1
+        @metric.set(name: 'limits_response_total', value: @count, type: 'counter')
+      end
+    end
+  end
+
   class DecomMicroservice < Microservice
     include InterfaceDecomCommon
+    LIMITS_STATE_INDEX = { RED_LOW: 0, YELLOW_LOW: 1, YELLOW_HIGH: 2, RED_HIGH: 3, GREEN_LOW: 4, GREEN_HIGH: 5 }
 
     def initialize(*args)
       super(*args)
@@ -42,9 +100,14 @@ module OpenC3
       @error_count = 0
       @metric.set(name: 'decom_total', value: @count, type: 'counter')
       @metric.set(name: 'decom_error_total', value: @error_count, type: 'counter')
+      @limits_response_queue = Queue.new
+      @limits_response_thread = nil
     end
 
     def run
+      @limits_response_thread = LimitsResponseThread.new(microservice_name: @name, queue: @limits_response_queue, logger: @logger, metric: @metric, scope: @scope)
+      @limits_response_thread.start()
+
       setup_microservice_topic()
       while true
         break if @cancel_thread
@@ -79,6 +142,9 @@ module OpenC3
           @logger.error("Decom error: #{e.formatted}")
         end
       end
+
+      @limits_response_thread.stop()
+      @limits_response_thread = nil
     end
 
     def decom_packet(_topic, msg_id, msg_hash, _redis)
@@ -102,10 +168,24 @@ module OpenC3
           packet.extra = extra
         end
         packet.buffer = msg_hash["buffer"]
-        packet.process # Run processors
-        packet.check_limits(System.limits_set) # Process all the limits and call the limits_change_callback (as necessary)
+        # Processors are user code points which must be rescued
+        # so the TelemetryDecomTopic can write the packet
+        begin
+          packet.process # Run processors
+        rescue Exception => e
+          @error_count += 1
+          @metric.set(name: 'decom_error_total', value: @error_count, type: 'counter')
+          @error = e
+          @logger.error e.message
+        end
+        # Process all the limits and call the limits_change_callback (as necessary)
+        # check_limits also can call user code in the limits response
+        # but that is rescued separately in the limits_change_callback
+        packet.check_limits(System.limits_set)
 
+        # This is what actually decommutates the packet and updates the CVT
         TelemetryDecomTopic.write_packet(packet, scope: @scope)
+
         diff = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start # seconds as a float
         @metric.set(name: 'decom_duration_seconds', value: diff, type: 'gauge', unit: 'seconds')
       end
@@ -121,45 +201,59 @@ module OpenC3
     # @param log_change [Boolean] Whether to log this limits change event
     def limits_change_callback(packet, item, old_limits_state, value, log_change)
       return if @cancel_thread
-      packet_time = packet.packet_time
+      # Make a copy because packet_time is frozen
+      packet_time = packet.packet_time.dup
       if value
         message = "#{packet.target_name} #{packet.packet_name} #{item.name} = #{value} is #{item.limits.state}"
+        if item.limits.values
+          values = item.limits.values[System.limits_set]
+          # Check if the state is RED_LOW, YELLOW_LOW, YELLOW_HIGH, RED_HIGH, GREEN_LOW, GREEN_HIGH
+          if LIMITS_STATE_INDEX[item.limits.state]
+            # Directly index into the values and return the value
+            message += " (#{values[LIMITS_STATE_INDEX[item.limits.state]]})"
+          elsif item.limits.state == :GREEN
+            # If we're green we display the green range (YELLOW_LOW - YELLOW_HIGH)
+            message += " (#{values[1]} to #{values[2]})"
+          elsif item.limits.state == :BLUE
+            # If we're blue we display the blue range (GREEN_LOW - GREEN_HIGH)
+            message += " (#{values[4]} to #{values[5]})"
+          end
+        end
       else
         message = "#{packet.target_name} #{packet.packet_name} #{item.name} is disabled"
       end
-      message << " (#{packet.packet_time.sys.formatted})" if packet_time
 
-      time_nsec = packet_time ? packet_time.to_nsec_from_epoch : Time.now.to_nsec_from_epoch
+      # Include the packet_time in the log json but not the log message
+      time = { packet_time: packet_time.utc.iso8601(6) }
       if log_change
         case item.limits.state
         when :BLUE, :GREEN, :GREEN_LOW, :GREEN_HIGH
           # Only print INFO messages if we're changing ... not on initialization
-          @logger.info message if old_limits_state
+          @logger.info(message, other: time) if old_limits_state
         when :YELLOW, :YELLOW_LOW, :YELLOW_HIGH
-          @logger.warn(message, type: Logger::NOTIFICATION)
+          @logger.warn(message, other: time, type: Logger::NOTIFICATION)
         when :RED, :RED_LOW, :RED_HIGH
-          @logger.error(message, type: Logger::ALERT)
+          @logger.error(message, other: time, type: Logger::ALERT)
         end
       end
 
       # The openc3_limits_events topic can be listened to for all limits events, it is a continuous stream
       event = { type: :LIMITS_CHANGE, target_name: packet.target_name, packet_name: packet.packet_name,
                 item_name: item.name, old_limits_state: old_limits_state.to_s, new_limits_state: item.limits.state.to_s,
-                time_nsec: time_nsec, message: message.to_s }
+                time_nsec: packet_time.to_nsec_from_epoch, message: message.to_s }
       LimitsEventTopic.write(event, scope: @scope)
 
       if item.limits.response
-        begin
-          item.limits.response.call(packet, item, old_limits_state)
-        rescue Exception => e
-          @error = e
-          @logger.error "#{packet.target_name} #{packet.packet_name} #{item.name} Limits Response Exception!"
-          @logger.error "Called with old_state = #{old_limits_state}, new_state = #{item.limits.state}"
-          @logger.error e.formatted
-        end
+        copied_packet = packet.deep_copy
+        copied_item = packet.items[item.name]
+        @limits_response_queue << [copied_packet, copied_item, old_limits_state]
       end
     end
   end
 end
 
-OpenC3::DecomMicroservice.run if __FILE__ == $0
+if __FILE__ == $0
+  OpenC3::DecomMicroservice.run
+  ThreadManager.instance.shutdown
+  ThreadManager.instance.join
+end

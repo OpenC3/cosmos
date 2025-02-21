@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -24,7 +24,10 @@ require 'openc3/models/note_model'
 require 'time'
 
 class NotesController < ApplicationController
+  NOT_FOUND = 'not found'
+
   def initialize
+    super()
     @model_class = OpenC3::NoteModel
   end
 
@@ -46,7 +49,7 @@ class NotesController < ApplicationController
       else
         json = @model_class.all(scope: params[:scope])
       end
-      render json: json, status: 200
+      render json: json
     end
   end
 
@@ -84,7 +87,7 @@ class NotesController < ApplicationController
       model = @model_class.from_json(hash.symbolize_keys, scope: params[:scope])
       model.create
       OpenC3::Logger.info(
-        "Note created: #{model}",
+        "Note created: #{hash}",
         scope: params[:scope],
         user: username(),
       )
@@ -109,9 +112,9 @@ class NotesController < ApplicationController
     action do
       model_hash = @model_class.get(start: params[:id].to_i, scope: params[:scope])
       if model_hash
-        render json: model_hash, status: 200
+        render json: model_hash
       else
-        render json: { status: 'error', message: 'not found' }, status: 404
+        render json: { status: 'error', message: NOT_FOUND }, status: 404
       end
     end
   end
@@ -143,7 +146,7 @@ class NotesController < ApplicationController
     action do
       hash = @model_class.get(start: params[:id].to_i, scope: params[:scope])
       if hash.nil?
-        render json: { status: 'error', message: 'not found' }, status: 404
+        render json: { status: 'error', message: NOT_FOUND }, status: 404
         return
       end
       model = @model_class.from_json(hash.symbolize_keys, scope: params[:scope])
@@ -158,11 +161,11 @@ class NotesController < ApplicationController
         description: hash['description'],
       )
       OpenC3::Logger.info(
-        "Note updated: #{model}",
+        "Note updated: #{hash}",
         scope: params[:scope],
         user: username(),
       )
-      render json: model.as_json(:allow_nan => true), status: 200
+      render json: model.as_json(:allow_nan => true)
     end
   end
 
@@ -170,7 +173,7 @@ class NotesController < ApplicationController
   #
   # scope [String] the scope of the timeline, `TEST`
   # id [String] the score or id of the activity, `1620248449`
-  # @return [String] object/hash converted into json format but with a 204 no-content status code
+  # @return [String] object/hash converted into json format but with a 200 status code
   # Request Headers
   # ```json
   #  {
@@ -183,7 +186,7 @@ class NotesController < ApplicationController
     action do
       count = @model_class.destroy(start: params[:id].to_i, scope: params[:scope])
       if count == 0
-        render json: { status: 'error', message: 'not found' }, status: 404
+        render json: { status: 'error', message: NOT_FOUND }, status: 404
         return
       end
       OpenC3::Logger.info(
@@ -191,7 +194,7 @@ class NotesController < ApplicationController
         scope: params[:scope],
         user: username(),
       )
-      render json: { 'status' => count }, status: 204
+      render json: { status: count }
     end
   end
 
@@ -210,7 +213,7 @@ class NotesController < ApplicationController
   #     raise SortedInputError "Must include description value" if description.nil?
   #     model_array = @model_class.range(scope: params[:scope], start: start, stop: stop)
   #     model_array.find { |model| model.description.include? description }
-  #     render :json => model_array, :status => 200
+  #     render json: model_array
   #   end
   # end
 
@@ -221,6 +224,7 @@ class NotesController < ApplicationController
     begin
       yield
     rescue ArgumentError, TypeError => e
+      log_error(e)
       render json: {
                status: 'error',
                message: "Invalid input: #{e.message}",
@@ -228,6 +232,7 @@ class NotesController < ApplicationController
              },
              status: 400
     rescue OpenC3::SortedError => e
+      log_error(e)
       render json: {
                status: 'error',
                message: e.message,
@@ -235,6 +240,7 @@ class NotesController < ApplicationController
              },
              status: 400
     rescue StandardError => e
+      log_error(e)
       render json: {
                status: 'error',
                message: e.message,

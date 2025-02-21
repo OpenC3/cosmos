@@ -172,6 +172,7 @@ module OpenC3
     # Undo the actions of deploy and remove the model from OpenC3.
     # Subclasses must implement this as by default it is a noop.
     def undeploy
+      # empty for a reason
     end
 
     # Delete the model from the Store

@@ -207,7 +207,7 @@ class TemplateProtocol(TerminatedProtocol):
                 self.response_template = None
                 self.response_packet = None
                 self.response_target_name = None
-        except AttributeError:
+        except Exception:
             # If there is no response template we set to nil
             self.response_template = None
             self.response_packet = None
@@ -219,7 +219,7 @@ class TemplateProtocol(TerminatedProtocol):
         raw_packet = Packet(None, None)
         raw_packet.buffer = bytes(self.template, "ascii")
         raw_packet = super().write_packet(raw_packet)
-        if type(raw_packet) is str:
+        if isinstance(raw_packet, str):
             return raw_packet
 
         data = raw_packet.buffer

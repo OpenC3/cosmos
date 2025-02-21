@@ -127,7 +127,9 @@ module OpenC3
       end
     end
 
-    def get_download_url(path, scope: $openc3_scope)
+    # These are helper methods ... should not be used directly
+
+    def _get_download_url(path, scope: $openc3_scope)
       targets = "targets_modified" # First try targets_modified
       response = $api_server.request('get', "/openc3-api/storage/exists/#{scope}/#{targets}/#{path}", query: { bucket: 'OPENC3_CONFIG_BUCKET' }, scope: scope)
       if response.status != 200
@@ -142,8 +144,6 @@ module OpenC3
       result = _get_presigned_request(endpoint, external: true, scope: scope)
       return result['url']
     end
-
-    # These are helper methods ... should not be used directly
 
     def _get_storage_file(path, scope: $openc3_scope)
       # Create Tempfile to store data

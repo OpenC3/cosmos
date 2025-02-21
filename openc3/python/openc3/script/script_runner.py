@@ -29,42 +29,37 @@ def _script_response_error(response, message, scope=OPENC3_SCOPE):
 
 def script_list(scope=OPENC3_SCOPE):
     endpoint = "/script-api/scripts"
-    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request(
-        "get", endpoint, scope=scope
-    )
+    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request("get", endpoint, scope=scope)
     if not response or response.status_code != 200:
         _script_response_error(response, "Script list request failed", scope=scope)
     else:
-        return json.loads(response.text)
+        scripts = json.loads(response.text)
+        # Remove the '*' from the script names
+        return [script.rstrip("*") for script in scripts]
 
 
 def script_syntax_check(script, scope=OPENC3_SCOPE):
-    endpoint = "/script-api/scripts/syntax"
-    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request(
-        "post", endpoint, json=True, data=script, scope=scope
-    )
+    endpoint = "/script-api/scripts/temp.py/syntax"
+    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request("post", endpoint, json=False, data=script, scope=scope)
     if not response or response.status_code != 200:
-        _script_response_error(
-            response, "Script syntax check request failed", scope=scope
-        )
+        _script_response_error(response, "Script syntax check request failed", scope=scope)
     else:
         result = json.loads(response.text)
-        if result["title"] == "Syntax Check Successful":
-            return True
+        if result.get("title") == "Syntax Check Successful":
+            result["success"] = True
         else:
-            raise result.inspect
+            result["success"] = False
+        return result
 
 
 def script_body(filename, scope=OPENC3_SCOPE):
     endpoint = f"/script-api/scripts/{filename}"
-    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request(
-        "get", endpoint, scope=scope
-    )
+    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request("get", endpoint, scope=scope)
     if not response or response.status_code != 200:
         _script_response_error(response, f"Failed to get {filename}", scope=scope)
     else:
-        script = response.text
-        return script
+        result = json.loads(response.text)
+        return result.get("contents")
 
 
 def script_run(filename, disconnect=False, environment=None, scope=OPENC3_SCOPE):
@@ -93,9 +88,7 @@ def script_run(filename, disconnect=False, environment=None, scope=OPENC3_SCOPE)
 
 def script_delete(filename, scope=OPENC3_SCOPE):
     endpoint = f"/script-api/scripts/{filename}/delete"
-    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request(
-        "post", endpoint, scope=scope
-    )
+    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request("post", endpoint, scope=scope)
     if not response or response.status_code != 200:
         _script_response_error(response, f"Failed to delete {filename}", scope=scope)
     else:
@@ -104,9 +97,7 @@ def script_delete(filename, scope=OPENC3_SCOPE):
 
 def script_lock(filename, scope=OPENC3_SCOPE):
     endpoint = f"/script-api/scripts/{filename}/lock"
-    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request(
-        "post", endpoint, scope=scope
-    )
+    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request("post", endpoint, scope=scope)
     if not response or response.status_code != 200:
         _script_response_error(response, f"Failed to lock {filename}", scope=scope)
     else:
@@ -115,31 +106,25 @@ def script_lock(filename, scope=OPENC3_SCOPE):
 
 def script_unlock(filename, scope=OPENC3_SCOPE):
     endpoint = f"/script-api/scripts/{filename}/unlock"
-    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request(
-        "post", endpoint, scope=scope
-    )
+    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request("post", endpoint, scope=scope)
     if not response or response.status_code != 200:
         _script_response_error(response, f"Failed to unlock {filename}", scope=scope)
     else:
         return True
 
 
-def script_instrumented(filename, script, scope=OPENC3_SCOPE):
-    endpoint = f"/script-api/scripts/{filename}/instrumented"
-    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request(
-        "post", endpoint, json=True, data=script, scope=scope
-    )
+def script_instrumented(script, scope=OPENC3_SCOPE):
+    endpoint = "/script-api/scripts/temp.py/instrumented"
+    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request("post", endpoint, json=False, data=script, scope=scope)
     if not response or response.status_code != 200:
-        _script_response_error(
-            response, "Script instrumented request failed", scope=scope
-        )
+        _script_response_error(response, "Script instrumented request failed", scope=scope)
     else:
         result = json.loads(response.text)
-        if result["title"] == "Instrumented Script":
-            parsed = json.loads(result["description"])
-            return parsed.join("\n")
+        if result.get("title") == "Instrumented Script":
+            parsed = json.loads(result.get("description"))
+            return "\n".join(parsed)
         else:
-            raise result.inspect
+            raise result
 
 
 def script_create(filename, script, breakpoints=[], scope=OPENC3_SCOPE):
@@ -159,52 +144,36 @@ def script_create(filename, script, breakpoints=[], scope=OPENC3_SCOPE):
 
 def script_delete_all_breakpoints(scope=OPENC3_SCOPE):
     endpoint = "/script-api/breakpoints/delete/all"
-    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request(
-        "delete", endpoint, scope=scope
-    )
+    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request("delete", endpoint, scope=scope)
     if not response or response.status_code != 200:
-        _script_response_error(
-            response, "Script delete all breakpoints failed", scope=scope
-        )
+        _script_response_error(response, "Script delete all breakpoints failed", scope=scope)
     else:
         return True
 
 
 def running_script_list(scope=OPENC3_SCOPE):
     endpoint = "/script-api/running-script"
-    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request(
-        "get", endpoint, scope=scope
-    )
+    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request("get", endpoint, scope=scope)
     if not response or response.status_code != 200:
-        _script_response_error(
-            response, "Running script list request failed", scope=scope
-        )
+        _script_response_error(response, "Running script list request failed", scope=scope)
     else:
         return json.loads(response.text)
 
 
 def running_script_get(id, scope=OPENC3_SCOPE):
     endpoint = f"/script-api/running-script/{id}"
-    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request(
-        "get", endpoint, scope=scope
-    )
+    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request("get", endpoint, scope=scope)
     if not response or response.status_code != 200:
-        _script_response_error(
-            response, "Running script show request failed", scope=scope
-        )
+        _script_response_error(response, "Running script show request failed", scope=scope)
     else:
         return json.loads(response.text)
 
 
 def _running_script_action(id, action_name, scope=OPENC3_SCOPE):
     endpoint = f"/script-api/running-script/{id}/{action_name}"
-    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request(
-        "post", endpoint, scope=scope
-    )
+    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request("post", endpoint, scope=scope)
     if not response or response.status_code != 200:
-        _script_response_error(
-            response, f"Running script {action_name} request failed", scope=scope
-        )
+        _script_response_error(response, f"Running script {action_name} request failed", scope=scope)
     else:
         return True
 
@@ -243,16 +212,12 @@ def running_script_debug(id, debug_code, scope=OPENC3_SCOPE):
         "post", endpoint, json=True, data={"args": debug_code}, scope=scope
     )
     if not response or response.status_code != 200:
-        _script_response_error(
-            response, "Running script debug request failed", scope=scope
-        )
+        _script_response_error(response, "Running script debug request failed", scope=scope)
     else:
         return True
 
 
-def running_script_prompt(
-    id, method_name, answer, prompt_id, password=None, scope=OPENC3_SCOPE
-):
+def running_script_prompt(id, method_name, answer, prompt_id, password=None, scope=OPENC3_SCOPE):
     endpoint = f"/script-api/running-script/{id}/prompt"
     if password:
         response = openc3.script.SCRIPT_RUNNER_API_SERVER.request(
@@ -276,21 +241,15 @@ def running_script_prompt(
             scope=scope,
         )
     if not response or response.status_code != 200:
-        _script_response_error(
-            response, "Running script prompt request failed", scope=scope
-        )
+        _script_response_error(response, "Running script prompt request failed", scope=scope)
     else:
         return True
 
 
 def completed_script_list(scope=OPENC3_SCOPE):
     endpoint = "/script-api/completed-scripts"
-    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request(
-        "get", endpoint, scope=scope
-    )
+    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request("get", endpoint, scope=scope)
     if not response or response.status_code != 200:
-        _script_response_error(
-            response, "Completed script list request failed", scope=scope
-        )
+        _script_response_error(response, "Completed script list request failed", scope=scope)
     else:
         return json.loads(response.text)

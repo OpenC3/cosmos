@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -42,13 +42,13 @@ RSpec.describe Table, :type => :model do
       end
     end
     @s3_miss = false
-    count = 0
+    @count = 0
     allow(@s3).to receive(:get_object) do |args|
       if args[:key].include?('nope')
         raise Aws::S3::Errors::NoSuchKey.new('context','message')
       else
-        if @s3_miss and count < @s3_miss and args[:key].include?('config')
-          count += 1
+        if @s3_miss and @count < @s3_miss and args[:key].include?('config')
+          @count += 1
           nil
         else
           @get_object
@@ -187,7 +187,7 @@ RSpec.describe Table, :type => :model do
       @get_object.body.read = 'definition'
       allow(OpenC3::TableManagerCore).to receive(:report).and_return('report')
       file = Table.report('DEFAULT', 'INST/tables/bin/table.bin', 'INST/tables/config/table_def.txt')
-      expect(file.filename).to eql 'table.csv'
+      expect(file.filename).to eql 'INST/tables/bin/table.csv'
       expect(file.contents).to eql 'report'
       expect(@put_object['DEFAULT/targets_modified/INST/tables/bin/table.csv']).to eql "report"
     end
@@ -202,9 +202,9 @@ RSpec.describe Table, :type => :model do
       Dir.mkdir(tmp_dir) unless File.exist?(tmp_dir)
       allow(Dir).to receive(:mktmpdir).and_return(tmp_dir)
       file = Table.report('DEFAULT', 'INST/tables/bin/table.bin', 'INST/tables/config/table_def.txt', 'MY_TABLE')
-      expect(file.filename).to eql 'MyTable.csv'
+      expect(file.filename).to eql 'INST/tables/bin/MyTable.csv'
       expect(file.contents).to eql 'report' # Check the simple stub
-      expect(@put_object['DEFAULT/targets_modified/INST/tables/bin/table.csv']).to eql "report"
+      expect(@put_object['DEFAULT/targets_modified/INST/tables/bin/MyTable.csv']).to eql "report"
       # Real test is did we create the definition files
       files = Dir.glob("#{tmp_dir}/**/*").map {|file| File.basename(file) }
       expect(files).to include('table_def.txt')
@@ -340,6 +340,48 @@ RSpec.describe Table, :type => :model do
       @get_object.body.read = 'definition'
       # Now we're searching for something that matches and can't find it
       expect { Table.load('DEFAULT', 'INST/tables/bin/ConfigTable2.bin', 'INST/tables/config/ConfigTable_def.txt') }.to raise_error(Table::NotFound, "Definition file 'INST/tables/config/ConfigTable_def.txt' not found")
+    end
+  end
+
+  describe "get_definitions" do
+    it "looks up a definition file based on a binary filename" do
+      add_table('DEFAULT/targets/INST/tables/config/table_data.txt')
+      add_table('DEFAULT/targets/INST/tables/config/table_binary.txt')
+      add_table('DEFAULT/targets/INST/tables/config/table_data_2.txt')
+      @s3_miss = 2 # Cause S3 to miss the original and modified versions
+      @get_object.body = OpenStruct.new
+      @get_object.body.read = 'definition'
+      root_definition, definition_filename = Table.get_definitions('DEFAULT', 'INST/tables/config/table_data.txt', 'INST/tables/bin/table_data.bin')
+      expect(definition_filename).to eql 'INST/tables/config/table_data.txt'
+      @count = 0
+      root_definition, definition_filename = Table.get_definitions('DEFAULT', 'INST/tables/config/table_data.txt', 'INST/tables/bin/table_data_2.bin')
+      expect(definition_filename).to eql 'INST/tables/config/table_data_2.txt'
+      @count = 0
+      root_definition, definition_filename = Table.get_definitions('DEFAULT', 'INST/tables/config/table_data.txt', 'INST/tables/bin/table_binary.bin')
+      expect(definition_filename).to eql 'INST/tables/config/table_binary.txt'
+      @count = 0
+      root_definition, definition_filename = Table.get_definitions('DEFAULT', 'INST/tables/config/table_data.txt', 'INST/tables/bin/table_binary_additional.bin')
+      expect(definition_filename).to eql 'INST/tables/config/table_binary.txt'
+    end
+
+    it "looks up a definition file with _def based on a binary filename" do
+      add_table('DEFAULT/targets/INST/tables/config/table_data_def.txt')
+      add_table('DEFAULT/targets/INST/tables/config/table_binary_def.txt')
+      add_table('DEFAULT/targets/INST/tables/config/table_data_2_def.txt')
+      @s3_miss = 2 # Cause S3 to miss the original and modified versions
+      @get_object.body = OpenStruct.new
+      @get_object.body.read = 'definition'
+      root_definition, definition_filename = Table.get_definitions('DEFAULT', 'INST/tables/config/table_data.txt', 'INST/tables/bin/table_data.tbl')
+      expect(definition_filename).to eql 'INST/tables/config/table_data_def.txt'
+      @count = 0
+      root_definition, definition_filename = Table.get_definitions('DEFAULT', 'INST/tables/config/table_data.txt', 'INST/tables/bin/table_data_2.tbl')
+      expect(definition_filename).to eql 'INST/tables/config/table_data_2_def.txt'
+      @count = 0
+      root_definition, definition_filename = Table.get_definitions('DEFAULT', 'INST/tables/config/table_data.txt', 'INST/tables/bin/table_binary.tbl')
+      expect(definition_filename).to eql 'INST/tables/config/table_binary_def.txt'
+      @count = 0
+      root_definition, definition_filename = Table.get_definitions('DEFAULT', 'INST/tables/config/table_data.txt', 'INST/tables/bin/table_binary_additional.tbl')
+      expect(definition_filename).to eql 'INST/tables/config/table_binary_def.txt'
     end
   end
 end

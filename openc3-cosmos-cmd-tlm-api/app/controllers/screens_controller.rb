@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -19,14 +19,19 @@
 class ScreensController < ApplicationController
   def index
     return unless authorization('system')
-    render :json => Screen.all(*params.require([:scope]))
+    scope = sanitize_params([:scope])
+    return unless scope
+    scope = scope[0]
+    render json: Screen.all(scope)
   end
 
   def show
     return unless authorization('system')
-    screen = Screen.find(*params.require([:scope, :target, :screen]))
+    result = sanitize_params([:scope, :target, :screen])
+    return unless result
+    screen = Screen.find(*result)
     if screen
-      render :json => screen
+      render json: screen
     else
       head :not_found
     end
@@ -34,19 +39,27 @@ class ScreensController < ApplicationController
 
   def create
     return unless authorization('system_set')
-    screen = Screen.create(*params.require([:scope, :target, :screen, :text]))
+    result = sanitize_params([:scope, :target, :screen])
+    return unless result
+    text = params.require([:text])[0]
+    result << text
+    screen = Screen.create(*result)
     OpenC3::Logger.info("Screen saved: #{params[:target]} #{params[:screen]}", scope: params[:scope], user: username())
-    render :json => screen
+    render json: screen
   rescue => e
-    render(json: { status: 'error', message: e.message }, status: 500)
+    log_error(e)
+    render json: { status: 'error', message: e.message }, status: 500
   end
 
   def destroy
     return unless authorization('system_set')
-    screen = Screen.destroy(*params.require([:scope, :target, :screen]))
+    result = sanitize_params([:scope, :target, :screen])
+    return unless result
+    screen = Screen.destroy(*result)
     OpenC3::Logger.info("Screen deleted: #{params[:target]} #{params[:screen]}", scope: params[:scope], user: username())
     head :ok
   rescue => e
-    render(json: { status: 'error', message: e.message }, status: 500)
+    log_error(e)
+    render json: { status: 'error', message: e.message }, status: 500
   end
 end

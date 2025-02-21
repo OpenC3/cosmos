@@ -54,5 +54,25 @@ module ScriptRunnerApi
         OpenTelemetry::Instrumentation::Rack::Middlewares::TracerMiddleware
       )
     end
+
+    puts "Starting #{$0} in #{Rails.env} environment"
+
+    # Setup structured logging
+    require 'openc3/utilities/cosmos_rails_formatter'
+    # Don't set the anycable logger to info because it's way too much output
+    if $0.include?('anycable')
+      config.log_level = ENV["LOG_LEVEL"] || :error
+    else
+      config.log_level = ENV["LOG_LEVEL"] || :info
+    end
+    config.log_tags = {
+      request_id: :request_id,
+      token: -> request { request.headers['HTTP_AUTHORIZATION'] || request.query_parameters[:authorization] }
+    }
+    config.rails_semantic_logger.add_file_appender = false
+    config.semantic_logger.add_appender(
+      io: $stdout,
+      formatter: OpenC3::CosmosRailsFormatter.new
+    )
   end
 end

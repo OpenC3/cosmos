@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -23,7 +23,7 @@ require_relative 'package_audit_lib'
 require 'faraday'
 require 'faraday/follow_redirects'
 require 'dotenv'
-Dotenv.overload # Overload existing so we use .env exclusivly
+Dotenv.overload # Overload existing so we use .env exclusively
 
 version_tag = ARGV[0] || "latest"
 
@@ -35,14 +35,14 @@ minio_version = get_docker_version("openc3-minio/Dockerfile")
 # Manual list - MAKE SURE UP TO DATE especially base images
 containers = [
   # This should match the values in the .env file
-  { name: "openc3inc/openc3-ruby:#{version_tag}", base_image: "alpine:#{ENV['ALPINE_VERSION']}.#{ENV['ALPINE_BUILD']}", apk: true, gems: true },
+  { name: "openc3inc/openc3-ruby:#{version_tag}", base_image: "alpine:#{ENV['ALPINE_VERSION']}.#{ENV['ALPINE_BUILD']}", apk: true, gems: true, python: true },
   { name: "openc3inc/openc3-node:#{version_tag}", base_image: "openc3inc/openc3-ruby:#{version_tag}", apk: true },
-  { name: "openc3inc/openc3-base:#{version_tag}", base_image: "openc3inc/openc3-ruby:#{version_tag}", apk: true, gems: true },
-  { name: "openc3inc/openc3-cosmos-cmd-tlm-api:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true },
-  { name: "openc3inc/openc3-cosmos-init:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true,
-    yarn: ["/openc3/plugins/yarn.lock", "/openc3/plugins/yarn-tool-base.lock"] },
-  { name: "openc3inc/openc3-operator:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true },
-  { name: "openc3inc/openc3-cosmos-script-runner-api:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true },
+  { name: "openc3inc/openc3-base:#{version_tag}", base_image: "openc3inc/openc3-ruby:#{version_tag}", apk: true, gems: true, python: true },
+  { name: "openc3inc/openc3-cosmos-cmd-tlm-api:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true, python: true },
+  { name: "openc3inc/openc3-cosmos-init:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true, python: true,
+    yarn: ["/openc3/plugins/yarn.lock"] },
+  { name: "openc3inc/openc3-operator:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true, python: true },
+  { name: "openc3inc/openc3-cosmos-script-runner-api:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true, python: true },
   { name: "openc3inc/openc3-redis:#{version_tag}", base_image: "redis:#{redis_version}", apt: true },
   { name: "openc3inc/openc3-traefik:#{version_tag}", base_image: "traefik:#{traefik_version}", apk: true },
   { name: "openc3inc/openc3-minio:#{version_tag}", base_image: "minio/minio:#{minio_version}", rpm: true },
@@ -71,11 +71,11 @@ client = Faraday.new do |f|
   f.response :follow_redirects
 end
 check_alpine(client)
-check_container_version(client, containers, 'library/traefik')
+check_container_version(client, containers, 'traefik')
 check_minio(client, containers)
-check_container_version(client, containers, 'library/redis')
-base_pkgs = %w(import-map-overrides regenerator-runtime single-spa systemjs vue vue-router vuetify vuex)
-check_tool_base('openc3-cosmos-init/plugins/openc3-tool-base', base_pkgs)
+check_container_version(client, containers, 'redis')
+base_pkgs = %w(import-map-overrides single-spa systemjs vue vue-router vuetify vuex)
+check_tool_base('openc3-cosmos-init/plugins/packages/openc3-tool-base', base_pkgs)
 
 puts "\n*** If you update a container version re-run to ensure there aren't additional updates! ***\n\n"
 
@@ -93,6 +93,16 @@ Dir.chdir(File.join(__dir__, '../../openc3-cosmos-script-runner-api')) do
   puts `bundle outdated`
 end
 
+# Check the wheels
+Dir.chdir(File.join(__dir__, '../../openc3/python')) do
+  puts "\nChecking outdated wheels in openc3/python:"
+  puts `poetry show -o`
+end
+Dir.chdir(File.join(__dir__, '../../openc3-cosmos-init/plugins/packages/openc3-cosmos-demo')) do
+  puts "\nChecking outdated wheels in openc3-cosmos-demo:"
+  puts `python -m venv venv; source venv/bin/activate; pip install -r requirements.txt; pip list --outdated; deactivate; rm -rf venv`
+end
+
 File.open("openc3_package_report.txt", "w") do |file|
   file.write(summary_report)
   file.write(report)
@@ -100,11 +110,15 @@ end
 
 puts "\n\nRun the following:"
 puts "cd openc3-cosmos-init/plugins; yarn install; yarn upgrade-interactive --latest; cd ../.."
-puts "cd openc3-cosmos-init/plugins/openc3-tool-base; yarn install; yarn upgrade-interactive --latest; cd ../../.."
-puts "cd openc3/templates/widget; yarn install; yarn upgrade-interactive --latest; cd ../../.."
-puts "cd openc3/templates/tool_vue; yarn install; yarn upgrade-interactive --latest; cd ../../.."
-puts "cd openc3/templates/tool_react; yarn install; yarn upgrade-interactive --latest; cd ../../.."
-puts "cd openc3/templates/tool_angular; yarn install; yarn upgrade-interactive --latest; cd ../../.."
-puts "cd openc3/templates/tool_svelte; yarn install; yarn upgrade-interactive --latest; cd ../../.."
 puts "cd playwright; yarn install; yarn upgrade-interactive --latest; cd .."
+puts "cd docs.openc3.com; yarn install; yarn upgrade-interactive --latest; cd .."
+
+# Commenting this out since the templates don't really need to be updated, and updates broke them over time
+# puts "\n\nYou can run the following, but check that the templates still work if you do:"
+# puts "cd openc3/templates/widget; yarn install; yarn upgrade-interactive --latest; cd ../../.."
+# puts "cd openc3/templates/tool_vue; yarn install; yarn upgrade-interactive --latest; cd ../../.."
+# puts "cd openc3/templates/tool_react; yarn install; yarn upgrade-interactive --latest; cd ../../.."
+# puts "cd openc3/templates/tool_angular; yarn install; yarn upgrade-interactive --latest; cd ../../.."
+# puts "cd openc3/templates/tool_svelte; yarn install; yarn upgrade-interactive --latest; cd ../../.."
+
 puts "\n\n*** If you update #{base_pkgs.join(', ')} then re-run! ***\n\n"

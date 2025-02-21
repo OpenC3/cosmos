@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -26,7 +26,7 @@ require 'openc3/conversions/polynomial_conversion'
 module OpenC3
   describe PolynomialConversion, no_ext: true do
     describe 'initialize' do
-      it 'takes a coefficents array' do
+      it 'takes a coefficients array' do
         gc = PolynomialConversion.new(1, 2, 3)
         expect(gc.converted_type).to eql :FLOAT
         expect(gc.converted_bit_size).to eql 64
@@ -49,15 +49,15 @@ module OpenC3
     end
 
     describe 'as_json' do
-      it 'creates a reproducable format' do
+      it 'creates a reproducible format' do
         pc = PolynomialConversion.new(1, 2, 3)
         json = pc.as_json(:allow_nan => true)
         expect(json['class']).to eql 'OpenC3::PolynomialConversion'
         new_pc = OpenC3.const_get(json['class']).new(*json['params'])
-        expect(pc.coeffs).to eql (new_pc.coeffs)
-        expect(pc.converted_type).to eql (new_pc.converted_type)
-        expect(pc.converted_bit_size).to eql (new_pc.converted_bit_size)
-        expect(pc.converted_array_size).to eql (new_pc.converted_array_size)
+        expect(pc.coeffs).to eql(new_pc.coeffs)
+        expect(pc.converted_type).to eql(new_pc.converted_type)
+        expect(pc.converted_bit_size).to eql(new_pc.converted_bit_size)
+        expect(pc.converted_array_size).to eql(new_pc.converted_array_size)
         expect(pc.call(1, nil, nil)).to eql 6.0
         expect(new_pc.call(1, nil, nil)).to eql 6.0
       end

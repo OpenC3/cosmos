@@ -3,7 +3,7 @@ SCREEN AUTO AUTO 1.0
 VERTICAL
   TITLE Params
 
-  HORIZONTAL
+  HORIZONTAL 20
     MATRIXBYCOLUMNS 3
       LABEL VALUE5
         SETTING WIDTH 100 # Only need width on the first row
@@ -60,10 +60,17 @@ VERTICAL
         SETTING LED_COLOR GOOD GREEN
         SETTING LED_COLOR BAD RED
     END
-    SETTING RAW margin-left 20px
+    VERTICAL
+      LABELVALUE <%= target_name %> PARAMS P_2.2,2
+      LABELVALUE <%= target_name %> PARAMS P-3+3=3
+      LABELVALUE <%= target_name %> PARAMS P4!@#$%^&*?
+      LABELVALUE <%= target_name %> PARAMS P</5|\>
+      LABELVALUE <%= target_name %> PARAMS P(:6;)
+    END
   END
 
-  VERTICAL
-    LABELVALUE <%= target_name %> PARAMS PACKET_TIMEFORMATTED WITH_UNITS 20
+  HORIZONTAL
+    LABEL "Packet Time"
+    VALUE <%= target_name %> PARAMS PACKET_TIMEFORMATTED WITH_UNITS 25
   END
 END

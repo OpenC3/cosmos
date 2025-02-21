@@ -40,7 +40,6 @@ else:  # AWS
     s3_endpoint_url = f"https://s3.{AWS_REGION}.amazonaws.com"
     s3_session = boto3.session.Session(region_name=AWS_REGION)
 
-
 class AwsBucket(Bucket):
     CREATE_CHECK_COUNT = 100  # 10 seconds
 

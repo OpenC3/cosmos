@@ -6,8 +6,11 @@ MAP_TARGET:
       required: true
       description: Target name to map to this interface
       values: .+
-  example: |
+  ruby_example: |
     INTERFACE DATA_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil BURST
+      MAP_TARGET DATA
+  python_example: |
+    INTERFACE DATA_INT openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8081 10.0 nil BURST
       MAP_TARGET DATA
 MAP_CMD_TARGET:
   summary: Maps a target name to an interface for commands only
@@ -17,8 +20,11 @@ MAP_CMD_TARGET:
       required: true
       description: Command target name to map to this interface
       values: .+
-  example: |
+  ruby_example: |
     INTERFACE CMD_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil BURST
+      MAP_CMD_TARGET DATA # Only DATA commands go on the CMD_INT interface
+  python_example: |
+    INTERFACE CMD_INT openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8081 10.0 nil BURST
       MAP_CMD_TARGET DATA # Only DATA commands go on the CMD_INT interface
 MAP_TLM_TARGET:
   summary: Maps a target name to an interface for telemetry only
@@ -28,8 +34,11 @@ MAP_TLM_TARGET:
       required: true
       description: Telemetry target name to map to this interface
       values: .+
-  example: |
+  ruby_example: |
     INTERFACE TLM_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil BURST
+      MAP_TLM_TARGET DATA # Only DATA telemetry received on TLM_INT interface
+  python_example: |
+    INTERFACE TLM_INT openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8081 10.0 nil BURST
       MAP_TLM_TARGET DATA # Only DATA telemetry received on TLM_INT interface
 DONT_CONNECT:
   summary: Server will not automatically try to connect to the interface at startup
@@ -51,7 +60,7 @@ DISABLE_DISCONNECT:
   description:
     Use this keyword to prevent the user from disconnecting from the interface.
     This is typically used in a 'production' environment where you would not want
-    the user to inadvertantly disconnect from a target.
+    the user to inadvertently disconnect from a target.
 LOG_RAW:
   summary: Deprecated, use LOG_STREAM
 LOG_STREAM:
@@ -102,17 +111,18 @@ PROTOCOL:
       values: ["READ", "WRITE", "READ_WRITE"]
     - name: Protocol Filename or Classname
       required: true
-      description: Ruby filename or class name which implements the protocol
+      description: Ruby or Python filename or class name which implements the protocol
       values: .*
     - name: Protocol specific parameters
       required: false
       description: Additional parameters used by the protocol
-  example: |
+  ruby_example: |
     INTERFACE DATA_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil nil
       MAP_TARGET DATA
       # Rather than defining the LENGTH protocol on the INTERFACE line we define it here
       PROTOCOL READ LengthProtocol 0 16 0 1 BIG_ENDIAN 4 0xBA5EBA11
-    INTERFACE DATA_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil BURST
+  python_example: |
+    INTERFACE DATA_INT openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8081 10.0 nil BURST
       MAP_TARGET DATA
       PROTOCOL READ IgnorePacketProtocol INST IMAGE # Drop all INST IMAGE packets
 OPTION:
@@ -143,7 +153,9 @@ OPTION:
       OPTION LISTEN_ADDRESS 127.0.0.1
 SECRET:
   summary: Define a secret needed by this interface
-  description: Defines a secret for this interface and optionally assigns its value to an option
+  description:
+    Defines a secret for this interface and optionally assigns its value to an option.
+    For more information see [Admin Secrets](/docs/tools/admin#secrets).
   since: 5.3.0
   parameters:
     - name: Type
@@ -154,15 +166,19 @@ SECRET:
       values: .*
     - name: Secret Name
       required: true
-      description: The name of the secret to retrieve
+      description:
+        The name of the secret to retrieve from the Admin / Secrets tab.
+        For more information see [Admin Secrets](/docs/tools/admin#secrets).
       values: .*
     - name: Environment Variable or File Path
       required: true
-      description: Environment variable name or file path to store secret
+      description: Environment variable name or file path to store secret.
+        Note that if you use the Option Name to set an option to the secret value,
+        this value doesn't really matter as long as it is unique.
       values: .*
     - name: Option Name
       required: false
-      description: Interface option to pass the secret value
+      description: Interface option to pass the secret value. This is the primary way to pass secrets to interfaces.
       values: .*
     - name: Secret Store Name
       required: false
@@ -220,8 +236,8 @@ CMD:
       required: true
       description: One or more arguments to exec to run the microservice.
       values: .+
-  example: |
-    CMD ruby interface_microservice.rb DEFAULT__INTERFACE__INT1
+  ruby_example: CMD ruby interface_microservice.rb DEFAULT__INTERFACE__INT1
+  python_example: CMD python interface_microservice.py DEFAULT__INTERFACE__INT1
 CONTAINER:
   summary: Docker Container
   description: Container to execute and run the microservice in. Only used in COSMOS Enterprise Edition.
@@ -242,3 +258,14 @@ ROUTE_PREFIX:
       values: .*
   example: |
     ROUTE_PREFIX /interface
+SHARD:
+  summary: Operator shard to run target microservices on
+  description: Operator Shard. Only used if running multiple operator containers typically in Kubernetes
+  since: 6.0.0
+  parameters:
+    - name: Shard
+      required: false
+      description: Shard number starting from 0
+      values: \d+
+  example: |
+    SHARD 0

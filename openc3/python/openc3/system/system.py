@@ -66,7 +66,7 @@ class System:
             os.makedirs(f"{base_dir}/targets", exist_ok=True)
             bucket = Bucket.getClient()
             for target_name in target_names:
-                # Retrieve bucket/targets/target_name/target_id.zip
+                # Retrieve bucket/targets/target_name/<TARGET>_current.zip
                 zip_path = f"{base_dir}/targets/{target_name}_current.zip"
                 bucket_key = f"{scope}/target_archives/{target_name}/{target_name}_current.zip"
                 Logger.info(f"Retrieving {bucket_key} from targets bucket")

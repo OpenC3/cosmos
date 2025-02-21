@@ -29,11 +29,13 @@ module OpenC3
   class PythonPackageModel
     extend Api
 
+    DIST_INFO =  '.dist-info'
+
     def self.names
       paths = Dir.glob("#{ENV['PYTHONUSERBASE']}/lib/*")
       results = []
       paths.each do |path|
-        results.concat(Pathname.new(File.join(path, 'site-packages')).children.select { |c| c.directory? and File.extname(c) == '.dist-info' }.collect { |p| File.basename(p, '.dist-info') })
+        results.concat(Pathname.new(File.join(path, 'site-packages')).children.select { |c| c.directory? and File.extname(c) == DIST_INFO }.collect { |p| File.basename(p, DIST_INFO) })
       end
       return results.sort
     end
@@ -90,14 +92,20 @@ module OpenC3
         end
       end
       Logger.info "Installing python package: #{name_or_path}"
-      result = OpenC3::ProcessManager.instance.spawn(["/openc3/bin/pipinstall", "--user", "--no-warn-script-location", "-i", pypi_url, package_file_path], "package_install", package_filename, Time.now + 3600.0, scope: scope)
+      if ENV['PIP_ENABLE_TRUSTED_HOST'].nil?
+        pip_args = ["--no-warn-script-location", "-i", pypi_url, package_file_path]
+      else
+        pip_args = ["--no-warn-script-location", "-i", pypi_url, "--trusted-host", URI.parse(pypi_url).host, package_file_path]
+      end
+      result = OpenC3::ProcessManager.instance.spawn(["/openc3/bin/pipinstall"] + pip_args, "package_install", package_filename, Time.now + 3600.0, scope: scope)
       return result.name
     end
 
     def self.destroy(name, scope:)
       package_name, version = self.extract_name_and_version(name)
       Logger.info "Uninstalling package: #{name}"
-      result = OpenC3::ProcessManager.instance.spawn(["pip", "uninstall", package_name, "-y"], "package_uninstall", name, Time.now + 3600.0, scope: scope)
+      pip_args = ["-y", package_name]
+      result = OpenC3::ProcessManager.instance.spawn(["/openc3/bin/pipuninstall"] + pip_args, "package_uninstall", name, Time.now + 3600.0, scope: scope)
       return result.name
     end
 
@@ -105,7 +113,7 @@ module OpenC3
       split_name = name.split('-')
       if split_name.length > 1
         package_name = split_name[0..-2].join('-')
-        version = File.basename(split_name[-1], '.dist-info')
+        version = File.basename(split_name[-1], DIST_INFO)
       else
         package_name = name
         version = "Unknown"

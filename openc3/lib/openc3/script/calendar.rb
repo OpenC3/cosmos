@@ -23,12 +23,12 @@ module OpenC3
 
     private
 
-    def list_timelines(scope: $openc3_scope, token: $openc3_token)
+    def list_timelines(scope: $openc3_scope)
       response = $api_server.request('get', "/openc3-api/timeline", scope: scope)
       return _handle_response(response, 'Failed to list timelines')
     end
 
-    def create_timeline(name, color: nil, scope: $openc3_scope, token: $openc3_token)
+    def create_timeline(name, color: nil, scope: $openc3_scope)
       data = {}
       data['name'] = name
       data['color'] = color if color
@@ -36,19 +36,19 @@ module OpenC3
       return _handle_response(response, 'Failed to create timeline')
     end
 
-    def get_timeline(name, scope: $openc3_scope, token: $openc3_token)
+    def get_timeline(name, scope: $openc3_scope)
       response = $api_server.request('get', "/openc3-api/timeline/#{name}", scope: scope)
       return _handle_response(response, 'Failed to get timeline')
     end
 
-    def set_timeline_color(name, color, scope: $openc3_scope, token: $openc3_token)
+    def set_timeline_color(name, color, scope: $openc3_scope)
       post_data = {}
       post_data['color'] = color
       response = $api_server.request('post', "/openc3-api/timeline/#{name}/color", data: post_data, json: true, scope: scope)
       return _handle_response(response, 'Failed to set timeline color')
     end
 
-    def delete_timeline(name, force: false, scope: $openc3_scope, token: $openc3_token)
+    def delete_timeline(name, force: false, scope: $openc3_scope)
       url = "/openc3-api/timeline/#{name}"
       if force
         url += "?force=true"
@@ -57,16 +57,7 @@ module OpenC3
       return _handle_response(response, 'Failed to delete timeline')
     end
 
-    def get_timeline_activities(name, start: nil, stop: nil, scope: $openc3_scope, token: $openc3_token)
-      url = "/openc3-api/timeline/#{name}/activities"
-      if start and stop
-        url += "?start=#{start}&stop=#{stop}"
-      end
-      response = $api_server.request('get', url, scope: scope)
-      return _handle_response(response, 'Failed to get timeline activities')
-    end
-
-    def create_timeline_activity(name, kind:, start:, stop:, data: {}, scope: $openc3_scope, token: $openc3_token)
+    def create_timeline_activity(name, kind:, start:, stop:, data: {}, scope: $openc3_scope)
       kind = kind.to_s.downcase()
       kinds = %w(command script reserve)
       unless kinds.include?(kind)
@@ -81,13 +72,25 @@ module OpenC3
       return _handle_response(response, 'Failed to create timeline activity')
     end
 
-    def get_timeline_activity(name, start: nil, scope: $openc3_scope, token: $openc3_token)
-      response = $api_server.request('get', "/openc3-api/timeline/#{name}/activity/#{start}", scope: scope)
+    def get_timeline_activity(name, start, uuid, scope: $openc3_scope)
+      response = $api_server.request('get', "/openc3-api/timeline/#{name}/activity/#{start}/#{uuid}", scope: scope)
       return _handle_response(response, 'Failed to get timeline activity')
     end
 
-    def delete_timeline_activity(name, start, scope: $openc3_scope, token: $openc3_token)
-      response = $api_server.request('delete', "/openc3-api/timeline/#{name}/activity/#{start}", scope: scope)
+    def get_timeline_activities(name, start: nil, stop: nil, limit: nil, scope: $openc3_scope)
+      url = "/openc3-api/timeline/#{name}/activities"
+      if start and stop
+        url += "?start=#{start}&stop=#{stop}"
+      end
+      if limit
+        url += "?limit=#{limit}"
+      end
+      response = $api_server.request('get', url, scope: scope)
+      return _handle_response(response, 'Failed to get timeline activities')
+    end
+
+    def delete_timeline_activity(name, start, uuid, scope: $openc3_scope)
+      response = $api_server.request('delete', "/openc3-api/timeline/#{name}/activity/#{start}/#{uuid}", scope: scope)
       return _handle_response(response, 'Failed to delete timeline activity')
     end
 
@@ -98,12 +101,7 @@ module OpenC3
         result = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
         raise "#{error_message} due to #{result['message']}"
       end
-      # TODO: Not sure why the response body is empty (on delete) but check for that
-      if response.body.nil? or response.body.empty?
-        return nil
-      else
-        return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
-      end
+      return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
     end
   end
 end

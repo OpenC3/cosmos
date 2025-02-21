@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -18,21 +18,84 @@ import os
 import sys
 import time
 import json
-from datetime import datetime, timezone
+import threading
+import queue
 from openc3.microservices.microservice import Microservice
 from openc3.system.system import System
 from openc3.topics.topic import Topic
 from openc3.topics.limits_event_topic import LimitsEventTopic
 from openc3.topics.telemetry_decom_topic import TelemetryDecomTopic
 from openc3.config.config_parser import ConfigParser
-from openc3.utilities.time import to_nsec_from_epoch, from_nsec_from_epoch, formatted
+from openc3.utilities.time import to_nsec_from_epoch, from_nsec_from_epoch
+from openc3.utilities.thread_manager import ThreadManager
 from openc3.microservices.interface_decom_common import (
     handle_build_cmd,
     handle_inject_tlm,
 )
+from openc3.top_level import kill_thread
+
+
+class LimitsResponseThread:
+    def __init__(self, microservice_name, queue, logger, metric, scope):
+        self.microservice_name = microservice_name
+        self.queue = queue
+        self.logger = logger
+        self.metric = metric
+        self.scope = scope
+        self.count = 0
+        self.error_count = 0
+        self.metric.set(name="limits_response_total", value=self.count, type="counter")
+        self.metric.set(name="limits_response_error_total", value=self.error_count, type="counter")
+
+    def start(self):
+        self.thread = threading.Thread(target=self.run, daemon=True)
+        self.thread.start()
+        ThreadManager.instance().register(self.thread, stop_object=self)
+        return self.thread
+
+    def stop(self):
+        if self.thread:
+            kill_thread(self, self.thread)
+            self.thread = None
+
+    def graceful_kill(self):
+        self.queue.put([None, None, None])
+
+    def run(self):
+        try:
+            while True:
+                packet, item, old_limits_state = self.queue.get()
+                if packet is None:
+                    break
+
+                try:
+                    item.limits.response.call(packet, item, old_limits_state)
+                except Exception as error:
+                    self.error_count += 1
+                    self.metric.set(name="limits_response_error_total", value=self.error_count, type="counter")
+                    self.logger.error(
+                        f"{packet.target_name} {packet.packet_name} {item.name} Limits Response Exception!"
+                    )
+                    self.logger.error(f"Called with old_state = {old_limits_state}, new_state = {item.limits.state}")
+                    self.logger.error(repr(error))
+
+                self.count += 1
+                self.metric.set(name="limits_response_total", value=self.count, type="counter")
+        except Exception as error:
+            self.logger.error(f"{self.microservice_name}: Limits Response thread died: {repr(error)}")
+            raise error
 
 
 class DecomMicroservice(Microservice):
+    LIMITS_STATE_INDEX = {
+        "RED_LOW": 0,
+        "YELLOW_LOW": 1,
+        "YELLOW_HIGH": 2,
+        "RED_HIGH": 3,
+        "GREEN_LOW": 4,
+        "GREEN_HIGH": 5,
+    }
+
     def __init__(self, *args):
         super().__init__(*args)
         # Should only be one target, but there might be multiple decom microservices for a given target
@@ -45,8 +108,19 @@ class DecomMicroservice(Microservice):
         self.error_count = 0
         self.metric.set(name="decom_total", value=self.count, type="counter")
         self.metric.set(name="decom_error_total", value=self.error_count, type="counter")
+        self.limits_response_queue = queue.Queue()
+        self.limits_response_thread = None
 
     def run(self):
+        self.limits_response_thread = LimitsResponseThread(
+            microservice_name=self.name,
+            queue=self.limits_response_queue,
+            logger=self.logger,
+            metric=self.metric,
+            scope=self.scope,
+        )
+        self.limits_response_thread.start()
+
         self.setup_microservice_topic()
         while True:
             if self.cancel_thread:
@@ -71,11 +145,14 @@ class DecomMicroservice(Microservice):
                         self.metric.set(name="decom_total", value=self.count, type="counter")
                     self.count += 1
                 LimitsEventTopic.sync_system_thread_body(scope=self.scope)
-            except RuntimeError as error:
+            except Exception as error:
                 self.error_count += 1
                 self.metric.set(name="decom_error_total", value=self.error_count, type="counter")
                 self.error = error
                 self.logger.error(f"Decom error {repr(error)}")
+
+        self.limits_response_thread.stop()
+        self.limits_response_thread = None
 
     def decom_packet(self, topic, msg_id, msg_hash, _redis):
         # OpenC3.in_span("decom_packet") do
@@ -102,11 +179,21 @@ class DecomMicroservice(Microservice):
         if extra is not None:
             packet.extra = json.loads(extra)
         packet.buffer = msg_hash[b"buffer"]
-        packet.process()  # Run processors
-        packet.check_limits(
-            System.limits_set()
-        )  # Process all the limits and call the limits_change_callback (as necessary)
+        # Processors are user code points which must be rescued
+        # so the TelemetryDecomTopic can write the packet
+        try:
+            packet.process()  # Run processors
+        except Exception as error:
+            self.error_count += 1
+            self.metric.set(name="decom_error_total", value=self.error_count, type="counter")
+            self.error = error
+            self.logger.error(repr(error))
+        # Process all the limits and call the limits_change_callback (as necessary)
+        # check_limits also can call user code in the limits response
+        # but that is rescued separately in the limits_change_callback
+        packet.check_limits(System.limits_set())
 
+        # This is what updates the CVT
         TelemetryDecomTopic.write_packet(packet, scope=self.scope)
         diff = time.time() - start  # seconds as a float
         self.metric.set(name="decom_duration_seconds", value=diff, type="gauge", unit="seconds")
@@ -125,25 +212,34 @@ class DecomMicroservice(Microservice):
         packet_time = packet.packet_time
         if value:
             message = f"{packet.target_name} {packet.packet_name} {item.name} = {value} is {item.limits.state}"
+            if item.limits.values:
+                values = item.limits.values[System.limits_set()]
+                # Check if the state is RED_LOW, YELLOW_LOW, YELLOW_HIGH, RED_HIGH, GREEN_LOW, GREEN_HIGH
+                if DecomMicroservice.LIMITS_STATE_INDEX.get(item.limits.state, None) is not None:
+                    # Directly index into the values and return the value
+                    message += f" ({values[DecomMicroservice.LIMITS_STATE_INDEX[item.limits.state]]})"
+                elif item.limits.state == "GREEN":
+                    # If we're green we display the green range (YELLOW_LOW - YELLOW_HIGH)
+                    message += f" ({values[1]} to {values[2]})"
+                elif item.limits.state == "BLUE":
+                    # If we're blue we display the blue range (GREEN_LOW - GREEN_HIGH)
+                    message += f" ({values[4]} to {values[5]})"
         else:
             message = f"{packet.target_name} {packet.packet_name} {item.name} is disabled"
-        if packet_time:
-            message += f" ({formatted(packet.packet_time)})"
 
-        if packet_time:
-            time_nsec = to_nsec_from_epoch(packet_time)
-        else:
-            time_nsec = to_nsec_from_epoch(datetime.now(timezone.utc))
+        # Include the packet_time in the log json but not the log message
+        # Can't use isoformat because it appends "+00:00" instead of "Z"
+        time = {"packet_time": packet_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")}
         if log_change:
             match item.limits.state:
                 case "BLUE" | "GREEN" | "GREEN_LOW" | "GREEN_HIGH":
                     # Only print INFO messages if we're changing ... not on initialization
                     if old_limits_state:
-                        self.logger.info(message)
+                        self.logger.info(message, other=time)
                 case "YELLOW" | "YELLOW_LOW" | "YELLOW_HIGH":
-                    self.logger.warn(message, type=self.logger.NOTIFICATION)
+                    self.logger.warn(message, other=time, type=self.logger.NOTIFICATION)
                 case "RED" | "RED_LOW" | "RED_HIGH":
-                    self.logger.error(message, type=self.logger.ALERT)
+                    self.logger.error(message, other=time, type=self.logger.ALERT)
 
         # The openc3_limits_events topic can be listened to for all limits events, it is a continuous stream
         event = {
@@ -153,20 +249,18 @@ class DecomMicroservice(Microservice):
             "item_name": item.name,
             "old_limits_state": str(old_limits_state),
             "new_limits_state": str(item.limits.state),
-            "time_nsec": time_nsec,
+            "time_nsec": to_nsec_from_epoch(packet_time),
             "message": str(message),
         }
         LimitsEventTopic.write(event, scope=self.scope)
 
         if item.limits.response is not None:
-            try:
-                item.limits.response.call(packet, item, old_limits_state)
-            except RuntimeError as error:
-                self.error = error
-                self.logger.error(f"{packet.target_name} {packet.packet_name} {item.name} Limits Response Exception!")
-                self.logger.error(f"Called with old_state = {old_limits_state}, new_state = {item.limits.state}")
-                self.logger.error(repr(error))
+            copied_packet = packet.deep_copy()
+            copied_item = packet.items[item.name]
+            self.limits_response_queue.put([copied_packet, copied_item, old_limits_state])
 
 
 if os.path.basename(__file__) == os.path.basename(sys.argv[0]):
     DecomMicroservice.class_run()
+    ThreadManager.instance().shutdown()
+    ThreadManager.instance().join()

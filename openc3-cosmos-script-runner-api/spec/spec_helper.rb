@@ -34,6 +34,8 @@
 # the additional setup, and require it from the spec files that actually need
 # it.
 
+require 'rspec'
+
 # NOTE: You MUST require simplecov before anything else!
 if !ENV['OPENC3_NO_SIMPLECOV']
   require 'simplecov'
@@ -50,6 +52,7 @@ if !ENV['OPENC3_NO_SIMPLECOV']
     root.to_s
   end
   SimpleCov.at_exit do
+    require 'openc3/top_level'
     OpenC3.disable_warnings do
       Encoding.default_external = Encoding::UTF_8
       Encoding.default_internal = nil

@@ -14,10 +14,10 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/conversions/conversion'
@@ -42,7 +42,7 @@ module OpenC3
       attr_reader :coeffs
 
       # Creates a polynomial conversion segment. Multiple Segments are used to
-      # implemnt a {SegmentedPolynomialConversion}.
+      # implement a {SegmentedPolynomialConversion}.
       #
       # @param lower_bound [Integer] The value at which point this polynomial conversion
       #   should apply. All values >= to this value will be converted using the
@@ -60,16 +60,16 @@ module OpenC3
       # @param other_segment [Segment] The segment to compare
       # @return [Integer] 1 if self.lower_bound > other_segment.lower_bound, 0
       #   if they are equal, -1 if self.lower_bound < other_segment.lower_bound
-      def <=>(other_segment)
-        return other_segment.lower_bound <=> @lower_bound
+      def <=>(other)
+        return other.lower_bound <=> @lower_bound
       end
 
       # Implement equality operator primarily for ease of testing
       #
       # @param segment [Segment] Other segment
-      def ==(other_segment)
-        @lower_bound == other_segment.lower_bound &&
-          @coeffs == other_segment.coeffs
+      def ==(other)
+        @lower_bound == other.lower_bound &&
+          @coeffs == other.coeffs
       end
 
       # Perform the polynomial conversion
@@ -93,6 +93,7 @@ module OpenC3
     #   and the other entry is an array of the coefficients for that segment.
     def initialize(segments = [])
       super()
+      @params = []
       @segments = []
       segments.each { |lower_bound, coeffs| add_segment(lower_bound, *coeffs) }
       @converted_type = :FLOAT
@@ -107,6 +108,7 @@ module OpenC3
     #   given coefficients.
     # @param coeffs [Array<Integer>] The polynomial coefficients
     def add_segment(lower_bound, *coeffs)
+      @params << [lower_bound, coeffs]
       @segments << Segment.new(lower_bound, coeffs)
       @segments.sort!
     end
@@ -159,16 +161,6 @@ module OpenC3
           "    SEG_POLY_#{read_or_write}_CONVERSION #{segment.lower_bound} #{segment.coeffs.join(' ')}\n"
       end
       config
-    end
-
-    def as_json(*a)
-      params = []
-      @segments.each do |segment|
-        params << [segment.lower_bound, segment.coeffs]
-      end
-      result = super(*a)
-      result['params'] = [params]
-      result
     end
   end
 end

@@ -22,7 +22,7 @@ RUN if [[ $OPENC3_DEPENDENCY_REGISTRY == 'docker.io' ]]; then \
   # Modify the redis user and group to be 1001
   # The default alpine redis container uses 999
   # See https://github.com/docker-library/redis/blob/master/7.2/alpine/Dockerfile
-  apk add shadow; \
+  apk add shadow bash; \
   usermod -u 1001 redis; \
   groupmod -g 1001 redis; \
   # Remove gosu to eliminate a ton of CVEs

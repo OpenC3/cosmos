@@ -24,32 +24,30 @@
   <td>
     <v-checkbox
       v-if="isCheckbox"
-      dense
+      density="compact"
       hide-details
       v-model="checkValue"
-      @change="checkboxChange"
       :disabled="!dataItem.editable"
       data-test="table-item-checkbox"
     />
     <v-select
       v-else-if="dataItem.states"
-      dense
+      density="compact"
       hide-details
       v-model="stateValue"
-      @change="stateChange"
       :items="itemStates"
       :disabled="!dataItem.editable"
       data-test="table-item-select"
     />
     <v-text-field
       v-else
-      solo
-      dense
+      variant="solo"
+      density="compact"
       single-line
       hide-no-data
       hide-details
-      @change="textChange"
-      :value="format(dataItem.value)"
+      @update:model-value="textChange"
+      :model-value="format(dataItem.value)"
       :disabled="!dataItem.editable"
       data-test="table-item-text-field"
     />
@@ -57,10 +55,10 @@
 </template>
 
 <script>
-import VWidget from '@openc3/tool-common/src/components/widgets/VWidget'
+import { FormatValueBase } from '@openc3/vue-common/widgets'
 
 export default {
-  mixins: [VWidget],
+  mixins: [FormatValueBase],
   props: {
     item: {
       type: Object,
@@ -99,26 +97,28 @@ export default {
     itemStates: function () {
       let result = []
       for (const [text, value] of Object.entries(this.dataItem.states)) {
-        result.push({ text: text, value: value })
+        result.push({ title: text, value: value })
       }
       return result
     },
   },
-  methods: {
-    checkboxChange: function () {
+  watch: {
+    checkValue: function () {
       if (this.checkValue) {
         this.$emit('change', 'CHECKED')
       } else {
         this.$emit('change', 'UNCHECKED')
       }
     },
-    stateChange: function () {
+    stateValue: function () {
       // Lookup the state key that corresponds to the value
       let state = Object.keys(this.dataItem.states).find(
         (key) => this.dataItem.states[key] === this.stateValue,
       )
       this.$emit('change', state)
     },
+  },
+  methods: {
     textChange: function (value) {
       // Set the value since we're not using v-model on the textfield
       this.dataItem.value = value
@@ -132,7 +132,7 @@ export default {
       ) {
         this.dataItem.editable = false
       }
-      return this.formatValue(value)
+      return this.formatValueBase(value)
     },
   },
 }

@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -50,10 +50,10 @@ module OpenC3
         return @packet.extra['HTTP_ERROR_PACKET']
       when /^HTTP_QUERY_/
         return nil unless @packet.extra
-        if item.key
-          query_name = item.key
+        if item.key =~ /^HTTP_QUERY_/
+          query_name = item_name[11..-1].downcase
         else
-          query_name = item_name[11..-1]
+          query_name = item.key
         end
         queries = @packet.extra['HTTP_QUERIES']
         if queries
@@ -63,10 +63,10 @@ module OpenC3
         end
       when /^HTTP_HEADER_/
         return nil unless @packet.extra
-        if item.key
-          header_name = item.key
+        if item.key =~ /^HTTP_HEADER_/
+          header_name = item_name[12..-1].downcase
         else
-          header_name = item_name[12..-1]
+          header_name = item.key
         end
         headers = @packet.extra['HTTP_HEADERS']
         if headers
@@ -99,19 +99,19 @@ module OpenC3
         @packet.extra['HTTP_ERROR_PACKET'] = value.to_s.upcase
       when /^HTTP_QUERY_/
         @packet.extra ||= {}
-        if item.key
-          query_name = item.key
+        if item.key =~ /^HTTP_QUERY_/
+          query_name = item_name[11..-1].downcase
         else
-          query_name = item_name[11..-1]
+          query_name = item.key
         end
         queries = @packet.extra['HTTP_QUERIES'] ||= {}
         queries[query_name] = value.to_s
       when /^HTTP_HEADER_/
         @packet.extra ||= {}
-        if item.key
-          header_name = item.key
+        if item.key =~ /^HTTP_HEADER_/
+          header_name = item_name[12..-1].downcase
         else
-          header_name = item_name[12..-1]
+          header_name = item.key
         end
         headers = @packet.extra['HTTP_HEADERS'] ||= {}
         headers[header_name] = value.to_s
@@ -169,7 +169,7 @@ module OpenC3
       return @body_accessor.enforce_short_buffer_allowed
     end
 
-    # If this is true it will enfore that COSMOS DERIVED items must have a
+    # If this is true it will enforce that COSMOS DERIVED items must have a
     # write_conversion to be written
     def enforce_derived_write_conversion(item)
       case item.name

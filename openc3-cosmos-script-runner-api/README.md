@@ -1,24 +1,6 @@
-# README
+# Setting up the Script Runner API
 
-This README would normally document whatever steps are necessary to get the
-application up and running.
+## Changing the service password
 
-Things you may want to cover:
-
-* Ruby version
-
-* System dependencies
-
-* Configuration
-
-* Database creation
-
-* Database initialization
-
-* How to run the test suite
-
-* Services (job queues, cache servers, search engines, etc.)
-
-* Deployment instructions
-
-* ...
+Scripts use a service password to authenticate with the rest of the COSMOS system in the open source edition.
+You should pick a new service password by setting the value of the `OPENC3_SERVICE_PASSWORD` variable in the [.env file](../.env)

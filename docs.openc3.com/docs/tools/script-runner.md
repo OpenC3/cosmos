@@ -1,5 +1,8 @@
 ---
 title: Script Runner
+description: Run Python or Ruby scripts to send commands and check telemetry
+sidebar_custom_props:
+  myEmoji: 🛠️
 ---
 
 ## Introduction
@@ -50,14 +53,14 @@ style={{"float": 'left', "margin-right": 50 + 'px', "height": 330 + 'px'}} />
 - Display started and finished scripts
 - Show environment variables
 - Show defined metadata
-- Show overriden telemetry values
+- Show overridden telemetry values
 - Perform a syntax check
 - Perform a script mnemonic check
 - View the instrumented script
 - Shows the script call stack
 - Display the [debug](script-runner.md#debugging-scripts) prompt
 - Disconnect from real interfaces
-- Delete all sccript breakpoints
+- Delete all script breakpoints
 
 The Execution Status popup lists the currently running scripts. This allows other users to connect to running scripts and follow along with the currently executing script. It also lists previously executed scripts so you can download the script log.
 
@@ -79,13 +82,25 @@ At that point the currently executing line is marked with green. If an error is 
 
 This allows checks that depend on telemetry changing to potentially be retried as telemetry is being updated live in the background. You can also click Go to continue pass the error or Stop to end the script execution.
 
+### Right Click Script
+
+Right clicking a script brings up several options:
+
+![right-click](/img/script_runner/right_click.png)
+
+'Execute selection' causes the selected piece of code to be copied to a fresh Script Runner tab and executed independently of the current script. This is useful to run a selected section of code but be careful of references to other variables that are not selected. COSMOS will not be able to reference undefined variables!
+
+'Run from here' causes everything from the current location of the cursor to be copied to a fresh Script Runner tab and executed independently of the current script. This is useful to avoid executing earlier pieces of code but be careful of references to other variables that are not selected. COSMOS will not be able to reference undefined variables!
+
+'Clear all breakpoints' allows you to quickly clear breakpoints set by clicking on the editor line number.
+
 ## Running Script Suites
 
 If a script is structured as a Suite it automatically causes Script Runner to parse the file to populate the Suite, Group, and Script drop down menus.
 
 ![Suite Script](/img/script_runner/script_suite.png)
 
-To generate a new Suite use the File -> New Test Suite and then choose either Ruby or Python to create a Suite in that language.
+To generate a new Suite use the File -> New Suite and then choose either Ruby or Python to create a Suite in that language.
 
 ### Group
 
@@ -117,7 +132,7 @@ class ExampleGroup(Group):
         print("setup")
     def script_1(self):
         print("script 1")
-    def teardown(self)
+    def teardown(self):
         print("teardown")
 ```
 
@@ -149,7 +164,7 @@ In Python:
 from openc3.script.suite import Suite, Group
 class MySuite(Suite):
     def __init__(self):
-        self.add_group('ExampleGroup')
+        self.add_group(ExampleGroup)
     def setup(self):
         print("Suite setup")
     def teardown(self):

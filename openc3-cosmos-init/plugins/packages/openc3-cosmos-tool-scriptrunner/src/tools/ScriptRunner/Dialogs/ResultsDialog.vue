@@ -23,27 +23,26 @@
 <template>
   <v-dialog v-model="show" scrollable width="800">
     <v-card>
-      <v-system-bar>
+      <v-toolbar height="24">
         <v-spacer />
         <span> Script Results </span>
         <v-spacer />
-      </v-system-bar>
+      </v-toolbar>
       <div class="pa-2">
         <v-card-text style="width: 100%; max-height: 80vh; overflow: auto">
-          <v-textarea readonly hide-details dense auto-grow :value="text" />
+          <v-textarea
+            readonly
+            hide-details
+            density="compact"
+            auto-grow
+            :model-value="text"
+          />
         </v-card-text>
       </div>
-      <v-card-actions>
+      <v-card-actions class="px-2">
         <v-spacer />
-        <v-btn class="mx-2" outlined @click="downloadResults"> Download </v-btn>
-        <v-btn
-          class="mx-2"
-          color="primary"
-          @click="show = !show"
-          ref="okButton"
-        >
-          Ok
-        </v-btn>
+        <v-btn variant="outlined" @click="downloadResults"> Download </v-btn>
+        <v-btn variant="flat" @click="show = !show" ref="okButton"> Ok </v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -55,7 +54,7 @@ import { format } from 'date-fns'
 export default {
   components: {},
   props: {
-    value: {
+    modelValue: {
       type: Boolean,
       required: true,
     },
@@ -67,10 +66,10 @@ export default {
   computed: {
     show: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value) // input is the default event when using v-model
+        this.$emit('update:modelValue', value)
       },
     },
   },

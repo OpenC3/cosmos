@@ -12,6 +12,11 @@ on:
   pull_request:
     branches: [main]
 
+# Workaround for https://github.com/aquasecurity/trivy-action/issues/389
+env:
+  TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2
+  TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db:1
+
 jobs:
   openc3-scan:
     if: ${{ github.actor != 'dependabot[bot]' }}
@@ -19,166 +24,160 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: openc3.sh build
+        id: build
         # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'
         run: ./openc3.sh build
         env:
           OPENC3_TAG: ${{ github.sha }}
       - name: Run Trivy on image ruby
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        # See https://github.com/aquasecurity/trivy-action
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-ruby:${{ github.sha }}"
-          format: "sarif"
           output: "trivy-ruby.sarif"
-          ignore-unfixed: true
-          vuln-type: "os,library"
-          scanners: "vuln"
-          severity: "CRITICAL,HIGH"
+          trivy-config: trivy.yaml
       - name: Upload Trivy scan results
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: github/codeql-action/upload-sarif@v3
         with:
           category: "openc3-ruby"
           sarif_file: "trivy-ruby.sarif"
       - name: Run Trivy on image node
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-node:${{ github.sha }}"
-          format: "sarif"
           output: "trivy-node.sarif"
-          ignore-unfixed: true
-          vuln-type: "os,library"
-          scanners: "vuln"
-          severity: "CRITICAL,HIGH"
+          trivy-config: trivy.yaml
+          # On a subsequent call to the action we know trivy is already installed so can skip this
+          skip-setup-trivy: true
       - name: Upload Trivy scan results
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: github/codeql-action/upload-sarif@v3
         with:
           category: "openc3-node"
           sarif_file: "trivy-node.sarif"
       - name: Run Trivy on image base
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-base:${{ github.sha }}"
-          format: "sarif"
           output: "trivy-base.sarif"
-          ignore-unfixed: true
-          vuln-type: "os,library"
-          scanners: "vuln"
-          severity: "CRITICAL,HIGH"
+          trivy-config: trivy.yaml
+          skip-setup-trivy: true
       - name: Upload Trivy scan results
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: github/codeql-action/upload-sarif@v3
         with:
           category: "openc3-base"
           sarif_file: "trivy-base.sarif"
       - name: Run Trivy on image cosmos-init
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-cosmos-init:${{ github.sha }}"
-          format: "sarif"
           output: "trivy-init.sarif"
-          ignore-unfixed: true
-          vuln-type: "os,library"
-          scanners: "vuln"
-          severity: "CRITICAL,HIGH"
+          trivy-config: trivy.yaml
+          skip-setup-trivy: true
       - name: Upload Trivy scan results
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: github/codeql-action/upload-sarif@v3
         with:
           category: "openc3-init"
           sarif_file: "trivy-init.sarif"
       - name: Run Trivy on image redis
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-redis:${{ github.sha }}"
-          format: "sarif"
           output: "trivy-redis.sarif"
-          ignore-unfixed: true
-          vuln-type: "os,library"
-          scanners: "vuln"
-          severity: "CRITICAL,HIGH"
+          trivy-config: trivy.yaml
+          skip-setup-trivy: true
       - name: Upload Trivy scan results
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: github/codeql-action/upload-sarif@v3
         with:
           category: "openc3-redis"
           sarif_file: "trivy-redis.sarif"
       - name: Run Trivy on image minio
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-minio:${{ github.sha }}"
-          format: "sarif"
           output: "trivy-minio.sarif"
-          ignore-unfixed: true
-          vuln-type: "os,library"
-          scanners: "vuln"
-          severity: "CRITICAL,HIGH"
+          trivy-config: trivy.yaml
+          skip-setup-trivy: true
       - name: Upload Trivy scan results
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: github/codeql-action/upload-sarif@v3
         with:
           category: "openc3-minio"
           sarif_file: "trivy-minio.sarif"
       - name: Run Trivy on image operator
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-operator:${{ github.sha }}"
-          format: "sarif"
           output: "trivy-operator.sarif"
-          ignore-unfixed: true
-          vuln-type: "os,library"
-          scanners: "vuln"
-          severity: "CRITICAL,HIGH"
+          trivy-config: trivy.yaml
+          skip-setup-trivy: true
       - name: Upload Trivy scan results
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: github/codeql-action/upload-sarif@v3
         with:
           category: "openc3-operator"
           sarif_file: "trivy-operator.sarif"
       - name: Run Trivy on image cmd-tlm-api
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-cosmos-cmd-tlm-api:${{ github.sha }}"
-          format: "sarif"
           output: "trivy-cmd-tlm-api.sarif"
-          ignore-unfixed: true
-          vuln-type: "os,library"
-          scanners: "vuln"
-          severity: "CRITICAL,HIGH"
+          trivy-config: trivy.yaml
+          skip-setup-trivy: true
       - name: Upload Trivy scan results
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: github/codeql-action/upload-sarif@v3
         with:
           category: "openc3-cmd-tlm-api"
           sarif_file: "trivy-cmd-tlm-api.sarif"
       - name: Run Trivy on image script-runner-api
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-cosmos-script-runner-api:${{ github.sha }}"
-          format: "sarif"
           output: "trivy-script-runner-api.sarif"
-          ignore-unfixed: true
-          vuln-type: "os,library"
-          scanners: "vuln"
-          severity: "CRITICAL,HIGH"
+          trivy-config: trivy.yaml
+          skip-setup-trivy: true
       - name: Upload Trivy scan results
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: github/codeql-action/upload-sarif@v3
         with:
           category: "openc3-script-runner-api"
           sarif_file: "trivy-script-runner-api.sarif"
       - name: Run Trivy on image traefik
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-traefik:${{ github.sha }}"
-          format: "sarif"
           output: "trivy-traefik.sarif"
-          ignore-unfixed: true
-          vuln-type: "os,library"
-          scanners: "vuln"
-          severity: "CRITICAL,HIGH"
+          trivy-config: trivy.yaml
+          skip-setup-trivy: true
       - name: Upload Trivy scan results
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: github/codeql-action/upload-sarif@v3
         with:
           category: "openc3-traefik"
           sarif_file: "trivy-traefik.sarif"
       - name: Run Trivy in GitHub SBOM mode and submit results to Dependency Snapshots
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: "fs"
           format: "github"
+          exit-code: 1
           output: "dependency-results.sbom.json"
           image-ref: "."
           github-pat: ${{ secrets.GITHUB_TOKEN }}

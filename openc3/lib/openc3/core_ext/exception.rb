@@ -14,14 +14,21 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 # OpenC3 specific additions to the Ruby Exception class
 class Exception
+  def filtered
+    backtrace = self.backtrace.select do |line|
+      !line.include?('lib/ruby/gems')
+    end
+    return "#{self.message}\n#{backtrace.join("\n")}"
+  end
+
   # @param hide_runtime_error_class [Boolean] Whether to hide the Exception
   #   error class if the class is RuntimeError. Other classes will continue to
   #   be printed.

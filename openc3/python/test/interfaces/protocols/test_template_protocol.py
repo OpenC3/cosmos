@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -59,100 +59,82 @@ class TestTemplateProtocol(unittest.TestCase):
         self.interface = TestTemplateProtocol.MyInterface()
 
     def test_initializes_attributes(self):
-        self.interface.add_protocol(
-            TemplateProtocol, ["0xABCD", "0xABCD"], "READ_WRITE"
-        )
+        self.interface.add_protocol(TemplateProtocol, ["0xABCD", "0xABCD"], "READ_WRITE")
         self.assertEqual(self.interface.read_protocols[0].data, b"")
 
     def test_supports_an_initial_read_delay(self):
         self.interface.stream = TestTemplateProtocol.TemplateStream()
-        self.interface.add_protocol(
-            TemplateProtocol, ["0xABCD", "0xABCD", 0, 2], "READ_WRITE"
-        )
+        self.interface.add_protocol(TemplateProtocol, ["0xABCD", "0xABCD", 0, 0.02], "READ_WRITE")
         start = time.time()
         self.interface.connect()
-        self.assertTrue(
-            self.interface.read_protocols[0].connect_complete_time >= (start + 2.0)
-        )
+        self.assertGreaterEqual(self.interface.read_protocols[0].connect_complete_time, (start + 0.02))
+        self.assertLessEqual(self.interface.read_protocols[0].connect_complete_time, (start + 0.05))
 
-    # def test_unblocks_writes_waiting_for_responses(self):
-    #     self.interface.stream = TestTemplateProtocol.TemplateStream()
-    #     self.interface.add_protocol(
-    #         TemplateProtocol, ["0xABCD", "0xABCD"], "READ_WRITE"
-    #     )
-    #     packet = Packet("TGT", "CMD")
-    #     packet.append_item("CMD_TEMPLATE", 1024, "STRING")
-    #     packet.get_item("CMD_TEMPLATE").default = "SOUR'VOLT'"
-    #     packet.append_item("RSP_TEMPLATE", 1024, "STRING")
-    #     packet.get_item("RSP_TEMPLATE").default = "<VOLTAGE>"
-    #     packet.append_item("RSP_PACKET", 1024, "STRING")
-    #     packet.get_item("RSP_PACKET").default = "READ_VOLTAGE"
-    #     packet.restore_defaults()
-    #     # write blocks waiting for the response so spawn a thread
-    #     thread = threading.Thread(target=self.interface.write, args=[packet])
-    #     thread.start()
-    #     time.sleep(0.1)
-    #     self.interface.disconnect()
-    #     time.sleep(0.1)
-    #     thread.join()
-
-    def test_ignores_all_data_during_the_connect_period(self):
-        self.interface.stream = TestTemplateProtocol.TemplateStream()
-        self.interface.add_protocol(
-            TemplateProtocol, ["0xABCD", "0xABCD", 0, 1.5], "READ_WRITE"
-        )
-        start = time.time()
-        self.interface.connect()
-        TestTemplateProtocol.read_buffer = b"\x31\x30\xAB\xCD"
-        data = self.interface.read()
-        self.assertAlmostEqual(time.time() - start, 1.5, places=1)
-        self.assertEqual(data.buffer, b"\x31\x30")
-
-    def test_waits_before_writing_during_the_initial_delay_period(self):
-        self.interface.stream = TestTemplateProtocol.TemplateStream()
-        self.interface.add_protocol(
-            TemplateProtocol, ["0xABCD", "0xABCD", 0, 1.5], "READ_WRITE"
-        )
-        packet = Packet("TGT", "CMD")
-        packet.append_item("VOLTAGE", 16, "UINT")
-        packet.get_item("VOLTAGE").default = 1
-        packet.append_item("CHANNEL", 16, "UINT")
-        packet.get_item("CHANNEL").default = 2
-        packet.append_item("CMD_TEMPLATE", 1024, "STRING")
-        packet.get_item("CMD_TEMPLATE").default = (
-            "SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)"
-        )
-        packet.restore_defaults()
-        self.interface.connect()
-        write = time.time()
-        self.interface.write(packet)
-        self.assertAlmostEqual(time.time() - write, 1.5, places=1)
-
-    def test_works_without_a_response(self):
+    def test_unblocks_writes_waiting_for_responses(self):
         self.interface.stream = TestTemplateProtocol.TemplateStream()
         self.interface.add_protocol(
             TemplateProtocol, ["0xABCD", "0xABCD"], "READ_WRITE"
         )
         packet = Packet("TGT", "CMD")
+        packet.append_item("CMD_TEMPLATE", 1024, "STRING")
+        packet.get_item("CMD_TEMPLATE").default = "SOUR'VOLT'"
+        packet.append_item("RSP_TEMPLATE", 1024, "STRING")
+        packet.get_item("RSP_TEMPLATE").default = "<VOLTAGE>"
+        packet.append_item("RSP_PACKET", 1024, "STRING")
+        packet.get_item("RSP_PACKET").default = "READ_VOLTAGE"
+        packet.restore_defaults()
+        # write blocks waiting for the response so spawn a thread
+        thread = threading.Thread(target=self.interface.write, args=[packet])
+        thread.start()
+        time.sleep(0.001)
+        self.interface.disconnect()
+        thread.join()
+
+    def test_ignores_all_data_during_the_connect_period(self):
+        self.interface.stream = TestTemplateProtocol.TemplateStream()
+        self.interface.add_protocol(TemplateProtocol, ["0xABCD", "0xABCD", 0, 0.01], "READ_WRITE")
+        start = time.time()
+        self.interface.connect()
+        TestTemplateProtocol.read_buffer = b"\x31\x30\xAB\xCD"
+        data = self.interface.read()
+        self.assertAlmostEqual(time.time() - start, 0.01, places=1)
+        self.assertEqual(data.buffer, b"\x31\x30")
+
+    def test_waits_before_writing_during_the_initial_delay_period(self):
+        self.interface.stream = TestTemplateProtocol.TemplateStream()
+        self.interface.add_protocol(TemplateProtocol, ["0xABCD", "0xABCD", 0, 0.02], "READ_WRITE")
+        packet = Packet("TGT", "CMD")
         packet.append_item("VOLTAGE", 16, "UINT")
         packet.get_item("VOLTAGE").default = 1
         packet.append_item("CHANNEL", 16, "UINT")
         packet.get_item("CHANNEL").default = 2
         packet.append_item("CMD_TEMPLATE", 1024, "STRING")
-        packet.get_item("CMD_TEMPLATE").default = (
-            "SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)"
-        )
+        packet.get_item("CMD_TEMPLATE").default = "SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)"
+        packet.restore_defaults()
+        self.interface.connect()
+        write = time.time()
+        self.interface.write(packet)
+        self.assertAlmostEqual(time.time() - write, 0.02, places=1)
+
+    def test_works_without_a_response(self):
+        self.interface.stream = TestTemplateProtocol.TemplateStream()
+        self.interface.add_protocol(TemplateProtocol, ["0xABCD", "0xABCD"], "READ_WRITE")
+        packet = Packet("TGT", "CMD")
+        packet.append_item("VOLTAGE", 16, "UINT")
+        packet.get_item("VOLTAGE").default = 1
+        packet.append_item("CHANNEL", 16, "UINT")
+        packet.get_item("CHANNEL").default = 2
+        packet.append_item("CMD_TEMPLATE", 1024, "STRING")
+        packet.get_item("CMD_TEMPLATE").default = "SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)"
         packet.restore_defaults()
         self.interface.write(packet)
-        self.assertEqual(
-            TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 1, (self.2)\xAB\xCD"
-        )
+        self.assertEqual(TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 1, (self.2)\xAB\xCD")
 
     def test_logs_an_error_if_it_doesnt_receive_a_response(self):
         self.interface.stream = TestTemplateProtocol.TemplateStream()
         self.interface.add_protocol(
             TemplateProtocol,
-            ["0xA", "0xA", 0, None, 1, True, 0, None, False, 1.5],
+            ["0xA", "0xA", 0, None, 1, True, 0, None, False, 0.03],
             "READ_WRITE",
         )
         self.interface.target_names = ["TGT"]
@@ -172,13 +154,13 @@ class TestTemplateProtocol(unittest.TestCase):
                 "Timeout waiting for response",
                 stdout.getvalue(),
             )
-        self.assertAlmostEqual(time.time() - start, 1.5, places=1)
+        self.assertAlmostEqual(time.time() - start, 0.03, places=1)
 
     def test_disconnects_if_it_doesnt_receive_a_response(self):
         self.interface.stream = TestTemplateProtocol.TemplateStream()
         self.interface.add_protocol(
             TemplateProtocol,
-            ["0xA", "0xA", 0, None, 1, True, 0, None, False, 1.5, 0.02, True],
+            ["0xA", "0xA", 0, None, 1, True, 0, None, False, 0.04, 0.02, True],
             "READ_WRITE",
         )
         self.interface.target_names = ["TGT"]
@@ -194,7 +176,7 @@ class TestTemplateProtocol(unittest.TestCase):
         start = time.time()
         with self.assertRaisesRegex(RuntimeError, "Timeout waiting for response"):
             self.interface.write(packet)
-        self.assertAlmostEqual(time.time() - start, 1.5, places=1)
+        self.assertAlmostEqual(time.time() - start, 0.04, places=1)
 
     def test_doesnt_expect_responses_for_empty_response_fields(self):
         self.interface.stream = TestTemplateProtocol.TemplateStream()
@@ -240,9 +222,7 @@ class TestTemplateProtocol(unittest.TestCase):
         packet.append_item("CHANNEL", 16, "UINT")
         packet.get_item("CHANNEL").default = 1
         packet.append_item("CMD_TEMPLATE", 1024, "STRING")
-        packet.get_item("CMD_TEMPLATE").default = (
-            "SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)"
-        )
+        packet.get_item("CMD_TEMPLATE").default = "SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)"
         packet.append_item("RSP_TEMPLATE", 1024, "STRING")
         packet.get_item("RSP_TEMPLATE").default = "<VOLTAGE>"
         packet.append_item("RSP_PACKET", 1024, "STRING")
@@ -253,16 +233,14 @@ class TestTemplateProtocol(unittest.TestCase):
         TestTemplateProtocol.read_buffer = b"\x31\x30\xAB\xCD"  # ASCII 31, 30 is '10'
 
         def do_read(self):
-            time.sleep(0.5)
+            time.sleep(0.001)
             self.read_result = self.interface.read()
 
         thread = threading.Thread(target=do_read, args=[self])
         thread.start()
         self.interface.write(packet)
-        time.sleep(0.55)
-        self.assertEqual(
-            TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 11, (self.1)\xAB\xCD"
-        )
+        time.sleep(0.003)
+        self.assertEqual(TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 11, (self.1)\xAB\xCD")
         self.assertEqual(self.read_result.read("VOLTAGE"), (10))
 
     @patch("openc3.interfaces.protocols.template_protocol.System")
@@ -285,18 +263,14 @@ class TestTemplateProtocol(unittest.TestCase):
         )
         self.interface.target_names = ["TGT"]
         packet = Packet("TGT", "CMD")
-        packet.append_item(
-            "CMD_ID", 16, "UINT", None, "BIG_ENDIAN", "ERROR", None, None, None, 1
-        )  # ID == 1
+        packet.append_item("CMD_ID", 16, "UINT", None, "BIG_ENDIAN", "ERROR", None, None, None, 1)  # ID == 1
         packet.get_item("CMD_ID").default = 1
         packet.append_item("VOLTAGE", 16, "UINT")
         packet.get_item("VOLTAGE").default = 11
         packet.append_item("CHANNEL", 16, "UINT")
         packet.get_item("CHANNEL").default = 1
         packet.append_item("CMD_TEMPLATE", 1024, "STRING")
-        packet.get_item("CMD_TEMPLATE").default = (
-            "SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)"
-        )
+        packet.get_item("CMD_TEMPLATE").default = "SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)"
         packet.append_item("RSP_TEMPLATE", 1024, "STRING")
         packet.get_item("RSP_TEMPLATE").default = "<VOLTAGE>"
         packet.append_item("RSP_PACKET", 1024, "STRING")
@@ -307,19 +281,15 @@ class TestTemplateProtocol(unittest.TestCase):
         TestTemplateProtocol.read_buffer = b"\x31\x30\xAB\xCD"  # ASCII 31, 30 is '10'
 
         def do_read(self):
-            time.sleep(0.5)
+            time.sleep(0.001)
             self.read_result = self.interface.read()
 
         thread = threading.Thread(target=do_read, args=[self])
         thread.start()
         self.interface.write(packet)
-        time.sleep(0.55)
-        self.assertEqual(
-            TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 11, (self.1)\xAB\xCD"
-        )
-        self.assertEqual(
-            self.read_result.read("PKT_ID"), (1)
-        )  # Result ID set to the defined value)
+        time.sleep(0.003)
+        self.assertEqual(TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 11, (self.1)\xAB\xCD")
+        self.assertEqual(self.read_result.read("PKT_ID"), (1))  # Result ID set to the defined value)
         self.assertEqual(self.read_result.read("VOLTAGE"), (10))
 
     @patch("openc3.interfaces.protocols.template_protocol.System")
@@ -343,22 +313,16 @@ class TestTemplateProtocol(unittest.TestCase):
         )
         self.interface.target_names = ["TGT"]
         packet = Packet("TGT", "CMD")
-        packet.append_item(
-            "APID", 16, "UINT", None, "BIG_ENDIAN", "ERROR", None, None, None, 1
-        )  # ID == 1
+        packet.append_item("APID", 16, "UINT", None, "BIG_ENDIAN", "ERROR", None, None, None, 1)  # ID == 1
         packet.get_item("APID").default = 1
-        packet.append_item(
-            "PKTID", 16, "UINT", None, "BIG_ENDIAN", "ERROR", None, None, None, 2
-        )  # ID == 2
+        packet.append_item("PKTID", 16, "UINT", None, "BIG_ENDIAN", "ERROR", None, None, None, 2)  # ID == 2
         packet.get_item("PKTID").default = 2
         packet.append_item("VOLTAGE", 16, "UINT")
         packet.get_item("VOLTAGE").default = 11
         packet.append_item("CHANNEL", 16, "UINT")
         packet.get_item("CHANNEL").default = 1
         packet.append_item("CMD_TEMPLATE", 1024, "STRING")
-        packet.get_item("CMD_TEMPLATE").default = (
-            "SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)"
-        )
+        packet.get_item("CMD_TEMPLATE").default = "SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)"
         packet.append_item("RSP_TEMPLATE", 1024, "STRING")
         packet.get_item("RSP_TEMPLATE").default = "<VOLTAGE>"
         packet.append_item("RSP_PACKET", 1024, "STRING")
@@ -372,23 +336,17 @@ class TestTemplateProtocol(unittest.TestCase):
         TestTemplateProtocol.read_buffer = b"\x31\x30\xAB\xCD"  # ASCII 31, 30 is '10'
 
         def do_read(self):
-            time.sleep(0.5)
+            time.sleep(0.001)
             self.read_result = self.interface.read()
 
         thread = threading.Thread(target=do_read, args=[self])
         thread.start()
 
         self.interface.write(packet)
-        time.sleep(0.55)
-        self.assertEqual(
-            TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 11, (self.1)\xAB\xCD"
-        )
-        self.assertEqual(
-            self.read_result.read("APID"), (10)
-        )  # ID item set to the defined value)
-        self.assertEqual(
-            self.read_result.read("PKTID"), (20)
-        )  # ID item set to the defined value)
+        time.sleep(0.003)
+        self.assertEqual(TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 11, (self.1)\xAB\xCD")
+        self.assertEqual(self.read_result.read("APID"), (10))  # ID item set to the defined value)
+        self.assertEqual(self.read_result.read("PKTID"), (20))  # ID item set to the defined value)
 
     @patch("openc3.interfaces.protocols.template_protocol.System")
     def test_handles_templates_with_more_values_than_the_response(self, mock_system):
@@ -414,9 +372,7 @@ class TestTemplateProtocol(unittest.TestCase):
         packet.append_item("CHANNEL", 16, "UINT")
         packet.get_item("CHANNEL").default = 2
         packet.append_item("CMD_TEMPLATE", 1024, "STRING")
-        packet.get_item("CMD_TEMPLATE").default = (
-            "SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)"
-        )
+        packet.get_item("CMD_TEMPLATE").default = "SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)"
         packet.append_item("RSP_TEMPLATE", 1024, "STRING")
         packet.get_item("RSP_TEMPLATE").default = "<VOLTAGE>;<CURRENT>"
         packet.append_item("RSP_PACKET", 1024, "STRING")
@@ -426,22 +382,20 @@ class TestTemplateProtocol(unittest.TestCase):
         TestTemplateProtocol.read_buffer = b"\x31\x30\xAB\xCD"  # ASCII 31, 30 is '10'
 
         def do_read(self):
-            time.sleep(0.5)
+            time.sleep(0.001)
             self.read_result = self.interface.read()
 
         thread = threading.Thread(target=do_read, args=[self])
         thread.start()
         for stdout in capture_io():
             self.interface.write(packet)
-            time.sleep(0.55)
+            time.sleep(0.003)
             self.assertIn(
                 "Unexpected response:",
                 stdout.getvalue(),
             )
 
-        self.assertEqual(
-            TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 12, (self.2)\xAB\xCD"
-        )
+        self.assertEqual(TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 12, (self.2)\xAB\xCD")
 
     @patch("openc3.interfaces.protocols.template_protocol.System")
     def test_handles_responses_with_more_values_than_the_template(self, mock_system):
@@ -467,21 +421,17 @@ class TestTemplateProtocol(unittest.TestCase):
         packet.append_item("CHANNEL", 16, "UINT")
         packet.get_item("CHANNEL").default = 2
         packet.append_item("CMD_TEMPLATE", 1024, "STRING")
-        packet.get_item("CMD_TEMPLATE").default = (
-            "SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)"
-        )
+        packet.get_item("CMD_TEMPLATE").default = "SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)"
         packet.append_item("RSP_TEMPLATE", 1024, "STRING")
         packet.get_item("RSP_TEMPLATE").default = "<VOLTAGE>"
         packet.append_item("RSP_PACKET", 1024, "STRING")
         packet.get_item("RSP_PACKET").default = "READ_VOLTAGE"
         packet.restore_defaults()
         self.interface.connect()
-        TestTemplateProtocol.read_buffer = (
-            b"\x31\x30\x3B\x31\x31\xAB\xCD"  # ASCII is '10;11'
-        )
+        TestTemplateProtocol.read_buffer = b"\x31\x30\x3B\x31\x31\xAB\xCD"  # ASCII is '10;11'
 
         def do_read(self):
-            time.sleep(0.5)
+            time.sleep(0.001)
             self.read_result = self.interface.read()
 
         thread = threading.Thread(target=do_read, args=[self])
@@ -489,15 +439,13 @@ class TestTemplateProtocol(unittest.TestCase):
 
         for stdout in capture_io():
             self.interface.write(packet)
-            time.sleep(0.55)
+            time.sleep(0.003)
             self.assertIn(
                 "Could not write value 10;11",
                 stdout.getvalue(),
             )
 
-        self.assertEqual(
-            TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 12, (self.2)\xAB\xCD"
-        )
+        self.assertEqual(TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 12, (self.2)\xAB\xCD")
 
     @patch("openc3.interfaces.protocols.template_protocol.System")
     def test_ignores_response_lines(self, mock_system):
@@ -519,9 +467,7 @@ class TestTemplateProtocol(unittest.TestCase):
         packet.append_item("CHANNEL", 16, "UINT")
         packet.get_item("CHANNEL").default = 20
         packet.append_item("CMD_TEMPLATE", 1024, "STRING")
-        packet.get_item("CMD_TEMPLATE").default = (
-            "SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)"
-        )
+        packet.get_item("CMD_TEMPLATE").default = "SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)"
         packet.append_item("RSP_TEMPLATE", 1024, "STRING")
         packet.get_item("RSP_TEMPLATE").default = "<VOLTAGE>"
         packet.append_item("RSP_PACKET", 1024, "STRING")
@@ -529,20 +475,16 @@ class TestTemplateProtocol(unittest.TestCase):
         packet.restore_defaults()
         self.interface.connect()
         self.read_result = None
-        TestTemplateProtocol.read_buffer = (
-            b"\x31\x30\x0A\x31\x32\x0A"  # ASCII: 30:'0', 31:'1', etc
-        )
+        TestTemplateProtocol.read_buffer = b"\x31\x30\x0A\x31\x32\x0A"  # ASCII: 30:'0', 31:'1', etc
 
         def do_read(self):
-            time.sleep(0.5)
+            time.sleep(0.001)
             self.read_result = self.interface.read()
 
         thread = threading.Thread(target=do_read, args=[self])
         thread.start()
         self.interface.write(packet)
-        self.assertEqual(
-            TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 11, (self.20)\xAD"
-        )
+        self.assertEqual(TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 11, (self.20)\xAD")
         self.assertEqual(self.read_result.read("VOLTAGE"), 12)
 
     @patch("openc3.interfaces.protocols.template_protocol.System")
@@ -557,9 +499,7 @@ class TestTemplateProtocol(unittest.TestCase):
         mock_system.telemetry = Telemetry(pc, mock_system)
 
         self.interface.stream = TestTemplateProtocol.TemplateStream()
-        self.interface.add_protocol(
-            TemplateProtocol, ["0xAD", "0xA", 0, None, 2], "READ_WRITE"
-        )
+        self.interface.add_protocol(TemplateProtocol, ["0xAD", "0xA", 0, None, 2], "READ_WRITE")
         self.interface.target_names = ["TGT"]
         packet = Packet("TGT", "CMD")
         packet.append_item("CMD_TEMPLATE", 1024, "STRING")
@@ -574,7 +514,7 @@ class TestTemplateProtocol(unittest.TestCase):
         TestTemplateProtocol.read_buffer = b"\x4F\x70\x65\x0A\x6E\x43\x33\x0A"  # ASCII
 
         def do_read(self):
-            time.sleep(0.5)
+            time.sleep(0.001)
             self.read_result = self.interface.read()
 
         thread = threading.Thread(target=do_read, args=[self])

@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -83,12 +83,13 @@ class TestCmdApi(unittest.TestCase):
         model.create()
         InterfaceStatusModel.set(self.interface.as_json(), scope="DEFAULT")
 
-        self.thread = InterfaceCmdHandlerThread(self.interface, None, scope="DEFAULT")
-        self.thread.start()
-        time.sleep(0.5)
+        self.icht = InterfaceCmdHandlerThread(self.interface, None, scope="DEFAULT")
+        self.thread = self.icht.start()
+        time.sleep(0.001)
 
-    def tearDown(self) -> None:
-        self.thread.stop()
+    def tearDown(self):
+        self.icht.graceful_kill()
+        self.thread.join()
 
     def test_cmd_complains_about_unknown_targets_commands_and_parameters(self):
         with self.assertRaisesRegex(RuntimeError, "does not exist"):
@@ -109,13 +110,9 @@ class TestCmdApi(unittest.TestCase):
         ]:
             func = globals()[name]
             if "raw" in name:
-                target_name, cmd_name, params = func(
-                    "inst Collect with type 0, Duration 5"
-                )
+                target_name, cmd_name, params = func("inst Collect with type 0, Duration 5")
             else:
-                target_name, cmd_name, params = func(
-                    "inst Collect with type NORMAL, Duration 5"
-                )
+                target_name, cmd_name, params = func("inst Collect with type NORMAL, Duration 5")
             self.assertEqual(target_name, "INST")
             self.assertEqual(cmd_name, "COLLECT")
             if "raw" in name:
@@ -166,13 +163,9 @@ class TestCmdApi(unittest.TestCase):
         ]:
             func = globals()[name]
             if "raw" in name:
-                target_name, cmd_name, params = func(
-                    "inst", "Collect", {"TYPE": 0, "Duration": 5}
-                )
+                target_name, cmd_name, params = func("inst", "Collect", {"TYPE": 0, "Duration": 5})
             else:
-                target_name, cmd_name, params = func(
-                    "inst", "Collect", {"TYPE": "NORMAL", "Duration": 5}
-                )
+                target_name, cmd_name, params = func("inst", "Collect", {"TYPE": "NORMAL", "Duration": 5})
             self.assertEqual(target_name, "INST")
             self.assertEqual(cmd_name, "COLLECT")
             if "raw" in name:
@@ -337,10 +330,8 @@ class TestCmdApi(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "Must be numeric"):
                 func("INST", "ABORT", timeout="YES")
             self.process = False
-            with self.assertRaisesRegex(
-                RuntimeError, "Timeout of 5s waiting for cmd ack"
-            ):
-                func("INST", "ABORT")
+            with self.assertRaisesRegex(RuntimeError, "Timeout of 0.003s waiting for cmd ack"):
+                func("INST", "ABORT", timeout=0.003)
 
     def test_cmd_log_message_output(self):
         for name in [
@@ -357,21 +348,50 @@ class TestCmdApi(unittest.TestCase):
 
             for stdout in capture_io():
                 if "raw" in name:
-                    func("INST COLLECT with CCSDSVER 0, TYPE 0")
+                    func("INST COLLECT with TYPE 0, DURATION 5")
                 else:
-                    func("INST COLLECT with CCSDSVER 0, TYPE NORMAL")
+                    func("INST COLLECT with TYPE NORMAL, DURATION 5")
                 self.assertIn(
                     "INST COLLECT",
                     stdout.getvalue(),
                 )
-                # Check that the ignored parameters do not appear
+                # Check that various other parameters do not appear
                 self.assertNotIn(
                     "CCSDSVER",
                     stdout.getvalue(),
                 )
-                # Check that the regular parameters do appear
+                # Check that the given parameters do appear
                 self.assertIn(
                     "TYPE",
+                    stdout.getvalue(),
+                )
+                self.assertIn(
+                    "DURATION",
+                    stdout.getvalue(),
+                )
+
+            # Test alternative syntax with dict for parameters
+            for stdout in capture_io():
+                if "raw" in name:
+                    func("INST", "COLLECT", {"TYPE": 0, "DURATION": 5})
+                else:
+                    func("INST", "COLLECT", {"TYPE": "NORMAL", "DURATION": 5})
+                self.assertIn(
+                    "INST COLLECT",
+                    stdout.getvalue(),
+                )
+                # Check that various other parameters do not appear
+                self.assertNotIn(
+                    "CCSDSVER",
+                    stdout.getvalue(),
+                )
+                # Check that the given parameters do appear
+                self.assertIn(
+                    "TYPE",
+                    stdout.getvalue(),
+                )
+                self.assertIn(
+                    "DURATION",
                     stdout.getvalue(),
                 )
 
@@ -437,18 +457,14 @@ class TestCmdApi(unittest.TestCase):
 
             # Check that array parameters are logged corre
             for stdout in capture_io():
-                func(
-                    "INST ASCIICMD with STRING 'NOOP'"
-                )  # This has DISABLE_MESSAGES applied
+                func("INST ASCIICMD with STRING 'NOOP'")  # This has DISABLE_MESSAGES applied
                 self.assertNotIn(
                     "INST ASCIICMD",
                     stdout.getvalue(),
                 )
 
             for stdout in capture_io():
-                func(
-                    "INST ASCIICMD with STRING 'NOOP'", log_message=True
-                )  # Force log message
+                func("INST ASCIICMD with STRING 'NOOP'", log_message=True)  # Force log message
                 self.assertIn(
                     "INST ASCIICMD",
                     stdout.getvalue(),
@@ -461,9 +477,7 @@ class TestCmdApi(unittest.TestCase):
             enable_cmd("INST   BLAH")
 
     def test_enable_cmd_complains_about_missing_command(self):
-        with self.assertRaisesRegex(
-            RuntimeError, "Target name and command name required"
-        ):
+        with self.assertRaisesRegex(RuntimeError, "Target name and command name required"):
             enable_cmd("INST")
 
     def test_disable_cmd_complains_about_unknown_command(self):
@@ -473,9 +487,7 @@ class TestCmdApi(unittest.TestCase):
             disable_cmd("INST   BLAH")
 
     def test_disable_cmd_complains_about_missing_command(self):
-        with self.assertRaisesRegex(
-            RuntimeError, "Target name and command name required"
-        ):
+        with self.assertRaisesRegex(RuntimeError, "Target name and command name required"):
             disable_cmd("INST")
 
     def test_enable_disable_cmd(self):
@@ -509,14 +521,12 @@ class TestCmdApi(unittest.TestCase):
         self.assertEqual(struct.unpack(">H", output["buffer"][6:8])[0], 1)
 
     def test_send_raw_raises_on_unknown_interfaces(self):
-        with self.assertRaisesRegex(
-            RuntimeError, "Interface 'BLAH_INT' does not exist"
-        ):
+        with self.assertRaisesRegex(RuntimeError, "Interface 'BLAH_INT' does not exist"):
             send_raw("BLAH_INT", b"\x00\x01\x02\x03")
 
     def test_send_raw_sends_raw_data_to_an_interface(self):
         send_raw("inst_int", b"\x00\x01\x02\x03")
-        time.sleep(0.01)
+        time.sleep(0.001)
         self.assertEqual(MyInterface.interface_data, b"\x00\x01\x02\x03")
 
     def test_get_all_commands_complains_with_a_unknown_target(self):
@@ -556,9 +566,7 @@ class TestCmdApi(unittest.TestCase):
         self.assertEqual({"value": 1, "hazardous": ""}, result["states"]["SPECIAL"])
 
     def test_get_parameter_raises_with_invalid_params(self):
-        with self.assertRaisesRegex(
-            RuntimeError, "Target name, command name and parameter name required"
-        ):
+        with self.assertRaisesRegex(RuntimeError, "Target name, command name and parameter name required"):
             get_param("INST COLLECT")
 
     def test_get_parameter_returns_parameter_hash_for_array_parameter(self):
@@ -634,9 +642,7 @@ class TestCmdApi(unittest.TestCase):
         self.assertTrue(get_cmd_hazardous("INST", "CLEAR"))
 
     def test_get_cmd_hazardous_raises_with_invalid_params(self):
-        with self.assertRaisesRegex(
-            RuntimeError, "Both Target Name and Command Name must be given"
-        ):
+        with self.assertRaisesRegex(RuntimeError, "Both Target Name and Command Name must be given"):
             get_cmd_hazardous("INST")
 
     def test_get_cmd_hazardous_raises_with_the_wrong_number_of_arguments(self):
@@ -646,44 +652,38 @@ class TestCmdApi(unittest.TestCase):
     def test_get_cmd_value_returns_command_values(self):
         now = time.time()
         cmd("INST COLLECT with TYPE NORMAL, DURATION 5")
-        time.sleep(0.01)
+        time.sleep(0.001)
         self.assertEqual(get_cmd_value("inst collect type"), "NORMAL")
         self.assertEqual(get_cmd_value("inst collect type", type="RAW"), 0)
         self.assertEqual(get_cmd_value("INST COLLECT DURATION"), 5.0)
-        self.assertAlmostEqual(
-            get_cmd_value("INST COLLECT RECEIVED_TIMESECONDS"), now, 1
-        )
+        self.assertAlmostEqual(get_cmd_value("INST COLLECT RECEIVED_TIMESECONDS"), now, 1)
         self.assertAlmostEqual(get_cmd_value("INST COLLECT PACKET_TIMESECONDS"), now, 1)
         self.assertEqual(get_cmd_value("INST COLLECT RECEIVED_COUNT"), 1)
 
         cmd("INST COLLECT with TYPE NORMAL, DURATION 7")
-        time.sleep(0.01)
+        time.sleep(0.001)
         self.assertEqual(get_cmd_value("INST COLLECT RECEIVED_COUNT"), 2)
         self.assertEqual(get_cmd_value("INST COLLECT DURATION"), 7.0)
 
     def test_get_cmd_value_returns_command_values_old_style(self):
         now = time.time()
         cmd("INST COLLECT with TYPE NORMAL, DURATION 5")
-        time.sleep(0.01)
+        time.sleep(0.001)
         self.assertEqual(get_cmd_value("inst", "collect", "type"), "NORMAL")
         self.assertEqual(get_cmd_value("INST", "COLLECT", "DURATION"), 5.0)
-        self.assertAlmostEqual(
-            get_cmd_value("INST", "COLLECT", "RECEIVED_TIMESECONDS"), now, 1
-        )
-        self.assertAlmostEqual(
-            get_cmd_value("INST", "COLLECT", "PACKET_TIMESECONDS"), now, 1
-        )
+        self.assertAlmostEqual(get_cmd_value("INST", "COLLECT", "RECEIVED_TIMESECONDS"), now, 1)
+        self.assertAlmostEqual(get_cmd_value("INST", "COLLECT", "PACKET_TIMESECONDS"), now, 1)
         self.assertEqual(get_cmd_value("INST", "COLLECT", "RECEIVED_COUNT"), 1)
 
         cmd("INST COLLECT with TYPE NORMAL, DURATION 7")
-        time.sleep(0.01)
+        time.sleep(0.001)
         self.assertEqual(get_cmd_value("INST", "COLLECT", "RECEIVED_COUNT"), 2)
         self.assertEqual(get_cmd_value("INST", "COLLECT", "DURATION"), 7.0)
 
     def test_get_cmd_time_returns_command_times(self):
         now = time.time()
         cmd("INST COLLECT with TYPE NORMAL, DURATION 5")
-        time.sleep(0.01)
+        time.sleep(0.001)
         result = get_cmd_time("inst", "collect")
         self.assertEqual(result[0], ("INST"))
         self.assertEqual(result[1], ("COLLECT"))
@@ -701,7 +701,7 @@ class TestCmdApi(unittest.TestCase):
 
         now = time.time()
         cmd("INST ABORT")
-        time.sleep(0.01)
+        time.sleep(0.001)
         result = get_cmd_time("INST")
         self.assertEqual(result[0], ("INST"))
         self.assertEqual(result[1], ("ABORT"))  # New latest is ABORT
@@ -731,7 +731,7 @@ class TestCmdApi(unittest.TestCase):
         # Send unrelated commands to ensure specific command count
         cmd("INST ABORT")
         cmd_no_hazardous_check("INST CLEAR")
-        time.sleep(0.01)
+        time.sleep(0.001)
 
         count = get_cmd_cnt("INST", "COLLECT")
         self.assertEqual(count, start + 1)
@@ -741,13 +741,13 @@ class TestCmdApi(unittest.TestCase):
     def test_get_cmd_cnts_returns_transmit_count_for_commands(self):
         cmd("INST ABORT")
         cmd("INST COLLECT with TYPE NORMAL, DURATION 5")
-        time.sleep(0.01)
+        time.sleep(0.001)
         cnts = get_cmd_cnts([["inst", "abort"], ["INST", "COLLECT"]])
         self.assertEqual(cnts, ([1, 1]))
         cmd("INST ABORT")
         cmd("INST ABORT")
         cmd("INST COLLECT with TYPE NORMAL, DURATION 5")
-        time.sleep(0.01)
+        time.sleep(0.001)
         cnts = get_cmd_cnts([["INST", "ABORT"], ["INST", "COLLECT"]])
         self.assertEqual(cnts, ([3, 2]))
 
@@ -758,7 +758,6 @@ class BuildCommand(unittest.TestCase):
     def setUp(self, mock_let, mock_system):
         redis = mock_redis(self)
         setup_system()
-        mock_s3(self)
 
         orig_xread = redis.xread
 
@@ -785,10 +784,8 @@ class BuildCommand(unittest.TestCase):
         time.sleep(0.001)
 
     def test_complains_about_unknown_targets(self):
-        with self.assertRaisesRegex(
-            RuntimeError, "Timeout of 5s waiting for cmd ack. Does target 'BLAH' exist?"
-        ):
-            build_cmd("BLAH COLLECT")
+        with self.assertRaisesRegex(RuntimeError, "Timeout of 0.001s waiting for cmd ack. Does target 'BLAH' exist?"):
+            build_cmd("BLAH COLLECT", timeout=0.001)
 
     def test_complains_about_unknown_commands(self):
         with self.assertRaisesRegex(RuntimeError, "does not exist"):
@@ -842,8 +839,6 @@ class BuildCommand(unittest.TestCase):
     def test_warns_about_out_of_range_parameters(self):
         with self.assertRaisesRegex(RuntimeError, "not in valid range"):
             build_cmd("INST COLLECT with TYPE NORMAL, DURATION 1000")
-        cmd = build_cmd(
-            "INST COLLECT with TYPE NORMAL, DURATION 1000", range_check=False
-        )
+        cmd = build_cmd("INST COLLECT with TYPE NORMAL, DURATION 1000", range_check=False)
         self.assertEqual(cmd["target_name"], "INST")
         self.assertEqual(cmd["packet_name"], "COLLECT")

@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -21,22 +21,25 @@ require 'openc3/microservices/cleanup_microservice'
 
 module OpenC3
   class ScopeCleanupMicroservice < CleanupMicroservice
-    def run
-      scope = ScopeModel.get_model(name: @scope, scope: @scope)
-
+    def get_areas_and_poll_time
+      scope = ScopeModel.get_model(name: @scope)
       areas = [
-        ["#{@scope}/text_logs", scope.text_log_retain_time],
-        ["#{@scope}/tool_logs", scope.tool_log_retain_time],
+        ["#{@scope}/text_logs/openc3_log_messages", scope.text_log_retain_time],
+        ["#{@scope}/tool_logs/sr", scope.tool_log_retain_time],
       ]
 
       if @scope == 'DEFAULT'
-        areas << ["NOSCOPE/text_logs", scope.text_log_retain_time]
-        areas << ["NOSCOPE/tool_logs", scope.tool_log_retain_time]
+        areas << ["NOSCOPE/text_logs/openc3_log_messages", scope.text_log_retain_time]
+        areas << ["NOSCOPE/tool_logs/sr", scope.tool_log_retain_time]
       end
 
-      cleanup(areas, scope.cleanup_poll_time)
+      return areas, scope.cleanup_poll_time
     end
   end
 end
 
-OpenC3::CleanupMicroservice.run if __FILE__ == $0
+if __FILE__ == $0
+  OpenC3::ScopeCleanupMicroservice.run
+  ThreadManager.instance.shutdown
+  ThreadManager.instance.join
+end

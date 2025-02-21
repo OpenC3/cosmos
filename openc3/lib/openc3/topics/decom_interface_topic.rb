@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -20,7 +20,7 @@ require 'openc3/topics/topic'
 
 module OpenC3
   class DecomInterfaceTopic < Topic
-    def self.build_cmd(target_name, cmd_name, cmd_params, range_check, raw, scope:)
+    def self.build_cmd(target_name, cmd_name, cmd_params, range_check, raw, timeout: 5, scope:)
       data = {}
       data['target_name'] = target_name.to_s.upcase
       data['cmd_name'] = cmd_name.to_s.upcase
@@ -30,13 +30,13 @@ module OpenC3
       # DecomMicroservice is listening to the DECOMINTERFACE topic and is responsible
       # for actually building the command. This was deliberate to allow this to work
       # with or without an interface.
+      ack_topic = "{#{scope}__ACKCMD}TARGET__#{target_name}"
+      Topic.update_topic_offsets([ack_topic])
       decom_id = Topic.write_topic("#{scope}__DECOMINTERFACE__{#{target_name}}",
           { 'build_cmd' => JSON.generate(data, allow_nan: true) }, '*', 100)
-      timeout = 5 # Arbitrary 5s timeout
-      ack_topic = "{#{scope}__ACKCMD}TARGET__#{target_name}"
       time = Time.now
       while (Time.now - time) < timeout
-        Topic.read_topics([ack_topic]) do |topic, msg_id, msg_hash, redis|
+        Topic.read_topics([ack_topic]) do |_topic, _msg_id, msg_hash, _redis|
           if msg_hash["id"] == decom_id
             if msg_hash["result"] == "SUCCESS"
               return msg_hash
