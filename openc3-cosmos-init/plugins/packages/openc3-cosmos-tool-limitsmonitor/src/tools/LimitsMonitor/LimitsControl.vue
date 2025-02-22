@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -413,8 +413,8 @@ export default {
       }
     },
     handleMessages(messages) {
-      for (let message of messages) {
-        message = JSON.parse(message['event'])
+      for (let json of messages) {
+        let message = JSON.parse(json['event'])
 
         // We only want to handle LIMITS_CHANGE messages
         // NOTE: The channel also sends LIMITS_SETTINGS and LIMITS_SET messages

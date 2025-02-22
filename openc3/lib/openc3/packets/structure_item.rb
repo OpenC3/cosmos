@@ -303,6 +303,7 @@ module OpenC3
     def clone
       item = super()
       item.name = self.name.clone if self.name
+      item.key = self.key.clone if self.key
       item
     end
     alias dup clone

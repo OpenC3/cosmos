@@ -52,7 +52,7 @@ class PluginsController < ModelController
         render json: { status: 'error', message: error.message }, status: 500
         logger.error(error.formatted)
       ensure
-        FileUtils.remove_entry(temp_dir) if temp_dir and File.exist?(temp_dir)
+        FileUtils.remove_entry_secure(temp_dir, true)
       end
     else
       logger.error("No file received")

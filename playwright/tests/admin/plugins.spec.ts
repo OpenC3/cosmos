@@ -248,8 +248,12 @@ test.describe(() => {
       },
     )
     // Check for Complete
-    installRegexp = new RegExp(`Processing plugin_install: ${pluginGem} - Complete`)
-    await expect(page.locator('[data-test=process-list]')).toContainText(installRegexp)
+    installRegexp = new RegExp(
+      `Processing plugin_install: ${pluginGem} - Complete`,
+    )
+    await expect(page.locator('[data-test=process-list]')).toContainText(
+      installRegexp,
+    )
 
     await expect(
       page.locator(`[data-test=plugin-list] div:has-text("${plugin}")`).first(),
@@ -266,7 +270,6 @@ test.describe(() => {
       `Loading new plugin: ${pluginGem}`,
     )
     await page.getByRole('button', { name: 'Ok' }).click()
-
 
     // ==========================================
     // Section: MODIFY PLUGIN FILES
@@ -287,17 +290,26 @@ test.describe(() => {
     await page.locator('[data-test=script-runner-file]').click()
     await page.locator('text=Save File').click()
     await expect(page.locator('text=File Save As')).toBeVisible()
-    const pwtest = page.getByText('PW_TEST')
     await page
-      .locator('.v-list-item')
-      .filter({ has: pwtest })
-      .locator('.v-list-item-action')
+      .locator('.v-list-group:has-text("PW_TEST")')
+      .first()
+      .getByRole('button')
       .click()
-    await page.getByLabel('PW_TEST').getByText('procedures').click()
-    const prepend = await page.locator('[data-test=file-open-save-filename] input').inputValue()
-    await page.locator('[data-test=file-open-save-filename] input').fill(`${prepend}/save_new.rb`)
+    await page
+      .locator('.v-list-group:has-text("PW_TEST")')
+      .first()
+      .locator('.v-list-item:has-text("procedures")')
+      .click()
+    const prepend = await page
+      .locator('[data-test=file-open-save-filename] input')
+      .inputValue()
+    await page
+      .locator('[data-test=file-open-save-filename] input')
+      .fill(`${prepend}/save_new.rb`)
     await page.locator('[data-test=file-open-save-submit-btn]').click()
-    if (await page.locator('[data-test=confirm-dialog-overwrite]').isVisible()) {
+    if (
+      await page.locator('[data-test=confirm-dialog-overwrite]').isVisible()
+    ) {
       await page.locator('[data-test=confirm-dialog-overwrite]').click()
     }
     await expect(page.locator('#sr-controls')).toContainText(
@@ -311,9 +323,7 @@ test.describe(() => {
 
     // Check that we have a link to click
     await expect(
-      page
-        .locator('[data-test=plugin-list-item]')
-        .filter({ hasText: plugin })
+      page.locator('[data-test=plugin-list-item]').filter({ hasText: plugin }),
     ).toHaveCount(1)
 
     const [download1] = await Promise.all([
@@ -385,7 +395,6 @@ test.describe(() => {
     await expect(page.locator('.v-app-bar')).toContainText('Administrator')
     await page.locator('rux-icon-apps').getByRole('img').click()
 
-
     // ==========================================
     // Section: UPGRADE THE PLUGIN
     // ==========================================
@@ -433,8 +442,12 @@ test.describe(() => {
       },
     )
     // Check for Complete
-    upgradeRegexp = new RegExp(`Processing plugin_install: ${pluginGem1} - Complete`)
-    await expect(page.locator('[data-test=process-list]')).toContainText(upgradeRegexp)
+    upgradeRegexp = new RegExp(
+      `Processing plugin_install: ${pluginGem1} - Complete`,
+    )
+    await expect(page.locator('[data-test=process-list]')).toContainText(
+      upgradeRegexp,
+    )
 
     // Check that there are no longer any links (modified targets)
     await expect(
@@ -442,7 +455,6 @@ test.describe(() => {
         `[data-test=plugin-list] div[role=listitem]:has-text("${plugin}") >> a`,
       ),
     ).toHaveCount(0)
-
 
     // ==========================================
     // Section: EDIT THE PLUGIN
@@ -495,8 +507,12 @@ test.describe(() => {
       },
     )
     // Check for Complete ... note new installs append '__<TIMESTAMP>'
-    editRegexp = new RegExp(`Processing plugin_install: ${pluginGem1}__.* - Complete`)
-    await expect(page.locator('[data-test=process-list]')).toContainText(editRegexp)
+    editRegexp = new RegExp(
+      `Processing plugin_install: ${pluginGem1}__.* - Complete`,
+    )
+    await expect(page.locator('[data-test=process-list]')).toContainText(
+      editRegexp,
+    )
     // Ensure the target list is updated to show the new name
     await expect(
       page
@@ -523,7 +539,6 @@ test.describe(() => {
     // await expect(page.locator('.v-dialog--active')).toContainText('Updating existing plugin')
     await page.locator('.v-dialog>> button:has-text("Ok")').click()
 
-
     // ==========================================
     // Section: CREATE A NEW SCREEN
     // ==========================================
@@ -547,7 +562,6 @@ test.describe(() => {
     await page.goto('/tools/admin/plugins')
     await expect(page.locator('.v-app-bar')).toContainText('Administrator')
     await page.locator('rux-icon-apps').getByRole('img').click()
-
 
     // ==========================================
     // Section: DELETE THE PLUGIN
@@ -604,7 +618,9 @@ test.describe(() => {
       .first()
       .click()
     await expect(page.locator('.v-dialog')).toContainText('Process Output')
-    await expect(page.locator('.v-dialog')).toContainText('PluginModel destroyed')
+    await expect(page.locator('.v-dialog')).toContainText(
+      'PluginModel destroyed',
+    )
     await page.locator('.v-dialog >> button:has-text("Ok")').click()
   })
 })

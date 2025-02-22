@@ -33,12 +33,13 @@ group :development, :test do
   # Call 'byebug' anywhere in the code to stop execution and get a debugger console
   gem 'byebug', platforms: [:mri, :mingw, :x64_mingw]
   gem 'rspec-rails', '~> 7.0'
+  gem 'rspec'
   gem 'simplecov', '~> 0.20'
   gem 'simplecov-cobertura', '~> 2.1'
 end
 
 group :test do
-  gem 'mock_redis', '~> 0.45'
+  gem 'mock_redis', '~> 0.47'
 end
 
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem

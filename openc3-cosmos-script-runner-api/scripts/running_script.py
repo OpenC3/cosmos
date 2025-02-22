@@ -252,6 +252,7 @@ class RunningScript:
         self.output_time = datetime.now(timezone.utc).strftime(
             RunningScript.STRFTIME_FORMAT
         )
+        self.output_time_value = time.time()
         self.state = "init"
         self.script_globals = globals()
         RunningScript.disconnect = disconnect
@@ -676,6 +677,7 @@ class RunningScript:
         self.output_time = datetime.now(timezone.utc).strftime(
             RunningScript.STRFTIME_FORMAT
         )
+        self.output_time_value = time.time()
         string = self.output_io.getvalue()
         self.output_io.truncate(0)
         self.output_io.seek(0)
@@ -976,7 +978,7 @@ class RunningScript:
             # Start Output Thread
             if not RunningScript.output_thread:
                 RunningScript.output_thread = threading.Thread(
-                    target=RunningScript.output_thread_body, daemon=True
+                    target=RunningScript.output_thread_body, args=[self], daemon=True
                 )
                 RunningScript.output_thread.start()
 
@@ -1223,7 +1225,7 @@ class RunningScript:
         while True:
             if RunningScript.cancel_output:
                 break
-            if (time.time() - self.output_time) > 5.0:
+            if (time.time() - self.output_time_value) > 5.0:
                 self.handle_output_io()
             if RunningScript.cancel_output:
                 break

@@ -118,7 +118,7 @@ module OpenC3
         end
       rescue SystemExit, SignalException
         target.stop
-        FileUtils.remove_entry(temp_dir) if File.exist?(temp_dir)
+        FileUtils.remove_entry_secure(temp_dir, true)
       end
     end
   end

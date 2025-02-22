@@ -56,7 +56,7 @@ COSMOS uses an [environment file](https://docs.docker.com/compose/environment-va
 
 Per [Kubernetes.io](https://kubernetes.io/), "Kubernetes, also known as K8s, is an open-source system for automating deployment, scaling, and management of containerized applications. It groups containers that make up an application into logical units for easy management and discovery." [COSMOS Enterprise](https://openc3.com/enterprise) provides [Helm charts](https://helm.sh/docs/topics/charts/) for easy deployment to Kubernetes in various cloud environments.
 
-COSMOS Enterprise also provides [Terraform](https://www.terraform.io/) scripts to deploy COSMOS infrastructure on various cloud environments.
+COSMOS Enterprise also provides configuration to deploy COSMOS infrastructure on various cloud environments (e.g. CloudFormation template on AWS).
 
 ## Frontend
 

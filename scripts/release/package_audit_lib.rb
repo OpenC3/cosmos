@@ -454,23 +454,42 @@ def check_tool_base(path, base_pkgs)
         # Search here to get the URLs: https://cdnjs.com/
         case package
         when 'vue'
-          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{package}.global.js --output public/js/#{package}.global-#{latest}.js`
-          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{package}.global.prod.js --output public/js/#{package}.global.prod-#{latest}.min.js`
+          outfile = "public/js/#{package}.global-#{latest}.js"
+          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{package}.global.js --output #{outfile}`
+          validate_outfile(outfile, package, latest)
+          outfile = "public/js/#{package}.global.prod-#{latest}.min.js"
+          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{package}.global.prod.js --output #{outfile}`
+          validate_outfile(outfile, package, latest)
         when 'single-spa'
-          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/lib/es5/system/#{package}.min.js --output public/js/#{package}-#{latest}.min.js`
-          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/lib/es5/system/#{package}.min.js.map --output public/js/#{package}-#{latest}.min.js.map`
+          outfile = "public/js/#{package}-#{latest}.min.js"
+          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/lib/es5/system/#{package}.min.js --output #{outfile}`
+          validate_outfile(outfile, package, latest)
+          outfile = "public/js/#{package}-#{latest}.min.js.map"
+          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/lib/es5/system/#{package}.min.js.map --output #{outfile}`
+          validate_outfile(outfile, package, latest)
         when 'vuetify'
           FileUtils.rm(Dir["public/css/vuetify-*"][0]) # Delete the existing vuetify css
-          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{package}-labs.min.css --output public/css/#{package}-labs-#{latest}.min.css`
-          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{package}-labs.min.js --output public/js/#{package}-labs-#{latest}.min.js`
+          outfile = "public/css/#{package}-labs-#{latest}.min.css"
+          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{package}-labs.min.css --output #{outfile}`
+          validate_outfile(outfile, package, latest)
+          outfile = "public/js/#{package}-labs-#{latest}.min.js"
+          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{package}-labs.min.js --output #{outfile}`
+          validate_outfile(outfile, package, latest)
         when 'import-map-overrides'
-          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/import-map-overrides.js --output public/js/#{package}-#{latest}.min.js`
-          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/import-map-overrides.js.map --output public/js/#{package}-#{latest}.min.js.map`
+          outfile = "public/js/#{package}-#{latest}.min.js"
+          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/import-map-overrides.js --output #{outfile}`
+          validate_outfile(outfile, package, latest)
+          outfile = "public/js/#{package}-#{latest}.min.js.map"
+          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/import-map-overrides.js.map --output #{outfile}`
+          validate_outfile(outfile, package, latest)
         when 'keycloak-js'
-          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/keycloak.min.js --output public/js/#{package}-#{latest}.min.js`
-          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/keycloak.min.js.map --output public/js/#{package}-#{latest}.min.js.map`
+          outfile = "public/js/#{package}-#{latest}.min.js"
+          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/lib/keycloak.min.js --output #{outfile}`
+          validate_outfile(outfile, package, latest)
         else
-          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{package}.min.js --output public/js/#{package}-#{latest}.min.js`
+          outfile = "public/js/#{package}-#{latest}.min.js"
+          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{package}.min.js --output #{outfile}`
+          validate_outfile(outfile, package, latest)
         end
         FileUtils.rm existing
         # Now update the files with references to <package>-<version>.min.js
@@ -483,9 +502,18 @@ def check_tool_base(path, base_pkgs)
         if package == 'keycloak-js'
           html = File.read('public/js/auth.js')
           html.gsub!(/#{alt_package}-\d+\.\d+\.\d+\.min\.js/, "#{alt_package}-#{latest}.min.js")
-          File.open(filename, 'w') {|file| file.puts html }
+          File.open('public/js/auth.js', 'w') {|file| file.puts html }
         end
       end
     end
+  end
+end
+
+def validate_outfile(outfile, package, latest)
+  data = File.read(outfile)
+  if data.length < 100
+    puts "ERROR: While updating #{package} to #{latest} got the following:\n#{data}\n\nCheck the package and version."
+    FileUtils.rm outfile
+    exit 1
   end
 end

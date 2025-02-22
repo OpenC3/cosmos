@@ -402,11 +402,11 @@ module OpenC3
         )
         model2.create()
         expect(ActivityModel.count(name: 'timeline', scope: 'DEFAULT')).to eql 2
-        ActivityModel.destroy(name: 'timeline', scope: 'DEFAULT', score: start, uuid: model1.uuid)
-        # expect(ret).to eql(1) # TODO: mock_redis 0.45 not returning the correct value (Redis v4 vs v5 behavior)
+        ret = ActivityModel.destroy(name: 'timeline', scope: 'DEFAULT', score: start, uuid: model1.uuid)
+        expect(ret).to eql(1)
         expect(ActivityModel.count(name: 'timeline', scope: 'DEFAULT')).to eql 1
-        ActivityModel.destroy(name: 'timeline', scope: 'DEFAULT', score: start, uuid: model2.uuid)
-        # expect(ret).to eql(1) # TODO: mock_redis 0.45 not returning the correct value (Redis v4 vs v5 behavior)
+        ret = ActivityModel.destroy(name: 'timeline', scope: 'DEFAULT', score: start, uuid: model2.uuid)
+        expect(ret).to eql(1)
         expect(ActivityModel.count(name: 'timeline', scope: 'DEFAULT')).to eql 0
       end
 

@@ -18,15 +18,15 @@
 
 require 'openc3/microservices/microservice'
 require 'openc3/topics/topic'
+require 'openc3/utilities/thread_manager'
 
 module OpenC3
   class MultiMicroservice < Microservice
     def run
-      @threads = []
       ARGV.each do |microservice_name|
         microservice_model = MicroserviceModel.get_model(name: microservice_name, scope: @scope)
         if microservice_model.enabled
-          @threads << Thread.new do
+          thread = Thread.new do
             cmd_line = microservice_model.cmd.join(' ')
             split_cmd_line = cmd_line.split(' ')
             filename = nil
@@ -43,22 +43,16 @@ module OpenC3
             klass = filename.filename_to_class_name.to_class
             klass.run(microservice_model.name)
           end
+          ThreadManager.instance.register(thread)
         end
       end
-      @threads.each do |thread|
-        thread.join
-      end
-    end
-
-    def shutdown
-      super()
-      if @threads
-        @threads.each do |thread|
-          thread.join
-        end
-      end
+      ThreadManager.instance.monitor
+      ThreadManager.instance.shutdown
     end
   end
 end
-
-OpenC3::MultiMicroservice.run if __FILE__ == $0
+if __FILE__ == $0
+  OpenC3::MultiMicroservice.run
+  ThreadManager.instance.shutdown
+  ThreadManager.instance.join
+end
