@@ -23,6 +23,7 @@ coverage/
 profile/
 plugins/DEFAULT/
 **/python/prof/
+*.dSYM/
 
 # local env files
 .env.local

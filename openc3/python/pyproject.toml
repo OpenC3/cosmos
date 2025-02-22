@@ -16,7 +16,7 @@ dependencies = [
     "schedule (>=1.2.2,<2.0.0)",
     "redis[hiredis] (>=5.0.0,<6.0.0)",
     "requests (>=2.32.3,<3.0.0)",
-    "websockets (>=14.2,<15.0)",
+    "websockets (>=14.2,<16.0)",
 ]
 
 [tool.poetry.requires-plugins]

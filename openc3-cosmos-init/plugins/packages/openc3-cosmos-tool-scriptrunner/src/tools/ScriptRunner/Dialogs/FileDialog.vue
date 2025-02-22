@@ -45,7 +45,7 @@
               <v-file-input
                 label="Choose File"
                 v-model="inputValue"
-                :rules="fileInputRules"
+                :rules="rules"
                 autofocus
                 data-test="file-input"
                 :accept="filter"
@@ -104,7 +104,15 @@ export default {
     return {
       inputValue: null,
       valid: null,
-      fileInputRules: [(value) => !!value?.length || 'Required'],
+      rules: [
+        (value) => {
+          if (this.multiple) {
+            return value.length != 0 || 'Required'
+          } else {
+            return !!value || 'Required'
+          }
+        },
+      ],
     }
   },
   computed: {

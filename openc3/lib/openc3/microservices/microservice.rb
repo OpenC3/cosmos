@@ -213,7 +213,7 @@ module OpenC3
       @cancel_thread = true
       @microservice_status_sleeper.cancel if @microservice_status_sleeper
       MicroserviceStatusModel.set(as_json(:allow_nan => true), scope: @scope)
-      FileUtils.remove_entry(@temp_dir) if File.exist?(@temp_dir)
+      FileUtils.remove_entry_secure(@temp_dir, true)
       @metric.shutdown
       @logger.debug("Shutting down microservice complete: #{@name}")
       @shutdown_complete = true

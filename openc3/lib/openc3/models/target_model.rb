@@ -619,7 +619,7 @@ module OpenC3
           ConfigTopic.write({ kind: 'created', type: 'target', name: @name, plugin: @plugin }, scope: @scope)
         end
       ensure
-        FileUtils.remove_entry(temp_dir) if temp_dir and File.exist?(temp_dir)
+        FileUtils.remove_entry_secure(temp_dir, true)
       end
     end
 
