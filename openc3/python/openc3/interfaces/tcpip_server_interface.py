@@ -374,7 +374,11 @@ class TcpipServerInterface(StreamInterface):
             if self.cancel_threads:
                 break
             host_ip, port = address
-            hostname, _, _ = socket.gethostbyaddr(host_ip)
+            try:
+                hostname, _, _ = socket.gethostbyaddr(host_ip)
+            except Exception:
+                hostname = "UNKNOWN"
+
             # Configure TCP_NODELAY option
             client_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 
