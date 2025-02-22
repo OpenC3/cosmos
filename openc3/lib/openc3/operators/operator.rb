@@ -179,7 +179,7 @@ module OpenC3
         end
         @process.stop
       end
-      FileUtils.remove_entry(@temp_dir) if @temp_dir and File.exist?(@temp_dir)
+      FileUtils.remove_entry_secure(@temp_dir, true)
       @process = nil
     end
 

@@ -134,7 +134,7 @@ module OpenC3
         result['existing_plugin_txt_lines'] = existing_plugin_txt_lines if existing_plugin_txt_lines and not process_existing and existing_plugin_txt_lines != result['plugin_txt_lines']
         return result
       ensure
-        FileUtils.remove_entry(temp_dir) if temp_dir and File.exist?(temp_dir)
+        FileUtils.remove_entry_secure(temp_dir, true)
         tf.unlink if tf
       end
     end
@@ -287,7 +287,7 @@ module OpenC3
         plugin_model.destroy unless validate_only
         raise e
       ensure
-        FileUtils.remove_entry(temp_dir) if temp_dir and File.exist?(temp_dir)
+        FileUtils.remove_entry_secure(temp_dir, true)
         tf.unlink if tf
       end
       return plugin_model.as_json(:allow_nan => true)

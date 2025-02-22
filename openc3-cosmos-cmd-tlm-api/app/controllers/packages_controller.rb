@@ -49,7 +49,7 @@ class PackagesController < ApplicationController
         OpenC3::Logger.error("Error installing package: #{file.original_filename}:#{e.formatted}", scope: params[:scope], user: username())
         render json: { status: 'error', message: e.message, type: e.class }, status: 400
       ensure
-        FileUtils.remove_entry(temp_dir) if temp_dir and File.exist?(temp_dir)
+        FileUtils.remove_entry_secure(temp_dir, true)
       end
     else
       OpenC3::Logger.error("Error installing package: Package file as params[:package] is required", scope: params[:scope], user: username())
