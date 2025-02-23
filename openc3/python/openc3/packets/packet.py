@@ -277,7 +277,10 @@ class Packet(Structure):
         with self.synchronize():
             try:
                 self.internal_buffer_equals(buffer)
-            except Exception:
+            # Catch and re-raise the TypeError thrown by internal_buffer_equals
+            except TypeError as error:
+                raise error
+            except ValueError:
                 Logger.error(
                     f"{self.target_name} {self.packet_name} buffer ({type(buffer)}) received with actual packet length of {len(buffer)} but defined length of {self.defined_length}"
                 )
@@ -655,7 +658,7 @@ class Packet(Structure):
                     super().write_item(item, value, "RAW", buffer)
                 except ValueError as error:
                     if item.states and isinstance(value, str) and "invalid literal for" in repr(error):
-                        raise ValueError(f"Unknown state {value} for {item.name}, must be one of f{', '.join(item.states.keys())}") from error
+                        raise ValueError(f"Unknown state '{value}' for {item.name}, must be one of f{', '.join(item.states.keys())}") from error
                     else:
                         raise error
             case "FORMATTED" | "WITH_UNITS":

@@ -45,7 +45,7 @@ spec = Gem::Specification.new do |s|
     s.platform = Gem::Platform::CURRENT
   end
 
-  s.version = '6.0.3.pre.beta0'
+  s.version = '6.1.1.pre.beta0'
   s.licenses = ['AGPL-3.0-only', 'Nonstandard']
 
   # Executables
@@ -112,6 +112,7 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'opentelemetry-instrumentation-rack', '~> 0.21'
   s.add_runtime_dependency 'opentelemetry-instrumentation-redis', '~> 0.24'
   s.add_runtime_dependency 'opentelemetry-sdk', '~> 1.2'
+  s.add_runtime_dependency 'resolv-replace', '~> 0.1.1'
   s.add_runtime_dependency 'rufus-scheduler', '~> 3.8'
   s.add_runtime_dependency 'tzinfo-data', '~> 1.2023'
   s.add_runtime_dependency 'webrick', '~> 1.8'
@@ -126,7 +127,7 @@ spec = Gem::Specification.new do |s|
   s.add_development_dependency 'flay', '~> 2.12'
   s.add_development_dependency 'flog', '~> 4.6'
   s.add_development_dependency 'listen', '~> 3.7'
-  s.add_development_dependency 'mock_redis', '~> 0.41'
+  s.add_development_dependency 'mock_redis', '~> 0.47'
   s.add_development_dependency 'reek', '~> 6.0'
   s.add_development_dependency 'rspec', '~> 3.10'
   s.add_development_dependency 'rspec-rails', '~> 7.0'

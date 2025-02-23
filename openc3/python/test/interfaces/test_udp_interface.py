@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -141,7 +141,7 @@ class TestUdpInterface(unittest.TestCase):
         i.connect()
         thread = threading.Thread(target=i.read)
         thread.start()
-        time.sleep(0.1)
+        time.sleep(0.001)
         self.assertFalse(thread.is_alive())
 
     def test_counts_the_packets_received(self):
@@ -195,7 +195,6 @@ class TestUdpInterface(unittest.TestCase):
         i.disconnect()
         close_socket(write)
         i.stream_log_pair.shutdown()
-        time.sleep(0.01)
 
     def test_write_complains_if_write_dest_not_given(self):
         i = UdpInterface("localhost", "None", "8889")
@@ -256,4 +255,3 @@ class TestUdpInterface(unittest.TestCase):
         i.disconnect()
         close_socket(read)
         i.stream_log_pair.shutdown()
-        time.sleep(0.01)

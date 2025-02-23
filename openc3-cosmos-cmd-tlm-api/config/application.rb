@@ -58,14 +58,26 @@ module CmdTlmApi
       )
     end
 
+    puts "Starting #{$0} in #{Rails.env} environment"
+
     # Setup structured logging
     require 'openc3/utilities/cosmos_rails_formatter'
-    config.log_level = ENV["LOG_LEVEL"] || :info
+    # Don't set the anycable logger to info because it's way too much output
+    if $0.include?('anycable')
+      config.log_level = ENV["LOG_LEVEL"] || :error
+    else
+      config.log_level = ENV["LOG_LEVEL"] || :info
+    end
     config.log_tags = {
       request_id: :request_id,
       token: -> request { request.headers['HTTP_AUTHORIZATION'] || request.query_parameters[:authorization] }
     }
     config.rails_semantic_logger.add_file_appender = false
-    config.semantic_logger.add_appender(io: $stdout, formatter: OpenC3::CosmosRailsFormatter.new)
+    config.semantic_logger.add_appender(
+      io: $stdout,
+      formatter: OpenC3::CosmosRailsFormatter.new,
+      # These happen every 5s and clog up the logs
+      filter: -> log { log.message != "Completed #traefik" }
+    )
   end
 end

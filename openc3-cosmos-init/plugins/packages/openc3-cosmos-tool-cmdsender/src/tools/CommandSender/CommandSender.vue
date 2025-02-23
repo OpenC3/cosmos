@@ -183,6 +183,8 @@
         </v-toolbar>
         <v-card-text class="mt-6">
           Warning: Command {{ hazardousCommand }} is Hazardous. Send?
+          <br />
+          <span class="openc3-yellow"> Description: {{ commandDescription }} </span>
         </v-card-text>
         <v-card-actions class="px-2">
           <v-spacer />
@@ -281,6 +283,7 @@ export default {
       editor: null,
       targetName: '',
       commandName: '',
+      commandDescription: '',
       paramList: '',
       lastTargetName: '',
       lastCommandName: '',
@@ -617,6 +620,7 @@ export default {
               }
               this.screenCount += 1
             }
+            this.commandDescription = command.description
             this.sendDisabled = false
             this.status = ''
           },

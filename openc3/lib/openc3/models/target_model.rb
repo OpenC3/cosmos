@@ -340,7 +340,7 @@ module OpenC3
       reduced_minute_log_retain_time: nil,
       reduced_hour_log_retain_time: nil,
       reduced_day_log_retain_time: nil,
-      cleanup_poll_time: 900,
+      cleanup_poll_time: 600,
       needs_dependencies: false,
       target_microservices: {'REDUCER' => [[]]},
       reducer_disable: false,
@@ -619,7 +619,7 @@ module OpenC3
           ConfigTopic.write({ kind: 'created', type: 'target', name: @name, plugin: @plugin }, scope: @scope)
         end
       ensure
-        FileUtils.remove_entry(temp_dir) if temp_dir and File.exist?(temp_dir)
+        FileUtils.remove_entry_secure(temp_dir, true)
       end
     end
 

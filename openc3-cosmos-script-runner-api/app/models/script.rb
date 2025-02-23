@@ -284,6 +284,11 @@ class Script < OpenC3::TargetFile
   end
 
   def self.syntax(filename, text)
+    if text.nil?
+      return(
+        { 'title' => 'Syntax Check Failed', 'description' => 'no text passed' }
+      )
+    end
     language = detect_language(text, filename)
     if language == 'ruby'
       check_process = IO.popen('ruby -c -rubygems 2>&1', 'r+')
@@ -320,10 +325,10 @@ class Script < OpenC3::TargetFile
       # Python
       tf = nil
       begin
-        tf = Tempfile.new("test_script.py")
+        tf = Tempfile.new((['syntax', '.py']))
         tf.write(text)
-        tf.close
-        results, _ = Open3.capture2e("python -m py_compile #{tf.path}")
+        tf.close()
+        results, status = Open3.capture2e("python -m py_compile #{tf.path}")
         lines = []
         if results and results.length > 0
           results.each_line do |line|

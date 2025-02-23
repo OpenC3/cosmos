@@ -127,7 +127,10 @@ def get_target_file(path: str, original: bool = False, scope: str = OPENC3_SCOPE
                 raise error
 
 
-def get_download_url(path: str, scope: str = OPENC3_SCOPE):
+# These are helper methods ... should not be used directly
+
+
+def _get_download_url(path: str, scope: str = OPENC3_SCOPE):
     """Get a download url for object in block storage
 
     Args:
@@ -157,9 +160,6 @@ def get_download_url(path: str, scope: str = OPENC3_SCOPE):
     # external must be true because we're using this URL from the frontend
     result = _get_presigned_request(endpoint, external=True, scope=scope)
     return result["url"]
-
-
-# These are helper methods ... should not be used directly
 
 
 def _get_storage_file(path, scope=OPENC3_SCOPE):

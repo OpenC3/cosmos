@@ -62,7 +62,7 @@ module OpenC3
     after(:each) do
       @im_shutdown = true
       @im.shutdown
-      sleep(0.01)
+      @im_thread.join()
     end
 
     describe "get_router" do

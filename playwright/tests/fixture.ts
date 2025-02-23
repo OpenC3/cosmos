@@ -1,5 +1,5 @@
 /*
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -78,7 +78,7 @@ export const test = base.extend<{
           await page.locator('input[name="password"]').fill('admin')
           await Promise.all([
             page.waitForURL(`${baseURL}${toolPath}`),
-            page.locator('input:has-text("Sign In")').click(),
+            page.locator('button:has-text("Sign In")').click(),
           ])
           await page.context().storageState({ path: 'adminStorageState.json' })
         } else {
@@ -86,7 +86,7 @@ export const test = base.extend<{
           await page.locator('input[name="password"]').fill('operator')
           await Promise.all([
             page.waitForURL(`${baseURL}${toolPath}`),
-            page.locator('input:has-text("Sign In")').click(),
+            page.locator('button:has-text("Sign In")').click(),
           ])
           await page.context().storageState({ path: 'storageState.json' })
         }

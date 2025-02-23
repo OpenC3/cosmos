@@ -51,6 +51,8 @@ Rails.application.routes.draw do
     get '/microservices/:id', to: 'microservices#show', id: /[^\/]+/
     match '/microservices/:id', to: 'microservices#update', id: /[^\/]+/, via: [:patch, :put]
     delete '/microservices/:id', to: 'microservices#destroy', id: /[^\/]+/
+    post '/microservices/:id/start', to: 'microservices#start', id: /[^\/]+/
+    post '/microservices/:id/stop', to: 'microservices#stop', id: /[^\/]+/
 
     resources :process_status, only: [:index]
     get '/process_status/:id', to: 'process_status#show', id: /[^\/]+/
@@ -96,9 +98,9 @@ Rails.application.routes.draw do
     get '/timeline/:name/count', to: 'activity#count', name: /[^\/]+/
     get '/timeline/:name/activities', to: 'activity#index', name: /[^\/]+/
     post '/timeline/:name/activities', to: 'activity#create', name: /[^\/]+/
-    get '/timeline/:name/activity/:id', to: 'activity#show', name: /[^\/]+/, id: /[^\/]+/
-    post '/timeline/:name/activity/:id', to: 'activity#event', name: /[^\/]+/, id: /[^\/]+/
-    match '/timeline/:name/activity/:id', to: 'activity#update', name: /[^\/]+/, id: /[^\/]+/, via: [:patch, :put]
+    get '/timeline/:name/activity/:id(/:uuid)', to: 'activity#show', name: /[^\/]+/, id: /[^\/]+/, uuid: /[^\/]+/
+    post '/timeline/:name/activity/:id(/:uuid)', to: 'activity#event', name: /[^\/]+/, id: /[^\/]+/, uuid: /[^\/]+/
+    match '/timeline/:name/activity/:id(/:uuid)', to: 'activity#update', name: /[^\/]+/, id: /[^\/]+/, uuid: /[^\/]+/, via: [:patch, :put]
     # NOTE: uuid is new as of 5.19.0
     delete '/timeline/:name/activity/:id(/:uuid)', to: 'activity#destroy', name: /[^\/]+/, id: /[^\/]+/, uuid: /[^\/]+/
 

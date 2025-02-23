@@ -1,7 +1,7 @@
 # Make managed in .env-build
 ARG OPENC3_DEPENDENCY_REGISTRY=docker.io
-ARG ALPINE_BUILD
-ARG ALPINE_VERSION
+ARG ALPINE_BUILD=7
+ARG ALPINE_VERSION=3.19
 
 # Should be loaded from ARG
 FROM ${OPENC3_DEPENDENCY_REGISTRY}/alpine:${ALPINE_VERSION}.${ALPINE_BUILD}
@@ -41,6 +41,11 @@ RUN sed -i "s|RUBYGEMS_URL|${RUBYGEMS_URL}|g" /root/.gemrc
 RUN cp /root/.gemrc /etc/gemrc
 ENV GEMRC=/etc/gemrc
 
+COPY anycable* /usr/bin
+RUN /usr/bin/anycable_install.sh
+
+COPY shoreman.sh /usr/bin/shoreman
+
 RUN apk update \
   && apk upgrade \
   && apk add --no-cache \
@@ -73,6 +78,11 @@ RUN apk update \
   yaml-dev \
   && gem update --system 3.3.14 \
   && gem install rake \
+  # These need to be installed with the --platform flag to avoid errors on linux-musl
+  # See: https://github.com/protocolbuffers/protobuf/issues/16853#issuecomment-2583135716
+  # Should be fixed April 2025
+  && gem install google-protobuf --platform ruby \
+  && gem install grpc --platform ruby \
   && gem cleanup \
   && bundle config build.nokogiri --use-system-libraries \
   && bundle config git.allow_insecure true \
@@ -80,7 +90,9 @@ RUN apk update \
   && source /openc3/venv/bin/activate \
   && pip3 config --global set global.index $PYPI_URL/pypi \
   && pip3 config --global set global.index-url $PYPI_URL/simple \
-  && pip3 install --upgrade pip setuptools
+  && pip3 install --upgrade pip setuptools \
+  && pip3 install poetry \
+  && pip3 install poetry-plugin-export
 
 # Set user and group
 ENV IMAGE_USER=openc3

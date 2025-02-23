@@ -596,6 +596,94 @@ ARRAY INST HEALTH_STATUS ARY2 200 100 nil 4 WITH_UNITS
 ![ARRAY](/img/telemetry_viewer/widgets/array.png)
 
 
+### ARRAYPLOT
+**Plot an array of values.**
+
+The item can either be a simple array or a 2D array of x values and y values, e.g. [[x1, x2, x3], [y1, y2, y3]]. If the X_AXIS setting is not specified, the X axis starts with 0 and increments by 1. If the X_AXIS setting is used the x values of a 2D array will be ignored.
+
+
+Example Usage:
+```ruby
+ARRAYPLOT
+  SETTING TITLE "Array Data"
+  SETTING ITEM INST HEALTH_STATUS ARY
+  SETTING ITEM INST HEALTH_STATUS ARY2
+  SETTING SIZE 600 400
+  SETTING X_AXIS 10 10
+```
+![ARRAYPLOT](/img/telemetry_viewer/widgets/arrayplot.png)
+
+The following settings apply to ARRAYPLOT. They are applied using the SETTING keyword.
+#### TITLE
+**Title of the plot**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Title | Title of the plot | True |
+
+#### X_AXIS
+**Define the x-axis parameters for the plot**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Start | Start value for the x-axis | True |
+| Step | Step value for the x-axis | True |
+
+#### ITEM
+**Add a telemetry item to the graph**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Target name | The target name | True |
+| Packet name | The packet name | True |
+| Item name | The item name | True |
+| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED</span> | False |
+| Reduced | Whether to display reduced data. Default is DECOM.<br/><br/>Valid Values: <span class="values">DECOM, REDUCED_MINUTE, REDUCED_HOUR, REDUCED_DAY</span> | False |
+| Reduced Type | The type of reduce data to display. Only applies if Reduced is not DECOM.<br/><br/>Valid Values: <span class="values">MIN, MAX, AVG, STDDEV</span> | False |
+
+#### STARTTIME
+<div class="right">(Since 5.5.1)</div>**Start the graph history at the designated Time**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Start Time | Start time as formatted 'YYYY/MM/DD HH:MM:SS' | True |
+
+#### HISTORY
+<div class="right">(Since 5.5.1)</div>**Display an initial history of data**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Value | Value(d,h,m,s). For example 1d, 2h, 30m, 15s | True |
+
+#### SECONDSGRAPHED
+**Display the specified number of seconds in the graph**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Time | Number of seconds to display | True |
+
+#### POINTSSAVED
+**Save the number of seconds in graph memory**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Time | Number of seconds to save | True |
+
+#### POINTSGRAPHED
+**Number of points to display on the graph**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Time | Number of points to graph | True |
+
+#### SIZE
+**Size of the graph**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Width | Width in pixels | True |
+| Height | Height in pixels | True |
+
 ### BLOCK
 **Displays BLOCK data organized into rows and space separated**
 
@@ -643,6 +731,8 @@ FORMATVALUE INST LATEST TEMP1 %.2f CONVERTED 20
 
 ### LABELLED
 **Displays a LABEL followed by a LED**
+
+See the LED widget for more information
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -786,7 +876,7 @@ LABELVALUERANGEBAR INST HEALTH_STATUS TEMP1 -120 120
 ### LED
 **Displays a LED which changes color based on telemetry values**
 
-By default TRUE is green and FALSE is red and all other values are black. Additional values can be added by using the LED_COLOR setting. For example LED INST PARAMS VALUE3 RAW can be followed by SETTING LED_COLOR 0 GREEN, SETTING LED_COLOR 1 RED, and SETTING LED_COLOR ANY ORANGE.
+By default TRUE is green and FALSE is red and all other values are black. Additional values can be added by using the LED_COLOR setting. For example LED INST PARAMS VALUE3 RAW can be followed by SETTING LED_COLOR 0 GREEN, SETTING LED_COLOR 1 RED, and SETTING LED_COLOR ANY ORANGE. See LIMITSCOLOR for a widget that displays a circle depicting the limits color of an item.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -856,7 +946,7 @@ LIMITSCOLUMN INST HEALTH_STATUS TEMP1
 
 
 ### LIMITSCOLOR
-**Displays a circle depicting the limits color of an item**
+**Displays a circle depicting the limits color of an item. See LED for a widget that displays a circle which changes to an arbitrary color based on telemetry values.**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -865,12 +955,16 @@ LIMITSCOLUMN INST HEALTH_STATUS TEMP1
 | Item name | The item name | True |
 | Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
 | Radius | Radius of the circle (default is 10) | False |
-| Full Item Name | Show the full item name (default is false) | False |
+| Item Name Display | Show the full item name, e.g. TGT PKT ITEM (true), no item name (nil or none) or just the item name (false). Default is false. | False |
 
 Example Usage:
 ```ruby
-LIMITSCOLOR INST HEALTH_STATUS TEMP1 CONVERTED 30 TRUE
-LIMITSCOLOR INST HEALTH_STATUS TEMP1
+HORIZONTAL
+  LIMITSCOLOR INST HEALTH_STATUS TEMP1 CONVERTED 10 NIL # No label
+  LABEL '1st Temp'
+END
+LIMITSCOLOR INST HEALTH_STATUS TEMP2 # Default is label with just item name
+LIMITSCOLOR INST HEALTH_STATUS TEMP3 CONVERTED 20 TRUE # Full TGT/PKT/ITEM label
 ```
 ![LIMITSCOLOR](/img/telemetry_viewer/widgets/limitscolor.png)
 

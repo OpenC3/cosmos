@@ -74,7 +74,7 @@ class MyInterface(Interface):
         time.sleep(0.001)
         if MyInterface.read_interface_raise:
             raise RuntimeError("test-error")
-        time.sleep(0.1)
+        time.sleep(0.01)
         return self.data, None
 
     def interface_cmd(self, cmd_name, *cmd_args):
@@ -206,7 +206,7 @@ class TestInterfaceMicroservice(unittest.TestCase):
             )
 
             MyInterface.connect_raise = False
-            time.sleep(0.5)
+            time.sleep(0.2)
             all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
             self.assertEqual(all_interfaces["INST_INT"]["state"], "CONNECTED")
 
@@ -256,7 +256,7 @@ class TestInterfaceMicroservice(unittest.TestCase):
 
         for stdout in capture_io():
             InterfaceTopic.connect_interface("INST_INT", "test-host", 54321, scope="DEFAULT")
-            time.sleep(0.5)
+            time.sleep(0.2)
             self.assertIn("Connection Lost", stdout.getvalue())
             self.assertIn(TestInterfaceMicroservice.CONNECTING_MSG, stdout.getvalue())
             self.assertIn(TestInterfaceMicroservice.CONN_SUCCESS_MSG, stdout.getvalue())
@@ -284,6 +284,7 @@ class TestInterfaceMicroservice(unittest.TestCase):
     #     im.shutdown()
 
     def test_handles_a_clean_disconnect(self):
+        InterfaceMicroservice.DISCONNECT_WAIT_TIME = 0.01
         im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
         all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
         self.assertEqual(all_interfaces["INST_INT"]["state"], "ATTEMPTING")
@@ -299,14 +300,14 @@ class TestInterfaceMicroservice(unittest.TestCase):
             self.assertIn(TestInterfaceMicroservice.CONN_SUCCESS_MSG, stdout.getvalue())
 
             InterfaceTopic.disconnect_interface("INST_INT")
-            time.sleep(1.01)  # Allow disconnect
+            time.sleep(0.02)  # Allow disconnect
             all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
             self.assertEqual(all_interfaces["INST_INT"]["state"], "DISCONNECTED")
             self.assertIn("Disconnect requested", stdout.getvalue())
             self.assertIn("Connection Lost", stdout.getvalue())
 
             # Wait and verify still DISCONNECTED and not ATTEMPTING
-            time.sleep(0.5)
+            time.sleep(0.1)
             all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
             self.assertEqual(all_interfaces["INST_INT"]["state"], "DISCONNECTED")
             self.assertEqual(im.interface.disconnect_count, 1)
@@ -391,7 +392,7 @@ class TestInterfaceMicroservice(unittest.TestCase):
         self.assertEqual(all_interfaces["INST_INT"]["state"], "CONNECTED")
 
         InterfaceTopic.interface_cmd("INST_INT", "DO_THE_THING", "PARAM1", 2, scope="DEFAULT")
-        time.sleep(0.5)
+        time.sleep(0.1)
         self.assertEqual("DO_THE_THING", im.interface.interface_cmd_name)
         self.assertEqual(("PARAM1", 2), im.interface.interface_cmd_args)
         im.shutdown()
@@ -416,7 +417,7 @@ class TestInterfaceMicroservice(unittest.TestCase):
             index=3,
             scope="DEFAULT",
         )
-        time.sleep(0.5)
+        time.sleep(0.1)
         self.assertEqual("DO_THE_OTHER_THING", im.interface.protocol_cmd_name)
         self.assertEqual(("PARAM2", 3), im.interface.protocol_cmd_args)
         self.assertEqual("READ", im.interface.protocol_read_write)

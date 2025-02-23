@@ -75,8 +75,6 @@ module OpenC3
 
     def self.shutdown(interface, scope:)
       Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface.name}", { 'shutdown' => 'true' }, '*', 100)
-      sleep 1 # Give some time for the interface to shutdown
-      InterfaceTopic.clear_topics(InterfaceTopic.topics(interface, scope: scope))
     end
 
     def self.interface_cmd(interface_name, cmd_name, *cmd_params, scope:)

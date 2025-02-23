@@ -127,21 +127,34 @@ def prompt(
     return input()
 
 
+def step_mode():
+    # running_script.py implements the real functionality
+    pass
+
+
+def run_mode():
+    # running_script.py implements the real functionality
+    pass
+
+
 ###########################################################################
 # END PUBLIC API
 ###########################################################################
 
 from .api_shared import *
-from .cosmos_calendar import *
 from .commands import *
+from .cosmos_calendar import *
+from .critical_cmd import *
 from .exceptions import *
 from .limits import *
-from .telemetry import *
 from .metadata import *
+from .packages import *
+from .plugins import *
 from .screen import *
 from .script_runner import *
 from .storage import *
-from .critical_cmd import *
+from .tables import *
+from .telemetry import *
 from openc3.api import WHITELIST
 
 

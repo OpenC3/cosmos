@@ -136,10 +136,10 @@
       <v-col :cols="colSize" style="max-width: 140px"> </v-col>
     </v-row>
     <v-row no-gutters class="pa-3">
-      <v-col v-if="hazardous" :cols="colSize" class="openc3-yellow"
-        >Description: {{ description }} (HAZARDOUS)</v-col
-      >
-      <v-col v-else :cols="colSize">Description: {{ description }} </v-col>
+      <v-col :cols="colSize" :class="{ 'openc3-yellow': hazardous }">
+        Description: {{ description }}
+        <template v-if="hazardous"> (HAZARDOUS) </template>
+      </v-col>
     </v-row>
   </div>
 </template>

@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -104,7 +104,10 @@ class Metric:
 
     def shutdown(self):
         with Metric.mutex:
-            Metric.instances.remove(self)
+            try:
+                Metric.instances.remove(self)
+            except ValueError:
+                pass
             if len(Metric.instances) <= 0:
                 if Metric.update_sleeper:
                     Metric.update_sleeper.cancel()

@@ -67,6 +67,7 @@ module OpenC3
       @authentication = authentication.nil? ? generate_auth() : authentication
       @timeout = timeout
       @shutdown = false
+      # JsonDRb.debug = true # Enable for debugging
     end
 
     # generate the auth object
@@ -179,12 +180,11 @@ module OpenC3
     # NOTE: This is a helper method and should not be called directly
     def _generate_data(kwargs)
       data = kwargs[:data]
-      if data.nil?
-        data = kwargs[:data] = {}
-      elsif data.is_a?(Hash) == false and data.is_a?(String) == false
+      # data can be nil but otherwise must be a Hash or String
+      if !data.nil? and !data.is_a?(Hash) and !data.is_a?(String)
         raise JsonApiError, "incorrect type for keyword 'data' MUST be Hash or String: #{data}"
       end
-      return kwargs[:json] ? JSON.generate(kwargs[:data]) : kwargs[:data]
+      return kwargs[:json] ? JSON.generate(data) : data
     end
 
     # NOTE: This is a helper method and should not be called directly

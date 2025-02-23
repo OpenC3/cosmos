@@ -155,10 +155,10 @@ class ScriptsController < ApplicationController
   end
 
   def syntax
-    # Extract the target that this script lives under
     name = sanitize_params([:name], :allow_forward_slash => true)
     return unless name
     name = name[0]
+    # Extract the target that this script lives under
     target_name = name.split('/')[0]
     return unless authorization('script_run', target_name: target_name)
     script = Script.syntax(name, request.body.read)

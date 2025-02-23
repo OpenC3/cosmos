@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -26,23 +26,15 @@ test.use({
 })
 
 async function openFile(page, utils, filename) {
-  let half = Math.floor(filename.length / 2)
-  let part1 = filename.substring(0, half)
-  let part2 = filename.substring(half, filename.length)
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Open File').click()
   await expect(
     page.locator('.v-dialog').getByText('INST2', { exact: true }),
   ).toBeVisible()
-  await utils.sleep(200)
-  await page.locator('[data-test=file-open-save-search]').type(part1)
-  await utils.sleep(200)
-  await page.locator('[data-test=file-open-save-search]').type(part2)
-  await utils.sleep(200)
+  await page.locator('[data-test=file-open-save-search] input').fill(filename)
   await page.locator(`text=${filename}`).click()
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   await expect(page.locator('.v-dialog')).not.toBeVisible()
-  await utils.sleep(500)
 
   // Check for potential "<User> is editing this script"
   // This can happen if we had to do a retry on this test
@@ -51,6 +43,15 @@ async function openFile(page, utils, filename) {
     await page.locator('[data-test="unlock-button"]').click()
     await page.locator('[data-test="confirm-dialog-force unlock"]').click()
   }
+}
+
+async function runScript(page, utils, filename, callback = async () => {}) {
+  await openFile(page, utils, filename)
+  await page.locator('[data-test=start-button]').click()
+  await callback()
+  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
+    timeout: 20000,
+  })
 }
 
 test('opens a target file', async ({ page, utils }) => {
@@ -136,52 +137,30 @@ test('runs a script', async ({ page, utils }) => {
   await expect(page.locator('[data-test=state] input')).toHaveValue('stopped')
 })
 
-async function testCalendarApis(page, utils, filename) {
-  await openFile(page, utils, filename)
-  await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state] input')).toHaveValue(
-    'Connecting...',
-    {
-      timeout: 5000,
-    },
-  )
-  await expect(page.locator('[data-test=state] input')).toHaveValue('error', {
-    timeout: 20000,
-  })
-  await page.locator('[data-test=go-button]').click()
-  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
-    timeout: 20000,
-  })
-}
-
 test('test ruby calendar apis', async ({ page, utils }) => {
-  await testCalendarApis(page, utils, 'calendar.rb')
+  await runScript(page, utils, 'calendar.rb', async function () {
+    await expect(page.locator('[data-test=state] input')).toHaveValue('error', {
+      timeout: 20000,
+    })
+    await page.locator('[data-test=go-button]').click()
+  })
 })
 
 test('test python calendar apis', async ({ page, utils }) => {
-  await testCalendarApis(page, utils, 'calendar.py')
+  await runScript(page, utils, 'calendar.py', async function () {
+    await expect(page.locator('[data-test=state] input')).toHaveValue('error', {
+      timeout: 20000,
+    })
+    await page.locator('[data-test=go-button]').click()
+  })
 })
 
-async function testStashApis(page, utils, filename) {
-  await openFile(page, utils, filename)
-  await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state] input')).toHaveValue(
-    'Connecting...',
-    {
-      timeout: 5000,
-    },
-  )
-  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
-    timeout: 20000,
-  })
-}
-
 test('test ruby stash apis', async ({ page, utils }) => {
-  await testStashApis(page, utils, 'stash.rb')
+  await runScript(page, utils, 'stash.rb')
 })
 
 test('test python stash apis', async ({ page, utils }) => {
-  await testStashApis(page, utils, 'stash.py')
+  await runScript(page, utils, 'stash.py')
 })
 
 // Note: For local testing you can clear metadata
@@ -258,49 +237,45 @@ test('test python metadata apis', async ({ page, utils }) => {
 })
 
 async function testScreenApis(page, utils, filename, target) {
-  await openFile(page, utils, filename)
-  await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state] input')).toHaveValue(
-    'Connecting...',
-    {
-      timeout: 5000,
-    },
-  )
-  await expect(page.locator('[data-test=state] input')).toHaveValue('running')
-  // script displays INST ADCS
-  await expect(page.getByText(`${target} ADCS`, { exact: true })).toBeVisible()
-  // script displays INST HS
-  await expect(page.getByText(`${target} HS`, { exact: true })).toBeVisible()
-  // script calls clear_screen("INST", "ADCS")
-  await expect(
-    page.getByText(`${target} ADCS`, { exact: true }),
-  ).not.toBeVisible()
-  // script displays INST IMAGE
-  await expect(page.getByText(`${target} IMAGE`, { exact: true })).toBeVisible()
-  // script calls clear_all_screens()
-  await expect(
-    page.getByText(`${target} HS`, { exact: true }),
-  ).not.toBeVisible()
-  await expect(
-    page.getByText(`${target} IMAGE`, { exact: true }),
-  ).not.toBeVisible()
-  // script creates local screen "TEST"
-  await expect(page.getByText('LOCAL TEST', { exact: true })).toBeVisible()
-  // script calls clear_all_screens()
-  await expect(page.getByText('LOCAL TEST', { exact: true })).not.toBeVisible()
-  // script creates local screen "INST TEST"
-  await expect(page.getByText(`${target} TEST`, { exact: true })).toBeVisible()
-  // script calls clear_all_screens()
-  await expect(
-    page.getByText(`${target} TEST`, { exact: true }),
-  ).not.toBeVisible()
-  // script deletes INST TEST and tries to display it which results in error
-  await expect(page.locator('[data-test=state] input')).toHaveValue('error', {
-    timeout: 20000,
-  })
-  await page.locator('[data-test=go-button]').click()
-  await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
-    timeout: 20000,
+  await runScript(page, utils, filename, async function () {
+    // script displays INST ADCS
+    await expect(
+      page.getByText(`${target} ADCS`, { exact: true }),
+    ).toBeVisible()
+    // script displays INST HS
+    await expect(page.getByText(`${target} HS`, { exact: true })).toBeVisible()
+    // script calls clear_screen("INST", "ADCS")
+    await expect(
+      page.getByText(`${target} ADCS`, { exact: true }),
+    ).not.toBeVisible()
+    // script displays INST IMAGE
+    await expect(
+      page.getByText(`${target} IMAGE`, { exact: true }),
+    ).toBeVisible()
+    // script calls clear_all_screens()
+    await expect(
+      page.getByText(`${target} HS`, { exact: true }),
+    ).not.toBeVisible()
+    await expect(
+      page.getByText(`${target} IMAGE`, { exact: true }),
+    ).not.toBeVisible()
+    // script creates local screen "TEST"
+    await expect(page.getByText('LOCAL TEST', { exact: true })).toBeVisible()
+    // script calls clear_all_screens()
+    await expect(
+      page.getByText('LOCAL TEST', { exact: true }),
+    ).not.toBeVisible()
+    // script creates local screen "INST TEST"
+    await expect(
+      page.getByText(`${target} TEST`, { exact: true }),
+    ).toBeVisible()
+    // script calls clear_all_screens()
+    await expect(
+      page.getByText(`${target} TEST`, { exact: true }),
+    ).not.toBeVisible()
+    // script deletes INST TEST and tries to display it which results in error
+    await expect(page.locator('[data-test=state] input')).toHaveValue('error')
+    await page.locator('[data-test=go-button]').click()
   })
 }
 
@@ -310,6 +285,36 @@ test('test ruby screen apis', async ({ page, utils }) => {
 
 test('test python screen apis', async ({ page, utils }) => {
   await testScreenApis(page, utils, 'screens.py', 'INST2')
+})
+
+test('test ruby script apis', async ({ page, utils }) => {
+  await runScript(page, utils, 'scripting.rb', async function () {
+    await expect(page.locator('[data-test=state] input')).toHaveValue(
+      /paused \d+s/,
+    )
+    await page.locator('[data-test=step-button]').click()
+    await utils.sleep(500)
+    await page.locator('[data-test=step-button]').click()
+    await utils.sleep(500)
+    await page.locator('[data-test=step-button]').click()
+    await utils.sleep(500)
+    await page.locator('[data-test=step-button]').click()
+  })
+})
+
+test('test python script apis', async ({ page, utils }) => {
+  await runScript(page, utils, 'scripting.py', async function () {
+    await expect(page.locator('[data-test=state] input')).toHaveValue(
+      /paused \d+s/,
+    )
+    await page.locator('[data-test=step-button]').click()
+    await utils.sleep(500)
+    await page.locator('[data-test=step-button]').click()
+    await utils.sleep(500)
+    await page.locator('[data-test=step-button]').click()
+    await utils.sleep(500)
+    await page.locator('[data-test=step-button]').click()
+  })
 })
 
 test('test python numpy import', async ({ page, utils }) => {

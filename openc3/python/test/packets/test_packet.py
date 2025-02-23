@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -382,7 +382,7 @@ class PacketReadReadItem(unittest.TestCase):
         value += " more things"
         self.assertEqual(self.p.read_item(i, "WITH_UNITS"), "A str with units")
 
-        self.p.buffer = "\x00"
+        self.p.buffer = b"\x00"
         i.read_conversion = GenericConversion("['A', 'B', 'C']")
         value = self.p.read_item(i, "CONVERTED")
         self.assertEqual(value, ["A", "B", "C"])
@@ -684,7 +684,7 @@ class PacketWrite(unittest.TestCase):
         self.assertEqual(self.buffer, b"\x01\x00\x00\x00")
         self.p.write_item(i, "FALSE", "CONVERTED", self.buffer)
         self.assertEqual(self.buffer, b"\x02\x00\x00\x00")
-        with self.assertRaisesRegex(ValueError, "Unknown state BLAH for ITEM"):
+        with self.assertRaisesRegex(ValueError, "Unknown state 'BLAH' for ITEM"):
             self.p.write_item(i, "BLAH", "CONVERTED", self.buffer)
         i.write_conversion = GenericConversion("value / 2")
         self.p.write("ITEM", 4, "CONVERTED", self.buffer)
@@ -889,106 +889,142 @@ class PacketCheckBitOffsets(unittest.TestCase):
         p = Packet("tgt1", "pkt1")
         p.define_item("item1", 0, 8, "UINT")
         p.define_item("item2", 0, 8, "UINT")
-        self.assertEqual(
-            p.check_bit_offsets()[0],
-            "Bit definition overlap at bit offset 0 for packet TGT1 PKT1 items ITEM2 and ITEM1",
-        )
+        offsets = p.check_bit_offsets()
+        # This is a bit overkill for test cocde but it makes SonarQube happy
+        if len(offsets) > 0:
+            self.assertEqual(
+                offsets[0],
+                "Bit definition overlap at bit offset 0 for packet TGT1 PKT1 items ITEM2 and ITEM1",
+            )
+        else:
+            self.fail("No overlap detected")
 
     def test_does_not_complain_with_non_overlapping_negative_offsets(self):
         p = Packet("tgt1", "pkt1")
         p.define_item("item1", 0, 8, "UINT")
         p.define_item("item2", 8, -16, "BLOCK")
         p.define_item("item3", -16, 16, "UINT")
-        self.assertEqual(p.check_bit_offsets(), [])
+        offsets = p.check_bit_offsets()
+        self.assertEqual(offsets, [])
 
     def test_complains_with_overlapping_negative_offsets(self):
         p = Packet("tgt1", "pkt1")
         p.define_item("item1", 0, 8, "UINT")
         p.define_item("item2", 8, -16, "BLOCK")
         p.define_item("item3", -17, 16, "UINT")
-        self.assertEqual(
-            p.check_bit_offsets()[0],
-            "Bit definition overlap at bit offset -17 for packet TGT1 PKT1 items ITEM3 and ITEM2",
-        )
+        offsets = p.check_bit_offsets()
+        if len(offsets) > 0:
+            self.assertEqual(
+                offsets[0],
+                "Bit definition overlap at bit offset -17 for packet TGT1 PKT1 items ITEM3 and ITEM2",
+            )
+        else:
+            self.fail("No overlap detected")
 
     def test_complains_about_intersecting_items(self):
         p = Packet("tgt1", "pkt1")
         p.define_item("item1", 0, 32, "UINT")
         p.define_item("item2", 16, 32, "UINT")
-        self.assertEqual(
-            p.check_bit_offsets()[0],
-            "Bit definition overlap at bit offset 16 for packet TGT1 PKT1 items ITEM2 and ITEM1",
-        )
+        offsets = p.check_bit_offsets()
+        if len(offsets) > 0:
+            self.assertEqual(
+                offsets[0],
+                "Bit definition overlap at bit offset 16 for packet TGT1 PKT1 items ITEM2 and ITEM1",
+            )
+        else:
+            self.fail("No overlap detected")
 
     def test_complains_about_array_overlapping_items(self):
         p = Packet("tgt1", "pkt1")
         p.define_item("item1", 0, 8, "UINT", 32)
         p.define_item("item2", 0, 8, "UINT", 32)
-        self.assertEqual(
-            p.check_bit_offsets()[0],
-            "Bit definition overlap at bit offset 0 for packet TGT1 PKT1 items ITEM2 and ITEM1",
-        )
+        offsets = p.check_bit_offsets()
+        if len(offsets) > 0:
+            self.assertEqual(
+                offsets[0],
+                "Bit definition overlap at bit offset 0 for packet TGT1 PKT1 items ITEM2 and ITEM1",
+            )
+        else:
+            self.fail("No overlap detected")
 
     def test_does_not_complain_with_array_non_overlapping_negative_offsets(self):
         p = Packet("tgt1", "pkt1")
         p.define_item("item1", 0, 8, "UINT")
         p.define_item("item2", 8, 8, "INT", -16)
         p.define_item("item3", -16, 16, "UINT")
-        self.assertEqual(p.check_bit_offsets(), [])
+        offsets = p.check_bit_offsets()
+        self.assertEqual(offsets, [])
 
     def test_complains_with_array_overlapping_negative_offsets(self):
         p = Packet("tgt1", "pkt1")
         p.define_item("item1", 0, 8, "UINT")
         p.define_item("item2", 8, 8, "INT", -16)
         p.define_item("item3", -17, 16, "UINT")
-        self.assertEqual(
-            p.check_bit_offsets()[0],
-            "Bit definition overlap at bit offset -17 for packet TGT1 PKT1 items ITEM3 and ITEM2",
-        )
+        offsets = p.check_bit_offsets()
+        if len(offsets) > 0:
+            self.assertEqual(
+                offsets[0],
+                "Bit definition overlap at bit offset -17 for packet TGT1 PKT1 items ITEM3 and ITEM2",
+            )
+        else:
+            self.fail("No overlap detected")
 
     def test_complains_about_array_intersecting_items(self):
         p = Packet("tgt1", "pkt1")
         p.define_item("item1", 0, 8, "UINT", 32)
         p.define_item("item2", 16, 8, "UINT", 32)
-        self.assertEqual(
-            p.check_bit_offsets()[0],
-            "Bit definition overlap at bit offset 16 for packet TGT1 PKT1 items ITEM2 and ITEM1",
-        )
+        offsets = p.check_bit_offsets()
+        if len(offsets) > 0:
+            self.assertEqual(
+                offsets[0],
+                "Bit definition overlap at bit offset 16 for packet TGT1 PKT1 items ITEM2 and ITEM1",
+            )
+        else:
+            self.fail("No overlap detected")
 
     def test_does_not_complain_about_nonoverlapping_big_endian_bitfields(self):
         p = Packet("tgt1", "pkt1")
         p.define_item("item1", 0, 12, "UINT", None, "BIG_ENDIAN")
         p.define_item("item2", 12, 4, "UINT", None, "BIG_ENDIAN")
         p.define_item("item3", 16, 16, "UINT", None, "BIG_ENDIAN")
-        self.assertEqual(p.check_bit_offsets(), [])
+        offsets = p.check_bit_offsets()
+        self.assertEqual(offsets, [])
 
     def test_complains_about_overlapping_big_endian_bitfields(self):
         p = Packet("tgt1", "pkt1")
         p.define_item("item1", 0, 12, "UINT", None, "BIG_ENDIAN")
         p.define_item("item2", 10, 6, "UINT", None, "BIG_ENDIAN")
         p.define_item("item3", 16, 16, "UINT", None, "BIG_ENDIAN")
-        self.assertEqual(
-            p.check_bit_offsets()[0],
-            "Bit definition overlap at bit offset 10 for packet TGT1 PKT1 items ITEM2 and ITEM1",
-        )
+        offsets = p.check_bit_offsets()
+        if len(offsets) > 0:
+            self.assertEqual(
+                offsets[0],
+                "Bit definition overlap at bit offset 10 for packet TGT1 PKT1 items ITEM2 and ITEM1",
+            )
+        else:
+            self.fail("No overlap detected")
 
     def test_does_not_complain_about_nonoverlapping_little_endian_bitfields(self):
         p = Packet("tgt1", "pkt1")
         # bit offset in LITTLE_ENDIAN refers to MSB
         p.define_item("item1", 12, 12, "UINT", None, "LITTLE_ENDIAN")
         p.define_item("item2", 16, 16, "UINT", None, "LITTLE_ENDIAN")
-        self.assertEqual(p.check_bit_offsets(), [])
+        offsets = p.check_bit_offsets()
+        self.assertEqual(offsets, [])
 
     def test_complains_about_overlapping_little_endian_bitfields(self):
         p = Packet("tgt1", "pkt1")
         # bit offset in LITTLE_ENDIAN refers to MSB
         p.define_item("item1", 12, 12, "UINT", None, "LITTLE_ENDIAN")
         p.define_item("item2", 10, 10, "UINT", None, "LITTLE_ENDIAN")
-        self.assertEqual(
-            p.check_bit_offsets()[0],
-            "Bit definition overlap at bit offset 12 for packet TGT1 PKT1 items ITEM1 and ITEM2",
-        )
-
+        offsets = p.check_bit_offsets()
+        if len(offsets) > 0:
+            self.assertEqual(
+                offsets[0],
+                "Bit definition overlap at bit offset 12 for packet TGT1 PKT1 items ITEM1 and ITEM2",
+            )
+        else:
+            self.fail("No overlap detected")
 
 class PacketIdItems(unittest.TestCase):
     def test_returns_an_array_of_the_identifying_items(self):

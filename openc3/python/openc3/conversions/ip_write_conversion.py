@@ -31,17 +31,9 @@ class IpWriteConversion(Conversion):
     #   conversion.
     # @param buffer [String] The packet buffer
     # @return The converted value
-    def call(value, _packet, _buffer):
-        bytes = value.split(".")
-        result = 0
-        result += int(bytes[0])
-        result = result.append(8)
-        result += int(bytes[1])
-        result = result.append(8)
-        result += int(bytes[2])
-        result = result.append(8)
-        result += int(bytes[3])
-        return result
+    def call(self, value, _packet, _buffer):
+        octets = value.split('.')
+        return (int(octets[0]) << 24) | (int(octets[1]) << 16) | (int(octets[2]) << 8) | int(octets[3])
 
     # @return [String] The conversion class
     def __str__(self):

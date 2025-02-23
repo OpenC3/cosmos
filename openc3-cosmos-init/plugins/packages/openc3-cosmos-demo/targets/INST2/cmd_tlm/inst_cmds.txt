@@ -29,9 +29,11 @@ COMMAND <%= target_name %> SETPARAMS BIG_ENDIAN "Sets numbered parameters"
   <%= render "_ccsds_cmd.txt", locals: {id: 4} %>
   # ERB syntax:
   <% (1..5).each do |i| %>
-    APPEND_PARAMETER VALUE<%= i %> 16 UINT 0 5 1 "Value <%= i %> setting"
+    # The packet is BIG_ENDIAN (CCSDS) but these fields are LITTLE_ENDIAN
+    APPEND_PARAMETER VALUE<%= i %> 16 UINT 0 5 1 "Value <%= i %> setting" LITTLE_ENDIAN
     RELATED_ITEM <%= target_name %> PARAMS VALUE<%= i %>
   <% end %>
+  SCREEN <%= target_name %> PARAMS
 
   SELECT_PARAMETER VALUE5
     POLY_WRITE_CONVERSION 0 2
@@ -95,6 +97,8 @@ COMMAND <%= target_name %> TIME_OFFSET BIG_ENDIAN "Subtract the packet time by t
   VALIDATOR inst2_cmd_validator.py
   <%= render "_ccsds_cmd.txt", locals: {id: 12} %>
   APPEND_PARAMETER SECONDS 32 UINT MIN MAX 0 "Seconds to subtract from packet time"
+  APPEND_PARAMETER IP_ADDRESS 32 UINT MIN MAX "127.0.0.1" "IP address"
+    WRITE_CONVERSION openc3/conversions/ip_write_conversion.py
 
 COMMAND <%= target_name %> HIDDEN BIG_ENDIAN "Hidden command to bump the hidden packet"
   VALIDATOR inst2_cmd_validator.py

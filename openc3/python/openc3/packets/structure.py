@@ -481,15 +481,30 @@ class Structure:
     def clone(self):
         struct = copy.copy(self)
         struct._buffer = self.buffer  # Makes a copy
+        struct.accessor = copy.copy(self.accessor)
         struct.accessor.packet = struct
         return struct
 
-    MUTEX = threading.Lock()
+    # Clone that also deep copies items
+    # @return [Structure] A deep copy of the structure
+    def deep_copy(self):
+        cloned = self.clone()
+        cloned_items = []
+        for item in cloned.sorted_items:
+            cloned_items.append(item.clone())
+
+        cloned.sorted_items = cloned_items
+        cloned.items = {}
+        for item in cloned_items:
+            cloned.items[item.name] = item
+        return cloned
+
+    CLASS_MUTEX = threading.Lock()
 
     def setup_mutex(self):
         if self.mutex:
             return
-        with Structure.MUTEX:
+        with Structure.CLASS_MUTEX:
             self.mutex_allow_reads = False
             self.mutex = threading.Lock()
 

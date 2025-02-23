@@ -95,6 +95,7 @@ VARIABLE reduced_log_retain_time 2592000
     DONT_CONNECT
     # Override the default log time of 600
     LOG_STREAM 60
+    OPTION CONNECT_CMD LOG "<%= example_target_name %> START"
 <% end %>
 
 <% if include_templated and include_templated_int %>

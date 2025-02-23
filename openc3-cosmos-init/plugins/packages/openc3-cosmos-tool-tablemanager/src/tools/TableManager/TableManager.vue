@@ -524,7 +524,7 @@ export default {
       formData.append('binary', this.filename)
       formData.append('definition', this.definitionFilename)
       if (tableName !== null) {
-        formData.append('table', tableName)
+        formData.append('table_name', tableName)
       }
       Api.post(`/openc3-api/tables/binary`, {
         data: formData,
@@ -553,7 +553,7 @@ export default {
       const formData = new FormData()
       formData.append('definition', this.definitionFilename)
       if (tableName !== null) {
-        formData.append('table', tableName)
+        formData.append('table_name', tableName)
       }
       Api.post(`/openc3-api/tables/definition`, {
         data: formData,
@@ -574,7 +574,7 @@ export default {
       formData.append('binary', this.filename)
       formData.append('definition', this.definitionFilename)
       if (tableName !== null) {
-        formData.append('table', tableName)
+        formData.append('table_name', tableName)
       }
       Api.post(`/openc3-api/tables/report`, {
         data: formData,

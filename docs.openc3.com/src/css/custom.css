@@ -124,6 +124,10 @@ img[alt="SPACER"] {
   width: 180px;
 }
 
+img[alt="ARRAYPLOT"] {
+  width: 600px;
+}
+
 img[alt="ARRAY"] {
   width: 220px;
 }

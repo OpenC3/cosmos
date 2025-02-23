@@ -20,9 +20,7 @@
 # if purchased from OpenC3, Inc.
 */
 
-import * as ActionCable from '@rails/actioncable'
-//ActionCable.logger.enabled = true
-ActionCable.ConnectionMonitor.staleThreshold = 10
+import { createConsumer } from '@anycable/web'
 
 export default class Cable {
   constructor(url = '/openc3-api/cable') {
@@ -31,7 +29,8 @@ export default class Cable {
   }
   disconnect() {
     if (this._cable) {
-      this._cable.disconnect()
+      this._cable.cable.disconnect()
+      this._cable = null
     }
   }
   createSubscription(channel, scope, callbacks = {}, additionalOptions = {}) {
@@ -47,7 +46,8 @@ export default class Cable {
             encodeURIComponent(window.openc3Scope) +
             '&authorization=' +
             encodeURIComponent(localStorage.openc3Token)
-          this._cable = ActionCable.createConsumer(final_url)
+          final_url = new URL(final_url, document.baseURI).href
+          this._cable = createConsumer(final_url)
         }
         return this._cable.subscriptions.create(
           {
@@ -60,6 +60,6 @@ export default class Cable {
     )
   }
   recordPing() {
-    this._cable.connection.monitor.recordPing()
+    // Noop with Anycable
   }
 }

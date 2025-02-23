@@ -7,6 +7,9 @@ git_source(:github) { |repo| "https://github.com/#{repo}.git" }
 # Bundle edge Rails instead: gem 'rails', github: 'rails/rails'
 gem 'rails', '~> 7.1.0'
 
+# Use anycable instead of actioncable
+gem "anycable-rails", "~> 1.5"
+
 # The following gems are installed in the OpenC3 base container openc3-base
 # which this Dockerfile depends on: puma, redis, nokogiri
 
@@ -35,7 +38,7 @@ group :development, :test do
 end
 
 group :test do
-  gem 'mock_redis', '0.45'
+  gem 'mock_redis', '~> 0.47'
 end
 
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
@@ -46,5 +49,5 @@ if ENV['OPENC3_DEVEL']
 elsif ENV['OPENC3_PATH']
   gem 'openc3', :path => ENV['OPENC3_PATH']
 else
-  gem 'openc3', '6.0.3.pre.beta0'
+  gem 'openc3', '6.1.1.pre.beta0'
 end

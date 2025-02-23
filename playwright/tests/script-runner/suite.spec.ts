@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -76,7 +76,7 @@ async function runAndCheckResults(
     await utils.download(
       page,
       'button:has-text("Download")',
-      function (contents) {
+      function (contents: string) {
         expect(contents).toContain('Script Report')
         validator(contents)
       },
@@ -108,16 +108,21 @@ async function suiteTemplate(page, utils, type) {
 
 test('generates a ruby suite template', async ({ page, utils }) => {
   await suiteTemplate(page, utils, 'Ruby')
-  await page
-    .locator('textarea')
+  await expect(
+    page
+    .locator('pre')
     .filter({ hasText: "require 'openc3/script/suite.rb'" })
+    .first()
+  ).toBeVisible()
 })
 
 test('generates a python suite template', async ({ page, utils }) => {
   await suiteTemplate(page, utils, 'Python')
-  await page
-    .locator('textarea')
+  await expect(page
+    .locator('pre')
     .filter({ hasText: 'from openc3.script.suite import Suite, Group' })
+    .first()
+  ).toBeVisible()
 })
 
 test('loads Suite controls when opening a suite', async ({ page, utils }) => {
@@ -125,12 +130,12 @@ test('loads Suite controls when opening a suite', async ({ page, utils }) => {
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Open File').click()
   await utils.sleep(1000)
-  await page.locator('[data-test=file-open-save-search]').type('my_script_')
+  await page.locator('[data-test=file-open-save-search] input').fill('my_script_')
   await utils.sleep(500)
-  await page.locator('[data-test=file-open-save-search]').type('suite')
+  await page.locator('[data-test=file-open-save-search] input').fill('suite')
   await page.locator('text=script_suite >> nth=0').click() // nth=0 because INST, INST2
   await page.locator('[data-test=file-open-save-submit-btn]').click()
-  expect(await page.locator('#sr-controls')).toContainText(
+  await expect(page.locator('#sr-controls')).toContainText(
     `INST/procedures/my_script_suite.rb`,
   )
   // Verify defaults in the Suite options
@@ -161,12 +166,12 @@ test('loads Suite controls when opening a suite', async ({ page, utils }) => {
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Open File').click()
   await utils.sleep(1000)
-  await page.locator('[data-test=file-open-save-search]').type('dis')
+  await page.locator('[data-test=file-open-save-search] input').fill('dis')
   await utils.sleep(500)
-  await page.locator('[data-test=file-open-save-search]').type('connect')
+  await page.locator('[data-test=file-open-save-search] input').fill('connect')
   await page.locator('text=disconnect >> nth=0').click() // nth=0 because INST, INST2
   await page.locator('[data-test=file-open-save-submit-btn]').click()
-  expect(await page.locator('#sr-controls')).toContainText(
+  await expect(page.locator('#sr-controls')).toContainText(
     `INST/procedures/disconnect.rb`,
   )
   await expect(page.locator('[data-test=start-suite]')).not.toBeVisible()
@@ -240,7 +245,7 @@ test('starts a suite', async ({ page, utils }) => {
     page,
     utils,
     '[data-test=setup-suite]',
-    function (textarea) {
+    function (textarea: string) {
       expect(textarea).toMatch('setup:PASS')
       expect(textarea).toMatch('Total Tests: 1')
       expect(textarea).toMatch('Pass: 1')
@@ -252,7 +257,7 @@ test('starts a suite', async ({ page, utils }) => {
     page,
     utils,
     '[data-test=teardown-suite]',
-    function (textarea) {
+    function (textarea: string) {
       expect(textarea).toMatch('teardown:PASS')
       expect(textarea).toMatch('Total Tests: 1')
       expect(textarea).toMatch('Pass: 1')
@@ -264,7 +269,7 @@ test('starts a suite', async ({ page, utils }) => {
     page,
     utils,
     '[data-test=start-suite]',
-    function (textarea) {
+    function (textarea: string) {
       expect(textarea).toMatch('setup:PASS')
       expect(textarea).toMatch('teardown:PASS')
       expect(textarea).toMatch('Total Tests: 3')
@@ -297,7 +302,7 @@ test('starts a suite', async ({ page, utils }) => {
   `)
   await utils.sleep(1000)
   // Verify filename is marked as edited
-  expect(await page.locator('#sr-controls')).toContainText('*')
+  await expect(page.locator('#sr-controls')).toContainText('*')
   // Save the new values which should refresh the controls
   if (process.platform === 'darwin') {
     await page.keyboard.press('Meta+S')
@@ -341,7 +346,7 @@ test('starts a group', async ({ page, utils }) => {
     page,
     utils,
     '[data-test=setup-group]',
-    function (textarea) {
+    function (textarea: string) {
       expect(textarea).toMatch('setup:PASS')
       expect(textarea).toMatch('Total Tests: 1')
       expect(textarea).toMatch('Pass: 1')
@@ -353,7 +358,7 @@ test('starts a group', async ({ page, utils }) => {
     page,
     utils,
     '[data-test=teardown-group]',
-    function (textarea) {
+    function (textarea: string) {
       expect(textarea).toMatch('teardown:PASS')
       expect(textarea).toMatch('Total Tests: 1')
       expect(textarea).toMatch('Pass: 1')
@@ -365,7 +370,7 @@ test('starts a group', async ({ page, utils }) => {
     page,
     utils,
     '[data-test=start-group]',
-    function (textarea) {
+    function (textarea: string) {
       expect(textarea).toMatch('setup:PASS')
       expect(textarea).toMatch('teardown:PASS')
       expect(textarea).toMatch('Total Tests: 3')
@@ -401,7 +406,7 @@ test('starts a group', async ({ page, utils }) => {
   `)
   await utils.sleep(1000)
   // Verify filename is marked as edited
-  expect(await page.locator('#sr-controls')).toContainText('*')
+  await expect(page.locator('#sr-controls')).toContainText('*')
   // Save the new values which should refresh the controls
   if (process.platform === 'darwin') {
     await page.keyboard.press('Meta+S')
@@ -437,7 +442,7 @@ test('starts a script', async ({ page, utils }) => {
     page,
     utils,
     '[data-test=start-script]',
-    function (textarea) {
+    function (textarea: string) {
       expect(textarea).toMatch('test1')
       expect(textarea).toMatch('Total Tests: 1')
       expect(textarea).toMatch('Pass: 1')
@@ -467,7 +472,7 @@ test('handles manual mode', async ({ page, utils }) => {
     page,
     utils,
     '[data-test=start-group]',
-    function (textarea) {
+    function (textarea: string) {
       expect(textarea).toMatch('Manual = true')
       expect(textarea).toMatch('manual1')
       expect(textarea).not.toMatch('manual2')
@@ -481,7 +486,7 @@ test('handles manual mode', async ({ page, utils }) => {
     page,
     utils,
     '[data-test=start-group]',
-    function (textarea) {
+    function (textarea: string) {
       expect(textarea).toMatch('Manual = false')
       expect(textarea).not.toMatch('manual1')
       expect(textarea).toMatch('manual2')

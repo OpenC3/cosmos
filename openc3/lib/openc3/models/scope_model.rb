@@ -95,7 +95,7 @@ module OpenC3
       text_log_cycle_size: 50_000_000,
       text_log_retain_time: nil,
       tool_log_retain_time: nil,
-      cleanup_poll_time: 900,
+      cleanup_poll_time: 600,
       command_authority: false,
       critical_commanding: "OFF",
       shard: 0,
@@ -129,6 +129,12 @@ module OpenC3
       raise "Invalid scope name: #{@name}" if @name !~ /^[a-zA-Z0-9_-]+$/
       @name = @name.upcase
       @scope = @name # Ensure @scope matches @name
+      # Ensure the various cycle and retain times are integers
+      @text_log_cycle_time = @text_log_cycle_time.to_i
+      @text_log_cycle_size = @text_log_cycle_size.to_i
+      @text_log_retain_time = @text_log_retain_time.to_i if @text_log_retain_time
+      @tool_log_retain_time = @tool_log_retain_time.to_i if @tool_log_retain_time
+      @cleanup_poll_time = @cleanup_poll_time.to_i
       super(update: update, force: force, queued: queued)
 
       if ENTERPRISE

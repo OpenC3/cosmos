@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -18,20 +18,19 @@ import os
 import time
 import json
 import sys
+import traceback
 from datetime import datetime, timezone
 from openc3.script import get_overrides
 from openc3.utilities.bucket import Bucket
 from openc3.utilities.store import Store, EphemeralStore
 from openc3.utilities.extract import convert_to_value
 from openc3.utilities.logger import Logger
-from openc3.environment import *
-import traceback
+from openc3.environment import OPENC3_CONFIG_BUCKET
+from running_script import RunningScript, running_script_anycable_publish
 
 start_time = time.time()
 
-from running_script import RunningScript
-
-# # Load the bucket client code to ensure we authenticate outside ENV vars
+# Load the bucket client code to ensure we authenticate outside ENV vars
 Bucket.getClient()
 
 del os.environ["OPENC3_BUCKET_USERNAME"]
@@ -39,7 +38,7 @@ del os.environ["OPENC3_BUCKET_PASSWORD"]
 os.unsetenv("OPENC3_BUCKET_USERNAME")
 os.unsetenv("OPENC3_BUCKET_PASSWORD")
 
-# # Preload Store and remove Redis secrets from ENV
+# Preload Store and remove Redis secrets from ENV
 Store.instance()
 EphemeralStore.instance()
 
@@ -71,9 +70,9 @@ def run_script_log(id, message, color="BLACK", message_log=True):
     )
     if message_log:
         RunningScript.message_log().write(line_to_write + "\n", True)
-    Store.publish(
-        f"script-api:running-script-channel:{id}",
-        json.dumps({"type": "output", "line": line_to_write, "color": color}),
+    running_script_anycable_publish(
+        f"running-script-channel:{id}",
+        {"type": "output", "line": line_to_write, "color": color},
     )
 
 
@@ -118,6 +117,18 @@ try:
             )
     else:
         running_script.run()
+
+    running = Store.smembers("running-scripts")
+    if running is None:
+        running = []
+    running_script_anycable_publish(
+        "all-scripts-channel",
+        {
+            "type": "start",
+            "filename": path,
+            "active_scripts": len(running),
+        },
+    )
 
     # Subscribe to the ActionCable generated topic which is namedspaced with channel_prefix
     # (defined in cable.yml) and then the channel stream. This isn't typically how you see these
@@ -164,7 +175,7 @@ try:
                             | "open_file_dialog"
                             | "open_files_dialog"
                         ):
-                            if running_script.prompt_id != None:
+                            if running_script.prompt_id is not None:
                                 if (
                                     "prompt_id" in parsed_cmd
                                     and running_script.prompt_id
@@ -219,15 +230,13 @@ try:
                                     f"INFO: Unexpectedly received answer for unknown prompt {prompt_id}.",
                                 )
                         case "backtrace":
-                            Store.publish(
-                                f"script-api:running-script-channel:{id}",
-                                json.dumps(
-                                    {
-                                        "type": "script",
-                                        "method": "backtrace",
-                                        "args": running_script.current_backtrace,
-                                    }
-                                ),
+                            running_script_anycable_publish(
+                                f"running-script-channel:{id}",
+                                {
+                                    "type": "script",
+                                    "method": "backtrace",
+                                    "args": running_script.current_backtrace,
+                                },
                             )
                         case "debug":
                             run_script_log(
@@ -246,7 +255,7 @@ try:
                     run_script_log(
                         id, f"ERROR: Script command not handled: {msg['data']}", "RED"
                     )
-except Exception as err:
+except Exception:
     tb = traceback.format_exc()
     run_script_log(id, tb, "RED")
 finally:
@@ -266,12 +275,12 @@ finally:
         time.sleep(
             0.2
         )  # Allow the message queue to be emptied before signaling complete
-        Store.publish(
-            f"script-api:running-script-channel:{id}", json.dumps({"type": "complete"})
+        running_script_anycable_publish(
+            f"running-script-channel:{id}", {"type": "complete"}
         )
-        Store.publish(
-            "script-api:all-scripts-channel",
-            json.dumps({"type": "complete", "active_scripts": active_scripts}),
+        running_script_anycable_publish(
+            "all-scripts-channel",
+            {"type": "complete", "active_scripts": active_scripts},
         )
     finally:
         if running_script:

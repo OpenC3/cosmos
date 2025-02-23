@@ -152,6 +152,7 @@ module OpenC3
       @last_temp2 = 0
       @quiet = false
       @time_offset = 0
+      @ip_address = 0
     end
 
     def set_rates
@@ -238,6 +239,7 @@ module OpenC3
       when 'TIME_OFFSET'
         hs_packet.cmd_acpt_cnt += 1
         @time_offset = packet.read('seconds')
+        @ip_address = packet.read('ip_address')
       when 'HIDDEN'
         # Deliberately do not increment cmd_acpt_cnt
         @tlm_packets['HIDDEN'].count = packet.read('count')
@@ -378,6 +380,7 @@ module OpenC3
           packet.timesec = time.tv_sec - @time_offset
           packet.timeus = time.tv_usec
           packet.ccsdsseqcnt += 1
+          packet.ip_address = @ip_address
 
         when 'IMAGE'
           packet.timesec = time.tv_sec - @time_offset

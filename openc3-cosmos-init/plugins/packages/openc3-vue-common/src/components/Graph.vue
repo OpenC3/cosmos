@@ -447,8 +447,8 @@ export default {
       errors: [],
       colorIndex: 0,
       colors: [
-        // These are taken right from the Astro css definitions for
-        // --color-data-visualization-1 through 8
+        // The first 3 are taken from the Astro css definitions for
+        // --color-data-visualization-1 through 3
         '#00c7cb',
         '#938bdb',
         '#4dacff',
@@ -1038,12 +1038,16 @@ export default {
           connected: () => {
             this.addItemsToSubscription(this.items)
           },
-          disconnected: () => {
-            this.errors.push({
-              type: 'disconnected',
-              message: 'OpenC3 backend connection disconnected',
-              time: new Date().getTime(),
-            })
+          disconnected: (data) => {
+            // If allowReconnect is true it means we got a disconnect due to connection lost or server disconnect
+            // If allowReconnect is false this is a normal server close or client close
+            if (data.allowReconnect) {
+              this.errors.push({
+                type: 'disconnected',
+                message: 'OpenC3 backend connection disconnected',
+                time: new Date().getTime(),
+              })
+            }
           },
           rejected: () => {
             this.errors.push({
@@ -1109,9 +1113,11 @@ export default {
           height = height / 2.0 + 10 // 5px padding top and bottom
         }
       }
-      let width = viewWidth - 68 // padding left and right
+      // subtract off some arbitrary padding left and right to make the layout work
+      let width = viewWidth - 70
       if (!this.fullWidth) {
-        width = width / 2.0 - 10 // 5px padding left and right
+        // 6px padding left and right defined in TlmGrapher.vue .item-content
+        width = width / 2.0 - 12
       }
       return {
         width: this.width || width,

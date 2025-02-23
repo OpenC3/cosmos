@@ -173,3 +173,8 @@ MICROSERVICE:
           values: \d+
       example: |
         SHARD 0
+    STOPPED:
+      summary: Initially creates the microservice in a stopped state (not enabled)
+      since: 6.2.0
+      example: |
+        STOPPED

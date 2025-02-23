@@ -301,7 +301,7 @@ module OpenC3
           file.write(JSON.pretty_generate(plugin_hash, :allow_nan => true))
         end
       ensure
-        FileUtils.remove_entry(temp_dir) if temp_dir and File.exist?(temp_dir)
+        FileUtils.remove_entry_secure(temp_dir, true)
       end
     end
 
@@ -380,6 +380,7 @@ module OpenC3
 
     def self.put_target_file(path, io_or_string, scope:)
       full_folder_path = "#{OPENC3_LOCAL_MODE_PATH}/#{path}"
+      return unless File.expand_path(full_folder_path).start_with?(OPENC3_LOCAL_MODE_PATH)
       FileUtils.mkdir_p(File.dirname(full_folder_path))
       File.open(full_folder_path, 'wb') do |file|
         if String === io_or_string
@@ -393,7 +394,10 @@ module OpenC3
 
     def self.open_local_file(path, scope:)
       full_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/targets_modified/#{path}"
-      return File.open(full_path, 'rb')
+      if File.expand_path(full_path).start_with?(OPENC3_LOCAL_MODE_PATH)
+        return File.open(full_path, 'rb')
+      end
+      nil
     rescue Errno::ENOENT
       nil
     end
@@ -446,6 +450,7 @@ module OpenC3
     def self.save_tool_config(scope, tool, name, data)
       json = JSON.parse(data, :allow_nan => true, :create_additions => true)
       config_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/tool_config/#{tool}/#{name}.json"
+      return unless File.expand_path(config_path).start_with?(OPENC3_LOCAL_MODE_PATH)
       FileUtils.mkdir_p(File.dirname(config_path))
       File.open(config_path, 'w') do |file|
         file.write(JSON.pretty_generate(json, :allow_nan => true))
@@ -453,7 +458,9 @@ module OpenC3
     end
 
     def self.delete_tool_config(scope, tool, name)
-      FileUtils.rm_f("#{OPENC3_LOCAL_MODE_PATH}/#{scope}/tool_config/#{tool}/#{name}.json")
+      config_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/tool_config/#{tool}/#{name}.json"
+      return unless File.expand_path(config_path).start_with?(OPENC3_LOCAL_MODE_PATH)
+      FileUtils.rm_f(config_path)
     end
 
     def self.sync_settings()
@@ -471,6 +478,7 @@ module OpenC3
 
     def self.save_setting(scope, name, data)
       config_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/settings/#{name}.json"
+      return unless File.expand_path(config_path).start_with?(OPENC3_LOCAL_MODE_PATH)
       FileUtils.mkdir_p(File.dirname(config_path))
       # Anything can be stored as a setting so write it out directly
       File.write(config_path, data)
@@ -480,12 +488,14 @@ module OpenC3
 
     def self.sync_remote_to_local(bucket, key)
       local_path = "#{OPENC3_LOCAL_MODE_PATH}/#{key}"
+      return unless File.expand_path(local_path).start_with?(OPENC3_LOCAL_MODE_PATH)
       FileUtils.mkdir_p(File.dirname(local_path))
       bucket.get_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: key, path: local_path)
     end
 
     def self.sync_local_to_remote(bucket, key)
       local_path = "#{OPENC3_LOCAL_MODE_PATH}/#{key}"
+      return unless File.expand_path(local_path).start_with?(OPENC3_LOCAL_MODE_PATH)
       File.open(local_path, 'rb') do |read_file|
         bucket.put_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: key, body: read_file)
       end
@@ -493,6 +503,7 @@ module OpenC3
 
     def self.delete_local(key)
       local_path = "#{OPENC3_LOCAL_MODE_PATH}/#{key}"
+      return unless File.expand_path(local_path).start_with?(OPENC3_LOCAL_MODE_PATH)
       File.delete(local_path) if File.exist?(local_path)
       nil
     end

@@ -37,6 +37,7 @@ cd ..
 # openc3-base
 cd openc3
 docker build \
+  -f Dockerfile-ubi \
   --network host \
   --build-arg OPENC3_REGISTRY=$OPENC3_REGISTRY \
   --build-arg OPENC3_NAMESPACE=$OPENC3_NAMESPACE \
@@ -69,7 +70,7 @@ cd openc3-minio
 docker build \
   --network host \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource \
-  --build-arg OPENC3_MINIO_RELEASE=RELEASE.2023-10-16T04-13-43Z \
+  --build-arg OPENC3_MINIO_RELEASE=RELEASE.2025-01-20T14-49-07Z \
   --platform linux/amd64 \
   -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-minio-ubi:${OPENC3_TAG}" \
   .
@@ -90,6 +91,7 @@ cd ..
 # openc3-cosmos-cmd-tlm-api
 cd openc3-cosmos-cmd-tlm-api
 docker build \
+  -f Dockerfile-ubi \
   --network host \
   --build-arg OPENC3_REGISTRY=$OPENC3_REGISTRY \
   --build-arg OPENC3_NAMESPACE=$OPENC3_NAMESPACE \
@@ -103,6 +105,7 @@ cd ..
 # openc3-cosmos-script-runner-api
 cd openc3-cosmos-script-runner-api
 docker build \
+  -f Dockerfile-ubi \
   --network host \
   --build-arg OPENC3_REGISTRY=$OPENC3_REGISTRY \
   --build-arg OPENC3_NAMESPACE=$OPENC3_NAMESPACE \
@@ -137,13 +140,15 @@ docker build \
   --network host \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource/traefik \
   --build-arg TRAEFIK_CONFIG=$TRAEFIK_CONFIG \
-  --build-arg OPENC3_TRAEFIK_RELEASE=v3.3.2 \
+  --build-arg OPENC3_TRAEFIK_RELEASE=v3.3.3 \
   --platform linux/amd64 \
   -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-traefik-ubi:${OPENC3_TAG}" \
   .
 cd ..
 
 # openc3-cosmos-init
+# NOTE: Ensure OPENC3_MC_RELEASE is on IronBank:
+# https://ironbank.dso.mil/repomap/details;registry1Path=opensource%252Fminio%252Fmc
 # NOTE: RELEASE.2023-10-14T01-57-03Z is the last MINIO/MC release to support UBI8
 cd openc3-cosmos-init
 docker build \
@@ -151,7 +156,7 @@ docker build \
   --build-context docs=../docs.openc3.com \
   --build-arg NPM_URL=$NPM_URL \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource \
-  --build-arg OPENC3_MC_RELEASE=RELEASE.2023-10-14T01-57-03Z \
+  --build-arg OPENC3_MC_RELEASE=RELEASE.2025-01-17T23-25-50Z \
   --build-arg OPENC3_BASE_IMAGE=openc3-base-ubi \
   --build-arg OPENC3_NODE_IMAGE=openc3-node-ubi \
   --build-arg OPENC3_REGISTRY=$OPENC3_REGISTRY \

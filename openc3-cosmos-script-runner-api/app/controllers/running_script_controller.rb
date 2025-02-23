@@ -41,7 +41,7 @@ class RunningScriptController < ApplicationController
     if running_script
       target_name = running_script['name'].split('/')[0]
       return unless authorization('script_run', target_name: target_name)
-      ActionCable.server.broadcast("cmd-running-script-channel:#{params[:id]}", "stop")
+      running_script_publish("cmd-running-script-channel:#{params[:id]}", "stop")
       OpenC3::Logger.info("Script stopped: #{running_script}", scope: params[:scope], user: username())
       head :ok
     else
@@ -54,6 +54,7 @@ class RunningScriptController < ApplicationController
     if running_script
       target_name = running_script['name'].split('/')[0]
       return unless authorization('script_run', target_name: target_name)
+      running_script_publish("cmd-running-script-channel:#{params[:id]}", "stop")
       RunningScript.delete(params[:id].to_i)
       OpenC3::Logger.info("Script deleted: #{running_script}", scope: params[:scope], user: username())
       head :ok
@@ -67,7 +68,7 @@ class RunningScriptController < ApplicationController
     if running_script
       target_name = running_script['name'].split('/')[0]
       return unless authorization('script_run', target_name: target_name)
-      ActionCable.server.broadcast("cmd-running-script-channel:#{params[:id]}", "pause")
+      running_script_publish("cmd-running-script-channel:#{params[:id]}", "pause")
       OpenC3::Logger.info("Script paused: #{running_script}", scope: params[:scope], user: username())
       head :ok
     else
@@ -80,7 +81,7 @@ class RunningScriptController < ApplicationController
     if running_script
       target_name = running_script['name'].split('/')[0]
       return unless authorization('script_run', target_name: target_name)
-      ActionCable.server.broadcast("cmd-running-script-channel:#{params[:id]}", "retry")
+      running_script_publish("cmd-running-script-channel:#{params[:id]}", "retry")
       OpenC3::Logger.info("Script retried: #{running_script}", scope: params[:scope], user: username())
       head :ok
     else
@@ -93,7 +94,7 @@ class RunningScriptController < ApplicationController
     if running_script
       target_name = running_script['name'].split('/')[0]
       return unless authorization('script_run', target_name: target_name)
-      ActionCable.server.broadcast("cmd-running-script-channel:#{params[:id]}", "go")
+      running_script_publish("cmd-running-script-channel:#{params[:id]}", "go")
       OpenC3::Logger.info("Script resumed: #{running_script}", scope: params[:scope], user: username())
       head :ok
     else
@@ -106,7 +107,7 @@ class RunningScriptController < ApplicationController
     if running_script
       target_name = running_script['name'].split('/')[0]
       return unless authorization('script_run', target_name: target_name)
-      ActionCable.server.broadcast("cmd-running-script-channel:#{params[:id]}", "step")
+      running_script_publish("cmd-running-script-channel:#{params[:id]}", "step")
       OpenC3::Logger.info("Script stepped: #{running_script}", scope: params[:scope], user: username())
       head :ok
     else
@@ -121,11 +122,11 @@ class RunningScriptController < ApplicationController
       return unless authorization('script_run', target_name: target_name)
       if params[:password]
         # TODO: ActionCable is logging this ... probably shouldn't
-        ActionCable.server.broadcast("cmd-running-script-channel:#{params[:id]}", { method: params[:method], password: params[:password], prompt_id: params[:prompt_id] })
+        running_script_publish("cmd-running-script-channel:#{params[:id]}", { method: params[:method], password: params[:password], prompt_id: params[:prompt_id] })
       elsif params[:multiple]
-        ActionCable.server.broadcast("cmd-running-script-channel:#{params[:id]}", { method: params[:method], multiple: JSON.generate(params[:answer]), prompt_id: params[:prompt_id] })
+        running_script_publish("cmd-running-script-channel:#{params[:id]}", { method: params[:method], multiple: JSON.generate(params[:answer]), prompt_id: params[:prompt_id] })
       else
-        ActionCable.server.broadcast("cmd-running-script-channel:#{params[:id]}", { method: params[:method], answer: params[:answer], prompt_id: params[:prompt_id] })
+        running_script_publish("cmd-running-script-channel:#{params[:id]}", { method: params[:method], answer: params[:answer], prompt_id: params[:prompt_id] })
       end
       OpenC3::Logger.info("Script prompt action #{params[:method]}: #{running_script}", scope: params[:scope], user: username())
       head :ok
@@ -139,7 +140,7 @@ class RunningScriptController < ApplicationController
     if running_script
       target_name = running_script['name'].split('/')[0]
       return unless authorization('script_run', target_name: target_name)
-      ActionCable.server.broadcast("cmd-running-script-channel:#{params[:id]}", { method: params[:method], args: params[:args], prompt_id: params[:prompt_id] })
+      running_script_publish("cmd-running-script-channel:#{params[:id]}", { method: params[:method], args: params[:args], prompt_id: params[:prompt_id] })
       OpenC3::Logger.info("Script method action #{params[:method]}: #{running_script}", scope: params[:scope], user: username())
       head :ok
     else
