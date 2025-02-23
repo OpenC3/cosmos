@@ -57,7 +57,7 @@ module OpenC3
     # @param url [String] The url of openc3-cosmos-cmd-tlm-api http://openc3-cosmos-cmd-tlm-api:2901
     # @param timeout [Float] The time to wait before disconnecting 1.0
     # @param authentication [OpenC3Authentication] The authentication object if nill initialize will generate
-    def initialize(url: ENV['OPENC3_API_URL'], timeout: 1.0, authentication: nil)
+    def initialize(url:, timeout: 1.0, authentication: nil)
       @http = nil
       @mutex = Mutex.new
       @request_data = ""
