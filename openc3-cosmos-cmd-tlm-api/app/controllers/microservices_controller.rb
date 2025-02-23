@@ -24,7 +24,30 @@ require 'openc3/models/microservice_model'
 
 class MicroservicesController < ModelController
   def initialize
+    super()
     @model_class = OpenC3::MicroserviceModel
+  end
+
+  def start
+    return unless authorization('admin')
+    microservice = @model_class.get_model(name: params[:id], scope: params[:scope])
+    if microservice
+      OpenC3::Logger.info("#{params[:id]} started", scope: params[:scope], user: username())
+      microservice.enabled = true
+      microservice.update
+    end
+    head :ok
+  end
+
+  def stop
+    return unless authorization('admin')
+    microservice = @model_class.get_model(name: params[:id], scope: params[:scope])
+    if microservice
+      OpenC3::Logger.info("#{params[:id]} stopped", scope: params[:scope], user: username())
+      microservice.enabled = false
+      microservice.update
+    end
+    head :ok
   end
 
   def traefik
