@@ -59,7 +59,7 @@ class GenericConversion(Conversion):
     def call(self, value, packet, buffer):
         myself = packet  # For backwards compatibility
         if myself:  # Remove unused variable warning for myself
-            generic_globals = {"value": value, "packet": packet, "buffer": buffer}
+            generic_globals = {"value": value, "myself": myself, "packet": packet, "buffer": buffer}
             exec(self.exec_lines, generic_globals)
             return eval(self.eval_line, generic_globals)
 
