@@ -22,6 +22,7 @@ from openc3.models.offline_access_model import OfflineAccessModel
 from openc3.utilities.authentication import (
     OpenC3KeycloakAuthentication,
 )
+
 try:
     from openc3enterprise.utilities.authorization import user_info
 except ImportError:
@@ -34,7 +35,7 @@ def offline_access_needed(manual=False, scope=OPENC3_SCOPE, token=None):
     authorize(permission="system", manual=manual, scope=scope)
     try:
         authorize(permission="script_view", manual=manual, scope=scope)
-    except:
+    except Exception:
         # Not needed if can't run scripts
         return False
     info = user_info(token)
