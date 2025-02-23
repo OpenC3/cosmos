@@ -58,7 +58,7 @@ If you're building in a offline environment or want to use a private Rubygems, N
 Running COSMOS in development mode enables localhost access to internal API ports as well as sets `RAILS_ENV=development` in the cmd-tlm-api and script-runner-api Rails servers. To run in development mode:
 
 ```bash
-% ./openc3.sh dev
+% ./openc3.sh run
 ```
 
 You can now see the running containers (I removed CONTAINER ID, CREATED and STATUS to save space):
@@ -83,7 +83,8 @@ So now that you have COSMOS up and running how do you develop an individual COSM
 1.  Bootstrap the frontend with yarn
 
 ```bash
-openc3-init % yarn
+openc3-init/plugins % yarn
+openc3-init/plugins % yarn build:common
 ```
 
 1.  Serve a local COSMOS application (CmdTlmServer, ScriptRunner, etc)
