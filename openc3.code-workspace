@@ -30,7 +30,6 @@
     "vetur.validation.template": false,
     "eslint.validate": ["vue", "html", "javascript"],
     "eslint.workingDirectories": ["./openc3-cosmos-init/plugins"],
-    "eslint.packageManager": "yarn",
     "editor.formatOnSave": true,
     "editor.codeActionsOnSave": {
       "source.fixAll.eslint": "explicit"
