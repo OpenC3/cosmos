@@ -52,3 +52,11 @@ class TestGenericConversion(unittest.TestCase):
         self.assertEqual(gc.converted_array_size, (new_gc.converted_array_size))
         self.assertEqual(gc.call(0, pkt, 0), 5.0)
         self.assertEqual(new_gc.call(0, pkt, 0), 5.0)
+
+    def test_multiple_lines(self):
+        gc = GenericConversion("x = 10\ny = 2\nx / y", "UINT", 8)
+        self.assertEqual(gc.call(0, Packet(None, None), 0), 5)
+        gc = GenericConversion("x = 10\ny = 2\nx / y / value", "UINT", 8)
+        self.assertEqual(gc.call(5, Packet(None, None), 0), 1)
+        gc = GenericConversion("import math\nx = 10\ny = 2\nmath.ceil(x / y / value)", "UINT", 8)
+        self.assertEqual(gc.call(2, Packet(None, None), 0), 3)
