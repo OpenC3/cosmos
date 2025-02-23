@@ -92,14 +92,7 @@ openc3-init/plugins % yarn build:common
 ```bash
 openc3-init % cd plugins/packages/openc3-tool-scriptrunner
 openc3-tool-scriptrunner % yarn serve
-
-DONE  Compiled successfully in 128722ms
-App running at:
-- Local:   http://localhost:2914/tools/scriptrunner/
-- Network: http://localhost:2914/tools/scriptrunner/
-
-Note that the development build is not optimized.
-To create a production build, run npm run build.
+built in 128722ms
 ```
 
 1.  Set the [single SPA](https://single-spa.js.org/) override for the application
