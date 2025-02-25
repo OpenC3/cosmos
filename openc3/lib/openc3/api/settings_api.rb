@@ -91,7 +91,7 @@ module OpenC3
       if response.success?
         NewsModel.set(response.body)
       else
-        NewsModel.news_error(response)
+        NewsModel.news_error("Error contacting OpenC3 news feed (status: #{response.status})")
       end
 
       # Test code to update the news feed with a dummy message

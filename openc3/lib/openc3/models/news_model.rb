@@ -31,8 +31,12 @@ module OpenC3
       Store.get(PRIMARY_KEY)
     end
 
-    def self.news_error(response)
-      Store.set(PRIMARY_KEY, [{ date: Time.now.utc.iso8601, title: 'News Error', body: "Error contacting OpenC3 news feed (status: #{response.status})" }].to_json)
+    def self.news_error(message)
+      Store.set(PRIMARY_KEY, [{
+        date: Time.now.utc.iso8601,
+        title: 'News Error',
+        body: message
+      }].to_json)
     end
   end
 end
