@@ -45,7 +45,7 @@ module OpenC3
     end
 
     after(:each) do
-      FileUtils.remove_entry(@temp_dir) if @temp_dir and File.exist?(@temp_dir)
+      FileUtils.remove_entry_secure(@temp_dir, true)
       @temp_dir = nil
       ENV['GEM_HOME'] = @orig_gem_home
     end

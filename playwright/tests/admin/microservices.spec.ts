@@ -63,3 +63,48 @@ test('displays microservice details', async ({ page, utils }) => {
   })
   await page.getByRole('button', { name: 'Ok' }).click()
 })
+
+test('stops and starts microservices', async ({ page, utils }) => {
+  await page
+    .locator('.v-list-item')
+    .filter({ hasText: 'DEFAULT__USER__OPENC3-EXAMPLE' })
+    .locator('.mdi-stop')
+    .click()
+  await page.locator('[data-test="confirm-dialog-stop"]').click()
+  await expect(
+    page
+      .locator('.v-list-item')
+      .filter({ hasText: 'DEFAULT__USER__OPENC3-EXAMPLE' }),
+  ).toContainText('Enabled: False')
+
+  // Check the CmdTlmServer log messages
+  await page.goto('/tools/cmdtlmserver', {
+    waitUntil: 'domcontentloaded',
+  })
+  await expect(page.locator('[data-test=log-messages]')).toContainText(
+    'DEFAULT__USER__OPENC3-EXAMPLE stopped',
+  )
+
+  await page.goto('/tools/admin/microservices', {
+    waitUntil: 'domcontentloaded',
+  })
+  await page
+    .locator('.v-list-item')
+    .filter({ hasText: 'DEFAULT__USER__OPENC3-EXAMPLE' })
+    .locator('.mdi-play')
+    .click()
+  await page.locator('[data-test="confirm-dialog-start"]').click()
+  await expect(
+    page
+      .locator('.v-list-item')
+      .filter({ hasText: 'DEFAULT__USER__OPENC3-EXAMPLE' }),
+  ).toContainText('Enabled: True')
+
+  // Check the CmdTlmServer log messages
+  await page.goto('/tools/cmdtlmserver', {
+    waitUntil: 'domcontentloaded',
+  })
+  await expect(page.locator('[data-test=log-messages]')).toContainText(
+    'DEFAULT__USER__OPENC3-EXAMPLE started',
+  )
+})

@@ -34,6 +34,8 @@
 # the additional setup, and require it from the spec files that actually need
 # it.
 
+require 'rspec'
+
 # NOTE: You MUST require simplecov before anything else!
 if !ENV['OPENC3_NO_SIMPLECOV']
   require 'simplecov'

@@ -284,6 +284,7 @@ class TestInterfaceMicroservice(unittest.TestCase):
     #     im.shutdown()
 
     def test_handles_a_clean_disconnect(self):
+        InterfaceMicroservice.DISCONNECT_WAIT_TIME = 0.01
         im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
         all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
         self.assertEqual(all_interfaces["INST_INT"]["state"], "ATTEMPTING")
@@ -299,7 +300,7 @@ class TestInterfaceMicroservice(unittest.TestCase):
             self.assertIn(TestInterfaceMicroservice.CONN_SUCCESS_MSG, stdout.getvalue())
 
             InterfaceTopic.disconnect_interface("INST_INT")
-            time.sleep(1.01)  # Allow disconnect
+            time.sleep(0.02)  # Allow disconnect
             all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
             self.assertEqual(all_interfaces["INST_INT"]["state"], "DISCONNECTED")
             self.assertIn("Disconnect requested", stdout.getvalue())

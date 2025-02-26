@@ -1,15 +1,16 @@
----
-gem: --no-ri --no-rdoc --no-document --suggestions
+# See https://guides.rubygems.org/command-reference/?gem-environment#gem-environment
+
+# List of commands to override the defaults
 install: --no-document
 update: --no-document
 
-:benchmark: false
-
+# Make the gem command verbose
 :verbose: true
-
+# Print backtrace when RubyGems encounters an error
 :backtrace: true
-
+# Enable automatic updating of repository metadata
 :update_sources: true
+# A YAML array of remote gem repositories to install gems from
 :sources:
   # This is a variable that gets substituted by the Dockerfile
   - RUBYGEMS_URL

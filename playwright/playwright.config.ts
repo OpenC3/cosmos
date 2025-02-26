@@ -56,6 +56,10 @@ export default defineConfig({
 
   projects: [
     {
+      name: 'keycloak',
+      testMatch: /keycloak.setup\.ts/,
+    },
+    {
       name: 'setup',
       testMatch: /global.setup\.ts/,
     },

@@ -1,5 +1,5 @@
 /*
-# Copyright 2022 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -59,6 +59,7 @@ export default {
             reduced: setting[5] || 'DECOM',
             reducedType: setting[6] || null,
           })
+          break
         case 'STARTTIME':
           let date = parse(setting[1], 'yyyy/MM/dd HH:mm:ss', new Date())
           this.startTime = date.getTime() * 1000000 // nanoseconds

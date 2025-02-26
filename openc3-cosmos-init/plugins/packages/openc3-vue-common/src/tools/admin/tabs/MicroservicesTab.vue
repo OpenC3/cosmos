@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -22,25 +22,33 @@
 
 <template>
   <div>
+    <v-alert
+      v-model="showAlert"
+      dismissible
+      transition="scale-transition"
+      :type="alertType"
+      >{{ alert }}</v-alert
+    >
     <v-list class="list" data-test="microserviceList">
       <div v-for="microservice in microservices" :key="microservice">
         <v-list-item>
-          <v-list-item-title>{{ microservice }}</v-list-item-title>
-          <v-list-item-subtitle v-if="microservice_status[microservice]">
+          <v-list-item-title>{{ microservice.name }}</v-list-item-title>
+          <v-list-item-subtitle v-if="microservice_status[microservice.name]">
             Updated:
-            {{ formatDate(microservice_status[microservice].updated_at) }},
-            State: {{ microservice_status[microservice].state }}, Count:
-            {{ microservice_status[microservice].count }}
+            {{ formatDate(microservice_status[microservice.name].updated_at) }},
+            State: {{ microservice_status[microservice.name].state }}, Enabled:
+            {{ microservice.enabled === false ? 'False' : 'True' }}, Count:
+            {{ microservice_status[microservice.name].count }}
           </v-list-item-subtitle>
 
           <template v-slot:append>
-            <div v-if="microservice_status[microservice]">
-              <div v-show="!!microservice_status[microservice].error">
+            <div v-if="microservice_status[microservice.name]">
+              <div v-show="!!microservice_status[microservice.name].error">
                 <v-tooltip location="top">
                   <template v-slot:activator="{ props }">
                     <v-icon
                       v-bind="props"
-                      @click="showMicroserviceError(microservice)"
+                      @click="showMicroserviceError(microservice.name)"
                     >
                       mdi-alert
                     </v-icon>
@@ -49,14 +57,48 @@
                 </v-tooltip>
               </div>
             </div>
-            <v-tooltip location="top">
-              <template v-slot:activator="{ props }">
-                <v-icon v-bind="props" @click="showMicroservice(microservice)">
-                  mdi-eye
-                </v-icon>
-              </template>
-              <span>View Microservice</span>
-            </v-tooltip>
+            <v-list-item-icon class="mr-3">
+              <v-tooltip bottom>
+                <template v-slot:activator="{ on, attrs }">
+                  <v-icon
+                    @click="startMicroservice(microservice.name)"
+                    v-bind="attrs"
+                    v-on="on"
+                  >
+                    mdi-play
+                  </v-icon>
+                </template>
+                <span>Start Microservice</span>
+              </v-tooltip>
+            </v-list-item-icon>
+            <v-list-item-icon class="mr-3">
+              <v-tooltip bottom>
+                <template v-slot:activator="{ on, attrs }">
+                  <v-icon
+                    @click="stopMicroservice(microservice.name)"
+                    v-bind="attrs"
+                    v-on="on"
+                  >
+                    mdi-stop
+                  </v-icon>
+                </template>
+                <span>Stop Microservice</span>
+              </v-tooltip>
+            </v-list-item-icon>
+            <v-list-item-icon>
+              <v-tooltip bottom>
+                <template v-slot:activator="{ on, attrs }">
+                  <v-icon
+                    @click="showMicroservice(microservice.name)"
+                    v-bind="attrs"
+                    v-on="on"
+                  >
+                    mdi-eye
+                  </v-icon>
+                </template>
+                <span>View Microservice</span>
+              </v-tooltip>
+            </v-list-item-icon>
           </template>
         </v-list-item>
         <v-divider />
@@ -98,19 +140,78 @@ export default {
       dialogTitle: '',
       showDialog: false,
       showError: false,
+      alert: '',
+      alertType: 'success',
+      showAlert: false,
+      updater: null,
     }
   },
   mounted() {
     this.update()
+    this.updater = setInterval(() => {
+      this.update()
+    }, 2000)
+  },
+  beforeUnmount() {
+    clearInterval(this.updater)
+    this.updater = null
   },
   methods: {
     update: function () {
       Api.get('/openc3-api/microservice_status/all').then((response) => {
         this.microservice_status = response.data
       })
-      Api.get('/openc3-api/microservices').then((response) => {
-        this.microservices = response.data
+      Api.get('/openc3-api/microservices/all').then((response) => {
+        // Convert hash of microservices to array of microservices
+        let microservices = []
+        for (const [microservice_name, microservice] of Object.entries(response.data)) {
+          microservices.push(microservice)
+        }
+        microservices.sort((a, b) => a.name.localeCompare(b.name))
+        this.microservices = microservices
       })
+    },
+    startMicroservice: function (name) {
+      this.$dialog
+        .confirm(
+          `Are you sure you want to restart microservice: ${name}?`,
+          {
+            okText: 'Start',
+            cancelText: 'Cancel',
+          },
+        ).then((dialog) => {
+          Api.post(`/openc3-api/microservices/${name}/start`).then((response) => {
+            this.alert = `Started ${name}`
+            this.alertType = 'success'
+            this.showAlert = true
+            setTimeout(() => {
+              this.showAlert = false
+            }, 5000)
+          }).then(() => {
+            this.update()
+          })
+        })
+    },
+    stopMicroservice: function (name) {
+      this.$dialog
+        .confirm(
+          `Are you sure you want to stop microservice: ${name}?`,
+          {
+            okText: 'Stop',
+            cancelText: 'Cancel',
+          },
+        ).then((dialog) => {
+          Api.post(`/openc3-api/microservices/${name}/stop`).then((response) => {
+            this.alert = `Stopped ${name}`
+            this.alertType = 'success'
+            this.showAlert = true
+            setTimeout(() => {
+              this.showAlert = false
+            }, 5000)
+          }).then(() => {
+            this.update()
+          })
+        })
     },
     showMicroservice: function (name) {
       Api.get(`/openc3-api/microservices/${name}`).then((response) => {

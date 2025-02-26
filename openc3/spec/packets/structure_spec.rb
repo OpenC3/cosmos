@@ -683,19 +683,13 @@ module OpenC3
 
       it "recalculates the bit offsets for 0 size" do
         s = Structure.new(:BIG_ENDIAN)
-        # APPEND_ITEM BLOCK 8000 BLOCK "Raw Data"
-        # APPEND_ITEM IMAGE 0 BLOCK "Image Data"
-
         s.append_item("test1", 80, :BLOCK)
         s.append_item("test2", 0, :BLOCK)
         s.define_item("test3", -16, 16, :UINT)
         s.buffer = "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09" +
           "\x0a\x0b\x0c\x0d\x0e\x0f\x0f\x0e\x0d\x0c\x0b\x0a\xAA\x55"
-        puts s.read("test1").formatted
-        puts s.read("test2").formatted
-        puts s.read("test3")
         expect(s.read("test1")).to eql "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09"
-        # expect(s.read("test2")).to eql "\x0a\x0b\x0c\x0d\x0e\x0f\x0e\x0d\x0c\x0b\x0a"
+        expect(s.read("test2")).to eql "\x0a\x0b\x0c\x0d\x0e\x0f\x0f\x0e\x0d\x0c\x0b\x0a\xaa\x55"
         expect(s.read("test3")).to eql 0xAA55
       end
     end
@@ -726,6 +720,27 @@ module OpenC3
         expect(s2.read("test1")).to eql [0, 0]
         # Ensure we didn't change the original
         expect(s.read("test1")).to eql [1, 2]
+      end
+    end
+
+    describe "deep_copy" do
+      it "duplicates the structure and items" do
+        s = Structure.new(:BIG_ENDIAN)
+        s.append_item("test1", 8, :UINT, 16)
+        s.write("test1", [1, 2])
+        s.append_item("test2", 16, :UINT)
+        s.write("test2", 0x0304)
+        s.append_item("test3", 32, :UINT)
+        s.write("test3", 0x05060708)
+
+        s2 = s.deep_copy()
+        expect(s.items["TEST1"].overflow).to eql :ERROR
+        expect(s2.items["TEST1"].overflow).to eql :ERROR
+        # Change something about the item in the original
+        s.items["TEST1"].overflow = :SATURATE
+        expect(s.items["TEST1"].overflow).to eql :SATURATE
+        # Verify the deep_copy didn't change
+        expect(s2.items["TEST1"].overflow).to eql :ERROR
       end
     end
 

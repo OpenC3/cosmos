@@ -50,10 +50,18 @@ class GenericConversion(Conversion):
             self.converted_array_size = int(converted_array_size)
         self.params = [code_to_eval, converted_type, converted_bit_size, converted_array_size]
 
+        # Setup multiline eval where the last line defines the return value for eval
+        lines = code_to_eval.splitlines()
+        exec_lines = lines[0:(len(lines) - 1)]
+        self.exec_lines = compile("\n".join(exec_lines), "<string>", "exec")
+        self.eval_line = compile(lines[-1], "<string>", "eval")
+
     def call(self, value, packet, buffer):
         myself = packet  # For backwards compatibility
         if myself:  # Remove unused variable warning for myself
-            return eval(self.code_to_eval)
+            generic_globals = {"value": value, "myself": myself, "packet": packet, "buffer": buffer}
+            exec(self.exec_lines, generic_globals)
+            return eval(self.eval_line, generic_globals)
 
     # self.return [String] The conversion class followed by the code to evaluate
     def __str__(self):

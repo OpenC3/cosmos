@@ -30,6 +30,7 @@ OpenC3.require_file 'openc3/utilities/bucket'
 OpenC3.require_file 'openc3/utilities/secrets'
 OpenC3.require_file 'openc3/utilities/sleeper'
 OpenC3.require_file 'openc3/utilities/open_telemetry'
+OpenC3.require_file 'openc3/utilities/thread_manager'
 OpenC3.require_file 'openc3/models/microservice_model'
 OpenC3.require_file 'openc3/models/microservice_status_model'
 OpenC3.require_file 'tmpdir'
@@ -49,22 +50,27 @@ module OpenC3
     def self.run(name = nil)
       name = ENV['OPENC3_MICROSERVICE_NAME'] unless name
       microservice = self.new(name)
-      begin
-        MicroserviceStatusModel.set(microservice.as_json(:allow_nan => true), scope: microservice.scope)
-        microservice.state = 'RUNNING'
-        microservice.run
-        microservice.state = 'FINISHED'
-      rescue Exception => e
-        if SystemExit === e or SignalException === e
-          microservice.state = 'KILLED'
-        else
-          microservice.error = e
-          microservice.state = 'DIED_ERROR'
-          Logger.fatal("Microservice #{name} dying from exception\n#{e.formatted}")
+      thread = Thread.new do
+        begin
+          MicroserviceStatusModel.set(microservice.as_json(:allow_nan => true), scope: microservice.scope)
+          microservice.state = 'RUNNING'
+          microservice.run
+          microservice.state = 'FINISHED'
+        rescue Exception => e
+          if SystemExit === e or SignalException === e
+            microservice.state = 'KILLED'
+          else
+            microservice.error = e
+            microservice.state = 'DIED_ERROR'
+            Logger.fatal("Microservice #{name} dying from exception\n#{e.formatted}")
+          end
+        ensure
+          MicroserviceStatusModel.set(microservice.as_json(:allow_nan => true), scope: microservice.scope)
         end
-      ensure
-        MicroserviceStatusModel.set(microservice.as_json(:allow_nan => true), scope: microservice.scope)
       end
+      ThreadManager.instance.register(thread, shutdown_object: microservice)
+      ThreadManager.instance.monitor
+      ThreadManager.instance.shutdown
     end
 
     def as_json(*a)
@@ -192,6 +198,7 @@ module OpenC3
           @logger.error "#{@name} status thread died: #{e.formatted}"
           raise e
         end
+        ThreadManager.instance.register(@microservice_status_thread)
       end
     end
 
@@ -206,7 +213,7 @@ module OpenC3
       @cancel_thread = true
       @microservice_status_sleeper.cancel if @microservice_status_sleeper
       MicroserviceStatusModel.set(as_json(:allow_nan => true), scope: @scope)
-      FileUtils.remove_entry(@temp_dir) if File.exist?(@temp_dir)
+      FileUtils.remove_entry_secure(@temp_dir, true)
       @metric.shutdown
       @logger.debug("Shutting down microservice complete: #{@name}")
       @shutdown_complete = true

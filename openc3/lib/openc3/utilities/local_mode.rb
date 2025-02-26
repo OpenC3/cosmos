@@ -301,7 +301,7 @@ module OpenC3
           file.write(JSON.pretty_generate(plugin_hash, :allow_nan => true))
         end
       ensure
-        FileUtils.remove_entry(temp_dir) if temp_dir and File.exist?(temp_dir)
+        FileUtils.remove_entry_secure(temp_dir, true)
       end
     end
 
