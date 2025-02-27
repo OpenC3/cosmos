@@ -21,9 +21,9 @@
 -->
 
 <template>
-  <span class="text-h5 text-center pa-1 mt-1 label" :style="computedStyle">
+  <div class="text-h5 text-center pa-1 mt-1 label" :style="computedStyle">
     {{ labelText }}
-  </span>
+  </div>
 </template>
 
 <script>
