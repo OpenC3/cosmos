@@ -246,8 +246,8 @@ export default {
       if (
         value &&
         this.valueId &&
-        (this.valueId.includes('PACKET_TIMEFORMATTED') ||
-          this.valueId.includes('RECEIVED_TIMEFORMATTED'))
+        (this.valueId.toUpperCase().includes('PACKET_TIMEFORMATTED') ||
+          this.valueId.toUpperCase().includes('RECEIVED_TIMEFORMATTED'))
       ) {
         // Our dates have / rather than - which results in an invalid date on old browsers
         // when they call new Date(value)
