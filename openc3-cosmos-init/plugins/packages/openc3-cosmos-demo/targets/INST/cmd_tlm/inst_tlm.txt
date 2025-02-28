@@ -136,11 +136,11 @@ TELEMETRY <%= target_name %> PARAMS BIG_ENDIAN "Params set by SETPARAMS command"
       STATE BAD 1 RED
   <% end %>
   APPEND_ITEM IP_ADDRESS   32 UINT "Encoded IP Address"
-  APPEND_ITEM P_2.2,2      32 UINT "Test weird characters"
-  APPEND_ITEM P-3+3=3      32 UINT "Test weird characters"
-  APPEND_ITEM P4!@#$%^&*?  32 UINT "Test weird characters"
-  APPEND_ITEM P</5|\>      32 UINT "Test weird characters"
-  APPEND_ITEM P(:6;)       32 UINT "Test weird characters"
+  APPEND_ITEM P_2.2,2      64 INT "Test weird characters"
+  APPEND_ITEM P-3+3=3      64 INT "Test weird characters"
+  APPEND_ITEM P4!@#$%^&*?  64 UINT "Test weird characters"
+  APPEND_ITEM P</5|\>      64 UINT "Test weird characters"
+  APPEND_ITEM P(:6;)       64 UINT "Test weird characters"
   ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
     READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
 

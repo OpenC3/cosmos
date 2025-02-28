@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -25,6 +25,7 @@
 require 'openc3'
 require 'stringio'
 require 'base64'
+require 'openc3/accessors/binary_accessor'
 
 module OpenC3
   # Simulated instrument for the demo. Populates several packets and cycles
@@ -111,11 +112,11 @@ module OpenC3
       packet.value3 = 2
       packet.value4 = 1
       packet.value5 = 0
-      packet.write('P_2.2,2', 2)
-      packet.write('P-3+3=3', 3)
-      packet.write('P4!@#$%^&*?', 4)
-      packet.write('P</5|\>', 5)
-      packet.write('P(:6;)', 6)
+      packet.write('P_2.2,2', BinaryAccessor::MIN_INT64)
+      packet.write('P-3+3=3', BinaryAccessor::MAX_INT64)
+      packet.write('P4!@#$%^&*?', 0)
+      packet.write('P</5|\>', 1740684371613049856)
+      packet.write('P(:6;)', BinaryAccessor::MAX_UINT64)
 
       packet = @tlm_packets['IMAGE']
       packet.enable_method_missing
@@ -196,6 +197,7 @@ module OpenC3
         params_packet.value3 = packet.read('value3')
         params_packet.value4 = packet.read('value4')
         params_packet.value5 = packet.read('value5')
+        params_packet.write('P4!@#$%^&*?', packet.read('bigint'))
       when 'ASCIICMD'
         hs_packet.cmd_acpt_cnt += 1
         hs_packet.asciicmd = packet.read('string')
