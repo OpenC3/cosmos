@@ -33,6 +33,7 @@ COMMAND <%= target_name %> SETPARAMS BIG_ENDIAN "Sets numbered parameters"
     APPEND_PARAMETER VALUE<%= i %> 16 UINT 0 5 1 "Value <%= i %> setting" LITTLE_ENDIAN
     RELATED_ITEM <%= target_name %> PARAMS VALUE<%= i %>
   <% end %>
+  APPEND_PARAMETER BIGINT 64 UINT MIN MAX 0 "UINT 64 parameter"
   SCREEN <%= target_name %> PARAMS
 
   SELECT_PARAMETER VALUE5

@@ -235,6 +235,67 @@ test('handles NaN and Infinite values', async ({ page, utils }) => {
   )
 })
 
+test('handles big integers', async ({ page, utils }) => {
+  await page.locator('[data-test="clear-history"]').click()
+  // Send a different command: INST SETPARAMS
+  await utils.selectTargetPacketItem('INST', 'SETPARAMS')
+  // Set the BIGINT value to the maximum value
+  let value = '18446744073709551615'
+  await setValue(page, 'BIGINT', value)
+  await page.locator('[data-test="select-send"]').click()
+  await expect(page.locator('main')).toContainText(
+    `cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT ${value}") sent.`,
+  )
+  await checkHistory(
+    page,
+    `cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT ${value}") sent.`,
+  )
+  // Check the screen
+  await expect(
+    page
+      .getByText('P4!@#$%^&*?:')
+      .locator('xpath=..') // parent row
+      .locator('[data-test="value"] input'),
+  ).toHaveValue(value)
+
+  // Set the BIGINT value to value from https://github.com/OpenC3/cosmos/issues/1928
+  value = '1740684371613049856'
+  await setValue(page, 'BIGINT', value)
+  await page.locator('[data-test="select-send"]').click()
+  await expect(page.locator('main')).toContainText(
+    `cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT ${value}") sent.`,
+  )
+  await checkHistory(
+    page,
+    `cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT ${value}") sent.`,
+  )
+  // Check the screen
+  await expect(
+    page
+      .getByText('P4!@#$%^&*?:')
+      .locator('xpath=..') // parent row
+      .locator('[data-test="value"] input'),
+  ).toHaveValue(value)
+
+  value = '0' // Set the BIGINT value to 0 for later tests
+  await setValue(page, 'BIGINT', value)
+  await page.locator('[data-test="select-send"]').click()
+  await expect(page.locator('main')).toContainText(
+    `cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT ${value}") sent.`,
+  )
+  await checkHistory(
+    page,
+    `cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT ${value}") sent.`,
+  )
+  // Check the screen
+  await expect(
+    page
+      .getByText('P4!@#$%^&*?:')
+      .locator('xpath=..') // parent row
+      .locator('[data-test="value"] input'),
+  ).toHaveValue(value)
+})
+
 test('handles array values', async ({ page, utils }) => {
   await page.locator('[data-test="clear-history"]').click()
   await utils.selectTargetPacketItem('INST', 'ARYCMD')
@@ -319,20 +380,20 @@ test('executes commands from history', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'SETPARAMS')
   await page.locator('[data-test="select-send"]').click()
   await expect(page.locator('main')).toContainText(
-    'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1") sent.',
+    'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT 0") sent.',
   )
   // History should now contain both commands
   await checkHistory(page, 'cmd("INST CLEAR")')
   await checkHistory(
     page,
-    'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1")',
+    'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT 0")',
   )
   // Re-execute command
   await page.locator('[data-test=sender-history]').click()
   await page.locator('[data-test=sender-history]').press('ArrowUp')
   await page.locator('[data-test=sender-history]').press('Enter')
   await expect(page.locator('main')).toContainText(
-    'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1") sent. (2)',
+    'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT 0") sent. (2)',
   )
   // Edit the existing SETPARAMS command and then send
   // This is somewhat fragile but not sure how else to edit
@@ -345,17 +406,17 @@ test('executes commands from history', async ({ page, utils }) => {
   await page.locator('[data-test=sender-history]').pressSequentially('5')
   await page.locator('[data-test=sender-history]').press('Enter')
   await expect(page.locator('main')).toContainText(
-    'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 5") sent.',
+    'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT 5") sent.',
   )
   // History should now contain CLEAR and both SETPARAMS commands
   await checkHistory(page, 'cmd("INST CLEAR")')
   await checkHistory(
     page,
-    'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1")',
+    'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT 0")',
   )
   await checkHistory(
     page,
-    'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 5")',
+    'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT 5")',
   )
 
   // Reload page and verify history still exists
@@ -365,11 +426,11 @@ test('executes commands from history', async ({ page, utils }) => {
   await checkHistory(page, 'cmd("INST CLEAR")')
   await checkHistory(
     page,
-    'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1")',
+    'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT 0")',
   )
   await checkHistory(
     page,
-    'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 5")',
+    'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT 5")',
   )
   // Clear history and verify cleared
   let text = await page.locator('[data-test=sender-history]').innerText()
@@ -391,7 +452,7 @@ test('send vs history', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'SETPARAMS')
   await page.locator('[data-test="select-send"]').click()
   await expect(page.locator('main')).toContainText(
-    'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1") sent.',
+    'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT 0") sent.',
   )
   // Re-execute command
   await page.locator('[data-test=sender-history]').click()
@@ -401,7 +462,7 @@ test('send vs history', async ({ page, utils }) => {
   // Send command vs Send button
   await page.locator('[data-test="select-send"]').click()
   await expect(page.locator('main')).toContainText(
-    'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1") sent.',
+    'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT 0") sent.',
   )
 })
 
@@ -574,22 +635,22 @@ test('disable parameter conversions', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'SETPARAMS')
   await page.locator('[data-test="select-send"]').click()
   await expect(page.locator('main')).toContainText(
-    'cmd_raw("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1") sent',
+    'cmd_raw("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT 0") sent',
   )
   await checkHistory(
     page,
-    'cmd_raw("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1")',
+    'cmd_raw("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT 0")',
   )
   // Disable range checks just to verify the command history 'cmd_raw_no_range_check'
   await page.locator('[data-test=command-sender-mode]').click()
   await page.locator('text=Ignore Range Checks').click()
   await page.locator('[data-test="select-send"]').click()
   await expect(page.locator('main')).toContainText(
-    'cmd_raw_no_range_check("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1") sent',
+    'cmd_raw_no_range_check("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT 0") sent',
   )
   await checkHistory(
     page,
-    'cmd_raw_no_range_check("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1")',
+    'cmd_raw_no_range_check("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT 0")',
   )
 
   await page.locator('text=Script Runner').click()
