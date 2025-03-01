@@ -1,6 +1,6 @@
 {
   "name": "@openc3/cosmos-tool-iframe",
-  "version": "6.1.1-beta0",
+  "version": "6.2.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -12,8 +12,8 @@
   "dependencies": {
     "@astrouxds/astro-web-components": "7.24.1",
     "@braintree/sanitize-url": "7.1.1",
-    "@openc3/js-common": "6.1.1-beta0",
-    "@openc3/vue-common": "6.1.1-beta0",
+    "@openc3/js-common": "6.2.0",
+    "@openc3/vue-common": "6.2.0",
     "axios": "1.7.9",
     "date-fns": "4.1.0",
     "lodash": "4.17.21",
