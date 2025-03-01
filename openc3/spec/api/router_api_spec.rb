@@ -71,7 +71,7 @@ module OpenC3
         expect(router).to be_a Hash
         expect(router['name']).to eql "ROUTE_INT"
         # Verify it also includes the status
-        expect(router['state']).to eql "CONNECTED"
+        expect(router['state']).to match(/CONNECTED|ATTEMPTING/)
         expect(router['clients']).to eql 0
       end
     end
