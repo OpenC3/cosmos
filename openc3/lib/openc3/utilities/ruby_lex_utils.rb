@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -22,33 +22,33 @@
 
 require 'irb'
 require 'irb/ruby-lex'
-require 'stringio'
-
-# Clear the $VERBOSE global since we're overriding methods
-old_verbose = $VERBOSE; $VERBOSE = nil
-class RubyLex
-  attr_accessor :indent
-  attr_accessor :line_no
-  attr_accessor :exp_line_no
-  attr_accessor :tokens
-  attr_accessor :code_block_open
-  attr_accessor :ltype
-  attr_accessor :line
-  attr_accessor :continue
-
-  def reinitialize
-    @line_no = 1
-    @prompt = nil
-    initialize_input()
-  end
-end
-$VERBOSE = old_verbose
+require 'prism'
 
 class RubyLexUtils
-  # Regular expression to detect blank lines
-  BLANK_LINE_REGEX  = /^\s*$/
-  # Regular expression to detect lines containing only 'else'
-  LONELY_ELSE_REGEX = /^\s*else\s*$/
+  # The keyword arrays were taken from minifyrb:
+  # https://github.com/koic/minifyrb/blob/72043fa2e3b8f2d445dd6b00a5ecec3e7cb6afd8/lib/minifyrb/minifier.rb
+  AFTER_SPACE_REQUIRED_KEYWORDS = %i(
+    KEYWORD_ALIAS KEYWORD_AND KEYWORD_BEGIN KEYWORD_BREAK KEYWORD_CASE KEYWORD_CLASS KEYWORD_DEF KEYWORD_DO KEYWORD_ELSE
+    KEYWORD_ELSIF KEYWORD_ENSURE KEYWORD_FOR KEYWORD_IF KEYWORD_IF_MODIFIER KEYWORD_IN KEYWORD_MODULE KEYWORD_NEXT
+    KEYWORD_NOT KEYWORD_OR KEYWORD_REDO KEYWORD_RESCUE KEYWORD_RESCUE_MODIFIER KEYWORD_RETURN KEYWORD_SUPER KEYWORD_THEN
+    KEYWORD_UNDEF KEYWORD_UNLESS KEYWORD_UNLESS_MODIFIER KEYWORD_UNTIL KEYWORD_UNTIL_MODIFIER KEYWORD_WHEN KEYWORD_WHILE
+    KEYWORD_WHILE_MODIFIER KEYWORD_YIELD
+  )
+  BEFORE_SPACE_REQUIRED_KEYWORDS = %i(
+    KEYWORD_AND KEYWORD_DO KEYWORD_IF_MODIFIER KEYWORD_IN KEYWORD_OR KEYWORD_RESCUE_MODIFIER KEYWORD_THEN
+    KEYWORD_UNLESS_MODIFIER KEYWORD_UNTIL_MODIFIER KEYWORD_WHILE_MODIFIER
+  )
+  REQUIRE_SPACE_AFTER_IDENTIFIER_TYPES = %i(IDENTIFIER KEYWORD_DO STRING_BEGIN) # KEYWORD_SELF KEYWORD_TRUE KEYWORD_FALSE KEYWORD_NIL METHOD_NAME) + NUMERIC_LITERAL_TYPES
+  OPENING_DELIMITER_TYPES = %i(PARENTHESIS_LEFT BRACKET_LEFT BRACE_LEFT BRACKET_LEFT_ARRAY)
+  CLOSING_DELIMITER_TYPES = %i(PARENTHESIS_RIGHT BRACKET_RIGHT BRACE_RIGHT BRACKET_RIGHT_ARRAY)
+
+  UNINSTRUMENTABLE_KEYWORDS = %i(
+    KEYWORD_CLASS KEYWORD_MODULE KEYWORD_DEF KEYWORD_UNDEF KEYWORD_BEGIN KEYWORD_RESCUE
+    KEYWORD_ENSURE KEYWORD_END KEYWORD_IF KEYWORD_IF_MODIFIER KEYWORD_UNLESS KEYWORD_UNLESS_MODIFIER
+    KEYWORD_THEN KEYWORD_ELSIF KEYWORD_ELSE KEYWORD_CASE KEYWORD_WHEN BRACE_LEFT
+    KEYWORD_WHILE KEYWORD_UNTIL KEYWORD_UNTIL_MODIFIER KEYWORD_FOR KEYWORD_BREAK KEYWORD_NEXT
+    KEYWORD_REDO KEYWORD_RETRY KEYWORD_IN KEYWORD_DO KEYWORD_RETURN KEYWORD_ALIAS
+  )
 
   KEY_KEYWORDS = [
     'class'.freeze,
@@ -79,104 +79,23 @@ class RubyLexUtils
     'alias'.freeze
   ]
 
-  # Create a new RubyLex and StringIO to hold the text to operate on
-  def initialize
-    # Taken from https://github.com/ruby/ruby/blob/master/test/irb/test_ruby_lex.rb#L827
-    IRB.init_config(nil)
-    IRB.conf[:VERBOSE] = false
-    # IRB.setup doesn't work because the command line options are passed
-    # and it doesn't recognize --warnings when we run rspec (see spec.rake)
-    # IRB.setup(__FILE__)
-    workspace = IRB::WorkSpace.new(binding)
-    @context = IRB::Context.new(nil, workspace)
-
-    @lex    = RubyLex.new
-    @lex_io = StringIO.new('')
-  end
-
-  def ripper_lex_without_warning(code)
-    RubyLex.ripper_lex_without_warning(code)
-  end
-
-  # @param text [String]
-  # @return [Boolean] Whether the text contains the 'begin' keyword
-  def contains_begin?(text)
-    @lex.reinitialize
-    @lex_io.string = text
-    @lex.set_input(@lex_io, context: @context)
-    tokens = ripper_lex_without_warning(text)
-    tokens.each do |token|
-      if token[1] == :on_kw and token[2] == 'begin'
-        return true
-      end
-    end
-    return false
-  end
-
-  # @param text [String]
-  # @return [Boolean] Whether the text contains the 'end' keyword
-  def contains_end?(text)
-    @lex.reinitialize
-    @lex_io.string = text
-    @lex.set_input(@lex_io, context: @context)
-    tokens = ripper_lex_without_warning(text)
-    tokens.each do |token|
-      if token[1] == :on_kw and token[2] == 'end'
-        return true
-      end
-    end
-    return false
-  end
-
   # @param text [String]
   # @return [Boolean] Whether the text contains a Ruby keyword
   def contains_keyword?(text)
-    @lex.reinitialize
-    @lex_io.string = text
-    @lex.set_input(@lex_io, context: @context)
-    tokens = ripper_lex_without_warning(text)
+    lex = Prism.lex(text)
+    tokens = lex.value
     tokens.each do |token|
-      if token[1] == :on_kw
-        if KEY_KEYWORDS.include?(token[2])
+      token_object = token[0]
+      state_bits = token[1]
+      if token_object.type.start_with?("KEYWORD")
+        if KEY_KEYWORDS.include?(token_object.value)
           return true
         end
-      elsif token[1] == :on_lbrace and !token[3].allbits?(Ripper::EXPR_BEG | Ripper::EXPR_LABEL)
-        return true
-      end
-    end
-    return false
-  end
-
-  # @param text [String]
-  # @return [Boolean] Whether the text contains a keyword which starts a block.
-  #   i.e. 'do', '{', or 'begin'
-  def contains_block_beginning?(text)
-    @lex.reinitialize
-    @lex_io.string = text
-    @lex.set_input(@lex_io, context: @context)
-    tokens = ripper_lex_without_warning(text)
-    tokens.each do |token|
-      if token[1] == :on_kw
-        if token[2] == 'begin' || token[2] == 'do'
+      else
+        if token_object.type == :BRACE_LEFT and state_bits != (Ripper::EXPR_BEG | Ripper::EXPR_LABEL)
           return true
         end
-      elsif token[1] == :on_lbrace
-        return true
       end
-    end
-    return false
-  end
-
-  def continue_block?(text)
-    @lex.reinitialize
-    @lex_io.string = text
-    @lex.set_input(@lex_io, context: @context)
-    tokens = RubyLex.ripper_lex_without_warning(text)
-    index = tokens.length - 1
-    while index > 0
-      token = tokens[index]
-      return true if token[1] == :on_kw and token[2] == "do"
-      index -= 1
     end
     return false
   end
@@ -186,19 +105,18 @@ class RubyLexUtils
   #   progress will be set as the processing progresses
   # @return [String] The text with all comments removed
   def remove_comments(text, progress_dialog = nil)
-    @lex.reinitialize
-    @lex_io.string = text
-    @lex.set_input(@lex_io, context: @context)
+    lex = Prism.lex(text)
+    tokens = lex.value
     comments_removed = ""
     token_count = 0
     progress = 0.0
-    tokens = ripper_lex_without_warning(text)
     tokens.each do |token|
+      token_object = token[0]
       token_count += 1
-      if token[1] != :on_comment
-        comments_removed << token[2]
+      if token_object.type != :COMMENT
+        comments_removed << token_object.value
       else
-        newline_count = token[2].count("\n")
+        newline_count = token_object.value.count("\n")
         comments_removed << ("\n" * newline_count)
       end
       if progress_dialog and token_count % 10000 == 0
@@ -207,7 +125,6 @@ class RubyLexUtils
         progress_dialog.set_overall_progress(progress)
       end
     end
-
     return comments_removed
   end
 
@@ -219,113 +136,89 @@ class RubyLexUtils
   # @yieldparam inside_begin [Integer] The level of indentation
   # @yieldparam line_no [Integer] The current line number
   def each_lexed_segment(text)
-    inside_begin = false
-    lex = RubyLex.new
-    lex_io = StringIO.new(text)
-    lex.set_input(lex_io, context: @context)
-    lex.line = ''
     line = ''
-    indent = 0
-    continue_indent = nil
     begin_indent = nil
-    previous_line_indent = 0
+    inside_begin = false
+    string_begin = false
+    orig_line_no = nil
+    line_no = nil
+    rescue_line_no = nil
+    waiting_on_newline = false
+    waiting_on_close = 0
+    prev_token = nil
+    # Attempt at using a flag to determine if a line is instrumentable
+    # instrumentable = true
+    tokens = Prism.lex(text).value
+    tokens.each_cons(2) do |(token, _lex_state), (next_token, _next_lex_state)|
+      # pp token
+      # Ensure we have a space before the token if it's required
+      line += ' ' if BEFORE_SPACE_REQUIRED_KEYWORDS.include?(token.type)
+      line += token.value
+      line_no ||= token.location.start_line
+      orig_line_no ||= line_no
 
-    while lexed = lex.lex(@context)
-      lex.line_no += lexed.count("\n")
-      lex.line.concat lexed
-      line.concat lexed
-
-      if continue_indent
-        indent = previous_line_indent + lex.indent
-      else
-        indent += lex.indent
-        lex.indent = 0
+      # Thought about using this to determine if a line is instrumentable
+      # but we're failing existing tests due to braces. Braces in the old
+      # parser are context specific but in Prism they are just BRACE_LEFT and BRACE_RIGHT.
+      # For now we'll just use the existing Ripper logic.
+      # if UNINSTRUMENTABLE_KEYWORDS.include?(token.type)
+      #   instrumentable = false
+      # end
+      case token.type
+      when :EOF
+        break
+      when :IDENTIFIER
+        if REQUIRE_SPACE_AFTER_IDENTIFIER_TYPES.include?(next_token.type)
+          line += ' '
+        end
+      when :STRING_BEGIN
+        string_begin = true
+        line_no = token.location.start_line
+      when :STRING_CONTENT
+        next
+      when :STRING_END
+        string_begin = false
+        next
+      when :KEYWORD_BEGIN
+        inside_begin = true
+        begin_indent = token.location.start_column unless begin_indent # Don't restart for nested begins
+      when :KEYWORD_RESCUE
+        rescue_line_no = token.location.start_line
+      when :KEYWORD_END
+        # Assume the begin and end are aligned
+        # Otherwise we have to count any keywords that can close with END
+        if token.location.start_line == rescue_line_no || token.location.start_column == begin_indent
+          inside_begin = false
+        end
+      when *OPENING_DELIMITER_TYPES
+        waiting_on_close += 1
+      when *CLOSING_DELIMITER_TYPES
+        waiting_on_close -= 1
+        waiting_on_newline = true
+      when :NEWLINE, :IGNORED_NEWLINE
+        waiting_on_newline = false
+        # If the next token is a STRING_BEGIN then hold off processing the newline
+        # because it's going to be a string assignment
+        next if next_token.type == :STRING_BEGIN
       end
 
-      if inside_begin and indent < begin_indent
-        begin_indent = nil
-        inside_begin = false
-      end
+      # Ensure we have a space after the token if it's required
+      line += ' ' if AFTER_SPACE_REQUIRED_KEYWORDS.include?(token.type)
+      # Don't process the line yet if we're waiting for additional tokens
+      next if string_begin or waiting_on_newline or waiting_on_close > 0
 
-      # Uncomment the following to help with debugging
-      #puts
-      #puts '*' * 80
-      #puts lex.line
-      #puts "lexed = #{lexed.chomp}, indent (of next line) = #{indent}, actual lex.indent = #{lex.indent}, continue = #{lex.continue}, ltype = #{lex.ltype.inspect}, code_block_open = #{lex.code_block_open}, continue_indent = #{continue_indent.inspect}, begin_indent = #{begin_indent.inspect}"
-
-      # These lines put multiple lines together that are really one line
-      if lex.continue or lex.ltype
-        if not continue_block?(lexed)
-          # Set the indent we should stop at
-          unless continue_indent
-            if (indent - previous_line_indent) > 1
-              continue_indent = indent - 1
-            else
-              continue_indent = previous_line_indent
-            end
-          end
-          next
-        end
-      elsif continue_indent
-        if indent > continue_indent
-          # Still have more content
-          next
-        else
-          # Ready to yield this combined line
-          yield line, !contains_keyword?(line), inside_begin, lex.exp_line_no
-          line = ''
-          lex.exp_line_no = lex.line_no
-          # puts "clear line 1"
-          lex.line = ''
-          previous_line_indent = indent
-          continue_indent = nil
-          next
-        end
-      end
-      previous_line_indent = indent
-      continue_indent = nil
-
-      # Detect the beginning and end of begin blocks so we can not catch exceptions there
-      if contains_begin?(line)
-        if contains_end?(line)
-          # Assume the user is being fancy with a single line begin; end;
-          # Ignore
-        else
-          inside_begin = true
-          begin_indent = indent unless begin_indent # Don't restart for nested begins
-        end
-      end
-
-      # The following code does not care about indent
-
-      loop do # loop to allow restarting for nested conditions
-        # Yield blank lines and lonely else lines before the actual line
-        while (index = line.index("\n"))
-          one_line = line[0..index]
-          if BLANK_LINE_REGEX.match?(one_line)
-            yield one_line, true, inside_begin, lex.exp_line_no
-            lex.exp_line_no += 1
-            line = line[(index + 1)..-1]
-          elsif LONELY_ELSE_REGEX.match?(one_line)
-            yield one_line, false, inside_begin, lex.exp_line_no
-            lex.exp_line_no += 1
-            line = line[(index + 1)..-1]
-          else
-            break
-          end
-        end
-
+      # This is where we process the line and yield it
+      if line_no != token.location.start_line or line_no != token.location.end_line
         if contains_keyword?(line)
-          yield line, false, inside_begin, lex.exp_line_no
+          yield line, false, inside_begin, orig_line_no
         elsif !line.empty?
-          yield line, true, inside_begin, lex.exp_line_no
+          yield line, true, inside_begin, orig_line_no
         end
         line = ''
-        lex.exp_line_no = lex.line_no
-        # puts "clear line 2"
-        lex.line = ''
-        break
-      end # loop do
-    end # while lexed
-  end # def each_lexed_segment
+        orig_line_no = nil
+        line_no = nil
+      end
+      prev_token = token
+    end
+  end
 end
