@@ -1,6 +1,6 @@
 {
   "name": "<%= tool_name %>",
-  "version": "6.1.1-beta0",
+  "version": "6.2.1-beta0",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -23,7 +23,7 @@
     "@angular/platform-browser-dynamic": "^18.2.6",
     "@angular/router": "^18.2.6",
     "@astrouxds/astro-web-components": "^7.24.0",
-    "@openc3/js-common": "6.1.1-beta0",
+    "@openc3/js-common": "6.2.1-beta0",
     "rxjs": "~7.8.0",
     "single-spa": "^5.9.5",
     "single-spa-angular": "^9.2.0",
