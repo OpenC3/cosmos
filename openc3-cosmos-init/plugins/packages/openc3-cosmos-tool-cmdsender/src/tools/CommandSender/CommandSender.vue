@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -184,7 +184,9 @@
         <v-card-text class="mt-6">
           Warning: Command {{ hazardousCommand }} is Hazardous. Send?
           <br />
-          <span class="openc3-yellow"> Description: {{ commandDescription }} </span>
+          <span class="openc3-yellow">
+            Description: {{ commandDescription }}
+          </span>
         </v-card-text>
         <v-card-actions class="px-2">
           <v-spacer />
@@ -491,7 +493,13 @@ export default {
           } else if (this.isFloat(str)) {
             return parseFloat(str)
           } else if (this.isInt(str)) {
-            return parseInt(str)
+            // If this is a number that is too large for a JS number
+            // then we convert it to a BigInt which gets serialized in openc3Api.js
+            if (!Number.isSafeInteger(Number(str))) {
+              return BigInt(str)
+            } else {
+              return parseInt(str)
+            }
           } else if (this.isArray(str)) {
             return eval(str)
           } else {
@@ -576,10 +584,14 @@ export default {
                     // This is basically to handle the FLOAT MIN and MAX so they
                     // don't print out the huge exponential
                     if (parameter.minimum < -1e6) {
-                      parameter.minimum = parameter.minimum.toExponential(3)
+                      if (Number.isSafeInteger(parameter.minimum)) {
+                        parameter.minimum = parameter.minimum.toExponential(3)
+                      }
                     }
                     if (parameter.maximum > 1e6) {
-                      parameter.maximum = parameter.maximum.toExponential(3)
+                      if (Number.isSafeInteger(parameter.maximum)) {
+                        parameter.maximum = parameter.maximum.toExponential(3)
+                      }
                     }
                   }
                   range = `${parameter.minimum}..${parameter.maximum}`

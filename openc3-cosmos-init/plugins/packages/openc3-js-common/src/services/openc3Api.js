@@ -21,7 +21,12 @@
 */
 
 import axios from './axios.js'
+import { parse, stringify, isSafeNumber } from 'lossless-json'
 
+// parse huge integer values into a bigint, and use a regular number otherwise
+export function customNumberParser(value) {
+  return isSafeNumber(value) ? parseFloat(value) : BigInt(value)
+}
 export default class OpenC3Api {
   id = 1
 
@@ -67,6 +72,19 @@ export default class OpenC3Api {
             ...headerOptions,
           },
           timeout: timeout,
+          transformRequest: [
+            (data, headers) => {
+              // stringify the data with lossless-json
+              return stringify(data)
+            },
+          ],
+          transformResponse: [
+            (data) => {
+              // parse the data with lossless-json ensuring that large numbers are parsed as BigInts
+              // but all other numbers are parsed as regular numbers
+              return parse(data, undefined, customNumberParser)
+            },
+          ],
         },
       )
       // let data = response.data

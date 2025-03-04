@@ -1,7 +1,7 @@
 {
   "name": "@openc3/js-common",
   "description": "Common library for COSMOS tool development",
-  "version": "6.1.1-beta0",
+  "version": "6.2.1-beta0",
   "license": "SEE LICENSE IN LICENSE.txt",
   "homepage": "https://openc3.com",
   "repository": {
@@ -51,7 +51,8 @@
     "sass": "1.85.0",
     "sortablejs": "1.15.6",
     "sprintf-js": "1.1.3",
-    "uplot": "1.6.31"
+    "uplot": "1.6.31",
+    "lossless-json": "4.0.2"
   },
   "devDependencies": {
     "eslint": "9.20.1",

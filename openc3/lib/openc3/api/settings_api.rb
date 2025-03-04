@@ -91,7 +91,7 @@ module OpenC3
       if response.success?
         NewsModel.set(response.body)
       else
-        NewsModel.news_error(response)
+        NewsModel.news_error("Error contacting OpenC3 news feed (status: #{response.status})")
       end
 
       # Test code to update the news feed with a dummy message
@@ -100,6 +100,8 @@ module OpenC3
       # json.unshift( { date: Time.now.utc.iso8601, title: "News at #{Time.now}", body: "The news feed has been updated at #{Time.now}." })
       # json.pop if json.length > 5
       # NewsModel.set(json.to_json)
+    rescue Exception => e
+      NewsModel.news_error("Error contacting OpenC3 news feed. #{e.message})")
     end
   end
 end
