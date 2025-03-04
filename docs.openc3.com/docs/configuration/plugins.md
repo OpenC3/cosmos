@@ -755,6 +755,15 @@ Example Usage:
 SHARD 0
 ```
 
+### STOPPED
+<div class="right">(Since 6.2.0)</div>**Initially creates the microservice in a stopped state (not enabled)**
+
+
+Example Usage:
+```ruby
+STOPPED
+```
+
 ## TOOL
 **Define a tool**
 
