@@ -25,108 +25,16 @@ require 'irb/ruby-lex'
 require 'prism'
 
 class RubyLexUtils
-  # The keyword arrays were taken from minifyrb:
-  # https://github.com/koic/minifyrb/blob/72043fa2e3b8f2d445dd6b00a5ecec3e7cb6afd8/lib/minifyrb/minifier.rb
-  AFTER_SPACE_REQUIRED_KEYWORDS = %i(
-    KEYWORD_ALIAS KEYWORD_AND KEYWORD_BEGIN KEYWORD_BREAK KEYWORD_CASE KEYWORD_CLASS KEYWORD_DEF KEYWORD_DO KEYWORD_ELSE
-    KEYWORD_ELSIF KEYWORD_ENSURE KEYWORD_FOR KEYWORD_IF KEYWORD_IF_MODIFIER KEYWORD_IN KEYWORD_MODULE KEYWORD_NEXT
-    KEYWORD_NOT KEYWORD_OR KEYWORD_REDO KEYWORD_RESCUE KEYWORD_RESCUE_MODIFIER KEYWORD_RETURN KEYWORD_SUPER KEYWORD_THEN
-    KEYWORD_UNDEF KEYWORD_UNLESS KEYWORD_UNLESS_MODIFIER KEYWORD_UNTIL KEYWORD_UNTIL_MODIFIER KEYWORD_WHEN KEYWORD_WHILE
-    KEYWORD_WHILE_MODIFIER KEYWORD_YIELD
-  )
-  BEFORE_SPACE_REQUIRED_KEYWORDS = %i(
-    KEYWORD_AND KEYWORD_DO KEYWORD_IF_MODIFIER KEYWORD_IN KEYWORD_OR KEYWORD_RESCUE_MODIFIER KEYWORD_THEN
-    KEYWORD_UNLESS_MODIFIER KEYWORD_UNTIL_MODIFIER KEYWORD_WHILE_MODIFIER
-  )
-  REQUIRE_SPACE_AFTER_IDENTIFIER_TYPES = %i(IDENTIFIER KEYWORD_DO STRING_BEGIN) # KEYWORD_SELF KEYWORD_TRUE KEYWORD_FALSE KEYWORD_NIL METHOD_NAME) + NUMERIC_LITERAL_TYPES
   OPENING_DELIMITER_TYPES = %i(PARENTHESIS_LEFT BRACKET_LEFT BRACE_LEFT BRACKET_LEFT_ARRAY)
   CLOSING_DELIMITER_TYPES = %i(PARENTHESIS_RIGHT BRACKET_RIGHT BRACE_RIGHT BRACKET_RIGHT_ARRAY)
 
   UNINSTRUMENTABLE_KEYWORDS = %i(
     KEYWORD_CLASS KEYWORD_MODULE KEYWORD_DEF KEYWORD_UNDEF KEYWORD_BEGIN KEYWORD_RESCUE
     KEYWORD_ENSURE KEYWORD_END KEYWORD_IF KEYWORD_IF_MODIFIER KEYWORD_UNLESS KEYWORD_UNLESS_MODIFIER
-    KEYWORD_THEN KEYWORD_ELSIF KEYWORD_ELSE KEYWORD_CASE KEYWORD_WHEN BRACE_LEFT
+    KEYWORD_THEN KEYWORD_ELSIF KEYWORD_ELSE KEYWORD_CASE KEYWORD_WHEN
     KEYWORD_WHILE KEYWORD_UNTIL KEYWORD_UNTIL_MODIFIER KEYWORD_FOR KEYWORD_BREAK KEYWORD_NEXT
     KEYWORD_REDO KEYWORD_RETRY KEYWORD_IN KEYWORD_DO KEYWORD_RETURN KEYWORD_ALIAS
   )
-
-  KEY_KEYWORDS = [
-    'class'.freeze,
-    'module'.freeze,
-    'def'.freeze,
-    'undef'.freeze,
-    'begin'.freeze,
-    'rescue'.freeze,
-    'ensure'.freeze,
-    'end'.freeze,
-    'if'.freeze,
-    'unless'.freeze,
-    'then'.freeze,
-    'elsif'.freeze,
-    'else'.freeze,
-    'case'.freeze,
-    'when'.freeze,
-    'while'.freeze,
-    'until'.freeze,
-    'for'.freeze,
-    'break'.freeze,
-    'next'.freeze,
-    'redo'.freeze,
-    'retry'.freeze,
-    'in'.freeze,
-    'do'.freeze,
-    'return'.freeze,
-    'alias'.freeze
-  ]
-
-  # @param text [String]
-  # @return [Boolean] Whether the text contains a Ruby keyword
-  def contains_keyword?(text)
-    lex = Prism.lex(text)
-    tokens = lex.value
-    tokens.each do |token|
-      token_object = token[0]
-      state_bits = token[1]
-      if token_object.type.start_with?("KEYWORD")
-        if KEY_KEYWORDS.include?(token_object.value)
-          return true
-        end
-      else
-        if token_object.type == :BRACE_LEFT and state_bits != (Ripper::EXPR_BEG | Ripper::EXPR_LABEL)
-          return true
-        end
-      end
-    end
-    return false
-  end
-
-  # @param text [String]
-  # @param progress_dialog [OpenC3::ProgressDialog] If this is set, the overall
-  #   progress will be set as the processing progresses
-  # @return [String] The text with all comments removed
-  def remove_comments(text, progress_dialog = nil)
-    lex = Prism.lex(text)
-    tokens = lex.value
-    comments_removed = ""
-    token_count = 0
-    progress = 0.0
-    tokens.each do |token|
-      token_object = token[0]
-      token_count += 1
-      if token_object.type != :COMMENT
-        comments_removed << token_object.value
-      else
-        newline_count = token_object.value.count("\n")
-        comments_removed << ("\n" * newline_count)
-      end
-      if progress_dialog and token_count % 10000 == 0
-        progress += 0.01
-        progress = 0.0 if progress >= 0.99
-        progress_dialog.set_overall_progress(progress)
-      end
-    end
-    return comments_removed
-  end
 
   # Yields each lexed segment and if the segment is instrumentable
   #
@@ -146,36 +54,64 @@ class RubyLexUtils
     waiting_on_newline = false
     waiting_on_close = 0
     prev_token = nil
-    # Attempt at using a flag to determine if a line is instrumentable
-    # instrumentable = true
+    instrumentable = true
     tokens = Prism.lex(text).value
-    tokens.each_cons(2) do |(token, _lex_state), (next_token, _next_lex_state)|
-      # pp token
-      # Ensure we have a space before the token if it's required
-      line += ' ' if BEFORE_SPACE_REQUIRED_KEYWORDS.include?(token.type)
-      line += token.value
+    # See: https://github.com/ruby/prism/blob/main/lib/prism/parse_result.rb
+    # for what is returned by Prism.lex
+    # We process the tokens in pairs to recreate spacing and handle string assignments
+    tokens.each_cons(2) do |(token, lex_state), (next_token, _next_lex_state)|
+      # Ignore embedded documentation must be at column 0 and looks like:
+=begin
+This is a comment
+And so is this
+=end
+      if token.type == :EMBDOC_BEGIN or token.type == :EMBDOC_LINE or token.type == :EMBDOC_END
+        next
+      end
+
+      # Comments require tacking on a newline but are otherwise ignored
+      if token.type == :COMMENT
+        line += "\n"
+        waiting_on_newline = false
+      else
+        line += token.value
+      end
+
+      if UNINSTRUMENTABLE_KEYWORDS.include?(token.type)
+        instrumentable = false
+      end
+
+      # We're processing tokens in pairs so we need to check if we're at the end
+      # of the file and process the last line
+      if next_token.type == :EOF
+        if !line.empty?
+          yield line, instrumentable, inside_begin, orig_line_no
+        end
+        break
+      end
+
+      # Recreate spaces between tokens rather than trying to figure out
+      # which tokens require spacing before and after
+      if token.location.start_line == next_token.location.start_line
+        spaces = next_token.location.start_column - token.location.end_column
+        line += ' ' * spaces
+      end
       line_no ||= token.location.start_line
+      # Keep track of the original line number because the line number can change
+      # when we're putting together multline structures like strings, arrays, hashes, etc.
       orig_line_no ||= line_no
 
-      # Thought about using this to determine if a line is instrumentable
-      # but we're failing existing tests due to braces. Braces in the old
-      # parser are context specific but in Prism they are just BRACE_LEFT and BRACE_RIGHT.
-      # For now we'll just use the existing Ripper logic.
-      # if UNINSTRUMENTABLE_KEYWORDS.include?(token.type)
-      #   instrumentable = false
-      # end
       case token.type
-      when :EOF
-        break
-      when :IDENTIFIER
-        if REQUIRE_SPACE_AFTER_IDENTIFIER_TYPES.include?(next_token.type)
-          line += ' '
+      when :BRACE_LEFT
+        # BRACE is a special case because it can be used for hashes and blocks
+        if lex_state != (Ripper::EXPR_BEG | Ripper::EXPR_LABEL)
+          instrumentable = false
         end
+        waiting_on_close += 1
       when :STRING_BEGIN
+        # Mark when a string begins to allow for processing string interpolation tokens
         string_begin = true
         line_no = token.location.start_line
-      when :STRING_CONTENT
-        next
       when :STRING_END
         string_begin = false
         next
@@ -202,19 +138,14 @@ class RubyLexUtils
         next if next_token.type == :STRING_BEGIN
       end
 
-      # Ensure we have a space after the token if it's required
-      line += ' ' if AFTER_SPACE_REQUIRED_KEYWORDS.include?(token.type)
       # Don't process the line yet if we're waiting for additional tokens
       next if string_begin or waiting_on_newline or waiting_on_close > 0
 
       # This is where we process the line and yield it
       if line_no != token.location.start_line or line_no != token.location.end_line
-        if contains_keyword?(line)
-          yield line, false, inside_begin, orig_line_no
-        elsif !line.empty?
-          yield line, true, inside_begin, orig_line_no
-        end
+        yield line, instrumentable, inside_begin, orig_line_no
         line = ''
+        instrumentable = true
         orig_line_no = nil
         line_no = nil
       end
