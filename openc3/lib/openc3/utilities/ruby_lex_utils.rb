@@ -98,7 +98,7 @@ And so is this
       end
       line_no ||= token.location.start_line
       # Keep track of the original line number because the line number can change
-      # when we're putting together multline structures like strings, arrays, hashes, etc.
+      # when we're putting together multiline structures like strings, arrays, hashes, etc.
       orig_line_no ||= line_no
 
       case token.type
