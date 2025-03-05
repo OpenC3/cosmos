@@ -31,13 +31,13 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   /* Retry once on CI */
   retries: process.env.CI ? 1 : 0,
-  workers: 1,
-  /* See if explicit WORKERS count was given, otherwise allow parallelism on CI/CD */
-  // workers: process.env.WORKERS
-  //   ? parseInt(process.env.WORKERS)
-  //   : process.env.CI
-  //   ? 3
-  //   : 1,
+  /* Allows multiple tests from each file to be run at the same time */
+  fullyParallel: true,
+  workers: process.env.WORKERS
+    ? parseInt(process.env.WORKERS) // Use explicit worker count if given
+    : process.env.CI
+      ? 4 // Otherwise use 4 on CI/CD
+      : undefined, // and a bunch locally
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: process.env.CI ? 'github' : 'list',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
