@@ -25,6 +25,11 @@ test.use({
   toolName: 'Script Runner',
 })
 
+// Most of these tests are super flaky when run in parallel with each other.
+// Just gonna disable parallelism for now.
+// TODO: This might actually be bugginess in the app? Not sure
+test.describe.configure({ mode: 'serial' })
+
 async function openFile(page, utils, filename) {
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Open File').click()
