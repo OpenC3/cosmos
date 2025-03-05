@@ -493,7 +493,11 @@ export default {
       if (this.isPinned(value)) {
         return true
       } else {
-        return value.toString().indexOf(search.toUpperCase()) >= 0
+        if (value) {
+          return value.toString().indexOf(search.toUpperCase()) >= 0
+        } else {
+          return false
+        }
       }
     },
     packetChanged(event) {
