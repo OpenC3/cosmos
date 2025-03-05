@@ -212,19 +212,25 @@ print('done')
 
 def test_raise_with_try(mock_running_script):
     script = """
-raise RuntimeError("Error")
-try:
-  i = 0
-  i += 1
-  print(i)
+i = 0
+raise RuntimeError("Error1") # Handled by us
+try: # Initial try
+  i = 1
+  try: # Nested try
+    i = 2
+  except RuntimeError:
+    i = 3
+  raise RuntimeError("BAD") # Handled by them
 except RuntimeError:
-  pass
-raise RuntimeError("Error")
+  i = 5 # This handler should execute
+raise RuntimeError("Error2") # Handled by us
 """
     parsed = ast.parse(script)
     tree = ScriptInstrumentor("testfile.py").visit(parsed)
     compiled = compile(tree, filename="testfile.py", mode="exec")
-    exec(compiled, {"RunningScript": mock_running_script})
+    vars = {'i': None}
+    exec(compiled, {"RunningScript": mock_running_script}, vars)
+    assert(vars["i"] == 5)
 
     assert mock_running_script.pre_lines == [
         ("testfile.py", 2),
@@ -232,18 +238,24 @@ raise RuntimeError("Error")
         ("testfile.py", 4),
         ("testfile.py", 5),
         ("testfile.py", 6),
-        ("testfile.py", 9),
+        ("testfile.py", 7),
+        ("testfile.py", 10),
+        ("testfile.py", 12),
+        ("testfile.py", 13),
     ]
     assert mock_running_script.post_lines == [
         ("testfile.py", 2),
-        ("testfile.py", 4),
+        ("testfile.py", 3),
         ("testfile.py", 5),
-        ("testfile.py", 6),
-        ("testfile.py", 9),
+        ("testfile.py", 7),
+        ("testfile.py", 10),
+        ("testfile.py", 12),
+        ("testfile.py", 13),
     ]
     assert mock_running_script.exceptions == [
-        ("testfile.py", 2),
-        ("testfile.py", 9),
+        ("testfile.py", 3),
+        # Note the exception on line 10 is handled by them
+        ("testfile.py", 13),
     ]
 
 
