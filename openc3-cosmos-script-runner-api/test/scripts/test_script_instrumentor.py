@@ -191,6 +191,36 @@ print('done')
     ]
 
 
+def test_raise_with_try(mock_running_script):
+    script = """
+raise RuntimeError("Error")
+try:
+  pass
+except RuntimeError:
+  pass
+raise RuntimeError("Error")
+"""
+    parsed = ast.parse(script)
+    tree = ScriptInstrumentor("testfile.py").visit(parsed)
+    compiled = compile(tree, filename="testfile.py", mode="exec")
+    exec(compiled, {"RunningScript": mock_running_script})
+
+    assert mock_running_script.pre_lines == [
+        ("testfile.py", 2),
+        ("testfile.py", 3),
+        ("testfile.py", 4),
+        ("testfile.py", 7),
+    ]
+    assert mock_running_script.post_lines == [
+        ("testfile.py", 2),
+        ("testfile.py", 7),
+    ]
+    assert mock_running_script.exceptions == [
+        ("testfile.py", 2),
+        ("testfile.py", 7),
+    ]
+
+
 def test_import_future_script(mock_running_script):
     script = "from __future__ import annotations\nprint('hi')"
     parsed = ast.parse(script)
