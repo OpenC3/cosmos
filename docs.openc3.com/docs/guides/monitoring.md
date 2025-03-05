@@ -8,7 +8,7 @@ sidebar_custom_props:
 ### Monitoring and observability
 
 :::warning Example Only
-Monitoring with Fluentd is not offically supported by OpenC3 and the documentation here is simply an example of how this could be performed.
+Monitoring with Fluentd is not officially supported by OpenC3 and the documentation here is simply an example of how this could be performed.
 :::
 
 With moving COSMOS to container based service, we needed a better way to monitor the internals of COSMOS. So here is some information on external services that you can use to monitor COSMOS. If you want to read more about [Monitoring Distributed Systems](https://sre.google/sre-book/monitoring-distributed-systems/)
