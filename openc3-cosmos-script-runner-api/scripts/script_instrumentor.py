@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -158,7 +158,7 @@ else:
     def track_import_from(self, node):
         # Don't tract from __future__ imports because they must come first or:
         #   SyntaxError: from __future__ imports must occur at the beginning of the file
-        if node.module != '__future__':
+        if node.module != "__future__":
             return self.track_enter_leave(node)
 
     # Notes organized (including newlines) per https://docs.python.org/3/library/ast.html#abstract-grammar
