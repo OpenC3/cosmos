@@ -42,7 +42,7 @@ module OpenC3
         DOC
         expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
           ["begin\n", false, true, 5], # can't instrument begin
-          ["x = 0\n", true, true, 6],
+          ["  x = 0\n", true, true, 6],
           ["end\n", false, false, 7] # can't instrument end
         )
       end
@@ -60,9 +60,9 @@ module OpenC3
         expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
           ["\n", true, false, 1],
           ["puts \"HI\"\n", true, false, 2],
-          ["\n", true, false, 3],
-          ["\n", true, false, 4],
-          ["puts ENV.inspect\n", true, false, 5],
+          ["  \n", true, false, 3],
+          ["  \n", true, false, 4],
+          ["  puts ENV.inspect\n", true, false, 5],
           ["puts('YES') \n", true, false, 6],
           ["pp ENV\n", true, false, 7]
         )
@@ -83,12 +83,12 @@ module OpenC3
         expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
           ["z = 5\n", true, false, 1],
           ["begin\n", false, true, 2], # can't instrument begin
-          ["a = 0\n", true, true, 3],
-          ["begin\n", false, true, 4],
-          ["x = 0\n", true, true, 5],
-          ["rescue\n", false, true, 6],
-          ["x = 1\n", true, true, 7],
-          ["end\n", false, true, 8],
+          ["  a = 0\n", true, true, 3],
+          ["  begin\n", false, true, 4],
+          ["    x = 0\n", true, true, 5],
+          ["  rescue\n", false, true, 6],
+          ["    x = 1\n", true, true, 7],
+          ["  end\n", false, true, 8],
           ["end\n", false, false, 9]
         ) # can't instrument end
       end
@@ -113,7 +113,9 @@ module OpenC3
           }.each {|x, y| puts x}
         DOC
         expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
-          ["{ :X1 => 1,\n:X2 => 2\n}.each {|x, y| puts x}\n", false, false, 1]
+          ["{ :X1 => 1,\n" +
+           "  :X2 => 2\n" +
+           "}.each {|x, y| puts x}\n", false, false, 1]
         )
       end
 
@@ -141,23 +143,23 @@ module OpenC3
         DOC
         expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
           ["limits = {\n" +
-          "'val' => {\n" +
-          "'val Voltage' => {\n" +
-          "'tlm_name'        => 'target packet item',\n" +
-          "'metric'          => 'V',\n" +
-          "'requirement_id'  => nil,\n" +
-          "'off_limits'      => {\n" +
-          "'yellow_lower'  => nil,\n" +
-          "'red_lower'     => nil\n" +
-          "},\n" +
-          "'on_limits'       => {\n" +
-          "'red_lower'     => 1,\n" +
-          "'yellow_lower'  => 1,\n" +
-          "'yellow_upper'  => 1,\n" +
-          "'red_upper'     => 1\n" +
-          "}\n" +
-          "}\n" +
-          "}\n" +
+          "  'val' => {\n" +
+          "    'val Voltage' => {\n" +
+          "      'tlm_name'        => 'target packet item',\n" +
+          "      'metric'          => 'V',\n" +
+          "      'requirement_id'  => nil,\n" +
+          "      'off_limits'      => {\n" +
+          "          'yellow_lower'  => nil,\n" +
+          "          'red_lower'     => nil\n" +
+          "      },\n" +
+          "      'on_limits'       => {\n" +
+          "          'red_lower'     => 1,\n" +
+          "          'yellow_lower'  => 1,\n" +
+          "          'yellow_upper'  => 1,\n" +
+          "          'red_upper'     => 1\n" +
+          "      }\n" +
+          "    }\n" +
+          "  }\n" +
           "}\n", true, false, 1]
         )
       end
@@ -183,20 +185,20 @@ module OpenC3
         DOC
         expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
           ["array = [\n" +
-          "1, 2, 3,\n" +
-          "4,\n" +
-          "[\n" +
-          "5, 6, 7\n" +
-          "],\n" +
-          "{\n" +
-          "'tlm_name'        => 'target packet item',\n" +
-          "'metric'          => 'V',\n" +
-          "'requirement_id'  => nil,\n" +
-          "'off_limits'      => {\n" +
-          "'yellow_lower'  => nil,\n" +
-          "'red_lower'     => nil\n" +
-          "},\n" +
-          "}\n" +
+          "  1, 2, 3,\n" +
+          "  4,\n" +
+          "  [\n" +
+          "    5, 6, 7\n" +
+          "  ],\n" +
+          "  {\n" +
+          "    'tlm_name'        => 'target packet item',\n" +
+          "    'metric'          => 'V',\n" +
+          "    'requirement_id'  => nil,\n" +
+          "    'off_limits'      => {\n" +
+          "        'yellow_lower'  => nil,\n" +
+          "        'red_lower'     => nil\n" +
+          "    },\n" +
+          "  }\n" +
           "]\n", true, false, 1]
         )
       end
@@ -266,11 +268,11 @@ module OpenC3
           ["wait_check(\"INST HEALTH_STATUS COLLECTS > \#{collects}\", 5)\n", true, false, 3],
           ["\n", true, false, 4],
           ["begin\n", false, true, 5],
-          ["loop do\n", false, true, 6],
-          ["puts 'hi'\n", true, true, 7],
-          ["end\n", false, true, 8],
+          ["  loop do\n", false, true, 6],
+          ["    puts 'hi'\n", true, true, 7],
+          ["  end\n", false, true, 8],
           ["rescue\n", false, true, 9],
-          ["puts 'error'\n", true, true, 10],
+          ["  puts 'error'\n", true, true, 10],
           ["end\n", false, false, 11]
         )
       end
@@ -333,20 +335,20 @@ module OpenC3
         DOC
         expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
           ["class Test\n", false, false, 1],
-          ["def instance_method(variable)\n", false, false, 2],
-          ["puts variable\n", true, false, 3],
-          ["if variable\n", false, false, 4],
-          ["puts 'another puts'\n", true, false, 5],
-          ["end\n", false, false, 6],
-          ["end\n", false, false, 7],
+          ["  def instance_method(variable)\n", false, false, 2],
+          ["    puts variable\n", true, false, 3],
+          ["    if variable\n", false, false, 4],
+          ["      puts 'another puts'\n", true, false, 5],
+          ["    end\n", false, false, 6],
+          ["  end\n", false, false, 7],
           ["\n", true, false, 8],
-          ["def self.class_method(variable, keyword:)\n", false, false, 9],
-          ["begin\n", false, true, 10],
-          ["puts variable\n", true, true, 11],
-          ["rescue\n", false, true, 12],
-          ["puts keyword\n", true, true, 13],
-          ["end\n", false, false, 14],
-          ["end\n", false, false, 15],
+          ["  def self.class_method(variable, keyword:)\n", false, false, 9],
+          ["    begin\n", false, true, 10],
+          ["      puts variable\n", true, true, 11],
+          ["    rescue\n", false, true, 12],
+          ["      puts keyword\n", true, true, 13],
+          ["    end\n", false, false, 14],
+          ["  end\n", false, false, 15],
           ["end\n", false, false, 16],
           ["\n", true, false, 17],
           ["test = Test.new\n", true, false, 18],
@@ -368,14 +370,14 @@ module OpenC3
         DOC
         expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
           ["class Test\n", false, false, 1],
-          ["def instance_method(\n" +
-           "variable1,\n" +
-           "variable2,\n" +
-           "variable3,\n" +
-           "variable4\n" +
-           ")\n", false, false, 2],
-          ["puts variable1\n", true, false, 8],
-          ["end\n", false, false, 9],
+          ["  def instance_method(\n" +
+           "    variable1,\n" +
+           "    variable2,\n" +
+           "    variable3,\n" +
+           "    variable4\n" +
+           "  )\n", false, false, 2],
+          ["    puts variable1\n", true, false, 8],
+          ["  end\n", false, false, 9],
           ["end\n", false, false, 10]
         )
       end
@@ -389,11 +391,11 @@ module OpenC3
                     end
         DOC
         expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
-          ["if true\n", false, false, 1],
-          ["unless false\n", false, false, 2],
-          ["puts 'hi'\n", true, false, 3],
+          ["            if true\n", false, false, 1],
+          ["              unless false\n", false, false, 2],
+          ["      puts 'hi'\n", true, false, 3],
           ["end\n", false, false, 4],
-          ["end\n", false, false, 5]
+          ["            end\n", false, false, 5]
         )
       end
 
@@ -403,7 +405,8 @@ module OpenC3
             DURATION \#{duration}")
         DOC
         expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
-          ["cmd(\"INST COLLECT with TYPE \#{type},\n  DURATION \#{duration}\")\n", true, false, 1],
+          ["cmd(\"INST COLLECT with TYPE \#{type},\n"+
+           "  DURATION \#{duration}\")\n", true, false, 1],
         )
       end
 
@@ -416,7 +419,11 @@ module OpenC3
             END"
         DOC
         expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
-          ["definition = \"\n  SCREEN AUTO AUTO 1.0\n    VERTICALBOX 'Test Screen'\n    LABELVALUE \#{target} \#{packet} \#{item}\n  END\"\n", true, false, 1]
+          ["definition = \"\n"+
+           "  SCREEN AUTO AUTO 1.0\n"+
+           "    VERTICALBOX 'Test Screen'\n"+
+           "    LABELVALUE \#{target} \#{packet} \#{item}\n"+
+           "  END\"\n", true, false, 1]
         )
       end
 
@@ -441,13 +448,13 @@ module OpenC3
         expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
           ["array = [1, 2, 3]\n", true, false, 1],
           ["array.each do |value|\n", false, false, 2],
-          ["puts value\n", true, false, 3],
+          ["  puts value\n", true, false, 3],
           ["end\n", false, false, 4],
-          ["array.each {\nputs \"an item\"\n}\n", false, false, 5],
+          ["array.each {\n  puts \"an item\"\n}\n", false, false, 5],
           ["begin\n", false, true, 8],
-          ["puts \"another\"\n", true, true, 9],
+          ["  puts \"another\"\n", true, true, 9],
           ["rescue Exception => err\n", false, true, 10],
-          ["puts err\n", true, true, 11],
+          ["  puts err\n", true, true, 11],
           ["end\n", false, false, 12],
           ["begin; puts \"in begin\"\n", false, true, 13],
           ["rescue; puts \"in rescue\"\n", false, true, 14],
@@ -468,11 +475,11 @@ module OpenC3
         DOC
         expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
           ["def method1\n", false, false, 1],
-          ["a = \"part1\" +\n\"part2\"\n", true, false, 2],
+          ["  a = \"part1\" +\n    \"part2\"\n", true, false, 2],
           ["end\n", false, false, 4],
           ["\n", true, false, 5],
           ["def method2\n", false, false, 6],
-          ["a = 5\n", true, false, 7],
+          ["  a = 5\n", true, false, 7],
           ["end\n", false, false, 8],
         )
       end

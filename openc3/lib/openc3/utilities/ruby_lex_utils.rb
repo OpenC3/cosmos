@@ -60,14 +60,27 @@ class RubyLexUtils
     # for what is returned by Prism.lex
     # We process the tokens in pairs to recreate spacing and handle string assignments
     tokens.each_cons(2) do |(token, lex_state), (next_token, _next_lex_state)|
+      # pp token # Uncomment for debugging
       # Ignore embedded documentation must be at column 0 and looks like:
 =begin
 This is a comment
 And so is this
 =end
       if token.type == :EMBDOC_BEGIN or token.type == :EMBDOC_LINE or token.type == :EMBDOC_END
+        prev_token = token
         next
       end
+
+      # Recreate the spaces at the beginning of a line
+      # This has to come before we add the token.value to the line
+      if prev_token.nil?
+        line += ' ' * token.location.start_column
+      # If the previous token is STRING_CONTENT it is probably string interpolation so ignore it
+      # Otherwise if the previous token has changed lines we're on a newline so add space
+      elsif prev_token.type != :STRING_CONTENT and prev_token.location.end_line - prev_token.location.start_line > 0
+        line += ' ' * token.location.start_column
+      end
+      prev_token = token
 
       # Comments require tacking on a newline but are otherwise ignored
       if token.type == :COMMENT
@@ -149,7 +162,6 @@ And so is this
         orig_line_no = nil
         line_no = nil
       end
-      prev_token = token
     end
   end
 end
