@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -73,10 +73,9 @@ else:
         in_try = self.in_try
         if not in_try and type(node) in self.try_nodes:
             self.in_try = True
+
         # Visit the children of the node
         node = self.generic_visit(node)
-        if not in_try and type(node) in self.try_nodes:
-            self.in_try = False
         # ast.parse returns a module, so we need to extract
         # the first element of the body which is the node
         pre_line = ast.parse(
@@ -136,9 +135,10 @@ else:
     # Call the pre_line_instrumentation ONLY and then execute the node
     def track_reached(self, node):
         # Determine if we're in a try block, this is used by track_enter_leave
-        in_try = self.in_try
-        if not in_try and type(node) in self.try_nodes:
+        if not self.in_try and type(node) in self.try_nodes:
             self.in_try = True
+        else:
+            self.in_try = False
 
         # Visit the children of the node
         node = self.generic_visit(node)
@@ -158,7 +158,7 @@ else:
     def track_import_from(self, node):
         # Don't tract from __future__ imports because they must come first or:
         #   SyntaxError: from __future__ imports must occur at the beginning of the file
-        if node.module != '__future__':
+        if node.module != "__future__":
             return self.track_enter_leave(node)
 
     # Notes organized (including newlines) per https://docs.python.org/3/library/ast.html#abstract-grammar
