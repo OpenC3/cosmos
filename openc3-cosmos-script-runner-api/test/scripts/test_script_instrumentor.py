@@ -228,9 +228,9 @@ raise RuntimeError("Error2") # Handled by us
     parsed = ast.parse(script)
     tree = ScriptInstrumentor("testfile.py").visit(parsed)
     compiled = compile(tree, filename="testfile.py", mode="exec")
-    locals = {'i': None}
-    exec(compiled, {"RunningScript": mock_running_script}, locals)
-    assert(locals["i"] == 5)
+    local_vars = {'i': None}
+    exec(compiled, {"RunningScript": mock_running_script}, local_vars)
+    assert(local_vars["i"] == 5)
 
     assert mock_running_script.pre_lines == [
         ("testfile.py", 2),
