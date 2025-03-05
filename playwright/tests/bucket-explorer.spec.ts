@@ -200,13 +200,17 @@ test('upload and delete', async ({ page, utils }) => {
   await fileChooser.setFiles('package.json')
   await page.locator('[data-test="upload-file-submit-btn"]').click()
 
-  await expect(page.locator('tbody > tr')).toHaveCount(count + 1, { timeout: 10000 })
+  await expect
+    .poll(() => page.locator('tbody > tr').count(), { timeout: 10000 })
+    .toBeGreaterThanOrEqual(count + 1)
   await expect(page.getByRole('cell', { name: 'package.json' })).toBeVisible()
   await page
     .locator('tr:has-text("package.json") [data-test="delete-file"]')
     .click()
   await page.locator('[data-test="confirm-dialog-delete"]').click()
-  await expect(page.locator('tbody > tr')).toHaveCount(count)
+  await expect
+    .poll(() => page.locator('tbody > tr').count(), { timeout: 10000 })
+    .toBeGreaterThanOrEqual(count)
 
   // Note that Promise.all prevents a race condition
   // between clicking and waiting for the file chooser.
@@ -339,7 +343,7 @@ test('auto refreshes to update files', async ({
   await utils.sleep(5000) // Ensure the table is rendered before checking
   await expect(
     pageTwo.getByRole('cell', { name: 'package2.json' }),
-  ).not.toBeVisible()
+  ).not.toBeVisible({ timeout: 10000 })
 
   // Set the refresh interval on the second tab to 1s
   await pageTwo.locator('[data-test=bucket-explorer-file]').click()

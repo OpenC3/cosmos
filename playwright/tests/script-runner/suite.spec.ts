@@ -110,18 +110,19 @@ test('generates a ruby suite template', async ({ page, utils }) => {
   await suiteTemplate(page, utils, 'Ruby')
   await expect(
     page
-    .locator('pre')
-    .filter({ hasText: "require 'openc3/script/suite.rb'" })
-    .first()
+      .locator('pre')
+      .filter({ hasText: "require 'openc3/script/suite.rb'" })
+      .first(),
   ).toBeVisible()
 })
 
 test('generates a python suite template', async ({ page, utils }) => {
   await suiteTemplate(page, utils, 'Python')
-  await expect(page
-    .locator('pre')
-    .filter({ hasText: 'from openc3.script.suite import Suite, Group' })
-    .first()
+  await expect(
+    page
+      .locator('pre')
+      .filter({ hasText: 'from openc3.script.suite import Suite, Group' })
+      .first(),
   ).toBeVisible()
 })
 
@@ -130,7 +131,9 @@ test('loads Suite controls when opening a suite', async ({ page, utils }) => {
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Open File').click()
   await utils.sleep(1000)
-  await page.locator('[data-test=file-open-save-search] input').fill('my_script_')
+  await page
+    .locator('[data-test=file-open-save-search] input')
+    .fill('my_script_')
   await utils.sleep(500)
   await page.locator('[data-test=file-open-save-search] input').fill('suite')
   await page.locator('text=script_suite >> nth=0').click() // nth=0 because INST, INST2

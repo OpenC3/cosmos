@@ -164,9 +164,13 @@ test('changes the polling rate', async ({ page, utils }) => {
     .locator('.v-dialog [data-test=refresh-interval] input')
     .press('Enter')
   await page.locator('.v-dialog').press('Escape')
-  const received = parseInt(await page.inputValue('tr:has-text("RECEIVED_COUNT") input'))
+  const received = parseInt(
+    await page.inputValue('tr:has-text("RECEIVED_COUNT") input'),
+  )
   await utils.sleep(7000)
-  const received2 = parseInt(await page.inputValue('tr:has-text("RECEIVED_COUNT") input'))
+  const received2 = parseInt(
+    await page.inputValue('tr:has-text("RECEIVED_COUNT") input'),
+  )
   expect(received2 - received).toBeLessThanOrEqual(6) // Allow slop
   expect(received2 - received).toBeGreaterThanOrEqual(4) // Allow slop
   // Set it back
