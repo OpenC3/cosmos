@@ -71,6 +71,7 @@ z = x + y
 def test_try_except_script(mock_running_script):
     script = """
 try:
+  print('start')
   x = 1 / 0
 except ZeroDivisionError:
   x = 0
@@ -84,14 +85,16 @@ print('done')
     assert mock_running_script.pre_lines == [
         ("testfile.py", 2),
         ("testfile.py", 3),
-        ("testfile.py", 5),
+        ("testfile.py", 4),
         ("testfile.py", 6),
+        ("testfile.py", 7),
     ]
     assert mock_running_script.post_lines == [
-        # Line 2 doesn't exit because it raises an exception
+        # Line 2 doesn't exit because it is a try
         ("testfile.py", 3),
-        ("testfile.py", 5),
+        ("testfile.py", 4),
         ("testfile.py", 6),
+        ("testfile.py", 7),
     ]
     assert mock_running_script.exceptions == []
 
@@ -211,7 +214,9 @@ def test_raise_with_try(mock_running_script):
     script = """
 raise RuntimeError("Error")
 try:
-  pass
+  i = 0
+  i += 1
+  print(i)
 except RuntimeError:
   pass
 raise RuntimeError("Error")
@@ -225,15 +230,20 @@ raise RuntimeError("Error")
         ("testfile.py", 2),
         ("testfile.py", 3),
         ("testfile.py", 4),
-        ("testfile.py", 7),
+        ("testfile.py", 5),
+        ("testfile.py", 6),
+        ("testfile.py", 9),
     ]
     assert mock_running_script.post_lines == [
         ("testfile.py", 2),
-        ("testfile.py", 7),
+        ("testfile.py", 4),
+        ("testfile.py", 5),
+        ("testfile.py", 6),
+        ("testfile.py", 9),
     ]
     assert mock_running_script.exceptions == [
         ("testfile.py", 2),
-        ("testfile.py", 7),
+        ("testfile.py", 9),
     ]
 
 
