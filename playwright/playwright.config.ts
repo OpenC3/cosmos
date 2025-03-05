@@ -14,14 +14,15 @@ export const ADMIN_STORAGE_STATE = path.join(
  */
 export default defineConfig({
   testDir: './tests',
-  /* Maximum time one test can run for. */
-  timeout: 5 * 60 * 1000, // 5 minutes
+  /* Maximum time one test can run for (default 30s). */
+  timeout: 30 * 1000, // default value
   expect: {
     /**
      * Maximum time expect() should wait for the condition to be met.
+     * (default 5s)
      * For example in `await expect(locator).toHaveText();`
      */
-    timeout: 10000,
+    timeout: 5000, // default value
   },
   /* Maximum time for the entire test run. Since we run the entire suite
      on each browser separately this should be enough. */

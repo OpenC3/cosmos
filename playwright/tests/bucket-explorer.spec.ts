@@ -200,7 +200,7 @@ test('upload and delete', async ({ page, utils }) => {
   await fileChooser.setFiles('package.json')
   await page.locator('[data-test="upload-file-submit-btn"]').click()
 
-  await expect(page.locator('tbody > tr')).toHaveCount(count + 1)
+  await expect(page.locator('tbody > tr')).toHaveCount(count + 1, { timeout: 10000 })
   await expect(page.getByRole('cell', { name: 'package.json' })).toBeVisible()
   await page
     .locator('tr:has-text("package.json") [data-test="delete-file"]')
@@ -242,6 +242,7 @@ test('upload and delete', async ({ page, utils }) => {
 })
 
 test('navigate logs and tools bucket', async ({ page, utils }) => {
+  test.setTimeout(3 * 60 * 1000) // 3 minutes
   // Keep clicking alternatively on tools and then logs to force a refresh
   // This allows the DEFAULT folder to appear in time
   await expect(async () => {

@@ -24,6 +24,7 @@ test('waits for the services to deploy and connect', async ({
   page,
   utils,
 }) => {
+  test.setTimeout(5 * 60 * 1000) // 5 minutes
   await page.goto('/tools/cmdtlmserver')
   await expect(page.locator('.v-app-bar')).toContainText('CmdTlmServer')
   // Check the 3rd column (nth starts at 0) on the row containing INST_INT says CONNECTED
