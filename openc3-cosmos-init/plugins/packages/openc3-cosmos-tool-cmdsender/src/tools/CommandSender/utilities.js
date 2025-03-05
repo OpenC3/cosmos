@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 */
 
@@ -60,11 +60,11 @@ export default {
       if (str.length < 2) {
         return str
       }
-      var firstChar = str.charAt(0)
+      let firstChar = str.charAt(0)
       if (firstChar !== '"' && firstChar !== "'") {
         return str
       }
-      var lastChar = str.charAt(str.length - 1)
+      let lastChar = str.charAt(str.length - 1)
       if (firstChar !== lastChar) {
         return str
       }
@@ -72,10 +72,10 @@ export default {
     },
 
     convertToString(value) {
-      var i = 0
-      var returnValue = ''
+      let i = 0
+      let returnValue = ''
       if (Object.prototype.toString.call(value).slice(8, -1) === 'Array') {
-        var arrayLength = value.length
+        let arrayLength = value.length
         returnValue = '[ '
         for (i = 0; i < arrayLength; i++) {
           if (
@@ -97,7 +97,7 @@ export default {
           // This is binary data, display in hex.
           returnValue = '0x'
           for (i = 0; i < value.raw.length; i++) {
-            var nibble = value.raw[i].toString(16).toUpperCase()
+            let nibble = value.raw[i].toString(16).toUpperCase()
             if (nibble.length < 2) {
               nibble = '0' + nibble
             }
