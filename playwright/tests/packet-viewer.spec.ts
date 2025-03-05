@@ -164,9 +164,13 @@ test('changes the polling rate', async ({ page, utils }) => {
     .locator('.v-dialog [data-test=refresh-interval] input')
     .press('Enter')
   await page.locator('.v-dialog').press('Escape')
-  const received = parseInt(await page.inputValue('tr:has-text("RECEIVED_COUNT") input'))
+  const received = parseInt(
+    await page.inputValue('tr:has-text("RECEIVED_COUNT") input'),
+  )
   await utils.sleep(7000)
-  const received2 = parseInt(await page.inputValue('tr:has-text("RECEIVED_COUNT") input'))
+  const received2 = parseInt(
+    await page.inputValue('tr:has-text("RECEIVED_COUNT") input'),
+  )
   expect(received2 - received).toBeLessThanOrEqual(6) // Allow slop
   expect(received2 - received).toBeGreaterThanOrEqual(4) // Allow slop
   // Set it back
@@ -191,6 +195,12 @@ test('displays formatted items with units by default', async ({
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
   // Check for exactly 3 decimal points followed by units
   await matchItem(page, 'TEMP1', /^-?\d+\.\d{3}\s\S$/)
+})
+
+test('searches on packets without data', async ({ page, utils }) => {
+  await utils.selectTargetPacketItem('EXAMPLE', 'STATUS')
+  await page.locator('[data-test="search"] input').fill('STRING')
+  await expect.poll(() => page.locator('tbody > tr').count()).toEqual(1)
 })
 
 test('displays formatted items with units', async ({ page, utils }) => {
