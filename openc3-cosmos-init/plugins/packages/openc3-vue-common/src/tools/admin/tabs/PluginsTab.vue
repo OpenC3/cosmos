@@ -112,83 +112,13 @@
         <v-col class="text-h6"> Plugin List </v-col>
       </v-row>
       <div v-for="(plugin, index) in shownPlugins" :key="index">
-        <v-list-item data-test="plugin-list-item">
-          <v-list-item-title>
-            <template v-if="isModified(plugin)"> * </template>
-            {{ plugin }}
-          </v-list-item-title>
-          <v-list-item-subtitle v-if="pluginTargets(plugin).length !== 0">
-            <span
-              v-for="(target, index) in pluginTargets(plugin)"
-              :key="index"
-              class="mr-2"
-            >
-              <a
-                v-if="target.modified"
-                @click.prevent="downloadTarget(target.name)"
-              >
-                {{ target.name }}
-              </a>
-              <span v-else> {{ target.name }} </span>
-            </span>
-          </v-list-item-subtitle>
-
-          <template v-slot:append>
-            <div class="mx-3">
-              <v-tooltip location="top">
-                <template v-slot:activator="{ props }">
-                  <v-icon
-                    v-bind="props"
-                    @click="downloadPlugin(plugin)"
-                    icon="mdi-download"
-                    data-test="download-plugin"
-                  />
-                </template>
-                <span> Download Plugin </span>
-              </v-tooltip>
-            </div>
-            <div class="mx-3">
-              <v-tooltip location="top">
-                <template v-slot:activator="{ props }">
-                  <v-icon
-                    v-bind="props"
-                    @click="editPlugin(plugin)"
-                    icon="mdi-pencil"
-                    data-test="edit-plugin"
-                  />
-                </template>
-                <span> Edit Plugin Details </span>
-              </v-tooltip>
-            </div>
-            <div class="mx-3">
-              <v-tooltip location="top">
-                <template v-slot:activator="{ props }">
-                  <v-icon
-                    v-bind="props"
-                    @click="upgradePlugin(plugin)"
-                    icon="mdi-update"
-                    data-test="upgrade-plugin"
-                  />
-                </template>
-                <span> Upgrade Plugin </span>
-              </v-tooltip>
-            </div>
-            <div class="mx-3">
-              <v-tooltip location="top">
-                <template v-slot:activator="{ props }">
-                  <v-icon
-                    v-bind="props"
-                    @click="deletePrompt(plugin)"
-                    icon="mdi-delete"
-                    data-test="delete-plugin"
-                  />
-                </template>
-                <span> Delete Plugin </span>
-              </v-tooltip>
-            </div>
-          </template>
-        </v-list-item>
-        <v-divider v-if="index < plugins.length - 1" :key="index" />
+        <plugin-list-item
+          :plugin="plugin"
+          :isModified="isModified(plugin.name)"
+          @edit="() => editPlugin(plugin.name)"
+          @upgrade="() => upgradePlugin(plugin.name)"
+        />
+        <v-divider v-if="index < shownPlugins.length - 1" :key="index" />
       </div>
     </v-list>
     <plugin-dialog
@@ -225,11 +155,14 @@ import { toDate, format } from 'date-fns'
 import { Api } from '@openc3/js-common/services'
 import { SimpleTextDialog } from '@/components'
 import { ModifiedPluginDialog, PluginDialog } from '@/tools/admin'
+import { PluginListItem, PluginTargets } from '@/tools/admin/tabs/plugins'
 import { PluginStore } from '@/plugins/plugin-store'
 
 export default {
+  mixins: [PluginTargets],
   components: {
     PluginDialog,
+    PluginListItem,
     PluginStore,
     ModifiedPluginDialog,
     SimpleTextDialog,
@@ -238,8 +171,8 @@ export default {
     return {
       file: null,
       currentPlugin: null,
-      plugins: [],
-      targets: [],
+      plugins: {},
+      targets: {},
       processes: {},
       alert: '',
       alertType: 'success',
@@ -296,46 +229,15 @@ export default {
   },
   computed: {
     shownPlugins() {
-      let result = []
-      for (let plugin of this.plugins) {
-        let pluginNameFirst = plugin.split('__')[0]
-        let pluginNameSplit = pluginNameFirst.split('-')
-        pluginNameSplit = pluginNameSplit.slice(0, -1)
-        let pluginName = pluginNameSplit.join('-')
-        if (
-          !this.defaultPlugins.includes(pluginName) ||
+      return Object.entries(this.plugins).filter(([pluginName, plugin]) => {
+        const pluginNameFirst = pluginName.split('__')[0]
+        const pluginNameSplit = pluginNameFirst.split('-').slice(0, -1)
+        const pluginNameShort = pluginNameSplit.join('-')
+        return !this.defaultPlugins.includes(pluginNameShort) ||
           this.showDefaultTools
-        ) {
-          result.push(plugin)
-        }
-      }
-      return result
-    },
-    pluginTargets() {
-      return (plugin) => {
-        let result = []
-        for (const target in this.targets) {
-          if (this.targets[target]['plugin'] === plugin) {
-            result.push(this.targets[target])
-          }
-        }
-        return result
-      }
-    },
-    isModified() {
-      return (plugin) => {
-        let result = false
-        for (const target in this.targets) {
-          if (
-            this.targets[target]['plugin'] === plugin &&
-            this.targets[target]['modified'] === true
-          ) {
-            result = true
-            break
-          }
-        }
-        return result
-      }
+      }).map(([pluginName, plugin]) => {
+        return plugin
+      })
     },
   },
   mounted() {
@@ -353,12 +255,18 @@ export default {
     }
   },
   methods: {
+    isModified: function (plugin) {
+      return Object.entries(this.targets).some(([targetName, target]) => {
+        return target['plugin'] === plugin &&
+        target['modified'] === true
+      })
+    },
     showOutput: function (process) {
       this.processOutput = process.output
       this.showProcessOutput = true
     },
     update: function () {
-      Api.get('/openc3-api/plugins').then((response) => {
+      Api.get('/openc3-api/plugins/all').then((response) => {
         this.plugins = response.data
       })
       Api.get('/openc3-api/targets_modified').then((response) => {
@@ -418,10 +326,10 @@ export default {
               response.data.existing_plugin_txt_lines.join('\n')
           }
           let pluginTxt = response.data.plugin_txt_lines.join('\n')
-          ;(this.pluginName = response.data.name),
-            (this.variables = response.data.variables),
-            (this.pluginTxt = pluginTxt),
-            (this.existingPluginTxt = existingPluginTxt)
+          this.pluginName = response.data.name
+          this.variables = response.data.variables
+          this.pluginTxt = pluginTxt
+          this.existingPluginTxt = existingPluginTxt
           this.showPluginDialog = true
           this.file = undefined
         })
@@ -484,51 +392,16 @@ export default {
       // eslint-disable-next-line
       console.log(`Install ${gemUrl}`)
     },
-    downloadTarget: function (name) {
-      Api.post(`/openc3-api/targets/${name}/download`).then((response) => {
-        // Decode Base64 string
-        const decodedData = window.atob(response.data.contents)
-        // Create UNIT8ARRAY of size same as row data length
-        const uInt8Array = new Uint8Array(decodedData.length)
-        // Insert all character code into uInt8Array
-        for (let i = 0; i < decodedData.length; ++i) {
-          uInt8Array[i] = decodedData.charCodeAt(i)
-        }
-        const blob = new Blob([uInt8Array], { type: 'application/zip' })
-        const link = document.createElement('a')
-        link.href = URL.createObjectURL(blob)
-        link.setAttribute('download', response.data.filename)
-        link.click()
-      })
-    },
-    downloadPlugin: function (plugin) {
-      Api.post(`/openc3-api/packages/${plugin}/download`).then((response) => {
-        // Decode Base64 string
-        const decodedData = window.atob(response.data.contents)
-        // Create UNIT8ARRAY of size same as row data length
-        const uInt8Array = new Uint8Array(decodedData.length)
-        // Insert all character code into uInt8Array
-        for (let i = 0; i < decodedData.length; ++i) {
-          uInt8Array[i] = decodedData.charCodeAt(i)
-        }
-        const blob = new Blob([uInt8Array], { type: 'application/zip' })
-        const link = document.createElement('a')
-        link.href = URL.createObjectURL(blob)
-        link.setAttribute('download', response.data.filename)
-        link.click()
-      })
-    },
     editPlugin: function (plugin) {
       Api.get(`/openc3-api/plugins/${plugin}`).then((response) => {
         let existingPluginTxt = null
         if (response.data.existing_plugin_txt_lines !== undefined) {
           existingPluginTxt = response.data.existing_plugin_txt_lines.join('\n')
         }
-        let pluginTxt = response.data.plugin_txt_lines.join('\n')
-        ;(this.pluginName = response.data.name),
-          (this.variables = response.data.variables),
-          (this.pluginTxt = pluginTxt),
-          (this.existingPluginTxt = existingPluginTxt)
+        this.pluginName = response.data.name
+        this.variables = response.data.variables
+        this.pluginTxt = response.data.plugin_txt_lines.join('\n')
+        this.existingPluginTxt = existingPluginTxt
         this.showPluginDialog = true
       })
     },
