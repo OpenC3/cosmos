@@ -7,6 +7,10 @@ sidebar_custom_props:
 
 ### Monitoring and observability
 
+:::warning Example Only
+Monitoring with Fluentd is not officially supported by OpenC3 and the documentation here is simply an example of how this could be performed.
+:::
+
 With moving COSMOS to container based service, we needed a better way to monitor the internals of COSMOS. So here is some information on external services that you can use to monitor COSMOS. If you want to read more about [Monitoring Distributed Systems](https://sre.google/sre-book/monitoring-distributed-systems/)
 
 ### [Fluent/Fluentd](https://www.fluentd.org/guides/recipes/docker-logging)
@@ -81,13 +85,15 @@ in_docker.conf
 
 Dockerfile
 
+NOTE: If building on a Macbook (for example) you should use the architecture specific build in the FROM line, e.g. `FROM arm64v8/fluentd:v1.18-1`
+
 ```
-FROM fluent/fluentd:v1.10.3-1.0
+FROM fluent/fluentd:v1.18-1
 
 COPY ./in_docker.conf /fluentd/etc/fluent.conf
 USER root
-RUN gem install fluent-plugin-elasticsearch --no-document --version 4.0.7 \
-  && gem install fluent-plugin-prometheus --no-document --version 1.8.5
+RUN gem install fluent-plugin-elasticsearch --no-document --version 5.4.3 \
+  && gem install fluent-plugin-prometheus --no-document --version 2.2.0
 USER fluent
 ```
 
@@ -156,7 +162,7 @@ scrape_configs:
 Dockerfile
 
 ```
-FROM prom/prometheus:v2.24.1
+FROM prom/prometheus:v3.2.1
 ADD prometheus.yaml /etc/prometheus/
 ```
 
