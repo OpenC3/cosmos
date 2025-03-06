@@ -1,5 +1,5 @@
 /*
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -19,7 +19,7 @@
 import { Api, OpenC3Api } from '@openc3/js-common/services'
 
 // Test data useful for testing ScreenCompleter
-// var autocompleteData = [
+// let autocompleteData = [
 //   {
 //     caption: 'HORIZONTAL',
 //     meta: 'Places the widgets it encapsulates horizontally',
@@ -52,16 +52,16 @@ export default class ScreenCompleter {
   }
 
   async getCompletions(editor, session, pos, prefix, callback) {
-    var line = session.getLine(pos.row)
-    var lineBefore = line.slice(0, pos.column)
-    var parsedLine = lineBefore.trimStart().split(/ (?![^<]*>)/)
-    var suggestions = this.autocompleteData
+    let line = session.getLine(pos.row)
+    let lineBefore = line.slice(0, pos.column)
+    let parsedLine = lineBefore.trimStart().split(/ (?![^<]*>)/)
+    let suggestions = this.autocompleteData
     // If we have more than 1 we've selected a keyword
     if (parsedLine.length > 1) {
       suggestions = suggestions.find((x) => x.caption === parsedLine[0])
     }
-    var result = {}
-    var more = true
+    let result = {}
+    let more = true
     // If we found suggestions and the suggestions have params
     // then we do logic to substitute suggestions using the actual
     // target, packet, item data
@@ -72,23 +72,26 @@ export default class ScreenCompleter {
       }
       // parsedLine.length - 2 because the last element is blank
       // e.g. ['LABELVALUE', 'INST', '']
-      var current = suggestions['params'][parsedLine.length - 2]
+      let current = suggestions['params'][parsedLine.length - 2]
       // Check for Target name, Packet name, and Item name and use
       // api calls to substitute actual values for suggestions
       if (current['Target name']) {
-        var names = await this.api.get_target_names()
-        suggestions = names.reduce((acc, curr) => ((acc[curr] = 1), acc), {})
+        let target_names = await this.api.get_target_names()
+        suggestions = target_names.reduce(
+          (acc, curr) => ((acc[curr] = 1), acc),
+          {},
+        )
       } else if (current['Packet name']) {
-        var target = parsedLine[parsedLine.length - 2]
-        var packets = await this.api.get_all_tlm(target)
+        let target_name = parsedLine[parsedLine.length - 2]
+        let packets = await this.api.get_all_tlm(target_name)
         suggestions = packets.reduce(
           (acc, pkt) => ((acc[pkt.packet_name] = pkt.description), acc),
           {},
         )
       } else if (current['Item name']) {
-        var target = parsedLine[parsedLine.length - 3]
-        var packet = parsedLine[parsedLine.length - 2]
-        var packet = await this.api.get_tlm(target, packet)
+        let target_name = parsedLine[parsedLine.length - 3]
+        let packet_name = parsedLine[parsedLine.length - 2]
+        let packet = await this.api.get_tlm(target_name, packet_name)
         suggestions = packet.items.reduce(
           (acc, item) => ((acc[item.name] = item.description), acc),
           {},
@@ -99,7 +102,7 @@ export default class ScreenCompleter {
       }
 
       result = Object.keys(suggestions || {}).map((x) => {
-        var completions = {
+        let completions = {
           value: x + (more ? ' ' : ''),
           // We want the autoComplete to continue right up
           // to the last parameter
