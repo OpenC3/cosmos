@@ -3,4 +3,4 @@ web: bin/rails s -b 0.0.0.0 -p 2901
 ws: anycable-go --host 0.0.0.0 --port 3901 --path /openc3-api/cable --log_level error
 # Ruby logging is log-level (https://docs.anycable.io/ruby/logging?id=logging)
 # but Rails overrides this so we set it in config/application.rb
-rpc: bundle exec anycable --broadcast_adapter http
+rpc: bundle exec anycable --broadcast_adapter http --http_broadcast_url http://127.0.0.1:8090/_broadcast
