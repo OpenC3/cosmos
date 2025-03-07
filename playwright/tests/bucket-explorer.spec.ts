@@ -15,7 +15,6 @@
 
 // @ts-check
 import { test, expect } from './fixture'
-import { format } from 'date-fns'
 
 test.use({
   toolPath: '/tools/bucketexplorer',
@@ -185,7 +184,7 @@ test('upload and delete', async ({ page, utils }) => {
   await expect(page.locator('[data-test="file-path"]')).toHaveText(
     '/ DEFAULT / tmp /',
   )
-  await utils.sleep(5000) // Ensure the table is rendered before getting the count
+  await page.locator('tbody> tr').first().waitFor()
   let count = await page.locator('tbody > tr').count()
 
   // Note that Promise.all prevents a race condition
@@ -264,7 +263,7 @@ test('navigate logs and tools bucket', async ({ page, utils }) => {
   )
   await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/logs%2FDEFAULT%2F/)
   // Ensure the log files have the correct dates
-  let date = format(new Date(), 'yyyyMMdd')
+  let date = new Date().toISOString().split('T')[0].replace(/-/g, '')
   await page.getByRole('cell', { name: 'raw_logs' }).click()
   await page.getByRole('cell', { name: 'tlm' }).click()
   await page.getByRole('cell', { name: 'INST', exact: true }).click()
@@ -335,7 +334,7 @@ test('auto refreshes to update files', async ({
   await page.locator('[data-test="upload-file-submit-btn"]').click()
 
   // The second tab shouldn't have refreshed yet, so the file shouldn't be there
-  await utils.sleep(5000) // Ensure the table is rendered before checking
+  await page.locator('tbody> tr').first().waitFor()
   await expect(
     pageTwo.getByRole('cell', { name: 'package2.json' }),
   ).not.toBeVisible()
@@ -352,7 +351,7 @@ test('auto refreshes to update files', async ({
   await pageTwo.locator('.v-dialog').press('Escape')
 
   // Second tab should auto refresh in 1s and then the file should be there
-  await utils.sleep(5000) // Ensure the table is rendered before checking
+  await page.locator('tbody> tr').first().waitFor()
   await expect(
     pageTwo.getByRole('cell', { name: 'package2.json' }),
   ).toBeVisible()
