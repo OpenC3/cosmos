@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -35,6 +35,12 @@ require 'openc3/api/target_api'
 require 'openc3/api/tlm_api'
 require 'openc3/utilities/authorization'
 require 'openc3/topics/topic'
+begin
+  require 'openc3-enterprise/api/cmd_authority_api'
+rescue LoadError
+  # LoadError expected for Open Source Edition
+end
+
 
 module OpenC3
   module Api
