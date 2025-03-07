@@ -22,9 +22,10 @@
 
 <template>
   <div>
-    <v-banner class="boxbanner" :style="computedStyle" single-line>
+    <div class="boxbanner" :style="computedStyle" single-line>
       {{ parameters[0] }}
-    </v-banner>
+    </div>
+    <hr />
     <vertical-widget
       v-bind="listeners"
       :parameters="parameters.slice(1)"
@@ -49,11 +50,8 @@ export default {
 </script>
 
 <style scoped>
-.boxbanner :deep(.v-banner__wrapper) {
-  padding: 4px !important;
-}
-.boxbanner :deep(.v-banner__text) {
-  font-weight: 600;
-  font-size: 16px;
+.boxbanner {
+  padding-left: 4px;
+  font-weight: bold;
 }
 </style>
