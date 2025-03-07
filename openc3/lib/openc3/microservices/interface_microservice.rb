@@ -37,7 +37,7 @@ require 'openc3/interfaces/interface'
 begin
   require 'openc3-enterprise/models/critical_cmd_model'
 rescue LoadError
-  # Should never actual be used in Open Source
+  # LoadError expected for Open Source Edition
 end
 
 module OpenC3
