@@ -40,7 +40,7 @@ module OpenC3
     # END NOTE
 
     def initialize(name:, offline_access_token: nil, updated_at: nil, scope:)
-      super("#{scope}__#{PRIMARY_KEY}", name: name, scope: scope)
+      super("#{scope}__#{PRIMARY_KEY}", name: name, updated_at: updated_at, scope: scope)
       @offline_access_token = offline_access_token
     end
 
