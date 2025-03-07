@@ -21,11 +21,7 @@
 -->
 
 <template>
-  <div
-    data-test="label"
-    class="pa-1 mt-1 label"
-    :style="[cssProps, computedStyle]"
-  >
+  <div data-test="label" class="pa-1 label" :style="[cssProps, computedStyle]">
     {{ labelText }}
   </div>
 </template>
