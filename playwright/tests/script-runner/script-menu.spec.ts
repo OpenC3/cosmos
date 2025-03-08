@@ -48,7 +48,7 @@ test('show started scripts', async ({ page, utils }) => {
   let filename = await page.locator('[data-test=filename] input').inputValue()
 
   await page.locator('[data-test=script-runner-script]').click()
-  await page.locator('text="Execution Status"').click()
+  await page.getByText('Execution Status').click()
   await utils.sleep(1000)
   // Each section has a Refresh button so click the first one
   await page.getByRole('button', { name: 'Refresh' }).first().click()
@@ -61,7 +61,7 @@ test('show started scripts', async ({ page, utils }) => {
   await page.locator('[data-test=go-button]').click()
   await expect(page.locator('[data-test=state] input')).toHaveValue('stopped')
   await page.locator('[data-test=script-runner-script]').click()
-  await page.locator('text="Execution Status"').click()
+  await page.getByText('Execution Status').click()
   await utils.sleep(1000)
   await page.locator('button:has-text("Refresh")').first().click()
   await expect(page.locator('[data-test=running-scripts]')).not.toContainText(
