@@ -99,10 +99,17 @@ test('warns with duplicate item', async ({ page, utils }) => {
 })
 
 test('warns with no time delta', async ({ page, utils }) => {
-  const start = sub(new Date(), { minutes: 1 })
+  const date = new Date()
+  const start = sub(date, { minutes: 1 })
+  await page
+    .locator('[data-test=start-date] input')
+    .fill(format(date, 'yyyy-MM-dd'))
   await page
     .locator('[data-test=start-time] input')
     .fill(format(start, 'HH:mm:ss'))
+  await page
+    .locator('[data-test=end-date] input')
+    .fill(format(date, 'yyyy-MM-dd'))
   await page
     .locator('[data-test=end-time] input')
     .fill(format(start, 'HH:mm:ss'))
