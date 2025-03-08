@@ -4,7 +4,7 @@ set -e
 PLUGINS="/openc3/plugins"
 GEMS="/openc3/plugins/gems/"
 PACKAGES="packages"
-OPENC3_RELEASE_VERSION=6.2.1-beta0
+OPENC3_RELEASE_VERSION=6.2.2-beta0
 
 # 2nd argument provides an override for the workspace name,
 # but that can be inferred from the 1st argument for most tools

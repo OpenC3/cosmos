@@ -197,6 +197,12 @@ test('displays formatted items with units by default', async ({
   await matchItem(page, 'TEMP1', /^-?\d+\.\d{3}\s\S$/)
 })
 
+test('searches on packets without data', async ({ page, utils }) => {
+  await utils.selectTargetPacketItem('EXAMPLE', 'STATUS')
+  await page.locator('[data-test="search"] input').fill('STRING')
+  await expect.poll(() => page.locator('tbody > tr').count()).toEqual(1)
+})
+
 test('displays formatted items with units', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
   await page.locator('[data-test="search"] input').fill('TEMP1')
