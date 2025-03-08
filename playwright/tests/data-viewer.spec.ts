@@ -89,7 +89,7 @@ test('saves, opens, and resets the configuration', async ({ page, utils }) => {
   await page.locator('[data-test=history-component-open-settings]').click()
   await expect(page.locator('[data-test=display-settings-card]')).toBeVisible()
   await expect(
-    page.locator('[data-test=history-component-settings-history] input')
+    page.locator('[data-test=history-component-settings-history] input'),
   ).toHaveValue('200')
   await page.locator('#openc3-menu >> text=Data Viewer').click({ force: true })
   await expect(
@@ -117,13 +117,13 @@ test('adds a raw packet to a new tab', async ({ page, utils }) => {
   await addComponent(page, utils, 'INST', 'ADCS')
   await page.locator('[data-test=start-button]').click()
   await expect(
-    page.locator('[data-test=history-component-text-area] textarea')
+    page.locator('[data-test=history-component-text-area] textarea'),
   ).toHaveValue(/Received seconds:/)
   await expect(
-    page.locator('[data-test=history-component-text-area] textarea')
+    page.locator('[data-test=history-component-text-area] textarea'),
   ).toHaveValue(/00000010:/)
   await expect(
-    page.locator('[data-test=history-component-text-area] textarea')
+    page.locator('[data-test=history-component-text-area] textarea'),
   ).toHaveValue(/00000020:/)
 })
 
@@ -137,16 +137,16 @@ test('adds a decom packet to a new tab', async ({ page, utils }) => {
   await page.locator('[data-test=add-component]').click()
   await page.locator('[data-test=start-button]').click()
   await expect(
-    page.locator('[data-test=history-component-text-area] textarea')
+    page.locator('[data-test=history-component-text-area] textarea'),
   ).toHaveValue(/POSX:/)
   await expect(
-    page.locator('[data-test=history-component-text-area] textarea')
+    page.locator('[data-test=history-component-text-area] textarea'),
   ).toHaveValue(/POSY:/)
   await expect(
-    page.locator('[data-test=history-component-text-area] textarea')
+    page.locator('[data-test=history-component-text-area] textarea'),
   ).toHaveValue(/POSZ:/)
   await expect(
-    page.locator('[data-test=history-component-text-area] textarea')
+    page.locator('[data-test=history-component-text-area] textarea'),
   ).not.toHaveValue(/00000010:/)
 })
 
@@ -161,13 +161,13 @@ test('adds a custom component to a new tab', async ({ page, utils }) => {
 
   await page.locator('[data-test=start-button]').click()
   await expect(
-    page.locator('[data-test=history-component-text-area] textarea')
+    page.locator('[data-test=history-component-text-area] textarea'),
   ).toHaveValue(/(.*\n)+Magnitude:.*/)
   await page
     .locator('[data-test=history-component-search] input')
     .fill('Magnitude:')
   await expect(
-    page.locator('[data-test=history-component-text-area] textarea')
+    page.locator('[data-test=history-component-text-area] textarea'),
   ).toHaveValue(/^Magnitude:.*$/)
 })
 
@@ -210,16 +210,16 @@ test('controls playback', async ({ page, utils }) => {
   // Step back and forth
   await page.getByLabel('prepended action').click()
   await expect(
-    page.locator('[data-test=history-component-text-area] textarea')
+    page.locator('[data-test=history-component-text-area] textarea'),
   ).not.toHaveValue(content)
   await page.getByLabel('appended action').click()
   expect(
-    page.locator('[data-test=history-component-text-area] textarea')
+    page.locator('[data-test=history-component-text-area] textarea'),
   ).toHaveValue(content)
   // Resume
   await page.locator('[data-test=history-component-play-pause]').click()
   expect(
-    page.locator('[data-test=history-component-text-area] textarea')
+    page.locator('[data-test=history-component-text-area] textarea'),
   ).not.toHaveValue(content)
   // Stop
   await page.locator('[data-test="stop-button"]').click()
@@ -229,7 +229,7 @@ test('controls playback', async ({ page, utils }) => {
     .inputValue()
   await utils.sleep(500) // Wait for potential changes
   expect(
-    page.locator('[data-test=history-component-text-area] textarea')
+    page.locator('[data-test=history-component-text-area] textarea'),
   ).toHaveValue(content)
 })
 
@@ -241,50 +241,49 @@ test('changes display settings', async ({ page, utils }) => {
   await expect(page.locator('[data-test=display-settings-card]')).toBeVisible()
   await page.getByText('Show timestamp').click()
   await expect(
-    page.locator('[data-test=history-component-text-area] textarea')
+    page.locator('[data-test=history-component-text-area] textarea'),
   ).not.toHaveValue(/Received seconds:/)
   await page.getByText('Show timestamp').click()
   await expect(
-    page
-      .locator('[data-test=history-component-text-area] textarea')
+    page.locator('[data-test=history-component-text-area] textarea'),
   ).toHaveValue(/Received seconds:/)
   await page.getByText('Show ASCII').click()
   await expect(
-    page.locator('[data-test=history-component-text-area] textarea')
+    page.locator('[data-test=history-component-text-area] textarea'),
   ).toHaveValue(
     /(\s\w\w){16}\s?(?!\s)/, // per https://regex101.com/
   )
   await page.getByText('Show ASCII').click()
   await expect(
-    page.locator('[data-test=history-component-text-area] textarea')
+    page.locator('[data-test=history-component-text-area] textarea'),
   ).toHaveValue(
     /(\s\w\w){16}\s{4}\S*/, // per https://regex101.com/
   )
   await page.getByText('Show line address').click()
   await expect(
-    page.locator('[data-test=history-component-text-area] textarea')
+    page.locator('[data-test=history-component-text-area] textarea'),
   ).not.toHaveValue(/00000000:/)
   await page.getByText('Show line address').click()
   await expect(
-    page.locator('[data-test=history-component-text-area] textarea')
+    page.locator('[data-test=history-component-text-area] textarea'),
   ).toHaveValue(/00000000:/)
   await page
     .locator('[data-test=history-component-settings-num-bytes] input')
     .fill('8')
   await expect(
-    page.locator('[data-test=history-component-text-area] textarea')
+    page.locator('[data-test=history-component-text-area] textarea'),
   ).toHaveValue(
     /(\s\w\w){8}\s{4}\S*/, // per https://regex101.com/
   )
 
   await expect(
-    page.locator('[data-test=history-component-text-area] textarea')
+    page.locator('[data-test=history-component-text-area] textarea'),
   ).not.toHaveValue(/Received seconds:(.*\n)+.*Received seconds:/)
   await page
     .locator('[data-test=history-component-settings-num-packets] input')
     .fill('2')
   await expect(
-    page.locator('[data-test=history-component-text-area] textarea')
+    page.locator('[data-test=history-component-text-area] textarea'),
   ).toHaveValue(
     /Received seconds:(.*\n)+.*Received seconds:/, // per https://regex101.com/
   )
@@ -378,14 +377,12 @@ test('adds single packet item', async ({ page, utils }) => {
   await page.locator('[data-test=add-component]').click()
   await page.locator('[data-test="start-button"]').click()
 
-  await expect(
-    page.locator('[data-test=history-component-text-area] textarea')
-  )
-  // Create regular expression to match the line:
-  // Time: 2024-10-01T01:15:49.419Z  TEMP1: -1.119 C
-  .toHaveValue(
-    /Time: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\s+TEMP1: .*\.\d{3} C/,
-  )
+  await expect(page.locator('[data-test=history-component-text-area] textarea'))
+    // Create regular expression to match the line:
+    // Time: 2024-10-01T01:15:49.419Z  TEMP1: -1.119 C
+    .toHaveValue(
+      /Time: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\s+TEMP1: .*\.\d{3} C/,
+    )
 })
 
 test('adds multiple packet items', async ({ page, utils }) => {
@@ -399,14 +396,12 @@ test('adds multiple packet items', async ({ page, utils }) => {
   await page.locator('[data-test=add-component]').click()
   await page.locator('[data-test="start-button"]').click()
 
-  await expect(
-    page.locator('[data-test=history-component-text-area] textarea')
-  )
-  // Create regular expression to match the line:
-  // Time: 2024-10-01T02:12:42.419Z  TEMP3: -20.785 C  PACKET_TIME: 2024-10-01 02:12:42 +0000
-  .toHaveValue(
-    /Time: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\s+TEMP3: .*\.\d{3} C\s+PACKET_TIME: \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/,
-  )
+  await expect(page.locator('[data-test=history-component-text-area] textarea'))
+    // Create regular expression to match the line:
+    // Time: 2024-10-01T02:12:42.419Z  TEMP3: -20.785 C  PACKET_TIME: 2024-10-01 02:12:42 +0000
+    .toHaveValue(
+      /Time: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\s+TEMP3: .*\.\d{3} C\s+PACKET_TIME: \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/,
+    )
 })
 
 // TODO: Additional testing to cover the following:

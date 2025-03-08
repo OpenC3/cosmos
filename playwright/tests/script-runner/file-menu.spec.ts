@@ -107,7 +107,7 @@ test('open a file using url param', async ({ page, utils }) => {
     page
       .locator('pre')
       .filter({ hasText: 'INST2/procedures/utilities/collect.py' })
-      .first()
+      .first(),
   ).toBeVisible()
 })
 
@@ -120,7 +120,9 @@ test('handles File->Save new file', async ({ page, utils }) => {
   await page
     .locator('[data-test=file-open-save-filename] input')
     .fill('save_new.rb')
-  await expect(page.locator('text=save_new.rb is not a valid filename')).toBeVisible()
+  await expect(
+    page.locator('text=save_new.rb is not a valid filename'),
+  ).toBeVisible()
   await page
     .locator('.v-list-group:has-text("INST")')
     .first()
@@ -132,8 +134,12 @@ test('handles File->Save new file', async ({ page, utils }) => {
     .locator('.v-list-item:has-text("procedures")')
     .first() // because /tables/procedures
     .click()
-  const prepend = await page.locator('[data-test=file-open-save-filename] input').inputValue()
-  await page.locator('[data-test=file-open-save-filename] input').fill(`${prepend}/save_new.rb`)
+  const prepend = await page
+    .locator('[data-test=file-open-save-filename] input')
+    .inputValue()
+  await page
+    .locator('[data-test=file-open-save-filename] input')
+    .fill(`${prepend}/save_new.rb`)
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   await expect(page.locator('#sr-controls')).toContainText(
     'INST/procedures/save_new.rb',
@@ -171,7 +177,9 @@ test('handles File Save overwrite', async ({ page, utils }) => {
   // File->Save As
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Save As...').click()
-  await expect(page.locator('text=INST/procedures/save_overwrite.rb')).toBeVisible()
+  await expect(
+    page.locator('text=INST/procedures/save_overwrite.rb'),
+  ).toBeVisible()
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   // Confirmation dialog
   await page.locator('text=Are you sure you want to overwrite').click()

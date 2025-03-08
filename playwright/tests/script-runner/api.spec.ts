@@ -128,7 +128,13 @@ test('runs a script', async ({ page, utils }) => {
 
   await page.locator('[data-test="script-runner-script"]').click()
   await page.getByText('Execution Status').click()
-  await page.getByRole('button', { name: 'Connect' }).first().click()
+  await page
+    .locator(
+      '[data-test="running-scripts"] tr:has-text("INST/procedures/disconnect.rb")',
+    )
+    .first()
+    .getByRole('button', { name: 'Connect' })
+    .click()
 
   await expect(page.locator('[data-test=state] input')).toHaveValue('error', {
     timeout: 20000,
@@ -191,7 +197,10 @@ async function testMetadataApis(page, utils, filename) {
   await page.locator('[data-test="new-event"]').click()
   await page.getByRole('button', { name: 'Next', exact: true }).click()
   await page.locator('[data-test="new-metadata-icon"]').click()
-  await page.locator('[data-test="key-0"]').locator('input').fill('inputkey')
+  await page
+    .locator('[data-test="key-0"]')
+    .locator('input')
+    .fill('inputkey_' + filename)
   await page
     .locator('[data-test="value-0"]')
     .locator('input')
@@ -216,7 +225,7 @@ test('test ruby metadata apis', async ({ page, utils }) => {
     '"updatekey"=>3',
   )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    '"inputkey"=>"inputvalue"',
+    '"inputkey_metadata.rb"=>"inputvalue"',
   )
 })
 
@@ -232,7 +241,7 @@ test('test python metadata apis', async ({ page, utils }) => {
     "'updatekey': 3",
   )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    "'inputkey': 'inputvalue'",
+    "'inputkey_metadata.py': 'inputvalue'",
   )
 })
 

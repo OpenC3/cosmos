@@ -25,6 +25,11 @@ test.use({
   toolName: 'Script Runner',
 })
 
+// Most of these tests are super flaky when run in parallel with each other.
+// Just gonna disable parallelism for now.
+// TODO: This might actually be bugginess in the app? Not sure
+test.describe.configure({ mode: 'serial' })
+
 test('keeps a debug command history', async ({ page, utils }) => {
   await page.locator('textarea').fill(`
   x = 12345

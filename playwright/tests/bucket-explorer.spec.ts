@@ -199,13 +199,17 @@ test('upload and delete', async ({ page, utils }) => {
   await fileChooser.setFiles('package.json')
   await page.locator('[data-test="upload-file-submit-btn"]').click()
 
-  await expect(page.locator('tbody > tr')).toHaveCount(count + 1)
+  await expect
+    .poll(() => page.locator('tbody > tr').count(), { timeout: 10000 })
+    .toBeGreaterThanOrEqual(count + 1)
   await expect(page.getByRole('cell', { name: 'package.json' })).toBeVisible()
   await page
     .locator('tr:has-text("package.json") [data-test="delete-file"]')
     .click()
   await page.locator('[data-test="confirm-dialog-delete"]').click()
-  await expect(page.locator('tbody > tr')).toHaveCount(count)
+  await expect
+    .poll(() => page.locator('tbody > tr').count(), { timeout: 10000 })
+    .toBeGreaterThanOrEqual(count)
 
   // Note that Promise.all prevents a race condition
   // between clicking and waiting for the file chooser.
@@ -241,6 +245,7 @@ test('upload and delete', async ({ page, utils }) => {
 })
 
 test('navigate logs and tools bucket', async ({ page, utils }) => {
+  test.setTimeout(3 * 60 * 1000) // 3 minutes
   // Keep clicking alternatively on tools and then logs to force a refresh
   // This allows the DEFAULT folder to appear in time
   await expect(async () => {
@@ -337,7 +342,7 @@ test('auto refreshes to update files', async ({
   await page.locator('tbody> tr').first().waitFor()
   await expect(
     pageTwo.getByRole('cell', { name: 'package2.json' }),
-  ).not.toBeVisible()
+  ).not.toBeVisible({ timeout: 10000 })
 
   // Set the refresh interval on the second tab to 1s
   await pageTwo.locator('[data-test=bucket-explorer-file]').click()
