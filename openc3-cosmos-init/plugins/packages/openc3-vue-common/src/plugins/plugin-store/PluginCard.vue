@@ -17,7 +17,7 @@
 -->
 
 <template>
-  <v-dialog max-width="500">
+  <plugin-details-dialog v-bind="plugin" @trigger-install="install">
     <template v-slot:activator="{ props }">
       <v-card v-bind="props" height="350" class="d-flex flex-column">
         <v-card-title class="d-flex align-center justify-content-space-between">
@@ -58,109 +58,19 @@
         </v-card-actions>
       </v-card>
     </template>
-
-    <template v-slot:default="{ isActive }">
-      <v-card>
-        <v-toolbar height="24">
-          <v-spacer />
-          <span v-text="title" />
-          <v-spacer />
-          <v-tooltip location="top">
-            <template v-slot:activator="{ props }">
-              <div v-bind="props">
-                <v-btn
-                  :href="storeLink"
-                  target="_blank"
-                  icon="mdi-open-in-new"
-                  size="small"
-                  variant="plain"
-                />
-              </div>
-            </template>
-            <span> View at plugins.openc3.com </span>
-          </v-tooltip>
-        </v-toolbar>
-        <v-card-subtitle class="d-flex align-center justify-content-space-between">
-          <div> {{ author }} </div>
-          <v-spacer />
-          <div v-if="verified">
-            Verified
-            <v-badge inline icon="mdi-shield-check" color="success" />
-          </div>
-        </v-card-subtitle>
-        <v-card-subtitle class="d-flex align-center justify-content-space-between">
-          <div>
-            <v-icon icon="mdi-cloud-download" size="x-small" />
-            {{ downloads }} downloads
-          </div>
-          <v-spacer />
-          <div class="d-flex align-center">
-            <v-rating
-              :model-value="rating"
-              density="compact"
-              size="small"
-              readonly
-              half-increments
-            />
-          </div>
-        </v-card-subtitle>
-        <v-card-text>
-          <v-img v-if="image" :src="image" />
-          <div v-text="description" />
-          <div class="mt-3 text-caption font-italic"> License: {{ license }} </div>
-          <div class="text-caption font-italic"> SHA256: {{ sha256 }} </div>
-        </v-card-text>
-
-        <v-card-actions class="justify-start px-6">
-          <v-btn
-            text="Install"
-            append-icon="mdi-puzzle-plus"
-            variant="elevated"
-            @click="() => {
-              isActive.value = false
-              install()
-            }"
-          />
-          <v-btn
-            text="Repository"
-            append-icon="mdi-open-in-new"
-            variant="outlined"
-            :href="repository"
-            target="_blank"
-          />
-          <v-btn
-            text="Homepage"
-            append-icon="mdi-open-in-new"
-            variant="outlined"
-            :href="homepage"
-            target="_blank"
-          />
-        </v-card-actions>
-      </v-card>
-    </template>
-  </v-dialog>
+  </plugin-details-dialog>
 </template>
 
 <script>
+import PluginProps from './PluginProps'
+import PluginDetailsDialog from './PluginDetailsDialog.vue'
+
 export default {
-  emits: ['triggerInstall'],
-  props: {
-    title: String,
-    titleSlug: String,
-    author: String,
-    authorSlug: String,
-    description: String,
-    keywords: Array,
-    image: String,
-    license: String,
-    rating: Number,
-    downloads: Number,
-    verified: Boolean,
-    homepage: String,
-    repository: String,
-    gemUrl: String,
-    sha256: String,
+  mixins: [PluginProps],
+  components: {
+    PluginDetailsDialog,
   },
+  emits: ['triggerInstall'],
   computed: {
     storeLink: function () {
       return `https://plugins.openc3.com/${this.authorSlug}/${this.titleSlug}`

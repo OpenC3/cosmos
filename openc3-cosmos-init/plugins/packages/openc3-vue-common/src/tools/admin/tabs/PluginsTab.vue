@@ -32,21 +32,14 @@
           ref="fileInput"
           @change="fileChange"
         />
-        Note: Use <v-icon> mdi-update </v-icon> to upgrade existing plugins
+        <br />
+        Note: Use <v-icon> mdi-dots-horizontal </v-icon> in the Installed Plugins list to upgrade existing plugins
       </v-col>
       <v-col class="ml-4 mr-2" cols="4">
         <rux-progress :value="progress" />
       </v-col>
     </v-row>
     <v-row no-gutters class="px-2">
-      <v-col>
-        <v-checkbox
-          v-model="showDefaultTools"
-          label="Show Default Tools"
-          class="mt-0"
-          data-test="show-default-tools"
-        />
-      </v-col>
       <v-col align="right" class="mr-2">
         <div> * indicates a modified plugin </div>
         <div> Click target link to download modifications </div>
@@ -67,7 +60,7 @@
       data-test="process-list"
     >
       <v-row no-gutters class="px-4">
-        <v-col class="text-h6"> Process List </v-col>
+        <v-col class="text-h5"> Process List </v-col>
         <v-col align="right">
           <!-- See openc3/lib/openc3/utilities/process_manager.rb CLEANUP_CYCLE_SECONDS -->
           <div> Showing last 10 min of activity </div>
@@ -107,20 +100,44 @@
         <v-divider />
       </div>
     </v-list>
-    <v-list class="list" data-test="plugin-list">
-      <v-row class="px-4">
-        <v-col class="text-h6"> Plugin List </v-col>
-      </v-row>
-      <div v-for="(plugin, index) in shownPlugins" :key="index">
+    <v-row class="px-4">
+      <v-col class="text-h5">
+        Installed Plugins
+      </v-col>
+      <v-col class="v-col-auto">
+        <v-switch
+          v-model="showDefaultTools"
+          label="Show Default Tools"
+          density="compact"
+          hide-details
+          data-test="show-default-tools"
+        />
+      </v-col>
+    </v-row>
+    <v-data-table
+      :headers="[]"
+      :items="shownPlugins"
+      density="compact"
+      class="list"
+      data-test="plugin-list"
+    >
+      <template v-slot:item="{ item: plugin }">
         <plugin-list-item
-          :plugin="plugin"
+          v-bind="plugin"
+          :targets="pluginTargets(plugin.name)"
           :isModified="isModified(plugin.name)"
           @edit="() => editPlugin(plugin.name)"
           @upgrade="() => upgradePlugin(plugin.name)"
+          @delete="() => deletePrompt(plugin.name)"
+          @show-details="showDetails"
         />
-        <v-divider v-if="index < shownPlugins.length - 1" :key="index" />
-      </div>
-    </v-list>
+      </template>
+    </v-data-table>
+    <plugin-card
+      v-bind="detailPlugin"
+      hide-activator
+      :show-dailog="showPluginDetails"
+    />
     <plugin-dialog
       v-if="showPluginDialog"
       v-model="showPluginDialog"
@@ -155,11 +172,11 @@ import { toDate, format } from 'date-fns'
 import { Api } from '@openc3/js-common/services'
 import { SimpleTextDialog } from '@/components'
 import { ModifiedPluginDialog, PluginDialog } from '@/tools/admin'
-import { PluginListItem, PluginTargets } from '@/tools/admin/tabs/plugins'
+import { PluginListItem } from '@/tools/admin/tabs/plugins'
+import { PluginApi } from '@/tools/admin/tabs/plugins'
 import { PluginStore } from '@/plugins/plugin-store'
 
 export default {
-  mixins: [PluginTargets],
   components: {
     PluginDialog,
     PluginListItem,
@@ -171,6 +188,8 @@ export default {
     return {
       file: null,
       currentPlugin: null,
+      showPluginDetails: false,
+      detailPlugin: null,
       plugins: {},
       targets: {},
       processes: {},
@@ -236,7 +255,11 @@ export default {
         return !this.defaultPlugins.includes(pluginNameShort) ||
           this.showDefaultTools
       }).map(([pluginName, plugin]) => {
-        return plugin
+        const storePlugin = PluginApi.getBySha(plugin.gem_sha)
+        return {
+          ...storePlugin,
+          ...plugin,
+        }
       })
     },
   },
@@ -255,6 +278,19 @@ export default {
     }
   },
   methods: {
+    showDetails: function (plugin) {
+      this.detailPlugin = plugin
+      this.showPluginDetails = true
+    },
+    pluginTargets: function (plugin) {
+      let result = []
+      for (const target in this.targets) {
+        if (this.targets[target]['plugin'] === plugin) {
+          result.push(this.targets[target])
+        }
+      }
+      return result
+    },
     isModified: function (plugin) {
       return Object.entries(this.targets).some(([targetName, target]) => {
         return target['plugin'] === plugin &&
@@ -268,6 +304,10 @@ export default {
     update: function () {
       Api.get('/openc3-api/plugins/all').then((response) => {
         this.plugins = response.data
+
+        // TODO: delete me
+        const demoKey = Object.keys(this.plugins).find(k => k.includes('demo'))
+        this.plugins[demoKey].gem_sha = 'demosha256'
       })
       Api.get('/openc3-api/targets_modified').then((response) => {
         this.targets = response.data
