@@ -70,6 +70,7 @@ class MicroserviceModel(Model):
         secrets: Optional[list] = None,
         prefix=None,
         disable_erb=None,
+        ignore_changes=None,
         shard=0,
         scope: str = OPENC3_SCOPE,
     ):
@@ -108,6 +109,7 @@ class MicroserviceModel(Model):
         self.secrets = secrets
         self.prefix = prefix
         self.disable_erb = disable_erb
+        self.ignore_changes = ignore_changes
         self.shard = shard
         if self.shard is None:
             self.shard = 0
@@ -132,5 +134,6 @@ class MicroserviceModel(Model):
             "secrets": self.secrets,  # .as_json(),
             "prefix": self.prefix,
             "disable_erb": self.disable_erb,
+            "ignore_changes": self.ignore_changes,
             "shard": self.shard,
         }

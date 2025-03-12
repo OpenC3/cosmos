@@ -1119,6 +1119,19 @@ module OpenC3
       end
     end
 
+    describe "clear_all_non_derived_items" do
+      it "resets the packet to just derived items" do
+        p = Packet.new("tgt", "pkt")
+        p.append_item("test1", 8, :UINT, 16)
+        p.append_item("test2", 16, :UINT)
+        i3 = p.define_item("test3", 0, 0, :DERIVED)
+        i3.read_conversion = GenericConversion.new("packet.read('TEST1')")
+        expect(p.items.keys).to eql %w(TEST1 TEST2 TEST3)
+        p.clear_all_non_derived_items()
+        expect(p.items.keys).to eql %w(TEST3)
+      end
+    end
+
     describe "enable_limits" do
       it "enables limits on each packet item" do
         p = Packet.new("tgt", "pkt")

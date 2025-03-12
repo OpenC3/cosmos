@@ -17,11 +17,16 @@
 import json
 import time
 from typing import Any, Optional
-
+from datetime import datetime, timezone
 from openc3.environment import OPENC3_SCOPE
+from openc3.topics.topic import Topic
 from openc3.models.model import Model
+from openc3.models.cvt_model import CvtModel
+from openc3.models.microservice_model import MicroserviceModel
 from openc3.utilities.store import Store
 from openc3.utilities.logger import Logger
+from openc3.utilities.bucket import Bucket
+from openc3.environment import OPENC3_CONFIG_BUCKET
 
 
 # Manages the target in Redis. It stores the target itself under the
@@ -204,3 +209,124 @@ class TargetModel(Model):
             scope=scope,
         )
         self.folder_name = folder_name
+
+    def update_store_telemetry(self, packet_hash, clear_old=True):
+        for target_name, packets in packet_hash:
+            if clear_old:
+                Store.delete(f"{self.scope}__openc3tlm__{target_name}")
+            for packet_name, packet in packets:
+                Logger.debug(f"Configuring tlm packet= {target_name} {packet_name}")
+                try:
+                    Store.hset(f"{self.scope}__openc3tlm__{target_name}", packet_name, json.dumps(packet.as_json()))
+                except Exception as e:
+                    Logger.error(f"Invalid text present in {target_name} {packet_name} tlm packet")
+                    raise e
+                json_hash = {}
+                for item in packet.sorted_items:
+                    json_hash[item.name] = None
+                CvtModel.set(
+                    json_hash, target_name=packet.target_name, packet_name=packet.packet_name, scope=self.scope
+                )
+
+    def update_store_commands(self, packet_hash, clear_old=True):
+        for target_name, packets in packet_hash.items():
+            if clear_old:
+                Store.delete(f"{self.scope}__openc3cmd__{target_name}")
+            for packet_name, packet in packets:
+                Logger.debug(f"Configuring cmd packet= {target_name} {packet_name}")
+                try:
+                    Store.hset(f"{self.scope}__openc3cmd__{target_name}", packet_name, json.dumps(packet.as_json()))
+                except Exception as e:
+                    Logger.error(f"Invalid text present in {target_name} {packet_name} cmd packet")
+                    raise e
+
+    def update_store_item_map(self):
+        # Create item_map
+        item_map_key = f"{self.scope}__{self.name}__item_to_packet_map"
+        item_map = TargetModel.build_item_to_packet_map(self.name, scope=self.scope)
+        Store.set(item_map_key, json.dumps(item_map))
+        TargetModel.item_map_cache[self.name] = [datetime.now(timezone.utc), item_map]
+
+    def dynamic_update(self, packets, cmd_or_tlm="TELEMETRY", filename="dynamic_tlm.txt"):
+        # Build hash of targets/packets
+        packet_hash = {}
+        for packet in packets:
+            target_name = packet.target_name.upper()
+            if not packet_hash.get(target_name, None):
+                packet_hash[target_name] = {}
+            packet_name = packet.packet_name.upper()
+            packet_hash[target_name][packet_name] = packet
+
+        # Update Redis
+        if cmd_or_tlm == "TELEMETRY":
+            self.update_store_telemetry(packet_hash, clear_old=False)
+            self.update_store_item_map()
+        else:
+            self.update_store_commands(packet_hash, clear_old=False)
+
+        # Build dynamic file for cmd_tlm
+        configs = {}
+        for packet in packets:
+            target_name = packet.target_name.upper()
+            if not configs[target_name]:
+                configs[target_name] = ""
+            config = configs[target_name]
+            config.append(packet.to_config(cmd_or_tlm))
+            config.append("\n")
+        for target_name, config in configs:
+            bucket_key = f"{self.scope}/targets_modified/{target_name}/cmd_tlm/{filename}"
+            client = Bucket.getClient()
+            client.put_object(
+                # Use targets_modified to save modifications
+                # This keeps the original target clean (read-only)
+                bucket=OPENC3_CONFIG_BUCKET,
+                key=bucket_key,
+                body=config,
+            )
+
+        # Inform microservices of new topics
+        # Need to tell loggers to log, and decom to decom
+        # We do this for no downtime
+        raw_topics = []
+        decom_topics = []
+        for packet in packets:
+            if cmd_or_tlm == "TELEMETRY":
+                raw_topics.append(f"{self.scope}__TELEMETRY__{{{self.name}}}__{packet.packet_name.upper()}")
+                decom_topics.append(f"{self.scope}__DECOM__{{{self.name}}}__{packet.packet_name.upper()}")
+            else:
+                raw_topics.append(f"{self.scope}__COMMAND__{{{self.name}}}__{packet.packet_name.upper()}")
+                decom_topics.append(f"{self.scope}__DECOMCMD__{{{self.name}}}__{packet.packet_name.upper()}")
+        if cmd_or_tlm == "TELEMETRY":
+            Topic.write_topic(
+                f"MICROSERVICE__{self.scope}__PACKETLOG__{self.name}",
+                {"command": "ADD_TOPICS", "topics": raw_topics.as_json()},
+            )
+            self.add_topics_to_microservice(f"{self.scope}__PACKETLOG__{self.name}", raw_topics)
+            Topic.write_topic(
+                f"MICROSERVICE__{self.scope}__DECOMLOG__{self.name}",
+                {"command": "ADD_TOPICS", "topics": decom_topics.as_json()},
+            )
+            self.add_topics_to_microservice(f"{self.scope}__DECOMLOG__{self.name}", decom_topics)
+            Topic.write_topic(
+                f"MICROSERVICE__{self.scope}__DECOM__{self.name}",
+                {"command": "ADD_TOPICS", "topics": raw_topics.as_json()},
+            )
+            self.add_topics_to_microservice(f"{self.scope}__DECOM__{self.name}", raw_topics)
+        else:
+            Topic.write_topic(
+                f"MICROSERVICE__{self.scope}__COMMANDLOG__{self.name}",
+                {"command": "ADD_TOPICS", "topics": raw_topics.as_json()},
+            )
+            self.add_topics_to_microservice(f"{self.scope}__COMMANDLOG__{self.name}", raw_topics)
+            Topic.write_topic(
+                f"MICROSERVICE__{self.scope}__DECOMCMDLOG__{self.name}",
+                {"command": "ADD_TOPICS", "topics": decom_topics.as_json()},
+            )
+            self.add_topics_to_microservice(f"{self.scope}__DECOMCMDLOG__{self.name}", decom_topics)
+
+    def add_topics_to_microservice(self, microservice_name, topics):
+        model = MicroserviceModel.get_model(name=microservice_name, scope=self.scope)
+        model.topics += topics
+        model.topics = list(set(model.topics))
+        model.ignore_changes = True  # Don't restart the microservice right now
+        model.update()

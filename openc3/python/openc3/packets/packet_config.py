@@ -329,7 +329,7 @@ class PacketConfig:
                     if not hash:
                         hash = {}
                     self.cmd_id_value_hash[self.current_packet.target_name] = hash
-                    self.update_id_value_hash(hash)
+                    self.update_id_value_hash(self.current_packet, hash)
             else:
                 self.telemetry[self.current_packet.target_name][self.current_packet.packet_name] = self.current_packet
                 if not self.current_packet.virtual:
@@ -337,10 +337,39 @@ class PacketConfig:
                     if not hash:
                         hash = {}
                     self.tlm_id_value_hash[self.current_packet.target_name] = hash
-                    self.update_id_value_hash(hash)
+                    self.update_id_value_hash(self.current_packet, hash)
 
             self.current_packet = None
             self.current_item = None
+
+    def dynamic_add_packet(self, packet, cmd_or_tlm="TELEMETRY", affect_ids=False):
+        if cmd_or_tlm == "COMMAND":
+            self.commands[packet.target_name][packet.packet_name] = packet
+
+            if affect_ids:
+                hash = self.cmd_id_value_hash.get(packet.target_name, None)
+                if not hash:
+                    hash = {}
+                self.cmd_id_value_hash[packet.target_name] = hash
+                self.update_id_value_hash(packet, hash)
+        else:
+            self.telemetry[packet.target_name][packet.packet_name] = packet
+
+            # Update latest_data lookup for telemetry
+            for item in packet.sorted_items:
+                target_latest_data = self.latest_data[packet.target_name]
+                if not target_latest_data.get(item.name, None):
+                    target_latest_data[item.name] = []
+                latest_data_packets = target_latest_data[item.name]
+                if packet not in latest_data_packets:
+                    latest_data_packets.append(packet)
+
+            if affect_ids:
+                hash = self.tlm_id_value_hash.get(packet.target_name, None)
+                if not hash:
+                    hash = {}
+                self.tlm_id_value_hash[packet.target_name] = hash
+                self.update_id_value_hash(packet, hash)
 
     # This method provides way to quickly test packet configs
     #
@@ -364,15 +393,15 @@ class PacketConfig:
             pc.process_file(tf.name, process_target_name)
         return pc
 
-    def update_id_value_hash(self, hash):
-        if self.current_packet.id_items and len(self.current_packet.id_items) > 0:
+    def update_id_value_hash(self, packet, hash):
+        if packet.id_items and len(packet.id_items) > 0:
             key = []
-            for item in self.current_packet.id_items:
+            for item in packet.id_items:
                 key.append(item.id_value)
 
-            hash[repr(key)] = self.current_packet
+            hash[repr(key)] = packet
         else:
-            hash["CATCHALL"] = self.current_packet
+            hash["CATCHALL"] = packet
 
     def reset_processing_variables(self):
         self.current_cmd_or_tlm = None

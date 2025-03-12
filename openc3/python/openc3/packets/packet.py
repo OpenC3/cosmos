@@ -845,6 +845,29 @@ class Packet(Structure):
         )
         item.description = "OpenC3 packet received count"
 
+    # Reset the packet to just derived items
+    def clear_all_non_derived_items(self):
+        self.defined_length = 0
+        self.defined_length_bits = 0
+        self.pos_bit_size = 0
+        self.neg_bit_size = 0
+        self.fixed_size = True
+        self.short_buffer_allowed = False
+        self.id_items = None
+        self.limits_items = None
+        new_items = {}
+        new_sorted_items = []
+        print(self.items)
+        for name, item in self.items.items():
+            if item.data_type == 'DERIVED':
+                new_items[name] = item
+        for item in self.sorted_items:
+            if item.data_type == 'DERIVED':
+                new_sorted_items.append(item)
+        self.items = new_items
+        self.sorted_items = new_sorted_items
+        self.config_name = None
+
     # Enable limits on an item by name
     #
     # self.param name [String] Name of the item to enable limits
@@ -971,6 +994,9 @@ class Packet(Structure):
             config += f"  ACCESSOR {self.accessor.__class__.__name__}\n"
         if self.validator:
             config += f"  VALIDATOR {self.validator.__class__.__name__}\n"
+        # TODO: Add TEMPLATE_ENCODED so this can always be done inline regardless of content
+        if self.template:
+            config += f"  TEMPLATE '{self.template}'\n"
         if self.short_buffer_allowed:
             config += "  ALLOW_SHORT\n"
         if self.hazardous:

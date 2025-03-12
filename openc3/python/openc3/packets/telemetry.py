@@ -192,3 +192,6 @@ class Telemetry:
     #   packet name returning the packet.
     def all(self):
         return self.config.telemetry
+
+    def dynamic_add_packet(self, packet, affect_ids=False):
+        self.config.dynamic_add_packet(packet, "TELEMETRY", affect_ids=affect_ids)
