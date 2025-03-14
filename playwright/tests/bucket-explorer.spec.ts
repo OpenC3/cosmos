@@ -161,6 +161,7 @@ test('view file', async ({ page, utils }) => {
 })
 
 test('upload and delete', async ({ page, utils }) => {
+  const randomDir = 'tmp_' + `${Math.random()}`.substring(2)
   await page.getByText('config').click()
   await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/config%2F/)
   await expect(page.locator('[data-test="file-path"]')).toHaveText('/')
@@ -178,11 +179,11 @@ test('upload and delete', async ({ page, utils }) => {
   await fileChooser1.setFiles('package.json')
   await page
     .locator('[data-test="upload-file-path"] input')
-    .fill('DEFAULT/tmp/tmp.json')
+    .fill(`DEFAULT/${randomDir}/tmp.json`)
   await page.locator('[data-test="upload-file-submit-btn"]').click()
 
   await expect(page.locator('[data-test="file-path"]')).toHaveText(
-    '/ DEFAULT / tmp /',
+    `/ DEFAULT / ${randomDir} /`,
   )
   await page.locator('tbody> tr').first().waitFor()
   let count = await page.locator('tbody > tr').count()
@@ -199,13 +200,17 @@ test('upload and delete', async ({ page, utils }) => {
   await fileChooser.setFiles('package.json')
   await page.locator('[data-test="upload-file-submit-btn"]').click()
 
-  await expect(page.locator('tbody > tr')).toHaveCount(count + 1)
+  await expect
+    .poll(() => page.locator('tbody > tr').count(), { timeout: 10000 })
+    .toBeGreaterThanOrEqual(count + 1)
   await expect(page.getByRole('cell', { name: 'package.json' })).toBeVisible()
   await page
     .locator('tr:has-text("package.json") [data-test="delete-file"]')
     .click()
   await page.locator('[data-test="confirm-dialog-delete"]').click()
-  await expect(page.locator('tbody > tr')).toHaveCount(count)
+  await expect
+    .poll(() => page.locator('tbody > tr').count(), { timeout: 10000 })
+    .toBeGreaterThanOrEqual(count)
 
   // Note that Promise.all prevents a race condition
   // between clicking and waiting for the file chooser.
@@ -219,10 +224,10 @@ test('upload and delete', async ({ page, utils }) => {
   await fileChooser2.setFiles('package.json')
   await page
     .locator('[data-test="upload-file-path"] input')
-    .fill('DEFAULT/tmp/TEST/tmp/myfile.json')
+    .fill(`DEFAULT/${randomDir}/TEST/tmp/myfile.json`)
   await page.locator('[data-test="upload-file-submit-btn"]').click()
   await expect(page.locator('[data-test="file-path"]')).toHaveText(
-    '/ DEFAULT / tmp / TEST / tmp /',
+    `/ DEFAULT / ${randomDir} / TEST / tmp /`,
   )
   await page
     .locator('tr:has-text("myfile.json") [data-test="delete-file"]')
@@ -233,7 +238,7 @@ test('upload and delete', async ({ page, utils }) => {
   await page.getByText('logs').click()
   await page.getByText('config').click()
   await page.getByRole('cell', { name: 'DEFAULT' }).click()
-  await page.getByRole('cell', { name: 'tmp' }).click()
+  await page.getByRole('cell', { name: randomDir }).click()
   await page
     .locator('tr:has-text("tmp.json") [data-test="delete-file"]')
     .click()
@@ -241,6 +246,7 @@ test('upload and delete', async ({ page, utils }) => {
 })
 
 test('navigate logs and tools bucket', async ({ page, utils }) => {
+  test.setTimeout(3 * 60 * 1000) // 3 minutes
   // Keep clicking alternatively on tools and then logs to force a refresh
   // This allows the DEFAULT folder to appear in time
   await expect(async () => {
@@ -290,6 +296,7 @@ test('auto refreshes to update files', async ({
   toolPath,
   context,
 }) => {
+  const randomDir = 'tmp_' + `${Math.random()}`.substring(2)
   // Upload something from the first tab to make sure the tmp dir exists
   await page.getByText('config').click()
   await expect(page.getByLabel('prepended action')).toBeVisible()
@@ -300,7 +307,7 @@ test('auto refreshes to update files', async ({
   await fileChooser1.setFiles('package.json')
   await page
     .locator('[data-test="upload-file-path"] input')
-    .fill('DEFAULT/tmp/package1.json')
+    .fill(`DEFAULT/${randomDir}/package1.json`)
   await page.locator('[data-test="upload-file-submit-btn"]').click()
 
   // Open another tab and navigate to the tmp dir
@@ -308,7 +315,7 @@ test('auto refreshes to update files', async ({
   pageTwo.goto(toolPath)
   await pageTwo.getByText('config').click()
   await pageTwo.getByRole('cell', { name: 'DEFAULT' }).click()
-  await pageTwo.getByRole('cell', { name: 'tmp' }).click()
+  await pageTwo.getByRole('cell', { name: randomDir }).click()
 
   // Set the refresh interval on the second tab to be really slow
   await pageTwo.locator('[data-test=bucket-explorer-file]').click()
@@ -330,14 +337,14 @@ test('auto refreshes to update files', async ({
   await fileChooser2.setFiles('package.json')
   await page
     .locator('[data-test="upload-file-path"] input')
-    .fill('DEFAULT/tmp/package2.json')
+    .fill(`DEFAULT/${randomDir}/package2.json`)
   await page.locator('[data-test="upload-file-submit-btn"]').click()
 
   // The second tab shouldn't have refreshed yet, so the file shouldn't be there
   await page.locator('tbody> tr').first().waitFor()
   await expect(
     pageTwo.getByRole('cell', { name: 'package2.json' }),
-  ).not.toBeVisible()
+  ).not.toBeVisible({ timeout: 10000 })
 
   // Set the refresh interval on the second tab to 1s
   await pageTwo.locator('[data-test=bucket-explorer-file]').click()

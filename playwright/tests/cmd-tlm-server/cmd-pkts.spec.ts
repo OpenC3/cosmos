@@ -62,7 +62,7 @@ test('displays the command count', async ({ page, utils }) => {
     .locator('[data-test=cmd-packets-table] >> tr td >> nth=2')
     .textContent()
   if (countStr === null) {
-    throw new Error("Unable to get packet count")
+    throw new Error('Unable to get packet count')
   }
   const count = parseInt(countStr)
   // Send an ABORT command
@@ -94,10 +94,11 @@ test('displays the command count', async ({ page, utils }) => {
     )
     .toEqual(2)
   await expect
-    .poll(async () => 
-      await page
-        .locator('[data-test=cmd-packets-table] >> tr td >> nth=2')
-        .textContent()
+    .poll(
+      async () =>
+        await page
+          .locator('[data-test=cmd-packets-table] >> tr td >> nth=2')
+          .textContent(),
     )
     .toEqual(`${count + 1}`)
 })

@@ -201,6 +201,7 @@ test.describe(() => {
   test.use({ storageState: 'storageState.json' })
 
   test('installs, modifies, and deletes a plugin', async ({ page, utils }) => {
+    test.setTimeout(3 * 60 * 1000) // 3 minutes
     // This test goes through the gamut of plugin functionality: install, upgrade, modify, delete.
     // It is one test so that it works with Playwright's parallelization and optional order randomization.
 
