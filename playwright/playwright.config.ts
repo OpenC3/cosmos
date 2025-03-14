@@ -36,8 +36,8 @@ export default defineConfig({
   workers: process.env.WORKERS
     ? parseInt(process.env.WORKERS) // Use explicit worker count if given
     : process.env.CI
-      ? 4 // Otherwise use 4 on CI/CD
-      : undefined, // and a bunch locally
+      ? 3 // Otherwise use 3 on CI/CD
+      : undefined, // and a bunch locally (seems to be 7, but the default isn't documented)
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: process.env.CI ? 'github' : 'list',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */

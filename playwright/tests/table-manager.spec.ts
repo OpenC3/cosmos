@@ -294,6 +294,7 @@ test('save as and delete', async ({ page, utils }) => {
   await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=Save As').click()
   await expect(page.locator('.v-dialog')).toBeVisible()
+  await utils.sleep(100) // Sometimes the test is too fast and the old filename gets populated after the test types?
   await page
     .locator('[data-test=file-open-save-filename] input')
     .fill('INST/tables/bin/ConfigTables2.bin')
@@ -312,6 +313,7 @@ test('save as and delete', async ({ page, utils }) => {
   await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=Open File').click()
   await expect(page.locator('.v-dialog')).toBeVisible()
+  await utils.sleep(100) // Sometimes the test is too fast and the old filename gets populated after the test types?
   await page
     .locator('[data-test=file-open-save-search] input')
     .fill('ConfigTables2.bin')
@@ -332,6 +334,7 @@ test('save as and delete', async ({ page, utils }) => {
   await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=Save As').click()
   await expect(page.locator('.v-dialog')).toBeVisible()
+  await utils.sleep(100) // Sometimes the test is too fast and the old filename gets populated after the test types?
   await page
     .locator('[data-test=file-open-save-filename] input')
     .fill('INST/tables/bin/Binary.bin')
@@ -350,6 +353,7 @@ test('save as and delete', async ({ page, utils }) => {
   await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=Open File').click()
   await expect(page.locator('.v-dialog')).toBeVisible()
+  await utils.sleep(100) // Sometimes the test is too fast and the old filename gets populated after the test types?
   await page
     .locator('[data-test=file-open-save-search] input')
     .fill('Binary.bin')
