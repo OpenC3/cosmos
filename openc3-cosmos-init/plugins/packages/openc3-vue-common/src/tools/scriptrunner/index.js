@@ -1,5 +1,5 @@
 /*
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2025, OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -16,26 +16,14 @@
 # if purchased from OpenC3, Inc.
 */
 
-import { createRouter, createWebHistory } from 'vue-router'
-import { prependBasePath } from '@openc3/js-common/utils'
-import { NotFound } from '@openc3/vue-common/components'
-import { ScriptRunner } from '@openc3/vue-common/tools/scriptrunner'
+import RunningScripts from '@/tools/scriptrunner/RunningScripts.vue'
+import ScriptLogMessages from '@/tools/scriptrunner/ScriptLogMessages.vue'
+import ScriptRunner from '@/tools/scriptrunner/ScriptRunner.vue'
+import SuiteRunner from '@/tools/scriptrunner/SuiteRunner.vue'
 
-const routes = [
-  {
-    path: '/:id?',
-    name: 'ScriptRunner',
-    component: ScriptRunner,
-  },
-  {
-    path: '/:pathMatch(.)*',
-    name: 'NotFound',
-    component: NotFound,
-  },
-]
-routes.forEach(prependBasePath)
-
-export default createRouter({
-  history: createWebHistory(),
-  routes,
-})
+export {
+  RunningScripts,
+  ScriptLogMessages,
+  ScriptRunner,
+  SuiteRunner,
+}

@@ -21,277 +21,335 @@
 -->
 
 <template>
-  <top-bar :menus="menus" :title="title" />
-  <v-snackbar
-    v-model="showAlert"
-    location="top"
-    :color="alertType"
-    :timeout="3000"
-  >
-    <v-icon> mdi-{{ alertType }} </v-icon>
-    {{ alertText }}
-    <template v-slot:actions="{ attrs }">
-      <v-btn variant="text" v-bind="attrs" @click="showAlert = false">
-        Close
-      </v-btn>
-    </template>
-  </v-snackbar>
-  <v-snackbar
-    v-model="showEditingToast"
-    location="top"
-    :timeout="-1"
-    color="orange"
-  >
-    <v-icon> mdi-pencil-off </v-icon>
-    {{ lockedBy }} is editing this script. Editor is in read-only mode
-    <template v-slot:actions="{ attrs }">
-      <v-btn
-        variant="text"
-        v-bind="attrs"
-        color="danger"
-        @click="confirmLocalUnlock"
-        data-test="unlock-button"
-      >
-        Unlock
-      </v-btn>
-      <v-btn
-        variant="text"
-        v-bind="attrs"
-        @click="
-          () => {
-            showEditingToast = false
-          }
-        "
-      >
-        dismiss
-      </v-btn>
-    </template>
-  </v-snackbar>
-  <div class="grid">
-    <div
-      class="item"
-      v-for="def in screens"
-      :key="def.id"
-      :id="screenId(def.id)"
-      ref="gridItem"
+  <div v-if="!inline">
+    <top-bar :menus="menus" :title="title" />
+    <v-snackbar
+      v-model="showAlert"
+      location="top"
+      :color="alertType"
+      :timeout="3000"
     >
-      <div class="item-content">
-        <openc3-screen
-          :target="def.target"
-          :screen="def.screen"
-          :definition="def.definition"
-          :keywords="screenKeywords"
-          :initialFloated="true"
-          :initialTop="def.top"
-          :initialLeft="def.left"
-          :initialZ="3"
-          :minZ="3"
-          :fixFloated="true"
-          :count="def.count"
-          @close-screen="closeScreen(def.id)"
-          @delete-screen="closeScreen(def.id)"
-        />
+      <v-icon> mdi-{{ alertType }} </v-icon>
+      {{ alertText }}
+      <template v-slot:actions="{ attrs }">
+        <v-btn variant="text" v-bind="attrs" @click="showAlert = false">
+          Close
+        </v-btn>
+      </template>
+    </v-snackbar>
+    <v-snackbar
+      v-model="showEditingToast"
+      location="top"
+      :timeout="-1"
+      color="orange"
+    >
+      <v-icon> mdi-pencil-off </v-icon>
+      {{ lockedBy }} is editing this script. Editor is in read-only mode
+      <template v-slot:actions="{ attrs }">
+        <v-btn
+          variant="text"
+          v-bind="attrs"
+          color="danger"
+          @click="confirmLocalUnlock"
+          data-test="unlock-button"
+        >
+          Unlock
+        </v-btn>
+        <v-btn
+          variant="text"
+          v-bind="attrs"
+          @click="
+            () => {
+              showEditingToast = false
+            }
+          "
+        >
+          dismiss
+        </v-btn>
+      </template>
+    </v-snackbar>
+    <div class="grid">
+      <div
+        class="item"
+        v-for="def in screens"
+        :key="def.id"
+        :id="screenId(def.id)"
+        ref="gridItem"
+      >
+        <div class="item-content">
+          <openc3-screen
+            :target="def.target"
+            :screen="def.screen"
+            :definition="def.definition"
+            :keywords="screenKeywords"
+            :initialFloated="true"
+            :initialTop="def.top"
+            :initialLeft="def.left"
+            :initialZ="3"
+            :minZ="3"
+            :fixFloated="true"
+            :count="def.count"
+            @close-screen="closeScreen(def.id)"
+            @delete-screen="closeScreen(def.id)"
+          />
+        </div>
       </div>
     </div>
-  </div>
-  <v-card style="padding: 10px">
-    <suite-runner
-      v-if="suiteRunner"
-      class="suite-runner"
-      :suite-map="suiteMap"
-      :disable-buttons="disableSuiteButtons"
-      :filename="fullFilename"
-      @button="suiteRunnerButton"
-      @loaded="doResize"
-    />
-    <div id="sr-controls">
-      <v-row no-gutters justify="space-between">
-        <v-icon v-if="showDisconnect" class="mt-2" color="red">
-          mdi-connection
-        </v-icon>
-        <v-tooltip location="top">
-          <template v-slot:activator="{ props }">
-            <v-btn
-              v-bind="props"
-              icon="mdi-cached"
-              variant="text"
-              @click="reloadFile"
-              :disabled="filename === NEW_FILENAME"
-            />
-          </template>
-          <span> Reload File </span>
-        </v-tooltip>
-        <v-select
-          v-model="filenameSelect"
-          @update:model-value="fileNameChanged"
-          :items="fileList"
-          :disabled="fileList.length <= 1"
-          label="Filename"
-          id="filename"
-          data-test="filename"
-          style="width: 300px"
-          density="compact"
-          variant="outlined"
-          hide-details
-        />
-        <v-text-field
-          v-model="scriptId"
-          label="Script ID"
-          data-test="id"
-          class="shrink ml-2 script-state"
-          style="max-width: 100px"
-          density="compact"
-          variant="outlined"
-          readonly
-          hide-details
-        />
-        <v-text-field
-          v-model="stateTimer"
-          label="Script State"
-          data-test="state"
-          class="shrink ml-2 script-state"
-          style="max-width: 120px"
-          density="compact"
-          variant="outlined"
-          readonly
-          hide-details
-        />
-        <v-progress-circular
-          v-if="state === 'Connecting...'"
-          :size="40"
-          class="ml-2 mr-2"
-          indeterminate
-          color="primary"
-        />
-        <div v-else style="width: 40px; height: 40px" class="ml-2 mr-2"></div>
-
-        <!-- Hide the Start button when Suite Runner controls are showing -->
-        <v-spacer />
-        <div v-if="startOrGoButton === 'Start'">
-          <v-btn
-            @click="startHandler"
-            class="mx-1"
-            color="primary"
-            data-test="start-button"
-            :disabled="startOrGoDisabled || !executeUser"
-            :hidden="suiteRunner"
-          >
-            <span> Start </span>
-          </v-btn>
+    <v-card style="padding: 10px">
+      <suite-runner
+        v-if="suiteRunner"
+        class="suite-runner"
+        :suite-map="suiteMap"
+        :disable-buttons="disableSuiteButtons"
+        :filename="fullFilename"
+        @button="suiteRunnerButton"
+        @loaded="doResize"
+      />
+      <div id="sr-controls">
+        <v-row no-gutters justify="space-between">
+          <v-icon v-if="showDisconnect" class="mt-2" color="red">
+            mdi-connection
+          </v-icon>
           <v-tooltip location="top">
             <template v-slot:activator="{ props }">
               <v-btn
                 v-bind="props"
-                @click="scriptEnvironment.show = !scriptEnvironment.show"
-                class="mx-1"
-                data-test="env-button"
-                :color="environmentIconColor"
-                :disabled="envDisabled"
-              >
-                <v-icon> {{ environmentIcon }} </v-icon>
-              </v-btn>
+                icon="mdi-cached"
+                variant="text"
+                @click="reloadFile"
+                :disabled="filename === NEW_FILENAME"
+              />
             </template>
-            <span>Script Environment</span>
+            <span> Reload File </span>
           </v-tooltip>
-        </div>
-        <div v-else>
-          <v-btn
-            @click="go"
-            color="primary"
-            class="mr-2"
-            :disabled="startOrGoDisabled"
-            data-test="go-button"
-          >
-            Go
-          </v-btn>
-          <v-btn
-            color="primary"
-            @click="pauseOrRetry"
-            class="mr-2"
-            :disabled="pauseOrRetryDisabled"
-            data-test="pause-retry-button"
-          >
-            {{ pauseOrRetryButton }}
-          </v-btn>
-
-          <v-btn
-            color="primary"
-            @click="stop"
-            data-test="stop-button"
-            :disabled="stopDisabled"
-          >
-            Stop
-          </v-btn>
-        </div>
-      </v-row>
-    </div>
-  </v-card>
-  <splitpanes horizontal @resize="calcHeight" style="height: 100%">
-    <pane class="editorbox" size="50">
-      <v-snackbar
-        v-model="showSave"
-        absolute
-        location="top right"
-        :timeout="-1"
-        class="saving"
-      >
-        Saving...
-      </v-snackbar>
-      <pre
-        ref="editor"
-        class="editor"
-        @contextmenu.prevent="showExecuteSelectionMenu"
-      ></pre>
-      <v-menu v-model="executeSelectionMenu" :target="[menuX, menuY]">
-        <v-list>
-          <v-list-item
-            v-for="item in executeSelectionMenuItems"
-            link
-            :key="item.label"
-            :disabled="scriptId"
-          >
-            <v-list-item-title @click="item.command">
-              {{ item.label }}
-            </v-list-item-title>
-          </v-list-item>
-        </v-list>
-      </v-menu>
-    </pane>
-    <pane id="messages" class="mt-2" ref="messagesDiv">
-      <div id="debug" class="pa-0" v-if="showDebug">
-        <v-row no-gutters>
-          <v-btn
-            color="primary"
-            @click="step"
-            style="width: 100px"
-            class="mr-4"
-            :disabled="!scriptId"
-            data-test="step-button"
-          >
-            Step
-            <v-icon end> mdi-step-forward </v-icon>
-          </v-btn>
-          <v-text-field
-            ref="debug"
-            class="mb-2"
-            variant="outlined"
+          <v-select
+            v-model="filenameSelect"
+            @update:model-value="fileNameChanged"
+            :items="fileList"
+            :disabled="fileList.length <= 1"
+            label="Filename"
+            id="filename"
+            data-test="filename"
+            style="width: 300px"
             density="compact"
+            variant="outlined"
             hide-details
-            label="Debug"
-            v-model="debug"
-            @keydown="debugKeydown"
-            data-test="debug-text"
           />
+          <v-text-field
+            v-model="scriptId"
+            label="Script ID"
+            data-test="id"
+            class="shrink ml-2 script-state"
+            style="max-width: 100px"
+            density="compact"
+            variant="outlined"
+            readonly
+            hide-details
+          />
+          <v-text-field
+            v-model="stateTimer"
+            label="Script State"
+            data-test="state"
+            class="shrink ml-2 script-state"
+            style="max-width: 120px"
+            density="compact"
+            variant="outlined"
+            readonly
+            hide-details
+          />
+          <v-progress-circular
+            v-if="state === 'Connecting...'"
+            :size="40"
+            class="ml-2 mr-2"
+            indeterminate
+            color="primary"
+          />
+          <div v-else style="width: 40px; height: 40px" class="ml-2 mr-2"></div>
+
+          <v-spacer />
+          <div v-if="startOrGoButton === 'Start'">
+            <v-btn
+              @click="startHandler"
+              class="mx-1"
+              color="primary"
+              data-test="start-button"
+              :disabled="startOrGoDisabled || !executeUser"
+              :hidden="suiteRunner"
+            >
+              <span> Start </span>
+            </v-btn>
+            <v-tooltip location="top">
+              <template v-slot:activator="{ props }">
+                <v-btn
+                  v-bind="props"
+                  @click="scriptEnvironment.show = !scriptEnvironment.show"
+                  class="mx-1"
+                  data-test="env-button"
+                  :color="environmentIconColor"
+                  :disabled="envDisabled"
+                >
+                  <v-icon> {{ environmentIcon }} </v-icon>
+                </v-btn>
+              </template>
+              <span>Script Environment</span>
+            </v-tooltip>
+          </div>
+          <div v-else>
+            <v-btn
+              @click="go"
+              color="primary"
+              class="mr-2"
+              :disabled="startOrGoDisabled"
+              data-test="go-button"
+            >
+              Go
+            </v-btn>
+            <v-btn
+              color="primary"
+              @click="pauseOrRetry"
+              class="mr-2"
+              :disabled="pauseOrRetryDisabled"
+              data-test="pause-retry-button"
+            >
+              {{ pauseOrRetryButton }}
+            </v-btn>
+
+            <v-btn
+              color="primary"
+              @click="stop"
+              data-test="stop-button"
+              :disabled="stopDisabled"
+            >
+              Stop
+            </v-btn>
+          </div>
         </v-row>
       </div>
-      <script-log-messages
-        id="log-messages"
-        v-model="messages"
-        @sort="messageSortOrder"
-      />
-    </pane>
-  </splitpanes>
-  <!--- MENUS --->
+    </v-card>
+    <splitpanes horizontal @resize="calcHeight" style="height: 100%">
+      <pane class="editorbox" size="50">
+        <v-snackbar
+          v-model="showSave"
+          absolute
+          location="top right"
+          :timeout="-1"
+          class="saving"
+        >
+          Saving...
+        </v-snackbar>
+        <pre
+          ref="editor"
+          class="editor"
+          @contextmenu.prevent="showExecuteSelectionMenu"
+        ></pre>
+        <v-menu v-model="executeSelectionMenu" :target="[menuX, menuY]">
+          <v-list>
+            <v-list-item
+              v-for="item in executeSelectionMenuItems"
+              link
+              :key="item.label"
+              :disabled="scriptId"
+            >
+              <v-list-item-title @click="item.command">
+                {{ item.label }}
+              </v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-menu>
+      </pane>
+      <pane id="messages" class="mt-2" ref="messagesDiv">
+        <div id="debug" class="pa-0" v-if="showDebug">
+          <v-row no-gutters>
+            <v-btn
+              color="primary"
+              @click="step"
+              style="width: 100px"
+              class="mr-4"
+              :disabled="!scriptId"
+              data-test="step-button"
+            >
+              Step
+              <v-icon end> mdi-step-forward </v-icon>
+            </v-btn>
+            <v-text-field
+              ref="debug"
+              class="mb-2"
+              variant="outlined"
+              density="compact"
+              hide-details
+              label="Debug"
+              v-model="debug"
+              @keydown="debugKeydown"
+              data-test="debug-text"
+            />
+          </v-row>
+        </div>
+        <script-log-messages
+          id="log-messages"
+          v-model="messages"
+          @sort="messageSortOrder"
+        />
+      </pane>
+    </splitpanes>
+  </div>
+
+  <div v-if="inline">
+    <v-row>
+      <v-col class="v-col-10" style="margin:0px;padding:0px;">
+        <pre
+          ref="editor"
+          class="editor"
+          style="height:200px;"
+          @contextmenu.prevent="showExecuteSelectionMenu"
+        ></pre>
+      </v-col>
+      <v-col class="v-col-2" style="display:flex;justify-content:center;align-items:center;background-color:var(--color-background-surface-default);">
+        <div v-if="startOrGoButton === 'Start'">
+            <v-btn
+              @click="startHandler"
+              class="mx-1"
+              color="primary"
+              data-test="start-button"
+              :disabled="startOrGoDisabled || !executeUser"
+              :hidden="suiteRunner"
+            >
+              <span> Start </span>
+            </v-btn>
+          </div>
+          <div v-else>
+            <v-btn
+              @click="go"
+              color="primary"
+              class="ma-2"
+              :disabled="startOrGoDisabled"
+              data-test="go-button"
+            >
+              Go
+            </v-btn>
+            <v-btn
+              color="primary"
+              @click="pauseOrRetry"
+              class="ma-2"
+              :disabled="pauseOrRetryDisabled"
+              data-test="pause-retry-button"
+            >
+              {{ pauseOrRetryButton }}
+            </v-btn>
+
+            <v-btn
+              color="primary"
+              @click="stop"
+              class="ma-2"
+              data-test="stop-button"
+              :disabled="stopDisabled"
+            >
+              Stop
+            </v-btn>
+          </div>
+      </v-col>
+    </v-row>
+  </div>
+
   <file-open-save-dialog
     v-if="fileOpen"
     v-model="fileOpen"
@@ -415,22 +473,22 @@ import {
   Openc3Screen,
   SimpleTextDialog,
   TopBar,
-} from '@openc3/vue-common/components'
-import { fileIcon } from '@openc3/vue-common/util'
-import { EventListDialog } from '@openc3/vue-common/tools/calendar'
+} from '@/components'
+import { fileIcon } from '@/util'
+import { EventListDialog } from '@/tools/calendar'
 
-import AskDialog from './Dialogs/AskDialog'
-import FileDialog from './Dialogs/FileDialog'
-import InformationDialog from './Dialogs/InformationDialog'
-import OverridesDialog from './Dialogs/OverridesDialog'
-import PromptDialog from './Dialogs/PromptDialog'
-import ResultsDialog from './Dialogs/ResultsDialog'
-import ScriptEnvironmentDialog from './Dialogs/ScriptEnvironmentDialog'
-import SuiteRunner from './SuiteRunner'
-import ScriptLogMessages from './ScriptLogMessages'
-import { CmdCompleter, TlmCompleter, MnemonicChecker } from './autocomplete'
-import { SleepAnnotator } from './annotations'
-import RunningScripts from './RunningScripts.vue'
+import AskDialog from '@/tools/scriptrunner/Dialogs/AskDialog.vue'
+import FileDialog from '@/tools/scriptrunner/Dialogs/FileDialog.vue'
+import InformationDialog from '@/tools/scriptrunner/Dialogs/InformationDialog.vue'
+import OverridesDialog from '@/tools/scriptrunner/Dialogs/OverridesDialog.vue'
+import PromptDialog from '@/tools/scriptrunner/Dialogs/PromptDialog.vue'
+import ResultsDialog from '@/tools/scriptrunner/Dialogs/ResultsDialog.vue'
+import ScriptEnvironmentDialog from '@/tools/scriptrunner/Dialogs/ScriptEnvironmentDialog.vue'
+import SuiteRunner from '@/tools/scriptrunner/SuiteRunner.vue'
+import ScriptLogMessages from '@/tools/scriptrunner/ScriptLogMessages.vue'
+import { CmdCompleter, TlmCompleter, MnemonicChecker } from '@/tools/scriptrunner/autocomplete'
+import { SleepAnnotator } from '@/tools/scriptrunner/annotations'
+import RunningScripts from '@/tools/scriptrunner/RunningScripts.vue'
 
 // Matches target_file.rb TEMP_FOLDER
 const TEMP_FOLDER = '__TEMP__'
@@ -463,6 +521,16 @@ export default {
     CriticalCmdDialog,
   },
   mixins: [AceEditorModes],
+  props: {
+    inline: {
+      type: Boolean,
+      default: false,
+    },
+    body: {
+      type: String,
+      default: null,
+    }
+  },
   data() {
     return {
       title: 'Script Runner',
@@ -913,10 +981,12 @@ export default {
     },
     fullFilename: function (filename) {
       this.filenameSelect = filename
-      if (filename === NEW_FILENAME) {
-        localStorage.removeItem('script_runner__filename')
-      } else {
-        localStorage['script_runner__filename'] = filename
+      if (!this.inline) {
+        if (filename === NEW_FILENAME) {
+          localStorage.removeItem('script_runner__filename')
+        } else {
+          localStorage['script_runner__filename'] = filename
+        }
       }
     },
   },
@@ -937,7 +1007,7 @@ export default {
 
     // Make NEW_FILENAME available to the template
     this.NEW_FILENAME = NEW_FILENAME
-    window.onbeforeunload = this.unlockFile
+    //window.onbeforeunload = this.unlockFile
 
     let user = OpenC3Auth.user()
     let roles = OpenC3Auth.userroles()
@@ -977,11 +1047,13 @@ export default {
       }
     }
     // Output the userinfo for use in the SuiteRunner component
-    localStorage['script_runner__userinfo'] = JSON.stringify({
-      name: user['preferred_username'],
-      readOnly: this.readOnlyUser,
-      execute: this.executeUser,
-    })
+    if (!this.inline) {
+      localStorage['script_runner__userinfo'] = JSON.stringify({
+        name: user['preferred_username'],
+        readOnly: this.readOnlyUser,
+        execute: this.executeUser,
+      })
+    }
     if (this.readOnlyUser == true) {
       this.alertType = 'info'
       let text = `User ${user['preferred_username']} is read only`
@@ -995,6 +1067,10 @@ export default {
     Api.get('/openc3-api/autocomplete/keywords/screen').then((response) => {
       this.screenKeywords = response.data
     })
+
+    if (this.inline) {
+      this.readOnly = true
+    }
   },
   mounted: async function () {
     this.editor = ace.edit(this.$refs.editor)
@@ -1037,7 +1113,7 @@ export default {
 
     this.cable = new Cable('/script-api/cable')
 
-    if (localStorage['script_runner__recent']) {
+    if (!this.inline && localStorage['script_runner__recent']) {
       this.recent = JSON.parse(localStorage['script_runner__recent'])
       // Rebuild the command since that doesn't get stringified
       this.recent = this.recent.map((item) => ({
@@ -1054,7 +1130,7 @@ export default {
     } else if (this.$route.params?.id) {
       await this.tryLoadRunningScript(this.$route.params.id)
     } else {
-      if (localStorage['script_runner__filename']) {
+      if (!this.inline && localStorage['script_runner__filename']) {
         this.filename = localStorage['script_runner__filename']
         await this.reloadFile(false)
       }
@@ -1062,6 +1138,13 @@ export default {
     this.updateInterval = setInterval(async () => {
       this.processReceived()
     }, 100) // Every 100ms
+
+    if (this.inline) {
+      if (this.body) {
+        this.editor.setValue(this.body)
+        this.editor.clearSelection()
+      }
+    }
   },
   beforeUnmount() {
     this.editor.destroy()
@@ -1548,6 +1631,7 @@ export default {
       this.waitingInterval = null
     },
     processLine(data) {
+
       if (data.filename && data.filename !== this.currentFilename) {
         if (!this.files[data.filename]) {
           // We don't have the contents of the running file (probably because connected to running script)
@@ -1928,9 +2012,9 @@ export default {
           this.file.show = true
           break
         default:
-          /* console.log(
-            'Unknown script method:' + data.method + ' with args:' + data.args
-          ) */
+          // console.log(
+          // 'Unknown script method:' + data.method + ' with args:' + data.args
+          // )
           break
       }
     },
@@ -1995,13 +2079,15 @@ export default {
       this.suiteRunner = false
       this.startOrGoDisabled = false
       this.envDisabled = false
-      this.$router
-        .replace({
-          name: 'ScriptRunner',
-        })
-        // catch the error in case we route to where we already are
-        .catch((err) => {})
-      document.title = 'Script Runner'
+      if (!this.inline) {
+        this.$router
+          .replace({
+            name: 'ScriptRunner',
+          })
+          // catch the error in case we route to where we already are
+          .catch((err) => {})
+        document.title = 'Script Runner'
+      }
       this.doResize()
     },
     async newRubyTestSuite() {
@@ -2111,13 +2197,17 @@ class TestSuite(Suite):
         this.recent.pop()
       }
       // This only stringifies the label and icon ... not the command
-      localStorage['script_runner__recent'] = JSON.stringify(this.recent)
+      if (!this.inline) {
+        localStorage['script_runner__recent'] = JSON.stringify(this.recent)
+      }
     },
     removeFromRecent(filename) {
       this.recent = this.recent.filter((entry) => entry.label !== filename)
-      localStorage['script_runner__recent'] = JSON.stringify(this.recent)
-      if (localStorage['script_runner__filename'] === filename) {
-        localStorage.removeItem('script_runner__filename')
+      if (!this.inline) {
+        localStorage['script_runner__recent'] = JSON.stringify(this.recent)
+        if (localStorage['script_runner__filename'] === filename) {
+          localStorage.removeItem('script_runner__filename')
+        }
       }
     },
     openFile() {
@@ -2177,23 +2267,25 @@ class TestSuite(Suite):
         }
       }
       this.filename = newFilename
-      // Update the URL with the filename
-      this.$router
-        .replace({
-          name: 'ScriptRunner',
-          query: {
-            file: this.filename,
-          },
-        })
-        // catch the error in case we route to where we already are
-        .catch((err) => {})
+      if (!this.inline) {
+        // Update the URL with the filename
+        this.$router
+          .replace({
+            name: 'ScriptRunner',
+            query: {
+              file: this.filename,
+            },
+          })
+          // catch the error in case we route to where we already are
+          .catch((err) => {})
 
-      // Update the browser tab with the name of the file first
-      // so squished tabs are still useful, followed by the rest
-      // of the path for context. Target name will be first which
-      // is probably the most useful part of the path.
-      let parts = this.filename.split('/')
-      document.title = `${parts.pop()} (${parts.join('/')})`
+        // Update the browser tab with the name of the file first
+        // so squished tabs are still useful, followed by the rest
+        // of the path for context. Target name will be first which
+        // is probably the most useful part of the path.
+        let parts = this.filename.split('/')
+        document.title = `${parts.pop()} (${parts.join('/')})`
+      }
 
       if (this.filename.split('.').pop() === 'py') {
         this.editor.session.setMode(this.pythonMode)
@@ -2202,8 +2294,8 @@ class TestSuite(Suite):
       }
       this.currentFilename = null
       this.editor.session.setValue(file.contents)
-      this.breakpoints[filename] = breakpoints
-      this.restoreBreakpoints(filename)
+      this.breakpoints[this.filename] = breakpoints
+      this.restoreBreakpoints(this.filename)
       this.fileModified = ''
       this.envDisabled = false
       this.addToRecent(this.filename)
@@ -2228,7 +2320,9 @@ class TestSuite(Suite):
       this.recent = this.recent.filter(
         (entry) => !entry.label.includes('__TEMP__'),
       )
-      localStorage['script_runner__recent'] = JSON.stringify(this.recent)
+      if (!this.inline) {
+        localStorage['script_runner__recent'] = JSON.stringify(this.recent)
+      }
     },
     detectLanguage() {
       let rubyRegex1 = new RegExp('^\\s*(require|load|puts) ')
