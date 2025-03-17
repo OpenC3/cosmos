@@ -48,7 +48,12 @@
           item-title="label"
           item-value="value"
           v-model="selectedPacketName"
-        />
+        >
+          <template v-if="showLatest" v-slot:prepend-item>
+            <v-list-item title="LATEST" @click="packetNameChanged('LATEST')" />
+            <v-divider />
+          </template>
+        </v-autocomplete>
       </v-col>
       <v-col
         v-if="chooseItem"
@@ -182,6 +187,10 @@ export default {
       default: '',
     },
     selectTypes: {
+      type: Boolean,
+      default: false,
+    },
+    showLatest: {
       type: Boolean,
       default: false,
     },
@@ -403,35 +412,51 @@ export default {
         return
       }
       this.internalDisabled = true
+      this.itemNames = []
+      const packetsToGet =
+        this.selectedPacketName === 'LATEST'
+          ? this.packetNames.map((packet) => packet.value)
+          : [this.selectedPacketName]
       const cmd = this.mode === 'tlm' ? 'get_tlm' : 'get_cmd'
-      this.api[cmd](this.selectedTargetName, this.selectedPacketName).then(
-        (packet) => {
-          this.itemNames = packet.items
-            .map((item) => {
-              let label = item.name
-              if (item.data_type == 'DERIVED') {
-                label += ' *'
-              }
-              return [
-                {
-                  label: label,
-                  value: item.name,
-                  description: item.description,
-                  array: item.array_size / item.bit_size,
-                },
-              ]
-            })
-            .reduce((result, item) => {
-              return result.concat(item)
-            }, [])
-          this.itemNames.sort((a, b) => (a.label > b.label ? 1 : -1))
+      const getPacketItemPromises = packetsToGet.map((packetName) =>
+        this.api[cmd](this.selectedTargetName, packetName),
+      )
+      Promise.all(getPacketItemPromises)
+        .then((packets) => {
+          const theseItems = []
+          packets.forEach((packet) => {
+            const itemsToAdd = packet.items
+              .map((item) => {
+                let label = item.name
+                if (item.data_type == 'DERIVED') {
+                  label += ' *'
+                }
+                return [
+                  {
+                    label: label,
+                    value: item.name,
+                    description: item.description,
+                    array: item.array_size / item.bit_size,
+                  },
+                ]
+              })
+              .reduce((result, item) => {
+                return result.concat(item)
+              }, [])
+            theseItems.unshift(...itemsToAdd)
+          })
+          theseItems.sort((a, b) => (a.label > b.label ? 1 : -1))
           if (this.allowAll) {
-            this.itemNames.unshift(this.ALL)
+            theseItems.unshift(this.ALL)
           }
           if (!this.selectedItemName) {
-            this.selectedItemName = this.itemNames[0].value
+            this.selectedItemName = theseItems[0].value
           }
-          this.description = this.itemNames[0].description
+          this.description = theseItems[0].description
+          return theseItems
+        })
+        .then((itemNames) => {
+          this.itemNames = itemNames
           this.itemIsArray()
           this.$emit('on-set', {
             targetName: this.selectedTargetName,
@@ -442,8 +467,7 @@ export default {
             reducedType: this.selectedReducedType,
           })
           this.internalDisabled = false
-        },
-      )
+        })
     },
     itemIsArray: function () {
       let i = this.itemNames.findIndex(
@@ -500,6 +524,9 @@ export default {
       if (value === 'ALL') {
         this.itemsDisabled = true
         this.internalDisabled = false
+      } else if (value === 'LATEST') {
+        this.itemsDisabled = false
+        this.selectedPacketName = 'LATEST'
       } else {
         this.itemsDisabled = false
         const packet = this.packetNames.find((packet) => {
