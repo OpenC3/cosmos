@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -542,9 +542,9 @@ class TestPacketConfig(unittest.TestCase):
     def test_sets_the_accessor_for_the_packet(self):
         tf = tempfile.NamedTemporaryFile(mode="w")
         tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
-        tf.write("ACCESSOR XmlAccessor\n")
+        tf.write("ACCESSOR openc3/accessors/xml_accessor.py\n")
         tf.write('COMMAND tgt2 pkt1 LITTLE_ENDIAN "Description"\n')
-        tf.write("ACCESSOR CborAccessor\n")
+        tf.write("ACCESSOR CborAccessor\n")  # Still works with the deprecated class name syntax
         tf.seek(0)
         self.pc.process_file(tf.name, "SYSTEM")
         self.assertEqual(self.pc.telemetry["TGT1"]["PKT1"].accessor.__class__.__name__, "XmlAccessor")
@@ -554,9 +554,11 @@ class TestPacketConfig(unittest.TestCase):
     def test_handles_bad_accessors(self):
         tf = tempfile.NamedTemporaryFile(mode="w")
         tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
-        tf.write("ACCESSOR NopeAccessor\n")
+        tf.write("ACCESSOR openc3/accessors/nope_accessor.py\n")
         tf.seek(0)
-        with self.assertRaisesRegex(ConfigParser.Error, "No module named 'openc3.accessors.nope_accessor"):
+        with self.assertRaisesRegex(
+            ConfigParser.Error, "ModuleNotFoundError parsing openc3/accessors/nope_accessor.py. Usage: ACCESSOR"
+        ):
             self.pc.process_file(tf.name, "SYSTEM")
         tf.close()
 
@@ -723,7 +725,7 @@ class TestPacketConfig(unittest.TestCase):
     def test_uses_json_template(self):
         tf = tempfile.NamedTemporaryFile(mode="w")
         tf.write('COMMAND tgt1 pkt99 LITTLE_ENDIAN "Description"\n')
-        tf.write("ACCESSOR JsonAccessor\n")
+        tf.write("ACCESSOR openc3/accessors/json_accessor.py\n")
         tf.write(
             'TEMPLATE \'{"id_item":1, "item1":101, "more": { "item2":12, "item3":3.14, "item4":"Example", "item5":[4, 3, 2, 1] } }\'\n'
         )
@@ -782,7 +784,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
         tf.write(f"TEMPLATE_FILE {os.path.join(os.getcwd(), 'unittest.txt')}\n")
         tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
-        tf.write("ACCESSOR CborAccessor\n")
+        tf.write("ACCESSOR openc3/accessors/cbor_accessor.py\n")
         tf.write(f"TEMPLATE_FILE {filename}\n")
         tf.write('APPEND_ID_PARAMETER ID_ITEM 32 INT 1 1 1 "Int Item"\n')
         tf.write("  KEY $.id_item\n")
@@ -819,7 +821,7 @@ class TestPacketConfig(unittest.TestCase):
         os.remove(os.path.join(os.getcwd(), "unittest.txt"))
         tf.close()
 
-    def test_handles_bad_tesmplate_files(self):
+    def test_handles_bad_template_files(self):
         tf = tempfile.NamedTemporaryFile(mode="w")
         tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
         tf.write("TEMPLATE_FILE nope.txt\n")

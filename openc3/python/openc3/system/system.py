@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -15,6 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 import os
+import glob
 import zipfile
 import traceback
 from threading import Lock
@@ -45,6 +46,9 @@ class System:
     # Mutex used to ensure that only one instance of System is created
     instance_mutex = Lock()
 
+    # Callbacks to call once instance_obj is created
+    post_instance_callbacks = []
+
     @classmethod
     def limits_set(cls, scope=OPENC3_SCOPE):
         """This line is basically the same code as limits_event_topic.py,
@@ -59,6 +63,13 @@ class System:
             return list(sets.keys())[list(sets.values()).index(b"true")].decode()
         except ValueError:
             return "DEFAULT"
+
+    @classmethod
+    def add_post_instance_callback(cls, callback):
+        if System.obj_instance:
+            callback()
+        else:
+            cls.post_instance_callbacks << callback
 
     @classmethod
     def setup_targets(cls, target_names, base_dir, scope=OPENC3_SCOPE):
@@ -105,7 +116,11 @@ class System:
             raise Exception("System.instance parameters are required on first call")
 
         with System.instance_mutex:
+            if System.instance_obj:
+                return System.instance_obj
             System.instance_obj = cls(target_names, target_config_dir)
+            for callback in System.post_instance_callbacks:
+                callback()
             return System.instance_obj
 
     # Dynamically add packets to the system instance
@@ -126,6 +141,10 @@ class System:
     # @param target_names [Array of target names]
     # @param target_config_dir Directory where target config folders are
     def __init__(self, target_names, target_config_dir):
+        # Find all the base gem lib directories and add them to the search path
+        # Ruby handles this because the gem is installed so lib is in the path
+        for path in glob.glob("/gems/gems/**/lib"):
+            add_to_search_path(path, True)
         if target_config_dir:
             add_to_search_path(target_config_dir, True)
         System.targets = {}

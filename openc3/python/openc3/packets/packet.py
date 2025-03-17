@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -506,7 +506,9 @@ class Packet(Structure):
         try:
             return super().get_item(name)
         except ValueError as error:
-            raise RuntimeError(f"Packet item '{self.target_name} {self.packet_name} {name.upper()}' does not exist") from error
+            raise RuntimeError(
+                f"Packet item '{self.target_name} {self.packet_name} {name.upper()}' does not exist"
+            ) from error
 
     # Read an item in the packet
     #
@@ -658,7 +660,9 @@ class Packet(Structure):
                     super().write_item(item, value, "RAW", buffer)
                 except ValueError as error:
                     if item.states and isinstance(value, str) and "invalid literal for" in repr(error):
-                        raise ValueError(f"Unknown state '{value}' for {item.name}, must be one of f{', '.join(item.states.keys())}") from error
+                        raise ValueError(
+                            f"Unknown state '{value}' for {item.name}, must be one of f{', '.join(item.states.keys())}"
+                        ) from error
                     else:
                         raise error
             case "FORMATTED" | "WITH_UNITS":
@@ -857,12 +861,11 @@ class Packet(Structure):
         self.limits_items = None
         new_items = {}
         new_sorted_items = []
-        print(self.items)
         for name, item in self.items.items():
-            if item.data_type == 'DERIVED':
+            if item.data_type == "DERIVED":
                 new_items[name] = item
         for item in self.sorted_items:
-            if item.data_type == 'DERIVED':
+            if item.data_type == "DERIVED":
                 new_sorted_items.append(item)
         self.items = new_items
         self.sorted_items = new_sorted_items
@@ -919,7 +922,7 @@ class Packet(Structure):
     # self.param ignore_persistence [Boolean] Whether to ignore persistence case
     #   checking for out of limits
     def check_limits(self, limits_set="DEFAULT", ignore_persistence=False):
-        if len(self.limits_items) == 0:
+        if not self.limits_items or len(self.limits_items) == 0:
             return
 
         for item in self.limits_items:

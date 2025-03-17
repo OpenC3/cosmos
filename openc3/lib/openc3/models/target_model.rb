@@ -310,6 +310,7 @@ module OpenC3
       end
     end
 
+    # Make sure to update target_model.py if you add additional parameters
     def initialize(
       name:,
       folder_name: nil,

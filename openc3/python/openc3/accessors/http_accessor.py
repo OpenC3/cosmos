@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -17,17 +17,25 @@
 import re
 from .accessor import Accessor
 from openc3.top_level import get_class_from_module
-from openc3.utilities.string import class_name_to_filename
+from openc3.utilities.string import class_name_to_filename, filename_to_module, filename_to_class_name
 
 
 class HttpAccessor(Accessor):
-    def __init__(self, packet, body_accessor="FormAccessor", *body_accessor_args):
+    def __init__(self, packet, body_accessor="openc3/accessors/form_accessor.py", *body_accessor_args):
         super().__init__(packet)
         self.args.append(body_accessor)
         for arg in body_accessor_args:
             self.args.append(arg)
-        filename = class_name_to_filename(body_accessor)
-        klass = get_class_from_module(f"openc3.accessors.{filename}", body_accessor)
+        try:
+            klass = get_class_from_module(
+                filename_to_module(body_accessor),
+                filename_to_class_name(body_accessor),
+            )
+        # Fall back to the deprecated behavior of passing the ClassName
+        except ModuleNotFoundError:
+            filename = class_name_to_filename(body_accessor)
+            klass = get_class_from_module(f"openc3.accessors.{filename}", body_accessor)
+
         self.body_accessor = klass(packet, *body_accessor_args)
 
     def read_item(self, item, buffer):

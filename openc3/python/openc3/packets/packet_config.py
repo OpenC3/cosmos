@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -513,17 +513,25 @@ class PacketConfig:
                 self.current_packet.restricted = True
 
             case "ACCESSOR":
-                usage = f"{keyword} <Class name> <Optional parameters> ..."
+                usage = f"{keyword} <File name> <Optional parameters> ..."
                 parser.verify_num_parameters(1, None, usage)
+                klass = None
                 try:
-                    filename = class_name_to_filename(params[0])
-                    klass = get_class_from_module(f"openc3.accessors.{filename}", params[0])
-                    if len(params) > 1:
-                        self.current_packet.accessor = klass(self.current_packet, *params[1:])
-                    else:
-                        self.current_packet.accessor = klass(self.current_packet)
-                except ModuleNotFoundError as error:
-                    raise parser.error(error)
+                    klass = get_class_from_module(
+                        filename_to_module(params[0]),
+                        filename_to_class_name(params[0]),
+                    )
+                except ModuleNotFoundError:
+                    try:
+                        # Fall back to the deprecated behavior of passing the ClassName (only works with built-in accessors)
+                        filename = class_name_to_filename(params[0])
+                        klass = get_class_from_module(f"openc3.accessors.{filename}", params[0])
+                    except ModuleNotFoundError:
+                        raise parser.error(f"ModuleNotFoundError parsing {params[0]}. Usage: {usage}")
+                if len(params) > 1:
+                    self.current_packet.accessor = klass(self.current_packet, *params[1:])
+                else:
+                    self.current_packet.accessor = klass(self.current_packet)
 
             case "VALIDATOR":
                 usage = f"{keyword} <Class name> <Optional parameters> ..."

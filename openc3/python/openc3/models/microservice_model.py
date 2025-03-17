@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -72,6 +72,7 @@ class MicroserviceModel(Model):
         disable_erb=None,
         ignore_changes=None,
         shard=0,
+        enabled: bool = True,
         scope: str = OPENC3_SCOPE,
     ):
         parts = name.split("__")
@@ -113,6 +114,9 @@ class MicroserviceModel(Model):
         self.shard = shard
         if self.shard is None:
             self.shard = 0
+        self.enabled = enabled
+        if self.enabled is None:
+            self.enabled = True
         self.bucket = Bucket.getClient()
 
     def as_json(self):
@@ -136,4 +140,5 @@ class MicroserviceModel(Model):
             "disable_erb": self.disable_erb,
             "ignore_changes": self.ignore_changes,
             "shard": self.shard,
+            "enabled": self.enabled,
         }
