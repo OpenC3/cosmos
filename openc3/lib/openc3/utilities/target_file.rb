@@ -42,7 +42,7 @@ module OpenC3
 
       # Add in local targets_modified if present
       if ENV['OPENC3_LOCAL_MODE']
-        local_modified = OpenC3::LocalMode.local_target_files(scope: scope, path_matchers: path_matchers, include_temp: include_temp)
+        local_modified = OpenC3::LocalMode.local_target_files(scope: scope, target: target, path_matchers: path_matchers, include_temp: include_temp)
         local_modified.each do |filename|
           if include_temp and filename.include?(TEMP_FOLDER)
             temp << filename

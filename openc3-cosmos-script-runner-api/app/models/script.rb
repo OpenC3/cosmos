@@ -29,8 +29,8 @@ require 'openc3/tools/test_runner/test'
 OpenC3.require_file 'openc3/utilities/store'
 
 class Script < OpenC3::TargetFile
-  def self.all(scope)
-    super(scope, nil, include_temp: true) # No path matchers
+  def self.all(scope, target = nil)
+    super(scope, nil, target: target, include_temp: true) # No path matchers
   end
 
   def self.lock(scope, name, username)

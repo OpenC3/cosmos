@@ -40,10 +40,9 @@ class ScriptsController < ApplicationController
 
   def index
     return unless authorization('script_view')
-    scope = sanitize_params([:scope])
+    scope, target = sanitize_params([:scope, :target])
     return unless scope
-    scope = scope[0]
-    render json: Script.all(scope)
+    render json: Script.all(scope, target)
   end
 
   def delete_temp
