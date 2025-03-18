@@ -325,19 +325,19 @@ class PacketConfig:
                 PacketParser.check_item_data_types(self.current_packet)
                 self.commands[self.current_packet.target_name][self.current_packet.packet_name] = self.current_packet
                 if not self.current_packet.virtual:
-                    cmd_id_values = self.cmd_id_value_hash.get(self.current_packet.target_name)
-                    if not cmd_id_values:
-                        cmd_id_values = {}
-                    self.cmd_id_value_hash[self.current_packet.target_name] = cmd_id_values
-                    self.update_id_value_hash(cmd_id_values)
+                    id_values = self.cmd_id_value_hash.get(self.current_packet.target_name)
+                    if not id_values:
+                        id_values = {}
+                    self.cmd_id_value_hash[self.current_packet.target_name] = id_values
+                    self.update_id_value_hash(self.current_packet, id_values)
             else:
                 self.telemetry[self.current_packet.target_name][self.current_packet.packet_name] = self.current_packet
                 if not self.current_packet.virtual:
-                    tlm_id_values = self.tlm_id_value_hash.get(self.current_packet.target_name)
-                    if not tlm_id_values:
-                        tlm_id_values = {}
-                    self.tlm_id_value_hash[self.current_packet.target_name] = tlm_id_values
-                    self.update_id_value_hash(tlm_id_values)
+                    id_values = self.tlm_id_value_hash.get(self.current_packet.target_name)
+                    if not id_values:
+                        id_values = {}
+                    self.tlm_id_value_hash[self.current_packet.target_name] = id_values
+                    self.update_id_value_hash(self.current_packet, id_values)
 
             self.current_packet = None
             self.current_item = None
@@ -347,11 +347,11 @@ class PacketConfig:
             self.commands[packet.target_name][packet.packet_name] = packet
 
             if affect_ids:
-                hash = self.cmd_id_value_hash.get(packet.target_name, None)
-                if not hash:
-                    hash = {}
-                self.cmd_id_value_hash[packet.target_name] = hash
-                self.update_id_value_hash(packet, hash)
+                id_values = self.cmd_id_value_hash.get(packet.target_name, None)
+                if not id_values:
+                    id_values = {}
+                self.cmd_id_value_hash[packet.target_name] = id_values
+                self.update_id_value_hash(packet, id_values)
         else:
             self.telemetry[packet.target_name][packet.packet_name] = packet
 
@@ -365,11 +365,11 @@ class PacketConfig:
                     latest_data_packets.append(packet)
 
             if affect_ids:
-                hash = self.tlm_id_value_hash.get(packet.target_name, None)
-                if not hash:
-                    hash = {}
-                self.tlm_id_value_hash[packet.target_name] = hash
-                self.update_id_value_hash(packet, hash)
+                id_values = self.tlm_id_value_hash.get(packet.target_name, None)
+                if not id_values:
+                    id_values = {}
+                self.tlm_id_value_hash[packet.target_name] = id_values
+                self.update_id_value_hash(packet, id_values)
 
     # This method provides way to quickly test packet configs
     #
