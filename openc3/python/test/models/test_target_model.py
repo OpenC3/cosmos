@@ -92,7 +92,7 @@ class TestTargetModelPackets(unittest.TestCase):
         self.assertEqual(itpm["CCSDSVER"], ["HEALTH_STATUS", "ADCS", "PARAMS", "IMAGE", "MECH", "HIDDEN"])
         # Copy cache
         cache = dict(TargetModel.item_map_cache)
-        itpm = TargetModel.get_item_to_packet_map("INST", scope="DEFAULT")
+        TargetModel.get_item_to_packet_map("INST", scope="DEFAULT")
         # Verify the cache time doesn't change
         self.assertEqual(cache["INST"][0], (cache["INST"][0]))
 
