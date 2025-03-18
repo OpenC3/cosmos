@@ -287,6 +287,10 @@ export default class OpenC3Api {
     return this.exec('get_all_tlm_names', [target_name])
   }
 
+  get_all_tlm_items_metadata(target_name) {
+    return this.exec('get_all_tlm_items_metadata', [target_name])
+  }
+
   async get_tlm_packet(target_name, packet_name, value_type, stale_time = 30) {
     const data = await this.exec('get_tlm_packet', [target_name, packet_name], {
       type: value_type,

@@ -48,6 +48,7 @@ module OpenC3
                        'get_all_telemetry', # DEPRECATED
                        'get_all_tlm_names',
                        'get_all_telemetry_names', # DEPRECATED
+                       'get_all_tlm_items_metadata',
                        'get_tlm',
                        'get_telemetry', # DEPRECATED
                        'get_item',
@@ -313,6 +314,14 @@ module OpenC3
       return names
     end
     alias get_all_telemetry_names get_all_tlm_names
+
+    # Returns an array of all the item hashes for every packet in a target
+    #
+    # @param target_name [String] Name of the taret
+    # @return [Array<String>] Array of all telemetry item names
+    def get_all_tlm_items_metadata(target_name, manual: false, scope: $openc3_scope, token: $openc3_token)
+      TargetModel.all_items_metadata(target_name, scope: scope)
+    end
 
     # Returns a telemetry packet hash
     #

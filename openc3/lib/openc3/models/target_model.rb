@@ -204,7 +204,7 @@ module OpenC3
       JSON.parse(json, :allow_nan => true, :create_additions => true)
     end
 
-    # @return [Array>Hash>] All packet hashes under the target_name
+    # @return [Array<Hash>] All packet hashes under the target_name
     def self.packets(target_name, type: :TLM, scope:)
       raise "Unknown type #{type} for #{target_name}" unless VALID_TYPES.include?(type)
       raise "Target '#{target_name}' does not exist for scope: #{scope}" unless get(name: target_name, scope: scope)
@@ -217,7 +217,7 @@ module OpenC3
       result
     end
 
-    # @return [Array>Hash>] All packet hashes under the target_name
+    # @return [Array<Hash>] All packet hashes under the target_name
     def self.all_packet_name_descriptions(target_name, type: :TLM, scope:)
       self.packets(target_name, type: type, scope: scope).map! { |hash| hash.slice("packet_name", "description") }
     end
@@ -255,6 +255,20 @@ module OpenC3
         raise "Item(s) #{not_found.join(', ')} does not exist"
       end
       found
+    end
+
+    # @return [Array<Hash>] All the item hashes for every packet in a target
+    def self.all_items_metadata(target_name, type: :TLM, scope:)
+      items = []
+      packets = packets(target_name, type: type, scope: scope)
+      items += packets.flat_map do |packet|
+        packet['items'].map do |item|
+          item.slice('name', 'description', 'data_type', 'array_size', 'bit_size')
+        end
+      end
+      items.uniq! { |i| i['name'] } # since this would be used by `<target_name> LATEST <item_name>`
+      items.sort_by! { |i| i['name'] }
+      items
     end
 
     # @return [Hash{String => Array<Array<String, String, String>>}]

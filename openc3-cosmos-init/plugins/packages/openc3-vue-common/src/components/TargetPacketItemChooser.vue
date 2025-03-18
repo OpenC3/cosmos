@@ -412,62 +412,57 @@ export default {
         return
       }
       this.internalDisabled = true
-      this.itemNames = []
-      const packetsToGet =
-        this.selectedPacketName === 'LATEST'
-          ? this.packetNames.map((packet) => packet.value)
-          : [this.selectedPacketName]
-      const cmd = this.mode === 'tlm' ? 'get_tlm' : 'get_cmd'
-      const getPacketItemPromises = packetsToGet.map((packetName) =>
-        this.api[cmd](this.selectedTargetName, packetName),
-      )
-      Promise.all(getPacketItemPromises)
-        .then((packets) => {
-          const theseItems = []
-          packets.forEach((packet) => {
-            const itemsToAdd = packet.items
-              .map((item) => {
-                let label = item.name
-                if (item.data_type == 'DERIVED') {
-                  label += ' *'
-                }
-                return [
-                  {
-                    label: label,
-                    value: item.name,
-                    description: item.description,
-                    array: item.array_size / item.bit_size,
-                  },
-                ]
-              })
-              .reduce((result, item) => {
-                return result.concat(item)
-              }, [])
-            theseItems.unshift(...itemsToAdd)
+
+      let getItemsPromise
+      if (this.selectedPacketName === 'LATEST') {
+        getItemsPromise = this.api.get_all_tlm_items_metadata(
+          this.selectedTargetName,
+        )
+      } else {
+        const cmd = this.mode === 'tlm' ? 'get_tlm' : 'get_cmd'
+        getItemsPromise = this.api[cmd](
+          this.selectedTargetName,
+          this.selectedPacketName,
+        ).then((packet) => packet.items)
+      }
+      getItemsPromise.then((items) => {
+        this.itemNames = items
+          .map((item) => {
+            let label = item.name
+            if (item.data_type == 'DERIVED') {
+              label += ' *'
+            }
+            return [
+              {
+                label: label,
+                value: item.name,
+                description: item.description,
+                array: item.array_size / item.bit_size,
+              },
+            ]
           })
-          theseItems.sort((a, b) => (a.label > b.label ? 1 : -1))
-          if (this.allowAll) {
-            theseItems.unshift(this.ALL)
-          }
-          if (!this.selectedItemName) {
-            this.selectedItemName = theseItems[0].value
-          }
-          this.description = theseItems[0].description
-          return theseItems
+          .reduce((result, item) => {
+            return result.concat(item)
+          }, [])
+        this.itemNames.sort((a, b) => (a.label > b.label ? 1 : -1))
+        if (this.allowAll) {
+          this.itemNames.unshift(this.ALL)
+        }
+        if (!this.selectedItemName) {
+          this.selectedItemName = this.itemNames[0].value
+        }
+        this.description = this.itemNames[0].description
+        this.itemIsArray()
+        this.$emit('on-set', {
+          targetName: this.selectedTargetName,
+          packetName: this.selectedPacketName,
+          itemName: this.selectedItemNameWIndex,
+          valueType: this.selectedValueType,
+          reduced: this.selectedReduced,
+          reducedType: this.selectedReducedType,
         })
-        .then((itemNames) => {
-          this.itemNames = itemNames
-          this.itemIsArray()
-          this.$emit('on-set', {
-            targetName: this.selectedTargetName,
-            packetName: this.selectedPacketName,
-            itemName: this.selectedItemNameWIndex,
-            valueType: this.selectedValueType,
-            reduced: this.selectedReduced,
-            reducedType: this.selectedReducedType,
-          })
-          this.internalDisabled = false
-        })
+        this.internalDisabled = false
+      })
     },
     itemIsArray: function () {
       let i = this.itemNames.findIndex(
