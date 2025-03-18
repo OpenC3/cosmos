@@ -261,7 +261,7 @@ class TargetModel(Model):
                 json_hash = {}
                 for item in packet.sorted_items:
                     json_hash[item.name] = None
-                # Use Store.hset directly instead of CvtModel.set to avoid cirular dependency
+                # Use Store.hset directly instead of CvtModel.set to avoid circular dependency
                 Store.hset(
                     f"{self.scope}__tlm__{packet.target_name}",
                     packet.packet_name,
