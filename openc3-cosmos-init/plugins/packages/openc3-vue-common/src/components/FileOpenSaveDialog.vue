@@ -58,6 +58,7 @@
                 :key="`${node.id}`"
                 :node="node"
                 :search="search"
+                :type="type"
                 @request="activeFile"
                 @delete="deleteTemp"
               ></tree-node>
@@ -331,7 +332,7 @@ export default {
         })
         .then((response) => {
           this.$emit('clear-temp')
-          this.loadFiles()
+          this.loadFiles('__TEMP__')
         })
         .catch((error) => {
           this.$notify.serious({
@@ -438,7 +439,7 @@ export default {
   background-color: var(--color-background-base-default);
   padding: 10px;
   margin-top: 5px;
-  max-height: 70vh;
+  max-height: 60vh;
   font-size: large;
 }
 </style>

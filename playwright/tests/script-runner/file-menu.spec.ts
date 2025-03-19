@@ -38,6 +38,7 @@ test('clears the editor on File->New', async ({ page, utils }) => {
 test('open a file', async ({ page, utils }) => {
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Open File').click()
+  await utils.sleep(500) // Allow background data to fetch
   await expect(page.getByText('INST2', { exact: true })).toBeVisible()
   await utils.sleep(100)
   await page.locator('[data-test=file-open-save-search] input').fill('dis')
@@ -61,6 +62,7 @@ test('open a file', async ({ page, utils }) => {
   )
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Open File').click()
+  await utils.sleep(500) // Allow background data to fetch
   await expect(page.getByText('INST2', { exact: true })).toBeVisible()
   await utils.sleep(100)
   await page.locator('[data-test=file-open-save-search] input').fill('meta')
@@ -107,7 +109,7 @@ test('open a file using url param', async ({ page, utils }) => {
     page
       .locator('pre')
       .filter({ hasText: 'INST2/procedures/utilities/collect.py' })
-      .first()
+      .first(),
   ).toBeVisible()
 })
 
@@ -117,23 +119,21 @@ test('handles File->Save new file', async ({ page, utils }) => {
   await page.locator('text=Save File').click()
   // New files automatically open File Save As
   await expect(page.locator('text=File Save As')).toBeVisible()
+  await utils.sleep(500) // Allow background data to fetch
   await page
     .locator('[data-test=file-open-save-filename] input')
     .fill('save_new.rb')
-  await expect(page.locator('text=save_new.rb is not a valid filename')).toBeVisible()
+  await expect(
+    page.locator('text=save_new.rb is not a valid filename'),
+  ).toBeVisible()
+  await page.getByText('INST', { exact: true }).click()
+  await page.getByText('procedures', { exact: true }).click()
+  const prepend = await page
+    .locator('[data-test=file-open-save-filename] input')
+    .inputValue()
   await page
-    .locator('.v-list-group:has-text("INST")')
-    .first()
-    .getByRole('button')
-    .click()
-  await page
-    .locator('.v-list-group:has-text("INST")')
-    .first()
-    .locator('.v-list-item:has-text("procedures")')
-    .first() // because /tables/procedures
-    .click()
-  const prepend = await page.locator('[data-test=file-open-save-filename] input').inputValue()
-  await page.locator('[data-test=file-open-save-filename] input').fill(`${prepend}/save_new.rb`)
+    .locator('[data-test=file-open-save-filename] input')
+    .fill(`${prepend}/save_new.rb`)
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   await expect(page.locator('#sr-controls')).toContainText(
     'INST/procedures/save_new.rb',
@@ -171,7 +171,9 @@ test('handles File Save overwrite', async ({ page, utils }) => {
   // File->Save As
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Save As...').click()
-  await expect(page.locator('text=INST/procedures/save_overwrite.rb')).toBeVisible()
+  await expect(
+    page.locator('text=INST/procedures/save_overwrite.rb'),
+  ).toBeVisible()
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   // Confirmation dialog
   await page.locator('text=Are you sure you want to overwrite').click()
@@ -255,14 +257,15 @@ test('can delete all temp files', async ({ page, utils }) => {
   // Open file
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Open File').click()
+  await utils.sleep(500) // Allow background data to fetch
   await page.locator('.v-dialog >> text=__TEMP__').click()
   await expect(page.locator(`.v-dialog >> text=${tempFile1}`)).toBeVisible()
   await expect(page.locator(`.v-dialog >> text=${tempFile2}`)).toBeVisible()
 
   await page
-    .locator('.v-list-group:has-text("__TEMP__")')
+    .getByText('__TEMP__')
+    .locator('xpath=..') // parent
     .getByRole('button')
-    .last()
     .click()
   await page.locator('[data-test="confirm-dialog-delete"]').click()
   await expect(page.locator('.v-dialog >> text=__TEMP__')).not.toBeVisible()
@@ -271,7 +274,7 @@ test('can delete all temp files', async ({ page, utils }) => {
   // Open file
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Open File').click()
-  await utils.sleep(1000)
+  await utils.sleep(500) // Allow background data to fetch
   await expect(page.locator('.v-dialog')).toContainText('INST')
   await expect(page.locator('.v-dialog')).not.toContainText('__TEMP__')
   await page.locator('[data-test="file-open-save-cancel-btn"]').click()

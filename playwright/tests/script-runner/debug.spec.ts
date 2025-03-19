@@ -271,8 +271,10 @@ puts "e"`)
 test('remembers breakpoints and clears all', async ({ page, utils }) => {
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Open File').click()
-  await utils.sleep(1000)
+  await utils.sleep(500)
   await page.locator('[data-test=file-open-save-search] input').fill('checks')
+  await utils.sleep(100)
+  await page.locator('[data-test=file-open-save-search] input').fill('.rb')
   await page.locator('text=checks >> nth=0').click() // nth=0 because INST, INST2
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   await expect(page.locator('#sr-controls')).toContainText(

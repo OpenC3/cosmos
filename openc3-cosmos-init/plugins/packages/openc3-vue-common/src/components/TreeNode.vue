@@ -80,6 +80,7 @@
         :key="child.id"
         :node="child"
         :search="search"
+        :type="type"
         @node-toggled="bubbleNodeToggled"
         @request="bubbleNodeRequest"
       ></tree-node>
@@ -98,6 +99,10 @@ const props = defineProps({
   search: {
     type: String,
     default: '',
+  },
+  type: {
+    type: String,
+    default: 'open',
   },
 })
 
@@ -124,8 +129,15 @@ watch(
 const emit = defineEmits(['nodeToggled', 'request'])
 
 const handleClick = (node) => {
-  if (node.children) toggle()
-  else request(node)
+  if (node.children) {
+    toggle()
+    // Only emit request on folder for save dialog
+    if (props.type === 'save') {
+      emit('request', node)
+    }
+  } else {
+    emit('request', node)
+  }
 }
 const toggle = () => {
   if (props.node.children) {
@@ -134,10 +146,6 @@ const toggle = () => {
     emit('nodeToggled', props.node.id, isOpen.path)
   }
 }
-const request = (node) => {
-  emit('request', node)
-}
-
 // Bubble up the event for the nested tree-nodes
 const bubbleNodeToggled = (nodeName, isOpen) => {
   emit('nodeToggled', nodeName, isOpen)
