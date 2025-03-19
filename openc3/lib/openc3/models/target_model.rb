@@ -257,17 +257,9 @@ module OpenC3
       found
     end
 
-    # @return [Array<Hash>] All the item hashes for every packet in a target
-    def self.all_items_metadata(target_name, type: :TLM, scope:)
-      items = []
-      packets = packets(target_name, type: type, scope: scope)
-      items += packets.flat_map do |packet|
-        packet['items'].map do |item|
-          item.slice('name', 'description', 'data_type', 'array_size', 'bit_size')
-        end
-      end
-      items.uniq! { |i| i['name'] } # since this would be used by `<target_name> LATEST <item_name>`
-      items.sort_by! { |i| i['name'] }
+    # @return [Array<String>] All the item names for every packet in a target
+    def self.all_item_names(target_name, type: :TLM, scope:)
+      items = Store.zrange("#{scope}__openc3tlm__#{target_name}__allitems", 0, -1)
       items
     end
 
@@ -775,6 +767,11 @@ module OpenC3
       update()
     end
 
+    def add_to_target_allitems_list(target_name, item)
+      score = 0 # https://redis.io/docs/latest/develop/data-types/sorted-sets/#lexicographical-scores
+      Store.zadd("#{@scope}__openc3tlm__#{target_name}__allitems", score, item.name)
+    end
+
     def update_store_telemetry(packet_hash, clear_old: true)
       packet_hash.each do |target_name, packets|
         Store.del("#{@scope}__openc3tlm__#{target_name}") if clear_old
@@ -789,6 +786,7 @@ module OpenC3
           json_hash = Hash.new
           packet.sorted_items.each do |item|
             json_hash[item.name] = nil
+            add_to_target_allitems_list(target_name, item)
           end
           CvtModel.set(json_hash, target_name: packet.target_name, packet_name: packet.packet_name, scope: @scope)
         end
