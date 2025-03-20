@@ -25,7 +25,11 @@
     <div
       @click="handleClick(node)"
       class="node-content"
-      v-if="!search || node.children || node.path.includes(search)"
+      v-if="
+        !search ||
+        node.children ||
+        node.path.toLowerCase().includes(search.toLowerCase())
+      "
     >
       <div class="content-wrapper">
         <v-icon
