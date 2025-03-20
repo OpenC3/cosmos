@@ -265,14 +265,18 @@ module OpenC3
     end
 
     def self.rebuild_target_allitems_list(target_name, type: :TLM, scope:)
-      score = 0 # https://redis.io/docs/latest/develop/data-types/sorted-sets/#lexicographical-scores
       packets = packets(target_name, type: type, scope: scope)
       packets.each do |packet|
         packet['items'].each do |item|
-          Store.zadd("#{scope}__openc3tlm__#{target_name}__allitems", score, item['name'])
+          TargetModel.add_to_target_allitems_list(target_name, item['name'], scope: scope)
         end
       end
       Store.zrange("#{scope}__openc3tlm__#{target_name}__allitems", 0, -1) # return the new sorted set to let redis do the sorting
+    end
+
+    def self.add_to_target_allitems_list(target_name, item_name, scope:)
+      score = 0 # https://redis.io/docs/latest/develop/data-types/sorted-sets/#lexicographical-scores
+      Store.zadd("#{scope}__openc3tlm__#{target_name}__allitems", score, item_name)
     end
 
     # @return [Hash{String => Array<Array<String, String, String>>}]
@@ -779,11 +783,6 @@ module OpenC3
       update()
     end
 
-    def add_to_target_allitems_list(target_name, item_name, scope: @scope)
-      score = 0 # https://redis.io/docs/latest/develop/data-types/sorted-sets/#lexicographical-scores
-      Store.zadd("#{scope}__openc3tlm__#{target_name}__allitems", score, item_name)
-    end
-
     def update_store_telemetry(packet_hash, clear_old: true)
       packet_hash.each do |target_name, packets|
         Store.del("#{@scope}__openc3tlm__#{target_name}") if clear_old
@@ -798,7 +797,7 @@ module OpenC3
           json_hash = Hash.new
           packet.sorted_items.each do |item|
             json_hash[item.name] = nil
-            add_to_target_allitems_list(target_name, item.name)
+            TargetModel.add_to_target_allitems_list(target_name, item.name, scope: @scope)
           end
           CvtModel.set(json_hash, target_name: packet.target_name, packet_name: packet.packet_name, scope: @scope)
         end
