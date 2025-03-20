@@ -150,6 +150,23 @@ class TargetModel(Model):
             raise RuntimeError(f"Item(s) {', '.join(not_found)} does not exist")
         return found
 
+    # @return [List<String>] All the item names for every packet in a target
+    @classmethod
+    def all_item_names(cls, target_name: str, type: str = "TLM", scope: str = OPENC3_SCOPE):
+        items = Store.zrange(f"{scope}__openc3tlm__{target_name}__allitems", 0, -1)
+        if not items:
+            items = cls.rebuild_target_allitems_list(target_name, type=type, scope=scope)
+        return items
+
+    @classmethod
+    def rebuild_target_allitems_list(cls, target_name: str, type: str = "TLM", scope: str = OPENC3_SCOPE):
+        score = 0 # https://redis.io/docs/latest/develop/data-types/sorted-sets/#lexicographical-scores
+        for packet in cls.packets(target_name, scope=scope):
+            for item in packet["items"]:
+                Store.zadd(f"{scope}__openc3tlm__{target_name}__allitems", score, item["name"])
+        return Store.zrange(f"{scope}__openc3tlm__{target_name}__allitems", 0, -1) # return the new sorted set to let redis do the sorting
+
+
     # @return [Hash{String => Array<Array<String, String, String>>}]
     @classmethod
     def limits_groups(cls, scope: str = OPENC3_SCOPE):
