@@ -27,19 +27,17 @@ test.use({
 
 async function openFile(page, utils, filename) {
   await expect(page.locator('.v-dialog')).toBeVisible()
-  await utils.sleep(500) // Allow background data to fetch
-  await expect(
-    page.locator('.v-dialog').getByText('INST2', { exact: true }),
-  ).toBeVisible()
+  await expect(page.getByRole('progressbar')).not.toBeVisible()
+  await expect(page.getByText('TEMPLATED')).not.toBeVisible()
   let parts = filename.split('.')
   await page.locator('[data-test=file-open-save-search] input').type(parts[0])
   await utils.sleep(100)
   await page
     .locator('[data-test=file-open-save-search] input')
     .type(`.${parts[1]}`)
+  await utils.sleep(100)
   await page.locator(`text=${filename} >> nth=0`).click()
   await page.locator('[data-test=file-open-save-submit-btn]').click()
-  await expect(page.locator('.v-dialog')).not.toBeVisible()
 }
 
 //
@@ -279,6 +277,8 @@ test('save as and delete', async ({ page, utils }) => {
   await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=Save As').click()
   await expect(page.locator('.v-dialog')).toBeVisible()
+  await expect(page.getByRole('progressbar')).not.toBeVisible()
+  await expect(page.getByText('TEMPLATED')).not.toBeVisible()
   await page
     .locator('[data-test=file-open-save-filename] input')
     .fill('INST/tables/bin/ConfigTables2.bin')
@@ -312,6 +312,8 @@ test('save as and delete', async ({ page, utils }) => {
   await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=Save As').click()
   await expect(page.locator('.v-dialog')).toBeVisible()
+  await expect(page.getByRole('progressbar')).not.toBeVisible()
+  await expect(page.getByText('TEMPLATED')).not.toBeVisible()
   await page
     .locator('[data-test=file-open-save-filename] input')
     .fill('INST/tables/bin/Binary.bin')
@@ -333,11 +335,8 @@ test('save as and delete', async ({ page, utils }) => {
   if (await page.locator('[data-test=confirm-dialog-overwrite]').isVisible()) {
     await page.locator('[data-test=confirm-dialog-overwrite]').click()
   }
-  await page
-    .locator('[data-test=file-open-save-search] input')
-    .fill('ConfigTables_def')
-  await page.locator('text=ConfigTables_def >> nth=0').click()
-  await page.locator('[data-test=file-open-save-submit-btn]').click()
+  await utils.sleep(500) // Allow previous dialog to close and new to open
+  await openFile(page, utils, 'ConfigTables_def.txt')
   if (await page.locator('[data-test=confirm-dialog-overwrite]').isVisible()) {
     await page.locator('[data-test=confirm-dialog-overwrite]').click()
   }
