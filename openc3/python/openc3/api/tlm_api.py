@@ -341,7 +341,11 @@ def get_all_tlm_item_names(target_name: str, hidden: bool = False, scope: str = 
         List[str] Array of all telemetry item names
     """
     authorize(permission="tlm", target_name=target_name, scope=scope)
-    return TargetModel.all_item_names(target_name, scope=scope)
+    try:
+        items = TargetModel.all_item_names(target_name, scope=scope)
+    except RuntimeError:
+        items = []
+    return items
 
 # get_all_telemetry_names is DEPRECATED
 get_all_telemetry_names = get_all_tlm_names

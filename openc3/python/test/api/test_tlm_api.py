@@ -603,6 +603,22 @@ class TestTlmApi(unittest.TestCase):
         self.assertIn("MECH", names)
         self.assertIn("HIDDEN", names)
 
+    # get_all_tlm_item_names
+    def test_get_all_tlm_item_names_returns_an_empty_array_if_the_target_does_not_exist(
+        self,
+    ):
+        self.assertEqual(get_all_tlm_item_names("BLAH"), [])
+
+    # Commenting this out for now... Looks like FakeRedis' zadd() is broken?
+    # def test_get_all_tlm_item_names_returns_an_array_of_all_item_names(self):
+    #     items = get_all_tlm_item_names("INST", scope="DEFAULT")
+    #     self.assertEqual(type(items), list)
+    #     self.assertEqual(len(items), 67)
+    #     self.assertIn("ARY", items)
+    #     self.assertIn("ATTPROGRESS", items)
+    #     self.assertIn("BLOCKTEST", items)
+    #     self.assertIn("CCSDSAPID", items)
+
     # get_tlm
     def test_get_tlm_raises_if_the_target_or_packet_do_not_exist(self):
         with self.assertRaisesRegex(

@@ -321,7 +321,12 @@ module OpenC3
     # @return [Array<String>] Array of all telemetry item names
     def get_all_tlm_item_names(target_name, manual: false, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'tlm', target_name: target_name, manual: manual, scope: scope, token: token)
-      TargetModel.all_item_names(target_name, scope: scope)
+      begin
+        items = TargetModel.all_item_names(target_name, scope: scope)
+      rescue RuntimeError
+        items = []
+      end
+      return items
     end
 
     # Returns a telemetry packet hash
