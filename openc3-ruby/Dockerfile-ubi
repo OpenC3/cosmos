@@ -48,8 +48,8 @@ COPY ./ubi.repo /etc/yum.repos.d/ubi.repo
 RUN microdnf update -y \
     && microdnf install -y --setopt=tsflags=nodocs $PACKAGES \
     && mkdir -p /usr/src \
-    && tar -xzf /tmp/ruby-3.3.tar.gz -C /usr/src/ \
-    && rm -f /tmp/ruby-3.3.tar.gz \
+    && tar -xzf /tmp/ruby-3.3.7.tar.gz -C /usr/src/ \
+    && rm -f /tmp/ruby-3.3.7.tar.gz \
     && RUBY_DIR=$(ls /usr/src/ | grep ruby) \
     && cd /usr/src/${RUBY_DIR} \
     && ./configure --disable-install-doc --enable-shared \
@@ -84,15 +84,6 @@ RUN cd / \
     && pip3 install --upgrade pip setuptools \
     && pip3 install poetry \
     && pip3 install poetry-plugin-export
-
-# Begin CVE fix CVE-2023-36617 (update uri 0.12.1 to version 0.12.2 or greater)
-
-# Update uri as a default gem and
-# Remove default status from old uri version 0.12.1 by moving it up one directory because default gems cannot be removed
-RUN gem update uri --default \
-    && mv /usr/local/lib/ruby/gems/3.2.0/specifications/default/uri-0.12.1.gemspec /usr/local/lib/ruby/gems/3.2.0/specifications/ \
-    && gem uninstall uri --version 0.12.1
-#  End fix CVE-2023-36617
 
 # TODO: Add rbspy and htop support
 
