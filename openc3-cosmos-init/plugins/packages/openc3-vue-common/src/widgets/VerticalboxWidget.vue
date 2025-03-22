@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -22,10 +22,15 @@
 
 <template>
   <div>
-    <div class="boxbanner" :style="computedStyle" single-line>
-      {{ parameters[0] }}
-    </div>
-    <hr />
+    <label-widget
+      :parameters="parameters.slice(0, 1)"
+      :settings="[...labelSettings]"
+      :widget-index="0"
+    />
+    <horizontal-line-widget
+      :settings="[...appliedSettings]"
+      :widget-index="1"
+    />
     <vertical-widget
       v-bind="listeners"
       :parameters="parameters.slice(1)"
@@ -38,20 +43,30 @@
 </template>
 
 <script>
+import LabelWidget from './LabelWidget.vue'
+import HorizontalLineWidget from './HorizontallineWidget.vue'
 import VerticalWidget from './VerticalWidget.vue'
 import Layout from './Layout'
 
 export default {
   mixins: [Layout],
   components: {
+    LabelWidget,
+    HorizontalLineWidget,
     VerticalWidget,
+  },
+  created() {
+    this.labelSettings = [...this.appliedSettings]
+    // Set the font-weight to bold if not already set
+    const fontWeightSetting = this.labelSettings.find(
+      (setting) =>
+        setting[0] === '0' &&
+        setting[1] === 'RAW' &&
+        setting[2] === 'font-weight',
+    )
+    if (!fontWeightSetting) {
+      this.labelSettings.push(['0', 'RAW', 'font-weight', 'bold'])
+    }
   },
 }
 </script>
-
-<style scoped>
-.boxbanner {
-  padding-left: 4px;
-  font-weight: bold;
-}
-</style>
