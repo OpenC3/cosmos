@@ -3,7 +3,7 @@
 # TODO: Can this script be replaced by https://github.com/docker/build-push-action
 
 # From this directory, to locally build x86 from an ARM machine (Mac Apple Silicon):
-#   Uncomment OPENC3_REGISTRY line below
+#   Uncomment OPENC3_REGISTRY and OPENC3_ENTERPRISE_REGISTRY lines
 # Start the local registry. Note MacOS reserves port 5000 for Airdrop receiver.
 # Search for Airdrop in System Prefs and disable Airdrop Receiver, then:
 #   % docker run -d -p 5000:5000 --restart=always --name registry registry:2
@@ -20,10 +20,21 @@
 #   % ./build_multi_arch.sh
 
 set -eux
-OPENC3_PLATFORMS=linux/amd64,linux/arm64
 cd ../..
 eval $(sed -e '/^#/d' -e 's/^/export /' -e 's/$/;/' .env) ;
 # OPENC3_REGISTRY=localhost:5000 # Uncomment for local builds
+# OPENC3_ENTERPRISE_REGISTRY=localhost:5000 # Uncomment for local builds
+
+# check if the first parameter is 'ubi'
+if [ "$1" = "ubi" ]; then
+  OPENC3_PLATFORMS=linux/amd64
+  DOCKERFILE='Dockerfile-ubi'
+  SUFFIX='-ubi'
+else
+  OPENC3_PLATFORMS=linux/amd64,linux/arm64
+  DOCKERFILE='Dockerfile'
+  SUFFIX=''
+fi
 
 # Setup cacert.pem
 echo "Downloading cert from curl"
@@ -43,82 +54,110 @@ cp ./cacert.pem openc3-minio/cacert.pem
 
 cd openc3-ruby
 docker buildx build \
+  --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg ALPINE_VERSION=${ALPINE_VERSION} \
   --build-arg ALPINE_BUILD=${ALPINE_BUILD} \
   --build-arg APK_URL=${APK_URL} \
   --build-arg RUBYGEMS_URL=${RUBYGEMS_URL} \
+  --build-arg PYPI_URL=$PYPI_URL \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
-  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-ruby:${OPENC3_RELEASE_VERSION} \
-  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-ruby:${OPENC3_RELEASE_VERSION} .
+  --build-arg OPENC3_UBI_REGISTRY=$OPENC3_UBI_REGISTRY \
+  --build-arg OPENC3_UBI_IMAGE=$OPENC3_UBI_IMAGE \
+  --build-arg OPENC3_UBI_TAG=$OPENC3_UBI_TAG \
+  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-ruby${SUFFIX}:${OPENC3_RELEASE_VERSION} \
+  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-ruby${SUFFIX}:${OPENC3_RELEASE_VERSION} .
 
 if [ $OPENC3_UPDATE_LATEST = true ]
 then
 docker buildx build \
+  --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg ALPINE_VERSION=${ALPINE_VERSION} \
   --build-arg ALPINE_BUILD=${ALPINE_BUILD} \
   --build-arg APK_URL=${APK_URL} \
   --build-arg RUBYGEMS_URL=${RUBYGEMS_URL} \
+  --build-arg PYPI_URL=$PYPI_URL \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
-  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-ruby:latest \
-  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-ruby:latest .
+  --build-arg OPENC3_UBI_REGISTRY=$OPENC3_UBI_REGISTRY \
+  --build-arg OPENC3_UBI_IMAGE=$OPENC3_UBI_IMAGE \
+  --build-arg OPENC3_UBI_TAG=$OPENC3_UBI_TAG \
+  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-ruby${SUFFIX}:latest \
+  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-ruby${SUFFIX}:latest .
 fi
 
 cd ../openc3
 docker buildx build \
+  --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_NAMESPACE=${OPENC3_NAMESPACE} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
-  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-base:${OPENC3_RELEASE_VERSION} \
-  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-base:${OPENC3_RELEASE_VERSION} .
+  --build-arg OPENC3_IMAGE=openc3-ruby-ubi \
+  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-base${SUFFIX}:${OPENC3_RELEASE_VERSION} \
+  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-base${SUFFIX}:${OPENC3_RELEASE_VERSION} .
 
 if [ $OPENC3_UPDATE_LATEST = true ]
 then
 docker buildx build \
+  --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_NAMESPACE=${OPENC3_NAMESPACE} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
-  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-base:latest \
-  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-base:latest .
+  --build-arg OPENC3_IMAGE=openc3-ruby-ubi \
+  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-base${SUFFIX}:latest \
+  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-base${SUFFIX}:latest .
 fi
 
 cd ../openc3-node
 docker buildx build \
+  --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_NAMESPACE=${OPENC3_NAMESPACE} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
-  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-node:${OPENC3_RELEASE_VERSION} \
-  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-node:${OPENC3_RELEASE_VERSION} .
+  --build-arg NPM_URL=$NPM_URL \
+  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-node${SUFFIX}:${OPENC3_RELEASE_VERSION} \
+  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-node${SUFFIX}:${OPENC3_RELEASE_VERSION} .
 
 if [ $OPENC3_UPDATE_LATEST = true ]
 then
 docker buildx build \
+  --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_NAMESPACE=${OPENC3_NAMESPACE} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
-  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-node:latest \
-  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-node:latest .
+  --build-arg NPM_URL=$NPM_URL \
+  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-node${SUFFIX}:latest \
+  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-node${SUFFIX}:latest .
 fi
 
 # Note: Missing OPENC3_REGISTRY build-arg intentionally to default to docker.io
+if [ "$1" = "ubi" ]; then
+  OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource/redis
+  OPENC3_REDIS_IMAGE=redis7
+  OPENC3_REDIS_VERSION=7.2.3
+else
+  OPENC3_REDIS_IMAGE=redis
+  OPENC3_REDIS_VERSION=7.2-alpine
+fi
 cd ../openc3-redis
 docker buildx build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
-  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis:${OPENC3_RELEASE_VERSION} \
-  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-redis:${OPENC3_RELEASE_VERSION} .
+  --build-arg OPENC3_REDIS_IMAGE=${OPENC3_REDIS_IMAGE} \
+  --build-arg OPENC3_REDIS_VERSION=${OPENC3_REDIS_VERSION} \
+  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis${SUFFIX}:${OPENC3_RELEASE_VERSION} \
+  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-redis${SUFFIX}:${OPENC3_RELEASE_VERSION} .
 
 if [ $OPENC3_UPDATE_LATEST = true ]
 then
@@ -126,17 +165,22 @@ docker buildx build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
-  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis:latest \
-  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-redis:latest .
+  --build-arg OPENC3_REDIS_IMAGE=${OPENC3_REDIS_IMAGE} \
+  --build-arg OPENC3_REDIS_VERSION=${OPENC3_REDIS_VERSION} \
+  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis${SUFFIX}:latest \
+  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-redis${SUFFIX}:latest .
 fi
 
+if [ "$1" = "ubi" ]; then
+  OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource
+fi
 cd ../openc3-minio
 docker buildx build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
-  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-minio:${OPENC3_RELEASE_VERSION} \
-  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-minio:${OPENC3_RELEASE_VERSION} .
+  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-minio${SUFFIX}:${OPENC3_RELEASE_VERSION} \
+  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-minio${SUFFIX}:${OPENC3_RELEASE_VERSION} .
 
 if [ $OPENC3_UPDATE_LATEST = true ]
 then
@@ -144,52 +188,60 @@ docker buildx build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
-  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-minio:latest \
-  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-minio:latest .
+  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-minio${SUFFIX}:latest \
+  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-minio${SUFFIX}:latest .
 fi
 
 cd ../openc3-cosmos-cmd-tlm-api
 docker buildx build \
+  --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_NAMESPACE=${OPENC3_NAMESPACE} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
-  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-cmd-tlm-api:${OPENC3_RELEASE_VERSION} \
-  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-cosmos-cmd-tlm-api:${OPENC3_RELEASE_VERSION} .
+  --build-arg OPENC3_IMAGE=openc3-base-ubi \
+  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-cmd-tlm-api${SUFFIX}:${OPENC3_RELEASE_VERSION} \
+  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-cosmos-cmd-tlm-api${SUFFIX}:${OPENC3_RELEASE_VERSION} .
 
 if [ $OPENC3_UPDATE_LATEST = true ]
 then
 docker buildx build \
+  --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_NAMESPACE=${OPENC3_NAMESPACE} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
-  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-cmd-tlm-api:latest \
-  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-cosmos-cmd-tlm-api:latest .
+  --build-arg OPENC3_IMAGE=openc3-base-ubi \
+  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-cmd-tlm-api${SUFFIX}:latest \
+  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-cosmos-cmd-tlm-api${SUFFIX}:latest .
 fi
 
 cd ../openc3-cosmos-script-runner-api
 docker buildx build \
+  --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_NAMESPACE=${OPENC3_NAMESPACE} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
-  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-script-runner-api:${OPENC3_RELEASE_VERSION} \
-  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-cosmos-script-runner-api:${OPENC3_RELEASE_VERSION} .
+  --build-arg OPENC3_IMAGE=openc3-base-ubi \
+  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-script-runner-api${SUFFIX}:${OPENC3_RELEASE_VERSION} \
+  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-cosmos-script-runner-api${SUFFIX}:${OPENC3_RELEASE_VERSION} .
 
 if [ $OPENC3_UPDATE_LATEST = true ]
 then
 docker buildx build \
+  --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_NAMESPACE=${OPENC3_NAMESPACE} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
-  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-script-runner-api:latest \
-  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-cosmos-script-runner-api:latest .
+  --build-arg OPENC3_IMAGE=openc3-base-ubi \
+  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-script-runner-api${SUFFIX}:latest \
+  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-cosmos-script-runner-api${SUFFIX}:latest .
 fi
 
 cd ../openc3-operator
@@ -199,8 +251,9 @@ docker buildx build \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_NAMESPACE=${OPENC3_NAMESPACE} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
-  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-operator:${OPENC3_RELEASE_VERSION} \
-  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-operator:${OPENC3_RELEASE_VERSION} .
+  --build-arg OPENC3_IMAGE=openc3-base-ubi \
+  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-operator${SUFFIX}:${OPENC3_RELEASE_VERSION} \
+  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-operator${SUFFIX}:${OPENC3_RELEASE_VERSION} .
 
 if [ $OPENC3_UPDATE_LATEST = true ]
 then
@@ -210,18 +263,22 @@ docker buildx build \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_NAMESPACE=${OPENC3_NAMESPACE} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
-  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-operator:latest \
-  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-operator:latest .
+  --build-arg OPENC3_IMAGE=openc3-base-ubi \
+  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-operator${SUFFIX}:latest \
+  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-operator${SUFFIX}:latest .
 fi
 
 # Note: Missing OPENC3_REGISTRY build-arg intentionally to default to docker.io
+if [ "$1" = "ubi" ]; then
+  OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource/traefik
+fi
 cd ../openc3-traefik
 docker buildx build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
-  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-traefik:${OPENC3_RELEASE_VERSION} \
-  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-traefik:${OPENC3_RELEASE_VERSION} .
+  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-traefik${SUFFIX}:${OPENC3_RELEASE_VERSION} \
+  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-traefik${SUFFIX}:${OPENC3_RELEASE_VERSION} .
 
 if [ $OPENC3_UPDATE_LATEST = true ]
 then
@@ -229,10 +286,13 @@ docker buildx build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
-  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-traefik:latest \
-  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-traefik:latest .
+  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-traefik${SUFFIX}:latest \
+  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-traefik${SUFFIX}:latest .
 fi
 
+if [ "$1" = "ubi" ]; then
+  OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource
+fi
 cd ../openc3-cosmos-init
 docker buildx build \
   --platform ${OPENC3_PLATFORMS} \
@@ -243,8 +303,10 @@ docker buildx build \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_NAMESPACE=${OPENC3_NAMESPACE} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
-  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-init:${OPENC3_RELEASE_VERSION} \
-  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-cosmos-init:${OPENC3_RELEASE_VERSION} .
+  --build-arg OPENC3_BASE_IMAGE=openc3-base-ubi \
+  --build-arg OPENC3_NODE_IMAGE=openc3-node-ubi \
+  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-init${SUFFIX}:${OPENC3_RELEASE_VERSION} \
+  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-cosmos-init${SUFFIX}:${OPENC3_RELEASE_VERSION} .
 
 if [ $OPENC3_UPDATE_LATEST = true ]
 then
@@ -257,6 +319,8 @@ docker buildx build \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_NAMESPACE=${OPENC3_NAMESPACE} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
-  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-init:latest \
-  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-cosmos-init:latest .
+  --build-arg OPENC3_BASE_IMAGE=openc3-base-ubi \
+  --build-arg OPENC3_NODE_IMAGE=openc3-node-ubi \
+  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-init${SUFFIX}:latest \
+  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-cosmos-init${SUFFIX}:latest .
 fi
