@@ -20,6 +20,9 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+# A portion of this file was funded by Blue Origin Enterprises, L.P.
+# See https://github.com/OpenC3/cosmos/pull/1957
+
 require 'openc3/top_level'
 require 'openc3/models/model'
 require 'openc3/models/cvt_model'
