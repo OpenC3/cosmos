@@ -1233,5 +1233,63 @@ module OpenC3
         deploy_multi_microservice(gem_path, variables)
       end
     end
+
+    # Change Funded by Blue Origin
+    def self.increment_telemetry_count(target_name, packet_name, count, scope:)
+      return Store.hincrby("#{scope}__TELEMETRYCNTS__{#{target_name}}", packet_name, count)
+    end
+
+    def self.get_all_telemetry_counts(target_name, scope:)
+      return Store.hgetall("#{scope}__TELEMETRYCNTS__{#{target_name}}")
+    end
+
+    def self.get_telemetry_count(target_name, packet_name, scope:)
+      value = Store.hget("#{scope}__TELEMETRYCNTS__{#{target_name}}", packet_name)
+      return value || 0 # Return 0 if the key doesn't exist
+    end
+
+    def self.get_telemetry_counts(target_packets, scope:)
+      result = Store.redis_pool.pipelined do
+        target_packets.each do |target_name, packet_name|
+          target_name = target_name.upcase
+          packet_name = packet_name.upcase
+          Store.hget("#{scope}__TELEMETRYCNTS__{#{target_name}}", packet_name)
+        end
+      end
+      counts = []
+      result.each do |count|
+        counts << (count || 0) # Return 0 if the key doesn't exist
+      end
+      return counts
+    end
+
+    def self.increment_command_count(target_name, packet_name, count, scope:)
+      return Store.hincrby("#{scope}__COMMANDCNTS__{#{target_name}}", packet_name, count)
+    end
+
+    def self.get_all_command_counts(target_name, scope:)
+      return Store.hgetall("#{scope}__COMMANDCNTS__{#{target_name}}")
+    end
+
+    def self.get_command_count(target_name, packet_name, scope:)
+      value = Store.hget("#{scope}__COMMANDCNTS__{#{target_name}}", packet_name)
+      return value || 0 # Return 0 if the key doesn't exist
+    end
+
+    def self.get_command_counts(target_packets, scope:)
+      result = Store.redis_pool.pipelined do
+        target_packets.each do |target_name, packet_name|
+          target_name = target_name.upcase
+          packet_name = packet_name.upcase
+          Store.hget("#{scope}__COMMANDCNTS__{#{target_name}}", packet_name)
+        end
+      end
+      counts = []
+      result.each do |count|
+        counts << (count || 0) # Return 0 if the key doesn't exist
+      end
+      return counts
+    end
+    # End Change Funded by Blue Origin
   end
 end

@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 from openc3.packets.packet import Packet
 from openc3.utilities.string import simple_formatted
 from openc3.utilities.extract import convert_to_value
-
+from openc3.models.target_model import TargetModel
 
 class Commands:
     """Commands uses PacketConfig to parse the command and telemetry
@@ -122,7 +122,8 @@ class Commands:
                         identified_packet = hash.get("CATCHALL")
 
             if identified_packet is not None:
-                identified_packet.received_count += 1
+                # Line Change Funded by Blue Origin
+                identified_packet.received_count = TargetModel.increment_command_count(identified_packet.target_name, identified_packet.packet_name, 1)
                 identified_packet = identified_packet.clone()
                 identified_packet.received_time = None
                 identified_packet.stored = False
@@ -144,6 +145,7 @@ class Commands:
     # @param raw [Boolean] Indicates whether or not to run conversions on command parameters
     # @param check_required_params [Boolean] Indicates whether or not to check
     #   that the required command parameters are present
+    # Line Change Funded by Blue Origin
     def build_cmd(
         self,
         target_name,
@@ -152,13 +154,18 @@ class Commands:
         range_checking=True,
         raw=False,
         check_required_params=True,
+        increment_received_count=True,
+        scope=None,
     ):
         target_upcase = target_name.upper()
         packet_upcase = packet_name.upper()
 
         # Lookup the command and create a light weight copy
         pkt = self.packet(target_upcase, packet_upcase)
-        pkt.received_count += 1
+        # Change Funded by Blue Origin
+        if increment_received_count and scope is not None:
+            pkt.received_count = TargetModel.increment_command_count(pkt.target_name, pkt.packet_name, 1, scope=scope)
+        # End Change Funded by Blue Origin
         command = pkt.clone()
 
         # Restore the command's buffer to a zeroed string of defined length

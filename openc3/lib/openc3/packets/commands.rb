@@ -133,7 +133,8 @@ module OpenC3
         end
 
         if identified_packet
-          identified_packet.received_count += 1
+          # Line Change Funded by Blue Origin
+          identified_packet.received_count = TargetModel.increment_command_count(identified_packet.target_name, identified_packet.packet_name, 1)
           identified_packet = identified_packet.clone
           identified_packet.received_time = nil
           identified_packet.stored = false
@@ -158,13 +159,18 @@ module OpenC3
     # @param raw [Boolean] Indicates whether or not to run conversions on command parameters
     # @param check_required_params [Boolean] Indicates whether or not to check
     #   that the required command parameters are present
-    def build_cmd(target_name, packet_name, params = {}, range_checking = true, raw = false, check_required_params = true)
+    # Line Change Funded by Blue Origin
+    def build_cmd(target_name, packet_name, params = {}, range_checking = true, raw = false, check_required_params = true, increment_received_count: true, scope: nil)
       target_upcase = target_name.to_s.upcase
       packet_upcase = packet_name.to_s.upcase
 
       # Lookup the command and create a light weight copy
       pkt = packet(target_upcase, packet_upcase)
-      pkt.received_count += 1
+      # Change Funded by Blue Origin
+      if increment_received_count and scope
+        pkt.received_count = TargetModel.increment_command_count(pkt.target_name, pkt.packet_name, 1, scope: scope)
+      end
+      # End Change Funded by Blue Origin
       command = pkt.clone
 
       # Restore the command's buffer to a zeroed string of defined length

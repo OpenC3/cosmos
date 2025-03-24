@@ -188,6 +188,66 @@ class TargetModel(Model):
                 item_map[item_name].append(packet["packet_name"])
         return item_map
 
+    # Change Funded by Blue Origin
+    @classmethod
+    def increment_telemetry_count(cls, target_name: str, packet_name: str, count: int, scope: str = OPENC3_SCOPE):
+        return Store.hincrby(f"{scope}__TELEMETRYCNTS__{{{target_name}}}", packet_name, count)
+
+    @classmethod
+    def get_all_telemetry_counts(cls, target_name: str, scope: str = OPENC3_SCOPE):
+        return Store.hgetall(f"{scope}__TELEMETRYCNTS__{{{target_name}}}")
+
+    @classmethod
+    def get_telemetry_count(cls, target_name: str, packet_name: str, scope: str = OPENC3_SCOPE):
+        value = Store.hget(f"{scope}__TELEMETRYCNTS__{{{target_name}}}", packet_name)
+        return value or 0 # Return 0 if the key doesn't exist
+
+    @classmethod
+    def get_telemetry_counts(cls, target_packets: list, scope: str = OPENC3_SCOPE):
+        result = []
+        with Store.instance().redis_pool.get() as redis:
+            pipeline = redis.pipeline(transaction=False)
+            for target_name, packet_name in target_packets:
+                target_name = target_name.upper()
+                packet_name = packet_name.upper()
+                pipeline.hget(f"{scope}__TELEMETRYCNTS__{{{target_name}}}", packet_name)
+            result = pipeline.execute()
+
+        counts = []
+        for count in result:
+            counts.append(count or 0) # Return 0 if the key doesn't exist
+        return counts
+
+    @classmethod
+    def increment_command_count(cls, target_name: str, packet_name: str , count: int, scope: str = OPENC3_SCOPE):
+        return Store.hincrby(f"{scope}__COMMANDCNTS__{{{target_name}}}", packet_name, count)
+
+    @classmethod
+    def get_all_command_counts(cls, target_name: str, scope: str = OPENC3_SCOPE):
+        return Store.hgetall(f"{scope}__COMMANDCNTS__{{{target_name}}}")
+
+    @classmethod
+    def get_command_count(cls, target_name: str, packet_name: str, scope: str = OPENC3_SCOPE):
+        value = Store.hget(f"{scope}__COMMANDCNTS__{{{target_name}}}", packet_name)
+        return value or 0 # Return 0 if the key doesn't exist
+
+    @classmethod
+    def get_command_counts(cls, target_packets: list, scope: str = OPENC3_SCOPE):
+        result = []
+        with Store.instance().redis_pool.get() as redis:
+            pipeline = redis.pipeline(transaction=False)
+            for target_name, packet_name in target_packets:
+                target_name = target_name.upper()
+                packet_name = packet_name.upper()
+                pipeline.hget(f"{scope}__COMMANDCNTS__{{{target_name}}}", packet_name)
+            result = pipeline.execute()
+
+        counts = []
+        for count in result:
+            counts.append(count or 0) # Return 0 if the key doesn't exist
+        return counts
+    # End Change Funded by Blue Origin
+
     def __init__(
         self,
         name: str,

@@ -128,7 +128,8 @@ module OpenC3
                 @logger.info "#{@interface.name}: Write raw"
                 # A raw interface write results in an UNKNOWN packet
                 command = System.commands.packet('UNKNOWN', 'UNKNOWN')
-                command.received_count += 1
+                # Line Change Funded by Blue Origin
+                command.received_count = TargetModel.increment_command_count('UNKNOWN', 'UNKNOWN', 1, scope: @scope)
                 command = command.clone
                 command.buffer = msg_hash['raw']
                 command.received_time = Time.now
@@ -207,7 +208,8 @@ module OpenC3
           begin
             begin
               if cmd_params
-                command = System.commands.build_cmd(target_name, cmd_name, cmd_params, range_check, raw)
+                # Line Change Funded by Blue Origin
+                command = System.commands.build_cmd(target_name, cmd_name, cmd_params, range_check, raw, scope: @scope)
               elsif cmd_buffer
                 if target_name
                   command = System.commands.identify(cmd_buffer, [target_name])
@@ -216,7 +218,8 @@ module OpenC3
                 end
                 unless command
                   command = System.commands.packet('UNKNOWN', 'UNKNOWN')
-                  command.received_count += 1
+                  # Line Change Funded by Blue Origin
+                  command.received_count = TargetModel.increment_command_count('UNKNOWN', 'UNKNOWN', 1, scope: @scope)
                   command = command.clone
                   command.buffer = cmd_buffer
                 end
@@ -504,6 +507,11 @@ module OpenC3
       end
 
       @queued = false
+      # Change Funded by Blue Origin
+      @sync_packet_count_data = {}
+      @sync_packet_count_time = nil
+      @sync_packet_count_delay_seconds = 1.0 # Sync packet counts every second
+      # End Change Funded by Blue Origin
       @interface.options.each do |option_name, option_values|
         if option_name.upcase == 'OPTIMIZE_THROUGHPUT'
           @queued = true
@@ -511,6 +519,11 @@ module OpenC3
           EphemeralStoreQueued.instance.set_update_interval(update_interval)
           StoreQueued.instance.set_update_interval(update_interval)
         end
+        # Change Funded by Blue Origin
+        if option_name.upcase == 'SYNC_PACKET_COUNT_DELAY_SECONDS'
+          @sync_packet_count_delay_seconds = option_values[0].to_f
+        end
+        # End Change Funded by Blue Origin
       end
 
       @interface_thread_sleeper = Sleeper.new
@@ -678,7 +691,8 @@ module OpenC3
       end
 
       # Write to stream
-      packet.received_count += 1
+      # Line Change Funded by Blue Origin
+      sync_tlm_packet_counts(packet)
       TelemetryTopic.write_packet(packet, queued: @queued, scope: @scope)
     end
 
@@ -811,6 +825,60 @@ module OpenC3
 
     def graceful_kill
       # Just to avoid warning
+    end
+
+    # Function Funded by Blue Origin
+    def sync_tlm_packet_counts(packet)
+      if @sync_packet_count_delay_seconds <= 0
+        # Perfect but slow method
+        packet.received_count = TargetModel.increment_telemetry_count(packet.target_name, packet.packet_name, 1, scope: @scope)
+      else
+        # Eventually consistent method
+        # Only sync every period (default 1 second) to avoid hammering Redis
+        # This is a trade off between speed and accuracy
+        # The packet count is eventually consistent
+        @sync_packet_count_data[packet.target_name] ||= {}
+        @sync_packet_count_data[packet.target_name][packet.packet_name] ||= 0
+        @sync_packet_count_data[packet.target_name][packet.packet_name] += 1
+
+        # Ensures counters change between syncs
+        packet.received_count += 1
+
+        # Check if we need to sync the packet counts
+        if @sync_packet_count_time.nil? or (Time.now - @sync_packet_count_time) > @sync_packet_count_delay_seconds
+          @sync_packet_count_time = Time.now
+
+          inc_count = 0
+          # Use pipeline to make this one transaction
+          result = Store.redis_pool.pipelined do
+            # Increment global counters for packets received
+            @sync_packet_count_data.each do |target_name, packet_data|
+              packet_data.each do |packet_name, count|
+                TargetModel.increment_telemetry_count(target_name, packet_name, count, scope: @scope)
+                inc_count += 1
+              end
+            end
+            @sync_packet_count_data = {}
+
+            # Get all the packet counts with the global counters
+            @interface.tlm_target_names.each do |target_name|
+              TargetModel.get_all_telemetry_counts(target_name, scope: @scope)
+            end
+            TargetModel.get_all_telemetry_counts('UNKNOWN', scope: @scope)
+          end
+          @interface.tlm_target_names.each do |target_name|
+            result[inc_count].each do |packet_name, count|
+              update_packet = System.telemetry.packet(target_name, packet_name)
+              update_packet.received_count = count.to_i
+            end
+            inc_count += 1
+          end
+          result[inc_count].each do |packet_name, count|
+            update_packet = System.telemetry.packet('UNKNOWN', packet_name)
+            update_packet.received_count = count.to_i
+          end
+        end
+      end
     end
   end
 end

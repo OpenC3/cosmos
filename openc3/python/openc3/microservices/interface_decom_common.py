@@ -16,12 +16,14 @@
 
 from datetime import datetime, timezone
 import json
+import time
+import threading
 from openc3.system.system import System
 from openc3.topics.topic import Topic
 from openc3.topics.telemetry_topic import TelemetryTopic
 from openc3.utilities.time import to_nsec_from_epoch
 from openc3.utilities.json import JsonEncoder, JsonDecoder
-
+from openc3.models.target_model import TargetModel
 
 def handle_inject_tlm(inject_tlm_json, scope):
     inject_tlm_hash = json.loads(inject_tlm_json, cls=JsonDecoder)
@@ -33,8 +35,9 @@ def handle_inject_tlm(inject_tlm_json, scope):
     if item_hash:
         for name, value in item_hash.items():
             packet.write(str(name), value, type)
-    packet.received_count += 1
     packet.received_time = datetime.now(timezone.utc)
+    # Line Change Funded by Blue Origin
+    packet.received_count = TargetModel.increment_telemetry_count(packet.target_name, packet.packet_name, 1, scope=scope)
     TelemetryTopic.write_packet(packet, scope)
 
 
@@ -47,7 +50,8 @@ def handle_build_cmd(build_cmd_json, msg_id, scope):
     raw = build_cmd_hash["raw"]
     ack_topic = f"{{{scope}__ACKCMD}}TARGET__{target_name}"
     try:
-        command = System.commands.build_cmd(target_name, cmd_name, cmd_params, range_check, raw)
+        # Line Change Funded by Blue Origin
+        command = System.commands.build_cmd(target_name, cmd_name, cmd_params, range_check, raw, increment_received_count=False, scope=scope)
         msg_hash = {
             "id": msg_id,
             "result": "SUCCESS",

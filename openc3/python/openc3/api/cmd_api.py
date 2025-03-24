@@ -498,7 +498,8 @@ def get_cmd_cnt(*args, scope=OPENC3_SCOPE, manual=False):
         manual=manual,
     )
     TargetModel.packet(target_name, command_name, type="CMD", scope=scope)
-    return Topic.get_cnt(f"{scope}__COMMAND__{{{target_name}}}__{command_name}")
+    # Line Change Funded by Blue Origin
+    return TargetModel.get_command_count(target_name, command_name, scope=scope)
 
 
 # Get the transmit counts for command packets
@@ -508,12 +509,8 @@ def get_cmd_cnt(*args, scope=OPENC3_SCOPE, manual=False):
 def get_cmd_cnts(target_commands, scope=OPENC3_SCOPE):
     authorize(permission="system", scope=scope)
     if isinstance(target_commands, list) and isinstance(target_commands[0], list):
-        counts = []
-        for target_name, command_name in target_commands:
-            target_name = target_name.upper()
-            command_name = command_name.upper()
-            counts.append(Topic.get_cnt(f"{scope}__COMMAND__{{{target_name}}}__{command_name}"))
-        return counts
+        # Line Change Funded by Blue Origin
+        return TargetModel.get_command_counts(target_commands, scope=scope)
     else:
         raise RuntimeError(
             "get_cmd_cnts takes a dict of dicts containing target, packet_name, e.g. [['INST', 'COLLECT'], ['INST', 'ABORT']]"

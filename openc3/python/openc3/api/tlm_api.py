@@ -445,7 +445,8 @@ def get_tlm_cnt(*args, scope: str = OPENC3_SCOPE):
     target_name, packet_name = _extract_target_packet_names("get_tlm_cnt", *args)
     authorize(permission="system", target_name=target_name, packet_name=packet_name, scope=scope)
     TargetModel.packet(target_name, packet_name, scope=scope)
-    return Topic.get_cnt(f"{scope}__TELEMETRY__{{{target_name}}}__{packet_name}")
+    # Line Change Funded by Blue Origin
+    return TargetModel.get_telemetry_count(target_name, packet_name, scope=scope)
 
 
 def get_tlm_cnts(target_packets, scope=OPENC3_SCOPE):
@@ -458,13 +459,8 @@ def get_tlm_cnts(target_packets, scope=OPENC3_SCOPE):
         [Numeric] Transmit count for the command
     """
     authorize(permission="system", scope=scope)
-    counts = []
-    for target_name, packet_name in target_packets:
-        target_name = target_name.upper()
-        packet_name = packet_name.upper()
-        counts.append(Topic.get_cnt(f"{scope}__TELEMETRY__{{{target_name}}}__{packet_name}"))
-    return counts
-
+    # Line Change Funded by Blue Origin
+    return TargetModel.get_telemetry_counts(target_packets, scope=scope)
 
 def get_packet_derived_items(*args, scope=OPENC3_SCOPE):
     """Get the list of derived telemetry items for a packet

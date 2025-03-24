@@ -33,8 +33,9 @@ module OpenC3
           packet.write(name.to_s, value, type)
         end
       end
-      packet.received_count += 1
       packet.received_time = Time.now.sys
+      # Line Change Funded by Blue Origin
+      packet.received_count = TargetModel.increment_telemetry_count(packet.target_name, packet.packet_name, 1)
       TelemetryTopic.write_packet(packet, scope: @scope)
     # If the inject_tlm parameters are bad we rescue so
     # interface_microservice and decom_microservice can continue
@@ -51,7 +52,8 @@ module OpenC3
       raw = build_cmd_hash['raw']
       ack_topic = "{#{@scope}__ACKCMD}TARGET__#{target_name}"
       begin
-        command = System.commands.build_cmd(target_name, cmd_name, cmd_params, range_check, raw)
+        # Line Change Funded by Blue Origin
+        command = System.commands.build_cmd(target_name, cmd_name, cmd_params, range_check, raw, increment_received_count: false, scope: @scope)
         msg_hash = {
           id: msg_id,
           result: 'SUCCESS',
