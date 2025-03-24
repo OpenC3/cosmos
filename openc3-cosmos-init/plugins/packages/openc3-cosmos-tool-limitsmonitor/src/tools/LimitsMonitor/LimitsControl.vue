@@ -51,18 +51,20 @@
         />
       </v-row>
 
-      <v-row data-test="limits-row" class="my-0 ml-1 mr-1">
-        <div class="pa-1 mt-1 mr-2 label" style="width: 200px">Timestamp</div>
-        <div class="pa-1 mt-1 mr-2 label" style="width: 200px">Item Name</div>
-        <div class="pa-1 mt-1 mr-2 label" style="width: 200px">Value</div>
-        <div class="pa-1 mt-1 mr-2 label" style="width: 180px">Limits Bar</div>
-        <div class="pa-1 mt-1 mr-2 label">Controls</div>
-      </v-row>
-      <div v-for="(item, index) in items" :key="item.key">
-        <v-row data-test="limits-row" class="align-center my-0 mx-1">
-          <div class="pa-1 mt-1 mr-2 label" style="width: 200px">
-            {{ item.timestamp }}
-          </div>
+      <v-data-table
+        :headers="headers"
+        :items="items"
+        item-value="key"
+        data-test="limits-table"
+        class="limits-table"
+        density="compact"
+        width="800px"
+        v-model:items-per-page="itemsPerPage"
+      >
+        <template v-slot:item.timestamp="{ item }">
+          {{ item.timestamp }}
+        </template>
+        <template v-slot:item.telemetry="{ item }">
           <labelvaluelimitsbar-widget
             v-if="item.limits"
             :parameters="item.parameters"
@@ -81,48 +83,40 @@
             v-on:add-item="addItem"
             v-on:delete-item="deleteItem"
           />
-          <v-tooltip location="top">
-            <template v-slot:activator="{ props }">
+        </template>
+        <template v-slot:item.actions="{ item }">
+          <v-menu>
+            <template v-slot:activator="{ props: menuProps }">
               <v-btn
-                icon="mdi-close-circle-multiple"
+                icon="mdi-dots-horizontal"
                 variant="text"
                 density="compact"
-                class="mr-2"
-                @click="ignorePacket(item.key)"
-                v-bind="props"
+                v-bind="menuProps"
               />
             </template>
-            <span>Ignore Entire Packet</span>
-          </v-tooltip>
-          <v-tooltip location="top">
-            <template v-slot:activator="{ props }">
-              <v-btn
-                icon="mdi-close-circle"
-                variant="text"
-                density="compact"
-                class="mr-2"
-                @click="ignoreItem(item.key)"
-                v-bind="props"
-              />
-            </template>
-            <span>Ignore Item</span>
-          </v-tooltip>
-          <v-tooltip location="top">
-            <template v-slot:activator="{ props }">
-              <v-btn
-                icon="mdi-eye-off"
-                variant="text"
-                density="compact"
-                class="mr-2"
-                @click="removeItem(item.key)"
-                v-bind="props"
-              />
-            </template>
-            <span>Temporarily Hide Item</span>
-          </v-tooltip>
-        </v-row>
-        <v-divider v-if="index < items.length" :key="index" />
-      </div>
+            <v-list>
+              <v-list-item @click="ignorePacket(item.key)">
+                <template v-slot:prepend>
+                  <v-icon>mdi-close-circle-multiple</v-icon>
+                </template>
+                <v-list-item-title>Ignore Entire Packet</v-list-item-title>
+              </v-list-item>
+              <v-list-item @click="ignoreItem(item.key)">
+                <template v-slot:prepend>
+                  <v-icon>mdi-close-circle</v-icon>
+                </template>
+                <v-list-item-title>Ignore Item</v-list-item-title>
+              </v-list-item>
+              <v-list-item @click="removeItem(item.key)">
+                <template v-slot:prepend>
+                  <v-icon>mdi-eye-off</v-icon>
+                </template>
+                <v-list-item-title>Temporarily Hide Item</v-list-item-title>
+              </v-list-item>
+            </v-list>
+          </v-menu>
+        </template>
+      </v-data-table>
       <div class="footer">
         Note: Timestamp is "now" for items currently out of limits when the page
         is loaded.
@@ -203,6 +197,12 @@ export default {
       screenItems: [],
       screenValues: {},
       updateCounter: 0,
+      itemsPerPage: 25,
+      headers: [
+        { title: 'Timestamp', key: 'timestamp', width: '130px' },
+        { title: 'Item', key: 'telemetry', width: '580px' },
+        { title: 'Controls', key: 'actions', width: '80px' },
+      ],
       widgetSettings: [
         ['WIDTH', '580px'], // Total of three subwidgets
         ['0', 'WIDTH', '200px'],
@@ -517,5 +517,15 @@ export default {
 
 .textfield-red {
   color: rgb(255, 45, 45);
+}
+
+.limits-table {
+  margin-top: 5px;
+  margin-bottom: 10px;
+}
+
+.limits-table :deep(th) {
+  font-weight: bold;
+  background-color: var(--color-background-base-default);
 }
 </style>
