@@ -49,35 +49,49 @@
           style="max-width: 200px"
           data-test="limits-set"
         />
+        <v-spacer></v-spacer>
+        <v-text-field
+          v-model="search"
+          label="Search"
+          prepend-inner-icon="mdi-magnify"
+          clearable
+          variant="outlined"
+          density="compact"
+          single-line
+          hide-details
+          style="max-width: 300px"
+          data-test="search"
+        />
       </v-row>
 
       <v-data-table
         :headers="headers"
         :items="items"
+        :search="search"
+        :custom-filter="customFilter"
         item-value="key"
         data-test="limits-table"
         class="limits-table"
         density="compact"
-        width="800px"
         v-model:items-per-page="itemsPerPage"
       >
         <template v-slot:item.timestamp="{ item }">
           {{ item.timestamp }}
         </template>
-        <template v-slot:item.telemetry="{ item }">
-          <labelvaluelimitsbar-widget
+        <template v-slot:item.value="{ item }">
+          <valuelimitsbar-widget
             v-if="item.limits"
             :parameters="item.parameters"
-            :settings="widgetSettings"
+            :settings="valueLimitsBarWidgetSettings"
             :screen-values="screenValues"
             :screen-time-zone="timeZone"
             v-on:add-item="addItem"
             v-on:delete-item="deleteItem"
           />
-          <labelvalue-widget
+          <value-widget
             v-else
             :parameters="item.parameters"
-            :settings="widgetSettings"
+            :settings="valueWidgetSettings"
             :screen-values="screenValues"
             :screen-time-zone="timeZone"
             v-on:add-item="addItem"
@@ -115,6 +129,9 @@
               </v-list-item>
             </v-list>
           </v-menu>
+        </template>
+        <template v-slot:item.limits="{ item }">
+          <v-spacer></v-spacer>
         </template>
       </v-data-table>
       <div class="footer">
@@ -164,14 +181,14 @@
 import { Cable, OpenC3Api } from '@openc3/js-common/services'
 import { TimeFilters } from '@openc3/vue-common/util'
 import {
-  LabelvalueWidget,
-  LabelvaluelimitsbarWidget,
+  ValueWidget,
+  ValuelimitsbarWidget,
 } from '@openc3/vue-common/widgets'
 
 export default {
   components: {
-    LabelvalueWidget,
-    LabelvaluelimitsbarWidget,
+    ValueWidget,
+    ValuelimitsbarWidget,
   },
   props: {
     modelValue: {
@@ -198,16 +215,39 @@ export default {
       screenValues: {},
       updateCounter: 0,
       itemsPerPage: 25,
+      search: '',
       headers: [
-        { title: 'Timestamp', key: 'timestamp', width: '130px' },
-        { title: 'Item', key: 'telemetry', width: '580px' },
-        { title: 'Controls', key: 'actions', width: '80px' },
+        {
+          title: 'Timestamp',
+          key: 'timestamp',
+          width: '130px',
+          sortable: true,
+          nowrap: true },
+        {
+          title: 'Item',
+          key: 'item',
+          value: item => item.parameters[2],
+          sortable: true,
+          minWidth: '100px',
+          width: '200px',
+          maxWidth: '300px',
+        },
+        {
+          title: 'Value',
+          key: 'value',
+          width: '380px',
+          sortable: false
+        },
+        { title: 'Controls', key: 'actions', width: '80px', sortable: false },
+        { title: '', key: 'limits', sortable: false }
       ],
-      widgetSettings: [
-        ['WIDTH', '580px'], // Total of three subwidgets
+      valueLimitsBarWidgetSettings: [
+        ['WIDTH', '380px'], // Total of two subwidgets
         ['0', 'WIDTH', '200px'],
-        ['1', 'WIDTH', '200px'],
-        ['2', 'WIDTH', '180px'],
+        ['1', 'WIDTH', '180px'],
+      ],
+      valueWidgetSettings: [
+        ['WIDTH', '200px'],
       ],
     }
   },
@@ -494,6 +534,34 @@ export default {
     // Menu options
     showIgnored() {
       this.ignoredItemsDialog = true
+    },
+
+    // Search filter
+    customFilter(value, search, item) {
+      if (!search || search.trim() === '') return true
+
+      search = search.toLowerCase()
+
+      // Check if any parameter matches the search
+      if (item.parameters && item.parameters.length > 0) {
+        for (const param of item.parameters) {
+          if (param.toLowerCase().includes(search)) {
+            return true
+          }
+        }
+      }
+
+      // Check for timestamp match
+      if (item.timestamp && item.timestamp.toLowerCase().includes(search)) {
+        return true
+      }
+
+      // Check the key
+      if (item.key && item.key.toLowerCase().includes(search)) {
+        return true
+      }
+
+      return false
     },
   },
 }
