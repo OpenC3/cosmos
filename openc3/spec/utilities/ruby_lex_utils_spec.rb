@@ -29,51 +29,43 @@ module OpenC3
       @lex = RubyLexUtils.new
     end
 
-    describe "contains_begin?" do
-      it "detects the begin keyword" do
-        expect(@lex.contains_begin?("  begin  ")).to be true
-        expect(@lex.contains_begin?("  begin # asdf  ")).to be true
-      end
-    end
-
-    describe "contains_keyword?" do
-      it "detects the ruby keywords" do
-        expect(@lex.contains_keyword?("if something")).to be true
-        expect(@lex.contains_keyword?("obj.method = something")).to be false
-      end
-    end
-
-    describe "contains_block_beginning?" do
-      it "detects block beginning keywords" do
-        expect(@lex.contains_block_beginning?("do")).to be true
-        expect(@lex.contains_block_beginning?("[].each {")).to be true
-        expect(@lex.contains_block_beginning?("begin")).to be true
-      end
-    end
-
-    describe "remove_comments" do
-      it "removes comments" do
-        text = <<~DOC
-          # This is a comment
-          blah = 5 # Inline comment
-          # Another
-        DOC
-        expect(@lex.remove_comments(text)).to eql "\nblah = 5 \n\n"
-      end
-    end
-
     describe "each_lexed_segment" do
       it "yields each segment" do
         text = <<~DOC
+          =begin
+          This is a comment
+          So is this
+          =end
           begin
             x = 0
           end
         DOC
         expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
-          ["begin\n", false, true, 1], # can't instrument begin
-          ["  x = 0\n", true, true, 2],
-          ["end\n", false, false, 3]
-        ) # can't instrument end
+          ["begin\n", false, true, 5], # can't instrument begin
+          ["  x = 0\n", true, true, 6],
+          ["end\n", false, false, 7] # can't instrument end
+        )
+      end
+
+      it "handles puts" do
+        text = <<~DOC
+          # Initial comment
+          puts "HI"
+            # This is a comment
+            # block
+            puts ENV.inspect
+          puts('YES') # So is this
+          pp ENV
+        DOC
+        expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
+          ["\n", true, false, 1],
+          ["puts \"HI\"\n", true, false, 2],
+          ["  \n", true, false, 3],
+          ["  \n", true, false, 4],
+          ["  puts ENV.inspect\n", true, false, 5],
+          ["puts('YES') \n", true, false, 6],
+          ["pp ENV\n", true, false, 7]
+        )
       end
 
       it "handles multiple begins" do
@@ -121,11 +113,13 @@ module OpenC3
           }.each {|x, y| puts x}
         DOC
         expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
-          ["{ :X1 => 1,\n  :X2 => 2\n}.each {|x, y| puts x}\n", false, false, 1]
+          ["{ :X1 => 1,\n" +
+           "  :X2 => 2\n" +
+           "}.each {|x, y| puts x}\n", false, false, 1]
         )
       end
 
-      it "handles even more complex hash and array segments" do
+      it "handles complex hash segments" do
         text = <<~DOC
           limits = {
             'val' => {
@@ -168,7 +162,9 @@ module OpenC3
           "  }\n" +
           "}\n", true, false, 1]
         )
+      end
 
+      it "handles complex array segments" do
         text = <<~DOC
           array = [
             1, 2, 3,
@@ -305,6 +301,29 @@ module OpenC3
         )
       end
 
+      it "handles 1 line raise" do
+        text = <<~DOC
+          raise "Bad return"
+        DOC
+        expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
+          ["raise \"Bad return\"\n", true, false, 1],
+        )
+
+        text = <<~DOC
+          raise "Bad return" if true
+        DOC
+        expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
+          ["raise \"Bad return\" if true\n", true, false, 1],
+        )
+
+        text = <<~DOC
+          raise "Bad return" unless result == 'CHOICE1' or result == 'CHOICE2'
+        DOC
+        expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
+          ["raise \"Bad return\" unless result == 'CHOICE1' or result == 'CHOICE2'\n", true, false, 1],
+        )
+      end
+
       it "handles classes" do
         text = <<~DOC
           class Test
@@ -366,11 +385,11 @@ module OpenC3
         expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
           ["class Test\n", false, false, 1],
           ["  def instance_method(\n" +
-          "    variable1,\n" +
-          "    variable2,\n" +
-          "    variable3,\n" +
-          "    variable4\n" +
-          "  )\n", false, false, 2],
+           "    variable1,\n" +
+           "    variable2,\n" +
+           "    variable3,\n" +
+           "    variable4\n" +
+           "  )\n", false, false, 2],
           ["    puts variable1\n", true, false, 8],
           ["  end\n", false, false, 9],
           ["end\n", false, false, 10]
@@ -380,14 +399,14 @@ module OpenC3
       it "handles weird spacing" do
         text = <<~DOC
                     if true
-                      if false
+                      unless false
               puts 'hi'
         end
                     end
         DOC
         expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
           ["            if true\n", false, false, 1],
-          ["              if false\n", false, false, 2],
+          ["              unless false\n", false, false, 2],
           ["      puts 'hi'\n", true, false, 3],
           ["end\n", false, false, 4],
           ["            end\n", false, false, 5]
@@ -400,7 +419,8 @@ module OpenC3
             DURATION \#{duration}")
         DOC
         expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
-          ["cmd(\"INST COLLECT with TYPE \#{type},\n  DURATION \#{duration}\")\n", true, false, 1],
+          ["cmd(\"INST COLLECT with TYPE \#{type},\n"+
+           "  DURATION \#{duration}\")\n", true, false, 1],
         )
       end
 
@@ -413,7 +433,11 @@ module OpenC3
             END"
         DOC
         expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
-          ["definition = \"\n  SCREEN AUTO AUTO 1.0\n    VERTICALBOX 'Test Screen'\n    LABELVALUE \#{target} \#{packet} \#{item}\n  END\"\n", true, false, 1]
+          ["definition = \"\n"+
+           "  SCREEN AUTO AUTO 1.0\n"+
+           "    VERTICALBOX 'Test Screen'\n"+
+           "    LABELVALUE \#{target} \#{packet} \#{item}\n"+
+           "  END\"\n", true, false, 1]
         )
       end
 
