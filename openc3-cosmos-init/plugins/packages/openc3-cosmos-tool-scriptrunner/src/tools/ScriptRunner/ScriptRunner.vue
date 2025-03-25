@@ -409,6 +409,7 @@ import 'splitpanes/dist/splitpanes.css'
 import { Api, Cable, OpenC3Api } from '@openc3/js-common/services'
 import {
   AceEditorModes,
+  AceEditorUtils,
   CriticalCmdDialog,
   EnvironmentDialog,
   FileOpenSaveDialog,
@@ -1012,6 +1013,13 @@ export default {
     this.editor.completers = [new CmdCompleter(), new TlmCompleter()]
     this.editor.setHighlightActiveLine(false)
     this.editor.focus()
+    
+    // Apply vim mode if enabled
+    AceEditorUtils.applyVimModeIfEnabled(this.editor)
+    
+    // Add vim mode toggle to context menu
+    AceEditorUtils.addVimModeToggleToContextMenu(this.editor)
+    
     this.editor.on('guttermousedown', this.toggleBreakpoint)
     // We listen to tokenizerUpdate rather than change because this
     // is the background process that updates as changes are processed

@@ -113,6 +113,7 @@ import 'ace-builds/src-min-noconflict/mode-json'
 import 'ace-builds/src-min-noconflict/theme-twilight'
 import 'ace-builds/src-min-noconflict/ext-language_tools'
 import 'ace-builds/src-min-noconflict/ext-searchbox'
+import { AceEditorUtils } from '../../components/ace'
 
 export default {
   props: {
@@ -145,6 +146,12 @@ export default {
     if (this.readonly) {
       this.editor.setReadOnly(true)
     }
+    
+    // Apply vim mode if enabled
+    AceEditorUtils.applyVimModeIfEnabled(this.editor)
+    
+    // Add vim mode toggle to context menu
+    AceEditorUtils.addVimModeToggleToContextMenu(this.editor)
   },
   beforeUnmount() {
     if (this.editor) {

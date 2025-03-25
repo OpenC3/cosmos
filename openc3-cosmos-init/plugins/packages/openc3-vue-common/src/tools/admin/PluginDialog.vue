@@ -121,6 +121,7 @@ import 'ace-builds/src-min-noconflict/ext-searchbox'
 import AceDiff from '@openc3/ace-diff'
 import '@openc3/ace-diff/dist/ace-diff-dark.min.css'
 import { toRaw } from 'vue'
+import { AceEditorUtils } from '../../components/ace'
 
 export default {
   props: {
@@ -165,6 +166,12 @@ export default {
       this.editor.setValue(this.localPluginTxt)
       this.editor.clearSelection()
       this.editor.focus()
+      
+      // Apply vim mode if enabled
+      AceEditorUtils.applyVimModeIfEnabled(this.editor)
+      
+      // Add vim mode toggle to context menu
+      AceEditorUtils.addVimModeToggleToContextMenu(this.editor)
     } else {
       this.tab = 1 // Show the diff right off the bat
       this.differ = new AceDiff({
@@ -183,6 +190,15 @@ export default {
       // Match our existing editors
       this.differ.getEditors().left.setFontSize(16)
       this.differ.getEditors().right.setFontSize(16)
+      
+      // Apply vim mode if enabled to both editor instances
+      AceEditorUtils.applyVimModeIfEnabled(this.differ.getEditors().left)
+      AceEditorUtils.applyVimModeIfEnabled(this.differ.getEditors().right)
+      
+      // Add vim mode toggle to context menu for both editors
+      AceEditorUtils.addVimModeToggleToContextMenu(this.differ.getEditors().left)
+      AceEditorUtils.addVimModeToggleToContextMenu(this.differ.getEditors().right)
+      
       this.curDiff = -1 // so the first will be 0
     }
   },

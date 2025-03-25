@@ -129,6 +129,7 @@ import 'ace-builds/src-min-noconflict/theme-twilight'
 import 'ace-builds/src-min-noconflict/ext-language_tools'
 import 'ace-builds/src-min-noconflict/ext-searchbox'
 import { ScreenCompleter } from './autocomplete'
+import { AceEditorUtils } from './ace'
 
 export default {
   props: {
@@ -210,6 +211,12 @@ export default {
     this.editor.setValue(this.definition)
     this.editor.clearSelection()
     this.editor.focus()
+    
+    // Apply vim mode if enabled
+    AceEditorUtils.applyVimModeIfEnabled(this.editor)
+    
+    // Add vim mode toggle to context menu
+    AceEditorUtils.addVimModeToggleToContextMenu(this.editor)
   },
   beforeUnmount() {
     this.editor.destroy()
