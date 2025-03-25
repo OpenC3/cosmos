@@ -13,7 +13,7 @@
     "@astrouxds/astro-web-components": "7.24.1",
     "@openc3/js-common": "6.2.2-beta0",
     "@openc3/vue-common": "6.2.2-beta0",
-    "axios": "1.7.9",
+    "axios": "1.8.2",
     "date-fns": "4.1.0",
     "single-spa-vue": "3.0.1",
     "sprintf-js": "1.1.3"

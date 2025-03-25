@@ -14,7 +14,7 @@
     "@openc3/js-common": "6.2.2-beta0",
     "@openc3/vue-common": "6.2.2-beta0",
     "ace-builds": "1.38.0",
-    "axios": "1.7.9",
+    "axios": "1.8.2",
     "date-fns": "4.1.0",
     "lodash": "4.17.21",
     "single-spa-vue": "3.0.1",
