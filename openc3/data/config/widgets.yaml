@@ -34,6 +34,7 @@ Layout Widgets:
           values: .*
       example: |
         VERTICALBOX Info
+          SUBSETTING 1 RAW border "1px dashed green"
           LABEL "TEST"
           LABEL "SCREEN"
         END
@@ -64,6 +65,8 @@ Layout Widgets:
           values: .*
       example: |
         HORIZONTALBOX Info 10
+          SUBSETTING 0 RAW text-align CENTER
+          SUBSETTING 1 RAW border "1px solid blue"
           LABEL "TEST"
           LABEL "SCREEN"
         END
