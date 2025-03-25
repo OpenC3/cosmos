@@ -69,6 +69,10 @@ irb(main):002:0> Cosmos::Api::WHITELIST
 
 The script methods allow you to list the available scripts, spawn a script, and run a script while monitoring its output. Note that you must set the OPENC3_API_PASSWORD in Open Source and both the OPENC3_API_USER and OPENC3_API_PASSWORD in Enterprise.
 
+:::note Offline Access Token
+You must visit the frontend Script Runner page as the OPENC3_API_USER in order to obtain an offline access token before the script cli methods will work.
+:::
+
 ### List
 
 List all the available scripts which includes all the files in every target directory. You can filter this list using bash to only include procedures, Ruby files, Python files, etc.
@@ -141,9 +145,9 @@ script complete
 Validate is used to validate built COSMOS plugins. It walks through the installation process without actually installing the plugin.
 
 ```bash
-% openc3.sh cli validate openc3-cosmos-test-1.0.0.gem
-Installing openc3-cosmos-test-1.0.0.gem
-Successfully validated openc3-cosmos-test-1.0.0.gem
+% openc3.sh cli validate openc3-cosmos-cfdp-1.0.0.gem
+Installing openc3-cosmos-cfdp-1.0.0.gem
+Successfully validated openc3-cosmos-cfdp-1.0.0.gem
 ```
 
 ## Load
@@ -151,9 +155,10 @@ Successfully validated openc3-cosmos-test-1.0.0.gem
 Load can load a plugin into COSMOS without using the GUI. This is useful for scripts or CI/CD pipelines.
 
 ```bash
-% openc3.sh cli load openc3-cosmos-test-1.0.0.gem
-Installing openc3-cosmos-test-1.0.0.gem
-Successfully installed openc3-cosmos-test-1.0.0.gem
+% openc3.sh cli load openc3-cosmos-cfdp-1.0.0.gem
+Loading new plugin: openc3-cosmos-cfdp-1.0.0.gem
+{"name"=>"openc3-cosmos-cfdp-1.0.0.gem", "variables"=>{"cfdp_microservice_name"=>"CFDP", "cfdp_route_prefix"=>"/cfdp", "cfdp_port"=>"2905", "cfdp_cmd_target_name"=>"CFDP2", "cfdp_cmd_packet_name"=>"CFDP_PDU", "cfdp_cmd_item_name"=>"PDU", "cfdp_tlm_target_name"=>"CFDP2", "cfdp_tlm_packet_name"=>"CFDP_PDU", "cfdp_tlm_item_name"=>"PDU", "source_entity_id"=>"1", "destination_entity_id"=>"2", "root_path"=>"/DEFAULT/targets_modified/CFDP/tmp", "bucket"=>"config", "plugin_test_mode"=>"false"}, "plugin_txt_lines"=>["VARIABLE cfdp_microservice_name CFDP", "VARIABLE cfdp_route_prefix /cfdp", "VARIABLE cfdp_port 2905", "", "VARIABLE cfdp_cmd_target_name CFDP2", "VARIABLE cfdp_cmd_packet_name CFDP_PDU", "VARIABLE cfdp_cmd_item_name PDU", "", "VARIABLE cfdp_tlm_target_name CFDP2", "VARIABLE cfdp_tlm_packet_name CFDP_PDU", "VARIABLE cfdp_tlm_item_name PDU", "", "VARIABLE source_entity_id 1", "VARIABLE destination_entity_id 2", "VARIABLE root_path /DEFAULT/targets_modified/CFDP/tmp", "VARIABLE bucket config", "", "# Set to true to enable a test configuration", "VARIABLE plugin_test_mode \"false\"", "", "MICROSERVICE CFDP <%= cfdp_microservice_name %>", "  WORK_DIR .", "  ROUTE_PREFIX <%= cfdp_route_prefix %>", "  ENV OPENC3_ROUTE_PREFIX <%= cfdp_route_prefix %>", "  ENV SECRET_KEY_BASE 324973597349867207430793759437697498769349867349674", "  PORT <%= cfdp_port %>", "  CMD rails s -b 0.0.0.0 -p <%= cfdp_port %> -e production", "  # MIB Options Follow -", "  # You will need to modify these for your mission", "  OPTION source_entity_id <%= source_entity_id %>", "  OPTION tlm_info <%= cfdp_tlm_target_name %> <%= cfdp_tlm_packet_name %> <%= cfdp_tlm_item_name %>", "  OPTION destination_entity_id <%= destination_entity_id %>", "  OPTION cmd_info <%= cfdp_cmd_target_name %> <%= cfdp_cmd_packet_name %> <%= cfdp_cmd_item_name %>", "  OPTION root_path <%= root_path %>", "  <% if bucket.to_s.strip != '' %>", "    OPTION bucket <%= bucket %>", "  <% end %>", "", "<% include_test = (plugin_test_mode.to_s.strip.downcase == \"true\") %>", "<% if include_test %>", "  TARGET CFDPTEST CFDP", "  TARGET CFDPTEST CFDP2", "", "  MICROSERVICE CFDP CFDP2", "    WORK_DIR .", "    ROUTE_PREFIX /cfdp2", "    ENV OPENC3_ROUTE_PREFIX /cfdp2", "    ENV SECRET_KEY_BASE 324973597349867207430793759437697498769349867349674", "    PORT 2906", "    CMD rails s -b 0.0.0.0 -p 2906 -e production", "    OPTION source_entity_id <%= destination_entity_id %>", "    OPTION tlm_info CFDP CFDP_PDU PDU", "    OPTION destination_entity_id <%= source_entity_id %>", "    OPTION cmd_info CFDP CFDP_PDU PDU", "    OPTION root_path <%= root_path %>", "    <% if bucket.to_s.strip != '' %>", "      OPTION bucket <%= bucket %>", "    <% end %>", "", "  <% test_host = ENV['KUBERNETES_SERVICE_HOST'] ? (scope.to_s.downcase + \"-interface-cfdp2-int-service\") : \"openc3-operator\" %>", "  INTERFACE CFDP_INT tcpip_client_interface.rb <%= test_host %> 2907 2907 10.0 nil LENGTH 0 32 4 1 BIG_ENDIAN 0 nil nil true", "    MAP_TARGET CFDP", "", "  INTERFACE CFDP2_INT tcpip_server_interface.rb 2907 2907 10.0 nil LENGTH 0 32 4 1 BIG_ENDIAN 0 nil nil true", "    PORT 2907", "    MAP_TARGET CFDP2", "<% end %>"], "needs_dependencies"=>false, "updated_at"=>nil}
+Updating local plugin files: /plugins/DEFAULT/openc3-cosmos-cfdp
 ```
 
 ## List
@@ -161,9 +166,29 @@ Successfully installed openc3-cosmos-test-1.0.0.gem
 List displays all the installed plugins.
 
 ```bash
-% openc3.sh cli load openc3-cosmos-test-1.0.0.gem
-Installing openc3-cosmos-test-1.0.0.gem
-Successfully installed openc3-cosmos-test-1.0.0.gem
+% openc3.sh cli list
+openc3-cosmos-cfdp-1.0.0.gem__20250325160956
+openc3-cosmos-demo-6.2.2.pre.beta0.20250325143120.gem__20250325160201
+openc3-cosmos-enterprise-tool-admin-6.2.2.pre.beta0.20250325155648.gem__20250325160159
+openc3-cosmos-tool-autonomic-6.2.2.pre.beta0.20250325155658.gem__20250325160225
+openc3-cosmos-tool-bucketexplorer-6.2.2.pre.beta0.20250325143107.gem__20250325160227
+openc3-cosmos-tool-calendar-6.2.2.pre.beta0.20250325155654.gem__20250325160224
+openc3-cosmos-tool-cmdhistory-6.2.2.pre.beta0.20250325155651.gem__20250325160212
+openc3-cosmos-tool-cmdsender-6.2.2.pre.beta0.20250325143111.gem__20250325160211
+openc3-cosmos-tool-cmdtlmserver-6.2.2.pre.beta0.20250325143114.gem__20250325160208
+openc3-cosmos-tool-dataextractor-6.2.2.pre.beta0.20250325143104.gem__20250325160219
+openc3-cosmos-tool-dataviewer-6.2.2.pre.beta0.20250325143108.gem__20250325160220
+openc3-cosmos-tool-docs-6.2.2.pre.beta0.20250325155535.gem__20250325160228
+openc3-cosmos-tool-grafana-6.2.2.pre.beta0.20250325155658.gem__20250325160233
+openc3-cosmos-tool-handbooks-6.2.2.pre.beta0.20250325143113.gem__20250325160222
+openc3-cosmos-tool-iframe-6.2.2.pre.beta0.20250325143110.gem__20250325160158
+openc3-cosmos-tool-limitsmonitor-6.2.2.pre.beta0.20250325155448.gem__20250325160209
+openc3-cosmos-tool-packetviewer-6.2.2.pre.beta0.20250325143104.gem__20250325160215
+openc3-cosmos-tool-scriptrunner-6.2.2.pre.beta0.20250325143111.gem__20250325160214
+openc3-cosmos-tool-tablemanager-6.2.2.pre.beta0.20250325143116.gem__20250325160223
+openc3-cosmos-tool-tlmgrapher-6.2.2.pre.beta0.20250325143105.gem__20250325160218
+openc3-cosmos-tool-tlmviewer-6.2.2.pre.beta0.20250325143108.gem__20250325160216
+openc3-enterprise-tool-base-6.2.2.pre.beta0.20250325155704.gem__20250325160153
 ```
 
 ## Generate
@@ -180,7 +205,7 @@ A COSMOS Bridge is a small application that is run on the local computer to conn
 Allows you to install or remove Ruby gems or Python wheels into COSMOS. These are dependencies that are not packaged with the COSMOS plugin itself.
 
 ```bash
-% openc3.sh cli pkginstall local_gem.gem
+% openc3.sh cli pkginstall rspec-3.13.0.gem
 ```
 
 ## Rubysloc (deprecated)
