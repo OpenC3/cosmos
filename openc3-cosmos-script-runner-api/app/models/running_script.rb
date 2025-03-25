@@ -730,22 +730,21 @@ class RunningScript
     instrumented_text = ''
 
     @cancel_instrumentation = false
-    comments_removed_text = ruby_lex_utils.remove_comments(text)
-    num_lines = comments_removed_text.num_lines.to_f
+    num_lines = text.num_lines.to_f
     num_lines = 1 if num_lines < 1
     instrumented_text =
       instrument_script_implementation(ruby_lex_utils,
-                                        comments_removed_text,
-                                        num_lines,
-                                        filename,
-                                        mark_private)
+                                       text,
+                                       num_lines,
+                                       filename,
+                                       mark_private)
 
     raise OpenC3::StopScript if @cancel_instrumentation
     instrumented_text
   end
 
   def self.instrument_script_implementation(ruby_lex_utils,
-                                            comments_removed_text,
+                                            text,
                                             _num_lines,
                                             filename,
                                             mark_private = false)
@@ -755,14 +754,12 @@ class RunningScript
       instrumented_text = ''
     end
 
-    ruby_lex_utils.each_lexed_segment(comments_removed_text) do |segment, instrumentable, inside_begin, line_no|
+    ruby_lex_utils.each_lexed_segment(text) do |segment, instrumentable, inside_begin, line_no|
       return nil if @cancel_instrumentation
       instrumented_line = ''
       if instrumentable
         # Add a newline if it's empty to ensure the instrumented code has
-        # the same number of lines as the original script. Note that the
-        # segment could have originally had comments but they were stripped in
-        # ruby_lex_utils.remove_comments
+        # the same number of lines as the original script
         if segment.strip.empty?
           instrumented_text << "\n"
           next
