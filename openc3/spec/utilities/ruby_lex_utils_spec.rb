@@ -303,10 +303,24 @@ module OpenC3
 
       it "handles 1 line raise" do
         text = <<~DOC
+          raise "Bad return"
+        DOC
+        expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
+          ["raise \"Bad return\"\n", true, false, 1],
+        )
+
+        text = <<~DOC
+          raise "Bad return" if true
+        DOC
+        expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
+          ["raise \"Bad return\" if true\n", true, false, 1],
+        )
+
+        text = <<~DOC
           raise "Bad return" unless result == 'CHOICE1' or result == 'CHOICE2'
         DOC
         expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
-          ["raise \"Bad return\" unless result == 'CHOICE1' or result == 'CHOICE2'\n", false, false, 1],
+          ["raise \"Bad return\" unless result == 'CHOICE1' or result == 'CHOICE2'\n", true, false, 1],
         )
       end
 
