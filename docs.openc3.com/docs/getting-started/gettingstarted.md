@@ -1,5 +1,5 @@
 ---
-sidebar_position: 2
+sidebar_position: 3
 title: Getting Started
 description: Getting starting with COSMOS
 sidebar_custom_props:

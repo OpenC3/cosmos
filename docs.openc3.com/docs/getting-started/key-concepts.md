@@ -1,5 +1,5 @@
 ---
-sidebar_position: 5
+sidebar_position: 1
 title: Key Concepts
 description: Projects, Containerization, Frontend, Backend
 sidebar_custom_props:
@@ -76,7 +76,7 @@ Per [AstroUXDS](https://www.astrouxds.com/), "The Astro Space UX Design System e
 
 ### Redis
 
-[Redis](https://redis.io/) is an in-memory data store with support for strings, hashes, lists, sets, sorted sets, streams, and more. COSMOS uses Redis to store both our configuration and data. If you look back at our [container list](/docs/getting-started/key_concepts#containers) you'll notice two redis containers: cosmos-openc3-redis-1 and cosmos-openc3-redis-ephemeral-1. The ephemeral container contains all the real-time data pushed into [Redis streams](https://redis.io/docs/data-types/streams/). The other redis container contains COSMOS configuration that is meant to persist. [COSMOS Enterprise](https://openc3.com/enterprise) provides helm charts that setup [Redis Cluster](https://redis.io/docs/management/scaling/) to perform horizontal scaling where data is shared across multiple Redis nodes.
+[Redis](https://redis.io/) is an in-memory data store with support for strings, hashes, lists, sets, sorted sets, streams, and more. COSMOS uses Redis to store both our configuration and data. If you look back at our [container list](/docs/getting-started/key-concepts#containers) you'll notice two redis containers: cosmos-openc3-redis-1 and cosmos-openc3-redis-ephemeral-1. The ephemeral container contains all the real-time data pushed into [Redis streams](https://redis.io/docs/data-types/streams/). The other redis container contains COSMOS configuration that is meant to persist. [COSMOS Enterprise](https://openc3.com/enterprise) provides helm charts that setup [Redis Cluster](https://redis.io/docs/management/scaling/) to perform horizontal scaling where data is shared across multiple Redis nodes.
 
 ### MinIO
 
