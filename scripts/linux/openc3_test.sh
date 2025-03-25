@@ -69,7 +69,7 @@ case $1 in
     ${DOCKER_COMPOSE_COMMAND} -f compose.yaml up -d
     cd playwright
     yarn run fixlinux
-    yarn playwright test
+    yarn test
     yarn coverage
     cd -
     ;;

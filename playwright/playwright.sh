@@ -44,12 +44,14 @@ case $1 in
         ;;
 
     run-chromium )
-        yarn playwright test "${@:2}" --project=chromium
+        yarn test:parallel "${@:2}"
+        yarn test:serial "${@:2}"
         ;;
 
     run-aws )
         sed -i 's#http://localhost:2900#https://aws.openc3.com#' playwright.config.ts
-        KEYCLOAK_URL=https://aws.openc3.com/auth REDIRECT_URL=https://aws.openc3.com/* yarn playwright test --project=keycloak
-        yarn playwright test "${@:2}" --project=chromium
+        KEYCLOAK_URL=https://aws.openc3.com/auth REDIRECT_URL=https://aws.openc3.com/* yarn test:keycloak
+        yarn test:parallel "${@:2}"
+        yarn test:serial "${@:2}"
         ;;
 esac
