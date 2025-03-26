@@ -25,11 +25,7 @@
     <div
       @click="handleClick(node)"
       class="node-content"
-      v-if="
-        !search ||
-        node.children ||
-        node.path.toLowerCase().includes(search.toLowerCase())
-      "
+      v-if="showNode"
     >
       <div class="content-wrapper">
         <v-icon
@@ -93,7 +89,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 const props = defineProps({
   node: {
@@ -111,6 +107,20 @@ const props = defineProps({
 })
 
 const isOpen = ref(props.node.isOpen || false)
+
+const showNode = computed(() => {
+  const _nodeOrChildMatchesSearch = (node) => {
+    if (!props.search) {
+      return true
+    }
+    if (node.path.toLowerCase().includes(props.search)) {
+      return true
+    }
+    return !!node.children?.some(_nodeOrChildMatchesSearch)
+  }
+
+  return _nodeOrChildMatchesSearch(props.node)
+})
 
 watch(
   () => props.node.isOpen,

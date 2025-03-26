@@ -214,7 +214,7 @@ export default {
     Api.get('/openc3-api/targets').then((response) => {
       this.targets = response.data
       this.targets.push('__TEMP__') // Also support __TEMP__
-      this.targets.map((target) => {
+      this.targets.forEach((target) => {
         // Name not found so push the item and add a children array
         this.items.push({
           id: target,
