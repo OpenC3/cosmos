@@ -77,13 +77,12 @@ spec = Gem::Specification.new do |s|
   s.required_ruby_version = '>= 3.0'
 
   # Runtime Dependencies
-  # IRB version is highly coupled to the openc3/utilities/ruby_lex_utils.rb
   s.add_runtime_dependency 'bundler',   '~> 2.3'
   s.add_runtime_dependency 'hiredis-client', '~> 0.22'
-  s.add_runtime_dependency 'irb',       '1.6.2'
   s.add_runtime_dependency 'json',      '~> 2.6'
   s.add_runtime_dependency 'matrix',    '~> 0.4'
   s.add_runtime_dependency 'nokogiri',  '~> 1.14'
+  s.add_runtime_dependency 'prism',     '~> 1.3.0'
   s.add_runtime_dependency 'psych',     '~> 5.0'
   s.add_runtime_dependency 'puma',      '~> 6.2'
   s.add_runtime_dependency 'rack',      '~> 3.0'
