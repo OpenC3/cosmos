@@ -51,7 +51,7 @@
         <v-btn
           block
           color="primary"
-          :disabled="buttonsDisabled"
+          :disabled="buttonsDisabled || (item.disable_disconnect && item.connected === 'CONNECTED')"
           @click="connectDisconnect(item)"
         >
           {{ item.connect }}
@@ -189,6 +189,7 @@ export default {
             rx_bytes: int[6],
             cmd_pkts: int[7],
             tlm_pkts: int[8],
+            disable_disconnect: int[9], // Add the disable_disconnect property from the backend
           })
         }
         this.buttonsDisabled = false

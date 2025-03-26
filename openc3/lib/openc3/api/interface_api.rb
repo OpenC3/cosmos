@@ -111,15 +111,19 @@ module OpenC3
     # Get information about all interfaces
     #
     # @return [Array<Array<String, Numeric, Numeric, Numeric, Numeric, Numeric,
-    #   Numeric, Numeric>>] Array of Arrays containing \[name, state, num clients,
+    #   Numeric, Numeric, Boolean>>] Array of Arrays containing \[name, state, num clients,
     #   TX queue size, RX queue size, TX bytes, RX bytes, Command count,
-    #   Telemetry count] for all interfaces
+    #   Telemetry count, disable_disconnect] for all interfaces
     def get_all_interface_info(manual: false, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'system', manual: manual, scope: scope, token: token)
       info = []
-      InterfaceStatusModel.all(scope: scope).each do |_int_name, int|
+      InterfaceStatusModel.all(scope: scope).each do |int_name, int|
+        # Get the interface configuration to access disable_disconnect
+        interface_model = InterfaceModel.get(name: int_name, scope: scope)
+        disable_disconnect = interface_model && interface_model['disable_disconnect'] ? true : false
+
         info << [int['name'], int['state'], int['clients'], int['txsize'], int['rxsize'],
-                 int['txbytes'], int['rxbytes'], int['txcnt'], int['rxcnt']]
+                 int['txbytes'], int['rxbytes'], int['txcnt'], int['rxcnt'], disable_disconnect]
       end
       info.sort! { |a, b| a[0] <=> b[0] }
       info
