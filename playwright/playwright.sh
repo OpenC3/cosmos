@@ -6,6 +6,7 @@ usage() {
   echo "*  build-plugin: builds the plugin to be used in the playwright tests" >&2
   echo "*  reset-storage-state: clear out cached data" >&2
   echo "*  run-chromium: runs the playwright tests against a locally running version of Cosmos using Chrome" >&2
+  echo "*  run-enterprise: runs the enterprise playwright tests against a locally running version of Cosmos using Chrome" >&2
   echo "*  run-aws: runs the playwright tests against a remotely running version of Cosmos using Chrome" >&2
   exit 1
 }
@@ -44,14 +45,15 @@ case $1 in
         ;;
 
     run-chromium )
-        yarn test:parallel "${@:2}"
-        yarn test:serial "${@:2}"
+        yarn test
         ;;
+
+    run-enterprise )
+        yarn test:enterprise
 
     run-aws )
         sed -i 's#http://localhost:2900#https://aws.openc3.com#' playwright.config.ts
         KEYCLOAK_URL=https://aws.openc3.com/auth REDIRECT_URL=https://aws.openc3.com/* yarn test:keycloak
-        yarn test:parallel "${@:2}"
-        yarn test:serial "${@:2}"
+        yarn test
         ;;
 esac
