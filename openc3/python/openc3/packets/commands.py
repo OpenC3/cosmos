@@ -112,14 +112,14 @@ class Commands:
                         identified_packet = packet
                         break
             else:
-                # Do a hash lookup to quickly identify the packet
+                # Do a lookup to quickly identify the packet
                 if len(target_packets) > 0:
                     packet = next(iter(target_packets.values()))
                     key = packet.read_id_values(packet_data)
-                    hash = self.config.cmd_id_value_hash[target_name]
-                    identified_packet = hash.get(str(key))
+                    id_values = self.config.cmd_id_value_hash[target_name]
+                    identified_packet = id_values.get(str(key))
                     if identified_packet is None:
-                        identified_packet = hash.get("CATCHALL")
+                        identified_packet = id_values.get("CATCHALL")
 
             if identified_packet is not None:
                 identified_packet.received_count += 1

@@ -243,10 +243,10 @@ def get_cmd_buffer(*args, scope=OPENC3_SCOPE, manual=False):
     )
     TargetModel.packet(target_name, command_name, type="CMD", scope=scope)
     topic = f"{scope}__COMMAND__{{{target_name}}}__{command_name}"
-    msg_id, msg_hash = Topic.get_newest_message(topic)
+    msg_id, message = Topic.get_newest_message(topic)
     if msg_id:
         # Decode the keys for user convenience
-        return {k.decode(): v for (k, v) in msg_hash.items()}
+        return {k.decode(): v for (k, v) in message.items()}
     return None
 
 
@@ -359,15 +359,15 @@ def get_cmd_hazardous(*args, scope=OPENC3_SCOPE, manual=False):
         if item["name"] not in parameters and "states" not in item:
             continue
 
-        # States are an array of the name followed by a hash of 'value' and sometimes 'hazardous'
-        for name, hash in item["states"].items():
+        # States are an array of the name followed by a dict of 'value' and sometimes 'hazardous'
+        for name, items in item["states"].items():
             parameter_name = parameters[item["name"]]
             # Remove quotes from string parameters
             if isinstance(parameter_name, str):
                 parameter_name = parameter_name.replace('"', "").replace("'", "")
             # To be hazardous the state must be marked hazardous
             # Check if either the state name or value matches the param passed
-            if hash.get("hazardous") is not None and (name == parameter_name or hash["value"] == parameter_name):
+            if items.get("hazardous") is not None and (name == parameter_name or items["value"] == parameter_name):
                 return True
     return False
 

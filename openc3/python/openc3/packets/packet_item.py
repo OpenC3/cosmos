@@ -331,34 +331,34 @@ class PacketItem(StructureItem):
     #   item
 
     def to_hash(self):
-        hash = {}
-        hash["format_string"] = self.format_string
+        item = {}
+        item["format_string"] = self.format_string
         if self.read_conversion:
-            hash["read_conversion"] = str(self.read_conversion)
+            item["read_conversion"] = str(self.read_conversion)
         else:
-            hash["read_conversion"] = None
+            item["read_conversion"] = None
         if self.write_conversion:
-            hash["write_conversion"] = str(self.write_conversion)
+            item["write_conversion"] = str(self.write_conversion)
         else:
-            hash["write_conversion"] = None
-        hash["id_value"] = self.id_value
-        hash["states"] = self.states
-        hash["description"] = self.description
-        hash["units_full"] = self.units_full
-        hash["units"] = self.units
-        hash["default"] = self.default
-        # hash["range"] = self.range
-        hash["minimum"] = self.minimum
-        hash["maximum"] = self.maximum
-        hash["required"] = self.required
-        hash["hazardous"] = self.hazardous
-        hash["messages_disabled"] = self.messages_disabled
-        hash["state_colors"] = self.state_colors
-        hash["limits"] = self.limits.to_hash
-        hash["meta"] = None
+            item["write_conversion"] = None
+        item["id_value"] = self.id_value
+        item["states"] = self.states
+        item["description"] = self.description
+        item["units_full"] = self.units_full
+        item["units"] = self.units
+        item["default"] = self.default
+        # item["range"] = self.range
+        item["minimum"] = self.minimum
+        item["maximum"] = self.maximum
+        item["required"] = self.required
+        item["hazardous"] = self.hazardous
+        item["messages_disabled"] = self.messages_disabled
+        item["state_colors"] = self.state_colors
+        item["limits"] = self.limits.as_json()
+        item["meta"] = None
         if self.meta:
-            hash["meta"] = self.meta
-        return hash
+            item["meta"] = self.meta
+        return item
 
     # def calculate_range(self):
     #     first = self.range.first
@@ -517,62 +517,62 @@ class PacketItem(StructureItem):
         return config
 
     @classmethod
-    def from_json(cls, hash):
+    def from_json(cls, item_hash):
         # Convert strings to symbols
-        endianness = hash.get("endianness")
-        data_type = hash.get("data_type")
-        overflow = hash.get("overflow")
+        endianness = item_hash.get("endianness")
+        data_type = item_hash.get("data_type")
+        overflow = item_hash.get("overflow")
         item = PacketItem(
-            hash.get("name"),
-            hash.get("bit_offset"),
-            hash.get("bit_size"),
+            item_hash.get("name"),
+            item_hash.get("bit_offset"),
+            item_hash.get("bit_size"),
             data_type,
             endianness,
-            hash.get("array_size"),
+            item_hash.get("array_size"),
             overflow,
         )
-        item.description = hash.get("description")
-        item.id_value = hash.get("id_value")
-        item.default = hash.get("default")
-        item.minimum = hash.get("minimum")
-        item.maximum = hash.get("maximum")
-        item.required = hash.get("required")
-        item.format_string = hash.get("format_string")
-        item.units = hash.get("units")
-        item.units_full = hash.get("units_full")
-        if hash.get("states"):
+        item.description = item_hash.get("description")
+        item.id_value = item_hash.get("id_value")
+        item.default = item_hash.get("default")
+        item.minimum = item_hash.get("minimum")
+        item.maximum = item_hash.get("maximum")
+        item.required = item_hash.get("required")
+        item.format_string = item_hash.get("format_string")
+        item.units = item_hash.get("units")
+        item.units_full = item_hash.get("units_full")
+        if item_hash.get("states"):
             item.states = {}
             item.hazardous = {}
             item.messages_disabled = {}
             item.state_colors = {}
-            for state_name, state in hash.get("states").items():
+            for state_name, state in item_hash.get("states").items():
                 item.states[state_name] = state.get("value")
                 item.hazardous[state_name] = state.get("hazardous")
                 item.messages_disabled[state_name] = state.get("messages_disabled")
                 item.state_colors[state_name] = state.get("color")
         # Recreate OpenC3 built-in conversions
-        #   if hash.get('read_conversion']:
+        #   if item_hash.get('read_conversion']:
         #     try:
-        #       item.read_conversion = OpenC3::const_get(hash['read_conversion']['class'])(*hash['read_conversion']['params'])
+        #       item.read_conversion = OpenC3::const_get(item_hash['read_conversion']['class'])(*item_hash['read_conversion']['params'])
         #     except:
-        #       Logger.error(f"{item.name} read_conversion of {hash['read_conversion']} could not be instantiated due to {error}")
-        #   if hash.get('write_conversion']:
+        #       Logger.error(f"{item.name} read_conversion of {item_hash['read_conversion']} could not be instantiated due to {error}")
+        #   if item_hash.get('write_conversion']:
         #     try:
-        #       item.write_conversion = OpenC3::const_get(hash['write_conversion']['class'])(*hash['write_conversion']['params'])
+        #       item.write_conversion = OpenC3::const_get(item_hash['write_conversion']['class'])(*item_hash['write_conversion']['params'])
         #     except:
-        #       Logger.error(f"{item.name} write_conversion of {hash['write_conversion']} could not be instantiated due to {error}")
+        #       Logger.error(f"{item.name} write_conversion of {item_hash['write_conversion']} could not be instantiated due to {error}")
 
         item.limits = PacketItemLimits()
-        if hash.get("limits"):
+        if item_hash.get("limits"):
             # Delete the keys so the only ones left are limits sets
-            persistence_setting = hash["limits"].pop("persistence_setting", None)
+            persistence_setting = item_hash["limits"].pop("persistence_setting", None)
             if persistence_setting:
                 item.limits.persistence_setting = persistence_setting
-            hash["limits"].pop("response", None)  # Can't round trip response
-            if hash["limits"].pop("enabled", None):
+            item_hash["limits"].pop("response", None)  # Can't round trip response
+            if item_hash["limits"].pop("enabled", None):
                 item.limits.enabled = True
             values = {}
-            for set, items in hash["limits"].items():
+            for set, items in item_hash["limits"].items():
                 values[set] = [
                     items["red_low"],
                     items["yellow_low"],
@@ -583,7 +583,7 @@ class PacketItem(StructureItem):
                     values[set] += [items["green_low"], items["green_high"]]
             if len(values) > 0:
                 item.limits.values = values
-        item.meta = hash.get("meta")
+        item.meta = item_hash.get("meta")
         return item
 
     def parameter_config(self):

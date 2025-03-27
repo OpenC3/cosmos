@@ -298,12 +298,11 @@ class TestStructureItem(unittest.TestCase):
         si2 = si1.clone()
         self.assertTrue(si1 < si2)
 
-    def test_creates_a_hash(self):
-        item = StructureItem("test", 0, 8, "UINT", "BIG_ENDIAN", 16)
-        hash = item.as_json()
-        self.assertEqual(len(hash.keys()), 8)
+    def test_creates_a_dict(self):
+        item = StructureItem("test", 0, 8, "UINT", "BIG_ENDIAN", 16).as_json()
+        self.assertEqual(len(item.keys()), 8)
         self.assertListEqual(
-            list(hash.keys()),
+            list(item.keys()),
             [
                 "name",
                 "key",
@@ -315,14 +314,14 @@ class TestStructureItem(unittest.TestCase):
                 "overflow",
             ],
         )
-        self.assertEqual(hash["name"], "TEST")
-        self.assertEqual(hash["key"], "test")
-        self.assertEqual(hash["bit_offset"], 0)
-        self.assertEqual(hash["bit_size"], 8)
-        self.assertEqual(hash["data_type"], "UINT")
-        self.assertEqual(hash["endianness"], "BIG_ENDIAN")
-        self.assertEqual(hash["array_size"], 16)
-        self.assertEqual(hash["overflow"], "ERROR")
+        self.assertEqual(item["name"], "TEST")
+        self.assertEqual(item["key"], "test")
+        self.assertEqual(item["bit_offset"], 0)
+        self.assertEqual(item["bit_size"], 8)
+        self.assertEqual(item["data_type"], "UINT")
+        self.assertEqual(item["endianness"], "BIG_ENDIAN")
+        self.assertEqual(item["array_size"], 16)
+        self.assertEqual(item["overflow"], "ERROR")
 
     def test_creates_structure_item_from_hash(self):
         item = StructureItem("test", 0, 8, "UINT", "BIG_ENDIAN", 16)
