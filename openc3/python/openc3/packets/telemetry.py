@@ -10,9 +10,12 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
-
+#
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+#
+# A portion of this file was funded by Blue Origin Enterprises, L.P.
+# See https://github.com/OpenC3/cosmos/pull/1953
 
 
 class Telemetry:
@@ -192,3 +195,6 @@ class Telemetry:
     #   packet name returning the packet.
     def all(self):
         return self.config.telemetry
+
+    def dynamic_add_packet(self, packet, affect_ids=False):
+        self.config.dynamic_add_packet(packet, "TELEMETRY", affect_ids=affect_ids)

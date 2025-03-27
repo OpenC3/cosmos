@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -10,9 +10,12 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
-
+#
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+#
+# A portion of this file was funded by Blue Origin Enterprises, L.P.
+# See https://github.com/OpenC3/cosmos/pull/1953
 
 from datetime import datetime, timezone
 from openc3.packets.packet import Packet
@@ -276,6 +279,9 @@ class Commands:
     def all(self):
         return self.config.commands
 
+    def dynamic_add_packet(self, packet, affect_ids=False):
+        self.config.dynamic_add_packet(packet, "COMMAND", affect_ids=affect_ids)
+
     def _set_parameters(self, command, params, range_checking):
         given_item_names = []
         for item_name, value in params.items():
@@ -297,7 +303,8 @@ class Commands:
                             else:
                                 # Normal commands report missing state maps
                                 raise RuntimeError(
-                                    f"Command parameter '{command.target_name} {command.packet_name} {item_upcase}' = {value} not one of {', '.join(item.states.keys())}")
+                                    f"Command parameter '{command.target_name} {command.packet_name} {item_upcase}' = {value} not one of {', '.join(item.states.keys())}"
+                                )
 
                 # Only range check if we have a min, max and not a string default value
                 minimum = item.minimum

@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -10,9 +10,12 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
-
+#
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+#
+# A portion of this file was funded by Blue Origin Enterprises, L.P.
+# See https://github.com/OpenC3/cosmos/pull/1953
 
 import os
 import tempfile
@@ -325,22 +328,51 @@ class PacketConfig:
                 PacketParser.check_item_data_types(self.current_packet)
                 self.commands[self.current_packet.target_name][self.current_packet.packet_name] = self.current_packet
                 if not self.current_packet.virtual:
-                    hash = self.cmd_id_value_hash.get(self.current_packet.target_name)
-                    if not hash:
-                        hash = {}
-                    self.cmd_id_value_hash[self.current_packet.target_name] = hash
-                    self.update_id_value_hash(hash)
+                    id_values = self.cmd_id_value_hash.get(self.current_packet.target_name)
+                    if not id_values:
+                        id_values = {}
+                    self.cmd_id_value_hash[self.current_packet.target_name] = id_values
+                    self.update_id_value_hash(self.current_packet, id_values)
             else:
                 self.telemetry[self.current_packet.target_name][self.current_packet.packet_name] = self.current_packet
                 if not self.current_packet.virtual:
-                    hash = self.tlm_id_value_hash.get(self.current_packet.target_name)
-                    if not hash:
-                        hash = {}
-                    self.tlm_id_value_hash[self.current_packet.target_name] = hash
-                    self.update_id_value_hash(hash)
+                    id_values = self.tlm_id_value_hash.get(self.current_packet.target_name)
+                    if not id_values:
+                        id_values = {}
+                    self.tlm_id_value_hash[self.current_packet.target_name] = id_values
+                    self.update_id_value_hash(self.current_packet, id_values)
 
             self.current_packet = None
             self.current_item = None
+
+    def dynamic_add_packet(self, packet, cmd_or_tlm="TELEMETRY", affect_ids=False):
+        if cmd_or_tlm == "COMMAND":
+            self.commands[packet.target_name][packet.packet_name] = packet
+
+            if affect_ids:
+                id_values = self.cmd_id_value_hash.get(packet.target_name, None)
+                if not id_values:
+                    id_values = {}
+                self.cmd_id_value_hash[packet.target_name] = id_values
+                self.update_id_value_hash(packet, id_values)
+        else:
+            self.telemetry[packet.target_name][packet.packet_name] = packet
+
+            # Update latest_data lookup for telemetry
+            for item in packet.sorted_items:
+                target_latest_data = self.latest_data[packet.target_name]
+                if not target_latest_data.get(item.name, None):
+                    target_latest_data[item.name] = []
+                latest_data_packets = target_latest_data[item.name]
+                if packet not in latest_data_packets:
+                    latest_data_packets.append(packet)
+
+            if affect_ids:
+                id_values = self.tlm_id_value_hash.get(packet.target_name, None)
+                if not id_values:
+                    id_values = {}
+                self.tlm_id_value_hash[packet.target_name] = id_values
+                self.update_id_value_hash(packet, id_values)
 
     # This method provides way to quickly test packet configs
     #
@@ -364,15 +396,15 @@ class PacketConfig:
             pc.process_file(tf.name, process_target_name)
         return pc
 
-    def update_id_value_hash(self, hash):
-        if self.current_packet.id_items and len(self.current_packet.id_items) > 0:
+    def update_id_value_hash(self, packet, hash):
+        if packet.id_items and len(packet.id_items) > 0:
             key = []
-            for item in self.current_packet.id_items:
+            for item in packet.id_items:
                 key.append(item.id_value)
 
-            hash[repr(key)] = self.current_packet
+            hash[repr(key)] = packet
         else:
-            hash["CATCHALL"] = self.current_packet
+            hash["CATCHALL"] = packet
 
     def reset_processing_variables(self):
         self.current_cmd_or_tlm = None
@@ -484,17 +516,25 @@ class PacketConfig:
                 self.current_packet.restricted = True
 
             case "ACCESSOR":
-                usage = f"{keyword} <Class name> <Optional parameters> ..."
+                usage = f"{keyword} <File name> <Optional parameters> ..."
                 parser.verify_num_parameters(1, None, usage)
+                klass = None
                 try:
-                    filename = class_name_to_filename(params[0])
-                    klass = get_class_from_module(f"openc3.accessors.{filename}", params[0])
-                    if len(params) > 1:
-                        self.current_packet.accessor = klass(self.current_packet, *params[1:])
-                    else:
-                        self.current_packet.accessor = klass(self.current_packet)
-                except ModuleNotFoundError as error:
-                    raise parser.error(error)
+                    klass = get_class_from_module(
+                        filename_to_module(params[0]),
+                        filename_to_class_name(params[0]),
+                    )
+                except ModuleNotFoundError:
+                    try:
+                        # Fall back to the deprecated behavior of passing the ClassName (only works with built-in accessors)
+                        filename = class_name_to_filename(params[0])
+                        klass = get_class_from_module(f"openc3.accessors.{filename}", params[0])
+                    except ModuleNotFoundError:
+                        raise parser.error(f"ModuleNotFoundError parsing {params[0]}. Usage: {usage}")
+                if len(params) > 1:
+                    self.current_packet.accessor = klass(self.current_packet, *params[1:])
+                else:
+                    self.current_packet.accessor = klass(self.current_packet)
 
             case "VALIDATOR":
                 usage = f"{keyword} <Class name> <Optional parameters> ..."
