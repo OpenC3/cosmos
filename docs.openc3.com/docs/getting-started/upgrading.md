@@ -274,7 +274,7 @@ COSMOS 5 is a new architecture and treats targets as independent [plugins](../co
 
 ### Configuration Migration Tool
 
-COSMOS 5 includes a migration tool for converting an existing COSMOS 4 configuration into a COSMOS 5 plugin. This example assumes an existing COSMOS 4 configuration at C:\COSMOS and a new COSMOS 5 installation at C:\cosmos-project. Linux users can adjust paths and change from .bat to .sh to follow along.
+COSMOS 5 (but not COSMOS 6) includes a migration tool for converting an existing COSMOS 4 configuration into a COSMOS 5 plugin. This example assumes an existing COSMOS 4 configuration at C:\COSMOS and a new COSMOS 5 installation at C:\cosmos-project. Linux users can adjust paths and change from .bat to .sh to follow along.
 
 1. Change to the existing COSMOS 4 configuration directory. You should see the config, lib, procedures, outputs directory. You can then run the migration tool by specifying the absolute path to the COSMOS 5 installation.
 
