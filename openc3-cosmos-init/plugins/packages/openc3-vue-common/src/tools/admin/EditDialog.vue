@@ -73,7 +73,20 @@
               </v-row>
             </div>
             <v-row no-gutters>
-              <pre class="editor" ref="editor"></pre>
+              <pre
+                class="editor"
+                ref="editor"
+                @contextmenu.prevent="showContextMenu"
+              ></pre>
+              <v-menu v-model="contextMenu" :target="[menuX, menuY]">
+                <v-list>
+                  <v-list-item
+                    title="Toggle Vim mode"
+                    prepend-icon="extras:vim"
+                    @click="toggleVimMode"
+                  />
+                </v-list>
+              </v-menu>
             </v-row>
             <v-row class="my-3">
               <span class="text-red" v-show="error" v-text="error" />
@@ -129,6 +142,9 @@ export default {
   data() {
     return {
       editor: null,
+      contextMenu: false,
+      menuX: 0,
+      menuY: 0,
     }
   },
   mounted() {
@@ -142,16 +158,11 @@ export default {
     this.editor.setHighlightActiveLine(false)
     this.editor.setValue(this.content)
     this.editor.clearSelection()
+    AceEditorUtils.applyVimModeIfEnabled(this.editor)
     this.editor.focus()
     if (this.readonly) {
       this.editor.setReadOnly(true)
     }
-    
-    // Apply vim mode if enabled
-    AceEditorUtils.applyVimModeIfEnabled(this.editor)
-    
-    // Add vim mode toggle to context menu
-    AceEditorUtils.addVimModeToggleToContextMenu(this.editor)
   },
   beforeUnmount() {
     if (this.editor) {
@@ -224,6 +235,25 @@ export default {
         this.$id = 'ace/mode/openc3'
       }).call(Mode.prototype)
       return Mode
+    },
+    showContextMenu: function (event) {
+      this.menuX = event.pageX
+      this.menuY = event.pageY
+
+      let position = this.editor.getCursorPosition()
+      let token = this.editor.session.getTokenAt(position.row, position.column)
+      if (token) {
+        let value = token.value.trim()
+        if (value.includes(' ')) {
+          this.docsKeyword = value.split(' ')[0]
+        } else {
+          this.docsKeyword = value
+        }
+        this.contextMenu = true
+      }
+    },
+    toggleVimMode: function () {
+      AceEditorUtils.toggleVimMode(this.editor)
     },
   },
 }

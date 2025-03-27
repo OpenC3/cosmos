@@ -85,6 +85,12 @@
                   {{ docsKeyword }} documentation
                 </v-list-item-title>
               </v-list-item>
+              <v-divider />
+              <v-list-item
+                title="Toggle Vim mode"
+                prepend-icon="extras:vim"
+                @click="toggleVimMode"
+              />
             </v-list>
           </v-menu>
         </v-row>
@@ -210,19 +216,17 @@ export default {
     this.editor.setHighlightActiveLine(false)
     this.editor.setValue(this.definition)
     this.editor.clearSelection()
-    this.editor.focus()
-    
-    // Apply vim mode if enabled
     AceEditorUtils.applyVimModeIfEnabled(this.editor)
-    
-    // Add vim mode toggle to context menu
-    AceEditorUtils.addVimModeToggleToContextMenu(this.editor)
+    this.editor.focus()
   },
   beforeUnmount() {
     this.editor.destroy()
     this.editor.container.remove()
   },
   methods: {
+    toggleVimMode: function () {
+      AceEditorUtils.toggleVimMode(this.editor)
+    },
     showContextMenu: function (event) {
       this.menuX = event.pageX
       this.menuY = event.pageY

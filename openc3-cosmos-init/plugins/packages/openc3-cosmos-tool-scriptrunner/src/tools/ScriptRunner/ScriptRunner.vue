@@ -254,6 +254,12 @@
               {{ item.label }}
             </v-list-item-title>
           </v-list-item>
+          <v-divider />
+          <v-list-item
+            title="Toggle Vim mode"
+            prepend-icon="extras:vim"
+            @click="toggleVimMode"
+          />
         </v-list>
       </v-menu>
     </pane>
@@ -1012,13 +1018,8 @@ export default {
     this.editor.setOption('enableLiveAutocompletion', true)
     this.editor.completers = [new CmdCompleter(), new TlmCompleter()]
     this.editor.setHighlightActiveLine(false)
-    this.editor.focus()
-    
-    // Apply vim mode if enabled
     AceEditorUtils.applyVimModeIfEnabled(this.editor)
-    
-    // Add vim mode toggle to context menu
-    AceEditorUtils.addVimModeToggleToContextMenu(this.editor)
+    this.editor.focus()
     
     this.editor.on('guttermousedown', this.toggleBreakpoint)
     // We listen to tokenizerUpdate rather than change because this
@@ -1094,6 +1095,9 @@ export default {
     }
   },
   methods: {
+    toggleVimMode() {
+      AceEditorUtils.toggleVimMode(this.editor)
+    },
     doResize() {
       this.editor.resize()
       // nextTick allows the resize to work correctly
