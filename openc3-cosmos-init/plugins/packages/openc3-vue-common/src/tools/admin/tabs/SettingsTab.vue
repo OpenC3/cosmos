@@ -22,6 +22,8 @@
     <v-divider />
     <default-config-settings />
     <v-divider />
+    <editor-settings />
+    <v-divider />
     <astro-settings />
     <v-divider />
     <time-zone-settings />
@@ -43,6 +45,7 @@
 <script>
 import SuppressedSettings from './settings/SuppressedSettings.vue'
 import DefaultConfigSettings from './settings/DefaultConfigSettings.vue'
+import EditorSettings from './settings/EditorSettings.vue'
 import AstroSettings from './settings/AstroSettings.vue'
 import ClassificationBannerSettings from './settings/ClassificationBannerSettings.vue'
 import TimeZoneSettings from './settings/TimeZoneSettings.vue'
@@ -56,6 +59,7 @@ export default {
   components: {
     SuppressedSettings,
     DefaultConfigSettings,
+    EditorSettings,
     AstroSettings,
     ClassificationBannerSettings,
     TimeZoneSettings,
