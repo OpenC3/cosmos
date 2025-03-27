@@ -56,7 +56,7 @@ class CvtModel(Model):
         else:
             Store.hset(key, packet_name, packet_json)
 
-    # Get the hash for packet in the CVT
+    # Get the dict for packet in the CVT
     # Note: Does not apply overrides
     @classmethod
     def get(cls, target_name: str, packet_name: str, cache_timeout: float = 0.1, scope: str = OPENC3_SCOPE):
@@ -64,15 +64,15 @@ class CvtModel(Model):
         tgt_pkt_key = key + f"__{packet_name}"
         now = time.time()
         if tgt_pkt_key in CvtModel.packet_cache:
-            cache_time, hash = CvtModel.packet_cache[tgt_pkt_key]
+            cache_time, pkt_hash = CvtModel.packet_cache[tgt_pkt_key]
             if (now - cache_time) < cache_timeout:
-                return hash
+                return pkt_hash
         packet = Store.hget(key, packet_name)
         if packet is None:
             raise RuntimeError(f"Packet '{target_name} {packet_name}' does not exist")
-        hash = json.loads(packet, cls=JsonDecoder)
-        CvtModel.packet_cache[tgt_pkt_key] = [now, hash]
-        return hash
+        pkt_hash = json.loads(packet, cls=JsonDecoder)
+        CvtModel.packet_cache[tgt_pkt_key] = [now, pkt_hash]
+        return pkt_hash
 
     # Set an item in the current value table
     @classmethod
@@ -86,24 +86,24 @@ class CvtModel(Model):
         queued: bool = False,
         scope: str = OPENC3_SCOPE,
     ):
-        hash = cls.get(target_name, packet_name, cache_timeout=0.0, scope=scope)
+        pkt_hash = cls.get(target_name, packet_name, cache_timeout=0.0, scope=scope)
         match type:
             case "WITH_UNITS":
-                hash[f"{item_name}__U"] = str(value)  # WITH_UNITS should always be a string
+                pkt_hash[f"{item_name}__U"] = str(value)  # WITH_UNITS should always be a string
             case "FORMATTED":
-                hash[f"{item_name}__F"] = str(value)  # FORMATTED should always be a string
+                pkt_hash[f"{item_name}__F"] = str(value)  # FORMATTED should always be a string
             case "CONVERTED":
-                hash[f"{item_name}__C"] = value
+                pkt_hash[f"{item_name}__C"] = value
             case "RAW":
-                hash[item_name] = value
+                pkt_hash[item_name] = value
             case "ALL":
-                hash[f"{item_name}__U"] = str(value)  # WITH_UNITS should always be a string
-                hash[f"{item_name}__F"] = str(value)  # FORMATTED should always be a string
-                hash[f"{item_name}__C"] = value
-                hash[item_name] = value
+                pkt_hash[f"{item_name}__U"] = str(value)  # WITH_UNITS should always be a string
+                pkt_hash[f"{item_name}__F"] = str(value)  # FORMATTED should always be a string
+                pkt_hash[f"{item_name}__C"] = value
+                pkt_hash[item_name] = value
             case _:
                 raise RuntimeError(f"Unknown type '{type}' for {target_name} {packet_name} {item_name}")
-        cls.set(hash, target_name=target_name, packet_name=packet_name, queued=queued, scope=scope)
+        cls.set(pkt_hash, target_name=target_name, packet_name=packet_name, queued=queued, scope=scope)
 
     # Get an item from the current value table
     @classmethod
@@ -126,8 +126,8 @@ class CvtModel(Model):
         )
         if result is not None:
             return result
-        hash = cls.get(target_name, packet_name, scope=scope)
-        for cvt_value in [hash[x] for x in types if x in hash]:
+        pkt_hash = cls.get(target_name, packet_name, scope=scope)
+        for cvt_value in [pkt_hash[x] for x in types if x in pkt_hash]:
             if cvt_value is not None:
                 if type == "FORMATTED" or type == "WITH_UNITS":
                     return str(cvt_value)
@@ -151,7 +151,7 @@ class CvtModel(Model):
         lookups = []
         packet_lookup = {}
         overrides = {}
-        # First generate a lookup hash of all the items represented so we can query the CVT
+        # First generate a lookup dict of all the items represented so we can query the CVT
         for item in items:
             cls._parse_item(now, lookups, overrides, item, cache_timeout=cache_timeout, scope=scope)
 
@@ -163,25 +163,25 @@ class CvtModel(Model):
                     cache_timeout,
                     scope,
                 )
-            hash = packet_lookup[target_packet_key]
+            pkt_hash = packet_lookup[target_packet_key]
             item_result = []
             if isinstance(value_keys, dict):  # Set in _parse_item to indicate override
                 item_result.insert(0, value_keys["value"])
             else:
                 for key in value_keys:
-                    if key in hash:
-                        item_result.insert(0, hash[key])
+                    if key in pkt_hash:
+                        item_result.insert(0, pkt_hash[key])
                         break  # We want the first value
                 # If we were able to find a value, try to get the limits state
                 if len(item_result) > 0 and item_result[0] is not None:
-                    if now - hash["RECEIVED_TIMESECONDS"] > stale_time:
+                    if now - pkt_hash["RECEIVED_TIMESECONDS"] > stale_time:
                         item_result.insert(1, "STALE")
                     else:
                         # The last key is simply the name (RAW) so we can append __L
                         # If there is no limits then it returns None which is acceptable
-                        item_result.insert(1, hash.get(f"{value_keys[-1]}__L"))
+                        item_result.insert(1, pkt_hash.get(f"{value_keys[-1]}__L"))
                 else:
-                    if value_keys[-1] not in hash:
+                    if value_keys[-1] not in pkt_hash:
                         raise RuntimeError(f"Item '{target_name} {packet_name} {value_keys[-1]}' does not exist")
                     else:
                         item_result.insert(1, None)
@@ -198,8 +198,8 @@ class CvtModel(Model):
                 continue
             # decode the binary string keys to strings
             all = {k.decode(): v for (k, v) in all.items()}
-            for packet_name, hash in all.items():
-                items = json.loads(hash, cls=JsonDecoder)
+            for packet_name, pkt_hash in all.items():
+                items = json.loads(pkt_hash, cls=JsonDecoder)
                 for key, value in items.items():
                     item = {}
                     item["target_name"] = target_name
@@ -226,67 +226,67 @@ class CvtModel(Model):
     @classmethod
     def override(cls, target_name, packet_name, item_name, value, type="ALL", scope=OPENC3_SCOPE):
         """Override a current value table item such that it always returns the same value for the given type"""
-        hash = Store.hget(f"{scope}__override__{target_name}", packet_name)
-        if hash is not None:
-            hash = json.loads(hash)
+        pkt_hash = Store.hget(f"{scope}__override__{target_name}", packet_name)
+        if pkt_hash is not None:
+            pkt_hash = json.loads(pkt_hash)
         else:
-            hash = {}
+            pkt_hash = {}
         match type:
             case "ALL":
-                hash[item_name] = value
-                hash[f"{item_name}__C"] = value
-                hash[f"{item_name}__F"] = str(value)
-                hash[f"{item_name}__U"] = str(value)
+                pkt_hash[item_name] = value
+                pkt_hash[f"{item_name}__C"] = value
+                pkt_hash[f"{item_name}__F"] = str(value)
+                pkt_hash[f"{item_name}__U"] = str(value)
             case "RAW":
-                hash[item_name] = value
+                pkt_hash[item_name] = value
             case "CONVERTED":
-                hash[f"{item_name}__C"] = value
+                pkt_hash[f"{item_name}__C"] = value
             case "FORMATTED":
-                hash[f"{item_name}__F"] = str(value)  # Always a String
+                pkt_hash[f"{item_name}__F"] = str(value)  # Always a String
             case "WITH_UNITS":
-                hash[f"{item_name}__U"] = str(value)  # Always a String
+                pkt_hash[f"{item_name}__U"] = str(value)  # Always a String
             case _:
                 raise RuntimeError(f"Unknown type '{type}' for {target_name} {packet_name} {item_name}")
         tgt_pkt_key = f"{scope}__tlm__{target_name}__{packet_name}"
-        CvtModel.override_cache[tgt_pkt_key] = [time.time(), hash]
-        Store.hset(f"{scope}__override__{target_name}", packet_name, json.dumps(hash))
+        CvtModel.override_cache[tgt_pkt_key] = [time.time(), pkt_hash]
+        Store.hset(f"{scope}__override__{target_name}", packet_name, json.dumps(pkt_hash))
 
     # Normalize a current value table item such that it returns the actual value
     @classmethod
     def normalize(cls, target_name, packet_name, item_name, type="ALL", scope=OPENC3_SCOPE):
-        hash = Store.hget(f"{scope}__override__{target_name}", packet_name)
-        if hash is not None:
-            hash = json.loads(hash)
+        pkt_hash = Store.hget(f"{scope}__override__{target_name}", packet_name)
+        if pkt_hash is not None:
+            pkt_hash = json.loads(pkt_hash)
         else:
-            hash = {}
+            pkt_hash = {}
         match type:
             case "ALL":
-                hash.pop(item_name, None)
-                hash.pop(f"{item_name}__C", None)
-                hash.pop(f"{item_name}__F", None)
-                hash.pop(f"{item_name}__U", None)
+                pkt_hash.pop(item_name, None)
+                pkt_hash.pop(f"{item_name}__C", None)
+                pkt_hash.pop(f"{item_name}__F", None)
+                pkt_hash.pop(f"{item_name}__U", None)
             case "RAW":
-                if item_name in hash:
-                    hash.pop(item_name)
+                if item_name in pkt_hash:
+                    pkt_hash.pop(item_name)
             case "CONVERTED":
-                if f"{item_name}__C" in hash:
-                    hash.pop(f"{item_name}__C")
+                if f"{item_name}__C" in pkt_hash:
+                    pkt_hash.pop(f"{item_name}__C")
             case "FORMATTED":
-                if f"{item_name}__F" in hash:
-                    hash.pop(f"{item_name}__F")
+                if f"{item_name}__F" in pkt_hash:
+                    pkt_hash.pop(f"{item_name}__F")
             case "WITH_UNITS":
-                if f"{item_name}__U" in hash:
-                    hash.pop(f"{item_name}__U")
+                if f"{item_name}__U" in pkt_hash:
+                    pkt_hash.pop(f"{item_name}__U")
             case _:
                 raise RuntimeError(f"Unknown type '{type}' for {target_name} {packet_name} {item_name}")
         tgt_pkt_key = f"{scope}__tlm__{target_name}__{packet_name}"
-        if len(hash) == 0:
+        if len(pkt_hash) == 0:
             if tgt_pkt_key in CvtModel.override_cache:
                 CvtModel.override_cache.pop(tgt_pkt_key)
             Store.hdel(f"{scope}__override__{target_name}", packet_name)
         else:
-            CvtModel.override_cache[tgt_pkt_key] = [time.time(), hash]
-            Store.hset(f"{scope}__override__{target_name}", packet_name, json.dumps(hash))
+            CvtModel.override_cache[tgt_pkt_key] = [time.time(), pkt_hash]
+            Store.hset(f"{scope}__override__{target_name}", packet_name, json.dumps(pkt_hash))
 
     @classmethod
     def determine_latest_packet_for_item(cls, target_name, item_name, cache_timeout=0.1, scope=OPENC3_SCOPE):
@@ -298,14 +298,14 @@ class CvtModel(Model):
         latest = -1
         latest_packet_name = None
         for packet_name in packet_names:
-            hash = cls.get(
+            pkt_hash = cls.get(
                 target_name,
                 packet_name,
                 cache_timeout,
                 scope,
             )
-            if hash["PACKET_TIMESECONDS"] and hash["PACKET_TIMESECONDS"] > latest:
-                latest = hash["PACKET_TIMESECONDS"]
+            if pkt_hash["PACKET_TIMESECONDS"] and pkt_hash["PACKET_TIMESECONDS"] > latest:
+                latest = pkt_hash["PACKET_TIMESECONDS"]
                 latest_packet_name = packet_name
         if latest == -1:
             raise RuntimeError(f"Item '{target_name} LATEST {item_name}' does not exist for scope: {scope}")
@@ -361,22 +361,22 @@ class CvtModel(Model):
     @classmethod
     def _get_overrides(cls, now, tgt_pkt_key, overrides, target_name, packet_name, cache_timeout, scope):
         if tgt_pkt_key in CvtModel.override_cache:
-            cache_time, hash = CvtModel.override_cache[tgt_pkt_key]
+            cache_time, pkt_hash = CvtModel.override_cache[tgt_pkt_key]
             if (now - cache_time) < cache_timeout:
-                overrides[tgt_pkt_key] = hash
-                return hash
+                overrides[tgt_pkt_key] = pkt_hash
+                return pkt_hash
         override_data = Store.hget(f"{scope}__override__{target_name}", packet_name)
         if override_data is not None:
-            hash = json.loads(override_data)
-            overrides[tgt_pkt_key] = hash
+            pkt_hash = json.loads(override_data)
+            overrides[tgt_pkt_key] = pkt_hash
         else:
-            hash = {}
+            pkt_hash = {}
             overrides[tgt_pkt_key] = {}
-        CvtModel.override_cache[tgt_pkt_key] = [now, hash]  # always update
-        return hash
+        CvtModel.override_cache[tgt_pkt_key] = [now, pkt_hash]  # always update
+        return pkt_hash
 
     # parse item and update lookups with packet_name and target_name and keys
-    # return an ordered array of hash with keys
+    # return an ordered array of dict with keys
     @classmethod
     def _parse_item(cls, now, lookups, overrides, item, cache_timeout, scope):
         target_name, packet_name, item_name, value_type = item

@@ -79,7 +79,7 @@ def print_usage
   puts "  cli bridgesetup CONFIG_FILENAME   # Create a default config file"
   puts "  cli pkginstall PKGFILENAME SCOPE  # Install loaded package (Ruby gem or python package)"
   puts "  cli pkguninstall PKGFILENAME SCOPE  # Uninstall loaded package (Ruby gem or python package)"
-  puts "  cli rubysloc                      # Counts Ruby SLOC recursively. Run with --help for more info."
+  puts "  cli rubysloc                      # DEPRECATED: Please use scc (https://github.com/boyter/scc)"
   puts "  cli xtce_converter                # Convert to and from the XTCE format. Run with --help for more info."
   puts "  cli cstol_converter               # Converts CSTOL files (.prc) to COSMOS. Run with --help for more info."
   puts ""
