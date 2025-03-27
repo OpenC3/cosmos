@@ -22,11 +22,7 @@
 -->
 <template>
   <div class="tree-node">
-    <div
-      @click="handleClick(node)"
-      class="node-content"
-      v-if="showNode"
-    >
+    <div @click="handleClick(node)" class="node-content" v-if="showNode">
       <div class="content-wrapper">
         <v-icon
           v-if="node.children"
@@ -113,7 +109,7 @@ const showNode = computed(() => {
     if (!props.search) {
       return true
     }
-    if (node.path.toLowerCase().includes(props.search)) {
+    if (node.path.toLowerCase().includes(props.search.toLowerCase())) {
       return true
     }
     return !!node.children?.some(_nodeOrChildMatchesSearch)
