@@ -61,10 +61,10 @@ class Model:
         """
         base = cls.store().hgetall(primary_key)
         # decode the binary string keys to strings
-        hash_ = {k.decode(): v for (k, v) in base.items()}
-        for key, value in hash_.items():
-            hash_[key] = json.loads(value)
-        return hash_
+        decoded = {k.decode(): v for (k, v) in base.items()}
+        for key, value in decoded.items():
+            decoded[key] = json.loads(value)
+        return decoded
 
     # END NOTE
 
