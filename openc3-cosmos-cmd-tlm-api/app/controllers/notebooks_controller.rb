@@ -1,4 +1,5 @@
-/*
+# encoding: ascii-8bit
+
 # Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
@@ -14,28 +15,10 @@
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
-*/
 
-import { createRouter, createWebHistory } from 'vue-router'
-import { prependBasePath } from '@openc3/js-common/utils'
-import { NotFound } from '@openc3/vue-common/components'
-import { ScriptRunner } from '@openc3/vue-common/tools/scriptrunner'
-
-const routes = [
-  {
-    path: '/:id?',
-    name: 'ScriptRunner',
-    component: ScriptRunner,
-  },
-  {
-    path: '/:pathMatch(.)*',
-    name: 'NotFound',
-    component: NotFound,
-  },
-]
-routes.forEach(prependBasePath)
-
-export default createRouter({
-  history: createWebHistory(),
-  routes,
-})
+begin
+  require 'openc3-enterprise/controllers/notebooks_controller'
+rescue LoadError
+  class NotebooksController
+  end
+end

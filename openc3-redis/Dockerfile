@@ -43,4 +43,5 @@ RUN ["chmod", "-R", "777", "/home/data/"]
 EXPOSE 3680
 USER redis
 
+WORKDIR /data
 CMD [ "redis-server", "/config/redis.conf" ]
