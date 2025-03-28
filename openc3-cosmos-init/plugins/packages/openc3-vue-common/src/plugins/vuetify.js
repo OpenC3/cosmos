@@ -18,7 +18,7 @@
 
 import { createVuetify } from 'vuetify'
 import { mdi } from 'vuetify/iconsets/mdi'
-import { AstroIconVuetifySets } from '@/icons'
+import { AstroIconVuetifySets, CustomIconSet } from '@/icons'
 import cosmosDark from './cosmosThemeDark'
 
 export default createVuetify({
@@ -33,6 +33,7 @@ export default createVuetify({
     sets: {
       mdi,
       ...AstroIconVuetifySets,
+      ...CustomIconSet,
     },
   },
 })
