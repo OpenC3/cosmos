@@ -25,6 +25,8 @@ test.use({
   toolName: 'Script Runner',
 })
 
+test.describe.configure({ mode: 'serial' })
+
 test('prompts for hazardous commands', async ({ page, utils }) => {
   await page.locator('textarea').fill('cmd("INST CLEAR")')
   await page.locator('[data-test=start-button]').click()

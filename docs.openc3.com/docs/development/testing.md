@@ -39,8 +39,17 @@ sidebar_custom_props:
 
 1. Run tests (Note the --headed option visually displays tests, leave it off to run in the background)
 
+   Tests are split into a group that runs in parallel and a group that runs serially. This is done to improve overall execution time.
+
    ```bash
-   cosmos-playwright % yarn playwright test --project=chromium --headed
+   cosmos-playwright % yarn test:parallel --headed
+   cosmos-playwright % yarn test:serial --headed
+   ```
+
+   You can run both groups together, but the --headed option will not apply to both groups:
+
+   ```bash
+   cosmos-playwright % yarn test
    ```
 
 1. _[Optional]_ Fix istanbul/nyc coverage source lookups (use `fixwindows` if not on Linux).
