@@ -170,12 +170,15 @@ class TargetModel(Model):
 
     @classmethod
     def rebuild_target_allitems_list(cls, target_name: str, type: str = "TLM", scope: str = OPENC3_SCOPE):
-        score = 0 # https://redis.io/docs/latest/develop/data-types/sorted-sets/#lexicographical-scores
         for packet in cls.packets(target_name, scope=scope):
             for item in packet["items"]:
-                Store.zadd(f"{scope}__openc3tlm__{target_name}__allitems", score, item["name"])
+                cls.add_to_target_allitems_list(target_name, item["name"], scope=scope)
         return Store.zrange(f"{scope}__openc3tlm__{target_name}__allitems", 0, -1) # return the new sorted set to let redis do the sorting
 
+    @classmethod
+    def add_to_target_allitems_list(cls, target_name: str, item_name: str, scope: str = OPENC3_scope):
+        score = 0 # https://redis.io/docs/latest/develop/data-types/sorted-sets/#lexicographical-scores
+        Store.zadd(f"{scope}__openc3tlm__{target_name}__allitems", score, item_name)
 
     # @return [Hash{String => Array<Array<String, String, String>>}]
     @classmethod
@@ -274,6 +277,7 @@ class TargetModel(Model):
         for target_name, packets in packet_hash.items():
             if clear_old:
                 Store.delete(f"{self.scope}__openc3tlm__{target_name}")
+                Store.delete(f"{self.scope}__openc3tlm__{target_name}__allitems")
             for packet_name, packet in packets.items():
                 Logger.debug(f"Configuring tlm packet= {target_name} {packet_name}")
                 try:
@@ -284,6 +288,7 @@ class TargetModel(Model):
                 json_hash = {}
                 for item in packet.sorted_items:
                     json_hash[item.name] = None
+                    TargetModel.add_to_target_allitems_list(target_name, item.name, scope=self.scope)
                 # Use Store.hset directly instead of CvtModel.set to avoid circular dependency
                 Store.hset(
                     f"{self.scope}__tlm__{packet.target_name}",

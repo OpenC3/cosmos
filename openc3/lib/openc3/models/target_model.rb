@@ -789,8 +789,10 @@ module OpenC3
 
     def update_store_telemetry(packet_hash, clear_old: true)
       packet_hash.each do |target_name, packets|
-        Store.del("#{@scope}__openc3tlm__#{target_name}") if clear_old
-        Store.del("#{@scope}__openc3tlm__#{target_name}__allitems") if clear_old
+        if clear_old
+          Store.del("#{@scope}__openc3tlm__#{target_name}")
+          Store.del("#{@scope}__openc3tlm__#{target_name}__allitems")
+        end
         packets.each do |packet_name, packet|
           Logger.debug "Configuring tlm packet: #{target_name} #{packet_name}"
           begin
