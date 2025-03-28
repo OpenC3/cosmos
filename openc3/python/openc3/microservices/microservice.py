@@ -56,6 +56,7 @@ class Microservice:
                 microservice.error = err
                 microservice.state = "DIED_ERROR"
             Logger.fatal(f"Microservice {microservice.name} dying from exception\n{traceback.format_exc()}")
+            microservice.shutdown() # Dying in crash so should try to shutdown
         finally:
             if microservice:
                 MicroserviceStatusModel.set(microservice.as_json(), scope=microservice.scope)

@@ -137,7 +137,7 @@ class TestInterfaceApi(unittest.TestCase):
         self.assertEqual(info[0][5], 0)
         self.assertEqual(info[0][6], 0)
         self.assertEqual(info[0][7], 0)
-        self.assertEqual(info[0][8], 0)
+        # self.assertEqual(info[0][8], 0) # Might increment because InterfaceMicroservice is running
         self.assertEqual(info[0][9], False)
 
         model = InterfaceModel.get_model(name="INST_INT", scope="DEFAULT")
@@ -153,7 +153,7 @@ class TestInterfaceApi(unittest.TestCase):
         self.assertEqual(info[0][5], 0)
         self.assertEqual(info[0][6], 0)
         self.assertEqual(info[0][7], 0)
-        self.assertEqual(info[0][8], 0)
+        # self.assertEqual(info[0][8], 0) # Might increment because InterfaceMicroservice is running
         self.assertEqual(info[0][9], True)
 
     def test_successfully_maps_a_target_to_an_interface(self):

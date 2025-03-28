@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -13,6 +13,9 @@
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+#
+# A portion of this file was funded by Blue Origin Enterprises, L.P.
+# See https://github.com/OpenC3/cosmos/pull/1963
 
 from datetime import datetime, timezone
 import json
@@ -21,7 +24,7 @@ from openc3.topics.topic import Topic
 from openc3.topics.telemetry_topic import TelemetryTopic
 from openc3.utilities.time import to_nsec_from_epoch
 from openc3.utilities.json import JsonEncoder, JsonDecoder
-
+from openc3.models.target_model import TargetModel
 
 def handle_inject_tlm(inject_tlm_json, scope):
     inject_tlm_hash = json.loads(inject_tlm_json, cls=JsonDecoder)
@@ -33,8 +36,8 @@ def handle_inject_tlm(inject_tlm_json, scope):
     if item_hash:
         for name, value in item_hash.items():
             packet.write(str(name), value, type)
-    packet.received_count += 1
     packet.received_time = datetime.now(timezone.utc)
+    packet.received_count = TargetModel.increment_telemetry_count(packet.target_name, packet.packet_name, 1, scope=scope)
     TelemetryTopic.write_packet(packet, scope)
 
 

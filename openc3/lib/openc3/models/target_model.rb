@@ -14,11 +14,14 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+#
+# A portion of this file was funded by Blue Origin Enterprises, L.P.
+# See https://github.com/OpenC3/cosmos/pull/1953 and https://github.com/OpenC3/cosmos/pull/1963
 
 require 'openc3/top_level'
 require 'openc3/models/model'
@@ -1233,6 +1236,108 @@ module OpenC3
         # Multi Microservice to parent other target microservices
         deploy_multi_microservice(gem_path, variables)
       end
+    end
+
+    def self.increment_telemetry_count(target_name, packet_name, count, scope:)
+      result = Store.hincrby("#{scope}__TELEMETRYCNTS__{#{target_name}}", packet_name, count)
+      if String === result
+        return result.to_i
+      else
+        return result
+      end
+    end
+
+    def self.get_all_telemetry_counts(target_name, scope:)
+      result = {}
+      get_all = Store.hgetall("#{scope}__TELEMETRYCNTS__{#{target_name}}")
+      if Hash === get_all
+        get_all.each do |key, value|
+          result[key] = value.to_i
+        end
+      else
+        return result
+      end
+    end
+
+    def self.get_telemetry_count(target_name, packet_name, scope:)
+      value = Store.hget("#{scope}__TELEMETRYCNTS__{#{target_name}}", packet_name)
+      if String === value
+        return value.to_i
+      elsif value.nil?
+        return 0 # Return 0 if the key doesn't exist
+      else
+        return value
+      end
+    end
+
+    def self.get_telemetry_counts(target_packets, scope:)
+      result = Store.redis_pool.pipelined do
+        target_packets.each do |target_name, packet_name|
+          target_name = target_name.upcase
+          packet_name = packet_name.upcase
+          Store.hget("#{scope}__TELEMETRYCNTS__{#{target_name}}", packet_name)
+        end
+      end
+      counts = []
+      result.each do |count|
+        if count
+          counts << count.to_i
+        else
+          counts << 0
+        end
+      end
+      return counts
+    end
+
+    def self.increment_command_count(target_name, packet_name, count, scope:)
+      result = Store.hincrby("#{scope}__COMMANDCNTS__{#{target_name}}", packet_name, count)
+      if String === result
+        return result.to_i
+      else
+        return result
+      end
+    end
+
+    def self.get_all_command_counts(target_name, scope:)
+      result = {}
+      get_all = Store.hgetall("#{scope}__COMMANDCNTS__{#{target_name}}")
+      if Hash === get_all
+        get_all.each do |key, value|
+          result[key] = value.to_i
+        end
+      else
+        return result
+      end
+    end
+
+    def self.get_command_count(target_name, packet_name, scope:)
+      value = Store.hget("#{scope}__COMMANDCNTS__{#{target_name}}", packet_name)
+      if String === value
+        return value.to_i
+      elsif value.nil?
+        return 0 # Return 0 if the key doesn't exist
+      else
+        return value
+      end
+    end
+
+    def self.get_command_counts(target_packets, scope:)
+      result = Store.redis_pool.pipelined do
+        target_packets.each do |target_name, packet_name|
+          target_name = target_name.upcase
+          packet_name = packet_name.upcase
+          Store.hget("#{scope}__COMMANDCNTS__{#{target_name}}", packet_name)
+        end
+      end
+      counts = []
+      result.each do |count|
+        if count
+          counts << count.to_i
+        else
+          counts << 0
+        end
+      end
+      return counts
     end
   end
 end

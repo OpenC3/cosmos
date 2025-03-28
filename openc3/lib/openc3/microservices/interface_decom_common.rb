@@ -15,6 +15,9 @@
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+#
+# A portion of this file was funded by Blue Origin Enterprises, L.P.
+# See https://github.com/OpenC3/cosmos/pull/1963
 
 require 'openc3/topics/telemetry_topic'
 require 'openc3/system/system'
@@ -33,8 +36,8 @@ module OpenC3
           packet.write(name.to_s, value, type)
         end
       end
-      packet.received_count += 1
       packet.received_time = Time.now.sys
+      packet.received_count = TargetModel.increment_telemetry_count(packet.target_name, packet.packet_name, 1, scope: @scope)
       TelemetryTopic.write_packet(packet, scope: @scope)
     # If the inject_tlm parameters are bad we rescue so
     # interface_microservice and decom_microservice can continue
