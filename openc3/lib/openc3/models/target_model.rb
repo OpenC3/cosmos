@@ -335,6 +335,7 @@ module OpenC3
       end
     end
 
+    # Make sure to update target_model.py if you add additional parameters
     def initialize(
       name:,
       folder_name: nil,
@@ -788,8 +789,10 @@ module OpenC3
 
     def update_store_telemetry(packet_hash, clear_old: true)
       packet_hash.each do |target_name, packets|
-        Store.del("#{@scope}__openc3tlm__#{target_name}") if clear_old
-        Store.del("#{@scope}__openc3tlm__#{target_name}__allitems") if clear_old
+        if clear_old
+          Store.del("#{@scope}__openc3tlm__#{target_name}")
+          Store.del("#{@scope}__openc3tlm__#{target_name}__allitems")
+        end
         packets.each do |packet_name, packet|
           Logger.debug "Configuring tlm packet: #{target_name} #{packet_name}"
           begin
@@ -861,6 +864,8 @@ module OpenC3
       return system
     end
 
+    # NOTE: If you call dynamic_update multiple times you should specify a different
+    # filename parameter or the last one will be overwritten
     def dynamic_update(packets, cmd_or_tlm = :TELEMETRY, filename = "dynamic_tlm.txt")
       # Build hash of targets/packets
       packet_hash = {}
@@ -889,17 +894,15 @@ module OpenC3
         config << "\n"
       end
       configs.each do |target_name, config|
-        begin
-          bucket_key = "#{@scope}/targets_modified/#{target_name}/cmd_tlm/#{filename}"
-          client = Bucket.getClient()
-          client.put_object(
-            # Use targets_modified to save modifications
-            # This keeps the original target clean (read-only)
-            bucket: ENV['OPENC3_CONFIG_BUCKET'],
-            key: bucket_key,
-            body: config
-          )
-        end
+        bucket_key = "#{@scope}/targets_modified/#{target_name}/cmd_tlm/#{filename}"
+        client = Bucket.getClient()
+        client.put_object(
+          # Use targets_modified to save modifications
+          # This keeps the original target clean (read-only)
+          bucket: ENV['OPENC3_CONFIG_BUCKET'],
+          key: bucket_key,
+          body: config
+        )
       end
 
       # Inform microservices of new topics

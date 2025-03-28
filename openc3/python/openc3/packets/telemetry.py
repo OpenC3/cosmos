@@ -10,9 +10,12 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
-
+#
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+#
+# A portion of this file was funded by Blue Origin Enterprises, L.P.
+# See https://github.com/OpenC3/cosmos/pull/1953
 
 
 class Telemetry:
@@ -122,10 +125,10 @@ class Telemetry:
                 if len(target_packets) > 0:
                     packet = next(iter(target_packets.values()))
                     key = packet.read_id_values(packet_data)
-                    hash = self.config.tlm_id_value_hash[target_name]
-                    identified_packet = hash.get(repr(key))
+                    id_values = self.config.tlm_id_value_hash[target_name]
+                    identified_packet = id_values.get(repr(key))
                     if identified_packet is None:
-                        identified_packet = hash.get("CATCHALL")
+                        identified_packet = id_values.get("CATCHALL")
                     if identified_packet is not None:
                         return identified_packet
 
@@ -192,3 +195,6 @@ class Telemetry:
     #   packet name returning the packet.
     def all(self):
         return self.config.telemetry
+
+    def dynamic_add_packet(self, packet, affect_ids=False):
+        self.config.dynamic_add_packet(packet, "TELEMETRY", affect_ids=affect_ids)

@@ -12,13 +12,16 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
-
+#
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+#
+# A portion of this file was funded by Blue Origin Enterprises, L.P.
+# See https://github.com/OpenC3/cosmos/pull/1953
 
 require 'spec_helper'
 require 'openc3'
@@ -1116,6 +1119,19 @@ module OpenC3
         expect(p.buffer).to eql "\x03\x04\x01\x02\x02\x04\x06\x08"
         p.restore_defaults(p.buffer(false))
         expect(p.buffer).to eql "\x03\x04\x01\x02\x04\x06\x08\x0A"
+      end
+    end
+
+    describe "clear_all_non_derived_items" do
+      it "resets the packet to just derived items" do
+        p = Packet.new("tgt", "pkt")
+        p.append_item("test1", 8, :UINT, 16)
+        p.append_item("test2", 16, :UINT)
+        i3 = p.define_item("test3", 0, 0, :DERIVED)
+        i3.read_conversion = GenericConversion.new("packet.read('TEST1')")
+        expect(p.items.keys).to eql %w(TEST1 TEST2 TEST3)
+        p.clear_all_non_derived_items()
+        expect(p.items.keys).to eql %w(TEST3)
       end
     end
 

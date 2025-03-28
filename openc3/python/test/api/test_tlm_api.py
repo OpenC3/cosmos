@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -13,6 +13,9 @@
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+
+# A portion of this file was funded by Blue Origin Enterprises, L.P.
+# See https://github.com/OpenC3/cosmos/pull/1957
 
 import time
 from datetime import datetime, timezone, timedelta

@@ -43,7 +43,8 @@ class ScriptsController < ApplicationController
     scope = sanitize_params([:scope])
     return unless scope
     scope = scope[0]
-    render json: Script.all(scope)
+    target = params[:target]
+    render json: Script.all(scope, target)
   end
 
   def delete_temp

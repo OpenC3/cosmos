@@ -126,6 +126,33 @@ module OpenC3
       it "gets interface name and all info" do
         info = @api.get_all_interface_info.sort
         expect(info[0][0]).to eq "INST_INT"
+        expect(info[0][1]).to eq "CONNECTED"
+        expect(info[0][2]).to eq 0
+        expect(info[0][3]).to eq 0
+        expect(info[0][4]).to eq 0
+        expect(info[0][5]).to eq 0
+        expect(info[0][6]).to eq 0
+        expect(info[0][7]).to eq 0
+        expect(info[0][8]).to eq 0
+        expect(info[0][9]).to eq false
+        expect(info[0][10]).to be nil
+
+        model = InterfaceModel.get_model(name: "INST_INT", scope: "DEFAULT")
+        model.disable_disconnect = true
+        model.update
+
+        info = @api.get_all_interface_info.sort
+        expect(info[0][0]).to eq "INST_INT"
+        expect(info[0][1]).to eq "CONNECTED"
+        expect(info[0][2]).to eq 0
+        expect(info[0][3]).to eq 0
+        expect(info[0][4]).to eq 0
+        expect(info[0][5]).to eq 0
+        expect(info[0][6]).to eq 0
+        expect(info[0][7]).to eq 0
+        expect(info[0][8]).to eq 0
+        expect(info[0][9]).to eq true # disable disconnect
+        expect(info[0][10]).to be nil
       end
     end
 

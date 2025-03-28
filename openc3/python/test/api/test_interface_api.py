@@ -130,7 +130,31 @@ class TestInterfaceApi(unittest.TestCase):
     def test_gets_interface_name_and_all_info(self):
         info = get_all_interface_info()
         self.assertEqual(info[0][0], "INST_INT")
-        self.assertIn(get_interface("INST_INT")["state"], ["ATTEMPTING", "CONNECTED"])
+        self.assertIn(info[0][1], ["ATTEMPTING", "CONNECTED"])
+        self.assertEqual(info[0][2], 0)
+        self.assertEqual(info[0][3], 0)
+        self.assertEqual(info[0][4], 0)
+        self.assertEqual(info[0][5], 0)
+        self.assertEqual(info[0][6], 0)
+        self.assertEqual(info[0][7], 0)
+        self.assertEqual(info[0][8], 0)
+        self.assertEqual(info[0][9], False)
+
+        model = InterfaceModel.get_model(name="INST_INT", scope="DEFAULT")
+        model.disable_disconnect = True
+        model.update()
+
+        info = get_all_interface_info()
+        self.assertEqual(info[0][0], "INST_INT")
+        self.assertIn(info[0][1], ["ATTEMPTING", "CONNECTED"])
+        self.assertEqual(info[0][2], 0)
+        self.assertEqual(info[0][3], 0)
+        self.assertEqual(info[0][4], 0)
+        self.assertEqual(info[0][5], 0)
+        self.assertEqual(info[0][6], 0)
+        self.assertEqual(info[0][7], 0)
+        self.assertEqual(info[0][8], 0)
+        self.assertEqual(info[0][9], True)
 
     def test_successfully_maps_a_target_to_an_interface(self):
         TargetModel(name="INST", scope="DEFAULT").create()

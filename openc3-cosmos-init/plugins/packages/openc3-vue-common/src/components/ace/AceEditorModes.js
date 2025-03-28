@@ -27,9 +27,6 @@ import 'ace-builds/src-min-noconflict/ext-searchbox'
 import { OpenC3Api } from '@openc3/js-common/services'
 
 export default {
-  data: {
-    configKey: '',
-  },
   methods: {
     buildLanguageMode(HighlightRules, FoldMode) {
       let oop = ace.require('ace/lib/oop')
