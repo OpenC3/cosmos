@@ -1007,7 +1007,6 @@ export default {
 
     // Make NEW_FILENAME available to the template
     this.NEW_FILENAME = NEW_FILENAME
-    //window.onbeforeunload = this.unlockFile
 
     let user = OpenC3Auth.user()
     let roles = OpenC3Auth.userroles()

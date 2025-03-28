@@ -93,7 +93,7 @@ RUN apk update \
   && pip3 install --upgrade pip setuptools \
   && pip3 install poetry \
   && pip3 install poetry-plugin-export \
-  # Note this is needed to preven pip disappearing in some build environments
+  # Note this is needed to prevent pip disappearing in some build environments
   && cp /openc3/venv/bin/pip* /openc3
 
 # Note this is needed to fix pip files disappearing in some build environments
