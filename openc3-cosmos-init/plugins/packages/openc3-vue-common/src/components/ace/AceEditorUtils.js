@@ -16,6 +16,9 @@
 # if purchased from OpenC3, Inc.
 */
 
+import 'ace-builds/src-min-noconflict/keybinding-vim'
+import 'ace-builds/src-min-noconflict/ext-searchbox'
+
 const VIM_MODE_STORAGE_KEY = 'openc3-ace-vim-mode-enabled'
 const VIM_KEYBOARD_HANDLER = 'ace/keyboard/vim'
 
