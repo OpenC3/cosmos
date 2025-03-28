@@ -402,15 +402,18 @@ module OpenC3
       nil
     end
 
-    def self.local_target_files(scope:, path_matchers:, include_temp: false)
+    def self.local_target_files(scope:, path_matchers:, include_temp: false, target: nil)
       files = []
       local_catalog = build_local_catalog(scope: scope)
       local_catalog.each do |key, _size|
         split_key = key.split('/')
         # DEFAULT/targets_modified/__TEMP__/YYYY_MM_DD_HH_MM_SS_mmm_temp.rb
         # See target_file.rb TEMP_FOLDER
-        if split_key[2] === '__TEMP__'
+        if split_key[2] == '__TEMP__'
           files << split_key[2..-1].join('/') if include_temp
+          next
+        end
+        if target and split_key[2] != target
           next
         end
         if path_matchers

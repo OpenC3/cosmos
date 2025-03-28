@@ -85,6 +85,12 @@
                   {{ docsKeyword }} documentation
                 </v-list-item-title>
               </v-list-item>
+              <v-divider />
+              <v-list-item
+                title="Toggle Vim mode"
+                prepend-icon="extras:vim"
+                @click="toggleVimMode"
+              />
             </v-list>
           </v-menu>
         </v-row>
@@ -129,6 +135,7 @@ import 'ace-builds/src-min-noconflict/theme-twilight'
 import 'ace-builds/src-min-noconflict/ext-language_tools'
 import 'ace-builds/src-min-noconflict/ext-searchbox'
 import { ScreenCompleter } from './autocomplete'
+import { AceEditorUtils } from './ace'
 
 export default {
   props: {
@@ -209,6 +216,7 @@ export default {
     this.editor.setHighlightActiveLine(false)
     this.editor.setValue(this.definition)
     this.editor.clearSelection()
+    AceEditorUtils.applyVimModeIfEnabled(this.editor)
     this.editor.focus()
   },
   beforeUnmount() {
@@ -216,6 +224,9 @@ export default {
     this.editor.container.remove()
   },
   methods: {
+    toggleVimMode: function () {
+      AceEditorUtils.toggleVimMode(this.editor)
+    },
     showContextMenu: function (event) {
       this.menuX = event.pageX
       this.menuY = event.pageY

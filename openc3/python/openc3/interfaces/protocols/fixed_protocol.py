@@ -102,17 +102,17 @@ class FixedProtocol(BurstProtocol):
                         identified_packet = packet
                         break
             else:
-                # Do a hash lookup to quickly identify the packet
+                # Do a lookup to quickly identify the packet
                 if len(target_packets) > 0:
                     packet = next(iter(target_packets.values()))
                     key = packet.read_id_values(self.data[self.discard_leading_bytes :])
                     if self.telemetry:
-                        hash = System.telemetry.config.tlm_id_value_hash[target_name]
+                        id_values = System.telemetry.config.tlm_id_value_hash[target_name]
                     else:
-                        hash = System.commands.config.cmd_id_value_hash[target_name]
-                    identified_packet = hash.get(repr(key))
+                        id_values = System.commands.config.cmd_id_value_hash[target_name]
+                    identified_packet = id_values.get(repr(key))
                     if identified_packet is None:
-                        identified_packet = hash.get("CATCHALL")
+                        identified_packet = id_values.get("CATCHALL")
 
             if identified_packet is not None:
                 if identified_packet.defined_length + self.discard_leading_bytes > len(self.data):

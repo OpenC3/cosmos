@@ -179,6 +179,11 @@ Rails.application.routes.draw do
     post "/screen", to: "screens#create"
     delete '/screen/:target/:screen', to: 'screens#destroy'
 
+    get "/notebooks", to: "notebooks#index"
+    get "/notebook/:target/:notebook", to: "notebooks#show"
+    post "/notebook", to: "notebooks#create"
+    delete '/notebook/:target/:notebook', to: 'notebooks#destroy'
+
     get "/secrets", to: "secrets#index"
     post "/secrets/:key", to: "secrets#create", key: /[^\/]+/
     delete '/secrets/:key', to: 'secrets#destroy', key: /[^\/]+/

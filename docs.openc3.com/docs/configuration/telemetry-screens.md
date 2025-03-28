@@ -356,6 +356,7 @@ The VERTICALBOX widget sizes itself to fit its contents vertically and to fit th
 Example Usage:
 ```ruby
 VERTICALBOX Info
+  SUBSETTING 1 RAW border "1px dashed green"
   LABEL "TEST"
   LABEL "SCREEN"
 END
@@ -395,6 +396,8 @@ The HORIZONTALBOX widget sizes itself to fit its contents
 Example Usage:
 ```ruby
 HORIZONTALBOX Info 10
+  SUBSETTING 0 RAW text-align CENTER
+  SUBSETTING 1 RAW border "1px solid blue"
   LABEL "TEST"
   LABEL "SCREEN"
 END
