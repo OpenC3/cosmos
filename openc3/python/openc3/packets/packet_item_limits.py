@@ -88,3 +88,16 @@ class PacketItemLimits:
             self.__response = response
         else:
             self.__response = None
+
+    def as_json(self):
+        limits = {}
+        limits['values'] = self.__values
+        limits['enabled'] = self.enabled
+        limits['state'] = self.__state
+        if self.__response:
+            limits['response'] = str(self.__response)
+        else:
+            limits['response'] = None
+        limits['persistence_setting'] = self.persistence_setting
+        limits['persistence_count'] = self.persistence_count
+        return limits

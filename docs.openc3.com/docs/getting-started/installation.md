@@ -1,5 +1,5 @@
 ---
-sidebar_position: 1
+sidebar_position: 2
 title: Installation
 description: Installing OpenC3 COSMOS
 sidebar_custom_props:
@@ -35,7 +35,7 @@ Docker by default will break idle (no data) connections after a period of 5 minu
 
 ### CLONE PROJECT
 
-We recommend using the COSMOS [project template](key_concepts#projects) to get started.
+We recommend using the COSMOS [project template](key-concepts#projects) to get started.
 
 ```bash
 git clone https://github.com/OpenC3/cosmos-project.git

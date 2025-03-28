@@ -14,11 +14,14 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+#
+# A portion of this file was funded by Blue Origin Enterprises, L.P.
+# See https://github.com/OpenC3/cosmos/pull/1953
 
 require 'spec_helper'
 require 'fileutils'
@@ -199,11 +202,33 @@ module OpenC3
          expect(lgs).to be_a(Hash)
       end
 
-      it "gets item-to-packet map" do
+      it "gets item-to-packet map from cache" do
+        orig_cache = TargetModel.class_variable_get(:@@item_map_cache).dup
         itpm = TargetModel.get_item_to_packet_map("INST", scope: "DEFAULT")
         expect(itpm).to be_a(Hash)
         expect(itpm["CCSDSVER"]).to be_a(Array)
         expect(itpm["CCSDSVER"]).to eql(%w(ADCS HEALTH_STATUS HIDDEN IMAGE MECH PARAMS))
+        # Verify cached time was NOT updated
+        cache = TargetModel.class_variable_get(:@@item_map_cache)
+        expect(cache["INST"][0]).to eq(orig_cache["INST"][0])
+      end
+
+      it "gets item-to-packet map on an invalid cache" do
+        orig_cache = TargetModel.class_variable_get(:@@item_map_cache).dup
+        timeout = TargetModel::ITEM_MAP_CACHE_TIMEOUT
+        OpenC3.disable_warnings do
+          TargetModel::ITEM_MAP_CACHE_TIMEOUT = 0
+        end
+        itpm = TargetModel.get_item_to_packet_map("INST", scope: "DEFAULT")
+        expect(itpm).to be_a(Hash)
+        expect(itpm["CCSDSVER"]).to be_a(Array)
+        expect(itpm["CCSDSVER"]).to eql(%w(ADCS HEALTH_STATUS HIDDEN IMAGE MECH PARAMS))
+        # Verify cached time was updated
+        cache = TargetModel.class_variable_get(:@@item_map_cache)
+        expect(cache["INST"][0]).to be > orig_cache["INST"][0]
+        OpenC3.disable_warnings do
+          TargetModel::ITEM_MAP_CACHE_TIMEOUT = timeout
+        end
       end
 
       it "raises for an unknown type" do
@@ -498,6 +523,7 @@ module OpenC3
         tf.puts "PACKET REDUCER"
         tf.puts "PACKET DECOM"
         tf.puts "DISABLE_ERB"
+        tf.puts "SHARD 9"
         tf.puts "TARGET_MICROSERVICE CLEANUP"
         tf.puts "TLM_LOG_CYCLE_TIME 5"
         tf.puts "TLM_LOG_CYCLE_SIZE 6"
@@ -516,6 +542,7 @@ module OpenC3
         expect(json['tlm_log_cycle_size']).to eql 6
         expect(json['tlm_decom_log_cycle_time']).to eql 7
         expect(json['tlm_decom_log_cycle_size']).to eql 8
+        expect(json['shard']).to eql 9
         tf.unlink
       end
     end
@@ -524,7 +551,6 @@ module OpenC3
       before(:each) do
         @scope = "DEFAULT"
         @target = "INST"
-        @client = Bucket.getClient
         @target_dir = File.join(SPEC_DIR, "install", "config")
       end
 
@@ -557,8 +583,8 @@ module OpenC3
       it "creates and deploys Target microservices" do
         variables = { "test" => "example" }
         umodel = double(MicroserviceModel)
-        expect(umodel).to receive(:create).exactly(7).times
-        expect(umodel).to receive(:deploy).with(@target_dir, variables).exactly(7).times
+        expect(umodel).to receive(:create).exactly(8).times
+        expect(umodel).to receive(:deploy).with(@target_dir, variables).exactly(8).times
         # Verify the microservices that are started
         expect(MicroserviceModel).to receive(:new).with(hash_including(
                                                           name: "#{@scope}__COMMANDLOG__#{@target}",
@@ -595,7 +621,12 @@ module OpenC3
                                                           plugin: 'PLUGIN',
                                                           scope: @scope
                                                         )).and_return(umodel)
-        model = TargetModel.new(folder_name: @target, name: @target, scope: @scope, plugin: 'PLUGIN')
+        expect(MicroserviceModel).to receive(:new).with(hash_including(
+                                                          name: "#{@scope}__CLEANUP__#{@target}",
+                                                          plugin: 'PLUGIN',
+                                                          scope: @scope
+                                                        )).and_return(umodel)
+        model = TargetModel.new(folder_name: @target, name: @target, scope: @scope, plugin: 'PLUGIN', tlm_log_retain_time: 60)
         model.create
         capture_io do |stdout|
           model.deploy(@target_dir, variables)
@@ -754,6 +785,75 @@ module OpenC3
         expect(targets.keys).to_not include("INST")
         keys = get_all_redis_keys()
         expect(orig_keys.sort).to eql keys.sort
+      end
+    end
+
+    describe "dynamic_update" do
+      before(:each) do
+        @scope = "DEFAULT"
+        @target = "INST"
+        setup_system()
+        @model = TargetModel.new(folder_name: @target, name: "INST", scope: @scope)
+        @model.create
+        @model.update_store(System.new([@target], File.join(SPEC_DIR, 'install', 'config', 'targets')))
+        @s3 = instance_double("Aws::S3::Client")
+        allow(Aws::S3::Client).to receive(:new).and_return(@s3)
+        allow(@s3).to receive(:head_bucket)
+        allow(@s3).to receive(:delete_bucket)
+      end
+
+      it "adds new commands" do
+        packet = Packet.new("INST", "NEW_CMD")
+        cmd_log_model = MicroserviceModel.new(folder_name: "INST", name: "DEFAULT__COMMANDLOG__INST", scope: @scope)
+        cmd_log_model.create
+        decom_cmd_log_model = MicroserviceModel.new(folder_name: "INST", name: "DEFAULT__DECOMCMDLOG__INST", scope: @scope)
+        decom_cmd_log_model.create
+
+        pkts = Store.hgetall("#{@scope}__openc3cmd__#{@target}")
+        expect(pkts.keys).to_not include("NEW_CMD")
+        expect(pkts.keys).to include("ABORT")
+
+        expect(@s3).to receive(:put_object).with(bucket: 'config', key: "#{@scope}/targets_modified/#{@target}/cmd_tlm/dynamic_tlm.txt", body: anything, cache_control: nil, content_type: nil, metadata: nil, checksum_algorithm: anything)
+
+        @model.dynamic_update([packet], :COMMAND)
+
+        # Make sure the Store gets updated with the new packet
+        pkts = Store.hgetall("#{@scope}__openc3cmd__#{@target}")
+        expect(pkts.keys).to include("NEW_CMD")
+        expect(pkts.keys).to include("ABORT") # Other commands should still be there
+        model = MicroserviceModel.get_model(name: "DEFAULT__COMMANDLOG__INST", scope: @scope)
+        expect(model.topics).to include("DEFAULT__COMMAND__{INST}__NEW_CMD")
+        model = MicroserviceModel.get_model(name: "DEFAULT__DECOMCMDLOG__INST", scope: @scope)
+        expect(model.topics).to include("DEFAULT__DECOMCMD__{INST}__NEW_CMD")
+      end
+
+      it "adds new telemetry" do
+        packet = Packet.new("INST", "NEW_TLM")
+        pkt_log_model = MicroserviceModel.new(folder_name: "INST", name: "DEFAULT__PACKETLOG__INST", scope: @scope)
+        pkt_log_model.create
+        decom_log_model = MicroserviceModel.new(folder_name: "INST", name: "DEFAULT__DECOMLOG__INST", scope: @scope)
+        decom_log_model.create
+        decom_model = MicroserviceModel.new(folder_name: "INST", name: "DEFAULT__DECOM__INST", scope: @scope)
+        decom_model.create
+
+        pkts = Store.hgetall("#{@scope}__openc3tlm__#{@target}")
+        expect(pkts.keys).to_not include("NEW_TLM")
+        expect(pkts.keys).to include("HEALTH_STATUS")
+
+        expect(@s3).to receive(:put_object).with(bucket: 'config', key: "#{@scope}/targets_modified/#{@target}/cmd_tlm/dynamic_tlm.txt", body: anything, cache_control: nil, content_type: nil, metadata: nil, checksum_algorithm: anything)
+
+        @model.dynamic_update([packet], :TELEMETRY)
+
+        # Make sure the Store gets updated with the new packet
+        pkts = Store.hgetall("#{@scope}__openc3tlm__#{@target}")
+        expect(pkts.keys).to include("NEW_TLM")
+        expect(pkts.keys).to include("HEALTH_STATUS") # Other telemetry should still be there
+        model = MicroserviceModel.get_model(name: "DEFAULT__PACKETLOG__INST", scope: @scope)
+        expect(model.topics).to include("DEFAULT__TELEMETRY__{INST}__NEW_TLM")
+        model = MicroserviceModel.get_model(name: "DEFAULT__DECOMLOG__INST", scope: @scope)
+        expect(model.topics).to include("DEFAULT__DECOM__{INST}__NEW_TLM")
+        model = MicroserviceModel.get_model(name: "DEFAULT__DECOM__INST", scope: @scope)
+        expect(model.topics).to include("DEFAULT__TELEMETRY__{INST}__NEW_TLM")
       end
     end
   end

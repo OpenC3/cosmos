@@ -115,6 +115,9 @@ export class ConfigParserService {
       let line = lines[i].trim()
       // Ensure the line length is not 0
       if (line.length === 0) {
+        if (yield_non_keyword_lines) {
+          handler(null, [], this.line, this.lineNumber)
+        }
         continue
       }
 

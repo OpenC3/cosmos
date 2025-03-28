@@ -1,5 +1,5 @@
 /*
-# Copyright 2022 Ball Aerospace & Technologies Corp.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -11,10 +11,6 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
-
-# Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
-# All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -23,12 +19,13 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { prependBasePath } from '@openc3/js-common/utils'
 import { NotFound } from '@openc3/vue-common/components'
+import { ScriptRunner } from '@openc3/vue-common/tools/scriptrunner'
 
 const routes = [
   {
     path: '/:id?',
     name: 'ScriptRunner',
-    component: () => import('./tools/ScriptRunner/ScriptRunner.vue'),
+    component: ScriptRunner,
   },
   {
     path: '/:pathMatch(.)*',

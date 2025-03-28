@@ -290,16 +290,9 @@ test.describe(() => {
     await page.locator('[data-test=script-runner-file]').click()
     await page.locator('text=Save File').click()
     await expect(page.locator('text=File Save As')).toBeVisible()
-    await page
-      .locator('.v-list-group:has-text("PW_TEST")')
-      .first()
-      .getByRole('button')
-      .click()
-    await page
-      .locator('.v-list-group:has-text("PW_TEST")')
-      .first()
-      .locator('.v-list-item:has-text("procedures")')
-      .click()
+    await utils.sleep(500) // Allow background data to fetch
+    await page.getByText('PW_TEST', { exact: true }).click()
+    await page.getByText('procedures', { exact: true }).click()
     const prepend = await page
       .locator('[data-test=file-open-save-filename] input')
       .inputValue()
