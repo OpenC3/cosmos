@@ -1249,7 +1249,7 @@ module OpenC3
     def self.get_all_telemetry_counts(target_name, scope:)
       result = {}
       get_all = Store.hgetall("#{scope}__TELEMETRYCNTS__{#{target_name}}")
-      if Hash === result
+      if Hash === get_all
         get_all.each do |key, value|
           result[key] = value.to_i
         end
@@ -1300,7 +1300,7 @@ module OpenC3
     def self.get_all_command_counts(target_name, scope:)
       result = {}
       get_all = Store.hgetall("#{scope}__COMMANDCNTS__{#{target_name}}")
-      if Hash === result
+      if Hash === get_all
         get_all.each do |key, value|
           result[key] = value.to_i
         end
