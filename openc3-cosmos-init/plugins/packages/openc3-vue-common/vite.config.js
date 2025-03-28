@@ -14,6 +14,7 @@ export default defineConfig({
         'tools/admin': './src/tools/admin/index.js',
         'tools/base': './src/tools/base/index.js',
         'tools/calendar': './src/tools/calendar/index.js',
+        'tools/scriptrunner': './src/tools/scriptrunner/index.js',
         'util': './src/util/index.js',
         'widgets': './src/widgets/index.js',
       },

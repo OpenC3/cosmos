@@ -92,7 +92,12 @@ RUN apk update \
   && pip3 config --global set global.index-url $PYPI_URL/simple \
   && pip3 install --upgrade pip setuptools \
   && pip3 install poetry \
-  && pip3 install poetry-plugin-export
+  && pip3 install poetry-plugin-export \
+  # Note this is needed to prevent pip disappearing in some build environments
+  && cp /openc3/venv/bin/pip* /openc3
+
+# Note this is needed to fix pip files disappearing in some build environments
+RUN mv /openc3/pip* /openc3/venv/bin/.
 
 # Set user and group
 ENV IMAGE_USER=openc3
