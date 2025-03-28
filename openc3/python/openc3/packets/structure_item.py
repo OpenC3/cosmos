@@ -268,35 +268,35 @@ class StructureItem:
         return item
 
     @classmethod
-    def from_json(cls, hash):
+    def from_json(cls, structure):
         # Convert strings to symbols
-        endianness = hash.get("endianness")
-        data_type = hash.get("data_type")
-        array_size = hash.get("array_size")
-        overflow = hash.get("overflow")
+        endianness = structure.get("endianness")
+        data_type = structure.get("data_type")
+        array_size = structure.get("array_size")
+        overflow = structure.get("overflow")
         si = StructureItem(
-            hash["name"],
-            hash["bit_offset"],
-            hash["bit_size"],
+            structure["name"],
+            structure["bit_offset"],
+            structure["bit_size"],
             data_type,
             endianness,
             array_size,
             overflow,
         )
-        si.key = hash.get("key", hash["name"])
+        si.key = structure.get("key", structure["name"])
         return si
 
     def as_json(self):
-        hash = {}
-        hash["name"] = self.name
-        hash["key"] = self.key
-        hash["bit_offset"] = self.original_bit_offset
-        hash["bit_size"] = self.original_bit_size
-        hash["data_type"] = self.data_type
-        hash["endianness"] = self.endianness
-        hash["array_size"] = self.original_array_size
-        hash["overflow"] = self.overflow
-        return hash
+        structure = {}
+        structure["name"] = self.name
+        structure["key"] = self.key
+        structure["bit_offset"] = self.original_bit_offset
+        structure["bit_size"] = self.original_bit_size
+        structure["data_type"] = self.data_type
+        structure["endianness"] = self.endianness
+        structure["array_size"] = self.original_array_size
+        structure["overflow"] = self.overflow
+        return structure
 
     def little_endian_bit_field(self):
         if self.endianness != "LITTLE_ENDIAN":

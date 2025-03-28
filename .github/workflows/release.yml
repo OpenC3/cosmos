@@ -96,6 +96,19 @@ jobs:
           OPENC3_NAMESPACE: openc3inc
           OPENC3_RELEASE_VERSION: ${{ github.event.inputs.version }}
           OPENC3_UPDATE_LATEST: ${{ github.event.inputs.update_latest }}
+      - name: build_multi_arch UBI
+        # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
+        shell: 'script -q -e -c "bash {0}"'
+        run: ./build_multi_arch.sh ubi
+        working-directory: scripts/release
+        env:
+          OPENC3_DEPENDENCY_REGISTRY: docker.io
+          OPENC3_ENTERPRISE_REGISTRY: ghcr.io
+          OPENC3_ENTERPRISE_NAMESPACE: openc3
+          OPENC3_REGISTRY: docker.io
+          OPENC3_NAMESPACE: openc3inc
+          OPENC3_RELEASE_VERSION: ${{ github.event.inputs.version }}
+          OPENC3_UPDATE_LATEST: ${{ github.event.inputs.update_latest }}
       - name: extract gems
         # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'

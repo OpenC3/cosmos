@@ -32,10 +32,16 @@ test.describe.configure({ mode: 'serial' })
 async function openFile(page, utils, filename) {
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Open File').click()
+  await utils.sleep(500) // Allow background data to fetch
   await expect(
     page.locator('.v-dialog').getByText('INST2', { exact: true }),
   ).toBeVisible()
-  await page.locator('[data-test=file-open-save-search] input').fill(filename)
+  let parts = filename.split('.')
+  await page.locator('[data-test=file-open-save-search] input').fill(parts[0])
+  await utils.sleep(100)
+  await page
+    .locator('[data-test=file-open-save-search] input')
+    .fill(`.${parts[1]}`)
   await page.locator(`text=${filename}`).click()
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   await expect(page.locator('.v-dialog')).not.toBeVisible()

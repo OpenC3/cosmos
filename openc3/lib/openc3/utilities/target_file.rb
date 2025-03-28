@@ -26,13 +26,17 @@ module OpenC3
     # Matches ScriptRunner.vue const TEMP_FOLDER
     TEMP_FOLDER = '__TEMP__'
 
-    def self.all(scope, path_matchers, target: nil, include_temp: false)
+    def self.all(scope, path_matchers, target: nil)
       target = target.upcase if target
 
+      include_temp = true
       bucket = Bucket.getClient()
       if target
         prefix = "#{scope}/targets/#{target}/"
         modified_prefix = "#{scope}/targets_modified/#{target}/"
+        if target != TEMP_FOLDER
+          include_temp = false
+        end
       else
         prefix = "#{scope}/targets/"
         modified_prefix = "#{scope}/targets_modified/"
@@ -42,7 +46,7 @@ module OpenC3
 
       # Add in local targets_modified if present
       if ENV['OPENC3_LOCAL_MODE']
-        local_modified = OpenC3::LocalMode.local_target_files(scope: scope, path_matchers: path_matchers, include_temp: include_temp)
+        local_modified = OpenC3::LocalMode.local_target_files(scope: scope, target: target, path_matchers: path_matchers, include_temp: include_temp)
         local_modified.each do |filename|
           if include_temp and filename.include?(TEMP_FOLDER)
             temp << filename

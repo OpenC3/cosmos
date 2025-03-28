@@ -50,6 +50,7 @@ case $1 in
 
     run-enterprise )
         yarn test:enterprise
+        ;;
 
     run-aws )
         sed -i 's#http://localhost:2900#https://aws.openc3.com#' playwright.config.ts

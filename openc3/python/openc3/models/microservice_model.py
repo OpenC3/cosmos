@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -10,9 +10,12 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
-
+#
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+#
+# A portion of this file was funded by Blue Origin Enterprises, L.P.
+# See https://github.com/OpenC3/cosmos/pull/1953
 
 from typing import Optional
 
@@ -70,7 +73,9 @@ class MicroserviceModel(Model):
         secrets: Optional[list] = None,
         prefix=None,
         disable_erb=None,
+        ignore_changes=None,
         shard=0,
+        enabled: bool = True,
         scope: str = OPENC3_SCOPE,
     ):
         parts = name.split("__")
@@ -108,9 +113,13 @@ class MicroserviceModel(Model):
         self.secrets = secrets
         self.prefix = prefix
         self.disable_erb = disable_erb
+        self.ignore_changes = ignore_changes
         self.shard = shard
         if self.shard is None:
             self.shard = 0
+        self.enabled = enabled
+        if self.enabled is None:
+            self.enabled = True
         self.bucket = Bucket.getClient()
 
     def as_json(self):
@@ -132,5 +141,7 @@ class MicroserviceModel(Model):
             "secrets": self.secrets,  # .as_json(),
             "prefix": self.prefix,
             "disable_erb": self.disable_erb,
+            "ignore_changes": self.ignore_changes,
             "shard": self.shard,
+            "enabled": self.enabled,
         }

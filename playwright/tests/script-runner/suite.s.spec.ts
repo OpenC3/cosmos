@@ -130,13 +130,15 @@ test('loads Suite controls when opening a suite', async ({ page, utils }) => {
   // Open the file
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Open File').click()
-  await utils.sleep(1000)
+  await utils.sleep(500) // Allow background data to fetch
   await page
     .locator('[data-test=file-open-save-search] input')
-    .fill('my_script_')
-  await utils.sleep(500)
-  await page.locator('[data-test=file-open-save-search] input').fill('suite')
-  await page.locator('text=script_suite >> nth=0').click() // nth=0 because INST, INST2
+    .fill('my_script')
+  await utils.sleep(100)
+  await page
+    .locator('[data-test=file-open-save-search] input')
+    .fill('_suite.rb')
+  await page.locator('text=my_script_suite').click()
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   await expect(page.locator('#sr-controls')).toContainText(
     `INST/procedures/my_script_suite.rb`,
@@ -168,11 +170,13 @@ test('loads Suite controls when opening a suite', async ({ page, utils }) => {
   // Verify Suite controls go away when loading a normal script
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Open File').click()
-  await utils.sleep(1000)
-  await page.locator('[data-test=file-open-save-search] input').fill('dis')
   await utils.sleep(500)
-  await page.locator('[data-test=file-open-save-search] input').fill('connect')
-  await page.locator('text=disconnect >> nth=0').click() // nth=0 because INST, INST2
+  await page
+    .locator('[data-test=file-open-save-search] input')
+    .fill('disconnect')
+  await utils.sleep(100)
+  await page.locator('[data-test=file-open-save-search] input').fill('.rb')
+  await page.locator('text=disconnect').click()
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   await expect(page.locator('#sr-controls')).toContainText(
     `INST/procedures/disconnect.rb`,

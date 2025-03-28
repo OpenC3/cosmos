@@ -27,20 +27,20 @@ test.use({
 
 test('disconnects and connects an interface', async ({ page, utils }) => {
   await expect(
-    page.locator('tr:has-text("INST_INT") td >> nth=2'),
+    page.locator('tr:has-text("INST2_INT") td >> nth=2'),
   ).toContainText('CONNECTED')
-  await page.locator('tr:has-text("INST_INT") td >> nth=1').click()
+  await page.locator('tr:has-text("INST2_INT") td >> nth=1').click()
   await expect(
-    page.locator('tr:has-text("INST_INT") td >> nth=2'),
+    page.locator('tr:has-text("INST2_INT") td >> nth=2'),
   ).toContainText('DISCONNECTED')
   await expect(page.locator('[data-test=log-messages]')).toContainText(
-    'INST_INT: Disconnect',
+    'INST2_INT: Disconnect',
   )
-  await page.locator('tr:has-text("INST_INT") td >> nth=1').click()
+  await page.locator('tr:has-text("INST2_INT") td >> nth=1').click()
   await expect(
-    page.locator('tr:has-text("INST_INT") td >> nth=2'),
+    page.locator('tr:has-text("INST2_INT") td >> nth=2'),
   ).toContainText('CONNECTED')
   await expect(page.locator('[data-test=log-messages]')).toContainText(
-    'INST_INT: Connection Success',
+    'INST2_INT: Connection Success',
   )
 })

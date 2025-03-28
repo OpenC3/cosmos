@@ -427,6 +427,7 @@ a.fixcenter {
   > .v-treeview-item__root
   > .v-treeview-item__level {
   width: 0px;
+  padding-left: 0px;
 }
 #openc3-nav-drawer
   .v-treeview
@@ -434,10 +435,25 @@ a.fixcenter {
   > .v-treeview-item__root
   > .v-treeview-item__toggle {
   width: 0px;
+  padding-left: 0px;
+}
+#openc3-nav-drawer .v-treeview > .v-treeview-group > .v-list-group__header {
+  padding-left: 30px;
+}
+#openc3-nav-drawer .v-treeview > .v-treeview-group > .v-list-group__items {
+  --indent-padding: 30px;
+}
+#openc3-nav-drawer .v-treeview .v-treeview-item {
+  padding-left: 0px;
+}
+#openc3-nav-drawer .v-treeview .v-treeview-item .v-list-item-action {
+  width: 0px;
+  padding-left: 0px;
 }
 #openc3-nav-drawer
   .v-treeview-item__children
   div.v-treeview-item__level:nth-child(1) {
   width: 0px;
+  padding-left: 0px;
 }
 </style>

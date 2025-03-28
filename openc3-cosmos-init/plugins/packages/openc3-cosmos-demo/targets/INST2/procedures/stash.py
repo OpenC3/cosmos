@@ -15,8 +15,7 @@ data = [1, 2, [3, 4]]
 stash_set("ary_py", data)
 check_expression(f"{stash_get('ary_py')} == {data}")
 stash_delete("ary_py")
-# Note: hashes with symbol keys works but get converted to string keys on stash_get
-hash = {"one": 1, "two": 2, "string": "string"}
-stash_set("hash_py", hash)
-check_expression(f"{stash_get('hash_py')} == {hash}")
-stash_delete("hash_py")
+data = {"one": 1, "two": 2, "string": "string"}
+stash_set("data_py", data)
+check_expression(f"{stash_get('data_py')} == {data}")
+stash_delete("data_py")

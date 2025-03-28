@@ -1,12 +1,12 @@
 ---
-sidebar_position: 3
+sidebar_position: 6
 title: Code Generators
 description: Using openc3.sh to generate code
 sidebar_custom_props:
   myEmoji: 🏭
 ---
 
-The COSMOS Code Generators are built into the scripts `openc3.sh` and `openc3.bat` that are included in the COSMOS [project](https://github.com/OpenC3/cosmos-project) (more about [projects](key_concepts#projects)).
+The COSMOS Code Generators are built into the scripts `openc3.sh` and `openc3.bat` that are included in the COSMOS [project](https://github.com/OpenC3/cosmos-project) (more about [projects](key-concepts#projects)).
 
 If you followed the [Installation Guide](installation.md) you should already be inside a cloned [openc3-project](https://github.com/OpenC3/cosmos-project) which is in your PATH (necessary for openc3.bat / openc3.sh to be resolved). To see all the available code generators type the following:
 
