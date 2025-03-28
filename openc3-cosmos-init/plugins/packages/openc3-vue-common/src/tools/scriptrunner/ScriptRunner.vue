@@ -254,6 +254,12 @@
                 {{ item.label }}
               </v-list-item-title>
             </v-list-item>
+            <v-divider />
+            <v-list-item
+              title="Toggle Vim mode"
+              prepend-icon="extras:vim"
+              @click="toggleVimMode"
+            />
           </v-list>
         </v-menu>
       </pane>
