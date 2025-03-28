@@ -425,6 +425,31 @@ module OpenC3
       end
     end
 
+    describe "self.all_item_names" do
+      before(:each) do
+        setup_system()
+        model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT")
+        model.create
+        model.update_store(System.new(['INST'], File.join(SPEC_DIR, 'install', 'config', 'targets')))
+      end
+
+      it "returns all item names" do
+        items = TargetModel.all_item_names("INST", scope: "DEFAULT")
+        expect(items.length).to eql 67
+        expect(items.uniq.length).to eql 67
+      end
+
+      it "rebuilds the allitems list when missing" do
+        Store.del("DEFAULT__openc3tlm__INST__allitems")
+        redis_items = Store.zrange("DEFAULT__openc3tlm__INST__allitems", 0, -1)
+        expect(redis_items.length).to eql 0
+        model_items = TargetModel.all_item_names("INST", scope: "DEFAULT")
+        expect(model_items.length).to eql 67
+        redis_items = Store.zrange("DEFAULT__openc3tlm__INST__allitems", 0, -1)
+        expect(redis_items.length).to eql 67
+      end
+    end
+
     describe "self.handle_config" do
       it "only recognizes TARGET" do
         parser = double("ConfigParser").as_null_object
@@ -702,6 +727,8 @@ module OpenC3
         orig_keys << "DEFAULT__CONFIG"
         orig_keys << "DEFAULT__openc3cmd__UNKNOWN"
         orig_keys << "DEFAULT__openc3tlm__UNKNOWN"
+        orig_keys << "DEFAULT__openc3tlm__INST__allitems"
+        orig_keys << "DEFAULT__openc3tlm__SYSTEM__allitems"
         orig_keys << "DEFAULT__limits_sets"
         orig_keys << "DEFAULT__tlm__UNKNOWN"
         orig_keys << "openc3_microservices"

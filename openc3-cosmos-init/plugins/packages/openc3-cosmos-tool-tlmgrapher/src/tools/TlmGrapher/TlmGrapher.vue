@@ -47,6 +47,7 @@
               button-text="Add Item"
               choose-item
               select-types
+              show-latest
             />
             <!-- All this row / col stuff is to setup a structure similar to the
                  target-packet-item-chooser so it will layout the same -->

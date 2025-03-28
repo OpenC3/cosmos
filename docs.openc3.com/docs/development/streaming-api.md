@@ -132,3 +132,146 @@ For raw packets, each packet is represented as a JSON object with a time field h
   }
 ]
 ```
+
+## Ruby Example
+
+Below is a simple Ruby example for using the streaming API to retrieve telemetry data:
+
+```ruby
+require 'openc3'
+require 'openc3/script/web_socket_api'
+
+$openc3_scope = 'DEFAULT'
+ENV['OPENC3_API_HOSTNAME'] = '127.0.0.1'
+ENV['OPENC3_API_PORT'] = '2900'
+ENV['OPENC3_API_PASSWORD'] = 'password'
+# The following are needed for Enterprise (change user/pass as necessary)
+#ENV['OPENC3_API_USER'] = 'operator'
+#ENV['OPENC3_API_PASSWORD'] = 'operator'
+#ENV['OPENC3_KEYCLOAK_REALM'] = 'openc3'
+#ENV['OPENC3_KEYCLOAK_URL'] = 'http://127.0.0.1:2900/auth'
+
+# Open a file to write CSV data
+csv = File.open('telemetry_data.csv', 'w')
+
+# Connect to the streaming API
+OpenC3::StreamingWebSocketApi.new() do |api|
+  # Add items to stream - request data from yesterday to 1 minute ago
+  api.add(items: [
+    'DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED',
+    'DECOM__TLM__INST__HEALTH_STATUS__TEMP2__CONVERTED'
+  ],
+  start_time: (Time.now - 86400).to_nsec_from_epoch,  # 24 hours ago
+  end_time: (Time.now - 60).to_nsec_from_epoch)       # 1 minute ago
+
+  # Write CSV header
+  csv.puts "Time,TEMP1,TEMP2"
+
+  # Read all data from the stream
+  data = api.read
+
+  # Process each data point
+  data.each do |item|
+    csv.puts "#{item['__time']/1_000_000_000.0},#{item['DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED']},#{item['DECOM__TLM__INST__HEALTH_STATUS__TEMP2__CONVERTED']}"
+  end
+end
+csv.close()
+```
+
+## StreamingApi Architecture
+
+The StreamingApi is a core component of COSMOS that provides real-time and historical data streaming capabilities. Below is an overview of its architecture and design.
+
+### Architecture Overview
+
+The StreamingApi uses a modular architecture with several key components:
+
+```
+StreamingApi
+├── StreamingThread (abstract)
+│   ├── RealtimeStreamingThread
+│   └── LoggedStreamingThread
+└── StreamingObjectCollection
+    └── StreamingObject
+```
+
+### Key Components
+
+#### StreamingApi
+
+The main class that manages streaming connections and handles client requests:
+
+- Initializes with a client UUID, channel, and scope
+- Manages thread lifecycle for both real-time and historical data
+- Processes client requests to add or remove data streams
+- Coordinates handoff from historical to real-time streaming
+- Sends batched data back to clients via ActionCable
+
+#### StreamingThread
+
+Abstract base class that defines common thread functionality:
+
+- Manages thread lifecycle (start, stop)
+- Processes data from various sources
+- Handles batching and transmission of results
+- Determines when streaming is complete
+
+#### RealtimeStreamingThread
+
+Specialized thread for real-time data:
+
+- Subscribes to Redis topics
+- Processes incoming messages in real-time
+- Continuous streaming from current time
+
+#### LoggedStreamingThread
+
+Specialized thread for historical data:
+
+- Reads from archived log files
+- Handles time-based sorting of data
+- Transitions to real-time streaming when historical data is exhausted
+
+#### StreamingObject
+
+Represents a single subscription item:
+
+- Parses and validates stream keys
+- Stores metadata about the stream (mode, target, packet, item)
+- Tracks timestamps and offsets
+- Handles authorization
+
+#### StreamingObjectCollection
+
+Manages groups of StreamingObjects:
+
+- Organizes objects by topic
+- Tracks collective state
+- Provides efficient lookups
+
+### Data Flow
+
+1. Client connects to ActionCable and subscribes to StreamingChannel
+2. Client sends 'add' request with items/packets to stream
+3. StreamingApi creates appropriate StreamingObjects with authorization
+4. For historical requests:
+   - LoggedStreamingThread reads from log files
+   - Data is sent in batches to client
+   - When historical data is exhausted, handoff to real-time
+5. For real-time requests:
+   - RealtimeStreamingThread subscribes to Redis topics
+   - Data is sent to client as it arrives
+6. Client can add/remove items at any time
+7. When client disconnects, all threads are terminated
+
+### Performance Considerations
+
+- Uses thread-per-request model for historical data
+- Maintains a single thread for real-time data
+- Batches results to reduce network overhead (up to 100 items per batch)
+- File caching for efficient historical data access
+- Seamless transition from historical to real-time data
+
+### Security
+
+Every StreamingObject verifies authorization for the specific target and packet being requested, ensuring users only access data they have permission to view.

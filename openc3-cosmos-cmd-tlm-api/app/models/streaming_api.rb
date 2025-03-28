@@ -14,14 +14,18 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+#
+# A portion of this file was funded by Blue Origin Enterprises, L.P.
+# See https://github.com/OpenC3/cosmos/pull/1957
 
 require 'openc3'
 OpenC3.require_file 'openc3/utilities/authorization'
+OpenC3.require_file 'openc3/models/target_model'
 require_relative 'logged_streaming_thread'
 require_relative 'realtime_streaming_thread'
 require_relative 'streaming_object'
@@ -36,6 +40,27 @@ class StreamingApi
     @mutex = Mutex.new
     @realtime_thread = nil
     @logged_threads = []
+  end
+
+  # Create new StreamingObjects using the data['items'] and add them to the StreamingObjectCollection
+  def build_item_collection(collection, data, start_time: nil, end_time: nil, scope: nil, token: nil)
+    data["items"].each do |key, item_key|
+      item_key = key unless item_key
+      # Unwrap LATEST packet into individual items
+      parts = key.split('__')
+      if parts[3] == 'LATEST'
+        item_map = OpenC3::TargetModel.get_item_to_packet_map(parts[2], scope: scope)
+        packet_names = item_map[parts[4]]
+        raise "Item '#{parts[2]} LATEST #{parts[4]}' does not exist for scope: #{scope}" unless packet_names
+        packet_names.each do |packet_name|
+          parts[3] = packet_name
+          key = parts.join('__')
+          collection.add(StreamingObject.new(key, start_time, end_time, item_key: item_key, scope: scope, token: token))
+        end
+      else
+        collection.add(StreamingObject.new(key, start_time, end_time, item_key: item_key, scope: scope, token: token))
+      end
+    end
   end
 
   # Request to add data to the stream
@@ -75,10 +100,7 @@ class StreamingApi
       # Build the collection of streaming objects for this request
       collection = StreamingObjectCollection.new
       if data["items"]
-        data["items"].each do |key, item_key|
-          item_key = key unless item_key
-          collection.add(StreamingObject.new(key, start_time, end_time, item_key: item_key, scope: scope, token: token))
-        end
+        build_item_collection(collection, data, start_time: start_time, end_time: end_time, scope: scope, token: token)
       end
       if data["packets"]
         data["packets"].each do |key|
@@ -133,10 +155,7 @@ class StreamingApi
     # Build the collection of streaming objects for this request
     collection = StreamingObjectCollection.new
     if data["items"]
-      data["items"].each do |key, item_key|
-        item_key = key unless item_key
-        collection.add(StreamingObject.new(key, nil, nil, item_key: item_key, scope: scope, token: token))
-      end
+      build_item_collection(collection, data, scope: scope, token: token)
     end
     if data["packets"]
       data["packets"].each do |key|

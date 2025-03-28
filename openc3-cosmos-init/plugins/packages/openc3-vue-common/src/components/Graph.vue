@@ -1497,8 +1497,8 @@ export default {
       // }
       for (let i = 0; i < data.length; i++) {
         let time = data[i].__time / 1000000000.0 // Time in seconds
-        let length = data[0].length
-        if (length === 0 || time > data[0][length - 1]) {
+        let length = this.data[0].length
+        if (length === 0 || time > this.data[0][length - 1]) {
           // Nominal case - append new data to end
           for (let j = 0; j < this.data.length; j++) {
             this.data[j].push(null)

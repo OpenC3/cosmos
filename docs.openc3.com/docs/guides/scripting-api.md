@@ -1611,6 +1611,26 @@ Ruby / Python Example:
 get_all_tlm_names("INST")  #=> ["ADCS", "HEALTH_STATUS", ...]
 ```
 
+### get_all_tlm_item_names
+
+Returns all the item names for every packet in a target
+
+Ruby / Python Syntax:
+
+```ruby
+get_all_tlm_item_names("<Target Name>")
+```
+
+| Parameter   | Description        |
+| ----------- | ------------------ |
+| Target Name | Name of the target |
+
+Ruby / Python Example:
+
+```ruby
+get_all_tlm_item_names("INST")  #=> ["ARY", "ARY2", "ASCIICMD", "ATTPROGRESS", ...]
+```
+
 ### get_tlm
 
 > Since 5.13.0, since 5.0.0 as get_telemetry

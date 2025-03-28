@@ -164,7 +164,9 @@ export default {
       Api.get('/openc3-api/microservices/all').then((response) => {
         // Convert hash of microservices to array of microservices
         let microservices = []
-        for (const [microservice_name, microservice] of Object.entries(response.data)) {
+        for (const [microservice_name, microservice] of Object.entries(
+          response.data,
+        )) {
           microservices.push(microservice)
         }
         microservices.sort((a, b) => a.name.localeCompare(b.name))
@@ -173,44 +175,44 @@ export default {
     },
     startMicroservice: function (name) {
       this.$dialog
-        .confirm(
-          `Are you sure you want to restart microservice: ${name}?`,
-          {
-            okText: 'Start',
-            cancelText: 'Cancel',
-          },
-        ).then((dialog) => {
-          Api.post(`/openc3-api/microservices/${name}/start`).then((response) => {
-            this.alert = `Started ${name}`
-            this.alertType = 'success'
-            this.showAlert = true
-            setTimeout(() => {
-              this.showAlert = false
-            }, 5000)
-          }).then(() => {
-            this.update()
-          })
+        .confirm(`Are you sure you want to restart microservice: ${name}?`, {
+          okText: 'Start',
+          cancelText: 'Cancel',
+        })
+        .then((dialog) => {
+          Api.post(`/openc3-api/microservices/${name}/start`)
+            .then((response) => {
+              this.alert = `Started ${name}`
+              this.alertType = 'success'
+              this.showAlert = true
+              setTimeout(() => {
+                this.showAlert = false
+              }, 5000)
+            })
+            .then(() => {
+              this.update()
+            })
         })
     },
     stopMicroservice: function (name) {
       this.$dialog
-        .confirm(
-          `Are you sure you want to stop microservice: ${name}?`,
-          {
-            okText: 'Stop',
-            cancelText: 'Cancel',
-          },
-        ).then((dialog) => {
-          Api.post(`/openc3-api/microservices/${name}/stop`).then((response) => {
-            this.alert = `Stopped ${name}`
-            this.alertType = 'success'
-            this.showAlert = true
-            setTimeout(() => {
-              this.showAlert = false
-            }, 5000)
-          }).then(() => {
-            this.update()
-          })
+        .confirm(`Are you sure you want to stop microservice: ${name}?`, {
+          okText: 'Stop',
+          cancelText: 'Cancel',
+        })
+        .then((dialog) => {
+          Api.post(`/openc3-api/microservices/${name}/stop`)
+            .then((response) => {
+              this.alert = `Stopped ${name}`
+              this.alertType = 'success'
+              this.showAlert = true
+              setTimeout(() => {
+                this.showAlert = false
+              }, 5000)
+            })
+            .then(() => {
+              this.update()
+            })
         })
     },
     showMicroservice: function (name) {
