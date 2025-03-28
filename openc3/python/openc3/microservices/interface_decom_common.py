@@ -19,8 +19,6 @@
 
 from datetime import datetime, timezone
 import json
-import time
-import threading
 from openc3.system.system import System
 from openc3.topics.topic import Topic
 from openc3.topics.telemetry_topic import TelemetryTopic
