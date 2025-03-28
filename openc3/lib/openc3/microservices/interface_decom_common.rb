@@ -15,6 +15,9 @@
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+#
+# A portion of this file was funded by Blue Origin Enterprises, L.P.
+# See https://github.com/OpenC3/cosmos/pull/1963
 
 require 'openc3/topics/telemetry_topic'
 require 'openc3/system/system'
@@ -34,8 +37,7 @@ module OpenC3
         end
       end
       packet.received_time = Time.now.sys
-      # Line Change Funded by Blue Origin
-      packet.received_count = TargetModel.increment_telemetry_count(packet.target_name, packet.packet_name, 1)
+      packet.received_count = TargetModel.increment_telemetry_count(packet.target_name, packet.packet_name, 1, scope: @scope)
       TelemetryTopic.write_packet(packet, scope: @scope)
     # If the inject_tlm parameters are bad we rescue so
     # interface_microservice and decom_microservice can continue
@@ -52,8 +54,7 @@ module OpenC3
       raw = build_cmd_hash['raw']
       ack_topic = "{#{@scope}__ACKCMD}TARGET__#{target_name}"
       begin
-        # Line Change Funded by Blue Origin
-        command = System.commands.build_cmd(target_name, cmd_name, cmd_params, range_check, raw, increment_received_count: false, scope: @scope)
+        command = System.commands.build_cmd(target_name, cmd_name, cmd_params, range_check, raw)
         msg_hash = {
           id: msg_id,
           result: 'SUCCESS',

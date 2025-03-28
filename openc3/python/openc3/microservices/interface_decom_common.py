@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -13,6 +13,9 @@
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+#
+# A portion of this file was funded by Blue Origin Enterprises, L.P.
+# See https://github.com/OpenC3/cosmos/pull/1963
 
 from datetime import datetime, timezone
 import json
@@ -36,7 +39,6 @@ def handle_inject_tlm(inject_tlm_json, scope):
         for name, value in item_hash.items():
             packet.write(str(name), value, type)
     packet.received_time = datetime.now(timezone.utc)
-    # Line Change Funded by Blue Origin
     packet.received_count = TargetModel.increment_telemetry_count(packet.target_name, packet.packet_name, 1, scope=scope)
     TelemetryTopic.write_packet(packet, scope)
 
@@ -50,8 +52,7 @@ def handle_build_cmd(build_cmd_json, msg_id, scope):
     raw = build_cmd_hash["raw"]
     ack_topic = f"{{{scope}__ACKCMD}}TARGET__{target_name}"
     try:
-        # Line Change Funded by Blue Origin
-        command = System.commands.build_cmd(target_name, cmd_name, cmd_params, range_check, raw, increment_received_count=False, scope=scope)
+        command = System.commands.build_cmd(target_name, cmd_name, cmd_params, range_check, raw)
         msg_hash = {
             "id": msg_id,
             "result": "SUCCESS",

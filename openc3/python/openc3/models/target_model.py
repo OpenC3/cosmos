@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -13,6 +13,9 @@
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+#
+# A portion of this file was funded by Blue Origin Enterprises, L.P.
+# See https://github.com/OpenC3/cosmos/pull/1963
 
 import json
 import time
@@ -188,19 +191,36 @@ class TargetModel(Model):
                 item_map[item_name].append(packet["packet_name"])
         return item_map
 
-    # Change Funded by Blue Origin
+
     @classmethod
     def increment_telemetry_count(cls, target_name: str, packet_name: str, count: int, scope: str = OPENC3_SCOPE):
-        return Store.hincrby(f"{scope}__TELEMETRYCNTS__{{{target_name}}}", packet_name, count)
+        result = Store.hincrby(f"{scope}__TELEMETRYCNTS__{{{target_name}}}", packet_name, count)
+        if isinstance(result, (bytes, bytearray)):
+            return int(result)
+        else:
+            return result
+
 
     @classmethod
     def get_all_telemetry_counts(cls, target_name: str, scope: str = OPENC3_SCOPE):
-        return Store.hgetall(f"{scope}__TELEMETRYCNTS__{{{target_name}}}")
+        result = {}
+        get_all = Store.hgetall(f"{scope}__TELEMETRYCNTS__{{{target_name}}}")
+        if get_all is dict:
+            for key, value in get_all.items():
+                result[key] = int(value)
+            return result
+        else:
+            return get_all
 
     @classmethod
     def get_telemetry_count(cls, target_name: str, packet_name: str, scope: str = OPENC3_SCOPE):
         value = Store.hget(f"{scope}__TELEMETRYCNTS__{{{target_name}}}", packet_name)
-        return value or 0 # Return 0 if the key doesn't exist
+        if value is None:
+            return 0
+        elif isinstance(value, (bytes, bytearray)):
+            return int(value)
+        else:
+            return value
 
     @classmethod
     def get_telemetry_counts(cls, target_packets: list, scope: str = OPENC3_SCOPE):
@@ -215,21 +235,40 @@ class TargetModel(Model):
 
         counts = []
         for count in result:
-            counts.append(count or 0) # Return 0 if the key doesn't exist
+            if count is None:
+                counts.append(0)
+            else:
+                counts.append(int(count))
         return counts
 
     @classmethod
     def increment_command_count(cls, target_name: str, packet_name: str , count: int, scope: str = OPENC3_SCOPE):
-        return Store.hincrby(f"{scope}__COMMANDCNTS__{{{target_name}}}", packet_name, count)
+        result = Store.hincrby(f"{scope}__COMMANDCNTS__{{{target_name}}}", packet_name, count)
+        if isinstance(result, (bytes, bytearray)):
+            return int(result)
+        else:
+            return result
 
     @classmethod
     def get_all_command_counts(cls, target_name: str, scope: str = OPENC3_SCOPE):
-        return Store.hgetall(f"{scope}__COMMANDCNTS__{{{target_name}}}")
+        result = {}
+        get_all = Store.hgetall(f"{scope}__COMMANDCNTS__{{{target_name}}}")
+        if get_all is dict:
+            for key, value in get_all.items():
+                result[key] = int(value)
+            return result
+        else:
+            return get_all
 
     @classmethod
     def get_command_count(cls, target_name: str, packet_name: str, scope: str = OPENC3_SCOPE):
         value = Store.hget(f"{scope}__COMMANDCNTS__{{{target_name}}}", packet_name)
-        return value or 0 # Return 0 if the key doesn't exist
+        if value is None:
+            return 0
+        elif isinstance(value, (bytes, bytearray)):
+            return int(value)
+        else:
+            return value
 
     @classmethod
     def get_command_counts(cls, target_packets: list, scope: str = OPENC3_SCOPE):
@@ -244,9 +283,12 @@ class TargetModel(Model):
 
         counts = []
         for count in result:
-            counts.append(count or 0) # Return 0 if the key doesn't exist
+            if count is None:
+                counts.append(0)
+            else:
+                counts.append(int(count))
         return counts
-    # End Change Funded by Blue Origin
+
 
     def __init__(
         self,

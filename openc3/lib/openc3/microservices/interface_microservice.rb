@@ -19,6 +19,9 @@
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+#
+# A portion of this file was funded by Blue Origin Enterprises, L.P.
+# See https://github.com/OpenC3/cosmos/pull/1963
 
 require 'openc3/microservices/microservice'
 require 'openc3/microservices/interface_decom_common'
@@ -128,7 +131,6 @@ module OpenC3
                 @logger.info "#{@interface.name}: Write raw"
                 # A raw interface write results in an UNKNOWN packet
                 command = System.commands.packet('UNKNOWN', 'UNKNOWN')
-                # Line Change Funded by Blue Origin
                 command.received_count = TargetModel.increment_command_count('UNKNOWN', 'UNKNOWN', 1, scope: @scope)
                 command = command.clone
                 command.buffer = msg_hash['raw']
@@ -208,8 +210,7 @@ module OpenC3
           begin
             begin
               if cmd_params
-                # Line Change Funded by Blue Origin
-                command = System.commands.build_cmd(target_name, cmd_name, cmd_params, range_check, raw, scope: @scope)
+                command = System.commands.build_cmd(target_name, cmd_name, cmd_params, range_check, raw)
               elsif cmd_buffer
                 if target_name
                   command = System.commands.identify(cmd_buffer, [target_name])
@@ -217,15 +218,15 @@ module OpenC3
                   command = System.commands.identify(cmd_buffer, @interface.cmd_target_names)
                 end
                 unless command
-                  command = System.commands.packet('UNKNOWN', 'UNKNOWN')
-                  # Line Change Funded by Blue Origin
-                  command.received_count = TargetModel.increment_command_count('UNKNOWN', 'UNKNOWN', 1, scope: @scope)
-                  command = command.clone
+                  command = System.commands.packet('UNKNOWN', 'UNKNOWN').clone
                   command.buffer = cmd_buffer
                 end
               else
                 raise "Invalid command received:\n #{msg_hash}"
               end
+              orig_command = System.commands.packet(command.target_name, command.packet_name)
+              orig_command.received_count = TargetModel.increment_command_count(command.target_name, command.packet_name, 1, scope: @scope)
+              command.received_count = orig_command.received_count
               command.received_time = Time.now
             rescue => e
               @logger.error "#{@interface.name}: #{msg_hash}"
@@ -507,11 +508,9 @@ module OpenC3
       end
 
       @queued = false
-      # Change Funded by Blue Origin
       @sync_packet_count_data = {}
       @sync_packet_count_time = nil
       @sync_packet_count_delay_seconds = 1.0 # Sync packet counts every second
-      # End Change Funded by Blue Origin
       @interface.options.each do |option_name, option_values|
         if option_name.upcase == 'OPTIMIZE_THROUGHPUT'
           @queued = true
@@ -519,11 +518,9 @@ module OpenC3
           EphemeralStoreQueued.instance.set_update_interval(update_interval)
           StoreQueued.instance.set_update_interval(update_interval)
         end
-        # Change Funded by Blue Origin
         if option_name.upcase == 'SYNC_PACKET_COUNT_DELAY_SECONDS'
           @sync_packet_count_delay_seconds = option_values[0].to_f
         end
-        # End Change Funded by Blue Origin
       end
 
       @interface_thread_sleeper = Sleeper.new
@@ -691,7 +688,6 @@ module OpenC3
       end
 
       # Write to stream
-      # Line Change Funded by Blue Origin
       sync_tlm_packet_counts(packet)
       TelemetryTopic.write_packet(packet, queued: @queued, scope: @scope)
     end
@@ -827,7 +823,6 @@ module OpenC3
       # Just to avoid warning
     end
 
-    # Function Funded by Blue Origin
     def sync_tlm_packet_counts(packet)
       if @sync_packet_count_delay_seconds <= 0
         # Perfect but slow method

@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -13,6 +13,9 @@
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+#
+# A portion of this file was funded by Blue Origin Enterprises, L.P.
+# See https://github.com/OpenC3/cosmos/pull/1963
 
 import json
 from openc3.api import WHITELIST
@@ -445,7 +448,6 @@ def get_tlm_cnt(*args, scope: str = OPENC3_SCOPE):
     target_name, packet_name = _extract_target_packet_names("get_tlm_cnt", *args)
     authorize(permission="system", target_name=target_name, packet_name=packet_name, scope=scope)
     TargetModel.packet(target_name, packet_name, scope=scope)
-    # Line Change Funded by Blue Origin
     return TargetModel.get_telemetry_count(target_name, packet_name, scope=scope)
 
 
@@ -459,7 +461,6 @@ def get_tlm_cnts(target_packets, scope=OPENC3_SCOPE):
         [Numeric] Transmit count for the command
     """
     authorize(permission="system", scope=scope)
-    # Line Change Funded by Blue Origin
     return TargetModel.get_telemetry_counts(target_packets, scope=scope)
 
 def get_packet_derived_items(*args, scope=OPENC3_SCOPE):

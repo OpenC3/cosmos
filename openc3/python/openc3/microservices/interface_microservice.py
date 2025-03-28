@@ -13,6 +13,9 @@
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+#
+# A portion of this file was funded by Blue Origin Enterprises, L.P.
+# See https://github.com/OpenC3/cosmos/pull/1963
 
 import os
 import sys
@@ -150,7 +153,6 @@ class InterfaceCmdHandlerThread:
                     self.logger.info(f"{self.interface.name}: Write raw")
                     # A raw interface write results in an UNKNOWN packet
                     command = System.commands.packet("UNKNOWN", "UNKNOWN")
-                    # Line Change Funded by Blue Origin
                     command.received_count = TargetModel.increment_command_count(command.target_name, command.packet_name, 1, scope=self.scope)
                     command = command.clone()
                     command.buffer = msg_hash[b"raw"]
@@ -225,21 +227,20 @@ class InterfaceCmdHandlerThread:
         try:
             try:
                 if cmd_params is not None:
-                    # Line Change Funded by Blue Origin
-                    command = System.commands.build_cmd(target_name, cmd_name, cmd_params, range_check, raw, scope=self.scope)
+                    command = System.commands.build_cmd(target_name, cmd_name, cmd_params, range_check, raw)
                 elif cmd_buffer is not None:
                     if target_name:
                         command = System.commands.identify(cmd_buffer, [target_name])
                     else:
                         command = System.commands.identify(cmd_buffer, self.interface.cmd_target_names)
                     if not command:
-                        command = System.commands.packet("UNKNOWN", "UNKNOWN")
-                        # Line Change Funded by Blue Origin
-                        command.received_count = TargetModel.increment_command_count(command.target_name, command.packet_name, 1, scope=self.scope)
-                        command = command.clone()
+                        command = System.commands.packet("UNKNOWN", "UNKNOWN").clone()
                         command.buffer = cmd_buffer
                 else:
                     raise RuntimeError(f"Invalid command received:\n{msg_hash}")
+                orig_command = System.commands.packet(command.target_name, command.packet_name)
+                orig_command.received_count = TargetModel.increment_command_count(command.target_name, command.packet_name, 1, scope=self.scope)
+                command.received_count = orig_command.received_count
                 command.received_time = datetime.now(timezone.utc)
             except Exception as error:
                 self.logger.error(f"{self.interface.name}: {msg_hash}")
@@ -522,21 +523,17 @@ class InterfaceMicroservice(Microservice):
             RouterStatusModel.set(self.interface.as_json(), scope=self.scope)
 
         self.queued = False
-        # Change Funded by Blue Origin
         self.sync_packet_count_data = {}
         self.sync_packet_count_time = None
         self.sync_packet_count_delay_seconds = 1.0 # Sync packet counts every second
-        # End Change Funded by Blue Origin
         for option_name, option_values in self.interface.options.items():
             if option_name.upper() == "OPTIMIZE_THROUGHPUT":
                 self.queued = True
                 update_interval = float(option_values[0])
                 EphemeralStoreQueued.instance().set_update_interval(update_interval)
                 StoreQueued.instance().set_update_interval(update_interval)
-            # Change Funded by Blue Origin
             if option_name.upper() == 'SYNC_PACKET_COUNT_DELAY_SECONDS':
                 self.sync_packet_count_delay_seconds = float(option_values[0])
-            # End Change Funded by Blue Origin
 
         if self.interface_or_router == "INTERFACE":
             self.handler_thread = InterfaceCmdHandlerThread(
@@ -715,7 +712,6 @@ class InterfaceMicroservice(Microservice):
             )
 
         # Write to stream
-        # Line Change Funded by Blue Origin
         self.sync_tlm_packet_counts(packet)
         TelemetryTopic.write_packet(packet, queued=self.queued, scope=self.scope)
 
@@ -840,8 +836,6 @@ class InterfaceMicroservice(Microservice):
     def graceful_kill(self):
         pass  # Just to avoid warning
 
-
-    # Function Funded by Blue Origin
     def sync_tlm_packet_counts(self, packet):
         if self.sync_packet_count_delay_seconds <= 0:
             # Perfect but slow method
