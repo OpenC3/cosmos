@@ -176,7 +176,7 @@ class TargetModel(Model):
         return Store.zrange(f"{scope}__openc3tlm__{target_name}__allitems", 0, -1) # return the new sorted set to let redis do the sorting
 
     @classmethod
-    def add_to_target_allitems_list(cls, target_name: str, item_name: str, scope: str = OPENC3_scope):
+    def add_to_target_allitems_list(cls, target_name: str, item_name: str, scope: str = OPENC3_SCOPE):
         score = 0 # https://redis.io/docs/latest/develop/data-types/sorted-sets/#lexicographical-scores
         Store.zadd(f"{scope}__openc3tlm__{target_name}__allitems", score, item_name)
 
