@@ -13,11 +13,14 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+#
+# A portion of this file was funded by Blue Origin Enterprises, L.P.
+# See https://github.com/OpenC3/cosmos/pull/1957
 -->
 
 <template>
@@ -1507,8 +1510,19 @@ export default {
         } else {
           let index = bs(this.data[0], time, this.bs_comparator)
           if (index >= 0) {
-            // Found the slot in the existing data
-            this.set_data_at_index(index, time, data[i])
+            // Found a slot with the exact same time value
+            // Handle duplicate time by subtracting a small amount until we find an open slot
+            while (index >= 0) {
+              time -= 1e-6 // Subtract a microsecond
+              index = bs(this.data[0], time, this.bs_comparator)
+            }
+            // Now that we have a unique time, insert at the ideal index
+            let ideal_index = -index - 1
+            for (let j = 0; j < this.data.length; j++) {
+              this.data[j].splice(ideal_index, 0, null)
+            }
+            // Use the adjusted time but keep the original data
+            this.set_data_at_index(ideal_index, time, data[i])
           } else {
             // Insert a new null slot at the ideal index
             let ideal_index = -index - 1
