@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -766,11 +766,13 @@ export default {
           ],
         },
       }
-      this.overview = new uPlot(
-        overviewOpts,
-        this.data,
-        document.getElementById(`overview${this.id}`),
-      )
+      if (!this.hideOverview) {
+        this.overview = new uPlot(
+          overviewOpts,
+          this.data,
+          document.getElementById(`overview${this.id}`),
+        )
+      }
       this.moveLegend(this.legendPosition)
 
       // Allow the charts to dynamically resize when the window resizes
@@ -1442,7 +1444,9 @@ export default {
       if (this.data.length === 2) {
         this.data[0] = []
         this.graph.setData(this.data)
-        this.overview.setData(this.data)
+        if (this.overview) {
+          this.overview.setData(this.data)
+        }
       }
     },
     removeItems: function (itemArray) {
@@ -1464,7 +1468,9 @@ export default {
       if (this.data.length === 1) {
         this.data[0] = []
         this.graph.setData(this.data)
-        this.overview.setData(this.data)
+        if (this.overview) {
+          this.overview.setData(this.data)
+        }
       }
       this.$emit('resize')
       this.$emit('edit')
