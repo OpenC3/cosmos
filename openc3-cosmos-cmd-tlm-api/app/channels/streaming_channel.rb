@@ -24,16 +24,18 @@ class StreamingChannel < ApplicationCable::Channel
   @@broadcasters = {}
 
   def subscribed
-    stream_from uuid
-    @@broadcasters[uuid] = StreamingApi.new(uuid, self, scope: scope)
+    subscription_key = "streaming_#{uuid}"
+    stream_from subscription_key
+    @@broadcasters[subscription_key] = StreamingApi.new(subscription_key, scope: scope)
   end
 
   def unsubscribed
-    if @@broadcasters[uuid]
-      stop_stream_from uuid
-      @@broadcasters[uuid].kill
-      @@broadcasters[uuid] = nil
-      @@broadcasters.delete(uuid)
+    subscription_key = "streaming_#{uuid}"
+    if @@broadcasters[subscription_key]
+      stop_stream_from subscription_key
+      @@broadcasters[subscription_key].kill
+      @@broadcasters[subscription_key] = nil
+      @@broadcasters.delete(subscription_key)
     end
   end
 
