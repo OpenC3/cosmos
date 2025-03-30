@@ -187,7 +187,7 @@ module OpenC3
     #   build_cmd('TGT','CMD',{'PARAM1'=>val,'PARAM2'=>val})
     def build_cmd(*args, range_check: true, raw: false, scope: $openc3_scope, **kwargs)
       extract_string_kwargs_to_args(args, kwargs)
-      $api_server.build_command(*args)
+      $api_server.build_cmd(*args)
     end
     # build_command is DEPRECATED
     alias build_command build_cmd
