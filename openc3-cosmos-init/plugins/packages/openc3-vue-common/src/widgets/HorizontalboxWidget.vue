@@ -23,6 +23,7 @@
 <template>
   <div>
     <label-widget
+      v-if="parameters.length > 0"
       :parameters="parameters.slice(0, 1)"
       :settings="[...labelSettings]"
       :widget-index="0"
