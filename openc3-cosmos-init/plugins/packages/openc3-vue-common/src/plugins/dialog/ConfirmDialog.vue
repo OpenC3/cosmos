@@ -110,14 +110,19 @@ export default {
       this.reject = reject
     },
     ok: function () {
-      if (this.params.validateText === this.validationText) {
+      if (!this.params.validateText || this.params.validateText === this.validationText) {
         this.show = false
         this.resolve(true)
+        this.refresh()
       }
     },
     cancel: function () {
       this.show = false
       this.reject(true)
+      this.refresh()
+    },
+    refresh: function () {
+      this.validationText = ''
     },
   },
 }
