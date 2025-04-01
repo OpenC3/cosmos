@@ -1,6 +1,4 @@
-# encoding: ascii
-#
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2025 OpenC3, Incx.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -16,7 +14,11 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-try:
-    from openc3.tools.table_manager import TableManagerCore, TableConfig, Table, TableItem, TableParser, TableItemParser
-except ImportError:
-    pass
+from openc3.tools.table_manager.table_manager_core import TableManagerCore
+from openc3.tools.table_manager.table_config import TableConfig
+from openc3.tools.table_manager.table import Table
+from openc3.tools.table_manager.table_item import TableItem
+from openc3.tools.table_manager.table_parser import TableParser
+from openc3.tools.table_manager.table_item_parser import TableItemParser
+
+__all__ = ['TableManagerCore', 'TableConfig', 'Table', 'TableItem', 'TableParser', 'TableItemParser']

@@ -54,7 +54,7 @@ class LocalMode:
             return
         os.makedirs(os.path.dirname(full_folder_path), exist_ok=True)
         flags = "w"
-        if isinstance(io_or_string, bytes):
+        if isinstance(io_or_string, (bytes, bytearray)):
             flags += "b"
         with open(full_folder_path, flags) as file:
             if hasattr(io_or_string, "read"):

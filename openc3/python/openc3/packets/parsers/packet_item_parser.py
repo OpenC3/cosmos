@@ -244,25 +244,27 @@ class PacketItemParser:
     # There are many different usages of the ITEM and PARAMETER keywords so
     # parse the keyword and parameters to generate the correct usage information.
     def _get_usage(self):
-        usage = f"{self.parser.keyword} <ITEM NAME> "
-        if "APPEND" not in self.parser.keyword:
+        keyword = self.parser.keyword or ""
+        usage = f"{keyword} <ITEM NAME> "
+        if "APPEND" not in keyword:
             usage += "<BIT OFFSET> "
         usage += self._bit_size_usage()
         usage += self._type_usage()
-        if "ARRAY" in self.parser.keyword:
+        if "ARRAY" in keyword:
             usage += "<TOTAL ARRAY BIT SIZE> "
         usage += self._id_usage()
         usage += "<DESCRIPTION (Optional)> <ENDIANNESS (Optional)>"
         return usage
 
     def _bit_size_usage(self):
-        if "ARRAY" in self.parser.keyword:
+        keyword = self.parser.keyword or ""
+        if "ARRAY" in keyword:
             return "<ARRAY ITEM BIT SIZE> "
         else:
             return "<BIT SIZE> "
 
     def _type_usage(self):
-        keyword = self.parser.keyword
+        keyword = self.parser.keyword or ""
         # Item type usage is simple so just return it
         if "ITEM" in keyword:
             return "<TYPE: INT/UINT/FLOAT/STRING/BLOCK/DERIVED> "
@@ -275,7 +277,7 @@ class PacketItemParser:
         else:
             try:
                 data_type = self._get_data_type()
-            except RuntimeError:
+            except TypeError:
                 # If the data type could not be determined set something
                 data_type = "INT"
             # STRING and BLOCK types do not have min or max values
@@ -289,10 +291,11 @@ class PacketItemParser:
         return usage
 
     def _id_usage(self):
-        if "ID" not in self.parser.keyword:
+        keyword = self.parser.keyword or ""
+        if "ID" not in keyword:
             return ""
 
-        if "PARAMETER" in self.parser.keyword:
+        if "PARAMETER" in keyword:
             return "<DEFAULT AND ID VALUE> "
         else:
             return "<ID VALUE> "

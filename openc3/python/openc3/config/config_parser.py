@@ -84,26 +84,26 @@ class ConfigParser:
             data = file.read()
         return data
 
-    # Processes a file and yields |config| to the given block
-    #
-    # self.param filename [String] The full name and path of the configuration file
-    # self.param yield_non_keyword_lines [Boolean] Whether to yield all lines including blank
-    #   lines or comment lines.
-    # self.param remove_quotes [Boolean] Whether to remove beginning and ending single
-    #   or double quote characters from parameters.
-    # self.param run_erb [Boolean] Whether or not to run ERB on the file - Has no effect in Python
-    # self.param variables [Hash] variables to push to ERB context
-    # self.param block [Block] The block to yield to
-    # self.yieldparam keyword [String] The keyword in the current parsed line
-    # self.yieldparam parameters [Array<String>] The parameters in the current parsed line
     def parse_file(
         self,
         filename,
         yield_non_keyword_lines=False,
         remove_quotes_arg=True,
         run_erb=True,
-        variables={},
+        variables={}
     ):
+        """Parse a file and call the callback for each line
+
+        Args:
+            filename (str): The file to parse
+            yield_non_keyword_lines (bool, optional): Whether to yield lines without keywords
+            remove_quotes_arg (bool, optional): Whether to remove quotes from parameters
+            run_erb (bool, optional): No effect in Python
+            variables (dict, optional): No effect in Python
+
+        Returns:
+            None
+        """
         if filename and not os.path.exists(filename):
             raise ConfigParser.Error(self, f"Configuration file {filename} does not exist.")
 
@@ -118,13 +118,18 @@ class ConfigParser:
                 ConfigParser.PARSING_REGEX,
             )
 
-    # Verifies the parameters in the config parameter have the specified
-    # number of parameter and raises an Error if not.
-    #
-    # self.param [Integer] min_num_params The minimum number of parameters
-    # self.param [Integer] max_num_params The maximum number of parameters. Pass
-    #   None to indicate there is no maximum number of parameters.
     def verify_num_parameters(self, min_num_params, max_num_params, usage=""):
+        """
+        Verifies the parameters in the ConfigParser have the specified number of arguments
+
+        Args:
+            min_num_params (int): The minimum number of parameters
+            max_num_params (int): The maximum number of parameters
+            usage (str): Usage description to display in error message
+
+        Raises:
+            Error: Insufficient/Excessive parameters for keyword
+        """
         # This syntax works with 0 because each doesn't return any values
         # for a backwards range
         for index in range(1, min_num_params + 1):
@@ -136,12 +141,13 @@ class ConfigParser:
         if max_num_params is not None and self.parameters[max_num_params : max_num_params + 1]:
             raise ConfigParser.Error(self, f"Too many parameters for {self.keyword}.", usage, self.url)
 
-    # Verifies the indicated parameter in the config doesn't start or end
-    # with an underscore, doesn't contain a double underscore or double bracket,
-    # doesn't contain spaces, quotes or brackets.
-    #
-    # self.param [Integer] index The index of the parameter to check
     def verify_parameter_naming(self, index, usage=""):
+        """
+        Verifies that the parameter does not contain reserved characters
+
+        Args:
+            index (int): The index of the parameter to be verified
+        """
         param = self.parameters[index - 1]
         if param[-1] == "_":
             raise ConfigParser.Error(
@@ -300,6 +306,17 @@ class ConfigParser:
 
     @classmethod
     def calculate_range_value(cls, type, data_type, bit_size):
+        """
+        Calculate the min or max value for a given data type and bit size
+
+        Args:
+            data_type: Data type (INT, UINT, etc.)
+            bit_size: Size in bits
+            type: MIN or MAX
+
+        Returns:
+            Min or max value
+        """
         value = 0  # Default for UINT minimum
 
         match data_type:
