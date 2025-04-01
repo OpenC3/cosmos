@@ -18,11 +18,7 @@ import os
 import shutil
 import unittest
 import tempfile
-from unittest.mock import patch
-from openc3.config.config_parser import ConfigParser
 from openc3.tools.table_manager.table_config import TableConfig
-from openc3.tools.table_manager.table_parser import TableParser
-from openc3.tools.table_manager.table import Table
 
 class TestTableParser(unittest.TestCase):
     def setUp(self):

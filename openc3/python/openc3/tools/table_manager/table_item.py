@@ -15,7 +15,6 @@
 # if purchased from OpenC3, Inc.
 
 from openc3.packets.packet_item import PacketItem
-import copy
 
 class TableItem(PacketItem):
     """
