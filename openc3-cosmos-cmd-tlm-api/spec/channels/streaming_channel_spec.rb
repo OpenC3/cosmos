@@ -41,7 +41,7 @@ RSpec.describe StreamingChannel, :type => :channel do
   it "subscribes" do
     subscribe()
     expect(subscription).to be_confirmed
-    expect(subscription).to have_stream_from('12345')
+    expect(subscription).to have_stream_from('streaming_12345')
   end
 
   context "adds" do

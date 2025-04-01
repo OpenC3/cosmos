@@ -492,8 +492,10 @@ export default {
     filter(value, search, _item) {
       if (this.isPinned(value)) {
         return true
-      } else {
+      } else if (value) {
         return value.toString().indexOf(search.toUpperCase()) >= 0
+      } else {
+        return false
       }
     },
     packetChanged(event) {

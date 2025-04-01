@@ -19,10 +19,10 @@
 require_relative 'topics_thread'
 
 class ConfigEventsApi
-  def initialize(uuid, channel, history_count = 0, start_offset = nil, scope:)
+  def initialize(subscription_key, history_count = 0, start_offset = nil, scope:)
     topics = ["#{scope}__CONFIG"]
     start_offsets = [start_offset] if start_offset and start_offset != 'undefined'
-    @thread = TopicsThread.new(topics, channel, history_count, offsets: start_offsets, transmit_msg_id: true)
+    @thread = TopicsThread.new(topics, subscription_key, history_count, offsets: start_offsets, transmit_msg_id: true)
     @thread.start
   end
 

@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -18,7 +18,6 @@ import glob
 import pathlib
 import os
 from typing import Optional
-
 from openc3.top_level import add_to_search_path
 from openc3.utilities.logger import Logger
 from openc3.config.config_parser import ConfigParser
@@ -35,7 +34,6 @@ class Target:
         and telemetry definition files found in the targets cmd_tlm directory.
         System uses this list and processes them using PacketConfig."""
         self.language = "python"
-        self.requires = []
         self.ignored_parameters = []
         self.ignored_items = []
         self.cmd_tlm_files = []
@@ -72,37 +70,10 @@ class Target:
                     usage = f"{keyword} <ruby | python>"
                     parser.verify_num_parameters(1, 1, usage)
                     self.language = parameters[0].lower()
+
                 case "REQUIRE":
-                    usage = f"{keyword} <FILENAME>"
-                    parser.verify_num_parameters(1, 1, usage)
-                    # TODO:
-                    # filename = f"{self.dir}/lib/{parameters[0]}"
-                    # try:
-                    #     # Require absolute path to file in target lib folder. Prevents name
-                    #     # conflicts at the require step
-                    #     # OpenC3.require_file(filename, False)
-
-                    # except LoadError:
-                    #     begin
-                    #     # If we couldn't load at the target/lib level check everywhere
-                    #     OpenC3.disable_warnings do
-                    #         filename = parameters[0]
-                    #         OpenC3.require_file(parameters[0])
-
-                    #     rescue Exception => err
-                    #     raise parser.error(err)
-
-                    # rescue Exception => err
-                    #     raise parser.error(err)
-
-                    # This code resolves any relative paths to absolute before putting into the self.requires array
-                    # unless Pathname.new(filename).absolute?
-                    #     $:.each do |search_path|
-                    #     test_filename = os.path.join(search_path, filename).gsub("\\", "/")
-                    #     if os.path.exists(test_filename)
-                    #         filename = test_filename
-                    #         break
-                    # self.requires << filename
+                    # This keyword is deprecated in Python
+                    pass
 
                 case "IGNORE_PARAMETER" | "IGNORE_ITEM":
                     usage = f"{keyword} <{keyword.split('_')[1]} NAME>"
@@ -138,7 +109,6 @@ class Target:
     def as_json(self):
         config = {
             "name": self.name,
-            "requires": self.requires,
             "ignored_parameters": self.ignored_parameters,
             "ignored_items": self.ignored_items,
             "cmd_tlm_files": self.cmd_tlm_files,
@@ -158,7 +128,6 @@ class Target:
             gem_path (os.)
         """
         self.dir = gem_path if gem_path else os.path.join(path, self.name)
-
         lib_dir = os.path.join(self.dir, "lib")
         if os.path.exists(lib_dir):
             add_to_search_path(lib_dir, False)

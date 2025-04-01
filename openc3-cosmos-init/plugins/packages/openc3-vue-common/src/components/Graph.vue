@@ -13,11 +13,14 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+#
+# A portion of this file was funded by Blue Origin Enterprises, L.P.
+# See https://github.com/OpenC3/cosmos/pull/1957
 -->
 
 <template>
@@ -766,11 +769,13 @@ export default {
           ],
         },
       }
-      this.overview = new uPlot(
-        overviewOpts,
-        this.data,
-        document.getElementById(`overview${this.id}`),
-      )
+      if (!this.hideOverview) {
+        this.overview = new uPlot(
+          overviewOpts,
+          this.data,
+          document.getElementById(`overview${this.id}`),
+        )
+      }
       this.moveLegend(this.legendPosition)
 
       // Allow the charts to dynamically resize when the window resizes
@@ -1442,7 +1447,9 @@ export default {
       if (this.data.length === 2) {
         this.data[0] = []
         this.graph.setData(this.data)
-        this.overview.setData(this.data)
+        if (this.overview) {
+          this.overview.setData(this.data)
+        }
       }
     },
     removeItems: function (itemArray) {
@@ -1464,7 +1471,9 @@ export default {
       if (this.data.length === 1) {
         this.data[0] = []
         this.graph.setData(this.data)
-        this.overview.setData(this.data)
+        if (this.overview) {
+          this.overview.setData(this.data)
+        }
       }
       this.$emit('resize')
       this.$emit('edit')
@@ -1497,8 +1506,8 @@ export default {
       // }
       for (let i = 0; i < data.length; i++) {
         let time = data[i].__time / 1000000000.0 // Time in seconds
-        let length = data[0].length
-        if (length === 0 || time > data[0][length - 1]) {
+        let length = this.data[0].length
+        if (length === 0 || time > this.data[0][length - 1]) {
           // Nominal case - append new data to end
           for (let j = 0; j < this.data.length; j++) {
             this.data[j].push(null)
@@ -1507,8 +1516,19 @@ export default {
         } else {
           let index = bs(this.data[0], time, this.bs_comparator)
           if (index >= 0) {
-            // Found the slot in the existing data
-            this.set_data_at_index(index, time, data[i])
+            // Found a slot with the exact same time value
+            // Handle duplicate time by subtracting a small amount until we find an open slot
+            while (index >= 0) {
+              time -= 1e-5 // Subtract 10 microseconds
+              index = bs(this.data[0], time, this.bs_comparator)
+            }
+            // Now that we have a unique time, insert at the ideal index
+            let ideal_index = -index - 1
+            for (let j = 0; j < this.data.length; j++) {
+              this.data[j].splice(ideal_index, 0, null)
+            }
+            // Use the adjusted time but keep the original data
+            this.set_data_at_index(ideal_index, time, data[i])
           } else {
             // Insert a new null slot at the ideal index
             let ideal_index = -index - 1

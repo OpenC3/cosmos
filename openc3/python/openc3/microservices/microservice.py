@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -56,6 +56,7 @@ class Microservice:
                 microservice.error = err
                 microservice.state = "DIED_ERROR"
             Logger.fatal(f"Microservice {microservice.name} dying from exception\n{traceback.format_exc()}")
+            microservice.shutdown() # Dying in crash so should try to shutdown
         finally:
             if microservice:
                 MicroserviceStatusModel.set(microservice.as_json(), scope=microservice.scope)
@@ -215,8 +216,8 @@ class Microservice:
 
     # Returns if the command was handled
     def microservice_cmd(self, topic, msg_id, msg_hash, _):
-        command = msg_hash["command"]
-        if command == "ADD_TOPICS":
+        command = msg_hash.get("command")
+        if command == "ADD_TOPICS" and msg_hash.get("topics"):
             topics = json.loads(msg_hash["topics"])
             if topics and isinstance(topics, list):
                 for new_topic in topics:

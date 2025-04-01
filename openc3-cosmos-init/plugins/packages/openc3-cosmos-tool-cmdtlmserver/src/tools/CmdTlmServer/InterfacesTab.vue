@@ -48,14 +48,29 @@
       data-test="interfaces-table"
     >
       <template v-slot:item.connect="{ item }">
-        <v-btn
-          block
-          color="primary"
-          :disabled="buttonsDisabled"
-          @click="connectDisconnect(item)"
+        <v-tooltip
+          location="top"
+          :disabled="
+            !item.disable_disconnect || item.connected === 'DISCONNECTED'
+          "
+          text="This interface set DISABLE_DISCONNECT in plugin.txt"
         >
-          {{ item.connect }}
-        </v-btn>
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
+              <v-btn
+                block
+                color="primary"
+                :disabled="
+                  buttonsDisabled ||
+                  (item.disable_disconnect && item.connected === 'CONNECTED')
+                "
+                @click="connectDisconnect(item)"
+              >
+                {{ item.connect }}
+              </v-btn>
+            </div>
+          </template>
+        </v-tooltip>
       </template>
       <template v-slot:item.connected="{ item }">
         <span :class="item.connectedClass">
@@ -189,6 +204,7 @@ export default {
             rx_bytes: int[6],
             cmd_pkts: int[7],
             tlm_pkts: int[8],
+            disable_disconnect: int[9], // Add the disable_disconnect property from the backend
           })
         }
         this.buttonsDisabled = false

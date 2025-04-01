@@ -67,7 +67,26 @@
               <v-row class="pa-3">
                 <v-col> This can be edited before installation. </v-col>
               </v-row>
-              <pre ref="editor" class="editor"></pre>
+              <pre
+                ref="editor"
+                class="editor"
+                @contextmenu.prevent="showContextMenu"
+              ></pre>
+              <v-menu v-model="contextMenu" :target="[menuX, menuY]">
+                <v-list>
+                  <v-list-item link>
+                    <v-list-item-title @click="openDocumentation">
+                      {{ docsKeyword }} documentation
+                    </v-list-item-title>
+                  </v-list-item>
+                  <v-divider />
+                  <v-list-item
+                    title="Toggle Vim mode"
+                    prepend-icon="extras:vim"
+                    @click="toggleVimMode"
+                  />
+                </v-list>
+              </v-menu>
             </v-window-item>
             <v-window-item
               v-else
@@ -121,6 +140,7 @@ import 'ace-builds/src-min-noconflict/ext-searchbox'
 import AceDiff from '@openc3/ace-diff'
 import '@openc3/ace-diff/dist/ace-diff-dark.min.css'
 import { toRaw } from 'vue'
+import { AceEditorUtils } from '../../components/ace'
 
 export default {
   props: {
@@ -150,6 +170,9 @@ export default {
       localExistingPluginTxt: null,
       editor: null,
       differ: null,
+      contextMenu: false,
+      menuX: 0,
+      menuY: 0,
     }
   },
   mounted() {
@@ -164,6 +187,7 @@ export default {
       this.editor.setHighlightActiveLine(false)
       this.editor.setValue(this.localPluginTxt)
       this.editor.clearSelection()
+      AceEditorUtils.applyVimModeIfEnabled(this.editor)
       this.editor.focus()
     } else {
       this.tab = 1 // Show the diff right off the bat
@@ -183,6 +207,11 @@ export default {
       // Match our existing editors
       this.differ.getEditors().left.setFontSize(16)
       this.differ.getEditors().right.setFontSize(16)
+      
+      // Apply vim mode if enabled to both editor instances
+      AceEditorUtils.applyVimModeIfEnabled(this.differ.getEditors().left)
+      AceEditorUtils.applyVimModeIfEnabled(this.differ.getEditors().right)
+      
       this.curDiff = -1 // so the first will be 0
     }
   },
@@ -325,6 +354,28 @@ export default {
     },
     close: function () {
       this.show = !this.show
+    },
+    showContextMenu: function (event) {
+      this.menuX = event.pageX
+      this.menuY = event.pageY
+
+      let position = this.editor.getCursorPosition()
+      let token = this.editor.session.getTokenAt(position.row, position.column)
+      if (token) {
+        let value = token.value.trim()
+        if (value.includes(' ')) {
+          this.docsKeyword = value.split(' ')[0]
+        } else {
+          this.docsKeyword = value
+        }
+        this.contextMenu = true
+      }
+    },
+    toggleVimMode: function () {
+      if (this.editor) {
+        AceEditorUtils.toggleVimMode(this.editor)
+        // don't worry about this.differ since AceDiff replaces the editor anyway, and thus there's no context menu
+      }
     },
   },
 }

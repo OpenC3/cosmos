@@ -64,6 +64,7 @@ module OpenC3
             microservice.state = 'DIED_ERROR'
             Logger.fatal("Microservice #{name} dying from exception\n#{e.formatted}")
           end
+          microservice.shutdown # Dying in crash so should try to shutdown
         ensure
           MicroserviceStatusModel.set(microservice.as_json(:allow_nan => true), scope: microservice.scope)
         end

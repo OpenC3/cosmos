@@ -14,11 +14,12 @@ export const ADMIN_STORAGE_STATE = path.join(
  */
 export default defineConfig({
   testDir: './tests',
-  /* Maximum time one test can run for. */
-  timeout: 5 * 60 * 1000, // 5 minutes
+  /* Maximum time one test can run for (default 30s). */
+  timeout: 60 * 1000,
   expect: {
     /**
      * Maximum time expect() should wait for the condition to be met.
+     * (default 5s)
      * For example in `await expect(locator).toHaveText();`
      */
     timeout: 10000,
@@ -30,13 +31,13 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   /* Retry once on CI */
   retries: process.env.CI ? 1 : 0,
-  workers: 1,
-  /* See if explicit WORKERS count was given, otherwise allow parallelism on CI/CD */
-  // workers: process.env.WORKERS
-  //   ? parseInt(process.env.WORKERS)
-  //   : process.env.CI
-  //   ? 3
-  //   : 1,
+  /* Allows multiple tests from each file to be run at the same time */
+  fullyParallel: true,
+  workers: process.env.WORKERS
+    ? parseInt(process.env.WORKERS) // Use explicit worker count if given
+    : process.env.CI
+      ? 3 // Otherwise use 3 on CI/CD
+      : undefined, // and a bunch locally (seems to be 7, but the default isn't documented)
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: process.env.CI ? 'github' : 'list',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */

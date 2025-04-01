@@ -25,7 +25,7 @@
 
 <template>
   <div :style="computedStyle" ref="bar">
-    <v-card :min-height="height" :min-width="width" style="cursor: default">
+    <v-card v-if="!inline" :min-height="height" :min-width="width" style="cursor: default">
       <v-toolbar height="24">
         <div v-show="errors.length !== 0">
           <v-tooltip location="top">
@@ -149,6 +149,32 @@
         </div>
       </v-expand-transition>
     </v-card>
+
+    <div
+      class="pa-1"
+      style="position: relative"
+      v-if="inline"
+    >
+      <v-overlay
+        style="pointer-events: none"
+        :model-value="errors.length !== 0"
+        opacity="0.8"
+        absolute
+        attach
+      />
+      <vertical-widget
+        :key="screenKey"
+        :widgets="layoutStack[0].widgets"
+        :screen-values="screenValues"
+        :screen-time-zone="timeZone"
+        v-on:add-item="addItem"
+        v-on:delete-item="deleteItem"
+        v-on:open="open"
+        v-on:close="close"
+        v-on:close-all="closeAll"
+      />
+    </div>
+
     <edit-screen-dialog
       v-if="editDialog"
       v-model="editDialog"
@@ -241,6 +267,10 @@ export default {
     timeZone: {
       type: String,
       default: 'local',
+    },
+    inline: {
+      type: Boolean,
+      default: false,
     },
   },
   data() {

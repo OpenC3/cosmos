@@ -1,7 +1,7 @@
 # Make managed in .env-build
 ARG OPENC3_DEPENDENCY_REGISTRY=docker.io
-ARG ALPINE_BUILD=7
-ARG ALPINE_VERSION=3.19
+ARG ALPINE_VERSION=3.21
+ARG ALPINE_BUILD=3
 
 # Should be loaded from ARG
 FROM ${OPENC3_DEPENDENCY_REGISTRY}/alpine:${ALPINE_VERSION}.${ALPINE_BUILD}
@@ -56,7 +56,7 @@ RUN apk update \
   htop \
   less \
   libc6-compat \
-  # Ruby 3.2 no longer bundles libffi so explicitly include
+  # Ruby 3.2+ no longer bundles libffi so explicitly include
   libffi-dev \
   libxml2-dev \
   libxslt-dev \
@@ -74,9 +74,9 @@ RUN apk update \
   ruby-io-console \
   ruby-irb \
   tini \
-  # Ruby 3.2 no longer bundles libyaml so explicitly include
+  # Ruby 3.2+ no longer bundles libyaml so explicitly include
   yaml-dev \
-  && gem update --system 3.3.14 \
+  && gem update --system \
   && gem install rake \
   # These need to be installed with the --platform flag to avoid errors on linux-musl
   # See: https://github.com/protocolbuffers/protobuf/issues/16853#issuecomment-2583135716
@@ -92,7 +92,12 @@ RUN apk update \
   && pip3 config --global set global.index-url $PYPI_URL/simple \
   && pip3 install --upgrade pip setuptools \
   && pip3 install poetry \
-  && pip3 install poetry-plugin-export
+  && pip3 install poetry-plugin-export \
+  # Note this is needed to prevent pip disappearing in some build environments
+  && cp /openc3/venv/bin/pip* /openc3
+
+# Note this is needed to fix pip files disappearing in some build environments
+RUN mv /openc3/pip* /openc3/venv/bin/.
 
 # Set user and group
 ENV IMAGE_USER=openc3
@@ -101,7 +106,7 @@ ENV USER_ID=1001
 ENV GROUP_ID=1001
 # The build time venv is at /openc3/venv and the runtime venv is at /gems/python_packages
 # NOTE: This is declared as PYTHONUSERBASE: "/gems/python_packages" in compose.yaml
-ENV PYTHONPATH=/openc3/venv/lib/python3.11/site-packages/:/gems/python_packages/lib/python3.11/site-packages/
+ENV PYTHONPATH=/openc3/venv/lib/python3.12/site-packages/:/gems/python_packages/lib/python3.12/site-packages/
 RUN addgroup -g ${GROUP_ID} -S ${IMAGE_GROUP}
 RUN adduser -u ${USER_ID} -G ${IMAGE_GROUP} -s /bin/ash -S ${IMAGE_USER}
 

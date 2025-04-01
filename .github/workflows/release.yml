@@ -31,10 +31,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.QA_PAT }}
-      - name: Set up Ruby 3.2
+      - name: Set up Ruby 3.3
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: 3.2
+          ruby-version: 3.3
           bundler-cache: false # runs 'bundle install' and caches installed gems automatically
           working-directory: openc3
       - uses: actions/setup-node@v4
@@ -44,7 +44,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.x"
+          python-version: "3.12"
       - name: Install dependencies
         working-directory: openc3/python
         run: |
@@ -80,10 +80,26 @@ jobs:
       - name: Build Python Package
         working-directory: openc3/python
         run: python -m build
+      - name: Build Yarn Packages
+        run: yarn; yarn build:common
+        working-directory: openc3-cosmos-init/plugins
       - name: build_multi_arch
         # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'
         run: ./build_multi_arch.sh
+        working-directory: scripts/release
+        env:
+          OPENC3_DEPENDENCY_REGISTRY: docker.io
+          OPENC3_ENTERPRISE_REGISTRY: ghcr.io
+          OPENC3_ENTERPRISE_NAMESPACE: openc3
+          OPENC3_REGISTRY: docker.io
+          OPENC3_NAMESPACE: openc3inc
+          OPENC3_RELEASE_VERSION: ${{ github.event.inputs.version }}
+          OPENC3_UPDATE_LATEST: ${{ github.event.inputs.update_latest }}
+      - name: build_multi_arch UBI
+        # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
+        shell: 'script -q -e -c "bash {0}"'
+        run: ./build_multi_arch.sh ubi
         working-directory: scripts/release
         env:
           OPENC3_DEPENDENCY_REGISTRY: docker.io

@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -47,7 +47,7 @@ else:
 
     def __init__(self, filename):
         self.filename = filename
-        self.in_try = False
+        self.try_count = 0
         self.try_nodes = [ast.Try]
         if sys.version_info >= (3, 11):
             self.try_nodes.append(ast.TryStar)
@@ -69,14 +69,9 @@ else:
     #         RunningScript.instance.post_line_instrumentation('myfile.py', 1)
     # This allows us to retry statements that raise exceptions
     def track_enter_leave(self, node):
-        # Determine if we're in a try block
-        in_try = self.in_try
-        if not in_try and type(node) in self.try_nodes:
-            self.in_try = True
         # Visit the children of the node
         node = self.generic_visit(node)
-        if not in_try and type(node) in self.try_nodes:
-            self.in_try = False
+
         # ast.parse returns a module, so we need to extract
         # the first element of the body which is the node
         pre_line = ast.parse(
@@ -85,6 +80,7 @@ else:
         post_line = ast.parse(
             self.post_line_instrumentation.format(self.filename, node.lineno)
         ).body[0]
+
         true_node = ast.Constant(True)
         break_node = ast.Break()
         for new_node in (pre_line, post_line, true_node, break_node):
@@ -102,11 +98,13 @@ else:
             # It's actually surprising how many nodes are nested in the new_node
             for new_node2 in ast.walk(new_node):
                 ast.copy_location(new_node2, node)
+
         # Create an exception handler node to wrap the exception handler code
         excepthandler = ast.ExceptHandler(type=None, name=None, body=exception_handler)
         ast.copy_location(excepthandler, node)
+
         # If we're not already in a try block, we need to wrap the node in a while loop
-        if not self.in_try:
+        if self.try_count == 0:
             try_node = ast.Try(
                 # pre_line is the pre_line_instrumentation, node is the original node
                 # and if the code is executed without an exception, we break
@@ -136,12 +134,13 @@ else:
     # Call the pre_line_instrumentation ONLY and then execute the node
     def track_reached(self, node):
         # Determine if we're in a try block, this is used by track_enter_leave
-        in_try = self.in_try
-        if not in_try and type(node) in self.try_nodes:
-            self.in_try = True
+        if type(node) in self.try_nodes:
+            # Increment the try count to account for nested try / except blocks
+            self.try_count += 1
 
         # Visit the children of the node
         node = self.generic_visit(node)
+
         pre_line = ast.parse(
             self.pre_line_instrumentation.format(self.filename, node.lineno)
         ).body[0]
@@ -153,12 +152,17 @@ else:
         # The if_node is effectively a noop that holds the preline & node that we need to execute
         if_node = ast.If(test=n, body=[pre_line, node], orelse=[])
         ast.copy_location(if_node, node)
+
+        # If we're in a try block decrement the count to account for nested try / except blocks
+        if type(node) in self.try_nodes:
+            self.try_count -= 1
+
         return if_node
 
     def track_import_from(self, node):
         # Don't tract from __future__ imports because they must come first or:
         #   SyntaxError: from __future__ imports must occur at the beginning of the file
-        if node.module != '__future__':
+        if node.module != "__future__":
             return self.track_enter_leave(node)
 
     # Notes organized (including newlines) per https://docs.python.org/3/library/ast.html#abstract-grammar
