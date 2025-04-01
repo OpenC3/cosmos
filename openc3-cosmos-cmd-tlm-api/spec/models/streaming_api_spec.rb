@@ -125,14 +125,13 @@ RSpec.describe StreamingApi, type: :model do
     end
 
     @messages = []
-    @channel = double('channel')
-    allow(@channel).to receive(:uuid).and_return("abc123")
+    @subscription_key = "streaming_abc123"
 
     allow(ActionCable.server).to receive(:broadcast) do |uuid, message|
       @messages << message
     end
 
-    @api = StreamingApi.new(123, @channel, scope: 'DEFAULT')
+    @api = StreamingApi.new(@subscription_key, scope: 'DEFAULT')
   end
 
   after(:each) do
@@ -142,7 +141,6 @@ RSpec.describe StreamingApi, type: :model do
   it 'stores the channel and threads' do
     expect(@api.instance_variable_get('@realtime_thread')).to be_nil
     expect(@api.instance_variable_get('@logged_threads')).to be_empty
-    expect(@api.instance_variable_get('@channel')).to eq(@channel)
   end
 
   context 'streaming with Redis' do

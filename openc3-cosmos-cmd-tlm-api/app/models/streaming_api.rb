@@ -30,9 +30,8 @@ require_relative 'streaming_object_collection'
 class StreamingApi
   include OpenC3::Authorization
 
-  def initialize(uuid, channel, scope: nil)
-    @uuid = uuid
-    @channel = channel
+  def initialize(subscription_key, scope: nil)
+    @subscription_key = subscription_key
     @mutex = Mutex.new
     @realtime_thread = nil
     @logged_threads = []
@@ -194,7 +193,7 @@ class StreamingApi
 
   def transmit_results(results, force: false)
     if results.length > 0 or force
-      ActionCable.server.broadcast(@channel.uuid, results.as_json(:allow_nan => true))
+      ActionCable.server.broadcast(@subscription_key, results.as_json(:allow_nan => true))
     end
   end
 
