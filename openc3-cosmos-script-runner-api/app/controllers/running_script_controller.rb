@@ -24,6 +24,12 @@ class RunningScriptController < ApplicationController
   def index
     return unless authorization('script_view')
     render json: RunningScript.all
+    array = OpenC3::Store.smembers(RUNNING_SCRIPTS)
+    items = []
+    array.each do |member|
+      items << JSON.parse(member, :allow_nan => true, :create_additions => true)
+    end
+    items.sort { |a, b| b['id'] <=> a['id'] }
   end
 
   def show

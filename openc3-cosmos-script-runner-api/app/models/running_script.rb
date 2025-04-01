@@ -34,10 +34,10 @@ require 'openc3/utilities/store_queued'
 require 'openc3/utilities/bucket_require'
 require 'openc3/models/offline_access_model'
 require 'openc3/models/environment_model'
+require 'openc3/models/script_status_model'
 
 RAILS_ROOT = File.expand_path(File.join(__dir__, '..', '..'))
 SCRIPT_API = 'script-api'
-RUNNING_SCRIPTS = 'running-scripts'
 
 def running_script_publish(channel_name, data)
   stream_name = [SCRIPT_API, channel_name].compact.join(":")
@@ -128,9 +128,9 @@ module OpenC3
           RunningScript.instrumented_cache[path] = [instrumented_script, text]
           cached = false
         end
-        running = OpenC3::Store.smembers(RUNNING_SCRIPTS)
+        running = ScriptStatusModel.all(scope: RunningScript.instance.scope, type: 'running')
         running ||= []
-        running_script_anycable_publish("all-scripts-channel", { type: :start, filename: procedure_name, active_scripts: running.length })
+        running_script_anycable_publish("all-scripts-channel", { type: :start, filename: procedure_name, active_scripts: running.length, scope: RunningScript.instance.scope })
         Object.class_eval(instrumented_script, path, 1)
 
         # Return whether we had to load and instrument this file, i.e. it was not cached
@@ -273,36 +273,6 @@ class RunningScript
     self.class.message_log(@id)
   end
 
-  def self.all
-    array = OpenC3::Store.smembers(RUNNING_SCRIPTS)
-    items = []
-    array.each do |member|
-      items << JSON.parse(member, :allow_nan => true, :create_additions => true)
-    end
-    items.sort { |a, b| b['id'] <=> a['id'] }
-  end
-
-  def self.find(id)
-    result = OpenC3::Store.get("running-script:#{id}").to_s
-    if result.length > 0
-      JSON.parse(result, :allow_nan => true, :create_additions => true)
-    else
-      return nil
-    end
-  end
-
-  def self.delete(id)
-    OpenC3::Store.del("running-script:#{id}")
-    running = OpenC3::Store.smembers(RUNNING_SCRIPTS)
-    running.each do |item|
-      parsed = JSON.parse(item, :allow_nan => true, :create_additions => true)
-      if parsed["id"].to_s == id.to_s
-        OpenC3::Store.srem(RUNNING_SCRIPTS, item)
-        break
-      end
-    end
-  end
-
   def self.spawn(scope, name, suite_runner = nil, disconnect = false, environment = nil, user_full_name = nil, username = nil)
     if File.extname(name) == '.py'
       process_name = 'python'
@@ -311,28 +281,32 @@ class RunningScript
       process_name = 'ruby'
       runner_path = File.join(RAILS_ROOT, 'scripts', 'run_script.rb')
     end
-    running_script_id = OpenC3::Store.incr('running-script-id')
 
     # Open Source full name (EE has the actual name)
+    running_script_id = OpenC3::Store.incr('running-script-id')
+    username ||= 'Anonymous'
     user_full_name ||= 'Anonymous'
-    start_time = Time.now
-    details = {
-      id: running_script_id,
-      scope: scope,
-      name: name,
-      user: user_full_name,
-      start_time: start_time.to_s,
-      disconnect: disconnect,
-      environment: environment
-    }
-    OpenC3::Store.sadd(RUNNING_SCRIPTS, details.as_json(:allow_nan => true).to_json(:allow_nan => true))
-    details[:hostname] = Socket.gethostname
-    # details[:pid] = process.pid
-    details[:state] = :spawning
-    details[:line_no] = 1
-    details[:update_time] = start_time.to_s
-    details[:suite_runner] = suite_runner.as_json(:allow_nan => true).to_json(:allow_nan => true) if suite_runner
-    OpenC3::Store.set("running-script:#{running_script_id}", details.as_json(:allow_nan => true).to_json(:allow_nan => true))
+    start_time = Time.now.utc.iso8601
+    script_status = OpenC3::ScriptStatusModel.new(
+      name: running_script_id.to_s,
+      state: 'spawning',
+      shard: 0,
+      filename: name,
+      current_filename: nil,
+      line_no: nil,
+      username: username,
+      user_full_name: user_full_name,
+      start_time: start_time,
+      end_time: nil,
+      disconnect: false,
+      environment: nil,
+      suite_runner: suite_runner.as_json(:allow_nan => true).to_json(:allow_nan => true),
+      errors: nil,
+      pid: nil,
+      updated_at: nil,
+      scope: scope
+    )
+    script_status.create
 
     process = ChildProcess.build(process_name, runner_path.to_s, running_script_id.to_s)
     process.io.inherit! # Helps with debugging
