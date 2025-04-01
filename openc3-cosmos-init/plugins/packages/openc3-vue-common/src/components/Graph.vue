@@ -1519,7 +1519,7 @@ export default {
             // Found a slot with the exact same time value
             // Handle duplicate time by subtracting a small amount until we find an open slot
             while (index >= 0) {
-              time -= 1e-6 // Subtract a microsecond
+              time -= 1e-5 // Subtract 10 microseconds
               index = bs(this.data[0], time, this.bs_comparator)
             }
             // Now that we have a unique time, insert at the ideal index
