@@ -45,9 +45,10 @@ class StreamingChannel < ApplicationCable::Channel
   #   items [Array of Item keys] ie ["DECOM__TLM__INST__ADCS__Q1__RAW"]
   #   scope
   def add(data)
+    subscription_key = "streaming_#{uuid}"
     if validate_data(data)
       begin
-        @@broadcasters[uuid].add(data)
+        @@broadcasters[subscription_key].add(data)
       rescue OpenC3::AuthError, OpenC3::ForbiddenError
         transmit({ "error" => "unauthorized" })
         reject() # Sets the rejected state on the connection
@@ -64,9 +65,10 @@ class StreamingChannel < ApplicationCable::Channel
   #   items [Array of Item keys] ie ["DECOM__TLM__INST__ADCS__Q1__RAW"]
   #   scope
   def remove(data)
+    subscription_key = "streaming_#{uuid}"
     if validate_data(data)
       begin
-        @@broadcasters[uuid].remove(data)
+        @@broadcasters[subscription_key].remove(data)
       rescue OpenC3::AuthError, OpenC3::ForbiddenError
         transmit({ "error" => "unauthorized" })
         reject() # Sets the rejected state on the connection
