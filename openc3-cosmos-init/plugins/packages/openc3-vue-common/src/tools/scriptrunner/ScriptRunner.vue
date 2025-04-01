@@ -254,6 +254,12 @@
                 {{ item.label }}
               </v-list-item-title>
             </v-list-item>
+            <v-divider />
+            <v-list-item
+              title="Toggle Vim mode"
+              prepend-icon="extras:vim"
+              @click="toggleVimMode"
+            />
           </v-list>
         </v-menu>
       </pane>
@@ -467,6 +473,7 @@ import 'splitpanes/dist/splitpanes.css'
 import { Api, Cable, OpenC3Api } from '@openc3/js-common/services'
 import {
   AceEditorModes,
+  AceEditorUtils,
   CriticalCmdDialog,
   EnvironmentDialog,
   FileOpenSaveDialog,
@@ -1086,7 +1093,9 @@ export default {
     this.editor.setOption('enableLiveAutocompletion', true)
     this.editor.completers = [new CmdCompleter(), new TlmCompleter()]
     this.editor.setHighlightActiveLine(false)
+    AceEditorUtils.applyVimModeIfEnabled(this.editor)
     this.editor.focus()
+    
     this.editor.on('guttermousedown', this.toggleBreakpoint)
     // We listen to tokenizerUpdate rather than change because this
     // is the background process that updates as changes are processed
@@ -1168,6 +1177,9 @@ export default {
     }
   },
   methods: {
+    toggleVimMode() {
+      AceEditorUtils.toggleVimMode(this.editor)
+    },
     doResize() {
       this.editor.resize()
       // nextTick allows the resize to work correctly

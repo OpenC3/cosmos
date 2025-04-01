@@ -4,11 +4,17 @@
   "license": "ISC",
   "description": "OpenC3 integration testing",
   "scripts": {
+    "test": "yarn test:parallel --quiet && yarn test:serial --quiet",
+    "test:parallel": "playwright test ./tests/**/*.p.spec.ts --project=chromium",
+    "test:serial": "playwright test ./tests/**/*.s.spec.ts --project=chromium --workers=1",
+    "test:enterprise": "ENTERPRISE=1 playwright test ./tests/enterprise/*.spec.ts --project=chromium --workers=1",
+    "test:keycloak": "playwright test ./tests/**/*.p.spec.ts --project=keycloak && playwright test ./tests/**/*.s.spec.ts --project=keycloak --workers=1",
     "fixlinux": "cp ./context.js node_modules/istanbul-lib-report/lib/context.js",
     "fixwindows": "copy .\\context.js node_modules\\istanbul-lib-report\\lib\\context.js",
     "coverage": "nyc report --reporter=html",
     "cobertura": "nyc report --reporter=cobertura",
-    "clean": "rm -rf .nyc_output || rmdir /s /q .nyc_output; rm -rf coverage || rmdir /s /q coverage; rm -rf test-results || rmdir /s /q test-results"
+    "clean": "rm -rf .nyc_output || rmdir /s /q .nyc_output; rm -rf coverage || rmdir /s /q coverage; rm -rf test-results || rmdir /s /q test-results",
+    "format": "prettier -w ./"
   },
   "dependencies": {
     "@playwright/test": "1.51.1",

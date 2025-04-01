@@ -122,9 +122,7 @@ test('saves, opens, and resets the configuration', async ({ page, utils }) => {
 
   await page.locator('[data-test=limits-monitor-file]').click()
   await page.locator('text=Save Configuration').click()
-  await page
-    .getByLabel('Configuration Name')
-    .fill('playwright')
+  await page.getByLabel('Configuration Name').fill('playwright')
   await page.locator('button:has-text("Ok")').click()
 
   await page.locator('[data-test=limits-monitor-file]').click()
@@ -333,10 +331,9 @@ test('displays the limits log', async ({ page, utils }) => {
     format(new Date(), 'yyyy-MM-dd'),
   )
   // These have long timeouts just to allow the demo to hit another limit
-  await expect(page.locator('[data-test=limits-events]')).toContainText(
-    'RED',
-    { timeout: 15000 },
-  )
+  await expect(page.locator('[data-test=limits-events]')).toContainText('RED', {
+    timeout: 15000,
+  })
   await expect(page.locator('[data-test=limits-events]')).toContainText(
     'YELLOW',
     { timeout: 15000 },

@@ -75,7 +75,9 @@ test('validates dates and times', async ({ page, utils }) => {
   // e.g. "22", which is fine because even if you go big it will round down.
   // The 'yyyy-MM-dd' format isn't how the date is displayed, but that's how it's
   // filled programmatically. (https://github.com/microsoft/playwright/pull/1676)
-  await page.locator('[data-test=start-date] input').fill(format(d, 'yyyy-MM-dd'))
+  await page
+    .locator('[data-test=start-date] input')
+    .fill(format(d, 'yyyy-MM-dd'))
   await expect(page.locator('text=Required')).not.toBeVisible()
   // Time validation
   await page.locator('[data-test=start-time] input').fill('')
@@ -97,10 +99,17 @@ test('warns with duplicate item', async ({ page, utils }) => {
 })
 
 test('warns with no time delta', async ({ page, utils }) => {
-  const start = sub(new Date(), { minutes: 1 })
+  const date = new Date()
+  const start = sub(date, { minutes: 1 })
+  await page
+    .locator('[data-test=start-date] input')
+    .fill(format(date, 'yyyy-MM-dd'))
   await page
     .locator('[data-test=start-time] input')
     .fill(format(start, 'HH:mm:ss'))
+  await page
+    .locator('[data-test=end-date] input')
+    .fill(format(date, 'yyyy-MM-dd'))
   await page
     .locator('[data-test=end-time] input')
     .fill(format(start, 'HH:mm:ss'))

@@ -769,11 +769,13 @@ export default {
           ],
         },
       }
-      this.overview = new uPlot(
-        overviewOpts,
-        this.data,
-        document.getElementById(`overview${this.id}`),
-      )
+      if (!this.hideOverview) {
+        this.overview = new uPlot(
+          overviewOpts,
+          this.data,
+          document.getElementById(`overview${this.id}`),
+        )
+      }
       this.moveLegend(this.legendPosition)
 
       // Allow the charts to dynamically resize when the window resizes
@@ -1445,7 +1447,9 @@ export default {
       if (this.data.length === 2) {
         this.data[0] = []
         this.graph.setData(this.data)
-        this.overview.setData(this.data)
+        if (this.overview) {
+          this.overview.setData(this.data)
+        }
       }
     },
     removeItems: function (itemArray) {
@@ -1467,7 +1471,9 @@ export default {
       if (this.data.length === 1) {
         this.data[0] = []
         this.graph.setData(this.data)
-        this.overview.setData(this.data)
+        if (this.overview) {
+          this.overview.setData(this.data)
+        }
       }
       this.$emit('resize')
       this.$emit('edit')

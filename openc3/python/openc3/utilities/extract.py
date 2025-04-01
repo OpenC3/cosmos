@@ -134,7 +134,7 @@ def add_cmd_parameter(keyword, value, cmd_params):
 
 
 def extract_fields_from_cmd_text(text):
-    split_string = re.split(SPLIT_WITH_REGEX, text, 2)
+    split_string = re.split(SPLIT_WITH_REGEX, text, maxsplit=2)
     if len(split_string) == 1 and SPLIT_WITH_REGEX.match(text):
         raise RuntimeError("ERROR: 'with' must be followed by parameters : {:s}".format(text))
 

@@ -23,7 +23,7 @@ GOTO :EOF
   docker compose -f compose.yaml up -d
   CD playwright
   CALL yarn run fixwindows
-  CALL yarn playwright test
+  CALL yarn test
   CALL yarn coverage
   CD ..
 GOTO :EOF

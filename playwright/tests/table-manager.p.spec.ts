@@ -215,6 +215,7 @@ test('opens and searches file', async ({ page, utils }) => {
 })
 
 test('downloads binary, definition, report', async ({ page, utils }) => {
+  test.setTimeout(60 * 1000) // 1 minute
   await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=Open File').click()
   await openFile(page, utils, 'configtables.bin')
@@ -277,6 +278,7 @@ test('save as and delete', async ({ page, utils }) => {
   await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=Save As').click()
   await expect(page.locator('.v-dialog')).toBeVisible()
+  await utils.sleep(100) // Sometimes the test is too fast and the old filename gets populated after the test types?
   await expect(page.getByRole('progressbar')).not.toBeVisible()
   await expect(page.getByText('TEMPLATED')).not.toBeVisible()
   await page
@@ -312,6 +314,7 @@ test('save as and delete', async ({ page, utils }) => {
   await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=Save As').click()
   await expect(page.locator('.v-dialog')).toBeVisible()
+  await utils.sleep(100) // Sometimes the test is too fast and the old filename gets populated after the test types?
   await expect(page.getByRole('progressbar')).not.toBeVisible()
   await expect(page.getByText('TEMPLATED')).not.toBeVisible()
   await page

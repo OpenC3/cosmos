@@ -1049,21 +1049,15 @@ class TestTlmApi(unittest.TestCase):
     def test_get_tlm_cnt_returns_the_receive_count(self):
         start = get_tlm_cnt("inst", "Health_Status")
 
-        packet = System.telemetry.packet("INST", "HEALTH_STATUS").clone()
-        packet.received_time = datetime.now(timezone.utc)
-        packet.received_count += 1
-        TelemetryTopic.write_packet(packet, scope="DEFAULT")
+        TargetModel.increment_telemetry_count("INST", "HEALTH_STATUS", 1, scope="DEFAULT")
 
         count = get_tlm_cnt("INST", "HEALTH_STATUS")
         self.assertEqual(count, start + 1)
 
     def test_get_tlm_cnts_returns_receive_counts_for_telemetry_packets(self):
-        packet = System.telemetry.packet("INST", "ADCS").clone()
-        packet.received_time = datetime.now(timezone.utc)
-        packet.received_count = 100  # This is what is used in the result
-        TelemetryTopic.write_packet(packet, scope="DEFAULT")
+        result = TargetModel.increment_telemetry_count("INST", "ADCS", 100, scope="DEFAULT")
         cnts = get_tlm_cnts([["inst", "Adcs"]])
-        self.assertEqual(cnts, ([100]))
+        self.assertEqual(cnts, ([result]))
 
     def test_get_packet_derived_items_complains_about_non_existant_targets(self):
         with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH ABORT' does not exist"):

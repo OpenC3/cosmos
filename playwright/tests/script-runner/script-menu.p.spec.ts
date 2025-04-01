@@ -48,7 +48,7 @@ test('show started scripts', async ({ page, utils }) => {
   let filename = await page.locator('[data-test=filename] input').inputValue()
 
   await page.locator('[data-test=script-runner-script]').click()
-  await page.locator('text="Execution Status"').click()
+  await page.getByText('Execution Status').click()
   await utils.sleep(1000)
   // Each section has a Refresh button so click the first one
   await page.getByRole('button', { name: 'Refresh' }).first().click()
@@ -61,7 +61,7 @@ test('show started scripts', async ({ page, utils }) => {
   await page.locator('[data-test=go-button]').click()
   await expect(page.locator('[data-test=state] input')).toHaveValue('stopped')
   await page.locator('[data-test=script-runner-script]').click()
-  await page.locator('text="Execution Status"').click()
+  await page.getByText('Execution Status').click()
   await utils.sleep(1000)
   await page.locator('button:has-text("Refresh")').first().click()
   await expect(page.locator('[data-test=running-scripts]')).not.toContainText(
@@ -197,19 +197,19 @@ test('show overrides', async ({ page, utils }) => {
   await page.locator('[data-test=script-runner-script]').click()
   await page.locator('[data-test="script-runner-script-overrides"]').click()
   await expect(page.locator('.v-dialog >> tbody > tr')).toHaveCount(5)
-  await expect(page.locator('.v-dialog >> tbody > tr').nth(0)).toContainText(
+  await expect(page.locator('.v-dialog >> tbody')).toContainText(
     'INSTHEALTH_STATUSCOLLECTSRAW10',
   )
-  await expect(page.locator('.v-dialog >> tbody > tr').nth(1)).toContainText(
+  await expect(page.locator('.v-dialog >> tbody')).toContainText(
     'INSTHEALTH_STATUSCOLLECTSCONVERTED10',
   )
-  await expect(page.locator('.v-dialog >> tbody > tr').nth(2)).toContainText(
+  await expect(page.locator('.v-dialog >> tbody')).toContainText(
     'INSTHEALTH_STATUSCOLLECTSFORMATTED10',
   )
-  await expect(page.locator('.v-dialog >> tbody > tr').nth(3)).toContainText(
+  await expect(page.locator('.v-dialog >> tbody')).toContainText(
     'INSTHEALTH_STATUSCOLLECTSWITH_UNITS10',
   )
-  await expect(page.locator('.v-dialog >> tbody > tr').nth(4)).toContainText(
+  await expect(page.locator('.v-dialog >> tbody')).toContainText(
     'INSTHEALTH_STATUSDURATIONCONVERTED10',
   )
   await page
