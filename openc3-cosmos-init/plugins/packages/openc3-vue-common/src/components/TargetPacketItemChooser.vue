@@ -18,6 +18,9 @@
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+
+# A portion of this file was funded by Blue Origin Enterprises, L.P.
+# See https://github.com/OpenC3/cosmos/pull/1957
 -->
 
 <template>
@@ -48,7 +51,12 @@
           item-title="label"
           item-value="value"
           v-model="selectedPacketName"
-        />
+        >
+          <template v-if="includeLatestPacketInDropdown" v-slot:prepend-item>
+            <v-list-item title="LATEST" @click="packetNameChanged('LATEST')" />
+            <v-divider />
+          </template>
+        </v-autocomplete>
       </v-col>
       <v-col
         v-if="chooseItem"
@@ -182,6 +190,10 @@ export default {
       default: '',
     },
     selectTypes: {
+      type: Boolean,
+      default: false,
+    },
+    showLatest: {
       type: Boolean,
       default: false,
     },
@@ -321,6 +333,9 @@ export default {
         return this.selectedItemName
       }
     },
+    includeLatestPacketInDropdown: function () {
+      return this.showLatest && this.mode === 'tlm' // because LATEST cmd doesn't have much use and thus isn't currently implemented
+    },
   },
   watch: {
     initialTargetName: function (val) {
@@ -403,47 +418,61 @@ export default {
         return
       }
       this.internalDisabled = true
-      const cmd = this.mode === 'tlm' ? 'get_tlm' : 'get_cmd'
-      this.api[cmd](this.selectedTargetName, this.selectedPacketName).then(
-        (packet) => {
-          this.itemNames = packet.items
-            .map((item) => {
+
+      if (this.selectedPacketName === 'LATEST') {
+        this.api
+          .get_all_tlm_item_names(this.selectedTargetName)
+          .then((items) => {
+            this.itemNames = items.map((item) => {
+              return {
+                label: item,
+                value: item,
+                description: `LATEST ${item}`,
+                // Don't handle array for LATEST
+              }
+            })
+            this.finishUpdateItems()
+          })
+      } else {
+        const cmd = this.mode === 'tlm' ? 'get_tlm' : 'get_cmd'
+        this.api[cmd](this.selectedTargetName, this.selectedPacketName).then(
+          (packet) => {
+            this.itemNames = packet.items.map((item) => {
               let label = item.name
               if (item.data_type == 'DERIVED') {
                 label += ' *'
               }
-              return [
-                {
-                  label: label,
-                  value: item.name,
-                  description: item.description,
-                  array: item.array_size / item.bit_size,
-                },
-              ]
+              return {
+                label: label,
+                value: item.name,
+                description: item.description,
+                array: item.array_size / item.bit_size,
+              }
             })
-            .reduce((result, item) => {
-              return result.concat(item)
-            }, [])
-          this.itemNames.sort((a, b) => (a.label > b.label ? 1 : -1))
-          if (this.allowAll) {
-            this.itemNames.unshift(this.ALL)
-          }
-          if (!this.selectedItemName) {
-            this.selectedItemName = this.itemNames[0].value
-          }
-          this.description = this.itemNames[0].description
-          this.itemIsArray()
-          this.$emit('on-set', {
-            targetName: this.selectedTargetName,
-            packetName: this.selectedPacketName,
-            itemName: this.selectedItemNameWIndex,
-            valueType: this.selectedValueType,
-            reduced: this.selectedReduced,
-            reducedType: this.selectedReducedType,
-          })
-          this.internalDisabled = false
-        },
-      )
+            this.itemNames.sort((a, b) => (a.label > b.label ? 1 : -1))
+            this.finishUpdateItems()
+          },
+        )
+      }
+    },
+    finishUpdateItems: function () {
+      if (this.allowAll) {
+        this.itemNames.unshift(this.ALL)
+      }
+      if (!this.selectedItemName) {
+        this.selectedItemName = this.itemNames[0].value
+      }
+      this.description = this.itemNames[0].description
+      this.itemIsArray()
+      this.$emit('on-set', {
+        targetName: this.selectedTargetName,
+        packetName: this.selectedPacketName,
+        itemName: this.selectedItemNameWIndex,
+        valueType: this.selectedValueType,
+        reduced: this.selectedReduced,
+        reducedType: this.selectedReducedType,
+      })
+      this.internalDisabled = false
     },
     itemIsArray: function () {
       let i = this.itemNames.findIndex(
@@ -500,6 +529,9 @@ export default {
       if (value === 'ALL') {
         this.itemsDisabled = true
         this.internalDisabled = false
+      } else if (value === 'LATEST') {
+        this.itemsDisabled = false
+        this.selectedPacketName = 'LATEST'
       } else {
         this.itemsDisabled = false
         const packet = this.packetNames.find((packet) => {

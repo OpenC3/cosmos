@@ -23,6 +23,9 @@
 # A portion of this file was funded by Blue Origin Enterprises, L.P.
 # See https://github.com/OpenC3/cosmos/pull/1953 and https://github.com/OpenC3/cosmos/pull/1963
 
+# A portion of this file was funded by Blue Origin Enterprises, L.P.
+# See https://github.com/OpenC3/cosmos/pull/1957
+
 require 'openc3/top_level'
 require 'openc3/models/model'
 require 'openc3/models/cvt_model'
@@ -207,7 +210,7 @@ module OpenC3
       JSON.parse(json, :allow_nan => true, :create_additions => true)
     end
 
-    # @return [Array>Hash>] All packet hashes under the target_name
+    # @return [Array<Hash>] All packet hashes under the target_name
     def self.packets(target_name, type: :TLM, scope:)
       raise "Unknown type #{type} for #{target_name}" unless VALID_TYPES.include?(type)
       raise "Target '#{target_name}' does not exist for scope: #{scope}" unless get(name: target_name, scope: scope)
@@ -220,7 +223,7 @@ module OpenC3
       result
     end
 
-    # @return [Array>Hash>] All packet hashes under the target_name
+    # @return [Array<Hash>] All packet hashes under the target_name
     def self.all_packet_name_descriptions(target_name, type: :TLM, scope:)
       self.packets(target_name, type: type, scope: scope).map! { |hash| hash.slice("packet_name", "description") }
     end
@@ -258,6 +261,28 @@ module OpenC3
         raise "Item(s) #{not_found.join(', ')} does not exist"
       end
       found
+    end
+
+    # @return [Array<String>] All the item names for every packet in a target
+    def self.all_item_names(target_name, type: :TLM, scope:)
+      items = Store.zrange("#{scope}__openc3tlm__#{target_name}__allitems", 0, -1)
+      items = rebuild_target_allitems_list(target_name, type: type, scope: scope) if items.empty?
+      items
+    end
+
+    def self.rebuild_target_allitems_list(target_name, type: :TLM, scope:)
+      packets = packets(target_name, type: type, scope: scope)
+      packets.each do |packet|
+        packet['items'].each do |item|
+          TargetModel.add_to_target_allitems_list(target_name, item['name'], scope: scope)
+        end
+      end
+      Store.zrange("#{scope}__openc3tlm__#{target_name}__allitems", 0, -1) # return the new sorted set to let redis do the sorting
+    end
+
+    def self.add_to_target_allitems_list(target_name, item_name, scope:)
+      score = 0 # https://redis.io/docs/latest/develop/data-types/sorted-sets/#lexicographical-scores
+      Store.zadd("#{scope}__openc3tlm__#{target_name}__allitems", score, item_name)
     end
 
     # @return [Hash{String => Array<Array<String, String, String>>}]
@@ -767,7 +792,10 @@ module OpenC3
 
     def update_store_telemetry(packet_hash, clear_old: true)
       packet_hash.each do |target_name, packets|
-        Store.del("#{@scope}__openc3tlm__#{target_name}") if clear_old
+        if clear_old
+          Store.del("#{@scope}__openc3tlm__#{target_name}")
+          Store.del("#{@scope}__openc3tlm__#{target_name}__allitems")
+        end
         packets.each do |packet_name, packet|
           Logger.debug "Configuring tlm packet: #{target_name} #{packet_name}"
           begin
@@ -779,6 +807,7 @@ module OpenC3
           json_hash = Hash.new
           packet.sorted_items.each do |item|
             json_hash[item.name] = nil
+            TargetModel.add_to_target_allitems_list(target_name, item.name, scope: @scope)
           end
           CvtModel.set(json_hash, target_name: packet.target_name, packet_name: packet.packet_name, scope: @scope)
         end

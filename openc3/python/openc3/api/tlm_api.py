@@ -17,6 +17,9 @@
 # A portion of this file was funded by Blue Origin Enterprises, L.P.
 # See https://github.com/OpenC3/cosmos/pull/1963
 
+# A portion of this file was funded by Blue Origin Enterprises, L.P.
+# See https://github.com/OpenC3/cosmos/pull/1957
+
 import json
 from openc3.api import WHITELIST
 from openc3.environment import OPENC3_SCOPE
@@ -47,6 +50,7 @@ WHITELIST.extend(
         "get_all_telemetry",  # DEPRECATED
         "get_all_tlm_names",
         "get_all_telemetry_names",  # DEPRECATED
+        "get_all_tlm_item_names",
         "get_tlm",
         "get_telemetry",  # DEPRECATED
         "get_item",
@@ -333,6 +337,21 @@ def get_all_tlm_names(target_name: str, hidden: bool = False, scope: str = OPENC
                 names.append(packet["packet_name"])
     return names
 
+def get_all_tlm_item_names(target_name: str, hidden: bool = False, scope: str = OPENC3_SCOPE):
+    """Returns an array of all the item names for every packet in a target
+
+    Args:
+        target_name (str) Name of the target
+
+    Return:
+        List[str] Array of all telemetry item names
+    """
+    authorize(permission="tlm", target_name=target_name, scope=scope)
+    try:
+        items = TargetModel.all_item_names(target_name, scope=scope)
+    except RuntimeError:
+        items = []
+    return items
 
 # get_all_telemetry_names is DEPRECATED
 get_all_telemetry_names = get_all_tlm_names

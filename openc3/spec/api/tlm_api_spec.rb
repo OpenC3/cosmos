@@ -513,6 +513,19 @@ module OpenC3
       end
     end
 
+    describe "get_all_tlm_item_names" do
+      it "returns an empty array if the target does not exist" do
+        expect(@api.get_all_tlm_item_names("BLAH")).to eql []
+      end
+
+      it "returns an array of all item names from all packets" do
+        items = @api.get_all_tlm_item_names("INST", scope: "DEFAULT")
+        expect(items).to be_a Array
+        expect(items.length).to eql 67
+        expect(items).to include("ARY", "ATTPROGRESS", "BLOCKTEST", "CCSDSAPID")
+      end
+    end
+
     describe "get_tlm" do
       it "raises if the target or packet do not exist" do
         expect { @api.get_tlm("BLAH", "HEALTH_STATUS", scope: "DEFAULT") }.to raise_error("Packet 'BLAH HEALTH_STATUS' does not exist")
