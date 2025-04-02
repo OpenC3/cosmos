@@ -19,28 +19,29 @@
 require 'openc3/models/model'
 
 module OpenC3
+  # Note: This model is locked to the DEFAULT scope
   class OfflineAccessModel < Model
-    PRIMARY_KEY = 'openc3__offline_access'
+    PRIMARY_KEY = 'DEFAULT__openc3__offline_access'
 
     attr_accessor :offline_access_token
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
     def self.get(name:, scope:)
-      super("#{scope}__#{PRIMARY_KEY}", name: name)
+      super(PRIMARY_KEY, name: name)
     end
 
     def self.names(scope:)
-      super("#{scope}__#{PRIMARY_KEY}")
+      super(PRIMARY_KEY)
     end
 
     def self.all(scope:)
-      super("#{scope}__#{PRIMARY_KEY}")
+      super(PRIMARY_KEY)
     end
     # END NOTE
 
-    def initialize(name:, offline_access_token: nil, updated_at: nil, scope:)
-      super("#{scope}__#{PRIMARY_KEY}", name: name, updated_at: updated_at, scope: scope)
+    def initialize(name:, offline_access_token: nil, updated_at: nil, scope: 'DEFAULT')
+      super(PRIMARY_KEY, name: name, updated_at: updated_at, scope: 'DEFAULT')
       @offline_access_token = offline_access_token
     end
 

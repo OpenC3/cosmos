@@ -17,28 +17,28 @@
 from openc3.environment import OPENC3_SCOPE
 from openc3.models.model import Model
 
-
+# Note: This model is locked to the DEFAULT scope
 class OfflineAccessModel(Model):
-    PRIMARY_KEY = "openc3__offline_access"
+    PRIMARY_KEY = "DEFAULT__openc3__offline_access"
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
     @classmethod
     def get(cls, name: str, scope: str):
-        return super().get(f"{scope}{OfflineAccessModel.PRIMARY_KEY}", name=name)
+        return super().get(OfflineAccessModel.PRIMARY_KEY, name=name)
 
     @classmethod
     def names(cls, scope: str):
-        return super().names(f"{scope}{OfflineAccessModel.PRIMARY_KEY}")
+        return super().names(OfflineAccessModel.PRIMARY_KEY)
 
     @classmethod
     def all(cls, scope: str):
-        return super().all(f"{scope}{OfflineAccessModel.PRIMARY_KEY}")
+        return super().all(OfflineAccessModel.PRIMARY_KEY)
 
     def __init__(
-        self, name: str, offline_access_token: str = None, updated_at: float = None, scope: str = OPENC3_SCOPE
+        self, name: str, offline_access_token: str = None, updated_at: float = None, scope: str = 'DEFAULT'
     ):
-        super(f"{scope}__{OfflineAccessModel.PRIMARY_KEY}", name=name, updated_at=updated_at, scope=scope)
+        super(OfflineAccessModel.PRIMARY_KEY, name=name, updated_at=updated_at, scope='DEFAULT')
         self.offline_access_token = offline_access_token
 
     # @return [Hash] JSON encoding of this model
