@@ -50,7 +50,7 @@ def offline_access_needed(manual=False, scope=OPENC3_SCOPE, token=None):
                     return False
                 else:
                     model.offline_access_token = None
-                    model.update
+                    model.update()
                     return True
             return True
         else:
@@ -64,11 +64,11 @@ def set_offline_access(offline_access_token, manual=False, scope=OPENC3_SCOPE, t
     info = user_info(token)
     username = info["username"]
     if not username or username == "":
-        raise "Invalid username"
+        raise ValueError("Invalid username")
     model = OfflineAccessModel.get_model(name=username, scope=scope)
     if model:
         model.offline_access_token = offline_access_token
-        model.update
+        model.update()
     else:
         model = OfflineAccessModel(name=username, offline_access_token=offline_access_token, scope=scope)
-        model.create
+        model.create()

@@ -14,7 +14,6 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from openc3.environment import OPENC3_SCOPE
 from openc3.models.model import Model
 
 # Note: This model is locked to the DEFAULT scope
@@ -38,7 +37,7 @@ class OfflineAccessModel(Model):
     def __init__(
         self, name: str, offline_access_token: str = None, updated_at: float = None, scope: str = 'DEFAULT'
     ):
-        super(OfflineAccessModel.PRIMARY_KEY, name=name, updated_at=updated_at, scope='DEFAULT')
+        super().__init__(OfflineAccessModel.PRIMARY_KEY, name=name, updated_at=updated_at, scope='DEFAULT')
         self.offline_access_token = offline_access_token
 
     # @return [Hash] JSON encoding of this model
