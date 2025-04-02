@@ -26,7 +26,6 @@ import { OpenC3Api } from '@openc3/js-common/services'
 export default {
   data: function () {
     return {
-      api: null,
       classification: {
         text: '',
         fontColor: 'white',
@@ -51,22 +50,17 @@ export default {
     },
   },
   created: function () {
-    this.api = new OpenC3Api()
-    this.load()
-  },
-  methods: {
-    load: function () {
-      this.api
-        .get_setting('classification_banner')
-        .then((response) => {
-          if (response) {
-            this.classification = JSON.parse(response)
-          }
-        })
-        .catch((error) => {
-          // Do nothing
-        })
-    },
+    const api = new OpenC3Api()
+    api
+      .get_setting('classification_banner')
+      .then((response) => {
+        if (response) {
+          this.classification = JSON.parse(response)
+        }
+      })
+      .catch((error) => {
+        // Do nothing
+      })
   },
 }
 </script>
