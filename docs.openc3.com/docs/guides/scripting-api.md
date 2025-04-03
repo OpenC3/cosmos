@@ -3837,6 +3837,8 @@ script_delete("INST/procedures/checks.rb")
 
 Runs a script in Script Runner. The script will run in the background and can be opened in Script Runner by selecting Script->Execution Status and then connecting to it.
 
+Note: In Enterprise, initialize_offline_access must have been called at least once for the user who calls this method.
+
 Ruby / Python Syntax:
 
 ```ruby
@@ -5015,4 +5017,65 @@ Ruby / Python Example:
 
 ```ruby
 delete_config('telemetry_grapher', 'adcs')
+```
+
+## Offline Access
+
+An offline access token is required to execute scripts in COSMOS Enterprise. These methods support client side creation, testing, and
+setting of the offline_access_token.
+
+### initialize_offline_access
+
+Creates and sets the offline access token for the user. Note: calling this method is required before executing any api methods that require an offline access token like script_run (Enterprise Only). This method must be called OUTSIDE of ScriptRunner as it is needed in order to start a script in the first place.
+
+Ruby Example:
+
+```ruby
+# First setup environment variables. See examples/external_script.rb
+initialize_offline_access()
+script_run("INST/procedures/collect.rb")
+```
+
+Python Example:
+
+```python
+# First setup environment variables. See examples/external_script.py
+initialize_offline_access()
+script_run("INST2/procedures/collect.py")
+```
+
+### offline_access_needed
+
+Returns true if the user needs to generate an offline access token. Note this will only be true if the user is at least authorized to view scripts, otherwise it will always be false if script_view permission is not available for the user.
+
+Ruby Example:
+
+```ruby
+result = offline_access_needed() #=> true
+```
+
+Python Example:
+
+```python
+result = offline_access_needed() #=> False
+```
+
+### set_offline_access
+
+Sets the offline access token in the backend. Note: You probably don't need to call this method directly, as it will be called by initialize_offline_access().
+
+Ruby / Python Syntax:
+
+```ruby
+set_offline_access(offline_access_token)
+```
+
+| Parameter            | Description                                                                    |
+| -------------------- | ------------------------------------------------------------------------------ |
+| offline_access_token | Keycloak generated refresh token that contains the offline_access openid scope |
+
+Ruby / Python Example:
+
+```ruby
+set_offline_access(offline_access_token)
 ```

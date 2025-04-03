@@ -216,6 +216,20 @@ module OpenC3
       # NOOP
     end
 
+    # Note: Enterprise Only - Use this for first time setup of an offline access token
+    # so that users can run scripts.  Not necessary if accessing APIs via the web
+    # frontend as it handles it automatically.
+    #
+    # Example:
+    # initialize_offline_access()
+    # script_run("INST/procedures/collect.rb")
+    #
+    def initialize_offline_access
+      auth = OpenC3KeycloakAuthentication.new(ENV['OPENC3_KEYCLOAK_URL'])
+      auth.token(include_bearer: true, openid_scope: 'openid%20offline_access')
+      set_offline_access(auth.refresh_token)
+    end
+
     ###########################################################################
     # END PUBLIC API
     ###########################################################################

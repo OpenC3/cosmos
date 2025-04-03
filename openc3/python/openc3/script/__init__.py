@@ -15,7 +15,9 @@
 # if purchased from OpenC3, Inc.
 
 from openc3.script.server_proxy import ApiServerProxy, ScriptServerProxy
+from openc3.utilities.authentication import OpenC3KeycloakAuthentication
 from openc3.utilities.extract import convert_to_value
+from openc3.environment import OPENC3_KEYCLOAK_URL
 import threading
 
 API_SERVER = ApiServerProxy()
@@ -136,11 +138,6 @@ def run_mode():
     # running_script.py implements the real functionality
     pass
 
-
-###########################################################################
-# END PUBLIC API
-###########################################################################
-
 from .api_shared import *
 from .commands import *
 from .cosmos_calendar import *
@@ -156,6 +153,23 @@ from .storage import *
 from .tables import *
 from .telemetry import *
 from openc3.api import WHITELIST
+
+# Note: Enterprise Only - Use this for first time setup of an offline access token
+# so that users can run scripts.  Not necessary if accessing APIs via the web
+# frontend as it handles it automatically.
+#
+# Example:
+# initialize_offline_access()
+# script_run("INST/procedures/collect.rb")
+#
+def initialize_offline_access():
+    auth = OpenC3KeycloakAuthentication(OPENC3_KEYCLOAK_URL)
+    auth.token(include_bearer=True, openid_scope='openid%20offline_access')
+    set_offline_access(auth.refresh_token)
+
+###########################################################################
+# END PUBLIC API
+###########################################################################
 
 
 def prompt_for_critical_cmd(uuid, _username, _target_name, _cmd_name, _cmd_params, cmd_string):

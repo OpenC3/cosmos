@@ -25,7 +25,7 @@ module OpenC3
     def run
       ARGV.each do |microservice_name|
         microservice_model = MicroserviceModel.get_model(name: microservice_name, scope: @scope)
-        if microservice_model.enabled
+        if microservice_model and microservice_model.enabled
           thread = Thread.new do
             cmd_line = microservice_model.cmd.join(' ')
             split_cmd_line = cmd_line.split(' ')
