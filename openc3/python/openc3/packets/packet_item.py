@@ -227,7 +227,6 @@ class PacketItem(StructureItem):
                             raise TypeError(
                                 f"{self.name}: default must be a str but is a {self.default.__class__.__name__}"
                             )
-                        self.default = str(self.default)
 
     @property
     def hazardous(self):

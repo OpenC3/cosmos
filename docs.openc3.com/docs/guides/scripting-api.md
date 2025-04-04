@@ -3343,11 +3343,23 @@ put_target_file("INST/tables/bin/MCConfigurationTable_NoScrub.bin", table.buffer
 Python Example:
 
 ```python
-# NOTE: TableConfig and other TableManager classes do not yet exist in Python
-# So editing like the above Ruby example is not yet possible
-
+# Full example of using table_create_binary and then editing the binary
+from openc3.tools.table_manager.table_config import TableConfig
 # Returns a dict: {'filename': 'INST/tables/bin/ConfigTables.bin'}
-table = table_create_binary("INST/tables/config/ConfigTables_def.txt")
+table = table_create_binary("INST2/tables/config/ConfigTables_def.txt")
+file = get_target_file(table['filename'])
+table_binary = file.read()
+
+# Get the definition file so we can process the binary
+def_file = get_target_file("INST2/tables/config/MCConfigurationTable_def.txt")
+# Access the internal TableConfig to process the definition
+config = TableConfig.process_file(def_file.name)
+# Grab the table by the definition name, e.g. TABLE "MC_Configuration"
+table = config.table('MC_CONFIGURATION')
+# Now you can read or write individual items in the table
+table.write("MEMORY_SCRUBBING", "DISABLE")
+# Finally write the table.buffer (the binary) back to storage
+put_target_file("INST2/tables/bin/MCConfigurationTable_NoScrub.bin", table.buffer)
 ```
 
 ### table_create_report
