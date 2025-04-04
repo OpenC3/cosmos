@@ -160,15 +160,17 @@ services:
     #   - "127.0.0.1:7779:7779" # Open port for the demo router
     #   - "127.0.0.1:8081:8081/udp" # Open a udp port
     depends_on:
-      - "openc3-redis"
-      - "openc3-redis-ephemeral"
-      - "openc3-minio"
+      - openc3-redis
+      - openc3-redis-ephemeral
+      - openc3-minio
     volumes:
-      - "openc3-gems-v:/gems:ro"
-      - "./plugins:/plugins:z"
-      - "./cacert.pem:/devel/cacert.pem:z"
+      - openc3-gems-v:/gems:ro
+      - ./plugins:/plugins:z
+      - ./cacert.pem:/devel/cacert.pem:z
       # Add access to the entire C drive on Windows
       # - "/c:/c"
+      - /Users/jmthomas/dropbox:/dropbox
+      - /Users/jmthomas/archive:/archive
     logging:
       driver: "json-file"
       options:

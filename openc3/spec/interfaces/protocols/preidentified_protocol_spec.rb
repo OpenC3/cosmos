@@ -14,10 +14,10 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -53,7 +53,7 @@ module OpenC3
 
     it "handles receiving a bad packet length" do
       @interface.instance_variable_set(:@stream, PreStream.new)
-      @interface.add_protocol(PreidentifiedProtocol, [nil, 5], :READ_WRITE)
+      @interface.add_protocol(PreidentifiedProtocol, [nil, 5, 4], :READ_WRITE)
       pkt = System.telemetry.packet("SYSTEM", "META")
       time = Time.new(2020, 1, 31, 12, 15, 30.5)
       pkt.received_time = time
@@ -63,7 +63,8 @@ module OpenC3
 
     describe "initialize" do
       it "initializes attributes" do
-        @interface.add_protocol(PreidentifiedProtocol, ['0xDEADBEEF', 100], :READ_WRITE)
+        @interface.add_protocol(PreidentifiedProtocol, ['0xDEADBEEF', 100, 4], :READ_WRITE)
+        expect(@interface.read_protocols[0].instance_variable_get(:@mode)).to eq 4
         expect(@interface.read_protocols[0].instance_variable_get(:@data)).to eq ''
         expect(@interface.read_protocols[0].instance_variable_get(:@sync_pattern)).to eq "\xDE\xAD\xBE\xEF"
         expect(@interface.read_protocols[0].instance_variable_get(:@max_length)).to eq 100
@@ -71,33 +72,72 @@ module OpenC3
     end
 
     describe "write" do
-      it "creates a packet header" do
-        @interface.instance_variable_set(:@stream, PreStream.new)
-        @interface.add_protocol(PreidentifiedProtocol, [nil, 5], :READ_WRITE)
-        pkt = System.telemetry.packet("SYSTEM", "META")
-        time = Time.new(2020, 1, 31, 12, 15, 30.5)
-        pkt.received_time = time
-        @interface.write(pkt)
-        expect($buffer[0..0].unpack('C')[0]).to eql 0
-        expect($buffer[1..4].unpack('N')[0]).to eql time.to_f.to_i
-        expect($buffer[5..8].unpack('N')[0]).to eql 500000
-        offset = 9
-        tgt_name_length = $buffer[offset].unpack('C')[0]
-        offset += 1 # for the length field
-        expect($buffer[offset...(offset + tgt_name_length)]).to eql 'SYSTEM'
-        offset += tgt_name_length
-        pkt_name_length = $buffer[offset].unpack('C')[0]
-        offset += 1 # for the length field
-        expect($buffer[offset...(offset + pkt_name_length)]).to eql 'META'
-        offset += pkt_name_length
-        expect($buffer[offset..(offset + 3)].unpack('N')[0]).to eql pkt.buffer.length
-        offset += 4
-        expect($buffer[offset..-1]).to eql pkt.buffer
+      [true, false].each do |stored|
+        context "with stored #{stored}" do
+          it "creates a packet header" do
+            [4, 5, 6].each do |mode|
+              @interface = StreamInterface.new
+              @interface.instance_variable_set(:@stream, PreStream.new)
+              @interface.add_protocol(PreidentifiedProtocol, [nil, 5, mode], :READ_WRITE)
+              pkt = System.telemetry.packet("SYSTEM", "META")
+              time = Time.new(2020, 1, 31, 12, 15, 30.5)
+              pkt.received_time = time
+              pkt.stored = stored
+              @interface.write(pkt)
+              case mode
+              when 4
+                if stored
+                  expect($buffer[0..0].unpack('C')[0]).to eql 0x80
+                else
+                  expect($buffer[0..0].unpack('C')[0]).to eql 0
+                end
+                expect($buffer[1..4].unpack('N')[0]).to eql time.to_f.to_i
+                expect($buffer[5..8].unpack('N')[0]).to eql 500000
+                offset = 9
+                tgt_name_length = $buffer[offset].unpack('C')[0]
+                offset += 1 # for the length field
+                expect($buffer[offset...(offset + tgt_name_length)]).to eql 'SYSTEM'
+                offset += tgt_name_length
+                pkt_name_length = $buffer[offset].unpack('C')[0]
+                offset += 1 # for the length field
+                expect($buffer[offset...(offset + pkt_name_length)]).to eql 'META'
+                offset += pkt_name_length
+                expect($buffer[offset..(offset + 3)].unpack('N')[0]).to eql pkt.buffer.length
+                offset += 4
+                expect($buffer[offset..-1]).to eql pkt.buffer
+              when 5, 6
+                puts "GOT:"
+                puts $buffer.simple_formatted
+                length = $buffer[0..3].unpack('N')[0]
+                expect(length).to eql($buffer.length - 4) # 4 bytes for the length field
+                flags = $buffer[4..6].unpack('n')[0]
+                puts "flags: 0x#{flags.to_s(16)}"
+                puts "extra: 0x#{flags & 0x80}"
+                puts "rxtime: 0x#{flags & 0x40}"
+                if stored
+                  expect(flags & 0x400).to eql 0x400
+                else
+                  expect(flags & 0x400).to eql 0
+                end
+                # index = $buffer[7..9].unpack('n')[0]
+                # puts "index:#{index}"
+                time = $buffer[7..15].unpack('Q>')[0]
+                puts "time:#{time}"
+                rx_time = $buffer[15..23].unpack('Q>')[0]
+                puts "rx_time:#{rx_time}"
+
+                # Extra Length (Optional)	32-bit Unsigned Integer	Only Present if Extra Flag is Set. Length of extra data in bytes not including itself.
+                # Extra Data (Optional)	Variable-Length Block Data	Only Present if Extra Flag is Set. CBOR or JSON encoded object of extra data.
+                expect($buffer[23..-1]).to eql pkt.buffer
+              end
+            end
+          end
+        end
       end
 
       it "creates a packet header with stored" do
         @interface.instance_variable_set(:@stream, PreStream.new)
-        @interface.add_protocol(PreidentifiedProtocol, [nil, 5], :READ_WRITE)
+        @interface.add_protocol(PreidentifiedProtocol, [nil, 5, 4], :READ_WRITE)
         pkt = System.telemetry.packet("SYSTEM", "META").clone
         time = Time.new(2020, 1, 31, 12, 15, 30.5)
         pkt.received_time = time

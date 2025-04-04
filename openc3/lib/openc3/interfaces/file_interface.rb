@@ -18,9 +18,11 @@
 
 require 'openc3/interfaces/interface'
 require 'openc3/config/config_parser'
+require 'openc3/utilities/logger'
 require 'thread'
 require 'listen'
 require 'fileutils'
+require 'zlib'
 
 module OpenC3
   class FileInterface < Interface
@@ -101,7 +103,11 @@ module OpenC3
       while true
         if @file
           # Read more data from existing file
-          data = @file.read(@file_read_size)
+          if @file_read_size > 0
+            data = @file.read(@file_read_size)
+          else
+            data = @file.read
+          end
           if data and data.length > 0
             read_interface_base(data, nil)
             return data, nil
@@ -113,7 +119,11 @@ module OpenC3
         # Find the next file to read
         file = get_next_telemetry_file()
         if file
-          @file = File.open(file, 'rb')
+          if File.extname(file) == ".gz"
+            @file = Zlib::GzipReader.open(file)
+          else
+            @file = File.open(file, "rb")
+          end
           next
         end
 
