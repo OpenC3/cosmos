@@ -1,6 +1,6 @@
 {
   "name": "@openc3/tool-base",
-  "version": "6.2.2-beta0",
+  "version": "6.3.0",
   "type": "module",
   "scripts": {
     "serve": "vite build --watch --mode dev-server",
@@ -10,8 +10,8 @@
   },
   "dependencies": {
     "@astrouxds/astro-web-components": "7.25.1",
-    "@openc3/js-common": "6.2.2-beta0",
-    "@openc3/vue-common": "6.2.2-beta0",
+    "@openc3/js-common": "6.3.0",
+    "@openc3/vue-common": "6.3.0",
     "axios": "1.8.4",
     "date-fns": "4.1.0",
     "import-map-overrides": "5.1.1",
