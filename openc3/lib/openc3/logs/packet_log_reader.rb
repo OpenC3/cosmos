@@ -89,11 +89,15 @@ module OpenC3
     # @return [Boolean, Exception] Returns true if successfully changed to configuration specified in log,
     #    otherwise returns false and potentially an Exception class if an error occurred.  If no error occurred
     #    false indicates that the requested configuration was simply not found.
-    def open(filename)
+    def open(filename, string_io: nil)
       close()
       reset()
       @filename = filename
-      @file = BufferedFile.open(@filename, 'rb')
+      if string_io
+        @file = string_io
+      else
+        @file = BufferedFile.open(@filename, 'rb')
+      end
       @max_read_size = @file.size
       @max_read_size = MAX_READ_SIZE if @max_read_size > MAX_READ_SIZE
       return read_file_header()
@@ -104,7 +108,10 @@ module OpenC3
 
     # Closes the current log file
     def close
-      @file.close if @file and !@file.closed?
+      if @file and !@file.closed?
+        @file.close
+        @filename = nil
+      end
     end
 
     # Read a packet from the log file
@@ -118,60 +125,44 @@ module OpenC3
 
       length = length.unpack('N')[0]
       entry = @file.read(length)
-      header = parse_header(entry)
-      parse_entry(header, entry, length, identify_and_define)
-    rescue => e
-      close()
-      raise e
-    end
-
-    def parse_header(entry)
       flags = entry[0..1].unpack('n')[0]
 
-      header = OpenStruct.new
-      header.type = flags & OPENC3_ENTRY_TYPE_MASK
-      unless OPENC3_VALID_ENTRIES.include?(header.type)
-        raise "Invalid Entry Flags: #{flags}"
-      end
-      header.cmd_or_tlm = :TLM
-      header.cmd_or_tlm = :CMD if flags & OPENC3_CMD_FLAG_MASK == OPENC3_CMD_FLAG_MASK
-      header.stored = false
-      header.stored = true if flags & OPENC3_STORED_FLAG_MASK == OPENC3_STORED_FLAG_MASK
-      header.id = false
-      header.id = true if flags & OPENC3_ID_FLAG_MASK == OPENC3_ID_FLAG_MASK
-      header.cbor = false
-      header.cbor = true if flags & OPENC3_CBOR_FLAG_MASK == OPENC3_CBOR_FLAG_MASK
-      header.includes_received_time = false
-      header.includes_received_time = true if flags & OPENC3_RECEIVED_TIME_FLAG_MASK == OPENC3_RECEIVED_TIME_FLAG_MASK
-      header.includes_extra = false
-      header.includes_extra = true if flags & OPENC3_EXTRA_FLAG_MASK == OPENC3_EXTRA_FLAG_MASK
-      return header
-    end
+      cmd_or_tlm = :TLM
+      cmd_or_tlm = :CMD if flags & OPENC3_CMD_FLAG_MASK == OPENC3_CMD_FLAG_MASK
+      stored = false
+      stored = true if flags & OPENC3_STORED_FLAG_MASK == OPENC3_STORED_FLAG_MASK
+      id = false
+      id = true if flags & OPENC3_ID_FLAG_MASK == OPENC3_ID_FLAG_MASK
+      cbor = false
+      cbor = true if flags & OPENC3_CBOR_FLAG_MASK == OPENC3_CBOR_FLAG_MASK
+      includes_received_time = false
+      includes_received_time = true if flags & OPENC3_RECEIVED_TIME_FLAG_MASK == OPENC3_RECEIVED_TIME_FLAG_MASK
+      includes_extra = false
+      includes_extra = true if flags & OPENC3_EXTRA_FLAG_MASK == OPENC3_EXTRA_FLAG_MASK
 
-    def parse_entry(header, entry, length, identify_and_define = true)
-      if header.type == OPENC3_JSON_PACKET_ENTRY_TYPE_MASK
+      if flags & OPENC3_ENTRY_TYPE_MASK == OPENC3_RAW_PACKET_ENTRY_TYPE_MASK
         packet_index, time_nsec_since_epoch = entry[2..11].unpack('nQ>')
-        received_time_nsec_since_epoch, extra, json_data = handle_received_time_extra_and_data(header, entry, time_nsec_since_epoch)
+        received_time_nsec_since_epoch, extra, json_data = handle_received_time_extra_and_data(entry, time_nsec_since_epoch, includes_received_time, includes_extra, cbor)
         lookup_cmd_or_tlm, target_name, packet_name, _id, key_map = @packets[packet_index]
-        if header.cmd_or_tlm != lookup_cmd_or_tlm
-          raise "Packet type mismatch, packet:#{header.cmd_or_tlm}, lookup:#{lookup_cmd_or_tlm}"
+        if cmd_or_tlm != lookup_cmd_or_tlm
+          raise "Packet type mismatch, packet:#{cmd_or_tlm}, lookup:#{lookup_cmd_or_tlm}"
         end
 
-        if header.cbor
-          return JsonPacket.new(header.cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, header.stored, CBOR.decode(json_data), key_map, received_time_nsec_since_epoch: received_time_nsec_since_epoch, extra: extra)
+        if cbor
+          return JsonPacket.new(cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, CBOR.decode(json_data), key_map, received_time_nsec_since_epoch: received_time_nsec_since_epoch, extra: extra)
         else
-          return JsonPacket.new(header.cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, header.stored, json_data, key_map, received_time_nsec_since_epoch: received_time_nsec_since_epoch, extra: extra)
+          return JsonPacket.new(cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, json_data, key_map, received_time_nsec_since_epoch: received_time_nsec_since_epoch, extra: extra)
         end
-      elsif header.type == OPENC3_RAW_PACKET_ENTRY_TYPE_MASK
+      elsif flags & OPENC3_ENTRY_TYPE_MASK == OPENC3_TARGET_DECLARATION_ENTRY_TYPE_MASK
         packet_index, time_nsec_since_epoch = entry[2..11].unpack('nQ>')
-        received_time_nsec_since_epoch, _extra, packet_data = handle_received_time_extra_and_data(header, entry, time_nsec_since_epoch)
+        received_time_nsec_since_epoch, _extra, packet_data = handle_received_time_extra_and_data(entry, time_nsec_since_epoch, includes_received_time, includes_extra, cbor)
         lookup_cmd_or_tlm, target_name, packet_name, _id = @packets[packet_index]
-        if header.cmd_or_tlm != lookup_cmd_or_tlm
-          raise "Packet type mismatch, packet:#{header.cmd_or_tlm}, lookup:#{lookup_cmd_or_tlm}"
+        if cmd_or_tlm != lookup_cmd_or_tlm
+          raise "Packet type mismatch, packet:#{cmd_or_tlm}, lookup:#{lookup_cmd_or_tlm}"
         end
 
         if identify_and_define
-          packet = identify_and_define_packet_data(header.cmd_or_tlm, target_name, packet_name, packet_data)
+          packet = identify_and_define_packet_data(cmd_or_tlm, target_name, packet_name, packet_data)
         else
           # Build Packet
           packet = Packet.new(target_name, packet_name, :BIG_ENDIAN, nil, packet_data)
@@ -179,21 +170,21 @@ module OpenC3
         packet.packet_time = Time.from_nsec_from_epoch(time_nsec_since_epoch)
         received_time = Time.from_nsec_from_epoch(received_time_nsec_since_epoch)
         packet.set_received_time_fast(received_time)
-        packet.cmd_or_tlm = header.cmd_or_tlm
-        packet.stored = header.stored
+        packet.cmd_or_tlm = cmd_or_tlm
+        packet.stored = stored
         packet.received_count += 1
         return packet
-      elsif header.type == OPENC3_TARGET_DECLARATION_ENTRY_TYPE_MASK
+      elsif flags & OPENC3_ENTRY_TYPE_MASK == OPENC3_PACKET_DECLARATION_ENTRY_TYPE_MASK
         target_name_length = length - OPENC3_PRIMARY_FIXED_SIZE - OPENC3_TARGET_DECLARATION_SECONDARY_FIXED_SIZE
-        target_name_length -= OPENC3_ID_FIXED_SIZE if header.id
+        target_name_length -= OPENC3_ID_FIXED_SIZE if id
         target_name = entry[2..(target_name_length + 1)]
-        if header.id
-          header.id = entry[(target_name_length + 3)..(target_name_length + 34)]
-          @target_ids << header.id
+        if id
+          id = entry[(target_name_length + 3)..(target_name_length + 34)]
+          @target_ids << id
         end
         @target_names << target_name
         return read(identify_and_define)
-      elsif header.type == OPENC3_PACKET_DECLARATION_ENTRY_TYPE_MASK
+      elsif flags & OPENC3_ENTRY_TYPE_MASK == OPENC3_PACKET_DECLARATION_ENTRY_TYPE_MASK
         target_index = entry[2..3].unpack('n')[0]
         target_name = @target_names[target_index]
         unless target_name
@@ -204,25 +195,25 @@ module OpenC3
           target_name = 'UNKNOWN' unless target_name
         end
         packet_name_length = length - OPENC3_PRIMARY_FIXED_SIZE - OPENC3_PACKET_DECLARATION_SECONDARY_FIXED_SIZE
-        packet_name_length -= OPENC3_ID_FIXED_SIZE if header.id
+        packet_name_length -= OPENC3_ID_FIXED_SIZE if id
         packet_name = entry[4..(packet_name_length + 3)]
-        if header.id
-          header.id = entry[(packet_name_length + 4)..-1]
-          @packet_ids << header.id
+        if id
+          id = entry[(packet_name_length + 4)..-1]
+          @packet_ids << id
         end
-        @packets << [header.cmd_or_tlm, target_name, packet_name, header.id]
+        @packets << [cmd_or_tlm, target_name, packet_name, id]
         return read(identify_and_define)
-      elsif header.type == OPENC3_KEY_MAP_ENTRY_TYPE_MASK
+      elsif flags & OPENC3_ENTRY_TYPE_MASK == OPENC3_KEY_MAP_ENTRY_TYPE_MASK
         packet_index = entry[2..3].unpack('n')[0]
         key_map_length = length - OPENC3_PRIMARY_FIXED_SIZE - OPENC3_KEY_MAP_SECONDARY_FIXED_SIZE
-        if header.cbor
+        if cbor
           key_map = CBOR.decode(entry[4..(key_map_length + 3)])
         else
           key_map = JSON.parse(entry[4..(key_map_length + 3)], :allow_nan => true, :create_additions => true)
         end
         @packets[packet_index] << key_map
         return read(identify_and_define)
-      elsif header.type == OPENC3_OFFSET_MARKER_ENTRY_TYPE_MASK
+      elsif flags & OPENC3_ENTRY_TYPE_MASK == OPENC3_OFFSET_MARKER_ENTRY_TYPE_MASK
         data = entry[2..-1]
         split_data = data.split(',')
         redis_offset = split_data[0]
@@ -233,7 +224,12 @@ module OpenC3
           @redis_offset = redis_offset
         end
         return read(identify_and_define)
+      else
+        raise "Invalid Entry Flags: #{flags}"
       end
+    rescue => e
+      close()
+      raise e
     end
 
     # @return [Integer] The size of the log file being processed
@@ -305,20 +301,20 @@ module OpenC3
     end
 
     # Handle common optional fields in raw and JSON packets
-    def handle_received_time_extra_and_data(header, entry, time_nsec_since_epoch)
+    def handle_received_time_extra_and_data(entry, time_nsec_since_epoch, includes_received_time, includes_extra, cbor)
       next_offset = 12
       received_time_nsec_since_epoch = time_nsec_since_epoch
-      if header.includes_received_time
+      if includes_received_time
         received_time_nsec_since_epoch = entry[next_offset..(next_offset + OPENC3_RECEIVED_TIME_FIXED_SIZE - 1)].unpack(OPENC3_RECEIVED_TIME_PACK_DIRECTIVE)[0]
         next_offset += OPENC3_RECEIVED_TIME_FIXED_SIZE
       end
       extra = nil
-      if header.includes_extra
+      if includes_extra
         extra_length = entry[next_offset..(next_offset + OPENC3_EXTRA_LENGTH_FIXED_SIZE - 1)].unpack(OPENC3_EXTRA_LENGTH_PACK_DIRECTIVE)[0]
         next_offset += OPENC3_EXTRA_LENGTH_FIXED_SIZE
         extra_encoded = entry[next_offset..(next_offset + extra_length - 1)]
         next_offset += extra_length
-        if header.cbor
+        if cbor
           extra = CBOR.decode(extra_encoded)
         else
           extra = JSON.parse(extra_encode, allow_nan: true, create_additions: true)

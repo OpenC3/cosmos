@@ -20,6 +20,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+require 'stringio'
 require 'openc3/interfaces/protocols/burst_protocol'
 require 'openc3/logs/packet_log_constants'
 require 'openc3/logs/packet_log_reader'
@@ -37,6 +38,7 @@ module OpenC3
     # @param max_length [Integer] The maximum allowed value of the length field
     # @param mode [Integer] The protocol mode. 4 is COSMOS 4.3+, 5 is COSMOS 5.0+, 6 is COSMOS 6.0+ (no changes from 5)
     # @param file [true/false] Whether we're processing from a file (handle file headers)
+    #   This is typically used in conjunction with the file_interface
     # @param allow_empty_data [true/false/nil] See Protocol#initialize
     def initialize(sync_pattern = nil, max_length = nil, mode = 5, file = false, allow_empty_data = nil)
       super(0, sync_pattern, false, allow_empty_data)
@@ -123,11 +125,8 @@ module OpenC3
         data_to_send << data
       when 5, 6 # COSMOS5.0+ Protocol
         now = Time.now.to_nsec_from_epoch
-        puts("now: #{now} packed: #{[now].pack('Q>').simple_formatted}")
-        puts("rx_time: #{@received_time.to_nsec_from_epoch} packed: #{[@received_time.to_nsec_from_epoch].pack('Q>').simple_formatted}")
         data_to_send << @packet_log_writer.build_entry(:RAW_PACKET, :TLM, @write_target_name, @write_packet_name, now, @packet_stored, data, nil, received_time_nsec_since_epoch: @received_time.to_nsec_from_epoch, extra: @write_extra)
       end
-      puts data_to_send.simple_formatted
       return data_to_send, extra
     end
 
@@ -179,18 +178,25 @@ module OpenC3
 
       if @file
         if @reduction_state == :SYNC_REMOVED
+          # Ensure we have enough data to read the header
           return :STOP if @data.length < OPENC3_HEADER_LENGTH
           header = @data[0..OPENC3_HEADER_LENGTH]
-          return :STOP if @mode == 4 and header != COSMOS4_FILE_HEADER
-          return :STOP if @mode >= 5 and header != OPENC3_FILE_HEADER
-          @data.replace(@data[OPENC3_HEADER_LENGTH..-1])
-
           if @mode == 4
-            return :STOP if @data.length < COSMOS4_HEADER_LENGTH - OPENC3_HEADER_LENGTH
-            # Read and discard the rest of the header
-            @data.replace(@data[(COSMOS4_HEADER_LENGTH - OPENC3_HEADER_LENGTH)..-1])
+            if header != COSMOS4_FILE_HEADER
+              return :STOP
+            else
+              return :STOP if @data.length < COSMOS4_HEADER_LENGTH
+              # Read and discard the rest of the header
+              @data.replace(@data[(COSMOS4_HEADER_LENGTH)..-1])
+            end
           end
-          @reduction_state == :HEADER_REMOVED
+          if @mode >= 5
+            # Mode 5 keeps all the data because packet_log_reader handles it
+            if header.strip != OPENC3_FILE_HEADER
+              return :STOP
+            end
+          end
+          @reduction_state = :HEADER_REMOVED
         end
       else
         @reduction_state = :HEADER_REMOVED
@@ -207,17 +213,31 @@ module OpenC3
     end
 
     def handle_mode5
-      # Read and remove flags
-      return :STOP if @data.length < 6 # 4 bytes for length + 2 for header
-      length = @data[0..3].unpack('N')[0]
+      # Ensure we have enough data to get the length of the first entry
+      return :STOP if @data.length < 12 # 8 bytes for 'COSMOS5_' + 4 bytes for length
+      length = @data[8..12].unpack('N')[0] # First entry length
       return :STOP if @data.length < length
-      @data.replace(@data[4..-1]) # Remove length field
-      header = packet_log_reader.parse_header(@data)
-      return packet_log_reader.parse_entry(header, @data, @data.length)
+
+      # If this is the first time through, set up the packet log reader
+      unless @packet_log_reader.filename
+        @packet_log_reader.open(@interface.filename, string_io: StringIO.new(@data, 'rb'))
+      end
+      packet = @packet_log_reader.read()
+      if packet
+        # Set the data returned in read_packet()
+        @read_target_name = packet.target_name
+        @read_packet_name = packet.packet_name
+        @read_received_time = packet.received_time
+        @read_stored = packet.stored
+        return packet.buffer, packet.extra
+      else
+        # No more packets so close the reader and reset
+        @packet_log_reader.close()
+        @reduction_state = :START
+      end
     end
 
     def handle_mode4
-      puts "mode4 len:#{@data.length} state:#{@reduction_state}"
       # Read and remove flags
       return :STOP if @data.length < 1
 
