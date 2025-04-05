@@ -3343,11 +3343,23 @@ put_target_file("INST/tables/bin/MCConfigurationTable_NoScrub.bin", table.buffer
 Python Example:
 
 ```python
-# NOTE: TableConfig and other TableManager classes do not yet exist in Python
-# So editing like the above Ruby example is not yet possible
-
+# Full example of using table_create_binary and then editing the binary
+from openc3.tools.table_manager.table_config import TableConfig
 # Returns a dict: {'filename': 'INST/tables/bin/ConfigTables.bin'}
-table = table_create_binary("INST/tables/config/ConfigTables_def.txt")
+table = table_create_binary("INST2/tables/config/ConfigTables_def.txt")
+file = get_target_file(table['filename'])
+table_binary = file.read()
+
+# Get the definition file so we can process the binary
+def_file = get_target_file("INST2/tables/config/MCConfigurationTable_def.txt")
+# Access the internal TableConfig to process the definition
+config = TableConfig.process_file(def_file.name)
+# Grab the table by the definition name, e.g. TABLE "MC_Configuration"
+table = config.table('MC_CONFIGURATION')
+# Now you can read or write individual items in the table
+table.write("MEMORY_SCRUBBING", "DISABLE")
+# Finally write the table.buffer (the binary) back to storage
+put_target_file("INST2/tables/bin/MCConfigurationTable_NoScrub.bin", table.buffer)
 ```
 
 ### table_create_report
@@ -3836,6 +3848,8 @@ script_delete("INST/procedures/checks.rb")
 ### script_run
 
 Runs a script in Script Runner. The script will run in the background and can be opened in Script Runner by selecting Script->Execution Status and then connecting to it.
+
+Note: In Enterprise, initialize_offline_access must have been called at least once for the user who calls this method.
 
 Ruby / Python Syntax:
 
@@ -5015,4 +5029,65 @@ Ruby / Python Example:
 
 ```ruby
 delete_config('telemetry_grapher', 'adcs')
+```
+
+## Offline Access
+
+An offline access token is required to execute scripts in COSMOS Enterprise. These methods support client side creation, testing, and
+setting of the offline_access_token.
+
+### initialize_offline_access
+
+Creates and sets the offline access token for the user. Note: calling this method is required before executing any api methods that require an offline access token like script_run (Enterprise Only). This method must be called OUTSIDE of ScriptRunner as it is needed in order to start a script in the first place.
+
+Ruby Example:
+
+```ruby
+# First setup environment variables. See examples/external_script.rb
+initialize_offline_access()
+script_run("INST/procedures/collect.rb")
+```
+
+Python Example:
+
+```python
+# First setup environment variables. See examples/external_script.py
+initialize_offline_access()
+script_run("INST2/procedures/collect.py")
+```
+
+### offline_access_needed
+
+Returns true if the user needs to generate an offline access token. Note this will only be true if the user is at least authorized to view scripts, otherwise it will always be false if script_view permission is not available for the user.
+
+Ruby Example:
+
+```ruby
+result = offline_access_needed() #=> true
+```
+
+Python Example:
+
+```python
+result = offline_access_needed() #=> False
+```
+
+### set_offline_access
+
+Sets the offline access token in the backend. Note: You probably don't need to call this method directly, as it will be called by initialize_offline_access().
+
+Ruby / Python Syntax:
+
+```ruby
+set_offline_access(offline_access_token)
+```
+
+| Parameter            | Description                                                                    |
+| -------------------- | ------------------------------------------------------------------------------ |
+| offline_access_token | Keycloak generated refresh token that contains the offline_access openid scope |
+
+Ruby / Python Example:
+
+```ruby
+set_offline_access(offline_access_token)
 ```

@@ -11,15 +11,8 @@ TABLE "MC_Configuration" BIG_ENDIAN KEY_VALUE "Memory Control Configuration Tabl
   APPEND_PARAMETER "Memory_Scrubbing" 8 UINT 0 1 1
     STATE DISABLE 0
     STATE ENABLE 1
+  # NOTE: Python tables do not support GENERIC_WRITE_CONVERSION
   APPEND_PARAMETER "SIOC_Memory_Config" 8 UINT 1 3 3
-    GENERIC_WRITE_CONVERSION_START
-      if packet.read("Memory_Scrubbing") == 'DISABLE'
-        packet.get_item("SIOC_Memory_Config").range = (10..20)
-      else
-        packet.get_item("SIOC_Memory_Config").range = (1..3)
-      end
-      value
-    GENERIC_WRITE_CONVERSION_END
   APPEND_PARAMETER "Uneditable_Text" 32 UINT MIN MAX 0xDEADBEEF "Uneditable field"
     FORMAT_STRING "0x%0X"
     UNEDITABLE

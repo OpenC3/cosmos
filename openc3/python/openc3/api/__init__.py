@@ -21,6 +21,7 @@ from .cmd_api import *
 from .config_api import *
 from .interface_api import *
 from .limits_api import *
+from .offline_access_api import *
 from .router_api import *
 from .settings_api import *
 from .stash_api import *

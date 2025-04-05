@@ -350,8 +350,11 @@ module OpenC3
       # UNKNOWN PacketLog Microservice
       deploy_unknown_packetlog_microservice(gem_path, variables, @parent)
 
-      # Periodic Microservice
-      deploy_periodic_microservice(gem_path, variables, @parent)
+      # Only DEFAULT scope
+      if @scope == 'DEFAULT'
+        # Periodic Microservice
+        deploy_periodic_microservice(gem_path, variables, @parent)
+      end
 
       # Scope Cleanup Microservice
       deploy_scopecleanup_microservice(gem_path, variables, @parent)

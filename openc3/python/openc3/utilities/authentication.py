@@ -69,14 +69,14 @@ class OpenC3KeycloakAuthentication(OpenC3Authentication):
         self.http = Session()
 
     # Load the token from the environment
-    def token(self, include_bearer=True):
+    def token(self, include_bearer=True, openid_scope="openid"):
         with self.auth_mutex:
             self.log = [None, None]
             current_time = time.time()
             if self._token is None:
-                self._make_token(current_time)
+                self._make_token(current_time, openid_scope=openid_scope)
             elif self.refresh_expires_at < current_time:
-                self._make_token(current_time)
+                self._make_token(current_time, openid_scope=openid_scope)
             elif self.expires_at < current_time:
                 self._refresh_token(current_time)
         if include_bearer:
@@ -94,11 +94,11 @@ class OpenC3KeycloakAuthentication(OpenC3Authentication):
             return None
 
     # Make the token and save token to instance
-    def _make_token(self, current_time):
+    def _make_token(self, current_time, openid_scope="openid"):
         client_id = OPENC3_API_CLIENT or "api"
         if OPENC3_API_USER and OPENC3_API_PASSWORD:
             # Username and password
-            data = f"username={OPENC3_API_USER}&password={OPENC3_API_PASSWORD}&client_id={client_id}&grant_type=password&scope=openid"
+            data = f"username={OPENC3_API_USER}&password={OPENC3_API_PASSWORD}&client_id={client_id}&grant_type=password&scope={openid_scope}"
             headers = {
                 "Content-Type": "application/x-www-form-urlencoded",
                 "User-Agent": OPENC3_USER_AGENT,
