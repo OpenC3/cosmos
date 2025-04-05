@@ -220,7 +220,13 @@ module OpenC3
 
       # If this is the first time through, set up the packet log reader
       unless @packet_log_reader.filename
-        @packet_log_reader.open(@interface.filename, string_io: StringIO.new(@data, 'rb'))
+        begin
+          # file_interface will set the filename
+          filename = @interface.filename
+        rescue StandardError
+          filename = 'preidentified'
+        end
+        @packet_log_reader.open(filename, string_io: StringIO.new(@data, 'rb'))
       end
       packet = @packet_log_reader.read()
       if packet

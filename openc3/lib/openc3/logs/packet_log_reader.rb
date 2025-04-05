@@ -26,7 +26,6 @@ require 'openc3/packets/json_packet'
 require 'openc3/io/buffered_file'
 require 'openc3/logs/packet_log_constants'
 require 'cbor'
-require 'ostruct'
 
 module OpenC3
   # Reads a packet log of either commands or telemetry.
@@ -140,7 +139,7 @@ module OpenC3
       includes_extra = false
       includes_extra = true if flags & OPENC3_EXTRA_FLAG_MASK == OPENC3_EXTRA_FLAG_MASK
 
-      if flags & OPENC3_ENTRY_TYPE_MASK == OPENC3_RAW_PACKET_ENTRY_TYPE_MASK
+      if flags & OPENC3_ENTRY_TYPE_MASK == OPENC3_JSON_PACKET_ENTRY_TYPE_MASK
         packet_index, time_nsec_since_epoch = entry[2..11].unpack('nQ>')
         received_time_nsec_since_epoch, extra, json_data = handle_received_time_extra_and_data(entry, time_nsec_since_epoch, includes_received_time, includes_extra, cbor)
         lookup_cmd_or_tlm, target_name, packet_name, _id, key_map = @packets[packet_index]
@@ -153,7 +152,7 @@ module OpenC3
         else
           return JsonPacket.new(cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, json_data, key_map, received_time_nsec_since_epoch: received_time_nsec_since_epoch, extra: extra)
         end
-      elsif flags & OPENC3_ENTRY_TYPE_MASK == OPENC3_TARGET_DECLARATION_ENTRY_TYPE_MASK
+      elsif flags & OPENC3_ENTRY_TYPE_MASK == OPENC3_RAW_PACKET_ENTRY_TYPE_MASK
         packet_index, time_nsec_since_epoch = entry[2..11].unpack('nQ>')
         received_time_nsec_since_epoch, _extra, packet_data = handle_received_time_extra_and_data(entry, time_nsec_since_epoch, includes_received_time, includes_extra, cbor)
         lookup_cmd_or_tlm, target_name, packet_name, _id = @packets[packet_index]
@@ -174,7 +173,7 @@ module OpenC3
         packet.stored = stored
         packet.received_count += 1
         return packet
-      elsif flags & OPENC3_ENTRY_TYPE_MASK == OPENC3_PACKET_DECLARATION_ENTRY_TYPE_MASK
+      elsif flags & OPENC3_ENTRY_TYPE_MASK == OPENC3_TARGET_DECLARATION_ENTRY_TYPE_MASK
         target_name_length = length - OPENC3_PRIMARY_FIXED_SIZE - OPENC3_TARGET_DECLARATION_SECONDARY_FIXED_SIZE
         target_name_length -= OPENC3_ID_FIXED_SIZE if id
         target_name = entry[2..(target_name_length + 1)]
