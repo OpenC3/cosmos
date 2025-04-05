@@ -1,6 +1,6 @@
 {
   "name": "widgets_src",
-  "version": "6.3.0",
+  "version": "6.3.1-beta0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,8 +8,8 @@
   },
   "dependencies": {
     "@astrouxds/astro-web-components": "7.25.1",
-    "@openc3/js-common": "6.3.0",
-    "@openc3/vue-common": "6.3.0"
+    "@openc3/js-common": "6.3.1-beta0",
+    "@openc3/vue-common": "6.3.1-beta0"
   },
   "devDependencies": {
     "@rushstack/eslint-patch": "1.11.0",
