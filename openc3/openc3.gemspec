@@ -68,7 +68,6 @@ spec = Gem::Specification.new do |s|
     s.extensions << 'ext/openc3/ext/string/extconf.rb'
     s.extensions << 'ext/openc3/ext/tabbed_plots_config/extconf.rb'
     s.extensions << 'ext/openc3/ext/telemetry/extconf.rb'
-    s.extensions << 'ext/mkrf_conf.rb'
   end
 
   # Files are defined in Manifest.txt

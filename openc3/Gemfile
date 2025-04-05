@@ -2,8 +2,6 @@
 
 source ENV['RUBYGEMS_URL'] || "https://rubygems.org"
 
-gem 'ruby-termios', '>= 0.9' if RbConfig::CONFIG['target_os'] !~ /mswin|mingw|cygwin/i and RUBY_ENGINE == 'ruby'
-
 gemspec :name => 'openc3'
 
 # Include the rails gems for the convenience of custom microservice plugins
@@ -11,3 +9,4 @@ gem 'bootsnap', '>= 1.9.3', require: false
 gem 'rack-cors', '~> 2.0'
 gem 'rails', '~> 7.2.0'
 gem 'tzinfo-data'
+gem 'ruby-termios', '>= 1.0'
