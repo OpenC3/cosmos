@@ -26,14 +26,16 @@ eval $(sed -e '/^#/d' -e 's/^/export /' -e 's/$/;/' .env) ;
 # OPENC3_ENTERPRISE_REGISTRY=localhost:5000 # Uncomment for local builds
 
 # check if the first parameter is 'ubi'
-if [ "$1" = "ubi" ]; then
-  OPENC3_PLATFORMS=linux/amd64
-  DOCKERFILE='Dockerfile-ubi'
-  SUFFIX='-ubi'
-else
+if [ -z "$1" ]; then
+  # No argument provided, default is to use alpine
   OPENC3_PLATFORMS=linux/amd64,linux/arm64
   DOCKERFILE='Dockerfile'
   SUFFIX=''
+else
+  # Argument provided, assume it's 'ubi'
+  OPENC3_PLATFORMS=linux/amd64
+  DOCKERFILE='Dockerfile-ubi'
+  SUFFIX='-ubi'
 fi
 
 # Setup cacert.pem
