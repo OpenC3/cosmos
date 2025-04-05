@@ -22,6 +22,7 @@ from openc3.utilities.string import build_timestamped_filename
 import queue
 import os
 import pathlib
+import gzip
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 from watchdog.observers.polling import PollingObserver
@@ -133,8 +134,10 @@ class FileInterface(Interface):
             # Find the next file to read
             file = self.get_next_telemetry_file()
             if file:
-                print(f"Open: {file}")
-                self.file = open(file, "rb")
+                if file.endswith(".gz"):
+                    self.file = gzip.open(file, 'rb')
+                else:
+                    self.file = open(file, 'rb')
                 self.file_path = file
                 continue
 

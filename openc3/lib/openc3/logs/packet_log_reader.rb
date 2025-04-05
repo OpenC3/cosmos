@@ -88,11 +88,15 @@ module OpenC3
     # @return [Boolean, Exception] Returns true if successfully changed to configuration specified in log,
     #    otherwise returns false and potentially an Exception class if an error occurred.  If no error occurred
     #    false indicates that the requested configuration was simply not found.
-    def open(filename)
+    def open(filename, string_io: nil)
       close()
       reset()
       @filename = filename
-      @file = BufferedFile.open(@filename, 'rb')
+      if string_io
+        @file = string_io
+      else
+        @file = BufferedFile.open(@filename, 'rb')
+      end
       @max_read_size = @file.size
       @max_read_size = MAX_READ_SIZE if @max_read_size > MAX_READ_SIZE
       return read_file_header()
@@ -103,7 +107,10 @@ module OpenC3
 
     # Closes the current log file
     def close
-      @file.close if @file and !@file.closed?
+      if @file and !@file.closed?
+        @file.close
+        @filename = nil
+      end
     end
 
     # Read a packet from the log file

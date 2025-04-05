@@ -14,21 +14,23 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 module OpenC3
-  autoload(:Interface, 'openc3/interfaces/interface.rb')
+  autoload(:CosmosLogFileInterface, 'openc3/interfaces/cosmos_log_file_interface.rb')
+  autoload(:FileInterface, 'openc3/interfaces/file_interface.rb')
   autoload(:HttpClientInterface, 'openc3/interfaces/http_client_interface.rb')
   autoload(:HttpServerInterface, 'openc3/interfaces/http_server_interface.rb')
+  autoload(:Interface, 'openc3/interfaces/interface.rb')
   autoload(:MqttInterface, 'openc3/interfaces/mqtt_interface.rb')
   autoload(:MqttStreamInterface, 'openc3/interfaces/mqtt_stream_interface.rb')
-  autoload(:StreamInterface, 'openc3/interfaces/stream_interface.rb')
   autoload(:SerialInterface, 'openc3/interfaces/serial_interface.rb')
   autoload(:SimulatedTargetInterface, 'openc3/interfaces/simulated_target_interface.rb')
+  autoload(:StreamInterface, 'openc3/interfaces/stream_interface.rb')
   autoload(:TcpipClientInterface, 'openc3/interfaces/tcpip_client_interface.rb')
   autoload(:TcpipServerInterface, 'openc3/interfaces/tcpip_server_interface.rb')
   autoload(:UdpInterface, 'openc3/interfaces/udp_interface.rb')

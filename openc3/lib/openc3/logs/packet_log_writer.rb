@@ -54,6 +54,7 @@ module OpenC3
       cycle_hour = nil,
       cycle_minute = nil,
       enforce_time_order = true,
+      cycle_thread: true,
       scope: $openc3_scope
     )
       super(
@@ -63,7 +64,8 @@ module OpenC3
         cycle_size,
         cycle_hour,
         cycle_minute,
-        enforce_time_order
+        enforce_time_order,
+        cycle_thread: cycle_thread
       )
       @label = label
       @cmd_packet_table = {}
@@ -108,7 +110,10 @@ module OpenC3
           process_out_of_order = false
         end
         prepare_write(time_nsec_since_epoch, data.length, redis_topic, redis_offset, allow_new_file: allow_new_file, process_out_of_order: process_out_of_order)
-        write_entry(entry_type, cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, data, id, received_time_nsec_since_epoch: received_time_nsec_since_epoch, extra: extra) if @file
+        if @file
+          build_entry(entry_type, cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, data, id, received_time_nsec_since_epoch: received_time_nsec_since_epoch, extra: extra)
+          write_entry()
+        end
       ensure
         @mutex.unlock if take_mutex
       end
@@ -145,13 +150,14 @@ module OpenC3
       threads = []
       @mutex.lock if take_mutex
       begin
-        # Need to write the OFFSET_MARKER for each packet
-        @last_offsets.each do |redis_topic, last_offset|
-          write_entry(:OFFSET_MARKER, nil, nil, nil, nil, nil, last_offset + ',' + redis_topic, nil) if @file
+        if @file
+          # Need to write the OFFSET_MARKER for each packet
+          @last_offsets.each do |redis_topic, last_offset|
+            build_entry(:OFFSET_MARKER, nil, nil, nil, nil, nil, last_offset + ',' + redis_topic, nil)
+            write_entry()
+          end
         end
-
         threads.concat(super(false))
-
       ensure
         @mutex.unlock if take_mutex
       end
@@ -184,7 +190,8 @@ module OpenC3
             @target_id_cache[target_name] = id
           end
         end
-        write_entry(:TARGET_DECLARATION, cmd_or_tlm, target_name, packet_name, nil, nil, nil, id)
+        build_entry(:TARGET_DECLARATION, cmd_or_tlm, target_name, packet_name, nil, nil, nil, id)
+        write_entry()
       end
 
       # New target_table entry needed
@@ -210,7 +217,8 @@ module OpenC3
       rescue
         # No packet def
       end
-      write_entry(:PACKET_DECLARATION, cmd_or_tlm, target_name, packet_name, nil, nil, nil, id)
+      build_entry(:PACKET_DECLARATION, cmd_or_tlm, target_name, packet_name, nil, nil, nil, id)
+      write_entry()
       if entry_type == :JSON_PACKET
         key_map = @key_map_table[packet_index]
         unless key_map
@@ -225,16 +233,25 @@ module OpenC3
           end
           @key_map_table[packet_index] = reverse_key_map
           if @data_format == :CBOR
-            write_entry(:KEY_MAP, cmd_or_tlm, target_name, packet_name, nil, nil, key_map.to_cbor, nil)
+            build_entry(:KEY_MAP, cmd_or_tlm, target_name, packet_name, nil, nil, key_map.to_cbor, nil)
+            write_entry()
           else # JSON
-            write_entry(:KEY_MAP, cmd_or_tlm, target_name, packet_name, nil, nil, JSON.generate(key_map, :allow_nan => true), nil)
+            build_entry(:KEY_MAP, cmd_or_tlm, target_name, packet_name, nil, nil, JSON.generate(key_map, :allow_nan => true), nil)
+            write_entry()
           end
         end
       end
       return packet_index
     end
 
-    def write_entry(entry_type, cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, data, id, received_time_nsec_since_epoch: nil, extra: nil)
+    # Separate method to write to the file so build_entry can be called independently
+    def write_entry()
+      return unless @file
+      @file.write(@entry)
+      @file_size += @entry.length
+    end
+
+    def build_entry(entry_type, cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, data, id, received_time_nsec_since_epoch: nil, extra: nil)
       raise ArgumentError.new("Length of id must be 64, got #{id.length}") if id and id.length != 64 # 64 hex digits, gets packed to 32 bytes with .pack('H*')
 
       length = OPENC3_PRIMARY_FIXED_SIZE
@@ -337,8 +354,7 @@ module OpenC3
       else
         raise "Unknown entry_type: #{entry_type}"
       end
-      @file.write(@entry)
-      @file_size += @entry.length
+      return @entry
     end
 
     def bucket_filename

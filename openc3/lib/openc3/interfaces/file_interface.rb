@@ -18,12 +18,16 @@
 
 require 'openc3/interfaces/interface'
 require 'openc3/config/config_parser'
+require 'openc3/utilities/logger'
 require 'thread'
 require 'listen'
 require 'fileutils'
+require 'zlib'
 
 module OpenC3
   class FileInterface < Interface
+    attr_reader :filename
+
     # @param command_write_folder [String] Folder to write command files to - Set to nil to disallow writes
     # @param telemetry_read_folder [String] Folder to read telemetry files from - Set to nil to disallow reads
     # @param telemetry_archive_folder [String] Folder to move read telemetry files to - Set to DELETE to delete files
@@ -62,6 +66,7 @@ module OpenC3
       @write_raw_allowed = false unless @command_write_folder
 
       @file = nil
+      @filename = ''
       @listener = nil
       @connected = false
       @extension = ".bin"
@@ -101,7 +106,11 @@ module OpenC3
       while true
         if @file
           # Read more data from existing file
-          data = @file.read(@file_read_size)
+          if @file_read_size > 0
+            data = @file.read(@file_read_size)
+          else
+            data = @file.read
+          end
           if data and data.length > 0
             read_interface_base(data, nil)
             return data, nil
@@ -111,9 +120,13 @@ module OpenC3
         end
 
         # Find the next file to read
-        file = get_next_telemetry_file()
-        if file
-          @file = File.open(file, 'rb')
+        @filename = get_next_telemetry_file()
+        if @filename
+          if File.extname(@filename) == ".gz"
+            @file = Zlib::GzipReader.open(@filename)
+          else
+            @file = File.open(@filename, "rb")
+          end
           next
         end
 

@@ -14,10 +14,10 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -29,6 +29,8 @@ module OpenC3
   describe PreidentifiedProtocol do
     before(:all) do
       setup_system()
+      @log_dir = File.expand_path(File.join(SPEC_DIR, 'install', 'outputs', 'logs'))
+      FileUtils.mkdir_p(@log_dir)
     end
 
     before(:each) do
@@ -40,20 +42,16 @@ module OpenC3
     saved_verbose = $VERBOSE; $VERBOSE = nil
     class PreStream < Stream
       def connect; end
-
       def connected?; true; end
-
       def disconnect; end
-
       def read; $buffer; end
-
       def write(data); $buffer = data; end
     end
     $VERBOSE = saved_verbose
 
     it "handles receiving a bad packet length" do
       @interface.instance_variable_set(:@stream, PreStream.new)
-      @interface.add_protocol(PreidentifiedProtocol, [nil, 5], :READ_WRITE)
+      @interface.add_protocol(PreidentifiedProtocol, [nil, 5, 4], :READ_WRITE)
       pkt = System.telemetry.packet("SYSTEM", "META")
       time = Time.new(2020, 1, 31, 12, 15, 30.5)
       pkt.received_time = time
@@ -63,7 +61,8 @@ module OpenC3
 
     describe "initialize" do
       it "initializes attributes" do
-        @interface.add_protocol(PreidentifiedProtocol, ['0xDEADBEEF', 100], :READ_WRITE)
+        @interface.add_protocol(PreidentifiedProtocol, ['0xDEADBEEF', 100, 4], :READ_WRITE)
+        expect(@interface.read_protocols[0].instance_variable_get(:@mode)).to eq 4
         expect(@interface.read_protocols[0].instance_variable_get(:@data)).to eq ''
         expect(@interface.read_protocols[0].instance_variable_get(:@sync_pattern)).to eq "\xDE\xAD\xBE\xEF"
         expect(@interface.read_protocols[0].instance_variable_get(:@max_length)).to eq 100
@@ -71,58 +70,118 @@ module OpenC3
     end
 
     describe "write" do
-      it "creates a packet header" do
-        @interface.instance_variable_set(:@stream, PreStream.new)
-        @interface.add_protocol(PreidentifiedProtocol, [nil, 5], :READ_WRITE)
-        pkt = System.telemetry.packet("SYSTEM", "META")
-        time = Time.new(2020, 1, 31, 12, 15, 30.5)
-        pkt.received_time = time
-        @interface.write(pkt)
-        expect($buffer[0..0].unpack('C')[0]).to eql 0
-        expect($buffer[1..4].unpack('N')[0]).to eql time.to_f.to_i
-        expect($buffer[5..8].unpack('N')[0]).to eql 500000
-        offset = 9
-        tgt_name_length = $buffer[offset].unpack('C')[0]
-        offset += 1 # for the length field
-        expect($buffer[offset...(offset + tgt_name_length)]).to eql 'SYSTEM'
-        offset += tgt_name_length
-        pkt_name_length = $buffer[offset].unpack('C')[0]
-        offset += 1 # for the length field
-        expect($buffer[offset...(offset + pkt_name_length)]).to eql 'META'
-        offset += pkt_name_length
-        expect($buffer[offset..(offset + 3)].unpack('N')[0]).to eql pkt.buffer.length
-        offset += 4
-        expect($buffer[offset..-1]).to eql pkt.buffer
+      [true, false].each do |stored|
+        context "with stored #{stored}" do
+          it "creates a packet header" do
+            [4, 5, 6].each do |mode|
+              @interface = StreamInterface.new
+              @interface.instance_variable_set(:@stream, PreStream.new)
+              @interface.add_protocol(PreidentifiedProtocol, [nil, 5, mode], :READ_WRITE)
+              pkt = System.telemetry.packet("SYSTEM", "META")
+              time = Time.new(2020, 1, 31, 12, 15, 30.5)
+              pkt.received_time = time
+              pkt.stored = stored
+              @interface.write(pkt)
+              case mode
+              when 4
+                if stored
+                  expect($buffer[0..0].unpack('C')[0]).to eql 0x80
+                else
+                  expect($buffer[0..0].unpack('C')[0]).to eql 0
+                end
+                expect($buffer[1..4].unpack('N')[0]).to eql time.to_f.to_i
+                expect($buffer[5..8].unpack('N')[0]).to eql 500000
+                offset = 9
+                tgt_name_length = $buffer[offset].unpack('C')[0]
+                offset += 1 # for the length field
+                expect($buffer[offset...(offset + tgt_name_length)]).to eql 'SYSTEM'
+                offset += tgt_name_length
+                pkt_name_length = $buffer[offset].unpack('C')[0]
+                offset += 1 # for the length field
+                expect($buffer[offset...(offset + pkt_name_length)]).to eql 'META'
+                offset += pkt_name_length
+                expect($buffer[offset..(offset + 3)].unpack('N')[0]).to eql pkt.buffer.length
+                offset += 4
+                expect($buffer[offset..-1]).to eql pkt.buffer
+              when 5, 6
+                length = $buffer[0..3].unpack('N')[0]
+                expect(length).to eql($buffer.length - 4) # 4 bytes for the length field
+                flags = $buffer[4..6].unpack('n')[0]
+                if stored
+                  expect(flags & 0x400).to eql 0x400
+                else
+                  expect(flags & 0x400).to eql 0
+                end
+                index = $buffer[6..8].unpack('n')[0]
+                time = $buffer[8..16].unpack('Q>')[0]
+                rx_time = $buffer[16..24].unpack('Q>')[0]
+
+                # Extra Length (Optional)	32-bit Unsigned Integer	Only Present if Extra Flag is Set. Length of extra data in bytes not including itself.
+                # Extra Data (Optional)	Variable-Length Block Data	Only Present if Extra Flag is Set. CBOR or JSON encoded object of extra data.
+                expect($buffer[24..-1]).to eql pkt.buffer
+              end
+            end
+          end
+        end
       end
 
-      it "creates a packet header with stored" do
-        @interface.instance_variable_set(:@stream, PreStream.new)
-        @interface.add_protocol(PreidentifiedProtocol, [nil, 5], :READ_WRITE)
-        pkt = System.telemetry.packet("SYSTEM", "META").clone
-        time = Time.new(2020, 1, 31, 12, 15, 30.5)
-        pkt.received_time = time
-        pkt.stored = true
-        @interface.write(pkt)
-        expect($buffer[0..0].unpack('C')[0]).to eql 0x80
-        expect($buffer[1..4].unpack('N')[0]).to eql time.to_f.to_i
-        expect($buffer[5..8].unpack('N')[0]).to eql 500000
-        offset = 9
-        tgt_name_length = $buffer[offset].unpack('C')[0]
-        offset += 1 # for the length field
-        expect($buffer[offset...(offset + tgt_name_length)]).to eql 'SYSTEM'
-        offset += tgt_name_length
-        pkt_name_length = $buffer[offset].unpack('C')[0]
-        offset += 1 # for the length field
-        expect($buffer[offset...(offset + pkt_name_length)]).to eql 'META'
-        offset += pkt_name_length
-        expect($buffer[offset..(offset + 3)].unpack('N')[0]).to eql pkt.buffer.length
-        offset += 4
-        expect($buffer[offset..-1]).to eql pkt.buffer
+      describe "read from file" do
+        before(:each) do
+          @files = {}
+          s3 = double("AwsS3Client").as_null_object
+          allow(Aws::S3::Client).to receive(:new).and_return(s3)
+          allow(s3).to receive(:put_object) do |args|
+            @files[File.basename(args[:key])] = args[:body].read
+          end
+        end
+
+        it "reads handles a file header and reads packets" do
+          pkt1_time = Time.now.to_nsec_from_epoch
+          plw = PacketLogWriter.new(@log_dir, 'test')
+          plw.write(:RAW_PACKET, :TLM, 'TGT1', 'PKT1', pkt1_time, false, "\x01\x02", nil, '0-0')
+          pkt2_time = pkt1_time + 1_000_000_000
+          plw.write(:RAW_PACKET, :TLM, 'TGT2', 'PKT2', pkt2_time, false, "\x03\x04", nil, '0-0')
+          plw.shutdown
+          sleep 0.1 # Allow for shutdown thread "copy" to S3
+
+          filename = @files.keys[0]
+          $buffer = Zlib::GzipReader.new(StringIO.new(@files[filename])).read
+
+          @interface = StreamInterface.new
+          @interface.instance_variable_set(:@stream, PreStream.new)
+          @interface.instance_variable_set(:@filename, 'FILENAME')
+          @interface.add_protocol(PreidentifiedProtocol, [nil, nil, 5, true], :READ_WRITE)
+
+          packet = @interface.read
+          expect(packet.target_name).to eql 'TGT1'
+          expect(packet.packet_name).to eql 'PKT1'
+          expect(packet.identified?).to be true
+          expect(packet.defined?).to be false
+          expect(packet.buffer).to eql "\x01\x02"
+          expect(packet.received_time.to_nsec_from_epoch).to eql pkt1_time
+          expect(packet.stored).to be false
+          expect(packet.extra).to be nil
+
+          packet = @interface.read
+          expect(packet.target_name).to eql 'TGT2'
+          expect(packet.packet_name).to eql 'PKT2'
+          expect(packet.identified?).to be true
+          expect(packet.defined?).to be false
+          expect(packet.buffer).to eql "\x03\x04"
+          expect(packet.received_time.to_nsec_from_epoch).to eql pkt2_time
+          expect(packet.stored).to be false
+          expect(packet.extra).to be nil
+
+          # The stream will just keep reading the $buffer so we get the same packet
+          packet = @interface.read
+          expect(packet.target_name).to eql 'TGT1'
+          expect(packet.packet_name).to eql 'PKT1'
+        end
       end
 
       it "creates a packet header with extra" do
         @interface.instance_variable_set(:@stream, PreStream.new)
-        @interface.add_protocol(PreidentifiedProtocol, [nil, 5], :READ_WRITE)
+        @interface.add_protocol(PreidentifiedProtocol, [nil, 5, 4], :READ_WRITE)
         pkt = System.telemetry.packet("SYSTEM", "META").clone
         time = Time.new(2020, 1, 31, 12, 15, 30.5)
         pkt.received_time = time
@@ -156,7 +215,7 @@ module OpenC3
 
       it "creates a packet header with stored and extra" do
         @interface.instance_variable_set(:@stream, PreStream.new)
-        @interface.add_protocol(PreidentifiedProtocol, [nil, 5], :READ_WRITE)
+        @interface.add_protocol(PreidentifiedProtocol, [nil, 5, 4], :READ_WRITE)
         pkt = System.telemetry.packet("SYSTEM", "META").clone
         time = Time.new(2020, 1, 31, 12, 15, 30.5)
         pkt.received_time = time
@@ -190,7 +249,7 @@ module OpenC3
 
       it "handles a sync pattern" do
         @interface.instance_variable_set(:@stream, PreStream.new)
-        @interface.add_protocol(PreidentifiedProtocol, ["DEAD"], :READ_WRITE)
+        @interface.add_protocol(PreidentifiedProtocol, ["DEAD", 5, 4], :READ_WRITE)
         pkt = System.telemetry.packet("SYSTEM", "META")
         time = Time.new(2020, 1, 31, 12, 15, 30.5)
         pkt.received_time = time
@@ -215,7 +274,7 @@ module OpenC3
 
       it "handles a sync pattern with stored and extra" do
         @interface.instance_variable_set(:@stream, PreStream.new)
-        @interface.add_protocol(PreidentifiedProtocol, ["DEAD", 5], :READ_WRITE)
+        @interface.add_protocol(PreidentifiedProtocol, ["DEAD", 5, 4], :READ_WRITE)
         pkt = System.telemetry.packet("SYSTEM", "META").clone
         time = Time.new(2020, 1, 31, 12, 15, 30.5)
         pkt.received_time = time
@@ -252,7 +311,7 @@ module OpenC3
     describe "read" do
       it "handles a sync pattern" do
         @interface.instance_variable_set(:@stream, PreStream.new)
-        @interface.add_protocol(PreidentifiedProtocol, ["0x1234"], :READ_WRITE)
+        @interface.add_protocol(PreidentifiedProtocol, ["0x1234", nil, 4], :READ_WRITE)
         pkt = System.telemetry.packet("SYSTEM", "META")
         pkt.write("OPENC3_VERSION", "TEST")
         time = Time.new(2020, 1, 31, 12, 15, 30.5)
@@ -274,100 +333,7 @@ module OpenC3
 
       it "returns a packet" do
         @interface.instance_variable_set(:@stream, PreStream.new)
-        @interface.add_protocol(PreidentifiedProtocol, [], :READ_WRITE)
-        pkt = System.telemetry.packet("SYSTEM", "META")
-        pkt.write("OPENC3_VERSION", "TEST")
-        time = Time.new(2020, 1, 31, 12, 15, 30.5)
-        pkt.received_time = time
-        @interface.write(pkt)
-        packet = @interface.read
-        expect(packet.target_name).to eql 'SYSTEM'
-        expect(packet.packet_name).to eql 'META'
-        expect(packet.identified?).to be true
-        expect(packet.defined?).to be false
-
-        pkt2 = System.telemetry.update!("SYSTEM", "META", packet.buffer)
-        expect(pkt2.read('OPENC3_VERSION')).to eql 'TEST'
-        expect(pkt2.identified?).to be true
-        expect(pkt2.defined?).to be true
-      end
-    end
-
-    describe "write in mode 2" do
-      it "creates a packet header" do
-        @interface.instance_variable_set(:@stream, PreStream.new)
-        @interface.add_protocol(PreidentifiedProtocol, [nil, 5, 2], :READ_WRITE)
-        pkt = System.telemetry.packet("SYSTEM", "META")
-        time = Time.new(2020, 1, 31, 12, 15, 30.5)
-        pkt.received_time = time
-        @interface.write(pkt)
-        expect($buffer[0..3].unpack('N')[0]).to eql time.to_f.to_i
-        expect($buffer[4..7].unpack('N')[0]).to eql 500000
-        offset = 8
-        tgt_name_length = $buffer[offset].unpack('C')[0]
-        offset += 1 # for the length field
-        expect($buffer[offset...(offset + tgt_name_length)]).to eql 'SYSTEM'
-        offset += tgt_name_length
-        pkt_name_length = $buffer[offset].unpack('C')[0]
-        offset += 1 # for the length field
-        expect($buffer[offset...(offset + pkt_name_length)]).to eql 'META'
-        offset += pkt_name_length
-        expect($buffer[offset..(offset + 3)].unpack('N')[0]).to eql pkt.buffer.length
-        offset += 4
-        expect($buffer[offset..-1]).to eql pkt.buffer
-      end
-
-      it "handles a sync pattern" do
-        @interface.instance_variable_set(:@stream, PreStream.new)
-        @interface.add_protocol(PreidentifiedProtocol, ["DEAD", nil, 2], :READ_WRITE)
-        pkt = System.telemetry.packet("SYSTEM", "META")
-        time = Time.new(2020, 1, 31, 12, 15, 30.5)
-        pkt.received_time = time
-        @interface.write(pkt)
-        expect($buffer[0..1]).to eql("\xDE\xAD")
-        expect($buffer[2..5].unpack('N')[0]).to eql time.to_f.to_i
-        expect($buffer[6..9].unpack('N')[0]).to eql 500000
-        offset = 10
-        tgt_name_length = $buffer[offset].unpack('C')[0]
-        offset += 1 # for the length field
-        expect($buffer[offset...(offset + tgt_name_length)]).to eql 'SYSTEM'
-        offset += tgt_name_length
-        pkt_name_length = $buffer[offset].unpack('C')[0]
-        offset += 1 # for the length field
-        expect($buffer[offset...(offset + pkt_name_length)]).to eql 'META'
-        offset += pkt_name_length
-        expect($buffer[offset..(offset + 3)].unpack('N')[0]).to eql pkt.buffer.length
-        offset += 4
-        expect($buffer[offset..-1]).to eql pkt.buffer
-      end
-    end
-
-    describe "read in mode 2" do
-      it "handles a sync pattern" do
-        @interface.instance_variable_set(:@stream, PreStream.new)
-        @interface.add_protocol(PreidentifiedProtocol, ["0x1234", nil, 2], :READ_WRITE)
-        pkt = System.telemetry.packet("SYSTEM", "META")
-        pkt.write("OPENC3_VERSION", "TEST")
-        time = Time.new(2020, 1, 31, 12, 15, 30.5)
-        pkt.received_time = time
-        @interface.write(pkt)
-        expect($buffer[0]).to eql "\x12"
-        expect($buffer[1]).to eql "\x34"
-        packet = @interface.read
-        expect(packet.target_name).to eql 'SYSTEM'
-        expect(packet.packet_name).to eql 'META'
-        expect(packet.identified?).to be true
-        expect(packet.defined?).to be false
-
-        pkt2 = System.telemetry.update!("SYSTEM", "META", packet.buffer)
-        expect(pkt2.read('OPENC3_VERSION')).to eql 'TEST'
-        expect(pkt2.identified?).to be true
-        expect(pkt2.defined?).to be true
-      end
-
-      it "returns a packet" do
-        @interface.instance_variable_set(:@stream, PreStream.new)
-        @interface.add_protocol(PreidentifiedProtocol, [nil, nil, 2], :READ_WRITE)
+        @interface.add_protocol(PreidentifiedProtocol, [nil, nil, 4], :READ_WRITE)
         pkt = System.telemetry.packet("SYSTEM", "META")
         pkt.write("OPENC3_VERSION", "TEST")
         time = Time.new(2020, 1, 31, 12, 15, 30.5)
