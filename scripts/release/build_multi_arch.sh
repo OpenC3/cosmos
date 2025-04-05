@@ -30,10 +30,14 @@ if [ "${1:-default}" = "ubi" ]; then
   OPENC3_PLATFORMS=linux/amd64
   DOCKERFILE='Dockerfile-ubi'
   SUFFIX='-ubi'
+  OPENC3_MINIO_RELEASE=RELEASE.2025-01-20T14-49-07Z
+  OPENC3_MC_RELEASE=RELEASE.2025-01-17T23-25-50Z
 else
   OPENC3_PLATFORMS=linux/amd64,linux/arm64
   DOCKERFILE='Dockerfile'
   SUFFIX=''
+  OPENC3_MINIO_RELEASE=RELEASE.2025-04-03T14-56-28Z
+  OPENC3_MC_RELEASE=RELEASE.2025-03-12T17-29-24Z
 fi
 
 # Setup cacert.pem
@@ -179,6 +183,7 @@ docker buildx build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
+  --build-arg OPENC3_MINIO_RELEASE=${OPENC3_MINIO_RELEASE} \
   --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-minio${SUFFIX}:${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-minio${SUFFIX}:${OPENC3_RELEASE_VERSION} .
 
@@ -188,6 +193,7 @@ docker buildx build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
+  --build-arg OPENC3_MINIO_RELEASE=${OPENC3_MINIO_RELEASE} \
   --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-minio${SUFFIX}:latest \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-minio${SUFFIX}:latest .
 fi
@@ -300,6 +306,7 @@ docker buildx build \
   --build-context docs=../docs.openc3.com \
   --build-arg NPM_URL=${NPM_URL} \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
+  --build-arg OPENC3_MC_RELEASE=${OPENC3_MC_RELEASE} \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_NAMESPACE=${OPENC3_NAMESPACE} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
@@ -316,6 +323,7 @@ docker buildx build \
   --build-context docs=../docs.openc3.com \
   --build-arg NPM_URL=${NPM_URL} \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
+  --build-arg OPENC3_MC_RELEASE=${OPENC3_MC_RELEASE} \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_NAMESPACE=${OPENC3_NAMESPACE} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \

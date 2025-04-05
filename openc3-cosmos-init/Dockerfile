@@ -4,6 +4,8 @@ ARG OPENC3_NAMESPACE=openc3inc
 ARG OPENC3_TAG=latest
 ARG OPENC3_NODE_IMAGE=openc3-node
 ARG OPENC3_BASE_IMAGE=openc3-base
+# Update in openc3_build_ubi.sh when changing the release version
+# and build_multi_arch.sh
 ARG OPENC3_MC_RELEASE=RELEASE.2025-03-12T17-29-24Z
 
 FROM ${OPENC3_DEPENDENCY_REGISTRY}/minio/mc:${OPENC3_MC_RELEASE} AS minio-mc
