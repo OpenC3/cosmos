@@ -72,6 +72,8 @@ module OpenC3
     end
 
     def write_packet(packet)
+      @packet_time = packet.packet_time
+      @packet_time = Time.now unless @packet_time
       @received_time = packet.received_time
       @received_time = Time.now unless @received_time
       @write_time_seconds = [@received_time.tv_sec].pack('N') # UINT32
@@ -95,11 +97,10 @@ module OpenC3
         else
           @packet_stored = false
         end
-        if packet.extra
-          @write_extra = packet.extra.as_json.to_cbor
-        else
-          @write_extra = nil
-        end
+        @write_extra = nil
+        @write_extra = packet.extra if packet.extra
+      else
+        raise "PreidentifiedProtocol unsupported mode: #{@mode}"
       end
       return packet
     end
@@ -124,8 +125,20 @@ module OpenC3
         data_to_send << data_length
         data_to_send << data
       when 5, 6 # COSMOS5.0+ Protocol
-        now = Time.now.to_nsec_from_epoch
-        data_to_send << @packet_log_writer.build_entry(:RAW_PACKET, :TLM, @write_target_name, @write_packet_name, now, @packet_stored, data, nil, received_time_nsec_since_epoch: @received_time.to_nsec_from_epoch, extra: @write_extra)
+        data_to_send << @packet_log_writer.build_entry(
+          :RAW_PACKET,
+          :TLM,
+          @write_target_name,
+          @write_packet_name,
+          @packet_time.to_nsec_from_epoch,
+          @packet_stored,
+          data,
+          nil,
+          received_time_nsec_since_epoch: @received_time.to_nsec_from_epoch,
+          extra: @write_extra
+        )
+      else
+        raise "PreidentifiedProtocol unsupported mode: #{@mode}"
       end
       return data_to_send, extra
     end
@@ -190,11 +203,8 @@ module OpenC3
               @data.replace(@data[(COSMOS4_HEADER_LENGTH)..-1])
             end
           end
-          if @mode >= 5
-            # Mode 5 keeps all the data because packet_log_reader handles it
-            if header.strip != OPENC3_FILE_HEADER
-              return :STOP
-            end
+          if @mode >= 5 and header.strip != OPENC3_FILE_HEADER
+            return :STOP
           end
           @reduction_state = :HEADER_REMOVED
         end
@@ -208,6 +218,8 @@ module OpenC3
           return handle_mode4()
         when 5, 6
           return handle_mode5()
+        else
+          raise "PreidentifiedProtocol unsupported mode: #{@mode}"
         end
       end
     end
@@ -241,6 +253,10 @@ module OpenC3
         @packet_log_reader.close()
         @reduction_state = :START
       end
+    rescue StandardError => e
+      Logger.error("PreidentifiedProtocol error reading packet: #{e.message}")
+      @packet_log_reader.close()
+      @reduction_state = :START
     end
 
     def handle_mode4

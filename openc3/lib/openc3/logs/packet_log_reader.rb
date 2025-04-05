@@ -107,10 +107,8 @@ module OpenC3
 
     # Closes the current log file
     def close
-      if @file and !@file.closed?
-        @file.close
-        @filename = nil
-      end
+      @file.close if @file and !@file.closed?
+      @filename = nil
     end
 
     # Read a packet from the log file
