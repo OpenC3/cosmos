@@ -112,3 +112,11 @@ export default {
   background-color: var(--gsb-color-background) !important;
 }
 </style>
+
+<style>
+/* Classification banners */
+#footer {
+  margin-bottom: var(--classification-height-bottom);
+}
+/* END classification banners */
+</style>

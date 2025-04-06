@@ -45,7 +45,7 @@ spec = Gem::Specification.new do |s|
     s.platform = Gem::Platform::CURRENT
   end
 
-  s.version = '6.2.2.pre.beta0'
+  s.version = '6.3.1.pre.beta0'
   s.licenses = ['AGPL-3.0-only', 'Nonstandard']
 
   # Executables
@@ -68,7 +68,6 @@ spec = Gem::Specification.new do |s|
     s.extensions << 'ext/openc3/ext/string/extconf.rb'
     s.extensions << 'ext/openc3/ext/tabbed_plots_config/extconf.rb'
     s.extensions << 'ext/openc3/ext/telemetry/extconf.rb'
-    s.extensions << 'ext/mkrf_conf.rb'
   end
 
   # Files are defined in Manifest.txt

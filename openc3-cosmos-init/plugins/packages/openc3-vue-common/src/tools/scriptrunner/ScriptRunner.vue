@@ -21,7 +21,7 @@
 -->
 
 <template>
-  <div v-if="!inline">
+  <template v-if="!inline">
     <top-bar :menus="menus" :title="title" />
     <v-snackbar
       v-model="showAlert"
@@ -297,7 +297,7 @@
         />
       </pane>
     </splitpanes>
-  </div>
+  </template>
 
   <div v-if="inline">
     <v-row>

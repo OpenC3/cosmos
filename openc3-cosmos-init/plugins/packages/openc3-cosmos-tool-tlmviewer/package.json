@@ -1,6 +1,6 @@
 {
   "name": "@openc3/cosmos-tool-tlmviewer",
-  "version": "6.2.2-beta0",
+  "version": "6.3.1-beta0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,8 +11,8 @@
   },
   "dependencies": {
     "@astrouxds/astro-web-components": "7.25.1",
-    "@openc3/js-common": "6.2.2-beta0",
-    "@openc3/vue-common": "6.2.2-beta0",
+    "@openc3/js-common": "6.3.1-beta0",
+    "@openc3/vue-common": "6.3.1-beta0",
     "ace-builds": "1.39.1",
     "axios": "1.8.4",
     "binary-search": "1.3.6",
@@ -32,7 +32,7 @@
     "eslint-plugin-vue": "10.0.0",
     "prettier": "3.5.3",
     "sass": "1.86.0",
-    "vite": "6.2.4",
+    "vite": "6.2.5",
     "vue": "3.5.13",
     "vue-eslint-parser": "10.1.1"
   }

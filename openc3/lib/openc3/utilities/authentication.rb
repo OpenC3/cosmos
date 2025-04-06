@@ -75,14 +75,14 @@ module OpenC3
     end
 
     # Load the token from the environment
-    def token(include_bearer: true)
+    def token(include_bearer: true, openid_scope: 'openid')
       @auth_mutex.synchronize do
         @log = [nil, nil]
         current_time = Time.now.to_i
         if @token.nil?
-          _make_token(current_time)
+          _make_token(current_time, openid_scope: openid_scope)
         elsif @refresh_expires_at < current_time
-          _make_token(current_time)
+          _make_token(current_time, openid_scope: openid_scope)
         elsif @expires_at < current_time
           _refresh_token(current_time)
         end
@@ -108,13 +108,13 @@ module OpenC3
     private
 
     # Make the token and save token to instance
-    def _make_token(current_time)
+    def _make_token(current_time, openid_scope: 'openid')
       client_id = ENV['OPENC3_API_CLIENT'] || 'api'
       if ENV['OPENC3_API_USER'] and ENV['OPENC3_API_PASSWORD']
         # Username and password
         data = "username=#{ENV['OPENC3_API_USER']}&password=#{ENV['OPENC3_API_PASSWORD']}"
         data << "&client_id=#{client_id}"
-        data << '&grant_type=password&scope=openid'
+        data << "&grant_type=password&scope=#{openid_scope}"
         headers = {
           'Content-Type' => 'application/x-www-form-urlencoded',
           'User-Agent' => "OpenC3KeycloakAuthorization / #{OPENC3_VERSION} (ruby/openc3/lib/utilities/authentication)",

@@ -419,7 +419,27 @@ a.fixcenter {
   min-height: calc(100% + 8px);
 }
 </style>
+
 <style>
+/* Classification banners */
+#openc3-nav-drawer {
+  margin-bottom: var(--classification-height-bottom);
+}
+#openc3-nav-drawer,
+header {
+  margin-top: var(--classification-height-top);
+}
+#openc3-app-toolbar {
+  top: var(--classification-height-top);
+}
+#openc3-nav-drawer .v-navigation-drawer__content {
+  height: calc(
+    100% - var(--classification-height-top) -
+      var(--classification-height-bottom)
+  );
+}
+/* END classification banners */
+
 /* Remove the padding on root level nodes since we removed the expand icon */
 #openc3-nav-drawer
   .v-treeview

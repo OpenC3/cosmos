@@ -22,6 +22,7 @@ Usage:
     PARAMETERS name-value pairs to form the script's runtime environment
     OPTIONS: --wait 0 seconds to monitor status before detaching from the running script; ie --wait 100
              --disconnect run the script in disconnect mode
+  cli script init                   # initialize running scripts (Enterprise Only)
   cli validate /PATH/FILENAME.gem SCOPE variables.txt # Validate a COSMOS plugin gem file
   cli load /PATH/FILENAME.gem SCOPE variables.txt     # Loads a COSMOS plugin gem file
   cli list <SCOPE>                  # Lists installed plugins, SCOPE is DEFAULT if not given
@@ -70,7 +71,7 @@ irb(main):002:0> Cosmos::Api::WHITELIST
 The script methods allow you to list the available scripts, spawn a script, and run a script while monitoring its output. Note that you must set the OPENC3_API_PASSWORD in Open Source and both the OPENC3_API_USER and OPENC3_API_PASSWORD in Enterprise.
 
 :::note Offline Access Token
-You must visit the frontend Script Runner page as the OPENC3_API_USER in order to obtain an offline access token before the script cli methods will work.
+You must visit the frontend Script Runner page as the OPENC3_API_USER or run "openc3.sh cli script init" in order to obtain an offline access token before the other script cli methods will work.
 :::
 
 ### List

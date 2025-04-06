@@ -65,6 +65,33 @@ export default {
 </script>
 
 <style>
+/* Classification banners */
+#app {
+  margin-top: var(--classification-height-top);
+}
+#app::before,
+#app::after {
+  z-index: 9999;
+  position: fixed;
+  left: 0;
+  right: 0;
+  text-align: center;
+  content: var(--classification-text);
+  color: var(--classification-font-color);
+  background-color: var(--classification-background-color);
+}
+#app::before {
+  top: 0;
+  font-size: calc(var(--classification-height-top) * 0.7);
+  height: var(--classification-height-top);
+}
+#app::after {
+  bottom: 0;
+  font-size: calc(var(--classification-height-bottom) * 0.7);
+  height: var(--classification-height-bottom);
+}
+/* END classification banners */
+
 #openc3-tool {
   height: 100%;
 }
