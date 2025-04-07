@@ -203,15 +203,18 @@ The Template Protocol works much like the Terminated Protocol except it is desig
 | Response Polling Period      | Number of seconds to wait between polling for a response                                                                                                                                     | No       | 0.02                     |
 | Raise Exceptions             | Whether to raise exceptions when errors occur like timeouts or unexpected responses                                                                                                          | No       | false                    |
 
-### Preidentified Protocol (Internal)
+### Preidentified Protocol
 
-The Preidentified Protocol delineates packets using a custom COSMOS header. This internal Protocol was created to allow tools to connect and receive the entire packet stream. It can also be used to chain COSMOS instances together although that should rarely be needed with the new web native implementation.
+The Preidentified Protocol delineates packets using the COSMOS header. This Protocol was created to allow tools to connect and receive the entire packet stream. It can be used with the [FileInterface](/docs/configuration/interfaces#file-interface) to process COSMOS log files including COSMOS 4 log files. It can also be used to chain COSMOS instances together although that should rarely be needed with the new web native implementation.
 
 | Parameter    | Description                                                                                                                                                                                                                    | Required | Default                 |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- | ----------------------- |
 | Sync Pattern | Hex string representing a byte pattern that will be searched for in the raw data. This pattern represents a packet delimiter and all data found AFTER the sync pattern will be returned. The sync pattern itself is discarded. | No       | nil (no sync pattern)   |
 | Max Length   | The maximum allowed value in the length field                                                                                                                                                                                  | No       | nil (no maximum length) |
-| Mode         | The Version of the preidentified protocol to support (2 or 4).3                                                                                                                                                                | No       | 4                       |
+| Version      | COSMOS version to process: 4, 5, or 6. NOTE: No changes were made between versions 5 and 6.                                                                                                                                    | No       | 6                       |
+| File         | Whether the protocol will be processing files from the FileInterface and must handle the file header                                                                                                                           | No       | false                   |
+
+For an example of using Preidentified Protocol see [FileInterface](/docs/configuration/interfaces#file-interface).
 
 ## Helper Protocols
 

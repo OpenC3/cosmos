@@ -113,7 +113,7 @@ module OpenC3
           end
           if data and data.length > 0
             read_interface_base(data, nil)
-            return data, nil
+            return data, { filename: @filename, size: data.length }
           else
             finish_file()
           end

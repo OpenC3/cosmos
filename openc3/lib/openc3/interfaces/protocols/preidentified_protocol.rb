@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 Ball Aerospace & Technologies Corp.
+# Copyright 2025, OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -13,10 +13,6 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-# Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
-# All Rights Reserved
-#
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
@@ -40,7 +36,7 @@ module OpenC3
     # @param file [true/false] Whether we're processing from a file (handle file headers)
     #   This is typically used in conjunction with the file_interface
     # @param allow_empty_data [true/false/nil] See Protocol#initialize
-    def initialize(sync_pattern = nil, max_length = nil, mode = 5, file = false, allow_empty_data = nil)
+    def initialize(sync_pattern = nil, max_length = nil, mode = 6, file = false, allow_empty_data = nil)
       super(0, sync_pattern, false, allow_empty_data)
       @max_length = ConfigParser.handle_nil(max_length)
       @max_length = Integer(@max_length) if @max_length
@@ -59,15 +55,7 @@ module OpenC3
       packet.received_time = @read_received_time
       packet.target_name = @read_target_name
       packet.packet_name = @read_packet_name
-      # Anything greater than 4 has stored and extra
-      if @mode >= 4 # COSMOS4.3+ Protocol
-        packet.stored = @read_stored
-        if packet.extra and @read_extra
-          packet.extra.merge(@read_extra)
-        else
-          packet.extra = @read_extra
-        end
-      end
+      packet.stored = @read_stored
       return packet
     end
 
@@ -177,6 +165,17 @@ module OpenC3
 
     # Called by the BurstProtocol in read_data to process the data
     def reduce_to_single_packet
+      # File mode is special in that we're reading from a file and need to handle the file header
+      if @file and @extra and @extra[:filename]
+        # Check to see if we have built up more than the initial file size
+        # this isn't the full files size, just the size of the data we have so far
+        # If so it means we're staring a new file so we should replace our @data with the new file contents
+        if @data.length > @extra[:size]
+          @data.replace(@data[@extra[:size]..-1])
+          @reduction_state = :START
+        end
+      end
+
       # Discard sync pattern if present
       if @sync_pattern
         if @reduction_state == :START
@@ -193,52 +192,54 @@ module OpenC3
         if @reduction_state == :SYNC_REMOVED
           # Ensure we have enough data to read the header
           return :STOP if @data.length < OPENC3_HEADER_LENGTH
-          header = @data[0..OPENC3_HEADER_LENGTH]
-          if @mode == 4
+          header = @data[0...OPENC3_HEADER_LENGTH]
+          case @mode
+          when 4
+            # If we're in mode 4 and we don't have a COSMOS4 header then start over
             if header != COSMOS4_FILE_HEADER
+              @reduction_state = :START
               return :STOP
             else
               return :STOP if @data.length < COSMOS4_HEADER_LENGTH
               # Read and discard the rest of the header
               @data.replace(@data[(COSMOS4_HEADER_LENGTH)..-1])
             end
+          when 5, 6
+            # If we're in mode 5 and we don't have a COSMOS5 header then start over
+            if header != OPENC3_FILE_HEADER
+              @reduction_state = :START
+              return :STOP
+            end
+            # NOTE: We keep the file header in the data stream because packet_log_reader handles it
+          else
+            raise "PreidentifiedProtocol unsupported mode: #{@mode}"
           end
-          if @mode >= 5 and header.strip != OPENC3_FILE_HEADER
-            return :STOP
-          end
-          @reduction_state = :HEADER_REMOVED
+          @reduction_state = :PACKETS
         end
       else
-        @reduction_state = :HEADER_REMOVED
+        @reduction_state = :PACKETS
       end
 
-      if @reduction_state == :HEADER_REMOVED
-        case @mode
-        when 4
-          return handle_mode4()
-        when 5, 6
-          return handle_mode5()
-        else
-          raise "PreidentifiedProtocol unsupported mode: #{@mode}"
-        end
+      case @mode
+      when 4
+        return handle_mode4()
+      when 5, 6
+        return handle_mode5()
+      else
+        raise "PreidentifiedProtocol unsupported mode: #{@mode}"
       end
     end
 
     def handle_mode5
-      # Ensure we have enough data to get the length of the first entry
-      return :STOP if @data.length < 12 # 8 bytes for 'COSMOS5_' + 4 bytes for length
-      length = @data[8..12].unpack('N')[0] # First entry length
-      return :STOP if @data.length < length
+      if @file and @extra and @extra[:filename]
+        filename = @extra[:filename]
+      else
+        filename = @packet_log_reader.filename
+      end
 
-      # If this is the first time through, set up the packet log reader
-      unless @packet_log_reader.filename
-        begin
-          # file_interface will set the filename
-          filename = @interface.filename
-        rescue StandardError
-          filename = 'preidentified'
-        end
-        @packet_log_reader.open(filename, string_io: StringIO.new(@data, 'rb'))
+      # If this is the first time through or the filename has changed
+      if !@packet_log_reader.filename or @packet_log_reader.filename != filename
+        @packet_log_reader.open(filename, string_io: StringIO.new(@data, 'rb'), file_header: @file)
       end
       packet = @packet_log_reader.read()
       if packet
@@ -249,14 +250,8 @@ module OpenC3
         @read_stored = packet.stored
         return packet.buffer, packet.extra
       else
-        # No more packets so close the reader and reset
-        @packet_log_reader.close()
-        @reduction_state = :START
+        return :STOP
       end
-    rescue StandardError => e
-      Logger.error("PreidentifiedProtocol error reading packet: #{e.message}")
-      @packet_log_reader.close()
-      @reduction_state = :START
     end
 
     def handle_mode4
@@ -267,7 +262,7 @@ module OpenC3
       @data.replace(@data[1..-1])
       @read_stored = false
       @read_stored = true if (flags & COSMOS4_STORED_FLAG_MASK) != 0
-      @read_extra = nil
+      extra = nil
       if (flags & COSMOS4_EXTRA_FLAG_MASK) != 0
         @reduction_state = :NEED_EXTRA
       else
@@ -276,14 +271,14 @@ module OpenC3
 
       if @reduction_state == :NEED_EXTRA
         # Read and remove extra
-        @read_extra = read_length_field_followed_by_string(4)
-        return :STOP if @read_extra == :STOP
+        extra = read_length_field_followed_by_string(4)
+        return :STOP if extra == :STOP
 
-        @read_extra = JSON.parse(@read_extra, :allow_nan => true, :create_additions => true)
+        extra = JSON.parse(extra, :allow_nan => true, :create_additions => true)
         @reduction_state = :FLAGS_REMOVED
       end
 
-      if @reduction_state == :FLAGS_REMOVED or (@reduction_state == :SYNC_REMOVED and @mode != 4)
+      if @reduction_state == :FLAGS_REMOVED
         # Read and remove packet received time
         return :STOP if @data.length < 8
 
@@ -315,8 +310,8 @@ module OpenC3
         packet_data = read_length_field_followed_by_string(4)
         return :STOP if packet_data == :STOP
 
-        @reduction_state = :START
-        return packet_data, @extra
+        @reduction_state = :PACKETS
+        return packet_data, extra
       end
 
       raise "Error should never reach end of method #{@reduction_state}"

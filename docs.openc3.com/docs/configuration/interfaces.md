@@ -403,7 +403,7 @@ INTERFACE INTERFACE_NAME serial_interface.rb COM4 COM4 115200 NONE 1 10.0 10.0 #
 
 ### File Interface
 
-The file interface monitors a directory which is mapped via the compose.yaml file to a physical directory on the host machine. The primary use-case is to provides a method to process stored telemetry files into the COSMOS system. The file interface will monitor the given directory for new files and thus the host directory acts like a "drop box" where files can be processed and then archived to the Telemetry Archive Folder.
+The file interface monitors a directory which is mapped via the compose.yaml file to a physical directory on the host machine. The primary use-case is to provides a method to process stored telemetry files into the COSMOS system. The file interface will monitor the given directory for new files and thus the host directory acts like a "drop box" where files can be processed and then archived to the Telemetry Archive Folder. When coupled with the [PreidentifiedProtocol](/docs/configuration/protocols#preidentified-protocol), it can process COSMOS binary files from COSMOS version 4, 5, and 6.
 
 | Parameter                | Description                                                                                                                            | Required | Default     |
 | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- | -------- | ----------- |
@@ -440,9 +440,9 @@ openc3-operator:
 plugin.txt Ruby Examples:
 
 ```ruby
-INTERFACE INTERFACE_NAME file_interface.rb nil /dropbox /archive
+INTERFACE FILE_INT file_interface.rb nil /dropbox /archive 65536 true Preidentified nil nil 5 true
   MAP_TLM_TARGET INST # Since we passed nil to Command Write Folder we map as TLM only
-INTERFACE INTERFACE_NAME file_interface.rb /archive /dropbox/ /archive 1024 false
+INTERFACE FILE_INT file_interface.rb /archive /dropbox/ /archive 1024 false
   OPTION LABEL data
   OPTION EXTENSION .dat
   OPTION POLLING true
@@ -450,12 +450,10 @@ INTERFACE INTERFACE_NAME file_interface.rb /archive /dropbox/ /archive 1024 fals
   TLM_TARGET INST # This will store INST commands in the archive folder
 ```
 
-plugin.txt Python Examples:
-
 ```ruby
-INTERFACE INTERFACE_NAME openc3/interfaces/file_interface.py None /dropbox /archive
+INTERFACE FILE_INT openc3/interfaces/file_interface.py None /dropbox /archive 65536 True Preidentified None None 5 True
   MAP_TLM_TARGET INST  # Since we passed None to Command Write Folder we map as TLM only
-INTERFACE INTERFACE_NAME openc3/interfaces/file_interface.py /archive /dropbox/ /archive 1024 false
+INTERFACE FILE_INT openc3/interfaces/file_interface.py /archive /dropbox/ /archive 1024 False
   OPTION LABEL data
   OPTION EXTENSION .dat
   OPTION POLLING True
