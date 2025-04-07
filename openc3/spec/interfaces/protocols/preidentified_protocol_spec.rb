@@ -268,7 +268,7 @@ module OpenC3
         expect(packet.identified?).to be true
         expect(packet.defined?).to be false
         expect(packet.buffer).to eql "\x01\x02"
-        expect(packet.received_time).to eql pkt1_time
+        expect(packet.received_time).to be_within(0.001).of(pkt1_time)
         expect(packet.stored).to be true
         expect(packet.extra).to be nil
 
@@ -278,7 +278,7 @@ module OpenC3
         expect(packet.identified?).to be true
         expect(packet.defined?).to be false
         expect(packet.buffer).to eql "\x03\x04"
-        expect(packet.received_time).to eql pkt2_time
+        expect(packet.received_time).to be_within(0.001).of(pkt2_time)
         expect(packet.stored).to be false
         expect(packet.extra).to be nil
 

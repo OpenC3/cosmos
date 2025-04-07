@@ -21,7 +21,6 @@
 # if purchased from OpenC3, Inc.
 
 module OpenC3
-  autoload(:CosmosLogFileInterface, 'openc3/interfaces/cosmos_log_file_interface.rb')
   autoload(:FileInterface, 'openc3/interfaces/file_interface.rb')
   autoload(:HttpClientInterface, 'openc3/interfaces/http_client_interface.rb')
   autoload(:HttpServerInterface, 'openc3/interfaces/http_server_interface.rb')
