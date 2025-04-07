@@ -336,7 +336,8 @@ module OpenC3
           flags |= OPENC3_EXTRA_FLAG_MASK
           extra = JSON.parse(extra, :allow_nan => true, :create_additions => true) if String === extra
           length += OPENC3_EXTRA_LENGTH_FIXED_SIZE
-          if @data_format == :CBOR
+          # CBOR flag only valid for JSON_PACKET
+          if @data_format == :CBOR and entry_type == :JSON_PACKET
             extra_encoded = extra.as_json.to_cbor
           else
             extra_encoded = JSON.generate(extra.as_json, :allow_nan => true)

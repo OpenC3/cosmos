@@ -136,7 +136,7 @@ module OpenC3
       # each time we create an entry which we do a LOT!
       @entry = String.new
 
-      if @cycle_thread
+      if cycle_thread
         # Always make sure there is a cycle thread - (because it does trimming)
         @@mutex.synchronize do
           @@instances << self

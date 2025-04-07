@@ -89,7 +89,7 @@ module OpenC3
     describe "initialize" do
       it "initializes attributes" do
         @interface.add_protocol(PreidentifiedProtocol, ['0xDEADBEEF', 100, 4], :READ_WRITE)
-        expect(@interface.read_protocols[0].instance_variable_get(:@mode)).to eq 4
+        expect(@interface.read_protocols[0].instance_variable_get(:@version)).to eq 4
         expect(@interface.read_protocols[0].instance_variable_get(:@data)).to eq ''
         expect(@interface.read_protocols[0].instance_variable_get(:@sync_pattern)).to eq "\xDE\xAD\xBE\xEF"
         expect(@interface.read_protocols[0].instance_variable_get(:@max_length)).to eq 100
@@ -101,11 +101,11 @@ module OpenC3
         context "with stored #{stored}" do
           [true, false].each do |extra|
             context "with extra #{extra}" do
-              [4, 5, 6].each do |mode|
-                it "writes a packet in mode #{mode}" do
+              [4, 5, 6].each do |version|
+                it "writes a packet in version #{version}" do
                   @interface = StreamInterface.new
                   @interface.instance_variable_set(:@stream, PreStream.new)
-                  @interface.add_protocol(PreidentifiedProtocol, [nil, 5, mode], :READ_WRITE)
+                  @interface.add_protocol(PreidentifiedProtocol, [nil, 5, version], :READ_WRITE)
                   pkt = System.telemetry.packet("SYSTEM", "META")
                   packet_time = Time.new(2020, 1, 31, 12, 15, 30.5)
                   received_time = Time.new(2025, 1, 31, 12, 15, 30.5)
@@ -119,7 +119,7 @@ module OpenC3
                     pkt.extra = nil
                   end
                   @interface.write(pkt)
-                  case mode
+                  case version
                   when 4
                     flags = $buffer[0..0].unpack('C')[0]
                     offset = 1
@@ -171,7 +171,7 @@ module OpenC3
                     if extra
                       extra_length = $buffer[24..28].unpack('N')[0]
                       extra = $buffer[28..(28 + extra_length - 1)]
-                      decoded = CBOR.decode(extra)
+                      decoded = JSON.parse(extra)
                       expect(decoded).to eql extra_data
                       offset += 4 + extra_length
                     end
@@ -291,7 +291,7 @@ module OpenC3
         plw = PacketLogWriter.new(@log_dir, 'test')
         plw.write(:RAW_PACKET, :TLM, 'TGT1', 'PKT1', pkt1_time, true, "\x01\x02", nil, '0-0')
         pkt2_time = pkt1_time + 1_000_000_000
-        plw.write(:RAW_PACKET, :TLM, 'TGT2', 'PKT2', pkt2_time, false, "\x03\x04", nil, '0-0')
+        plw.write(:RAW_PACKET, :TLM, 'TGT2', 'PKT2', pkt2_time, false, "\x03\x04", nil, '0-0', extra: {"vcid" => 2 })
         plw.shutdown
         sleep 0.1 # Allow for shutdown thread "copy" to S3
         $request = 0

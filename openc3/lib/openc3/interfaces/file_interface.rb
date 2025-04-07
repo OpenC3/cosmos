@@ -74,6 +74,8 @@ module OpenC3
       @queue = Queue.new
       @polling = false
       @recursive = false
+      @throttle = nil
+      @sleeper = nil
     end
 
     def connect
@@ -95,6 +97,7 @@ module OpenC3
     def disconnect
       @file.close if @file and not @file.closed?
       @file = nil
+      @sleeper.cancel if @sleeper
       @listener.stop if @listener
       @listener = nil
       @queue << nil
@@ -116,6 +119,9 @@ module OpenC3
             return data, { filename: @filename, size: data.length }
           else
             finish_file()
+            if @throttle
+              return nil, nil if @sleeper.sleep(@throttle)
+            end
           end
         end
 
@@ -169,6 +175,9 @@ module OpenC3
         @polling = ConfigParser.handle_true_false(option_values[0])
       when 'RECURSIVE'
         @recursive = ConfigParser.handle_true_false(option_values[0])
+      when 'THROTTLE'
+        @throttle = Float(option_values[0])
+        @sleeper = Sleeper.new
       end
     end
 
@@ -186,11 +195,15 @@ module OpenC3
     end
 
     def get_next_telemetry_file
+      files = []
       if @recursive
-        return Dir.glob("#{@telemetry_read_folder}/**/*").sort[0]
+        files = Dir.glob("#{@telemetry_read_folder}/**/*")
       else
-        return Dir.glob("#{@telemetry_read_folder}/*").sort[0]
+        files = Dir.glob("#{@telemetry_read_folder}/*")
       end
+      # Dir.glob includes directories, so filter them out
+      files = files.sort.select { |fn| File.file?(fn) }
+      return files[0]
     end
 
     def create_unique_filename

@@ -14,11 +14,6 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from openc3.interfaces.interface import Interface
-from openc3.config.config_parser import ConfigParser
-from openc3.utilities.string import class_name_to_filename
-from openc3.top_level import get_class_from_module
-from openc3.utilities.string import build_timestamped_filename
 import queue
 import os
 import pathlib
@@ -26,6 +21,12 @@ import gzip
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 from watchdog.observers.polling import PollingObserver
+from openc3.top_level import get_class_from_module
+from openc3.interfaces.interface import Interface
+from openc3.config.config_parser import ConfigParser
+from openc3.utilities.string import class_name_to_filename
+from openc3.utilities.string import build_timestamped_filename
+from openc3.utilities.sleeper import Sleeper
 
 
 class NewFileEventHandler(FileSystemEventHandler):
@@ -90,6 +91,8 @@ class FileInterface(Interface):
         self.queue = queue.Queue()
         self.polling = False
         self.recursive = False
+        self.throttle = None
+        self.sleeper = None
 
     def connect(self):
         super().connect() # Reset the protocols
@@ -115,6 +118,8 @@ class FileInterface(Interface):
         self.file_path = None
         if self.listener:
             self.listener.stop()
+        if self.sleeper:
+            self.sleeper.cancel()
         self.listener = None
         self.queue.put(None)
         super().disconnect()
@@ -130,6 +135,9 @@ class FileInterface(Interface):
                     return data, None
                 else:
                     self.finish_file()
+                    if self.throttle:
+                        if self.sleeper.sleep(self.throttle):
+                            return None, None
 
             # Find the next file to read
             file = self.get_next_telemetry_file()
@@ -176,6 +184,9 @@ class FileInterface(Interface):
                 self.polling = ConfigParser.handle_true_false(option_values[0])
             case "RECURSIVE":
                 self.recursive = ConfigParser.handle_true_false(option_values[0])
+            case "THROTTLE":
+                self.throttle = float(option_values[0])
+                self.sleeper = Sleeper()
 
     def finish_file(self):
         self.file.close()

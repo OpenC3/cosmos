@@ -32,15 +32,15 @@ module OpenC3
 
     # @param sync_pattern (see BurstProtocol#initialize)
     # @param max_length [Integer] The maximum allowed value of the length field
-    # @param mode [Integer] The protocol mode. 4 is COSMOS 4.3+, 5 is COSMOS 5.0+, 6 is COSMOS 6.0+ (no changes from 5)
+    # @param version [Integer] COSMOS major version
     # @param file [true/false] Whether we're processing from a file (handle file headers)
     #   This is typically used in conjunction with the file_interface
     # @param allow_empty_data [true/false/nil] See Protocol#initialize
-    def initialize(sync_pattern = nil, max_length = nil, mode = 6, file = false, allow_empty_data = nil)
+    def initialize(sync_pattern = nil, max_length = nil, version = 6, file = false, allow_empty_data = nil)
       super(0, sync_pattern, false, allow_empty_data)
       @max_length = ConfigParser.handle_nil(max_length)
       @max_length = Integer(@max_length) if @max_length
-      @mode = Integer(mode)
+      @version = Integer(version)
       @file = ConfigParser.handle_true_false(file)
     end
 
@@ -70,8 +70,8 @@ module OpenC3
       @write_target_name = 'UNKNOWN' unless @write_target_name
       @write_packet_name = packet.packet_name
       @write_packet_name = 'UNKNOWN' unless @write_packet_name
-      case @mode
-      when 4 # COSMOS4.3+ Protocol
+      case @version
+      when 4
         @write_flags = 0
         @write_flags |= COSMOS4_STORED_FLAG_MASK if packet.stored
         @write_extra = nil
@@ -88,7 +88,7 @@ module OpenC3
         @write_extra = nil
         @write_extra = packet.extra if packet.extra
       else
-        raise "PreidentifiedProtocol unsupported mode: #{@mode}"
+        raise "PreidentifiedProtocol unsupported version: #{@version}"
       end
       return packet
     end
@@ -97,8 +97,8 @@ module OpenC3
       data_length = [data.length].pack('N') # UINT32
       data_to_send = ''
       data_to_send << @sync_pattern if @sync_pattern
-      case @mode
-      when 4 # COSMOS4.3+ Protocol
+      case @version
+      when 4
         data_to_send << @write_flags
         if @write_extra
           data_to_send << [@write_extra.length].pack('N')
@@ -112,7 +112,7 @@ module OpenC3
         data_to_send << @write_packet_name
         data_to_send << data_length
         data_to_send << data
-      when 5, 6 # COSMOS5.0+ Protocol
+      when 5, 6
         data_to_send << @packet_log_writer.build_entry(
           :RAW_PACKET,
           :TLM,
@@ -126,7 +126,7 @@ module OpenC3
           extra: @write_extra
         )
       else
-        raise "PreidentifiedProtocol unsupported mode: #{@mode}"
+        raise "PreidentifiedProtocol unsupported version: #{@version}"
       end
       return data_to_send, extra
     end
@@ -193,9 +193,9 @@ module OpenC3
           # Ensure we have enough data to read the header
           return :STOP if @data.length < OPENC3_HEADER_LENGTH
           header = @data[0...OPENC3_HEADER_LENGTH]
-          case @mode
+          case @version
           when 4
-            # If we're in mode 4 and we don't have a COSMOS4 header then start over
+            # If we're version 4 and we don't have a COSMOS4 header then start over
             if header != COSMOS4_FILE_HEADER
               @reduction_state = :START
               return :STOP
@@ -205,14 +205,14 @@ module OpenC3
               @data.replace(@data[(COSMOS4_HEADER_LENGTH)..-1])
             end
           when 5, 6
-            # If we're in mode 5 and we don't have a COSMOS5 header then start over
+            # If we're version 5 or 6 and we don't have a COSMOS5 header then start over
             if header != OPENC3_FILE_HEADER
               @reduction_state = :START
               return :STOP
             end
             # NOTE: We keep the file header in the data stream because packet_log_reader handles it
           else
-            raise "PreidentifiedProtocol unsupported mode: #{@mode}"
+            raise "PreidentifiedProtocol unsupported version: #{@version}"
           end
           @reduction_state = :PACKETS
         end
@@ -220,13 +220,13 @@ module OpenC3
         @reduction_state = :PACKETS
       end
 
-      case @mode
+      case @version
       when 4
         return handle_mode4()
       when 5, 6
         return handle_mode5()
       else
-        raise "PreidentifiedProtocol unsupported mode: #{@mode}"
+        raise "PreidentifiedProtocol unsupported version: #{@version}"
       end
     end
 
