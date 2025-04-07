@@ -403,7 +403,7 @@ INTERFACE INTERFACE_NAME serial_interface.rb COM4 COM4 115200 NONE 1 10.0 10.0 #
 
 ### File Interface
 
-The file interface monitors a directory which is mapped via the compose.yaml file to a physical directory on the host machine. The primary use-case is to provides a method to process stored telemetry files into the COSMOS system. The file interface will monitor the given directory for new files and thus the host directory acts like a "drop box" where files can be processed and then archived to the Telemetry Archive Folder. When coupled with the [PreidentifiedProtocol](/docs/configuration/protocols#preidentified-protocol), it can process COSMOS binary files from COSMOS version 4, 5, and 6.
+The file interface monitors a directory which is mapped via the compose.yaml file to a physical directory on the host machine. The primary use-case is to provide a method to process stored telemetry files into the COSMOS system. The file interface will monitor the given directory for new files and thus the host directory acts like a "drop box" where files can be processed and then archived to the Telemetry Archive Folder. When coupled with the [PreidentifiedProtocol](/docs/configuration/protocols#preidentified-protocol), it can process COSMOS binary files from COSMOS version 4, 5, and 6.
 
 | Parameter                | Description                                                                                                                            | Required | Default     |
 | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- | -------- | ----------- |
@@ -419,12 +419,12 @@ The file interface monitors a directory which is mapped via the compose.yaml fil
 
 Options are added directly beneath the interface definition as shown in the example.
 
-| Option    | Description                                                                                                                                                               | Default       |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
-| LABEL     | Label used when creating files in the command write folder                                                                                                                | command       |
-| EXTENSION | File extension used when creating files in the command write folder                                                                                                       | .bin          |
-| POLLING   | Whether to poll the file system for changes or use native notifications. Some filesystems won't work without polling (VM/Vagrant Shared folders, NFS, Samba, sshfs, etc.) | false / False |
-| RECURSIVE | Whether to recursively monitor the telemetry read folder                                                                                                                  | false / False |
+| Option    | Description                                                                                                                                                                                        | Default       |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| LABEL     | Label used when creating files in the command write folder                                                                                                                                         | command       |
+| EXTENSION | File extension used when creating files in the command write folder                                                                                                                                | .bin          |
+| POLLING   | Whether to poll the file system for changes or use native notifications. Some filesystems won't work without polling including Windows volumes, VM/Vagrant Shared folders, NFS, Samba, sshfs, etc. | false / False |
+| RECURSIVE | Whether to recursively monitor the telemetry read folder                                                                                                                                           | false / False |
 
 #### Docker compose.yaml
 
