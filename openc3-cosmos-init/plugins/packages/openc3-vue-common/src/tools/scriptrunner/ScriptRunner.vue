@@ -1093,7 +1093,7 @@ export default {
     this.editor.setOption('enableLiveAutocompletion', true)
     this.editor.completers = [new CmdCompleter(), new TlmCompleter()]
     this.editor.setHighlightActiveLine(false)
-    AceEditorUtils.applyVimModeIfEnabled(this.editor)
+    AceEditorUtils.applyVimModeIfEnabled(this.editor, { saveFn: this.saveFile })
     this.editor.focus()
     
     this.editor.on('guttermousedown', this.toggleBreakpoint)
