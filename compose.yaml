@@ -169,6 +169,8 @@ services:
       - "./cacert.pem:/devel/cacert.pem:z"
       # Add access to the entire C drive on Windows
       # - "/c:/c"
+      # Create a dropbox folder for ingest by FileInterface and PreidentifiedRouter
+      # - /usr/local/bin/dropbox:/dropbox
     logging:
       driver: "json-file"
       options:

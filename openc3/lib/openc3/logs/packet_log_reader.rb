@@ -85,17 +85,19 @@ module OpenC3
     end
 
     # @param filename [String] The log filename to open
-    # @return [Boolean, Exception] Returns true if successfully changed to configuration specified in log,
-    #    otherwise returns false and potentially an Exception class if an error occurred.  If no error occurred
-    #    false indicates that the requested configuration was simply not found.
-    def open(filename)
+    # @return Returns if successfully opens the log file and reads the header otherwise raises an exception
+    def open(filename, string_io: nil, file_header: true)
       close()
       reset()
       @filename = filename
-      @file = BufferedFile.open(@filename, 'rb')
+      if string_io
+        @file = string_io
+      else
+        @file = BufferedFile.open(@filename, 'rb')
+      end
       @max_read_size = @file.size
       @max_read_size = MAX_READ_SIZE if @max_read_size > MAX_READ_SIZE
-      return read_file_header()
+      read_file_header() if file_header
     rescue => e
       close()
       raise e
@@ -104,6 +106,7 @@ module OpenC3
     # Closes the current log file
     def close
       @file.close if @file and !@file.closed?
+      @filename = nil
     end
 
     # Read a packet from the log file
@@ -309,7 +312,7 @@ module OpenC3
         if cbor
           extra = CBOR.decode(extra_encoded)
         else
-          extra = JSON.parse(extra_encode, allow_nan: true, create_additions: true)
+          extra = JSON.parse(extra_encoded, allow_nan: true, create_additions: true)
         end
       end
       data = entry[next_offset..-1]
