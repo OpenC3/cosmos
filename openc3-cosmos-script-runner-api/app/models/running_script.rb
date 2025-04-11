@@ -404,21 +404,10 @@ class RunningScript
     disconnect_script() if disconnect
 
     # Get details from redis
-
-    details = OpenC3::Store.get("running-script:#{id}")
-    if details
-      @details = JSON.parse(details, :allow_nan => true, :create_additions => true)
-    else
-      # Create as much details as we know
-      @details = { id: @id, name: @filename, scope: @scope, start_time: Time.now.to_s, update_time: Time.now.to_s }
-    end
-
-    # Update details in redis
-    @details[:hostname] = Socket.gethostname
-    @details[:state] = @state
-    @details[:line_no] = 1
-    @details[:update_time] = Time.now.to_s
-    OpenC3::Store.set("running-script:#{id}", @details.as_json(:allow_nan => true).to_json(:allow_nan => true))
+    @script_status = OpenC3::ScriptStatus.get_model(name: id, scope: @scope)
+    @script_status.state = @state.to_s
+    @script_status.line_no = 1
+    @script_status.update
 
     # Retrieve file
     @body = ::Script.body(@scope, name)
@@ -438,10 +427,9 @@ class RunningScript
   # Called to update the running script state every time the @state or @current_line_number changes
   def update_running_script_store(state = nil)
     @state = state if state
-    @details[:state] = @state
-    @details[:line_no] = @current_line_number
-    @details[:update_time] = Time.now.to_s
-    OpenC3::StoreQueued.set("running-script:#{@id}", @details.as_json(:allow_nan => true).to_json(:allow_nan => true))
+    @script_status.state = @state
+    @script_status.line_no = @current_line_number
+    @script_status.update(queued: true)
   end
 
   def parse_options(options)
@@ -582,7 +570,7 @@ class RunningScript
   def stop_message_log
     metadata = {
       "id" => @id,
-      "user" => @details['user'],
+      "user" => @script_status.username,
       "scriptname" => unique_filename()
     }
     @@message_log.stop(true, metadata: metadata) if @@message_log
@@ -1084,7 +1072,7 @@ class RunningScript
       metadata = {
         # Note: The chars '(' and ')' are used by RunningScripts.vue to differentiate between script logs
         "id" => @id,
-        "user" => @details['user'],
+        "user" => @script_status.username,
         "scriptname" => "#{@current_filename} (#{OpenC3::SuiteRunner.suite_results.context.strip})"
       }
       thread = OpenC3::BucketUtilities.move_log_file_to_bucket(filename, bucket_key, metadata: metadata)

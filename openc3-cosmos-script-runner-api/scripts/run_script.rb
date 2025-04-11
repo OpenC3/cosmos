@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -44,10 +44,11 @@ ENV['OPENC3_REDIS_PASSWORD'] = nil
 # Note: SCRIPT_API = 'script-api' in running_script.rb
 
 id = ARGV[0]
-script = JSON.parse(OpenC3::Store.get("running-script:#{id}"), :allow_nan => true, :create_additions => true)
-scope = script['scope']
-name = script['name']
-disconnect = script['disconnect']
+scope = ARGV[1]
+script_status = OpenC3::ScriptStatusModel.get_model(name: id, scope: scope)
+name = script.filename
+disconnect = script.disconnect
+
 startup_time = Time.now - start_time
 path = File.join(ENV['OPENC3_CONFIG_BUCKET'], scope, 'targets', name)
 
@@ -72,15 +73,15 @@ begin
     run_script_log(id, message, 'YELLOW')
   end
 
-  if script['suite_runner']
-    script['suite_runner'] = JSON.parse(script['suite_runner'], :allow_nan => true, :create_additions => true) # Convert to hash
-    running_script.parse_options(script['suite_runner']['options'])
-    if script['suite_runner']['script']
-      running_script.run_text("OpenC3::SuiteRunner.start(#{script['suite_runner']['suite']}, #{script['suite_runner']['group']}, '#{script['suite_runner']['script']}')", initial_filename: "SCRIPTRUNNER")
-    elsif script['suite_runner']['group']
-      running_script.run_text("OpenC3::SuiteRunner.#{script['suite_runner']['method']}(#{script['suite_runner']['suite']}, #{script['suite_runner']['group']})", initial_filename: "SCRIPTRUNNER")
+  if script.suite_runner
+    script.suite_runner = JSON.parse(script.suite_runner, :allow_nan => true, :create_additions => true) # Convert to hash
+    running_script.parse_options(script.suite_runner['options'])
+    if script.suite_runner['script']
+      running_script.run_text("OpenC3::SuiteRunner.start(#{script.suite_runner['suite']}, #{script.suite_runner['group']}, '#{script.suite_runner['script']}')", initial_filename: "SCRIPTRUNNER")
+    elsif script.suite_runner['group']
+      running_script.run_text("OpenC3::SuiteRunner.#{script.suite_runner['method']}(#{script.suite_runner['suite']}, #{script.suite_runner['group']})", initial_filename: "SCRIPTRUNNER")
     else
-      running_script.run_text("OpenC3::SuiteRunner.#{script['suite_runner']['method']}(#{script['suite_runner']['suite']})", initial_filename: "SCRIPTRUNNER")
+      running_script.run_text("OpenC3::SuiteRunner.#{script.suite_runner['method']}(#{script.suite_runner['suite']})", initial_filename: "SCRIPTRUNNER")
     end
   else
     running_script.run
@@ -163,7 +164,7 @@ rescue Exception => e
 ensure
   begin
     # Remove running script from redis
-    script = OpenC3::Store.get("running-script:#{id}")
+    script_status = OpenC3::ScriptStatusModel.get_model(name: id, scope: scope)
     OpenC3::Store.del("running-script:#{id}") if script
     running = OpenC3::Store.smembers("running-scripts")
     active_scripts = running.length
