@@ -106,9 +106,8 @@ RUN apk update \
 # Note this is needed to fix pip files disappearing in some build environments
 RUN mv /openc3/pip* /openc3/venv/bin/.
 
-# Compile code for libcsp support
+# libsocketcan - used by libcsp - https://github.com/linux-can/libsocketcan
 COPY libsocketcan-0.0.12.tar.gz /opt/libsocketcan-0.0.12.tar.gz
-COPY libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip /opt/libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip
 RUN cd /opt \
   && tar -xzf libsocketcan-0.0.12.tar.gz \
   && cd libsocketcan-0.0.12 \
@@ -117,6 +116,12 @@ RUN cd /opt \
   && make \
   && make install \
   && cd /opt \
+  && rm -rf libsocketcan-0.0.12 \
+  && rm libsocketcan-0.0.12.tar.gz
+
+# libcsp - https://github.com/libcsp/libcsp
+COPY libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip /opt/libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip
+RIM cd /opt \
   && unzip libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip \
   && cd libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632 \
   # Patches to fix compilation issues
@@ -129,10 +134,8 @@ RUN cd /opt \
   && make install \
   && cp libcsp_py3* /usr/lib/python3.12/lib-dynload/. \
   && cd /opt \
-  && rm -rf libsocketcan-0.0.12 \
   && rm -rf libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632 \
-  && rm -rf libsocketcan-0.0.12.tar.gz \
-  && rm -rf libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip
+  && rm libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip
 
 # Set user and group
 ENV IMAGE_USER=openc3

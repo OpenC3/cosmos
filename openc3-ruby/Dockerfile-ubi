@@ -89,7 +89,7 @@ RUN cd / \
     && pip3 install poetry \
     && pip3 install poetry-plugin-export
 
-# rbspy
+# rbspy - https://github.com/rbspy/rbspy
 COPY rbspy-x86_64-unknown-linux-gnu-0.32.0.tar.gz /opt/rbspy-x86_64-unknown-linux-gnu-0.32.0.tar.gz
 RUN cd /opt \
   && tar -xzf rbspy-x86_64-unknown-linux-gnu-0.32.0.tar.gz \
@@ -99,7 +99,7 @@ RUN cd /opt \
   && rm rbspy-x86_64-unknown-linux-gnu \
   && rm rbspy-x86_64-unknown-linux-gnu-0.32.0.tar.gz
 
-# htop
+# htop - https://github.com/htop-dev/htop
 COPY htop-3.4.1.tar.gz /opt/htop-3.4.1.tar.gz
 RUN cd /opt \
   && tar -xzf htop-3.4.1.tar.gz \
@@ -112,7 +112,7 @@ RUN cd /opt \
   && rm -rf htop-3.4.1 \
   && rm htop-3.4.1.tar.gz
 
-# libsocketcan - used by libcsp
+# libsocketcan - used by libcsp - https://github.com/linux-can/libsocketcan
 COPY libsocketcan-0.0.12.tar.gz /opt/libsocketcan-0.0.12.tar.gz
 RUN cd /opt \
   && tar -xzf libsocketcan-0.0.12.tar.gz \
@@ -125,7 +125,7 @@ RUN cd /opt \
   && rm -rf libsocketcan-0.0.12 \
   && rm libsocketcan-0.0.12.tar.gz
 
-# libzmq - used by libcsp
+# libzmq - used by libcsp - https://github.com/zeromq/libzmq
 COPY libzmq-34f7fa22022bed9e0e390ed3580a1c83ac4a2834.zip /opt/libzmq-34f7fa22022bed9e0e390ed3580a1c83ac4a2834.zip
 RUN cd /opt \
   && unzip libzmq-34f7fa22022bed9e0e390ed3580a1c83ac4a2834.zip \
@@ -139,7 +139,7 @@ RUN cd /opt \
   && rm -rf libzmq-34f7fa22022bed9e0e390ed3580a1c83ac4a2834 \
   && rm libzmq-34f7fa22022bed9e0e390ed3580a1c83ac4a2834.zip
 
-# libcsp
+# libcsp - https://github.com/libcsp/libcsp
 COPY libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip /opt/libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip
 RUN cd /opt \
   && unzip libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip \
