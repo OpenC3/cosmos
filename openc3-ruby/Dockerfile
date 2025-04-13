@@ -121,7 +121,7 @@ RUN cd /opt \
 
 # libcsp - https://github.com/libcsp/libcsp
 COPY libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip /opt/libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip
-RIM cd /opt \
+RUN cd /opt \
   && unzip libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip \
   && cd libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632 \
   # Patches to fix compilation issues
