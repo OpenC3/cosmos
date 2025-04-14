@@ -208,9 +208,10 @@ module OpenC3
       shutdown()
     end
 
-    def shutdown
+    def shutdown(state = 'STOPPED')
       return if @shutdown_complete
       @logger.info("Shutting down microservice: #{@name}")
+      @state = state
       @cancel_thread = true
       @microservice_status_sleeper.cancel if @microservice_status_sleeper
       MicroserviceStatusModel.set(as_json(:allow_nan => true), scope: @scope)

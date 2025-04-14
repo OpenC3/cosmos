@@ -49,11 +49,13 @@ module OpenC3
 
     class ExampleTelemetryThread
       attr_reader :thread
+      attr_reader :count
 
       def initialize(interface, target_name)
         @interface = interface
         @target_name = target_name
         @sleeper = Sleeper.new
+        @count = 0
       end
 
       def start
@@ -66,6 +68,7 @@ module OpenC3
               packet.write('PACKET_ID', 1)
               packet.write('STRING', "The time is now: #{Time.now.sys.formatted}")
               @interface.write(packet)
+              @count += 1
               break if @sleeper.sleep(1)
             end
           rescue Exception => err
@@ -104,27 +107,29 @@ module OpenC3
       @interface_thread.start
       @telemetry_thread = ExampleTelemetryThread.new(@interface, @target_name)
       @telemetry_thread.start
+      @state = 'RUNNING'
     end
 
-    def stop
+    def shutdown
       @telemetry_thread.stop if @telemetry_thread
       @interface_thread.stop if @interface_thread
+      super()  # Sets the @state to 'STOPPED'
     end
 
     def run
       Logger.level = Logger::INFO
       Thread.abort_on_exception = true
 
+      # This state probably won't even display because we immediately
+      # transition to RUNNING but will if there is a failure in start
       @state = 'STARTING'
       start()
-      @state = 'RUNNING'
       while true
         break if @cancel_thread
+        @count = @telemetry_thread.count
         sleep @sleep_period
       end
-      @state = 'STOPPING'
-      stop()
-      @state = 'STOPPED'
+      shutdown()
     end
   end
 end
