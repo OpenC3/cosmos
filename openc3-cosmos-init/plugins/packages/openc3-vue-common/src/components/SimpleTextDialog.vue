@@ -29,7 +29,7 @@
         <v-spacer />
         <div class="mx-2">
           <v-tooltip location="top">
-            <template v-slot:activator="{ props }">
+            <template #activator="{ props }">
               <div v-bind="props">
                 <v-icon data-test="downloadIcon" @click="download">
                   mdi-download

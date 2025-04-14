@@ -23,7 +23,7 @@
 <template>
   <tr>
     <td class="text-start">{{ dataItems[0].index }}</td>
-    <td class="text-start" v-if="oneDimensional">{{ dataItems[0].name }}</td>
+    <td v-if="oneDimensional" class="text-start">{{ dataItems[0].name }}</td>
     <table-item
       v-for="(item, index) in dataItems"
       :key="item.name"

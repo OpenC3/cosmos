@@ -24,8 +24,8 @@
   <g>
     <image
       v-for="image in images"
-      :key="image.value"
       v-show="image.value == selectedValue"
+      :key="image.value"
       :href="image.url"
       :x="image.x"
       :y="image.y"

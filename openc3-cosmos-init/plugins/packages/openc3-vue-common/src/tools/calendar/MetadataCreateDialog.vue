@@ -22,7 +22,7 @@
 
 <template>
   <div>
-    <v-dialog persistent v-model="show" width="600">
+    <v-dialog v-model="show" persistent width="600">
       <v-card>
         <v-toolbar height="24">
           <v-spacer />
@@ -30,7 +30,7 @@
           <span v-else>Create Metadata</span>
           <v-spacer />
           <v-tooltip location="top">
-            <template v-slot:activator="{ props }">
+            <template #activator="{ props }">
               <div v-bind="props">
                 <v-icon data-test="close-metadata-icon" @click="clearHandler">
                   mdi-close-box
@@ -45,27 +45,27 @@
           editable
           :items="['Metadata Times', 'Metadata Input']"
         >
-          <template v-if="dialogStep === 2" v-slot:actions>
+          <template v-if="dialogStep === 2" #actions>
             <v-row class="ma-0 px-6 pb-4">
-              <v-btn @click="() => (dialogStep -= 1)" variant="text">
+              <v-btn variant="text" @click="() => (dialogStep -= 1)">
                 Previous
               </v-btn>
               <v-spacer />
-              <v-btn @click="clearHandler" variant="outlined" class="mr-4">
+              <v-btn variant="outlined" class="mr-4" @click="clearHandler">
                 Cancel
               </v-btn>
               <v-btn
-                @click.prevent="submitHandler"
                 type="submit"
                 color="primary"
                 :disabled="!!error"
+                @click.prevent="submitHandler"
               >
                 Ok
               </v-btn>
             </v-row>
           </template>
 
-          <template v-slot:item.1>
+          <template #item.1>
             <v-card-text>
               <div class="pa-2">
                 <color-select-form v-model="color" />
@@ -92,7 +92,7 @@
             </v-card-text>
           </template>
 
-          <template v-slot:item.2>
+          <template #item.2>
             <v-card-text>
               <div class="pa-2">
                 <div style="min-height: 200px">
@@ -122,6 +122,7 @@ export default {
     ColorSelectForm,
     MetadataInputForm,
   },
+  mixins: [CreateDialog, TimeFilters],
   props: {
     modelValue: Boolean,
     metadata: {
@@ -129,7 +130,6 @@ export default {
       default: null,
     },
   },
-  mixins: [CreateDialog, TimeFilters],
   data() {
     return {
       dialogStep: 1,
@@ -139,9 +139,6 @@ export default {
         required: (value) => !!value || 'Required',
       },
     }
-  },
-  mounted: function () {
-    this.updateValues()
   },
   computed: {
     typeError: function () {
@@ -167,6 +164,9 @@ export default {
         this.$emit('update:modelValue', value)
       },
     },
+  },
+  mounted: function () {
+    this.updateValues()
   },
   methods: {
     updateValues: function () {

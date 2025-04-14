@@ -27,46 +27,46 @@
       <v-card-title class="mb-2">Edit Item</v-card-title>
       <v-card-text>
         <v-select
+          v-model="editItem.valueType"
           variant="outlined"
           hide-details
           label="Value Type"
           :items="valueTypes"
-          v-model="editItem.valueType"
           class="mb-2"
         />
         <v-select
+          v-model="editItem.reduced"
           variant="outlined"
           hide-details
           label="Reduction"
           :items="reduction"
-          v-model="editItem.reduced"
           class="mb-2"
         />
         <v-select
+          v-model="editItem.reducedType"
           variant="outlined"
           hide-details
           label="Reduced Type"
           :items="reducedTypes"
           :disabled="editItem.reduced === 'DECOM'"
-          v-model="editItem.reducedType"
           class="mb-2"
         />
         <v-select
+          v-model="editItem.color"
           variant="outlined"
           hide-details
           label="Color"
           :items="colors"
-          v-model="editItem.color"
-          @update:model-value="$emit('changeColor', $event)"
           class="mb-2"
+          @update:model-value="$emit('changeColor', $event)"
         />
         <div v-if="limitsNames.length > 1">
           <v-select
+            v-model="limitsName"
             variant="outlined"
             hide-details
             label="Display Limits"
             :items="limitsNames"
-            v-model="limitsName"
             @update:model-value="$emit('changeLimits', limits[limitsName])"
           />
           <div class="pa-3">{{ limitsName }}: {{ limits[limitsName] }}</div>

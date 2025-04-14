@@ -24,17 +24,17 @@
   <td>
     <v-checkbox
       v-if="isCheckbox"
+      v-model="checkValue"
       density="compact"
       hide-details
-      v-model="checkValue"
       :disabled="!dataItem.editable"
       data-test="table-item-checkbox"
     />
     <v-select
       v-else-if="dataItem.states"
+      v-model="stateValue"
       density="compact"
       hide-details
-      v-model="stateValue"
       :items="itemStates"
       :disabled="!dataItem.editable"
       data-test="table-item-select"
@@ -46,10 +46,10 @@
       single-line
       hide-no-data
       hide-details
-      @update:model-value="textChange"
       :model-value="format(dataItem.value)"
       :disabled="!dataItem.editable"
       data-test="table-item-text-field"
+      @update:model-value="textChange"
     />
   </td>
 </template>
@@ -70,14 +70,6 @@ export default {
       dataItem: this.item,
       stateValue: null,
       checkValue: false,
-    }
-  },
-  created() {
-    if (this.dataItem.states) {
-      this.stateValue = this.dataItem.states[this.dataItem.value]
-    }
-    if (this.isCheckbox) {
-      this.checkValue = this.stateValue === 1
     }
   },
   computed: {
@@ -117,6 +109,14 @@ export default {
       )
       this.$emit('change', state)
     },
+  },
+  created() {
+    if (this.dataItem.states) {
+      this.stateValue = this.dataItem.states[this.dataItem.value]
+    }
+    if (this.isCheckbox) {
+      this.checkValue = this.stateValue === 1
+    }
   },
   methods: {
     textChange: function (value) {

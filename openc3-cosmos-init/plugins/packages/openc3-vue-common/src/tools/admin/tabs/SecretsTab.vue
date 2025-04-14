@@ -21,12 +21,12 @@
     <v-row no-gutters>
       <v-col>
         <v-file-input
+          ref="fileInput"
           v-model="file"
           show-size
           accept="*"
           class="mx-2"
           label="Click to select a file to create a secret from or enter a secret value"
-          ref="fileInput"
         />
       </v-col>
     </v-row>
@@ -45,16 +45,16 @@
       <v-col cols="3" class="px-2">
         <!-- Intentional double equals -->
         <v-btn
-          @click="upload()"
           class="mx-2"
           color="primary"
           data-test="secretUpload"
           :disabled="secretName === '' || (file == null && secretValue === '')"
           :loading="loadingSecret"
+          @click="upload()"
         >
           <v-icon start theme="dark">mdi-cloud-upload</v-icon>
           <span> Set </span>
-          <template v-slot:loader>
+          <template #loader>
             <span>Loading...</span>
           </template>
         </v-btn>
@@ -68,9 +68,9 @@
         <v-list-item>
           <v-list-item-title>{{ secret }}</v-list-item-title>
 
-          <template v-slot:append>
+          <template #append>
             <v-tooltip location="top">
-              <template v-slot:activator="{ props }">
+              <template #activator="{ props }">
                 <v-icon v-bind="props" @click="deleteSecret(secret)">
                   mdi-delete
                 </v-icon>

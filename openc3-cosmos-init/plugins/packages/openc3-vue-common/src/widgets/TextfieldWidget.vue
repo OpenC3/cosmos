@@ -22,12 +22,12 @@
 
 <template>
   <v-text-field
+    v-model="value"
     variant="solo"
     density="compact"
     single-line
     hide-no-data
     hide-details
-    v-model="value"
     :style="computedStyle"
   >
   </v-text-field>

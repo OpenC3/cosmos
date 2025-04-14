@@ -21,7 +21,7 @@
 -->
 
 <template>
-  <v-dialog persistent v-model="show" width="80vw">
+  <v-dialog v-model="show" persistent width="80vw">
     <v-card>
       <v-card-text>
         <v-card-title>{{ pluginName }} </v-card-title>
@@ -48,10 +48,10 @@
                   <div v-for="(value, name) in localVariables" :key="name">
                     <v-col style="width: 220px">
                       <v-text-field
+                        v-model="localVariables[name]"
                         clearable
                         type="text"
                         :label="name"
-                        v-model="localVariables[name]"
                       />
                     </v-col>
                   </div>
@@ -116,12 +116,12 @@
             <v-spacer />
             <v-btn
               variant="outlined"
-              @click.prevent="close"
               data-test="edit-cancel"
+              @click.prevent="close"
             >
               Cancel
             </v-btn>
-            <v-btn variant="flat" @click="submit" data-test="edit-submit">
+            <v-btn variant="flat" data-test="edit-submit" @click="submit">
               Install
             </v-btn>
           </v-card-actions>
@@ -175,6 +175,28 @@ export default {
       menuY: 0,
     }
   },
+  computed: {
+    show: {
+      get() {
+        return this.modelValue
+      },
+      set(value) {
+        this.$emit('update:modelValue', value)
+      },
+    },
+  },
+  watch: {
+    value: {
+      immediate: true,
+      handler: function () {
+        this.localVariables = JSON.parse(JSON.stringify(this.variables)) // deep copy
+        this.localPluginTxt = this.pluginTxt.slice()
+        if (this.existingPluginTxt !== null) {
+          this.localExistingPluginTxt = this.existingPluginTxt.slice()
+        }
+      },
+    },
+  },
   mounted() {
     const pluginMode = this.buildPluginMode()
     if (this.existingPluginTxt === null) {
@@ -207,11 +229,11 @@ export default {
       // Match our existing editors
       this.differ.getEditors().left.setFontSize(16)
       this.differ.getEditors().right.setFontSize(16)
-      
+
       // Apply vim mode if enabled to both editor instances
       AceEditorUtils.applyVimModeIfEnabled(this.differ.getEditors().left)
       AceEditorUtils.applyVimModeIfEnabled(this.differ.getEditors().right)
-      
+
       this.curDiff = -1 // so the first will be 0
     }
   },
@@ -222,28 +244,6 @@ export default {
     if (this.differ) {
       this.differ.destroy()
     }
-  },
-  computed: {
-    show: {
-      get() {
-        return this.modelValue
-      },
-      set(value) {
-        this.$emit('update:modelValue', value)
-      },
-    },
-  },
-  watch: {
-    value: {
-      immediate: true,
-      handler: function () {
-        this.localVariables = JSON.parse(JSON.stringify(this.variables)) // deep copy
-        this.localPluginTxt = this.pluginTxt.slice()
-        if (this.existingPluginTxt !== null) {
-          this.localExistingPluginTxt = this.existingPluginTxt.slice()
-        }
-      },
-    },
   },
   methods: {
     previousDiff() {

@@ -67,7 +67,7 @@
         />
       </v-col>
     </v-row>
-    <v-row dense v-if="hasDecom">
+    <v-row v-if="hasDecom" dense>
       <v-col> Packet Time: </v-col>
       <v-col>
         <v-text-field
@@ -82,7 +82,7 @@
         />
       </v-col>
     </v-row>
-    <v-row dense v-if="hasDecom">
+    <v-row v-if="hasDecom" dense>
       <v-col> Received Time: </v-col>
       <v-col>
         <v-text-field

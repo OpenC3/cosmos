@@ -48,11 +48,11 @@ import LabelWidget from './LabelWidget.vue'
 import ValueWidget from './ValueWidget.vue'
 
 export default {
-  mixins: [Widget],
   components: {
     LabelWidget,
     ValueWidget,
   },
+  mixins: [Widget],
   computed: {
     labelName() {
       let label = this.parameters[2]

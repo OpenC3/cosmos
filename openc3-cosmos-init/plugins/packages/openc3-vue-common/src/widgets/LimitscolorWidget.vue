@@ -23,7 +23,7 @@
 <template>
   <div ref="container" class="d-flex flex-row" :style="myComputedStyle">
     <div
-      :class="`led align-self-center ${this.limitsColor}`"
+      :class="`led align-self-center ${limitsColor}`"
       :style="cssProps"
     ></div>
     <label-widget
@@ -45,20 +45,6 @@ export default {
       radius: 15,
       fullLabelDisplay: false,
       displayLabel: true,
-    }
-  },
-  created() {
-    if (this.parameters[4]) {
-      this.radius = parseInt(this.parameters[4])
-    }
-    if (this.parameters[5]) {
-      if (this.parameters[5].toLowerCase() === 'true') {
-        this.fullLabelDisplay = true
-      } else if (this.parameters[5].toLowerCase() === 'nil') {
-        this.displayLabel = false
-      } else if (this.parameters[5].toLowerCase() === 'none') {
-        this.displayLabel = false
-      }
     }
   },
   computed: {
@@ -90,6 +76,20 @@ export default {
       delete this.computedStyle.flex
       return this.computedStyle
     },
+  },
+  created() {
+    if (this.parameters[4]) {
+      this.radius = parseInt(this.parameters[4])
+    }
+    if (this.parameters[5]) {
+      if (this.parameters[5].toLowerCase() === 'true') {
+        this.fullLabelDisplay = true
+      } else if (this.parameters[5].toLowerCase() === 'nil') {
+        this.displayLabel = false
+      } else if (this.parameters[5].toLowerCase() === 'none') {
+        this.displayLabel = false
+      }
+    }
   },
   methods: {
     getType() {

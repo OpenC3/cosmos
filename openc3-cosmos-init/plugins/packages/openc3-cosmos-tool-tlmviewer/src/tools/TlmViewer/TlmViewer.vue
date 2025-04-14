@@ -30,6 +30,7 @@
           <v-container>
             <v-row class="pa-3">
               <v-select
+                v-model="selectedTarget"
                 class="mr-4"
                 density="compact"
                 hide-details
@@ -38,34 +39,33 @@
                 :items="Object.keys(screens).sort()"
                 item-title="label"
                 item-value="value"
-                v-model="selectedTarget"
                 style="max-width: 300px"
                 data-test="select-target"
               />
               <v-select
+                v-model="selectedScreen"
                 class="mr-4"
                 density="compact"
                 hide-details
                 variant="outlined"
                 label="Select Screen"
                 :items="screens[selectedTarget]"
-                v-model="selectedScreen"
-                @update:model-value="screenSelect"
                 style="max-width: 300px"
                 data-test="select-screen"
+                @update:model-value="screenSelect"
               />
               <v-btn
                 class="bg-primary mr-2"
                 :disabled="!selectedScreen"
-                @click="() => showScreen(selectedTarget, selectedScreen)"
                 data-test="show-screen"
+                @click="() => showScreen(selectedTarget, selectedScreen)"
               >
                 Show
               </v-btn>
               <v-btn
                 class="bg-primary"
-                @click="() => newScreen(selectedTarget)"
                 data-test="new-screen"
+                @click="() => newScreen(selectedTarget)"
               >
                 New Screen
                 <v-icon> mdi-file-plus</v-icon>
@@ -77,11 +77,11 @@
     </v-expansion-panels>
     <div class="grid">
       <div
-        class="item"
         v-for="def in definitions"
-        :key="def.id"
         :id="screenId(def.id)"
+        :key="def.id"
         ref="gridItem"
+        class="item"
       >
         <div class="item-content">
           <openc3-screen
@@ -110,13 +110,13 @@
     <open-config-dialog
       v-if="openConfig"
       v-model="openConfig"
-      :configKey="configKey"
+      :config-key="configKey"
       @success="openConfiguration"
     />
     <save-config-dialog
       v-if="saveConfig"
       v-model="saveConfig"
-      :configKey="configKey"
+      :config-key="configKey"
       @success="saveConfiguration"
     />
     <new-screen-dialog
@@ -199,14 +199,6 @@ export default {
       saveConfig: false,
     }
   },
-  watch: {
-    definitions: {
-      handler: function () {
-        this.saveDefaultConfig(this.currentConfig)
-      },
-      deep: true,
-    },
-  },
   computed: {
     currentConfig: function () {
       return this.definitions.map((def) => {
@@ -219,6 +211,14 @@ export default {
           zIndex: def.zIndex,
         }
       })
+    },
+  },
+  watch: {
+    definitions: {
+      handler: function () {
+        this.saveDefaultConfig(this.currentConfig)
+      },
+      deep: true,
     },
   },
   created() {

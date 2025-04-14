@@ -46,11 +46,11 @@ import RangebarWidget from './RangebarWidget.vue'
 import Widget from './Widget'
 
 export default {
-  mixins: [Widget],
   components: {
     ValueWidget,
     RangebarWidget,
   },
+  mixins: [Widget],
   computed: {
     valueParameters() {
       return [

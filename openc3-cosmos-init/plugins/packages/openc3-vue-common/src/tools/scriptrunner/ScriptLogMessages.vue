@@ -26,7 +26,7 @@
       <v-card-title>
         <v-row class="pt-2">
           <v-tooltip location="top">
-            <template v-slot:activator="{ props }">
+            <template #activator="{ props }">
               <div v-bind="props">
                 <v-btn
                   icon="mdi-download"
@@ -42,11 +42,11 @@
           Script Messages
           <v-spacer />
           <v-select
+            v-model="messageOrder"
             density="compact"
             hide-details
             variant="outlined"
             :items="messageOrderOptions"
-            v-model="messageOrder"
             class="mr-2"
             style="max-width: 200px"
             data-test="message-order"
@@ -66,7 +66,7 @@
           />
 
           <v-tooltip location="top">
-            <template v-slot:activator="{ props }">
+            <template #activator="{ props }">
               <div v-bind="props">
                 <v-btn
                   icon="mdi-delete"
@@ -92,7 +92,7 @@
         density="compact"
         data-test="output-messages"
       >
-        <template v-slot:item.message="{ item }">
+        <template #item.message="{ item }">
           <div :class="messageClass(item.message)">{{ item.message }}</div>
         </template>
       </v-data-table>
@@ -118,11 +118,6 @@ export default {
       messageOrder: 'Newest on Top',
     }
   },
-  watch: {
-    messageOrder: function (newValue, oldValue) {
-      this.$emit('sort', newValue)
-    },
-  },
   computed: {
     messages: {
       get() {
@@ -131,6 +126,11 @@ export default {
       set(value) {
         this.$emit('update:modelValue', value)
       },
+    },
+  },
+  watch: {
+    messageOrder: function (newValue, oldValue) {
+      this.$emit('sort', newValue)
     },
   },
   methods: {

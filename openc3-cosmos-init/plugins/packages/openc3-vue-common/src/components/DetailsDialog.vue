@@ -35,7 +35,7 @@
       <v-card-subtitle>{{ details.description }}</v-card-subtitle>
       <v-card-text>
         <v-container fluid>
-          <v-row no-gutters v-if="type === 'tlm'">
+          <v-row v-if="type === 'tlm'" no-gutters>
             <v-col cols="5" class="label">Item Values</v-col>
             <v-col />
           </v-row>
@@ -75,15 +75,15 @@
             <v-col cols="5" class="label">Data Type</v-col>
             <v-col>{{ details.data_type }}</v-col>
           </v-row>
-          <v-row no-gutters v-if="type === 'cmd'">
+          <v-row v-if="type === 'cmd'" no-gutters>
             <v-col cols="5" class="label">Minimum</v-col>
             <v-col>{{ details.minimum }}</v-col>
           </v-row>
-          <v-row no-gutters v-if="type === 'cmd'">
+          <v-row v-if="type === 'cmd'" no-gutters>
             <v-col cols="5" class="label">Maximum</v-col>
             <v-col>{{ details.maximum }}</v-col>
           </v-row>
-          <v-row no-gutters v-if="type === 'cmd'">
+          <v-row v-if="type === 'cmd'" no-gutters>
             <v-col cols="5" class="label">Default</v-col>
             <v-col>{{ details.default }}</v-col>
           </v-row>
@@ -132,13 +132,13 @@
               <v-col cols="5" class="label">States</v-col>
               <v-col />
             </v-row>
-            <v-row no-gutters v-for="(state, key) in details.states" :key="key">
+            <v-row v-for="(state, key) in details.states" :key="key" no-gutters>
               <v-col cols="1"></v-col>
               <v-col cols="4" class="label">{{ key }}</v-col>
               <v-col>{{ state.value }}</v-col>
             </v-row>
           </div>
-          <v-row no-gutters v-else>
+          <v-row v-else no-gutters>
             <v-col cols="5" class="label">States</v-col>
             <v-col>None</v-col>
           </v-row>
@@ -147,7 +147,7 @@
               <v-col cols="5" class="label">Limits</v-col>
               <v-col></v-col>
             </v-row>
-            <v-row no-gutters v-for="(limit, key) in details.limits" :key="key">
+            <v-row v-for="(limit, key) in details.limits" :key="key" no-gutters>
               <v-col cols="1"></v-col>
               <v-col v-if="key === 'enabled'" cols="4" class="label"
                 >Enabled</v-col
@@ -155,11 +155,11 @@
               <v-switch
                 v-if="key === 'enabled'"
                 v-model="details.limits.enabled"
-                @update:model-value="changeLimitsEnabled"
                 density="compact"
                 color="primary"
                 class="compact-switch"
                 hide-details
+                @update:model-value="changeLimitsEnabled"
               ></v-switch>
               <v-col v-if="key !== 'enabled'" cols="4" class="label">{{
                 key
@@ -168,7 +168,7 @@
               <v-col></v-col>
             </v-row>
           </div>
-          <v-row no-gutters v-else>
+          <v-row v-else no-gutters>
             <v-col cols="5" class="label">Limits</v-col>
             <v-col>None</v-col>
           </v-row>
@@ -177,7 +177,7 @@
               <v-col cols="5" class="label">Meta</v-col>
               <v-col></v-col>
             </v-row>
-            <v-row no-gutters v-for="(value, key) in details.meta" :key="key">
+            <v-row v-for="(value, key) in details.meta" :key="key" no-gutters>
               <v-col cols="1"></v-col>
               <v-col cols="4" class="label">{{ key }}</v-col>
               <v-col>{{ value.join(', ') }}</v-col>
@@ -229,13 +229,6 @@ export default {
         this.$emit('update:modelValue', value)
       },
     },
-  },
-  created() {
-    this.api = new OpenC3Api()
-  },
-  beforeUnmount() {
-    clearInterval(this.updater)
-    this.updater = null
   },
   watch: {
     // Create a watcher on value which is the indicator to display the dialog
@@ -318,6 +311,13 @@ export default {
         this.updater = null
       }
     },
+  },
+  created() {
+    this.api = new OpenC3Api()
+  },
+  beforeUnmount() {
+    clearInterval(this.updater)
+    this.updater = null
   },
   methods: {
     // This check is necessary because COSMOS 5.20 was setting limits.enabled to false

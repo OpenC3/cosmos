@@ -23,7 +23,7 @@
 <template>
   <v-dialog v-model="show" width="600">
     <v-card>
-      <form v-on:submit.prevent="addEnvironment">
+      <form @submit.prevent="addEnvironment">
         <v-toolbar height="24">
           <v-spacer />
           <span>Global Environment Variables</span>
@@ -57,12 +57,12 @@
               :items-per-page="5"
               :items-per-page-options="[5]"
             >
-              <template v-slot:item.actions="{ item }">
+              <template #item.actions="{ item }">
                 <v-btn
-                  @click="deleteEnvironment(item)"
                   icon
                   class="mt-1"
                   data-test="item-delete"
+                  @click="deleteEnvironment(item)"
                 >
                   <v-icon>mdi-delete</v-icon>
                 </v-btn>
@@ -82,12 +82,12 @@
             </v-row>
             <v-row dense>
               <v-btn
-                @click.prevent="addEnvironment"
                 block
                 type="submit"
                 color="primary"
                 data-test="add-env"
                 :disabled="!key || !keyValue"
+                @click.prevent="addEnvironment"
               >
                 Add
               </v-btn>

@@ -29,14 +29,14 @@
       <v-col :cols="colSize" class="tpic-select pr-4" data-test="select-target">
         <v-autocomplete
           label="Select Target"
+          v-model="selectedTargetName"
           hide-details
           density="compact"
           variant="outlined"
-          @update:model-value="targetNameChanged"
           :items="targetNames"
           item-title="label"
           item-value="value"
-          v-model="selectedTargetName"
+          @update:model-value="targetNameChanged"
         />
       </v-col>
       <v-col :cols="colSize" class="tpic-select pr-4" data-test="select-packet">
@@ -44,15 +44,15 @@
           label="Select Packet"
           hide-details
           density="compact"
+          v-model="selectedPacketName"
           variant="outlined"
-          @update:model-value="packetNameChanged"
           :disabled="packetsDisabled || autocompleteDisabled"
           :items="packetNames"
           item-title="label"
           item-value="value"
-          v-model="selectedPacketName"
+          @update:model-value="packetNameChanged"
         >
-          <template v-if="includeLatestPacketInDropdown" v-slot:prepend-item>
+          <template v-if="includeLatestPacketInDropdown" #prepend-item>
             <v-list-item title="LATEST" @click="packetNameChanged('LATEST')" />
             <v-divider />
           </template>
@@ -68,13 +68,13 @@
           label="Select Item"
           hide-details
           density="compact"
+          v-model="selectedItemName"
           variant="outlined"
-          @update:model-value="itemNameChanged($event)"
           :disabled="itemsDisabled || autocompleteDisabled"
           :items="itemNames"
           item-title="label"
           item-value="value"
-          v-model="selectedItemName"
+          @update:model-value="itemNameChanged($event)"
         />
       </v-col>
       <!-- min-width: 105px is enough to display a 2 digit index -->
@@ -89,13 +89,13 @@
           label="Index"
           hide-details
           density="compact"
+          v-model="selectedArrayIndex"
           variant="outlined"
-          @update:model-value="indexChanged($event)"
           :disabled="itemsDisabled || autocompleteDisabled"
           :items="arrayIndexes()"
           item-title="label"
           item-value="value"
-          v-model="selectedArrayIndex"
+          @update:model-value="indexChanged($event)"
         />
       </v-col>
       <v-col v-if="buttonText" :cols="colSize" style="max-width: 140px">
@@ -109,36 +109,36 @@
         </v-btn>
       </v-col>
     </v-row>
-    <v-row no-gutters v-if="selectTypes" class="pt-6">
+    <v-row v-if="selectTypes" no-gutters class="pt-6">
       <v-col :cols="colSize" class="tpic-select pr-4" data-test="data-type">
         <v-autocomplete
+          v-model="selectedValueType"
           label="Value Type"
           hide-details
           density="compact"
           variant="outlined"
           :items="valueTypes"
-          v-model="selectedValueType"
         />
       </v-col>
       <v-col :cols="colSize" class="tpic-select pr-4" data-test="reduced">
         <v-autocomplete
+          v-model="selectedReduced"
           label="Reduced"
           hide-details
           density="compact"
           variant="outlined"
           :items="reductionModes"
-          v-model="selectedReduced"
         />
       </v-col>
       <v-col :cols="colSize" class="tpic-select pr-4" data-test="reduced-type">
         <v-autocomplete
+          v-model="selectedReducedType"
           label="Reduced Type"
           hide-details
           density="compact"
           variant="outlined"
           :disabled="selectedReduced === 'DECOM'"
           :items="reducedTypes"
-          v-model="selectedReducedType"
         />
       </v-col>
       <v-col :cols="colSize" style="max-width: 140px"> </v-col>
@@ -257,46 +257,6 @@ export default {
       },
     }
   },
-  created() {
-    this.internalDisabled = true
-    this.api = new OpenC3Api()
-    this.api.get_target_names().then((result) => {
-      this.targetNames = result.flatMap((target) => {
-        // Ignore the UNKNOWN target as it doesn't make sense to select this
-        if (target == 'UNKNOWN') {
-          return []
-        }
-        return { label: target, value: target }
-      })
-      // TODO: This is a nice enhancement but results in logs of API calls for many targets
-      // See if we can reduce this to a single API call
-      // Filter out any targets without packets
-      // for (let i = this.targetNames.length - 1; i >= 0; i--) {
-      //   const cmd =
-      //     this.mode === 'tlm' ? 'get_all_tlm_names' : 'get_all_cmd_names'
-      //   await this.api[cmd](this.targetNames[i].value).then((names) => {
-      //     if (names.length === 0) {
-      //       this.targetNames.splice(i, 1)
-      //     }
-      //   })
-      // }
-      if (this.allowAllTargets) {
-        this.targetNames.unshift(this.ALL)
-      }
-      // If the initial target name is not set, default to the first target
-      // which also updates packets and items as needed
-      if (!this.selectedTargetName) {
-        this.selectedTargetName = this.targetNames[0].value
-        this.targetNameChanged(this.selectedTargetName)
-      } else {
-        // Selected target name was set but we still have to update packets
-        this.updatePackets()
-      }
-      if (this.unknown) {
-        this.targetNames.push(this.UNKNOWN)
-      }
-    })
-  },
   computed: {
     actualButtonText: function () {
       if (this.selectedPacketName === 'ALL') {
@@ -369,6 +329,46 @@ export default {
         this.itemNames = []
       }
     },
+  },
+  created() {
+    this.internalDisabled = true
+    this.api = new OpenC3Api()
+    this.api.get_target_names().then((result) => {
+      this.targetNames = result.flatMap((target) => {
+        // Ignore the UNKNOWN target as it doesn't make sense to select this
+        if (target == 'UNKNOWN') {
+          return []
+        }
+        return { label: target, value: target }
+      })
+      // TODO: This is a nice enhancement but results in logs of API calls for many targets
+      // See if we can reduce this to a single API call
+      // Filter out any targets without packets
+      // for (let i = this.targetNames.length - 1; i >= 0; i--) {
+      //   const cmd =
+      //     this.mode === 'tlm' ? 'get_all_tlm_names' : 'get_all_cmd_names'
+      //   await this.api[cmd](this.targetNames[i].value).then((names) => {
+      //     if (names.length === 0) {
+      //       this.targetNames.splice(i, 1)
+      //     }
+      //   })
+      // }
+      if (this.allowAllTargets) {
+        this.targetNames.unshift(this.ALL)
+      }
+      // If the initial target name is not set, default to the first target
+      // which also updates packets and items as needed
+      if (!this.selectedTargetName) {
+        this.selectedTargetName = this.targetNames[0].value
+        this.targetNameChanged(this.selectedTargetName)
+      } else {
+        // Selected target name was set but we still have to update packets
+        this.updatePackets()
+      }
+      if (this.unknown) {
+        this.targetNames.push(this.UNKNOWN)
+      }
+    })
   },
   methods: {
     updatePackets: function () {

@@ -22,7 +22,7 @@
 -->
 <template>
   <div class="tree-node">
-    <div @click="handleClick(node)" class="node-content" v-if="showNode">
+    <div v-if="showNode" class="node-content" @click="handleClick(node)">
       <div class="content-wrapper">
         <v-icon
           v-if="node.children"
@@ -62,8 +62,8 @@
         <v-btn
           v-if="node.title === '__TEMP__'"
           icon
-          @click="emit('delete')"
           style="margin-left: auto"
+          @click="emit('delete')"
         >
           <v-icon> mdi-delete </v-icon>
         </v-btn>
@@ -121,7 +121,7 @@ const showNode = computed(() => {
 watch(
   () => props.node.isOpen,
   (newpath) => {
-    isOpen.path = newpath
+    isOpen.value.path = newpath
   },
 )
 
@@ -151,9 +151,9 @@ const handleClick = (node) => {
 }
 const toggle = () => {
   if (props.node.children) {
-    isOpen.path = !isOpen.path
-    props.node.isOpen = isOpen.path
-    emit('nodeToggled', props.node.id, isOpen.path)
+    isOpen.value.path = !isOpen.value.path
+    props.node.isOpen = isOpen.value.path
+    emit('nodeToggled', props.node.id, isOpen.value.path)
   }
 }
 // Bubble up the event for the nested tree-nodes

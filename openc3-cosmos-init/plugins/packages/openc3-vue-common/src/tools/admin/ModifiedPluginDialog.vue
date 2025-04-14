@@ -30,9 +30,9 @@
           existing modified files?
         </div>
         <v-list-item
-          lines="two"
           v-for="(target, index) in modifiedTargets"
           :key="index"
+          lines="two"
         >
           <v-list-item-title>{{ target.name }}</v-list-item-title>
           <v-list-item-subtitle

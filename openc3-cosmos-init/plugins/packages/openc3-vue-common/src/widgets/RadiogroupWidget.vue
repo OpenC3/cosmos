@@ -22,17 +22,17 @@
 
 <template>
   <v-radio-group
+    v-model="selectedIndex"
     hide-details
     density="compact"
-    v-model="selectedIndex"
     :style="computedStyle"
   >
     <component
-      v-for="(widget, index) in widgets"
       v-bind="listeners"
-      :value="index"
-      :key="index"
       :is="widget.type"
+      v-for="(widget, index) in widgets"
+      :key="index"
+      :value="index"
       :target="widget.target"
       :parameters="widget.parameters"
       :settings="widget.settings"

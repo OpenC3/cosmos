@@ -23,7 +23,7 @@
 <template>
   <div class="value-widget-container">
     <v-tooltip location="top">
-      <template v-slot:activator="{ props }">
+      <template #activator="{ props }">
         <v-text-field
           variant="solo"
           density="compact"
@@ -36,8 +36,8 @@
           :class="valueClass"
           :style="computedStyle"
           data-test="value"
-          @contextmenu="showContextMenu"
           v-bind="props"
+          @contextmenu="showContextMenu"
         />
       </template>
       <span>{{ fullName }}</span>
@@ -55,10 +55,10 @@
     </v-menu>
 
     <details-dialog
+      v-model="viewDetails"
       :target-name="parameters[0]"
       :packet-name="parameters[1]"
       :item-name="parameters[2]"
-      v-model="viewDetails"
     />
   </div>
 </template>

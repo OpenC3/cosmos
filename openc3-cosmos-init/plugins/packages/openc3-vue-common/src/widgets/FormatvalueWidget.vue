@@ -38,10 +38,10 @@ import Widget from './Widget'
 import ValueWidget from './ValueWidget.vue'
 
 export default {
-  mixins: [Widget],
   components: {
     ValueWidget,
   },
+  mixins: [Widget],
   computed: {
     getParameters() {
       return [

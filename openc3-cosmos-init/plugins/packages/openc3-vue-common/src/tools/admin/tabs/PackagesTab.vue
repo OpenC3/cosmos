@@ -26,9 +26,9 @@
       <v-col class="pa-2 mt-2">
         <v-btn @click="selectFile">Install Package</v-btn>
         <input
+          ref="fileInput"
           style="display: none"
           type="file"
-          ref="fileInput"
           @change="fileChange"
         />
       </v-col>
@@ -62,9 +62,9 @@
             <span v-text="' Updated At: ' + formatDate(process.updated_at)" />
           </v-list-item-subtitle>
 
-          <template v-slot:append v-if="process.state !== 'Running'">
+          <template v-if="process.state !== 'Running'" #append>
             <v-tooltip location="top">
-              <template v-slot:activator="{ props }">
+              <template #activator="{ props }">
                 <v-icon v-bind="props" @click="showOutput(process)">
                   mdi-eye
                 </v-icon>
@@ -82,9 +82,9 @@
         <v-list-item>
           <v-list-item-title>{{ gem }}</v-list-item-title>
 
-          <template v-slot:append>
+          <template #append>
             <v-tooltip location="top">
-              <template v-slot:activator="{ props }">
+              <template #activator="{ props }">
                 <v-icon v-bind="props" @click="deletePackage(gem)">
                   mdi-delete
                 </v-icon>
@@ -100,9 +100,9 @@
         <v-list-item>
           <v-list-item-title>{{ pkg }}</v-list-item-title>
 
-          <template v-slot:append>
+          <template #append>
             <v-tooltip location="top">
-              <template v-slot:activator="{ props }">
+              <template #activator="{ props }">
                 <v-icon v-bind="props" @click="deletePackage(pkg)">
                   mdi-delete
                 </v-icon>

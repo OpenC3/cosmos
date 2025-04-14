@@ -26,13 +26,13 @@
     <v-card>
       <div style="padding: 10px">
         <target-packet-item-chooser
-          :initial-target-name="this.$route.params.target"
-          :initial-packet-name="this.$route.params.packet"
-          @on-set="commandChanged($event)"
-          @addItem="buildCmd($event)"
+          :initial-target-name="$route.params.target"
+          :initial-packet-name="$route.params.packet"
           :disabled="sendDisabled"
           button-text="Send"
           mode="cmd"
+          @on-set="commandChanged($event)"
+          @add-item="buildCmd($event)"
         />
       </div>
 
@@ -62,7 +62,7 @@
           density="compact"
           @contextmenu:row="showContextMenu"
         >
-          <template v-slot:item.val="{ item }">
+          <template #item.val="{ item }">
             <command-parameter-editor
               v-model="item.val"
               :states="item.states"
@@ -85,7 +85,7 @@
               </v-col>
               <v-col>
                 <v-tooltip location="top">
-                  <template v-slot:activator="{ props }">
+                  <template #activator="{ props }">
                     <div v-bind="props" class="float-right">
                       <v-btn
                         icon="mdi-delete"
@@ -114,7 +114,7 @@
           :definition="screenDefinition"
           :keywords="keywords"
           :count="screenCount"
-          :showClose="false"
+          :show-close="false"
         />
       </v-col>
     </v-row>
@@ -132,17 +132,17 @@
       </v-list>
     </v-menu>
     <details-dialog
+      v-model="viewDetails"
       :target-name="targetName"
       :packet-name="commandName"
       :item-name="parameterName"
       :type="'cmd'"
-      v-model="viewDetails"
     />
     <critical-cmd-dialog
-      :uuid="criticalCmdUuid"
-      :cmdString="criticalCmdString"
-      :cmdUser="criticalCmdUser"
       v-model="displayCriticalCmd"
+      :uuid="criticalCmdUuid"
+      :cmd-string="criticalCmdString"
+      :cmd-user="criticalCmdUser"
     />
 
     <v-dialog v-model="displayErrorDialog" max-width="600">
@@ -162,9 +162,9 @@
             <v-row>
               <v-spacer />
               <v-btn
-                @click="displayErrorDialog = false"
                 color="primary"
                 data-test="error-dialog-ok"
+                @click="displayErrorDialog = false"
               >
                 Ok
               </v-btn>
@@ -190,8 +190,8 @@
         </v-card-text>
         <v-card-actions class="px-2">
           <v-spacer />
-          <v-btn @click="cancelHazardousCmd" variant="outlined"> Cancel </v-btn>
-          <v-btn @click="sendHazardousCmd" variant="flat"> Send </v-btn>
+          <v-btn variant="outlined" @click="cancelHazardousCmd"> Cancel </v-btn>
+          <v-btn variant="flat" @click="sendHazardousCmd"> Send </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -209,13 +209,13 @@
               <v-col>Interface:</v-col>
               <v-col>
                 <v-select
+                  v-model="selectedInterface"
                   variant="solo"
                   hide-details
                   density="compact"
                   :items="interfaces"
                   item-title="label"
                   item-value="value"
-                  v-model="selectedInterface"
                 />
               </v-col>
             </v-row>
@@ -228,13 +228,13 @@
             <v-row>
               <v-spacer />
               <v-btn
-                @click="cancelRawCmd"
                 variant="outlined"
                 data-test="raw-cancel"
+                @click="cancelRawCmd"
               >
                 Cancel
               </v-btn>
-              <v-btn @click="sendRawCmd" class="bg-primary" data-test="raw-ok">
+              <v-btn class="bg-primary" data-test="raw-ok" @click="sendRawCmd">
                 Ok
               </v-btn>
             </v-row>
@@ -262,7 +262,6 @@ import CommandParameterEditor from './CommandParameterEditor'
 import Utilities from './utilities'
 
 export default {
-  mixins: [Utilities],
   components: {
     DetailsDialog,
     CriticalCmdDialog,
@@ -271,6 +270,7 @@ export default {
     TopBar,
     Openc3Screen,
   },
+  mixins: [Utilities],
   data() {
     return {
       title: 'Command Sender',

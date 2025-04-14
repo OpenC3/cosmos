@@ -27,14 +27,14 @@
   <div @click.prevent="$emit('click')">
     <v-card>
       <v-toolbar
+        v-show="!hideToolbarData"
         height="24"
         class="pl-2 pr-2"
         :class="selectedGraphId === id ? 'active' : ''"
-        v-show="!hideToolbarData"
       >
         <div v-show="errors.length !== 0" class="mx-2">
           <v-tooltip text="Errors" location="top">
-            <template v-slot:activator="{ props }">
+            <template #activator="{ props }">
               <v-icon v-bind="props" @click="errorDialog = true">
                 mdi-alert
               </v-icon>
@@ -43,11 +43,11 @@
         </div>
 
         <v-tooltip text="Edit" location="top">
-          <template v-slot:activator="{ props }">
+          <template #activator="{ props }">
             <v-icon
               v-bind="props"
-              @click="editGraph = true"
               data-test="edit-graph-icon"
+              @click="editGraph = true"
             >
               mdi-pencil
             </v-icon>
@@ -60,19 +60,19 @@
 
         <div v-show="expand">
           <v-tooltip v-if="calcFullSize" text="Collapse" location="top">
-            <template v-slot:activator="{ props }">
+            <template #activator="{ props }">
               <v-icon
                 v-bind="props"
-                @click="collapseAll"
                 data-test="collapse-all"
+                @click="collapseAll"
               >
                 mdi-arrow-collapse
               </v-icon>
             </template>
           </v-tooltip>
           <v-tooltip v-else text="Expand" location="top">
-            <template v-slot:activator="{ props }">
-              <v-icon v-bind="props" @click="expandAll" data-test="expand-all">
+            <template #activator="{ props }">
+              <v-icon v-bind="props" data-test="expand-all" @click="expandAll">
                 mdi-arrow-expand
               </v-icon>
             </template>
@@ -81,22 +81,22 @@
 
         <div v-show="expand">
           <v-tooltip v-if="fullWidth" text="Collapse Width" location="top">
-            <template v-slot:activator="{ props }">
+            <template #activator="{ props }">
               <v-icon
                 v-bind="props"
-                @click="collapseWidth"
                 data-test="collapse-width"
+                @click="collapseWidth"
               >
                 mdi-arrow-collapse-horizontal
               </v-icon>
             </template>
           </v-tooltip>
           <v-tooltip v-else text="Expand Width" location="top">
-            <template v-slot:activator="{ props }">
+            <template #activator="{ props }">
               <v-icon
                 v-bind="props"
-                @click="expandWidth"
                 data-test="expand-width"
+                @click="expandWidth"
               >
                 mdi-arrow-expand-horizontal
               </v-icon>
@@ -106,22 +106,22 @@
 
         <div v-show="expand">
           <v-tooltip v-if="fullHeight" text="Collapse Height" location="top">
-            <template v-slot:activator="{ props }">
+            <template #activator="{ props }">
               <v-icon
                 v-bind="props"
-                @click="collapseHeight"
                 data-test="collapse-height"
+                @click="collapseHeight"
               >
                 mdi-arrow-collapse-vertical
               </v-icon>
             </template>
           </v-tooltip>
           <v-tooltip v-else text="Expand Height" location="top">
-            <template v-slot:activator="{ props }">
+            <template #activator="{ props }">
               <v-icon
                 v-bind="props"
-                @click="expandHeight"
                 data-test="expand-height"
+                @click="expandHeight"
               >
                 mdi-arrow-expand-vertical
               </v-icon>
@@ -130,22 +130,22 @@
         </div>
 
         <v-tooltip v-if="expand" text="Minimize" location="top">
-          <template v-slot:activator="{ props }">
+          <template #activator="{ props }">
             <v-icon
               v-bind="props"
-              @click="minMaxTransition"
               data-test="minimize-screen-icon"
+              @click="minMaxTransition"
             >
               mdi-window-minimize
             </v-icon>
           </template>
         </v-tooltip>
         <v-tooltip v-else text="Maximize" location="top">
-          <template v-slot:activator="{ props }">
+          <template #activator="{ props }">
             <v-icon
               v-bind="props"
-              @click="minMaxTransition"
               data-test="maximize-screen-icon"
+              @click="minMaxTransition"
             >
               mdi-window-maximize
             </v-icon>
@@ -153,11 +153,11 @@
         </v-tooltip>
 
         <v-tooltip text="Close" location="top">
-          <template v-slot:activator="{ props }">
+          <template #activator="{ props }">
             <v-icon
               v-bind="props"
-              @click="$emit('close-graph')"
               data-test="close-graph-icon"
+              @click="$emit('close-graph')"
             >
               mdi-close-box
             </v-icon>
@@ -166,10 +166,10 @@
       </v-toolbar>
 
       <v-expand-transition>
-        <div class="pa-1" id="chart" ref="chart" v-show="expand">
+        <div v-show="expand" id="chart" ref="chart" class="pa-1">
           <div :id="`chart${id}`"></div>
           <div id="betweenCharts"></div>
-          <div :id="`overview${id}`" v-show="showOverview"></div>
+          <div v-show="showOverview" :id="`overview${id}`"></div>
         </div>
       </v-expand-transition>
     </v-card>
@@ -203,9 +203,9 @@
       <v-card class="pa-3">
         <v-row dense>
           <v-text-field
+            v-model="title"
             readonly
             hide-details
-            v-model="title"
             class="pb-2"
             label="Graph Title"
           />
@@ -241,8 +241,8 @@
       v-model="editItem"
       :colors="colors"
       :item="selectedItem"
-      @changeColor="changeColor"
-      @changeLimits="changeLimits"
+      @change-color="changeColor"
+      @change-limits="changeLimits"
       @cancel="editItem = false"
       @close="closeEditItem"
     />
@@ -262,19 +262,19 @@
           {{ selectedItem.itemName }}
         </v-list-subheader>
         <v-list-item @click="editItem = true">
-          <template v-slot:prepend>
+          <template #prepend>
             <v-icon icon="mdi-pencil" />
           </template>
           <v-list-item-title> Edit </v-list-item-title>
         </v-list-item>
         <v-list-item @click="clearData([selectedItem])">
-          <template v-slot:prepend>
+          <template #prepend>
             <v-icon icon="mdi-eraser" />
           </template>
           <v-list-item-title> Clear </v-list-item-title>
         </v-list-item>
         <v-list-item @click="removeItems([selectedItem])">
-          <template v-slot:prepend>
+          <template #prepend>
             <v-icon icon="mdi-delete" />
           </template>
           <v-list-item-title> Delete </v-list-item-title>
@@ -314,12 +314,12 @@
       </v-list>
     </v-menu>
 
-    <div v-if="!sparkline" class="u-series" ref="info">
+    <div v-if="!sparkline" ref="info" class="u-series">
       <v-tooltip
         text="Click item to toggle, Right click to edit"
         location="top"
       >
-        <template v-slot:activator="{ props }">
+        <template #activator="{ props }">
           <v-icon v-bind="props"> mdi-information-variant-circle </v-icon>
         </template>
       </v-tooltip>
@@ -342,6 +342,7 @@ export default {
     GraphEditDialog,
     GraphEditItemDialog,
   },
+  mixins: [TimeFilters],
   props: {
     id: {
       type: Number,
@@ -403,7 +404,6 @@ export default {
       default: 'local',
     },
   },
-  mixins: [TimeFilters],
   data() {
     return {
       lines: [],
@@ -483,6 +483,66 @@ export default {
         return JSON.stringify(this.errors, null, 4)
       }
       return null
+    },
+  },
+  watch: {
+    state: function (newState, oldState) {
+      switch (newState) {
+        case 'start':
+          // Only subscribe if we were previously stopped
+          // If we were paused we do nothing ... see the data function
+          if (oldState === 'stop') {
+            this.startGraph()
+          }
+          break
+        // case 'pause': Nothing to do ... see the data function
+        case 'stop':
+          this.stopGraph()
+          break
+      }
+    },
+    data: function (newData, oldData) {
+      this.dataChanged = true
+    },
+    graphMinY: function (newVal, oldVal) {
+      let val = parseFloat(newVal)
+      if (!isNaN(val)) {
+        this.graphMinY = val
+      }
+      this.setGraphRange()
+    },
+    graphMaxY: function (newVal, oldVal) {
+      let val = parseFloat(newVal)
+      if (!isNaN(val)) {
+        this.graphMaxY = val
+      }
+      this.setGraphRange()
+    },
+    graphStartDateTime: function (newVal, oldVal) {
+      if (newVal && typeof newVal === 'string') {
+        this.graphStartDateTime =
+          this.parseDateTime(this.graphStartDateTime, this.timeZone) * 1000000
+        if (this.graphStartDateTime !== oldVal) {
+          this.needToUpdate = true
+        }
+      } else if (newVal === null && oldVal) {
+        // If they clear the start date time we need to update
+        this.graphStartDateTime = null
+        this.needToUpdate = true
+      }
+    },
+    graphEndDateTime: function (newVal, oldVal) {
+      if (newVal && typeof newVal === 'string') {
+        this.graphEndDateTime =
+          this.parseDateTime(this.graphEndDateTime, this.timeZone) * 1000000
+        if (this.graphEndDateTime !== oldVal) {
+          this.needToUpdate = true
+        }
+      } else if (newVal === null && oldVal) {
+        // If they clear the end date time we need to update
+        this.graphEndDateTime = null
+        this.needToUpdate = true
+      }
     },
   },
   created() {
@@ -790,66 +850,6 @@ export default {
     this.stopGraph()
     this.cable.disconnect()
     window.removeEventListener('resize', this.resize)
-  },
-  watch: {
-    state: function (newState, oldState) {
-      switch (newState) {
-        case 'start':
-          // Only subscribe if we were previously stopped
-          // If we were paused we do nothing ... see the data function
-          if (oldState === 'stop') {
-            this.startGraph()
-          }
-          break
-        // case 'pause': Nothing to do ... see the data function
-        case 'stop':
-          this.stopGraph()
-          break
-      }
-    },
-    data: function (newData, oldData) {
-      this.dataChanged = true
-    },
-    graphMinY: function (newVal, oldVal) {
-      let val = parseFloat(newVal)
-      if (!isNaN(val)) {
-        this.graphMinY = val
-      }
-      this.setGraphRange()
-    },
-    graphMaxY: function (newVal, oldVal) {
-      let val = parseFloat(newVal)
-      if (!isNaN(val)) {
-        this.graphMaxY = val
-      }
-      this.setGraphRange()
-    },
-    graphStartDateTime: function (newVal, oldVal) {
-      if (newVal && typeof newVal === 'string') {
-        this.graphStartDateTime =
-          this.parseDateTime(this.graphStartDateTime, this.timeZone) * 1000000
-        if (this.graphStartDateTime !== oldVal) {
-          this.needToUpdate = true
-        }
-      } else if (newVal === null && oldVal) {
-        // If they clear the start date time we need to update
-        this.graphStartDateTime = null
-        this.needToUpdate = true
-      }
-    },
-    graphEndDateTime: function (newVal, oldVal) {
-      if (newVal && typeof newVal === 'string') {
-        this.graphEndDateTime =
-          this.parseDateTime(this.graphEndDateTime, this.timeZone) * 1000000
-        if (this.graphEndDateTime !== oldVal) {
-          this.needToUpdate = true
-        }
-      } else if (newVal === null && oldVal) {
-        // If they clear the end date time we need to update
-        this.graphEndDateTime = null
-        this.needToUpdate = true
-      }
-    },
   },
   methods: {
     startGraph: function () {

@@ -51,12 +51,12 @@ import HorizontalWidget from './HorizontalWidget.vue'
 import Layout from './Layout'
 
 export default {
-  mixins: [Layout],
   components: {
     LabelWidget,
     HorizontalLineWidget,
     HorizontalWidget,
   },
+  mixins: [Layout],
   created() {
     this.labelSettings = [...this.appliedSettings]
     // Set the font-weight to bold if not already set

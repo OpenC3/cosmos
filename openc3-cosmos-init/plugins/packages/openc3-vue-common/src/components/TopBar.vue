@@ -28,8 +28,8 @@
       </v-col>
     </v-row>
     <v-row dense class="flex-nowrap">
-      <v-menu ref="topmenu" v-for="(menu, i) in menus" :key="i">
-        <template v-slot:activator="{ props }">
+      <v-menu v-for="(menu, i) in menus" ref="topmenu" :key="i">
+        <template #activator="{ props }">
           <v-btn
             v-bind="props"
             variant="outlined"
@@ -37,7 +37,7 @@
             :text="menu.label"
             :data-test="formatDT(`${title} ${menu.label}`)"
           >
-            <template v-slot:append>
+            <template #append>
               <v-icon class="menu-button-icon"> mdi-menu-down </v-icon>
             </template>
           </v-btn>
@@ -49,14 +49,14 @@
               v-else-if="option.subMenu && option.subMenu.length > 0"
               :key="j + '-submenu'"
             >
-              <v-menu open-on-hover location="right" :key="j">
-                <template v-slot:activator="{ props }">
+              <v-menu :key="j" open-on-hover location="right">
+                <template #activator="{ props }">
                   <v-list-item
                     v-bind="props"
-                    :disabled="option.disabled"
                     :key="j"
+                    :disabled="option.disabled"
                   >
-                    <template v-slot:prepend v-if="option.icon">
+                    <template v-if="option.icon" #prepend>
                       <v-icon :disabled="option.disabled">
                         {{ option.icon }}
                       </v-icon>
@@ -69,7 +69,7 @@
                       "
                       >{{ option.label }}
                     </v-list-item-title>
-                    <template v-slot:append>
+                    <template #append>
                       <v-icon> mdi-chevron-right </v-icon>
                     </template>
                   </v-list-item>
@@ -88,12 +88,12 @@
             </div>
             <v-radio-group
               v-else-if="option.radioGroup"
-              :model-value="option.value"
-              @update:model-value="option.command"
               :key="j + '-radio-group'"
+              :model-value="option.value"
               hide-details
               density="compact"
               class="ma-0 pa-0"
+              @update:model-value="option.command"
             >
               <v-list-item
                 v-for="(choice, k) in option.choices"
@@ -112,18 +112,18 @@
             </v-radio-group>
             <v-list-item
               v-else
-              @click="option.command(option)"
+              :key="j + '-list'"
               :disabled="option.disabled"
               :data-test="formatDT(`${title} ${menu.label} ${option.label}`)"
-              :key="j + '-list'"
+              @click="option.command(option)"
             >
-              <template v-slot:prepend v-if="option.icon">
+              <template v-if="option.icon" #prepend>
                 <v-icon
                   :icon="option.icon"
                   :disabled="option.disabled"
                 ></v-icon>
               </template>
-              <v-list-item-action class="list-action" v-if="option.checkbox">
+              <v-list-item-action v-if="option.checkbox" class="list-action">
                 <v-checkbox
                   v-model="option.checked"
                   :label="option.label"
@@ -162,6 +162,9 @@ export default {
       default: '',
     },
   },
+  mounted() {
+    document.title = this.title
+  },
   methods: {
     // Convert the string to a standard data-test format
     formatDT: function (string) {
@@ -171,9 +174,6 @@ export default {
       submenu.command(submenu)
       this.$refs.topmenu[0].isActive = false
     },
-  },
-  mounted() {
-    document.title = this.title
   },
 }
 </script>

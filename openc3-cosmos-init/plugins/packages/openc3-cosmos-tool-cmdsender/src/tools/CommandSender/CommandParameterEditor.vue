@@ -25,17 +25,16 @@
     <v-text-field
       v-if="!states"
       :model-value="textFieldValue"
-      @update:model-value="handleChange"
       hide-details
       density="compact"
       variant="filled"
       data-test="cmd-param-value"
+      @update:model-value="handleChange"
     />
     <div v-else class="d-flex align-center">
       <v-select
         :items="stateOptions"
         :model-value="selectValue"
-        @update:model-value="handleChange"
         item-title="label"
         :class="stateClass"
         hide-details
@@ -44,6 +43,7 @@
         placeholder="Select..."
         min-width="120px"
         data-test="cmd-param-select"
+        @update:model-value="handleChange"
       />
       <v-text-field
         :model-value="stateValue"

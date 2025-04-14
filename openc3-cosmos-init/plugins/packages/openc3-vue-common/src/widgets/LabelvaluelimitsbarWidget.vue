@@ -36,7 +36,7 @@
       :screen-values="screenValues"
       :widget-index="2"
       :line="line"
-      :lineNumber="lineNumber"
+      :line-number="lineNumber"
     />
   </div>
 </template>
@@ -47,11 +47,11 @@ import LimitsbarWidget from './LimitsbarWidget.vue'
 import Widget from './Widget'
 
 export default {
-  mixins: [Widget],
   components: {
     LabelvalueWidget,
     LimitsbarWidget,
   },
+  mixins: [Widget],
   computed: {
     // Filter the settings to just the ones that apply to LABELVALUE.
     // Normally this is automatically handled by Widget.js computedStyle().

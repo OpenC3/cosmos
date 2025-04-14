@@ -52,19 +52,19 @@
         :items-per-page-options="[3]"
         max-height="400"
       >
-        <template v-slot:item.connect="{ item }">
+        <template #item.connect="{ item }">
           <v-btn color="primary" @click="connectScript(item)">
             <span>Connect</span>
-            <v-icon end v-show="connectInNewTab"> mdi-open-in-new </v-icon>
+            <v-icon v-show="connectInNewTab" end> mdi-open-in-new </v-icon>
           </v-btn>
         </template>
-        <template v-slot:item.stop="{ item }">
+        <template #item.stop="{ item }">
           <v-btn color="primary" @click="stopScript(item)">
             <span>Stop</span>
             <v-icon end> mdi-close-circle-outline </v-icon>
           </v-btn>
         </template>
-        <template v-slot:item.delete="{ item }">
+        <template #item.delete="{ item }">
           <v-btn color="primary" @click="deleteScript(item)">
             <span>Delete</span>
             <v-icon end> mdi-alert-octagon-outline </v-icon>
@@ -101,7 +101,7 @@
         data-test="completed-scripts"
         :items-per-page-options="[5]"
       >
-        <template v-slot:item.view="{ item }">
+        <template #item.view="{ item }">
           <v-btn color="primary" @click="viewScriptLog(item)">
             <span v-if="item.name.includes('(') && item.name.includes(')')">
               Script Report
@@ -110,7 +110,7 @@
             <v-icon right> mdi-eye </v-icon>
           </v-btn>
         </template>
-        <template v-slot:item.download="{ item }">
+        <template #item.download="{ item }">
           <v-btn
             :disabled="downloadScript"
             :loading="downloadScript && downloadScript.name === item.name"
@@ -121,7 +121,7 @@
             </span>
             <span v-else> Script Log </span>
             <v-icon end> mdi-file-download-outline </v-icon>
-            <template v-slot:loader>
+            <template #loader>
               <span> Loading... </span>
             </template>
           </v-btn>
@@ -129,12 +129,12 @@
       </v-data-table>
     </v-card>
     <output-dialog
+      v-if="showDialog"
+      v-model="showDialog"
       :content="dialogContent"
       type="Script"
       :name="dialogName"
       :filename="dialogFilename"
-      v-model="showDialog"
-      v-if="showDialog"
       @submit="showDialog = false"
     />
   </div>
@@ -145,12 +145,12 @@ import { Api } from '@openc3/js-common/services'
 import { OutputDialog } from '@/components'
 
 export default {
+  components: { OutputDialog },
   props: {
     tabId: Number,
     curTab: Number,
     connectInNewTab: Boolean,
   },
-  components: { OutputDialog },
   data() {
     return {
       downloadScript: null,

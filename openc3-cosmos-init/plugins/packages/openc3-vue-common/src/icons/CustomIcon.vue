@@ -44,7 +44,7 @@ export default {
     },
     color: {
       type: String,
-      default: 'white'
+      default: 'white',
     },
   },
   computed: {

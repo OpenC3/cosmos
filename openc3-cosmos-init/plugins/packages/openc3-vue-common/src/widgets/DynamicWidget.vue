@@ -26,13 +26,13 @@
 
 <script>
 export default {
+  props: {
+    name: { default: null },
+  },
   data() {
     return {
       widgetType: null,
     }
-  },
-  props: {
-    name: { default: null },
   },
   computed: {
     url: function () {

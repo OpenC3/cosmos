@@ -22,11 +22,11 @@
 
 <template>
   <graph
-    :ref="'graph' + id"
     :id="id"
+    :ref="'graph' + id"
     :state="state"
     :selected-graph-id="id"
-    :startTime="startTime"
+    :start-time="startTime"
     :seconds-graphed="secondsGraphed"
     :points-saved="pointsSaved"
     :points-graphed="pointsGraphed"
@@ -34,11 +34,11 @@
     :height="size.height"
     :width="size.width"
     :style="computedStyle"
-    :time-zone="this.screenTimeZone"
-    @pause="() => (state = 'pause')"
-    @start="() => (state = 'start')"
+    :time-zone="screenTimeZone"
     hide-toolbar
     hide-overview
+    @pause="() => (state = 'pause')"
+    @start="() => (state = 'start')"
   />
 </template>
 

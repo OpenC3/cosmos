@@ -23,14 +23,14 @@
 <template>
   <div
     v-show="isVisible"
+    ref="rawDialog"
     :style="computedStyle"
     class="raw-dialog"
-    ref="rawDialog"
   >
     <div ref="bar" class="toolbar-wrapper">
       <v-toolbar height="24">
         <v-tooltip location="top">
-          <template v-slot:activator="{ props }">
+          <template #activator="{ props }">
             <div v-bind="props">
               <v-icon data-test="copy-icon" @click="copyRawData">
                 mdi-content-copy
@@ -40,7 +40,7 @@
           <span> Copy </span>
         </v-tooltip>
         <v-tooltip location="top">
-          <template v-slot:activator="{ props }">
+          <template #activator="{ props }">
             <div v-bind="props">
               <v-icon data-test="download" @click="downloadRawData">
                 mdi-download
@@ -53,7 +53,7 @@
         <span> {{ type }} </span>
         <v-spacer />
         <v-tooltip location="top">
-          <template v-slot:activator="{ props }">
+          <template #activator="{ props }">
             <div v-bind="props">
               <v-icon data-test="close" @click="$emit('close')">
                 mdi-close-box
@@ -69,7 +69,7 @@
         <span> {{ header }} </span>
         <v-spacer />
         <v-tooltip location="top">
-          <template v-slot:activator="{ props }">
+          <template #activator="{ props }">
             <div v-bind="props">
               <v-btn
                 :icon="buttonIcon"
@@ -100,8 +100,8 @@
           </v-col>
         </v-row>
         <v-textarea
-          class="pa-0 ma-0"
           v-model="rawData"
+          class="pa-0 ma-0"
           :rows="numRows"
           no-resize
           readonly

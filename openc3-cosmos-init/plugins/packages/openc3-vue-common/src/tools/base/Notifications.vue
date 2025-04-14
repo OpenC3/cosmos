@@ -29,7 +29,7 @@
       :close-on-content-click="false"
       :offset="[12, 102]"
     >
-      <template v-slot:activator="{ props }">
+      <template #activator="{ props }">
         <rux-monitoring-icon
           v-bind="props"
           class="rux-icon"
@@ -47,14 +47,14 @@
           <span> Notifications </span>
           <v-spacer />
           <v-tooltip location="top" open-delay="350">
-            <template v-slot:activator="{ props }">
+            <template #activator="{ props }">
               <v-btn
                 v-bind="props"
                 class="ml-1"
                 icon="mdi-close-box-multiple "
                 variant="text"
-                @click="clearNotifications"
                 data-test="clear-notifications"
+                @click="clearNotifications"
               />
             </template>
             <span> Clear all </span>
@@ -62,9 +62,9 @@
           <v-btn
             icon="astro:settings"
             variant="text"
-            @click="toggleSettingsDialog"
             class="ml-1"
             data-test="notification-settings"
+            @click="toggleSettingsDialog"
           />
         </v-card-title>
         <v-card-text v-if="notifications.length === 0">
@@ -89,10 +89,10 @@
             <v-list-item
               v-else
               :key="`notification-${index}`"
-              @click="openDialog(notification)"
               class="pl-2"
+              @click="openDialog(notification)"
             >
-              <template v-slot:prepend>
+              <template #prepend>
                 <rux-status
                   class="px-2"
                   :status="getStatus(notification.level)"

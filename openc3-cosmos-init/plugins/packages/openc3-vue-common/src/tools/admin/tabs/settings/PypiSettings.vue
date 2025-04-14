@@ -33,14 +33,14 @@
       Saved! (Refresh the page to see changes)
     </v-alert>
     <v-card-text class="pb-0">
-      <v-text-field label="Pypi URL" v-model="pypiUrl" data-test="pypi-url" />
+      <v-text-field v-model="pypiUrl" label="Pypi URL" data-test="pypi-url" />
     </v-card-text>
     <v-card-actions>
       <v-btn
-        @click="save"
         color="success"
         variant="text"
         data-test="save-pypi-url"
+        @click="save"
       >
         Save
       </v-btn>

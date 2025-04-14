@@ -49,13 +49,13 @@
       hover
       data-test="limits-events"
     >
-      <template v-slot:item.time_nsec="{ item }">
+      <template #item.time_nsec="{ item }">
         <span>{{ formatNanoseconds(item.time_nsec, timeZone) }}</span>
       </template>
-      <template v-slot:item.level="{ item }">
+      <template #item.level="{ item }">
         <rux-status :status="getStatus(item.message)"></rux-status>
       </template>
-      <template v-slot:item.message="{ item }">
+      <template #item.message="{ item }">
         <span :class="getColorClass(item.message)">{{ item.message }}</span>
       </template>
     </v-data-table>
@@ -67,6 +67,7 @@ import { Cable } from '@openc3/js-common/services'
 import { TimeFilters } from '@openc3/vue-common/util'
 
 export default {
+  mixins: [TimeFilters],
   props: {
     historyCount: {
       type: Number,
@@ -77,7 +78,6 @@ export default {
       default: 'local',
     },
   },
-  mixins: [TimeFilters],
   data() {
     return {
       data: [],

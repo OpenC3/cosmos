@@ -43,11 +43,11 @@ import LabelWidget from './LabelWidget.vue'
 import LedWidget from './LedWidget.vue'
 
 export default {
-  mixins: [Widget],
   components: {
     LabelWidget,
     LedWidget,
   },
+  mixins: [Widget],
   computed: {
     labelName() {
       // LabelWidget uses index 0 from the parameters prop
