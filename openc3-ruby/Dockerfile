@@ -49,8 +49,11 @@ COPY shoreman.sh /usr/bin/shoreman
 RUN apk update \
   && apk upgrade \
   && apk add --no-cache \
+  autoconf \
+  automake \
   build-base \
   ca-certificates \
+  cmake \
   curl \
   git \
   htop \
@@ -58,6 +61,7 @@ RUN apk update \
   libc6-compat \
   # Ruby 3.2+ no longer bundles libffi so explicitly include
   libffi-dev \
+  libtool \
   libxml2-dev \
   libxslt-dev \
   openblas-dev \
@@ -76,6 +80,7 @@ RUN apk update \
   tini \
   # Ruby 3.2+ no longer bundles libyaml so explicitly include
   yaml-dev \
+  zeromq-dev \
   && gem update --system \
   && gem install rake \
   # These need to be installed with the --platform flag to avoid errors on linux-musl
@@ -83,6 +88,8 @@ RUN apk update \
   # Should be fixed April 2025
   && gem install google-protobuf --platform ruby \
   && gem install grpc --platform ruby \
+  && strip /usr/lib/ruby/gems/3.3.0/gems/grpc-*/src/ruby/ext/grpc/libs/opt/*.a \
+  && rm -rf /usr/lib/ruby/gems/3.3.0/gems/grpc-*/src/ruby/ext/grpc/objs \
   && gem cleanup \
   && bundle config build.nokogiri --use-system-libraries \
   && bundle config git.allow_insecure true \
@@ -98,6 +105,37 @@ RUN apk update \
 
 # Note this is needed to fix pip files disappearing in some build environments
 RUN mv /openc3/pip* /openc3/venv/bin/.
+
+# libsocketcan - used by libcsp - https://github.com/linux-can/libsocketcan
+COPY libsocketcan-0.0.12.tar.gz /opt/libsocketcan-0.0.12.tar.gz
+RUN cd /opt \
+  && tar -xzf libsocketcan-0.0.12.tar.gz \
+  && cd libsocketcan-0.0.12 \
+  && autoreconf --force --install --symlink -Wall \
+  && ./configure \
+  && make \
+  && make install \
+  && cd /opt \
+  && rm -rf libsocketcan-0.0.12 \
+  && rm libsocketcan-0.0.12.tar.gz
+
+# libcsp - https://github.com/libcsp/libcsp
+COPY libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip /opt/libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip
+RUN cd /opt \
+  && unzip libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip \
+  && cd libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632 \
+  # Patches to fix compilation issues
+  && sed -i '1s/^/#include <sys\/select.h>/' src/drivers/can/can_socketcan.c \
+  && sed -i '2s/^/#include <endian.h>/' src/drivers/eth/eth_linux.c \
+  && mkdir build \
+  && cd build \
+  && cmake .. -DCSP_ENABLE_PYTHON3_BINDINGS=ON -DCSP_USR_RTABLE=ON \
+  && make \
+  && make install \
+  && cp libcsp_py3* /usr/lib/python3.12/lib-dynload/. \
+  && cd /opt \
+  && rm -rf libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632 \
+  && rm libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip
 
 # Set user and group
 ENV IMAGE_USER=openc3
