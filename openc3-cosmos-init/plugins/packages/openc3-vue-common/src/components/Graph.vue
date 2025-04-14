@@ -1646,7 +1646,7 @@ export default {
   width: 185px;
 }
 .u-select {
-  color: rgba(255, 255, 255, 0.07);
+  background-color: rgba(255, 255, 255, 0.07);
 }
 </style>
 <style scoped>
