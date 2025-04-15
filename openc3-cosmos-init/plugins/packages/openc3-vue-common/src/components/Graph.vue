@@ -156,7 +156,7 @@
           <template v-slot:activator="{ props }">
             <v-icon
               v-bind="props"
-              @click="$emit('close-graph')"
+              @click.stop="$emit('close-graph')"
               data-test="close-graph-icon"
             >
               mdi-close-box
