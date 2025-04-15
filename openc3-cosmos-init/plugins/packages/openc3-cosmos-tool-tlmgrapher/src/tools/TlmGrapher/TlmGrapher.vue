@@ -89,7 +89,7 @@
     </v-expansion-panel>
   </v-expansion-panels>
 
-  <v-btn v-if="!graphs?.length" text="Add Graph" prepend-icon="mdi-plus" @click="addGraph" />
+  <v-btn v-if="!graphs?.length" class="ma-1" text="Add Graph" prepend-icon="mdi-plus" @click="addGraph" />
   <div class="grid">
     <div
       class="item"
