@@ -625,10 +625,11 @@ i.v-icon.mdi-chevron-down {
   }
 }
 </style>
+
 <style lang="scss" scoped>
 .expansion {
-  padding: 5px;
   background-color: var(--color-background-base-default) !important;
+  padding: 5px;
   padding-bottom: 10px;
 }
 .v-container {
@@ -660,6 +661,7 @@ i.v-icon.mdi-chevron-down {
 .item {
   position: absolute;
   z-index: 1;
+  margin: 0;
 }
 .item.muuri-item-dragging {
   z-index: 3;

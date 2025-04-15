@@ -1119,10 +1119,10 @@ export default {
         }
       }
       // subtract off some arbitrary padding left and right to make the layout work
-      let width = viewWidth - 70
+      let width = viewWidth - 54
       if (!this.fullWidth) {
         // 6px padding left and right defined in TlmGrapher.vue .item-content
-        width = width / 2.0 - 12
+        width = width / 2.0 - 10
       }
       return {
         width: this.width || width,
