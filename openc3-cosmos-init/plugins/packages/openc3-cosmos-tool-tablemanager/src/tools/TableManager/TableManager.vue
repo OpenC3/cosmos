@@ -24,9 +24,9 @@
   <div>
     <top-bar :menus="menus" :title="title" />
     <v-file-input
-      ref="fileInput"
-      v-model="fileInput"
       show-size
+      v-model="fileInput"
+      ref="fileInput"
       accept=".bin"
       data-test="file-input"
       style="position: fixed; top: -100%"
@@ -36,26 +36,26 @@
         <v-row dense>
           <v-col cols="6">
             <v-text-field
-              id="filename"
-              v-model="fullFilename"
               variant="outlined"
               density="compact"
               readonly
               hide-details
               label="Filename"
+              v-model="fullFilename"
+              id="filename"
               class="filename"
               data-test="filename"
             />
           </v-col>
           <v-col cols="6">
             <v-text-field
-              id="definition-filename"
-              v-model="definitionFilename"
               variant="outlined"
               density="compact"
               readonly
               hide-details
               label="Definition"
+              v-model="definitionFilename"
+              id="definition-filename"
               class="filename"
               data-test="definition-filename"
             />
@@ -68,9 +68,9 @@
               dense
               color="primary"
               class="mr-3"
+              @click="downloadBinary(null)"
               :disabled="filename == ''"
               data-test="download-file-binary"
-              @click="downloadBinary(null)"
             >
               Binary
               <v-icon end theme="dark"> mdi-file-code </v-icon>
@@ -79,9 +79,9 @@
               dense
               color="primary"
               class="mr-3"
+              @click="downloadDefinition(null)"
               :disabled="filename == ''"
               data-test="download-file-definition"
-              @click="downloadDefinition(null)"
             >
               Definition
               <v-icon end theme="dark"> mdi-file-document-edit </v-icon>
@@ -89,9 +89,9 @@
             <v-btn
               dense
               color="primary"
+              @click="downloadReport(null)"
               :disabled="filename == ''"
               data-test="download-file-report"
-              @click="downloadReport(null)"
             >
               Report
               <v-icon end theme="dark"> mdi-file-document </v-icon>
@@ -101,9 +101,9 @@
             <v-btn
               dense
               color="primary"
+              @click="upload()"
               :disabled="!uploadScript"
               data-test="upload-file"
-              @click="upload()"
             >
               Upload
               <v-icon end theme="dark"> mdi-file-upload </v-icon>
@@ -113,9 +113,9 @@
             <v-btn
               dense
               color="primary"
+              @click="download()"
               :disabled="!downloadScript"
               data-test="download-file"
-              @click="download()"
             >
               Download
               <v-icon end theme="dark"> mdi-file-download </v-icon>
@@ -123,7 +123,7 @@
           </v-col>
           <v-col cols="auto">
             <v-tooltip location="top">
-              <template #activator="{ props }">
+              <template v-slot:activator="{ props }">
                 <span v-bind="props">
                   <v-checkbox
                     v-model="scriptBackground"
@@ -153,12 +153,12 @@
           class="search"
         />
       </v-card-title>
-      <v-tabs :key="`v-tabs_${tables.length}`" v-model="curTab">
+      <v-tabs v-model="curTab" :key="`v-tabs_${tables.length}`">
         <v-tab v-for="(table, index) in tables" :key="index">
           {{ table.name }}
         </v-tab>
       </v-tabs>
-      <v-tabs-window :key="`v-tabs-window_${tables.length}`" v-model="curTab">
+      <v-tabs-window v-model="curTab" :key="`v-tabs-window_${tables.length}`">
         <v-tabs-window-item
           v-for="(table, index) in tables"
           :key="`${filename}${index}`"
@@ -173,23 +173,23 @@
             density="compact"
             :data-test="table.name"
           >
-            <template #item="{ item }">
+            <template v-slot:item="{ item }">
               <table-row
-                :key="item[0].name"
                 :items="item"
+                :key="item[0].name"
                 @change.self="onChange(item, $event)"
               />
             </template>
-            <template v-if="tables.length > 1" #tfoot>
+            <template v-slot:tfoot v-if="tables.length > 1">
               <div style="position: absolute" class="ma-3">
                 <span class="text-body-1 mr-3">Table Download:</span>
                 <v-btn
                   dense
                   color="primary"
                   class="mr-3"
+                  @click="downloadBinary(table.name)"
                   :disabled="filename == ''"
                   data-test="download-table-binary"
-                  @click="downloadBinary(table.name)"
                 >
                   Binary
                   <v-icon end theme="dark"> mdi-file-code </v-icon>
@@ -198,9 +198,9 @@
                   dense
                   color="primary"
                   class="mr-3"
+                  @click="downloadDefinition(table.name)"
                   :disabled="filename == ''"
                   data-test="download-table-definition"
-                  @click="downloadDefinition(table.name)"
                 >
                   Definition
                   <v-icon end theme="dark"> mdi-file-document-edit </v-icon>
@@ -208,9 +208,9 @@
                 <v-btn
                   dense
                   color="primary"
+                  @click="downloadReport(table.name)"
                   :disabled="filename == ''"
                   data-test="download-table-report"
-                  @click="downloadReport(table.name)"
                 >
                   Report
                   <v-icon end theme="dark"> mdi-file-document </v-icon>

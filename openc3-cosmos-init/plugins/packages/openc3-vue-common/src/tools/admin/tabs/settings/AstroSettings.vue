@@ -29,14 +29,14 @@
       Saved! (Refresh the page to see changes)
     </v-alert>
     <v-card-text class="pb-0">
-      <v-switch v-model="hideClock" label="Hide Astro Clock" color="primary" />
+      <v-switch label="Hide Astro Clock" v-model="hideClock" color="primary" />
     </v-card-text>
     <v-card-actions>
       <v-btn
+        @click="save"
         color="success"
         variant="text"
         data-test="save-astro-settings"
-        @click="save"
       >
         Save
       </v-btn>

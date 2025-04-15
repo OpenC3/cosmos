@@ -25,8 +25,8 @@
     <top-bar :menus="menus" :title="title" />
     <limits-control
       ref="control"
-      :key="renderKey"
       v-model="ignored"
+      :key="renderKey"
       :time-zone="timeZone"
     />
     <div style="height: 15px" />
@@ -35,14 +35,14 @@
     <open-config-dialog
       v-if="openConfig"
       v-model="openConfig"
-      :config-key="configKey"
+      :configKey="configKey"
       @success="openConfiguration"
     />
     <!-- Note we're using v-if here so it gets re-created each time and refreshes the list -->
     <save-config-dialog
       v-if="saveConfig"
       v-model="saveConfig"
-      :config-key="configKey"
+      :configKey="configKey"
       @success="saveConfiguration"
     />
     <v-dialog v-model="limitsSetDialog" max-width="650">
@@ -62,9 +62,9 @@
             based on the new set.
           </span>
           <v-select
-            v-model="currentLimitsSet"
             label="Limits Set"
             :items="limitsSets"
+            v-model="currentLimitsSet"
             density="compact"
             variant="outlined"
             data-test="limits-set"

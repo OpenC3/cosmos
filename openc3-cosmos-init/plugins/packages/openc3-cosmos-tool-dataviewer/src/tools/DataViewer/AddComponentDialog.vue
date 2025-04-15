@@ -37,13 +37,13 @@
               <v-col>Select Component:</v-col>
               <v-col>
                 <v-select
-                  v-model="selectedComponent"
                   hide-details
                   density="compact"
                   variant="outlined"
                   :items="components"
                   item-title="label"
                   item-value="value"
+                  v-model="selectedComponent"
                   return-object
                   data-test="select-component"
                 />
@@ -76,10 +76,10 @@
             <v-row>
               <v-col>
                 <target-packet-item-chooser
+                  @add-item="addValue"
                   :button-text="chooseItem ? 'Add Item' : 'Add Packet'"
                   :mode="newPacketCmdOrTlm"
-                  :choose-item="chooseItem"
-                  @add-item="addValue"
+                  :chooseItem="chooseItem"
                 />
               </v-col>
             </v-row>
@@ -114,17 +114,17 @@
             <v-row
               ><v-col>
                 <v-data-table
-                  v-model:items-per-page="itemsPerPage"
                   :headers="headers"
                   :items="packets"
+                  v-model:items-per-page="itemsPerPage"
                   :items-per-page-options="[10, 100]"
                   multi-sort
                   density="compact"
                 >
-                  <template #item.delete="{ item }">
+                  <template v-slot:item.delete="{ item }">
                     <v-tooltip location="top">
-                      <template #activator="{ props }">
-                        <v-icon v-bind="props" @click="deleteItem(item)">
+                      <template v-slot:activator="{ props }">
+                        <v-icon @click="deleteItem(item)" v-bind="props">
                           mdi-delete
                         </v-icon>
                       </template>

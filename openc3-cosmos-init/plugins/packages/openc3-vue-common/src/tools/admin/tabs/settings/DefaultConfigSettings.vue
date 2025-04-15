@@ -44,10 +44,10 @@
     <v-card-actions class="px-2">
       <v-btn
         :disabled="!selectedLastConfigs.length"
+        @click="clearLastConfigs"
         color="warning"
         variant="text"
         data-test="clear-default-configs"
-        @click="clearLastConfigs"
       >
         Clear
       </v-btn>

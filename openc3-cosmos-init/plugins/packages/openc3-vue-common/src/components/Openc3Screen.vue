@@ -24,17 +24,12 @@
 -->
 
 <template>
-  <div ref="bar" :style="computedStyle">
-    <v-card
-      v-if="!inline"
-      :min-height="height"
-      :min-width="width"
-      style="cursor: default"
-    >
+  <div :style="computedStyle" ref="bar">
+    <v-card v-if="!inline" :min-height="height" :min-width="width" style="cursor: default">
       <v-toolbar height="24">
         <div v-show="errors.length !== 0">
           <v-tooltip location="top">
-            <template #activator="{ props }">
+            <template v-slot:activator="{ props }">
               <div v-bind="props">
                 <v-icon
                   data-test="error-graph-icon"
@@ -48,7 +43,7 @@
           </v-tooltip>
         </div>
         <v-tooltip location="top">
-          <template #activator="{ props }">
+          <template v-slot:activator="{ props }">
             <div v-bind="props">
               <v-icon data-test="edit-screen-icon" @click="openEdit">
                 mdi-pencil
@@ -57,8 +52,8 @@
           </template>
           <span> Edit Screen </span>
         </v-tooltip>
-        <v-tooltip v-if="!fixFloated" location="top">
-          <template #activator="{ props }">
+        <v-tooltip location="top" v-if="!fixFloated">
+          <template v-slot:activator="{ props }">
             <div v-bind="props">
               <v-icon data-test="float-screen-icon" @click="floatScreen">
                 {{ floated ? 'mdi-balloon' : 'mdi-view-grid-outline' }}
@@ -67,8 +62,8 @@
           </template>
           <span> {{ floated ? 'Unfloat Screen' : 'Float Screen' }} </span>
         </v-tooltip>
-        <v-tooltip v-if="floated" location="top">
-          <template #activator="{ props }">
+        <v-tooltip location="top" v-if="floated">
+          <template v-slot:activator="{ props }">
             <div v-bind="props">
               <v-icon data-test="up-screen-icon" @click="upScreen">
                 mdi-arrow-up
@@ -77,8 +72,8 @@
           </template>
           <span> Move Screen Up </span>
         </v-tooltip>
-        <v-tooltip v-if="floated && zIndex > minZ" location="top">
-          <template #activator="{ props }">
+        <v-tooltip location="top" v-if="floated && zIndex > minZ">
+          <template v-slot:activator="{ props }">
             <div v-bind="props">
               <v-icon data-test="down-screen-icon" @click="downScreen">
                 mdi-arrow-down
@@ -91,19 +86,19 @@
         <span> {{ target }} {{ screen }} </span>
         <v-spacer />
         <v-tooltip location="top">
-          <template #activator="{ props }">
+          <template v-slot:activator="{ props }">
             <div v-bind="props">
               <v-icon
-                v-show="expand"
                 data-test="minimize-screen-icon"
                 @click="minMaxTransition"
+                v-show="expand"
               >
                 mdi-window-minimize
               </v-icon>
               <v-icon
-                v-show="!expand"
                 data-test="maximize-screen-icon"
                 @click="minMaxTransition"
+                v-show="!expand"
               >
                 mdi-window-maximize
               </v-icon>
@@ -113,7 +108,7 @@
           <span v-show="!expand"> Maximize Screen </span>
         </v-tooltip>
         <v-tooltip v-if="showClose" location="top">
-          <template #activator="{ props }">
+          <template v-slot:activator="{ props }">
             <div v-bind="props">
               <v-icon
                 data-test="close-screen-icon"
@@ -128,10 +123,10 @@
       </v-toolbar>
       <v-expand-transition v-if="!editDialog">
         <div
-          v-show="expand"
-          ref="screen"
           class="pa-1"
           style="position: relative"
+          ref="screen"
+          v-show="expand"
         >
           <v-overlay
             style="pointer-events: none"
@@ -145,17 +140,21 @@
             :widgets="layoutStack[0].widgets"
             :screen-values="screenValues"
             :screen-time-zone="timeZone"
-            @add-item="addItem"
-            @delete-item="deleteItem"
-            @open="open"
-            @close="close"
-            @close-all="closeAll"
+            v-on:add-item="addItem"
+            v-on:delete-item="deleteItem"
+            v-on:open="open"
+            v-on:close="close"
+            v-on:close-all="closeAll"
           />
         </div>
       </v-expand-transition>
     </v-card>
 
-    <div v-if="inline" class="pa-1" style="position: relative">
+    <div
+      class="pa-1"
+      style="position: relative"
+      v-if="inline"
+    >
       <v-overlay
         style="pointer-events: none"
         :model-value="errors.length !== 0"
@@ -168,11 +167,11 @@
         :widgets="layoutStack[0].widgets"
         :screen-values="screenValues"
         :screen-time-zone="timeZone"
-        @add-item="addItem"
-        @delete-item="deleteItem"
-        @open="open"
-        @close="close"
-        @close-all="closeAll"
+        v-on:add-item="addItem"
+        v-on:delete-item="deleteItem"
+        v-on:open="open"
+        v-on:close="close"
+        v-on:close-all="closeAll"
       />
     </div>
 
@@ -212,10 +211,10 @@ import EditScreenDialog from './EditScreenDialog.vue'
 const MAX_ERRORS = 20
 
 export default {
+  mixins: [WidgetComponents],
   components: {
     EditScreenDialog,
   },
-  mixins: [WidgetComponents],
   props: {
     target: {
       type: String,
@@ -312,6 +311,14 @@ export default {
       screenId: uniqueId('openc3-screen_'),
     }
   },
+  watch: {
+    count: {
+      handler(newValue, oldValue) {
+        this.currentDefinition = this.definition
+        this.rerender()
+      },
+    },
+  },
   computed: {
     error: function () {
       if (this.errorDialog && this.errors.length > 0) {
@@ -340,14 +347,6 @@ export default {
         style['width'] = origWidth + 'px'
       }
       return style
-    },
-  },
-  watch: {
-    count: {
-      handler(newValue, oldValue) {
-        this.currentDefinition = this.definition
-        this.rerender()
-      },
     },
   },
   // Called when an error from any descendent component is captured

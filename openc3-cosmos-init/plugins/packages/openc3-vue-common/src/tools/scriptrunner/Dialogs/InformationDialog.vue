@@ -31,7 +31,7 @@
       </v-toolbar>
       <div class="pa-2">
         <v-card-text>
-          <v-row v-for="(line, index) in text" :key="index" no-gutters>
+          <v-row no-gutters v-for="(line, index) in text" :key="index">
             <span style="white-space: pre-line" v-text="line" />
           </v-row>
         </v-card-text>

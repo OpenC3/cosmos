@@ -34,9 +34,9 @@
       </v-card-subtitle>
       <v-card-text class="pb-0 ml-2">
         <v-text-field
-          v-model="redisCommandText"
           label="Redis command"
           class="monospace"
+          v-model="redisCommandText"
           @keydown="commandKeydown"
         />
         <span v-if="redisResponse" class="monospace">
@@ -46,9 +46,9 @@
       <v-card-actions class="px-2">
         <v-btn
           :disabled="!redisCommandText.length"
+          @click="executeRaw"
           color="success"
           variant="text"
-          @click="executeRaw"
         >
           Execute
         </v-btn>

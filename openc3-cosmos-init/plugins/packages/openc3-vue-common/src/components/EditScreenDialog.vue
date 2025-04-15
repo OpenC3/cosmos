@@ -18,12 +18,12 @@
 
 <template>
   <!-- Edit dialog -->
-  <v-dialog v-model="show" persistent width="75vw">
+  <v-dialog persistent v-model="show" width="75vw">
     <v-card>
       <v-toolbar height="24">
         <div class="mx-2">
           <v-tooltip location="top">
-            <template #activator="{ props }">
+            <template v-slot:activator="{ props }">
               <div v-bind="props">
                 <v-icon data-test="delete-screen-icon" @click="deleteScreen">
                   mdi-delete
@@ -38,7 +38,7 @@
         <v-spacer />
         <div class="mx-2">
           <v-tooltip location="top">
-            <template #activator="{ props }">
+            <template v-slot:activator="{ props }">
               <div v-bind="props">
                 <v-icon
                   data-test="download-screen-icon"
@@ -56,11 +56,11 @@
         <v-row class="mt-3"> Upload a screen file. </v-row>
         <v-row no-gutters align="center">
           <v-btn
+            @click="loadFile"
             :disabled="!file"
             color="primary"
             class="mr-3"
             data-test="edit-screen-load"
-            @click="loadFile"
           >
             Load
           </v-btn>
@@ -107,18 +107,18 @@
           >
           <v-spacer />
           <v-btn
+            @click="$emit('cancel')"
             class="mx-2"
             variant="outlined"
             data-test="edit-screen-cancel"
-            @click="$emit('cancel')"
           >
             Cancel
           </v-btn>
           <v-btn
+            @click="$emit('save', editor.getValue())"
             class="mx-2"
             color="primary"
             data-test="edit-screen-save"
-            @click="$emit('save', editor.getValue())"
           >
             Save
           </v-btn>

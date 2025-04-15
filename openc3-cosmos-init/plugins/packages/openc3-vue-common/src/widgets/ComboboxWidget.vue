@@ -22,11 +22,11 @@
 
 <template>
   <v-select
-    v-model="value"
     hide-details
     density="compact"
     variant="outlined"
     :items="items"
+    v-model="value"
     :style="computedStyle"
   >
   </v-select>

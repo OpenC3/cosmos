@@ -24,8 +24,8 @@
   <div>
     <v-navigation-drawer
       v-if="!chromeless"
-      id="openc3-nav-drawer"
       :model-value="drawer"
+      id="openc3-nav-drawer"
     >
       <img :src="logo" class="logo" alt="OpenC3" />
       <div class="cosmos" @click="showUpgradeToEnterpriseDialog = true">
@@ -39,9 +39,9 @@
           block
           size="small"
           :href="tool.url"
+          @click.prevent="() => navigateToUrl(tool.url)"
           class="fixcenter"
           color="primary"
-          @click.prevent="() => navigateToUrl(tool.url)"
         >
           Admin Console
         </v-btn>
@@ -55,7 +55,7 @@
         open-on-click
       >
         <!-- Beginning Icon -->
-        <template #prepend="{ item }">
+        <template v-slot:prepend="{ item }">
           <template v-if="item.icon">
             <a
               v-if="item.window === 'INLINE'"
@@ -71,7 +71,7 @@
         </template>
 
         <!-- Link Text -->
-        <template #title="{ item }">
+        <template v-slot:title="{ item }">
           <!-- Category has no Icon -->
           <a
             v-if="!item.icon"
@@ -111,7 +111,7 @@
         </template>
 
         <!-- New Tab Link -->
-        <template #append="{ item }">
+        <template v-slot:append="{ item }">
           <a v-if="item.icon" :href="newTabUrl(item)" target="_blank">
             <v-icon>mdi-open-in-new</v-icon>
           </a>

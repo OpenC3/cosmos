@@ -4,7 +4,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "lint": "eslint src",
     "build": "vite build -c vite-HelloworldWidget.config.js && vite build -c vite-BigWidget.config.js && vite build -c vite-DataviewerquaternionWidget.config.js && vite build -c vite-DataviewertimeWidget.config.js"
   },
   "dependencies": {

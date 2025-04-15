@@ -41,11 +41,11 @@
             {{ microservice_status[microservice.name].count }}
           </v-list-item-subtitle>
 
-          <template #append>
+          <template v-slot:append>
             <div v-if="microservice_status[microservice.name]">
               <div v-show="!!microservice_status[microservice.name].error">
                 <v-tooltip location="top">
-                  <template #activator="{ props }">
+                  <template v-slot:activator="{ props }">
                     <v-icon
                       v-bind="props"
                       @click="showMicroserviceError(microservice.name)"
@@ -59,10 +59,10 @@
             </div>
             <v-list-item-icon class="mr-3">
               <v-tooltip bottom>
-                <template #activator="{ on, attrs }">
+                <template v-slot:activator="{ on, attrs }">
                   <v-icon
-                    v-bind="attrs"
                     @click="startMicroservice(microservice.name)"
+                    v-bind="attrs"
                     v-on="on"
                   >
                     mdi-play
@@ -73,10 +73,10 @@
             </v-list-item-icon>
             <v-list-item-icon class="mr-3">
               <v-tooltip bottom>
-                <template #activator="{ on, attrs }">
+                <template v-slot:activator="{ on, attrs }">
                   <v-icon
-                    v-bind="attrs"
                     @click="stopMicroservice(microservice.name)"
+                    v-bind="attrs"
                     v-on="on"
                   >
                     mdi-stop
@@ -87,10 +87,10 @@
             </v-list-item-icon>
             <v-list-item-icon>
               <v-tooltip bottom>
-                <template #activator="{ on, attrs }">
+                <template v-slot:activator="{ on, attrs }">
                   <v-icon
-                    v-bind="attrs"
                     @click="showMicroservice(microservice.name)"
+                    v-bind="attrs"
                     v-on="on"
                   >
                     mdi-eye
@@ -105,16 +105,16 @@
       </div>
     </v-list>
     <output-dialog
-      v-if="showDialog"
       v-model="showDialog"
+      v-if="showDialog"
       :content="jsonContent"
       type="Microservice"
       :name="dialogTitle"
       @submit="dialogCallback"
     />
     <text-box-dialog
-      v-if="showError"
       v-model="showError"
+      v-if="showError"
       :text="jsonContent"
       :title="dialogTitle"
     />

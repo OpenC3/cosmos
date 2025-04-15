@@ -22,14 +22,14 @@
 
 <template>
   <div>
-    <v-dialog v-model="show" persistent width="80vw">
+    <v-dialog persistent v-model="show" width="80vw">
       <v-card>
         <v-toolbar height="24">
           <v-spacer />
           <span v-if="newMetadata">Metadata</span><span v-else>Events</span>
           <v-spacer />
           <v-tooltip location="top">
-            <template #activator="{ props }">
+            <template v-slot:activator="{ props }">
               <div v-bind="props">
                 <v-icon data-test="close-metadata-icon" @click="close">
                   mdi-close-box
@@ -59,34 +59,34 @@
           :items="localEvents"
           :search="search"
         >
-          <template #no-data>
+          <template v-slot:no-data>
             <span> No events </span>
           </template>
-          <template #item.start="{ item }">
+          <template v-slot:item.start="{ item }">
             {{ formatDateTime(item.start, timeZone) }}
           </template>
-          <template #item.end="{ item }">
+          <template v-slot:item.end="{ item }">
             {{ formatDateTime(item.end, timeZone) }}
           </template>
-          <template #item.type="{ item }">
+          <template v-slot:item.type="{ item }">
             {{ item.type.charAt(0).toUpperCase() + item.type.slice(1) }}
           </template>
-          <template #item.data="{ item }">
+          <template v-slot:item.data="{ item }">
             {{ dataFormat(item) }}
           </template>
-          <template #item.actions="{ item }">
+          <template v-slot:item.actions="{ item }">
             <v-icon
               size="small"
               class="mr-2"
-              data-test="edit-event"
               @click="editAction(item)"
+              data-test="edit-event"
             >
               mdi-pencil
             </v-icon>
             <v-icon
               size="small"
-              data-test="delete-event"
               @click="deleteAction(item)"
+              data-test="delete-event"
             >
               mdi-delete
             </v-icon>

@@ -21,16 +21,16 @@
 -->
 
 <template>
-  <v-dialog v-model="show" :persistent="!readonly" width="80vw">
+  <v-dialog :persistent="!readonly" v-model="show" width="80vw">
     <v-card>
-      <form @submit.prevent="submit">
+      <form v-on:submit.prevent="submit">
         <v-toolbar height="24">
           <v-spacer />
           <span v-text="title" />
           <v-spacer />
           <div class="mx-2">
             <v-tooltip location="top">
-              <template #activator="{ props }">
+              <template v-slot:activator="{ props }">
                 <div v-bind="props">
                   <v-icon data-test="downloadIcon" @click="download">
                     mdi-download
@@ -51,13 +51,13 @@
                   <v-btn
                     block
                     color="success"
+                    @click="loadFile"
                     :disabled="!file || loadingFile || readonly"
                     :loading="loadingFile"
                     data-test="editScreenLoadBtn"
-                    @click="loadFile"
                   >
                     Load
-                    <template #loader>
+                    <template v-slot:loader>
                       <span>Loading...</span>
                     </template>
                   </v-btn>
@@ -74,8 +74,8 @@
             </div>
             <v-row no-gutters>
               <pre
-                ref="editor"
                 class="editor"
+                ref="editor"
                 @contextmenu.prevent="showContextMenu"
               ></pre>
               <v-menu v-model="contextMenu" :target="[menuX, menuY]">
@@ -89,15 +89,15 @@
               </v-menu>
             </v-row>
             <v-row class="my-3">
-              <span v-show="error" class="text-red" v-text="error" />
+              <span class="text-red" v-show="error" v-text="error" />
             </v-row>
             <v-row>
               <v-spacer />
               <v-btn
+                @click.prevent="close"
                 variant="outlined"
                 class="mx-2"
                 data-test="editCancelBtn"
-                @click.prevent="close"
               >
                 Cancel
               </v-btn>
@@ -147,25 +147,6 @@ export default {
       menuY: 0,
     }
   },
-  computed: {
-    show: {
-      get() {
-        return this.modelValue
-      },
-      set(value) {
-        this.$emit('update:modelValue', value)
-      },
-    },
-    title: function () {
-      return `${this.type}: ${this.name}`
-    },
-    error: function () {
-      if (this.editor && this.editor.getValue() === '' && !this.file) {
-        return 'Input can not be blank.'
-      }
-      return null
-    },
-  },
   mounted() {
     const openPluginMode = this.buildPluginMode()
     this.editor = ace.edit(this.$refs.editor)
@@ -187,6 +168,25 @@ export default {
     if (this.editor) {
       this.editor.destroy()
     }
+  },
+  computed: {
+    show: {
+      get() {
+        return this.modelValue
+      },
+      set(value) {
+        this.$emit('update:modelValue', value)
+      },
+    },
+    title: function () {
+      return `${this.type}: ${this.name}`
+    },
+    error: function () {
+      if (this.editor && this.editor.getValue() === '' && !this.file) {
+        return 'Input can not be blank.'
+      }
+      return null
+    },
   },
   methods: {
     submit: function () {

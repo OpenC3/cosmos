@@ -24,9 +24,9 @@
   <div ref="container" :style="computedStyle" class="overflow-y-auto">
     <component
       v-bind="listeners"
-      :is="widget.type"
       v-for="(widget, index) in widgets"
       :key="index"
+      :is="widget.type"
       :target="widget.target"
       :parameters="widget.parameters"
       :settings="widget.settings"
@@ -45,10 +45,10 @@ import Layout from './Layout'
 import VerticalWidget from './VerticalWidget.vue'
 
 export default {
+  mixins: [Layout],
   components: {
     VerticalWidget,
   },
-  mixins: [Layout],
   created: function () {
     this.setHeight(this.parameters[0], 'px', 200)
     if (this.parameters[1]) {

@@ -46,10 +46,10 @@
     </v-card-text>
     <v-card-actions>
       <v-btn
+        @click="save"
         color="success"
         variant="text"
         data-test="save-time-zone"
-        @click="save"
       >
         Save
       </v-btn>

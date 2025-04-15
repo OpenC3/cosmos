@@ -33,14 +33,14 @@
       Saved! (Refresh the page to see changes)
     </v-alert>
     <v-card-text class="pb-0">
-      <v-text-field v-model="subtitle" label="Subtitle" data-test="subtitle" />
+      <v-text-field label="Subtitle" v-model="subtitle" data-test="subtitle" />
     </v-card-text>
     <v-card-actions>
       <v-btn
+        @click="save"
         color="success"
         variant="text"
         data-test="save-subtitle"
-        @click="save"
       >
         Save
       </v-btn>

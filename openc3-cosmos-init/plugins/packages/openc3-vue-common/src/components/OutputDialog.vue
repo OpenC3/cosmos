@@ -29,7 +29,7 @@
         <v-spacer />
         <div class="mx-2">
           <v-tooltip location="top">
-            <template #activator="{ props }">
+            <template v-slot:activator="{ props }">
               <div v-bind="props">
                 <v-icon data-test="downloadIcon" @click="download">
                   mdi-download
@@ -41,7 +41,7 @@
         </div>
       </v-toolbar>
       <v-card-text>
-        <pre ref="editor" class="editor"></pre>
+        <pre class="editor" ref="editor"></pre>
       </v-card-text>
       <v-card-actions class="pr-6 pb-4 pt-0">
         <v-spacer />
@@ -55,7 +55,6 @@
 import { AceEditorModes } from './ace'
 
 export default {
-  mixins: [AceEditorModes],
   props: {
     content: {
       type: String,
@@ -69,24 +68,12 @@ export default {
       required: false,
     },
   },
+  mixins: [AceEditorModes],
   data() {
     return {
       editor: null,
       mode: null,
     }
-  },
-  computed: {
-    show: {
-      get() {
-        return this.modelValue
-      },
-      set(value) {
-        this.$emit('update:modelValue', value)
-      },
-    },
-    title: function () {
-      return `${this.type}: ${this.name}`
-    },
   },
   mounted() {
     this.editor = ace.edit(this.$refs.editor)
@@ -130,6 +117,19 @@ export default {
     if (this.editor) {
       this.editor.destroy()
     }
+  },
+  computed: {
+    show: {
+      get() {
+        return this.modelValue
+      },
+      set(value) {
+        this.$emit('update:modelValue', value)
+      },
+    },
+    title: function () {
+      return `${this.type}: ${this.name}`
+    },
   },
   methods: {
     close: function () {

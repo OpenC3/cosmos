@@ -27,7 +27,7 @@
       <v-expansion-panel>
         <v-expansion-panel-title style="z-index: 1"></v-expansion-panel-title>
         <v-expansion-panel-text>
-          <div v-show="selectedGraphId === null">
+          <div v-show="this.selectedGraphId === null">
             <v-row class="my-5">
               <v-spacer />
               <span>
@@ -38,16 +38,16 @@
             </v-row>
           </div>
 
-          <v-container v-show="selectedGraphId !== null">
+          <v-container v-show="this.selectedGraphId !== null">
             <target-packet-item-chooser
-              :initial-target-name="$route.params.target"
-              :initial-packet-name="$route.params.packet"
-              :initial-item-name="$route.params.item"
+              :initial-target-name="this.$route.params.target"
+              :initial-packet-name="this.$route.params.packet"
+              :initial-item-name="this.$route.params.item"
+              @addItem="addItem"
               button-text="Add Item"
               choose-item
               select-types
               show-latest
-              @add-item="addItem"
             />
             <!-- All this row / col stuff is to setup a structure similar to the
                  target-packet-item-chooser so it will layout the same -->
@@ -59,28 +59,28 @@
                 <v-btn
                   v-show="state === 'pause'"
                   class="pulse"
-                  color="primary"
-                  data-test="start-graph"
-                  icon="mdi-play"
-                  size="large"
-                  @click="
+                  v-on:click="
                     () => {
                       state = 'start'
                     }
                   "
+                  color="primary"
+                  data-test="start-graph"
+                  icon="mdi-play"
+                  size="large"
                 >
                 </v-btn>
                 <v-btn
                   v-show="state === 'start'"
-                  color="primary"
-                  data-test="pause-graph"
-                  icon="mdi-pause"
-                  size="large"
-                  @click="
+                  v-on:click="
                     () => {
                       state = 'pause'
                     }
                   "
+                  color="primary"
+                  data-test="pause-graph"
+                  icon="mdi-pause"
+                  size="large"
                 />
                 <v-spacer />
               </v-col>
@@ -92,16 +92,16 @@
     <div>
       <div class="grid">
         <div
-          v-for="graph in graphs"
-          :id="`gridItem${graph}`"
-          :key="graph"
-          :ref="`gridItem${graph}`"
           class="item"
+          v-for="graph in graphs"
+          :key="graph"
+          :id="`gridItem${graph}`"
+          :ref="`gridItem${graph}`"
         >
           <div class="item-content">
             <graph
-              :id="graph"
               :ref="`graph${graph}`"
+              :id="graph"
               :state="state"
               :start-time="startTime"
               :selected-graph-id="selectedGraphId"
@@ -127,14 +127,14 @@
     <open-config-dialog
       v-if="showOpenConfig"
       v-model="showOpenConfig"
-      :config-key="configKey"
+      :configKey="configKey"
       @success="openConfiguration"
     />
     <!-- Note we're using v-if here so it gets re-created each time and refreshes the list -->
     <save-config-dialog
       v-if="showSaveConfig"
       v-model="showSaveConfig"
-      :config-key="configKey"
+      :configKey="configKey"
       @success="saveConfiguration"
     />
     <!-- Note we're using v-if here so it gets re-created each time and refreshes the list -->
@@ -296,6 +296,17 @@ export default {
       },
     }
   },
+  watch: {
+    settings: {
+      handler: function () {
+        this.saveDefaultConfig(this.currentConfig)
+      },
+      deep: true,
+    },
+    panel: function () {
+      this.resizeAll()
+    },
+  },
   computed: {
     currentConfig: function () {
       return {
@@ -329,17 +340,6 @@ export default {
           return config
         }),
       }
-    },
-  },
-  watch: {
-    settings: {
-      handler: function () {
-        this.saveDefaultConfig(this.currentConfig)
-      },
-      deep: true,
-    },
-    panel: function () {
-      this.resizeAll()
     },
   },
   created() {

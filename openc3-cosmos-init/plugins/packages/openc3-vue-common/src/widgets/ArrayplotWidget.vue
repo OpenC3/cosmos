@@ -17,7 +17,7 @@
 -->
 
 <template>
-  <div :id="`chart${id}`" class="pa-1"></div>
+  <div class="pa-1" :id="`chart${id}`"></div>
 </template>
 
 <script>
@@ -27,7 +27,6 @@ import { Cable } from '@openc3/js-common/services'
 import GraphWidget from './GraphWidget'
 
 export default {
-  mixins: [GraphWidget],
   data: function () {
     return {
       items: [],
@@ -64,20 +63,7 @@ export default {
       ],
     }
   },
-  computed: {
-    dataOnly() {
-      return this.data[1] // Ignore the x axis data
-    },
-  },
-  watch: {
-    // This is always firing even when the data is the same
-    // Is it because we're setting the whole array data[1]?
-    dataOnly: function () {
-      if (this.graph) {
-        this.graph.setData(this.data)
-      }
-    },
-  },
+  mixins: [GraphWidget],
   created() {
     for (const [index, item] of this.items.entries()) {
       this.data.push([]) // initialize the empty data arrays
@@ -164,6 +150,20 @@ export default {
   },
   beforeUnmount: function () {
     this.cable.disconnect()
+  },
+  computed: {
+    dataOnly() {
+      return this.data[1] // Ignore the x axis data
+    },
+  },
+  watch: {
+    // This is always firing even when the data is the same
+    // Is it because we're setting the whole array data[1]?
+    dataOnly: function () {
+      if (this.graph) {
+        this.graph.setData(this.data)
+      }
+    },
   },
   methods: {
     subscribe: function () {

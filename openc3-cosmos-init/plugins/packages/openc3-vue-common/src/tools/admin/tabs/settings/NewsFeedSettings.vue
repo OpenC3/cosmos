@@ -30,18 +30,18 @@
     </v-alert>
     <v-card-text class="pb-0">
       <v-switch
-        v-model="newsFeed"
         label="Allow COSMOS backend to pull the news feed from the COSMOS external news site.
         This is a low bandwidth poll which only happens every 12 hrs. To immediately update the news feed, click the 'Refresh' in the User Menu."
+        v-model="newsFeed"
         color="primary"
       />
     </v-card-text>
     <v-card-actions>
       <v-btn
+        @click="save"
         color="success"
         variant="text"
         data-test="save-news-feed"
-        @click="save"
       >
         Save
       </v-btn>

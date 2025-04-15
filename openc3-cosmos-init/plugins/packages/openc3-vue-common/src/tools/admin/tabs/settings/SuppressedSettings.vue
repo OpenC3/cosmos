@@ -44,10 +44,10 @@
     <v-card-actions class="px-2">
       <v-btn
         :disabled="!selectedSuppressedWarnings.length"
+        @click="resetSuppressedWarnings"
         color="warning"
         variant="text"
         data-test="reset-suppressed-warnings"
-        @click="resetSuppressedWarnings"
       >
         Reset
       </v-btn>

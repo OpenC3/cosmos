@@ -47,7 +47,7 @@
       multi-sort
       data-test="routers-table"
     >
-      <template #item.connect="{ item }">
+      <template v-slot:item.connect="{ item }">
         <v-btn
           block
           color="primary"
@@ -57,7 +57,7 @@
           {{ item.connect }}
         </v-btn>
       </template>
-      <template #item.connected="{ item }">
+      <template v-slot:item.connected="{ item }">
         <span :class="item.connectedClass">
           {{ item.connected }}
         </span>

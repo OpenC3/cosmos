@@ -31,7 +31,7 @@
     >
       <v-icon> mdi-{{ alertType }} </v-icon>
       {{ alertText }}
-      <template #actions="{ attrs }">
+      <template v-slot:actions="{ attrs }">
         <v-btn variant="text" v-bind="attrs" @click="showAlert = false">
           Close
         </v-btn>
@@ -45,13 +45,13 @@
     >
       <v-icon> mdi-pencil-off </v-icon>
       {{ lockedBy }} is editing this script. Editor is in read-only mode
-      <template #actions="{ attrs }">
+      <template v-slot:actions="{ attrs }">
         <v-btn
           variant="text"
           v-bind="attrs"
           color="danger"
-          data-test="unlock-button"
           @click="confirmLocalUnlock"
+          data-test="unlock-button"
         >
           Unlock
         </v-btn>
@@ -70,11 +70,11 @@
     </v-snackbar>
     <div class="grid">
       <div
-        v-for="def in screens"
-        :id="screenId(def.id)"
-        :key="def.id"
-        ref="gridItem"
         class="item"
+        v-for="def in screens"
+        :key="def.id"
+        :id="screenId(def.id)"
+        ref="gridItem"
       >
         <div class="item-content">
           <openc3-screen
@@ -82,12 +82,12 @@
             :screen="def.screen"
             :definition="def.definition"
             :keywords="screenKeywords"
-            :initial-floated="true"
-            :initial-top="def.top"
-            :initial-left="def.left"
-            :initial-z="3"
-            :min-z="3"
-            :fix-floated="true"
+            :initialFloated="true"
+            :initialTop="def.top"
+            :initialLeft="def.left"
+            :initialZ="3"
+            :minZ="3"
+            :fixFloated="true"
             :count="def.count"
             @close-screen="closeScreen(def.id)"
             @delete-screen="closeScreen(def.id)"
@@ -111,29 +111,29 @@
             mdi-connection
           </v-icon>
           <v-tooltip location="top">
-            <template #activator="{ props }">
+            <template v-slot:activator="{ props }">
               <v-btn
                 v-bind="props"
                 icon="mdi-cached"
                 variant="text"
-                :disabled="filename === NEW_FILENAME"
                 @click="reloadFile"
+                :disabled="filename === NEW_FILENAME"
               />
             </template>
             <span> Reload File </span>
           </v-tooltip>
           <v-select
-            id="filename"
             v-model="filenameSelect"
+            @update:model-value="fileNameChanged"
             :items="fileList"
             :disabled="fileList.length <= 1"
             label="Filename"
+            id="filename"
             data-test="filename"
             style="width: 300px"
             density="compact"
             variant="outlined"
             hide-details
-            @update:model-value="fileNameChanged"
           />
           <v-text-field
             v-model="scriptId"
@@ -169,24 +169,24 @@
           <v-spacer />
           <div v-if="startOrGoButton === 'Start'">
             <v-btn
+              @click="startHandler"
               class="mx-1"
               color="primary"
               data-test="start-button"
               :disabled="startOrGoDisabled || !executeUser"
               :hidden="suiteRunner"
-              @click="startHandler"
             >
               <span> Start </span>
             </v-btn>
             <v-tooltip location="top">
-              <template #activator="{ props }">
+              <template v-slot:activator="{ props }">
                 <v-btn
                   v-bind="props"
+                  @click="scriptEnvironment.show = !scriptEnvironment.show"
                   class="mx-1"
                   data-test="env-button"
                   :color="environmentIconColor"
                   :disabled="envDisabled"
-                  @click="scriptEnvironment.show = !scriptEnvironment.show"
                 >
                   <v-icon> {{ environmentIcon }} </v-icon>
                 </v-btn>
@@ -196,29 +196,29 @@
           </div>
           <div v-else>
             <v-btn
+              @click="go"
               color="primary"
               class="mr-2"
               :disabled="startOrGoDisabled"
               data-test="go-button"
-              @click="go"
             >
               Go
             </v-btn>
             <v-btn
               color="primary"
+              @click="pauseOrRetry"
               class="mr-2"
               :disabled="pauseOrRetryDisabled"
               data-test="pause-retry-button"
-              @click="pauseOrRetry"
             >
               {{ pauseOrRetryButton }}
             </v-btn>
 
             <v-btn
               color="primary"
+              @click="stop"
               data-test="stop-button"
               :disabled="stopDisabled"
-              @click="stop"
             >
               Stop
             </v-btn>
@@ -226,7 +226,7 @@
         </v-row>
       </div>
     </v-card>
-    <splitpanes horizontal style="height: 100%" @resize="calcHeight">
+    <splitpanes horizontal @resize="calcHeight" style="height: 100%">
       <pane class="editorbox" size="50">
         <v-snackbar
           v-model="showSave"
@@ -246,8 +246,8 @@
           <v-list>
             <v-list-item
               v-for="item in executeSelectionMenuItems"
-              :key="item.label"
               link
+              :key="item.label"
               :disabled="scriptId"
             >
               <v-list-item-title @click="item.command">
@@ -263,30 +263,30 @@
           </v-list>
         </v-menu>
       </pane>
-      <pane id="messages" ref="messagesDiv" class="mt-2">
-        <div v-if="showDebug" id="debug" class="pa-0">
+      <pane id="messages" class="mt-2" ref="messagesDiv">
+        <div id="debug" class="pa-0" v-if="showDebug">
           <v-row no-gutters>
             <v-btn
               color="primary"
+              @click="step"
               style="width: 100px"
               class="mr-4"
               :disabled="!scriptId"
               data-test="step-button"
-              @click="step"
             >
               Step
               <v-icon end> mdi-step-forward </v-icon>
             </v-btn>
             <v-text-field
               ref="debug"
-              v-model="debug"
               class="mb-2"
               variant="outlined"
               density="compact"
               hide-details
               label="Debug"
-              data-test="debug-text"
+              v-model="debug"
               @keydown="debugKeydown"
+              data-test="debug-text"
             />
           </v-row>
         </div>
@@ -301,65 +301,57 @@
 
   <div v-if="inline">
     <v-row>
-      <v-col class="v-col-10" style="margin: 0px; padding: 0px">
+      <v-col class="v-col-10" style="margin:0px;padding:0px;">
         <pre
           ref="editor"
           class="editor"
-          style="height: 200px"
+          style="height:200px;"
           @contextmenu.prevent="showExecuteSelectionMenu"
         ></pre>
       </v-col>
-      <v-col
-        class="v-col-2"
-        style="
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          background-color: var(--color-background-surface-default);
-        "
-      >
+      <v-col class="v-col-2" style="display:flex;justify-content:center;align-items:center;background-color:var(--color-background-surface-default);">
         <div v-if="startOrGoButton === 'Start'">
-          <v-btn
-            class="mx-1"
-            color="primary"
-            data-test="start-button"
-            :disabled="startOrGoDisabled || !executeUser"
-            :hidden="suiteRunner"
-            @click="startHandler"
-          >
-            <span> Start </span>
-          </v-btn>
-        </div>
-        <div v-else>
-          <v-btn
-            color="primary"
-            class="ma-2"
-            :disabled="startOrGoDisabled"
-            data-test="go-button"
-            @click="go"
-          >
-            Go
-          </v-btn>
-          <v-btn
-            color="primary"
-            class="ma-2"
-            :disabled="pauseOrRetryDisabled"
-            data-test="pause-retry-button"
-            @click="pauseOrRetry"
-          >
-            {{ pauseOrRetryButton }}
-          </v-btn>
+            <v-btn
+              @click="startHandler"
+              class="mx-1"
+              color="primary"
+              data-test="start-button"
+              :disabled="startOrGoDisabled || !executeUser"
+              :hidden="suiteRunner"
+            >
+              <span> Start </span>
+            </v-btn>
+          </div>
+          <div v-else>
+            <v-btn
+              @click="go"
+              color="primary"
+              class="ma-2"
+              :disabled="startOrGoDisabled"
+              data-test="go-button"
+            >
+              Go
+            </v-btn>
+            <v-btn
+              color="primary"
+              @click="pauseOrRetry"
+              class="ma-2"
+              :disabled="pauseOrRetryDisabled"
+              data-test="pause-retry-button"
+            >
+              {{ pauseOrRetryButton }}
+            </v-btn>
 
-          <v-btn
-            color="primary"
-            class="ma-2"
-            data-test="stop-button"
-            :disabled="stopDisabled"
-            @click="stop"
-          >
-            Stop
-          </v-btn>
-        </div>
+            <v-btn
+              color="primary"
+              @click="stop"
+              class="ma-2"
+              data-test="stop-button"
+              :disabled="stopDisabled"
+            >
+              Stop
+            </v-btn>
+          </div>
       </v-col>
     </v-row>
   </div>
@@ -449,11 +441,11 @@
     :width="1000"
   />
   <critical-cmd-dialog
-    v-model="displayCriticalCmd"
     :uuid="criticalCmdUuid"
-    :cmd-string="criticalCmdString"
-    :cmd-user="criticalCmdUser"
+    :cmdString="criticalCmdString"
+    :cmdUser="criticalCmdUser"
     :persistent="true"
+    v-model="displayCriticalCmd"
     @status="promptDialogCallback"
   />
   <v-bottom-sheet v-model="showScripts">
@@ -501,11 +493,7 @@ import ResultsDialog from '@/tools/scriptrunner/Dialogs/ResultsDialog.vue'
 import ScriptEnvironmentDialog from '@/tools/scriptrunner/Dialogs/ScriptEnvironmentDialog.vue'
 import SuiteRunner from '@/tools/scriptrunner/SuiteRunner.vue'
 import ScriptLogMessages from '@/tools/scriptrunner/ScriptLogMessages.vue'
-import {
-  CmdCompleter,
-  TlmCompleter,
-  MnemonicChecker,
-} from '@/tools/scriptrunner/autocomplete'
+import { CmdCompleter, TlmCompleter, MnemonicChecker } from '@/tools/scriptrunner/autocomplete'
 import { SleepAnnotator } from '@/tools/scriptrunner/annotations'
 import RunningScripts from '@/tools/scriptrunner/RunningScripts.vue'
 
@@ -540,13 +528,6 @@ export default {
     CriticalCmdDialog,
   },
   mixins: [AceEditorModes],
-  beforeRouteUpdate: function (to, from, next) {
-    if (to.params.id) {
-      this.tryLoadRunningScript(to.params.id).then(next)
-    } else {
-      next()
-    }
-  },
   props: {
     inline: {
       type: Boolean,
@@ -555,7 +536,7 @@ export default {
     body: {
       type: String,
       default: null,
-    },
+    }
   },
   data() {
     return {
@@ -1114,7 +1095,7 @@ export default {
     this.editor.setHighlightActiveLine(false)
     AceEditorUtils.applyVimModeIfEnabled(this.editor, { saveFn: this.saveFile })
     this.editor.focus()
-
+    
     this.editor.on('guttermousedown', this.toggleBreakpoint)
     // We listen to tokenizerUpdate rather than change because this
     // is the background process that updates as changes are processed
@@ -1187,6 +1168,13 @@ export default {
       this.subscription = null
     }
     this.cable.disconnect()
+  },
+  beforeRouteUpdate: function (to, from, next) {
+    if (to.params.id) {
+      this.tryLoadRunningScript(to.params.id).then(next)
+    } else {
+      next()
+    }
   },
   methods: {
     toggleVimMode() {
@@ -1654,6 +1642,7 @@ export default {
       this.waitingInterval = null
     },
     processLine(data) {
+
       if (data.filename && data.filename !== this.currentFilename) {
         if (!this.files[data.filename]) {
           // We don't have the contents of the running file (probably because connected to running script)

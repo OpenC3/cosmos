@@ -49,10 +49,10 @@
     </v-menu>
 
     <details-dialog
-      v-model="viewDetails"
       :target-name="parameters[0]"
       :packet-name="parameters[1]"
       :item-name="parameters[2]"
+      v-model="viewDetails"
     />
   </div>
 </template>
@@ -66,13 +66,13 @@ export default {
   components: {
     DetailsDialog,
   },
-  mixins: [VWidget],
   data: function () {
     return {
       width: 200,
       height: 200,
     }
   },
+  mixins: [VWidget],
   computed: {
     aging() {
       return {

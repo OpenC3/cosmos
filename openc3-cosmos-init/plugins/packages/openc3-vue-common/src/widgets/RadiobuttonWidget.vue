@@ -34,12 +34,12 @@
 import Widget from './Widget'
 
 export default {
-  mixins: [Widget],
   props: {
     value: {
       type: Number,
     },
   },
+  mixins: [Widget],
   data() {
     return {
       label: 'Radio',

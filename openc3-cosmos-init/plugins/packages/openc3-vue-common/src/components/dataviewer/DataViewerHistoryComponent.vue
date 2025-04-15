@@ -40,14 +40,14 @@
       <v-col cols="8" class="mt-1">
         <v-slider
           v-model="pauseOffset"
+          v-on:mousedown="pause"
+          @click:prepend="stepBackward"
+          @click:append="stepForward"
           prepend-icon="mdi-step-backward"
           append-icon="mdi-step-forward"
           :min="1 - currentConfig.history"
           :max="0"
           hide-details
-          @mousedown="pause"
-          @click:prepend="stepBackward"
-          @click:append="stepForward"
         />
       </v-col>
     </v-row>
@@ -69,7 +69,7 @@
           />
           <div class="floating-buttons">
             <v-menu :close-on-content-click="false" :min-width="700">
-              <template #activator="{ props }">
+              <template v-slot:activator="{ props }">
                 <v-btn
                   class="ml-2"
                   color="secondary"
@@ -168,24 +168,24 @@
             </v-menu>
             <v-btn
               class="ml-2"
+              v-on:click="download"
               color="secondary"
               icon
               size="small"
               data-test="history-component-download"
-              @click="download"
             >
               <v-icon>mdi-file-download</v-icon>
             </v-btn>
             <v-btn
               class="ml-2"
               :class="{ pulse: paused }"
+              v-on:click="togglePlayPause"
               color="primary"
               icon
               data-test="history-component-play-pause"
-              @click="togglePlayPause"
             >
-              <v-icon v-if="paused" size="large">mdi-play</v-icon>
-              <v-icon v-else size="large">mdi-pause</v-icon>
+              <v-icon size="large" v-if="paused">mdi-play</v-icon>
+              <v-icon size="large" v-else>mdi-pause</v-icon>
             </v-btn>
           </div>
         </div>
@@ -200,8 +200,8 @@ import { format } from 'date-fns'
 import DataViewerComponent from './DataViewerComponent'
 
 export default {
-  mixins: [DataViewerComponent],
   props: ['calculatePacketText'],
+  mixins: [DataViewerComponent],
   data: function () {
     return {
       history: [],

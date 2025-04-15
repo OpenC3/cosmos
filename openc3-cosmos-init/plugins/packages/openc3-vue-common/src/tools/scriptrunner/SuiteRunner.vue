@@ -28,7 +28,7 @@
           <v-row no-gutters>
             <v-col cols="6">
               <v-tooltip location="top">
-                <template #activator="{ props }">
+                <template v-slot:activator="{ props }">
                   <div v-bind="props">
                     <v-checkbox
                       v-model="options"
@@ -47,7 +47,7 @@
             </v-col>
             <v-col cols="6">
               <v-tooltip location="top">
-                <template #activator="{ props }">
+                <template v-slot:activator="{ props }">
                   <div v-bind="props">
                     <v-checkbox
                       v-model="options"
@@ -71,15 +71,15 @@
           <v-row no-gutters justify="end">
             <v-col cols="5">
               <v-select
-                v-model="suite"
                 label="Suite:"
                 class="mb-2 mr-2"
                 hide-details
                 density="compact"
                 variant="outlined"
-                :items="suites"
-                data-test="select-suite"
                 @update:model-value="suiteChanged"
+                :items="suites"
+                v-model="suite"
+                data-test="select-suite"
               />
             </v-col>
             <v-col cols="auto">
@@ -87,29 +87,29 @@
                 color="primary"
                 class="mr-2"
                 :disabled="disableButtons || !userInfo.execute"
-                data-test="start-suite"
                 @click="$emit('button', { method: 'start', suite, options })"
+                data-test="start-suite"
               >
                 Start
               </v-btn>
               <v-btn
                 color="primary"
                 class="mr-2"
+                @click="$emit('button', { method: 'setup', suite, options })"
                 data-test="setup-suite"
                 :disabled="
                   disableButtons || !setupSuiteEnabled || !userInfo.execute
                 "
-                @click="$emit('button', { method: 'setup', suite, options })"
               >
                 Setup
               </v-btn>
               <v-btn
                 color="primary"
+                @click="$emit('button', { method: 'teardown', suite, options })"
                 data-test="teardown-suite"
                 :disabled="
                   disableButtons || !teardownSuiteEnabled || !userInfo.execute
                 "
-                @click="$emit('button', { method: 'teardown', suite, options })"
               >
                 Teardown
               </v-btn>
@@ -122,7 +122,7 @@
           <v-row no-gutters>
             <v-col cols="6">
               <v-tooltip location="top">
-                <template #activator="{ props }">
+                <template v-slot:activator="{ props }">
                   <div v-bind="props">
                     <v-checkbox
                       v-model="options"
@@ -142,7 +142,7 @@
             </v-col>
             <v-col cols="6">
               <v-tooltip location="top">
-                <template #activator="{ props }">
+                <template v-slot:activator="{ props }">
                   <div v-bind="props">
                     <v-checkbox
                       v-model="options"
@@ -165,15 +165,15 @@
           <v-row no-gutters justify="end">
             <v-col cols="5">
               <v-select
-                v-model="group"
                 label="Group:"
                 class="mb-2 mr-2"
                 hide-details
                 density="compact"
                 variant="outlined"
-                :items="groups"
-                data-test="select-group"
                 @update:model-value="groupChanged"
+                :items="groups"
+                v-model="group"
+                data-test="select-group"
               />
             </v-col>
             <v-col cols="auto">
@@ -181,34 +181,34 @@
                 color="primary"
                 class="mr-2"
                 :disabled="disableButtons || !userInfo.execute"
-                data-test="start-group"
                 @click="
                   $emit('button', { method: 'start', suite, group, options })
                 "
+                data-test="start-group"
               >
                 Start
               </v-btn>
               <v-btn
                 color="primary"
                 class="mr-2"
+                @click="
+                  $emit('button', { method: 'setup', suite, group, options })
+                "
                 data-test="setup-group"
                 :disabled="
                   disableButtons || !setupGroupEnabled || !userInfo.execute
-                "
-                @click="
-                  $emit('button', { method: 'setup', suite, group, options })
                 "
               >
                 Setup
               </v-btn>
               <v-btn
                 color="primary"
+                @click="
+                  $emit('button', { method: 'teardown', suite, group, options })
+                "
                 data-test="teardown-group"
                 :disabled="
                   disableButtons || !teardownGroupEnabled || !userInfo.execute
-                "
-                @click="
-                  $emit('button', { method: 'teardown', suite, group, options })
                 "
               >
                 Teardown
@@ -222,7 +222,7 @@
           <v-row no-gutters>
             <v-col cols="6">
               <v-tooltip location="top">
-                <template #activator="{ props }">
+                <template v-slot:activator="{ props }">
                   <div v-bind="props">
                     <v-checkbox
                       v-model="options"
@@ -242,11 +242,11 @@
             </v-col>
             <v-col cols="6">
               <v-tooltip location="top">
-                <template #activator="{ props }">
+                <template v-slot:activator="{ props }">
                   <div v-bind="props">
                     <v-checkbox
-                      v-model="options"
                       :disabled="!options.includes('loop')"
+                      v-model="options"
                       label="Break Loop on Error"
                       value="breakLoopOnError"
                       hide-details
@@ -270,15 +270,15 @@
               <v-select
                 label="Script:"
                 class="mb-2 mr-2"
-                v-model="script"
                 hide-details
                 density="compact"
                 variant="outlined"
+                @update:model-value="scriptChanged"
                 :items="scriptNames"
                 item-title="title"
                 item-value="value"
+                v-model="script"
                 data-test="select-script"
-                @update:model-value="scriptChanged"
               />
             </v-col>
             <v-col cols="auto">
@@ -286,7 +286,6 @@
                 color="primary"
                 class="mr-2"
                 :disabled="disableButtons || !userInfo.execute"
-                data-test="start-script"
                 @click="
                   $emit('button', {
                     method: 'start',
@@ -296,6 +295,7 @@
                     options,
                   })
                 "
+                data-test="start-script"
               >
                 Start
               </v-btn>
@@ -399,6 +399,11 @@ export default {
       })
     },
   },
+  created() {
+    this.userInfo = JSON.parse(localStorage['script_runner__userinfo'])
+    this.initSuites()
+    this.$emit('loaded')
+  },
   // Watch the suiteMap so we can recreate the suites and set the initial value
   watch: {
     suiteMap: {
@@ -407,11 +412,6 @@ export default {
       },
       deep: true, // Deep watcher because suiteMap is a nested Object
     },
-  },
-  created() {
-    this.userInfo = JSON.parse(localStorage['script_runner__userinfo'])
-    this.initSuites()
-    this.$emit('loaded')
   },
   methods: {
     updateSuiteMap() {

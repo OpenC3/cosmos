@@ -49,16 +49,16 @@ import ValueWidget from './ValueWidget.vue'
 import { OpenC3Api } from '@openc3/js-common/services'
 
 export default {
-  components: {
-    LabelWidget,
-    ValueWidget,
-  },
   mixins: [Widget],
   data() {
     return {
       description: '',
       valueParameters: [],
     }
+  },
+  components: {
+    LabelWidget,
+    ValueWidget,
   },
   computed: {
     labelName() {

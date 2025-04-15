@@ -18,11 +18,11 @@
 
 <template>
   <component
-    :is="widgetType"
     ref="dynamic"
+    :is="widgetType"
     :config="currentConfig"
-    v-bind="{ ...$props, ...$attrs }"
     @config="(config) => (currentConfig = config)"
+    v-bind="{ ...$props, ...$attrs }"
   ></component>
 </template>
 
@@ -31,13 +31,13 @@ import { DataViewerComponent } from '@openc3/vue-common/components'
 
 export default {
   mixins: [DataViewerComponent],
-  props: {
-    name: { default: null },
-  },
   data() {
     return {
       widgetType: null,
     }
+  },
+  props: {
+    name: { default: null },
   },
   computed: {
     url: function () {

@@ -25,7 +25,6 @@
     <v-row>
       <v-autocomplete
         v-model="selected"
-        v-model:search="search"
         density="compact"
         variant="outlined"
         hide-no-data
@@ -34,6 +33,7 @@
         label="Select script"
         :loading="loading"
         :items="items"
+        v-model:search="search"
         data-test="select-script"
       />
     </v-row>
@@ -59,21 +59,6 @@ export default {
       items: [],
     }
   },
-  watch: {
-    selected(newVal, oldVal) {
-      if (newVal !== oldVal) {
-        if (newVal.slice(-1) === '*') {
-          // Remove the * before returning
-          this.$emit('file', newVal.substring(0, newVal.length - 1))
-        } else {
-          this.$emit('file', newVal)
-        }
-      }
-    },
-    search(val) {
-      val && val !== this.selected && this.querySelections(val)
-    },
-  },
   created() {
     this.loading = true
     Api.get('/script-api/scripts')
@@ -92,6 +77,21 @@ export default {
       })
     this.selected = this.modelValue ? this.modelValue : null
     this.loading = false
+  },
+  watch: {
+    selected(newVal, oldVal) {
+      if (newVal !== oldVal) {
+        if (newVal.slice(-1) === '*') {
+          // Remove the * before returning
+          this.$emit('file', newVal.substring(0, newVal.length - 1))
+        } else {
+          this.$emit('file', newVal)
+        }
+      }
+    },
+    search(val) {
+      val && val !== this.selected && this.querySelections(val)
+    },
   },
   methods: {
     querySelections: function (v) {

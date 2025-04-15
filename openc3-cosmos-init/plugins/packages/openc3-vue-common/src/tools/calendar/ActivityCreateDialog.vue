@@ -22,7 +22,7 @@
 
 <template>
   <div>
-    <v-dialog v-model="show" persistent width="600">
+    <v-dialog persistent v-model="show" width="600">
       <v-card>
         <v-toolbar height="24">
           <v-spacer />
@@ -30,7 +30,7 @@
           <span v-else>Create Activity</span>
           <v-spacer />
           <v-tooltip location="top">
-            <template #activator="{ props }">
+            <template v-slot:activator="{ props }">
               <div v-bind="props">
                 <v-icon data-test="close-note-icon" @click="clearHandler">
                   mdi-close-box
@@ -45,34 +45,34 @@
           editable
           :items="['Activity Times', 'Activity Type']"
         >
-          <template v-if="dialogStep === 2" #actions>
+          <template v-if="dialogStep === 2" v-slot:actions>
             <v-row class="ma-0 px-6 pb-4">
-              <v-btn variant="text" @click="() => (dialogStep -= 1)">
+              <v-btn @click="() => (dialogStep -= 1)" variant="text">
                 Previous
               </v-btn>
               <v-spacer />
-              <v-btn variant="outlined" class="mr-4" @click="clearHandler">
+              <v-btn @click="clearHandler" variant="outlined" class="mr-4">
                 Cancel
               </v-btn>
               <v-btn
+                @click.prevent="submitHandler"
                 type="submit"
                 color="primary"
                 :disabled="!!error"
-                @click.prevent="submitHandler"
               >
                 Ok
               </v-btn>
             </v-row>
           </template>
 
-          <template #item.1>
+          <template v-slot:item.1>
             <v-card-text>
               <div class="pr-2">
                 <v-select
-                  v-model="timeline"
                   density="compact"
                   hide-details
                   variant="outlined"
+                  v-model="timeline"
                   :items="timelineNames"
                   label="Timeline"
                   data-test="activity-select-timeline"
@@ -178,8 +178,8 @@
                 </v-row>
                 <v-row>
                   <span
-                    v-show="timeError"
                     class="ma-2 text-red"
+                    v-show="timeError"
                     v-text="timeError"
                   />
                 </v-row>
@@ -187,14 +187,14 @@
             </v-card-text>
           </template>
 
-          <template #item.2>
+          <template v-slot:item.2>
             <v-card-text>
               <div class="pr-2">
                 <v-select
-                  v-model="kind"
                   density="compact"
                   hide-details
                   variant="outlined"
+                  v-model="kind"
                   :items="types"
                   label="Activity Type"
                   data-test="activity-select-type"
@@ -213,7 +213,7 @@
                     data-test="activity-cmd"
                   />
                 </div>
-                <div v-else-if="kind === 'SCRIPT'" class="ma-3">
+                <div class="ma-3" v-else-if="kind === 'SCRIPT'">
                   <script-chooser @file="fileHandler" />
                   <environment-chooser v-model="activityEnvironment" />
                 </div>
@@ -243,7 +243,6 @@ export default {
     EnvironmentChooser,
     ScriptChooser,
   },
-  mixins: [CreateDialog, TimeFilters],
   props: {
     modelValue: Boolean,
     timelines: {
@@ -255,6 +254,7 @@ export default {
       default: null,
     },
   },
+  mixins: [CreateDialog, TimeFilters],
   data() {
     return {
       timeline: null,
@@ -273,6 +273,9 @@ export default {
       timeSpan: 'minutes',
       timeSpans: ['minutes', 'hours', 'days'],
     }
+  },
+  mounted: function () {
+    this.updateValues()
   },
   computed: {
     timeError: function () {
@@ -312,9 +315,6 @@ export default {
         this.$emit('update:modelValue', value)
       },
     },
-  },
-  mounted: function () {
-    this.updateValues()
   },
   methods: {
     changeKind: function (inputKind) {

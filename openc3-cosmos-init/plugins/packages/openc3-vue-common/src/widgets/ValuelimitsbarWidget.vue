@@ -37,7 +37,7 @@
       :screen-values="screenValues"
       :widget-index="1"
       :line="line"
-      :line-number="lineNumber"
+      :lineNumber="lineNumber"
     />
   </div>
 </template>
@@ -48,10 +48,10 @@ import LimitsbarWidget from './LimitsbarWidget.vue'
 import Widget from './Widget'
 
 export default {
+  mixins: [Widget],
   components: {
     ValueWidget,
     LimitsbarWidget,
   },
-  mixins: [Widget],
 }
 </script>

@@ -22,13 +22,13 @@
 
 <template>
   <div>
-    <v-select v-model="color" label="Color" :items="swatches">
-      <template #prepend-inner>
+    <v-select label="Color" :items="swatches" v-model="color">
+      <template v-slot:prepend-inner>
         <v-icon :color="color"> mdi-square </v-icon>
       </template>
-      <template #item="{ props, item }">
+      <template v-slot:item="{ props, item }">
         <v-list-item v-bind="props" :value="item.raw">
-          <template #prepend>
+          <template v-slot:prepend>
             <v-icon :color="item.raw"> mdi-square </v-icon>
           </template>
         </v-list-item>

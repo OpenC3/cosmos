@@ -30,7 +30,7 @@
           size="64"
         ></v-progress-circular>
       </v-overlay>
-      <form @submit.prevent="success">
+      <form v-on:submit.prevent="success">
         <v-toolbar height="24">
           <v-spacer />
           <span> {{ title }} </span>
@@ -74,9 +74,9 @@
             </v-row>
             <v-row dense>
               <div
-                v-show="error"
                 class="my-2 text-red"
                 style="white-space: pre-line"
+                v-show="error"
               >
                 {{ error }}
               </div>
@@ -84,22 +84,22 @@
             <v-row class="mt-2">
               <v-spacer />
               <v-btn
+                @click="show = false"
                 variant="outlined"
                 class="mx-2"
                 data-test="file-open-save-cancel-btn"
                 :disabled="disableButtons"
-                @click="show = false"
               >
                 Cancel
               </v-btn>
               <v-btn
+                @click.prevent="success"
                 ref="submitBtn"
                 type="submit"
                 color="primary"
                 class="mx-2"
                 data-test="file-open-save-submit-btn"
                 :disabled="disableButtons || !!error"
-                @click.prevent="success"
               >
                 {{ submit }}
               </v-btn>

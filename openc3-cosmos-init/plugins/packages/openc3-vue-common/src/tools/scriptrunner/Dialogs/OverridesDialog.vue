@@ -32,9 +32,9 @@
         <v-card-text>
           <v-row class="ma-1">
             <v-btn
+              @click="clearOverrides"
               color="primary"
               data-test="overrides-dialog-clear-all"
-              @click="clearOverrides"
             >
               Clear All Overrides
             </v-btn>
@@ -58,10 +58,10 @@
             multi-sort
             density="compact"
           >
-            <template #item.delete="{ item }">
+            <template v-slot:item.delete="{ item }">
               <v-tooltip location="top">
-                <template #activator="{ props }">
-                  <v-icon v-bind="props" @click="deleteOverride(item)">
+                <template v-slot:activator="{ props }">
+                  <v-icon @click="deleteOverride(item)" v-bind="props">
                     mdi-delete
                   </v-icon>
                 </template>
@@ -75,8 +75,8 @@
         <v-spacer />
         <v-btn
           variant="flat"
-          data-test="overrides-dialog-ok"
           @click="show = !show"
+          data-test="overrides-dialog-ok"
         >
           Ok
         </v-btn>
@@ -111,6 +111,10 @@ export default {
       ],
     }
   },
+  created: function () {
+    this.api = new OpenC3Api()
+    this.getOverrides()
+  },
   computed: {
     show: {
       get() {
@@ -120,10 +124,6 @@ export default {
         this.$emit('update:modelValue', value)
       },
     },
-  },
-  created: function () {
-    this.api = new OpenC3Api()
-    this.getOverrides()
   },
   methods: {
     getOverrides: function () {

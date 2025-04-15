@@ -30,10 +30,10 @@
     <v-window v-model="curTab">
       <v-window-item v-for="(tab, tabIndex) in widgets" :key="tabIndex">
         <component
-          v-bind="listeners"
-          :is="widget.type"
           v-for="(widget, widgetIndex) in tab.widgets"
+          v-bind="listeners"
           :key="`${tabIndex}-${widgetIndex}`"
+          :is="widget.type"
           :target="widget.target"
           :parameters="widget.parameters"
           :settings="widget.settings"

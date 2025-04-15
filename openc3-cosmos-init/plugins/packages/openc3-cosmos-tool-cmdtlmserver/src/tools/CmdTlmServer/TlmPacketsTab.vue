@@ -51,10 +51,10 @@
           key: 'packet_name',
         },
       ]"
-      data-test="tlm-packets-table"
       @update:current-items="currentItems"
+      data-test="tlm-packets-table"
     >
-      <template #item.view_raw="{ item }">
+      <template v-slot:item.view_raw="{ item }">
         <v-btn
           block
           color="primary"
@@ -64,7 +64,7 @@
           View Raw
         </v-btn>
       </template>
-      <template #item.view_in_pkt_viewer="{ item }">
+      <template v-slot:item.view_in_pkt_viewer="{ item }">
         <span v-if="item.target_name === 'UNKNOWN'">N/A</span>
         <v-btn
           v-if="item.target_name != 'UNKNOWN'"

@@ -17,7 +17,7 @@
 -->
 
 <template>
-  <v-icon :style="computedStyle" @click="clickHandler">
+  <v-icon @click="clickHandler" :style="computedStyle">
     {{ displayedIcon }}
   </v-icon>
 </template>

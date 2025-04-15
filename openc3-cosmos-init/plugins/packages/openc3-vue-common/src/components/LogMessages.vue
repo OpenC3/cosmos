@@ -25,7 +25,7 @@
     <v-card-title class="d-flex align-center justify-content-space-between">
       <div class="d-flex align-baseline">
         <v-tooltip location="top">
-          <template #activator="{ props }">
+          <template v-slot:activator="{ props }">
             <div v-bind="props">
               <v-btn
                 icon="mdi-download"
@@ -41,7 +41,7 @@
         </v-tooltip>
         <span> Log Messages </span>
         <v-tooltip location="top">
-          <template #activator="{ props }">
+          <template v-slot:activator="{ props }">
             <div v-bind="props">
               <v-btn
                 :icon="buttonIcon"
@@ -56,12 +56,12 @@
       </div>
       <v-spacer />
       <v-select
-        v-model="logLevel"
         label="Filter by log level"
         hide-details
         variant="outlined"
         density="compact"
         :items="logLevels"
+        v-model="logLevel"
         class="mr-2"
         style="max-width: 150px"
         data-test="log-messages-level"
@@ -81,7 +81,7 @@
         data-test="search-log-messages"
       />
       <v-tooltip location="top">
-        <template #activator="{ props }">
+        <template v-slot:activator="{ props }">
           <div v-bind="props">
             <v-btn
               icon="mdi-delete"
@@ -107,18 +107,18 @@
       hover
       data-test="log-messages"
     >
-      <template #item.timestamp="{ item }">
+      <template v-slot:item.timestamp="{ item }">
         <time :title="item.timestamp" :datetime="item.timestamp">
           {{ item.timestamp }}
         </time>
       </template>
-      <template #item.level="{ item }">
+      <template v-slot:item.level="{ item }">
         <span :style="'display: inline-flex; color:' + getColor(item.level)">
           <rux-status class="mr-1" :status="getStatus(item.level)"></rux-status>
           {{ item.level }}</span
         >
       </template>
-      <template #item.message="{ item }">
+      <template v-slot:item.message="{ item }">
         <div style="white-space: pre-wrap">{{ item.message }}</div>
       </template>
     </v-data-table>
@@ -132,7 +132,6 @@ import { AstroStatusColors, UnknownToAstroStatus } from '@/icons'
 import { TimeFilters } from '@/util'
 
 export default {
-  mixins: [TimeFilters],
   props: {
     historyCount: {
       type: Number,
@@ -143,6 +142,7 @@ export default {
       default: 'local',
     },
   },
+  mixins: [TimeFilters],
   data() {
     return {
       AstroStatusColors,

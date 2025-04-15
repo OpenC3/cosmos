@@ -25,7 +25,7 @@
     ref="history"
     :config="currentConfig"
     :packets="currentPackets"
-    :calculate-packet-text="calculatePacketText"
+    :calculatePacketText="calculatePacketText"
     @config="(config) => (currentConfig = config)"
   />
 </template>
@@ -38,10 +38,10 @@ import {
 } from '@openc3/vue-common/components'
 
 export default {
+  mixins: [DataViewerComponent],
   components: {
     DataViewerHistoryComponent,
   },
-  mixins: [DataViewerComponent],
   watch: {
     // Hook the HistoryComponent's receive method to our latestData being updated
     latestData: function (data) {

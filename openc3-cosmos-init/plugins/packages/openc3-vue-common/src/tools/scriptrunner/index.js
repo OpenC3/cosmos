@@ -21,4 +21,9 @@ import ScriptLogMessages from '@/tools/scriptrunner/ScriptLogMessages.vue'
 import ScriptRunner from '@/tools/scriptrunner/ScriptRunner.vue'
 import SuiteRunner from '@/tools/scriptrunner/SuiteRunner.vue'
 
-export { RunningScripts, ScriptLogMessages, ScriptRunner, SuiteRunner }
+export {
+  RunningScripts,
+  ScriptLogMessages,
+  ScriptRunner,
+  SuiteRunner,
+}

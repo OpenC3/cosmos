@@ -28,8 +28,8 @@
           block
           color="primary"
           data-test="toolAdd"
-          :disabled="!name || !url || !icon"
           @click="add()"
+          :disabled="!name || !url || !icon"
         >
           Add
           <v-icon end theme="dark">{{ icon }}</v-icon>
@@ -50,7 +50,7 @@
       can't be reordered. A browser refresh is required to see the new tool
       order.</span
     >
-    <v-list id="toollist" class="list" data-test="toolList">
+    <v-list class="list" data-test="toolList" id="toollist">
       <div v-for="(tool, index) in tools" :key="tool">
         <v-list-item
           :class="{ filter: tool === 'Base' || tool === 'Admin' }"
@@ -58,9 +58,9 @@
         >
           <v-list-item-title>{{ tool }}</v-list-item-title>
 
-          <template #append>
+          <template v-slot:append>
             <v-tooltip location="top">
-              <template #activator="{ props }">
+              <template v-slot:activator="{ props }">
                 <v-icon v-bind="props" @click="showTool(tool)">
                   mdi-eye
                 </v-icon>
@@ -68,7 +68,7 @@
               <span>Edit Tool</span>
             </v-tooltip>
             <v-tooltip location="top">
-              <template #activator="{ props }">
+              <template v-slot:activator="{ props }">
                 <v-icon v-bind="props" @click="deleteTool(tool)">
                   mdi-delete
                 </v-icon>
@@ -81,8 +81,8 @@
       </div>
     </v-list>
     <output-dialog
-      v-if="showDialog"
       v-model="showDialog"
+      v-if="showDialog"
       :content="jsonContent"
       type="Tool"
       :name="dialogTitle"

@@ -35,11 +35,11 @@
             <v-col>
               <div class="px-2">
                 <v-btn
+                  @click="searchGithub"
                   block
                   data-test="searchGithub"
                   color="primary"
                   :disabled="disableSearch"
-                  @click="searchGithub"
                 >
                   Github
                   <v-icon end theme="dark"> mdi-github </v-icon>
@@ -66,12 +66,12 @@
           </v-row>
           --->
           <v-row class="mt-5"> Community Gems </v-row>
-          <div v-if="listData.length < 1" class="mt-4">
+          <div class="mt-4" v-if="listData.length < 1">
             <v-row class="mx-2">
               <span> I’m sorry, Dave. No gems available.... </span>
             </v-row>
           </div>
-          <div v-else class="mt-4">
+          <div class="mt-4" v-else>
             <div v-for="(data, index) in listData" :key="index">
               <v-list-item>
                 <v-list-item-title>{{ data.name }}</v-list-item-title>
@@ -82,11 +82,11 @@
                   </div>
                   <div v-else>
                     <v-tooltip location="top">
-                      <template #activator="{ props }">
+                      <template v-slot:activator="{ props }">
                         <v-icon
                           v-bind="props"
-                          :disabled="activeDownload"
                           @click="downloadGem(data)"
+                          :disabled="activeDownload"
                         >
                           mdi-cloud-download
                         </v-icon>

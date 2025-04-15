@@ -23,14 +23,14 @@
       Settings for the code editors built into COSMOS (e.g. in Script Runner)
     </v-card-subtitle>
     <v-card-text class="pb-0">
-      <v-switch v-model="vimMode" label="Vim mode" color="primary" />
+      <v-switch label="Vim mode" v-model="vimMode" color="primary" />
     </v-card-text>
     <v-card-actions>
       <v-btn
+        @click="save"
         color="success"
         variant="text"
         data-test="save-editor-settings"
-        @click="save"
       >
         Save
       </v-btn>

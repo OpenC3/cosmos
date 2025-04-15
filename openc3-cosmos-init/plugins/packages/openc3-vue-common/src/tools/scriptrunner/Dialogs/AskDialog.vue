@@ -21,9 +21,9 @@
 -->
 
 <template>
-  <v-dialog v-model="show" persistent width="600">
+  <v-dialog persistent v-model="show" width="600">
     <v-card>
-      <v-form v-model="valid" @submit.prevent="submitHandler">
+      <v-form v-model="valid" v-on:submit.prevent="submitHandler">
         <v-toolbar height="24">
           <v-spacer />
           <span> User Input Required </span>
@@ -44,18 +44,18 @@
         <v-card-actions class="px-2">
           <v-spacer />
           <v-btn
+            @click="cancelHandler"
             variant="outlined"
             data-test="ask-cancel"
-            @click="cancelHandler"
           >
             Cancel
           </v-btn>
           <v-btn
+            @click.prevent="submitHandler"
             variant="flat"
             type="submit"
             data-test="ask-ok"
             :disabled="!valid"
-            @click.prevent="submitHandler"
           >
             Ok
           </v-btn>
@@ -93,16 +93,6 @@ export default {
       rules: [(v) => !!v || 'Required'],
     }
   },
-  computed: {
-    show: {
-      get() {
-        return this.modelValue
-      },
-      set(value) {
-        this.$emit('update:modelValue', value)
-      },
-    },
-  },
   created() {
     if (this.default) {
       this.valid = true
@@ -112,6 +102,16 @@ export default {
       this.valid = true
       this.rules = [(v) => true]
     }
+  },
+  computed: {
+    show: {
+      get() {
+        return this.modelValue
+      },
+      set(value) {
+        this.$emit('update:modelValue', value)
+      },
+    },
   },
   methods: {
     submitHandler: function () {

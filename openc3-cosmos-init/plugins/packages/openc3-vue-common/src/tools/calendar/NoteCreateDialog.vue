@@ -22,7 +22,7 @@
 
 <template>
   <div>
-    <v-dialog v-model="show" persistent width="600">
+    <v-dialog persistent v-model="show" width="600">
       <v-card>
         <v-toolbar height="24">
           <v-spacer />
@@ -30,7 +30,7 @@
           <span v-else>Create Note</span>
           <v-spacer />
           <v-tooltip location="top">
-            <template #activator="{ props }">
+            <template v-slot:activator="{ props }">
               <div v-bind="props">
                 <v-icon data-test="close-note-icon" @click="clearHandler">
                   mdi-close-box
@@ -45,27 +45,27 @@
           editable
           :items="['Note Times', 'Note Input']"
         >
-          <template v-if="dialogStep === 2" #actions>
+          <template v-if="dialogStep === 2" v-slot:actions>
             <v-row class="ma-0 px-6 pb-4">
-              <v-btn variant="text" @click="() => (dialogStep -= 1)">
+              <v-btn @click="() => (dialogStep -= 1)" variant="text">
                 Previous
               </v-btn>
               <v-spacer />
-              <v-btn variant="outlined" class="mr-4" @click="clearHandler">
+              <v-btn @click="clearHandler" variant="outlined" class="mr-4">
                 Cancel
               </v-btn>
               <v-btn
+                @click.prevent="submitHandler"
                 type="submit"
                 color="primary"
                 :disabled="!!error"
-                @click.prevent="submitHandler"
               >
                 Ok
               </v-btn>
             </v-row>
           </template>
 
-          <template #item.1>
+          <template v-slot:item.1>
             <v-card-text>
               <div class="pa-2">
                 <v-row dense>
@@ -108,8 +108,8 @@
                 </v-row>
                 <v-row>
                   <span
-                    v-show="timeError"
                     class="ma-2 text-red"
+                    v-show="timeError"
                     v-text="timeError"
                   />
                 </v-row>
@@ -117,7 +117,7 @@
             </v-card-text>
           </template>
 
-          <template #item.2>
+          <template v-slot:item.2>
             <v-card-text>
               <div class="pa-2">
                 <div>
@@ -153,13 +153,13 @@ export default {
   components: {
     ColorSelectForm,
   },
-  mixins: [CreateDialog, TimeFilters],
   props: {
     modelValue: Boolean,
     note: {
       type: Object,
     },
   },
+  mixins: [CreateDialog, TimeFilters],
   data() {
     return {
       dialogStep: 1,
@@ -169,6 +169,9 @@ export default {
         required: (value) => !!value || 'Required',
       },
     }
+  },
+  mounted: function () {
+    this.updateValues()
   },
   computed: {
     timeError: function () {
@@ -206,9 +209,6 @@ export default {
         this.$emit('update:modelValue', value)
       },
     },
-  },
-  mounted: function () {
-    this.updateValues()
   },
   methods: {
     updateValues: function () {

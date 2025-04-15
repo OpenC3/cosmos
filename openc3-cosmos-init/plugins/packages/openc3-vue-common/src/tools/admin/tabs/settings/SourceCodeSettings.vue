@@ -34,17 +34,17 @@
     </v-alert>
     <v-card-text class="pb-0">
       <v-text-field
-        v-model="sourceUrl"
         label="Source URL"
+        v-model="sourceUrl"
         data-test="source-url"
       />
     </v-card-text>
     <v-card-actions>
       <v-btn
+        @click="save"
         color="success"
         variant="text"
         data-test="save-source-url"
-        @click="save"
       >
         Save
       </v-btn>

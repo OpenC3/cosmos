@@ -35,7 +35,7 @@
       :screen-values="screenValues"
       :widget-index="2"
       :line="line"
-      :line-number="lineNumber"
+      :lineNumber="lineNumber"
     />
     <value-widget
       v-bind="$attrs"
@@ -55,11 +55,11 @@ import LimitscolumnWidget from './LimitscolumnWidget.vue'
 import Widget from './Widget'
 
 export default {
+  mixins: [Widget],
   components: {
     LabelWidget,
     ValueWidget,
     LimitscolumnWidget,
   },
-  mixins: [Widget],
 }
 </script>

@@ -23,10 +23,10 @@
 <template>
   <div ref="container" class="d-flex flex-row" :style="computedStyle">
     <component
-      v-bind="listeners"
-      :is="widget.type"
       v-for="(widget, index) in widgets"
+      v-bind="listeners"
       :key="index"
+      :is="widget.type"
       :target="widget.target"
       :parameters="widget.parameters"
       :settings="widget.settings"

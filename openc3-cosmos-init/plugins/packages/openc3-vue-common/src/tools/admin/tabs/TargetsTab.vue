@@ -30,10 +30,10 @@
             >Plugin: {{ target.plugin }}</v-list-item-subtitle
           >
 
-          <template #append>
-            <div v-if="target.modified" class="mx-3">
+          <template v-slot:append>
+            <div class="mx-3" v-if="target.modified">
               <v-tooltip location="top">
-                <template #activator="{ props }">
+                <template v-slot:activator="{ props }">
                   <v-icon v-bind="props" @click="downloadTarget(target.name)">
                     mdi-download
                   </v-icon>
@@ -42,7 +42,7 @@
               </v-tooltip>
             </div>
             <v-tooltip location="top">
-              <template #activator="{ props }">
+              <template v-slot:activator="{ props }">
                 <v-icon v-bind="props" @click="showTarget(target.name)">
                   mdi-eye
                 </v-icon>
@@ -55,8 +55,8 @@
       </div>
     </v-list>
     <output-dialog
-      v-if="showDialog"
       v-model="showDialog"
+      v-if="showDialog"
       :content="jsonContent"
       type="Target"
       :name="dialogTitle"

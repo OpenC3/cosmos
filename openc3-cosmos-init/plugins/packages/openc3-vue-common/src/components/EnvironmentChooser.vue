@@ -30,7 +30,7 @@
           <th scope="col" class="text-left">Value</th>
           <th scope="col" class="text-right">
             <v-tooltip location="top">
-              <template #activator="{ props }">
+              <template v-slot:activator="{ props }">
                 <div v-bind="props">
                   <v-icon data-test="new-metadata-icon" @click="addEnvVar">
                     mdi-plus
@@ -62,7 +62,7 @@
           </td>
           <td>
             <v-tooltip location="top">
-              <template #activator="{ props }">
+              <template v-slot:activator="{ props }">
                 <div v-bind="props">
                   <v-icon
                     :data-test="`remove-env-icon-${i}`"

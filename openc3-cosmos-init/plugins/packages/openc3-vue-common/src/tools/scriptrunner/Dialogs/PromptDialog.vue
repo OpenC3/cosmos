@@ -21,7 +21,7 @@
 -->
 
 <template>
-  <v-dialog v-model="show" persistent width="600">
+  <v-dialog persistent v-model="show" width="600">
     <v-card>
       <v-toolbar height="24">
         <v-spacer />
@@ -44,6 +44,7 @@
       <div v-if="layout === 'combo'">
         <v-row class="ma-2">
           <v-select
+            @update:model-value="selectOkDisabled = false"
             v-model="selectedItem"
             label="Select"
             color="secondary"
@@ -51,23 +52,22 @@
             data-test="prompt-select"
             :items="buttons"
             :multiple="multiple === true"
-            @update:model-value="selectOkDisabled = false"
           />
         </v-row>
         <v-card-actions class="px-2">
           <v-spacer />
           <v-btn
+            @click="cancelHandler"
             variant="outlined"
             data-test="prompt-cancel"
-            @click="cancelHandler"
           >
             Cancel
           </v-btn>
           <v-btn
             variant="flat"
+            @click="submitHandler"
             data-test="prompt-ok"
             :disabled="selectOkDisabled"
-            @click="submitHandler"
           >
             Ok
           </v-btn>
@@ -77,17 +77,17 @@
         <v-card-actions :class="layoutClass">
           <v-spacer />
           <v-btn
+            @click="cancelHandler"
             variant="outlined"
             data-test="prompt-cancel"
-            @click="cancelHandler"
           >
             Cancel
           </v-btn>
           <div v-for="(button, index) in buttons" :key="index">
             <v-btn
               variant="flat"
-              :data-test="`prompt-${button.text}`"
               @click="submitWrapper(button.value)"
+              :data-test="`prompt-${button.text}`"
             >
               {{ button.text }}
             </v-btn>

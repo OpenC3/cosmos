@@ -36,17 +36,17 @@
       <v-card-actions class="px-2">
         <v-spacer />
         <v-btn
+          @click="cancel"
           variant="outlined"
           data-test="environment-dialog-cancel"
-          @click="cancel"
         >
           Cancel
         </v-btn>
         <v-btn
+          @click="updateEnvironment"
           variant="flat"
           data-test="environment-dialog-save"
           :disabled="!!inputError"
-          @click="updateEnvironment"
         >
           Save
         </v-btn>
@@ -77,6 +77,9 @@ export default {
       selected: [],
     }
   },
+  mounted: function () {
+    this.loadEnvironment()
+  },
   computed: {
     show: {
       get() {
@@ -86,9 +89,6 @@ export default {
         this.$emit('update:modelValue', value)
       },
     },
-  },
-  mounted: function () {
-    this.loadEnvironment()
   },
   methods: {
     loadEnvironment: function () {
