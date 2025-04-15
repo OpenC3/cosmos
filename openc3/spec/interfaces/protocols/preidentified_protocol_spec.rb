@@ -222,125 +222,165 @@ module OpenC3
         end
       end
 
-      it "reads COSMOS 4 packets" do
-        $request = 0
-        $tempfile = 'cosmos4.bin'
-        pkt1_time = Time.now
-        pkt2_time = pkt1_time + 1
-        File.open($tempfile, 'wb') do |file|
-          configuration_name = 'COSMOS4'
-          file_header = "COSMOS4_TLM_#{configuration_name.ljust(32, ' ')[0..31]}_"
-          file_header << 'localhost'.ljust(83)
-          file.write(file_header)
-          packet = Packet.new("TGT1", "PKT1")
-          packet.received_time = pkt1_time
-          packet.stored = true
-          packet.buffer = "\x01\x02"
-          file.write(build_entry_header(packet))
-          file.write(packet.buffer(false))
-          packet = Packet.new("TGT2", "PKT2")
-          packet.received_time = pkt2_time
-          packet.stored = false
-          packet.buffer = "\x03\x04"
-          file.write(build_entry_header(packet))
-          file.write(packet.buffer(false))
-        end
-
-        class FileInterface
-          def get_next_telemetry_file
-            $request += 1
-            if $request == 1
-              $tempfile
-            else $request == 2
-              "FILE#{Time.now.to_f}"
+      [true, false].each do |stored|
+        context "with stored #{stored}" do
+          it "reads COSMOS 4 packets" do
+            $request = 0
+            $filename = 'cosmos4.bin'
+            pkt1_time = Time.now
+            pkt2_time = pkt1_time + 1
+            File.open("0_#{$filename}", 'wb') do |file|
+              configuration_name = 'COSMOS4'
+              file_header = "COSMOS4_TLM_#{configuration_name.ljust(32, ' ')[0..31]}_"
+              file_header << 'localhost'.ljust(83)
+              file.write(file_header)
+              packet = Packet.new("TGT1", "PKT1")
+              packet.received_time = pkt1_time
+              packet.stored = true
+              packet.buffer = "\x01\x02"
+              file.write(build_entry_header(packet))
+              file.write(packet.buffer(false))
+              packet = Packet.new("TGT2", "PKT2")
+              packet.received_time = pkt2_time
+              packet.stored = false
+              packet.buffer = "\x03\x04"
+              file.write(build_entry_header(packet))
+              file.write(packet.buffer(false))
             end
-          end
-          def finish_file
+            FileUtils.cp("0_#{$filename}", "1_#{$filename}")
+
+            class FileInterface
+              def get_next_telemetry_file
+                $request += 1
+                if $request == 1
+                  "0_#{$filename}"
+                elsif $request == 2
+                  "1_#{$filename}"
+                else
+                  "FILE#{Time.now.to_f}"
+                end
+              end
+              def finish_file
+              end
+            end
+            @interface = FileInterface.new(nil, '/path', nil, 65536, stored)
+            @interface.instance_variable_set(:@connected, true)
+            @interface.add_protocol(PreidentifiedProtocol, [nil, nil, 4, true], :READ_WRITE)
+
+            packet = @interface.read
+            expect(packet.target_name).to eql 'TGT1'
+            expect(packet.packet_name).to eql 'PKT1'
+            expect(packet.identified?).to be true
+            expect(packet.defined?).to be false
+            expect(packet.buffer).to eql "\x01\x02"
+            expect(packet.received_time).to be_within(0.001).of(pkt1_time)
+            expect(packet.stored).to be true
+            expect(packet.extra).to be nil
+
+            packet = @interface.read
+            expect(packet.target_name).to eql 'TGT2'
+            expect(packet.packet_name).to eql 'PKT2'
+            expect(packet.identified?).to be true
+            expect(packet.defined?).to be false
+            expect(packet.buffer).to eql "\x03\x04"
+            expect(packet.received_time).to be_within(0.001).of(pkt2_time)
+            expect(packet.stored).to be stored
+            expect(packet.extra).to be nil
+
+            # The next file returned by get_next_telemetry_file doesn't exist so:
+            expect { @interface.read }.to raise_error(Errno::ENOENT)
+
+            FileUtils.rm("0_#{$filename}")
+            FileUtils.rm("1_#{$filename}")
           end
         end
-        @interface = FileInterface.new(nil, '/path', nil)
-        @interface.instance_variable_set(:@connected, true)
-        @interface.add_protocol(PreidentifiedProtocol, [nil, nil, 4, true], :READ_WRITE)
-
-        packet = @interface.read
-        expect(packet.target_name).to eql 'TGT1'
-        expect(packet.packet_name).to eql 'PKT1'
-        expect(packet.identified?).to be true
-        expect(packet.defined?).to be false
-        expect(packet.buffer).to eql "\x01\x02"
-        expect(packet.received_time).to be_within(0.001).of(pkt1_time)
-        expect(packet.stored).to be true
-        expect(packet.extra).to be nil
-
-        packet = @interface.read
-        expect(packet.target_name).to eql 'TGT2'
-        expect(packet.packet_name).to eql 'PKT2'
-        expect(packet.identified?).to be true
-        expect(packet.defined?).to be false
-        expect(packet.buffer).to eql "\x03\x04"
-        expect(packet.received_time).to be_within(0.001).of(pkt2_time)
-        expect(packet.stored).to be false
-        expect(packet.extra).to be nil
-
-        # The next file returned by get_next_telemetry_file doesn't exist so:
-        expect { @interface.read }.to raise_error(Errno::ENOENT)
       end
 
-      it "reads COSMOS 5 packets" do
-        pkt1_time = Time.now.to_nsec_from_epoch
-        plw = PacketLogWriter.new(@log_dir, 'test')
-        plw.write(:RAW_PACKET, :TLM, 'TGT1', 'PKT1', pkt1_time, true, "\x01\x02", nil, '0-0')
-        pkt2_time = pkt1_time + 1_000_000_000
-        plw.write(:RAW_PACKET, :TLM, 'TGT2', 'PKT2', pkt2_time, false, "\x03\x04", nil, '0-0', extra: {"vcid" => 2 })
-        plw.shutdown
-        sleep 0.1 # Allow for shutdown thread "copy" to S3
-        $request = 0
-        $tempfile = nil
-        @files.each do |filename, data|
-          $tempfile = filename
-          File.open(filename, 'wb') do |file|
-            file.write(data)
-          end
-        end
-
-        class FileInterface
-          def get_next_telemetry_file
-            $request += 1
-            if $request == 1
-              $tempfile
-            else $request == 2
-              "FILE#{Time.now.to_f}"
+      [true, false].each do |stored|
+        context "with stored #{stored}" do
+          it "reads COSMOS 5 packets" do
+            pkt1_time = Time.now.to_nsec_from_epoch
+            plw = PacketLogWriter.new(@log_dir, 'test')
+            plw.write(:RAW_PACKET, :TLM, 'TGT1', 'PKT1', pkt1_time, true, "\x01\x02", nil, '0-0')
+            pkt2_time = pkt1_time + 1_000_000_000
+            plw.write(:RAW_PACKET, :TLM, 'TGT1', 'PKT2', pkt2_time, false, "\x03\x04", nil, '0-0', extra: {"vcid" => 2 })
+            plw.shutdown
+            sleep 0.1 # Allow for shutdown thread "copy" to S3
+            $request = 0
+            $filename = @files.keys[0]
+            File.open("0_#{$filename}", 'wb') do |file|
+              file.write(@files[$filename])
             end
-          end
-          def finish_file
+            File.open("1_#{$filename}", 'wb') do |file|
+              file.write(@files[$filename])
+            end
+
+            class FileInterface
+              def get_next_telemetry_file
+                $request += 1
+                if $request == 1
+                  "0_#{$filename}"
+                elsif $request == 2
+                  "1_#{$filename}"
+                else
+                  "FILE#{Time.now.to_f}"
+                end
+              end
+              def finish_file
+              end
+            end
+            # Test the worst case which is to give the protocol 1 byte at a time
+            @interface = FileInterface.new(nil, '/path', nil, 1, stored)
+            @interface.instance_variable_set(:@connected, true)
+            @interface.add_protocol(PreidentifiedProtocol, [nil, nil, 5, true], :READ_WRITE)
+
+            packet = @interface.read
+            expect(packet.target_name).to eql 'TGT1'
+            expect(packet.packet_name).to eql 'PKT1'
+            expect(packet.identified?).to be true
+            expect(packet.defined?).to be false
+            expect(packet.buffer).to eql "\x01\x02"
+            expect(packet.received_time.to_nsec_from_epoch).to eql pkt1_time
+            expect(packet.stored).to be true
+            expect(packet.extra).to be nil
+
+            packet = @interface.read
+            expect(packet.target_name).to eql 'TGT2'
+            expect(packet.packet_name).to eql 'PKT2'
+            expect(packet.identified?).to be true
+            expect(packet.defined?).to be false
+            expect(packet.buffer).to eql "\x03\x04"
+            expect(packet.received_time.to_nsec_from_epoch).to eql pkt2_time
+            expect(packet.stored).to be false
+            expect(packet.extra).to be nil
+
+            packet = @interface.read
+            expect(packet.target_name).to eql 'TGT1'
+            expect(packet.packet_name).to eql 'PKT1'
+            expect(packet.identified?).to be true
+            expect(packet.defined?).to be false
+            expect(packet.buffer).to eql "\x01\x02"
+            expect(packet.received_time.to_nsec_from_epoch).to eql pkt1_time
+            expect(packet.stored).to be true
+            expect(packet.extra).to be nil
+
+            packet = @interface.read
+            expect(packet.target_name).to eql 'TGT2'
+            expect(packet.packet_name).to eql 'PKT2'
+            expect(packet.identified?).to be true
+            expect(packet.defined?).to be false
+            expect(packet.buffer).to eql "\x03\x04"
+            expect(packet.received_time.to_nsec_from_epoch).to eql pkt2_time
+            expect(packet.stored).to be false
+            expect(packet.extra).to be nil
+
+            # The next file returned by get_next_telemetry_file doesn't exist so:
+            expect { @interface.read }.to raise_error(Errno::ENOENT)
+
+            FileUtils.rm("0_#{$filename}")
+            FileUtils.rm("1_#{$filename}")
           end
         end
-        @interface = FileInterface.new(nil, '/path', nil)
-        @interface.instance_variable_set(:@connected, true)
-        @interface.add_protocol(PreidentifiedProtocol, [nil, nil, 5, true], :READ_WRITE)
-
-        packet = @interface.read
-        expect(packet.target_name).to eql 'TGT1'
-        expect(packet.packet_name).to eql 'PKT1'
-        expect(packet.identified?).to be true
-        expect(packet.defined?).to be false
-        expect(packet.buffer).to eql "\x01\x02"
-        expect(packet.received_time.to_nsec_from_epoch).to eql pkt1_time
-        expect(packet.stored).to be true
-        expect(packet.extra).to be nil
-
-        packet = @interface.read
-        expect(packet.target_name).to eql 'TGT2'
-        expect(packet.packet_name).to eql 'PKT2'
-        expect(packet.identified?).to be true
-        expect(packet.defined?).to be false
-        expect(packet.buffer).to eql "\x03\x04"
-        expect(packet.received_time.to_nsec_from_epoch).to eql pkt2_time
-        expect(packet.stored).to be false
-        expect(packet.extra).to be nil
-
-        # The next file returned by get_next_telemetry_file doesn't exist so:
-        expect { @interface.read }.to raise_error(Errno::ENOENT)
       end
     end
   end

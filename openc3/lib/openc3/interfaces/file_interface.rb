@@ -128,6 +128,7 @@ module OpenC3
         # Find the next file to read
         @filename = get_next_telemetry_file()
         if @filename
+          puts "FileInterface: Processing file #{@filename}"
           if File.extname(@filename) == ".gz"
             @file = Zlib::GzipReader.open(@filename)
           else
@@ -154,8 +155,8 @@ module OpenC3
 
     def convert_data_to_packet(data, extra = nil)
       packet = super(data, extra)
-      if packet and @stored
-        packet.stored = true
+      if packet
+        packet.stored = @stored
       end
       return packet
     end

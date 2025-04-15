@@ -45,6 +45,7 @@ module OpenC3
     end
 
     def reset
+      puts "PreidentifiedProtocol: RESET *********************"
       super()
       @reduction_state = :START
       @packet_log_reader = PacketLogReader.new
@@ -289,6 +290,7 @@ module OpenC3
         @reduction_state = :TIME_REMOVED
       end
 
+      puts "4@reduction_state #{@reduction_state} data length #{@data.length} @data #{@data.simple_formatted}"
       if @reduction_state == :TIME_REMOVED
         # Read and remove the target name
         @read_target_name = read_length_field_followed_by_string(1)
@@ -297,6 +299,7 @@ module OpenC3
         @reduction_state = :TARGET_NAME_REMOVED
       end
 
+      puts "5@reduction_state #{@reduction_state} data length #{@data.length} @data #{@data.simple_formatted}"
       if @reduction_state == :TARGET_NAME_REMOVED
         # Read and remove the packet name
         @read_packet_name = read_length_field_followed_by_string(1)
@@ -305,6 +308,7 @@ module OpenC3
         @reduction_state = :PACKET_NAME_REMOVED
       end
 
+      puts "6@reduction_state #{@reduction_state} data length #{@data.length} @data #{@data.simple_formatted}"
       if @reduction_state == :PACKET_NAME_REMOVED
         # Read packet data and return
         packet_data = read_length_field_followed_by_string(4)

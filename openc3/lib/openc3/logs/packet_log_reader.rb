@@ -105,8 +105,7 @@ module OpenC3
 
     # Closes the current log file
     def close
-      @file.close if @file and !@file.closed?
-      @filename = nil
+      @file.close if @file and !@file.closed? and !@file.is_a?(StringIO)
     end
 
     # Read a packet from the log file
@@ -114,11 +113,20 @@ module OpenC3
     # @param identify_and_define (see #each)
     # @return [Packet]
     def read(identify_and_define = true)
+      if @file.is_a?(StringIO) and @file.size - @file.pos < 4
+        return -1 # Need more data
+      end
       # Read entry length
-      length = @file.read(4)
-      return nil if !length or length.length <= 0
+      length_bytes = @file.read(4)
+      return nil if !length_bytes or length_bytes.length <= 0
 
-      length = length.unpack('N')[0]
+      length = length_bytes.unpack('N')[0]
+      if @file.is_a?(StringIO) and @file.size - @file.pos < length
+        length_bytes.each_byte.reverse_each do |byte|
+          @file.ungetbyte(byte)
+        end
+        return -1 # Need more data
+      end
       entry = @file.read(length)
       flags = entry[0..1].unpack('n')[0]
 
