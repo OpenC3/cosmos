@@ -29,9 +29,7 @@
         <div v-if="selectedGraphId === null">
           <v-row class="my-5">
             <v-spacer />
-            <span>
-              Add a graph or select an existing graph to continue
-            </span>
+            <span> Add a graph or select an existing graph to continue </span>
             <v-spacer />
           </v-row>
         </div>
@@ -41,11 +39,11 @@
             :initial-target-name="$route.params.target"
             :initial-packet-name="$route.params.packet"
             :initial-item-name="$route.params.item"
-            @addItem="addItem"
             button-text="Add Item"
             choose-item
             select-types
             show-latest
+            @add-item="addItem"
           />
           <!-- All this row / col stuff is to setup a structure similar to the
             target-packet-item-chooser so it will layout the same 
@@ -58,28 +56,28 @@
               <v-btn
                 v-show="state === 'pause'"
                 class="pulse"
-                v-on:click="
-                  () => {
-                    state = 'start'
-                  }
-                "
                 color="primary"
                 data-test="start-graph"
                 icon="mdi-play"
                 size="large"
+                @click="
+                  () => {
+                    state = 'start'
+                  }
+                "
               >
               </v-btn>
               <v-btn
                 v-show="state === 'start'"
-                v-on:click="
-                  () => {
-                    state = 'pause'
-                  }
-                "
                 color="primary"
                 data-test="pause-graph"
                 icon="mdi-pause"
                 size="large"
+                @click="
+                  () => {
+                    state = 'pause'
+                  }
+                "
               />
               <v-spacer />
             </v-col>
@@ -89,19 +87,25 @@
     </v-expansion-panel>
   </v-expansion-panels>
 
-  <v-btn v-if="!graphs?.length" class="ma-1" text="Add Graph" prepend-icon="mdi-plus" @click="addGraph" />
+  <v-btn
+    v-if="!graphs?.length"
+    class="ma-1"
+    text="Add Graph"
+    prepend-icon="mdi-plus"
+    @click="addGraph"
+  />
   <div class="grid">
     <div
-      class="item"
       v-for="graph in graphs"
-      :key="graph"
       :id="`gridItem${graph}`"
+      :key="graph"
       :ref="`gridItem${graph}`"
+      class="item"
     >
       <div class="item-content">
         <graph
-          :ref="`graph${graph}`"
           :id="graph"
+          :ref="`graph${graph}`"
           :state="state"
           :start-time="startTime"
           :selected-graph-id="selectedGraphId"
@@ -127,14 +131,14 @@
   <open-config-dialog
     v-if="showOpenConfig"
     v-model="showOpenConfig"
-    :configKey="configKey"
+    :config-key="configKey"
     @success="openConfiguration"
   />
   <!-- Note we're using v-if here so it gets re-created each time and refreshes the list -->
   <save-config-dialog
     v-if="showSaveConfig"
     v-model="showSaveConfig"
-    :configKey="configKey"
+    :config-key="configKey"
     @success="saveConfiguration"
   />
   <!-- Note we're using v-if here so it gets re-created each time and refreshes the list -->
@@ -295,17 +299,6 @@ export default {
       },
     }
   },
-  watch: {
-    settings: {
-      handler: function () {
-        this.saveDefaultConfig(this.currentConfig)
-      },
-      deep: true,
-    },
-    panel: function () {
-      this.resizeAll()
-    },
-  },
   computed: {
     currentConfig: function () {
       return {
@@ -339,6 +332,17 @@ export default {
           return config
         }),
       }
+    },
+  },
+  watch: {
+    settings: {
+      handler: function () {
+        this.saveDefaultConfig(this.currentConfig)
+      },
+      deep: true,
+    },
+    panel: function () {
+      this.resizeAll()
     },
   },
   created() {
