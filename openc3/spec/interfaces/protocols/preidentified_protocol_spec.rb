@@ -263,6 +263,7 @@ module OpenC3
               def finish_file
               end
             end
+            # TODO: Test the worst case which is to give the protocol 1 byte at a time
             @interface = FileInterface.new(nil, '/path', nil, 65536, stored)
             @interface.instance_variable_set(:@connected, true)
             @interface.add_protocol(PreidentifiedProtocol, [nil, nil, 4, true], :READ_WRITE)
