@@ -40,7 +40,7 @@ const config = {
   // to replace "en" with "zh-Hans".
   i18n: {
     defaultLocale: "en",
-    locales: ["en"],
+    locales: ["en", "ja"],
   },
 
   plugins: [
@@ -190,6 +190,10 @@ const config = {
           {
             to: "https://openc3.com/about/",
             label: "About",
+          },
+          {
+            type: 'localeDropdown',
+            position: 'right',
           },
           {
             to: "https://github.com/OpenC3/cosmos",

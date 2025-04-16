@@ -1,0 +1,34 @@
+{
+  "version.label": {
+    "message": "次へ",
+    "description": "The label for version current"
+  },
+  "sidebar.defaultSidebar.category.Getting Started": {
+    "message": "はじめに",
+    "description": "The label for category Getting Started in sidebar defaultSidebar"
+  },
+  "sidebar.defaultSidebar.category.Getting Started.link.generated-index.description": {
+    "message": "OpenC3 COSMOSを初めよう",
+    "description": "The generated-index page description for category Getting Started in sidebar defaultSidebar"
+  },
+  "sidebar.defaultSidebar.category.Configuration": {
+    "message": "設定",
+    "description": "The label for category Configuration in sidebar defaultSidebar"
+  },
+  "sidebar.defaultSidebar.category.Tools": {
+    "message": "ツール",
+    "description": "The label for category Tools in sidebar defaultSidebar"
+  },
+  "sidebar.defaultSidebar.category.Guides": {
+    "message": "ガイド",
+    "description": "The label for category Guides in sidebar defaultSidebar"
+  },
+  "sidebar.defaultSidebar.category.Development": {
+    "message": "開発",
+    "description": "The label for category Development in sidebar defaultSidebar"
+  },
+  "sidebar.defaultSidebar.category.Meta": {
+    "message": "メタ情報",
+    "description": "The label for category Meta in sidebar defaultSidebar"
+  }
+}
