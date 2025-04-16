@@ -27,23 +27,16 @@
         <v-list-item>
           <v-list-item-title>{{ router }}</v-list-item-title>
 
-          <template v-slot:append>
-            <v-tooltip location="top">
-              <template v-slot:activator="{ props }">
-                <v-icon v-bind="props" @click="showRouter(router)">
-                  mdi-eye
-                </v-icon>
-              </template>
-              <span>Show Router Details</span>
-            </v-tooltip>
+          <template #append>
+            <v-btn icon="mdi-eye" variant="text" @click="showRouter(router)" />
           </template>
         </v-list-item>
         <v-divider />
       </div>
     </v-list>
     <output-dialog
-      v-model="showDialog"
       v-if="showDialog"
+      v-model="showDialog"
       :content="jsonContent"
       type="Router"
       :name="dialogTitle"

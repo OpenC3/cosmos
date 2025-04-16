@@ -37,13 +37,13 @@
               <v-col>Select Component:</v-col>
               <v-col>
                 <v-select
+                  v-model="selectedComponent"
                   hide-details
                   density="compact"
                   variant="outlined"
                   :items="components"
                   item-title="label"
                   item-value="value"
-                  v-model="selectedComponent"
                   return-object
                   data-test="select-component"
                 />
@@ -76,10 +76,10 @@
             <v-row>
               <v-col>
                 <target-packet-item-chooser
-                  @add-item="addValue"
                   :button-text="chooseItem ? 'Add Item' : 'Add Packet'"
                   :mode="newPacketCmdOrTlm"
-                  :chooseItem="chooseItem"
+                  :choose-item="chooseItem"
+                  @add-item="addValue"
                 />
               </v-col>
             </v-row>
@@ -114,22 +114,15 @@
             <v-row
               ><v-col>
                 <v-data-table
+                  v-model:items-per-page="itemsPerPage"
                   :headers="headers"
                   :items="packets"
-                  v-model:items-per-page="itemsPerPage"
                   :items-per-page-options="[10, 100]"
                   multi-sort
                   density="compact"
                 >
-                  <template v-slot:item.delete="{ item }">
-                    <v-tooltip location="top">
-                      <template v-slot:activator="{ props }">
-                        <v-icon @click="deleteItem(item)" v-bind="props">
-                          mdi-delete
-                        </v-icon>
-                      </template>
-                      <span>Delete Item</span>
-                    </v-tooltip>
+                  <template #item.delete="{ item }">
+                    <v-icon @click="deleteItem(item)"> mdi-delete </v-icon>
                   </template>
                 </v-data-table>
               </v-col></v-row

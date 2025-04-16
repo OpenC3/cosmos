@@ -41,63 +41,33 @@
             {{ microservice_status[microservice.name].count }}
           </v-list-item-subtitle>
 
-          <template v-slot:append>
-            <div v-if="microservice_status[microservice.name]">
-              <div v-show="!!microservice_status[microservice.name].error">
-                <v-tooltip location="top">
-                  <template v-slot:activator="{ props }">
-                    <v-icon
-                      v-bind="props"
-                      @click="showMicroserviceError(microservice.name)"
-                    >
-                      mdi-alert
-                    </v-icon>
-                  </template>
-                  <span>View Error</span>
-                </v-tooltip>
-              </div>
-            </div>
+          <template #append>
+            <v-btn
+              v-show="microservice_status[microservice.name]?.error"
+              icon="mdi-alert"
+              variant="text"
+              @click="showMicroserviceError(microservice.name)"
+            />
             <v-list-item-icon class="mr-3">
-              <v-tooltip bottom>
-                <template v-slot:activator="{ on, attrs }">
-                  <v-icon
-                    @click="startMicroservice(microservice.name)"
-                    v-bind="attrs"
-                    v-on="on"
-                  >
-                    mdi-play
-                  </v-icon>
-                </template>
-                <span>Start Microservice</span>
-              </v-tooltip>
+              <v-btn
+                icon="mdi-play"
+                variant="text"
+                @click="startMicroservice(microservice.name)"
+              />
             </v-list-item-icon>
             <v-list-item-icon class="mr-3">
-              <v-tooltip bottom>
-                <template v-slot:activator="{ on, attrs }">
-                  <v-icon
-                    @click="stopMicroservice(microservice.name)"
-                    v-bind="attrs"
-                    v-on="on"
-                  >
-                    mdi-stop
-                  </v-icon>
-                </template>
-                <span>Stop Microservice</span>
-              </v-tooltip>
+              <v-btn
+                icon="mdi-stop"
+                variant="text"
+                @click="stopMicroservice(microservice.name)"
+              />
             </v-list-item-icon>
             <v-list-item-icon>
-              <v-tooltip bottom>
-                <template v-slot:activator="{ on, attrs }">
-                  <v-icon
-                    @click="showMicroservice(microservice.name)"
-                    v-bind="attrs"
-                    v-on="on"
-                  >
-                    mdi-eye
-                  </v-icon>
-                </template>
-                <span>View Microservice</span>
-              </v-tooltip>
+              <v-btn
+                icon="mdi-eye"
+                variant="text"
+                @click="showMicroservice(microservice.name)"
+              />
             </v-list-item-icon>
           </template>
         </v-list-item>
@@ -105,16 +75,16 @@
       </div>
     </v-list>
     <output-dialog
-      v-model="showDialog"
       v-if="showDialog"
+      v-model="showDialog"
       :content="jsonContent"
       type="Microservice"
       :name="dialogTitle"
       @submit="dialogCallback"
     />
     <text-box-dialog
-      v-model="showError"
       v-if="showError"
+      v-model="showError"
       :text="jsonContent"
       :title="dialogTitle"
     />

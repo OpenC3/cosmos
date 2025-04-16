@@ -27,26 +27,23 @@
         <v-list-item>
           <v-list-item-title>{{ openc3_interface }}</v-list-item-title>
 
-          <template v-slot:append>
-            <v-tooltip location="top">
-              <template v-slot:activator="{ props }">
-                <v-icon v-bind="props" @click="showInterface(openc3_interface)">
-                  mdi-eye
-                </v-icon>
-              </template>
-              <span>Show Interface Details</span>
-            </v-tooltip>
+          <template #append>
+            <v-btn
+              icon="mdi-eye"
+              variant="text"
+              @click="showInterface(openc3_interface)"
+            />
           </template>
         </v-list-item>
         <v-divider />
       </div>
     </v-list>
     <output-dialog
+      v-if="showDialog"
+      v-model="showDialog"
       :content="jsonContent"
       type="Interface"
       :name="dialogTitle"
-      v-model="showDialog"
-      v-if="showDialog"
       @submit="dialogCallback"
     />
   </div>

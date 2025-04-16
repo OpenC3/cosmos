@@ -29,16 +29,12 @@
           <th scope="col" class="text-left">Key</th>
           <th scope="col" class="text-left">Value</th>
           <th scope="col" class="text-right">
-            <v-tooltip location="top">
-              <template v-slot:activator="{ props }">
-                <div v-bind="props">
-                  <v-icon data-test="new-metadata-icon" @click="addEnvVar">
-                    mdi-plus
-                  </v-icon>
-                </div>
-              </template>
-              <span> Add Environment </span>
-            </v-tooltip>
+            <v-btn
+              icon="mdi-plus"
+              variant="text"
+              data-test="new-metadata-icon"
+              @click="addEnvVar"
+            />
           </th>
         </tr>
         <tr v-for="(env, i) in selected" :key="`tr-${i}`">
@@ -61,19 +57,12 @@
             />
           </td>
           <td>
-            <v-tooltip location="top">
-              <template v-slot:activator="{ props }">
-                <div v-bind="props">
-                  <v-icon
-                    :data-test="`remove-env-icon-${i}`"
-                    @click="delEnvVar(i)"
-                  >
-                    mdi-delete
-                  </v-icon>
-                </div>
-              </template>
-              <span> Delete Environment </span>
-            </v-tooltip>
+            <v-btn
+              icon="mdi-delete"
+              variant="text"
+              :data-test="`remove-env-icon-${i}`"
+              @click="delEnvVar(i)"
+            />
           </td>
         </tr>
       </tbody>

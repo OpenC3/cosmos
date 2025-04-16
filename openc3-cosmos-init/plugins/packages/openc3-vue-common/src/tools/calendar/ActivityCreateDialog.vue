@@ -22,57 +22,53 @@
 
 <template>
   <div>
-    <v-dialog persistent v-model="show" width="600">
+    <v-dialog v-model="show" persistent width="600">
       <v-card>
         <v-toolbar height="24">
           <v-spacer />
           <span v-if="activity">Edit Activity</span>
           <span v-else>Create Activity</span>
           <v-spacer />
-          <v-tooltip location="top">
-            <template v-slot:activator="{ props }">
-              <div v-bind="props">
-                <v-icon data-test="close-note-icon" @click="clearHandler">
-                  mdi-close-box
-                </v-icon>
-              </div>
-            </template>
-            <span> Close </span>
-          </v-tooltip>
+          <v-btn
+            icon="mdi-close-box"
+            variant="text"
+            data-test="close-note-icon"
+            @click="clearHandler"
+          />
         </v-toolbar>
         <v-stepper
           v-model="dialogStep"
           editable
           :items="['Activity Times', 'Activity Type']"
         >
-          <template v-if="dialogStep === 2" v-slot:actions>
+          <template v-if="dialogStep === 2" #actions>
             <v-row class="ma-0 px-6 pb-4">
-              <v-btn @click="() => (dialogStep -= 1)" variant="text">
+              <v-btn variant="text" @click="() => (dialogStep -= 1)">
                 Previous
               </v-btn>
               <v-spacer />
-              <v-btn @click="clearHandler" variant="outlined" class="mr-4">
+              <v-btn variant="outlined" class="mr-4" @click="clearHandler">
                 Cancel
               </v-btn>
               <v-btn
-                @click.prevent="submitHandler"
                 type="submit"
                 color="primary"
                 :disabled="!!error"
+                @click.prevent="submitHandler"
               >
                 Ok
               </v-btn>
             </v-row>
           </template>
 
-          <template v-slot:item.1>
+          <template #item.1>
             <v-card-text>
               <div class="pr-2">
                 <v-select
+                  v-model="timeline"
                   density="compact"
                   hide-details
                   variant="outlined"
-                  v-model="timeline"
                   :items="timelineNames"
                   label="Timeline"
                   data-test="activity-select-timeline"
@@ -178,8 +174,8 @@
                 </v-row>
                 <v-row>
                   <span
-                    class="ma-2 text-red"
                     v-show="timeError"
+                    class="ma-2 text-red"
                     v-text="timeError"
                   />
                 </v-row>
@@ -187,14 +183,14 @@
             </v-card-text>
           </template>
 
-          <template v-slot:item.2>
+          <template #item.2>
             <v-card-text>
               <div class="pr-2">
                 <v-select
+                  v-model="kind"
                   density="compact"
                   hide-details
                   variant="outlined"
-                  v-model="kind"
                   :items="types"
                   label="Activity Type"
                   data-test="activity-select-type"
@@ -213,7 +209,7 @@
                     data-test="activity-cmd"
                   />
                 </div>
-                <div class="ma-3" v-else-if="kind === 'SCRIPT'">
+                <div v-else-if="kind === 'SCRIPT'" class="ma-3">
                   <script-chooser @file="fileHandler" />
                   <environment-chooser v-model="activityEnvironment" />
                 </div>
@@ -243,6 +239,7 @@ export default {
     EnvironmentChooser,
     ScriptChooser,
   },
+  mixins: [CreateDialog, TimeFilters],
   props: {
     modelValue: Boolean,
     timelines: {
@@ -254,7 +251,6 @@ export default {
       default: null,
     },
   },
-  mixins: [CreateDialog, TimeFilters],
   data() {
     return {
       timeline: null,
@@ -273,9 +269,6 @@ export default {
       timeSpan: 'minutes',
       timeSpans: ['minutes', 'hours', 'days'],
     }
-  },
-  mounted: function () {
-    this.updateValues()
   },
   computed: {
     timeError: function () {
@@ -315,6 +308,9 @@ export default {
         this.$emit('update:modelValue', value)
       },
     },
+  },
+  mounted: function () {
+    this.updateValues()
   },
   methods: {
     changeKind: function (inputKind) {

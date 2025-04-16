@@ -28,16 +28,12 @@
         <span> {{ title }} </span>
         <v-spacer />
         <div class="mx-2">
-          <v-tooltip location="top">
-            <template v-slot:activator="{ props }">
-              <div v-bind="props">
-                <v-icon data-test="downloadIcon" @click="download">
-                  mdi-download
-                </v-icon>
-              </div>
-            </template>
-            <span> Download </span>
-          </v-tooltip>
+          <v-btn
+            icon="mdi-download"
+            variant="text"
+            data-test="downloadIcon"
+            @click="download"
+          />
         </div>
       </v-toolbar>
       <v-card-text style="max-height: 80vh">

@@ -23,64 +23,45 @@
 <template>
   <div
     v-show="isVisible"
+    ref="rawDialog"
     :style="computedStyle"
     class="raw-dialog"
-    ref="rawDialog"
   >
     <div ref="bar" class="toolbar-wrapper">
       <v-toolbar height="24">
-        <v-tooltip location="top">
-          <template v-slot:activator="{ props }">
-            <div v-bind="props">
-              <v-icon data-test="copy-icon" @click="copyRawData">
-                mdi-content-copy
-              </v-icon>
-            </div>
-          </template>
-          <span> Copy </span>
-        </v-tooltip>
-        <v-tooltip location="top">
-          <template v-slot:activator="{ props }">
-            <div v-bind="props">
-              <v-icon data-test="download" @click="downloadRawData">
-                mdi-download
-              </v-icon>
-            </div>
-          </template>
-          <span> Download </span>
-        </v-tooltip>
+        <v-btn
+          icon="mdi-content-copy"
+          variant="text"
+          data-test="copy-icon"
+          @click="copyRawData"
+        />
+        <v-btn
+          icon="mdi-download"
+          variant="text"
+          data-test="download"
+          @click="downloadRawData"
+        />
         <v-spacer />
         <span> {{ type }} </span>
         <v-spacer />
-        <v-tooltip location="top">
-          <template v-slot:activator="{ props }">
-            <div v-bind="props">
-              <v-icon data-test="close" @click="$emit('close')">
-                mdi-close-box
-              </v-icon>
-            </div>
-          </template>
-          <span> Close </span>
-        </v-tooltip>
+        <v-btn
+          icon="mdi-close-box"
+          variant="text"
+          data-test="close"
+          @click="$emit('close')"
+        />
       </v-toolbar>
     </div>
     <v-card>
       <v-card-title class="d-flex align-center justify-content-space-between">
         <span> {{ header }} </span>
         <v-spacer />
-        <v-tooltip location="top">
-          <template v-slot:activator="{ props }">
-            <div v-bind="props">
-              <v-btn
-                :icon="buttonIcon"
-                variant="text"
-                data-test="pause"
-                @click="pause"
-              />
-            </div>
-          </template>
-          <span> {{ buttonLabel }} </span>
-        </v-tooltip>
+        <v-btn
+          :icon="buttonIcon"
+          variant="text"
+          data-test="pause"
+          @click="pause"
+        />
       </v-card-title>
       <v-card-text>
         <v-row dense>
@@ -100,8 +81,8 @@
           </v-col>
         </v-row>
         <v-textarea
-          class="pa-0 ma-0"
           v-model="rawData"
+          class="pa-0 ma-0"
           :rows="numRows"
           no-resize
           readonly
@@ -142,13 +123,6 @@ export default {
     }
   },
   computed: {
-    buttonLabel: function () {
-      if (this.paused) {
-        return 'Resume'
-      } else {
-        return 'Pause'
-      }
-    },
     buttonIcon: function () {
       if (this.paused) {
         return 'mdi-play'
@@ -167,7 +141,6 @@ export default {
         this.rawData = ''
         this.receivedCount = ''
         this.paused = false
-        this.buttonLabel = 'Pause'
         this.$emit('display', bool)
       },
     },
