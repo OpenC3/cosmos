@@ -51,6 +51,7 @@
             icon="mdi-notification-clear-all "
             variant="text"
             data-test="clear-notifications"
+            aria-label="Clear All Notifications"
             @click="clearNotifications"
           />
           <v-btn
@@ -58,6 +59,7 @@
             variant="text"
             class="ml-1"
             data-test="notification-settings"
+            aria-label="Notification Settings"
             @click="toggleSettingsDialog"
           />
         </v-card-title>

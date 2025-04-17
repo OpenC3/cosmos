@@ -21,6 +21,7 @@
     :icon="displayedIcon"
     variant="text"
     :style="computedStyle"
+    aria-label="Signal Strength"
     @click="clickHandler"
   />
 </template>

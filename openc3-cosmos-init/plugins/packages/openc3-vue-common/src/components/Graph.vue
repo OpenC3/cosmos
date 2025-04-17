@@ -38,6 +38,7 @@
           icon="mdi-alert"
           density="compact"
           variant="text"
+          aria-label="Show Errors"
           @click="
             () => {
               errorDialog = true
@@ -50,6 +51,7 @@
           variant="text"
           density="compact"
           data-test="edit-graph-icon"
+          aria-label="Edit Graph"
           @click="
             () => {
               editGraph = true

@@ -63,6 +63,7 @@
                   variant="text"
                   class="mt-1"
                   data-test="item-delete"
+                  aria-label="Delete Environment Variable"
                   @click="deleteEnvironment(item)"
                 />
               </template>

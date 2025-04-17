@@ -62,6 +62,7 @@
               <v-btn
                 icon="mdi-delete"
                 variant="text"
+                aria-label="Delete Override"
                 @click="deleteOverride(item)"
               />
             </template>

@@ -38,6 +38,7 @@
           variant="text"
           density="compact"
           data-test="error-graph-icon"
+          aria-label="Show Errors"
           @click="
             () => {
               errorDialog = true
@@ -49,6 +50,7 @@
           variant="text"
           density="compact"
           data-test="edit-screen-icon"
+          aria-label="Edit Screen"
           @click="openEdit"
         />
         <v-tooltip v-if="!fixFloated" :open-delay="600" location="top">
@@ -58,8 +60,9 @@
                 :icon="floated ? 'mdi-balloon' : 'mdi-view-grid-outline'"
                 variant="text"
                 data-test="float-screen-icon"
+                :aria-label="floated ? 'Unfloat Screen' : 'Float Screen'"
                 @click="floatScreen"
-              ></v-btn>
+              />
             </div>
           </template>
           <span> {{ floated ? 'Unfloat Screen' : 'Float Screen' }} </span>
@@ -71,8 +74,9 @@
                 icon="mdi-arrow-up"
                 variant="text"
                 data-test="up-screen-icon"
+                aria-label="Move Screen Up"
                 @click="upScreen"
-              ></v-btn>
+              />
             </div>
           </template>
           <span> Move Screen Up </span>
@@ -88,8 +92,9 @@
                 icon="mdi-arrow-down"
                 variant="text"
                 data-test="down-screen-icon"
+                aria-label="Move Screen Down"
                 @click="downScreen"
-              ></v-btn>
+              />
             </div>
           </template>
           <span> Move Screen Down </span>
@@ -103,6 +108,7 @@
           variant="text"
           density="compact"
           data-test="minimize-screen-icon"
+          aria-label="Minimize Screen"
           @click="minMaxTransition"
         />
         <v-btn
@@ -110,6 +116,7 @@
           icon="mdi-window-maximize"
           variant="text"
           data-test="maximize-screen-icon"
+          aria-label="Maximize Screen"
           @click="minMaxTransition"
         />
         <v-btn
@@ -118,6 +125,7 @@
           variant="text"
           density="compact"
           data-test="close-screen-icon"
+          aria-label="Close Screen"
           @click="$emit('close-screen')"
         />
       </v-toolbar>

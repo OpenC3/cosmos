@@ -98,6 +98,7 @@
                   v-bind="props"
                   icon="mdi-eye"
                   variant="text"
+                  aria-label="Show Output"
                   data-test="show-output"
                   @click="showOutput(process)"
                 />
@@ -137,6 +138,7 @@
               class="mx-3"
               icon="mdi-download"
               variant="text"
+              aria-label="Download Plugin"
               data-test="download-plugin"
               @click="downloadPlugin(plugin)"
             />
@@ -144,6 +146,7 @@
               class="mx-3"
               icon="mdi-pencil"
               variant="text"
+              aria-label="Edit Plugin"
               data-test="edit-plugin"
               @click="editPlugin(plugin)"
             />
@@ -154,6 +157,7 @@
                   class="mx-3"
                   icon="mdi-update"
                   variant="text"
+                  aria-label="Upgrade Plugin"
                   data-test="upgrade-plugin"
                   @click="upgradePlugin(plugin)"
                 />
@@ -164,6 +168,7 @@
               class="mx-3"
               icon="mdi-delete"
               variant="text"
+              aria-label="Delete Plugin"
               data-test="delete-plugin"
               @click="deletePrompt(plugin)"
             />

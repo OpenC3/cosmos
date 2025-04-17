@@ -76,6 +76,7 @@
                   v-bind="props"
                   icon="astro:settings"
                   size="small"
+                  aria-label="Settings"
                   data-test="history-component-open-settings"
                 />
               </template>
@@ -169,6 +170,7 @@
               color="secondary"
               icon="mdi-file-download"
               size="small"
+              aria-label="Download"
               data-test="history-component-download"
               @click="download"
             />
@@ -178,6 +180,7 @@
               color="primary"
               :icon="paused ? 'mdi-play' : 'mdi-pause'"
               size="large"
+              :aria-label="paused ? 'Play' : 'Pause'"
               data-test="history-component-play-pause"
               @click="togglePlayPause"
             />

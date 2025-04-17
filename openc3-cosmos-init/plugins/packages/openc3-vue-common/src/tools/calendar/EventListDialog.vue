@@ -33,6 +33,7 @@
             variant="text"
             density="compact"
             data-test="close-metadata-icon"
+            aria-label="Close Dialog"
             @click="close"
           />
         </v-toolbar>
@@ -79,15 +80,17 @@
               size="small"
               class="mr-2"
               data-test="edit-event"
+              aria-label="Edit Event"
               @click="editAction(item)"
-            ></v-btn>
+            />
             <v-btn
               icon="mdi-delete"
               variant="text"
               size="small"
               data-test="delete-event"
+              aria-label="Delete Event"
               @click="deleteAction(item)"
-            ></v-btn>
+            />
           </template>
         </v-data-table>
         <v-card-actions class="px-2">

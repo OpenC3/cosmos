@@ -125,6 +125,7 @@
                     <v-btn
                       icon="mdi-delete"
                       variant="text"
+                      aria-label="Delete Item"
                       @click="deleteItem(item)"
                     />
                   </template>

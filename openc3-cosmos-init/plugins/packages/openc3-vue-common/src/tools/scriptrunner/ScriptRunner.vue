@@ -117,6 +117,7 @@
                 icon="mdi-cached"
                 variant="text"
                 :disabled="filename === NEW_FILENAME"
+                aria-label="Reload File"
                 @click="reloadFile"
               />
             </template>
@@ -187,6 +188,7 @@
                   :icon="environmentIcon"
                   :disabled="envDisabled"
                   data-test="env-button"
+                  aria-label="Script Environment"
                   @click="scriptEnvironment.show = !scriptEnvironment.show"
                 />
               </template>

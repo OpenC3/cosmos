@@ -64,6 +64,7 @@
           icon="mdi-delete"
           variant="text"
           style="margin-left: auto"
+          aria-label="Delete"
           @click="emit('delete')"
         />
       </div>

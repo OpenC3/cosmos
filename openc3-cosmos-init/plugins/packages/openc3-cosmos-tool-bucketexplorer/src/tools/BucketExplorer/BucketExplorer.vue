@@ -93,6 +93,7 @@
               density="compact"
               class="ml-3 mt-1"
               data-test="be-nav-back"
+              aria-label="Navigate Back"
               @click.stop="backArrow"
             />
             <span class=".text-body-1 ma-2 font-size" data-test="file-path">
@@ -136,25 +137,31 @@
             v-if="item.icon === 'mdi-file' && isText(item.name)"
             icon="mdi-eye"
             variant="text"
+            density="compact"
             class="mr-3"
             data-test="view-file"
+            aria-label="View File"
             @click="viewFile(item.name)"
-          ></v-btn>
+          />
           <v-btn
             v-if="item.icon === 'mdi-file'"
             icon="mdi-download-box"
             variant="text"
+            density="compact"
             class="mr-3"
             data-test="download-file"
+            aria-label="Download File"
             @click="downloadFile(item.name)"
-          ></v-btn>
+          />
           <v-btn
             v-if="item.icon === 'mdi-file'"
             icon="mdi-delete"
             variant="text"
+            density="compact"
             data-test="delete-file"
+            aria-label="Delete File"
             @click="deleteFile(item.name)"
-          ></v-btn>
+          />
         </template>
       </v-data-table>
     </v-card>
