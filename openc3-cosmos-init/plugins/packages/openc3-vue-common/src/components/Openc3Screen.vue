@@ -54,9 +54,12 @@
         <v-tooltip v-if="!fixFloated" :open-delay="600" location="top">
           <template #activator="{ props }">
             <div v-bind="props">
-              <v-icon data-test="float-screen-icon" @click="floatScreen">
-                {{ floated ? 'mdi-balloon' : 'mdi-view-grid-outline' }}
-              </v-icon>
+              <v-btn
+                :icon="floated ? 'mdi-balloon' : 'mdi-view-grid-outline'"
+                variant="text"
+                data-test="float-screen-icon"
+                @click="floatScreen"
+              ></v-btn>
             </div>
           </template>
           <span> {{ floated ? 'Unfloat Screen' : 'Float Screen' }} </span>
@@ -64,9 +67,12 @@
         <v-tooltip v-if="floated" :open-delay="600" location="top">
           <template #activator="{ props }">
             <div v-bind="props">
-              <v-icon data-test="up-screen-icon" @click="upScreen">
-                mdi-arrow-up
-              </v-icon>
+              <v-btn
+                icon="mdi-arrow-up"
+                variant="text"
+                data-test="up-screen-icon"
+                @click="upScreen"
+              ></v-btn>
             </div>
           </template>
           <span> Move Screen Up </span>
@@ -78,9 +84,12 @@
         >
           <template #activator="{ props }">
             <div v-bind="props">
-              <v-icon data-test="down-screen-icon" @click="downScreen">
-                mdi-arrow-down
-              </v-icon>
+              <v-btn
+                icon="mdi-arrow-down"
+                variant="text"
+                data-test="down-screen-icon"
+                @click="downScreen"
+              ></v-btn>
             </div>
           </template>
           <span> Move Screen Down </span>
@@ -96,7 +105,7 @@
           data-test="minimize-screen-icon"
           @click="minMaxTransition"
         />
-        <v-icon
+        <v-btn
           v-else
           icon="mdi-window-maximize"
           variant="text"

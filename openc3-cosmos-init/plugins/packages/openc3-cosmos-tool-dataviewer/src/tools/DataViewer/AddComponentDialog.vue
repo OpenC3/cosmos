@@ -122,11 +122,14 @@
                   density="compact"
                 >
                   <template #item.delete="{ item }">
-                    <v-icon @click="deleteItem(item)"> mdi-delete </v-icon>
+                    <v-btn
+                      icon="mdi-delete"
+                      variant="text"
+                      @click="deleteItem(item)"
+                    />
                   </template>
-                </v-data-table>
-              </v-col></v-row
-            >
+                </v-data-table> </v-col
+            ></v-row>
           </v-container>
         </v-card-text>
         <v-card-actions class="px-2">

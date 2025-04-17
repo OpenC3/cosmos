@@ -59,13 +59,12 @@
             >
               <template #item.actions="{ item }">
                 <v-btn
-                  icon
+                  icon="mdi-delete"
+                  variant="text"
                   class="mt-1"
                   data-test="item-delete"
                   @click="deleteEnvironment(item)"
-                >
-                  <v-icon>mdi-delete</v-icon>
-                </v-btn>
+                />
               </template>
             </v-data-table>
             <v-row dense>

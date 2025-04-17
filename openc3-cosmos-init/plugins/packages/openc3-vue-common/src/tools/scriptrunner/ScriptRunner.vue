@@ -184,12 +184,11 @@
                   v-bind="props"
                   class="mx-1"
                   :color="environmentIconColor"
+                  :icon="environmentIcon"
                   :disabled="envDisabled"
                   data-test="env-button"
                   @click="scriptEnvironment.show = !scriptEnvironment.show"
-                >
-                  <v-icon> {{ environmentIcon }} </v-icon>
-                </v-btn>
+                />
               </template>
               <span>Script Environment</span>
             </v-tooltip>

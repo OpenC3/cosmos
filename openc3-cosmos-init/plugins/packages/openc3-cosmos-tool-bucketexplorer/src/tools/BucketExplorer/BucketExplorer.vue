@@ -132,29 +132,29 @@
           {{ item.size ? item.size.toLocaleString() : '' }}
         </template>
         <template #item.action="{ item }">
-          <v-icon
+          <v-btn
             v-if="item.icon === 'mdi-file' && isText(item.name)"
+            icon="mdi-eye"
+            variant="text"
             class="mr-3"
             data-test="view-file"
             @click="viewFile(item.name)"
-          >
-            mdi-eye
-          </v-icon>
-          <v-icon
+          ></v-btn>
+          <v-btn
             v-if="item.icon === 'mdi-file'"
+            icon="mdi-download-box"
+            variant="text"
             class="mr-3"
             data-test="download-file"
             @click="downloadFile(item.name)"
-          >
-            mdi-download-box
-          </v-icon>
-          <v-icon
+          ></v-btn>
+          <v-btn
             v-if="item.icon === 'mdi-file'"
+            icon="mdi-delete"
+            variant="text"
             data-test="delete-file"
             @click="deleteFile(item.name)"
-          >
-            mdi-delete
-          </v-icon>
+          ></v-btn>
         </template>
       </v-data-table>
     </v-card>

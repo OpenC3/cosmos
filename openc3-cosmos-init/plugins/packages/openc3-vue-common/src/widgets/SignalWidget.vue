@@ -17,9 +17,12 @@
 -->
 
 <template>
-  <v-icon @click="clickHandler" :style="computedStyle">
-    {{ displayedIcon }}
-  </v-icon>
+  <v-btn
+    :icon="displayedIcon"
+    variant="text"
+    :style="computedStyle"
+    @click="clickHandler"
+  />
 </template>
 
 <script>

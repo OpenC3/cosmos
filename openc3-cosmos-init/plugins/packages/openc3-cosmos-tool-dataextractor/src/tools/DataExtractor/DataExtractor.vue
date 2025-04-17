@@ -147,9 +147,12 @@
           density="compact"
         >
           <template #item.edit="{ item }">
-            <v-icon data-test="edit-row" @click.stop="item.edit = true">
-              mdi-pencil
-            </v-icon>
+            <v-btn
+              icon="mdi-pencil"
+              variant="text"
+              data-test="edit-row"
+              @click.stop="item.edit = true"
+            ></v-btn>
             <v-dialog
               v-model="item.edit"
               max-width="600"
@@ -211,9 +214,12 @@
             </v-dialog>
           </template>
           <template #item.delete="{ item }">
-            <v-icon data-test="delete-row" @click="deleteItem(item)">
-              mdi-delete
-            </v-icon>
+            <v-btn
+              icon="mdi-delete"
+              variant="text"
+              data-test="delete-row"
+              @click="deleteItem(item)"
+            ></v-btn>
           </template>
         </v-data-table>
       </v-card>
