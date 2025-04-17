@@ -1,70 +1,70 @@
 ---
-title: Calendar (Enterprise)
-description: Calendar visualization of metadata, notes, and timelines
+title: カレンダー (Enterprise)
+description: メタデータ、ノート、タイムラインの視覚化
 sidebar_custom_props:
   myEmoji: 🛠️
 ---
 
-## Introduction
+## はじめに
 
-Calendar visualizes metadata, notes, and timeline information in one easy to understand place. Timelines allow for the simple execution of commands and scripts based on future dates and times.
+カレンダーは、メタデータ、ノート、タイムライン情報を一つの理解しやすい場所に視覚化します。タイムラインを使用すると、未来の日時に基づいてコマンドやスクリプトを簡単に実行することができます。
 
-![Calendar](/img/calendar/blank_calendar.png)
+![カレンダー](/img/calendar/blank_calendar.png)
 
-### Adding Timelines
+### タイムラインの追加
 
-Adding a Timeline to COSMOS is as simple as clicking Create -> Timeline and giving it a unique name. Timelines can be created for organizational purposes or for overlapping activities as no activities can overlap on a given timeline. However, each additional timeline consists of several threads so only create timelines as necessary.
+COSMOSにタイムラインを追加するのは、作成 (Create) -> タイムライン (Timeline) をクリックして一意の名前を付けるだけで簡単です。タイムラインは組織化の目的や重複するアクティビティ用に作成できます。特定のタイムライン上ではアクティビティを重複させることはできません。ただし、追加の各タイムラインはいくつかのスレッドで構成されているため、必要に応じてのみタイムラインを作成してください。
 
-## Types of Events
+## イベントの種類
 
-### Metadata
+### メタデータ
 
-Metadata allows you to record arbitrary data into the COSMOS system. For example, you could ask the user for inputs which fall outside the available target telemetry including operators, environmental factors, procedural steps, etc. This allows for searching metadata based on these fields and correlating the related telemetry data.
+メタデータを使用すると、任意のデータをCOSMOSシステムに記録できます。例えば、オペレーター、環境要因、手順のステップなど、利用可能なターゲットテレメトリに含まれない入力をユーザーに求めることができます。これにより、これらのフィールドに基づいてメタデータを検索し、関連するテレメトリデータを相関させることができます。
 
-You can create a new metadata item from either the Create menu or by right-clicking on the calendar in the given time slot you want the metadata item to appear. Note that metadata entries only have a start time, they do not have an end time.
+作成メニュー (Create) から、またはカレンダー上でメタデータ項目を表示したい特定の時間枠を右クリックすることで、新しいメタデータ項目を作成できます。メタデータエントリには開始時間のみがあり、終了時間はないことに注意してください。
 
-![CreateMetadata1](/img/calendar/create_metadata1.png)
+![メタデータ作成1](/img/calendar/create_metadata1.png)
 
-You then add key / value pairs for all the metadata items you want to create.
+次に、作成したいすべてのメタデータ項目のキー/値ペアを追加します。
 
-![CreateMetadata2](/img/calendar/create_metadata2.png)
+![メタデータ作成2](/img/calendar/create_metadata2.png)
 
-### Note
+### ノート
 
-Notes require both a start and end time.
+ノートには開始時間と終了時間の両方が必要です。
 
-![CreateNote1](/img/calendar/create_note1.png)
+![ノート作成1](/img/calendar/create_note1.png)
 
-You then record the note to create the note event on the calendar.
+次に、カレンダーにノートイベントを作成するためにノートを記録します。
 
-![CreateNote2](/img/calendar/create_note2.png)
+![ノート作成2](/img/calendar/create_note2.png)
 
-### Activity
+### アクティビティ
 
-Scheduled on a timeline, activities take both a start and end time.
+タイムラインにスケジュールされるアクティビティは、開始時間と終了時間の両方を必要とします。
 
-![CreateActivity1](/img/calendar/create_activity1.png)
+![アクティビティ作成1](/img/calendar/create_activity1.png)
 
-Activities can run single commands, run a script, or simply "Reserve" space on the calendar for reference or other bookkeeping.
+アクティビティは、単一のコマンドを実行したり、スクリプトを実行したり、または単に参照やその他の記録管理のためにカレンダー上の空間を「予約」したりすることができます。
 
-![CreateActivity2](/img/calendar/create_activity2.png)
+![アクティビティ作成2](/img/calendar/create_activity2.png)
 
-When calendar activities are scheduled they appear with a green circle containing a plus (+). Once they complete successfully the icon changes to a green circle containing a checkbox (✓). Reserve activities simply have a blank green circle.
+カレンダーアクティビティがスケジュールされると、プラス（+）を含む緑色の円で表示されます。正常に完了すると、アイコンはチェックマーク（✓）を含む緑色の円に変わります。予約アクティビティは単に空の緑色の円を持ちます。
 
-![Calendar](/img/calendar/calendar.png)
+![カレンダー](/img/calendar/calendar.png)
 
-Calendar events can also be viewed in a list format via File->Show Table Display which supports pagination for listing both past and future events.
+カレンダーイベントはファイル (File)->テーブルの表示(Show Table Display)を通じてリスト形式でも表示でき、過去および未来のイベントの両方をリストするためのページネーションをサポートしています。
 
-![List View](/img/calendar/list_view.png)
+![リストビュー](/img/calendar/list_view.png)
 
-## Timeline Implementation Details
+## タイムラインの実装詳細
 
-When a user creates a timeline, a new timeline microservice starts. The timeline microservice is the main thread of execution for the timeline. This starts a scheduler manager thread. The scheduler manager thread contains a thread pool that hosts more than one thread to run the activity. The scheduler manager will evaluate the schedule and based on the start time of the activity it will add the activity to the queue.
+ユーザーがタイムラインを作成すると、新しいタイムラインマイクロサービスが起動します。タイムラインマイクロサービスはタイムラインの主要な実行スレッドです。これによりスケジューラマネージャースレッドが開始されます。スケジューラマネージャースレッドには、アクティビティを実行するための複数のスレッドを持つスレッドプールが含まれています。スケジューラマネージャーはスケジュールを評価し、アクティビティの開始時間に基づいてアクティビティをキューに追加します。
 
-The main thread will block on the web socket to listen to request changes to the timeline, these could be adding, removing, or updating activities. The main thread will make the changes to the in memory schedule if these changes are within the hour of the current time. When the web socket gets an update it has an action lookup table. These actions are "created", "updated", "deleted", etc... Some actions require updating the schedule from the database to ensure the schedule and the database are always in sync.
+メインスレッドはWebソケットでブロックし、タイムラインへの変更要求をリッスンします。これにはアクティビティの追加、削除、更新などが含まれます。これらの変更が現在の時刻から1時間以内であれば、メインスレッドはメモリ内のスケジュールに変更を加えます。Webソケットが更新を受け取ると、アクションルックアップテーブルが使用されます。これらのアクションは「作成」、「更新」、「削除」などです。一部のアクションでは、スケジュールとデータベースが常に同期されるようにするために、データベースからスケジュールを更新する必要があります。
 
-The schedule thread checks every second to make sure if a task can be run. If the start time is equal or less then the last 15 seconds it will then check the previously queued jobs list in the schedule. If the activity has not been queued and is not fulfilled the activity will be queued, this adds an event to the activity but is not saved to the database.
+スケジュールスレッドは1秒ごとにタスクを実行できるかどうかを確認します。開始時間が過去15秒以内であれば、スケジュール内の以前にキューに入れられたジョブリストをチェックします。アクティビティがキューに入れられておらず、実行されていない場合、アクティビティはキューに追加されます。これによりアクティビティにイベントが追加されますが、データベースには保存されません。
 
-The workers block on the queue until an activity is placed on the queue. Once a job is pulled from the queue they check the type and run the activity. The thread will mark the activity fulfillment true and update the database record with the complete. If the worker gets an error while trying to run the task the activity will NOT be fulfilled and record the error in the database.
+ワーカーはアクティビティがキューに配置されるまでキューでブロックします。ジョブがキューから取り出されると、タイプを確認してアクティビティを実行します。スレッドはアクティビティの実行を完了としてマークし、データベースレコードを更新して完了します。ワーカーがタスクの実行中にエラーが発生した場合、アクティビティは実行されず、エラーがデータベースに記録されます。
 
-![Timeline Lifecycle](/img/calendar/timeline_lifecycle.png)
+![タイムラインのライフサイクル](/img/calendar/timeline_lifecycle.png)

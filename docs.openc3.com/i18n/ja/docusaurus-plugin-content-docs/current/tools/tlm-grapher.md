@@ -1,96 +1,96 @@
 ---
-title: Telemetry Grapher
-description: Graph real time or historical data
+title: テレメトリグラファー
+description: リアルタイムまたは履歴データをグラフ化
 sidebar_custom_props:
   myEmoji: 🛠️
 ---
 
-## Introductions
+## はじめに
 
-Telemetry Grapher is a graphing application that allows for one or more telemetry points per graph. It supports multiple graphs per screen which can be resized and reordered. Multiple configurations can be saved and restored for different situations.
+テレメトリグラファーは、グラフごとに1つ以上のテレメトリポイントを表示できるグラフ作成アプリケーションです。画面ごとに複数のグラフをサポートし、サイズ変更や並べ替えが可能です。異なる状況に対応するために、複数の設定を保存して復元することができます。
 
-![Telemetry Grapher](/img/telemetry_grapher/telemetry_grapher.png)
+![テレメトリグラファー](/img/telemetry_grapher/telemetry_grapher.png)
 
-## Telemetry Grapher Menus
+## テレメトリグラファーのメニュー
 
-### File Menu Items
+### ファイルメニュー項目
 
 <!-- Image sized to match up with bullets -->
 
 <img src={require('@site/static/img/telemetry_grapher/file_menu.png').default}
-alt="File Menu"
+alt="ファイルメニュー"
 style={{"float": 'left', "margin-right": 50 + 'px', "height": 90 + 'px'}} />
 
-- Open a saved configuration (graphs and items)
-- Save the current configuration
-- Reset the configuration (default settings)
+- 保存された設定（グラフと項目）を開く
+- 現在の設定を保存
+- 設定をリセット（デフォルト設定）
 
-#### Open Configuration
+#### 設定を開く
 
-The Open Configuration dialog displays a list of all saved configurations. You select a configuration and then click Ok to load it. You can delete existing configurations by clicking the Trash icon next to a configuration name.
+設定を開くダイアログでは、保存されたすべての設定のリストが表示されます。設定を選択し、OKをクリックしてロードします。設定名の横にあるゴミ箱アイコンをクリックして、既存の設定を削除できます。
 
-#### Save Configuration
+#### 設定を保存
 
-The Save Configuration dialog also displays a list of all saved configurations. You click the Configuration Name text field, enter the name of your new configuration, and click Ok to save. You can delete existing configurations by clicking the Trash icon next to a configuration name.
+設定を保存ダイアログでも、保存されたすべての設定のリストが表示されます。設定名テキストフィールドをクリックし、新しい設定の名前を入力し、OKをクリックして保存します。設定名の横にあるゴミ箱アイコンをクリックして、既存の設定を削除できます。
 
-### Graph Menu Items
+### グラフメニュー項目
 
 <!-- Image sized to match up with bullets -->
 
 <img src={require('@site/static/img/telemetry_grapher/graph_menu.png').default}
-alt="File Menu"
+alt="ファイルメニュー"
 style={{"float": 'left', "margin-right": 50 + 'px', "height": 150 + 'px'}} />
 
-- Add a new graph
-- Start / Resume graphing
-- Pause graph
-- Stop graph
-- Edit grapher settings
+- 新しいグラフを追加
+- グラフの開始/再開
+- グラフの一時停止
+- グラフの停止
+- グラファー設定の編集
 
-Editing the grapher settings brings up a dialog to change settings affecting every graph in the Telemetry Grapher tool. Changing the Seconds Graphed changes the visible windows displaying graph points. The smaller of Seconds Graphed and Points Graphed will be used when calculating the number of points to display. Changing the Points Saved will affect performance of the browser window if set too high. The default of 1,000,000 points can store over 11.5 days of 1Hz data points.
+グラファー設定を編集すると、テレメトリグラファーツールのすべてのグラフに影響する設定を変更するダイアログが表示されます。グラフ表示秒数を変更すると、グラフポイントを表示する可視ウィンドウが変更されます。表示するポイント数を計算する際には、グラフ表示秒数とグラフ表示ポイント数の小さい方が使用されます。保存ポイント数を変更すると、値が高すぎる場合、ブラウザウィンドウのパフォーマンスに影響します。デフォルトの1,000,000ポイントは、1Hzのデータポイントで11.5日以上保存できます。
 
-Editing an individual graph by clicking the pencil icon in title bar of the graph brings up the edit graph dialog.
+グラフのタイトルバーの鉛筆アイコンをクリックして個々のグラフを編集すると、グラフ編集ダイアログが表示されます。
 
-![Edit Graph](/img/telemetry_grapher/edit_graph.png)
+![グラフの編集](/img/telemetry_grapher/edit_graph.png)
 
-Editing the Start Date and Start Time will re-query the data to begin at the specified time. This operation can take several seconds depending on how far back data is requested. Similarly, specifying the End Date and End Time will limit the data request to the specified time. Leaving the End Date / End Time fields blank will cause Telemetry Grapher to continue to graph items in real-time as they arrive.
+開始日と開始時間を編集すると、指定された時間から始まるようにデータが再クエリされます。この操作は、過去のデータをリクエストする距離によって数秒かかる場合があります。同様に、終了日と終了時間を指定すると、データリクエストが指定された時間に制限されます。終了日/終了時間フィールドを空のままにすると、テレメトリグラファーは到着したアイテムをリアルタイムでグラフ化し続けます。
 
-Changing the Min Y and Max Y values simply sets the graph scale. Deleting the Min Y and Max Y values allows the graph to scale automatically as values arrive. Compare the following graph with the minimum set to 0 and the maximum set to 100 with the first graph image (auto-scale).
+Y軸最小値とY軸最大値を変更すると、単にグラフのスケールが設定されます。Y軸最小値とY軸最大値を削除すると、グラフは値が到着するたびに自動的にスケーリングされます。最小値を0、最大値を100に設定した次のグラフを最初のグラフ画像（自動スケール）と比較してください。
 
-![Min Max](/img/telemetry_grapher/graph_min_max.png)
+![最小最大](/img/telemetry_grapher/graph_min_max.png)
 
-## Selecting Items
+## 項目の選択
 
-Selecting a target from the Select Target drop down automatically updates the available packets in the Select Packet drop down which updates the available items in the Select Item drop down. Clicking Add Item adds the item to the graph which immediately begins graphing.
+ターゲットの選択ドロップダウンからターゲットを選択すると、選択したパケットドロップダウンで利用可能なパケットが自動的に更新され、それによって選択した項目ドロップダウンで利用可能な項目が更新されます。項目を追加をクリックすると、項目がグラフに追加され、すぐにグラフ化が開始されます。
 
-![Temp 1](/img/telemetry_grapher/graph_temp1.png)
+![温度1](/img/telemetry_grapher/graph_temp1.png)
 
-As time passes, the main graph fills up and starts scrolling while the overview graph at the bottom shows the entire history.
+時間が経過すると、メイングラフが埋まってスクロールし始め、下部の概要グラフには全履歴が表示されます。
 
-![Temp 1 History](/img/telemetry_grapher/graph_temp1_time.png)
+![温度1履歴](/img/telemetry_grapher/graph_temp1_time.png)
 
-Selecting a new item and adding it to the graph automatically fills the graph with history until the beginning of the first item. This allows you to add items to the graph incrementally and maintain full history.
+新しい項目を選択してグラフに追加すると、最初の項目の開始時点までの履歴がグラフに自動的に入力されます。これにより、項目を徐々にグラフに追加しても、完全な履歴を維持することができます。
 
-![Temp1 Temp2](/img/telemetry_grapher/graph_temp1_temp2.png)
+![温度1温度2](/img/telemetry_grapher/graph_temp1_temp2.png)
 
-## Graph Window Management
+## グラフウィンドウの管理
 
-All graphs can be moved around the browser window by clicking their title bar and moving them. Other graphs will move around intelligently to fill the space. This allows you order the graphs no matter which order they were created in.
+すべてのグラフは、タイトルバーをクリックして移動することで、ブラウザウィンドウ内を移動できます。他のグラフはスペースを埋めるために効率良く移動します。これにより、作成順に関係なく、グラフを並べ替えることができます。
 
-Each graph has a set of window buttons in the upper right corner. The first shrinks or grows the graph both horizontally and vertically to allow for 4 graphs in the same browser tab. Note that half height graphs no longer show the overview graph.
+各グラフには、右上隅にウィンドウボタンのセットがあります。最初のボタンは、グラフを水平方向と垂直方向の両方で縮小または拡大し、同じブラウザタブ内に4つのグラフを表示できるようにします。半分の高さのグラフでは概要グラフが表示されなくなることに注意してください。
 
-![Four Graphs](/img/telemetry_grapher/four_graphs.png)
+![4つのグラフ](/img/telemetry_grapher/four_graphs.png)
 
-The second button shrinks or grows the graph horizontally so it will either be half or full width of the browser window. This allows for two full width graphs on top of each other.
+2番目のボタンは、グラフを水平方向に縮小または拡大し、ブラウザウィンドウの幅の半分または全幅になります。これにより、2つの全幅グラフを上下に配置できます。
 
-![Two Full Width](/img/telemetry_grapher/two_full_width.png)
+![2つの全幅](/img/telemetry_grapher/two_full_width.png)
 
-The second button shrinks or grows the graph vertically so it will either be half or full height of the browser window. This allows for two full height graphs side by side.
+３番目のボタンは、グラフを垂直方向に縮小または拡大し、ブラウザウィンドウの高さの半分または全高になります。これにより、2つの全高グラフを並べて表示できます。
 
-![Two Full Height](/img/telemetry_grapher/two_full_height.png)
+![2つの全高](/img/telemetry_grapher/two_full_height.png)
 
-The line button minimizes the graph to effectively hide it. This allows you to focus on a single graph without losing existing graphs.
+線ボタンはグラフを最小化して効果的に隠します。これにより、既存のグラフを失うことなく、単一のグラフに集中できます。
 
-![Minimized](/img/telemetry_grapher/minimized.png)
+![最小化](/img/telemetry_grapher/minimized.png)
 
-The final X button closes the graph.
+最後のXボタンはグラフを閉じます。

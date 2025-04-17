@@ -1,72 +1,74 @@
 ---
-title: Autonomic (Enterprise)
-description: Automated execution of commands and scripts
+title: オートノミック (Enterprise)
+description: コマンドとスクリプトの自動実行
 sidebar_custom_props:
   myEmoji: 🛠️
 ---
 
-## Introduction
+## はじめに
 
-Autonomic allows for the automated execution of commands and scripts based on user-defined rules.
+オートノミックは、ユーザー定義のルールに基づいてコマンドとスクリプトを自動実行することができます。
 
-### Overview
+### 概要
 
-Autonomic operates with some basic building blocks: Trigger Groups, Triggers, and Reactions. Triggers are simply logical blocks which evaluate true or false. Reactions can be linked to one or many Triggers and specify an action to perform. Together they allow for an action to be taken based on anything going on in your system.
+オートノミックは、トリガーグループ、トリガー、リアクションという基本的な構成要素で動作します。トリガーは単に真偽を評価する論理ブロックです。リアクションは1つまたは複数のトリガーにリンクでき、実行するアクションを指定します。これらを組み合わせることで、システム内で発生するあらゆる事象に基づいてアクションを実行することができます。
 
-![Autonomic](/img/autonomic/autonomic.png)
+![オートノミック](/img/autonomic/autonomic.png)
 
-### TriggerGroups
+### トリガーグループ
 
-Triggers are organized into groups, these groups are both for organization and to ensure that we can scale. It also allows triggers to be evaluated independently and simultaneously and can be useful for overlapping or high priority triggers. However, each trigger group spawns system resources so they should only be created as needed.
+トリガーはグループに整理されており、これらのグループは組織化とスケーリングに役立つものです。また、トリガーを独立して同時に評価することができ、重複するトリガーや優先度の高いトリガーに役立ちます。ただし、各トリガーグループはシステムリソースを使用するため、必要に応じてのみ作成する必要があります。
 
-![TriggerGroups](/img/autonomic/trigger_groups.png)
+![トリガーグループ](/img/autonomic/trigger_groups.png)
 
-### Triggers
+### トリガー
 
-Triggers are logical components that are evaluated to true or false. Creating a trigger is like specifying an equation to evaluate. The trigger creation dialog specifies the Trigger Group which owns the trigger and the "left operand". This can be a telemetry item or an existing trigger.
+トリガーは真偽を評価する論理コンポーネントです。トリガーを作成することは、評価する式を指定するようなものです。トリガー作成ダイアログでは、トリガーを所有するトリガーグループと「左オペランド」を指定します。これはテレメトリ項目または既存のトリガーにすることができます。
 
-![CreateTrigger1](/img/autonomic/create_trigger1.png)
+![トリガー作成1](/img/autonomic/create_trigger1.png)
 
-Once you've chosen the "left operand" you need to choose the operator.
+「左オペランド (Left Operand)」を選択したら、演算子を選択する必要があります。
 
-![CreateTrigger2](/img/autonomic/create_trigger2.png)
+![トリガー作成2](/img/autonomic/create_trigger2.png)
 
-Finally you choose the "right operand" which in this case is a simple value.
+最後に、この場合は単純な値である「右オペランド (Right Operand)」を選択します。
 
-![CreateTrigger3](/img/autonomic/create_trigger3.png)
+![トリガー作成3](/img/autonomic/create_trigger3.png)
 
-After the trigger is created it is displayed in Autonomic and waits to be activated by the given logic. Active triggers are highlighted in the list.
+トリガーが作成されると、オートノミックに表示され、指定されたロジックによってアクティブ化されるのを待ちます。アクティブなトリガーはリスト内でハイライト表示されます。
 
-![CreateTrigger3](/img/autonomic/enabled_trigger.png)
+![トリガー作成3](/img/autonomic/enabled_trigger.png)
 
-Triggers can also be manually disabled and enabled by clicking the plug icon.
+トリガーはプラグアイコンをクリックすることで手動で無効化および有効化することもできます。
 
-![CreateTrigger3](/img/autonomic/disable_trigger.png)
+![トリガー作成3](/img/autonomic/disable_trigger.png)
 
-Note in the above screenshot the Events which track everything about the trigger.
+上記のスクリーンショットでトリガーに関するすべてを追跡するイベントに注目してください。
 
-### Reactions
+### リアクション
 
-Reactions wait for triggers to be evaluated to true and perform actions such as sending a command or running a script. Reactions can not exist without a corresponding trigger. The reaction creation dialog specifies whether to treat the trigger as an Edge or Level. It then allows you to select which trigger(s) the reaction will react to. Selecting multiple triggers allows any of the triggers to trigger the reaction (Note: Creating a reaction which responds to Trigger A AND Trigger B is done by creating additional triggers).
+リアクションはトリガーが真と評価されるのを待ち、コマンドの送信やスクリプトの実行などのアクションを実行します。リアクションは対応するトリガーなしでは存在できません。リアクション作成ダイアログでは、トリガーをエッジとして扱うかレベルとして扱うかを指定します。次に、リアクションが反応するトリガーを選択することができます。複数のトリガーを選択すると、いずれかのトリガーがリアクションをトリガーできます（注：トリガーAおよびトリガーBに応答するリアクションの作成は、追加のトリガーを作成することで行います）。
 
-![CreateReaction1](/img/autonomic/create_reaction1.png)
+エッジトリガーはトリガーがアクティブに変化する時に発動します。もしすでにトリガーがアクティブな場合発動しません。レベルトリガーはトリガーがアクティブな時に発動します。
 
-After the triggers are specified, the dialog prompts for the actions to take. You can either send a command, run a script, or simply push a notification. Commands and scripts can also optionally push a notification. In this example a script is specified with a notification at the WARN level.
+![リアクション作成1](/img/autonomic/create_reaction1.png)
 
-:::warning Spawning Scripts
-Be aware of how and when you spawn scripts and whether they are running to completion. Spawning a faulty script can lead to many unfinished scripts consuming resources.
+トリガーが指定された後、実行するアクションの入力を求めるダイアログが表示されます。コマンドの送信、スクリプトの実行、または単に通知をプッシュすることができます。コマンドとスクリプトはオプションで通知をプッシュすることもできます。この例では、WARN レベルの通知付きスクリプトが指定されています。
+
+:::warning スクリプトの起動
+スクリプトをいつどのように起動するか、そして完了まで実行されているかどうかに注意してください。不良スクリプトを起動すると、多くの未完了スクリプトがリソースを消費する可能性があります。
 :::
 
-![CreateReaction2](/img/autonomic/create_reaction2.png)
+![リアクション作成2](/img/autonomic/create_reaction2.png)
 
-Finally the snooze setting is specified. Snooze is the number of seconds after the reaction runs before the reaction will be allowed to run again. This is especially important in Level triggers where if the trigger remains active the reaction can run continuously.
+最後にスヌーズ設定が指定されます。スヌーズは、リアクションが実行された後、リアクションが再度実行できるようになるまでの秒数です。これは特にレベルトリガーで重要で、トリガーがアクティブなままの場合、リアクションが継続的に実行される可能性があります。
 
-![CreateReaction3](/img/autonomic/create_reaction3.png)
+![リアクション作成3](/img/autonomic/create_reaction3.png)
 
-Once the reaction is created it is listed in the interface.
+リアクションが作成されると、インターフェースにリストされます。
 
-![InitialReaction](/img/autonomic/initial_reaction.png)
+![初期リアクション](/img/autonomic/initial_reaction.png)
 
-When the reaction runs the "State" changes to the snooze icon and the "Snooze Until" is updated to indicate the reaction is waiting before being allowed to run again.
+リアクションが実行されると、「状態（State)」がスヌーズアイコンに変わり、「スヌーズ終了時間 (Snooze Until)」が更新され、リアクションが再度実行できるようになるまで待機していることを示します。
 
-![SnoozedReaction](/img/autonomic/snoozed_reaction.png)
+![スヌーズされたリアクション](/img/autonomic/snoozed_reaction.png)

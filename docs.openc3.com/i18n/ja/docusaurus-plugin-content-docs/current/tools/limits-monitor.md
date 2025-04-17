@@ -1,66 +1,66 @@
 ---
-title: Limits Monitor
-description: View out of limit items and log messages
+title: リミットモニター
+description: 制限値を超えた項目とログメッセージの表示
 sidebar_custom_props:
   myEmoji: 🛠️
 ---
 
-## Introduction
+## はじめに
 
-The Limits Monitor application provides situational awareness for all telemetry items with limits. All limits items which violate their yellow or red limits are shown and continue to be shown until explicitly dismissed. Individual items and entire packets can be manually ignored to filter out known issues. In addition, all limits events are logged in a table which can be searched.
+リミットモニターアプリケーションは、制限値を持つすべてのテレメトリ項目の状況認識を提供します。黄色または赤の制限値に違反するすべての制限項目が表示され、明示的に消去されるまで表示され続けます。個々の項目やパケット全体を手動で無視して、既知の問題をフィルタリングすることができます。さらに、すべての制限イベントはテーブルに記録され、検索可能です。
 
-![Cmd Tlm Server](/img/limits_monitor/limits_monitor.png)
+![コマンドテレメトリサーバー](/img/limits_monitor/limits_monitor.png)
 
-## Limits Monitor Menus
+## リミットモニターのメニュー
 
-### File Menu Items
+### ファイルメニュー項目
 
 <!-- Image sized to match up with bullets -->
 
 <img src={require('@site/static/img/limits_monitor/file_menu.png').default}
-alt="File Menu"
+alt="ファイルメニュー"
 style={{"float": 'left', "margin-right": 50 + 'px', "height": 150 + 'px'}} />
 
-- Show the list of ignored items
-- Change the overall COSMOS limits set
-- Opens a saved configuration
-- Save the current configuration (ignored items)
-- Reset the configuration (defaults settings)
+- 無視された項目のリストを表示
+- COSMOSの全体的な制限セットを変更
+- 保存された設定を開く
+- 現在の設定（無視された項目）を保存
+- 設定をリセット（デフォルト設定）
 
-#### Show Ignored
+#### 無視された項目を表示
 
-This dialog displays all the items which the user has manually ignored by clicking the ignore icons next to out of limits items. Note that entire Packets which have been ignored are listed as TARGET PACKET without an item (as shown by INST MECH). Ignored items are removed by clicking the Trash icon. This means that the next time this item goes out of limits it will be displayed.
+このダイアログは、制限を超えた項目の横にある無視アイコンをクリックして、ユーザーが手動で無視したすべての項目を表示します。無視されたパケット全体はターゲットパケットとして項目なしでリストされることに注意してください（INST MECHのように表示されます）。無視された項目はゴミ箱アイコンをクリックすることで削除されます。これは、この項目が次回制限を超えると表示されることを意味します。
 
-![Ignored](/img/limits_monitor/ignored.png)
+![無視された項目](/img/limits_monitor/ignored.png)
 
-#### Change Limits Set
+#### 制限セットの変更
 
-Limits sets are defined with the [LIMITS](../configuration/telemetry#limits) keyword on telemetry items. Each item must have at least a DEFAULT limits set but can also have other named limit sets. COSMOS only has a single limits set active at one time. This dialog allows the user to change the active limits set and apply new limit values across all of COSMOS.
+制限セットはテレメトリ項目の[LIMITS](../configuration/telemetry#limits)キーワードで定義されます。各項目には少なくとも DEFAULT 制限セットが必要ですが、他の名前付き制限セットを持つこともできます。COSMOSは一度に1つの制限セットのみをアクティブにします。このダイアログでは、ユーザーがアクティブな制限セットを変更し、COSMOS全体に新しい制限値を適用することができます。
 
-![Change Limits Set](/img/limits_monitor/change_limits_set.png)
+![制限セットを変更](/img/limits_monitor/change_limits_set.png)
 
-#### Open Configuration
+#### 設定を開く
 
-The Open Configuration dialog displays a list of all saved configurations. You select a configuration and then click Ok to load it. You can delete existing configurations by clicking the Trash icon next to a configuration name.
+設定を開くダイアログでは、保存されたすべての設定のリストが表示されます。設定を選択し、OKをクリックしてロードします。設定名の横にあるゴミ箱アイコンをクリックして、既存の設定を削除できます。
 
-#### Save Configuration
+#### 設定を保存
 
-The Save Configuration dialog also displays a list of all saved configurations. You click the Configuration Name text field, enter the name of your new configuration, and click Ok to save. You can delete existing configurations by clicking the Trash icon next to a configuration name.
+設定を保存ダイアログでも、保存されたすべての設定のリストが表示されます。設定名テキストフィールドをクリックし、新しい設定の名前を入力し、OKをクリックして保存します。設定名の横にあるゴミ箱アイコンをクリックして、既存の設定を削除できます。
 
-## Limits Items
+## 制限項目
 
-The main interface of Limits Monitor is the top where items are displayed when they violate a yellow or red limit.
+リミットモニターの主要なインターフェースは、黄色または赤の制限に違反した場合に項目が表示される上部です。
 
-![Limits](/img/limits_monitor/limits_monitor.png)
+![制限](/img/limits_monitor/limits_monitor.png)
 
-Items with limits values are displayed using a red yellow green limits bar displaying where the current value lies within the defined limits (as shown by the various TEMP items). Items with yellow or red [states](../configuration/telemetry.md#state) are simply displayed with their state color (as shown by GROUND1STATUS). The COSMOS Demo contains both INST HEALTH_STATUS TEMP2 and INST2 HEALTH_STATUS TEMP2 which are identically named items within different target packets. Limits Monitor only displays the item name to save space, however if you mouse over the value box the full target and packet name is displayed.
+制限値を持つ項目は、定義された制限内で現在の値がどこにあるかを表示する赤黄緑の制限バーを使用して表示されます（様々なTEMP項目で示されています）。黄色または赤の[状態](../configuration/telemetry.md#state)を持つ項目は、単にその状態の色で表示されます（GROUND1STATUSで示されています）。COSMOS Demoには、異なるターゲットパケット内の同一名の項目であるINST HEALTH_STATUS TEMP2とINST2 HEALTH_STATUS TEMP2の両方が含まれています。リミットモニターはスペースを節約するために項目名のみを表示しますが、値ボックスにマウスを合わせると、ターゲットとパケットの完全な名前が表示されます。
 
-Clicking the first nested 'X' icon ignores the entire packet where the item resides. Any additional items in that packet which go out of limits are also ignored by Limits Monitor. Clicking the second (middle) 'X' ignores ONLY that specific item. If any packets or items are ignored the Overall Limits State is updated to indicate "(Some items ignored)" to indicate the Limits State is potentially being affected by ignored items.
+最初のネストされた「X」アイコンをクリックすると、項目が存在するパケット全体が無視されます。そのパケット内の制限を超える追加の項目もリミットモニターによって無視されます。2番目（中央）の「X」をクリックすると、その特定の項目「のみ」が無視されます。パケットや項目が無視されている場合、全体的な制限状態は「（一部の項目が無視されています） Some Items Ignored」と表示され、制限状態が無視された項目の影響を受ける可能性があることを示します。
 
-Clicking the last icon (eye with strike-through) temporarily hides the specified item. This is different from ignoring an item because if this item goes out of limits it will be again be displayed. Hiding an item is useful if the item has gone back to green and you want to continue to track it but want to clean up the current list of items. For example, we might hide the GROUND1STATUS items in the above example as they have transitioned back to green.
+最後のアイコン（取り消し線の付いた目）をクリックすると、指定された項目が一時的に非表示になります。これは項目を無視することとは異なり、この項目が制限を超えると再び表示されます。項目を非表示にすることは、項目が緑に戻り、それを追跡し続けたいが現在の項目リストをクリーンアップしたい場合に便利です。例えば、上記の例でGROUND1STATUS項目が緑に戻ったため、これらを非表示にすることがあります。
 
-## Limits Log
+## 制限ログ
 
-The Log section lists all limits events. Events can be filtered by using the Search box as shown.
+ログセクションにはすべての制限イベントがリストされます。イベントは、図のように検索ボックスを使用してフィルタリングできます。
 
-![Log](/img/limits_monitor/log.png)
+![ログ](/img/limits_monitor/log.png)

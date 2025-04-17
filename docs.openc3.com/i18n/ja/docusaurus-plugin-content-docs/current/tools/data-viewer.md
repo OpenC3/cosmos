@@ -1,44 +1,44 @@
 ---
-title: Data Viewer
-description: View packet or item data
+title: データビューア
+description: パケットまたは項目データを表示
 sidebar_custom_props:
   myEmoji: 🛠️
 ---
 
-## Introduction
+## はじめに
 
-Data Viewer allows you to view packet data or individual item data in both the past and in real time.
+データビューアを使用すると、過去およびリアルタイムの両方でパケットデータまたは個別の項目データを表示できます。
 
-![Data Viewer](/img/data_viewer/data_viewer.png)
+![データビューア](/img/data_viewer/data_viewer.png)
 
-## Data Viewer Menus
+## データビューアのメニュー
 
-### File Menu Items
+### ファイルメニュー項目
 
 <!-- Image sized to match up with bullets -->
 
 <img src={require('@site/static/img/data_viewer/file_menu.png').default}
-alt="File Menu"
+alt="ファイルメニュー"
 style={{"float": 'left', "margin-right": 50 + 'px', "height": 6 + 'em'}} />
 
-- Opens a saved configuration
-- Save the current configuration
-- Reset the configuration (default settings)
+- 保存された設定を開く
+- 現在の設定を保存
+- 設定をリセット（デフォルト設定）
 
-#### Open Configuration
+#### 設定を開く
 
-The Open Configuration dialog displays a list of all saved configurations. You select a configuration and then click Ok to load it. You can delete existing configurations by clicking the Trash icon next to a configuration name.
+設定を開くダイアログでは、保存されたすべての設定のリストが表示されます。設定を選択し、OKをクリックしてロードします。設定名の横にあるゴミ箱アイコンをクリックして、既存の設定を削除できます。
 
-#### Save Configuration
+#### 設定を保存
 
-The Save Configuration dialog also displays a list of all saved configurations. You click the Configuration Name text field, enter the name of your new configuration, and click Ok to save. You can delete existing configurations by clicking the Trash icon next to a configuration name.
+設定を保存ダイアログでも、保存されたすべての設定のリストが表示されます。設定名テキストフィールドをクリックし、新しい設定の名前を入力し、OKをクリックして保存します。設定名の横にあるゴミ箱アイコンをクリックして、既存の設定を削除できます。
 
-### Adding Components
+### コンポーネントの追加
 
-DataViewer displays data in a component. To add a new component to the interface click the plus icon. This brings up the Add Component dialog. First you select the component you want to use to visual the data. Next you add packets which will populate the component. Finally click Create to see the DataViewer component visualization.
+データビューアはコンポーネントにデータを表示します。インターフェースに新しいコンポーネントを追加するには、プラスアイコンをクリックします。これによりコンポーネント追加ダイアログが表示されます。まず、データを視覚化するために使用したいコンポーネントを選択します。次に、コンポーネントを入力するパケットを追加します。最後に「作成 (Create)」をクリックして、データビューアコンポーネントの視覚化を確認します。
 
-![Add Component](/img/data_viewer/add_component.png)
+![コンポーネントを追加](/img/data_viewer/add_component.png)
 
-To adjust the settings of the COSMOS Raw/Decom component click the gear icon to bring up the Display Settings dialog. You can turn on and off various visualizations, increase the number of packets displayed and the history.
+COSMOS Raw/Decomコンポーネントの設定を調整するには、歯車アイコンをクリックして表示設定ダイアログを表示します。さまざまな視覚化のオン/オフを切り替えたり、表示されるパケット数や履歴を増やしたりできます。
 
-![Add a packet](/img/data_viewer/display_settings.png)
+![パケットを追加](/img/data_viewer/display_settings.png)

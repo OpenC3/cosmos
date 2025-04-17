@@ -1,54 +1,54 @@
 ---
-title: Packet Viewer
-description: Displays all packets with their items
+title: パケットビューア
+description: すべてのパケットとその項目を表示
 sidebar_custom_props:
   myEmoji: 🛠️
 ---
 
-## Introduction
+## はじめに
 
-Packet Viewer is a live telemetry viewer which requires no configuration to display the current values for all defined target, packet, items. Items with limits are displayed colored (blue, green, yellow, or red) according to their current state. Items can be right clicked to get detailed information.
+パケットビューアは、定義されたすべてのターゲット、パケット、項目の現在の値を表示するために設定を必要としないライブテレメトリビューアです。制限値を持つ項目は、現在の状態に応じて色付け（青、緑、黄、または赤）されて表示されます。項目を右クリックすると詳細情報を取得できます。
 
-![Packet Viewer](/img/packet_viewer/packet_viewer.png)
+![パケットビューア](/img/packet_viewer/packet_viewer.png)
 
-## Packet Viewer Menus
+## パケットビューアのメニュー
 
-### File Menu Items
+### ファイルメニュー項目
 
 <!-- Image sized to match up with bullets -->
 
 <img src={require('@site/static/img/packet_viewer/file_menu.png').default}
-alt="File Menu"
+alt="ファイルメニュー"
 style={{"float": 'left', "margin-right": 50 + 'px', "height": 120 + 'px'}} />
 
-- Change the refresh and stale interval
-- Opens a saved configuration
-- Save the current configuration (view settings)
-- Reset the configuration (default settings)
+- 更新間隔と古い間隔を変更
+- 保存された設定を開く
+- 現在の設定（表示設定）を保存
+- 設定をリセット（デフォルト設定）
 
-### View Menu Items
+### 表示メニュー項目
 
 <!-- Image sized to match up with bullets -->
 
 <img src={require('@site/static/img/packet_viewer/view_menu.png').default}
-alt="View Menu"
+alt="表示メニュー"
 style={{"float": 'left', "margin-right": 50 + 'px', "height": 180 + 'px'}} />
 
-- Shows [ignored items](../configuration/target.md#ignore_item)
-- Display [derived](../configuration/telemetry.md#derived-items) items last
-- Display formatted items with [units](../configuration/telemetry#units)
-- Display [formatted](../configuration/telemetry#format_string) items
-- Display [converted](../configuration/telemetry#read_conversion) items
-- Display raw items
+- [無視された項目](../configuration/target.md#ignore_item)を表示
+- [派生](../configuration/telemetry.md#derived-items)項目を最後に表示
+- [単位](../configuration/telemetry#units)付きで整形された項目を表示
+- [整形された](../configuration/telemetry#format_string)項目を表示
+- [変換された](../configuration/telemetry#read_conversion)項目を表示
+- 生の項目を表示
 
-## Selecting Packets
+## パケットの選択
 
-Initially opening Packet Viewer will open the first alphabetical Target and Packet. Click the drop down menus to update the Items table to a new packet. To filter the list of items you can type in the search box.
+パケットビューアを最初に開くと、アルファベット順で最初のターゲットとパケットが開きます。ドロップダウンメニューをクリックして、項目テーブルを新しいパケットに更新します。項目のリストをフィルタリングするには、検索ボックスに入力できます。
 
-### Details
+### 詳細
 
-Right-clicking an item and selecting Details will open the details dialog.
+項目を右クリックして詳細を選択すると、詳細ダイアログが開きます。
 
-![Details](/img/packet_viewer/temp1_details.png)
+![詳細](/img/packet_viewer/temp1_details.png)
 
-This dialog lists everything defined on the telemetry item.
+このダイアログは、テレメトリ項目に定義されているすべてのものをリストします。

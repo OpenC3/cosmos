@@ -1,100 +1,100 @@
 ---
-title: Data Extractor
-description: Extract command or telemetry data into files
+title: データエクストラクター
+description: コマンドまたはテレメトリデータをファイルに抽出
 sidebar_custom_props:
   myEmoji: 🛠️
 ---
 
-## Introduction
+## はじめに
 
-Data Extractor extracts command and telemetry items into comma or tab separated files. Individual items or entire packets can be processed over any time period. Data Extractor also has a number of options to control the output for post processing in Excel or Matlab, for example.
+データエクストラクターは、コマンドとテレメトリ項目をカンマまたはタブ区切りのファイルに抽出します。個別の項目または全パケットを任意の期間にわたって処理できます。データエクストラクターには、例えばExcelやMatlabでの後処理のための出力を制御するための多くのオプションもあります。
 
-![Data Extractor](/img/data_extractor/data_extractor.png)
+![データエクストラクター](/img/data_extractor/data_extractor.png)
 
-## Data Extractor Menus
+## データエクストラクターのメニュー
 
-### File Menu Items
+### ファイルメニュー項目
 
 <!-- Image sized to match up with bullets -->
 
 <img src={require('@site/static/img/data_extractor/file_menu.png').default}
-alt="File Menu"
+alt="ファイルメニュー"
 style={{"float": 'left', "margin-right": 50 + 'px', "height": 150 + 'px'}} />
 
-- Opens a saved configuration
-- Save the current configuration (item list)
-- Reset the configuration (default settings)
-- Delimit output with commas
-- Delimit output with tabs
+- 保存された設定を開く
+- 現在の設定（項目リスト）を保存
+- 設定をリセット（デフォルト設定）
+- 出力をカンマで区切る
+- 出力をタブで区切る
 
-#### Open Configuration
+#### 設定を開く
 
-The Open Configuration dialog displays a list of all saved configurations. You select a configuration and then click Ok to load it. You can delete existing configurations by clicking the Trash icon next to a configuration name.
+設定を開くダイアログでは、保存されたすべての設定のリストが表示されます。設定を選択し、OKをクリックしてロードします。設定名の横にあるゴミ箱アイコンをクリックして、既存の設定を削除できます。
 
-#### Save Configuration
+#### 設定を保存
 
-The Save Configuration dialog also displays a list of all saved configurations. You click the Configuration Name text field, enter the name of your new configuration, and click Ok to save. You can delete existing configurations by clicking the Trash icon next to a configuration name.
+設定を保存ダイアログでも、保存されたすべての設定のリストが表示されます。設定名テキストフィールドをクリックし、新しい設定の名前を入力し、OKをクリックして保存します。設定名の横にあるゴミ箱アイコンをクリックして、既存の設定を削除できます。
 
-### Mode Menu Items
+### モードメニュー項目
 
 <!-- Image sized to match up with bullets -->
 
 <img src={require('@site/static/img/data_extractor/mode_menu.png').default}
-alt="Mode Menu"
+alt="モードメニュー"
 style={{"float": 'left', "margin-right": 50 + 'px', "height": 150 + 'px'}} />
 
-- Fill empty cells with the previous value
-- Add a Matlab comment ('%') to the header
-- Only output changed values
-- Only list item name as column header
-- List full Target Packet Item as header
+- 空のセルを前の値で埋める
+- ヘッダーにMatlabコメント（'%'）を追加
+- 変更された値のみを出力
+- 列ヘッダーとして項目名のみをリスト
+- ヘッダーとして完全なターゲットパケット項目をリスト
 
-## Selecting Items for Output
+## 出力する項目の選択
 
-### Start/End Date/Time
+### 開始/終了日時
 
-Data Extractor provides text fields where you specify the time range to extract items. Clicking the Start Date and End Date text fields opens a Date Chooser dialog. Note you can also manually type in the date. Clicking the Start Time and End Time icon opens up a Time Chooser dialog. Note you can also manually type in the time.
+データエクストラクターには、項目を抽出する時間範囲を指定するテキストフィールドが用意されています。開始日と終了日のテキストフィールドをクリックすると、日付選択ダイアログが開きます。日付を手動で入力することもできます。開始時間と終了時間のアイコンをクリックすると、時間選択ダイアログが開きます。時間を手動で入力することもできます。
 
-### Adding Target(s) Packet(s) Item(s)
+### ターゲット/パケット/項目の追加
 
-Data Extractor provides Target, Packet, Item drop downs to select the items you want to export. When you select a Target the Packet drop down defaults to \[All\] which sets the button to "Add Target". This would add EVERY item defined in EVERY packet in the target. Note: This can be a LOT of telemetry points but any added point can be removed.
+データエクストラクターには、エクスポートしたい項目を選択するためのターゲット、パケット、項目のドロップダウンが用意されています。ターゲットを選択すると、パケットのドロップダウンはデフォルトで[All]に設定され、ボタンは「ターゲットを追加 (Add Target)」に変わります。これにより、ターゲット内で定義されたすべてのパケットのすべての項目が追加されます。注意：これは非常に多くのテレメトリポイントになる可能性がありますが、追加されたポイントはいずれも削除できます。
 
-![Select Target](/img/data_extractor/add_target.png)
+![ターゲットを選択](/img/data_extractor/add_target.png)
 
-When you select a Packet the Item drop down defaults to \[All\] which sets the button to "Add Packet". This would add EVERY item defined in the specified packet. Note: This can be a LOT of telemetry points but any added point can be removed.
+パケットを選択すると、項目のドロップダウンはデフォルトで[All]に設定され、ボタンは「パケットを追加 (Add Packet)」に変わります。これにより、指定されたパケットで定義されたすべての項目が追加されます。注意：これは非常に多くのテレメトリポイントになる可能性がありますが、追加されたポイントはいずれも削除できます。
 
-![Select Packet](/img/data_extractor/add_packet.png)
+![パケットを選択](/img/data_extractor/add_packet.png)
 
-When you select an individual Item the button changes to "Add Item" and the Description field updates with the item's description.
+個別の項目を選択すると、ボタンは「項目を追加 (Add Item)」に変わり、説明フィールドはその項目の説明で更新されます。
 
-![Select Item](/img/data_extractor/add_item.png)
+![項目を選択](/img/data_extractor/add_item.png)
 
-### Removing Items
+### 項目の削除
 
-Once you've added items the Items table will have a list of items. Items can be removed by clicking the Trash icon next to the item. ALL items can be removed by clicking the Trash icon in the header.
+項目を追加すると、項目テーブルに項目のリストが表示されます。項目は、項目の横にあるゴミ箱アイコンをクリックして削除できます。ヘッダーのゴミ箱アイコンをクリックすると、すべての項目を削除できます。
 
-![Delete All Mouseover](/img/data_extractor/delete_all_mouseover.png)
+![すべて削除マウスオーバー](/img/data_extractor/delete_all_mouseover.png)
 
-### Editing Items
+### 項目の編集
 
-Items can be edited by clicking the Pencil icon next to the item. ALL items can be edited by clicking the pencil icon in the header.
+項目は、項目の横にある鉛筆アイコンをクリックして編集できます。ヘッダーの鉛筆アイコンをクリックすると、すべての項目を編集できます。
 
-![Edit All Mouseover](/img/data_extractor/edit_all_mouseover.png)
+![すべて編集マウスオーバー](/img/data_extractor/edit_all_mouseover.png)
 
-Clicking the Edit All brings up the Edit All Items dialog.
+「すべて編集 (Edit All Items)」をクリックすると、すべての項目を編集ダイアログが表示されます。
 
-![Edit All](/img/data_extractor/edit_all_items.png)
+![すべて編集](/img/data_extractor/edit_all_items.png)
 
-This allows you to change the data type of all items in the list. Clicking the pencil next to an individual item brings up a similar dialog to edit the individual item.
+これにより、リスト内のすべての項目のデータ型を変更できます。個々の項目の横にある鉛筆をクリックすると、個々の項目を編集するための同様のダイアログが表示されます。
 
-![Edit TEMP1](/img/data_extractor/edit_temp1.png)
+![TEMP1を編集](/img/data_extractor/edit_temp1.png)
 
-## Processing Items
+## 項目の処理
 
-Clicking the Process button starts the processing of the items list. A progress wheel is shown on the left side of the table and the Process button changes to Cancel to allow canceling the process.
+「処理 (Process)」ボタンをクリックすると、項目リストの処理が開始されます。テーブルの左側に進行状況を示す車輪が表示され、「処理 (Process)」ボタンは「キャンセル (Cancel)」に変わり、処理をキャンセルできるようになります。
 
-![Processing](/img/data_extractor/processing.png)
+![処理中](/img/data_extractor/processing.png)
 
-When the processing is complete, the browser shows a file download link. Note this varies by browser. This example is from Chrome.
+処理が完了すると、ブラウザにファイルのダウンロードリンクが表示されます。これはブラウザによって異なることに注意してください。この例はChromeからのものです。
 
-![Processing Done](/img/data_extractor/processing_done.png)
+![処理完了](/img/data_extractor/processing_done.png)

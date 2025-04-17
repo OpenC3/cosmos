@@ -76,7 +76,7 @@ Once you click Start the script is spawned in the Server and the Script State be
 
 ![connecting](/img/script_runner/connecting.png)
 
-At that point the currently executing line is marked with green. If an error is encountered the line turns red and and the Pause button changes to Retry to allow the line to be re-tried.
+At that point the currently executing line is marked with green. If an error is encountered the line turns red and the Pause button changes to Retry to allow the line to be re-tried.
 
 ![error](/img/script_runner/script_error.png)
 

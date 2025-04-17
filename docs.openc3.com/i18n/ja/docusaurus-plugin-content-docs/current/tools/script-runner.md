@@ -1,110 +1,110 @@
 ---
-title: Script Runner
-description: Run Python or Ruby scripts to send commands and check telemetry
+title: スクリプトランナー
+description: コマンドを送信してテレメトリをチェックするPythonまたはRubyスクリプトを実行
 sidebar_custom_props:
   myEmoji: 🛠️
 ---
 
-## Introduction
+## はじめに
 
-Script Runner is both an editor of COSMOS scripts as well as executes scripts. Script files are stored within a COSMOS target and Script Runner provides the ability to open, save, download and delete these files. When a suite of scripts is opened, Script Runner provides additional options to run individual scripts, groups of scripts, or entire suites.
+スクリプトランナーは、COSMOSスクリプトのエディタであると同時にスクリプトを実行します。スクリプトファイルはCOSMOSターゲット内に保存され、スクリプトランナーはこれらのファイルを開く、保存する、ダウンロードする、削除する機能を提供します。スクリプトのスイートが開かれると、スクリプトランナーは個々のスクリプト、スクリプトのグループ、またはスイート全体を実行するための追加オプションを提供します。
 
-![Script Runner](/img/script_runner/script_runner.png)
+![スクリプトランナー](/img/script_runner/script_runner.png)
 
-## Script Runner Menus
+## スクリプトランナーのメニュー
 
-### File Menu Items
+### ファイルメニュー項目
 
 <!-- Image sized to match up with bullets -->
 
 <img src={require('@site/static/img/script_runner/file_menu.png').default}
-alt="File Menu"
+alt="ファイルメニュー"
 style={{"float": 'left', "margin-right": 50 + 'px', "height": 250 + 'px'}} />
 
-- Clears the editor and filename
-- Creates a new test suite in Ruby or Python
-- Opens a dialog to select a file to open
-- Opens a recently used file
-- Saves the currently opened file to disk
-- Rename the current file
-- Downloads the current file to the browser
-- Deletes the current file (Permanently!)
+- エディタとファイル名をクリア
+- RubyまたはPythonで新しいテストスイートを作成
+- 開くファイルを選択するダイアログを開く
+- 最近使用したファイルを開く
+- 現在開いているファイルをディスクに保存
+- 現在のファイルの名前を変更
+- 現在のファイルをブラウザにダウンロード
+- 現在のファイルを削除（永久に！）
   <br/>
   <br/>
 
-#### File Open
+#### ファイルを開く
 
-The File Open Dialog displays a tree view of the installed targets. You can manually open the folders and browse for the file you want. You can also use the search box at the top and start typing part of the filename to filter the results.
+ファイルを開くダイアログには、インストールされたターゲットのツリービューが表示されます。フォルダを手動で開いて、必要なファイルを参照できます。また、上部の検索ボックスを使用し、ファイル名の一部を入力して結果をフィルタリングすることもできます。
 
-![File Open](/img/script_runner/file_open.png)
+![ファイルを開く](/img/script_runner/file_open.png)
 
-#### File Save As
+#### 名前を付けて保存
 
-When saving a file for the first time, or using File Save As, the File Save As Dialog appears. It works similar to the File Open Dialog displaying the tree view of the installed targets. You must select a folder by clicking the folder name and then filling out the Filename field with a filename before clicking Ok. You will be prompted before over-writing an existing file.
+ファイルを初めて保存する場合、または名前を付けて保存を使用する場合、ファイル名を付けて保存ダイアログが表示されます。これはファイルを開くダイアログと同様に、インストールされたターゲットのツリービューを表示します。フォルダ名をクリックしてフォルダを選択し、ファイル名フィールドにファイル名を入力してから、OKをクリックする必要があります。既存のファイルを上書きする前に確認メッセージが表示されます。
 
-### Script Menu Items
+### スクリプトメニュー項目
 
 <!-- Image sized to match up with bullets -->
 
 <img src={require('@site/static/img/script_runner/script_menu.png').default}
-alt="Script Menu"
+alt="スクリプトメニュー"
 style={{"float": 'left', "margin-right": 50 + 'px', "height": 330 + 'px'}} />
 
-- Display started and finished scripts
-- Show environment variables
-- Show defined metadata
-- Show overridden telemetry values
-- Perform a syntax check
-- Perform a script mnemonic check
-- View the instrumented script
-- Shows the script call stack
-- Display the [debug](script-runner.md#debugging-scripts) prompt
-- Disconnect from real interfaces
-- Delete all script breakpoints
+- 開始および終了したスクリプトを表示
+- 環境変数を表示
+- メタデータを表示
+- オーバーライドされたテレメトリ値を表示
+- 構文チェックを実行
+- スクリプトニーモニックチェックを実行
+- 計測されたスクリプトを表示
+- スクリプトコールスタックを表示
+- [デバッグ](script-runner.md#debugging-scripts)プロンプトを表示
+- 実際のインターフェースから切断
+- すべてのスクリプトブレークポイントを削除
 
-The Execution Status popup lists the currently running scripts. This allows other users to connect to running scripts and follow along with the currently executing script. It also lists previously executed scripts so you can download the script log.
+実行ステータスポップアップには、現在実行中のスクリプトが一覧表示されます。これにより、他のユーザーは実行中のスクリプトに接続し、現在実行中のスクリプトに沿って追跡できます。また、以前に実行されたスクリプトも一覧表示されるため、スクリプトログをダウンロードできます。
 
-![Running Scripts](/img/script_runner/running_scripts.png)
+![実行中のスクリプト](/img/script_runner/running_scripts.png)
 
-## Running Scripts
+## スクリプトの実行
 
-Running a regular script is simply a matter of opening it and clicking the Start button. By default when you open a script the Filename is updated and the editor loads the script.
+通常のスクリプトを実行するには、単にスクリプトを開いて開始ボタン(Start)をクリックするだけです。デフォルトでは、スクリプトを開くとファイル名が更新され、エディタにスクリプトがロードされます。
 
 ![checks.rb](/img/script_runner/checks_rb.png)
 
-Once you click Start the script is spawned in the Server and the Script State becomes Connecting.
+開始をクリックすると、スクリプトはサーバーで起動され、スクリプトの状態は「接続中 (Connecting)」になります。
 
-![connecting](/img/script_runner/connecting.png)
+![接続中](/img/script_runner/connecting.png)
 
-At that point the currently executing line is marked with green. If an error is encountered the line turns red and and the Pause button changes to Retry to allow the line to be re-tried.
+その時点で、現在実行中の行は緑色でマークされます。エラーが発生すると、行は赤色に変わり、一時停止ボタン (Pause)は「再試行 (Retry)」に変わり、行を再試行できるようになります。
 
-![error](/img/script_runner/script_error.png)
+![エラー](/img/script_runner/script_error.png)
 
-This allows checks that depend on telemetry changing to potentially be retried as telemetry is being updated live in the background. You can also click Go to continue pass the error or Stop to end the script execution.
+これにより、テレメトリの変更に依存するチェックは、テレメトリが背景でリアルタイムに更新されているため、潜在的に再試行できます。また、「進む (Go)」をクリックしてエラーを通過するか、「停止 (Stop)」をクリックしてスクリプトの実行を終了することもできます。
 
-### Right Click Script
+### スクリプトの右クリック
 
-Right clicking a script brings up several options:
+スクリプトを右クリックすると、いくつかのオプションが表示されます：
 
-![right-click](/img/script_runner/right_click.png)
+![右クリック](/img/script_runner/right_click.png)
 
-'Execute selection' causes the selected piece of code to be copied to a fresh Script Runner tab and executed independently of the current script. This is useful to run a selected section of code but be careful of references to other variables that are not selected. COSMOS will not be able to reference undefined variables!
+「選択部分を実行 (Execute selection)」は、選択したコード部分を新しいスクリプトランナータブにコピーし、現在のスクリプトとは独立して実行します。これはコードの選択部分を実行するのに便利ですが、選択されていない他の変数への参照には注意してください。COSMOSは未定義の変数を参照できません！
 
-'Run from here' causes everything from the current location of the cursor to be copied to a fresh Script Runner tab and executed independently of the current script. This is useful to avoid executing earlier pieces of code but be careful of references to other variables that are not selected. COSMOS will not be able to reference undefined variables!
+「ここから実行 (Run from here)」は、カーソルの現在位置からすべてを新しいスクリプトランナータブにコピーし、現在のスクリプトとは独立して実行します。これは前半のコードの実行を避けるのに便利ですが、選択されていない他の変数への参照には注意してください。COSMOSは未定義の変数を参照できません！
 
-'Clear all breakpoints' allows you to quickly clear breakpoints set by clicking on the editor line number.
+「すべてのブレークポイントをクリア (Clear local breakpoints)」では、エディタの行番号をクリックして設定したブレークポイントをすばやくクリアできます。
 
-## Running Script Suites
+## スクリプトスイートの実行
 
-If a script is structured as a Suite it automatically causes Script Runner to parse the file to populate the Suite, Group, and Script drop down menus.
+スクリプトがスイートとして構成されている場合、スクリプトランナーは自動的にファイルを解析して、スイート、グループ、およびスクリプトのドロップダウンメニューを入力します。
 
-![Suite Script](/img/script_runner/script_suite.png)
+![スイートスクリプト](/img/script_runner/script_suite.png)
 
-To generate a new Suite use the File -> New Suite and then choose either Ruby or Python to create a Suite in that language.
+新しいスイートを生成するには、ファイル (File) -> 新規スイート (New Suite) を使用し、RubyまたはPythonを選択してその言語でスイートを作成します。
 
-### Group
+### グループ
 
-The Group class contains the methods used to run the test or operations. Any methods starting with 'script', 'op', or 'test' which are implemented inside a Group class are automatically included as scripts to run. For example, in the above image, you'll notice the 'script_power_on' is in the Script drop down menu. Here's another simple Ruby example:
+グループクラスには、テストまたは操作を実行するために使用されるメソッドが含まれています。グループクラス内で実装される「script」、「op」、または「test」で始まるメソッドは、実行するスクリプトとして自動的に含まれます。例えば、上の画像では、「script_power_on」がスクリプトドロップダウンメニューにあることに気づくでしょう。別の簡単なRubyの例：
 
 <!-- prettier-ignore -->
 ```ruby
@@ -122,7 +122,7 @@ class ExampleGroup < OpenC3::Group
 end
 ```
 
-Equivalent Python example:
+同等のPythonの例：
 
 <!-- prettier-ignore -->
 ```python
@@ -136,11 +136,11 @@ class ExampleGroup(Group):
         print("teardown")
 ```
 
-The setup and teardown methods are special methods which enable the Setup and Teardown buttons next to the Group drop down menu. Clicking these buttons runs the associated method.
+setupとteardownメソッドは特別なメソッドで、グループドロップダウンメニューの横にあるセットアップとティアダウンボタンを有効にします。これらのボタンをクリックすると、関連するメソッドが実行されます。
 
-### Suite
+### スイート
 
-Groups are added to Suites by creating a class inheriting from Suite and then calling the add_group method. For example in Ruby:
+グループはSuiteから継承するクラスを作成し、add_groupメソッドを呼び出すことでスイートに追加されます。例えばRubyでは：
 
 <!-- prettier-ignore -->
 ```ruby
@@ -157,7 +157,7 @@ class MySuite < OpenC3::Suite
 end
 ```
 
-In Python:
+Pythonでは：
 
 <!-- prettier-ignore -->
 ```python
@@ -171,44 +171,44 @@ class MySuite(Suite):
         print("Suite teardown")
 ```
 
-Again there are setup and teardown methods which enable the Setup and Teardown buttons next to the Suite drop down menu.
+ここでも、スイートドロップダウンメニューの横にあるセットアップとティアダウンボタンを有効にするsetupとteardownメソッドがあります。
 
-Multiple Suites and Groups can be created in the same file and will be parsed and added to the drop down menus. Clicking Start at the Suite level will run ALL Groups and ALL Scripts within each Group. Similarly, clicking Start at the Group level will run all Scripts in the Group. Clicking Start next to the Script will run just the single Script.
+同じファイル内に複数のスイートとグループを作成でき、それらは解析されてドロップダウンメニューに追加されます。スイートレベルで開始をクリックすると、すべてのグループと各グループ内のすべてのスクリプトを実行します。同様に、グループレベルで開始をクリックすると、グループ内のすべてのスクリプトを実行します。スクリプトの横にある開始をクリックすると、単一のスクリプトのみを実行します。
 
-### Script Suite Options
+### スクリプトスイートオプション
 
-Opening a Script Suite creates six checkboxes which provide options to the running script.
+スクリプトスイートを開くと、実行中のスクリプトにオプションを提供する6つのチェックボックスが作成されます。
 
-![Suite Checkboxes](/img/script_runner/suite_checkboxes.png)
+![スイートチェックボックス](/img/script_runner/suite_checkboxes.png)
 
-#### Pause on Error
+#### エラーで一時停止
 
-Pauses the script if an error is encountered. This is the default and identical to how normal scripts are executed. Unchecking this box allows the script to continue past errors without user intervention. Similar to the User clicking Go upon encountering an error.
+エラーが発生した場合にスクリプトを一時停止します。これはデフォルトで、通常のスクリプトの実行方法と同じです。このボックスのチェックを外すと、ユーザーの介入なしにエラーを通過してスクリプトを続行することができます。エラーに遭遇した際にユーザーが「進む」をクリックするのと似ています。
 
-#### Continue after Error
+#### エラー後も続行
 
-Continue the script if an error is encountered. This is the default and identical to how normal scripts are executed. Unchecking this box means that the script will end after the first encountered error and execution will continue with any other scripts in the Suite/Group.
+エラーが発生した場合もスクリプトを続行します。これはデフォルトで、通常のスクリプトの実行方法と同じです。このボックスのチェックを外すと、最初に発生したエラーの後にスクリプトが終了し、スイート/グループ内の他のスクリプトが実行されます。
 
-#### Abort after Error
+#### エラー後に中止
 
-Abort the entire execution upon encountering an error. If the first Script in a Suite's Group encounters an error the entire Suite will stop execution. Note, if Continue after Error is set, the current script is allowed to continue and complete.
+エラーに遭遇すると実行全体を中止します。スイートのグループの最初のスクリプトでエラーが発生すると、スイート全体の実行が停止します。注：エラー後も続行が設定されている場合、現在のスクリプトは続行して完了することが許可されます。
 
-#### Manual
+#### マニュアル
 
-In Ruby, sets the global variable called `$manual` to true. In Python, sets `RunningScript.manual` to True. Setting this box only allows the script author to determine if the operator wants to execute manual steps or not. It is up the script author to use the variable in their scripts.
+Rubyでは、`$manual`というグローバル変数をtrueに設定します。Pythonでは、`RunningScript.manual`をTrueに設定します。このボックスを設定すると、スクリプトの作者はオペレータが手動ステップを実行するかどうかを判断できます。スクリプト内でこの変数を使用するかどうかはスクリプト作者次第です。
 
-#### Loop
+#### ループ
 
-Loop whatever the user started continuously. If the user clicks Start next to the Group then the entire Group will be looped. This is useful to catch and debug those tricky timing errors that only sometimes happen.
+ユーザーが開始したものを継続的にループします。ユーザーがグループの横にある開始をクリックすると、グループ全体がループされます。これは、時々だけ発生するトリッキーなタイミングエラーをキャッチしてデバッグするのに便利です。
 
-#### Break Loop on Error
+#### エラーでループを中断
 
-Break the loop if an Error occurs. Only available if the Loop option is set.
+エラーが発生した場合にループを中断します。ループオプションが設定されている場合にのみ使用可能です。
 
-## Debugging Scripts
+## スクリプトのデバッグ
 
-When you enable the Debug prompt an additional line appears between the script and the Log Messages. You can type local variables to cause them to be output in the Log Messages. You can also set local variables by typing `var = 10`.
+デバッグプロンプトを有効にすると、スクリプトとログメッセージの間に追加の行が表示されます。ローカル変数を入力すると、ログメッセージに出力されます。また、`var = 10`と入力してローカル変数を設定することもできます。
 
-![Debug](/img/script_runner/debug.png)
+![デバッグ](/img/script_runner/debug.png)
 
-The Step button allows you to step line by line through the script. Clicking Go continues regular execution.
+ステップボタンを使用すると、スクリプトを1行ずつ進めることができます。「進む」をクリックすると通常の実行が続行されます。

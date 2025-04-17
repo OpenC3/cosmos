@@ -1,26 +1,26 @@
 ---
-title: Command History (Enterprise)
-description: See all the commands sent, by whom, and if successful
+title: コマンド履歴 (Enterprise)
+description: 送信されたすべてのコマンド、送信者、成功したかどうかを確認
 sidebar_custom_props:
   myEmoji: 🛠️
 ---
 
-## Introduction
+## はじめに
 
-Command History provides the ability to see all the commands sent in COSMOS. Commands are listed in time execution order and include who sent the command and whether they were successful (if validated).
+コマンド履歴は、COSMOSで送信されたすべてのコマンドを確認する機能を提供します。コマンドは実行時間順にリストされ、誰がコマンドを送信したか、そして（検証された場合）それらが成功したかどうかが含まれます。
 
-![Command History](/img/command_history/command_history.png)
+![コマンド履歴](/img/command_history/command_history.png)
 
-### Selecting Time
+### 時間の選択
 
-By default, Command History displays the last hour of commands and then continues streaming commands as they are sent. You can select a different time range using the start date / time and end date / time choosers.
+デフォルトでは、コマンド履歴は過去1時間のコマンドを表示し、送信されたコマンドを継続的にストリーミングします。開始日時と終了日時の選択ツールを使用して、異なる時間範囲を選択できます。
 
-## Commands Table
+## コマンドテーブル
 
-The commands table is sorted by Time and list the User (or process), the Command, the Result and an optional Description.
+コマンドテーブルは時間でソートされ、ユーザー（またはプロセス）、コマンド、結果、およびオプションの説明がリストされています。
 
-As shown above, the User can be an actual user in the system (admin, operator) or a background process (DEFAULT\_\_MULTI\_\_INST, DEFAULT\_\_DECOM\_\_INST2).
+上記のように、ユーザーはシステム内の実際のユーザー（admin、operator）またはバックグラウンドプロセス（DEFAULT\_\_MULTI\_\_INST、DEFAULT\_\_DECOM\_\_INST2）になります。
 
-The Result field is the result of executing Command Validators established by the [VALIDATOR](../configuration/command#validator) keyword. Command Validators are either a Ruby or Python class which is used to validate the command success or failure with both a pre_check and post_check method. Usually when a command fails, a description is given as in the example above.
+結果フィールドは、[VALIDATOR](../configuration/command#validator)キーワードによって確立されたコマンドバリデータを実行した結果です。コマンドバリデータは、pre_checkとpost_checkの両方のメソッドでコマンドの成功または失敗を検証するために使用されるRubyまたはPythonクラスです。通常、コマンドが失敗すると、上記の例のように説明が与えられます。
 
-For more information read the [VALIDATOR](../configuration/command#validator) documentation and also see the [Ruby Example](https://github.com/OpenC3/cosmos/blob/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/targets/INST/lib/inst_cmd_validator.rb) and the [Python Example](https://github.com/OpenC3/cosmos/blob/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/targets/INST2/lib/inst2_cmd_validator.py) in the [COSMOS Demo](https://github.com/OpenC3/cosmos/tree/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo).
+詳細については、[VALIDATOR](../configuration/command#validator)のドキュメントを読み、また[COSMOS Demo](https://github.com/OpenC3/cosmos/tree/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo)の[Rubyの例](https://github.com/OpenC3/cosmos/blob/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/targets/INST/lib/inst_cmd_validator.rb)と[Pythonの例](https://github.com/OpenC3/cosmos/blob/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/targets/INST2/lib/inst2_cmd_validator.py)を参照してください。

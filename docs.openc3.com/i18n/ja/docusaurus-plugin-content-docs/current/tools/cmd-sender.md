@@ -1,53 +1,53 @@
 ---
-title: Command Sender
-description: Send individual commands
+title: コマンド送信ツール
+description: 個別のコマンドを送信する
 sidebar_custom_props:
   myEmoji: 🛠️
 ---
 
-## Introduction
+## はじめに
 
-Command Sender provides the ability to send any command defined by COSMOS. Commands are selected using the Target and Packet drop down fields which populate the command parameter (if any). A command history is stored which is also editable. Commands in the command history can be re-executed by pressing Enter. Related telemetry or screens are displayed in the bottom right next to the command history.
+コマンド送信ツールは、COSMOSからあらゆるコマンドを送信する機能です。コマンドは、ターゲットとパケットのドロップダウンフィールドを使用して選択され、コマンドパラメータ（ある場合）が入力されます。コマンド履歴が保存され、編集も可能です。コマンド履歴内のコマンドはEnterキーを押すことで再実行できます。関連するテレメトリまたは画面は、コマンド履歴の隣の右下に表示されます。
 
-![Command Sender](/img/command_sender/command_sender.png)
+![コマンド送信ツール](/img/command_sender/command_sender.png)
 
-## Command Sender Menus
+## コマンド送信ツールのメニュー
 
-### Mode Menu Items
+### モードメニュー項目
 
 <!-- Image sized to match up with bullets -->
 
 <img src={require('@site/static/img/command_sender/mode_menu.png').default}
-alt="Mode Menu"
+alt="モードメニュー"
 style={{"float": 'left', "margin-right": 50 + 'px', "height": 120 + 'px'}} />
 
-- Ignores parameter range checking
-- Displays parameter state values in hex
-- Shows ignored parameters
-- Disables all parameter conversions
+- パラメータ範囲チェックを無視
+- パラメータ状態値を16進数で表示
+- 無視されたパラメータを表示
+- すべてのパラメータ変換を無効化
 
-## Sending Commands
+## コマンドの送信
 
-Select a command by first selecting the target from the Select Target drop down. Changing the target automatically updates the Select Packet options to only display commands from that target. If the command has parameters a table is generated with all the parameters.
+まず「ターゲットを選択 (Select Target)」ドロップダウンからターゲットを選択してコマンドを選択します。ターゲットを変更すると、「パケットを選択 (Select Packet)」オプションが自動的に更新され、そのターゲットからのコマンドのみが表示されます。コマンドにパラメータがある場合、すべてのパラメータを含むテーブルが生成されます。
 
 ![INST COLLECT](/img/command_sender/inst_collect.png)
 
-Clicking on a parameter with States (like TYPE in the above example) brings up a drop down to select a state. Selecting a state populates the value field next to it. Sending a command updates the Status text and the Command History.
+状態を持つパラメータ（上記の例ではTYPE）をクリックすると、状態を選択するためのドロップダウンが表示されます。状態を選択すると、その隣の値フィールドに値が入力されます。コマンドを送信すると、ステータステキストとコマンド履歴が更新されます。
 
-![States](/img/command_sender/collect_states.png)
+![状態](/img/command_sender/collect_states.png)
 
-You can directly edit the Command History to change a parameter value. Pressing Enter on the line will then execute the command. If the command has changed a new line will be entered in the Command History. Pressing Enter several times on the same line updates the Status text with the number of commands sent (3 in the next example).
+コマンド履歴を直接編集してパラメータ値を変更できます。その行でEnterキーを押すと、コマンドが実行されます。コマンドが変更された場合、コマンド履歴に新しい行が入力されます。同じ行でEnterキーを数回押すと、ステータステキストが送信されたコマンドの数（次の例では3）で更新されます。
 
-![History](/img/command_sender/history.png)
+![履歴](/img/command_sender/history.png)
 
-### Hazardous Commands
+### 危険なコマンド
 
-Sending [hazardous](../configuration/command.md#hazardous) commands will prompt the user whether to send the command.
+[危険な](../configuration/command.md#hazardous)コマンドを送信すると、コマンドを送信するかどうかをユーザーに確認するプロンプトが表示されます。
 
 ![INST CLEAR](/img/command_sender/inst_clear.png)
 
-Commands can also have hazardous [states](../configuration/command.md#state) (INST COLLECT with TYPE SPECIAL) which also prompt the user. In this example, we've also checked all the menu options to show ignored parameters, display state values in hex (see SPECIAL, 0x1), disabled range checking (DURATION 1000), and disabled parameter conversions.
+コマンドには危険な[状態](../configuration/command.md#state)（INST COLLECT with TYPE SPECIAL）もあり、ユーザーにプロンプトが表示されます。この例では、無視されたパラメータを表示する、状態値を16進数で表示する（SPECIAL、0x1を参照）、範囲チェックを無効にする（DURATION 1000）、パラメータ変換を無効にするなど、すべてのメニューオプションをチェックしています。
 
-![INST COLLECT Hazardous](/img/command_sender/inst_collect_hazardous.png)
+![INST COLLECT 危険](/img/command_sender/inst_collect_hazardous.png)
 
-Selecting Yes will send the command and update the history with all the parameters shown. Note that when writing Scripts all parameters are optional unless explicitly marked [required](../configuration/command.md#required).
+「はい (Yes)」を選択すると、コマンドが送信され、表示されているすべてのパラメータで履歴が更新されます。スクリプトを作成する際には、明示的に[必須](../configuration/command.md#required)とマークされていない限り、すべてのパラメータはオプションであることに注意してください。

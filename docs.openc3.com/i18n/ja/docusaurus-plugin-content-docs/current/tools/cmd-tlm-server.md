@@ -1,81 +1,80 @@
 ---
-title: Command and Telemetry Server
-description: Status about interfaces, targets and log messages
+title: コマンドとテレメトリサーバー
+description: インターフェース、ターゲット、ログメッセージに関するステータス
 sidebar_custom_props:
   myEmoji: 🛠️
 ---
 
-## Introduction
+## はじめに
 
-The Command and Telemetry Server application provides status about the [interfaces](../configuration/interfaces.md) and targets instantiated in your COSMOS installation. Interfaces can be connected or disconnected and raw byte counts are returned. The application also provides quick shortcuts to view
-both raw and formatted command and telemetry packets as they go through the COSMOS system. At the bottom of the Command and Telemetry Server is the Log Messages showing server messages.
+コマンドとテレメトリサーバーアプリケーションは、COSMOSインストールでインスタンス化された[インターフェース](../configuration/interfaces.md)とターゲットに関するステータスを提供します。インターフェースは接続または切断でき、生のバイト数が返されます。このアプリケーションは、COSMOSシステムを通過する際の生のフォーマットされたコマンドとテレメトリパケットの両方を表示するための迅速なショートカットも提供します。コマンドとテレメトリサーバーの下部には、サーバーメッセージを表示するログメッセージがあります。
 
-![Cmd Tlm Server](/img/cmd_tlm_server/cmd_tlm_server.png)
+![コマンドテレメトリサーバー](/img/cmd_tlm_server/cmd_tlm_server.png)
 
-## Command and Telemetry Server Menus
+## コマンドとテレメトリサーバーのメニュー
 
-### File Menu Items
+### ファイルメニュー項目
 
-The Command and Telemetry Server has one menu under File -> Options:
+コマンドとテレメトリサーバーには、ファイル (File) -> オプション (Options) の下に1つのメニューがあります：
 
-![File Menu](/img/cmd_tlm_server/file_menu.png)
+![ファイルメニュー](/img/cmd_tlm_server/file_menu.png)
 
-This dialog changes the refresh rate of the Command and Telemetry Server to reduce load on both your browser window and the backend server. Note that this changes the refresh rate of the various tabs in the application. The Log Messages will continue to update as messages are generated.
+このダイアログは、ブラウザウィンドウとバックエンドサーバーの両方の負荷を軽減するために、コマンドとテレメトリサーバーの更新レートを変更します。これにより、アプリケーション内のさまざまなタブの更新レートが変更されることに注意してください。ログメッセージは、メッセージが生成されると引き続き更新されます。
 
-## Interfaces Tab
+## インターフェースタブ
 
-The Interfaces tab displays all the interfaces defined by your COSMOS installation. You can Connect or Disconnect interfaces and view raw byte and packet counts.
+インターフェースタブは、COSMOSインストールで定義されたすべてのインターフェースを表示します。インターフェースを接続または切断し、生のバイトとパケット数を表示できます。
 
-![Interfaces](/img/cmd_tlm_server/interfaces.png)
+![インターフェース](/img/cmd_tlm_server/interfaces.png)
 
-## Targets Tab
+## ターゲットタブ
 
-The Targets tab displays all the targets and their mapped interfaces along with the Command Authority status (Enterprise Only).
+ターゲットタブは、すべてのターゲットとそれらにマッピングされたインターフェース、およびコマンド権限のステータス（Enterpriseのみ）を表示します。
 
-![Targets](/img/cmd_tlm_server/targets.png)
+![ターゲット](/img/cmd_tlm_server/targets.png)
 
-Command Authority is enabled in the Admin Console and is enabled scope wide. Once Command Authority is enabled, individual users can give and take Command Authority which enables exclusive command and script access to that target. Without Command Authority, users can not send a command or start a script under that target. Note, commands or scripts scheduled with Calendar or Autonomic are not affected by Command Authority.
+コマンド権限は管理コンソールで有効にされ、スコープ全体で有効になります。コマンド権限が有効になると、個々のユーザーはコマンド権限を与えたり取り消したりできるようになり、そのターゲットへの排他的なコマンドとスクリプトアクセスが可能になります。コマンド権限がなければ、ユーザーはそのターゲットでコマンドを送信したりスクリプトを開始したりすることはできません。なお、カレンダーやオートノミックでスケジュールされたコマンドやスクリプトはコマンド権限の影響を受けません。
 
-![Command Authority](/img/cmd_tlm_server/cmd_authority.png)
+![コマンド権限](/img/cmd_tlm_server/cmd_authority.png)
 
-The other option shown in the Scope List is the Critical Command Mode. Critical commanding requires a different user to approve each command. It can either be enabled on just HAZARDOUS and RESTRICTED commands or on all manual commanding.
+スコープリストに表示されるもう一つのオプションは、クリティカルコマンドモードです。クリティカルコマンドでは、各コマンドを承認する別のユーザーが必要です。HAZARDOUSとRESTRICTEDコマンドのみ、または全ての手動コマンドに対して有効にすることができます。
 
-Here is an example of sending a HAZARDOUS command in Command Sender when Critical Command Mode is set to NORMAL.
+以下は、クリティカルコマンドモードがNORMALに設定されている場合に、コマンドセンダーでHAZARDOUSコマンドを送信する例です。
 
-![Critical Command](/img/cmd_tlm_server/critical_cmd_sender.png)
+![クリティカルコマンド](/img/cmd_tlm_server/critical_cmd_sender.png)
 
-## Command Packets Tab
+## コマンドパケットタブ
 
-The Command Packets tab displays all the available commands. The table can be sorted by clicking on the column headers. The table is paginated to support thousands of commands. The search bar searches all pages for a command.
+コマンドパケットタブは、利用可能なすべてのコマンドを表示します。テーブルは列ヘッダーをクリックすることでソートできます。テーブルはページ分割されており、何千ものコマンドをサポートしています。検索バーはすべてのページからコマンドを検索します。
 
-![Commands](/img/cmd_tlm_server/cmd_packets.png)
+![コマンド](/img/cmd_tlm_server/cmd_packets.png)
 
-Clicking on View Raw opens a dialog displaying the raw bytes for that command.
+「生表示 (View Raw)」をクリックすると、そのコマンドの生バイトを表示するダイアログが開きます。
 
-![Raw Command](/img/cmd_tlm_server/cmd_raw.png)
+![生コマンド](/img/cmd_tlm_server/cmd_raw.png)
 
-Clicking View in Command Sender opens up a new [Command Sender](cmd-sender.md) window with the specified command.
+「コマンドセンダーで表示 (View in Command Sender)」をクリックすると、指定されたコマンドで新しい[コマンドセンダー](cmd-sender.md)ウィンドウが開きます。
 
-## Telemetry Packets Tab
+## テレメトリパケットタブ
 
-The Telemetry Packets tab displays all the available telemetry. The table can be sorted by clicking on the column headers. The table is paginated to support thousands of telemetry packets. The search bar searches all pages for a telemetry packet.
+テレメトリパケットタブは、利用可能なすべてのテレメトリを表示します。テーブルは列ヘッダーをクリックすることでソートできます。テーブルはページ分割されており、何千ものテレメトリパケットをサポートしています。検索バーはすべてのページからテレメトリパケットを検索します。
 
-![Telemetry](/img/cmd_tlm_server/tlm_packets.png)
+![テレメトリ](/img/cmd_tlm_server/tlm_packets.png)
 
-Clicking on View Raw opens a dialog displaying the raw bytes for that telemetry packet.
+「生表示 (View Raw)」をクリックすると、そのテレメトリパケットの生バイトを表示するダイアログが開きます。
 
-![Raw Telemetry](/img/cmd_tlm_server/tlm_raw.png)
+![生テレメトリ](/img/cmd_tlm_server/tlm_raw.png)
 
-Clicking View in Packet Viewer opens up a new [Packet Viewer](packet-viewer.md) window with the specified telemetry packet.
+「パケットビューアで表示 (View in Packet Viewer)」をクリックすると、指定されたテレメトリパケットで新しい[パケットビューア](packet-viewer.md)ウィンドウが開きます。
 
-## Status Tab
+## ステータスタブ
 
-The Status tab displays COSMOS system metrics.
+ステータスタブはCOSMOSシステムメトリクスを表示します。
 
-![Status](/img/cmd_tlm_server/status.png)
+![ステータス](/img/cmd_tlm_server/status.png)
 
-## Log Messages
+## ログメッセージ
 
-The Log Messages table sits below all the tabs in the Command and Telemetry Server application. It displays server messages such as limits events (new RED, YELLOW, GREEN values), logging events (new files) and interface events (connecting and disconnecting). It can be filtered by severity or by entering values in the Search box. It can also be paused and resumed to inspect an individual message.
+ログメッセージテーブルは、コマンドとテレメトリサーバーアプリケーションのすべてのタブの下に位置しています。リミットイベント（新しいRED、YELLOW、GREEN値）、ロギングイベント（新しいファイル）、インターフェースイベント（接続と切断）などのサーバーメッセージを表示します。重大度でフィルタリングしたり、検索ボックスに値を入力することでフィルタリングできます。また、一時停止や再開を行って個々のメッセージを検査することもできます。
 
-![Log Messages](/img/cmd_tlm_server/log_messages.png)
+![ログメッセージ](/img/cmd_tlm_server/log_messages.png)

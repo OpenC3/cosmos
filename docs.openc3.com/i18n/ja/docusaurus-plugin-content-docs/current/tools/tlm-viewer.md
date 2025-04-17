@@ -1,69 +1,68 @@
 ---
-title: Telemetry Viewer
-description: Build custom screens using built-in widgets
+title: テレメトリビューア
+description: 組み込みウィジェットを使用してカスタム画面を構築
 sidebar_custom_props:
   myEmoji: 🛠️
 ---
 
-## Introduction
+## はじめに
 
-Telemetry Viewer is a live telemetry viewer which displays custom built screens. Screens are configured through simple text files which utilize numerous built-in widgets.
+テレメトリビューアは、カスタム構築された画面を表示するライブテレメトリビューアです。画面は、多数の組み込みウィジェットを利用した簡単なテキストファイルを通じて設定されます。
 
-![Telemetry Viewer](/img/telemetry_viewer/telemetry_viewer.png)
+![テレメトリビューア](/img/telemetry_viewer/telemetry_viewer.png)
 
-### File Menu Items
+### ファイルメニュー項目
 
 <!-- Image sized to match up with bullets -->
 
 <img src={require('@site/static/img/telemetry_viewer/file_menu.png').default}
-alt="File Menu"
+alt="ファイルメニュー"
 style={{"float": 'left', "margin-right": 50 + 'px', "height": 90 + 'px'}} />
 
-- Open a saved configuration
-- Save the current configuration
-- Reset the configuration (default settings)
+- 保存された設定を開く
+- 現在の設定を保存
+- 設定をリセット（デフォルト設定）
 
-#### Open Configuration
+#### 設定を開く
 
-The Open Configuration dialog displays a list of all saved configurations. You select a configuration and then click Ok to load it. You can delete existing configurations by clicking the Trash icon next to a configuration name.
+設定を開くダイアログでは、保存されたすべての設定のリストが表示されます。設定を選択し、OKをクリックしてロードします。設定名の横にあるゴミ箱アイコンをクリックして、既存の設定を削除できます。
 
-#### Save Configuration
+#### 設定を保存
 
-The Save Configuration dialog also displays a list of all saved configurations. You click the Configuration Name text field, enter the name of your new configuration, and click Ok to save. You can delete existing configurations by clicking the Trash icon next to a configuration name.
+設定を保存ダイアログでも、保存されたすべての設定のリストが表示されます。設定名テキストフィールドをクリックし、新しい設定の名前を入力し、OKをクリックして保存します。設定名の横にあるゴミ箱アイコンをクリックして、既存の設定を削除できます。
 
-## Selecting Screens
+## 画面の選択
 
-Selecting a target from the Select Target drop down automatically updates the available screens for that target in the Select Screen drop down. Clicking Show Screen causes that screen to display.
+ターゲットの選択ドロップダウンからターゲットを選択すると、画面の選択ドロップダウンにそのターゲットで利用可能な画面が自動的に更新されます。画面を表示をクリックすると、その画面が表示されます。
 
-## New Screen
+## 新規画面
 
-Clicking New Screen brings up the new screen dialog.
+新規画面をクリックすると、新規画面ダイアログが表示されます。
 
-![Telemetry Viewer](/img/telemetry_viewer/new_screen.png)
+![テレメトリビューア](/img/telemetry_viewer/new_screen.png)
 
-Screens are owned by Targets so Select Target chooses where the screen will be created. Screens can be based on a Packet such that all the items in that particular packet will be generated in a simple vertical screen similar to Packet Viewer. This is a good starting point for customizing a screen. Note that screen names must be unique so the screen name is set to 'adcs2' since an 'ADCS' screen already exists.
+画面はターゲットによって所有されているため、ターゲットの選択では画面が作成される場所を選択します。画面はパケットに基づくことができ、その特定のパケット内のすべての項目がパケットビューアに似た単純な垂直画面に生成されます。これは画面をカスタマイズするための良い出発点です。画面名は一意である必要があるため、「ADCS」画面がすでに存在するため、画面名は「adcs2」に設定されていることに注意してください。
 
-## Edit Screen
+## 画面の編集
 
-Clicking the pencil icon in the title bar of the screen brings up the edit dialog.
+画面のタイトルバーの鉛筆アイコンをクリックすると、編集ダイアログが表示されます。
 
-![Telemetry Viewer](/img/telemetry_viewer/edit_screen.png)
+![テレメトリビューア](/img/telemetry_viewer/edit_screen.png)
 
-The screen source is displayed in an editor with syntax highlighting and auto-completion. You can download the screen source using the download button in the upper right or delete the screen using the trash icon in the upper left. Click Save to save the screen edits at which point Telemetry Viewer will re-render the screen.
+画面のソースは、構文強調表示と自動補完機能を備えたエディタに表示されます。右上のダウンロードボタンを使用して画面ソースをダウンロードしたり、左上のゴミ箱アイコンを使用して画面を削除したりできます。保存をクリックして画面の編集を保存すると、テレメトリビューアは画面を再レンダリングします。
 
-## Screen Window Management
+## 画面ウィンドウの管理
 
-All screens can be moved around the browser window by clicking their title bar and moving them. Other screens will move around intelligently to fill the space. This allows you to order the screens no matter which order they were created in.
+すべての画面は、タイトルバーをクリックして移動することで、ブラウザウィンドウ内を移動できます。他の画面はスペースを埋めるために効率良く移動します。これにより、作成順に関係なく、画面を並べ替えることができます。
 
-You can also float the screens by clicking the grid icon in the upper left of the title bar. It will change to a balloon icon and allow you to click up and down to change the relative Z index of the window. The image screen is floated in the following screen shot.
+タイトルバーの左上にあるグリッドアイコンをクリックして、画面をフロートさせることもできます。風船アイコンに変わり、上下をクリックしてウィンドウの相対的なZインデックスを変更できるようになります。以下のスクリーンショットでは、画像画面がフロートしています。
 
-The dash button in the upper right of the title bar minimizes the screen to effectively hide it. This allows you to focus on a single screen without closing existing screens. In the screen shot below there are two minimized windows at the very bottom.
+タイトルバーの右上にあるダッシュボタンは、画面を最小化して効果的に隠します。これにより、既存の画面を閉じることなく、単一の画面に集中できます。以下のスクリーンショットでは、一番下に2つの最小化されたウィンドウがあります。
 
-![Float Minimized](/img/telemetry_viewer/float_minimize.png)
+![フロート最小化](/img/telemetry_viewer/float_minimize.png)
 
-The X button closes the screen.
+Xボタンは画面を閉じます。
 
-## Building Screens
+## 画面の構築
 
-For documentation on how to build Telemetry Screens and how to configure the
-screen widgets please see the [Telemetry Screens](../configuration/telemetry-screens.md).
+テレメトリ画面の構築方法と画面ウィジェットの設定方法については、[テレメトリ画面](../configuration/telemetry-screens.md)のドキュメントを参照してください。

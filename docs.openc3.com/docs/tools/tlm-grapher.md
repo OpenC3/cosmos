@@ -85,7 +85,7 @@ The second button shrinks or grows the graph horizontally so it will either be h
 
 ![Two Full Width](/img/telemetry_grapher/two_full_width.png)
 
-The second button shrinks or grows the graph vertically so it will either be half or full height of the browser window. This allows for two full height graphs side by side.
+The third button shrinks or grows the graph vertically so it will either be half or full height of the browser window. This allows for two full height graphs side by side.
 
 ![Two Full Height](/img/telemetry_grapher/two_full_height.png)
 

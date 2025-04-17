@@ -1,77 +1,77 @@
 ---
-title: Admin
-description: Administer COSMOS, install plugins, change settings
+title: 管理者
+description: COSMOSの管理、プラグインのインストール、設定の変更
 sidebar_custom_props:
   myEmoji: 🛠️
 ---
 
-## Introduction
+## はじめに
 
-Admin has it's own dedicated button at the top of the tools list. It is responsible for administering the COSMOS system including installing new plugins, viewing configuration, storing secrets and changing settings.
+管理者ツールは、ツールリストの上部に専用のボタンがあります。このツールはCOSMOSシステムの管理を担当しており、新しいプラグインのインストール、設定の閲覧、シークレットの保存、設定の変更などが可能です。
 
-### Plugins
+### プラグイン
 
-The Plugins tab is where you install new plugins into the COSMOS system. Plugins can dynamically add targets, microservices, interfaces, protocols, Telemetry Viewer widgets, and entire tools into the COSMOS runtime. The following screenshot shows the Plugins tab when only the COSMOS Demo is installed:
+プラグインタブでは、COSMOSシステムに新しいプラグインをインストールできます。プラグインは、ターゲット、マイクロサービス、インターフェース、プロトコル、テレメトリビューアウィジェット、およびツールをCOSMOSランタイムに追加できます。以下のスクリーンショットは、COSMOS Demoのみがインストールされている場合のプラグインタブを表示しています：
 
-![Plugins](/img/admin/plugins.png)
+![プラグイン](/img/admin/plugins.png)
 
-The plugin gem name is listed along with all the targets it contains. You can Download, Edit, Upgrade, or Delete (uninstall) the plugin using the buttons to the right. If a plugin's target has been modified, the target name turns into a link which when clicked will download the changed files. New plugins are installed by clicking the top field.
+プラグインのGem名がリストされ、含まれるすべてのターゲットが表示されます。右側のボタンを使用して、プラグインのダウンロード、編集、アップグレード、または削除（アンインストール）ができます。プラグインのターゲットが変更された場合、ターゲット名はリンクに変わり、クリックすると変更されたファイルがダウンロードされます。新しいプラグインは、上部のフィールドをクリックしてインストールします。
 
-### Targets
+### ターゲット
 
-The Targets tab shows all the targets installed and what plugin they came from. Clicking the eyeball shows the raw JSON that makes up the target configuration.
+ターゲットタブでは、インストールされているすべてのターゲットと、それらがどのプラグインから来たかを表示します。目のアイコンをクリックすると、ターゲット設定を構成する生のJSONが表示されます。
 
-![Targets](/img/admin/targets.png)
+![ターゲット](/img/admin/targets.png)
 
-### Interfaces
+### インターフェース
 
-The Interfaces tab shows all the interfaces installed. Clicking the eyeball shows the raw JSON that makes up the interface configuration.
+インターフェースタブでは、インストールされているすべてのインターフェースを表示します。目のアイコンをクリックすると、インターフェース設定を構成する生のJSONが表示されます。
 
-![Interfaces](/img/admin/interfaces.png)
+![インターフェース](/img/admin/interfaces.png)
 
-### Routers
+### ルーター
 
-The Routers tab shows all the routers installed. Clicking the eyeball shows the raw JSON that makes up the router configuration.
+ルータータブでは、インストールされているすべてのルーターを表示します。目のアイコンをクリックすると、ルーター設定を構成する生のJSONが表示されます。
 
-![Routers](/img/admin/routers.png)
+![ルーター](/img/admin/routers.png)
 
-### Microservices
+### マイクロサービス
 
-The Microservices tab shows all the microservices installed, their update time, state, and count. Clicking the eyeball shows the raw JSON that makes up the microservice configuration.
+マイクロサービスタブでは、インストールされているすべてのマイクロサービス、その更新時間、状態、数を表示します。目のアイコンをクリックすると、マイクロサービス設定を構成する生のJSONが表示されます。
 
-![Microservices](/img/admin/microservices.png)
+![マイクロサービス](/img/admin/microservices.png)
 
-### Packages
+### パッケージ
 
-The Packages tab shows all the Ruby gems and Python packages installed in the system. You can also install packages from this tab if you're in an offline (air gapped) environment where COSMOS can't pull dependencies from Rubygems or Pypi.
+パッケージタブでは、システムにインストールされているすべてのRuby gemとPythonパッケージを表示します。COSMOSがRubygemsやPypiから依存関係を取得できないオフライン（エアギャップ）環境にいる場合は、このタブからパッケージをインストールすることもできます。
 
-![Packages](/img/admin/packages.png)
+![パッケージ](/img/admin/packages.png)
 
-### Tools
+### ツール
 
-The Tools tab lists all the tools installed. You can reorder the tools in the Navigation bar by dragging and dropping the left side grab handle.
+ツールタブには、インストールされているすべてのツールがリストされています。左側のグラブハンドルをドラッグアンドドロップして、ナビゲーションバーのツールの順序を変更できます。
 
-![Tools](/img/admin/tools.png)
+![ツール](/img/admin/tools.png)
 
-You can also add links to existing tools in the navigation bar by using the Add button. Any [material design icons](https://pictogrammers.com/library/mdi/) can be used as the Tool icon.
+追加ボタン (Add) を使用して、既存のツールへのリンクをナビゲーションバーに追加することもできます。ツールアイコンとしては、[マテリアルデザインアイコン](https://pictogrammers.com/library/mdi/)を使用できます。
 
-![Add Tool](/img/admin/add_tool.png)
+![ツールの追加](/img/admin/add_tool.png)
 
 ### Redis
 
-The Redis tab allows you to interact directly with the underlying Redis database, making it easy to modify or delete data. THIS IS DANGEROUS, and should only be performed by COSMOS developers.
+Redisタブでは、基盤となるRedisデータベースと直接やり取りでき、データの変更や削除が簡単にできます。これは危険なため、COSMOSの開発者のみが実行すべきです。
 
 ![Redis](/img/admin/redis.png)
 
-### Secrets
+### シークレット
 
-The Secrets tab allows you to create secrets that can be used by Interfaces or Microservices using the [SECRET](../configuration/plugins#secret) keyword. Secrets require setting the Secret Name and then can be set to an individual value using the Secret Value, or to the contents of a file \(like a certificate file\) using the file selector. In the following example the USERNAME and PASSWORD were set to values while CA_FILE was set using an uploaded certificate file.
+シークレットタブでは、[SECRET](../configuration/plugins#secret)キーワードを使用したインターフェースやマイクロサービスで使用できるシークレットを作成できます。シークレットはシークレット名の設定が必要で、シークレット値を使用して個別の値に設定したり、ファイルセレクターを使用してファイル（証明書ファイルなど）の内容に設定したりできます。次の例では、USERNAMEとPASSWORDは値に設定され、CA_FILEはアップロードされた証明書ファイルを使用して設定されています。
 
-![Secrets](/img/admin/secrets.png)
+![シークレット](/img/admin/secrets.png)
 
-### Settings
+### 設定
 
-The Settings tab contains various settings used throughout COSMOS. These including clearing saved tool configuration, hiding the Astro Clock, changing the system time zone, adding a top and bottom banner, creating a subtitle in the navigation bar, and changing the URLs of the various package libraries.
+設定タブには、COSMOS全体で使用されるさまざまな設定が含まれています。これには、保存されたツール設定のクリア、アストロクロックの非表示、システムタイムゾーンの変更、上部と下部のバナーの追加、ナビゲーションバーにサブタイトルの作成、各パッケージライブラリのURLの変更などが含まれます。
 
-![Settings1](/img/admin/settings1.png)
-![Settings2](/img/admin/settings2.png)
+![設定1](/img/admin/settings1.png)
+![設定2](/img/admin/settings2.png)
