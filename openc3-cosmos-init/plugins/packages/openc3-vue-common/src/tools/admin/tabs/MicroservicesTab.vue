@@ -50,6 +50,7 @@
             />
             <v-list-item-icon class="mr-3">
               <v-btn
+                aria-label="Start Microservice"
                 icon="mdi-play"
                 variant="text"
                 @click="startMicroservice(microservice.name)"
@@ -57,6 +58,7 @@
             </v-list-item-icon>
             <v-list-item-icon class="mr-3">
               <v-btn
+                aria-label="Stop Microservice"
                 icon="mdi-stop"
                 variant="text"
                 @click="stopMicroservice(microservice.name)"
@@ -64,6 +66,7 @@
             </v-list-item-icon>
             <v-list-item-icon>
               <v-btn
+                aria-label="Show Microservice Details"
                 icon="mdi-eye"
                 variant="text"
                 @click="showMicroservice(microservice.name)"

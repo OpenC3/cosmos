@@ -29,6 +29,7 @@
 
           <template #append>
             <v-btn
+              aria-label="Show Interface Details"
               icon="mdi-eye"
               variant="text"
               @click="showInterface(openc3_interface)"

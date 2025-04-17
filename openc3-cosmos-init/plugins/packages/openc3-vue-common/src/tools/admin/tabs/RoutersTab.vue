@@ -28,7 +28,12 @@
           <v-list-item-title>{{ router }}</v-list-item-title>
 
           <template #append>
-            <v-btn icon="mdi-eye" variant="text" @click="showRouter(router)" />
+            <v-btn
+              aria-label="Show Router Details"
+              icon="mdi-eye"
+              variant="text"
+              @click="showRouter(router)"
+            />
           </template>
         </v-list-item>
         <v-divider />
