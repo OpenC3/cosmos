@@ -21,129 +21,132 @@
 -->
 
 <template>
-  <div>
-    <top-bar :menus="menus" :title="title" />
-    <v-expansion-panels v-model="panel" class="expansion">
-      <v-expansion-panel>
-        <v-expansion-panel-title style="z-index: 1"></v-expansion-panel-title>
-        <v-expansion-panel-text>
-          <div v-show="this.selectedGraphId === null">
-            <v-row class="my-5">
-              <v-spacer />
-              <span>
-                Add a graph from the menu bar or select an existing graph to
-                continue
-              </span>
-              <v-spacer />
-            </v-row>
-          </div>
-
-          <v-container v-show="this.selectedGraphId !== null">
-            <target-packet-item-chooser
-              :initial-target-name="this.$route.params.target"
-              :initial-packet-name="this.$route.params.packet"
-              :initial-item-name="this.$route.params.item"
-              @addItem="addItem"
-              button-text="Add Item"
-              choose-item
-              select-types
-              show-latest
-            />
-            <!-- All this row / col stuff is to setup a structure similar to the
-                 target-packet-item-chooser so it will layout the same -->
-            <v-row class="grapher-info">
-              <v-col style="max-width: 300px; pointer-events: none"></v-col>
-              <v-col style="max-width: 300px; pointer-events: none"></v-col>
-              <v-col style="max-width: 300px; pointer-events: none"></v-col>
-              <v-col style="max-width: 140px">
-                <v-btn
-                  v-show="state === 'pause'"
-                  class="pulse"
-                  v-on:click="
-                    () => {
-                      state = 'start'
-                    }
-                  "
-                  color="primary"
-                  data-test="start-graph"
-                  icon="mdi-play"
-                  size="large"
-                >
-                </v-btn>
-                <v-btn
-                  v-show="state === 'start'"
-                  v-on:click="
-                    () => {
-                      state = 'pause'
-                    }
-                  "
-                  color="primary"
-                  data-test="pause-graph"
-                  icon="mdi-pause"
-                  size="large"
-                />
-                <v-spacer />
-              </v-col>
-            </v-row>
-          </v-container>
-        </v-expansion-panel-text>
-      </v-expansion-panel>
-    </v-expansion-panels>
-    <div>
-      <div class="grid">
-        <div
-          class="item"
-          v-for="graph in graphs"
-          :key="graph"
-          :id="`gridItem${graph}`"
-          :ref="`gridItem${graph}`"
-        >
-          <div class="item-content">
-            <graph
-              :ref="`graph${graph}`"
-              :id="graph"
-              :state="state"
-              :start-time="startTime"
-              :selected-graph-id="selectedGraphId"
-              :seconds-graphed="settings.secondsGraphed.value"
-              :points-saved="settings.pointsSaved.value"
-              :points-graphed="settings.pointsGraphed.value"
-              :refresh-interval-ms="settings.refreshIntervalMs.value"
-              :time-zone="timeZone"
-              @close-graph="() => closeGraph(graph)"
-              @min-max-graph="() => minMaxGraph(graph)"
-              @resize="() => resize()"
-              @pause="() => (state = 'pause')"
-              @start="() => (state = 'start')"
-              @click="() => graphSelected(graph)"
-              @edit="saveDefaultConfig(currentConfig)"
-              @started="graphStarted"
-            />
-          </div>
+  <top-bar :menus="menus" :title="title" />
+  <v-expansion-panels v-model="panel" class="expansion">
+    <v-expansion-panel>
+      <v-expansion-panel-title style="z-index: 1"></v-expansion-panel-title>
+      <v-expansion-panel-text>
+        <div v-if="selectedGraphId === null">
+          <v-row class="my-5">
+            <v-spacer />
+            <span> Add a graph or select an existing graph to continue </span>
+            <v-spacer />
+          </v-row>
         </div>
+
+        <v-container v-else>
+          <target-packet-item-chooser
+            :initial-target-name="$route.params.target"
+            :initial-packet-name="$route.params.packet"
+            :initial-item-name="$route.params.item"
+            button-text="Add Item"
+            choose-item
+            select-types
+            show-latest
+            @add-item="addItem"
+          />
+          <!-- All this row / col stuff is to setup a structure similar to the
+            target-packet-item-chooser so it will layout the same 
+            TODO: make this a slot in target-packet-item-chooser -->
+          <v-row class="grapher-info">
+            <v-col style="max-width: 300px; pointer-events: none"></v-col>
+            <v-col style="max-width: 300px; pointer-events: none"></v-col>
+            <v-col style="max-width: 300px; pointer-events: none"></v-col>
+            <v-col style="max-width: 140px">
+              <v-btn
+                v-show="state === 'pause'"
+                class="pulse"
+                color="primary"
+                data-test="start-graph"
+                icon="mdi-play"
+                size="large"
+                @click="
+                  () => {
+                    state = 'start'
+                  }
+                "
+              >
+              </v-btn>
+              <v-btn
+                v-show="state === 'start'"
+                color="primary"
+                data-test="pause-graph"
+                icon="mdi-pause"
+                size="large"
+                @click="
+                  () => {
+                    state = 'pause'
+                  }
+                "
+              />
+              <v-spacer />
+            </v-col>
+          </v-row>
+        </v-container>
+      </v-expansion-panel-text>
+    </v-expansion-panel>
+  </v-expansion-panels>
+
+  <v-btn
+    v-if="!graphs?.length"
+    class="ma-1"
+    text="Add Graph"
+    prepend-icon="mdi-plus"
+    @click="addGraph"
+  />
+  <div class="grid">
+    <div
+      v-for="graph in graphs"
+      :id="`gridItem${graph}`"
+      :key="graph"
+      :ref="`gridItem${graph}`"
+      class="item"
+    >
+      <div class="item-content">
+        <graph
+          :id="graph"
+          :ref="`graph${graph}`"
+          :state="state"
+          :start-time="startTime"
+          :selected-graph-id="selectedGraphId"
+          :seconds-graphed="settings.secondsGraphed.value"
+          :points-saved="settings.pointsSaved.value"
+          :points-graphed="settings.pointsGraphed.value"
+          :refresh-interval-ms="settings.refreshIntervalMs.value"
+          :time-zone="timeZone"
+          @close-graph="() => closeGraph(graph)"
+          @min-max-graph="() => minMaxGraph(graph)"
+          @resize="() => resize()"
+          @pause="() => (state = 'pause')"
+          @start="() => (state = 'start')"
+          @click="() => graphSelected(graph)"
+          @edit="saveDefaultConfig(currentConfig)"
+          @started="graphStarted"
+        />
       </div>
     </div>
-    <!-- Note we're using v-if here so it gets re-created each time and refreshes the list -->
-    <open-config-dialog
-      v-if="showOpenConfig"
-      v-model="showOpenConfig"
-      :configKey="configKey"
-      @success="openConfiguration"
-    />
-    <!-- Note we're using v-if here so it gets re-created each time and refreshes the list -->
-    <save-config-dialog
-      v-if="showSaveConfig"
-      v-model="showSaveConfig"
-      :configKey="configKey"
-      @success="saveConfiguration"
-    />
-    <!-- Note we're using v-if here so it gets re-created each time and refreshes the list -->
-    <settings-dialog
-      v-if="showSettingsDialog"
-      v-model="showSettingsDialog"
-      :settings="settings"
-    />
   </div>
+
+  <!-- Note we're using v-if here so it gets re-created each time and refreshes the list -->
+  <open-config-dialog
+    v-if="showOpenConfig"
+    v-model="showOpenConfig"
+    :config-key="configKey"
+    @success="openConfiguration"
+  />
+  <!-- Note we're using v-if here so it gets re-created each time and refreshes the list -->
+  <save-config-dialog
+    v-if="showSaveConfig"
+    v-model="showSaveConfig"
+    :config-key="configKey"
+    @success="saveConfiguration"
+  />
+  <!-- Note we're using v-if here so it gets re-created each time and refreshes the list -->
+  <settings-dialog
+    v-if="showSettingsDialog"
+    v-model="showSettingsDialog"
+    :settings="settings"
+  />
 </template>
 
 <script>
@@ -296,17 +299,6 @@ export default {
       },
     }
   },
-  watch: {
-    settings: {
-      handler: function () {
-        this.saveDefaultConfig(this.currentConfig)
-      },
-      deep: true,
-    },
-    panel: function () {
-      this.resizeAll()
-    },
-  },
   computed: {
     currentConfig: function () {
       return {
@@ -340,6 +332,17 @@ export default {
           return config
         }),
       }
+    },
+  },
+  watch: {
+    settings: {
+      handler: function () {
+        this.saveDefaultConfig(this.currentConfig)
+      },
+      deep: true,
+    },
+    panel: function () {
+      this.resizeAll()
     },
   },
   created() {
@@ -626,10 +629,11 @@ i.v-icon.mdi-chevron-down {
   }
 }
 </style>
+
 <style lang="scss" scoped>
 .expansion {
-  padding: 5px;
   background-color: var(--color-background-base-default) !important;
+  padding: 5px;
   padding-bottom: 10px;
 }
 .v-container {
@@ -661,6 +665,7 @@ i.v-icon.mdi-chevron-down {
 .item {
   position: absolute;
   z-index: 1;
+  margin: 0;
 }
 .item.muuri-item-dragging {
   z-index: 3;
