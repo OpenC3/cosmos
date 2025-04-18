@@ -30,48 +30,25 @@
           <v-alert type="error" v-model="error" dismissible>
             {{ errorText }}
           </v-alert>
-          <v-row class="pt-4" style="color: white"
-            >User {{ cmdUser }} is waiting for approval to execute:
+          <v-row class="pt-4" style="color: white">User {{ cmdUser }} is waiting for approval to execute:
           </v-row>
           <v-row class="pa-4" style="color: white">{{ cmdString }}</v-row>
           <v-row class="text-subtitle-2">UUID: {{ uuid }}</v-row>
 
           <v-row v-if="!canApprove">
-            <v-text-field
-              v-model="username"
-              label="Username"
-              data-test="username"
-            />
+            <v-text-field v-model="username" label="Username" data-test="username" />
           </v-row>
           <v-row v-if="!canApprove">
-            <v-text-field
-              v-model="password"
-              type="password"
-              label="Password"
-              data-test="password"
-            />
+            <v-text-field v-model="password" type="password" label="Password" data-test="password" />
           </v-row>
           <v-row class="pt-2">
             <v-spacer />
-            <v-btn
-              type="submit"
-              @click.prevent="reject"
-              class="mx-2"
-              color="secondary"
-              outlined
-              :disabled="disableButtons"
-              data-test="reject"
-            >
+            <v-btn type="submit" @click.prevent="reject" class="mx-2" color="secondary" outlined
+              :disabled="disableButtons" data-test="reject">
               Reject
             </v-btn>
-            <v-btn
-              type="submit"
-              @click.prevent="approve"
-              class="mx-2"
-              color="primary"
-              :disabled="disableButtons"
-              data-test="approve"
-            >
+            <v-btn type="submit" @click.prevent="approve" class="mx-2" color="primary" :disabled="disableButtons"
+              data-test="approve">
               Approve
             </v-btn>
           </v-row>
@@ -249,9 +226,9 @@ export default {
     async getKeycloakToken() {
       const response = await axios.post(
         localStorage.keycloakUrl +
-          '/realms/' +
-          localStorage.keycloakRealm +
-          '/protocol/openid-connect/token',
+        '/realms/' +
+        localStorage.keycloakRealm +
+        '/protocol/openid-connect/token',
         {
           username: this.username,
           password: this.password,
@@ -277,6 +254,7 @@ export default {
   font-weight: bold;
   text-transform: capitalize;
 }
+
 :deep(.v-input--selection-controls) {
   padding: 0px;
   margin: 0px;

@@ -28,34 +28,17 @@
           <v-spacer />
           <span v-if="newMetadata">Metadata</span><span v-else>Events</span>
           <v-spacer />
-          <v-btn
-            icon="mdi-close-box"
-            variant="text"
-            data-test="close-metadata-icon"
-            @click="close"
-          />
+          <v-btn icon="mdi-close-box" variant="text" density="compact" data-test="close-metadata-icon" @click="close" />
         </v-toolbar>
         <v-card-title>
           <v-row class="pa-3">
             <span v-if="newMetadata">Metadata</span><span v-else>Events</span>
             <v-spacer />
-            <v-text-field
-              v-model="search"
-              label="Search"
-              prepend-inner-icon="mdi-magnify"
-              clearable
-              variant="outlined"
-              density="compact"
-              single-line
-              hide-details
-            />
+            <v-text-field v-model="search" label="Search" prepend-inner-icon="mdi-magnify" clearable variant="outlined"
+              density="compact" single-line hide-details />
           </v-row>
         </v-card-title>
-        <v-data-table
-          :headers="eventHeaders"
-          :items="localEvents"
-          :search="search"
-        >
+        <v-data-table :headers="eventHeaders" :items="localEvents" :search="search">
           <template #no-data>
             <span> No events </span>
           </template>
@@ -72,19 +55,10 @@
             {{ dataFormat(item) }}
           </template>
           <template #item.actions="{ item }">
-            <v-icon
-              size="small"
-              class="mr-2"
-              data-test="edit-event"
-              @click="editAction(item)"
-            >
+            <v-icon size="small" class="mr-2" data-test="edit-event" @click="editAction(item)">
               mdi-pencil
             </v-icon>
-            <v-icon
-              size="small"
-              data-test="delete-event"
-              @click="deleteAction(item)"
-            >
+            <v-icon size="small" data-test="delete-event" @click="deleteAction(item)">
               mdi-delete
             </v-icon>
           </template>
@@ -94,46 +68,22 @@
           <v-btn variant="outlined" data-test="close-event-list" @click="close">
             Close
           </v-btn>
-          <v-btn
-            v-if="newMetadata"
-            variant="flat"
-            data-test="new-event"
-            @click="showMetadataCreate = true"
-          >
+          <v-btn v-if="newMetadata" variant="flat" data-test="new-event" @click="showMetadataCreate = true">
             New Metadata
           </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
     <!-- Edit existing events -->
-    <activity-create-dialog
-      v-if="showActivityUpdate"
-      v-model="showActivityUpdate"
-      :activity="editActivity"
-      :time-zone="timeZone"
-      @update="updateActivity"
-    />
-    <metadata-create-dialog
-      v-if="showMetadataUpdate"
-      v-model="showMetadataUpdate"
-      :metadata="editMetadata"
-      :time-zone="timeZone"
-      @update="updateMetadata"
-    />
-    <note-create-dialog
-      v-if="showNoteUpdate"
-      v-model="showNoteUpdate"
-      :note="editNote"
-      :time-zone="timeZone"
-      @update="updateNote"
-    />
+    <activity-create-dialog v-if="showActivityUpdate" v-model="showActivityUpdate" :activity="editActivity"
+      :time-zone="timeZone" @update="updateActivity" />
+    <metadata-create-dialog v-if="showMetadataUpdate" v-model="showMetadataUpdate" :metadata="editMetadata"
+      :time-zone="timeZone" @update="updateMetadata" />
+    <note-create-dialog v-if="showNoteUpdate" v-model="showNoteUpdate" :note="editNote" :time-zone="timeZone"
+      @update="updateNote" />
     <!-- Create new metadata -->
-    <metadata-create-dialog
-      v-if="showMetadataCreate"
-      v-model="showMetadataCreate"
-      :time-zone="timeZone"
-      @update="addMetadata"
-    />
+    <metadata-create-dialog v-if="showMetadataCreate" v-model="showMetadataCreate" :time-zone="timeZone"
+      @update="addMetadata" />
   </div>
 </template>
 

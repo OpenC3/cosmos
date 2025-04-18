@@ -36,114 +36,55 @@
             <v-row align="center">
               <v-col>Select Component:</v-col>
               <v-col>
-                <v-select
-                  v-model="selectedComponent"
-                  hide-details
-                  density="compact"
-                  variant="outlined"
-                  :items="components"
-                  item-title="label"
-                  item-value="value"
-                  return-object
-                  data-test="select-component"
-                />
+                <v-select v-model="selectedComponent" hide-details density="compact" variant="outlined"
+                  :items="components" item-title="label" item-value="value" return-object
+                  data-test="select-component" />
               </v-col>
             </v-row>
-            <v-row
-              ><v-col>Add packets for this component to process.</v-col></v-row
-            >
+            <v-row><v-col>Add packets for this component to process.</v-col></v-row>
             <v-row>
               <v-col class="my-2">
-                <v-radio-group
-                  v-model="newPacketCmdOrTlm"
-                  inline
-                  hide-details
-                  class="mt-0"
-                >
-                  <v-radio
-                    label="Command"
-                    value="cmd"
-                    data-test="command-packet-radio"
-                  />
-                  <v-radio
-                    label="Telemetry"
-                    value="tlm"
-                    data-test="telemetry-packet-radio"
-                  />
+                <v-radio-group v-model="newPacketCmdOrTlm" inline hide-details class="mt-0">
+                  <v-radio label="Command" value="cmd" data-test="command-packet-radio" />
+                  <v-radio label="Telemetry" value="tlm" data-test="telemetry-packet-radio" />
                 </v-radio-group>
               </v-col>
             </v-row>
             <v-row>
               <v-col>
-                <target-packet-item-chooser
-                  :button-text="chooseItem ? 'Add Item' : 'Add Packet'"
-                  :mode="newPacketCmdOrTlm"
-                  :choose-item="chooseItem"
-                  @add-item="addValue"
-                />
+                <target-packet-item-chooser :button-text="chooseItem ? 'Add Item' : 'Add Packet'"
+                  :mode="newPacketCmdOrTlm" :choose-item="chooseItem" @add-item="addValue" />
               </v-col>
             </v-row>
             <v-row>
               <v-col>
                 <v-radio-group v-model="newPacketMode" inline hide-details>
-                  <v-radio
-                    label="Raw"
-                    value="RAW"
-                    :disabled="disableRadioOptions"
-                    data-test="new-packet-raw-radio"
-                  />
-                  <v-radio
-                    label="Decom"
-                    value="DECOM"
-                    :disabled="disableRadioOptions"
-                    data-test="new-packet-decom-radio"
-                  />
+                  <v-radio label="Raw" value="RAW" :disabled="disableRadioOptions" data-test="new-packet-raw-radio" />
+                  <v-radio label="Decom" value="DECOM" :disabled="disableRadioOptions"
+                    data-test="new-packet-decom-radio" />
                 </v-radio-group>
               </v-col>
               <v-col>
-                <v-select
-                  v-if="newPacketMode === 'DECOM'"
-                  v-model="newPacketValueType"
-                  hide-details
-                  label="Value Type"
-                  data-test="add-packet-value-type"
-                  :items="valueTypes"
-                />
+                <v-select v-if="newPacketMode === 'DECOM'" v-model="newPacketValueType" hide-details label="Value Type"
+                  data-test="add-packet-value-type" :items="valueTypes" />
               </v-col>
             </v-row>
-            <v-row
-              ><v-col>
-                <v-data-table
-                  v-model:items-per-page="itemsPerPage"
-                  :headers="headers"
-                  :items="packets"
-                  :items-per-page-options="[10, 100]"
-                  multi-sort
-                  density="compact"
-                >
+            <v-row><v-col>
+                <v-data-table v-model:items-per-page="itemsPerPage" :headers="headers" :items="packets"
+                  :items-per-page-options="[10, 100]" multi-sort density="compact">
                   <template #item.delete="{ item }">
                     <v-icon @click="deleteItem(item)"> mdi-delete </v-icon>
                   </template>
                 </v-data-table>
-              </v-col></v-row
-            >
+              </v-col></v-row>
           </v-container>
         </v-card-text>
         <v-card-actions class="px-2">
           <v-spacer />
-          <v-btn
-            variant="outlined"
-            data-test="cancel-component"
-            @click="cancelAddComponent"
-          >
+          <v-btn variant="outlined" data-test="cancel-component" @click="cancelAddComponent">
             Cancel
           </v-btn>
-          <v-btn
-            variant="flat"
-            data-test="add-component"
-            :disabled="!valid"
-            @click="addComponent"
-          >
+          <v-btn variant="flat" data-test="add-component" :disabled="!valid" @click="addComponent">
             Create
           </v-btn>
         </v-card-actions>

@@ -34,13 +34,7 @@
           <v-row>
             <v-col>
               <div class="px-2">
-                <v-btn
-                  block
-                  data-test="searchGithub"
-                  color="primary"
-                  :disabled="disableSearch"
-                  @click="searchGithub"
-                >
+                <v-btn block data-test="searchGithub" color="primary" :disabled="disableSearch" @click="searchGithub">
                   Github
                   <v-icon end theme="dark"> mdi-github </v-icon>
                 </v-btn>
@@ -77,18 +71,9 @@
                 <v-list-item-title>{{ data.name }}</v-list-item-title>
 
                 <v-list-item icon>
-                  <v-progress-circular
-                    v-if="activeDownload"
-                    indeterminate
-                    color="primary"
-                  />
-                  <v-btn
-                    v-else
-                    icon="mdi-cloud-download"
-                    variant="text"
-                    :disabled="activeDownload"
-                    @click="downloadGem(data)"
-                  />
+                  <v-progress-circular v-if="activeDownload" indeterminate color="primary" />
+                  <v-btn v-else icon="mdi-cloud-download" variant="text" :disabled="activeDownload"
+                    @click="downloadGem(data)" />
                 </v-list-item>
               </v-list-item>
               <v-divider v-if="index < listData.length - 1" :key="index" />

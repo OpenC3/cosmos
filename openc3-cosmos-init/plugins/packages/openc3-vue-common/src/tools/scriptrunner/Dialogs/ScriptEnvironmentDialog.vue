@@ -35,19 +35,10 @@
       </div>
       <v-card-actions class="px-2">
         <v-spacer />
-        <v-btn
-          @click="cancel"
-          variant="outlined"
-          data-test="environment-dialog-cancel"
-        >
+        <v-btn @click="cancel" variant="outlined" data-test="environment-dialog-cancel">
           Cancel
         </v-btn>
-        <v-btn
-          @click="updateEnvironment"
-          variant="flat"
-          data-test="environment-dialog-save"
-          :disabled="!!inputError"
-        >
+        <v-btn @click="updateEnvironment" variant="flat" data-test="environment-dialog-save" :disabled="!!inputError">
           Save
         </v-btn>
       </v-card-actions>

@@ -29,18 +29,10 @@
           <span v-if="metadata">Update Metadata</span>
           <span v-else>Create Metadata</span>
           <v-spacer />
-          <v-btn
-            icon="mdi-close-box"
-            variant="text"
-            data-test="close-metadata-icon"
-            @click="clearHandler"
-          />
+          <v-btn icon="mdi-close-box" variant="text" density="compact" data-test="close-metadata-icon"
+            @click="clearHandler" />
         </v-toolbar>
-        <v-stepper
-          v-model="dialogStep"
-          editable
-          :items="['Metadata Times', 'Metadata Input']"
-        >
+        <v-stepper v-model="dialogStep" editable :items="['Metadata Times', 'Metadata Input']">
           <template v-if="dialogStep === 2" #actions>
             <v-row class="ma-0 px-6 pb-4">
               <v-btn variant="text" @click="() => (dialogStep -= 1)">
@@ -50,12 +42,7 @@
               <v-btn variant="outlined" class="mr-4" @click="clearHandler">
                 Cancel
               </v-btn>
-              <v-btn
-                type="submit"
-                color="primary"
-                :disabled="!!error"
-                @click.prevent="submitHandler"
-              >
+              <v-btn type="submit" color="primary" :disabled="!!error" @click.prevent="submitHandler">
                 Ok
               </v-btn>
             </v-row>
@@ -66,23 +53,10 @@
               <div class="pa-2">
                 <color-select-form v-model="color" />
                 <v-row dense>
-                  <v-text-field
-                    v-model="startDate"
-                    type="date"
-                    label="Start Date"
-                    class="mx-1"
-                    :rules="[rules.required]"
-                    data-test="metadata-start-date"
-                  />
-                  <v-text-field
-                    v-model="startTime"
-                    type="time"
-                    step="1"
-                    label="Start Time"
-                    class="mx-1"
-                    :rules="[rules.required]"
-                    data-test="metadata-start-time"
-                  />
+                  <v-text-field v-model="startDate" type="date" label="Start Date" class="mx-1"
+                    :rules="[rules.required]" data-test="metadata-start-date" />
+                  <v-text-field v-model="startTime" type="time" step="1" label="Start Time" class="mx-1"
+                    :rules="[rules.required]" data-test="metadata-start-time" />
                 </v-row>
               </div>
             </v-card-text>

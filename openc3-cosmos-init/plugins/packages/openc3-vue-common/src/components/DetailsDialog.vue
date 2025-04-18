@@ -149,21 +149,13 @@
             </v-row>
             <v-row no-gutters v-for="(limit, key) in details.limits" :key="key">
               <v-col cols="1"></v-col>
-              <v-col v-if="key === 'enabled'" cols="4" class="label"
-                >Enabled</v-col
-              >
-              <v-switch
-                v-if="key === 'enabled'"
-                v-model="details.limits.enabled"
-                @update:model-value="changeLimitsEnabled"
-                density="compact"
-                color="primary"
-                class="compact-switch"
-                hide-details
-              ></v-switch>
+              <v-col v-if="key === 'enabled'" cols="4" class="label">Enabled</v-col>
+              <v-switch v-if="key === 'enabled'" v-model="details.limits.enabled"
+                @update:model-value="changeLimitsEnabled" density="compact" color="primary" class="compact-switch"
+                hide-details></v-switch>
               <v-col v-if="key !== 'enabled'" cols="4" class="label">{{
                 key
-              }}</v-col>
+                }}</v-col>
               <div v-if="key !== 'enabled'">{{ formatLimit(limit) }}</div>
               <v-col></v-col>
             </v-row>
@@ -413,10 +405,12 @@ export default {
   font-weight: bold;
   text-transform: capitalize;
 }
+
 :deep(.v-input--selection-controls) {
   padding: 0px;
   margin: 0px;
 }
+
 :deep(.v-switch .v-selection-control) {
   min-height: 28px;
 }

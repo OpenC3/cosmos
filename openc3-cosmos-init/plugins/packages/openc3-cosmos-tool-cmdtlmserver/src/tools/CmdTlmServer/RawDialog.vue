@@ -21,47 +21,22 @@
 -->
 
 <template>
-  <div
-    v-show="isVisible"
-    ref="rawDialog"
-    :style="computedStyle"
-    class="raw-dialog"
-  >
+  <div v-show="isVisible" ref="rawDialog" :style="computedStyle" class="raw-dialog">
     <div ref="bar" class="toolbar-wrapper">
       <v-toolbar height="24">
-        <v-btn
-          icon="mdi-content-copy"
-          variant="text"
-          data-test="copy-icon"
-          @click="copyRawData"
-        />
-        <v-btn
-          icon="mdi-download"
-          variant="text"
-          data-test="download"
-          @click="downloadRawData"
-        />
+        <v-btn icon="mdi-content-copy" variant="text" density="compact" data-test="copy-icon" @click="copyRawData" />
+        <v-btn icon="mdi-download" variant="text" density="compact" data-test="download" @click="downloadRawData" />
         <v-spacer />
         <span> {{ type }} </span>
         <v-spacer />
-        <v-btn
-          icon="mdi-close-box"
-          variant="text"
-          data-test="close"
-          @click="$emit('close')"
-        />
+        <v-btn icon="mdi-close-box" variant="text" density="compact" data-test="close" @click="$emit('close')" />
       </v-toolbar>
     </div>
     <v-card>
       <v-card-title class="d-flex align-center justify-content-space-between">
         <span> {{ header }} </span>
         <v-spacer />
-        <v-btn
-          :icon="buttonIcon"
-          variant="text"
-          data-test="pause"
-          @click="pause"
-        />
+        <v-btn :icon="buttonIcon" variant="text" data-test="pause" @click="pause" />
       </v-card-title>
       <v-card-text>
         <v-row dense>
@@ -80,13 +55,7 @@
             <span> {{ receivedCount }} </span>
           </v-col>
         </v-row>
-        <v-textarea
-          v-model="rawData"
-          class="pa-0 ma-0"
-          :rows="numRows"
-          no-resize
-          readonly
-        />
+        <v-textarea v-model="rawData" class="pa-0 ma-0" :rows="numRows" no-resize readonly />
       </v-card-text>
     </v-card>
   </div>
@@ -327,14 +296,17 @@ export default {
   width: 815px;
   background-color: var(--color-background-base-selected);
 }
+
 .raw-dialog .toolbar-wrapper {
   position: sticky;
   top: 0;
   z-index: 1;
 }
+
 .raw-dialog :deep(.v-card-text) {
   background-color: var(--color-background-base-selected);
 }
+
 .v-textarea :deep(textarea) {
   margin-top: 10px;
   font-family: 'Courier New', Courier, monospace;

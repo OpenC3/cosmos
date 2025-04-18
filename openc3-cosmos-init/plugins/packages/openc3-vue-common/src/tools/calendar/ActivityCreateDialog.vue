@@ -29,18 +29,10 @@
           <span v-if="activity">Edit Activity</span>
           <span v-else>Create Activity</span>
           <v-spacer />
-          <v-btn
-            icon="mdi-close-box"
-            variant="text"
-            data-test="close-note-icon"
-            @click="clearHandler"
-          />
+          <v-btn icon="mdi-close-box" variant="text" density="compact" data-test="close-note-icon"
+            @click="clearHandler" />
         </v-toolbar>
-        <v-stepper
-          v-model="dialogStep"
-          editable
-          :items="['Activity Times', 'Activity Type']"
-        >
+        <v-stepper v-model="dialogStep" editable :items="['Activity Times', 'Activity Type']">
           <template v-if="dialogStep === 2" #actions>
             <v-row class="ma-0 px-6 pb-4">
               <v-btn variant="text" @click="() => (dialogStep -= 1)">
@@ -50,12 +42,7 @@
               <v-btn variant="outlined" class="mr-4" @click="clearHandler">
                 Cancel
               </v-btn>
-              <v-btn
-                type="submit"
-                color="primary"
-                :disabled="!!error"
-                @click.prevent="submitHandler"
-              >
+              <v-btn type="submit" color="primary" :disabled="!!error" @click.prevent="submitHandler">
                 Ok
               </v-btn>
             </v-row>
@@ -64,120 +51,51 @@
           <template #item.1>
             <v-card-text>
               <div class="pr-2">
-                <v-select
-                  v-model="timeline"
-                  density="compact"
-                  hide-details
-                  variant="outlined"
-                  :items="timelineNames"
-                  label="Timeline"
-                  data-test="activity-select-timeline"
-                  class="pb-2"
-                >
+                <v-select v-model="timeline" density="compact" hide-details variant="outlined" :items="timelineNames"
+                  label="Timeline" data-test="activity-select-timeline" class="pb-2">
                 </v-select>
                 <v-row dense>
-                  <v-text-field
-                    v-model="startDate"
-                    type="date"
-                    label="Start Date"
-                    class="mx-1"
-                    :rules="[rules.required]"
-                    data-test="activity-start-date"
-                  />
-                  <v-text-field
-                    v-model="startTime"
-                    type="time"
-                    step="1"
-                    label="Start Time"
-                    class="mx-1"
-                    :rules="[rules.required]"
-                    data-test="activity-start-time"
-                  />
+                  <v-text-field v-model="startDate" type="date" label="Start Date" class="mx-1"
+                    :rules="[rules.required]" data-test="activity-start-date" />
+                  <v-text-field v-model="startTime" type="time" step="1" label="Start Time" class="mx-1"
+                    :rules="[rules.required]" data-test="activity-start-time" />
                 </v-row>
                 <v-row dense>
-                  <v-text-field
-                    v-model="endDate"
-                    type="date"
-                    label="End Date"
-                    class="mx-1"
-                    :rules="[rules.required]"
-                    data-test="activity-end-date"
-                  />
-                  <v-text-field
-                    v-model="endTime"
-                    type="time"
-                    step="1"
-                    label="End Time"
-                    class="mx-1"
-                    :rules="[rules.required]"
-                    data-test="activity-end-time"
-                  />
+                  <v-text-field v-model="endDate" type="date" label="End Date" class="mx-1" :rules="[rules.required]"
+                    data-test="activity-end-date" />
+                  <v-text-field v-model="endTime" type="time" step="1" label="End Time" class="mx-1"
+                    :rules="[rules.required]" data-test="activity-end-time" />
                 </v-row>
                 <v-row class="pl-3">
-                  <v-checkbox
-                    v-model="recurring"
-                    :disabled="!!activity"
-                    label="Recurring"
-                    hide-details
-                    data-test="recurring"
-                  >
+                  <v-checkbox v-model="recurring" :disabled="!!activity" label="Recurring" hide-details
+                    data-test="recurring">
                   </v-checkbox>
                 </v-row>
                 <v-row v-if="recurring">
-                  <v-col><div class="repeat">Repeat every</div></v-col>
                   <v-col>
-                    <v-text-field
-                      v-model="frequency"
-                      :disabled="!!activity"
-                      density="compact"
-                      variant="outlined"
-                      single-line
-                      hide-details
-                      data-test="recurring-frequency"
-                  /></v-col>
+                    <div class="repeat">Repeat every</div>
+                  </v-col>
                   <v-col>
-                    <v-select
-                      v-model="timeSpan"
-                      :disabled="!!activity"
-                      :items="timeSpans"
-                      style="primary"
-                      hide-details
-                      density="compact"
-                      variant="outlined"
-                      data-test="recurring-span"
-                    />
+                    <v-text-field v-model="frequency" :disabled="!!activity" density="compact" variant="outlined"
+                      single-line hide-details data-test="recurring-frequency" /></v-col>
+                  <v-col>
+                    <v-select v-model="timeSpan" :disabled="!!activity" :items="timeSpans" style="primary" hide-details
+                      density="compact" variant="outlined" data-test="recurring-span" />
                   </v-col>
                 </v-row>
                 <v-row v-if="recurring" style="padding-bottom: 10px">
-                  <v-col><div class="repeat">Ending</div></v-col>
                   <v-col>
-                    <v-text-field
-                      v-model="recurringEndDate"
-                      type="date"
-                      label="End Date"
-                      class="mx-1"
-                      :rules="[rules.required]"
-                      :disabled="!!activity"
-                      data-test="recurring-end-date"
-                  /></v-col>
+                    <div class="repeat">Ending</div>
+                  </v-col>
                   <v-col>
-                    <v-text-field
-                      v-model="recurringEndTime"
-                      type="time"
-                      step="1"
-                      label="End Time"
-                      class="mx-1"
-                      :rules="[rules.required]"
-                      :disabled="!!activity"
-                      data-test="recurring-end-time"
-                  /></v-col>
+                    <v-text-field v-model="recurringEndDate" type="date" label="End Date" class="mx-1"
+                      :rules="[rules.required]" :disabled="!!activity" data-test="recurring-end-date" /></v-col>
+                  <v-col>
+                    <v-text-field v-model="recurringEndTime" type="time" step="1" label="End Time" class="mx-1"
+                      :rules="[rules.required]" :disabled="!!activity" data-test="recurring-end-time" /></v-col>
                 </v-row>
                 <v-row>
-                  <span
-                    v-show="timeError"
-                    class="ma-2 text-red"
-                    v-text="timeError"
-                  />
+                  <span v-show="timeError" class="ma-2 text-red" v-text="timeError" />
                 </v-row>
               </div>
             </v-card-text>
@@ -186,28 +104,13 @@
           <template #item.2>
             <v-card-text>
               <div class="pr-2">
-                <v-select
-                  v-model="kind"
-                  density="compact"
-                  hide-details
-                  variant="outlined"
-                  :items="types"
-                  label="Activity Type"
-                  data-test="activity-select-type"
-                  class="pb-2"
-                >
+                <v-select v-model="kind" density="compact" hide-details variant="outlined" :items="types"
+                  label="Activity Type" data-test="activity-select-type" class="pb-2">
                 </v-select>
                 <div v-if="kind === 'COMMAND'">
-                  <v-text-field
-                    v-model="activityData"
-                    type="text"
-                    label="Command Input"
-                    placeholder="INST COLLECT with TYPE 0, DURATION 1, OPCODE 171, TEMP 0"
-                    prefix="cmd('"
-                    suffix="')"
-                    hint="Timeline runs commands with cmd_no_hazardous_check"
-                    data-test="activity-cmd"
-                  />
+                  <v-text-field v-model="activityData" type="text" label="Command Input"
+                    placeholder="INST COLLECT with TYPE 0, DURATION 1, OPCODE 171, TEMP 0" prefix="cmd('" suffix="')"
+                    hint="Timeline runs commands with cmd_no_hazardous_check" data-test="activity-cmd" />
                 </div>
                 <div v-else-if="kind === 'SCRIPT'" class="ma-3">
                   <script-chooser @file="fileHandler" />
@@ -444,6 +347,7 @@ export default {
   padding-top: 10px;
   text-align: right;
 }
+
 .v-stepper--vertical .v-stepper__content {
   width: auto;
   margin: 0px 0px 0px 36px;

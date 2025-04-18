@@ -31,13 +31,8 @@
       <v-card-text>
         <div v-for="item in settings" :key="item.title">
           <v-row class="my-5">
-            <v-text-field
-              hide-details="auto"
-              type="number"
-              :rules="item.rules"
-              :label="item.title"
-              v-model.number="item.value"
-            />
+            <v-text-field hide-details="auto" type="number" :rules="item.rules" :label="item.title"
+              v-model.number="item.value" />
           </v-row>
         </div>
         <v-row>

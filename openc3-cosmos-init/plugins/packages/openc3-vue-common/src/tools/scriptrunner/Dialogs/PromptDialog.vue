@@ -43,32 +43,15 @@
       </div>
       <div v-if="layout === 'combo'">
         <v-row class="ma-2">
-          <v-select
-            @update:model-value="selectOkDisabled = false"
-            v-model="selectedItem"
-            label="Select"
-            color="secondary"
-            class="ma-1"
-            data-test="prompt-select"
-            :items="buttons"
-            :multiple="multiple === true"
-          />
+          <v-select @update:model-value="selectOkDisabled = false" v-model="selectedItem" label="Select"
+            color="secondary" class="ma-1" data-test="prompt-select" :items="buttons" :multiple="multiple === true" />
         </v-row>
         <v-card-actions class="px-2">
           <v-spacer />
-          <v-btn
-            @click="cancelHandler"
-            variant="outlined"
-            data-test="prompt-cancel"
-          >
+          <v-btn @click="cancelHandler" variant="outlined" data-test="prompt-cancel">
             Cancel
           </v-btn>
-          <v-btn
-            variant="flat"
-            @click="submitHandler"
-            data-test="prompt-ok"
-            :disabled="selectOkDisabled"
-          >
+          <v-btn variant="flat" @click="submitHandler" data-test="prompt-ok" :disabled="selectOkDisabled">
             Ok
           </v-btn>
         </v-card-actions>
@@ -76,19 +59,11 @@
       <div v-else>
         <v-card-actions :class="layoutClass">
           <v-spacer />
-          <v-btn
-            @click="cancelHandler"
-            variant="outlined"
-            data-test="prompt-cancel"
-          >
+          <v-btn @click="cancelHandler" variant="outlined" data-test="prompt-cancel">
             Cancel
           </v-btn>
           <div v-for="(button, index) in buttons" :key="index">
-            <v-btn
-              variant="flat"
-              @click="submitWrapper(button.value)"
-              :data-test="`prompt-${button.text}`"
-            >
+            <v-btn variant="flat" @click="submitWrapper(button.value)" :data-test="`prompt-${button.text}`">
               {{ button.text }}
             </v-btn>
           </div>
@@ -176,6 +151,7 @@ export default {
   padding: 0;
   padding-bottom: 10px;
 }
+
 .text {
   font-size: 1rem;
   white-space: pre-line;

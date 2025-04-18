@@ -25,30 +25,15 @@
 
 <template>
   <div ref="bar" :style="computedStyle">
-    <v-card
-      v-if="!inline"
-      :min-height="height"
-      :min-width="width"
-      style="cursor: default"
-    >
+    <v-card v-if="!inline" :min-height="height" :min-width="width" style="cursor: default">
       <v-toolbar height="24">
-        <v-btn
-          v-show="errors.length !== 0"
-          icon="mdi-alert"
-          variant="text"
-          data-test="error-graph-icon"
-          @click="
+        <v-btn v-show="errors.length !== 0" icon="mdi-alert" variant="text" density="compact"
+          data-test="error-graph-icon" @click="
             () => {
               errorDialog = true
             }
-          "
-        />
-        <v-btn
-          icon="mdi-pencil"
-          variant="text"
-          data-test="edit-screen-icon"
-          @click="openEdit"
-        />
+          " />
+        <v-btn icon="mdi-pencil" variant="text" density="compact" data-test="edit-screen-icon" @click="openEdit" />
         <v-tooltip v-if="!fixFloated" :open-delay="600" location="top">
           <template #activator="{ props }">
             <div v-bind="props">
@@ -69,11 +54,7 @@
           </template>
           <span> Move Screen Up </span>
         </v-tooltip>
-        <v-tooltip
-          v-if="floated && zIndex > minZ"
-          :open-delay="600"
-          location="top"
-        >
+        <v-tooltip v-if="floated && zIndex > minZ" :open-delay="600" location="top">
           <template #activator="{ props }">
             <div v-bind="props">
               <v-icon data-test="down-screen-icon" @click="downScreen">
@@ -86,90 +67,33 @@
         <v-spacer />
         <span> {{ target }} {{ screen }} </span>
         <v-spacer />
-        <v-btn
-          v-if="expand"
-          icon="mdi-window-minimize"
-          variant="text"
-          data-test="minimize-screen-icon"
-          @click="minMaxTransition"
-        />
-        <v-icon
-          v-else
-          icon="mdi-window-maximize"
-          variant="text"
-          data-test="maximize-screen-icon"
-          @click="minMaxTransition"
-        />
-        <v-btn
-          v-if="showClose"
-          icon="mdi-close-box"
-          variant="text"
-          data-test="close-screen-icon"
-          @click="$emit('close-screen')"
-        />
+        <v-btn v-if="expand" icon="mdi-window-minimize" variant="text" density="compact"
+          data-test="minimize-screen-icon" @click="minMaxTransition" />
+        <v-icon v-else icon="mdi-window-maximize" variant="text" data-test="maximize-screen-icon"
+          @click="minMaxTransition" />
+        <v-btn v-if="showClose" icon="mdi-close-box" variant="text" density="compact" data-test="close-screen-icon"
+          @click="$emit('close-screen')" />
       </v-toolbar>
       <v-expand-transition v-if="!editDialog">
-        <div
-          v-show="expand"
-          ref="screen"
-          class="pa-1"
-          style="position: relative"
-        >
-          <v-overlay
-            style="pointer-events: none"
-            :model-value="errors.length !== 0"
-            opacity="0.8"
-            absolute
-            attach
-          />
-          <vertical-widget
-            :key="screenKey"
-            :widgets="layoutStack[0].widgets"
-            :screen-values="screenValues"
-            :screen-time-zone="timeZone"
-            @add-item="addItem"
-            @delete-item="deleteItem"
-            @open="open"
-            @close="close"
-            @close-all="closeAll"
-          />
+        <div v-show="expand" ref="screen" class="pa-1" style="position: relative">
+          <v-overlay style="pointer-events: none" :model-value="errors.length !== 0" opacity="0.8" absolute attach />
+          <vertical-widget :key="screenKey" :widgets="layoutStack[0].widgets" :screen-values="screenValues"
+            :screen-time-zone="timeZone" @add-item="addItem" @delete-item="deleteItem" @open="open" @close="close"
+            @close-all="closeAll" />
         </div>
       </v-expand-transition>
     </v-card>
 
     <div v-if="inline" class="pa-1" style="position: relative">
-      <v-overlay
-        style="pointer-events: none"
-        :model-value="errors.length !== 0"
-        opacity="0.8"
-        absolute
-        attach
-      />
-      <vertical-widget
-        :key="screenKey"
-        :widgets="layoutStack[0].widgets"
-        :screen-values="screenValues"
-        :screen-time-zone="timeZone"
-        @add-item="addItem"
-        @delete-item="deleteItem"
-        @open="open"
-        @close="close"
-        @close-all="closeAll"
-      />
+      <v-overlay style="pointer-events: none" :model-value="errors.length !== 0" opacity="0.8" absolute attach />
+      <vertical-widget :key="screenKey" :widgets="layoutStack[0].widgets" :screen-values="screenValues"
+        :screen-time-zone="timeZone" @add-item="addItem" @delete-item="deleteItem" @open="open" @close="close"
+        @close-all="closeAll" />
     </div>
 
-    <edit-screen-dialog
-      v-if="editDialog"
-      v-model="editDialog"
-      :target="target"
-      :screen="screen"
-      :definition="currentDefinition"
-      :keywords="keywords"
-      :errors="errors"
-      @save="saveEdit($event)"
-      @cancel="cancelEdit()"
-      @delete="deleteScreen()"
-    />
+    <edit-screen-dialog v-if="editDialog" v-model="editDialog" :target="target" :screen="screen"
+      :definition="currentDefinition" :keywords="keywords" :errors="errors" @save="saveEdit($event)"
+      @cancel="cancelEdit()" @delete="deleteScreen()" />
 
     <!-- Error dialog -->
     <v-dialog v-model="errorDialog" width="60vw">
@@ -455,7 +379,7 @@ export default {
               case 'SUBSETTING':
                 const widget =
                   this.currentLayout.widgets[
-                    this.currentLayout.widgets.length - 1
+                  this.currentLayout.widgets.length - 1
                   ] ?? this.currentLayout
                 widget.settings.push(parameters)
                 break
@@ -789,6 +713,7 @@ export default {
   padding-top: 0px;
   margin-top: 0px;
 }
+
 .v-textarea :deep(textarea) {
   padding: 5px;
   -webkit-mask-image: unset;

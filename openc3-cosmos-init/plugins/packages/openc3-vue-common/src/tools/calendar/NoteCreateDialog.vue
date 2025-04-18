@@ -29,18 +29,10 @@
           <span v-if="note">Update Note</span>
           <span v-else>Create Note</span>
           <v-spacer />
-          <v-btn
-            icon="mdi-close-box"
-            variant="text"
-            data-test="close-note-icon"
-            @click="clearHandler"
-          />
+          <v-btn icon="mdi-close-box" variant="text" density="compact" data-test="close-note-icon"
+            @click="clearHandler" />
         </v-toolbar>
-        <v-stepper
-          v-model="dialogStep"
-          editable
-          :items="['Note Times', 'Note Input']"
-        >
+        <v-stepper v-model="dialogStep" editable :items="['Note Times', 'Note Input']">
           <template v-if="dialogStep === 2" #actions>
             <v-row class="ma-0 px-6 pb-4">
               <v-btn variant="text" @click="() => (dialogStep -= 1)">
@@ -50,12 +42,7 @@
               <v-btn variant="outlined" class="mr-4" @click="clearHandler">
                 Cancel
               </v-btn>
-              <v-btn
-                type="submit"
-                color="primary"
-                :disabled="!!error"
-                @click.prevent="submitHandler"
-              >
+              <v-btn type="submit" color="primary" :disabled="!!error" @click.prevent="submitHandler">
                 Ok
               </v-btn>
             </v-row>
@@ -65,49 +52,19 @@
             <v-card-text>
               <div class="pa-2">
                 <v-row dense>
-                  <v-text-field
-                    v-model="startDate"
-                    type="date"
-                    label="Start Date"
-                    class="mx-1"
-                    :rules="[rules.required]"
-                    data-test="note-start-date"
-                  />
-                  <v-text-field
-                    v-model="startTime"
-                    type="time"
-                    step="1"
-                    label="Start Time"
-                    class="mx-1"
-                    :rules="[rules.required]"
-                    data-test="note-start-time"
-                  />
+                  <v-text-field v-model="startDate" type="date" label="Start Date" class="mx-1"
+                    :rules="[rules.required]" data-test="note-start-date" />
+                  <v-text-field v-model="startTime" type="time" step="1" label="Start Time" class="mx-1"
+                    :rules="[rules.required]" data-test="note-start-time" />
                 </v-row>
                 <v-row dense>
-                  <v-text-field
-                    v-model="endDate"
-                    type="date"
-                    label="End Date"
-                    class="mx-1"
-                    :rules="[rules.required]"
-                    data-test="note-end-date"
-                  />
-                  <v-text-field
-                    v-model="endTime"
-                    type="time"
-                    step="1"
-                    label="End Time"
-                    class="mx-1"
-                    :rules="[rules.required]"
-                    data-test="note-end-time"
-                  />
+                  <v-text-field v-model="endDate" type="date" label="End Date" class="mx-1" :rules="[rules.required]"
+                    data-test="note-end-date" />
+                  <v-text-field v-model="endTime" type="time" step="1" label="End Time" class="mx-1"
+                    :rules="[rules.required]" data-test="note-end-time" />
                 </v-row>
                 <v-row>
-                  <span
-                    v-show="timeError"
-                    class="ma-2 text-red"
-                    v-text="timeError"
-                  />
+                  <span v-show="timeError" class="ma-2 text-red" v-text="timeError" />
                 </v-row>
               </div>
             </v-card-text>
@@ -120,12 +77,8 @@
                   <color-select-form v-model="color" />
                 </div>
                 <div>
-                  <v-text-field
-                    v-model="description"
-                    type="text"
-                    label="Note Description"
-                    data-test="note-description"
-                  />
+                  <v-text-field v-model="description" type="text" label="Note Description"
+                    data-test="note-description" />
                 </div>
                 <v-row v-show="typeError">
                   <span class="ma-2 text-red" v-text="typeError" />

@@ -32,31 +32,16 @@
         <div class="pa-2">
           <v-card-text>
             <div class="question">{{ question }}</div>
-            <v-text-field
-              v-model="inputValue"
-              autofocus
-              data-test="ask-value-input"
-              :type="password ? 'password' : 'text'"
-              :rules="rules"
-            />
+            <v-text-field v-model="inputValue" autofocus data-test="ask-value-input"
+              :type="password ? 'password' : 'text'" :rules="rules" />
           </v-card-text>
         </div>
         <v-card-actions class="px-2">
           <v-spacer />
-          <v-btn
-            @click="cancelHandler"
-            variant="outlined"
-            data-test="ask-cancel"
-          >
+          <v-btn @click="cancelHandler" variant="outlined" data-test="ask-cancel">
             Cancel
           </v-btn>
-          <v-btn
-            @click.prevent="submitHandler"
-            variant="flat"
-            type="submit"
-            data-test="ask-ok"
-            :disabled="!valid"
-          >
+          <v-btn @click.prevent="submitHandler" variant="flat" type="submit" data-test="ask-ok" :disabled="!valid">
             Ok
           </v-btn>
         </v-card-actions>

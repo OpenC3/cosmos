@@ -31,50 +31,24 @@
       <div class="pa-2">
         <v-card-text>
           <v-row class="ma-1">
-            <v-btn
-              color="primary"
-              data-test="overrides-dialog-clear-all"
-              @click="clearOverrides"
-            >
+            <v-btn color="primary" data-test="overrides-dialog-clear-all" @click="clearOverrides">
               Clear All Overrides
             </v-btn>
             <v-spacer />
-            <v-text-field
-              v-model="search"
-              label="Search"
-              prepend-inner-icon="mdi-magnify"
-              clearable
-              variant="outlined"
-              density="compact"
-              single-line
-              hide-details
-            />
+            <v-text-field v-model="search" label="Search" prepend-inner-icon="mdi-magnify" clearable variant="outlined"
+              density="compact" single-line hide-details />
           </v-row>
-          <v-data-table
-            :headers="headers"
-            :items="overrides"
-            :search="search"
-            :items-per-page-options="[100]"
-            multi-sort
-            density="compact"
-          >
+          <v-data-table :headers="headers" :items="overrides" :search="search" :items-per-page-options="[100]"
+            multi-sort density="compact">
             <template #item.delete="{ item }">
-              <v-btn
-                icon="mdi-delete"
-                variant="text"
-                @click="deleteOverride(item)"
-              />
+              <v-btn icon="mdi-delete" variant="text" @click="deleteOverride(item)" />
             </template>
           </v-data-table>
         </v-card-text>
       </div>
       <v-card-actions class="px-2">
         <v-spacer />
-        <v-btn
-          variant="flat"
-          data-test="overrides-dialog-ok"
-          @click="show = !show"
-        >
+        <v-btn variant="flat" data-test="overrides-dialog-ok" @click="show = !show">
           Ok
         </v-btn>
       </v-card-actions>

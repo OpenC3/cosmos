@@ -25,49 +25,22 @@
     <top-bar :menus="menus" :title="title" />
     <v-card>
       <div style="padding: 10px">
-        <target-packet-item-chooser
-          :initial-target-name="$route.params.target"
-          :initial-packet-name="$route.params.packet"
-          :disabled="sendDisabled"
-          button-text="Send"
-          mode="cmd"
-          @on-set="commandChanged($event)"
-          @add-item="buildCmd($event)"
-        />
+        <target-packet-item-chooser :initial-target-name="$route.params.target"
+          :initial-packet-name="$route.params.packet" :disabled="sendDisabled" button-text="Send" mode="cmd"
+          @on-set="commandChanged($event)" @add-item="buildCmd($event)" />
       </div>
 
       <v-card v-if="rows.length !== 0">
         <v-card-title class="d-flex align-center justify-content-space-between">
           Parameters
           <v-spacer />
-          <v-text-field
-            v-model="search"
-            label="Search"
-            prepend-inner-icon="mdi-magnify"
-            clearable
-            variant="outlined"
-            density="compact"
-            single-line
-            hide-details
-            class="search"
-          />
+          <v-text-field v-model="search" label="Search" prepend-inner-icon="mdi-magnify" clearable variant="outlined"
+            density="compact" single-line hide-details class="search" />
         </v-card-title>
-        <v-data-table
-          :headers="headers"
-          :items="rows"
-          :search="search"
-          :items-per-page="-1"
-          hide-default-footer
-          multi-sort
-          density="compact"
-          @contextmenu:row="showContextMenu"
-        >
+        <v-data-table :headers="headers" :items="rows" :search="search" :items-per-page="-1" hide-default-footer
+          multi-sort density="compact" @contextmenu:row="showContextMenu">
           <template #item.val="{ item }">
-            <command-parameter-editor
-              v-model="item.val"
-              :states="item.states"
-              :states-in-hex="statesInHex"
-            />
+            <command-parameter-editor v-model="item.val" :states="item.states" :states-in-hex="statesInHex" />
           </template>
         </v-data-table>
       </v-card>
@@ -87,12 +60,7 @@
                 <v-tooltip :open-delay="600" location="top">
                   <template #activator="{ props }">
                     <div v-bind="props" class="float-right">
-                      <v-btn
-                        icon="mdi-delete-sweep"
-                        variant="text"
-                        data-test="clear-history"
-                        @click="clearHistory"
-                      />
+                      <v-btn icon="mdi-delete-sweep" variant="text" data-test="clear-history" @click="clearHistory" />
                     </div>
                   </template>
                   <span> Clear History </span>
@@ -108,42 +76,23 @@
         </v-card>
       </v-col>
       <v-col v-if="screenDefinition" md="auto">
-        <openc3-screen
-          :target="screenTarget"
-          :screen="screenName"
-          :definition="screenDefinition"
-          :keywords="keywords"
-          :count="screenCount"
-          :show-close="false"
-        />
+        <openc3-screen :target="screenTarget" :screen="screenName" :definition="screenDefinition" :keywords="keywords"
+          :count="screenCount" :show-close="false" />
       </v-col>
     </v-row>
     <div style="height: 15px" />
 
     <v-menu v-model="contextMenuShown" :target="[x, y]">
       <v-list>
-        <v-list-item
-          v-for="(item, index) in contextMenuOptions"
-          :key="index"
-          @click.stop="item.action"
-        >
+        <v-list-item v-for="(item, index) in contextMenuOptions" :key="index" @click.stop="item.action">
           <v-list-item-title>{{ item.title }}</v-list-item-title>
         </v-list-item>
       </v-list>
     </v-menu>
-    <details-dialog
-      v-model="viewDetails"
-      :target-name="targetName"
-      :packet-name="commandName"
-      :item-name="parameterName"
-      :type="'cmd'"
-    />
-    <critical-cmd-dialog
-      v-model="displayCriticalCmd"
-      :uuid="criticalCmdUuid"
-      :cmd-string="criticalCmdString"
-      :cmd-user="criticalCmdUser"
-    />
+    <details-dialog v-model="viewDetails" :target-name="targetName" :packet-name="commandName"
+      :item-name="parameterName" :type="'cmd'" />
+    <critical-cmd-dialog v-model="displayCriticalCmd" :uuid="criticalCmdUuid" :cmd-string="criticalCmdString"
+      :cmd-user="criticalCmdUser" />
 
     <v-dialog v-model="displayErrorDialog" max-width="600">
       <v-card>
@@ -161,11 +110,7 @@
             </v-row>
             <v-row>
               <v-spacer />
-              <v-btn
-                color="primary"
-                data-test="error-dialog-ok"
-                @click="displayErrorDialog = false"
-              >
+              <v-btn color="primary" data-test="error-dialog-ok" @click="displayErrorDialog = false">
                 Ok
               </v-btn>
             </v-row>
@@ -208,15 +153,8 @@
             <v-row class="my-2">
               <v-col>Interface:</v-col>
               <v-col>
-                <v-select
-                  v-model="selectedInterface"
-                  variant="solo"
-                  hide-details
-                  density="compact"
-                  :items="interfaces"
-                  item-title="label"
-                  item-value="value"
-                />
+                <v-select v-model="selectedInterface" variant="solo" hide-details density="compact" :items="interfaces"
+                  item-title="label" item-value="value" />
               </v-col>
             </v-row>
             <v-row no-gutters>
@@ -227,11 +165,7 @@
             </v-row>
             <v-row>
               <v-spacer />
-              <v-btn
-                variant="outlined"
-                data-test="raw-cancel"
-                @click="cancelRawCmd"
-              >
+              <v-btn variant="outlined" data-test="raw-cancel" @click="cancelRawCmd">
                 Cancel
               </v-btn>
               <v-btn class="bg-primary" data-test="raw-ok" @click="sendRawCmd">
@@ -531,7 +465,7 @@ export default {
             },
           })
           // catch the error in case we route to where we already are
-          .catch((err) => {})
+          .catch((err) => { })
       }
     },
 

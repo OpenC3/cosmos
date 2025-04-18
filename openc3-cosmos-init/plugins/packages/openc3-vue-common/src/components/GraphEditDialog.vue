@@ -36,22 +36,12 @@
             <v-row>
               <v-col>
                 <v-card-text class="pa-0">
-                  <v-text-field
-                    v-model="graph.title"
-                    class="pb-2"
-                    label="Title"
-                    hide-details
-                  />
+                  <v-text-field v-model="graph.title" class="pb-2" label="Title" hide-details />
                 </v-card-text>
               </v-col>
               <v-col>
-                <v-select
-                  v-model="graph.legendPosition"
-                  label="Legend Position"
-                  hide-details
-                  :items="legendPositions"
-                  style="max-width: 280px"
-                />
+                <v-select v-model="graph.legendPosition" label="Legend Position" hide-details :items="legendPositions"
+                  style="max-width: 280px" />
               </v-col>
             </v-row>
           </div>
@@ -61,24 +51,13 @@
             </v-card-text>
             <v-row>
               <v-col>
-                <v-text-field
-                  v-model="startDate"
-                  label="Start Date"
-                  :name="`date${Date.now()}`"
-                  :rules="[rules.date]"
-                  type="date"
-                />
+                <v-text-field v-model="startDate" label="Start Date" :name="`date${Date.now()}`" :rules="[rules.date]"
+                  type="date" />
               </v-col>
               <v-col>
                 <!-- We set the :name attribute to be unique to avoid auto-completion -->
-                <v-text-field
-                  v-model="startTime"
-                  label="Start Time"
-                  :name="`time${Date.now()}`"
-                  :rules="[rules.time]"
-                  type="time"
-                  step="1"
-                />
+                <v-text-field v-model="startTime" label="Start Time" :name="`time${Date.now()}`" :rules="[rules.time]"
+                  type="time" step="1" />
               </v-col>
             </v-row>
             <v-card-text class="pa-0">
@@ -87,24 +66,13 @@
             </v-card-text>
             <v-row>
               <v-col>
-                <v-text-field
-                  v-model="endDate"
-                  label="End Date"
-                  :name="`date${Date.now()}`"
-                  :rules="[rules.date]"
-                  type="date"
-                />
+                <v-text-field v-model="endDate" label="End Date" :name="`date${Date.now()}`" :rules="[rules.date]"
+                  type="date" />
               </v-col>
               <v-col>
                 <!-- We set the :name attribute to be unique to avoid auto-completion -->
-                <v-text-field
-                  v-model="endTime"
-                  label="End Time"
-                  :name="`time${Date.now()}`"
-                  :rules="[rules.time]"
-                  type="time"
-                  step="1"
-                />
+                <v-text-field v-model="endTime" label="End Time" :name="`time${Date.now()}`" :rules="[rules.time]"
+                  type="time" step="1" />
               </v-col>
             </v-row>
           </div>
@@ -116,20 +84,10 @@
             </v-card-text>
             <v-row dense>
               <v-col class="px-2">
-                <v-text-field
-                  v-model="graph.graphMinY"
-                  hide-details
-                  label="Min Y Axis (Optional)"
-                  type="number"
-                />
+                <v-text-field v-model="graph.graphMinY" hide-details label="Min Y Axis (Optional)" type="number" />
               </v-col>
               <v-col class="px-2">
-                <v-text-field
-                  v-model="graph.graphMaxY"
-                  hide-details
-                  label="Max Y Axis (Optional)"
-                  type="number"
-                />
+                <v-text-field v-model="graph.graphMaxY" hide-details label="Max Y Axis (Optional)" type="number" />
               </v-col>
             </v-row>
           </div>
@@ -142,31 +100,16 @@
                 <v-spacer />
                 <v-btn @click="addLine()"> New Line </v-btn>
               </v-list-item>
-              <v-list-item
-                v-for="(item, i) in graph.lines"
-                :key="i"
-                :value="item"
-                color="primary"
-              >
+              <v-list-item v-for="(item, i) in graph.lines" :key="i" :value="item" color="primary">
                 <v-row>
                   <v-col>
                     <v-text-field v-model="item.yValue" label="Y Value" />
                   </v-col>
                   <v-col>
-                    <v-select
-                      v-model="item.color"
-                      label="Color"
-                      hide-details
-                      :items="colors"
-                    />
+                    <v-select v-model="item.color" label="Color" hide-details :items="colors" />
                   </v-col>
                   <v-col>
-                    <v-btn
-                      style="padding: 30px"
-                      icon="mdi-delete"
-                      variant="text"
-                      @click="removeLine(item)"
-                    />
+                    <v-btn style="padding: 30px" icon="mdi-delete" variant="text" @click="removeLine(item)" />
                   </v-col>
                 </v-row>
               </v-list-item>
@@ -174,23 +117,12 @@
           </div>
         </v-tabs-window-item>
         <v-tabs-window-item value="2" eager>
-          <v-data-table
-            item-key="itemId"
-            class="elevation-1 my-2"
-            data-test="edit-graph-items"
-            :headers="itemHeaders"
-            :items="editItems"
-            :items-per-page="5"
-            :footer-props="{
+          <v-data-table item-key="itemId" class="elevation-1 my-2" data-test="edit-graph-items" :headers="itemHeaders"
+            :items="editItems" :items-per-page="5" :footer-props="{
               'items-per-page-options': [5],
-            }"
-          >
+            }">
             <template #item.actions="{ item }">
-              <v-btn
-                icon="mdi-delete"
-                variant="text"
-                @click="$emit('remove', item)"
-              />
+              <v-btn icon="mdi-delete" variant="text" @click="$emit('remove', item)" />
             </template>
             <template #no-data>
               <span> Currently no items on this graph </span>
@@ -376,11 +308,13 @@ export default {
   padding: 10px;
   margin-top: 10px;
 }
+
 /* For the Y Axis item editor within the Edit Dialog */
 .v-small-dialog__content {
   background-color: var(--color-background-surface-selected);
   padding: 5px 5px;
 }
+
 .horizontal-lines {
   background-color: var(--color-background-surface-default);
 }

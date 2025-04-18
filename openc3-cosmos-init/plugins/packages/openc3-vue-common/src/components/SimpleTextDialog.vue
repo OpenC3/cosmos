@@ -28,12 +28,7 @@
         <span> {{ title }} </span>
         <v-spacer />
         <div class="mx-2">
-          <v-btn
-            icon="mdi-download"
-            variant="text"
-            data-test="downloadIcon"
-            @click="download"
-          />
+          <v-btn icon="mdi-download" variant="text" density="compact" data-test="downloadIcon" @click="download" />
         </div>
       </v-toolbar>
       <v-card-text style="max-height: 80vh">

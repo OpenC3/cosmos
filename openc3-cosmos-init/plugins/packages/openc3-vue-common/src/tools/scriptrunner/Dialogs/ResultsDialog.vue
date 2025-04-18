@@ -30,13 +30,7 @@
       </v-toolbar>
       <div class="pa-2">
         <v-card-text style="width: 100%; max-height: 80vh; overflow: auto">
-          <v-textarea
-            readonly
-            hide-details
-            density="compact"
-            auto-grow
-            :model-value="text"
-          />
+          <v-textarea readonly hide-details density="compact" auto-grow :model-value="text" />
         </v-card-text>
       </div>
       <v-card-actions class="px-2">

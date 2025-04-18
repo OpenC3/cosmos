@@ -35,32 +35,16 @@
           <span v-else>{{ params.text }}</span>
           <div v-if="params.validateText" class="validate mt-4">
             Enter {{ params.validateText }} to confirm!
-            <v-text-field
-              variant="solo"
-              density="compact"
-              single-line
-              v-model="validationText"
-              :rules="[rules.required, rules.match]"
-              data-test="confirm-dialog-validate"
-            />
+            <v-text-field variant="solo" density="compact" single-line v-model="validationText"
+              :rules="[rules.required, rules.match]" data-test="confirm-dialog-validate" />
           </div>
         </v-card-text>
         <v-card-actions class="px-2">
           <v-spacer />
-          <v-btn
-            v-if="params.cancelText"
-            variant="outlined"
-            :data-test="dataTestCancel"
-            @click="cancel"
-          >
+          <v-btn v-if="params.cancelText" variant="outlined" :data-test="dataTestCancel" @click="cancel">
             {{ params.cancelText }}
           </v-btn>
-          <v-btn
-            variant="flat"
-            :color="params.okClass"
-            :data-test="dataTestOk"
-            @click="ok"
-          >
+          <v-btn variant="flat" :color="params.okClass" :data-test="dataTestOk" @click="ok">
             {{ params.okText }}
           </v-btn>
         </v-card-actions>

@@ -31,62 +31,27 @@
             <v-container>
               <v-row dense>
                 <v-col>
-                  <v-text-field
-                    v-model="startDate"
-                    label="Start Date"
-                    type="date"
-                    :rules="[rules.required]"
-                    data-test="start-date"
-                  />
+                  <v-text-field v-model="startDate" label="Start Date" type="date" :rules="[rules.required]"
+                    data-test="start-date" />
                 </v-col>
                 <v-col>
-                  <v-text-field
-                    v-model="startTime"
-                    label="Start Time"
-                    type="time"
-                    step="1"
-                    :rules="[rules.required]"
-                    data-test="start-time"
-                  />
+                  <v-text-field v-model="startTime" label="Start Time" type="time" step="1" :rules="[rules.required]"
+                    data-test="start-time" />
                 </v-col>
                 <v-col>
-                  <v-text-field
-                    v-model="endDate"
-                    label="End Date"
-                    type="date"
-                    :rules="endTime ? [rules.required] : []"
-                    data-test="end-date"
-                  />
+                  <v-text-field v-model="endDate" label="End Date" type="date" :rules="endTime ? [rules.required] : []"
+                    data-test="end-date" />
                 </v-col>
                 <v-col>
-                  <v-text-field
-                    v-model="endTime"
-                    label="End Time"
-                    type="time"
-                    step="1"
-                    :rules="endDate ? [rules.required] : []"
-                    data-test="end-time"
-                  />
+                  <v-text-field v-model="endTime" label="End Time" type="time" step="1"
+                    :rules="endDate ? [rules.required] : []" data-test="end-time" />
                 </v-col>
                 <v-col cols="auto" class="pt-4">
-                  <v-btn
-                    v-if="running"
-                    color="primary"
-                    width="100"
-                    data-test="stop-button"
-                    @click="stop"
-                  >
+                  <v-btn v-if="running" color="primary" width="100" data-test="stop-button" @click="stop">
                     Stop
                   </v-btn>
-                  <v-btn
-                    v-else
-                    :disabled="!canStart"
-                    color="primary"
-                    width="100"
-                    class="pulse-button"
-                    data-test="start-button"
-                    @click="start"
-                  >
+                  <v-btn v-else :disabled="!canStart" color="primary" width="100" class="pulse-button"
+                    data-test="start-button" @click="start">
                     Start
                   </v-btn>
                 </v-col>
@@ -107,52 +72,24 @@
         </v-alert>
       </div>
       <v-tabs ref="tabs" :key="`v-tabs_${config.tabs.length}`" v-model="curTab">
-        <v-tab
-          v-for="(tab, index) in config.tabs"
-          :key="index"
-          data-test="tab"
-          @contextmenu="(event) => tabMenu(event, index)"
-        >
+        <v-tab v-for="(tab, index) in config.tabs" :key="index" data-test="tab"
+          @contextmenu="(event) => tabMenu(event, index)">
           {{ tab.tabName }}
-          <v-btn
-            variant="text"
-            icon="mdi-close"
-            @click="() => deleteComponent(index)"
-          />
+          <v-btn variant="text" icon="mdi-close" @click="() => deleteComponent(index)" />
         </v-tab>
-        <v-btn
-          icon="mdi-tab-plus"
-          class="ml-2"
-          variant="text"
-          :class="config.tabs.length === 0 ? 'pulse-button' : ''"
-          data-test="new-tab"
-          @click="addTab"
-        />
+        <v-btn icon="mdi-tab-plus" class="ml-2" variant="text" :class="config.tabs.length === 0 ? 'pulse-button' : ''"
+          data-test="new-tab" @click="addTab" />
       </v-tabs>
-      <v-tabs-window
-        :key="`v-tabs-window_${config.tabs.length}`"
-        :model-value="curTab"
-      >
-        <v-tabs-window-item
-          v-for="(tab, index) in config.tabs"
-          :key="tab.ref"
-          eager
-        >
+      <v-tabs-window :key="`v-tabs-window_${config.tabs.length}`" :model-value="curTab">
+        <v-tabs-window-item v-for="(tab, index) in config.tabs" :key="tab.ref" eager>
           <keep-alive>
             <v-card flat>
               <v-divider />
               <v-card-title class="pa-3 d-flex align-center">
                 <span v-text="tab.name" />
               </v-card-title>
-              <component
-                v-bind="$attrs"
-                :is="tab.type"
-                :ref="tab.ref"
-                :name="tab.component"
-                :config="tab.config"
-                :packets="tab.packets"
-                @config="(config) => (tab.config = config)"
-              />
+              <component v-bind="$attrs" :is="tab.type" :ref="tab.ref" :name="tab.component" :config="tab.config"
+                :packets="tab.packets" @config="(config) => (tab.config = config)" />
               <v-card-text v-if="receivedPackets.length === 0">
                 No data! Make sure to hit the START button!
               </v-card-text>
@@ -166,18 +103,8 @@
       </v-card>
     </v-card>
     <!-- Dialogs for opening and saving configs -->
-    <open-config-dialog
-      v-if="openConfig"
-      v-model="openConfig"
-      :config-key="configKey"
-      @success="openConfiguration"
-    />
-    <save-config-dialog
-      v-if="saveConfig"
-      v-model="saveConfig"
-      :config-key="configKey"
-      @success="saveConfiguration"
-    />
+    <open-config-dialog v-if="openConfig" v-model="openConfig" :config-key="configKey" @success="openConfiguration" />
+    <save-config-dialog v-if="saveConfig" v-model="saveConfig" :config-key="configKey" @success="saveConfiguration" />
     <!-- Dialog for renaming a new tab -->
     <v-dialog v-model="tabNameDialog" width="600">
       <v-card>
@@ -187,27 +114,14 @@
           <v-spacer />
         </v-toolbar>
         <v-card-text>
-          <v-text-field
-            v-model="newTabName"
-            label="Tab name"
-            data-test="rename-tab-input"
-          />
+          <v-text-field v-model="newTabName" label="Tab name" data-test="rename-tab-input" />
         </v-card-text>
         <v-card-actions class="px-2">
           <v-spacer />
-          <v-btn
-            variant="outlined"
-            data-test="cancel-rename"
-            @click="cancelTabRename"
-          >
+          <v-btn variant="outlined" data-test="cancel-rename" @click="cancelTabRename">
             Cancel
           </v-btn>
-          <v-btn
-            variant="flat"
-            data-test="rename"
-            :disabled="!newTabName"
-            @click="renameTab"
-          >
+          <v-btn variant="flat" data-test="rename" :disabled="!newTabName" @click="renameTab">
             Rename
           </v-btn>
         </v-card-actions>
@@ -224,13 +138,8 @@
       </v-list>
     </v-menu>
     <!-- Dialog for adding a new component to a tab -->
-    <add-component-dialog
-      v-if="showAddComponentDialog"
-      v-model="showAddComponentDialog"
-      :components="components"
-      @add="addComponent"
-      @cancel="cancelAddComponent"
-    />
+    <add-component-dialog v-if="showAddComponentDialog" v-model="showAddComponentDialog" :components="components"
+      @add="addComponent" @cancel="cancelAddComponent" />
   </div>
 </template>
 
@@ -858,21 +767,26 @@ export default {
     margin: 0px;
   }
 }
+
 .v-expansion-panel-title {
   min-height: 10px;
   padding: 5px;
 }
+
 /* Add some juice to the START button to indicate it needs to be pressed */
 .pulse-button {
   animation: pulse 2s infinite;
 }
+
 @keyframes pulse {
   0% {
     -webkit-box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
   }
+
   70% {
     -webkit-box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
   }
+
   100% {
     -webkit-box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
   }

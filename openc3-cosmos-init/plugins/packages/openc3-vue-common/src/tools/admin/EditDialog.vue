@@ -28,13 +28,8 @@
           <v-spacer />
           <span v-text="title" />
           <v-spacer />
-          <v-btn
-            class="mx-2"
-            icon="mdi-download"
-            variant="text"
-            data-test="downloadIcon"
-            @click="download"
-          />
+          <v-btn class="mx-2" icon="mdi-download" variant="text" density="compact" data-test="downloadIcon"
+            @click="download" />
         </v-toolbar>
 
         <v-card-text>
@@ -43,14 +38,8 @@
               <v-row class="mt-3"> Upload a file. </v-row>
               <v-row no-gutters align="center">
                 <v-col cols="3">
-                  <v-btn
-                    block
-                    color="success"
-                    :disabled="!file || loadingFile || readonly"
-                    :loading="loadingFile"
-                    data-test="editScreenLoadBtn"
-                    @click="loadFile"
-                  >
+                  <v-btn block color="success" :disabled="!file || loadingFile || readonly" :loading="loadingFile"
+                    data-test="editScreenLoadBtn" @click="loadFile">
                     Load
                     <template #loader>
                       <span>Loading...</span>
@@ -58,28 +47,16 @@
                   </v-btn>
                 </v-col>
                 <v-col cols="9">
-                  <v-file-input
-                    v-model="file"
-                    accept=".json"
-                    label="Click to select .json file."
-                    :disabled="readonly"
-                  />
+                  <v-file-input v-model="file" accept=".json" label="Click to select .json file."
+                    :disabled="readonly" />
                 </v-col>
               </v-row>
             </div>
             <v-row no-gutters>
-              <pre
-                ref="editor"
-                class="editor"
-                @contextmenu.prevent="showContextMenu"
-              ></pre>
+              <pre ref="editor" class="editor" @contextmenu.prevent="showContextMenu"></pre>
               <v-menu v-model="contextMenu" :target="[menuX, menuY]">
                 <v-list>
-                  <v-list-item
-                    title="Toggle Vim mode"
-                    prepend-icon="extras:vim"
-                    @click="toggleVimMode"
-                  />
+                  <v-list-item title="Toggle Vim mode" prepend-icon="extras:vim" @click="toggleVimMode" />
                 </v-list>
               </v-menu>
             </v-row>
@@ -88,22 +65,11 @@
             </v-row>
             <v-row>
               <v-spacer />
-              <v-btn
-                variant="outlined"
-                class="mx-2"
-                data-test="editCancelBtn"
-                @click.prevent="close"
-              >
+              <v-btn variant="outlined" class="mx-2" data-test="editCancelBtn" @click.prevent="close">
                 Cancel
               </v-btn>
-              <v-btn
-                v-if="!readonly"
-                class="mx-2"
-                color="primary"
-                type="submit"
-                data-test="editSubmitBtn"
-                :disabled="!!error || readonly"
-              >
+              <v-btn v-if="!readonly" class="mx-2" color="primary" type="submit" data-test="editSubmitBtn"
+                :disabled="!!error || readonly">
                 Save
               </v-btn>
             </v-row>
@@ -226,9 +192,9 @@ export default {
       }
       let RubyMode = ace.require('ace/mode/ruby').Mode
       oop.inherits(Mode, RubyMode)
-      ;(function () {
-        this.$id = 'ace/mode/openc3'
-      }).call(Mode.prototype)
+        ; (function () {
+          this.$id = 'ace/mode/openc3'
+        }).call(Mode.prototype)
       return Mode
     },
     showContextMenu: function (event) {
@@ -261,6 +227,7 @@ export default {
   position: relative;
   font-size: 16px;
 }
+
 .v-textarea :deep(textarea) {
   padding: 5px;
 }

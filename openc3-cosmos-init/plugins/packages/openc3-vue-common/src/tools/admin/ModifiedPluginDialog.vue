@@ -29,49 +29,30 @@
           Plugin {{ plugin }} was modified. Would you like to delete the
           existing modified files?
         </div>
-        <v-list-item
-          lines="two"
-          v-for="(target, index) in modifiedTargets"
-          :key="index"
-        >
+        <v-list-item lines="two" v-for="(target, index) in modifiedTargets" :key="index">
           <v-list-item-title>{{ target.name }}</v-list-item-title>
-          <v-list-item-subtitle
-            v-for="(file, itemIndex) in target.files"
-            :key="itemIndex"
-            >{{ file }}</v-list-item-subtitle
-          >
+          <v-list-item-subtitle v-for="(file, itemIndex) in target.files" :key="itemIndex">{{ file
+            }}</v-list-item-subtitle>
         </v-list-item>
-        <v-checkbox
-          v-model="deleteModified"
-          label="DELETE MODIFIED! THIS CAN NOT BE UNDONE!!!"
-          color="error"
-          data-test="modified-plugin-delete-checkbox"
-        />
+        <v-checkbox v-model="deleteModified" label="DELETE MODIFIED! THIS CAN NOT BE UNDONE!!!" color="error"
+          data-test="modified-plugin-delete-checkbox" />
       </v-card-text>
       <v-card-actions class="px-2">
         <v-spacer />
-        <v-btn
-          variant="outlined"
-          data-test="modified-plugin-cancel"
-          @click="
-            () => {
-              show = false
-              $emit('cancel')
-            }
-          "
-        >
+        <v-btn variant="outlined" data-test="modified-plugin-cancel" @click="
+          () => {
+            show = false
+            $emit('cancel')
+          }
+        ">
           Cancel
         </v-btn>
-        <v-btn
-          variant="flat"
-          data-test="modified-plugin-submit"
-          @click="
-            () => {
-              show = false
-              $emit('submit', deleteModified)
-            }
-          "
-        >
+        <v-btn variant="flat" data-test="modified-plugin-submit" @click="
+          () => {
+            show = false
+            $emit('submit', deleteModified)
+          }
+        ">
           Confirm
         </v-btn>
       </v-card-actions>

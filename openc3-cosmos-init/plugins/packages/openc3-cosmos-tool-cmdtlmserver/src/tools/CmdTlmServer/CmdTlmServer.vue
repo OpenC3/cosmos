@@ -27,13 +27,7 @@
       <v-expansion-panel>
         <v-expansion-panel-title>
           <v-tabs v-model="curTab" fixed-tabs grow align-tabs="start">
-            <v-tab
-              v-for="(tab, index) in tabs"
-              :key="index"
-              :to="tab.path"
-              :text="tab.name"
-              @click.stop
-            />
+            <v-tab v-for="(tab, index) in tabs" :key="index" :to="tab.path" :text="tab.name" @click.stop />
           </v-tabs>
         </v-expansion-panel-title>
         <v-expansion-panel-text>
@@ -52,15 +46,8 @@
         <v-spacer />
       </v-toolbar>
       <div class="mt-6 pa-3">
-        <v-text-field
-          min="0"
-          max="10000"
-          step="100"
-          type="number"
-          label="Refresh Interval (ms)"
-          :model-value="refreshInterval"
-          @update:model-value="refreshInterval = $event"
-        />
+        <v-text-field min="0" max="10000" step="100" type="number" label="Refresh Interval (ms)"
+          :model-value="refreshInterval" @update:model-value="refreshInterval = $event" />
       </div>
     </v-card>
   </v-dialog>
@@ -163,16 +150,20 @@ export default {
 .v-expansion-panel-text :deep(.v-expansion-panel-text__wrapper) {
   padding: 0px;
 }
+
 .v-list :deep(.v-label) {
   margin-left: 5px;
 }
+
 .v-list-item__icon {
   /* For some reason the default margin-right is huge */
   margin-right: 15px !important;
 }
+
 .v-list-item__title {
   color: white;
 }
+
 .v-expansion-panel-title {
   min-height: initial;
   padding: 0px;

@@ -24,89 +24,37 @@
   <div>
     <v-card class="pa-5">
       <v-row class="ma-1">
-        <v-text-field
-          density="compact"
-          variant="outlined"
-          readonly
-          hide-details
-          label="Overall Limits State"
-          :model-value="overallStateFormatted"
-          :class="textFieldClass"
-          style="margin-right: 10px; max-width: 280px"
-          data-test="overall-state"
-        >
+        <v-text-field density="compact" variant="outlined" readonly hide-details label="Overall Limits State"
+          :model-value="overallStateFormatted" :class="textFieldClass" style="margin-right: 10px; max-width: 280px"
+          data-test="overall-state">
           <template v-slot:prepend-inner v-if="astroStatus">
             <rux-status :status="astroStatus" />
           </template>
         </v-text-field>
-        <v-text-field
-          density="compact"
-          variant="outlined"
-          readonly
-          hide-details
-          label="Current Limits Set"
-          :model-value="currentLimitsSet"
-          style="max-width: 200px"
-          data-test="limits-set"
-        />
+        <v-text-field density="compact" variant="outlined" readonly hide-details label="Current Limits Set"
+          :model-value="currentLimitsSet" style="max-width: 200px" data-test="limits-set" />
         <v-spacer></v-spacer>
-        <v-text-field
-          v-model="search"
-          label="Search"
-          prepend-inner-icon="mdi-magnify"
-          clearable
-          variant="outlined"
-          density="compact"
-          single-line
-          hide-details
-          style="max-width: 300px"
-          data-test="search"
-        />
+        <v-text-field v-model="search" label="Search" prepend-inner-icon="mdi-magnify" clearable variant="outlined"
+          density="compact" single-line hide-details style="max-width: 300px" data-test="search" />
       </v-row>
 
-      <v-data-table
-        :headers="headers"
-        :items="items"
-        :search="search"
-        :custom-filter="customFilter"
-        item-value="key"
-        data-test="limits-table"
-        class="limits-table"
-        density="compact"
-        v-model:items-per-page="itemsPerPage"
-      >
+      <v-data-table :headers="headers" :items="items" :search="search" :custom-filter="customFilter" item-value="key"
+        data-test="limits-table" class="limits-table" density="compact" v-model:items-per-page="itemsPerPage">
         <template v-slot:item.timestamp="{ item }">
           {{ item.timestamp }}
         </template>
         <template v-slot:item.value="{ item }">
-          <valuelimitsbar-widget
-            v-if="item.limits"
-            :parameters="item.parameters"
-            :settings="valueLimitsBarWidgetSettings"
-            :screen-values="screenValues"
-            :screen-time-zone="timeZone"
-            v-on:add-item="addItem"
-            v-on:delete-item="deleteItem"
-          />
-          <value-widget
-            v-else
-            :parameters="item.parameters"
-            :settings="valueWidgetSettings"
-            :screen-values="screenValues"
-            :screen-time-zone="timeZone"
-            v-on:add-item="addItem"
-            v-on:delete-item="deleteItem"
-          />
+          <valuelimitsbar-widget v-if="item.limits" :parameters="item.parameters"
+            :settings="valueLimitsBarWidgetSettings" :screen-values="screenValues" :screen-time-zone="timeZone"
+            v-on:add-item="addItem" v-on:delete-item="deleteItem" />
+          <value-widget v-else :parameters="item.parameters" :settings="valueWidgetSettings"
+            :screen-values="screenValues" :screen-time-zone="timeZone" v-on:add-item="addItem"
+            v-on:delete-item="deleteItem" />
         </template>
         <template v-slot:item.actions="{ item }">
           <v-menu>
             <template v-slot:activator="{ props: menuProps }">
-              <v-btn
-                icon="mdi-dots-horizontal"
-                variant="text"
-                density="compact"
-                v-bind="menuProps"
-              />
+              <v-btn icon="mdi-dots-horizontal" variant="text" density="compact" v-bind="menuProps" />
             </template>
             <v-list>
               <v-list-item @click="ignorePacket(item.key)">
@@ -152,18 +100,10 @@
               <v-row class="ma-1 align-center">
                 <span class="font-weight-black"> {{ item }} </span>
                 <v-spacer />
-                <v-btn
-                  @click="restoreItem(index)"
-                  icon="mdi-delete"
-                  density="compact"
-                  variant="text"
-                  :data-test="`remove-ignore-${index}`"
-                />
+                <v-btn @click="restoreItem(index)" icon="mdi-delete" density="compact" variant="text"
+                  :data-test="`remove-ignore-${index}`" />
               </v-row>
-              <v-divider
-                v-if="index < ignoredFormatted.length - 1"
-                :key="index"
-              />
+              <v-divider v-if="index < ignoredFormatted.length - 1" :key="index" />
             </div>
           </div>
         </v-card-text>
@@ -222,7 +162,8 @@ export default {
           key: 'timestamp',
           width: '130px',
           sortable: true,
-          nowrap: true },
+          nowrap: true
+        },
         {
           title: 'Item',
           key: 'item',
@@ -571,6 +512,7 @@ export default {
 .footer {
   padding-top: 5px;
 }
+
 .v-input {
   background-color: var(--color-background-base-default);
 }

@@ -22,14 +22,8 @@
     <v-card width="100%">
       <div style="padding-left: 5px; padding-top: 5px">
         <span class="ma-2 font-size">Buckets:</span>
-        <v-chip
-          v-for="(bucket, index) in buckets"
-          :key="index"
-          variant="elevated"
-          color="primary"
-          class="ma-2"
-          @click.stop="selectBucket(bucket)"
-        >
+        <v-chip v-for="(bucket, index) in buckets" :key="index" variant="elevated" color="primary" class="ma-2"
+          @click.stop="selectBucket(bucket)">
           <v-avatar start>
             <v-icon>mdi-bucket</v-icon>
           </v-avatar>
@@ -38,70 +32,30 @@
       </div>
       <div style="padding-left: 5px" v-if="volumes.length !== 0">
         <span class="ma-2 font-size">Volumes:</span>
-        <v-chip
-          v-for="(volume, index) in volumes"
-          :key="index"
-          variant="elevated"
-          color="primary"
-          class="ma-2"
-          @click.stop="selectVolume(volume)"
-        >
+        <v-chip v-for="(volume, index) in volumes" :key="index" variant="elevated" color="primary" class="ma-2"
+          @click.stop="selectVolume(volume)">
           <v-avatar start>
             <v-icon>mdi-folder</v-icon>
           </v-avatar>
           {{ volume }}
         </v-chip>
       </div>
-      <v-card-title
-        class="pt-0 d-flex align-center justify-content-space-between"
-      >
+      <v-card-title class="pt-0 d-flex align-center justify-content-space-between">
         {{ root }} Files
         <v-spacer />
-        <v-text-field
-          v-model="search"
-          label="Search"
-          prepend-inner-icon="mdi-magnify"
-          clearable
-          variant="outlined"
-          density="compact"
-          single-line
-          hide-details
-          class="search"
-          data-test="search-input"
-        />
+        <v-text-field v-model="search" label="Search" prepend-inner-icon="mdi-magnify" clearable variant="outlined"
+          density="compact" single-line hide-details class="search" data-test="search-input" />
       </v-card-title>
-      <v-data-table
-        :headers="headers"
-        :items="files"
-        :search="search"
-        :items-per-page="-1"
-        :items-per-page-options="[10, 20, 50, 100, -1]"
-        v-model:sort-by="sortBy"
-        @click:row.stop="fileClick"
-        multi-sort
-        density="compact"
-        hover
-      >
+      <v-data-table :headers="headers" :items="files" :search="search" :items-per-page="-1"
+        :items-per-page-options="[10, 20, 50, 100, -1]" v-model:sort-by="sortBy" @click:row.stop="fileClick" multi-sort
+        density="compact" hover>
         <template v-slot:top>
-          <v-row
-            class="ma-0"
-            style="background-color: var(--color-background-surface-header)"
-          >
-            <v-btn
-              icon="mdi-chevron-left-box-outline"
-              variant="text"
-              density="compact"
-              class="ml-3 mt-1"
-              @click.stop="backArrow"
-              data-test="be-nav-back"
-            />
+          <v-row class="ma-0" style="background-color: var(--color-background-surface-header)">
+            <v-btn icon="mdi-chevron-left-box-outline" variant="text" density="compact" class="ml-3 mt-1"
+              @click.stop="backArrow" data-test="be-nav-back" />
             <span class=".text-body-1 ma-2 font-size" data-test="file-path">
-              <a
-                v-for="(part, index) in breadcrumbPath"
-                :key="index"
-                @click.prevent="gotoPath(part.path)"
-                style="cursor: pointer"
-                >/&nbsp;{{ part.name }}&nbsp;
+              <a v-for="(part, index) in breadcrumbPath" :key="index" @click.prevent="gotoPath(part.path)"
+                style="cursor: pointer">/&nbsp;{{ part.name }}&nbsp;
               </a>
             </span>
             <v-spacer />
@@ -113,14 +67,8 @@
             <v-spacer />
             <div class="ma-2" style="display: flex" v-if="mode === 'bucket'">
               <span class="font-size">Upload File</span>
-              <v-file-input
-                v-model="file"
-                hide-input
-                hide-details
-                class="mr-1 file-input"
-                prepend-icon="mdi-upload"
-                data-test="upload-file"
-              />
+              <v-file-input v-model="file" hide-input hide-details class="mr-1 file-input" prepend-icon="mdi-upload"
+                data-test="upload-file" />
             </div>
           </v-row>
         </template>
@@ -132,27 +80,15 @@
           {{ item.size ? item.size.toLocaleString() : '' }}
         </template>
         <template v-slot:item.action="{ item }">
-          <v-icon
-            v-if="item.icon === 'mdi-file' && isText(item.name)"
-            @click="viewFile(item.name)"
-            class="mr-3"
-            data-test="view-file"
-          >
+          <v-icon v-if="item.icon === 'mdi-file' && isText(item.name)" @click="viewFile(item.name)" class="mr-3"
+            data-test="view-file">
             mdi-eye
           </v-icon>
-          <v-icon
-            v-if="item.icon === 'mdi-file'"
-            @click="downloadFile(item.name)"
-            class="mr-3"
-            data-test="download-file"
-          >
+          <v-icon v-if="item.icon === 'mdi-file'" @click="downloadFile(item.name)" class="mr-3"
+            data-test="download-file">
             mdi-download-box
           </v-icon>
-          <v-icon
-            v-if="item.icon === 'mdi-file'"
-            @click="deleteFile(item.name)"
-            data-test="delete-file"
-          >
+          <v-icon v-if="item.icon === 'mdi-file'" @click="deleteFile(item.name)" data-test="delete-file">
             mdi-delete
           </v-icon>
         </template>
@@ -174,30 +110,16 @@
               </span>
             </v-row>
             <v-row>
-              <v-text-field
-                v-model="uploadFilePath"
-                hide-details
-                label="File Path"
-                data-test="upload-file-path"
-              />
+              <v-text-field v-model="uploadFilePath" hide-details label="File Path" data-test="upload-file-path" />
             </v-row>
             <v-row class="mt-6">
               <v-spacer />
-              <v-btn
-                @click="uploadPathDialog = false"
-                variant="outlined"
-                class="mx-2"
-                data-test="upload-file-cancel-btn"
-              >
+              <v-btn @click="uploadPathDialog = false" variant="outlined" class="mx-2"
+                data-test="upload-file-cancel-btn">
                 Cancel
               </v-btn>
-              <v-btn
-                @click.prevent="uploadFile"
-                class="mx-2"
-                color="primary"
-                type="submit"
-                data-test="upload-file-submit-btn"
-              >
+              <v-btn @click.prevent="uploadFile" class="mx-2" color="primary" type="submit"
+                data-test="upload-file-submit-btn">
                 Upload
               </v-btn>
             </v-row>
@@ -205,11 +127,7 @@
         </v-card-text>
       </v-card>
     </v-dialog>
-    <v-dialog
-      v-model="optionsDialog"
-      @keydown.esc="optionsDialog = false"
-      max-width="300"
-    >
+    <v-dialog v-model="optionsDialog" @keydown.esc="optionsDialog = false" max-width="300">
       <v-card>
         <v-toolbar height="24">
           <v-spacer />
@@ -218,28 +136,14 @@
         </v-toolbar>
         <v-card-text>
           <div class="pa-3">
-            <v-text-field
-              v-model="refreshInterval"
-              min="1"
-              max="3600"
-              step="100"
-              type="number"
-              label="Refresh Interval (s)"
-              data-test="refresh-interval"
-            />
+            <v-text-field v-model="refreshInterval" min="1" max="3600" step="100" type="number"
+              label="Refresh Interval (s)" data-test="refresh-interval" />
           </div>
         </v-card-text>
       </v-card>
     </v-dialog>
-    <output-dialog
-      type="File"
-      :content="dialogContent"
-      :name="dialogName"
-      :filename="dialogFilename"
-      v-model="showDialog"
-      v-if="showDialog"
-      @submit="showDialog = false"
-    />
+    <output-dialog type="File" :content="dialogContent" :name="dialogName" :filename="dialogFilename"
+      v-model="showDialog" v-if="showDialog" @submit="showDialog = false" />
   </div>
 </template>
 
@@ -569,15 +473,14 @@ export default {
           return Api.delete(
             `/openc3-api/storage/delete/${encodeURIComponent(
               this.path,
-            )}${filename}?${
-              this.mode
+            )}${filename}?${this.mode
             }=OPENC3_${root}_${this.mode.toUpperCase()}`,
           )
         })
         .then((response) => {
           this.updateFiles()
         })
-        .catch((err) => {})
+        .catch((err) => { })
     },
     updateFiles() {
       let root = this.root.toUpperCase()
@@ -585,8 +488,7 @@ export default {
         root = root.slice(1)
       }
       Api.get(
-        `/openc3-api/storage/files/OPENC3_${root}_${this.mode.toUpperCase()}/${
-          this.path
+        `/openc3-api/storage/files/OPENC3_${root}_${this.mode.toUpperCase()}/${this.path
         }`,
       )
         .then((response) => {
@@ -627,9 +529,11 @@ export default {
 .font-size {
   font-size: 1rem;
 }
+
 .small-font-size {
   font-size: 0.8rem;
 }
+
 .file-input {
   padding-top: 0px;
   margin-top: 0px;
