@@ -2721,6 +2721,7 @@ class TestSuite(Suite):
   position: relative;
 }
 .item {
+  /* TODO: this non-scoped generic class name conflicts with other things and should be scoped or renamed. */
   position: absolute;
   display: block;
   margin: 5px;

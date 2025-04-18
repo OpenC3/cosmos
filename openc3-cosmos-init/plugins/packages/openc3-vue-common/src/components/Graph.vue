@@ -67,7 +67,7 @@
           @click="minMaxTransition" />
 
         <v-btn icon="mdi-close-box" variant="text" density="compact" data-test="close-graph-icon"
-          @click="$emit('close-graph')" />
+          @click.stop="$emit('close-graph')" />
       </v-toolbar>
 
       <v-expand-transition>
@@ -976,10 +976,10 @@ export default {
         }
       }
       // subtract off some arbitrary padding left and right to make the layout work
-      let width = viewWidth - 70
+      let width = viewWidth - 54
       if (!this.fullWidth) {
         // 6px padding left and right defined in TlmGrapher.vue .item-content
-        width = width / 2.0 - 12
+        width = width / 2.0 - 10
       }
       return {
         width: this.width || width,
@@ -1513,7 +1513,7 @@ export default {
 }
 
 .u-select {
-  color: rgba(255, 255, 255, 0.07);
+  background-color: rgba(255, 255, 255, 0.07);
 }
 </style>
 <style scoped>
