@@ -21,9 +21,9 @@
 -->
 
 <template>
-  <v-dialog v-model="show" @keydown.esc="cancel" width="600">
+  <v-dialog v-model="show" width="600" @keydown.esc="cancel">
     <v-card>
-      <form v-on:submit.prevent="success">
+      <form @submit.prevent="success">
         <v-toolbar height="24">
           <v-spacer />
           <span>Save Configuration</span>
@@ -34,8 +34,8 @@
           <div class="mt-4 pa-3">
             <v-row dense>
               <v-text-field
-                label="search"
                 v-model="search"
+                label="search"
                 type="text"
                 prepend-inner-icon="mdi-magnify"
                 clearable
@@ -59,7 +59,7 @@
               :items-per-page-options="[5]"
               @click:row="($event, row) => selectRow(row)"
             >
-              <template v-slot:item.actions="{ item }">
+              <template #item.actions="{ item }">
                 <v-btn
                   class="mt-1"
                   icon="mdi-delete"
@@ -80,7 +80,7 @@
               />
             </v-row>
             <v-row dense>
-              <span class="ma-2 text-red" v-show="error" v-text="error" />
+              <span v-show="error" class="ma-2 text-red" v-text="error" />
             </v-row>
           </div>
         </v-card-text>
@@ -89,10 +89,10 @@
           <v-btn variant="outlined" @click="cancel"> Cancel </v-btn>
           <v-btn
             variant="flat"
-            @click.prevent="success"
             type="submit"
             data-test="save-config-submit-btn"
             :disabled="!!error"
+            @click.prevent="success"
           >
             Ok
           </v-btn>
@@ -154,6 +154,13 @@ export default {
       },
     },
   },
+  watch: {
+    selectedItem: function (val) {
+      if (val) {
+        this.configName = val.config
+      }
+    },
+  },
   mounted() {
     let configId = -1
     new OpenC3Api()
@@ -207,13 +214,6 @@ export default {
             )
           }
         })
-    },
-  },
-  watch: {
-    selectedItem: function (val) {
-      if (val) {
-        this.configName = val.config
-      }
     },
   },
 }

@@ -310,7 +310,6 @@ input {
 // Revert card behavior to Vuetify2 to allow components such as RawDialog to float correctly
 .v-card {
   overflow: initial !important;
-  z-index: initial !important;
 }
 
 // Allow tooltips to be clickable (Packet Viewer uses this)

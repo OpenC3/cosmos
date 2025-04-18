@@ -17,7 +17,7 @@
 -->
 
 <template>
-  <v-dialog :persistent="persistent" v-model="show" width="600">
+  <v-dialog v-model="show" :persistent="persistent" width="600">
     <v-card>
       <v-toolbar height="24">
         <v-spacer />
@@ -27,7 +27,7 @@
 
       <v-card-text>
         <v-container fluid>
-          <v-alert type="error" v-model="error" dismissible>
+          <v-alert v-model="error" type="error" dismissible>
             {{ errorText }}
           </v-alert>
           <v-row class="pt-4" style="color: white"
@@ -55,22 +55,22 @@
             <v-spacer />
             <v-btn
               type="submit"
-              @click.prevent="reject"
               class="mx-2"
               color="secondary"
               outlined
               :disabled="disableButtons"
               data-test="reject"
+              @click.prevent="reject"
             >
               Reject
             </v-btn>
             <v-btn
               type="submit"
-              @click.prevent="approve"
               class="mx-2"
               color="primary"
               :disabled="disableButtons"
               data-test="approve"
+              @click.prevent="approve"
             >
               Approve
             </v-btn>
@@ -122,13 +122,6 @@ export default {
       return !this.formValid && !this.canApprove
     },
   },
-  beforeUnmount() {
-    clearInterval(this.updater)
-    this.updater = null
-    this.canApprove = false
-    this.username = null
-    this.password = null
-  },
   watch: {
     // Create a watcher on value which is the indicator to display the dialog
     // If value is true we request the details from the server
@@ -167,6 +160,13 @@ export default {
         this.password = null
       }
     },
+  },
+  beforeUnmount() {
+    clearInterval(this.updater)
+    this.updater = null
+    this.canApprove = false
+    this.username = null
+    this.password = null
   },
   methods: {
     async approve() {
@@ -277,6 +277,7 @@ export default {
   font-weight: bold;
   text-transform: capitalize;
 }
+
 :deep(.v-input--selection-controls) {
   padding: 0px;
   margin: 0px;

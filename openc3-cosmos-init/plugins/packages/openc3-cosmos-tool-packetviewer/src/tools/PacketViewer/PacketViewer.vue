@@ -26,8 +26,8 @@
     <v-card>
       <div style="padding: 10px">
         <target-packet-item-chooser
-          :initial-target-name="this.$route.params.target"
-          :initial-packet-name="this.$route.params.packet"
+          :initial-target-name="$route.params.target"
+          :initial-packet-name="$route.params.packet"
           @on-set="packetChanged($event)"
         />
       </div>
@@ -48,6 +48,7 @@
         />
       </v-card-title>
       <v-data-table
+        v-model:items-per-page="itemsPerPage"
         :search="search"
         :headers="headers"
         :header-props="{
@@ -57,14 +58,17 @@
         :custom-filter="filter"
         :sort-by="sortBy"
         multi-sort
-        v-model:items-per-page="itemsPerPage"
         :items-per-page-options="[10, 20, 50, 100, -1]"
         density="compact"
       >
-        <template v-slot:item.name="{ item }">
+        <template #item.name="{ item }">
           <div @contextmenu="(event) => showContextMenu(event, item)">
-            <v-tooltip bottom :key="`${item.name}-${isPinned(item.name)}`">
-              <template v-slot:activator="{ props }">
+            <v-tooltip
+              :key="`${item.name}-${isPinned(item.name)}`"
+              :open-delay="600"
+              bottom
+            >
+              <template #activator="{ props }">
                 <v-icon
                   v-if="isPinned(item.name)"
                   v-bind="props"
@@ -73,15 +77,15 @@
                   mdi-pin
                 </v-icon>
               </template>
-              <span
-                >Pinned items remain at the top.<br />Right click to
-                unpin.</span
-              >
+              <span>
+                Pinned items remain at the top.<br />
+                Right click to unpin.
+              </span>
             </v-tooltip>
             {{ item.name }}<span v-if="item.derived">&nbsp;*</span>
           </div>
         </template>
-        <template v-slot:item.value="{ item }">
+        <template #item.value="{ item }">
           <value-widget
             :key="item.name"
             :value="item.value"
@@ -92,9 +96,9 @@
             :screen-time-zone="timeZone"
           />
         </template>
-        <template v-slot:footer.prepend>
+        <template #footer.prepend>
           <v-tooltip right close-delay="2000">
-            <template v-slot:activator="{ props }">
+            <template #activator="{ props }">
               <v-icon v-bind="props" class="info-tooltip">
                 mdi-information-variant-circle
               </v-icon>
@@ -116,8 +120,8 @@
     </v-card>
     <v-dialog
       v-model="optionsDialog"
-      @keydown.esc="optionsDialog = false"
       max-width="360px"
+      @keydown.esc="optionsDialog = false"
     >
       <v-card>
         <v-toolbar :height="24">
@@ -128,12 +132,12 @@
         <v-card-text>
           <div class="pa-3">
             <v-text-field
+              v-model="refreshInterval"
               min="0"
               max="10000"
               step="100"
               type="number"
               label="Refresh Interval (ms)"
-              v-model="refreshInterval"
               data-test="refresh-interval"
             />
           </div>
@@ -145,9 +149,9 @@
               type="number"
               label="Time at which to mark data Stale (seconds)"
               :model-value="staleLimit"
-              @update:model-value="staleLimit = parseInt($event)"
               min-width="280px"
               data-test="stale-limit"
+              @update:model-value="staleLimit = parseInt($event)"
             />
           </div>
         </v-card-text>
@@ -157,14 +161,14 @@
     <open-config-dialog
       v-if="showOpenConfig"
       v-model="showOpenConfig"
-      :configKey="configKey"
+      :config-key="configKey"
       @success="openConfiguration"
     />
     <!-- Note we're using v-if here so it gets re-created each time and refreshes the list -->
     <save-config-dialog
       v-if="showSaveConfig"
       v-model="showSaveConfig"
-      :configKey="configKey"
+      :config-key="configKey"
       @success="saveConfiguration"
     />
     <v-menu v-model="contextMenuShown" :target="[x, y]" absolute offset-y>
@@ -249,40 +253,6 @@ export default {
       x: 0,
       y: 0,
     }
-  },
-  watch: {
-    showIgnored: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    derivedLast: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    valueType: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    // Create a watcher on refreshInterval so we can change the updater
-    refreshInterval: function () {
-      this.changeUpdater(false)
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    staleLimit: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    itemsPerPage: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    pinnedItems: {
-      handler(_newVal, _oldVal) {
-        this.saveDefaultConfig(this.currentConfig)
-      },
-      deep: true, // Because pinnedItems is an array
-    },
-    '$route.params': function ({ target, packet }) {
-      this.packetChanged({
-        targetName: target.toUpperCase(),
-        packetName: packet.toUpperCase(),
-      })
-    },
   },
   computed: {
     menus: function () {
@@ -419,6 +389,40 @@ export default {
         })
       }
       return options
+    },
+  },
+  watch: {
+    showIgnored: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    derivedLast: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    valueType: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    // Create a watcher on refreshInterval so we can change the updater
+    refreshInterval: function () {
+      this.changeUpdater(false)
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    staleLimit: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    itemsPerPage: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    pinnedItems: {
+      handler(_newVal, _oldVal) {
+        this.saveDefaultConfig(this.currentConfig)
+      },
+      deep: true, // Because pinnedItems is an array
+    },
+    '$route.params': function ({ target, packet }) {
+      this.packetChanged({
+        targetName: target.toUpperCase(),
+        packetName: packet.toUpperCase(),
+      })
     },
   },
   created() {
@@ -665,9 +669,11 @@ export default {
 a {
   color: blue;
 }
+
 .pin-item {
   float: left;
 }
+
 .info-tooltip {
   margin-left: 10px;
 }

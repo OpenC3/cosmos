@@ -25,8 +25,12 @@
     <v-card-title class="d-flex align-center justify-content-space-between">
       {{ data.length }} Targets
       <v-spacer />
-      <v-tooltip location="top" :disabled="enterprise && commandAuthority">
-        <template v-slot:activator="{ props }">
+      <v-tooltip
+        :open-delay="600"
+        location="top"
+        :disabled="enterprise && commandAuthority"
+      >
+        <template #activator="{ props }">
           <!-- This is a little weird because it captures all the clicks -->
           <!-- including the clicks on the button so the tooltipHandler -->
           <!-- is also the button handler  -->
@@ -51,8 +55,12 @@
           learn more.
         </span>
       </v-tooltip>
-      <v-tooltip location="top" :disabled="enterprise && commandAuthority">
-        <template v-slot:activator="{ props }">
+      <v-tooltip
+        :open-delay="600"
+        location="top"
+        :disabled="enterprise && commandAuthority"
+      >
+        <template #activator="{ props }">
           <div v-bind="props" @click="tooltipHandler('releaseAll')">
             <v-btn
               color="primary"
@@ -95,27 +103,27 @@
       multi-sort
       data-test="targets-table"
     >
-      <template v-slot:item.take="{ item }">
+      <template #item.take="{ item }">
         <span v-if="item.name === 'UNKNOWN'">N/A</span>
         <v-btn
           v-if="item.name != 'UNKNOWN'"
           block
           color="primary"
-          @click="take(item.name)"
           :disabled="!commandAuthority"
+          @click="take(item.name)"
         >
           Take
           <v-icon end> mdi-account-check </v-icon>
         </v-btn>
       </template>
-      <template v-slot:item.release="{ item }">
+      <template #item.release="{ item }">
         <span v-if="item.name === 'UNKNOWN'">N/A</span>
         <v-btn
           v-if="item.name != 'UNKNOWN'"
           block
           color="primary"
-          @click="release(item.name)"
           :disabled="!commandAuthority"
+          @click="release(item.name)"
         >
           Release
           <v-icon end> mdi-account-cancel </v-icon>

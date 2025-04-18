@@ -22,8 +22,8 @@
 
 <template>
   <div class="value-widget-container" :style="[computedStyle, aging]">
-    <v-tooltip location="top">
-      <template v-slot:activator="{ props }">
+    <v-tooltip :open-delay="600" location="top">
+      <template #activator="{ props }">
         <v-text-field
           variant="solo"
           density="compact"
@@ -33,10 +33,10 @@
           :model-value="_value"
           :class="valueClass"
           data-test="value"
-          @contextmenu="showContextMenu"
           v-bind="props"
+          @contextmenu="showContextMenu"
         >
-          <template v-slot:prepend-inner v-if="astroStatus">
+          <template v-if="astroStatus" #prepend-inner>
             <rux-status :status="astroStatus" />
           </template>
         </v-text-field>
@@ -56,10 +56,10 @@
     </v-menu>
 
     <details-dialog
+      v-model="viewDetails"
       :target-name="parameters[0]"
       :packet-name="parameters[1]"
       :item-name="parameters[2]"
-      v-model="viewDetails"
     />
   </div>
 </template>

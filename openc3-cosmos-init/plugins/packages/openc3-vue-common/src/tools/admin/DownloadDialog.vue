@@ -35,11 +35,11 @@
             <v-col>
               <div class="px-2">
                 <v-btn
-                  @click="searchGithub"
                   block
                   data-test="searchGithub"
                   color="primary"
                   :disabled="disableSearch"
+                  @click="searchGithub"
                 >
                   Github
                   <v-icon end theme="dark"> mdi-github </v-icon>
@@ -66,34 +66,29 @@
           </v-row>
           --->
           <v-row class="mt-5"> Community Gems </v-row>
-          <div class="mt-4" v-if="listData.length < 1">
+          <div v-if="listData.length < 1" class="mt-4">
             <v-row class="mx-2">
               <span> I’m sorry, Dave. No gems available.... </span>
             </v-row>
           </div>
-          <div class="mt-4" v-else>
+          <div v-else class="mt-4">
             <div v-for="(data, index) in listData" :key="index">
               <v-list-item>
                 <v-list-item-title>{{ data.name }}</v-list-item-title>
 
                 <v-list-item icon>
-                  <div v-if="activeDownload">
-                    <v-progress-circular indeterminate color="primary" />
-                  </div>
-                  <div v-else>
-                    <v-tooltip location="top">
-                      <template v-slot:activator="{ props }">
-                        <v-icon
-                          v-bind="props"
-                          @click="downloadGem(data)"
-                          :disabled="activeDownload"
-                        >
-                          mdi-cloud-download
-                        </v-icon>
-                      </template>
-                      <span>Download Gem</span>
-                    </v-tooltip>
-                  </div>
+                  <v-progress-circular
+                    v-if="activeDownload"
+                    indeterminate
+                    color="primary"
+                  />
+                  <v-btn
+                    v-else
+                    icon="mdi-cloud-download"
+                    variant="text"
+                    :disabled="activeDownload"
+                    @click="downloadGem(data)"
+                  />
                 </v-list-item>
               </v-list-item>
               <v-divider v-if="index < listData.length - 1" :key="index" />

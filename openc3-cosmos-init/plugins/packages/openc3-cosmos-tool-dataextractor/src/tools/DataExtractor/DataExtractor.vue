@@ -80,12 +80,12 @@
         <v-row>
           <v-col>
             <target-packet-item-chooser
-              @add-item="addItem($event)"
               button-text="Add Item"
               :mode="cmdOrTlm"
               :hidden="true"
               choose-item
               allow-all
+              @add-item="addItem($event)"
             />
           </v-col>
         </v-row>
@@ -97,38 +97,28 @@
         <v-spacer />
         <v-btn
           class="bg-primary"
-          @click="processItems"
           :disabled="items.length < 1"
+          @click="processItems"
         >
           {{ processButtonText }}
         </v-btn>
         <v-spacer />
-        <v-tooltip location="top">
-          <template v-slot:activator="{ props }">
-            <v-btn
-              icon="mdi-pencil"
-              variant="text"
-              @click="editAll = true"
-              v-bind="props"
-              :disabled="items.length < 1"
-              data-test="editAll"
-            />
-          </template>
-          <span> Edit All Items </span>
-        </v-tooltip>
-        <v-tooltip location="top">
-          <template v-slot:activator="{ props }">
-            <v-btn
-              icon="mdi-delete"
-              variant="text"
-              @click="deleteAll"
-              v-bind="props"
-              :disabled="items.length < 1"
-              data-test="delete-all"
-            />
-          </template>
-          <span>Delete All Items</span>
-        </v-tooltip>
+        <v-btn
+          icon="mdi-pencil-box-multiple"
+          variant="text"
+          density="compact"
+          :disabled="items.length < 1"
+          data-test="editAll"
+          @click="editAll = true"
+        />
+        <v-btn
+          icon="mdi-delete-sweep"
+          variant="text"
+          density="compact"
+          :disabled="items.length < 1"
+          data-test="delete-all"
+          @click="deleteAll"
+        />
       </v-toolbar>
       <!-- <v-row no-gutters> -->
       <v-card width="100%">
@@ -148,31 +138,22 @@
           />
         </v-card-title>
         <v-data-table
+          v-model:items-per-page="itemsPerPage"
           :headers="headers"
           :items="items"
           :search="search"
-          v-model:items-per-page="itemsPerPage"
           :items-per-page-options="[10, 20, 50, 100, -1]"
           multi-sort
           density="compact"
         >
-          <template v-slot:item.edit="{ item }">
-            <v-tooltip location="top">
-              <template v-slot:activator="{ props }">
-                <v-icon
-                  @click.stop="item.edit = true"
-                  v-bind="props"
-                  data-test="edit-row"
-                >
-                  mdi-pencil
-                </v-icon>
-              </template>
-              <span>Edit Item</span>
-            </v-tooltip>
+          <template #item.edit="{ item }">
+            <v-icon data-test="edit-row" @click.stop="item.edit = true">
+              mdi-pencil
+            </v-icon>
             <v-dialog
               v-model="item.edit"
-              @keydown.esc="item.edit = false"
               max-width="600"
+              @keydown.esc="item.edit = false"
             >
               <v-card>
                 <v-toolbar height="24">
@@ -189,33 +170,33 @@
                   <v-row>
                     <v-col>
                       <v-select
+                        v-model="item.mode"
                         hide-details
                         :items="modes"
                         label="Mode"
                         variant="outlined"
-                        v-model="item.mode"
                       />
                     </v-col>
                   </v-row>
                   <v-row>
                     <v-col>
                       <v-select
+                        v-model="item.valueType"
                         hide-details
                         :items="valueTypes"
                         label="Value Type"
                         variant="outlined"
-                        v-model="item.valueType"
                       />
                     </v-col>
                   </v-row>
                   <v-row>
                     <v-col>
                       <v-select
+                        v-model="item.reducedType"
                         hide-details
                         :items="reducedTypes"
                         label="Reduced Type"
                         variant="outlined"
-                        v-model="item.reducedType"
                       />
                     </v-col>
                   </v-row>
@@ -229,27 +210,18 @@
               </v-card>
             </v-dialog>
           </template>
-          <template v-slot:item.delete="{ item }">
-            <v-tooltip location="top">
-              <template v-slot:activator="{ props }">
-                <v-icon
-                  @click="deleteItem(item)"
-                  v-bind="props"
-                  data-test="delete-row"
-                >
-                  mdi-delete
-                </v-icon>
-              </template>
-              <span> Delete Item </span>
-            </v-tooltip>
+          <template #item.delete="{ item }">
+            <v-icon data-test="delete-row" @click="deleteItem(item)">
+              mdi-delete
+            </v-icon>
           </template>
         </v-data-table>
       </v-card>
     </v-card>
     <v-dialog
       v-model="editAll"
-      @keydown.esc="editAll = !editAll"
       max-width="600"
+      @keydown.esc="editAll = !editAll"
     >
       <v-card>
         <v-toolbar height="24">
@@ -266,33 +238,33 @@
           <v-row>
             <v-col>
               <v-select
+                v-model="allItemMode"
                 hide-details
                 :items="modes"
                 label="Mode"
                 variant="outlined"
-                v-model="allItemMode"
               />
             </v-col>
           </v-row>
           <v-row>
             <v-col>
               <v-select
+                v-model="allItemValueType"
                 hide-details
                 :items="valueTypes"
                 label="Value Type"
                 variant="outlined"
-                v-model="allItemValueType"
               />
             </v-col>
           </v-row>
           <v-row>
             <v-col>
               <v-select
+                v-model="allItemReducedType"
                 hide-details
                 :items="reducedTypes"
                 label="Reduced Type"
                 variant="outlined"
-                v-model="allItemReducedType"
               />
             </v-col>
           </v-row>
@@ -314,14 +286,14 @@
     <open-config-dialog
       v-if="openConfig"
       v-model="openConfig"
-      :configKey="configKey"
+      :config-key="configKey"
       @success="openConfiguration"
     />
     <!-- Note we're using v-if here so it gets re-created each time and refreshes the list -->
     <save-config-dialog
       v-if="saveConfig"
       v-model="saveConfig"
-      :configKey="configKey"
+      :config-key="configKey"
       @success="saveConfiguration"
     />
   </div>
@@ -408,40 +380,6 @@ export default {
       cable: new Cable(),
       subscription: null,
     }
-  },
-  watch: {
-    delimiter: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    fillDown: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    matlabHeader: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    uniqueOnly: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    columnNode: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
-    cmdOrTlm: function () {
-      if (this.items.length === 0) {
-        this.saveDefaultConfig(this.currentConfig)
-      } else {
-        // Setting this.items will trigger a saveDefaultConfig() in the handler below
-        this.items = []
-      }
-    },
-    items: {
-      handler: function () {
-        this.saveDefaultConfig(this.currentConfig)
-      },
-      deep: true,
-    },
-    itemsPerPage: function () {
-      this.saveDefaultConfig(this.currentConfig)
-    },
   },
   computed: {
     menus: function () {
@@ -568,6 +506,40 @@ export default {
         items: this.items,
         itemsPerPage: this.itemsPerPage,
       }
+    },
+  },
+  watch: {
+    delimiter: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    fillDown: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    matlabHeader: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    uniqueOnly: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    columnNode: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    cmdOrTlm: function () {
+      if (this.items.length === 0) {
+        this.saveDefaultConfig(this.currentConfig)
+      } else {
+        // Setting this.items will trigger a saveDefaultConfig() in the handler below
+        this.items = []
+      }
+    },
+    items: {
+      handler: function () {
+        this.saveDefaultConfig(this.currentConfig)
+      },
+      deep: true,
+    },
+    itemsPerPage: function () {
+      this.saveDefaultConfig(this.currentConfig)
     },
   },
   async created() {
@@ -1081,6 +1053,7 @@ export default {
 .title-font {
   font-size: 1.125rem;
 }
+
 // Disable transition animations to allow bar to grow faster
 .v-progress-linear__determinate {
   transition: none !important;

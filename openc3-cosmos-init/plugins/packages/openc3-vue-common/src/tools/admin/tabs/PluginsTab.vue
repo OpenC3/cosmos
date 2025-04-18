@@ -26,9 +26,9 @@
       <v-col class="pa-2 mt-2">
         <v-btn @click="selectFile">Install New Plugin</v-btn>
         <input
+          ref="fileInput"
           style="display: none"
           type="file"
-          ref="fileInput"
           @change="fileChange"
         />
         &nbsp;Note: Use <v-icon>mdi-update</v-icon> to upgrade existing plugins
@@ -54,15 +54,15 @@
     <v-divider />
     <!-- TODO This alert shows both success and failure. Make consistent with rest of OpenC3. -->
     <v-alert
+      v-model="showAlert"
       closable
       :type="alertType"
-      v-model="showAlert"
       data-test="plugin-alert"
       >{{ alert }}</v-alert
     >
     <v-list
-      class="list"
       v-if="Object.keys(processes).length > 0"
+      class="list"
       data-test="process-list"
     >
       <v-row no-gutters class="px-4"
@@ -83,22 +83,24 @@
             />
           </v-list-item-title>
           <v-list-item-subtitle>
-            <span v-text="' Updated At: ' + formatDate(process.updated_at)"
-          /></v-list-item-subtitle>
+            <span v-text="' Updated At: ' + formatDate(process.updated_at)" />
+          </v-list-item-subtitle>
 
-          <template v-slot:append>
-            <div v-if="process.state === 'Running'">
-              <v-progress-circular indeterminate color="primary" />
-            </div>
-            <v-tooltip v-else location="top">
-              <template v-slot:activator="{ props }">
-                <v-icon
+          <template #append>
+            <v-progress-circular
+              v-if="process.state === 'Running'"
+              indeterminate
+              color="primary"
+            />
+            <v-tooltip v-else :open-delay="600" location="top">
+              <template #activator="{ props }">
+                <v-btn
                   v-bind="props"
-                  @click="showOutput(process)"
+                  icon="mdi-eye"
+                  variant="text"
                   data-test="show-output"
-                >
-                  mdi-eye
-                </v-icon>
+                  @click="showOutput(process)"
+                />
               </template>
               <span>Show Output</span>
             </v-tooltip>
@@ -130,63 +132,41 @@
             </span>
           </v-list-item-subtitle>
 
-          <template v-slot:append>
-            <div class="mx-3">
-              <v-tooltip location="top">
-                <template v-slot:activator="{ props }">
-                  <v-icon
-                    v-bind="props"
-                    @click="downloadPlugin(plugin)"
-                    data-test="download-plugin"
-                  >
-                    mdi-download
-                  </v-icon>
-                </template>
-                <span>Download Plugin</span>
-              </v-tooltip>
-            </div>
-            <div class="mx-3">
-              <v-tooltip location="top">
-                <template v-slot:activator="{ props }">
-                  <v-icon
-                    v-bind="props"
-                    @click="editPlugin(plugin)"
-                    data-test="edit-plugin"
-                  >
-                    mdi-pencil
-                  </v-icon>
-                </template>
-                <span>Edit Plugin Details</span>
-              </v-tooltip>
-            </div>
-            <div class="mx-3">
-              <v-tooltip location="top">
-                <template v-slot:activator="{ props }">
-                  <v-icon
-                    v-bind="props"
-                    @click="upgradePlugin(plugin)"
-                    data-test="upgrade-plugin"
-                  >
-                    mdi-update
-                  </v-icon>
-                </template>
-                <span>Upgrade Plugin</span>
-              </v-tooltip>
-            </div>
-            <div class="mx-3">
-              <v-tooltip location="top">
-                <template v-slot:activator="{ props }">
-                  <v-icon
-                    v-bind="props"
-                    @click="deletePrompt(plugin)"
-                    data-test="delete-plugin"
-                  >
-                    mdi-delete
-                  </v-icon>
-                </template>
-                <span>Delete Plugin</span>
-              </v-tooltip>
-            </div>
+          <template #append>
+            <v-btn
+              class="mx-3"
+              icon="mdi-download"
+              variant="text"
+              data-test="download-plugin"
+              @click="downloadPlugin(plugin)"
+            />
+            <v-btn
+              class="mx-3"
+              icon="mdi-pencil"
+              variant="text"
+              data-test="edit-plugin"
+              @click="editPlugin(plugin)"
+            />
+            <v-tooltip :open-delay="600" location="top">
+              <template #activator="{ props }">
+                <v-btn
+                  v-bind="props"
+                  class="mx-3"
+                  icon="mdi-update"
+                  variant="text"
+                  data-test="upgrade-plugin"
+                  @click="upgradePlugin(plugin)"
+                />
+              </template>
+              <span>Upgrade Plugin</span>
+            </v-tooltip>
+            <v-btn
+              class="mx-3"
+              icon="mdi-delete"
+              variant="text"
+              data-test="delete-plugin"
+              @click="deletePrompt(plugin)"
+            />
           </template>
         </v-list-item>
         <v-divider v-if="index < plugins.length - 1" :key="index" />
@@ -195,18 +175,18 @@
     <plugin-dialog
       v-if="showPluginDialog"
       v-model="showPluginDialog"
-      :pluginName="pluginName"
+      :plugin-name="pluginName"
       :variables="variables"
-      :pluginTxt="pluginTxt"
-      :existingPluginTxt="existingPluginTxt"
+      :plugin-txt="pluginTxt"
+      :existing-plugin-txt="existingPluginTxt"
       @callback="pluginCallback"
     />
     <modified-plugin-dialog
       v-if="showModifiedPluginDialog"
       v-model="showModifiedPluginDialog"
-      :pluginName="currentPlugin"
+      :plugin-name="currentPlugin"
       :targets="pluginTargets(currentPlugin)"
-      :pluginDelete="pluginDelete"
+      :plugin-delete="pluginDelete"
       @submit="modifiedSubmit"
     />
     <!-- <download-dialog v-model="showDownloadDialog" /> -->
@@ -280,15 +260,6 @@ export default {
       ],
     }
   },
-  watch: {
-    // watcher to reset the file input when the dialog is closed
-    showPluginDialog: function (newValue, oldValue) {
-      if (newValue === false) {
-        this.file = null
-        this.$refs.fileInput.value = null
-      }
-    },
-  },
   computed: {
     shownPlugins() {
       let result = []
@@ -330,6 +301,15 @@ export default {
           }
         }
         return result
+      }
+    },
+  },
+  watch: {
+    // watcher to reset the file input when the dialog is closed
+    showPluginDialog: function (newValue, oldValue) {
+      if (newValue === false) {
+        this.file = null
+        this.$refs.fileInput.value = null
       }
     },
   },
