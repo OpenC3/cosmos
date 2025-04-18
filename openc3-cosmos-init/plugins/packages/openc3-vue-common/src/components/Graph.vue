@@ -26,48 +26,118 @@
 <template>
   <div @click.prevent="$emit('click')">
     <v-card>
-      <v-toolbar v-show="!hideToolbarData" height="24" class="pl-2 pr-2"
-        :class="selectedGraphId === id ? 'active' : ''">
-        <v-btn v-show="errors.length !== 0" class="mx-2" icon="mdi-alert" density="compact" variant="text" @click="
-          () => {
-            errorDialog = true
-          }
-        " />
+      <v-toolbar
+        v-show="!hideToolbarData"
+        height="24"
+        class="pl-2 pr-2"
+        :class="selectedGraphId === id ? 'active' : ''"
+      >
+        <v-btn
+          v-show="errors.length !== 0"
+          class="mx-2"
+          icon="mdi-alert"
+          density="compact"
+          variant="text"
+          @click="
+            () => {
+              errorDialog = true
+            }
+          "
+        />
 
-        <v-btn icon="mdi-pencil" variant="text" density="compact" data-test="edit-graph-icon" @click="
-          () => {
-            editGraph = true
-          }
-        " />
+        <v-btn
+          icon="mdi-pencil"
+          variant="text"
+          density="compact"
+          data-test="edit-graph-icon"
+          @click="
+            () => {
+              editGraph = true
+            }
+          "
+        />
 
         <v-spacer />
         <span> {{ title }} </span>
         <v-spacer />
 
         <template v-if="expand">
-          <v-btn v-if="calcFullSize" icon="mdi-arrow-collapse" variant="text" density="compact" data-test="collapse-all"
-            @click="collapseAll" />
-          <v-btn v-else icon="mdi-arrow-expand" variant="text" density="compact" data-test="expand-all"
-            @click="expandAll" />
+          <v-btn
+            v-if="calcFullSize"
+            icon="mdi-arrow-collapse"
+            variant="text"
+            density="compact"
+            data-test="collapse-all"
+            @click="collapseAll"
+          />
+          <v-btn
+            v-else
+            icon="mdi-arrow-expand"
+            variant="text"
+            density="compact"
+            data-test="expand-all"
+            @click="expandAll"
+          />
 
-          <v-btn v-if="fullWidth" icon="mdi-arrow-collapse-horizontal" variant="text" density="compact"
-            data-test="collapse-width" @click="collapseWidth" />
-          <v-btn v-else icon="mdi-arrow-expand-horizontal" variant="text" density="compact" data-test="expand-width"
-            @click="expandWidth" />
+          <v-btn
+            v-if="fullWidth"
+            icon="mdi-arrow-collapse-horizontal"
+            variant="text"
+            density="compact"
+            data-test="collapse-width"
+            @click="collapseWidth"
+          />
+          <v-btn
+            v-else
+            icon="mdi-arrow-expand-horizontal"
+            variant="text"
+            density="compact"
+            data-test="expand-width"
+            @click="expandWidth"
+          />
 
-          <v-btn v-if="fullHeight" icon="mdi-arrow-collapse-vertical" variant="text" density="compact"
-            data-test="collapse-height" @click="collapseHeight" />
-          <v-btn v-else icon="mdi-arrow-expand-vertical" variant="text" density="compact" data-test="expand-height"
-            @click="expandHeight" />
+          <v-btn
+            v-if="fullHeight"
+            icon="mdi-arrow-collapse-vertical"
+            variant="text"
+            density="compact"
+            data-test="collapse-height"
+            @click="collapseHeight"
+          />
+          <v-btn
+            v-else
+            icon="mdi-arrow-expand-vertical"
+            variant="text"
+            density="compact"
+            data-test="expand-height"
+            @click="expandHeight"
+          />
         </template>
 
-        <v-btn v-if="expand" icon="mdi-window-minimize" variant="text" density="compact"
-          data-test="minimize-screen-icon" @click="minMaxTransition" />
-        <v-btn v-else icon="mdi-window-maximize" variant="text" density="compact" data-test="maximize-screen-icon"
-          @click="minMaxTransition" />
+        <v-btn
+          v-if="expand"
+          icon="mdi-window-minimize"
+          variant="text"
+          density="compact"
+          data-test="minimize-screen-icon"
+          @click="minMaxTransition"
+        />
+        <v-btn
+          v-else
+          icon="mdi-window-maximize"
+          variant="text"
+          density="compact"
+          data-test="maximize-screen-icon"
+          @click="minMaxTransition"
+        />
 
-        <v-btn icon="mdi-close-box" variant="text" density="compact" data-test="close-graph-icon"
-          @click.stop="$emit('close-graph')" />
+        <v-btn
+          icon="mdi-close-box"
+          variant="text"
+          density="compact"
+          data-test="close-graph-icon"
+          @click.stop="$emit('close-graph')"
+        />
       </v-toolbar>
 
       <v-expand-transition>
@@ -80,10 +150,23 @@
     </v-card>
 
     <!-- Edit graph dialog -->
-    <graph-edit-dialog v-if="editGraph" v-model="editGraph" :title="title" :legend-position="legendPosition"
-      :items="items" :graph-min-y="graphMinY" :graph-max-y="graphMaxY" :lines="lines" :colors="colors"
-      :start-date-time="graphStartDateTime" :end-date-time="graphEndDateTime" :time-zone="timeZone"
-      @remove="removeItems([$event])" @ok="editGraphClose" @cancel="editGraph = false" />
+    <graph-edit-dialog
+      v-if="editGraph"
+      v-model="editGraph"
+      :title="title"
+      :legend-position="legendPosition"
+      :items="items"
+      :graph-min-y="graphMinY"
+      :graph-max-y="graphMaxY"
+      :lines="lines"
+      :colors="colors"
+      :start-date-time="graphStartDateTime"
+      :end-date-time="graphEndDateTime"
+      :time-zone="timeZone"
+      @remove="removeItems([$event])"
+      @ok="editGraphClose"
+      @cancel="editGraph = false"
+    />
 
     <!-- Error dialog -->
     <v-dialog v-model="errorDialog" max-width="600">
@@ -94,7 +177,13 @@
       </v-toolbar>
       <v-card class="pa-3">
         <v-row dense>
-          <v-text-field v-model="title" readonly hide-details class="pb-2" label="Graph Title" />
+          <v-text-field
+            v-model="title"
+            readonly
+            hide-details
+            class="pb-2"
+            label="Graph Title"
+          />
         </v-row>
         <v-row class="my-3">
           <v-textarea readonly rows="8" :value="error" />
@@ -106,7 +195,13 @@
     </v-dialog>
 
     <!-- Edit right click context menu -->
-    <v-menu v-if="editGraphMenu" v-model="editGraphMenu" :target="[editGraphMenuX, editGraphMenuY]" absolute offset-y>
+    <v-menu
+      v-if="editGraphMenu"
+      v-model="editGraphMenu"
+      :target="[editGraphMenuX, editGraphMenuY]"
+      absolute
+      offset-y
+    >
       <v-list>
         <v-list-item @click="editGraph = true">
           <v-list-item-title style="cursor: pointer">
@@ -116,11 +211,25 @@
       </v-list>
     </v-menu>
 
-    <graph-edit-item-dialog v-if="editItem" v-model="editItem" :colors="colors" :item="selectedItem"
-      @change-color="changeColor" @change-limits="changeLimits" @cancel="editItem = false" @close="closeEditItem" />
+    <graph-edit-item-dialog
+      v-if="editItem"
+      v-model="editItem"
+      :colors="colors"
+      :item="selectedItem"
+      @change-color="changeColor"
+      @change-limits="changeLimits"
+      @cancel="editItem = false"
+      @close="closeEditItem"
+    />
 
     <!-- Edit Item right click context menu -->
-    <v-menu v-if="itemMenu" v-model="itemMenu" :target="[itemMenuX, itemMenuY]" absolute offset-y>
+    <v-menu
+      v-if="itemMenu"
+      v-model="itemMenu"
+      :target="[itemMenuX, itemMenuY]"
+      absolute
+      offset-y
+    >
       <v-list nav density="compact">
         <v-list-subheader>
           {{ selectedItem.targetName }}
@@ -149,7 +258,13 @@
     </v-menu>
 
     <!-- Edit Legend right click context menu -->
-    <v-menu v-if="legendMenu" v-model="legendMenu" :target="[legendMenuX, legendMenuY]" absolute offset-y>
+    <v-menu
+      v-if="legendMenu"
+      v-model="legendMenu"
+      :target="[legendMenuX, legendMenuY]"
+      absolute
+      offset-y
+    >
       <v-list>
         <v-list-item @click="moveLegend('top')">
           <v-list-item-title style="cursor: pointer">
@@ -175,7 +290,10 @@
     </v-menu>
 
     <div v-if="!sparkline" ref="info" class="u-series">
-      <v-tooltip text="Click item to toggle, Right click to edit" location="top">
+      <v-tooltip
+        text="Click item to toggle, Right click to edit"
+        location="top"
+      >
         <template #activator="{ props }">
           <v-icon v-bind="props"> mdi-information-variant-circle </v-icon>
         </template>

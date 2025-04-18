@@ -23,7 +23,7 @@
 <template>
   <v-dialog v-model="show" width="600">
     <v-card>
-      <form v-on:submit.prevent="addEnvironment">
+      <form @submit.prevent="addEnvironment">
         <v-toolbar height="24">
           <v-spacer />
           <span>Global Environment Variables</span>
@@ -32,14 +32,38 @@
         <v-card-text>
           <div class="pa-3">
             <v-row dense class="mb-2">
-              <v-text-field v-model="search" label="search" type="text" data-test="search"
-                prepend-inner-icon="mdi-magnify" clearable variant="outlined" density="compact"
-                clear-icon="mdi-close-circle-outline" autofocus single-line hide-details />
+              <v-text-field
+                v-model="search"
+                label="search"
+                type="text"
+                data-test="search"
+                prepend-inner-icon="mdi-magnify"
+                clearable
+                variant="outlined"
+                density="compact"
+                clear-icon="mdi-close-circle-outline"
+                autofocus
+                single-line
+                hide-details
+              />
             </v-row>
-            <v-data-table item-key="name" hide-default-header data-test="env-table" :search="search" :headers="headers"
-              :items="environment" :items-per-page="5" :items-per-page-options="[5]">
-              <template v-slot:item.actions="{ item }">
-                <v-btn @click="deleteEnvironment(item)" icon class="mt-1" data-test="item-delete">
+            <v-data-table
+              item-key="name"
+              hide-default-header
+              data-test="env-table"
+              :search="search"
+              :headers="headers"
+              :items="environment"
+              :items-per-page="5"
+              :items-per-page-options="[5]"
+            >
+              <template #item.actions="{ item }">
+                <v-btn
+                  icon
+                  class="mt-1"
+                  data-test="item-delete"
+                  @click="deleteEnvironment(item)"
+                >
                   <v-icon>mdi-delete</v-icon>
                 </v-btn>
               </template>
@@ -49,12 +73,22 @@
                 <v-text-field v-model="key" label="Key" data-test="env-key" />
               </v-col>
               <v-col>
-                <v-text-field v-model="keyValue" label="Value" data-test="env-value" />
+                <v-text-field
+                  v-model="keyValue"
+                  label="Value"
+                  data-test="env-value"
+                />
               </v-col>
             </v-row>
             <v-row dense>
-              <v-btn @click.prevent="addEnvironment" block type="submit" color="primary" data-test="add-env"
-                :disabled="!key || !keyValue">
+              <v-btn
+                block
+                type="submit"
+                color="primary"
+                data-test="add-env"
+                :disabled="!key || !keyValue"
+                @click.prevent="addEnvironment"
+              >
                 Add
               </v-btn>
             </v-row>

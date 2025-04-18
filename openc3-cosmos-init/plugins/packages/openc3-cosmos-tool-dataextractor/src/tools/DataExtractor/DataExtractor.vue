@@ -27,21 +27,45 @@
       <v-container>
         <v-row>
           <v-col>
-            <v-text-field v-model="startDate" label="Start Date" type="date" :max="todaysDate" :rules="[rules.required]"
-              data-test="start-date" />
+            <v-text-field
+              v-model="startDate"
+              label="Start Date"
+              type="date"
+              :max="todaysDate"
+              :rules="[rules.required]"
+              data-test="start-date"
+            />
           </v-col>
           <v-col>
-            <v-text-field v-model="startTime" label="Start Time" type="time" step="1" :rules="[rules.required]"
-              data-test="start-time">
+            <v-text-field
+              v-model="startTime"
+              label="Start Time"
+              type="time"
+              step="1"
+              :rules="[rules.required]"
+              data-test="start-time"
+            >
             </v-text-field>
           </v-col>
           <v-col>
-            <v-text-field v-model="endDate" label="End Date" type="date" :max="todaysDate" :rules="[rules.required]"
-              data-test="end-date" />
+            <v-text-field
+              v-model="endDate"
+              label="End Date"
+              type="date"
+              :max="todaysDate"
+              :rules="[rules.required]"
+              data-test="end-date"
+            />
           </v-col>
           <v-col>
-            <v-text-field v-model="endTime" label="End Time" type="time" step="1" :rules="[rules.required]"
-              data-test="end-time">
+            <v-text-field
+              v-model="endTime"
+              label="End Time"
+              type="time"
+              step="1"
+              :rules="[rules.required]"
+              data-test="end-time"
+            >
             </v-text-field>
           </v-col>
         </v-row>
@@ -55,8 +79,14 @@
         </v-row>
         <v-row>
           <v-col>
-            <target-packet-item-chooser button-text="Add Item" :mode="cmdOrTlm" :hidden="true" choose-item allow-all
-              @add-item="addItem($event)" />
+            <target-packet-item-chooser
+              button-text="Add Item"
+              :mode="cmdOrTlm"
+              :hidden="true"
+              choose-item
+              allow-all
+              @add-item="addItem($event)"
+            />
           </v-col>
         </v-row>
       </v-container>
@@ -65,30 +95,66 @@
         &nbsp; Processed: {{ totalPacketsReceived }} packets,
         {{ totalItemsReceived }} items
         <v-spacer />
-        <v-btn class="bg-primary" :disabled="items.length < 1" @click="processItems">
+        <v-btn
+          class="bg-primary"
+          :disabled="items.length < 1"
+          @click="processItems"
+        >
           {{ processButtonText }}
         </v-btn>
         <v-spacer />
-        <v-btn icon="mdi-pencil-box-multiple" variant="text" density="compact" :disabled="items.length < 1"
-          data-test="editAll" @click="editAll = true" />
-        <v-btn icon="mdi-delete-sweep" variant="text" density="compact" :disabled="items.length < 1"
-          data-test="delete-all" @click="deleteAll" />
+        <v-btn
+          icon="mdi-pencil-box-multiple"
+          variant="text"
+          density="compact"
+          :disabled="items.length < 1"
+          data-test="editAll"
+          @click="editAll = true"
+        />
+        <v-btn
+          icon="mdi-delete-sweep"
+          variant="text"
+          density="compact"
+          :disabled="items.length < 1"
+          data-test="delete-all"
+          @click="deleteAll"
+        />
       </v-toolbar>
       <!-- <v-row no-gutters> -->
       <v-card width="100%">
         <v-card-title>
           Items
           <v-spacer />
-          <v-text-field v-model="search" label="Search" prepend-inner-icon="mdi-magnify" clearable variant="outlined"
-            density="compact" single-line hide-details class="search" />
+          <v-text-field
+            v-model="search"
+            label="Search"
+            prepend-inner-icon="mdi-magnify"
+            clearable
+            variant="outlined"
+            density="compact"
+            single-line
+            hide-details
+            class="search"
+          />
         </v-card-title>
-        <v-data-table v-model:items-per-page="itemsPerPage" :headers="headers" :items="items" :search="search"
-          :items-per-page-options="[10, 20, 50, 100, -1]" multi-sort density="compact">
+        <v-data-table
+          v-model:items-per-page="itemsPerPage"
+          :headers="headers"
+          :items="items"
+          :search="search"
+          :items-per-page-options="[10, 20, 50, 100, -1]"
+          multi-sort
+          density="compact"
+        >
           <template #item.edit="{ item }">
             <v-icon data-test="edit-row" @click.stop="item.edit = true">
               mdi-pencil
             </v-icon>
-            <v-dialog v-model="item.edit" max-width="600" @keydown.esc="item.edit = false">
+            <v-dialog
+              v-model="item.edit"
+              max-width="600"
+              @keydown.esc="item.edit = false"
+            >
               <v-card>
                 <v-toolbar height="24">
                   <v-spacer />
@@ -103,19 +169,35 @@
                   </v-row>
                   <v-row>
                     <v-col>
-                      <v-select v-model="item.mode" hide-details :items="modes" label="Mode" variant="outlined" />
+                      <v-select
+                        v-model="item.mode"
+                        hide-details
+                        :items="modes"
+                        label="Mode"
+                        variant="outlined"
+                      />
                     </v-col>
                   </v-row>
                   <v-row>
                     <v-col>
-                      <v-select v-model="item.valueType" hide-details :items="valueTypes" label="Value Type"
-                        variant="outlined" />
+                      <v-select
+                        v-model="item.valueType"
+                        hide-details
+                        :items="valueTypes"
+                        label="Value Type"
+                        variant="outlined"
+                      />
                     </v-col>
                   </v-row>
                   <v-row>
                     <v-col>
-                      <v-select v-model="item.reducedType" hide-details :items="reducedTypes" label="Reduced Type"
-                        variant="outlined" />
+                      <v-select
+                        v-model="item.reducedType"
+                        hide-details
+                        :items="reducedTypes"
+                        label="Reduced Type"
+                        variant="outlined"
+                      />
                     </v-col>
                   </v-row>
                 </v-card-text>
@@ -136,7 +218,11 @@
         </v-data-table>
       </v-card>
     </v-card>
-    <v-dialog v-model="editAll" max-width="600" @keydown.esc="editAll = !editAll">
+    <v-dialog
+      v-model="editAll"
+      max-width="600"
+      @keydown.esc="editAll = !editAll"
+    >
       <v-card>
         <v-toolbar height="24">
           <v-spacer />
@@ -151,35 +237,65 @@
           </v-row>
           <v-row>
             <v-col>
-              <v-select v-model="allItemMode" hide-details :items="modes" label="Mode" variant="outlined" />
+              <v-select
+                v-model="allItemMode"
+                hide-details
+                :items="modes"
+                label="Mode"
+                variant="outlined"
+              />
             </v-col>
           </v-row>
           <v-row>
             <v-col>
-              <v-select v-model="allItemValueType" hide-details :items="valueTypes" label="Value Type"
-                variant="outlined" />
+              <v-select
+                v-model="allItemValueType"
+                hide-details
+                :items="valueTypes"
+                label="Value Type"
+                variant="outlined"
+              />
             </v-col>
           </v-row>
           <v-row>
             <v-col>
-              <v-select v-model="allItemReducedType" hide-details :items="reducedTypes" label="Reduced Type"
-                variant="outlined" />
+              <v-select
+                v-model="allItemReducedType"
+                hide-details
+                :items="reducedTypes"
+                label="Reduced Type"
+                variant="outlined"
+              />
             </v-col>
           </v-row>
         </v-card-text>
         <v-card-actions class="px-2">
           <v-spacer />
           <v-btn variant="outlined" @click="editAll = !editAll"> Cancel </v-btn>
-          <v-btn variant="flat" :disabled="!allItemValueType" @click="editAllItems()">
+          <v-btn
+            variant="flat"
+            :disabled="!allItemValueType"
+            @click="editAllItems()"
+          >
             Ok
           </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
     <!-- Note we're using v-if here so it gets re-created each time and refreshes the list -->
-    <open-config-dialog v-if="openConfig" v-model="openConfig" :config-key="configKey" @success="openConfiguration" />
+    <open-config-dialog
+      v-if="openConfig"
+      v-model="openConfig"
+      :config-key="configKey"
+      @success="openConfiguration"
+    />
     <!-- Note we're using v-if here so it gets re-created each time and refreshes the list -->
-    <save-config-dialog v-if="saveConfig" v-model="saveConfig" :config-key="configKey" @success="saveConfiguration" />
+    <save-config-dialog
+      v-if="saveConfig"
+      v-model="saveConfig"
+      :config-key="configKey"
+      @success="saveConfiguration"
+    />
   </div>
 </template>
 
@@ -727,7 +843,7 @@ export default {
         dataExtractorRawData.push(data)
         this.progress = Math.ceil(
           (100 * (data[0]['__time'] - this.startDateTime)) /
-          (this.endDateTime - this.startDateTime),
+            (this.endDateTime - this.startDateTime),
         )
 
         let delimiterOverhead = this.columnHeaders.length * this.packetsReceived
@@ -899,9 +1015,9 @@ export default {
       link.setAttribute(
         'download',
         this.startDateTimeFilename +
-        '_' +
-        this.fileCount +
-        downloadFileExtension,
+          '_' +
+          this.fileCount +
+          downloadFileExtension,
       )
       link.click()
 

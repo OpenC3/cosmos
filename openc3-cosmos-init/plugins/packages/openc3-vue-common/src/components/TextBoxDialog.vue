@@ -28,12 +28,23 @@
         <span> {{ title }} </span>
         <v-spacer />
         <div class="mx-2">
-          <v-btn icon="mdi-download" variant="text" density="compact" data-test="downloadIcon" @click="download" />
+          <v-btn
+            icon="mdi-download"
+            variant="text"
+            density="compact"
+            data-test="downloadIcon"
+            @click="download"
+          />
         </div>
       </v-toolbar>
       <div class="pa-2">
         <v-card-text>
-          <v-textarea v-model="dialogText" readonly rows="15" data-test="dialogText" />
+          <v-textarea
+            v-model="dialogText"
+            readonly
+            rows="15"
+            data-test="dialogText"
+          />
         </v-card-text>
       </div>
       <v-card-actions class="px-2">

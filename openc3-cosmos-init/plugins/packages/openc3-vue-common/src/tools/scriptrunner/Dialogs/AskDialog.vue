@@ -21,9 +21,9 @@
 -->
 
 <template>
-  <v-dialog persistent v-model="show" width="600">
+  <v-dialog v-model="show" persistent width="600">
     <v-card>
-      <v-form v-model="valid" v-on:submit.prevent="submitHandler">
+      <v-form v-model="valid" @submit.prevent="submitHandler">
         <v-toolbar height="24">
           <v-spacer />
           <span> User Input Required </span>
@@ -32,16 +32,31 @@
         <div class="pa-2">
           <v-card-text>
             <div class="question">{{ question }}</div>
-            <v-text-field v-model="inputValue" autofocus data-test="ask-value-input"
-              :type="password ? 'password' : 'text'" :rules="rules" />
+            <v-text-field
+              v-model="inputValue"
+              autofocus
+              data-test="ask-value-input"
+              :type="password ? 'password' : 'text'"
+              :rules="rules"
+            />
           </v-card-text>
         </div>
         <v-card-actions class="px-2">
           <v-spacer />
-          <v-btn @click="cancelHandler" variant="outlined" data-test="ask-cancel">
+          <v-btn
+            variant="outlined"
+            data-test="ask-cancel"
+            @click="cancelHandler"
+          >
             Cancel
           </v-btn>
-          <v-btn @click.prevent="submitHandler" variant="flat" type="submit" data-test="ask-ok" :disabled="!valid">
+          <v-btn
+            variant="flat"
+            type="submit"
+            data-test="ask-ok"
+            :disabled="!valid"
+            @click.prevent="submitHandler"
+          >
             Ok
           </v-btn>
         </v-card-actions>
@@ -78,16 +93,6 @@ export default {
       rules: [(v) => !!v || 'Required'],
     }
   },
-  created() {
-    if (this.default) {
-      this.valid = true
-      this.inputValue = this.default
-    }
-    if (this.answerRequired === false) {
-      this.valid = true
-      this.rules = [(v) => true]
-    }
-  },
   computed: {
     show: {
       get() {
@@ -97,6 +102,16 @@ export default {
         this.$emit('update:modelValue', value)
       },
     },
+  },
+  created() {
+    if (this.default) {
+      this.valid = true
+      this.inputValue = this.default
+    }
+    if (this.answerRequired === false) {
+      this.valid = true
+      this.rules = [(v) => true]
+    }
   },
   methods: {
     submitHandler: function () {

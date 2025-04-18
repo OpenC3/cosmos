@@ -17,7 +17,7 @@
 -->
 
 <template>
-  <v-dialog :persistent="persistent" v-model="show" width="600">
+  <v-dialog v-model="show" :persistent="persistent" width="600">
     <v-card>
       <v-toolbar height="24">
         <v-spacer />
@@ -27,28 +27,51 @@
 
       <v-card-text>
         <v-container fluid>
-          <v-alert type="error" v-model="error" dismissible>
+          <v-alert v-model="error" type="error" dismissible>
             {{ errorText }}
           </v-alert>
-          <v-row class="pt-4" style="color: white">User {{ cmdUser }} is waiting for approval to execute:
+          <v-row class="pt-4" style="color: white"
+            >User {{ cmdUser }} is waiting for approval to execute:
           </v-row>
           <v-row class="pa-4" style="color: white">{{ cmdString }}</v-row>
           <v-row class="text-subtitle-2">UUID: {{ uuid }}</v-row>
 
           <v-row v-if="!canApprove">
-            <v-text-field v-model="username" label="Username" data-test="username" />
+            <v-text-field
+              v-model="username"
+              label="Username"
+              data-test="username"
+            />
           </v-row>
           <v-row v-if="!canApprove">
-            <v-text-field v-model="password" type="password" label="Password" data-test="password" />
+            <v-text-field
+              v-model="password"
+              type="password"
+              label="Password"
+              data-test="password"
+            />
           </v-row>
           <v-row class="pt-2">
             <v-spacer />
-            <v-btn type="submit" @click.prevent="reject" class="mx-2" color="secondary" outlined
-              :disabled="disableButtons" data-test="reject">
+            <v-btn
+              type="submit"
+              class="mx-2"
+              color="secondary"
+              outlined
+              :disabled="disableButtons"
+              data-test="reject"
+              @click.prevent="reject"
+            >
               Reject
             </v-btn>
-            <v-btn type="submit" @click.prevent="approve" class="mx-2" color="primary" :disabled="disableButtons"
-              data-test="approve">
+            <v-btn
+              type="submit"
+              class="mx-2"
+              color="primary"
+              :disabled="disableButtons"
+              data-test="approve"
+              @click.prevent="approve"
+            >
               Approve
             </v-btn>
           </v-row>
@@ -99,13 +122,6 @@ export default {
       return !this.formValid && !this.canApprove
     },
   },
-  beforeUnmount() {
-    clearInterval(this.updater)
-    this.updater = null
-    this.canApprove = false
-    this.username = null
-    this.password = null
-  },
   watch: {
     // Create a watcher on value which is the indicator to display the dialog
     // If value is true we request the details from the server
@@ -144,6 +160,13 @@ export default {
         this.password = null
       }
     },
+  },
+  beforeUnmount() {
+    clearInterval(this.updater)
+    this.updater = null
+    this.canApprove = false
+    this.username = null
+    this.password = null
   },
   methods: {
     async approve() {
@@ -226,9 +249,9 @@ export default {
     async getKeycloakToken() {
       const response = await axios.post(
         localStorage.keycloakUrl +
-        '/realms/' +
-        localStorage.keycloakRealm +
-        '/protocol/openid-connect/token',
+          '/realms/' +
+          localStorage.keycloakRealm +
+          '/protocol/openid-connect/token',
         {
           username: this.username,
           password: this.password,

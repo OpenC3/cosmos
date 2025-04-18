@@ -266,9 +266,9 @@
           <v-row no-gutters justify="end">
             <v-col cols="5">
               <v-select
+                v-model="script"
                 label="Script:"
                 class="mb-2 mr-2"
-                v-model="script"
                 hide-details
                 density="compact"
                 variant="outlined"

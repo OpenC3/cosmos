@@ -24,11 +24,21 @@
         <v-spacer />
         <span>Create New Screen</span>
         <v-spacer />
-        <v-btn icon="mdi-close-box" variant="text" density="compact" data-test="new-screen-close-icon"
-          @click="show = false" />
+        <v-btn
+          icon="mdi-close-box"
+          variant="text"
+          density="compact"
+          data-test="new-screen-close-icon"
+          @click="show = false"
+        />
       </v-toolbar>
       <v-card-text>
-        <v-alert v-model="duplicateScreenAlert" type="error" closable density="compact">
+        <v-alert
+          v-model="duplicateScreenAlert"
+          type="error"
+          closable
+          density="compact"
+        >
           Screen {{ newScreenName.toUpperCase() }} already exists!
         </v-alert>
         <v-row class="pt-3">
@@ -36,8 +46,14 @@
         </v-row>
         <v-row dense>
           <v-col>
-            <v-select v-model="selectedTarget" label="Select Target" :items="targets" item-title="label"
-              item-value="value" @update:model-value="targetSelect" />
+            <v-select
+              v-model="selectedTarget"
+              label="Select Target"
+              :items="targets"
+              item-title="label"
+              item-value="value"
+              @update:model-value="targetSelect"
+            />
           </v-col>
         </v-row>
 
@@ -53,14 +69,30 @@
         </v-row>
         <v-row dense>
           <v-col>
-            <v-autocomplete v-model="selectedPacketName" label="New screen packet" hide-details density="compact"
-              :items="packetNames" item-title="label" item-value="value" data-test="new-screen-packet" />
+            <v-autocomplete
+              v-model="selectedPacketName"
+              label="New screen packet"
+              hide-details
+              density="compact"
+              :items="packetNames"
+              item-title="label"
+              item-value="value"
+              data-test="new-screen-packet"
+            />
           </v-col>
         </v-row>
         <v-row dense>
           <v-col>
-            <v-text-field v-model="newScreenName" flat autofocus clearable label="Screen Name (without .txt)"
-              :rules="[rules.required]" data-test="new-screen-name" @keyup="newScreenKeyup($event)" />
+            <v-text-field
+              v-model="newScreenName"
+              flat
+              autofocus
+              clearable
+              label="Screen Name (without .txt)"
+              :rules="[rules.required]"
+              data-test="new-screen-name"
+              @keyup="newScreenKeyup($event)"
+            />
             <div v-if="newScreenSaving" class="pl-2">
               <v-progress-circular indeterminate color="primary" />
             </div>

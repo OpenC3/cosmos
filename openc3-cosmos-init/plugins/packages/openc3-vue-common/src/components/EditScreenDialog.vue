@@ -21,25 +21,52 @@
   <v-dialog v-model="show" persistent width="75vw">
     <v-card>
       <v-toolbar height="24">
-        <v-btn class="mx-2" icon="mdi-delete" variant="text" density="compact" data-test="delete-screen-icon"
-          @click="deleteScreen" />
+        <v-btn
+          class="mx-2"
+          icon="mdi-delete"
+          variant="text"
+          density="compact"
+          data-test="delete-screen-icon"
+          @click="deleteScreen"
+        />
         <v-spacer />
         <span> Edit Screen: {{ target }} {{ screen }} </span>
         <v-spacer />
-        <v-btn class="mx-2" icon="mdi-download" variant="text" density="compact" data-test="download-screen-icon"
-          @click="downloadScreen" />
+        <v-btn
+          class="mx-2"
+          icon="mdi-download"
+          variant="text"
+          density="compact"
+          data-test="download-screen-icon"
+          @click="downloadScreen"
+        />
       </v-toolbar>
       <v-card-text style="max-height: 90vh">
         <v-row class="mt-3"> Upload a screen file. </v-row>
         <v-row no-gutters align="center">
-          <v-btn :disabled="!file" color="primary" class="mr-3" data-test="edit-screen-load" @click="loadFile">
+          <v-btn
+            :disabled="!file"
+            color="primary"
+            class="mr-3"
+            data-test="edit-screen-load"
+            @click="loadFile"
+          >
             Load
           </v-btn>
-          <v-file-input v-model="file" truncate-length="15" accept=".txt" label="Click to select .txt screen file." />
+          <v-file-input
+            v-model="file"
+            truncate-length="15"
+            accept=".txt"
+            label="Click to select .txt screen file."
+          />
         </v-row>
         <v-row class="mb-2"> Edit the screen definition. </v-row>
         <v-row class="mb-2">
-          <pre ref="editor" class="editor" @contextmenu.prevent="showContextMenu"></pre>
+          <pre
+            ref="editor"
+            class="editor"
+            @contextmenu.prevent="showContextMenu"
+          ></pre>
           <v-menu v-model="contextMenu" :target="[menuX, menuY]">
             <v-list>
               <v-list-item link>
@@ -48,7 +75,11 @@
                 </v-list-item-title>
               </v-list-item>
               <v-divider />
-              <v-list-item title="Toggle Vim mode" prepend-icon="extras:vim" @click="toggleVimMode" />
+              <v-list-item
+                title="Toggle Vim mode"
+                prepend-icon="extras:vim"
+                @click="toggleVimMode"
+              />
             </v-list>
           </v-menu>
         </v-row>
@@ -59,13 +90,25 @@
           </div>
         </v-row>
         <v-row class="mt-5">
-          <span>Ctrl-space brings up autocomplete. Right click keywords for
-            documentation.</span>
+          <span
+            >Ctrl-space brings up autocomplete. Right click keywords for
+            documentation.</span
+          >
           <v-spacer />
-          <v-btn class="mx-2" variant="outlined" data-test="edit-screen-cancel" @click="$emit('cancel')">
+          <v-btn
+            class="mx-2"
+            variant="outlined"
+            data-test="edit-screen-cancel"
+            @click="$emit('cancel')"
+          >
             Cancel
           </v-btn>
-          <v-btn class="mx-2" color="primary" data-test="edit-screen-save" @click="$emit('save', editor.getValue())">
+          <v-btn
+            class="mx-2"
+            color="primary"
+            data-test="edit-screen-save"
+            @click="$emit('save', editor.getValue())"
+          >
             Save
           </v-btn>
         </v-row>
@@ -191,7 +234,8 @@ export default {
     },
     openDocumentation() {
       window.open(
-        `${window.location.origin
+        `${
+          window.location.origin
         }/tools/staticdocs/docs/configuration/telemetry-screens#${this.docsKeyword.toLowerCase()}`,
         '_blank',
       )
@@ -236,9 +280,9 @@ export default {
       }
       let TextMode = ace.require('ace/mode/text').Mode
       oop.inherits(Mode, TextMode)
-        ; (function () {
-          this.$id = 'ace/mode/openc3'
-        }).call(Mode.prototype)
+      ;(function () {
+        this.$id = 'ace/mode/openc3'
+      }).call(Mode.prototype)
       return Mode
     },
     downloadScreen: function () {

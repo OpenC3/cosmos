@@ -24,9 +24,13 @@
   <v-dialog v-model="show" width="600" @keydown.enter="success()">
     <v-card>
       <v-overlay :model-value="loading">
-        <v-progress-circular indeterminate absolute size="64"></v-progress-circular>
+        <v-progress-circular
+          indeterminate
+          absolute
+          size="64"
+        ></v-progress-circular>
       </v-overlay>
-      <form v-on:submit.prevent="success">
+      <form @submit.prevent="success">
         <v-toolbar height="24">
           <v-spacer />
           <span> {{ title }} </span>
@@ -36,30 +40,67 @@
           <div class="pa-3">
             <v-row>{{ helpText }} </v-row>
             <v-row dense class="mt-5">
-              <v-text-field v-model="search" flat autofocus hide-details clearable label="Search"
-                prepend-inner-icon="mdi-magnify" density="compact" data-test="file-open-save-search" />
+              <v-text-field
+                v-model="search"
+                flat
+                autofocus
+                hide-details
+                clearable
+                label="Search"
+                prepend-inner-icon="mdi-magnify"
+                density="compact"
+                data-test="file-open-save-search"
+              />
             </v-row>
             <div class="overflow-y-auto tree-container">
-              <tree-node v-for="node in items" :key="`${node.id}`" :node="node" :search="search" :type="type"
-                @request="activeFile" @delete="deleteTemp"></tree-node>
+              <tree-node
+                v-for="node in items"
+                :key="`${node.id}`"
+                :node="node"
+                :search="search"
+                :type="type"
+                @request="activeFile"
+                @delete="deleteTemp"
+              ></tree-node>
             </div>
             <v-row class="my-2">
-              <v-text-field v-model="selectedFile" hide-details label="Filename" data-test="file-open-save-filename"
-                :disabled="type === 'open'" />
+              <v-text-field
+                v-model="selectedFile"
+                hide-details
+                label="Filename"
+                data-test="file-open-save-filename"
+                :disabled="type === 'open'"
+              />
             </v-row>
             <v-row dense>
-              <div class="my-2 text-red" style="white-space: pre-line" v-show="error">
+              <div
+                v-show="error"
+                class="my-2 text-red"
+                style="white-space: pre-line"
+              >
                 {{ error }}
               </div>
             </v-row>
             <v-row class="mt-2">
               <v-spacer />
-              <v-btn @click="show = false" variant="outlined" class="mx-2" data-test="file-open-save-cancel-btn"
-                :disabled="disableButtons">
+              <v-btn
+                variant="outlined"
+                class="mx-2"
+                data-test="file-open-save-cancel-btn"
+                :disabled="disableButtons"
+                @click="show = false"
+              >
                 Cancel
               </v-btn>
-              <v-btn @click.prevent="success" ref="submitBtn" type="submit" color="primary" class="mx-2"
-                data-test="file-open-save-submit-btn" :disabled="disableButtons || !!error">
+              <v-btn
+                ref="submitBtn"
+                type="submit"
+                color="primary"
+                class="mx-2"
+                data-test="file-open-save-submit-btn"
+                :disabled="disableButtons || !!error"
+                @click.prevent="success"
+              >
                 {{ submit }}
               </v-btn>
             </v-row>
@@ -340,7 +381,7 @@ export default {
             this.$emit('filename', this.selectedFile)
             this.clear()
           })
-          .catch((error) => { }) // Cancel, do nothing
+          .catch((error) => {}) // Cancel, do nothing
       } else {
         this.$emit('filename', this.selectedFile)
         this.clear()

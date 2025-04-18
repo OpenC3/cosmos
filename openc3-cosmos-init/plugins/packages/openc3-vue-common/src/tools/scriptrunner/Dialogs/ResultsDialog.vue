@@ -30,13 +30,19 @@
       </v-toolbar>
       <div class="pa-2">
         <v-card-text style="width: 100%; max-height: 80vh; overflow: auto">
-          <v-textarea readonly hide-details density="compact" auto-grow :model-value="text" />
+          <v-textarea
+            readonly
+            hide-details
+            density="compact"
+            auto-grow
+            :model-value="text"
+          />
         </v-card-text>
       </div>
       <v-card-actions class="px-2">
         <v-spacer />
         <v-btn variant="outlined" @click="downloadResults"> Download </v-btn>
-        <v-btn variant="flat" @click="show = !show" ref="okButton"> Ok </v-btn>
+        <v-btn ref="okButton" variant="flat" @click="show = !show"> Ok </v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>

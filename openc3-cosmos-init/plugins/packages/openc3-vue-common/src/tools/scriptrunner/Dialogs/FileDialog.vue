@@ -21,9 +21,9 @@
 -->
 
 <template>
-  <v-dialog persistent v-model="show" width="600">
+  <v-dialog v-model="show" persistent width="600">
     <v-card>
-      <v-form v-model="valid" v-on:submit.prevent="submitHandler">
+      <v-form v-model="valid" @submit.prevent="submitHandler">
         <v-toolbar height="24">
           <v-spacer />
           <span> File Dialog </span>
@@ -35,20 +35,42 @@
               <span class="title">{{ title }}</span>
             </v-row>
             <v-row v-if="message">
-              <span class="ma-3" style="white-space: pre-line" v-text="message" />
+              <span
+                class="ma-3"
+                style="white-space: pre-line"
+                v-text="message"
+              />
             </v-row>
             <v-row class="my-1">
-              <v-file-input label="Choose File" v-model="inputValue" :rules="rules" autofocus data-test="file-input"
-                :accept="filter" small-chips :multiple="multiple" />
+              <v-file-input
+                v-model="inputValue"
+                label="Choose File"
+                :rules="rules"
+                autofocus
+                data-test="file-input"
+                :accept="filter"
+                small-chips
+                :multiple="multiple"
+              />
             </v-row>
           </v-card-text>
         </div>
         <v-card-actions class="px-2">
           <v-spacer />
-          <v-btn @click="cancelHandler" variant="outlined" data-test="file-cancel">
+          <v-btn
+            variant="outlined"
+            data-test="file-cancel"
+            @click="cancelHandler"
+          >
             Cancel
           </v-btn>
-          <v-btn @click.prevent="submitHandler" variant="flat" type="submit" data-test="file-ok" :disabled="!valid">
+          <v-btn
+            variant="flat"
+            type="submit"
+            data-test="file-ok"
+            :disabled="!valid"
+            @click.prevent="submitHandler"
+          >
             Ok
           </v-btn>
         </v-card-actions>

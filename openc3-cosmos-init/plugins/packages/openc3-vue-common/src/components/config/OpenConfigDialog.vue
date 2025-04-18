@@ -21,9 +21,9 @@
 -->
 
 <template>
-  <v-dialog v-model="show" @keydown.esc="cancel" width="600">
+  <v-dialog v-model="show" width="600" @keydown.esc="cancel">
     <v-card>
-      <form v-on:submit.prevent="success">
+      <form @submit.prevent="success">
         <v-toolbar height="24">
           <v-spacer />
           <span>Open Configuration</span>
@@ -33,30 +33,64 @@
         <v-card-text>
           <div class="mt-4 pa-3">
             <v-row dense>
-              <v-text-field label="search" v-model="search" type="text" prepend-inner-icon="mdi-magnify" clearable
-                variant="outlined" density="compact" clear-icon="mdi-close-circle-outline" autofocus single-line
-                hide-details data-test="search" />
+              <v-text-field
+                v-model="search"
+                label="search"
+                type="text"
+                prepend-inner-icon="mdi-magnify"
+                clearable
+                variant="outlined"
+                density="compact"
+                clear-icon="mdi-close-circle-outline"
+                autofocus
+                single-line
+                hide-details
+                data-test="search"
+              />
             </v-row>
-            <v-data-table v-model="selectedRows" show-select select-strategy="single" item-value="configId"
-              :search="search" :headers="headers" :items="configs" :items-per-page="5" :items-per-page-options="[5]"
-              @click:row="($event, row) => selectRow(row)">
-              <template v-slot:item.actions="{ item }">
-                <v-btn class="mt-1" icon="mdi-delete" variant="text" data-test="item-delete"
-                  @click="deleteConfig(item)" />
+            <v-data-table
+              v-model="selectedRows"
+              show-select
+              select-strategy="single"
+              item-value="configId"
+              :search="search"
+              :headers="headers"
+              :items="configs"
+              :items-per-page="5"
+              :items-per-page-options="[5]"
+              @click:row="($event, row) => selectRow(row)"
+            >
+              <template #item.actions="{ item }">
+                <v-btn
+                  class="mt-1"
+                  icon="mdi-delete"
+                  variant="text"
+                  data-test="item-delete"
+                  @click="deleteConfig(item)"
+                />
               </template>
             </v-data-table>
             <v-row dense>
-              <span class="ma-2 text-red" v-show="error" v-text="error" />
+              <span v-show="error" class="ma-2 text-red" v-text="error" />
             </v-row>
           </div>
         </v-card-text>
         <v-card-actions class="px-2">
           <v-spacer />
-          <v-btn variant="outlined" @click="cancel" data-test="open-config-cancel-btn">
+          <v-btn
+            variant="outlined"
+            data-test="open-config-cancel-btn"
+            @click="cancel"
+          >
             Cancel
           </v-btn>
-          <v-btn variant="flat" @click.prevent="success" type="submit" data-test="open-config-submit-btn"
-            :disabled="!!error">
+          <v-btn
+            variant="flat"
+            type="submit"
+            data-test="open-config-submit-btn"
+            :disabled="!!error"
+            @click.prevent="success"
+          >
             Ok
           </v-btn>
         </v-card-actions>
