@@ -95,6 +95,17 @@ class TestUdpReadSocket(unittest.TestCase):
             udp_read.read(2.0)
         udp_read.close()
 
+    @patch.object(select, "select")
+    @patch("socket.socket")
+    def test_handles_closed_socket(self, mock_socket, mock_select):
+        sock = mock_socket.return_value
+        # EBADF is what you get when the socket is closed
+        sock.recvfrom.side_effect = socket.error(socket.EBADF)
+        mock_select.return_value = ([], [], [])
+        udp_read = UdpReadSocket(8889)
+        data = udp_read.read(2.0)
+        self.assertIsNone(data)
+
 
 class TestUdpReadWriteSocket(unittest.TestCase):
     def test_creates_a_socket(self):
