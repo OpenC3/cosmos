@@ -28,16 +28,12 @@
           <th scope="col" class="text-left">Key</th>
           <th scope="col" class="text-left">Value</th>
           <th scope="col" class="text-right">
-            <v-tooltip location="top">
-              <template v-slot:activator="{ props }">
-                <div v-bind="props">
-                  <v-icon data-test="new-metadata-icon" @click="newMetadata">
-                    mdi-plus
-                  </v-icon>
-                </div>
-              </template>
-              <span> New Metadata </span>
-            </v-tooltip>
+            <v-btn
+              icon="mdi-plus"
+              variant="text"
+              data-test="new-metadata-icon"
+              @click="newMetadata"
+            />
           </th>
         </tr>
         <tr v-for="(meta, i) in metadata" :key="`tr-${i}`">
@@ -58,19 +54,12 @@
             />
           </td>
           <td>
-            <v-tooltip location="top">
-              <template v-slot:activator="{ props }">
-                <div v-bind="props">
-                  <v-icon
-                    :data-test="`delete-metadata-icon-${i}`"
-                    @click="rm(i)"
-                  >
-                    mdi-delete
-                  </v-icon>
-                </div>
-              </template>
-              <span> Delete Metadata </span>
-            </v-tooltip>
+            <v-btn
+              icon="mdi-delete"
+              variant="text"
+              :data-test="`delete-metadata-icon-${i}`"
+              @click="rm(i)"
+            />
           </td>
         </tr>
       </tbody>

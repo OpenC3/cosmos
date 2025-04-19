@@ -24,16 +24,13 @@
         <v-spacer />
         <span>Create New Screen</span>
         <v-spacer />
-        <v-tooltip location="top">
-          <template v-slot:activator="{ props }">
-            <div v-bind="props">
-              <v-icon data-test="new-screen-close-icon" @click="show = false">
-                mdi-close-box
-              </v-icon>
-            </div>
-          </template>
-          <span> Close </span>
-        </v-tooltip>
+        <v-btn
+          icon="mdi-close-box"
+          variant="text"
+          density="compact"
+          data-test="new-screen-close-icon"
+          @click="show = false"
+        />
       </v-toolbar>
       <v-card-text>
         <v-alert
@@ -50,11 +47,11 @@
         <v-row dense>
           <v-col>
             <v-select
+              v-model="selectedTarget"
               label="Select Target"
               :items="targets"
               item-title="label"
               item-value="value"
-              v-model="selectedTarget"
               @update:model-value="targetSelect"
             />
           </v-col>
@@ -73,13 +70,13 @@
         <v-row dense>
           <v-col>
             <v-autocomplete
+              v-model="selectedPacketName"
               label="New screen packet"
               hide-details
               density="compact"
               :items="packetNames"
               item-title="label"
               item-value="value"
-              v-model="selectedPacketName"
               data-test="new-screen-packet"
             />
           </v-col>
@@ -96,7 +93,7 @@
               data-test="new-screen-name"
               @keyup="newScreenKeyup($event)"
             />
-            <div class="pl-2" v-if="newScreenSaving">
+            <div v-if="newScreenSaving" class="pl-2">
               <v-progress-circular indeterminate color="primary" />
             </div>
           </v-col>
@@ -139,18 +136,6 @@ export default {
         required: (value) => !!value || 'Required.',
       },
     }
-  },
-  created() {
-    this.api = new OpenC3Api()
-    this.duplicateScreenAlert = false
-    this.newScreenSaving = false
-    this.selectedTarget = this.target
-    this.api
-      .get_target_names({ params: { scope: window.openc3Scope } })
-      .then((targets) => {
-        this.targets = targets.filter((item) => item !== 'UNKNOWN')
-      })
-    this.targetSelect(this.selectedTarget)
   },
   computed: {
     show: {
@@ -198,6 +183,18 @@ export default {
         this.duplicateScreenAlert = false
       }
     },
+  },
+  created() {
+    this.api = new OpenC3Api()
+    this.duplicateScreenAlert = false
+    this.newScreenSaving = false
+    this.selectedTarget = this.target
+    this.api
+      .get_target_names({ params: { scope: window.openc3Scope } })
+      .then((targets) => {
+        this.targets = targets.filter((item) => item !== 'UNKNOWN')
+      })
+    this.targetSelect(this.selectedTarget)
   },
   methods: {
     targetSelect(target) {

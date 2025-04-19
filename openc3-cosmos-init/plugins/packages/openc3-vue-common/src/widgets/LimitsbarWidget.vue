@@ -17,8 +17,8 @@
 -->
 
 <template>
-  <v-tooltip location="top">
-    <template v-slot:activator="{ props }">
+  <v-tooltip :open-delay="600" location="top">
+    <template #activator="{ props }">
       <div class="limitsbar" :style="[cssProps, computedStyle]" v-bind="props">
         <div class="limitsbar__container">
           <div class="limitsbar__redlow" />

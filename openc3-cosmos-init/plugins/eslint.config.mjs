@@ -1,54 +1,44 @@
-import prettier from "eslint-plugin-prettier";
-import globals from "globals";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import js from "@eslint/js";
-import { FlatCompat } from "@eslint/eslintrc";
+import prettierConfig from "@vue/eslint-config-prettier"
+import pluginVue from "eslint-plugin-vue"
+import globals from "globals"
+import parser from "vue-eslint-parser"
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const compat = new FlatCompat({
-    baseDirectory: __dirname,
-    recommendedConfig: js.configs.recommended,
-    allConfig: js.configs.all
-});
-
-export default [...compat.extends(
-    "plugin:vue/vue3-essential",
-    "plugin:prettier/recommended",
-    "@vue/prettier",
-), {
-    plugins: {
-        prettier,
-    },
-
+export default [
+  ...pluginVue.configs['flat/recommended'],
+  {
     languageOptions: {
-        globals: {
-            ...globals.node,
-        },
+      globals: {
+        ...globals.node,
+      },
 
-        ecmaVersion: 5,
-        sourceType: "commonjs",
+      parser: parser,
+      ecmaVersion: 2022,
+      sourceType: "module",
     },
 
     rules: {
-        "no-console": "error",
-        "no-debugger": "error",
+      "no-console": "error",
+      "no-debugger": "error",
 
-        "prettier/prettier": ["warn", {
-            endOfLine: "auto",
-        }],
+      "prettier/prettier": ["warn", {
+        endOfLine: "auto",
+      }],
 
-        "vue/valid-v-slot": ["error", {
-            allowModifiers: true,
-        }],
+      "vue/multi-word-component-names": "off",
+
+      "vue/valid-v-slot": ["error", {
+        allowModifiers: true,
+      }],
     },
-}, {
+  },
+  {
     files: ["**/__tests__/*.{j,t}s?(x)", "**/tests/unit/**/*.spec.{j,t}s?(x)"],
 
     languageOptions: {
-        globals: {
-            ...globals.jest,
-        },
+      globals: {
+        ...globals.jest,
+      },
     },
-}];
+  },
+  prettierConfig,
+]

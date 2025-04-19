@@ -27,8 +27,8 @@
         <v-col cols="4">
           <v-row no-gutters>
             <v-col cols="6">
-              <v-tooltip location="top">
-                <template v-slot:activator="{ props }">
+              <v-tooltip :open-delay="600" location="top">
+                <template #activator="{ props }">
                   <div v-bind="props">
                     <v-checkbox
                       v-model="options"
@@ -39,15 +39,15 @@
                     />
                   </div>
                 </template>
-                <span
-                  >Checked pauses the script when an error is encountered<br />Unchecked
-                  continues without user interaction</span
-                >
+                <span>
+                  Checked pauses the script when an error is encountered<br />
+                  Unchecked continues without user interaction
+                </span>
               </v-tooltip>
             </v-col>
             <v-col cols="6">
-              <v-tooltip location="top">
-                <template v-slot:activator="{ props }">
+              <v-tooltip :open-delay="600" location="top">
+                <template #activator="{ props }">
                   <div v-bind="props">
                     <v-checkbox
                       v-model="options"
@@ -58,11 +58,10 @@
                     />
                   </div>
                 </template>
-                <span
-                  >{{ checkedManualTooltip }}<br />{{
-                    uncheckedManualTooltip
-                  }}</span
-                >
+                <span>
+                  {{ checkedManualTooltip }}<br />
+                  {{ uncheckedManualTooltip }}
+                </span>
               </v-tooltip>
             </v-col>
           </v-row>
@@ -71,15 +70,15 @@
           <v-row no-gutters justify="end">
             <v-col cols="5">
               <v-select
+                v-model="suite"
                 label="Suite:"
                 class="mb-2 mr-2"
                 hide-details
                 density="compact"
                 variant="outlined"
-                @update:model-value="suiteChanged"
                 :items="suites"
-                v-model="suite"
                 data-test="select-suite"
+                @update:model-value="suiteChanged"
               />
             </v-col>
             <v-col cols="auto">
@@ -87,29 +86,29 @@
                 color="primary"
                 class="mr-2"
                 :disabled="disableButtons || !userInfo.execute"
-                @click="$emit('button', { method: 'start', suite, options })"
                 data-test="start-suite"
+                @click="$emit('button', { method: 'start', suite, options })"
               >
                 Start
               </v-btn>
               <v-btn
                 color="primary"
                 class="mr-2"
-                @click="$emit('button', { method: 'setup', suite, options })"
                 data-test="setup-suite"
                 :disabled="
                   disableButtons || !setupSuiteEnabled || !userInfo.execute
                 "
+                @click="$emit('button', { method: 'setup', suite, options })"
               >
                 Setup
               </v-btn>
               <v-btn
                 color="primary"
-                @click="$emit('button', { method: 'teardown', suite, options })"
                 data-test="teardown-suite"
                 :disabled="
                   disableButtons || !teardownSuiteEnabled || !userInfo.execute
                 "
+                @click="$emit('button', { method: 'teardown', suite, options })"
               >
                 Teardown
               </v-btn>
@@ -121,8 +120,8 @@
         <v-col cols="4">
           <v-row no-gutters>
             <v-col cols="6">
-              <v-tooltip location="top">
-                <template v-slot:activator="{ props }">
+              <v-tooltip :open-delay="600" location="top">
+                <template #activator="{ props }">
                   <div v-bind="props">
                     <v-checkbox
                       v-model="options"
@@ -133,16 +132,16 @@
                     />
                   </div>
                 </template>
-                <span
-                  >Checked allows the script to continue when an error is
-                  encountered<br />Unchecked forces the current script to
-                  end</span
-                >
+                <span>
+                  Checked allows the script to continue when an error is
+                  encountered<br />
+                  Unchecked forces the current script to end
+                </span>
               </v-tooltip>
             </v-col>
             <v-col cols="6">
-              <v-tooltip location="top">
-                <template v-slot:activator="{ props }">
+              <v-tooltip :open-delay="600" location="top">
+                <template #activator="{ props }">
                   <div v-bind="props">
                     <v-checkbox
                       v-model="options"
@@ -153,10 +152,10 @@
                     />
                   </div>
                 </template>
-                <span
-                  >Checked continuously executes until explicitly stopped<br />
-                  Unchecked executes only the started script(s)</span
-                >
+                <span>
+                  Checked continuously executes until explicitly stopped<br />
+                  Unchecked executes only the started script(s)
+                </span>
               </v-tooltip>
             </v-col>
           </v-row>
@@ -165,15 +164,15 @@
           <v-row no-gutters justify="end">
             <v-col cols="5">
               <v-select
+                v-model="group"
                 label="Group:"
                 class="mb-2 mr-2"
                 hide-details
                 density="compact"
                 variant="outlined"
-                @update:model-value="groupChanged"
                 :items="groups"
-                v-model="group"
                 data-test="select-group"
+                @update:model-value="groupChanged"
               />
             </v-col>
             <v-col cols="auto">
@@ -181,34 +180,34 @@
                 color="primary"
                 class="mr-2"
                 :disabled="disableButtons || !userInfo.execute"
+                data-test="start-group"
                 @click="
                   $emit('button', { method: 'start', suite, group, options })
                 "
-                data-test="start-group"
               >
                 Start
               </v-btn>
               <v-btn
                 color="primary"
                 class="mr-2"
-                @click="
-                  $emit('button', { method: 'setup', suite, group, options })
-                "
                 data-test="setup-group"
                 :disabled="
                   disableButtons || !setupGroupEnabled || !userInfo.execute
+                "
+                @click="
+                  $emit('button', { method: 'setup', suite, group, options })
                 "
               >
                 Setup
               </v-btn>
               <v-btn
                 color="primary"
-                @click="
-                  $emit('button', { method: 'teardown', suite, group, options })
-                "
                 data-test="teardown-group"
                 :disabled="
                   disableButtons || !teardownGroupEnabled || !userInfo.execute
+                "
+                @click="
+                  $emit('button', { method: 'teardown', suite, group, options })
                 "
               >
                 Teardown
@@ -221,8 +220,8 @@
         <v-col cols="4">
           <v-row no-gutters>
             <v-col cols="6">
-              <v-tooltip location="top">
-                <template v-slot:activator="{ props }">
+              <v-tooltip :open-delay="600" location="top">
+                <template #activator="{ props }">
                   <div v-bind="props">
                     <v-checkbox
                       v-model="options"
@@ -233,20 +232,20 @@
                     />
                   </div>
                 </template>
-                <span
-                  >Checked stops additional script execution when an error is
+                <span>
+                  Checked stops additional script execution when an error is
                   encountered<br />
-                  Unchecked allows additional scripts to execute</span
-                >
+                  Unchecked allows additional scripts to execute
+                </span>
               </v-tooltip>
             </v-col>
             <v-col cols="6">
-              <v-tooltip location="top">
-                <template v-slot:activator="{ props }">
+              <v-tooltip :open-delay="600" location="top">
+                <template #activator="{ props }">
                   <div v-bind="props">
                     <v-checkbox
-                      :disabled="!options.includes('loop')"
                       v-model="options"
+                      :disabled="!options.includes('loop')"
                       label="Break Loop on Error"
                       value="breakLoopOnError"
                       hide-details
@@ -254,12 +253,11 @@
                     />
                   </div>
                 </template>
-                <span
-                  >Checked breaks the loop option when an error is
-                  encountered<br />
+                <span>
+                  Checked breaks the loop option when an error is encountered<br />
                   Unchecked allows the loop to run continuously<br />
-                  Note: Abort after Error still breaks the loop</span
-                >
+                  Note: Abort after Error still breaks the loop
+                </span>
               </v-tooltip>
             </v-col>
           </v-row>
@@ -268,17 +266,17 @@
           <v-row no-gutters justify="end">
             <v-col cols="5">
               <v-select
+                v-model="script"
                 label="Script:"
                 class="mb-2 mr-2"
                 hide-details
                 density="compact"
                 variant="outlined"
-                @update:model-value="scriptChanged"
                 :items="scriptNames"
                 item-title="title"
                 item-value="value"
-                v-model="script"
                 data-test="select-script"
+                @update:model-value="scriptChanged"
               />
             </v-col>
             <v-col cols="auto">
@@ -286,6 +284,7 @@
                 color="primary"
                 class="mr-2"
                 :disabled="disableButtons || !userInfo.execute"
+                data-test="start-script"
                 @click="
                   $emit('button', {
                     method: 'start',
@@ -295,7 +294,6 @@
                     options,
                   })
                 "
-                data-test="start-script"
               >
                 Start
               </v-btn>
@@ -399,11 +397,6 @@ export default {
       })
     },
   },
-  created() {
-    this.userInfo = JSON.parse(localStorage['script_runner__userinfo'])
-    this.initSuites()
-    this.$emit('loaded')
-  },
   // Watch the suiteMap so we can recreate the suites and set the initial value
   watch: {
     suiteMap: {
@@ -412,6 +405,11 @@ export default {
       },
       deep: true, // Deep watcher because suiteMap is a nested Object
     },
+  },
+  created() {
+    this.userInfo = JSON.parse(localStorage['script_runner__userinfo'])
+    this.initSuites()
+    this.$emit('loaded')
   },
   methods: {
     updateSuiteMap() {

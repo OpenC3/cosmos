@@ -28,8 +28,8 @@
           block
           color="primary"
           data-test="toolAdd"
-          @click="add()"
           :disabled="!name || !url || !icon"
+          @click="add()"
         >
           Add
           <v-icon end theme="dark">{{ icon }}</v-icon>
@@ -50,7 +50,7 @@
       can't be reordered. A browser refresh is required to see the new tool
       order.</span
     >
-    <v-list class="list" data-test="toolList" id="toollist">
+    <v-list id="toollist" class="list" data-test="toolList">
       <div v-for="(tool, index) in tools" :key="tool">
         <v-list-item
           :class="{ filter: tool === 'Base' || tool === 'Admin' }"
@@ -58,31 +58,17 @@
         >
           <v-list-item-title>{{ tool }}</v-list-item-title>
 
-          <template v-slot:append>
-            <v-tooltip location="top">
-              <template v-slot:activator="{ props }">
-                <v-icon v-bind="props" @click="showTool(tool)">
-                  mdi-eye
-                </v-icon>
-              </template>
-              <span>Edit Tool</span>
-            </v-tooltip>
-            <v-tooltip location="top">
-              <template v-slot:activator="{ props }">
-                <v-icon v-bind="props" @click="deleteTool(tool)">
-                  mdi-delete
-                </v-icon>
-              </template>
-              <span>Delete Tool</span>
-            </v-tooltip>
+          <template #append>
+            <v-btn icon="mdi-eye" variant="text" @click="showTool(tool)" />
+            <v-btn icon="mdi-delete" variant="text" @click="deleteTool(tool)" />
           </template>
         </v-list-item>
         <v-divider v-if="index < tools.length - 1" :key="index" />
       </div>
     </v-list>
     <output-dialog
-      v-model="showDialog"
       v-if="showDialog"
+      v-model="showDialog"
       :content="jsonContent"
       type="Tool"
       :name="dialogTitle"

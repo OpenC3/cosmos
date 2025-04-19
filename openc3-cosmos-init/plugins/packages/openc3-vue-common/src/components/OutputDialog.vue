@@ -28,20 +28,17 @@
         <span v-text="title" />
         <v-spacer />
         <div class="mx-2">
-          <v-tooltip location="top">
-            <template v-slot:activator="{ props }">
-              <div v-bind="props">
-                <v-icon data-test="downloadIcon" @click="download">
-                  mdi-download
-                </v-icon>
-              </div>
-            </template>
-            <span> Download </span>
-          </v-tooltip>
+          <v-btn
+            icon="mdi-download"
+            variant="text"
+            density="compact"
+            data-test="downloadIcon"
+            @click="download"
+          />
         </div>
       </v-toolbar>
       <v-card-text>
-        <pre class="editor" ref="editor"></pre>
+        <pre ref="editor" class="editor"></pre>
       </v-card-text>
       <v-card-actions class="pr-6 pb-4 pt-0">
         <v-spacer />
@@ -55,6 +52,7 @@
 import { AceEditorModes } from './ace'
 
 export default {
+  mixins: [AceEditorModes],
   props: {
     content: {
       type: String,
@@ -68,12 +66,24 @@ export default {
       required: false,
     },
   },
-  mixins: [AceEditorModes],
   data() {
     return {
       editor: null,
       mode: null,
     }
+  },
+  computed: {
+    show: {
+      get() {
+        return this.modelValue
+      },
+      set(value) {
+        this.$emit('update:modelValue', value)
+      },
+    },
+    title: function () {
+      return `${this.type}: ${this.name}`
+    },
   },
   mounted() {
     this.editor = ace.edit(this.$refs.editor)
@@ -118,19 +128,6 @@ export default {
       this.editor.destroy()
     }
   },
-  computed: {
-    show: {
-      get() {
-        return this.modelValue
-      },
-      set(value) {
-        this.$emit('update:modelValue', value)
-      },
-    },
-    title: function () {
-      return `${this.type}: ${this.name}`
-    },
-  },
   methods: {
     close: function () {
       this.show = !this.show
@@ -159,6 +156,7 @@ export default {
   position: relative;
   font-size: 16px;
 }
+
 .v-textarea :deep(textarea) {
   padding: 5px;
 }

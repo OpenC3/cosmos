@@ -24,44 +24,30 @@
   <v-card>
     <v-card-title class="d-flex align-center justify-content-space-between">
       <div class="d-flex align-baseline">
-        <v-tooltip location="top">
-          <template v-slot:activator="{ props }">
-            <div v-bind="props">
-              <v-btn
-                icon="mdi-download"
-                variant="text"
-                size="small"
-                class="mr-2"
-                data-test="download-log"
-                @click="downloadLog"
-              />
-            </div>
-          </template>
-          <span> Download Log </span>
-        </v-tooltip>
+        <v-btn
+          icon="mdi-download"
+          variant="text"
+          size="small"
+          class="mr-2"
+          data-test="download-log"
+          @click="downloadLog"
+        />
         <span> Log Messages </span>
-        <v-tooltip location="top">
-          <template v-slot:activator="{ props }">
-            <div v-bind="props">
-              <v-btn
-                :icon="buttonIcon"
-                variant="text"
-                data-test="pause"
-                @click="pause"
-              />
-            </div>
-          </template>
-          <span> {{ buttonLabel }} </span>
-        </v-tooltip>
+        <v-btn
+          :icon="buttonIcon"
+          variant="text"
+          data-test="pause"
+          @click="pause"
+        />
       </div>
       <v-spacer />
       <v-select
+        v-model="logLevel"
         label="Filter by log level"
         hide-details
         variant="outlined"
         density="compact"
         :items="logLevels"
-        v-model="logLevel"
         class="mr-2"
         style="max-width: 150px"
         data-test="log-messages-level"
@@ -80,20 +66,13 @@
         class="search"
         data-test="search-log-messages"
       />
-      <v-tooltip location="top">
-        <template v-slot:activator="{ props }">
-          <div v-bind="props">
-            <v-btn
-              icon="mdi-delete"
-              variant="text"
-              class="ml-2"
-              data-test="clear-log"
-              @click="clearLog"
-            />
-          </div>
-        </template>
-        <span> Clear Log </span>
-      </v-tooltip>
+      <v-btn
+        icon="mdi-delete-sweep"
+        variant="text"
+        class="ml-2"
+        data-test="clear-log"
+        @click="clearLog"
+      />
     </v-card-title>
     <v-data-table
       :headers="headers"
@@ -107,18 +86,18 @@
       hover
       data-test="log-messages"
     >
-      <template v-slot:item.timestamp="{ item }">
+      <template #item.timestamp="{ item }">
         <time :title="item.timestamp" :datetime="item.timestamp">
           {{ item.timestamp }}
         </time>
       </template>
-      <template v-slot:item.level="{ item }">
+      <template #item.level="{ item }">
         <span :style="'display: inline-flex; color:' + getColor(item.level)">
           <rux-status class="mr-1" :status="getStatus(item.level)"></rux-status>
           {{ item.level }}</span
         >
       </template>
-      <template v-slot:item.message="{ item }">
+      <template #item.message="{ item }">
         <div style="white-space: pre-wrap">{{ item.message }}</div>
       </template>
     </v-data-table>
@@ -132,6 +111,7 @@ import { AstroStatusColors, UnknownToAstroStatus } from '@/icons'
 import { TimeFilters } from '@/util'
 
 export default {
+  mixins: [TimeFilters],
   props: {
     historyCount: {
       type: Number,
@@ -142,7 +122,6 @@ export default {
       default: 'local',
     },
   },
-  mixins: [TimeFilters],
   data() {
     return {
       AstroStatusColors,
@@ -163,13 +142,6 @@ export default {
     }
   },
   computed: {
-    buttonLabel: function () {
-      if (this.paused) {
-        return 'Resume'
-      } else {
-        return 'Pause'
-      }
-    },
     buttonIcon: function () {
       if (this.paused) {
         return 'mdi-play'

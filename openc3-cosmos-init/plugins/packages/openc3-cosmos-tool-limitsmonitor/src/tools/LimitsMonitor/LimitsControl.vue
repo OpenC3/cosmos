@@ -35,7 +35,7 @@
           style="margin-right: 10px; max-width: 280px"
           data-test="overall-state"
         >
-          <template v-slot:prepend-inner v-if="astroStatus">
+          <template v-if="astroStatus" #prepend-inner>
             <rux-status :status="astroStatus" />
           </template>
         </v-text-field>
@@ -65,6 +65,7 @@
       </v-row>
 
       <v-data-table
+        v-model:items-per-page="itemsPerPage"
         :headers="headers"
         :items="items"
         :search="search"
@@ -73,20 +74,19 @@
         data-test="limits-table"
         class="limits-table"
         density="compact"
-        v-model:items-per-page="itemsPerPage"
       >
-        <template v-slot:item.timestamp="{ item }">
+        <template #item.timestamp="{ item }">
           {{ item.timestamp }}
         </template>
-        <template v-slot:item.value="{ item }">
+        <template #item.value="{ item }">
           <valuelimitsbar-widget
             v-if="item.limits"
             :parameters="item.parameters"
             :settings="valueLimitsBarWidgetSettings"
             :screen-values="screenValues"
             :screen-time-zone="timeZone"
-            v-on:add-item="addItem"
-            v-on:delete-item="deleteItem"
+            @add-item="addItem"
+            @delete-item="deleteItem"
           />
           <value-widget
             v-else
@@ -94,13 +94,13 @@
             :settings="valueWidgetSettings"
             :screen-values="screenValues"
             :screen-time-zone="timeZone"
-            v-on:add-item="addItem"
-            v-on:delete-item="deleteItem"
+            @add-item="addItem"
+            @delete-item="deleteItem"
           />
         </template>
-        <template v-slot:item.actions="{ item }">
+        <template #item.actions="{ item }">
           <v-menu>
-            <template v-slot:activator="{ props: menuProps }">
+            <template #activator="{ props: menuProps }">
               <v-btn
                 icon="mdi-dots-horizontal"
                 variant="text"
@@ -110,19 +110,19 @@
             </template>
             <v-list>
               <v-list-item @click="ignorePacket(item.key)">
-                <template v-slot:prepend>
+                <template #prepend>
                   <v-icon>mdi-close-circle-multiple</v-icon>
                 </template>
                 <v-list-item-title>Ignore Entire Packet</v-list-item-title>
               </v-list-item>
               <v-list-item @click="ignoreItem(item.key)">
-                <template v-slot:prepend>
+                <template #prepend>
                   <v-icon>mdi-close-circle</v-icon>
                 </template>
                 <v-list-item-title>Ignore Item</v-list-item-title>
               </v-list-item>
               <v-list-item @click="removeItem(item.key)">
-                <template v-slot:prepend>
+                <template #prepend>
                   <v-icon>mdi-eye-off</v-icon>
                 </template>
                 <v-list-item-title>Temporarily Hide Item</v-list-item-title>
@@ -130,7 +130,7 @@
             </v-list>
           </v-menu>
         </template>
-        <template v-slot:item.limits="{ item }">
+        <template #item.limits="{ item }">
           <v-spacer></v-spacer>
         </template>
       </v-data-table>
@@ -153,11 +153,11 @@
                 <span class="font-weight-black"> {{ item }} </span>
                 <v-spacer />
                 <v-btn
-                  @click="restoreItem(index)"
                   icon="mdi-delete"
                   density="compact"
                   variant="text"
                   :data-test="`remove-ignore-${index}`"
+                  @click="restoreItem(index)"
                 />
               </v-row>
               <v-divider
@@ -180,16 +180,14 @@
 <script>
 import { Cable, OpenC3Api } from '@openc3/js-common/services'
 import { TimeFilters } from '@openc3/vue-common/util'
-import {
-  ValueWidget,
-  ValuelimitsbarWidget,
-} from '@openc3/vue-common/widgets'
+import { ValueWidget, ValuelimitsbarWidget } from '@openc3/vue-common/widgets'
 
 export default {
   components: {
     ValueWidget,
     ValuelimitsbarWidget,
   },
+  mixins: [TimeFilters],
   props: {
     modelValue: {
       type: Array,
@@ -200,7 +198,6 @@ export default {
       default: 'local',
     },
   },
-  mixins: [TimeFilters],
   data() {
     return {
       api: null,
@@ -222,11 +219,12 @@ export default {
           key: 'timestamp',
           width: '130px',
           sortable: true,
-          nowrap: true },
+          nowrap: true,
+        },
         {
           title: 'Item',
           key: 'item',
-          value: item => item.parameters[2],
+          value: (item) => item.parameters[2],
           sortable: true,
           minWidth: '100px',
           width: '200px',
@@ -236,19 +234,17 @@ export default {
           title: 'Value',
           key: 'value',
           width: '380px',
-          sortable: false
+          sortable: false,
         },
         { title: 'Controls', key: 'actions', width: '80px', sortable: false },
-        { title: '', key: 'limits', sortable: false }
+        { title: '', key: 'limits', sortable: false },
       ],
       valueLimitsBarWidgetSettings: [
         ['WIDTH', '380px'], // Total of two subwidgets
         ['0', 'WIDTH', '200px'],
         ['1', 'WIDTH', '180px'],
       ],
-      valueWidgetSettings: [
-        ['WIDTH', '200px'],
-      ],
+      valueWidgetSettings: [['WIDTH', '200px']],
     }
   },
   computed: {
@@ -571,6 +567,7 @@ export default {
 .footer {
   padding-top: 5px;
 }
+
 .v-input {
   background-color: var(--color-background-base-default);
 }

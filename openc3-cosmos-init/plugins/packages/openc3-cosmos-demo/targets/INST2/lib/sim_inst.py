@@ -115,11 +115,11 @@ class SimInst(SimulatedTarget):
         packet.write("value3", 2)
         packet.write("value4", 1)
         packet.write("value5", 0)
-        packet.write('P_2.2,2', BinaryAccessor.MIN_INT64)
-        packet.write('P-3+3=3', BinaryAccessor.MAX_INT64)
-        packet.write('P4!@#$%^&*?', 0)
-        packet.write('P</5|\>', 1740684371613049856)
-        packet.write('P(:6;)', BinaryAccessor.MAX_UINT64)
+        packet.write("P_2.2,2", BinaryAccessor.MIN_INT64)
+        packet.write("P-3+3=3", BinaryAccessor.MAX_INT64)
+        packet.write("P4!@#$%^&*?", 0)
+        packet.write("P</5|\\>", 1740684371613049856)
+        packet.write("P(:6;)", BinaryAccessor.MAX_UINT64)
 
         packet = self.tlm_packets["IMAGE"]
         packet.write("CcsdsSeqFlags", "NOGROUP")
@@ -188,7 +188,7 @@ class SimInst(SimulatedTarget):
                 params_packet.write("value3", packet.read("value3"))
                 params_packet.write("value4", packet.read("value4"))
                 params_packet.write("value5", packet.read("value5"))
-                params_packet.write('P4!@#$%^&*?', packet.read('bigint'))
+                params_packet.write("P4!@#$%^&*?", packet.read("bigint"))
             case "ASCIICMD":
                 hs_packet.write("cmd_acpt_cnt", hs_packet.read("cmd_acpt_cnt") + 1)
                 hs_packet.write("asciicmd", packet.read("string"))

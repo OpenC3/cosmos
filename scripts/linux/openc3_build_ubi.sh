@@ -70,7 +70,7 @@ cd openc3-minio
 docker build \
   --network host \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource \
-  --build-arg OPENC3_MINIO_RELEASE=RELEASE.2025-01-20T14-49-07Z \
+  --build-arg OPENC3_MINIO_RELEASE=RELEASE.2025-04-03T14-56-28Z \
   --platform linux/amd64 \
   -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-minio-ubi:${OPENC3_TAG}" \
   .
@@ -82,7 +82,7 @@ docker build \
   --network host \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource/redis \
   --build-arg OPENC3_REDIS_IMAGE=redis7 \
-  --build-arg OPENC3_REDIS_VERSION="7.2.3" \
+  --build-arg OPENC3_REDIS_VERSION="7.2.5" \
   --platform linux/amd64 \
   -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis-ubi:${OPENC3_TAG}" \
   .

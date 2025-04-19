@@ -6,7 +6,7 @@ ARG OPENC3_NODE_IMAGE=openc3-node
 ARG OPENC3_BASE_IMAGE=openc3-base
 # Update in openc3_build_ubi.sh when changing the release version
 # and build_multi_arch.sh
-ARG OPENC3_MC_RELEASE=RELEASE.2025-03-12T17-29-24Z
+ARG OPENC3_MC_RELEASE=RELEASE.2025-04-08T15-39-49Z
 
 FROM ${OPENC3_DEPENDENCY_REGISTRY}/minio/mc:${OPENC3_MC_RELEASE} AS minio-mc
 FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_NODE_IMAGE}:${OPENC3_TAG} AS openc3-frontend-tmp
@@ -39,7 +39,11 @@ COPY ./plugins/packages/openc3-cosmos-demo/*.json packages/openc3-cosmos-demo/
 ARG NPM_URL=https://registry.npmjs.org
 RUN yarn config set registry $NPM_URL && yarn --network-timeout 600000
 
-RUN yarn build:common
+# yarn build hangs for some reason on vue tools in UBI
+# So we use npm run build instead
+RUN cd packages/openc3-cosmos-ace-diff && npm run build
+RUN cd packages/openc3-js-common && npm run build
+RUN cd packages/openc3-vue-common && npm run build
 
 COPY ./plugins/docker-package-build.sh ./plugins/eslint.config.mjs ./plugins/.nycrc ./
 RUN chmod +x ./docker-package-build.sh

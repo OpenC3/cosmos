@@ -34,6 +34,7 @@ module OpenC3
     end
 
     class ScpiInterfaceThread < InterfaceThread
+      attr_reader :index
       def initialize(interface)
         super(interface)
         @index = 0
@@ -63,26 +64,29 @@ module OpenC3
     def start
       @interface_thread = ScpiInterfaceThread.new(@target_interface)
       @interface_thread.start
+      @state = 'RUNNING'
     end
 
-    def stop
+    def shutdown
       @interface_thread.stop if @interface_thread
+      super() # Sets the @state to 'STOPPED'
     end
 
     def run
       Logger.level = Logger::INFO
       Thread.abort_on_exception = true
 
+      # This state probably won't even display because we immediately
+      # transition to RUNNING but will if there is a failure in start
       @state = 'STARTING'
       start()
-      @state = 'RUNNING'
       while true
         break if @cancel_thread
+        @count = @interface_thread.index
         sleep @sleep_period
       end
       @state = 'STOPPING'
-      stop()
-      @state = 'STOPPED'
+      shutdown()
     end
   end
 end

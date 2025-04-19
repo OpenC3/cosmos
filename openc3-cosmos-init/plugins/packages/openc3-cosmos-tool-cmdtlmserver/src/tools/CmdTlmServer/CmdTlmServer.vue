@@ -163,16 +163,20 @@ export default {
 .v-expansion-panel-text :deep(.v-expansion-panel-text__wrapper) {
   padding: 0px;
 }
+
 .v-list :deep(.v-label) {
   margin-left: 5px;
 }
+
 .v-list-item__icon {
   /* For some reason the default margin-right is huge */
   margin-right: 15px !important;
 }
+
 .v-list-item__title {
   color: white;
 }
+
 .v-expansion-panel-title {
   min-height: initial;
   padding: 0px;

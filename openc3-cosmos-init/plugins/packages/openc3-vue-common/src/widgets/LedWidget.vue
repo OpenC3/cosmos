@@ -22,8 +22,8 @@
 
 <template>
   <div>
-    <v-tooltip location="top">
-      <template v-slot:activator="{ props }">
+    <v-tooltip :open-delay="600" location="top">
+      <template #activator="{ props }">
         <div
           :class="getClass"
           :style="[cssProps, computedStyle]"
@@ -47,10 +47,10 @@
     </v-menu>
 
     <details-dialog
+      v-model="viewDetails"
       :target-name="parameters[0]"
       :packet-name="parameters[1]"
       :item-name="parameters[2]"
-      v-model="viewDetails"
     />
   </div>
 </template>

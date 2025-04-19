@@ -89,10 +89,12 @@ export default {
   float: right;
   margin: 15px;
 }
+
 .cosmos {
   text-align: center;
   font-size: 18pt;
 }
+
 .reason {
   font-weight: bold;
 }
