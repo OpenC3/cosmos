@@ -69,6 +69,7 @@
                   v-bind="props"
                   icon="mdi-eye"
                   variant="text"
+                  aria-label="Show Output"
                   @click="showOutput(process)"
                 />
               </template>
@@ -89,6 +90,7 @@
             <v-btn
               icon="mdi-delete"
               variant="text"
+              aria-label="Delete Ruby Gem"
               @click="deletePackage(gem)"
             />
           </template>
@@ -104,6 +106,7 @@
             <v-btn
               icon="mdi-delete"
               variant="text"
+              aria-label="Delete Python Package"
               @click="deletePackage(pkg)"
             />
           </template>

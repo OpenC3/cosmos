@@ -40,14 +40,14 @@
       <v-col cols="8" class="mt-1">
         <v-slider
           v-model="pauseOffset"
-          v-on:mousedown="pause"
-          @click:prepend="stepBackward"
-          @click:append="stepForward"
           prepend-icon="mdi-step-backward"
           append-icon="mdi-step-forward"
           :min="1 - currentConfig.history"
           :max="0"
           hide-details
+          @mousedown="pause"
+          @click:prepend="stepBackward"
+          @click:append="stepForward"
         />
       </v-col>
     </v-row>
@@ -69,17 +69,16 @@
           />
           <div class="floating-buttons">
             <v-menu :close-on-content-click="false" :min-width="700">
-              <template v-slot:activator="{ props }">
+              <template #activator="{ props }">
                 <v-btn
                   class="ml-2"
                   color="secondary"
                   v-bind="props"
-                  icon
+                  icon="astro:settings"
                   size="small"
+                  aria-label="Settings"
                   data-test="history-component-open-settings"
-                >
-                  <v-icon>astro:settings</v-icon>
-                </v-btn>
+                />
               </template>
               <v-card>
                 <v-card-title data-test="display-settings-card">
@@ -168,25 +167,23 @@
             </v-menu>
             <v-btn
               class="ml-2"
-              v-on:click="download"
               color="secondary"
-              icon
+              icon="mdi-file-download"
               size="small"
+              aria-label="Download"
               data-test="history-component-download"
-            >
-              <v-icon>mdi-file-download</v-icon>
-            </v-btn>
+              @click="download"
+            />
             <v-btn
               class="ml-2"
               :class="{ pulse: paused }"
-              v-on:click="togglePlayPause"
               color="primary"
-              icon
+              :icon="paused ? 'mdi-play' : 'mdi-pause'"
+              size="large"
+              :aria-label="paused ? 'Play' : 'Pause'"
               data-test="history-component-play-pause"
-            >
-              <v-icon size="large" v-if="paused">mdi-play</v-icon>
-              <v-icon size="large" v-else>mdi-pause</v-icon>
-            </v-btn>
+              @click="togglePlayPause"
+            />
           </div>
         </div>
       </v-col>
@@ -200,8 +197,8 @@ import { format } from 'date-fns'
 import DataViewerComponent from './DataViewerComponent'
 
 export default {
-  props: ['calculatePacketText'],
   mixins: [DataViewerComponent],
+  props: ['calculatePacketText'],
   data: function () {
     return {
       history: [],

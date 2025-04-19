@@ -59,8 +59,18 @@
           <v-list-item-title>{{ tool }}</v-list-item-title>
 
           <template #append>
-            <v-btn icon="mdi-eye" variant="text" @click="showTool(tool)" />
-            <v-btn icon="mdi-delete" variant="text" @click="deleteTool(tool)" />
+            <v-btn
+              icon="mdi-eye"
+              variant="text"
+              aria-label="View Tool"
+              @click="showTool(tool)"
+            />
+            <v-btn
+              icon="mdi-delete"
+              variant="text"
+              aria-label="Delete Tool"
+              @click="deleteTool(tool)"
+            />
           </template>
         </v-list-item>
         <v-divider v-if="index < tools.length - 1" :key="index" />

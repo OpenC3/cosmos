@@ -30,6 +30,7 @@
             icon="mdi-download"
             variant="text"
             data-test="download-log"
+            aria-label="Download Log"
             @click="downloadLog"
           />
           Script Messages
@@ -63,6 +64,7 @@
             icon="mdi-delete-sweep"
             variant="text"
             data-test="clear-log"
+            aria-label="Clear Log"
             @click="clearLog"
           />
         </v-row>
