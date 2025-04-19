@@ -45,7 +45,6 @@ module OpenC3
     end
 
     def reset
-      puts "PreidentifiedProtocol: RESET *********************"
       super()
       @reduction_state = :START
       @packet_log_reader = PacketLogReader.new
@@ -56,7 +55,10 @@ module OpenC3
       packet.received_time = @read_received_time
       packet.target_name = @read_target_name
       packet.packet_name = @read_packet_name
-      packet.stored = @read_stored
+      # Only set the stored flag if it was not already set by the interface
+      # This is important because FileInterface sets the stored flag and we
+      # want to preserve that
+      packet.stored = @read_stored unless packet.stored
       return packet
     end
 
@@ -166,17 +168,6 @@ module OpenC3
 
     # Called by the BurstProtocol in read_data to process the data
     def reduce_to_single_packet
-      # File mode is special in that we're reading from a file and need to handle the file header
-      if @file and @extra and @extra[:filename]
-        # Check to see if we have built up more than the initial file size
-        # this isn't the full files size, just the size of the data we have so far
-        # If so it means we're staring a new file so we should replace our @data with the new file contents
-        if @data.length > @extra[:size]
-          @data.replace(@data[@extra[:size]..-1])
-          @reduction_state = :START
-        end
-      end
-
       # Discard sync pattern if present
       if @sync_pattern
         if @reduction_state == :START
@@ -215,10 +206,10 @@ module OpenC3
           else
             raise "PreidentifiedProtocol unsupported version: #{@version}"
           end
-          @reduction_state = :PACKETS
+          @reduction_state = :HEADER_REMOVED
         end
       else
-        @reduction_state = :PACKETS
+        @reduction_state = :HEADER_REMOVED
       end
 
       case @version
@@ -243,15 +234,15 @@ module OpenC3
         @packet_log_reader.open(filename, string_io: StringIO.new(@data, 'rb'), file_header: @file)
       end
       packet = @packet_log_reader.read()
-      if packet
+      if packet == -1
+        return :STOP
+      else
         # Set the data returned in read_packet()
         @read_target_name = packet.target_name
         @read_packet_name = packet.packet_name
         @read_received_time = packet.received_time
         @read_stored = packet.stored
         return packet.buffer, packet.extra
-      else
-        return :STOP
       end
     end
 
@@ -259,15 +250,17 @@ module OpenC3
       # Read and remove flags
       return :STOP if @data.length < 1
 
-      flags = @data[0].unpack('C')[0] # byte
-      @data.replace(@data[1..-1])
-      @read_stored = false
-      @read_stored = true if (flags & COSMOS4_STORED_FLAG_MASK) != 0
-      extra = nil
-      if (flags & COSMOS4_EXTRA_FLAG_MASK) != 0
-        @reduction_state = :NEED_EXTRA
-      else
-        @reduction_state = :FLAGS_REMOVED
+      if @reduction_state == :HEADER_REMOVED
+        flags = @data[0].unpack('C')[0] # byte
+        @data.replace(@data[1..-1])
+        @read_stored = false
+        @read_stored = true if (flags & COSMOS4_STORED_FLAG_MASK) != 0
+        extra = nil
+        if (flags & COSMOS4_EXTRA_FLAG_MASK) != 0
+          @reduction_state = :NEED_EXTRA
+        else
+          @reduction_state = :FLAGS_REMOVED
+        end
       end
 
       if @reduction_state == :NEED_EXTRA
@@ -290,7 +283,6 @@ module OpenC3
         @reduction_state = :TIME_REMOVED
       end
 
-      puts "4@reduction_state #{@reduction_state} data length #{@data.length} @data #{@data.simple_formatted}"
       if @reduction_state == :TIME_REMOVED
         # Read and remove the target name
         @read_target_name = read_length_field_followed_by_string(1)
@@ -299,7 +291,6 @@ module OpenC3
         @reduction_state = :TARGET_NAME_REMOVED
       end
 
-      puts "5@reduction_state #{@reduction_state} data length #{@data.length} @data #{@data.simple_formatted}"
       if @reduction_state == :TARGET_NAME_REMOVED
         # Read and remove the packet name
         @read_packet_name = read_length_field_followed_by_string(1)
@@ -308,13 +299,12 @@ module OpenC3
         @reduction_state = :PACKET_NAME_REMOVED
       end
 
-      puts "6@reduction_state #{@reduction_state} data length #{@data.length} @data #{@data.simple_formatted}"
       if @reduction_state == :PACKET_NAME_REMOVED
         # Read packet data and return
         packet_data = read_length_field_followed_by_string(4)
         return :STOP if packet_data == :STOP
 
-        @reduction_state = :PACKETS
+        @reduction_state = :HEADER_REMOVED
         return packet_data, extra
       end
 

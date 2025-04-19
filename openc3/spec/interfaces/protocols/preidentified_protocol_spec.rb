@@ -263,8 +263,7 @@ module OpenC3
               def finish_file
               end
             end
-            # TODO: Test the worst case which is to give the protocol 1 byte at a time
-            @interface = FileInterface.new(nil, '/path', nil, 65536, stored)
+            @interface = FileInterface.new(nil, '/path', nil, 1, stored)
             @interface.instance_variable_set(:@connected, true)
             @interface.add_protocol(PreidentifiedProtocol, [nil, nil, 4, true], :READ_WRITE)
 
@@ -304,7 +303,7 @@ module OpenC3
             plw = PacketLogWriter.new(@log_dir, 'test')
             plw.write(:RAW_PACKET, :TLM, 'TGT1', 'PKT1', pkt1_time, true, "\x01\x02", nil, '0-0')
             pkt2_time = pkt1_time + 1_000_000_000
-            plw.write(:RAW_PACKET, :TLM, 'TGT1', 'PKT2', pkt2_time, false, "\x03\x04", nil, '0-0', extra: {"vcid" => 2 })
+            plw.write(:RAW_PACKET, :TLM, 'TGT2', 'PKT2', pkt2_time, false, "\x03\x04", nil, '0-0', extra: {"vcid" => 2 })
             plw.shutdown
             sleep 0.1 # Allow for shutdown thread "copy" to S3
             $request = 0
@@ -333,7 +332,7 @@ module OpenC3
             # Test the worst case which is to give the protocol 1 byte at a time
             @interface = FileInterface.new(nil, '/path', nil, 1, stored)
             @interface.instance_variable_set(:@connected, true)
-            @interface.add_protocol(PreidentifiedProtocol, [nil, nil, 5, true], :READ_WRITE)
+            @interface.add_protocol(PreidentifiedProtocol, [nil, nil, 6, true], :READ_WRITE)
 
             packet = @interface.read
             expect(packet.target_name).to eql 'TGT1'
@@ -352,7 +351,7 @@ module OpenC3
             expect(packet.defined?).to be false
             expect(packet.buffer).to eql "\x03\x04"
             expect(packet.received_time.to_nsec_from_epoch).to eql pkt2_time
-            expect(packet.stored).to be false
+            expect(packet.stored).to be stored
             expect(packet.extra).to be nil
 
             packet = @interface.read
@@ -372,7 +371,7 @@ module OpenC3
             expect(packet.defined?).to be false
             expect(packet.buffer).to eql "\x03\x04"
             expect(packet.received_time.to_nsec_from_epoch).to eql pkt2_time
-            expect(packet.stored).to be false
+            expect(packet.stored).to be stored
             expect(packet.extra).to be nil
 
             # The next file returned by get_next_telemetry_file doesn't exist so:

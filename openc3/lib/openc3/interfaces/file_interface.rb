@@ -109,14 +109,11 @@ module OpenC3
       while true
         if @file
           # Read more data from existing file
-          if @file_read_size > 0
-            data = @file.read(@file_read_size)
-          else
-            data = @file.read
-          end
+          data = @file.read(@file_read_size)
           if data and data.length > 0
             read_interface_base(data, nil)
-            return data, { filename: @filename, size: data.length }
+            # Return the filename as extra so protocols can detect when we've switched files
+            return data, { filename: @filename }
           else
             finish_file()
             if @throttle
@@ -128,7 +125,6 @@ module OpenC3
         # Find the next file to read
         @filename = get_next_telemetry_file()
         if @filename
-          puts "FileInterface: Processing file #{@filename}"
           if File.extname(@filename) == ".gz"
             @file = Zlib::GzipReader.open(@filename)
           else
