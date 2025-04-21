@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -91,4 +91,4 @@ class TestLogger(unittest.TestCase):
         self.verify_output(Logger.FATAL, "fatal")
 
     def test_help(self):
-        help(Logger)
+        self.assertIsNone(help(Logger))
