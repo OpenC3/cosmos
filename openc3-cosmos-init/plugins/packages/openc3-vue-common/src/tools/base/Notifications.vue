@@ -46,14 +46,21 @@
         <v-card-title class="d-flex align-center justify-content-space-between">
           <span> Notifications </span>
           <v-spacer />
-          <v-btn
-            class="ml-1"
-            icon="mdi-notification-clear-all "
-            variant="text"
-            data-test="clear-notifications"
-            aria-label="Clear All Notifications"
-            @click="clearNotifications"
-          />
+          <v-tooltip :open-delay="600" location="top">
+            <template #activator="{ props }">
+              <div v-bind="props">
+                <v-btn
+                  class="ml-1"
+                  icon="mdi-notification-clear-all "
+                  variant="text"
+                  data-test="clear-notifications"
+                  aria-label="Dismiss All Notifications"
+                  @click="clearNotifications"
+                  />
+              </div>
+            </template>
+            <span> Dismiss All Notifications </span>
+          </v-tooltip>
           <v-btn
             icon="astro:settings"
             variant="text"
