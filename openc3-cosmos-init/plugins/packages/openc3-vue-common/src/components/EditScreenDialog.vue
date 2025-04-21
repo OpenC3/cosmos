@@ -1,5 +1,5 @@
 <!--
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -205,7 +205,7 @@ export default {
     this.editor.setHighlightActiveLine(false)
     this.editor.setValue(this.definition)
     this.editor.clearSelection()
-    AceEditorUtils.applyVimModeIfEnabled(this.editor)
+    AceEditorUtils.applyVimModeIfEnabled(this.editor, {})
     this.editor.focus()
   },
   beforeUnmount() {

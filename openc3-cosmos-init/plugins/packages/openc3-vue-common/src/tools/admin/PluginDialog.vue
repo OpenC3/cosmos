@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -21,7 +21,7 @@
 -->
 
 <template>
-  <v-dialog persistent v-model="show" width="80vw">
+  <v-dialog v-model="show" persistent width="80vw">
     <v-card>
       <v-card-text>
         <v-card-title>{{ pluginName }} </v-card-title>
@@ -48,10 +48,10 @@
                   <div v-for="(value, name) in localVariables" :key="name">
                     <v-col style="width: 220px">
                       <v-text-field
+                        v-model="localVariables[name]"
                         clearable
                         type="text"
                         :label="name"
-                        v-model="localVariables[name]"
                       />
                     </v-col>
                   </div>
@@ -116,12 +116,12 @@
             <v-spacer />
             <v-btn
               variant="outlined"
-              @click.prevent="close"
               data-test="edit-cancel"
+              @click.prevent="close"
             >
               Cancel
             </v-btn>
-            <v-btn variant="flat" @click="submit" data-test="edit-submit">
+            <v-btn variant="flat" data-test="edit-submit" @click="submit">
               Install
             </v-btn>
           </v-card-actions>
@@ -175,54 +175,6 @@ export default {
       menuY: 0,
     }
   },
-  mounted() {
-    const pluginMode = this.buildPluginMode()
-    if (this.existingPluginTxt === null) {
-      this.editor = ace.edit(this.$refs.editor)
-      this.editor.setTheme('ace/theme/twilight')
-      this.editor.session.setMode(new pluginMode())
-      this.editor.session.setTabSize(2)
-      this.editor.session.setUseWrapMode(true)
-      this.editor.$blockScrolling = Infinity
-      this.editor.setHighlightActiveLine(false)
-      this.editor.setValue(this.localPluginTxt)
-      this.editor.clearSelection()
-      AceEditorUtils.applyVimModeIfEnabled(this.editor)
-      this.editor.focus()
-    } else {
-      this.tab = 1 // Show the diff right off the bat
-      this.differ = new AceDiff({
-        element: this.$refs.editor,
-        mode: new pluginMode(),
-        theme: 'ace/theme/twilight',
-        left: {
-          content: this.localExistingPluginTxt,
-          copyLinkEnabled: false,
-        },
-        right: {
-          content: this.localPluginTxt,
-          editable: false,
-        },
-      })
-      // Match our existing editors
-      this.differ.getEditors().left.setFontSize(16)
-      this.differ.getEditors().right.setFontSize(16)
-      
-      // Apply vim mode if enabled to both editor instances
-      AceEditorUtils.applyVimModeIfEnabled(this.differ.getEditors().left)
-      AceEditorUtils.applyVimModeIfEnabled(this.differ.getEditors().right)
-      
-      this.curDiff = -1 // so the first will be 0
-    }
-  },
-  beforeUnmount() {
-    if (this.editor) {
-      this.editor.destroy()
-    }
-    if (this.differ) {
-      this.differ.destroy()
-    }
-  },
   computed: {
     show: {
       get() {
@@ -244,6 +196,54 @@ export default {
         }
       },
     },
+  },
+  mounted() {
+    const pluginMode = this.buildPluginMode()
+    if (this.existingPluginTxt === null) {
+      this.editor = ace.edit(this.$refs.editor)
+      this.editor.setTheme('ace/theme/twilight')
+      this.editor.session.setMode(new pluginMode())
+      this.editor.session.setTabSize(2)
+      this.editor.session.setUseWrapMode(true)
+      this.editor.$blockScrolling = Infinity
+      this.editor.setHighlightActiveLine(false)
+      this.editor.setValue(this.localPluginTxt)
+      this.editor.clearSelection()
+      AceEditorUtils.applyVimModeIfEnabled(this.editor, {})
+      this.editor.focus()
+    } else {
+      this.tab = 1 // Show the diff right off the bat
+      this.differ = new AceDiff({
+        element: this.$refs.editor,
+        mode: new pluginMode(),
+        theme: 'ace/theme/twilight',
+        left: {
+          content: this.localExistingPluginTxt,
+          copyLinkEnabled: false,
+        },
+        right: {
+          content: this.localPluginTxt,
+          editable: false,
+        },
+      })
+      // Match our existing editors
+      this.differ.getEditors().left.setFontSize(16)
+      this.differ.getEditors().right.setFontSize(16)
+
+      // Apply vim mode if enabled to both editor instances
+      AceEditorUtils.applyVimModeIfEnabled(this.differ.getEditors().left, {})
+      AceEditorUtils.applyVimModeIfEnabled(this.differ.getEditors().right, {})
+
+      this.curDiff = -1 // so the first will be 0
+    }
+  },
+  beforeUnmount() {
+    if (this.editor) {
+      this.editor.destroy()
+    }
+    if (this.differ) {
+      this.differ.destroy()
+    }
   },
   methods: {
     previousDiff() {

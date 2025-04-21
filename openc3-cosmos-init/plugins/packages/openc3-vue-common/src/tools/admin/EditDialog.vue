@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -173,7 +173,7 @@ export default {
     this.editor.setHighlightActiveLine(false)
     this.editor.setValue(this.content)
     this.editor.clearSelection()
-    AceEditorUtils.applyVimModeIfEnabled(this.editor)
+    AceEditorUtils.applyVimModeIfEnabled(this.editor, {})
     this.editor.focus()
     if (this.readonly) {
       this.editor.setReadOnly(true)
