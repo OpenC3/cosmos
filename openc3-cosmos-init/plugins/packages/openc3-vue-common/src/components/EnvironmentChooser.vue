@@ -22,7 +22,7 @@
 
 <template>
   <div>
-    <v-table dense>
+    <v-table density="compact">
       <span> Add environment variables (optional)</span>
       <tbody>
         <tr>
@@ -43,6 +43,7 @@
               v-model="env.key"
               density="compact"
               type="text"
+              hide-details
               :readonly="env.readonly"
               :data-test="`key-${i}`"
             />
@@ -52,6 +53,7 @@
               v-model="env.value"
               density="compact"
               type="text"
+              hide-details
               :readonly="env.readonly"
               :data-test="`value-${i}`"
             />

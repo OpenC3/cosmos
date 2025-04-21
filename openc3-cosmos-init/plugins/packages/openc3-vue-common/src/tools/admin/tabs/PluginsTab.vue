@@ -135,7 +135,6 @@
 
           <template #append>
             <v-btn
-              class="mx-3"
               icon="mdi-download"
               variant="text"
               aria-label="Download Plugin"
@@ -143,7 +142,6 @@
               @click="downloadPlugin(plugin)"
             />
             <v-btn
-              class="mx-3"
               icon="mdi-pencil"
               variant="text"
               aria-label="Edit Plugin"
@@ -154,7 +152,6 @@
               <template #activator="{ props }">
                 <v-btn
                   v-bind="props"
-                  class="mx-3"
                   icon="mdi-update"
                   variant="text"
                   aria-label="Upgrade Plugin"
@@ -165,7 +162,6 @@
               <span>Upgrade Plugin</span>
             </v-tooltip>
             <v-btn
-              class="mx-3"
               icon="mdi-delete"
               variant="text"
               aria-label="Delete Plugin"
