@@ -173,7 +173,7 @@ export default {
     this.editor.setHighlightActiveLine(false)
     this.editor.setValue(this.content)
     this.editor.clearSelection()
-    AceEditorUtils.applyVimModeIfEnabled(this.editor, {})
+    AceEditorUtils.applyVimModeIfEnabled(this.editor)
     this.editor.focus()
     if (this.readonly) {
       this.editor.setReadOnly(true)

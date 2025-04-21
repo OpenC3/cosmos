@@ -209,7 +209,7 @@ export default {
       this.editor.setHighlightActiveLine(false)
       this.editor.setValue(this.localPluginTxt)
       this.editor.clearSelection()
-      AceEditorUtils.applyVimModeIfEnabled(this.editor, {})
+      AceEditorUtils.applyVimModeIfEnabled(this.editor)
       this.editor.focus()
     } else {
       this.tab = 1 // Show the diff right off the bat
@@ -231,8 +231,8 @@ export default {
       this.differ.getEditors().right.setFontSize(16)
 
       // Apply vim mode if enabled to both editor instances
-      AceEditorUtils.applyVimModeIfEnabled(this.differ.getEditors().left, {})
-      AceEditorUtils.applyVimModeIfEnabled(this.differ.getEditors().right, {})
+      AceEditorUtils.applyVimModeIfEnabled(this.differ.getEditors().left)
+      AceEditorUtils.applyVimModeIfEnabled(this.differ.getEditors().right)
 
       this.curDiff = -1 // so the first will be 0
     }

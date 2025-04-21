@@ -62,12 +62,12 @@ export default {
    * Apply vim mode to editor if enabled in localStorage
    * @param {Object} editor - Ace editor instance
    */
-  applyVimModeIfEnabled(editor, { saveFn }) {
+  applyVimModeIfEnabled(editor, { saveFn } = {}) {
     if (this.isVimModeEnabled()) {
       editor.setKeyboardHandler(VIM_KEYBOARD_HANDLER)
       ace.config.loadModule(VIM_KEYBOARD_HANDLER, (module) => {
         module.CodeMirror.Vim.defineEx('write', 'w', (codeMirror) => {
-          if (saveFn) {
+          if (typeof saveFn === 'function') {
             saveFn()
           } else {
             codeMirror.ace.execCommand('save')
