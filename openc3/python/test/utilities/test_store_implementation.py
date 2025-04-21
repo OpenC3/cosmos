@@ -20,4 +20,5 @@ from openc3.utilities.store_implementation import Store
 
 class TestStoreImplementation(unittest.TestCase):
     def test_help(self):
-        self.assertIsNone(help(Store))
+        #NOSONAR
+        help(Store)
