@@ -91,5 +91,4 @@ class TestLogger(unittest.TestCase):
         self.verify_output(Logger.FATAL, "fatal")
 
     def test_help(self):
-        #NOSONAR
-        help(Logger)
+        help(Logger) # NOSONAR

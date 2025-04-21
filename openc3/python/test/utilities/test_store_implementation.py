@@ -20,5 +20,4 @@ from openc3.utilities.store_implementation import Store
 
 class TestStoreImplementation(unittest.TestCase):
     def test_help(self):
-        #NOSONAR
-        help(Store)
+        help(Store) # NOSONAR
