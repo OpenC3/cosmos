@@ -1,63 +1,63 @@
 ---
 title: Raspberry Pi
-description: Running COSMOS on a Raspberry Pi
+description: Raspberry PiでCOSMOSを実行する
 sidebar_custom_props:
   myEmoji: 🍓
 ---
 
-### COSMOS Running on Raspberry Pi 4
+### Raspberry Pi 4でCOSMOSを実行する
 
-The Raspberry Pi 4 is a low-cost powerful ARM-based minicomputer that runs linux. And because it runs modern linux, it can also run COSMOS! These directions will get you up and running.
+Raspberry Pi 4は、Linuxを実行する低コストで強力なARMベースのミニコンピュータです。そして、最新のLinuxを実行するため、COSMOSも実行できます！以下の手順で、セットアップと実行方法を説明します。
 
-What you'll need:
+必要なもの：
 
-- Raspberry Pi 4 board (tested with 8GB RAM)
-- A Pi Case but Optional
-- Raspbeerry Pi Power Supply
-- 32GB or Larger SD Card - Also faster the better
-- A Laptop with a way to write SD Cards
+- Raspberry Pi 4ボード（8GB RAMでテスト済み）
+- Piケース（オプション）
+- Raspberry Pi電源アダプタ
+- 32GB以上のSDカード - 速いものほど良い
+- SDカードに書き込み可能なノートパソコン
 
-Let's get started!
+それでは始めましょう！
 
-1. Setup 64-bit Raspian OS Lite on the SD Card
+1. SDカードに64-bit Raspbian OS Liteをセットアップする
 
-   Make sure you have the Raspberry Pi Imager app from: https://www.raspberrypi.com/software/
+   https://www.raspberrypi.com/software/ からRaspberry Pi Imagerアプリを入手していることを確認してください
 
-   1. Insert the SD Card into your computer (Note this process will erase all data on the SD card!)
-   1. Open the Raspberry Pi Imager App
-   1. Click the "Choose Device" Button
-   1. Pick Your Raspberry Pi Model
-   1. Click the "Choose OS" Button
-   1. Select "Raspberry Pi OS (other)"
-   1. Select "Raspberry Pi OS Lite (64-bit)"
-   1. Click the "Choose Storage" Button
-   1. Select Your SD Card
-   1. Click Edit Settings
-   1. If prompted if you would like to prefill the Wifi information, select OK
-   1. Set the hostname to: cosmos.local
-   1. Set the username and password. The default username is your username, you should also set a password to make the system secure
-   1. Fill in your Wifi info, and set the country appropriately (ie. US)
-   1. Set the correct time zone
-   1. Goto the Services Tab and Enable SSH
-   1. You can either use Password auth, or public-key only if your computer is already setup for passwordless SSH
-   1. Goto the Options tab and make sure "Enable Telemetry" is not checked
-   1. Click "Save" when everything is filled out
-   1. Click "Yes" to apply OS Customization Settings, Yes to Are You Sure, and Wait for it to complete
+   1. SDカードをコンピュータに挿入します（注意：この処理によりSDカード上のすべてのデータが消去されます！）
+   1. Raspberry Pi Imagerアプリを開きます
+   1. 「Choose Device」ボタンをクリックします
+   1. お使いのRaspberry Piモデルを選択します
+   1. 「Choose OS」ボタンをクリックします
+   1. 「Raspberry Pi OS (other)」を選択します
+   1. 「Raspberry Pi OS Lite (64-bit)」を選択します
+   1. 「Choose Storage」ボタンをクリックします
+   1. SDカードを選択します
+   1. Edit Settings（設定を編集）をクリックします
+   1. Wi-Fi情報を事前に入力するかどうか尋ねられたら、OKを選択します
+   1. ホスト名を cosmos.local に設定します
+   1. ユーザー名とパスワードを設定します。デフォルトのユーザー名はあなたのユーザー名ですが、システムを安全にするためにパスワードも設定する必要があります
+   1. Wi-Fi情報を入力し、国を適切に設定します（例：JP）
+   1. 正しいタイムゾーンを設定します
+   1. サービスタブに移動し、SSHを有効にします
+   1. パスワード認証を使用するか、コンピュータがすでにパスワードなしSSH用に設定されている場合は公開鍵のみを使用できます
+   1. オプションタブに移動し、「Enable Telemetry」（テレメトリを有効にする）がチェックされていないことを確認します
+   1. すべて入力したら「Save」（保存）をクリックします
+   1. OS カスタマイズ設定を適用するために「Yes」をクリックし、「Are You Sure」（本当によろしいですか）に「Yes」と答え、完了するまで待ちます
 
-1. Make sure the Raspberry Pi is NOT powered on
+1. Raspberry Piの電源が入っていないことを確認します
 
-1. Remove the SD Card from your computer and insert into the Raspberry Pi
+1. SDカードをコンピュータから取り出し、Raspberry Piに挿入します
 
-1. Apply power to the Raspberry Pi and wait approximately 1 minute for it to boot
+1. Raspberry Piに電源を供給し、起動するまで約1分待ちます
 
-1. SSH to your raspberry Pi
+1. Raspberry PiにSSH接続します
 
-   1. Open a terminal window and use ssh to connect to your Pi
+   1. ターミナルウィンドウを開き、SSHを使用してPiに接続します
 
-      1. On Mac / Linux: ssh yourusername@cosmos.local
-      1. On Windows, use Putty to connect. You will probably have to install Bonjour for Windows for .local addresses to work as well.
+      1. Mac / Linux: ssh yourusername@cosmos.local
+      1. Windowsでは、Puttyを使用して接続します。.localアドレスを機能させるには、Windows用のBonjourをインストールする必要がある場合があります。
 
-1. From SSH, Enter the following commands
+1. SSHから、以下のコマンドを入力します
 
 ```bash
    sudo sysctl -w vm.max_map_count=262144
@@ -71,10 +71,10 @@ Let's get started!
    newgrp docker
    git clone https://github.com/OpenC3/cosmos-project.git cosmos
    cd cosmos
-   # Edit compose.yaml and remove 127.0.0.1: from the ports section of the openc3-traefik service
+   # compose.yamlを編集し、openc3-traefikサービスのportsセクションから127.0.0.1:を削除します
    ./openc3.sh run
 ```
 
-1. After about 2 minutes, open a web browser on your computer, and goto: http://cosmos.local:2900
+1. 約2分後、コンピュータでウェブブラウザを開き、http://cosmos.local:2900 にアクセスします
 
-1. Congratulations! You now have COSMOS running on a Raspberry Pi!
+1. おめでとうございます！これでRaspberry PiでCOSMOSが実行されています！

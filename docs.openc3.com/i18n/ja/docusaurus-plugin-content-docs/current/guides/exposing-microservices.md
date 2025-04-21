@@ -1,24 +1,24 @@
 ---
-title: Exposing Microservices
-description: Provide external accessibility to microservices
+title: マイクロサービスの公開
+description: マイクロサービスへの外部アクセシビリティを提供する
 sidebar_custom_props:
   myEmoji: 🚪
 ---
 
-COSMOS provides a simple method to add new APIs and make custom microservices and interfaces accessible to the network.
+COSMOSは、新しいAPIを追加し、カスタムマイクロサービスとインターフェースをネットワークからアクセス可能にするシンプルな方法を提供します。
 
-:::warning Make sure anything you expose is secure
+:::warning 公開するものがセキュアであることを確認してください
 
-Make sure that any new apis you expose check for user credentials and authorize actions appropriately.
+公開する新しいAPIがユーザー認証情報をチェックし、アクションを適切に認可することを確認してください。
 :::
 
-## Expose microservices using the PORT and ROUTE_PREFIX keywords
+## PORTとROUTE_PREFIXキーワードを使用してマイクロサービスを公開する
 
-In your plugin.txt file, both [INTERFACE](../configuration/plugins#interface-1) and [MICROSERVICE](../configuration/plugins#microservice-1) support the keywords [PORT](../configuration/plugins#port-1) and [ROUTE_PREFIX](../configuration/plugins#route_prefix-1).
+plugin.txtファイルでは、[INTERFACE](../configuration/plugins#interface-1)と[MICROSERVICE](../configuration/plugins#microservice-1)の両方が[PORT](../configuration/plugins#port-1)と[ROUTE_PREFIX](../configuration/plugins#route_prefix-1)キーワードをサポートしています。
 
-[PORT](../configuration/plugins#port-1) is used to declare the port(s) that your microservice is listening for connections on. This is used in combination with [ROUTE_PREFIX](../configuration/plugins#route_prefix-1) to create a dynamic traefik route to your microservice.
+[PORT](../configuration/plugins#port-1)は、マイクロサービスが接続をリッスンしているポートを宣言するために使用されます。これは[ROUTE_PREFIX](../configuration/plugins#route_prefix-1)と組み合わせて、マイクロサービスへの動的なtraefikルートを作成するために使用されます。
 
-The following code is used internally to let traefik know where to connect to your microservice internally:
+以下のコードは、traefikがマイクロサービスに内部で接続する場所を知らせるために内部的に使用されます：
 
 ```ruby
 if ENV['OPENC3_OPERATOR_HOSTNAME']
@@ -32,15 +32,15 @@ else
 end
 ```
 
-Note that this is the internal route to your microservice. Determining this route checks two different environment variables.
+これはマイクロサービスへの内部ルートであることに注意してください。このルートを決定するには、2つの異なる環境変数をチェックします。
 
-OPENC3_OPERATOR_HOSTNAME is used to override the default service name for our regular docker compose operator of "openc3-operator". Usually this is not set.
+OPENC3_OPERATOR_HOSTNAMEは、通常のdocker composeオペレータの「openc3-operator」のデフォルトサービス名を上書きするために使用されます。通常、これは設定されていません。
 
-In OpenC3 Enterprise, KUBERNETES_SERVICE_HOST is used to detect if we are running in a Kubernetes environment (it will be set by Kubernetes), in which case the service is expected to have a Kubernetes service named scope-user-microservicename-service. For example, if you are using the DEFAULT scope and have a microservice named MYMICROSERVICE the service would be found at the hostname: default-user-mymicroservice-service. Double underscores or single underscores are replaced by a dash and the name is all lower case.
+OpenC3 Enterpriseでは、KUBERNETES_SERVICE_HOSTはKubernetes環境で実行されているかどうかを検出するために使用されます（Kubernetesによって設定されます）。その場合、サービスはscope-user-microservicename-serviceという名前のKubernetesサービスを持つことが期待されます。例えば、DEFAULTスコープを使用していて、MYMICROSERVICEという名前のマイクロサービスがある場合、サービスはdefault-user-mymicroservice-serviceというホスト名で見つかります。二重アンダースコアまたは単一アンダースコアはダッシュに置き換えられ、名前はすべて小文字になります。
 
-[ROUTE_PREFIX](../configuration/plugins#route_prefix-1) is used to define the external route. The external route will take the form of http(s)://YOURCOSMOSDOMAIN:PORT/ROUTE_PREFIX. So for example, if you set the [ROUTE_PREFIX](../configuration/plugins#route_prefix-1) to /mymicroservice then on a default local installation, it could be reached at `http://localhost:2900/mymicroservice`. The `http://localhost:2900` part should be substituted by whatever domain you are accessing COSMOS at.
+[ROUTE_PREFIX](../configuration/plugins#route_prefix-1)は外部ルートを定義するために使用されます。外部ルートはhttp(s)://YOURCOSMOSDOMAIN:PORT/ROUTE_PREFIXという形式になります。例えば、[ROUTE_PREFIX](../configuration/plugins#route_prefix-1)を/mymicroserviceに設定した場合、デフォルトのローカルインストールでは`http://localhost:2900/mymicroservice`でアクセスできます。`http://localhost:2900`の部分は、COSMOSにアクセスしているドメインで置き換える必要があります。
 
-Here is a snippet of code showing [PORT](../configuration/plugins#port-1) and [ROUTE_PREFIX](../configuration/plugins#route_prefix-1) in use within a plugin.txt file:
+以下は、plugin.txtファイル内で[PORT](../configuration/plugins#port-1)と[ROUTE_PREFIX](../configuration/plugins#route_prefix-1)を使用している例です：
 
 ```bash
 VARIABLE cfdp_microservice_name CFDP
@@ -53,15 +53,15 @@ MICROSERVICE CFDP <%= cfdp_microservice_name %>
   PORT <%= cfdp_port %>
 ```
 
-Leaving the variables at their default values the following will occur:
+変数をデフォルト値のままにすると、以下のようになります：
 
-- The microservice will be exposed internally to Docker (Open Source or Enterprise) at: `http://openc3-operator:2905`
-- The microservice will be exposed internally to Kubernetes (Enterprise) at: `http://default-user-cfdp-service:2905`
-- The microservice will be exposed externally to the network at: `http://localhost:2900/cfdp`
+- マイクロサービスはDocker（オープンソースまたはエンタープライズ）に内部的に`http://openc3-operator:2905`で公開されます
+- マイクロサービスはKubernetes（エンタープライズ）に内部的に`http://default-user-cfdp-service:2905`で公開されます
+- マイクロサービスはネットワークに外部的に`http://localhost:2900/cfdp`で公開されます
 
-The same can be done for [INTERFACE](../configuration/plugins#interface-1) but note that the Kubernetes service name will use the microservice name of the interface which takes the form of `SCOPE__INTERFACE__INTERFACENAME`.
+同様のことが[INTERFACE](../configuration/plugins#interface-1)でも可能ですが、Kubernetesサービス名は`SCOPE__INTERFACE__INTERFACENAME`の形式をとるインターフェースのマイクロサービス名を使用することに注意してください。
 
-Here is an example using [PORT](../configuration/plugins#port) and [ROUTE_PREFIX](../configuration/plugins#route_prefix) with [INTERFACE](../configuration/plugins#interface-1):
+以下は、[INTERFACE](../configuration/plugins#interface-1)で[PORT](../configuration/plugins#port)と[ROUTE_PREFIX](../configuration/plugins#route_prefix)を使用する例です：
 
 ```bash
 VARIABLE my_interface_name MY_INT
@@ -73,20 +73,20 @@ INTERFACE <%= my_interface_name %> http_server_interface.rb <%= my_port %>
   PORT <%= my_port %>
 ```
 
-- The interface will be exposed internally to Docker (Open Source or Enterprise) at: `http://openc3-operator:2910`
-- The interface will be exposed internally to Kubernetes (Enterprise) at: `http://default-interface-my-int-service:2905`
-- The interface will be exposed externally to the network at: `http://localhost:2900/myint`
+- インターフェースはDocker（オープンソースまたはエンタープライズ）に内部的に`http://openc3-operator:2910`で公開されます
+- インターフェースはKubernetes（エンタープライズ）に内部的に`http://default-interface-my-int-service:2905`で公開されます
+- インターフェースはネットワークに外部的に`http://localhost:2900/myint`で公開されます
 
-:::warning Sharded Operator on Kubernetes (Enterprise)
+:::warning Kubernetesでのシャーディングされたオペレータ（Enterprise）
 
-The sharded operator is expected to be used on Kubernetes whenever the Kubernetes Operator is not used. Typically this will be because the user does not have permission to use the Kubernetes API directly to spawn containers which is required for use of the Kubernetes Operator. In this case, Kubernetes services will NOT be automatically created, and will have to be manually created by a user with permissions in Kubernetes, or through some other authorized method (like a custom framework dashboard or config file).
+シャーディングされたオペレータは、Kubernetesオペレータが使用されていない場合にKubernetesで使用されることが期待されています。通常、これはユーザーがKubernetes APIを直接使用してコンテナを起動する権限がないためです（これはKubernetesオペレータを使用するために必要です）。この場合、Kubernetesサービスは自動的に作成されず、Kubernetesでの権限を持つユーザーによって手動で作成されるか、他の承認された方法（カスタムフレームワークダッシュボードや設定ファイルなど）を通じて作成する必要があります。
 :::
 
-## Connecting to microservices from a different INTERFACE in plugin.txt
+## plugin.txtの異なるINTERFACEからマイクロサービスに接続する
 
-Sometimes you might want to have an INTERFACE connect to a microservice you are running. For this case, only the PORT keyword is required on the INTERFACE or MICROSERVICE because we are only connecting internally and ROUTE_PREFIX isn't used.
+時には、実行しているマイクロサービスにINTERFACEを接続したい場合があります。この場合、内部的に接続するだけでROUTE_PREFIXは使用されないため、INTERFACEまたはMICROSERVICEにはPORTキーワードのみが必要です。
 
-The following code taken from our demo plugin provides an example of how to calculate the correct hostname across both Open Source and Enterprise versions of COSMOS in a plugin.txt file:
+デモプラグインから取得した以下のコードは、plugin.txtファイル内でオープンソースとエンタープライズの両方のCOSMOSバージョンで正しいホスト名を計算する方法の例を提供しています：
 
 ```
   <% example_host = ENV['KUBERNETES_SERVICE_HOST'] ? "#{scope}-user-#{example_microservice_name.downcase.gsub('__', '-').gsub('_', '-')}-service" : "openc3-operator" %>
@@ -94,4 +94,4 @@ The following code taken from our demo plugin provides an example of how to calc
     MAP_TARGET <%= example_target_name %>
 ```
 
-Note that the above code does not handle the OPENC3_OPERATOR_HOSTNAME environment variable which might change the default name of openc3-operator. Update as needed.
+上記のコードはOPENC3_OPERATOR_HOSTNAME環境変数を処理していないことに注意してください。これはopenc3-operatorのデフォルト名を変更する可能性があります。必要に応じて更新してください。

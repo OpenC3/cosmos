@@ -1,36 +1,36 @@
 ---
-title: Logging
-description: The log files in COSMOS
+title: ロギング
+description: COSMOSのログファイル
 sidebar_custom_props:
   myEmoji: 🪵
 ---
 
-The COSMOS [Bucket Explorer](../tools/bucket-explorer.md) tool provides a way to browse the COSMOS bucket storage backend whether you are running locally or in a cloud environment. Browse to http://localhost:2900/tools/bucketexplorer and you should see the list of buckets at the top:
+COSMOS [バケットエクスプローラ](../tools/bucket-explorer.md)ツールは、ローカルで実行している場合でもクラウド環境で実行している場合でも、COSMOSのバケットストレージバックエンドを閲覧する方法を提供します。http://localhost:2900/tools/bucketexplorer に移動すると、上部にバケットのリストが表示されます：
 
-![Bucket Explorer](/img/guides/logging/logs.png)
+![バケットエクスプローラ](/img/guides/logging/logs.png)
 
-Note the config and logs buckets are organized by scopes of which there initially is just one: DEFAULT. Clicking the DEFAULT folder in the logs bucket shows the decom_logs, raw_logs, reduced_xxx_logs, text_logs and tool_logs.
+configとlogsバケットはスコープによって整理されており、初期状態では「DEFAULT」というスコープが一つだけあります。logsバケット内のDEFAULTフォルダをクリックすると、decom_logs、raw_logs、reduced_xxx_logs、text_logs、tool_logsが表示されます。
 
 ### decom_logs & raw_logs
 
-The decom_logs and raw_logs folders contain the decommutated and raw command and telemetry data. Both are further broken down by target, packet, then date. For example, browsing into the DEFAULT/raw_logs/tlm/INST2/&lt;YYYYMMDD&gt;/ directory:
+decom_logsとraw_logsフォルダには、デコミュテーション（復調）された、および生のコマンドとテレメトリデータが含まれています。どちらもさらにターゲット、パケット、そして日付ごとに分けられています。例えば、DEFAULT/raw_logs/tlm/INST2/&lt;YYYYMMDD&gt;/ディレクトリを閲覧すると：
 
 ![raw_tlm_logs](/img/guides/logging/raw_tlm_logs.png)
 
-Note the presence of the gzipped .bin files which contain the raw binary data. For more information about the structure of these files see the [Log Structure](../development/log-structure.md) developer documentation.
+生のバイナリデータを含むgzip圧縮された.binファイルが存在していることに注目してください。これらのファイルの構造について詳しくは、[ログ構造](../development/log-structure.md)の開発者ドキュメントを参照してください。
 
-The default settings for the Logging microservice is to start a new log file every 10 minutes or 50MB, which ever comes first. In the case of the low data rate demo, the 10 minute mark is hit first.
+ロギングマイクロサービスのデフォルト設定では、10分ごとまたは50MBごとにいずれか早い方で新しいログファイルを開始します。低データレートのデモの場合、10分の区切りが先に来ます。
 
-To change the logging settings add the various CYCLE_TIME [Target Modifiers](../configuration/plugins.md#target-modifiers) under the declared [TARGET](../configuration/plugins.md#target-1) name in your plugin.txt.
+ロギング設定を変更するには、plugin.txtファイル内の宣言された[TARGET](../configuration/plugins.md#target-1)名の下に、様々なCYCLE_TIME [ターゲット修飾子](../configuration/plugins.md#target-modifiers)を追加します。
 
 ### text_logs
 
-The text_logs folder contains openc3_log_messages which contains text files that are again sorted by date and timestamped. These log messages come from the various microservices including the server and the target microservices. Thus these logs contain all the commands sent (in plain text) and telemetry checked. These log messages files are long term records of the messages in the CmdTlmServer Log Messages window:
+text_logsフォルダにはopenc3_log_messagesが含まれており、これには再び日付順にソートされタイムスタンプが付けられたテキストファイルが含まれています。これらのログメッセージは、サーバーやターゲットマイクロサービスを含む様々なマイクロサービスから生成されます。したがって、これらのログには送信されたすべてのコマンド（プレーンテキスト形式）と、チェックされたテレメトリが含まれています。これらのログメッセージファイルは、CmdTlmServerのログメッセージウィンドウに表示されるメッセージの長期的な記録です：
 
 ![log_messages](/img/guides/logging/log_messages.png)
 
 ### tool_logs
 
-The tool_logs directory contains logs from the various COSMOS tools. Note that if you have not yet run any tools you may not see this directory as it is created on demand. Tool sub-directories are also created on demand. For example, after running a script in Script Runner a new 'sr' subdirectory appears which contains the script runner log resulting from running the script. In some cases logs in this directory may also be directly available from the tool itself. In the Script Runner case, the Script Messages pane below the script holds the output messages from the last script. Clicking the Download link allows you to download these messages as a file.
+tool_logsディレクトリには、様々なCOSMOSツールからのログが含まれています。まだツールを実行していない場合、このディレクトリは必要に応じて作成されるため表示されない場合があることに注意してください。ツールのサブディレクトリも必要に応じて作成されます。例えば、Script Runnerでスクリプトを実行した後、スクリプト実行の結果としてのスクリプトランナーログを含む新しい「sr」サブディレクトリが表示されます。場合によっては、このディレクトリ内のログはツール自体から直接利用できることもあります。Script Runnerの場合、スクリプトの下にあるScript Messagesペインには、最後のスクリプトからの出力メッセージが表示されます。Downloadリンクをクリックすると、これらのメッセージをファイルとしてダウンロードできます。
 
 ![log_messages](/img/guides/logging/script_messages.png)

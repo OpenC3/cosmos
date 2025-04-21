@@ -1,23 +1,21 @@
 ---
-title: Monitoring
-description: Various ways to monitor COSMOS internals
+title: モニタリング
+description: COSMOSの内部を監視する様々な方法
 sidebar_custom_props:
   myEmoji: 🖥️
 ---
 
-### Monitoring and observability
+### モニタリングと可観測性
 
-:::warning Example Only
-Monitoring with Fluentd is not officially supported by OpenC3 and the documentation here is simply an example of how this could be performed.
+:::warning 例示のみ
+FluentdによるモニタリングはOpenC3によって公式にサポートされておらず、ここに記載されているドキュメントはその実行方法の例に過ぎません。
 :::
 
-With moving COSMOS to container based service, we needed a better way to monitor the internals of COSMOS. So here is some information on external services that you can use to monitor COSMOS. If you want to read more about [Monitoring Distributed Systems](https://sre.google/sre-book/monitoring-distributed-systems/)
+COSMOSをコンテナベースのサービスに移行するにあたり、COSMOSの内部をより良く監視する方法が必要でした。そこで、COSMOSを監視するために使用できる外部サービスに関する情報をいくつか紹介します。[分散システムのモニタリング](https://sre.google/sre-book/monitoring-distributed-systems/)についてさらに詳しく知りたい場合はこちらをご覧ください。
 
 ### [Fluent/Fluentd](https://www.fluentd.org/guides/recipes/docker-logging)
 
-> Fluentd is an open source data collector, which lets you unify the data collection and consumption for a better use and understanding of data.
-
-#### Notes
+> Fluentdはオープンソースのデータコレクターであり、データ収集と消費を統一して、データのより良い使用と理解を可能にします。
 
 in_docker.conf
 
@@ -85,7 +83,7 @@ in_docker.conf
 
 Dockerfile
 
-NOTE: If building on a Macbook (for example) you should use the architecture specific build in the FROM line, e.g. `FROM arm64v8/fluentd:v1.18-1`
+注意：FROM行でアーキテクチャ固有のビルドを使用する必要があります。例、MacBookである場合：`FROM arm64v8/fluentd:v1.18-1`
 
 ```
 FROM fluent/fluentd:v1.18-1
@@ -99,13 +97,11 @@ USER fluent
 
 ### [OpenDistro](https://opendistro.github.io/for-elasticsearch-docs/)
 
-> Open Distro for Elasticsearch provides a powerful, easy-to-use event monitoring and alerting system, enabling you to monitor your data and send notifications automatically to your stakeholders. With an intuitive Kibana interface and powerful API, it is easy to set up and manage alerts.
+> Open Distro for Elasticsearchは、強力で使いやすいイベントモニタリングおよびアラートシステムを提供し、データを監視して自動的に関係者に通知を送信できるようにします。直感的なKibanaインターフェースと強力なAPIにより、アラートの設定と管理が容易です。
 
 - [Docker](https://opendistro.github.io/for-elasticsearch-docs/docs/install/docker/)
 
-#### Notes
-
-When testing this I found that depending on how you ingest your logs into the opendistro I found I had to disable security. Here is an example of the docker file.
+これをテストした際、opendistroにログを取り込む方法によっては、セキュリティを無効にする必要があることがわかりました。以下はDockerfileの例です。
 
 Dockerfile
 
@@ -117,9 +113,7 @@ RUN /usr/share/elasticsearch/bin/elasticsearch-plugin remove opendistro_security
 
 ### [Prometheus](https://prometheus.io/)
 
-> Prometheus scrapes metrics from instrumented jobs, either directly or via an intermediary push gateway for short-lived jobs. It stores all scraped samples locally and runs rules over this data to either aggregate and record new time series from existing data or generate alerts. Grafana or other API consumers can be used to visualize the collected data.
-
-#### Notes
+> Prometheusは、計測されたジョブからメトリクスを直接、または短命なジョブのための中間プッシュゲートウェイを介して収集します。収集したすべてのサンプルをローカルに保存し、このデータに対してルールを実行して、既存のデータから新しい時系列データを集計して記録したり、アラートを生成したりします。収集されたデータの視覚化には、Grafanaやその他のAPIコンシューマーを使用できます。
 
 prometheus.yaml
 
@@ -168,9 +162,7 @@ ADD prometheus.yaml /etc/prometheus/
 
 ### [Grafana](https://grafana.com/)
 
-> Grafana is a multi-platform open source analytics and interactive visualization web application. It provides charts, graphs, and alerts for the web when connected to supported data sources.
-
-#### Notes
+> Grafanaは、マルチプラットフォームのオープンソース分析および対話型可視化Webアプリケーションです。サポートされているデータソースに接続すると、Web用のチャート、グラフ、アラートを提供します。
 
 datasource.yaml
 
@@ -180,7 +172,7 @@ apiVersion: 1
 datasources:
   - name: Prometheus
     type: prometheus
-    # Access mode - proxy (server in the UI) or direct (browser in the UI).
+    # アクセスモード - proxy (UIのサーバー) または direct (UIのブラウザ)
     access: proxy
     url: http://openc3-prometheus:9090
 ```

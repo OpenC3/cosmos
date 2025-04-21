@@ -1,45 +1,45 @@
 ---
-title: Local Mode
-description: Edit scripts and screens directly on the host file system
+title: ローカルモード
+description: ホストファイルシステム上で直接スクリプトと画面を編集する
 sidebar_custom_props:
   myEmoji: 🧭
 ---
 
-Local Mode is a new feature in the 5.0.9 COSMOS release. It is intended to capture the configuration of an edited plugin so it can be configuration managed. It allows you to edit portions of a plugin (scripts and screens) locally in the editor of your choice and instantly have those changes appear in the COSMOS plugin. This avoids the plugin build / install cycle which is required when editing command and telemetry or interface definitions.
+ローカルモードは、COSMOS 5.0.9リリースの新機能です。これは、編集されたプラグインの設定を取得して、設定管理できるようにすることを目的としています。プラグインの一部（スクリプトや画面）を選択したエディタでローカルに編集し、その変更がCOSMOSプラグインにすぐに反映されるようにします。これにより、コマンドやテレメトリ、インターフェース定義を編集する際に必要なプラグインのビルド/インストールサイクルを回避できます。
 
-## Using Local Mode
+## ローカルモードの使用
 
-In this tutorial we will use the COSMOS Demo as configured by the [Installation Guide](../getting-started/installation.md). You should have cloned a [cosmos-project](https://github.com/OpenC3/cosmos-project) and started it using `openc3.sh run`.
+このチュートリアルでは、[インストールガイド](../getting-started/installation.md)で設定されたCOSMOSデモを使用します。[cosmos-project](https://github.com/OpenC3/cosmos-project)をクローンし、`openc3.sh run`を使用して起動しているはずです。
 
-If you check the project directory you should see a `plugins/DEFAULT/openc3-cosmos-demo` directory. This will contain both the gem that was installed and a `plugin_instance.json` file. The `plugin_instance.json` file captures the plugin.txt values when the plugin was installed. Note, all files in the plugins directory are meant to be configuration managed with the project. This ensures if you make local edits and check them in, another user can clone the project and get the exact same configuration. We will demonstrate this later.
+プロジェクトディレクトリを確認すると、`plugins/DEFAULT/openc3-cosmos-demo`ディレクトリが表示されるはずです。これには、インストールされたgemと`plugin_instance.json`ファイルの両方が含まれています。`plugin_instance.json`ファイルは、プラグインがインストールされたときのplugin.txtの値を取得します。注意点として、pluginsディレクトリ内のすべてのファイルはプロジェクトと共に設定管理されることを意図しています。これにより、ローカルで編集してチェックインすると、別のユーザーがプロジェクトをクローンして全く同じ設定を取得できます。これについては後で説明します。
 
-### Editing scripts
+### スクリプトの編集
 
 :::info Visual Studio Code
-This tutorial will use [VS Code](https://code.visualstudio.com) which is the editor used by the COSMOS developers.
+このチュートリアルでは、COSMOSの開発者が使用しているエディタである[VS Code](https://code.visualstudio.com)を使用します。
 :::
 
-The most common use case for Local Mode is script development. Launch Script Runner and open the `INST/procedures/checks.rb` file. If you run this script you'll notice that it has a few errors (by design) which prevent it from running to completion. Let's fix it! Comment out lines 7 & 9 and save the script. You should now notice that Local Mode has saved a copy of the script to `plugins/targets_modified/INST/procedures/checks.rb`.
+ローカルモードの最も一般的なユースケースはスクリプト開発です。Script Runnerを起動し、`INST/procedures/checks.rb`ファイルを開きます。このスクリプトを実行すると、完了まで実行できないいくつかのエラー（設計上）があることに気付くでしょう。修正しましょう！7行目と9行目をコメントアウトして、スクリプトを保存します。これでローカルモードがスクリプトのコピーを`plugins/targets_modified/INST/procedures/checks.rb`に保存したことに気付くはずです。
 
-![Project Layout](/img/guides/local_mode/project.png)
+![プロジェクトレイアウト](/img/guides/local_mode/project.png)
 
-At this point Local Mode keeps these scripts in sync so we can edit in either place. Let's edit the local script by adding a simple comment at the top: `# This is a script`. Now if we go back to Script Runner the changes have not _automatically_ appeared. However, there is a Reload button next to the filename that will refresh the file from the backend.
+この時点で、ローカルモードはこれらのスクリプトを同期させているため、どちらの場所でも編集できます。ローカルスクリプトを編集して、先頭に簡単なコメントを追加してみましょう：`# This is a script`。Script Runnerに戻ると、変更は_自動的に_表示されていません。ただし、ファイル名の横にあるReloadボタンがあり、これをクリックするとバックエンドからファイルを更新できます。
 
-![Project Layout](/img/guides/local_mode/reload_file.png)
+![プロジェクトレイアウト](/img/guides/local_mode/reload_file.png)
 
-Clicking this reloads the file which has been synced into COSMOS and now we see our comment.
+これをクリックすると、COSMOSに同期されたファイルがリロードされ、コメントが表示されます。
 
-![Project Layout](/img/guides/local_mode/reloaded.png)
+![プロジェクトレイアウト](/img/guides/local_mode/reloaded.png)
 
-### Disabling Local Mode
+### ローカルモードの無効化
 
-If you want to disable Local Mode you can edit the .env file and delete the setting `OPENC3_LOCAL_MODE=1`.
+ローカルモードを無効にしたい場合は、.envファイルを編集して設定`OPENC3_LOCAL_MODE=1`を削除できます。
 
-## Configuration Management
+## 構成管理
 
-It is recommended to configuration manage the entire project including the plugins directory. This will allow any user who starts COSMOS to launch an identical configuration. Plugins are created and updated with any modifications found in the targets_modified directory.
+pluginsディレクトリを含むプロジェクト全体を構成管理することをお勧めします。これにより、COSMOSを起動するすべてのユーザーが同一の構成を起動できます。プラグインはtargets_modifiedディレクトリで見つかった変更で作成および更新されます。
 
-At some point you will probably want to release your local changes back to the plugin they originated from. Simply copy the entire targets_modified/TARGET directory back to the original plugin. At that point you can rebuild the plugin using the CLI.
+いずれかの時点で、おそらくローカルの変更を元のプラグインに戻したいと思うでしょう。targets_modified/TARGETディレクトリ全体を元のプラグインにコピーするだけです。その時点で、CLIを使用してプラグインを再ビルドできます。
 
 ```
 openc3-cosmos-demo % ./openc3.sh cli rake build VERSION=1.0.1
@@ -49,10 +49,10 @@ openc3-cosmos-demo % ./openc3.sh cli rake build VERSION=1.0.1
   File: openc3-cosmos-demo-1.0.1.gem
 ```
 
-Upgrade the plugin using the Admin Plugins tab and the Upgrade link. When you select your newly built plugin, COSMOS detects the existing changes and asks if you want to delete them. There is a stern warning attached because this will permanently remove these changes! Since we just moved over the changes and rebuilt the plugin we will check the box and INSTALL.
+管理者プラグインタブとアップグレードリンクを使用してプラグインをアップグレードします。新しくビルドしたプラグインを選択すると、COSMOSは既存の変更を検出し、それらを削除するかどうか尋ねます。これは永久に変更を削除するため、警告が付いています。変更を移動してプラグインを再ビルドしたので、チェックボックスをオンにしてINSTALLします。
 
-![Project Layout](/img/guides/local_mode/delete_modified.png)
+![プロジェクトレイアウト](/img/guides/local_mode/delete_modified.png)
 
-When the new plugin is installed, the project's `plugins` directory gets updated with the new plugin and everything under the targets_modified directory is removed because there are no modifications on a new install.
+新しいプラグインがインストールされると、プロジェクトの`plugins`ディレクトリが新しいプラグインで更新され、targets_modifiedディレクトリの下にあるすべてのものは新しいインストールでは変更がないため削除されます。
 
-Local Mode is a powerful way to develop scripts and screens on the local file system and automatically have them sync to COSMOS.
+ローカルモードは、ローカルファイルシステム上でスクリプトや画面を開発し、自動的にそれらをCOSMOSと同期させる強力な方法です。

@@ -1,21 +1,21 @@
 ---
-title: Little Endian Bitfields
-description: Defining little endian bitfields
+title: リトルエンディアンのビットフィールド
+description: リトルエンディアンのビットフィールドを定義する
 sidebar_custom_props:
   myEmoji: 💻
 ---
 
-Defining little endian bitfields is a little weird but is possible in COSMOS. However, note that APPEND does not work with little endian bitfields.
+リトルエンディアンのビットフィールドを定義することは少し変わっていますが、COSMOSでは可能です。ただし、APPENDはリトルエンディアンのビットフィールドでは機能しないことに注意してください。
 
-Here are the rules on how COSMOS handles LITTLE_ENDIAN data:
+以下は、COSMOSがLITTLE_ENDIANデータを扱う際のルールです：
 
-1. COSMOS bit offsets are always defined in BIG_ENDIAN terms. Bit 0 is always the most significant bit of the first byte in a packet, and increasing from there.
+1. COSMOSのビットオフセットは常にBIG_ENDIANの用語で定義されます。ビット0は常にパケットの最初のバイトの最上位ビットであり、そこから増加していきます。
 
-1. All 8, 16, 32, and 64-bit byte-aligned LITTLE_ENDIAN data types define their bit_offset as the most significant bit of the first byte in the packet that contains part of the item. (This is exactly the same as BIG_ENDIAN). Note that for all except 8-bit LITTLE_ENDIAN items, this is the LEAST significant byte of the item.
+1. すべての8ビット、16ビット、32ビット、64ビットのバイト境界が合ったLITTLE_ENDIANデータ型は、パケット内のアイテムの一部を含む最初のバイトの最上位ビットとしてbit_offsetを定義します（これはBIG_ENDIANと全く同じです）。8ビットのLITTLE_ENDIANアイテムを除くすべてのアイテムでは、これはアイテムの最下位バイトになることに注意してください。
 
-1. LITTLE_ENDIAN bit fields are defined as any LITTLE_ENDIAN INT or UINT item that is not 8, 16, 32, or 64-bit and byte aligned.
+1. LITTLE_ENDIANビットフィールドは、8ビット、16ビット、32ビット、または64ビットではなく、バイト境界が合っていないLITTLE_ENDIAN INTまたはUINTアイテムとして定義されます。
 
-1. LITTLE_ENDIAN bit fields must define their bit_offset as the location of the most significant bit of the bitfield in BIG_ENDIAN space as described in rule 1 above. So for example. The following C struct at the beginning of a packet would be defined like so:
+1. LITTLE_ENDIANビットフィールドは、上記のルール1で説明されているように、BIG_ENDIANスペースでのビットフィールドの最上位ビットの位置としてbit_offsetを定義する必要があります。例えば、パケットの先頭にある次のC構造体は次のように定義されます：
 
 ```c
 struct {
@@ -29,6 +29,6 @@ ITEM B 12 8 UINT "struct item b"
 ITEM C 8 4 UINT "struct item c"
 ```
 
-This is hard to visualize, but the structure above gets spread out in a byte array like the following after byte swapping: least significant 4 bits of b, 4-bits a, 4-bits c, most significant 4 bits of b.
+これは視覚化するのが難しいですが、上記の構造はバイトスワップ後、バイト配列内で次のように展開されます：bの最下位4ビット、aの4ビット、cの4ビット、bの最上位4ビット。
 
-The best advice is to experiment and use the View Raw feature in the Command and Telemetry Service to inspect the bytes of the packet and adjust as necessary.
+最良のアドバイスは、実験を行い、コマンドとテレメトリサービスのView Raw機能を使用してパケットのバイトを検査し、必要に応じて調整することです。

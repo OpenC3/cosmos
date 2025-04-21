@@ -1,69 +1,69 @@
 ---
-title: Script Writing Guide
-description: Key concepts and best practices for script writing
+title: スクリプト作成ガイド
+description: スクリプト作成のための主要概念とベストプラクティス
 sidebar_custom_props:
   myEmoji: 🏃‍➡️
 ---
 
-## Introduction
+## はじめに
 
-This guide aims to provide the best practices for using the scripting capabilities provided by COSMOS. Scripts are used to automate a series of activities for operations or testing. The goal of this document is to ensure scripts are written that are simple, easy to understand, maintainable, and correct. Guidance on some of the key details of using the COSMOS Script Runner is also provided.
+このガイドは、COSMOSが提供するスクリプト機能を使用するためのベストプラクティスを提供することを目的としています。スクリプトは、運用やテストのための一連の活動を自動化するために使用されます。このドキュメントの目的は、シンプルで理解しやすく、保守可能で正確なスクリプトを作成することです。COSMOSスクリプトランナーの使用に関する主要な詳細についてもガイダンスを提供します。
 
-## Concepts
+## 概念
 
-COSMOS supports both Ruby and Python for writing scripts. Ruby and Python are very similar scripting languages and most of this guide applies directly to both. Where examples are used, both a Ruby and Python example are given.
+COSMOSはスクリプト作成にRubyとPythonの両方をサポートしています。RubyとPythonは非常に似たスクリプト言語であり、このガイドのほとんどは両方に直接適用されます。例を使用する場合は、RubyとPythonの両方の例が示されています。
 
-### Ruby vs Python in COSMOS
+### COSMOSでのRuby対Python
 
-There are many similarities and a few key differences between Ruby and Python when it comes to writing COSMOS scripts.
+COSMOSスクリプトを書く際のRubyとPythonの間には多くの類似点といくつかの主要な違いがあります。
 
-1. There is no 80 character limit on line length. Lines can be as long as you like, but be careful to not make them too long as it makes printed reviews of scripts more difficult.
-1. Indentation white space:
-   1. Ruby: Not significant. Ruby uses the `end` keyword to determine indented code blocks with a standard of 2 spaces.
-   1. Python: Significant. Python uses indentation to determine code blocks with a standard of 4 spaces.
-1. Variables do not have to be declared ahead of time and can be reassigned later, i.e. Ruby and Python are dynamically typed.
-1. Variable interpolation:
-   1. Ruby: Variable values can be placed into strings using the `"#{variable}"` syntax.
-   1. Python: Variable values can be placed into f-strings using the `f"{variable}"` syntax.
-1. A variable declared inside of a block or loop will not exist outside of that block unless it was already declared.
+1. 行の長さに80文字の制限はありません。行の長さは好きなだけ長くできますが、スクリプトの印刷レビューが難しくなるため、あまり長くしないように注意してください。
+1. インデントの空白：
+   1. Ruby: 重要ではありません。Rubyは`end`キーワードを使用して、2スペースを標準としたインデントされたコードブロックを決定します。
+   1. Python: 重要です。Pythonはインデントを使用して、4スペースを標準としたコードブロックを決定します。
+1. 変数は事前に宣言する必要がなく、後で再割り当てできます。つまり、RubyとPythonは動的型付けです。
+1. 変数の補間：
+   1. Ruby: 変数値は`"#{variable}"`構文を使用して文字列に配置できます。
+   1. Python: 変数値は`f"{variable}"`構文を使用してf-stringに配置できます。
+1. ブロックやループ内で宣言された変数は、すでに宣言されていない限り、そのブロックの外側には存在しません。
 
-Both languages provides a script writer a lot of power. But with great power comes great responsibility. Remember when writing your scripts that you or someone else will come along later and need to understand them. Therefore use the following style guidelines:
+両言語はスクリプト作成者に多くの力を提供します。しかし、大きな力には大きな責任が伴います。スクリプトを書くときは、あなた自身や他の誰かが後でそれを理解する必要があることを忘れないでください。したがって、次のスタイルガイドラインを使用してください：
 
-- Use consistent spacing for indentation and do NOT use tabs
-- Constants should be all caps with underscores
+- インデントには一貫したスペースを使用し、タブを使用しないでください
+- 定数はすべて大文字でアンダースコア付き
   - `SPEED_OF_LIGHT = 299792458 # meters per s`
-- Variable names and method names should be in lowercase with underscores
+- 変数名とメソッド名は小文字でアンダースコア付き
   - `last_name = "Smith"`
   - `perform_setup_operation()`
-- Class names (when used) should be camel case and the files which contain them should match but be lowercase with underscores
+- クラス名（使用する場合）はキャメルケースで、それらを含むファイルは小文字とアンダースコアで一致する必要があります
   - `class DataUploader # in 'data_uploader.rb'`
   - `class CcsdsUtility: # in 'ccsds_utility.py'`
-- Don't add useless comments but instead describe intent
+- 無意味なコメントを追加せず、代わりに意図を説明してください
 
 <div style={{"clear": 'both'}}></div>
 
-The following is an example of good Ruby style:
+以下は良いRubyスタイルの例です：
 
 ```ruby
-load 'TARGET/lib/upload_utility.rb' # library we do NOT want to show executing
-load_utility 'TARGET/lib/helper_utility.rb' # library we do want to show executing
+load 'TARGET/lib/upload_utility.rb' # 実行を表示したくないライブラリ
+load_utility 'TARGET/lib/helper_utility.rb' # 実行を表示したいライブラリ
 
-# Declare constants
+# 定数を宣言
 OUR_TARGETS = ['INST','INST2']
 
-# Clear the collect counter of the passed in target name
+# 渡されたターゲット名の収集カウンターをクリア
 def clear_collects(target)
   cmd("#{target} CLEAR")
   wait_check("#{target} HEALTH_STATUS COLLECTS == 0", 5)
 end
 
 ######################################
-# START
+# 開始
 ######################################
 helper = HelperUtility.new
 helper.setup
 
-# Perform collects on all the targets
+# すべてのターゲットで収集を実行
 OUR_TARGETS.each do |target|
   collects = tlm("#{target} HEALTH_STATUS COLLECTS")
   cmd("#{target} COLLECT with TYPE SPECIAL")
@@ -74,29 +74,29 @@ clear_collects('INST')
 clear_collects('INST2')
 ```
 
-The following is an example of good Python style:
+以下は良いPythonスタイルの例です：
 
 ```python
 from openc3.script import *
 
-import TARGET.lib.upload_utility # library we do NOT want to show executing
-load_utility('TARGET/lib/helper_utility.rb') # library we do want to show executing
+import TARGET.lib.upload_utility # 実行を表示したくないライブラリ
+load_utility('TARGET/lib/helper_utility.rb') # 実行を表示したいライブラリ
 
-# Declare constants
+# 定数を宣言
 OUR_TARGETS = ['INST','INST2']
 
-# Clear the collect counter of the passed in target name
+# 渡されたターゲット名の収集カウンターをクリア
 def clear_collects(target):
     cmd(f"{target} CLEAR")
     wait_check(f"{target} HEALTH_STATUS COLLECTS == 0", 5)
 
 ######################################
-# START
+# 開始
 ######################################
 helper = HelperUtility()
 helper.setup()
 
-# Perform collects on all the targets
+# すべてのターゲットで収集を実行
 for target in OUR_TARGETS:
     collects = tlm(f"{target} HEALTH_STATUS COLLECTS")
     cmd(f"{target} COLLECT with TYPE SPECIAL")
@@ -106,30 +106,30 @@ clear_collects('INST')
 clear_collects('INST2')
 ```
 
-Both examples shows several features of COSMOS scripting in action. Notice the difference between 'load' or 'import' and 'load_utility'. The first is to load additional scripts which will NOT be shown in Script Runner when executing. This is a good place to put code which takes a long time to run such as image analysis or other looping code where you just want the output. 'load_utility' will visually execute the code line by line to show the user what is happening.
+両方の例はCOSMOSスクリプティングのいくつかの機能を示しています。'load'または'import'と'load_utility'の違いに注目してください。最初のものは実行時にScript Runnerで表示されない追加スクリプトを読み込むためのものです。これは画像分析や長時間実行するループコードなど、出力だけが欲しい場合に良い場所です。'load_utility'は何が起こっているかをユーザーに示すために、コードを1行ずつ視覚的に実行します。
 
-Next we declare our constants and create an array of strings which we store in OUR_TARGETS. Notice the constant is all uppercase with underscores.
+次に定数を宣言し、OUR_TARGETSに文字列の配列を格納します。定数はすべて大文字でアンダースコア付きであることに注意してください。
 
-Then we declare our local methods of which we have one called clear_collects. Please provide a comment at the beginning of each method describing what it does and the parameters that it takes.
+次にclear_collectsという1つのローカルメソッドを宣言します。各メソッドの先頭には、それが何をするのか、およびそれが受け取るパラメータを説明するコメントを提供してください。
 
-The 'helper_utility' is then created. Note the similarity in the class name and the file name we loaded.
+次に'helper_utility'が作成されます。クラス名と読み込んだファイル名の類似性に注意してください。
 
-The collect example shows how you can iterate over the array of strings we previously created and use variables when commanding and checking telemetry. The Ruby pound bracket #{} notation and python f-string f"{} notation puts whatever the variable holds into the string. You can even execute additional code inside the brackets like we do when checking for the collect count to increment.
+collect例では、以前に作成した文字列配列を反復処理し、コマンドやテレメトリをチェックする際に変数を使用する方法を示しています。Rubyのポンド括弧#\{\}記法とPythonのf文字列f"{}"記法は、変数が保持しているものを文字列に入れます。括弧内で追加のコードを実行することもできます。例えば、収集回数の増加をチェックするときのようにです。
 
-Finally we call our 'clear_collects' method on each target by passing the target name.
+最後に、ターゲット名を渡して各ターゲットに対して'clear_collects'メソッドを呼び出します。
 
-## Scripting Philosophy
+## スクリプティングの哲学
 
-### A Super Basic Script Example
+### 基本的なスクリプト例
 
-Most COSMOS scripts can be broken down into the simple pattern of sending a command to a system/subsystem and then verifying that the command worked as expected. This pattern is most commonly implemented with cmd() followed by wait_check(), like the following:
+ほとんどのCOSMOSスクリプトは、システム/サブシステムにコマンドを送信し、そのコマンドが期待通りに機能したことを確認するという単純なパターンに分解できます。このパターンは通常、以下のようにcmd()の後にwait_check()を使用して実装されます：
 
 ```ruby
 cmd("INST COLLECT with TYPE NORMAL, TEMP 10.0")
 wait_check("INST HEALTH_STATUS TYPE == 'NORMAL'", 5)
 ```
 
-or similarly with a counter that is sampled before the command.
+または同様に、コマンドの前にサンプリングされるカウンターを使用します。
 
 Ruby:
 
@@ -147,25 +147,25 @@ cmd("INST COLLECT with TYPE NORMAL, TEMP 10.0")
 wait_check(f"INST HEALTH_STATUS COLLECTS >= {count + 1}", 5)
 ```
 
-90% of the COSMOS scripts you write should be the simple patterns shown above except that you may need to check more than one item after each command to make sure the command worked as expected.
+作成するCOSMOSスクリプトの90%は、コマンドが期待通りに機能したことを確認するために各コマンドの後に複数の項目をチェックする必要がある場合を除いて、上記のような単純なパターンであるべきです。
 
-### KISS (Keep It Simple Stupid)
+### KISS（Keep It Simple Stupid）
 
-Ruby and Python are very powerful languages with many ways to accomplish the same thing. Given that, always choose the method that is easiest to understand for yourself and others. While it is possible to create complex one liners or obtuse regular expressions, you'll thank yourself later by expanding complex one liners and breaking up and documenting regular expressions.
+RubyとPythonは非常に強力な言語であり、同じことを達成するための多くの方法があります。それを考慮すると、常に自分や他の人にとって最も理解しやすい方法を選択してください。複雑な1行コードや難解な正規表現を作成することも可能ですが、複雑な1行コードを展開し、正規表現を分解して文書化することで、後で自分自身に感謝することになるでしょう。
 
-### Keep things DRY (Don't Repeat Yourself)
+### DRY（Don't Repeat Yourself）
 
-A widespread problem in scripts written for any command and control system is large blocks of code that are repeated multiple times. In extreme cases, this has led to 100,000+ line scripts that are impossible to maintain and review.
+任意のコマンドと制御システム用に書かれたスクリプトでの広範な問題は、同じコードブロックが複数回繰り返されることです。極端な場合、これは保守やレビューが不可能な10万行以上のスクリプトにつながることがあります。
 
-There are two common ways repetition presents itself: exact blocks of code to perform a common action such as powering on a subsystem, and blocks of code that only differ in the name of the mnemonic being checked or the values checked against. Both are solved by removing the repetition using methods (or functions).
+繰り返しが現れる一般的な方法は2つあります：サブシステムの電源を入れるなどの一般的なアクションを実行するための正確なコードブロック、およびチェックされる助記語の名前またはチェックされる値のみが異なるコードブロックです。どちらもメソッド（または関数）を使用して繰り返しを削除することで解決されます。
 
-For example, a script that powers on a subsystem and ensures correct telemetry would become:
+例えば、サブシステムの電源を入れて正しいテレメトリを確保するスクリプトは次のようになります：
 
 Ruby:
 
 ```ruby
 def power_on_subsystem
-  # 100 lines of cmd(), wait_check(), etc
+  # 100行のcmd()、wait_check()など
 end
 ```
 
@@ -173,24 +173,24 @@ Python:
 
 ```python
 def power_on_subsystem():
-    # 100 lines of cmd(), wait_check(), etc
+    # 100行のcmd()、wait_check()など
 ```
 
-Ideally, the above methods would be stored in another file where it could be used by other scripts. If it is truly only useful in the one script, then it could be at the top of the file. The updated script would then look like:
+理想的には、上記のメソッドは他のスクリプトでも使用できるように別のファイルに保存されるべきです。それが真に1つのスクリプトでしか役に立たない場合は、ファイルの先頭に置くことができます。更新されたスクリプトは次のようになります：
 
 ```ruby
 power_on_subsystem()
-# 150 lines operating the subsystem (e.g.)
+# 150行のサブシステム操作（例）
 # cmd(...)
 # wait_check(...)
 #...
 power_off_subystem()
-# Unrelated activities
+# 関連のないアクティビティ
 power_on_subsystem()
-# etc.
+# など
 ```
 
-Blocks of code where only the only variation is the mnemonics or values checked can be replaced by methods with arguments.
+唯一の変更が助記語またはチェックされる値であるコードブロックは、引数を持つメソッドで置き換えることができます。
 
 Ruby:
 
@@ -211,28 +211,28 @@ def test_minimum_temp(enable_cmd_name, enable_tlm, temp_tlm, expected_temp):
     wait_check(f"TARGET {temp_tlm} >= {expected_temp}", 50)
 ```
 
-### Use Comments Appropriately
+### コメントを適切に使用する
 
-Use comments when what you are doing is unclear or there is a higher-level purpose to a set of lines. Try to avoid putting numbers or other details in a comment as they can become out of sync with the underlying code. Ruby and Python comments start with a # pound symbol and can be anywhere on a line.
+あなたが行っていることが不明確な場合や、一連の行に高レベルの目的がある場合は、コメントを使用してください。コメント内に数字やその他の詳細を入れないようにしてください。それらは基礎となるコードと同期が取れなくなる可能性があります。RubyとPythonのコメントは#ポンド記号で始まり、行のどこにでも配置できます。
 
 ```ruby
-# This line sends an abort command - BAD COMMENT, UNNECESSARY
+# このラインはアボートコマンドを送信します - 悪いコメント、不要
 cmd("INST ABORT")
-# Rotate the gimbal to look at the calibration target - GOOD COMMENT
-cmd("INST ROTATE with ANGLE 180.0") # Rotate 180 degrees - BAD COMMENT
+# キャリブレーションターゲットを見るためにジンバルを回転させる - 良いコメント
+cmd("INST ROTATE with ANGLE 180.0") # 180度回転 - 悪いコメント
 ```
 
-### Script Runner
+### スクリプトランナー
 
-COSMOS provides two unique ways to run scripts (also known as procedures). Script Runner provides both a script execution environment and a script editor. The script editor includes code completion for both COSMOS methods and command/telemetry item names. It is also a great environment to develop and test scripts. Script Runner provides a framework for users that are familiar with a traditional scripting model with longer style procedures, and for users that want to be able to edit their scripts in place.
+COSMOSはスクリプト（プロシージャとも呼ばれる）を実行するための2つのユニークな方法を提供します。スクリプトランナーはスクリプト実行環境とスクリプトエディタの両方を提供します。スクリプトエディタには、COSMOSメソッドとコマンド/テレメトリ項目名の両方のコード補完が含まれています。これはスクリプトを開発してテストするための優れた環境でもあります。スクリプトランナーは、長いスタイルのプロシージャを持つ従来のスクリプティングモデルに慣れているユーザーと、その場でスクリプトを編集できるようにしたいユーザーのためのフレームワークを提供します。
 
-When opening a suite file (named with 'suite') Script Runner provides a more formal, but also more powerful, environment for running scripts. Suite files breaks scripts down into suites, groups, and scripts (individual methods). Suites are the highest-level concept and would typically cover a large procedure such as a thermal vacuum test, or a large operations scenario such as performing on orbit checkout. Groups capture a related set of scripts such as all the scripts regarding a specific mechanism. A Group might be a collection of scripts all related to a subsystem, or a specific series of tests such as an RF checkout. Scripts capture individual activities that can either pass or fail. Script Runner allows for running an entire suite, one or more groups, or one or more scripts easily. It also automatically produces reports containing timing, pass / fail counts, etc.
+スイートファイル（'suite'という名前）を開くと、スクリプトランナーはより正式ですが、より強力なスクリプト実行環境を提供します。スイートファイルはスクリプトをスイート、グループ、およびスクリプト（個々のメソッド）に分割します。スイートは最高レベルの概念であり、通常、熱真空試験などの大規模な手順や、軌道上チェックアウトの実行などの大規模な運用シナリオをカバーします。グループは、特定のメカニズムに関するすべてのスクリプトなど、関連するスクリプトのセットをキャプチャします。グループはサブシステムに関連するスクリプトのコレクションや、RF検査などの特定の一連のテストである場合があります。スクリプトは合格または不合格のいずれかになる個々のアクティビティをキャプチャします。スクリプトランナーでは、スイート全体、1つ以上のグループ、または1つ以上のスクリプトを簡単に実行できます。また、タイミング、合格/不合格のカウントなどを含むレポートを自動的に生成します。
 
-The correct environment for the job is up to individual users, and many programs will use both script formats to complete their goals.
+仕事に適した環境は個々のユーザー次第であり、多くのプログラムは両方のスクリプト形式を使用して目標を達成します。
 
-### Looping vs Unrolled Loops
+### ループ vs アンロールされたループ
 
-Loops are powerful constructs that allow you to perform the same operations multiple times without having to rewrite the same code over and over (See the DRY Concept). However, they can make restarting a COSMOS script at the point of a failure difficult or impossible. If there is a low probability of something failing, then loops are an excellent choice. If a script is running a loop over a list of telemetry points, it may be a better choice to “unroll” the loop by making the loop body into a method, and then calling that method directly for each iteration of a loop that would have occurred.
+ループは、同じコードを何度も書き直す必要なく、同じ操作を複数回実行できる強力な構造です（DRYの概念を参照）。ただし、失敗した時点でCOSMOSスクリプトを再開するのが難しいか不可能になる場合があります。何かが失敗する可能性が低い場合、ループは優れた選択肢です。スクリプトがテレメトリポイントのリストでループを実行している場合、ループ本体をメソッドにしてから、発生するはずだったループの各繰り返しに対してそのメソッドを直接呼び出すことでループを「アンロール」する方が良い選択かもしれません。
 
 Ruby:
 
@@ -249,7 +249,7 @@ for temperature_number in range(1, 11):
     check_temperature(temperature_number)
 ```
 
-If the above script was stopped after temperature number 3, there would be no way to restart the loop at temperature number 4. A better solution for small loop counts is to unroll the loop.
+上記のスクリプトが温度番号3の後に停止した場合、温度番号4でループを再開する方法はありません。ループカウントが少ない場合の良い解決策は、ループをアンロールすることです。
 
 ```ruby
 check_temperature(1)
@@ -264,22 +264,22 @@ check_temperature(9)
 check_temperature(10)
 ```
 
-In the unrolled version above, the COSMOS “Start script at selected line” feature can be used to resume the script at any point.
+上記のアンロールされたバージョンでは、COSMOSの「選択した行からスクリプトを開始」機能を使用して、任意の点でスクリプトを再開できます。
 
-## Script Organization
+## スクリプトの構成
 
-All scripts must be part of a [Plugin](../configuration/plugins.md). You can create a simple plugin called SCRIPTS or PROCEDURES that only contains lib and procedures directories to store scripts. If COSMOS detects a plugin without defined cmd/tlm it will not spawn microservices for telemetry processing.
+すべてのスクリプトは[プラグイン](../configuration/plugins.md)の一部である必要があります。SCRIPTSやPROCEDURESなどの単純なプラグインを作成して、スクリプトを保存するためのlibとproceduresディレクトリのみを含めることができます。COSMOSが定義されたcmd/tlmを持たないプラグインを検出すると、テレメトリ処理用のマイクロサービスを起動しません。
 
-### Organizing Your Scripts into a Plugin
+### スクリプトをプラグインに整理する
 
-As your scripts become large with many methods, it makes sense to break them up into multiple files within a plugin. Here is a recommended organization for your plugin's scripts/procedures.
+スクリプトが多くのメソッドを持つ大きなものになるにつれて、それらをプラグイン内の複数のファイルに分割することが理にかなっています。以下はプラグインのスクリプト/プロシージャの推奨される構成です。
 
-| Folder                         | Description                                                               |
-| ------------------------------ | ------------------------------------------------------------------------- |
-| targets/TARGET_NAME/lib        | Place script files containing reusable target specific methods here       |
-| targets/TARGET_NAME/procedures | Place simple procedures that are centered around one specific target here |
+| フォルダ                        | 説明                                                                |
+| ------------------------------ | ------------------------------------------------------------------ |
+| targets/TARGET_NAME/lib        | 再利用可能なターゲット固有のメソッドを含むスクリプトファイルをここに配置 |
+| targets/TARGET_NAME/procedures | 1つの特定のターゲットを中心とした単純なプロシージャをここに配置        |
 
-In your main procedure you will usually bring in the other files with instrumentation using load_utility.
+メインプロシージャでは、通常、load_utilityを使用してインストルメンテーションで他のファイルを取り込みます。
 
 ```ruby
 # Ruby:
@@ -288,21 +288,21 @@ load_utility('TARGET/lib/my_other_script.rb')
 load_utility('TARGET/procedures/my_other_script.py')
 ```
 
-### Organize Scripts into Methods
+### スクリプトをメソッドに整理する
 
-Put each activity into a distinct method. Putting your scripts into methods makes organization easy and gives a great high-level overview of what the overall script does (assuming you name the methods well). There are no bonus points for vague, short method names. Make your method names long and clear.
+各アクティビティを異なるメソッドに入れてください。スクリプトをメソッドに入れると、整理が簡単になり、全体的なスクリプトが何をするかについての優れた高レベルの概要が得られます（メソッドに適切な名前を付ける場合）。曖昧で短いメソッド名にはボーナスポイントはありません。メソッド名は長く明確にしてください。
 
 Ruby:
 
 ```ruby
 def test_1_heater_zone_control
   puts "Verifies requirements 304, 306, and 310"
-  # Test code here
+  # テストコードをここに
 end
 
 def script_1_heater_zone_control
   puts "Verifies requirements 304, 306, and 310"
-  # Test code here
+  # テストコードをここに
 end
 ```
 
@@ -311,18 +311,18 @@ Python:
 ```python
 def test_1_heater_zone_control():
     print("Verifies requirements 304, 306, and 310")
-    # Test code here
+    # テストコードをここに
 
 def script_1_heater_zone_control():
     print("Verifies requirements 304, 306, and 310")
-    # Test code here
+    # テストコードをここに
 ```
 
-### Using Classes vs Unscoped Methods
+### クラス vs 非スコープメソッドの使用
 
-Classes in object-oriented programming allow you to organize a set of related methods and some associated state. The most important aspect is that the methods work on some shared state. For example, if you have code that moves a gimbal around, and need to keep track of the number of moves, or steps, performed across methods, then that is a wonderful place to use a class. If you just need a helper method to do something that happens multiple times in a script without copy and pasting, it probably does not need to be in a class.
+オブジェクト指向プログラミングのクラスを使用すると、関連するメソッドのセットと関連する状態を整理できます。最も重要な側面は、メソッドが何らかの共有状態で動作することです。例えば、ジンバルを動かすコードがあり、メソッド間で移動または手順の数を追跡する必要がある場合、これはクラスを使用するのに最適な場所です。スクリプト内で複数回発生する処理をコピー＆ペーストせずに実行するためのヘルパーメソッドが必要な場合は、おそらくクラスに入れる必要はありません。
 
-NOTE: The convention in COSMOS is to have a TARGET/lib/target.\[rb/py\] file which is named after the TARGET name and contains a class called Target. This discussion refers to scripts in the TARGET/procedures directory.
+注：COSMOSの規則では、TARGET名に基づいて名付けられたTARGET/lib/target.[rb/py]ファイルがあり、Targetと呼ばれるクラスが含まれています。この議論はTARGET/proceduresディレクトリのスクリプトを指しています。
 
 Ruby:
 
@@ -333,11 +333,11 @@ class Gimbal
     @gimbal_steps = 0
   end
   def move(steps_to_move)
-    # Move the gimbal
+    # ジンバルを動かす
     @gimbal_steps += steps_to_move
   end
   def home_gimbal
-    # Home the gimbal
+    # ジンバルをホームポジションに
     @gimbal_steps = 0
   end
 end
@@ -363,11 +363,11 @@ class Gimbal:
         self.gimbal_steps = 0
 
     def move(self, steps_to_move):
-        # Move the gimbal
+        # ジンバルを動かす
         self.gimbal_steps += steps_to_move
 
     def home_gimbal(self):
-        # Home the gimbal
+        # ジンバルをホームポジションに
         self.gimbal_steps = 0
 
 def perform_common_math(x, y):
@@ -382,24 +382,24 @@ result = perform_common_math(gimbal.gimbal_steps, 10)
 print(f"Math:{result}")
 ```
 
-### Instrumented vs Uninstrumented Lines (require vs load)
+### インストルメント化された行と非インストルメント化された行（requireとload）
 
-COSMOS scripts are normally “instrumented”. This means that each line has some extra code added behind the scenes that primarily highlights the current executing line and catches exceptions if things fail such as a wait_check. If your script needs to use code in other files, there are a few ways to bring in that code. Some techniques bring in instrumented code and others bring in uninstrumented code. There are reasons to use both.
+COSMOSスクリプトは通常「インストルメント化」されています。これは、各行に主に現在実行中の行をハイライトし、wait_checkのような何かが失敗した場合に例外をキャッチするコードが裏側で追加されていることを意味します。スクリプトで他のファイルのコードを使用する必要がある場合、そのコードを取り込むためにいくつかの方法があります。一部の手法はインストルメント化されたコードを取り込み、他の手法は非インストルメント化されたコードを取り込みます。両方を使用する理由があります。
 
-load_utility (and the deprecated require_utility), bring in instrumented code from other files. When COSMOS runs the code in the other file, Script Runner will dive into the other file and show each line highlighted as it executes. This should be the default way to bring in other files, as it allows continuing if something fails, and provides better visibility to operators.
+load_utility（および非推奨のrequire_utility）は、他のファイルからインストルメント化されたコードを取り込みます。COSMOSが他のファイルのコードを実行するとき、Script Runnerは他のファイルに移動し、実行時に各行をハイライト表示します。これは他のファイルを取り込むためのデフォルトの方法であるべきです。何かが失敗した場合に継続することができ、オペレーターによりよい可視性を提供するためです。
 
-However, sometimes you don't want to display code executing from other files. Externally developed libraries generally do not like to be instrumented, and code that contains large loops or that just takes a long time to execute when highlighting lines, will be much faster if included in a method that does not instrument lines. Ruby provides two ways to bring in uninstrumented code. The first is the “load” keyword. Load will bring in the code from another file and will bring in any changes to the file if it is updated on the next call to load. “require” is like load but is optimized to only bring in the code from another file once. Therefore, if you use require and then change the file it requires, you must restart Script Runner to re-require the file and bring in the changes. In general, load is recommended over require for COSMOS scripting. One gotcha with load is that it requires the full filename including extension, while the require keyword does not.
+しかし、時には他のファイルからのコード実行を表示したくない場合もあります。外部で開発されたライブラリは一般的にインストルメント化されることを好まず、大きなループを含むコードや行のハイライト表示時に時間がかかるコードは、インストルメント化されていないメソッドに含めるとはるかに高速になります。Rubyは非インストルメント化されたコードを取り込むための2つの方法を提供しています。1つ目は「load」キーワードです。loadは別のファイルからコードを取り込み、ファイルが更新された場合は次のload呼び出し時にその変更を取り込みます。「require」はloadに似ていますが、別のファイルからコードを一度だけ取り込むように最適化されています。したがって、requireを使用してからrequireするファイルを変更する場合、ファイルを再度requireして変更を取り込むためにはScript Runnerを再起動する必要があります。一般的に、COSMOSスクリプティングではrequireよりもloadが推奨されます。loadの1つの注意点は、拡張子を含む完全なファイル名が必要なのに対し、requireキーワードはそれを必要としないことです。
 
-In Python, libraries are included using the import syntax. Any code imported using import is not instrumented. Only the code imported using load_utility is instrumented.
+Pythonでは、ライブラリはimport構文を使用して含まれます。importを使用してインポートされたコードはインストルメント化されません。load_utilityを使用してインポートされたコードのみがインストルメント化されます。
 
-Finally, COSMOS scripting has a special syntax for disabling instrumentation in the middle of an instrumented script, with the disable_instrumentation method. This allows you to disable instrumentation for large loops and other activities that are too slow when running instrumented.
+最後に、COSMOSスクリプティングには、インストルメント化されたスクリプトの途中でインストルメント化を無効にするための特別な構文があり、それはdisable_instrumentationメソッドです。これにより、インストルメント化された状態で実行すると遅すぎる大きなループやその他のアクティビティのインストルメント化を無効にすることができます。
 
 Ruby:
 
 ```ruby
 temp = 0
 disable_instrumentation do
-  # Make sure nothing in here will raise exceptions!
+  # ここでは例外を投げる可能性のあるものが何もないことを確認してください！
   5000000.times do
     temp += 1
   end
@@ -412,143 +412,143 @@ Python:
 ```python
 temp = 0
 with disable_instrumentation():
-    # Make sure nothing in here will raise exceptions!
+    # ここでは例外を投げる可能性のあるものが何もないことを確認してください！
     for x in range(0,5000000):
         temp += 1
 print(temp)
 ```
 
-:::warning When Running Uninstrumented Code
-Make sure that the code will not raise any exceptions or have any check failures. If an exception is raised from uninstrumented code, then your entire script will stop.
+:::warning 非インストルメント化されたコードを実行する際
+コードが例外を発生させたり、チェックが失敗したりしないことを確認してください。非インストルメント化されたコードから例外が発生した場合、スクリプト全体が停止します。
 :::
 
-## Debugging and Auditing
+## デバッグと監査
 
-### Built-In Debugging Capabilities
+### 組み込みデバッグ機能
 
-Script Runner has built in debugging capabilities that can be useful in determining why your script is behaving in a certain way. Of primary importance is the ability to inspect and set script variables.
+Script Runnerには、スクリプトが特定の動作をしている理由を判断するのに役立つ組み込みのデバッグ機能があります。特に重要なのは、スクリプト変数を検査して設定する能力です。
 
-To use the debugging functionality, first select the “Toggle Debug” option from the Script Menu. This will add a small Debug: prompt to the bottom of the tool. Any code entered in this prompt will be executed when Enter is pressed. To inspect variables in a running script, pause the script and then type the variable name to print out the value of the variable in the debug prompt.
+デバッグ機能を使用するには、まずスクリプトメニューから「Toggle Debug」オプションを選択します。これにより、ツールの下部に小さなDebug:プロンプトが追加されます。このプロンプトに入力されたコードは、Enterが押されると実行されます。実行中のスクリプトの変数を検査するには、スクリプトを一時停止してから、変数名を入力して変数の値をデバッグプロンプトに表示します。
 
 ```ruby
 variable_name
 ```
 
-Variables can also be set simply by using equals.
+変数は単に等号を使用して設定することもできます。
 
 ```ruby
 variable_name = 5
 ```
 
-If necessary, you can also inject commands from the debug prompt using the normal commanding methods. These commands will be logged to the Script Runner message log, which may be advantageous over using a different COSMOS tool like CmdSender (where the command would only be logged in the CmdTlmServer message log).
+必要に応じて、デバッグプロンプトから通常のコマンディングメソッドを使用してコマンドを挿入することもできます。これらのコマンドはScript Runnerメッセージログに記録されます。これは、CmdSender（コマンドはCmdTlmServerメッセージログにのみ記録される）のような別のCOSMOSツールを使用するよりも有利かもしれません。
 
 ```ruby
 cmd("INST COLLECT with TYPE NORMAL")
 ```
 
-Note that the debug prompt keeps the command history and you can scroll through the history by using the up and down arrows.
+デバッグプロンプトはコマンド履歴を保持し、上下の矢印を使用して履歴をスクロールできることに注意してください。
 
-### Breakpoints
+### ブレークポイント
 
-You can click the line number (left side gutter) in Script Runner to add a breakpoint. The script will automatically pause when it hits the breakpoint. Once stopped at the breakpoint, you can evaluate variables using the Debug line.
+Script Runnerで行番号（左側のガター）をクリックしてブレークポイントを追加できます。スクリプトはブレークポイントに到達すると自動的に一時停止します。ブレークポイントで停止したら、Debug行を使用して変数を評価できます。
 
-### Using Disconnect Mode
+### 切断モードの使用
 
-Disconnect mode is a feature of Script Runner that allows testing scripts in an environment without real hardware in the loop. Disconnect mode is started by selecting Script -> Toggle Disconnect. Once selected, the user is prompted to select which targets to disconnect. By default, all targets are disconnected, which allows for testing scripts without any real hardware. Optionally, only a subset of targets can be selected which can be useful for trying out scripts in partially integrated environments.
+切断モードは、実際のハードウェアがループに入っていない環境でスクリプトをテストできるScript Runnerの機能です。切断モードはスクリプト -> Toggle Disconnectを選択して開始します。選択すると、ユーザーは切断するターゲットを選択するよう求められます。デフォルトでは、すべてのターゲットが切断され、実際のハードウェアなしでスクリプトをテストできます。オプションで、ターゲットのサブセットのみを選択することができ、これは部分的に統合された環境でスクリプトを試すのに役立ちます。
 
-While in disconnect mode, commands to the disconnected targets always succeed. Additionally, all checks of disconnected targets' telemetry are immediately successful. This allows for a quick run-through of procedures for logic errors and other script specific errors without having to worry about the behavior and proper functioning of hardware.
+切断モードでは、切断されたターゲットへのコマンドは常に成功します。さらに、切断されたターゲットのテレメトリのすべてのチェックはすぐに成功します。これにより、ハードウェアの動作や適切な機能を心配することなく、論理エラーやその他のスクリプト固有のエラーについてプロシージャを素早く実行できます。
 
-### Auditing your Scripts
+### スクリプトの監査
 
-Script Runner includes several tools to help audit your scripts both before and after execution.
+Script Runnerには、実行前後にスクリプトを監査するためのいくつかのツールが含まれています。
 
-#### Ruby Syntax Check
+#### Ruby構文チェック
 
-The Ruby Syntax Check tool is found under the Script Menu. This tool uses the ruby executable with the -c flag to run a syntax check on your script. If any syntax errors are found the exact message presented by the Ruby interpreter is shown to the user. These can be cryptic, but the most common faults are not closing a quoted string, forgetting an “end” keyword, or using a block but forgetting the proceeding “do” keyword.
+Ruby構文チェックツールはスクリプトメニューにあります。このツールは-cフラグを付けたruby実行可能ファイルを使用して、スクリプトの構文チェックを実行します。構文エラーが見つかった場合、Rubyインタープリタが提示する正確なメッセージがユーザーに表示されます。これらは暗号のように見えることがありますが、最も一般的な問題は、引用符で囲まれた文字列を閉じていない、「end」キーワードを忘れている、またはブロックを使用しているが前の「do」キーワードを忘れているなどです。
 
-## Common Scenarios
+## 一般的なシナリオ
 
-### User Input Best Practices
+### ユーザー入力のベストプラクティス
 
-COSMOS provides several different methods to gather manual user input in scripts. When using user input methods that allow for arbitrary values (like ask() and ask_string()), it is very important to validate the value given in your script before moving on. When asking for text input, it is extra important to handle different casing possibilities and to ensure that invalid input will either re-prompt the user or take a safe path.
+COSMOSはスクリプトで手動ユーザー入力を収集するためのいくつかの異なるメソッドを提供しています。任意の値を許可するユーザー入力メソッド（ask()やask_string()など）を使用する場合は、先に進む前にスクリプトで与えられた値を検証することが非常に重要です。テキスト入力を求める場合は、大文字小文字の可能性に対処し、無効な入力でユーザーに再度プロンプトを表示するか安全なパスを取ることを確実にすることが特に重要です。
 
 Ruby:
 
 ```ruby
-answer = ask_string("Do you want to continue (y/n)?")
+answer = ask_string("続行しますか (y/n)?")
 if answer != 'y' and answer != 'Y'
-  raise "User entered: #{answer}"
+  raise "ユーザーが入力: #{answer}"
 end
 
 temp = 0.0
 while temp < 10.0 or temp > 50.0
-  temp = ask("Enter the desired temperature between 10.0 and 50.0")
+  temp = ask("10.0から50.0の間の希望温度を入力してください")
 end
 ```
 
 Python:
 
 ```python
-answer = ask_string("Do you want to continue (y/n)?")
+answer = ask_string("続行しますか (y/n)?")
 if answer != 'y' and answer != 'Y':
-    raise RuntimeError(f"User entered: {answer}")
+    raise RuntimeError(f"ユーザーが入力: {answer}")
 
 temp = 0.0
 while temp < 10.0 or temp > 50.0:
-    temp = ask("Enter the desired temperature between 10.0 and 50.0")
+    temp = ask("10.0から50.0の間の希望温度を入力してください")
 ```
 
-When possible, always use one of the other user input methods that has a constrained list of choices for your users (message_box, vertical_message_box, combo_box).
+可能な場合は、常にユーザーに制約された選択肢のリストを持つ他のユーザー入力メソッド（message_box、vertical_message_box、combo_box）を使用してください。
 
-Note that all these user input methods provide the user the option to “Cancel”. When cancel is clicked, the script is paused but remains at the user input line. When hitting “Go” to the continue, the user will be re-prompted to enter the value.
+これらのすべてのユーザー入力メソッドは、ユーザーに「キャンセル (Cancel)」オプションを提供することに注意してください。キャンセルがクリックされると、スクリプトは一時停止しますが、ユーザー入力行に留まります。「Go」を押して続行すると、ユーザーは値を入力するよう再度求められます。
 
-### Conditionally Require Manual User Input Steps
+### 条件付きで手動ユーザー入力ステップを要求する
 
-When possible, a useful design pattern is to write your scripts such that they can run without prompting for any user input. This allows the scripts to be more easily tested and provides a documented default value for any user input choices or values. To implement this pattern, all manual steps such as ask(), prompt(), and infinite wait() statements need to be wrapped with an if statement that checks the value of $manual in Ruby or RunningScript.manual in Python. If the variable is set, then the manual steps should be executed. If not, then a default value should be used.
+可能な場合、ユーザー入力を求めることなく実行できるようにスクリプトを書くことは有用な設計パターンです。これにより、スクリプトがより簡単にテストでき、ユーザー入力の選択や値に対して文書化されたデフォルト値が提供されます。このパターンを実装するには、ask()、prompt()、無限wait()ステートメントなどのすべての手動ステップを、RubyではRuby $manual、Pythonでは RunningScript.manual の値をチェックするif文でラップする必要があります。変数が設定されている場合は手動ステップを実行し、そうでない場合はデフォルト値を使用します。
 
-Ruby Example:
+Ruby例:
 
 ```ruby
 if $manual
-  temp = ask("Please enter the temperature")
+  temp = ask("温度を入力してください")
 else
   temp = 20.0
 end
 if !$manual
-  puts "Skipping infinite wait in auto mode"
+  puts "自動モードでは無限待機をスキップします"
 else
   wait
 end
 ```
 
-Python Example:
+Python例:
 
 ```python
 if RunningScript.manual:
-    temp = ask("Please enter the temperature")
+    temp = ask("温度を入力してください")
 else:
     temp = 20.0
 if not RunningScript.manual:
-    print("Skipping infinite wait in auto mode")
+    print("自動モードでは無限待機をスキップします")
 else:
     wait()
 ```
 
-When running suites, there is a checkbox at the top of the tool called “Manual” that affects this $manual variable directly.
+スイートを実行する場合、ツールの上部に「手動 (Manual)」というチェックボックスがあり、この$manual変数に直接影響します。
 
-### Outputting Extra Information to a Report
+### レポートに追加情報を出力する
 
-COSMOS Script Runner operating on a script suite automatically generates a report that shows the PASS/FAILED/SKIPPED state for each script. You can also inject arbitrary text into this report using the example as follows. Alternatively, you can simply use print text into the Script Runner message log.
+COSMOSスクリプトランナーは、スクリプトスイートで動作する際に、各スクリプトのPASS/FAILED/SKIPPEDの状態を示すレポートを自動的に生成します。以下の例のように、このレポートに任意のテキストを挿入することもできます。あるいは、シンプルにprintを使用してScript Runnerメッセージログにテキストを出力することもできます。
 
 Ruby:
 
 ```ruby
 class MyGroup < OpenC3::Group
   def script_1
-    # The following text will be placed in the report
-    OpenC3::Group.puts "Verifies requirements 304, 306, 310"
-    # This puts line will show up in the sr_messages log file
-    puts "script_1 complete"
+    # 以下のテキストはレポートに配置されます
+    OpenC3::Group.puts "要件304、306、310を検証します"
+    # このputs行はsr_messagesログファイルに表示されます
+    puts "script_1完了"
   end
 end
 ```
@@ -559,28 +559,28 @@ Python:
 from openc3.script.suite import Group
 class MyGroup(Group):
     def script_1():
-        # The following text will be placed in the report
-        Group.print("Verifies requirements 304, 306, 310")
-        # This puts line will show up in the sr_messages log file
-        print("script_1 complete")
+        # 以下のテキストはレポートに配置されます
+        Group.print("要件304、306、310を検証します")
+        # このputs行はsr_messagesログファイルに表示されます
+        print("script_1完了")
 ```
 
-### Getting the Most Recent Value of a Telemetry Point from Multiple Packets
+### 複数のパケットからテレメトリポイントの最新値を取得する
 
-Some systems include high rate data points with the same name in every packet. COSMOS supports getting the most recent value of a telemetry point that is in multiple packets using a special packet name of LATEST. Assume the target INST has two packets, PACKET1 and PACKET2. Both packets have a telemetry point called TEMP.
+一部のシステムには、すべてのパケットに同じ名前の高レートデータポイントが含まれています。COSMOSは、LATESTという特別なパケット名を使用して、複数のパケットに含まれるテレメトリポイントの最新値を取得することをサポートしています。ターゲットINSTにPACKET1とPACKET2の2つのパケットがあるとします。両方のパケットにはTEMPというテレメトリポイントがあります。
 
 ```ruby
-# Get the value of TEMP from the most recently received PACKET1
+# 最も最近受信したPACKET1からTEMPの値を取得
 value = tlm("INST PACKET1 TEMP")
-# Get the value of TEMP from the most recently received PACKET2
+# 最も最近受信したPACKET2からTEMPの値を取得
 value = tlm("INST PACKET2 TEMP")
-# Get the value of TEMP from the most recently received PACKET1 or PACKET2
+# 最も最近受信したPACKET1またはPACKET2からTEMPの値を取得
 value = tlm("INST LATEST TEMP")
 ```
 
-### Checking Every Single Sample of a Telemetry Point
+### テレメトリポイントのすべてのサンプルをチェックする
 
-When writing COSMOS scripts, checking the most recent value of a telemetry point normally gets the job done. The tlm(), tlm_raw(), etc methods all retrieve the most recent value of a telemetry point. Sometimes you need to perform analysis on every single sample of a telemetry point. This can be done using the COSMOS packet subscription system. The packet subscription system lets you choose one or more packets and receive them all from a queue. You can then pick out the specific telemetry points you care about from each packet.
+COSMOSスクリプトを書く際、テレメトリポイントの最新の値をチェックすることで通常は仕事が完了します。tlm()、tlm_raw()などのメソッドはすべて、テレメトリポイントの最新の値を取得します。テレメトリポイントのすべてのサンプルに対して分析を実行する必要がある場合もあります。これはCOSMOSパケットサブスクリプションシステムを使用して行うことができます。パケットサブスクリプションシステムでは、1つまたは複数のパケットを選択し、それらをすべてキューから受信することができます。その後、各パケットから関心のある特定のテレメトリポイントを選び出すことができます。
 
 Ruby:
 
@@ -591,7 +591,7 @@ id, packets = get_packets(id)
 packets.each do |packet|
   puts "#{packet['PACKET_TIMESECONDS']}: #{packet['target_name']} #{packet['packet_name']}"
 end
-# Wait for some time later and reuse the last returned ID
+# しばらく待ってから、最後に返されたIDを再利用
 id, packets = get_packets(id)
 ```
 
@@ -603,13 +603,13 @@ wait(1.5)
 id, packets = get_packets(id)
 for packet in packets:
     print(f"{packet['PACKET_TIMESECONDS']}: {packet['target_name']} {packet['packet_name']}")
-# Wait for some time later and reuse the last returned ID
+# しばらく待ってから、最後に返されたIDを再利用
 id, packets = get_packets(id)
 ```
 
-### Using Variables in Mnemonics
+### ニーモニックで変数を使用する
 
-Because command and telemetry mnemonics are just strings in COSMOS scripts, you can make use of variables in some contexts to make reusable code. For example, a method can take a target name as an input to support multiple instances of a target. You could also pass in the value for a set of numbered telemetry points.
+コマンドとテレメトリのニーモニックはCOSMOSスクリプトの単なる文字列なので、一部のコンテキストでは変数を利用して再利用可能なコードを作成できます。例えば、メソッドはターゲット名を入力として受け取り、ターゲットの複数のインスタンスをサポートできます。番号付きテレメトリポイントのセットの値を渡すこともできます。
 
 Ruby:
 
@@ -628,11 +628,11 @@ def example(target_name, temp_number):
     wait_check(f"{target_name} TEMP{temp_number} > 50.0")
 ```
 
-This can also be useful when looping through a numbered set of telemetry points but be considerate of the downsides of looping as discussed in the [Looping vs Unrolled Loops](#looping-vs-unrolled-loops) section.
+これは、番号付けされたテレメトリポイントのセットをループ処理する場合にも役立ちますが、[ループ vs アンロールされたループ](#ループ-vs-アンロールされたループ)セクションで説明したループのデメリットに注意してください。
 
-### Using Custom wait_check_expression
+### カスタムwait_check_expressionの使用
 
-The COSMOS wait_check_expression (and check_expression) allow you to perform more complicated checks and still stop the script with a CHECK error message if something goes wrong. For example, you can check variables against each other or check a telemetry point against a range. The exact string of text passed to wait_check_expression is repeatedly evaluated until it passes, or a timeout occurs. It is important to not use string interpolation within the actual expression or the values inside of the string interpolation syntax will only be evaluated once when it is converted into a string.
+COSMOSのwait_check_expression（およびcheck_expression）を使用すると、より複雑なチェックを実行し、それでも何かがうまくいかなかった場合にCHECKエラーメッセージでスクリプトを停止させることができます。例えば、変数同士をチェックしたり、テレメトリポイントを範囲に対してチェックしたりできます。wait_check_expressionに渡される正確なテキスト文字列は、パスするか、タイムアウトが発生するまで繰り返し評価されます。実際の式内で文字列補間を使用しないことが重要です。そうしないと、文字列補間構文内の値は文字列に変換されるときに1回だけ評価されます。
 
 Ruby:
 
@@ -641,10 +641,10 @@ one = 1
 two = 2
 
 wait_check_expression("one == two", 1)
-# ERROR: CHECK: one == two is FALSE after waiting 1.017035 seconds
+# エラー: CHECK: one == two は 1.017035 秒待機後にFALSEです
 
-# Checking an integer range
-wait_check_expression("one > 0 and one < 10 # init value one = #{one}", 1)
+# 整数範囲のチェック
+wait_check_expression("one > 0 and one < 10 # 初期値 one = #{one}", 1)
 ```
 
 Python:
@@ -654,81 +654,80 @@ one = 1
 two = 2
 
 wait_check_expression("one == two", 1, 0.25, locals())
-# ERROR: CHECK: one == two is FALSE after waiting 1.017035 seconds
+# エラー: CHECK: one == two は 1.017035 秒待機後にFALSEです
 
-# Checking an integer range
+# 整数範囲のチェック
 wait_check_expression("one > 0 and one < 10", 1, 0.25, locals())
 ```
 
-### COSMOS Scripting Differences from Regular Ruby Scripting
+### 通常のRubyスクリプティングとCOSMOSスクリプティングの違い
 
-#### Do not use single line if statements
+#### 単一行のif文を使用しないでください
 
-COSMOS scripting instruments each line to catch exceptions if things go wrong. With single line if statements the exception handling doesn't know which part of the statement failed and cannot properly continue. If an exception is raised in a single line if statement, then the entire script will stop and not be able to continue. Do not use single line if statements in COSMOS scripts. (However, they are fine to use in interfaces and other Ruby code, just not COSMOS scripts).
+COSMOSスクリプティングは、何かがうまくいかなかった場合に例外をキャッチするために各行をインストルメント化します。単一行のif文では、例外処理がステートメントのどの部分が失敗したかを知ることができず、適切に継続できません。単一行のif文で例外が発生すると、スクリプト全体が停止し、継続できなくなります。COSMOSスクリプトでは単一行のif文を使用しないでください（ただし、インターフェースやその他のRubyコードでは使用しても問題ありません。COSMOSスクリプトだけでは使用しないでください）。
 
-Don't do this:
+次のようにしないでください：
 
 ```ruby
 run_method() if tlm("INST HEALTH_STATUS TEMP1") > 10.0
 ```
 
-Do this instead:
+代わりに次のようにしてください：
 
 ```ruby
-# It is best not to execute any code that could fail in an if statement, ie
-# tlm() could fail if the CmdTlmServer was not running or a mnemonic
-# was misspelled
+# if文の中で失敗する可能性のあるコードを実行しないのがベストです
+# tlm()は、CmdTlmServerが実行されていなかったり、ニーモニックのスペルが間違っていたりすると失敗する可能性があります
 temp1 = tlm("INST HEALTH_STATUS TEMP1")
 if temp1 > 10.0
   run_method()
 end
 ```
 
-## When Things Go Wrong
+## 問題が発生した場合
 
-### Common Reasons Checks Fail
+### チェックが失敗する一般的な理由
 
-There are three common reasons that checks fail in COSMOS scripts:
+COSMOSスクリプトでチェックが失敗する一般的な理由は3つあります：
 
-1. The delay given was too short
+1. 遅延が短すぎた
 
-   The wait_check() method takes a timeout that indicates how long to wait for the referenced telemetry point to pass the check. The timeout needs to be large enough for the system under test to finish its action and for updated telemetry to be received. Note that the script will continue as soon as the check completes successfully. Thus, the only penalty for a longer timeout is the additional wait time in a failure condition.
+   wait_check()メソッドは、参照されるテレメトリポイントがチェックに合格するまで待機する時間を示すタイムアウトを取ります。タイムアウトは、テスト対象のシステムがアクションを完了し、更新されたテレメトリを受信するのに十分な長さである必要があります。チェックが正常に完了するとすぐにスクリプトが続行されることに注意してください。したがって、より長いタイムアウトの唯一のペナルティは、失敗条件での追加の待機時間です。
 
-2. The range or value checked against was incorrect or too stringent
+2. チェックされた範囲または値が不正確または厳しすぎた
 
-   Often the actual telemetry value is ok, but the expected value checked against was too tight. Loosen the ranges on checks when it makes sense. Ensure your script is using the wait_check_tolerance() routine when checking floating point numbers and verify you're using an appropriate tolerance value.
+   実際のテレメトリ値は問題ないが、チェックされた期待値が厳しすぎることがよくあります。意味のある場合はチェックの範囲を緩めてください。浮動小数点数をチェックする場合は、スクリプトがwait_check_tolerance()ルーチンを使用していることを確認し、適切な許容値を使用していることを確認してください。
 
-3. The check really failed
+3. チェックが本当に失敗した
 
-   Of course, sometimes there are real failures. See the next section for how to handle them and recover.
+   もちろん、実際の失敗が発生することもあります。次のセクションでは、それらを処理して回復する方法を説明します。
 
-### How to Recover from Anomalies
+### 異常からの回復方法
 
-Once something has failed, and your script has stopped with a pink highlighted line, how can you recover? Fortunately, COSMOS provides several mechanisms that can be used to recover after something in your script fails.
+何かが失敗し、スクリプトがピンク色でハイライトされた行で停止した後、どのように回復できますか？幸いなことに、COSMOSはスクリプトで何かが失敗した後に回復するために使用できるいくつかのメカニズムを提供しています。
 
-1. Retry
+1. 再試行
 
-   After a failure, the Script Runner “Pause” button changes to “Retry”. Clicking on the Retry button will re-execute the line the failed. For failures due to timing issues, this will often resolve the issue and allow the script to continue. Make note of the failure and be sure to update your script prior to the next run.
+   失敗後、Script Runnerの「一時停止 (Pause)」ボタンは「再試行 (Retry)」に変わります。「再試行 (Retry)」ボタンをクリックすると、失敗した行が再実行されます。タイミングの問題による失敗の場合、これにより問題が解決され、スクリプトを続行できることがよくあります。失敗に注意し、次回の実行前にスクリプトを更新するようにしてください。
 
-1. Use the Debug Prompt
+1. デバッグプロンプトの使用
 
-   By selecting Script -> Toggle Debug, you can perform arbitrary actions that may be needed to correct the situation without stopping the running script. You can also inspect variables to help determine why something failed.
+   Script -> Toggle Debugを選択することで、実行中のスクリプトを停止せずに状況を修正するために必要な任意のアクションを実行できます。また、なぜ何かが失敗したかを判断するために変数を検査することもできます。
 
-1. Execute Selection
+1. 選択実行
 
-   If only a small section of a script needs to be run, then “Execute Selection" can be used to execute only a small portion of the script. This can also be used when a script is paused or stopped in error.
+   スクリプトの一部のみを実行する必要がある場合は、「選択実行 (Execute Selection)」を使用してスクリプトの一部のみを実行できます。これはスクリプトが一時停止しているか、エラーで停止している場合にも使用できます。
 
-1. Run from here
+1. ここから実行
 
-   By clicking into a script, and right clicking to select "Run from here", users can restart a script at an arbitrary point. This works well if no required variable definitions exist earlier in the script.
+   スクリプトをクリックし、右クリックして「ここから実行 (Run from here)」を選択することで、ユーザーは任意の点からスクリプトを再開できます。これは、スクリプトの前半に必要な変数定義が存在しない場合に適しています。
 
-## Advanced Topics
+## 高度なトピック
 
-### Advanced Script Configuration with CSV or Excel
+### CSVまたはExcelを使用した高度なスクリプト設定
 
-Using a spreadsheet to store the values for use by a script can be a great option if you have a CM-controlled script but need to be able to tweak some values for a test or if you need to use different values for different serial numbers.
+スプレッドシートを使用してスクリプトで使用する値を保存することは、CM制御されたスクリプトがあるがテストのために一部の値を調整する必要がある場合や、異なるシリアル番号に対して異なる値を使用する必要がある場合に優れたオプションとなります。
 
-The Ruby CSV class be used to easily read data from CSV files (recommended for cross platform projects).
+Ruby CSVクラスを使用すると、CSVファイルからデータを簡単に読み取ることができます（クロスプラットフォームプロジェクトに推奨）。
 
 ```ruby
 require 'csv'
@@ -736,7 +735,7 @@ values = CSV.read('test.csv')
 puts values[0][0]
 ```
 
-If you are only using Windows, COSMOS also contains a library for reading Excel files.
+Windowsのみを使用している場合、COSMOSにはExcelファイルを読み取るためのライブラリも含まれています。
 
 ```ruby
 require 'openc3/win32/excel'
@@ -744,11 +743,11 @@ ss = ExcelSpreadsheet.new('C:/git/cosmos/test.xlsx')
 puts ss[0][0][0]
 ```
 
-### When to use Ruby Modules
+### Rubyモジュールの使用タイミング
 
-Modules in Ruby have two purposes: namespacing and mixins. Namespacing allows having classes and methods with the same name, but with different meanings. For example, if they are namespaced, COSMOS can have a Packet class and another Ruby library can have a Packet class. This isn't typically useful for COSMOS scripting though.
+Rubyのモジュールには2つの目的があります：名前空間とミックスイン。名前空間は、同じ名前で意味の異なるクラスやメソッドを持つことを可能にします。例えば、名前空間を使用すれば、COSMOSはPacketクラスを持ち、別のRubyライブラリもPacketクラスを持つことができます。ただし、これはCOSMOSスクリプティングには通常役立ちません。
 
-Mixins allow adding common methods to classes without using inheritance. Mixins can be useful to add common functionality to some classes but not others, or to break up classes into multiple files.
+ミックスインは継承を使用せずにクラスに共通のメソッドを追加することを可能にします。ミックスインは、一部のクラスに共通の機能を追加し、他のクラスには追加しない場合や、クラスを複数のファイルに分割する場合に役立ちます。
 
 ```ruby
 module MyModule

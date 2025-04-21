@@ -12,7 +12,7 @@
     "description": "Navbar item with label Home"
   },
   "item.label.Enterprise": {
-    "message": "エンタープライズ",
+    "message": "Enterprise",
     "description": "Navbar item with label Enterprise"
   },
   "item.label.Documentation": {

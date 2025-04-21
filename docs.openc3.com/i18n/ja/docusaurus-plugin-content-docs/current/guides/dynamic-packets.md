@@ -1,19 +1,19 @@
 ---
-title: Dynamic Packets
-description: How COSMOS dynamically builds packets
+title: 動的パケット
+description: COSMOSが動的にパケットを構築する方法
 sidebar_custom_props:
   myEmoji: 🧱
 ---
 
-COSMOS has the ability to dynamically build packets rather than have them statically defined by our [COMMAND](/docs/configuration/command) and [TELEMETRY](/docs/configuration/telemetry) configuration files. This is useful when your telemetry items are dynamic like when generating [prometheus](https://prometheus.io/) metrics.
+COSMOSには、[COMMAND](/docs/configuration/command)と[TELEMETRY](/docs/configuration/telemetry)の設定ファイルで静的に定義するのではなく、パケットを動的に構築する機能があります。これは、[prometheus](https://prometheus.io/)メトリクスを生成する場合のように、テレメトリ項目が動的である場合に便利です。
 
-The best way to illustrate this capability is with an example. If you're an Enterprise customer, please see the [prometheus-metrics](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-prometheus-metrics) plugin.
+この機能を説明する最良の方法は、例を示すことです。Enterprise顧客の場合は、[prometheus-metrics](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-prometheus-metrics)プラグインをご覧ください。
 
-## Using Dynamic Update
+## 動的更新の使用
 
-To use the dynamic update capability in your own code you need to call the `TargetModel` `dynamic_update` method. This method takes an array / list of packets, whether the packets are commands or telemetry, and the filename to create in the config bucket.
+あなた自身のコードで動的更新機能を使用するには、`TargetModel`の`dynamic_update`メソッドを呼び出す必要があります。このメソッドは、パケットの配列/リスト、パケットがコマンドかテレメトリかの区別、および設定バケットに作成するファイル名を引数に取ります。
 
-Here is the method signature:
+以下がメソッドのシグネチャです：
 
 ```ruby
 def dynamic_update(packets, cmd_or_tlm = :TELEMETRY, filename = "dynamic_tlm.txt")
@@ -23,38 +23,38 @@ def dynamic_update(packets, cmd_or_tlm = :TELEMETRY, filename = "dynamic_tlm.txt
 def dynamic_update(self, packets, cmd_or_tlm="TELEMETRY", filename="dynamic_tlm.txt")
 ```
 
-Here is an example of using this method:
+このメソッドの使用例は以下の通りです：
 
 ```ruby
-# Create a new packet
+# 新しいパケットを作成
 packet = Packet.new('INST', 'NEW_PACKET')
-# or get an existing packet
+# または既存のパケットを取得
 packet = System.telemetry.packet('INST', 'METRICS')
-# Modify the packet by appending new items to it
+# 新しいアイテムを追加してパケットを変更
 packet.append_item('NEW_ITEM', 32, :FLOAT)
-# Grab the TargetModel associated with the packet's target
+# パケットのターゲットに関連付けられたTargetModelを取得
 target_model = TargetModel.get_model(name: 'INST', scope: 'DEFAULT')
-# Update the target model with the new packet
+# 新しいパケットでターゲットモデルを更新
 target_model.dynamic_update([packet])
 ```
 
 ```python
-# Create a new packet
+# 新しいパケットを作成
 packet = Packet('INST', 'NEW_PACKET')
-# or get an existing packet
+# または既存のパケットを取得
 packet = System.telemetry.packet('INST', 'METRICS')
-# Modify the packet by appending new items to it
+# 新しいアイテムを追加してパケットを変更
 packet.append_item('NEW_ITEM', 32, 'FLOAT')
-# Grab the TargetModel associated with the packet's target
+# パケットのターゲットに関連付けられたTargetModelを取得
 target_model = TargetModel.get_model(name='INST', scope='DEFAULT')
-# Update the target model with the new packet
+# 新しいパケットでターゲットモデルを更新
 target_model.dynamic_update([packet])
 ```
 
-When this method is called several things happen:
+このメソッドが呼び出されると、いくつかのことが起こります：
 
-1. The COSMOS Redis database is updated with the new packets and the current value table is initialized
-2. A configuration file for the packets is created and stored at &lt;SCOPE&gt;/targets_modified/&lt;TARGET&gt;/cmd_tlm/dynamic_tlm.txt. Note that if you call `dynamic_update` multiple times you should update the filename so it is not written over.
-3. The COSMOS microservices are informed of the new streaming topics which will contain the raw and decommuted packet data. Part of this action is to restart the microservices so they pickup these changes. For COMMANDS the following are restarted: &lt;SCOPE&gt;\_\_COMMANDLOG\_\_&lt;TARGET&gt; and &lt;SCOPE&gt;\_\_DECOMCMDLOG\_\_&lt;TARGET&gt;. For TELEMETRY the following are restarted: &lt;SCOPE&gt;\_\_PACKET_LOG\_\_&lt;TARGET&gt;, &lt;SCOPE&gt;\_\_DECOMLOG\_\_&lt;TARGET&gt;, and &lt;SCOPE&gt;\_\_DECOM\_\_&lt;TARGET&gt;.
+1. COSMOS Redisデータベースが新しいパケットで更新され、現在値テーブルが初期化されます
+2. パケットの設定ファイルが作成され、&lt;SCOPE&gt;/targets_modified/&lt;TARGET&gt;/cmd_tlm/dynamic_tlm.txtに保存されます。`dynamic_update`を複数回呼び出す場合は、ファイル名を更新して上書きされないようにする必要があります。
+3. COSMOSマイクロサービスに、生のパケットデータと分解されたパケットデータを含む新しいストリーミングトピックが通知されます。このアクションの一部として、マイクロサービスが再起動され、これらの変更が適用されます。COMMANDSの場合、次のものが再起動されます：&lt;SCOPE&gt;\_\_COMMANDLOG\_\_&lt;TARGET&gt;と&lt;SCOPE&gt;\_\_DECOMCMDLOG\_\_&lt;TARGET&gt;。TELEMETRYの場合、次のものが再起動されます：&lt;SCOPE&gt;\_\_PACKET_LOG\_\_&lt;TARGET&gt;、&lt;SCOPE&gt;\_\_DECOMLOG\_\_&lt;TARGET&gt;、および&lt;SCOPE&gt;\_\_DECOM\_\_&lt;TARGET&gt;。
 
-Since `dynamic_update` restarts the LOG microservices there is a potential for a loss of packets during the restart. Thus you should not call `dynamic_update` during critical telemetry processing periods.
+`dynamic_update`はLOGマイクロサービスを再起動するため、再起動中にパケットが失われる可能性があります。したがって、重要なテレメトリ処理期間中には`dynamic_update`を呼び出すべきではありません。

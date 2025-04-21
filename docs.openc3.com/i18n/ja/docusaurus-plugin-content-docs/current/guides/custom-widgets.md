@@ -1,32 +1,32 @@
 ---
-title: Custom Widgets
-description: How to build custom widgets for use in Telemetry Viewer
+title: カスタムウィジェット
+description: Telemetry Viewerで使用するカスタムウィジェットの構築方法
 sidebar_custom_props:
   myEmoji: 🔨
 ---
 
-COSMOS allows you to build custom widgets which can be deployed with your [plugin](../configuration/plugins.md) and used in [Telemetry Viewer](../tools/tlm-viewer.md). Building custom widgets can utilize any javascript frameworks but since COSMOS is written with Vue.js, we will use that framework in this tutorial. Please see the [Widget Generator](../getting-started/generators#widget-generator) guide for information about generating the scaffolding for a custom widget.
+COSMOSでは、[プラグイン](../configuration/plugins.md)と共にデプロイして[テレメトリビューア](../tools/tlm-viewer.md)で使用できるカスタムウィジェットを構築することができます。カスタムウィジェットの構築には任意のJavaScriptフレームワークを使用できますが、COSMOSはVue.jsで書かれているため、このチュートリアルではそのフレームワークを使用します。カスタムウィジェットの基本構造を生成する方法については、[ウィジェットジェネレータ](../getting-started/generators#widget-generator)ガイドを参照してください。
 
-## Custom Widgets
+## カスタムウィジェット
 
-We're basically going to follow the COSMOS [Demo](https://github.com/OpenC3/cosmos/tree/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo) and explain how that custom widget was created.
+基本的にCOSMOSの[デモ](https://github.com/OpenC3/cosmos/tree/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo)に従って、そのカスタムウィジェットがどのように作成されたかを説明します。
 
-If you look at the bottom of the Demo's [plugin.txt](https://github.com/OpenC3/cosmos/blob/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/plugin.txt) file you'll see we declare the widgets:
+デモの[plugin.txt](https://github.com/OpenC3/cosmos/blob/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/plugin.txt)ファイルの下部を見ると、ウィジェットを宣言しているのが分かります：
 
 ```ruby
 WIDGET BIG
 WIDGET HELLOWORLD
 ```
 
-When the plugin is deployed this causes COSMOS to look for the as-built widgets. For the BIG widget it will look for the widget at `tools/widgets/BigWidget/BigWidget.umd.min.js`. Similarly it looks for HELLOWORLD at `tools/widgets/HelloworldWidget/HelloworldWidget.umd.min.js`. These directories and file names may seem mysterious but it's all about how the widgets get built.
+プラグインがデプロイされると、COSMOSはビルド済みのウィジェットを探します。BIGウィジェットの場合、`tools/widgets/BigWidget/BigWidget.umd.min.js`でウィジェットを探します。同様に、HELLOWORLDは`tools/widgets/HelloworldWidget/HelloworldWidget.umd.min.js`で探します。これらのディレクトリとファイル名は不思議に思えるかもしれませんが、それはウィジェットがどのようにビルドされるかに関係しています。
 
-### Helloworld Widget
+### Helloworldウィジェット
 
-The Helloworld Widget source code is found in the plugin's src directory and is called [HelloworldWidget.vue](https://github.com/OpenC3/cosmos/blob/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/src/HelloworldWidget.vue). The basic structure is as follows:
+Helloworldウィジェットのソースコードはプラグインのsrcディレクトリにあり、[HelloworldWidget.vue](https://github.com/OpenC3/cosmos/blob/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/src/HelloworldWidget.vue)と呼ばれています。基本構造は次の通りです：
 
 ```vue
 <template>
-  <!-- Implement widget here -->
+  <!-- ここにウィジェットを実装 -->
 </template>
 
 <script>
@@ -35,21 +35,21 @@ export default {
   mixins: [Widget],
   data() {
     return {
-      // Reactive data items
+      // リアクティブデータ項目
     };
   },
 };
 </script>
 <style scoped>
-/* widget specific style */
+/* ウィジェット固有のスタイル */
 </style>
 ```
 
 :::info Vue & Vuetify
-For more information about how the COSMOS frontend is built (including all the Widgets) please check out [Vue.js](https://vuejs.org) and [Vuetify](https://vuetifyjs.com).
+COSMOSフロントエンド（すべてのウィジェットを含む）がどのように構築されているかについての詳細は、[Vue.js](https://vuejs.org)と[Vuetify](https://vuetifyjs.com)をご確認ください。
 :::
 
-To build this custom widget we changed the Demo [Rakefile](https://github.com/OpenC3/cosmos/blob/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/Rakefile) to call `yarn run build` when the plugin is built. `yarn run XXX` looks for 'scripts' to run in the [package.json](https://github.com/OpenC3/cosmos/blob/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/package.json) file. If we open package.json we find the following:
+このカスタムウィジェットをビルドするために、デモの[Rakefile](https://github.com/OpenC3/cosmos/blob/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/Rakefile)を変更して、プラグインがビルドされるときに`yarn run build`を呼び出すようにしました。`yarn run XXX`は[package.json](https://github.com/OpenC3/cosmos/blob/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/package.json)ファイル内で実行する「スクリプト」を探します。package.jsonを開くと、次のようになっています：
 
 ```json
   "scripts": {
@@ -57,9 +57,9 @@ To build this custom widget we changed the Demo [Rakefile](https://github.com/Op
   },
 ```
 
-This uses the `vue-cli-service` to build the code found at `src/HelloworldWidget.vue` and formats as `umd-min` and puts it in the `tools/widgets/HelloworldWidget` directory. So this is why the plugin looks for the plugin at `tools/widgets/HelloworldWidget/HelloworldWidget.umd.min.js`. Click [here](https://cli.vuejs.org/guide/cli-service.html#vue-cli-service-build) for the `vue-cli-service build` documentation.
+これは`vue-cli-service`を使用して、`src/HelloworldWidget.vue`にあるコードをビルドし、`umd-min`形式でフォーマットして、`tools/widgets/HelloworldWidget`ディレクトリに配置します。そのため、プラグインは`tools/widgets/HelloworldWidget/HelloworldWidget.umd.min.js`でプラグインを探します。`vue-cli-service build`のドキュメントについては[こちら](https://cli.vuejs.org/guide/cli-service.html#vue-cli-service-build)をクリックしてください。
 
-If you look at the Demo plugin's [simple.txt](https://github.com/OpenC3/cosmos/blob/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/targets/INST/screens/simple.txt) screen you'll see we're using the widgets:
+デモプラグインの[simple.txt](https://github.com/OpenC3/cosmos/blob/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/targets/INST/screens/simple.txt)画面を見ると、ウィジェットを使用していることがわかります：
 
 ```ruby
 SCREEN AUTO AUTO 0.5
@@ -68,8 +68,8 @@ HELLOWORLD
 BIG <%= target_name %> HEALTH_STATUS TEMP1
 ```
 
-Opening this screen in Telemetry Viewer results in the following:
+テレメトリビューアでこの画面を開くと、次のようになります：
 
-![Simple Screen](/img/guides/simple_screen.png)
+![シンプル画面](/img/guides/simple_screen.png)
 
-While this is a simple example the possibilities with custom widgets are limitless!
+これは単純な例ですが、カスタムウィジェットの可能性は無限大です！

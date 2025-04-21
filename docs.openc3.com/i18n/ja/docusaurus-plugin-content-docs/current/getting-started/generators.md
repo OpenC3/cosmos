@@ -48,7 +48,7 @@ Plugin openc3-cosmos-gse successfully generated!
 
 ## ターゲットジェネレーター
 
-ターゲットジェネレーターは、新しいCOSMOSターゲットの基礎を作成します。既存のCOSMOSプラグイン内で動作する必要があり、ターゲット名が必要です。例えば：
+ターゲットジェネレーターは、新しいCOSMOSターゲットの基本構造を作成します。既存のCOSMOSプラグイン内で動作する必要があり、ターゲット名が必要です。例えば：
 
 ```bash
 openc3-cosmos-gse % openc3.sh cli generate target
@@ -87,7 +87,7 @@ INTERFACE <%= gse_target_name %>_INT tcpip_client_interface.rb host.docker.inter
 
 ## マイクロサービスジェネレーター
 
-マイクロサービスジェネレーターは、新しいCOSMOSマイクロサービスの基礎を作成します。既存のCOSMOSプラグイン内で動作する必要があり、ターゲット名が必要です。例えば：
+マイクロサービスジェネレーターは、新しいCOSMOSマイクロサービスの基本構造を作成します。既存のCOSMOSプラグイン内で動作する必要があり、ターゲット名が必要です。例えば：
 
 ```bash
 openc3-cosmos-gse % openc3.sh cli generate microservice
@@ -113,7 +113,7 @@ MICROSERVICE BACKGROUND background-microservice
 
 ## 変換ジェネレーター
 
-変換ジェネレーターは、新しいCOSMOS [変換(Conversion)](../configuration/telemetry#read_conversion)の基礎を作成します。既存のCOSMOSプラグイン内で動作する必要があり、ターゲット名と変換名の両方が必要です。例えば：
+変換ジェネレーターは、新しいCOSMOS [変換(Conversion)](../configuration/telemetry#read_conversion)の基本構造を作成します。既存のCOSMOSプラグイン内で動作する必要があり、ターゲット名と変換名の両方が必要です。例えば：
 
 ```bash
 openc3-cosmos-gse % openc3.sh cli generate conversion
@@ -147,7 +147,7 @@ TELEMETRY GSE STATUS BIG_ENDIAN "Telemetry description"
 
 ## リミットレスポンスジェネレーター
 
-リミットレスポンスジェネレーターは、新しいCOSMOS [リミットレスポンス](../configuration/telemetry#limits_response)の基礎を作成します。既存のCOSMOSプラグイン内で動作する必要があり、ターゲット名とリミットレスポンス名の両方が必要です。例えば：
+リミットレスポンスジェネレーターは、新しいCOSMOS [リミットレスポンス](../configuration/telemetry#limits_response)の基本構造を作成します。既存のCOSMOSプラグイン内で動作する必要があり、ターゲット名とリミットレスポンス名の両方が必要です。例えば：
 
 ```bash
 openc3-cosmos-gse % openc3.sh cli generate limits_response
@@ -182,7 +182,7 @@ TELEMETRY GSE STATUS BIG_ENDIAN "Telemetry description"
 
 ## ウィジェットジェネレーター
 
-ウィジェットジェネレーターは、[テレメトリビューアー画面](../configuration/telemetry-screens)で使用するための新しいCOSMOSウィジェットの基礎を作成します。詳細については、[カスタムウィジェット](../guides/custom-widgets)ガイドを参照してください。既存のCOSMOSプラグイン内で動作する必要があり、ウィジェット名が必要です。例えば：
+ウィジェットジェネレーターは、[テレメトリビューアー画面](../configuration/telemetry-screens)で使用するための新しいCOSMOSウィジェットの基本構造を作成します。詳細については、[カスタムウィジェット](../guides/custom-widgets)ガイドを参照してください。既存のCOSMOSプラグイン内で動作する必要があり、ウィジェット名が必要です。例えば：
 
 ```bash
 openc3-cosmos-gse % openc3.sh cli generate widget
@@ -207,7 +207,7 @@ WIDGET Helloworld
 
 ## ツールジェネレーター
 
-ツールジェネレーターは、新しいCOSMOSツールの基礎を作成します。既存のCOSMOSプラグイン内で動作する必要があり、ツール名が必要です。カスタムツールの開発には、Vue.js、Angular、React、SvelteなどのJavascriptフレームワークに関する深い知識が必要です。すべてのCOSMOSツールはVue.jsで構築されているため、新しいツール開発には Vue.js が推奨されるフレームワークです。フロントエンド開発の詳細については、[フロントエンドアプリケーションの実行](../development/developing#running-a-frontend-application)を参照してください。
+ツールジェネレーターは、新しいCOSMOSツールの基本構造を作成します。既存のCOSMOSプラグイン内で動作する必要があり、ツール名が必要です。カスタムツールの開発には、Vue.js、Angular、React、SvelteなどのJavascriptフレームワークに関する深い知識が必要です。すべてのCOSMOSツールはVue.jsで構築されているため、新しいツール開発には Vue.js が推奨されるフレームワークです。フロントエンド開発の詳細については、[フロントエンドアプリケーションの実行](../development/developing#running-a-frontend-application)を参照してください。
 
 ```bash
 openc3-cosmos-gse % openc3.sh cli generate tool

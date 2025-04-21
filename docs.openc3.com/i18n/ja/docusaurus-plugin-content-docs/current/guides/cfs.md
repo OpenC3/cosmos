@@ -1,30 +1,29 @@
 ---
-title: COSMOS and NASA cFS
-description: Tutorial for integrating with NASA cFS
+title: COSMOSとNASA cFS
+description: NASA cFSとの統合チュートリアル
 sidebar_custom_props:
   myEmoji: 🚀
 ---
 
-## Working configuration
+## 動作確認済み構成
 
-This tutorial has been tested using the following components:
+このチュートリアルは、以下のコンポーネントを使用してテストされています：
 
-- COSMOS v5 release [5.0.6](https://github.com/OpenC3/cosmos/releases/tag/v5.0.6)
-- cFS master-branch commit: 561b128 (June 1, 2022)
+- COSMOS v5リリース [5.0.6](https://github.com/OpenC3/cosmos/releases/tag/v5.0.6)
+- cFS masterブランチコミット: 561b128 (2022年6月1日)
 - Docker Desktop 4.9.0 on Windows
 
-Replace all `<xxxxxx>` with your matching paths and names. Example: `<USERNAME>`.
+すべての `<xxxxxx>` を対応するパスや名前に置き換えてください。例：`<USERNAME>`。
 
-## Setting up COSMOS
+## COSMOSのセットアップ
 
-Install COSMOS according to the official [installation](../getting-started/installation.md) instructions.
+公式の[インストール](../getting-started/installation.md)手順に従ってCOSMOSをインストールします。
 
-### Configuring COSMOS
+### COSMOSの設定
 
-Change the Docker configuration for the interoperability with NASA cFS. For
-subscribing to the telemetry, you have to append a port binding in the file
-`compose.yaml` under the section `openc3-operator`. The port number has to
-match with the port number cFS is sending the telemetry on.
+NASA cFSとの相互運用性のためにDocker設定を変更します。テレメトリをサブスクライブするには、
+`compose.yaml`ファイルの`openc3-operator`セクションにポートバインディングを追加する必要があります。
+ポート番号はcFSがテレメトリを送信するポート番号と一致させる必要があります。
 
 ```yaml
 openc3-operator:
@@ -32,31 +31,31 @@ openc3-operator:
     - "1235:1235/udp"
 ```
 
-Run COSMOS, the first run takes a while (~15 min).
+COSMOSを実行します。初回の実行には時間がかかります（約15分）。
 
 ```bash
 openc3.sh start
 ```
 
-When started, connect with a browser to [http://localhost:2900](http://localhost:2900).
+起動したら、ブラウザで[http://localhost:2900](http://localhost:2900)に接続します。
 
-For shutting down COSMOS:
+COSMOSをシャットダウンするには：
 
 ```bash
 openc3.sh stop
 ```
 
-## Setting up cFS
+## cFSのセットアップ
 
-To run [NASA cFS](https://github.com/nasa/cFS) as a Docker container do the following:
+[NASA cFS](https://github.com/nasa/cFS)をDockerコンテナとして実行するには、以下の手順を実行します：
 
-### Clone cFS
+### cFSのクローン
 
 ```bash
 git clone --recurse-submodules https://github.com/nasa/cFS.git
 ```
 
-### Create Dockerfile in cFS dir
+### cFSディレクトリにDockerfileを作成
 
 ```docker
 FROM ubuntu:22.10 AS builder
@@ -93,35 +92,34 @@ WORKDIR /cFS/build/exe/cpu1
 ENTRYPOINT [ "./core-cpu1" ]
 ```
 
-### Build and run cFS
+### cFSのビルドと実行
 
-Note we're connecting to the COSMOS network (`docker network ls`) and exposing the cFS ports.
+COSMOSネットワーク（`docker network ls`で確認できます）に接続し、cFSポートを公開していることに注意してください。
 
 ```bash
 docker build -t cfs .
 docker run --cap-add CAP_SYS_RESOURCE --net=openc3-cosmos-network --name cfs -p1234:1234/udp -p1235:1235 cfs
 ```
 
-## Creating a COSMOS plugin for TM/TC interface with cFS
+## cFSとのTM/TCインターフェース用COSMOSプラグインの作成
 
-The detailed instructions how to create a plugin, can be found
-[here](../getting-started/gettingstarted.md), in the chapter "Interfacing with Your Hardware".
+プラグインの作成に関する詳細な手順は、
+[こちら](../getting-started/gettingstarted.md)の「ハードウェアとのインターフェース」の章にあります。
 
-Create a new plugin with the name `CFS`. `CFS` is the name of the plugin and
-must be in capital letters according to the COSMOS documentation. This command
-should create the plugin structure. Then cd into the plugin to create the target.
+`CFS`という名前で新しいプラグインを作成します。COSMOSドキュメントによると、`CFS`はプラグイン名であり、
+大文字である必要があります。このコマンドはプラグイン構造を作成するはずです。
+その後、プラグインのディレクトリに移動してターゲットを作成します。
 
 ```bash
-# cd .. to the location of the cfs dir
+# cd .. でcfsディレクトリの場所に移動
 $PATH_TO_OPENC3/openc3.sh cli generate plugin CFS
 cd openc3-cosmos-cfs
 $PATH_TO_OPENC3/openc3.sh cli generate target CFS
 ```
 
-In this newly created plugin, change the `plugin.txt` file, so that the
-communication happens over UDP. `port_tm` is the port number on which cFS
-sends the telemetry messages. `port_tc` indicates the port on which cFS listens to the
-telecommands.
+この新しく作成されたプラグインで、`plugin.txt`ファイルを変更して、
+通信がUDP経由で行われるようにします。`port_tm`はcFSがテレメトリメッセージを送信するポート番号です。
+`port_tc`はcFSがテレコマンドをリッスンするポートを示します。
 
 ```ruby
 VARIABLE ip 127.0.0.1
@@ -135,21 +133,21 @@ INTERFACE <%= cfs_target_name %>_INT udp_interface.rb <%= ip %> <%= port_tc %> <
   MAP_TARGET <%= cfs_target_name %>
 ```
 
-Note that the two arguments to the `TARGET` parameter are:
+`TARGET`パラメータへの2つの引数に注意してください：
 
-1. the physical target name that should match the name of the plugin, i.e. `CFS`.
-   This name must match the folder name in the `targets` folder. Example: for the
-   `CFS` plugin, the target specifications must be under
-   `openc3-cfs/targets/CFS`. If you don't follow this
-   convention, the server will refuse to install your plugin at the following steps.
+1. プラグインの名前と一致する物理ターゲット名、つまり`CFS`。
+   この名前は`targets`フォルダ内のフォルダ名と一致する必要があります。例：
+   `CFS`プラグインでは、ターゲット仕様は
+   `openc3-cfs/targets/CFS`にある必要があります。この
+   規則に従わない場合、サーバーは次のステップでプラグインのインストールを拒否します。
 
-1. the name of your target and how it is shown in the user interface.
+1. ターゲットの名前と、それがユーザーインターフェースでどのように表示されるか。
 
-In this example, we keep both names to be `CFS`.
+この例では、両方の名前を`CFS`にしています。
 
-## Creating TM/TC definitions
+## TM/TC定義の作成
 
-Change to the target folder and remove the existing files and create own files.
+ターゲットフォルダに移動し、既存のファイルを削除して独自のファイルを作成します。
 
 ```bash
 cd openc3-cfs/targets/CFS/cmd_tlm
@@ -159,10 +157,9 @@ touch cfs_tlm.txt
 touch to_lab_cmds.txt
 ```
 
-Open these newly created files in a text editor and fill them with following
-content.
+これらの新しく作成されたファイルをテキストエディタで開き、以下の内容を入力します。
 
-`to_lab_cmds.txt`:
+`to_lab_cmds.txt`：
 
 ```ruby
 COMMAND CFS TO_LAB_ENABLE BIG_ENDIAN "Enable telemetry"
@@ -178,13 +175,12 @@ COMMAND CFS TO_LAB_ENABLE BIG_ENDIAN "Enable telemetry"
   APPEND_PARAMETER    DEST_IP   144  STRING "127.0.0.1"                      "Destination IP, i.e. 172.16.9.112, pc-57"
 ```
 
-:::info Enabling Telemetry
-The command `0x1880` is needed to enable telemetry. When the cFS receives
-this command, it starts sending telemetry to the IP address provided via the
-`DEST_IP` field.
+:::info テレメトリの有効化
+コマンド`0x1880`はテレメトリを有効にするために必要です。cFSがこのコマンドを受信すると、
+`DEST_IP`フィールドで提供されたIPアドレスにテレメトリの送信を開始します。
 :::
 
-`cfs_cmds.txt`:
+`cfs_cmds.txt`：
 
 ```ruby
 COMMAND CFS NOOP BIG_ENDIAN "NOOP Command"
@@ -217,7 +213,7 @@ COMMAND CFS PROCESS BIG_ENDIAN "Process Command"
   APPEND_PARAMETER       CHECKSUM     8   UINT   MIN_UINT8   MAX_UINT8   MIN_UINT8   ""
 ```
 
-`cfs_tlm.txt`:
+`cfs_tlm.txt`：
 
 ```ruby
 TELEMETRY CFS HK BIG_ENDIAN "housekeeping telemetry"
@@ -241,36 +237,33 @@ TELEMETRY CFS HK BIG_ENDIAN "housekeeping telemetry"
   APPEND_ITEM      SPARE       16   UINT            "Spares"
 ```
 
-Build the plugin from the base of your plugin folder:
+プラグインフォルダのベースからプラグインをビルドします：
 
 ```bash
 # cd openc3-cfs
 $PATH_TO_OPENC3/openc3.sh cli rake build VERSION=1.0.0
 ```
 
-:::info Plugin versioning
-Do not forget to change the version number with every build if you want to
-better distinguish between the versions of the plugin. When the version is
-seen in the plugin's .gem file name, it is easier to visualize the existing
-versions and the newly uploaded versions.
+:::info プラグインのバージョン管理
+プラグインのバージョン間をより簡単に区別したい場合は、ビルドごとにバージョン番号を変更するのを忘れないでください。
+バージョンがプラグインの.gemファイル名に表示されると、既存のバージョンと新しくアップロードされたバージョンを
+視覚化しやすくなります。
 :::
 
-:::info Plugin parameters
-Multiple parameters are available for the plugin configuration. See the [plugin](../configuration/plugins.md) page.
+:::info プラグインパラメータ
+プラグイン設定には複数のパラメータが利用可能です。[プラグイン](../configuration/plugins.md)ページを参照してください。
 :::
 
-## Uploading the plugin
+## プラグインのアップロード
 
-After the plugin has been built, you can import the plugin in the admin area of
-the page.
+プラグインがビルドされたら、ページの管理エリアでプラグインをインポートできます。
 
-Connect with a browser to
-[http://localhost:2900/tools/admin](http://localhost:2900/tools/admin).
+ブラウザで[http://localhost:2900/tools/admin](http://localhost:2900/tools/admin)に接続します。
 
-Click on the clip icon and navigate to where your plugin is stored and select
-the `openc3-cosmos-cfs-1.0.0.gem` file. Right of the selection line click on `UPLOAD`.
+クリップアイコンをクリックし、プラグインが保存されている場所に移動して
+`openc3-cosmos-cfs-1.0.0.gem`ファイルを選択します。選択行の右側にある`UPLOAD`をクリックします。
 
-Determine the IP address the cFS container and COSMOS operator container are running at:
+cFSコンテナとCOSMOS operatorコンテナが実行されているIPアドレスを確認します：
 
 ```bash
 docker network ls
@@ -297,27 +290,30 @@ docker network inspect openc3-cosmos-network
 ]
 ```
 
-When using this plugin, make sure to change the `ip` variable during uploading
-to match where cFS is running. In the example above you would set it to 172.20.0.9.
-`port_tm` is the port number on which cFS is sending the telemetry messages.
-`port_tc` indicates the port on cFS is listening for telecommands.
+このプラグインを使用する際は、アップロード時に`ip`変数をcFSが実行されている場所に合わせて変更してください。
+上記の例では、172.20.0.9に設定します。
+`port_tm`はcFSがテレメトリメッセージを送信するポート番号です。
+`port_tc`はcFSがテレコマンドをリッスンしているポートを示します。
 
-Under `cfs_target_name` you can change the target name of this plugin. This
-step is optional as long as you are fine with your plugin showing up as `CFS`.
+`cfs_target_name`でこのプラグインのターゲット名を変更できます。
+プラグインが`CFS`として表示されることに問題がなければ、このステップはオプションです。
 
-![Plugin Variable Settings](/img/guides/plugin_variables.png)
+![プラグイン変数設定](/img/guides/plugin_variables.png)
 
-:::warning Port subscription
-The last uploaded plugin on COSMOS will subscribe to TM on port 1235.
-Other plugins will not receive any TM anymore.
+:::warning ポートサブスクリプション
+COSMOS上で最後にアップロードされたプラグインがポート1235でテレメトリをサブスクライブします。
+他のプラグインはテレメトリを受信しなくなります。
 :::
 
-:::info Typo errors
-Presence of typos in one of the plugin files can cause problems when uploading and installing
-the plugin's .gem file. Make sure your configuration is typo-free.
+:::info タイプミスエラー
+プラグインファイルの一つにタイプミスがあると、プラグインの.gemファイルのアップロードとインストール時に
+問題が発生する可能性があります。設定にタイプミスがないことを確認してください。
 :::
 
-In the example above, the operator image is running at 172.20.0.8. To enable telemetry, go to the browser and connect to
-[http://localhost:2900/tools/cmdsender/CFS/TO_LAB_ENABLE](http://localhost:2900/tools/cmdsender/CFS/TO_LAB_ENABLE). Change the `DEST_IP` to the IP address of the operator image (172.20.0.8) and send the command.
+上記の例では、operatorイメージは172.20.0.8で実行されています。テレメトリを有効にするには、ブラウザで
+[http://localhost:2900/tools/cmdsender/CFS/TO_LAB_ENABLE](http://localhost:2900/tools/cmdsender/CFS/TO_LAB_ENABLE)に接続します。
+`DEST_IP`をoperatorイメージのIPアドレス（172.20.0.8）に変更し、コマンドを送信します。
 
-Under [http://localhost:2900/tools/cmdtlmserver/tlm-packets](http://localhost:2900/tools/cmdtlmserver/tlm-packets), you should see the incoming packets. Note in the CmdTlmServer you will also see CFS_INT UNKNOWN packets because we did not define the full cFS packet set. That exercise is left to the reader.
+[http://localhost:2900/tools/cmdtlmserver/tlm-packets](http://localhost:2900/tools/cmdtlmserver/tlm-packets)で、
+受信パケットが表示されるはずです。CmdTlmServerでは、CFS_INT UNKNOWNパケットも表示されることに注意してください。
+これは完全なcFSパケットセットを定義していないためです。この演習は読者に委ねられています。
