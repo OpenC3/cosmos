@@ -72,6 +72,10 @@ class StoreMeta(type):
         if func == "instance" or func == "instance_mutex" or func == "my_instance":
             return super().__getattribute__(func)
 
+        # Handle dunder methods to support help() and other introspection
+        if func.startswith("__") and func.endswith("__"):
+            return super().__getattribute__(func)
+
         def method(*args, **kw_args):
             return getattr(cls.instance(), func)(*args, **kw_args)
 

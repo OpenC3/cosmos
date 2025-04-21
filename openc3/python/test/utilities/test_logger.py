@@ -89,3 +89,6 @@ class TestLogger(unittest.TestCase):
 
     def test_fatal_only_prints_if_level_is_fatal(self):
         self.verify_output(Logger.FATAL, "fatal")
+
+    def test_help(self):
+        help(Logger)
