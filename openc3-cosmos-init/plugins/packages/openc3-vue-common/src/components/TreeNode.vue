@@ -121,7 +121,7 @@ const showNode = computed(() => {
 watch(
   () => props.node.isOpen,
   (newpath) => {
-    isOpen.path = newpath
+    isOpen.value = newpath
   },
 )
 
@@ -151,9 +151,9 @@ const handleClick = (node) => {
 }
 const toggle = () => {
   if (props.node.children) {
-    isOpen.path = !isOpen.path
-    props.node.isOpen = isOpen.path
-    emit('nodeToggled', props.node.id, isOpen.path)
+    isOpen.value = !isOpen.value
+    props.node.isOpen = isOpen.value
+    emit('nodeToggled', props.node.id, isOpen.value)
   }
 }
 // Bubble up the event for the nested tree-nodes

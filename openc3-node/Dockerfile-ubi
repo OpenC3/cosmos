@@ -4,7 +4,7 @@ ARG OPENC3_TAG=latest
 
 FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-ruby-ubi:${OPENC3_TAG}
 
-ENV NODEJS_VERSION=20
+ENV NODEJS_VERSION=22
 
 ARG NPM_URL=https://registry.npmjs.org
 
@@ -15,7 +15,7 @@ USER root
 RUN INSTALL_PKGS="nodejs nodejs-nodemon nodejs-full-i18n npm findutils tar" && \
   microdnf -y module disable nodejs && \
   microdnf -y module enable nodejs:$NODEJS_VERSION && \
-  microdnf --nodocs --setopt=install_weak_deps=0 install $INSTALL_PKGS && \
+  microdnf -y --nodocs --setopt=install_weak_deps=0 install $INSTALL_PKGS && \
   node -v | grep -qe "^v$NODEJS_VERSION\." && echo "Found VERSION $NODEJS_VERSION" && \
   npm config set registry="$NPM_URL" && \
   npm install --global yarn && \

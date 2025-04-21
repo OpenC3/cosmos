@@ -47,15 +47,16 @@
       multi-sort
       data-test="interfaces-table"
     >
-      <template v-slot:item.connect="{ item }">
+      <template #item.connect="{ item }">
         <v-tooltip
+          :open-delay="600"
           location="top"
           :disabled="
             !item.disable_disconnect || item.connected === 'DISCONNECTED'
           "
           text="This interface set DISABLE_DISCONNECT in plugin.txt"
         >
-          <template v-slot:activator="{ props }">
+          <template #activator="{ props }">
             <div v-bind="props">
               <v-btn
                 block
@@ -72,7 +73,7 @@
           </template>
         </v-tooltip>
       </template>
-      <template v-slot:item.connected="{ item }">
+      <template #item.connected="{ item }">
         <span :class="item.connectedClass">
           {{ item.connected }}
         </span>

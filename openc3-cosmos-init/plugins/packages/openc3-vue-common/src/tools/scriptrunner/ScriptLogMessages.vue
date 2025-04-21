@@ -25,28 +25,21 @@
     <v-card>
       <v-card-title>
         <v-row class="pt-2">
-          <v-tooltip location="top">
-            <template v-slot:activator="{ props }">
-              <div v-bind="props">
-                <v-btn
-                  icon="mdi-download"
-                  variant="text"
-                  class="mx-2"
-                  data-test="download-log"
-                  @click="downloadLog"
-                />
-              </div>
-            </template>
-            <span> Download Log </span>
-          </v-tooltip>
+          <v-btn
+            class="mx-2"
+            icon="mdi-download"
+            variant="text"
+            data-test="download-log"
+            @click="downloadLog"
+          />
           Script Messages
           <v-spacer />
           <v-select
+            v-model="messageOrder"
             density="compact"
             hide-details
             variant="outlined"
             :items="messageOrderOptions"
-            v-model="messageOrder"
             class="mr-2"
             style="max-width: 200px"
             data-test="message-order"
@@ -65,21 +58,14 @@
             data-test="search-messages"
           />
 
-          <v-tooltip location="top">
-            <template v-slot:activator="{ props }">
-              <div v-bind="props">
-                <v-btn
-                  icon="mdi-delete"
-                  variant="text"
-                  class="mx-2"
-                  data-test="clear-log"
-                  @click="clearLog"
-                />
-              </div>
-            </template>
-            <span> Clear Log </span>
-          </v-tooltip></v-row
-        >
+          <v-btn
+            class="mx-2"
+            icon="mdi-delete-sweep"
+            variant="text"
+            data-test="clear-log"
+            @click="clearLog"
+          />
+        </v-row>
       </v-card-title>
       <v-data-table
         id="script-log-messages"
@@ -92,7 +78,7 @@
         density="compact"
         data-test="output-messages"
       >
-        <template v-slot:item.message="{ item }">
+        <template #item.message="{ item }">
           <div :class="messageClass(item.message)">{{ item.message }}</div>
         </template>
       </v-data-table>
@@ -118,11 +104,6 @@ export default {
       messageOrder: 'Newest on Top',
     }
   },
-  watch: {
-    messageOrder: function (newValue, oldValue) {
-      this.$emit('sort', newValue)
-    },
-  },
   computed: {
     messages: {
       get() {
@@ -131,6 +112,11 @@ export default {
       set(value) {
         this.$emit('update:modelValue', value)
       },
+    },
+  },
+  watch: {
+    messageOrder: function (newValue, oldValue) {
+      this.$emit('sort', newValue)
     },
   },
   methods: {

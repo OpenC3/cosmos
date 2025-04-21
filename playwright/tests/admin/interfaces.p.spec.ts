@@ -32,7 +32,7 @@ test('displays interface names', async ({ page, utils }) => {
 })
 
 test('displays interface details', async ({ page, utils }) => {
-  await page.getByRole('button', { name: '󰈈' }).first().click()
+  await page.locator('[aria-label="Show Interface Details"]').first().click()
   await expect(page.locator('.editor')).toContainText('"name": "EXAMPLE_INT"')
   await utils.download(page, '[data-test="downloadIcon"]', function (contents) {
     expect(contents).toContain('"name": "EXAMPLE_INT"')

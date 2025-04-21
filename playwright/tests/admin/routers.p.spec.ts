@@ -27,7 +27,7 @@ test('displays router names', async ({ page, utils }) => {
 })
 
 test('displays router details', async ({ page, utils }) => {
-  await page.getByRole('button', { name: '󰈈' }).first().click()
+  await page.locator('[aria-label="Show Router Details"]').first().click()
   await expect(page.locator('.editor')).toContainText('"name": "INST_ROUTER"')
   await utils.download(page, '[data-test="downloadIcon"]', function (contents) {
     expect(contents).toContain('"name": "INST_ROUTER"')

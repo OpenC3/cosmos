@@ -192,10 +192,11 @@ class Microservice:
     def run(self):
         self.shutdown()
 
-    def shutdown(self):
+    def shutdown(self, state='STOPPED'):
         if self.shutdown_complete:
             return  # Nothing more to do
         self.logger.info(f"Shutting down microservice: {self.name}")
+        self.state = state
         self.cancel_thread = True
         if self.microservice_status_sleeper:
             self.microservice_status_sleeper.cancel()

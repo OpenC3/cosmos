@@ -102,12 +102,14 @@ class UdpReadWriteSocket:
         while True:
             try:
                 data, _ = self.socket.recvfrom(65536, socket.MSG_DONTWAIT)
-                break
             except socket.error as e:
                 if e.args[0] == socket.EAGAIN or e.args[0] == socket.EWOULDBLOCK:
                     result = select.select([self.socket], [], [], read_timeout)
                     if len(result[0]) == 0 and len(result[1]) == 0 and len(result[2]) == 0:
                         raise socket.timeout
+                    else:
+                        continue
+            break
         return data
 
     # Defer all methods to the UDPSocket

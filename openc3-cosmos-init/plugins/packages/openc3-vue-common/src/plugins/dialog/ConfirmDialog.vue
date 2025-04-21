@@ -36,10 +36,10 @@
           <div v-if="params.validateText" class="validate mt-4">
             Enter {{ params.validateText }} to confirm!
             <v-text-field
+              v-model="validationText"
               variant="solo"
               density="compact"
               single-line
-              v-model="validationText"
               :rules="[rules.required, rules.match]"
               data-test="confirm-dialog-validate"
             />
@@ -110,7 +110,10 @@ export default {
       this.reject = reject
     },
     ok: function () {
-      if (!this.params.validateText || this.params.validateText === this.validationText) {
+      if (
+        !this.params.validateText ||
+        this.params.validateText === this.validationText
+      ) {
         this.show = false
         this.resolve(true)
         this.refresh()
