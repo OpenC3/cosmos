@@ -10,8 +10,6 @@ import isInternalUrl from "@docusaurus/isInternalUrl";
 import { translate } from "@docusaurus/Translate";
 import Heading from "@theme/Heading";
 import styles from "./styles.module.css";
-import useBaseUrl from "@docusaurus/useBaseUrl";
-import ThemedImage from "@theme/ThemedImage";
 function useCategoryItemsPlural() {
   const { selectMessage } = usePluralForm();
   return (count) =>
