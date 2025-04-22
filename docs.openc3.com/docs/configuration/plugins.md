@@ -61,7 +61,7 @@ The VARIABLE keyword defines a variable that will be requested for the user to e
 ## NEEDS_DEPENDENCIES
 <div class="right">(Since 5.5.0)</div>**Indicates the plugin needs dependencies and sets the GEM_HOME environment variable**
 
-If the plugin has a top level lib folder or lists runtime dependencies in the gemspec, NEEDS_DEPENDENCIES is effectively already set. Note that in Enterprise Edition, having NEEDS_DEPENDENCIES adds the NFS volume mount to the Kubernetes pod.
+If the plugin has a top level lib folder or lists runtime dependencies in the gemspec, NEEDS_DEPENDENCIES is effectively already set. Note that in Enterprise, having NEEDS_DEPENDENCIES adds the NFS volume mount to the Kubernetes pod.
 
 
 ## INTERFACE
@@ -311,7 +311,7 @@ CMD python interface_microservice.py DEFAULT__INTERFACE__INT1
 ### CONTAINER
 <div class="right">(Since 5.7.0)</div>**Docker Container**
 
-Container to execute and run the microservice in. Only used in COSMOS Enterprise Edition.
+Container to execute and run the microservice in. Only used in COSMOS Enterprise.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -693,7 +693,7 @@ Generic key/value(s) options to pass to the microservice. These take the form of
 ### CONTAINER
 **Docker Container**
 
-Container to execute and run the microservice in. Only used in COSMOS Enterprise Edition.
+Container to execute and run the microservice in. Only used in COSMOS Enterprise.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -839,7 +839,7 @@ Whether or not the tool is shown in the Navigation menu. Should generally be tru
 ### POSITION
 <div class="right">(Since 5.0.8)</div>**Position of the tool in the nav bar**
 
-Position of the tool starting at 2 (1 is reserved for Admin Console). Tools without a position are appended to the end as they are installed. All COSMOS open source tools have consecutive integer values for position.
+Position of the tool starting at 2 (1 is reserved for Admin Console). Tools without a position are appended to the end as they are installed. All COSMOS Core tools have consecutive integer values for position.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|

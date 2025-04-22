@@ -38,7 +38,7 @@ Note the `--workers=1` passed to the serial (`*.s.spec.ts`) group. If you omit t
 
 The following examples use the parallel group, but these apply to the serial group as well.
 
-1.  Open playwright and run tests. The first example is running against Open Source, the second against Enterprise.
+1.  Open playwright and run tests. The first example is running against Core, the second against Enterprise.
 
         playwright> yarn test:parallel --headed
         playwright> ENTERPRISE=1 yarn test:parallel --headed

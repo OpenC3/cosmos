@@ -7,7 +7,7 @@ sidebar_custom_props:
 
 # Developing COSMOS
 
-So you want to help develop COSMOS? All of our open source COSMOS code is on [Github](https://github.com/) so the first thing to do is get an [account](https://github.com/join). Next [clone](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) the [COSMOS](https://github.com/openc3/cosmos) repository. We accept contributions from others as [Pull Requests](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests).
+So you want to help develop COSMOS? All of our COSMOS Core code is on [Github](https://github.com/) so the first thing to do is get an [account](https://github.com/join). Next [clone](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) the [COSMOS](https://github.com/openc3/cosmos) repository. We accept contributions from others as [Pull Requests](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests).
 
 ## Development Tools
 

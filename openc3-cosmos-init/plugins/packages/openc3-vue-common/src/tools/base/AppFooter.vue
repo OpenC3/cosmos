@@ -21,7 +21,7 @@
 -->
 
 <template>
-  <v-footer id="footer" app v-if="!chromeless" height="33">
+  <v-footer v-if="!chromeless" id="footer" app height="33">
     <img :src="icon" alt="OpenC3" />
     <span :class="footerClass" @click="upgrade">
       OpenC3 {{ edition }} {{ version }} &copy; 2024 - License:
@@ -62,27 +62,27 @@ export default {
       chromeless: this.$route.query.chromeless,
     }
   },
+  computed: {
+    footerClass() {
+      if (this.enterprise) {
+        return 'enterprise'
+      } else {
+        return 'core'
+      }
+    },
+  },
   created: function () {
     this.getSourceUrl()
     Api.get('/openc3-api/info').then((response) => {
       if (response.data.enterprise) {
         this.edition = 'COSMOS Enterprise'
       } else {
-        this.edition = 'COSMOS Open Source'
+        this.edition = 'COSMOS Core'
       }
       this.enterprise = response.data.enterprise
       this.license = response.data.license
       this.version = response.data.version
     })
-  },
-  computed: {
-    footerClass() {
-      if (this.enterprise) {
-        return 'enterprise'
-      } else {
-        return 'base'
-      }
-    },
   },
   methods: {
     getSourceUrl: function () {
@@ -100,7 +100,7 @@ export default {
 </script>
 
 <style scoped>
-.base {
+.core {
   margin-left: 5px;
   cursor: pointer;
 }

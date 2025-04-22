@@ -101,7 +101,7 @@ module OpenC3
     end
 
     describe "update" do
-      it "updates command_authority and works in open source" do
+      it "updates command_authority and works in core" do
         model = ScopeModel.new(name: "DEFAULT", command_authority: true, critical_commanding: "ALL", updated_at: 12345)
         model.create()
         json = model.as_json(:allow_nan => true)

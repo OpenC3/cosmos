@@ -107,7 +107,7 @@ MICROSERVICE:
           values: .+
     CONTAINER:
       summary: Docker Container
-      description: Container to execute and run the microservice in. Only used in COSMOS Enterprise Edition.
+      description: Container to execute and run the microservice in. Only used in COSMOS Enterprise.
       parameters:
         - name: Args
           required: false
