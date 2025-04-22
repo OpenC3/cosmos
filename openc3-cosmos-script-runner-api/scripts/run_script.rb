@@ -41,16 +41,14 @@ OpenC3::EphemeralStore.instance
 ENV['OPENC3_REDIS_USERNAME'] = nil
 ENV['OPENC3_REDIS_PASSWORD'] = nil
 
-# Note: SCRIPT_API = 'script-api' in running_script.rb
-
 id = ARGV[0]
 scope = ARGV[1]
 script_status = OpenC3::ScriptStatusModel.get_model(name: id, scope: scope)
-name = script.filename
-disconnect = script.disconnect
+raise "Unknown script id #{id} for scope #{scope}" unless script_status
+raise "Script in unexpected state: #{script_status.state}" unless script_status.state == 'spawning'
 
 startup_time = Time.now - start_time
-path = File.join(ENV['OPENC3_CONFIG_BUCKET'], scope, 'targets', name)
+path = File.join(ENV['OPENC3_CONFIG_BUCKET'], scope, 'targets', script_status.filename)
 
 def run_script_log(id, message, color = 'BLACK', message_log = true)
   line_to_write = Time.now.sys.formatted + " (SCRIPTRUNNER): " + message
@@ -61,9 +59,10 @@ end
 begin
   # Ensure usage of Logger in scripts will show Script Runner as the source
   OpenC3::Logger.microservice_name = "Script Runner"
-  running_script = RunningScript.new(id, scope, name, disconnect)
+  running_script = RunningScript.new(script_status)
   run_script_log(id, "Script #{path} spawned in #{startup_time} seconds <ruby #{RUBY_VERSION}>", 'BLACK')
 
+  # Log any overrides if present
   overrides = get_overrides()
   unless overrides.empty?
     message = "The following overrides were present:"
@@ -73,29 +72,27 @@ begin
     run_script_log(id, message, 'YELLOW')
   end
 
-  if script.suite_runner
-    script.suite_runner = JSON.parse(script.suite_runner, :allow_nan => true, :create_additions => true) # Convert to hash
-    running_script.parse_options(script.suite_runner['options'])
+  # Start the script in another thread
+  if script_status.suite_runner
+    script_status.suite_runner = JSON.parse(script_status.suite_runner, :allow_nan => true, :create_additions => true) # Convert to hash
+    running_script.parse_options(script_status.suite_runner['options'])
     if script.suite_runner['script']
-      running_script.run_text("OpenC3::SuiteRunner.start(#{script.suite_runner['suite']}, #{script.suite_runner['group']}, '#{script.suite_runner['script']}')", initial_filename: "SCRIPTRUNNER")
+      running_script.run_text("OpenC3::SuiteRunner.start(#{script_status.suite_runner['suite']}, #{script_status.suite_runner['group']}, '#{script_status.suite_runner['script']}')", initial_filename: "SCRIPTRUNNER")
     elsif script.suite_runner['group']
-      running_script.run_text("OpenC3::SuiteRunner.#{script.suite_runner['method']}(#{script.suite_runner['suite']}, #{script.suite_runner['group']})", initial_filename: "SCRIPTRUNNER")
+      running_script.run_text("OpenC3::SuiteRunner.#{script_status.suite_runner['method']}(#{script_status.suite_runner['suite']}, #{script_status.suite_runner['group']})", initial_filename: "SCRIPTRUNNER")
     else
-      running_script.run_text("OpenC3::SuiteRunner.#{script.suite_runner['method']}(#{script.suite_runner['suite']})", initial_filename: "SCRIPTRUNNER")
+      running_script.run_text("OpenC3::SuiteRunner.#{script_status.suite_runner['method']}(#{script_status.suite_runner['suite']})", initial_filename: "SCRIPTRUNNER")
     end
   else
     running_script.run
   end
 
-  running = OpenC3::Store.smembers(RUNNING_SCRIPTS)
-  running ||= []
-  running_script_anycable_publish("all-scripts-channel", { type: :start, filename: path, active_scripts: running.length })
+  # Notify frontend of number of running scripts in this scope
+  running = OpenC3::ScriptStatusModel.all(scope: scope, type: "running")
+  running_script_anycable_publish("all-scripts-channel", { type: :start, filename: script_status.filename, active_scripts: running.length, scope: scope })
 
-  # Subscribe to the ActionCable generated topic which is namedspaced with channel_prefix
-  # (defined in cable.yml) and then the channel stream. This isn't typically how you see these
-  # topics used in the Rails ActionCable documentation but this is what is happening under the
-  # scenes in ActionCable. Throughout the rest of the code we use ActionCable to broadcast
-  #   e.g. ActionCable.server.broadcast("running-script-channel:#{@id}", ...)
+  # Subscribe to the pub sub channel for this script
+  # Note: SCRIPT_API = 'script-api' in running_script.rb
   redis = OpenC3::Store.instance.build_redis
   redis.subscribe([SCRIPT_API, "cmd-running-script-channel:#{id}"].compact.join(":")) do |on|
     on.message do |_channel, msg|
@@ -161,25 +158,28 @@ begin
   end
 rescue Exception => e
   run_script_log(id, e.formatted, 'RED')
+  script_status.state = 'crash'
+  script_status.errors ||= []
+  script_status.errors << e.formatted
+  script_status.update
 ensure
   begin
-    # Remove running script from redis
-    script_status = OpenC3::ScriptStatusModel.get_model(name: id, scope: scope)
-    OpenC3::Store.del("running-script:#{id}") if script
-    running = OpenC3::Store.smembers("running-scripts")
-    active_scripts = running.length
-    running.each do |item|
-      parsed = JSON.parse(item, :allow_nan => true, :create_additions => true)
-      if parsed["id"].to_s == id.to_s
-        OpenC3::Store.srem("running-scripts", item)
-        active_scripts -= 1
-        break
-      end
-    end
     sleep 0.2 # Allow the message queue to be emptied before signaling complete
 
-    running_script_anycable_publish("running-script-channel:#{id}", { type: :complete })
-    running_script_anycable_publish("all-scripts-channel", { type: :complete, active_scripts: active_scripts })
+    # Ensure the script is marked as complete with an end time
+    unless script_status.is_complete?()
+      script_status.state = 'complete'
+    end
+    script_status.end_time = Time.now.utc.iso8601
+    script_status.update
+
+    running = OpenC3::ScriptStatusModel.all(scope: scope, type: "running")
+
+    # Inform script channel it is complete
+    running_script_anycable_publish("running-script-channel:#{id}", { type: :complete, state: script_status.state })
+
+    # Inform frontend of number of running scripts in this scope
+    running_script_anycable_publish("all-scripts-channel", { type: :complete, filename: script_status.filename, active_scripts: running.length, scope: scope })
   ensure
     running_script.stop_message_log if running_script
   end

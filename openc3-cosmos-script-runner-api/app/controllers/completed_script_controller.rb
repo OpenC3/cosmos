@@ -23,6 +23,6 @@
 class CompletedScriptController < ApplicationController
   def index
     return unless authorization('script_view')
-    render json: CompletedScript.all(params[:scope])
+    render json: OpenC3::ScriptStatusModel.all(scope: params[:scope], type: 'completed')
   end
 end

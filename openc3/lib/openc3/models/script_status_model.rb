@@ -24,7 +24,10 @@ module OpenC3
     RUNNING_PRIMARY_KEY = 'running-script'
     COMPLETED_PRIMARY_KEY = 'running-script-completed'
 
-    attr_accessor :state # spawning, init, running, paused, waiting, error, crash, stopped, breakpoint, complete, complete_errors
+    def id
+      return @name
+    end
+    attr_reader :state # spawning, init, running, paused, waiting, error, crash, stopped, breakpoint, complete, complete_errors, killed
     attr_accessor :shard
     attr_accessor :filename
     attr_accessor :current_filename
@@ -58,25 +61,37 @@ module OpenC3
       end
     end
 
-    def self.all(scope:, type: "running")
+    def self.all(scope:, offset: 0, limit: 10, type: "running")
       if type == "running"
-        return super("#{RUNNING_PRIMARY_KEY}__#{scope}")
+        keys = self.store.zrevrange("#{RUNNING_PRIMARY_KEY}__#{scope}__LIST", offset, offset + limit - 1)
+        return [] if keys.empty?
+        return self.store.redis_pool.pipelined do
+          keys.each do |key|
+            self.store.hget("#{RUNNING_PRIMARY_KEY}__#{scope}", key)
+          end
+        end
       else
-        return super("#{COMPLETED_PRIMARY_KEY}__#{scope}")
+        keys = self.store.zrevrange("#{COMPLETED_PRIMARY_KEY}__#{scope}__LIST", offset, offset + limit - 1)
+        return [] if keys.empty?
+        return self.store.redis_pool.pipelined do
+          keys.each do |key|
+            self.store.hget("#{COMPLETED_PRIMARY_KEY}__#{scope}", key)
+          end
+        end
       end
     end
 
     def initialize(
-      name:,
-      state:, # spawning, init, running, paused, waiting, error, crash, stopped, breakpoint, complete, complete_errors
-      shard: 0,
-      filename:,
-      current_filename: nil,
-      line_no: nil,
-      username:,
-      user_full_name:,
-      start_time:,
-      end_time: nil,
+      name:, # id
+      state:, # spawning, init, running, paused, waiting, error, breakpoint, crash, stopped, complete, complete_errors
+      shard: 0, # Future enhancement of script runner shards
+      filename:, # The initial filename
+      current_filename: nil, # The current filename
+      line_no: nil, # The current line number
+      username:, # The username of the person who started the script
+      user_full_name:, # The full name of the person who started the script
+      start_time:, # The time the script started ISO format
+      end_time: nil, # The time the script ended ISO format
       disconnect: false,
       environment: nil,
       suite_runner: false,
@@ -86,7 +101,7 @@ module OpenC3
       scope:
     )
       @state = state
-      if @state == 'complete' or @state == 'complete_errors' or @state == 'stopped' or @state == 'crash'
+      if is_complete?()
         super("#{COMPLETED_PRIMARY_KEY}__#{scope}", name: name, updated_at: updated_at, plugin: nil, scope: scope)
       else
         super("#{RUNNING_PRIMARY_KEY}__#{scope}", name: name, updated_at: updated_at, plugin: nil, scope: scope)
@@ -106,22 +121,60 @@ module OpenC3
       @pid = pid
     end
 
+    def is_complete?
+      return (@state == 'complete' or @state == 'complete_errors' or @state == 'stopped' or @state == 'crash' or @state == 'killed')
+    end
+
+    def state=(new_state)
+      # If the state is already a flavor of complete, leave it alone (first wins)
+      if not is_complete?()
+        @state = new_state
+        # If setting to complete, check for errors
+        # and set the state to complete_errors if they exist
+        if @state == 'complete' and @errors
+          @state = 'complete_errors'
+        end
+      end
+    end
+
+    # Update the Redis hash at primary_key and set the field "name"
+    # to the JSON generated via calling as_json
+    def create(update: false, force: false, queued: false, isoformat: true)
+      @updated_at = Time.now.utc.to_nsec_from_epoch
+
+      if queued
+        write_store = self.class.store_queued
+      else
+        write_store = self.class.store
+      end
+      write_store.hset(@primary_key, @name, JSON.generate(self.as_json(:allow_nan => true), :allow_nan => true))
+
+      # Also add to ordered set on create
+      write_store.zadd(@primary_key + "__LIST", @name.to_f, @name) if not update
+    end
+
     def update(force: false, queued: false)
       # Magically handle the change from running to completed
-      if @state == 'complete' or @state == 'complete_errors' or @state == 'stopped' or @state == 'crash'
-        # We are complete
-        if @primary_key == "#{RUNNING_PRIMARY_KEY}__#{@scope}"
-          # Destroy the running key
-          destroy()
-          @destroyed = false
+      if is_complete?() and @primary_key == "#{RUNNING_PRIMARY_KEY}__#{@scope}"
+        # Destroy the running key
+        destroy()
+        @destroyed = false
 
-          # Move to completed
-          @primary_key = "#{COMPLETED_PRIMARY_KEY}__#{@scope}"
-          create(update: false, force: force, queued: queued)
-        end
+        # Move to completed
+        @primary_key = "#{COMPLETED_PRIMARY_KEY}__#{@scope}"
+        create(update: false, force: force, queued: queued, isoformat: true)
       else
-        create(update: true, force: force, queued: queued)
+        create(update: true, force: force, queued: queued, isoformat: true)
       end
+    end
+
+    # Delete the model from the Store
+    def destroy
+      @destroyed = true
+      undeploy()
+      self.class.store.hdel(@primary_key, @name)
+      # Also remove from ordered set
+      self.class.store.zremrangebyscore(@primary_key + "__LIST", @name.to_f - 0.1, @name.to_f + 0.1)
     end
 
     def as_json(*a)
