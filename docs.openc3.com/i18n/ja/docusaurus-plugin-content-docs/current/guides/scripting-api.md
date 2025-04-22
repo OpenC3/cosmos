@@ -1,216 +1,215 @@
 ---
-title: Scripting API Guide
-description: Scripting API methods, deprecations and migrations
+title: スクリプティング API ガイド
+description: スクリプティング API メソッド、非推奨機能および移行
 sidebar_custom_props:
   myEmoji: 📝
 ---
 
-This document provides the information necessary to write test procedures using the COSMOS scripting API. Scripting in COSMOS is designed to be simple and intuitive. The code completion ability for command and telemetry mnemonics makes Script Runner the ideal place to write your procedures, however any text editor will do. If there is functionality that you don't see here or perhaps an easier syntax for doing something, please submit a ticket.
+このドキュメントでは、COSMOS スクリプティング API を使用してテスト手順を記述するために必要な情報を提供します。COSMOS でのスクリプティングはシンプルに設計されています。コマンドやテレメトリのニーモニックにコード補完機能があるため、Script Runner はプロシージャを作成するのに理想的な場所ですが、任意のテキストエディタでも作成できます。ここに記載されていない機能や、より簡単な構文が必要な場合は、チケットを送信してください。
 
-## Concepts
+## 概念
 
-### Programming Languages
+### プログラミング言語
 
-COSMOS scripting is implemented using either Ruby or Python. Ruby and Python are very similar scripting languages and in many cases the COSMOS APIs are identical between the two. This guide is written to support both with additional language specific information found in the [Script Writing Guide](../guides/script-writing.md).
+COSMOS スクリプティングは Ruby または Python のいずれかを使って実装されています。Ruby と Python は非常に似たスクリプト言語であり、多くの場合、COSMOS API は両方で同一です。このガイドは両方をサポートするために書かれており、言語固有の追加情報は [スクリプト作成ガイド](../guides/script-writing.md) にあります。
 
-### Using Script Runner
+### Script Runner の使用
 
-Script Runner is a graphical application that provides the ideal environment for running and implementing your test procedures. The Script Runner tool is broken into 4 main sections. At the top of the tool is a menu bar that allows you to do such things as open and save files, perform a syntax check, and execute your script.
+Script Runner はテスト手順の実行と実装のための理想的な環境を提供するグラフィカルアプリケーションです。Script Runner ツールは主に 4 つのセクションに分かれています。ツールの上部にはメニューバーがあり、ファイルの開閉、構文チェック、スクリプトの実行などができます。
 
-Next is a tool bar that displays the currently executing script and three buttons, "Start/Go", "Pause/Retry", and "Stop". The Start/Go button is used to start the script and continue past errors or waits. The Pause/Retry button will pause the executing script. If an error is encountered the Pause button changes to Retry to re-execute the errored line. Finally, the Stop button will stop the executing script at any time.
+次に、現在実行中のスクリプトと「Start/Go」、「Pause/Retry」、「Stop」の 3 つのボタンを表示するツールバーがあります。Start/Go ボタンはスクリプトを開始し、エラーや待機を越えて継続するために使用されます。Pause/Retry ボタンは実行中のスクリプトを一時停止します。エラーが発生した場合、Pause ボタンは Retry に変わり、エラーが発生した行を再実行します。最後に、Stop ボタンはいつでも実行中のスクリプトを停止します。
 
-Third is the display of the actual script. While the script is not running, you may edit and compose scripts in this area. A handy code completion feature is provided that will list out the available commands or telemetry points as you are writing your script. Simply begin writing a cmd( or tlm( line to bring up code completion. This feature greatly reduces typos in command and telemetry mnemonics.
+3 番目は実際のスクリプトの表示です。スクリプトが実行されていないとき、このエリアでスクリプトを編集・作成することができます。便利なコード補完機能があり、スクリプトを書いている時に利用可能なコマンドやテレメトリポイントのリストが表示されます。cmd( または tlm( の行を書き始めるだけでコード補完が表示されます。この機能により、コマンドとテレメトリのニーモニックでのタイプミスが大幅に減少します。
 
-Finally, the bottom of the display is the log messages. All commands that are sent, errors that occur, and user print statements appear in this area.
+最後に、ディスプレイの一番下にはログメッセージがあります。送信されたコマンド、発生したエラー、ユーザーのプリント文がすべてこのエリアに表示されます。
 
-### Telemetry Types
+### テレメトリタイプ
 
-There are four different ways that telemetry values can be retrieved in COSMOS. The following chart explains their differences.
+COSMOS ではテレメトリ値を取得する 4 つの異なる方法があります。以下の表ではその違いを説明しています。
 
-| Telemetry Type       | Description                                                                                                                                                                                                                                                                                                                  |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Raw                  | Raw telemetry is exactly as it is in the telemetry packet before any conversions. All telemetry items will have a raw value except for Derived telemetry points which have no real location in a packet. Requesting raw telemetry on a derived item will return nil.                                                         |
-| Converted            | Converted telemetry is raw telemetry that has gone through a conversion factor such as a state conversion or a polynomial conversion. If a telemetry item does not have a conversion defined, then converted telemetry will be the same as raw telemetry. This is the most common type of telemety used in scripts.          |
-| Formatted            | Formatted telemetry is converted telemetry that has gone through a printf style conversion into a string. Formatted telemetry will always have a string representation. If no format string is defined for a telemetry point, then formatted telemetry will be the same as converted telemetry except represented as string. |
-| Formatted with Units | Formatted with Units telemetry is the same as Formatted telemetry except that a space and the units of the telemetry item are appended to the end of the string. If no units are defined for a telemetry item then this type is the same as Formatted telemetry.                                                             |
+| テレメトリタイプ     | 説明                                                                                                                                                                                                                                                                                                                                |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Raw                  | 生のテレメトリは、変換前のテレメトリパケットにあるまさにそのままの状態です。派生テレメトリポイント（パケット内に実際の位置を持たないもの）を除くすべてのテレメトリ項目は生の値を持ちます。派生項目に対して生のテレメトリを要求すると nil が返されます。                                                                        |
+| Converted            | 変換されたテレメトリは、状態変換や多項式変換などの変換係数を通過した生のテレメトリです。テレメトリ項目に変換が定義されていない場合、変換されたテレメトリは生のテレメトリと同じになります。これはスクリプトで最も一般的に使用されるテレメトリのタイプです。                                                                      |
+| Formatted            | フォーマットされたテレメトリは、printf スタイルの変換を経て文字列になった変換済みテレメトリです。フォーマットされたテレメトリは常に文字列表現を持ちます。テレメトリポイントにフォーマット文字列が定義されていない場合、フォーマットされたテレメトリは変換されたテレメトリと同じですが、文字列として表現されます。               |
+| Formatted with Units | 単位付きでフォーマットされたテレメトリは、フォーマットされたテレメトリと同じですが、文字列の末尾にスペースとテレメトリ項目の単位が追加されます。テレメトリ項目に単位が定義されていない場合、このタイプはフォーマットされたテレメトリと同じになります。                                                                          |
 
 ## Script Runner API
 
-The following methods are designed to be used in Script Runner procedures. Many can also be used in custom built COSMOS tools. Please see the COSMOS Tool API section for methods that are more efficient to use in custom tools.
+以下のメソッドは Script Runner の手順で使用するために設計されています。多くは、カスタムビルドされた COSMOS ツールでも使用できます。カスタムツールでより効率的に使用するメソッドについては、COSMOS Tool API セクションを参照してください。
 
-### Migration from COSMOS v5 to v6
+### COSMOS v5 から v6 への移行
 
-The following API methods have been removed from COSMOS v6. Most of the deprecated API methods still remain for backwards compatibility.
+以下の API メソッドは COSMOS v6 から削除されました。ほとんどの非推奨 API メソッドは後方互換性のために残っています。
 
-| Method              | Tool                         | Status                             |
-| ------------------- | ---------------------------- | ---------------------------------- |
-| get_all_target_info | Command and Telemetry Server | Removed, use get_target_interfaces |
-| play_wav_file       | Script Runner                | Removed                            |
-| status_bar          | Script Runner                | Removed                            |
+| メソッド            | ツール                       | ステータス                               |
+| ------------------- | ---------------------------- | ---------------------------------------- |
+| get_all_target_info | Command and Telemetry Server | 削除、get_target_interfaces を使用       |
+| play_wav_file       | Script Runner                | 削除                                     |
+| status_bar          | Script Runner                | 削除                                     |
 
-### Migration from COSMOS v4 to v5
+### COSMOS v4 から v5 への移行
 
-The following API methods are either deprecated (will not be ported to COSMOS 5) or currently unimplemented (eventually will be ported to COSMOS 5):
+以下の API メソッドはいずれも非推奨（COSMOS 5 に移植されません）、または現在未実装（最終的に COSMOS 5 に移植される予定）です：
 
-| Method                                | Tool                         | Status                                                              |
-| ------------------------------------- | ---------------------------- | ------------------------------------------------------------------- |
-| clear                                 | Telemetry Viewer             | Deprecated, use clear_screen                                        |
-| clear_all                             | Telemetry Viewer             | Deprecated, use clear_all_screens                                   |
-| close_local_screens                   | Telemetry Viewer             | Deprecated, use clear_screen                                        |
-| clear_disconnected_targets            | Script Runner                | Deprecated                                                          |
-| cmd_tlm_clear_counters                | Command and Telemetry Server | Deprecated                                                          |
-| cmd_tlm_reload                        | Command and Telemetry Server | Deprecated                                                          |
-| display                               | Telemetry Viewer             | Deprecated, use display_screen                                      |
-| get_all_packet_logger_info            | Command and Telemetry Server | Deprecated                                                          |
-| get_all_target_info                   | Command and Telemetry Server | Deprecated, use get_target_interfaces                               |
-| get_background_tasks                  | Command and Telemetry Server | Deprecated                                                          |
-| get_all_cmd_info                      | Command and Telemetry Server | Deprecated, use get_all_cmds                                        |
-| get_all_tlm_info                      | Command and Telemetry Server | Deprecated, use get_all_tlm                                         |
-| get_cmd_list                          | Command and Telemetry Server | Deprecated, use get_all_cmds                                        |
-| get_cmd_log_filename                  | Command and Telemetry Server | Deprecated                                                          |
-| get_cmd_param_list                    | Command and Telemetry Server | Deprecated, use get_cmd                                             |
-| get_cmd_tlm_disconnect                | Script Runner                | Deprecated, use $disconnect                                         |
-| get_disconnected_targets              | Script Runner                | Unimplemented                                                       |
-| get_interface_info                    | Command and Telemetry Server | Deprecated, use get_interface                                       |
-| get_interface_targets                 | Command and Telemetry Server | Deprecated                                                          |
-| get_output_logs_filenames             | Command and Telemetry Server | Deprecated                                                          |
-| get_packet                            | Command and Telemetry Server | Deprecated, use get_packets                                         |
-| get_packet_data                       | Command and Telemetry Server | Deprecated, use get_packets                                         |
-| get_packet_logger_info                | Command and Telemetry Server | Deprecated                                                          |
-| get_packet_loggers                    | Command and Telemetry Server | Deprecated                                                          |
-| get_replay_mode                       | Replay                       | Deprecated                                                          |
-| get_router_info                       | Command and Telemetry Server | Deprecated, use get_router                                          |
-| get_scriptrunner_message_log_filename | Command and Telemetry Server | Deprecated                                                          |
-| get_server_message                    | Command and Telemetry Server | Deprecated                                                          |
-| get_server_message_log_filename       | Command and Telemetry Server | Deprecated                                                          |
-| get_server_status                     | Command and Telemetry Server | Deprecated                                                          |
-| get_stale                             | Command and Telemetry Server | Deprecated                                                          |
-| get_target_ignored_items              | Command and Telemetry Server | Deprecated, use get_target                                          |
-| get_target_ignored_parameters         | Command and Telemetry Server | Deprecated, use get_target                                          |
-| get_target_info                       | Command and Telemetry Server | Deprecated, use get_target                                          |
-| get_target_list                       | Command and Telemetry Server | Deprecated, use get_target_names                                    |
-| get_tlm_details                       | Command and Telemetry Server | Deprecated                                                          |
-| get_tlm_item_list                     | Command and Telemetry Server | Deprecated                                                          |
-| get_tlm_list                          | Command and Telemetry Server | Deprecated                                                          |
-| get_tlm_log_filename                  | Command and Telemetry Server | Deprecated                                                          |
-| interface_state                       | Command and Telemetry Server | Deprecated, use get_interface                                       |
-| override_tlm_raw                      | Command and Telemetry Server | Deprecated, use override_tlm                                        |
-| open_directory_dialog                 | Script Runner                | Deprecated                                                          |
-| play_wav_file                         | Script Runner                | Deprecated                                                          |
-| replay_move_end                       | Replay                       | Deprecated                                                          |
-| replay_move_index                     | Replay                       | Deprecated                                                          |
-| replay_move_start                     | Replay                       | Deprecated                                                          |
-| replay_play                           | Replay                       | Deprecated                                                          |
-| replay_reverse_play                   | Replay                       | Deprecated                                                          |
-| replay_select_file                    | Replay                       | Deprecated                                                          |
-| replay_set_playback_delay             | Replay                       | Deprecated                                                          |
-| replay_status                         | Replay                       | Deprecated                                                          |
-| replay_step_back                      | Replay                       | Deprecated                                                          |
-| replay_step_forward                   | Replay                       | Deprecated                                                          |
-| replay_stop                           | Replay                       | Deprecated                                                          |
-| require_utility                       | Script Runner                | Deprecated but exists for backwards compatibility, use load_utility |
-| router_state                          | Command and Telemetry Server | Deprecated, use get_router                                          |
-| save_file_dialog                      | Script Runner                | Deprecated                                                          |
-| save_setting                          | Command and Telemetry Server | Deprecated but exists for backwards compatibility, use set_setting  |
-| set_cmd_tlm_disconnect                | Script Runner                | Deprecated, use disconnect_script                                   |
-| set_disconnected_targets              | Script Runner                | Unimplemented                                                       |
-| set_replay_mode                       | Replay                       | Deprecated                                                          |
-| set_stdout_max_lines                  | Script Runner                | Deprecated                                                          |
-| set_tlm_raw                           | Script Runner                | Deprecated, use set_tlm                                             |
-| show_backtrace                        | Script Runner                | Deprecated, backtrace always shown                                  |
-| status_bar                            | Script Runner                | Deprecated                                                          |
-| shutdown_cmd_tlm                      | Command and Telemetry Server | Deprecated                                                          |
-| start_cmd_log                         | Command and Telemetry Server | Deprecated                                                          |
-| start_logging                         | Command and Telemetry Server | Deprecated                                                          |
-| start_new_scriptrunner_message_log    | Command and Telemetry Server | Deprecated                                                          |
-| start_new_server_message_log          | Command and Telemetry Server | Deprecated                                                          |
-| start_tlm_log                         | Command and Telemetry Server | Deprecated                                                          |
-| stop_background_task                  | Command and Telemetry Server | Deprecated                                                          |
-| stop_cmd_log                          | Command and Telemetry Server | Deprecated                                                          |
-| stop_logging                          | Command and Telemetry Server | Deprecated                                                          |
-| stop_tlm_log                          | Command and Telemetry Server | Deprecated                                                          |
-| subscribe_limits_events               | Command and Telemetry Server | Deprecated                                                          |
-| subscribe_packet_data                 | Command and Telemetry Server | Deprecated, use subscribe_packets                                   |
-| subscribe_server_messages             | Command and Telemetry Server | Unimplemented                                                       |
-| tlm_variable                          | Script Runner                | Deprecated, use tlm() and pass type                                 |
-| unsubscribe_limits_events             | Command and Telemetry Server | Deprecated                                                          |
-| unsubscribe_packet_data               | Command and Telemetry Server | Deprecated                                                          |
-| unsubscribe_server_messages           | Command and Telemetry Server | Deprecated                                                          |
-| wait_raw                              | Script Runner                | Deprecated, use wait(..., type: :RAW)                               |
-| wait_check_raw                        | Script Runner                | Deprecated, use wait_check(..., type: :RAW)                         |
-| wait_tolerance_raw                    | Script Runner                | Deprecated, use wait_tolerance(..., type: :RAW)                     |
-| wait_check_tolerance_raw              | Script Runner                | Deprecated, use wait_check_tolerance(..., type: :RAW)               |
+| メソッド                                | ツール                       | ステータス                                                         |
+| --------------------------------------- | ---------------------------- | ------------------------------------------------------------------ |
+| clear                                   | Telemetry Viewer             | 非推奨、clear_screen を使用                                        |
+| clear_all                               | Telemetry Viewer             | 非推奨、clear_all_screens を使用                                   |
+| close_local_screens                     | Telemetry Viewer             | 非推奨、clear_screen を使用                                        |
+| clear_disconnected_targets              | Script Runner                | 非推奨                                                             |
+| cmd_tlm_clear_counters                  | Command and Telemetry Server | 非推奨                                                             |
+| cmd_tlm_reload                          | Command and Telemetry Server | 非推奨                                                             |
+| display                                 | Telemetry Viewer             | 非推奨、display_screen を使用                                      |
+| get_all_packet_logger_info              | Command and Telemetry Server | 非推奨                                                             |
+| get_all_target_info                     | Command and Telemetry Server | 非推奨、get_target_interfaces を使用                               |
+| get_background_tasks                    | Command and Telemetry Server | 非推奨                                                             |
+| get_all_cmd_info                        | Command and Telemetry Server | 非推奨、get_all_cmds を使用                                        |
+| get_all_tlm_info                        | Command and Telemetry Server | 非推奨、get_all_tlm を使用                                         |
+| get_cmd_list                            | Command and Telemetry Server | 非推奨、get_all_cmds を使用                                        |
+| get_cmd_log_filename                    | Command and Telemetry Server | 非推奨                                                             |
+| get_cmd_param_list                      | Command and Telemetry Server | 非推奨、get_cmd を使用                                             |
+| get_cmd_tlm_disconnect                  | Script Runner                | 非推奨、$disconnect を使用                                         |
+| get_disconnected_targets                | Script Runner                | 未実装                                                             |
+| get_interface_info                      | Command and Telemetry Server | 非推奨、get_interface を使用                                       |
+| get_interface_targets                   | Command and Telemetry Server | 非推奨                                                             |
+| get_output_logs_filenames               | Command and Telemetry Server | 非推奨                                                             |
+| get_packet                              | Command and Telemetry Server | 非推奨、get_packets を使用                                         |
+| get_packet_data                         | Command and Telemetry Server | 非推奨、get_packets を使用                                         |
+| get_packet_logger_info                  | Command and Telemetry Server | 非推奨                                                             |
+| get_packet_loggers                      | Command and Telemetry Server | 非推奨                                                             |
+| get_replay_mode                         | Replay                       | 非推奨                                                             |
+| get_router_info                         | Command and Telemetry Server | 非推奨、get_router を使用                                          |
+| get_scriptrunner_message_log_filename   | Command and Telemetry Server | 非推奨                                                             |
+| get_server_message                      | Command and Telemetry Server | 非推奨                                                             |
+| get_server_message_log_filename         | Command and Telemetry Server | 非推奨                                                             |
+| get_server_status                       | Command and Telemetry Server | 非推奨                                                             |
+| get_stale                               | Command and Telemetry Server | 非推奨                                                             |
+| get_target_ignored_items                | Command and Telemetry Server | 非推奨、get_target を使用                                          |
+| get_target_ignored_parameters           | Command and Telemetry Server | 非推奨、get_target を使用                                          |
+| get_target_info                         | Command and Telemetry Server | 非推奨、get_target を使用                                          |
+| get_target_list                         | Command and Telemetry Server | 非推奨、get_target_names を使用                                    |
+| get_tlm_details                         | Command and Telemetry Server | 非推奨                                                             |
+| get_tlm_item_list                       | Command and Telemetry Server | 非推奨                                                             |
+| get_tlm_list                            | Command and Telemetry Server | 非推奨                                                             |
+| get_tlm_log_filename                    | Command and Telemetry Server | 非推奨                                                             |
+| interface_state                         | Command and Telemetry Server | 非推奨、get_interface を使用                                       |
+| override_tlm_raw                        | Command and Telemetry Server | 非推奨、override_tlm を使用                                        |
+| open_directory_dialog                   | Script Runner                | 非推奨                                                             |
+| play_wav_file                           | Script Runner                | 非推奨                                                             |
+| replay_move_end                         | Replay                       | 非推奨                                                             |
+| replay_move_index                       | Replay                       | 非推奨                                                             |
+| replay_move_start                       | Replay                       | 非推奨                                                             |
+| replay_play                             | Replay                       | 非推奨                                                             |
+| replay_reverse_play                     | Replay                       | 非推奨                                                             |
+| replay_select_file                      | Replay                       | 非推奨                                                             |
+| replay_set_playback_delay               | Replay                       | 非推奨                                                             |
+| replay_status                           | Replay                       | 非推奨                                                             |
+| replay_step_back                        | Replay                       | 非推奨                                                             |
+| replay_step_forward                     | Replay                       | 非推奨                                                             |
+| replay_stop                             | Replay                       | 非推奨                                                             |
+| require_utility                         | Script Runner                | 非推奨ですが後方互換性のため存在、load_utility を使用             |
+| router_state                            | Command and Telemetry Server | 非推奨、get_router を使用                                          |
+| save_file_dialog                        | Script Runner                | 非推奨                                                             |
+| save_setting                            | Command and Telemetry Server | 非推奨ですが後方互換性のため存在、set_setting を使用              |
+| set_cmd_tlm_disconnect                  | Script Runner                | 非推奨、disconnect_script を使用                                   |
+| set_disconnected_targets                | Script Runner                | 未実装                                                             |
+| set_replay_mode                         | Replay                       | 非推奨                                                             |
+| set_stdout_max_lines                    | Script Runner                | 非推奨                                                             |
+| set_tlm_raw                             | Script Runner                | 非推奨、set_tlm を使用                                             |
+| show_backtrace                          | Script Runner                | 非推奨、バックトレースは常に表示                                   |
+| status_bar                              | Script Runner                | 非推奨                                                             |
+| shutdown_cmd_tlm                        | Command and Telemetry Server | 非推奨                                                             |
+| start_cmd_log                           | Command and Telemetry Server | 非推奨                                                             |
+| start_logging                           | Command and Telemetry Server | 非推奨                                                             |
+| start_new_scriptrunner_message_log      | Command and Telemetry Server | 非推奨                                                             |
+| start_new_server_message_log            | Command and Telemetry Server | 非推奨                                                             |
+| start_tlm_log                           | Command and Telemetry Server | 非推奨                                                             |
+| stop_background_task                    | Command and Telemetry Server | 非推奨                                                             |
+| stop_cmd_log                            | Command and Telemetry Server | 非推奨                                                             |
+| stop_logging                            | Command and Telemetry Server | 非推奨                                                             |
+| stop_tlm_log                            | Command and Telemetry Server | 非推奨                                                             |
+| subscribe_limits_events                 | Command and Telemetry Server | 非推奨                                                             |
+| subscribe_packet_data                   | Command and Telemetry Server | 非推奨、subscribe_packets を使用                                   |
+| subscribe_server_messages               | Command and Telemetry Server | 未実装                                                             |
+| tlm_variable                            | Script Runner                | 非推奨、tlm() を使用してタイプを渡す                               |
+| unsubscribe_limits_events               | Command and Telemetry Server | 非推奨                                                             |
+| unsubscribe_packet_data                 | Command and Telemetry Server | 非推奨                                                             |
+| unsubscribe_server_messages             | Command and Telemetry Server | 非推奨                                                             |
+| wait_raw                                | Script Runner                | 非推奨、wait(..., type: :RAW) を使用                               |
+| wait_check_raw                          | Script Runner                | 非推奨、wait_check(..., type: :RAW) を使用                         |
+| wait_tolerance_raw                      | Script Runner                | 非推奨、wait_tolerance(..., type: :RAW) を使用                     |
+| wait_check_tolerance_raw                | Script Runner                | 非推奨、wait_check_tolerance(..., type: :RAW) を使用               |
 
-## Retrieving User Input
+## ユーザー入力の取得
 
-These methods allow the user to enter values that are needed by the script.
+これらのメソッドを使用すると、スクリプトに必要な値をユーザーが入力できます。
 
 ### ask
 
-Prompts the user for input with a question. User input is automatically converted from a string to the appropriate data type. For example if the user enters "1", the number 1 as an integer will be returned.
+質問でユーザーに入力を促します。ユーザー入力は自動的に文字列から適切なデータ型に変換されます。例えば、ユーザーが「1」と入力すると、整数としての数値 1 が返されます。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 ask("<question>", <Blank or Default>, <Password>)
 ```
 
-| Parameter        | Description                                                                                                                             |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| question         | Question to prompt the user with.                                                                                                       |
-| Blank or Default | Whether or not to allow empty responses (optional - defaults to false). If a non-boolean value is passed it is used as a default value. |
-| Password         | Whether to treat the entry as a password which is displayed with dots and not logged. Default is false.                                 |
+| パラメータ         | 説明                                                                                                                  |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| question           | ユーザーに表示する質問。                                                                                              |
+| Blank or Default   | 空の応答を許可するかどうか（オプション - デフォルトは false）。ブール値でない値が渡された場合、デフォルト値として使用されます。 |
+| Password           | 入力をパスワードとして扱うかどうか。パスワードはドットで表示され、ログに記録されません。デフォルトは false です。    |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
-value = ask("Enter an integer")
-value = ask("Enter a value or nothing", true)
-value = ask("Enter a value", 10)
-password = ask("Enter your password", false, true)
+value = ask("整数を入力してください")
+value = ask("値を入力するか何も入力しないでください", true)
+value = ask("値を入力してください", 10)
+password = ask("パスワードを入力してください", false, true)
 ```
 
-Python Example:
+Python の例：
 
 ```python
-value = ask("Enter an integer")
-value = ask("Enter a value or nothing", True)
-value = ask("Enter a value", 10)
-password = ask("Enter your password", False, True)
+value = ask("整数を入力してください")
+value = ask("値を入力するか何も入力しないでください", True)
+value = ask("値を入力してください", 10)
+password = ask("パスワードを入力してください", False, True)
 ```
 
 ### ask_string
 
-Prompts the user for input with a question. User input is always returned as a string. For example if the user enters "1", the string "1" will be returned.
+質問でユーザーに入力を促します。ユーザー入力は常に文字列として返されます。例えば、ユーザーが「1」と入力すると、文字列「1」が返されます。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 ask_string("<question>", <Blank or Default>, <Password>)
 ```
 
-| Parameter        | Description                                                                                                                             |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| question         | Question to prompt the user with.                                                                                                       |
-| Blank or Default | Whether or not to allow empty responses (optional - defaults to false). If a non-boolean value is passed it is used as a default value. |
-| Password         | Whether to treat the entry as a password which is displayed with dots and not logged. Default is false.                                 |
+| パラメータ         | 説明                                                                                                                  |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| question           | ユーザーに表示する質問。                                                                                              |
+| Blank or Default   | 空の応答を許可するかどうか（オプション - デフォルトは false）。ブール値でない値が渡された場合、デフォルト値として使用されます。 |
+| Password           | 入力をパスワードとして扱うかどうか。パスワードはドットで表示され、ログに記録されません。デフォルトは false です。    |
 
-Ruby Example:
+Ruby の例：
 
-```ruby
-string = ask_string("Enter a String")
-string = ask_string("Enter a value or nothing", true)
-string = ask_string("Enter a value", "test")
-password = ask_string("Enter your password", false, true)
+```rubystring = ask_string("文字列を入力してください")
+string = ask_string("値を入力するか何も入力しないでください", true)
+string = ask_string("値を入力してください", "test")
+password = ask_string("パスワードを入力してください", false, true)
 ```
 
-Python Example:
+Python の例：
 
 ```python
-string = ask_string("Enter a String")
-string = ask_string("Enter a value or nothing", True)
-string = ask_string("Enter a value", "test")
-password = ask_string("Enter your password", False, True)
+string = ask_string("文字列を入力してください")
+string = ask_string("値を入力するか何も入力しないでください", True)
+string = ask_string("値を入力してください", "test")
+password = ask_string("パスワードを入力してください", False, True)
 ```
 
 ### message_box
@@ -219,9 +218,9 @@ password = ask_string("Enter your password", False, True)
 
 ### combo_box
 
-The message_box, vertical_message_box, and combo_box methods create a message box with arbitrary buttons or selections that the user can click. The text of the button clicked is returned.
+message_box、vertical_message_box、および combo_box メソッドは、ユーザーがクリックできる任意のボタンまたは選択肢を持つメッセージボックスを作成します。クリックされたボタンのテキストが返されます。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 message_box("<Message>", "<button text 1>", ...)
@@ -229,138 +228,138 @@ vertical_message_box("<Message>", "<button text 1>", ...)
 combo_box("<Message>", "<selection text 1>", ...)
 ```
 
-| Parameter             | Description                      |
-| --------------------- | -------------------------------- |
-| Message               | Message to prompt the user with. |
-| Button/Selection Text | Text for a button or selection   |
+| パラメータ            | 説明                           |
+| --------------------- | ------------------------------ |
+| Message               | ユーザーに表示するメッセージ。 |
+| Button/Selection Text | ボタンまたは選択肢のテキスト   |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
-value = message_box("Select the sensor number", 'One', 'Two')
-value = vertical_message_box("Select the sensor number", 'One', 'Two')
-value = combo_box("Select the sensor number", 'One', 'Two')
+value = message_box("センサー番号を選択してください", 'One', 'Two')
+value = vertical_message_box("センサー番号を選択してください", 'One', 'Two')
+value = combo_box("センサー番号を選択してください", 'One', 'Two')
 case value
 when 'One'
-  puts 'Sensor One'
+  puts 'センサー One'
 when 'Two'
-  puts 'Sensor Two'
+  puts 'センサー Two'
 end
 ```
 
-Python Example:
+Python の例：
 
 ```python
-value = message_box("Select the sensor number", 'One', 'Two')
-value = vertical_message_box("Select the sensor number", 'One', 'Two')
-value = combo_box("Select the sensor number", 'One', 'Two')
+value = message_box("センサー番号を選択してください", 'One', 'Two')
+value = vertical_message_box("センサー番号を選択してください", 'One', 'Two')
+value = combo_box("センサー番号を選択してください", 'One', 'Two')
 match value:
     case 'One':
-        print('Sensor One')
+        print('センサー One')
     case 'Two':
-        print('Sensor Two')
+        print('センサー Two')
 ```
 
 ### get_target_file
 
-Return a file handle to a file in the target directory
+ターゲットディレクトリ内のファイルへのファイルハンドルを返します
 
-Ruby Syntax:
+Ruby 構文：
 
 ```ruby
 get_target_file("<File Path>", original: false)
 ```
 
-Python Syntax:
+Python 構文：
 
 ```ruby
 get_target_file("<File Path>", original=False)
 ```
 
-| Parameter | Description                                                                                                                                                                                                                           |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| File Path | The path to the file in the target directory. Should assume to start with a TARGET name, e.g. INST/procedures/proc.rb                                                                                                                 |
-| original  | Whether to get the original file from the plug-in, or any modifications to the file. Default is false which means to grab the modified file. If the modified file does not exist the API will automatically try to pull the original. |
+| パラメータ | 説明                                                                                                                                                                                                                                               |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| File Path  | ターゲットディレクトリ内のファイルへのパス。TARGET 名で始まると想定されます。例：INST/procedures/proc.rb                                                                                                                                           |
+| original   | プラグインから元のファイルを取得するか、ファイルへの変更を取得するかどうか。デフォルトは false で、これは変更されたファイルを取得することを意味します。変更されたファイルが存在しない場合、API は自動的に元のファイルを取得しようとします。 |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 file = get_target_file("INST/data/attitude.bin")
-puts file.read().formatted # format a binary file
-file.unlink # delete file
+puts file.read().formatted # バイナリファイルをフォーマット
+file.unlink # ファイルを削除
 file = get_target_file("INST/procedures/checks.rb", original: true)
 puts file.read()
-file.unlink # delete file
+file.unlink # ファイルを削除
 ```
 
-Python Example:
+Python の例：
 
 ```python
 from openc3.utilities.string import formatted
 
 file = get_target_file("INST/data/attitude.bin")
-print(formatted(file.read())) # format a binary file
-file.close() # delete file
+print(formatted(file.read())) # バイナリファイルをフォーマット
+file.close() # ファイルを削除
 file = get_target_file("INST/procedures/checks.rb", original=True)
 print(file.read())
-file.close() # delete file
+file.close() # ファイルを削除
 ```
 
 ### put_target_file
 
-Writes a file to the target directory
+ターゲットディレクトリにファイルを書き込みます
 
-Ruby or Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 put_target_file("<File Path>", "IO or String")
 ```
 
-| Parameter    | Description                                                                                                                                                                                                                                                                      |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| File Path    | The path to the file in the target directory. Should assume to start with a TARGET name, e.g. INST/procedures/proc.rb. The file can previously exist or not. Note: The original file from the plug-in will not be modified, however existing modified files will be overwritten. |
-| IO or String | The data can be an IO object or String                                                                                                                                                                                                                                           |
+| パラメータ    | 説明                                                                                                                                                                                                                                                                                                 |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| File Path     | ターゲットディレクトリ内のファイルへのパス。TARGET 名で始まると想定されます。例：INST/procedures/proc.rb。ファイルは以前に存在していてもしていなくても構いません。注意：プラグインの元のファイルは変更されませんが、既存の変更されたファイルは上書きされます。                                    |
+| IO or String  | データは IO オブジェクトまたは文字列です                                                                                                                                                                                                                                                             |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
-put_target_file("INST/test1.txt", "this is a string test")
+put_target_file("INST/test1.txt", "これは文字列テストです")
 file = Tempfile.new('test')
-file.write("this is a Io test")
+file.write("これは Io テストです")
 file.rewind
 put_target_file("INST/test2.txt", file)
-put_target_file("INST/test3.bin", "\x00\x01\x02\x03\xFF\xEE\xDD\xCC") # binary
+put_target_file("INST/test3.bin", "\x00\x01\x02\x03\xFF\xEE\xDD\xCC") # バイナリ
 ```
 
-Python Example:
+Python の例：
 
 ```python
-put_target_file("INST/test1.txt", "this is a string test")
+put_target_file("INST/test1.txt", "これは文字列テストです")
 file = tempfile.NamedTemporaryFile(mode="w+t")
-file.write("this is a Io test")
+file.write("これは Io テストです")
 file.seek(0)
 put_target_file("INST/test2.txt", file)
-put_target_file("INST/test3.bin", b"\x00\x01\x02\x03\xFF\xEE\xDD\xCC") # binary
+put_target_file("INST/test3.bin", b"\x00\x01\x02\x03\xFF\xEE\xDD\xCC") # バイナリ
 ```
 
 ### delete_target_file
 
-Delete a file in the target directory
+ターゲットディレクトリ内のファイルを削除します
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 delete_target_file("<File Path>")
 ```
 
-| Parameter | Description                                                                                                                                                                                                                                   |
-| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| File Path | The path to the file in the target directory. Should assume to start with a TARGET name, e.g. INST/procedures/proc.rb. Note: Only files created with put_target_file can be deleted. Original files from the plugin installation will remain. |
+| パラメータ | 説明                                                                                                                                                                                                                                 |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| File Path  | ターゲットディレクトリ内のファイルへのパス。TARGET 名で始まると想定されます。例：INST/procedures/proc.rb。注意：put_target_file で作成されたファイルのみ削除できます。プラグインのインストールからの元のファイルは残ります。 |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
-put_target_file("INST/delete_me.txt", "to be deleted")
+put_target_file("INST/delete_me.txt", "削除される予定")
 delete_target_file("INST/delete_me.txt")
 ```
 
@@ -368,40 +367,40 @@ delete_target_file("INST/delete_me.txt")
 
 ### open_files_dialog
 
-The open_file_dialog and open_files_dialog methods create a file dialog box so the user can select a single or multiple files. The selected file(s) is returned.
+open_file_dialog および open_files_dialog メソッドは、ユーザーが単一または複数のファイルを選択できるファイルダイアログボックスを作成します。選択したファイルが返されます。
 
-Note: COSMOS 5 has deprecated the save_file_dialog and open_directory_dialog methods. save_file_dialog can be replaced by put_target_file if you want to write a file back to the target. open_directory_dialog doesn't make sense in new architecture so you must request individual files.
+注意：COSMOS 5 では save_file_dialog および open_directory_dialog メソッドが非推奨になっています。ファイルをターゲットに書き戻したい場合は、save_file_dialog を put_target_file に置き換えることができます。新しいアーキテクチャでは open_directory_dialog は意味がないため、個々のファイルをリクエストする必要があります。
 
-Ruby Syntax:
+Ruby 構文：
 
 ```ruby
 open_file_dialog("<Title>", "<Message>", filter: "<filter>")
 open_files_dialog("<Title>", "<Message>", filter: "<filter>")
 ```
 
-Python Syntax:
+Python 構文：
 
 ```python
 open_file_dialog("<Title>", "<Message>", filter="<filter>")
 open_files_dialog("<Title>", "<Message>", filter="<filter>")
 ```
 
-| Parameter | Description                                                                                                                                                                                                                        |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Title     | The title to put on the dialog. Required.                                                                                                                                                                                          |
-| Message   | The message to display in the dialog box. Optional parameter.                                                                                                                                                                      |
-| filter    | Named parameter to filter allowed file types. Optional parameter, specified as comma delimited file types, e.g. ".txt,.doc". See https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/file#accept for more information. |
+| パラメータ | 説明                                                                                                                                                                                                                             |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Title      | ダイアログに表示するタイトル。必須。                                                                                                                                                                                            |
+| Message    | ダイアログボックスに表示するメッセージ。オプションのパラメータ。                                                                                                                                                                |
+| filter     | 許可されるファイルタイプをフィルタリングするための名前付きパラメータ。オプションのパラメータで、コンマ区切りのファイルタイプで指定します。例：".txt,.doc"。詳細は https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/file#accept を参照してください。 |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
-file = open_file_dialog("Open a single file", "Choose something interesting", filter: ".txt")
-puts file # Ruby File object
+file = open_file_dialog("単一ファイルを開く", "ファイルを選んでください", filter: ".txt")
+puts file # Ruby File オブジェクト
 puts file.read
 file.delete
 
-files = open_files_dialog("Open multiple files") # message is optional
-puts files # Array of File objects (even if you select only one)
+files = open_files_dialog("複数のファイルを開く") # メッセージはオプション
+puts files # File オブジェクトの配列（1つだけ選択しても）
 files.each do |file|
   puts file
   puts file.read
@@ -409,88 +408,88 @@ files.each do |file|
 end
 ```
 
-Python Example:
+Python の例：
 
 ```python
-file = open_file_dialog("Open a single file", "Choose something interesting", filter=".txt")
+file = open_file_dialog("単一ファイルを開く", "ファイルを選んでください", filter=".txt")
 print(file)
 print(file.read())
 file.close()
 
-files = open_files_dialog("Open multiple files") # message is optional
-print(files) # Array of File objects (even if you select only one)
+files = open_files_dialog("複数のファイルを開く") # メッセージはオプション
+print(files) # File オブジェクトの配列（1つだけ選択しても）
 for file in files:
     print(file)
     print(file.read())
     file.close()
 ```
 
-## Providing information to the user
+## ユーザーへの情報提供
 
-These methods notify the user that something has occurred.
+これらのメソッドは、何かが発生したことをユーザーに通知します。
 
 ### prompt
 
-Displays a message to the user and waits for them to press an ok button.
+ユーザーにメッセージを表示し、OKボタンを押すのを待ちます。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 prompt("<Message>")
 ```
 
-| Parameter | Description                      |
-| --------- | -------------------------------- |
-| Message   | Message to prompt the user with. |
+| パラメータ | 説明                           |
+| ---------- | ------------------------------ |
+| Message    | ユーザーに表示するメッセージ。 |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
-prompt("Press OK to continue")
+prompt("続行するには OK を押してください")
 ```
 
-## Commands
+## コマンド
 
-These methods provide capability to send commands to a target and receive information about commands in the system.
+これらのメソッドは、ターゲットにコマンドを送信し、システム内のコマンドに関する情報を受信する機能を提供します。
 
 ### cmd
 
-Sends a specified command.
+指定されたコマンドを送信します。
 
-Ruby Syntax:
+Ruby 構文：
 
 ```ruby
 cmd("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
 cmd("<Target Name>", "<Command Name>", "Param #1 Name" => <Param #1 Value>, "Param #2 Name" => <Param #2 Value>, ...)
 ```
 
-Python Syntax:
+Python 構文：
 
 ```python
 cmd("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
 cmd("<Target Name>", "<Command Name>", {"Param #1 Name": <Param #1 Value>, "Param #2 Name": <Param #2 Value>, ...})
 ```
 
-| Parameter      | Description                                                                                          |
-| -------------- | ---------------------------------------------------------------------------------------------------- |
-| Target Name    | Name of the target this command is associated with.                                                  |
-| Command Name   | Name of this command. Also referred to as its mnemonic.                                              |
-| Param #x Name  | Name of a command parameter. If there are no parameters then the 'with' keyword should not be given. |
-| Param #x Value | Value of the command parameter. Values are automatically converted to the appropriate type.          |
-| timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
-| log_message    | Optional named parameter to prevent logging of the command                                           |
+| パラメータ       | 説明                                                                                 |
+| ---------------- | ------------------------------------------------------------------------------------ |
+| Target Name      | このコマンドに関連付けられているターゲットの名前。                                   |
+| Command Name     | このコマンドの名前。ニーモニックとも呼ばれます。                                     |
+| Param #x Name    | コマンドパラメータの名前。パラメータがない場合は 'with' キーワードを指定しないでください。 |
+| Param #x Value   | コマンドパラメータの値。値は自動的に適切な型に変換されます。                         |
+| timeout          | デフォルトのタイムアウト値（5秒）を変更するための名前付きパラメータ                   |
+| log_message      | コマンドのログを防ぐための名前付きパラメータ                                         |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 cmd("INST COLLECT with DURATION 10, TYPE NORMAL")
-# In Ruby the brackets around parameters are optional
+# Ruby ではパラメータの周りの括弧はオプション
 cmd("INST", "COLLECT", "DURATION" => 10, "TYPE" => "NORMAL")
 cmd("INST", "COLLECT", { "DURATION" => 10, "TYPE" => "NORMAL" })
 cmd("INST ABORT", timeout: 10, log_message: false)
 ```
 
-Python Example:
+Python の例：
 
 ```python
 cmd("INST COLLECT with DURATION 10, TYPE NORMAL")
@@ -500,39 +499,39 @@ cmd("INST ABORT", timeout=10, log_message=False)
 
 ### cmd_no_range_check
 
-Sends a specified command without performing range checking on its parameters. This should only be used when it is necessary to intentionally send a bad command parameter to test a target.
+パラメータの範囲チェックを実行せずに指定したコマンドを送信します。これは、ターゲットをテストするために意図的に不正なコマンドパラメータを送信する必要がある場合にのみ使用してください。
 
-Ruby Syntax:
+Ruby 構文：
 
 ```ruby
 cmd_no_range_check("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
 cmd_no_range_check("<Target Name>", "<Command Name>", "Param #1 Name" => <Param #1 Value>, "Param #2 Name" => <Param #2 Value>, ...)
 ```
 
-Python Syntax:
+Python 構文：
 
 ```python
 cmd_no_range_check("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
 cmd_no_range_check("<Target Name>", "<Command Name>", {"Param #1 Name": <Param #1 Value>, "Param #2 Name": <Param #2 Value>, ...})
 ```
 
-| Parameter      | Description                                                                                          |
-| -------------- | ---------------------------------------------------------------------------------------------------- |
-| Target Name    | Name of the target this command is associated with.                                                  |
-| Command Name   | Name of this command. Also referred to as its mnemonic.                                              |
-| Param #x Name  | Name of a command parameter. If there are no parameters then the 'with' keyword should not be given. |
-| Param #x Value | Value of the command parameter. Values are automatically converted to the appropriate type.          |
-| timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
-| log_message    | Optional named parameter to prevent logging of the command                                           |
+| パラメータ       | 説明                                                                                 |
+| ---------------- | ------------------------------------------------------------------------------------ |
+| Target Name      | このコマンドに関連付けられているターゲットの名前。                                   |
+| Command Name     | このコマンドの名前。ニーモニックとも呼ばれます。                                     |
+| Param #x Name    | コマンドパラメータの名前。パラメータがない場合は 'with' キーワードを指定しないでください。 |
+| Param #x Value   | コマンドパラメータの値。値は自動的に適切な型に変換されます。                         |
+| timeout          | デフォルトのタイムアウト値（5秒）を変更するための名前付きパラメータ                   |
+| log_message      | コマンドのログを防ぐための名前付きパラメータ                                         |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 cmd_no_range_check("INST COLLECT with DURATION 11, TYPE NORMAL")
 cmd_no_range_check("INST", "COLLECT", "DURATION" => 11, "TYPE" => "NORMAL")
 ```
 
-Python Example:
+Python の例：
 
 ```python
 cmd_no_range_check("INST COLLECT with DURATION 11, TYPE NORMAL")
@@ -541,32 +540,32 @@ cmd_no_range_check("INST", "COLLECT", {"DURATION": 11, "TYPE": "NORMAL"})
 
 ### cmd_no_hazardous_check
 
-Sends a specified command without performing the notification if it is a hazardous command. This should only be used when it is necessary to fully automate testing involving hazardous commands.
+危険なコマンドである場合の通知を行わずに指定されたコマンドを送信します。これは、危険なコマンドを含むテストを完全に自動化する必要がある場合にのみ使用してください。
 
-Ruby Syntax:
+Ruby 構文：
 
 ```ruby
 cmd_no_hazardous_check("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
 cmd_no_hazardous_check("<Target Name>", "<Command Name>", "Param #1 Name" => <Param #1 Value>, "Param #2 Name" => <Param #2 Value>, ...)
 ```
 
-Python Syntax:
+Python 構文：
 
 ```python
 cmd_no_hazardous_check("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
 cmd_no_hazardous_check("<Target Name>", "<Command Name>", {"Param #1 Name": <Param #1 Value>, "Param #2 Name": <Param #2 Value>, ...})
 ```
 
-| Parameter      | Description                                                                                          |
-| -------------- | ---------------------------------------------------------------------------------------------------- |
-| Target Name    | Name of the target this command is associated with.                                                  |
-| Command Name   | Name of this command. Also referred to as its mnemonic.                                              |
-| Param #x Name  | Name of a command parameter. If there are no parameters then the 'with' keyword should not be given. |
-| Param #x Value | Value of the command parameter. Values are automatically converted to the appropriate type.          |
-| timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
-| log_message    | Optional named parameter to prevent logging of the command                                           |
+| パラメータ       | 説明                                                                                 |
+| ---------------- | ------------------------------------------------------------------------------------ |
+| Target Name      | このコマンドに関連付けられているターゲットの名前。                                   |
+| Command Name     | このコマンドの名前。ニーモニックとも呼ばれます。                                     |
+| Param #x Name    | コマンドパラメータの名前。パラメータがない場合は 'with' キーワードを指定しないでください。 |
+| Param #x Value   | コマンドパラメータの値。値は自動的に適切な型に変換されます。                         |
+| timeout          | デフォルトのタイムアウト値（5秒）を変更するための名前付きパラメータ                   |
+| log_message      | コマンドのログを防ぐための名前付きパラメータ                                         |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 cmd_no_hazardous_check("INST CLEAR")
@@ -575,39 +574,39 @@ cmd_no_hazardous_check("INST", "CLEAR")
 
 ### cmd_no_checks
 
-Sends a specified command without performing the parameter range checks or notification if it is a hazardous command. This should only be used when it is necessary to fully automate testing involving hazardous commands that intentionally have invalid parameters.
+パラメータの範囲チェックを実行せず、コマンドが危険なコマンドである場合の通知も行わずに指定されたコマンドを送信します。これは、意図的に無効なパラメータを持つ危険なコマンドを含むテストを完全に自動化する必要がある場合にのみ使用してください。
 
-Ruby Syntax:
+Ruby 構文：
 
 ```ruby
 cmd_no_checks("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
 cmd_no_checks("<Target Name>", "<Command Name>", "Param #1 Name" => <Param #1 Value>, "Param #2 Name" => <Param #2 Value>, ...)
 ```
 
-Python Syntax:
+Python 構文：
 
 ```python
 cmd_no_checks("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
 cmd_no_checks("<Target Name>", "<Command Name>", {"Param #1 Name": <Param #1 Value>, "Param #2 Name": <Param #2 Value>, ...})
 ```
 
-| Parameter      | Description                                                                                          |
-| -------------- | ---------------------------------------------------------------------------------------------------- |
-| Target Name    | Name of the target this command is associated with.                                                  |
-| Command Name   | Name of this command. Also referred to as its mnemonic.                                              |
-| Param #x Name  | Name of a command parameter. If there are no parameters then the 'with' keyword should not be given. |
-| Param #x Value | Value of the command parameter. Values are automatically converted to the appropriate type.          |
-| timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
-| log_message    | Optional named parameter to prevent logging of the command                                           |
+| パラメータ       | 説明                                                                                 |
+| ---------------- | ------------------------------------------------------------------------------------ |
+| Target Name      | このコマンドに関連付けられているターゲットの名前。                                   |
+| Command Name     | このコマンドの名前。ニーモニックとも呼ばれます。                                     |
+| Param #x Name    | コマンドパラメータの名前。パラメータがない場合は 'with' キーワードを指定しないでください。 |
+| Param #x Value   | コマンドパラメータの値。値は自動的に適切な型に変換されます。                         |
+| timeout          | デフォルトのタイムアウト値（5秒）を変更するための名前付きパラメータ                   |
+| log_message      | コマンドのログを防ぐための名前付きパラメータ                                         |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 cmd_no_checks("INST COLLECT with DURATION 11, TYPE SPECIAL")
 cmd_no_checks("INST", "COLLECT", "DURATION" => 11, "TYPE" => "SPECIAL")
 ```
 
-Python Example:
+Python の例：
 
 ```python
 cmd_no_checks("INST COLLECT with DURATION 11, TYPE SPECIAL")
@@ -616,39 +615,39 @@ cmd_no_checks("INST", "COLLECT", {"DURATION": 11, "TYPE": "SPECIAL"})
 
 ### cmd_raw
 
-Sends a specified command without running conversions.
+変換を実行せずに指定されたコマンドを送信します。
 
-Ruby Syntax:
+Ruby 構文：
 
 ```ruby
 cmd_raw("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
 cmd_raw("<Target Name>", "<Command Name>", "<Param #1 Name>" => <Param #1 Value>, "<Param #2 Name>" => <Param #2 Value>, ...)
 ```
 
-Python Syntax:
+Python 構文：
 
 ```python
 cmd_raw("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
 cmd_raw("<Target Name>", "<Command Name>", {"<Param #1 Name>": <Param #1 Value>, "<Param #2 Name>": <Param #2 Value>, ...})
 ```
 
-| Parameter      | Description                                                                                          |
-| -------------- | ---------------------------------------------------------------------------------------------------- |
-| Target Name    | Name of the target this command is associated with.                                                  |
-| Command Name   | Name of this command. Also referred to as its mnemonic.                                              |
-| Param #x Name  | Name of a command parameter. If there are no parameters then the 'with' keyword should not be given. |
-| Param #x Value | Value of the command parameter. Values are automatically converted to the appropriate type.          |
-| timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
-| log_message    | Optional named parameter to prevent logging of the command                                           |
+| パラメータ       | 説明                                                                                 |
+| ---------------- | ------------------------------------------------------------------------------------ |
+| Target Name      | このコマンドに関連付けられているターゲットの名前。                                   |
+| Command Name     | このコマンドの名前。ニーモニックとも呼ばれます。                                     |
+| Param #x Name    | コマンドパラメータの名前。パラメータがない場合は 'with' キーワードを指定しないでください。 |
+| Param #x Value   | コマンドパラメータの値。値は自動的に適切な型に変換されます。                         |
+| timeout          | デフォルトのタイムアウト値（5秒）を変更するための名前付きパラメータ                   |
+| log_message      | コマンドのログを防ぐための名前付きパラメータ                                         |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 cmd_raw("INST COLLECT with DURATION 10, TYPE 0")
 cmd_raw("INST", "COLLECT", "DURATION" => 10, "TYPE" => 0)
 ```
 
-Python Example:
+Python の例：
 
 ```python
 cmd_raw("INST COLLECT with DURATION 10, TYPE 0")
@@ -657,39 +656,39 @@ cmd_raw("INST", "COLLECT", {"DURATION": 10, "TYPE": 0})
 
 ### cmd_raw_no_range_check
 
-Sends a specified command without running conversions or performing range checking on its parameters. This should only be used when it is necessary to intentionally send a bad command parameter to test a target.
+変換を実行せず、パラメータの範囲チェックも実行せずに指定されたコマンドを送信します。これは、ターゲットをテストするために意図的に不正なコマンドパラメータを送信する必要がある場合にのみ使用してください。
 
-Ruby Syntax:
+Ruby 構文：
 
 ```ruby
 cmd_raw_no_range_check("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
 cmd_raw_no_range_check("<Target Name>", "<Command Name>", "<Param #1 Name>" => <Param #1 Value>, "<Param #2 Name>" => <Param #2 Value>, ...)
 ```
 
-Python Syntax:
+Python 構文：
 
 ```python
 cmd_raw_no_range_check("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
 cmd_raw_no_range_check("<Target Name>", "<Command Name>", {"<Param #1 Name>": <Param #1 Value>, "<Param #2 Name>": <Param #2 Value>, ...})
 ```
 
-| Parameter      | Description                                                                                          |
-| -------------- | ---------------------------------------------------------------------------------------------------- |
-| Target Name    | Name of the target this command is associated with.                                                  |
-| Command Name   | Name of this command. Also referred to as its mnemonic.                                              |
-| Param #x Name  | Name of a command parameter. If there are no parameters then the 'with' keyword should not be given. |
-| Param #x Value | Value of the command parameter. Values are automatically converted to the appropriate type.          |
-| timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
-| log_message    | Optional named parameter to prevent logging of the command                                           |
+| パラメータ       | 説明                                                                                 |
+| ---------------- | ------------------------------------------------------------------------------------ |
+| Target Name      | このコマンドに関連付けられているターゲットの名前。                                   |
+| Command Name     | このコマンドの名前。ニーモニックとも呼ばれます。                                     |
+| Param #x Name    | コマンドパラメータの名前。パラメータがない場合は 'with' キーワードを指定しないでください。 |
+| Param #x Value   | コマンドパラメータの値。値は自動的に適切な型に変換されます。                         |
+| timeout          | デフォルトのタイムアウト値（5秒）を変更するための名前付きパラメータ                   |
+| log_message      | コマンドのログを防ぐための名前付きパラメータ                                         |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 cmd_raw_no_range_check("INST COLLECT with DURATION 11, TYPE 0")
 cmd_raw_no_range_check("INST", "COLLECT", "DURATION" => 11, "TYPE" => 0)
 ```
 
-Python Example:
+Python の例：
 
 ```python
 cmd_raw_no_range_check("INST COLLECT with DURATION 11, TYPE 0")
@@ -698,32 +697,32 @@ cmd_raw_no_range_check("INST", "COLLECT", {"DURATION": 11, "TYPE": 0})
 
 ### cmd_raw_no_hazardous_check
 
-Sends a specified command without running conversions or performing the notification if it is a hazardous command. This should only be used when it is necessary to fully automate testing involving hazardous commands.
+変換を実行せず、コマンドが危険なコマンドである場合の通知も行わずに指定されたコマンドを送信します。これは、危険なコマンドを含むテストを完全に自動化する必要がある場合にのみ使用してください。
 
-Ruby Syntax:
+Ruby 構文：
 
 ```ruby
 cmd_raw_no_hazardous_check("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
 cmd_raw_no_hazardous_check("<Target Name>", "<Command Name>", "<Param #1 Name>" => <Param #1 Value>, "<Param #2 Name>" => <Param #2 Value>, ...)
 ```
 
-Python Syntax:
+Python 構文：
 
 ```python
 cmd_raw_no_hazardous_check("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
 cmd_raw_no_hazardous_check("<Target Name>", "<Command Name>", {"<Param #1 Name>": <Param #1 Value>, "<Param #2 Name>": <Param #2 Value>, ...})
 ```
 
-| Parameter      | Description                                                                                          |
-| -------------- | ---------------------------------------------------------------------------------------------------- |
-| Target Name    | Name of the target this command is associated with.                                                  |
-| Command Name   | Name of this command. Also referred to as its mnemonic.                                              |
-| Param #x Name  | Name of a command parameter. If there are no parameters then the 'with' keyword should not be given. |
-| Param #x Value | Value of the command parameter. Values are automatically converted to the appropriate type.          |
-| timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
-| log_message    | Optional named parameter to prevent logging of the command                                           |
+| パラメータ       | 説明                                                                                 |
+| ---------------- | ------------------------------------------------------------------------------------ |
+| Target Name      | このコマンドに関連付けられているターゲットの名前。                                   |
+| Command Name     | このコマンドの名前。ニーモニックとも呼ばれます。                                     |
+| Param #x Name    | コマンドパラメータの名前。パラメータがない場合は 'with' キーワードを指定しないでください。 |
+| Param #x Value   | コマンドパラメータの値。値は自動的に適切な型に変換されます。                         |
+| timeout          | デフォルトのタイムアウト値（5秒）を変更するための名前付きパラメータ                   |
+| log_message      | コマンドのログを防ぐための名前付きパラメータ                                         |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 cmd_raw_no_hazardous_check("INST CLEAR")
@@ -732,39 +731,39 @@ cmd_raw_no_hazardous_check("INST", "CLEAR")
 
 ### cmd_raw_no_checks
 
-Sends a specified command without running conversions or performing the parameter range checks or notification if it is a hazardous command. This should only be used when it is necessary to fully automate testing involving hazardous commands that intentionally have invalid parameters.
+変換、パラメータの範囲チェック、およびコマンドが危険なコマンドである場合の通知を実行せずに指定されたコマンドを送信します。これは、意図的に無効なパラメータを持つ危険なコマンドを含むテストを完全に自動化する必要がある場合にのみ使用してください。
 
-Ruby Syntax:
+Ruby 構文：
 
 ```ruby
 cmd_raw_no_checks("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
 cmd_raw_no_checks("<Target Name>", "<Command Name>", "<Param #1 Name>" => <Param #1 Value>, "<Param #2 Name>" => <Param #2 Value>, ...)
 ```
 
-Python Syntax:
+Python 構文：
 
 ```python
 cmd_raw_no_checks("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
 cmd_raw_no_checks("<Target Name>", "<Command Name>", {"<Param #1 Name>": <Param #1 Value>, "<Param #2 Name>": <Param #2 Value>, ...})
 ```
 
-| Parameter      | Description                                                                                          |
-| -------------- | ---------------------------------------------------------------------------------------------------- |
-| Target Name    | Name of the target this command is associated with.                                                  |
-| Command Name   | Name of this command. Also referred to as its mnemonic.                                              |
-| Param #x Name  | Name of a command parameter. If there are no parameters then the 'with' keyword should not be given. |
-| Param #x Value | Value of the command parameter. Values are automatically converted to the appropriate type.          |
-| timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
-| log_message    | Optional named parameter to prevent logging of the command                                           |
+| パラメータ       | 説明                                                                                 |
+| ---------------- | ------------------------------------------------------------------------------------ |
+| Target Name      | このコマンドに関連付けられているターゲットの名前。                                   |
+| Command Name     | このコマンドの名前。ニーモニックとも呼ばれます。                                     |
+| Param #x Name    | コマンドパラメータの名前。パラメータがない場合は 'with' キーワードを指定しないでください。 |
+| Param #x Value   | コマンドパラメータの値。値は自動的に適切な型に変換されます。                         |
+| timeout          | デフォルトのタイムアウト値（5秒）を変更するための名前付きパラメータ                   |
+| log_message      | コマンドのログを防ぐための名前付きパラメータ                                         |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 cmd_raw_no_checks("INST COLLECT with DURATION 11, TYPE 1")
 cmd_raw_no_checks("INST", "COLLECT", "DURATION" => 11, "TYPE" => 1)
 ```
 
-Python Example:
+Python の例：
 
 ```python
 cmd_raw_no_checks("INST COLLECT with DURATION 11, TYPE 1")
@@ -773,36 +772,36 @@ cmd_raw_no_checks("INST", "COLLECT", {"DURATION": 11, "TYPE": 1})
 
 ### build_cmd
 
-> Since 5.13.0, since 5.8.0 as build_command
+> 5.13.0 から、5.8.0 では build_command として
 
-Builds a command binary string so you can see the raw bytes for a given command. Use the [get_cmd](#get_cmd) to get information about a command like endianness, description, items, etc.
+特定のコマンドの生のバイトを確認できるようにコマンドのバイナリ文字列を構築します。コマンドについてのエンディアン、説明、項目などの情報を取得するには [get_cmd](#get_cmd) を使用してください。
 
-Ruby Syntax:
+Ruby 構文：
 
 ```ruby
 build_cmd(<ARGS>, range_check: true, raw: false)
 ```
 
-Python Syntax:
+Python 構文：
 
 ```python
 build_cmd(<ARGS>, range_check=True, raw=False)
 ```
 
-| Parameter   | Description                                                                             |
-| ----------- | --------------------------------------------------------------------------------------- |
-| ARGS        | Command parameters (see cmd)                                                            |
-| range_check | Whether to perform range checking on the command. Default is true.                      |
-| raw         | Whether to write the command arguments as RAW or CONVERTED value. Default is CONVERTED. |
+| パラメータ   | 説明                                                         |
+| ------------ | ------------------------------------------------------------ |
+| ARGS         | コマンドパラメータ（cmd を参照）                             |
+| range_check  | コマンドの範囲チェックを実行するかどうか。デフォルトは true。 |
+| raw          | コマンド引数を RAW または CONVERTED 値として書き込むかどうか。デフォルトは CONVERTED。 |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 x = build_cmd("INST COLLECT with DURATION 10, TYPE NORMAL")
 puts x  #=> {"id"=>"1696437370872-0", "result"=>"SUCCESS", "time"=>"1696437370872305961", "received_time"=>"1696437370872305961", "target_name"=>"INST", "packet_name"=>"COLLECT", "received_count"=>"3", "buffer"=>"\x13\xE7\xC0\x00\x00\f\x00\x01\x00\x00A \x00\x00\xAB\x00\x00\x00\x00"}
 ```
 
-Python Example:
+Python の例：
 
 ```python
 x = build_cmd("INST COLLECT with DURATION 10, TYPE NORMAL")
@@ -811,23 +810,23 @@ print(x)  #=> {'id': '1697298167748-0', 'result': 'SUCCESS', 'time': '1697298167
 
 ### enable_cmd
 
-> Since 5.15.1
+> 5.15.1 から
 
-Enables a disabled command. Sending a disabled command raises `DisabledError` with a message like 'INST ABORT is Disabled'.
+無効化されたコマンドを有効にします。無効化されたコマンドを送信すると、「INST ABORT is Disabled」のようなメッセージで `DisabledError` が発生します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 buffer = enable_cmd("<Target Name> <Command Name>")
 buffer = enable_cmd("<Target Name>", "<Command Name>")
 ```
 
-| Parameter   | Description                   |
-| ----------- | ----------------------------- |
-| Target Name | Name of the target.           |
-| Packet Name | Name of the command (packet). |
+| パラメータ   | 説明                        |
+| ------------ | --------------------------- |
+| Target Name  | ターゲットの名前。          |
+| Packet Name  | コマンド（パケット）の名前。 |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 enable_cmd("INST ABORT")
@@ -835,23 +834,23 @@ enable_cmd("INST ABORT")
 
 ### disable_cmd
 
-> Since 5.15.1
+> 5.15.1 から
 
-Disables a command. Sending a disabled command raises `DisabledError` with a message like 'INST ABORT is Disabled'.
+コマンドを無効にします。無効化されたコマンドを送信すると、「INST ABORT is Disabled」のようなメッセージで `DisabledError` が発生します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 buffer = disable_cmd("<Target Name> <Command Name>")
 buffer = disable_cmd("<Target Name>", "<Command Name>")
 ```
 
-| Parameter   | Description                   |
-| ----------- | ----------------------------- |
-| Target Name | Name of the target.           |
-| Packet Name | Name of the command (packet). |
+| パラメータ   | 説明                        |
+| ------------ | --------------------------- |
+| Target Name  | ターゲットの名前。          |
+| Packet Name  | コマンド（パケット）の名前。 |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 disable_cmd("INST ABORT")
@@ -859,20 +858,20 @@ disable_cmd("INST ABORT")
 
 ### send_raw
 
-Sends raw data on an interface.
+インターフェース上で生のデータを送信します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 send_raw(<Interface Name>, <Data>)
 ```
 
-| Parameter      | Description                                    |
-| -------------- | ---------------------------------------------- |
-| Interface Name | Name of the interface to send the raw data on. |
-| Data           | Raw ruby string of data to send.               |
+| パラメータ       | 説明                                         |
+| ---------------- | -------------------------------------------- |
+| Interface Name   | 生のデータを送信するインターフェースの名前。 |
+| Data             | 送信する生のデータのRuby文字列。             |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 send_raw("INST_INT", data)
@@ -880,21 +879,21 @@ send_raw("INST_INT", data)
 
 ### get_all_cmds
 
-> Since 5.13.0, since 5.0.0 as get_all_commands
+> 5.13.0 から、5.0.0 では get_all_commands として
 
-Returns an array of the commands that are available for a particular target. The returned array is an array of hashes / list of dicts which fully describe the command packet.
+特定のターゲットで利用可能なコマンドの配列を返します。返される配列は、コマンドパケットを完全に記述するハッシュの配列（Pythonではディクショナリのリスト）です。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 get_all_cmds("<Target Name>")
 ```
 
-| Parameter   | Description         |
-| ----------- | ------------------- |
-| Target Name | Name of the target. |
+| パラメータ   | 説明                 |
+| ------------ | -------------------- |
+| Target Name  | ターゲットの名前。   |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 cmd_list = get_all_cmds("INST")
@@ -908,7 +907,7 @@ puts cmd_list  #=>
 # }]
 ```
 
-Python Example:
+Python の例：
 
 ```python
 cmd_list = get_all_cmds("INST")
@@ -924,28 +923,28 @@ print(cmd_list)  #=>
 
 ### get_all_cmd_names
 
-> Since 5.13.0, since 5.0.6 as get_all_command_names
+> 5.13.0 から、5.0.6 では get_all_command_names として
 
-Returns an array of the command names for a particular target.
+特定のターゲットのコマンド名の配列を返します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 get_all_cmd_names("<Target Name>")
 ```
 
-| Parameter   | Description        |
-| ----------- | ------------------ |
-| Target Name | Name of the target |
+| パラメータ   | 説明                |
+| ------------ | ------------------- |
+| Target Name  | ターゲットの名前    |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 cmd_list = get_all_cmd_names("INST")
 puts cmd_list  #=> ['ABORT', 'ARYCMD', 'ASCIICMD', ...]
 ```
 
-Python Example:
+Python の例：
 
 ```python
 cmd_list = get_all_cmd_names("INST")
@@ -954,23 +953,23 @@ print(cmd_list)  #=> ['ABORT', 'ARYCMD', 'ASCIICMD', ...]
 
 ### get_cmd
 
-> Since 5.13.0, since 5.0.0 as get_command
+> 5.13.0 から、5.0.0 では get_command として
 
-Returns a command hash which fully describes the command packet. To get the binary buffer of an as-built command use [build_cmd](#build_cmd).
+コマンドパケットを完全に記述するコマンドハッシュを返します。構築済みコマンドのバイナリバッファを取得するには [build_cmd](#build_cmd) を使用してください。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 get_cmd("<Target Name> <Packet Name>")
 get_cmd("<Target Name>", "<Packet Name>")
 ```
 
-| Parameter   | Description         |
-| ----------- | ------------------- |
-| Target Name | Name of the target. |
-| Packet Name | Name of the packet. |
+| パラメータ   | 説明                 |
+| ------------ | -------------------- |
+| Target Name  | ターゲットの名前。   |
+| Packet Name  | パケットの名前。     |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 abort_cmd = get_cmd("INST ABORT")
@@ -984,7 +983,7 @@ puts abort_cmd  #=>
 # }]
 ```
 
-Python Example:
+Python の例：
 
 ```python
 abort_cmd = get_cmd("INST ABORT")
@@ -1000,24 +999,24 @@ print(abort_cmd)  #=>
 
 ### get_param
 
-> Since 5.13.0, since 5.0.0 as get_parameter
+> 5.13.0 から、5.0.0 では get_parameter として
 
-Returns a hash of the given command parameter
+指定されたコマンドパラメータのハッシュを返します
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 get_param("<Target Name> <Command Name> <Parameter Name>")
 get_param("<Target Name>", "<Command Name>", "<Parameter Name>")
 ```
 
-| Parameter      | Description            |
-| -------------- | ---------------------- |
-| Target Name    | Name of the target.    |
-| Command Name   | Name of the command.   |
-| Parameter Name | Name of the parameter. |
+| パラメータ      | 説明                    |
+| --------------- | ----------------------- |
+| Target Name     | ターゲットの名前。      |
+| Command Name    | コマンドの名前。        |
+| Parameter Name  | パラメータの名前。      |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 param = get_param("INST COLLECT TYPE")
@@ -1028,7 +1027,7 @@ puts param  #=>
 #  "states"=>{"NORMAL"=>{"value"=>0}, "SPECIAL"=>{"value"=>1, "hazardous"=>""}}, "limits"=>{}}
 ```
 
-Python Example:
+Python の例：
 
 ```python
 param = get_param("INST COLLECT TYPE")
@@ -1041,21 +1040,21 @@ print(param)  #=>
 
 ### get_cmd_buffer
 
-Returns a packet hash (similar to get_cmd) along with the raw packet buffer as a Ruby string.
+Ruby文字列としての生のパケットバッファとともにパケットハッシュ（get_cmdと同様）を返します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 buffer = get_cmd_buffer("<Target Name> <Packet Name>")['buffer']
 buffer = get_cmd_buffer("<Target Name>", "<Packet Name>")['buffer']
 ```
 
-| Parameter   | Description         |
-| ----------- | ------------------- |
-| Target Name | Name of the target. |
-| Packet Name | Name of the packet. |
+| パラメータ   | 説明                 |
+| ------------ | -------------------- |
+| Target Name  | ターゲットの名前。   |
+| Packet Name  | パケットの名前。     |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 packet = get_cmd_buffer("INST COLLECT")
@@ -1065,7 +1064,7 @@ puts packet  #=>
 #  "buffer"=>"\x13\xE7\xC0\x00\x00\f\x00\x01\x00\x00@\xE0\x00\x00\xAB\x00\x00\x00\x00"}
 ```
 
-Python Example:
+Python の例：
 
 ```python
 packet = get_cmd_buffer("INST COLLECT")
@@ -1077,28 +1076,28 @@ print(packet)  #=>
 
 ### get_cmd_hazardous
 
-Returns true/false indicating whether a particular command is flagged as hazardous.
+特定のコマンドが危険としてフラグが立てられているかどうかを示すtrue/falseを返します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 get_cmd_hazardous("<Target Name>", "<Command Name>", <Command Params - optional>)
 ```
 
-| Parameter      | Description                                                                                                                   |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Target Name    | Name of the target.                                                                                                           |
-| Command Name   | Name of the command.                                                                                                          |
-| Command Params | Hash of the parameters given to the command (optional). Note that some commands are only hazardous based on parameter states. |
+| パラメータ      | 説明                                                                                                |
+| --------------- | --------------------------------------------------------------------------------------------------- |
+| Target Name     | ターゲットの名前。                                                                                  |
+| Command Name    | コマンドの名前。                                                                                    |
+| Command Params  | コマンドに渡されるパラメータのハッシュ（オプション）。一部のコマンドはパラメータの状態に基づいてのみ危険です。 |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 hazardous = get_cmd_hazardous("INST", "COLLECT", {'TYPE' => 'SPECIAL'})
 puts hazardous  #=> true
 ```
 
-Python Example:
+Python の例：
 
 ```python
 hazardous = get_cmd_hazardous("INST", "COLLECT", {'TYPE': 'SPECIAL'})
@@ -1107,29 +1106,29 @@ print(hazardous) #=> True
 
 ### get_cmd_value
 
-Returns reads a value from the most recently sent command packet. The pseudo-parameters 'PACKET_TIMESECONDS', 'PACKET_TIMEFORMATTED', 'RECEIVED_COUNT', 'RECEIVED_TIMEFORMATTED', and 'RECEIVED_TIMESECONDS' are also supported.
+最後に送信されたコマンドパケットから値を読み取ります。擬似パラメータの「PACKET_TIMESECONDS」、「PACKET_TIMEFORMATTED」、「RECEIVED_COUNT」、「RECEIVED_TIMEFORMATTED」、および「RECEIVED_TIMESECONDS」もサポートされています。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 get_cmd_value("<Target Name>", "<Command Name>", "<Parameter Name>", <Value Type - optional>)
 ```
 
-| Parameter      | Description                                                                                          |
-| -------------- | ---------------------------------------------------------------------------------------------------- |
-| Target Name    | Name of the target.                                                                                  |
-| Command Name   | Name of the command.                                                                                 |
-| Parameter Name | Name of the command parameter.                                                                       |
-| Value Type     | Value Type to read. RAW, CONVERTED, FORMATTED, or WITH_UNITS. NOTE: Symbol in Ruby and str in Python |
+| パラメータ      | 説明                                                                          |
+| --------------- | ----------------------------------------------------------------------------- |
+| Target Name     | ターゲットの名前。                                                            |
+| Command Name    | コマンドの名前。                                                              |
+| Parameter Name  | コマンドパラメータの名前。                                                    |
+| Value Type      | 読み取る値のタイプ。RAW、CONVERTED、FORMATTED、または WITH_UNITS。注：Ruby ではシンボル、Python では文字列 |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 value = get_cmd_value("INST", "COLLECT", "TEMP", :RAW)
 puts value  #=> 0.0
 ```
 
-Python Example:
+Python の例：
 
 ```python
 value = get_cmd_value("INST", "COLLECT", "TEMP", "RAW")
@@ -1138,87 +1137,87 @@ print(value)  #=> 0.0
 
 ### get_cmd_time
 
-Returns the time of the most recent command sent.
+最近送信されたコマンドの時間を返します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 get_cmd_time("<Target Name - optional>", "<Command Name - optional>")
 ```
 
-| Parameter    | Description                                                                                               |
-| ------------ | --------------------------------------------------------------------------------------------------------- |
-| Target Name  | Name of the target. If not given, then the most recent command time to any target will be returned        |
-| Command Name | Name of the command. If not given, then the most recent command time to the given target will be returned |
+| パラメータ     | 説明                                                                                                |
+| -------------- | --------------------------------------------------------------------------------------------------- |
+| Target Name    | ターゲットの名前。指定されない場合、任意のターゲットへの最新のコマンド時間が返されます              |
+| Command Name   | コマンドの名前。指定されない場合、指定されたターゲットへの最新のコマンド時間が返されます            |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
-target_name, command_name, time = get_cmd_time() # Name of the most recent command sent to any target and time
-target_name, command_name, time = get_cmd_time("INST") # Name of the most recent command sent to the INST target and time
-target_name, command_name, time = get_cmd_time("INST", "COLLECT") # Name of the most recent INST COLLECT command and time
+target_name, command_name, time = get_cmd_time() # 任意のターゲットに送信された最新のコマンドの名前と時間
+target_name, command_name, time = get_cmd_time("INST") # INSTターゲットに送信された最新のコマンドの名前と時間
+target_name, command_name, time = get_cmd_time("INST", "COLLECT") # 最新のINST COLLECTコマンドの名前と時間
 ```
 
 ### get_cmd_cnt
 
-Returns the number of times a specified command has been sent.
+指定されたコマンドが送信された回数を返します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 get_cmd_cnt("<Target Name> <Command Name>")
 get_cmd_cnt("<Target Name>", "<Command Name>")
 ```
 
-| Parameter    | Description          |
-| ------------ | -------------------- |
-| Target Name  | Name of the target.  |
-| Command Name | Name of the command. |
+| パラメータ     | 説明                |
+| -------------- | ------------------- |
+| Target Name    | ターゲットの名前。  |
+| Command Name   | コマンドの名前。    |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
-cmd_cnt = get_cmd_cnt("INST COLLECT") # Number of times the INST COLLECT command has been sent
+cmd_cnt = get_cmd_cnt("INST COLLECT") # INST COLLECTコマンドが送信された回数
 ```
 
 ### get_cmd_cnts
 
-Returns the number of times the specified commands have been sent.
+指定されたコマンドが送信された回数を返します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 get_cmd_cnts([["<Target Name>", "<Command Name>"], ["<Target Name>", "<Command Name>"], ...])
 ```
 
-| Parameter    | Description          |
-| ------------ | -------------------- |
-| Target Name  | Name of the target.  |
-| Command Name | Name of the command. |
+| パラメータ     | 説明                |
+| -------------- | ------------------- |
+| Target Name    | ターゲットの名前。  |
+| Command Name   | コマンドの名前。    |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
-cmd_cnt = get_cmd_cnts([['INST', 'COLLECT'], ['INST', 'ABORT']]) # Number of times the INST COLLECT and INST ABORT commands have been sent
+cmd_cnt = get_cmd_cnts([['INST', 'COLLECT'], ['INST', 'ABORT']]) # INST COLLECTとINST ABORTコマンドが送信された回数
 ```
 
 ### critical_cmd_status
 
-Returns the status of a critical command. One of APPROVED, REJECTED, or WAITING.
+クリティカルコマンドのステータスを返します。APPROVED、REJECTED、または WAITINGのいずれかです。
 
-> Since 5.20.0
+> 5.20.0 から
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 critical_cmd_status(uuid)
 ```
 
-| Parameter | Description                                                 |
-| --------- | ----------------------------------------------------------- |
-| uuid      | UUID for the critical command (displayed in the COSMOS GUI) |
+| パラメータ | 説明                                                 |
+| ---------- | ---------------------------------------------------- |
+| uuid       | クリティカルコマンドのUUID（COSMOS GUIに表示されます） |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 status = critical_cmd_status("2fa14183-3148-4399-9a74-a130257118f9") #=> WAITING
@@ -1226,21 +1225,21 @@ status = critical_cmd_status("2fa14183-3148-4399-9a74-a130257118f9") #=> WAITING
 
 ### critical_cmd_approve
 
-Approve the critical command as the current user.
+現在のユーザーとしてクリティカルコマンドを承認します。
 
-> Since 5.20.0
+> 5.20.0 から
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 critical_cmd_approve(uuid)
 ```
 
-| Parameter | Description                                                 |
-| --------- | ----------------------------------------------------------- |
-| uuid      | UUID for the critical command (displayed in the COSMOS GUI) |
+| パラメータ | 説明                                                 |
+| ---------- | ---------------------------------------------------- |
+| uuid       | クリティカルコマンドのUUID（COSMOS GUIに表示されます） |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 critical_cmd_approve("2fa14183-3148-4399-9a74-a130257118f9")
@@ -1248,21 +1247,21 @@ critical_cmd_approve("2fa14183-3148-4399-9a74-a130257118f9")
 
 ### critical_cmd_reject
 
-Reject the critical command as the current user.
+現在のユーザーとしてクリティカルコマンドを拒否します。
 
-> Since 5.20.0
+> 5.20.0 から
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 critical_cmd_reject(uuid)
 ```
 
-| Parameter | Description                                                 |
-| --------- | ----------------------------------------------------------- |
-| uuid      | UUID for the critical command (displayed in the COSMOS GUI) |
+| パラメータ | 説明                                                 |
+| ---------- | ---------------------------------------------------- |
+| uuid       | クリティカルコマンドのUUID（COSMOS GUIに表示されます） |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 critical_cmd_reject("2fa14183-3148-4399-9a74-a130257118f9")
@@ -1270,96 +1269,96 @@ critical_cmd_reject("2fa14183-3148-4399-9a74-a130257118f9")
 
 ### critical_cmd_can_approve
 
-Returns whether or not the current user can approve the critical command.
+現在のユーザーがクリティカルコマンドを承認できるかどうかを返します。
 
-> Since 5.20.0
+> 5.20.0 から
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 critical_cmd_can_approve(uuid)
 ```
 
-| Parameter | Description                                                 |
-| --------- | ----------------------------------------------------------- |
-| uuid      | UUID for the critical command (displayed in the COSMOS GUI) |
+| パラメータ | 説明                                                 |
+| ---------- | ---------------------------------------------------- |
+| uuid       | クリティカルコマンドのUUID（COSMOS GUIに表示されます） |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 status = critical_cmd_can_approve("2fa14183-3148-4399-9a74-a130257118f9") #=> true / false
 ```
 
-## Handling Telemetry
+## テレメトリの処理
 
-These methods allow the user to interact with telemetry items.
+これらのメソッドを使用すると、ユーザーはテレメトリ項目を操作できます。
 
 ### check, check_raw, check_formatted, check_with_units
 
-Performs a verification of a telemetry item using its specified telemetry type. If the verification fails then the script will be paused with an error. If no comparison is given to check then the telemetry item is simply printed to the script output. Note: In most cases using wait_check is a better choice than using check.
+指定されたテレメトリタイプを使用してテレメトリ項目の検証を実行します。検証が失敗すると、スクリプトはエラーで一時停止します。検証するための比較が与えられていない場合、テレメトリ項目は単にスクリプト出力に表示されます。注意: ほとんどの場合、check よりも wait_check を使用する方が良い選択です。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 check("<Target Name> <Packet Name> <Item Name> <Comparison - optional>")
 ```
 
-| Parameter   | Description                                                                                                                                        |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Target Name | Name of the target of the telemetry item.                                                                                                          |
-| Packet Name | Name of the telemetry packet of the telemetry item.                                                                                                |
-| Item Name   | Name of the telemetry item.                                                                                                                        |
-| Comparison  | A comparison to perform against the telemetry item. If a comparison is not given then the telemetry item will just be printed into the script log. |
+| パラメータ   | 説明                                                                                                           |
+| ------------ | -------------------------------------------------------------------------------------------------------------- |
+| Target Name  | テレメトリ項目のターゲットの名前。                                                                              |
+| Packet Name  | テレメトリ項目のテレメトリパケットの名前。                                                                      |
+| Item Name    | テレメトリ項目の名前。                                                                                          |
+| Comparison   | テレメトリ項目に対して実行する比較。比較が与えられていない場合、テレメトリ項目はスクリプトログに表示されるだけです。 |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 check("INST HEALTH_STATUS COLLECTS > 1")
 check_raw("INST HEALTH_STATUS COLLECTS > 1")
 check_formatted("INST HEALTH_STATUS COLLECTS > 1")
 check_with_units("INST HEALTH_STATUS COLLECTS > 1")
-# Ruby passes type as symbol
+# Rubyではタイプをシンボルとして渡します
 check("INST HEALTH_STATUS COLLECTS > 1", type: :RAW)
 ```
 
-Python Example:
+Python の例：
 
 ```python
 check("INST HEALTH_STATUS COLLECTS > 1")
 check_raw("INST HEALTH_STATUS COLLECTS > 1")
 check_formatted("INST HEALTH_STATUS COLLECTS > 1")
 check_with_units("INST HEALTH_STATUS COLLECTS > 1")
-# Python passes type as string
+# Pythonではタイプを文字列として渡します
 check("INST HEALTH_STATUS COLLECTS > 1", type='RAW')
 ```
 
 ### check_tolerance
 
-Checks a converted telemetry item against an expected value with a tolerance. If the verification fails then the script will be paused with an error. Note: In most cases using wait_check_tolerance is a better choice than using check_tolerance.
+変換されたテレメトリ項目を許容範囲内の期待値と比較します。検証が失敗すると、スクリプトはエラーで一時停止します。注意: ほとんどの場合、check_tolerance よりも wait_check_tolerance を使用する方が良い選択です。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 check_tolerance("<Target Name> <Packet Name> <Item Name>", <Expected Value>, <Tolerance>)
 ```
 
-| Parameter      | Description                                             |
-| -------------- | ------------------------------------------------------- |
-| Target Name    | Name of the target of the telemetry item.               |
-| Packet Name    | Name of the telemetry packet of the telemetry item.     |
-| Item Name      | Name of the telemetry item.                             |
-| Expected Value | Expected value of the telemetry item.                   |
-| Tolerance      | ± Tolerance on the expected value.                      |
-| type           | CONVERTED (default) or RAW (Ruby symbol, Python string) |
+| パラメータ       | 説明                                                                 |
+| ---------------- | -------------------------------------------------------------------- |
+| Target Name      | テレメトリ項目のターゲットの名前。                                    |
+| Packet Name      | テレメトリ項目のテレメトリパケットの名前。                            |
+| Item Name        | テレメトリ項目の名前。                                                |
+| Expected Value   | テレメトリ項目の期待値。                                              |
+| Tolerance        | 期待値に対する±許容範囲。                                            |
+| type             | CONVERTED（デフォルト）または RAW（Rubyではシンボル、Pythonでは文字列） |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0)
 check_tolerance("INST HEALTH_STATUS TEMP1", 50000, 20000, type: :RAW)
 ```
 
-Python Example:
+Python の例：
 
 ```python
 check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0)
@@ -1368,74 +1367,74 @@ check_tolerance("INST HEALTH_STATUS TEMP1", 50000, 20000, type='RAW')
 
 ### check_expression
 
-Evaluates an expression. If the expression evaluates to false the script will be paused with an error. This method can be used to perform more complicated comparisons than using check as shown in the example. Note: In most cases using [wait_check_expression](#wait_check_expression) is a better choice than using check_expression.
+式を評価します。式が false と評価されると、スクリプトはエラーで一時停止します。この方法は、例に示すように check を使用するよりも複雑な比較を実行するために使用できます。注意: ほとんどの場合、check_expression よりも [wait_check_expression](#wait_check_expression) を使用するほうが良い選択です。
 
-Remember that everything inside the check_expression string will be evaluated directly and thus must be valid syntax. A common mistake is to check a variable like so (Ruby variable interpolation):
+check_expression 文字列内のすべては直接評価されるため、有効な構文である必要があることに注意してください。よくある間違いは、変数を次のようにチェックすることです（Ruby変数の補間）：
 
-`check_expression("#{answer} == 'yes'") # where answer contains 'yes'`
+`check_expression("#{answer} == 'yes'") # answerに'yes'が含まれている場合`
 
-This evaluates to `yes == 'yes'` which is not valid syntax because the variable yes is not defined (usually). The correct way to write this expression is as follows:
+これは `yes == 'yes'` と評価されますが、yes 変数は（通常）定義されていないため、有効な構文ではありません。この式を書く正しい方法は次のとおりです：
 
-`check_expression("'#{answer}' == 'yes'") # where answer contains 'yes'`
+`check_expression("'#{answer}' == 'yes'") # answerに'yes'が含まれている場合`
 
-Now this evaluates to `'yes' == 'yes'` which is true so the check passes.
+これにより、`'yes' == 'yes'` と評価され、true なのでチェックは合格します。
 
-Ruby Syntax:
+Ruby 構文：
 
 ```ruby
 check_expression(exp_to_eval, context = nil)
 ```
 
-Python Syntax:
+Python 構文：
 
 ```python
 check_expression(exp_to_eval, globals=None, locals=None)
 ```
 
-| Parameter             | Description                                                                                                                   |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| exp_to_eval           | An expression to evaluate.                                                                                                    |
-| context (ruby only)   | The context to call eval with. Defaults to nil. Context in Ruby is typically binding() and is usually not needed.             |
-| globals (python only) | The globals to call eval with. Defaults to None. Note that to use COSMOS APIs like tlm() you must pass globals().             |
-| locals (python only)  | The locals to call eval with. Defaults to None. Note that if you're using local variables in a method you must pass locals(). |
+| パラメータ              | 説明                                                                                                                             |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| exp_to_eval            | 評価する式。                                                                                                                       |
+| context (rubyのみ)     | eval を呼び出すコンテキスト。デフォルトは nil。Ruby のコンテキストは通常 binding() であり、通常は必要ありません。                  |
+| globals (pythonのみ)   | eval を呼び出すグローバル。デフォルトは None。tlm() などの COSMOS API を使用するには globals() を渡す必要があることに注意してください。 |
+| locals (pythonのみ)    | eval を呼び出すローカル。デフォルトは None。メソッドでローカル変数を使用している場合は locals() を渡す必要があることに注意してください。 |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 check_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm('INST HEALTH_STATUS TEMP1') > 25.0")
 ```
 
-Python Example:
+Python の例：
 
 ```python
 def check(value):
-    # Here we using both tlm() and a local 'value' so we need to pass globals() and locals()
+    # ここでは tlm() とローカル変数 'value' の両方を使用しているため、globals() と locals() を渡す必要があります
     check_expression("tlm('INST HEALTH_STATUS COLLECTS') > value", 5, 0.25, globals(), locals())
 check(5)
 ```
 
 ### check_exception
 
-Executes a method and expects an exception to be raised. If the method does not raise an exception, a CheckError is raised.
+メソッドを実行し、例外が発生することを期待します。メソッドが例外を発生させない場合、CheckError が発生します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 check_exception("<Method Name>", "<Method Params - optional>")
 ```
 
-| Parameter     | Description                                              |
-| ------------- | -------------------------------------------------------- |
-| Method Name   | The COSMOS scripting method to execute, e.g. 'cmd', etc. |
-| Method Params | Parameters for the method                                |
+| パラメータ     | 説明                                                |
+| ------------- | --------------------------------------------------- |
+| Method Name   | 実行するCOSMOSスクリプティングメソッド（例：'cmd'など）。 |
+| Method Params | メソッドのパラメータ                                  |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 check_exception("cmd", "INST", "COLLECT", "TYPE" => "NORMAL")
 ```
 
-Python Example:
+Python の例：
 
 ```python
 check_exception("cmd", "INST", "COLLECT", {"TYPE": "NORMAL"})
@@ -1443,23 +1442,23 @@ check_exception("cmd", "INST", "COLLECT", {"TYPE": "NORMAL"})
 
 ### tlm, tlm_raw, tlm_formatted, tlm_with_units
 
-Reads the specified form of a telemetry item.
+テレメトリ項目の指定された形式を読み取ります。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 tlm("<Target Name> <Packet Name> <Item Name>")
 tlm("<Target Name>", "<Packet Name>", "<Item Name>")
 ```
 
-| Parameter   | Description                                                                                                        |
-| ----------- | ------------------------------------------------------------------------------------------------------------------ |
-| Target Name | Name of the target of the telemetry item.                                                                          |
-| Packet Name | Name of the telemetry packet of the telemetry item.                                                                |
-| Item Name   | Name of the telemetry item.                                                                                        |
-| type        | Named parameter specifying the type. RAW, CONVERTED (default), FORMATTED, WITH_UNITS (Ruby symbol, Python string). |
+| パラメータ   | 説明                                                                                                       |
+| ------------ | ---------------------------------------------------------------------------------------------------------- |
+| Target Name  | テレメトリ項目のターゲットの名前。                                                                          |
+| Packet Name  | テレメトリ項目のテレメトリパケットの名前。                                                                  |
+| Item Name    | テレメトリ項目の名前。                                                                                      |
+| type         | タイプを指定する名前付きパラメータ。RAW、CONVERTED（デフォルト）、FORMATTED、WITH_UNITS（Rubyではシンボル、Pythonでは文字列）。 |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 value = tlm("INST HEALTH_STATUS COLLECTS")
@@ -1467,11 +1466,11 @@ value = tlm("INST", "HEALTH_STATUS", "COLLECTS")
 value = tlm_raw("INST HEALTH_STATUS COLLECTS")
 value = tlm_formatted("INST HEALTH_STATUS COLLECTS")
 value = tlm_with_units("INST HEALTH_STATUS COLLECTS")
-# Equivalent to tlm_raw
+# tlm_raw と同等
 raw_value = tlm("INST HEALTH_STATUS COLLECTS", type: :RAW)
 ```
 
-Python Example:
+Python の例：
 
 ```python
 value = tlm("INST HEALTH_STATUS COLLECTS")
@@ -1479,27 +1478,27 @@ value = tlm("INST", "HEALTH_STATUS", "COLLECTS")
 value = tlm_raw("INST HEALTH_STATUS COLLECTS")
 value = tlm_formatted("INST HEALTH_STATUS COLLECTS")
 value = tlm_with_units("INST HEALTH_STATUS COLLECTS")
-# Equivalent to tlm_raw
+# tlm_raw と同等
 raw_value = tlm("INST HEALTH_STATUS COLLECTS", type='RAW')
 ```
 
 ### get_tlm_buffer
 
-Returns a packet hash (similar to get_tlm) along with the raw packet buffer.
+生のパケットバッファとともにパケットハッシュ（get_tlm と同様）を返します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 buffer = get_tlm_buffer("<Target Name> <Packet Name>")['buffer']
 buffer = get_tlm_buffer("<Target Name>", "<Packet Name>")['buffer']
 ```
 
-| Parameter   | Description         |
-| ----------- | ------------------- |
-| Target Name | Name of the target. |
-| Packet Name | Name of the packet. |
+| パラメータ   | 説明                 |
+| ------------ | -------------------- |
+| Target Name  | ターゲットの名前。   |
+| Packet Name  | パケットの名前。     |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 packet = get_tlm_buffer("INST HEALTH_STATUS")
@@ -1508,28 +1507,28 @@ packet['buffer']
 
 ### get_tlm_packet
 
-Returns the names, values, and limits states of all telemetry items in a specified packet. The value is returned as an array of arrays with each entry containing [item_name, item_value, limits_state].
+指定されたパケット内のすべてのテレメトリ項目の名前、値、およびリミット状態を返します。値は [item_name, item_value, limits_state] を含む配列の配列として返されます。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 get_tlm_packet("<Target Name> <Packet Name>", <type>)
 get_tlm_packet("<Target Name>", "<Packet Name>", <type>)
 ```
 
-| Parameter   | Description                                                                                                           |
-| ----------- | --------------------------------------------------------------------------------------------------------------------- |
-| Target Name | Name of the target.                                                                                                   |
-| Packet Name | Name of the packet.                                                                                                   |
-| type        | Named parameter specifying the type. RAW, CONVERTED (default), FORMATTED, or WITH_UNITS (Ruby symbol, Python string). |
+| パラメータ   | 説明                                                                                                           |
+| ------------ | -------------------------------------------------------------------------------------------------------------- |
+| Target Name  | ターゲットの名前。                                                                                             |
+| Packet Name  | パケットの名前。                                                                                               |
+| type         | タイプを指定する名前付きパラメータ。RAW、CONVERTED（デフォルト）、FORMATTED、または WITH_UNITS（Rubyではシンボル、Pythonでは文字列）。 |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 names_values_and_limits_states = get_tlm_packet("INST HEALTH_STATUS", type: :FORMATTED)
 ```
 
-Python Example:
+Python の例：
 
 ```python
 names_values_and_limits_states = get_tlm_packet("INST HEALTH_STATUS", type='FORMATTED')
@@ -1537,19 +1536,19 @@ names_values_and_limits_states = get_tlm_packet("INST HEALTH_STATUS", type='FORM
 
 ### get_tlm_values
 
-Returns the values and current limits state for a specified set of telemetry items. Items can be in any telemetry packet in the system. They can all be retrieved using the same value type or a specific value type can be specified for each item.
+指定されたテレメトリ項目のセットの値と現在のリミット状態を返します。項目はシステム内の任意のテレメトリパケットに含めることができます。すべて同じ値タイプを使用して取得することも、各項目に特定の値タイプを指定することもできます。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 values, limits_states, limits_settings, limits_set = get_tlm_values(<Items>)
 ```
 
-| Parameter | Description                                                 |
-| --------- | ----------------------------------------------------------- |
-| Items     | Array of strings of the form ['TGT__PKT__ITEM__TYPE', ... ] |
+| パラメータ | 説明                                                         |
+| ---------- | ------------------------------------------------------------ |
+| Items      | ['TGT__PKT__ITEM__TYPE', ... ] 形式の文字列の配列             |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 values = get_tlm_values(["INST__HEALTH_STATUS__TEMP1__CONVERTED", "INST__HEALTH_STATUS__TEMP2__RAW"])
@@ -1558,21 +1557,21 @@ print(values) # [[-100.0, :RED_LOW], [0, :RED_LOW]]
 
 ### get_all_tlm
 
-> Since 5.13.0, since 5.0.0 as get_all_telemetry
+> 5.13.0 から、5.0.0 では get_all_telemetry として
 
-Returns an array of all target packet hashes.
+すべてのターゲットパケットハッシュの配列を返します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 get_all_tlm("<Target Name>")
 ```
 
-| Parameter   | Description         |
-| ----------- | ------------------- |
-| Target Name | Name of the target. |
+| パラメータ   | 説明                 |
+| ------------ | -------------------- |
+| Target Name  | ターゲットの名前。   |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 packets = get_all_tlm("INST")
@@ -1591,21 +1590,21 @@ print(packets)
 
 ### get_all_tlm_names
 
-> Since 5.13.0, since 5.0.6 as get_all_telemetry_names
+> 5.13.0 から、5.0.6 では get_all_telemetry_names として
 
-Returns an array of all target packet names.
+すべてのターゲットパケット名の配列を返します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 get_all_tlm_names("<Target Name>")
 ```
 
-| Parameter   | Description        |
-| ----------- | ------------------ |
-| Target Name | Name of the target |
+| パラメータ   | 説明                 |
+| ------------ | -------------------- |
+| Target Name  | ターゲットの名前     |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 get_all_tlm_names("INST")  #=> ["ADCS", "HEALTH_STATUS", ...]
@@ -1613,19 +1612,19 @@ get_all_tlm_names("INST")  #=> ["ADCS", "HEALTH_STATUS", ...]
 
 ### get_all_tlm_item_names
 
-Returns all the item names for every packet in a target
+ターゲット内のすべてのパケットのすべての項目名を返します
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 get_all_tlm_item_names("<Target Name>")
 ```
 
-| Parameter   | Description        |
-| ----------- | ------------------ |
-| Target Name | Name of the target |
+| パラメータ   | 説明                |
+| ------------ | ------------------- |
+| Target Name  | ターゲットの名前    |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 get_all_tlm_item_names("INST")  #=> ["ARY", "ARY2", "ASCIICMD", "ATTPROGRESS", ...]
@@ -1633,23 +1632,23 @@ get_all_tlm_item_names("INST")  #=> ["ARY", "ARY2", "ASCIICMD", "ATTPROGRESS", .
 
 ### get_tlm
 
-> Since 5.13.0, since 5.0.0 as get_telemetry
+> 5.13.0 から、5.0.0 では get_telemetry として
 
-Returns a packet hash.
+パケットハッシュを返します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 get_tlm("<Target Name> <Packet Name>")
 get_tlm("<Target Name>", "<Packet Name>")
 ```
 
-| Parameter   | Description         |
-| ----------- | ------------------- |
-| Target Name | Name of the target. |
-| Packet Name | Name of the packet. |
+| パラメータ   | 説明                 |
+| ------------ | -------------------- |
+| Target Name  | ターゲットの名前。   |
+| Packet Name  | パケットの名前。     |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 packet = get_tlm("INST HEALTH_STATUS")
@@ -1675,22 +1674,22 @@ print(packet)
 
 ### get_item
 
-Returns an item hash.
+項目ハッシュを返します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 get_item("<Target Name> <Packet Name> <Item Name>")
 get_item("<Target Name>", "<Packet Name>", "<Item Name>")
 ```
 
-| Parameter   | Description         |
-| ----------- | ------------------- |
-| Target Name | Name of the target. |
-| Packet Name | Name of the packet. |
-| Item Name   | Name of the item.   |
+| パラメータ   | 説明                 |
+| ------------ | -------------------- |
+| Target Name  | ターゲットの名前。   |
+| Packet Name  | パケットの名前。     |
+| Item Name    | 項目の名前。         |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 item = get_item("INST HEALTH_STATUS CCSDSVER")
@@ -1707,57 +1706,57 @@ print(item)
 
 ### get_tlm_cnt
 
-Returns the number of times a specified telemetry packet has been received.
+指定されたテレメトリパケットが受信された回数を返します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 get_tlm_cnt("<Target Name> <Packet Name>")
 get_tlm_cnt("<Target Name>", "<Packet Name>")
 ```
 
-| Parameter   | Description                   |
-| ----------- | ----------------------------- |
-| Target Name | Name of the target.           |
-| Packet Name | Name of the telemetry packet. |
+| パラメータ   | 説明                         |
+| ------------ | ---------------------------- |
+| Target Name  | ターゲットの名前。           |
+| Packet Name  | テレメトリパケットの名前。   |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
-tlm_cnt = get_tlm_cnt("INST HEALTH_STATUS") # Number of times the INST HEALTH_STATUS telemetry packet has been received.
+tlm_cnt = get_tlm_cnt("INST HEALTH_STATUS") # INST HEALTH_STATUS テレメトリパケットが受信された回数
 ```
 
 ### set_tlm
 
-Sets a telemetry item value in the Command and Telemetry Server. This value will be overwritten if a new packet is received from an interface. For that reason this method is most useful if interfaces are disconnected or for testing via the Script Runner disconnect mode. Manually setting telemetry values allows for the execution of many logical paths in scripts.
+コマンドおよびテレメトリサーバーでテレメトリ項目の値を設定します。この値は、インターフェースから新しいパケットが受信されると上書きされます。そのため、このメソッドは、インターフェースが切断されている場合や、Script Runnerの切断モードを介したテストに最も役立ちます。テレメトリ値を手動で設定することで、スクリプト内の多くの論理パスを実行できます。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 set_tlm("<Target> <Packet> <Item> = <Value>", <type>)
 ```
 
-| Parameter | Description                                                                             |
-| --------- | --------------------------------------------------------------------------------------- |
-| Target    | Target name                                                                             |
-| Packet    | Packet name                                                                             |
-| Item      | Item name                                                                               |
-| Value     | Value to set                                                                            |
-| type      | Value type RAW, CONVERTED (default), FORMATTED, WITH_UNITS (Ruby symbol, Python string) |
+| パラメータ | 説明                                                                                |
+| ---------- | ----------------------------------------------------------------------------------- |
+| Target     | ターゲット名                                                                        |
+| Packet     | パケット名                                                                          |
+| Item       | 項目名                                                                              |
+| Value      | 設定する値                                                                          |
+| type       | 値のタイプ RAW、CONVERTED（デフォルト）、FORMATTED、WITH_UNITS（Rubyではシンボル、Pythonでは文字列） |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
-set_tlm("INST HEALTH_STATUS COLLECTS = 5") # type is :CONVERTED by default
+set_tlm("INST HEALTH_STATUS COLLECTS = 5") # type はデフォルトで :CONVERTED です
 check("INST HEALTH_STATUS COLLECTS == 5")
 set_tlm("INST HEALTH_STATUS COLLECTS = 10", type: :RAW)
 check("INST HEALTH_STATUS COLLECTS == 10", type: :RAW)
 ```
 
-Python Example:
+Python の例：
 
 ```python
-set_tlm("INST HEALTH_STATUS COLLECTS = 5") # type is CONVERTED by default
+set_tlm("INST HEALTH_STATUS COLLECTS = 5") # type はデフォルトで CONVERTED です
 check("INST HEALTH_STATUS COLLECTS == 5")
 set_tlm("INST HEALTH_STATUS COLLECTS = 10", type='RAW')
 check("INST HEALTH_STATUS COLLECTS == 10", type='RAW')
@@ -1765,28 +1764,28 @@ check("INST HEALTH_STATUS COLLECTS == 10", type='RAW')
 
 ### inject_tlm
 
-Injects a packet into the system as if it was received from an interface.
+インターフェースから受信したかのようにパケットをシステムに注入します。
 
-Ruby / Packet Syntax:
+Ruby / Packet 構文：
 
 ```ruby
 inject_tlm("<target_name>", "<packet_name>", <item_hash>, <type>)
 ```
 
-| Parameter | Description                                                                                                                                                      |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Target    | Target name                                                                                                                                                      |
-| Packet    | Packet name                                                                                                                                                      |
-| Item Hash | Hash of item name/value for each item. If an item is not specified in the hash, the current value table value will be used. Optional parameter, defaults to nil. |
-| type      | Type of values in the item hash, RAW, CONVERTED (default), FORMATTED, WITH_UNITS (Ruby symbol, Python string)                                                    |
+| パラメータ  | 説明                                                                                                                                                                 |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Target      | ターゲット名                                                                                                                                                         |
+| Packet      | パケット名                                                                                                                                                           |
+| Item Hash   | 各項目の項目名/値のハッシュ。ハッシュで項目が指定されていない場合、現在の値テーブルの値が使用されます。オプションのパラメータ、デフォルトは nil。                  |
+| type        | 項目ハッシュの値のタイプ、RAW、CONVERTED（デフォルト）、FORMATTED、WITH_UNITS（Rubyではシンボル、Pythonでは文字列）                                               |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 inject_tlm("INST", "PARAMS", {'VALUE1' => 5.0, 'VALUE2' => 7.0})
 ```
 
-Python Example:
+Python の例：
 
 ```python
 inject_tlm("INST", "PARAMS", {'VALUE1': 5.0, 'VALUE2': 7.0})
@@ -1794,78 +1793,78 @@ inject_tlm("INST", "PARAMS", {'VALUE1': 5.0, 'VALUE2': 7.0})
 
 ### override_tlm
 
-Sets the converted value for a telmetry point in the Command and Telemetry Server. This value will be maintained even if a new packet is received on the interface unless the override is canceled with the normalize_tlm method.
+コマンドおよびテレメトリサーバーでテレメトリポイントの変換値を設定します。この値は、normalize_tlm メソッドでオーバーライドがキャンセルされない限り、インターフェース上で新しいパケットが受信されても維持されます。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 override_tlm("<Target> <Packet> <Item> = <Value>", <type>)
 ```
 
-| Parameter | Description                                                                                         |
-| --------- | --------------------------------------------------------------------------------------------------- |
-| Target    | Target name                                                                                         |
-| Packet    | Packet name                                                                                         |
-| Item      | Item name                                                                                           |
-| Value     | Value to set                                                                                        |
-| type      | Type to override, ALL (default), RAW, CONVERTED, FORMATTED, WITH_UNITS (Ruby symbol, Python string) |
+| パラメータ | 説明                                                                                         |
+| ---------- | -------------------------------------------------------------------------------------------- |
+| Target     | ターゲット名                                                                                |
+| Packet     | パケット名                                                                                  |
+| Item       | 項目名                                                                                      |
+| Value      | 設定する値                                                                                  |
+| type       | オーバーライドするタイプ、ALL（デフォルト）、RAW、CONVERTED、FORMATTED、WITH_UNITS（Rubyではシンボル、Pythonでは文字列） |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
-override_tlm("INST HEALTH_STATUS TEMP1 = 5") # All requests for TEMP1 return 5
-override_tlm("INST HEALTH_STATUS TEMP2 = 0", type: :RAW) # Only RAW tlm set to 0
+override_tlm("INST HEALTH_STATUS TEMP1 = 5") # TEMP1に対するすべてのリクエストが5を返す
+override_tlm("INST HEALTH_STATUS TEMP2 = 0", type: :RAW) # RAW tlmのみが0に設定される
 ```
 
-Python Example:
+Python の例：
 
 ```python
-override_tlm("INST HEALTH_STATUS TEMP1 = 5") # All requests for TEMP1 return 5
-override_tlm("INST HEALTH_STATUS TEMP2 = 0", type='RAW') # Only RAW tlm set to 0
+override_tlm("INST HEALTH_STATUS TEMP1 = 5") # TEMP1に対するすべてのリクエストが5を返す
+override_tlm("INST HEALTH_STATUS TEMP2 = 0", type='RAW') # RAW tlmのみが0に設定される
 ```
 
 ### normalize_tlm
 
-Clears the override of a telmetry point in the Command and Telemetry Server.
+コマンドおよびテレメトリサーバーでのテレメトリポイントのオーバーライドをクリアします。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 normalize_tlm("<Target> <Packet> <Item>", <type>)
 ```
 
-| Parameter | Description                                                                                          |
-| --------- | ---------------------------------------------------------------------------------------------------- |
-| Target    | Target name                                                                                          |
-| Packet    | Packet name                                                                                          |
-| Item      | Item name                                                                                            |
-| type      | Type to normalize, ALL (default), RAW, CONVERTED, FORMATTED, WITH_UNITS (Ruby symbol, Python string) |
+| パラメータ | 説明                                                                                          |
+| ---------- | --------------------------------------------------------------------------------------------- |
+| Target     | ターゲット名                                                                                 |
+| Packet     | パケット名                                                                                   |
+| Item       | 項目名                                                                                       |
+| type       | 正規化するタイプ、ALL（デフォルト）、RAW、CONVERTED、FORMATTED、WITH_UNITS（Rubyではシンボル、Pythonでは文字列） |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
-normalize_tlm("INST HEALTH_STATUS TEMP1") # clear all overrides
-normalize_tlm("INST HEALTH_STATUS TEMP1", type: :RAW) # clear only the RAW override
+normalize_tlm("INST HEALTH_STATUS TEMP1") # すべてのオーバーライドをクリア
+normalize_tlm("INST HEALTH_STATUS TEMP1", type: :RAW) # RAWオーバーライドのみをクリア
 ```
 
-Python Example:
+Python の例：
 
 ```python
-normalize_tlm("INST HEALTH_STATUS TEMP1") # clear all overrides
-normalize_tlm("INST HEALTH_STATUS TEMP1", type='RAW') # clear only the RAW override
+normalize_tlm("INST HEALTH_STATUS TEMP1") # すべてのオーバーライドをクリア
+normalize_tlm("INST HEALTH_STATUS TEMP1", type='RAW') # RAWオーバーライドのみをクリア
 ```
 
 ### get_overrides
 
-Returns an array of the the currently overridden values set by override_tlm. NOTE: This returns all the value types that are overridden which by default is all 4 values types when using override_tlm.
+override_tlm によって設定された現在オーバーライドされている値の配列を返します。注意：これはオーバーライドされているすべての値タイプを返します。デフォルトでは、override_tlm を使用する際にすべての 4 つの値タイプがオーバーライドされます。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 get_overrides()
 ```
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 override_tlm("INST HEALTH_STATUS TEMP1 = 5")
@@ -1876,7 +1875,7 @@ puts get_overrides() #=>
 #   {"target_name"=>"INST", "packet_name"=>"HEALTH_STATUS", "item_name"=>"TEMP1", "value_type"=>"WITH_UNITS", "value"=>"5"} ]
 ```
 
-Python Example:
+Python の例：
 
 ```python
 override_tlm("INST HEALTH_STATUS TEMP1 = 5")
@@ -1887,25 +1886,25 @@ print(get_overrides()) #=>
 #   {'target_name': 'INST', 'packet_name': 'HEALTH_STATUS', 'item_name': 'TEMP1', 'value_type': 'WITH_UNITS', 'value': '5'} ]
 ```
 
-## Packet Data Subscriptions
+## パケットデータサブスクリプション
 
-APIs for subscribing to specific packets of data. This provides an interface to ensure that each telemetry packet is received and handled rather than relying on polling where some data may be missed.
+特定のデータパケットをサブスクライブするためのAPI。これは、ポーリングに依存して一部のデータが見逃される可能性がある代わりに、各テレメトリパケットが確実に受信および処理されるようにするインターフェースを提供します。
 
 ### subscribe_packets
 
-Allows the user to listen for one or more telemetry packets of data to arrive. A unique id is returned which is used to retrieve the data.
+ユーザーが1つ以上のテレメトリデータパケットの到着をリッスンできるようにします。データの取得に使用される一意のIDが返されます。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 subscribe_packets(packets)
 ```
 
-| Parameter | Description                                                                         |
-| --------- | ----------------------------------------------------------------------------------- |
-| packets   | Nested array of target name/packet name pairs that the user wishes to subscribe to. |
+| パラメータ | 説明                                                                   |
+| ---------- | ---------------------------------------------------------------------- |
+| packets    | ユーザーがサブスクライブしたいターゲット名/パケット名のペアのネスト配列。 |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 id = subscribe_packets([['INST', 'HEALTH_STATUS'], ['INST', 'ADCS']])
@@ -1913,27 +1912,27 @@ id = subscribe_packets([['INST', 'HEALTH_STATUS'], ['INST', 'ADCS']])
 
 ### get_packets
 
-Streams packet data from a previous subscription.
+以前のサブスクリプションからパケットデータをストリーミングします。
 
-Ruby Syntax:
+Ruby 構文：
 
 ```ruby
 get_packets(id, block: nil, count: 1000)
 ```
 
-Python Syntax:
+Python 構文：
 
 ```python
 get_packets(id, block=None, count=1000)
 ```
 
-| Parameter | Description                                                                                                  |
-| --------- | ------------------------------------------------------------------------------------------------------------ |
-| id        | Unique id returned by subscribe_packets                                                                      |
-| block     | Number of milliseconds to block while waiting for packets form ANY stream, default nil / None (do not block) |
-| count     | Maximum number of packets to return from EACH packet stream                                                  |
+| パラメータ | 説明                                                                                                                        |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------- |
+| id         | subscribe_packets によって返される一意の ID                                                                                 |
+| block      | 任意のストリームからのパケットを待機している間ブロックするミリ秒数、デフォルトは nil / None（ブロックしない）                |
+| count      | 各パケットストリームから返すパケットの最大数                                                                               |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 id = subscribe_packets([['INST', 'HEALTH_STATUS'], ['INST', 'ADCS']])
@@ -1942,14 +1941,14 @@ id, packets = get_packets(id)
 packets.each do |packet|
   puts "#{packet['PACKET_TIMESECONDS']}: #{packet['target_name']} #{packet['packet_name']}"
 end
-# Reuse ID from last call, allow for 1s wait, only get 1 packet
+# 前回の呼び出しからIDを再利用し、1秒間の待機を許可し、1つのパケットのみを取得
 id, packets = get_packets(id, block: 1000, count: 1)
 packets.each do |packet|
   puts "#{packet['PACKET_TIMESECONDS']}: #{packet['target_name']} #{packet['packet_name']}"
 end
 ```
 
-Python Example:
+Python の例：
 
 ```python
 id = subscribe_packets([['INST', 'HEALTH_STATUS'], ['INST', 'ADCS']])
@@ -1958,7 +1957,7 @@ id, packets = get_packets(id)
 for packet in packets:
     print(f"{packet['PACKET_TIMESECONDS']}: {packet['target_name']} {packet['packet_name']}")
 
-# Reuse ID from last call, allow for 1s wait, only get 1 packet
+# 前回の呼び出しからIDを再利用し、1秒間の待機を許可し、1つのパケットのみを取得
 id, packets = get_packets(id, block=1000, count=1)
 for packet in packets:
     print(f"{packet['PACKET_TIMESECONDS']}: {packet['target_name']} {packet['packet_name']}")
@@ -1966,21 +1965,21 @@ for packet in packets:
 
 ### get_tlm_cnt
 
-Get the receive count for a telemetry packet
+テレメトリパケットの受信カウントを取得します
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 get_tlm_cnt("<Target> <Packet>")
 get_tlm_cnt("<Target>", "<Packet>")
 ```
 
-| Parameter | Description |
-| --------- | ----------- |
-| Target    | Target name |
-| Packet    | Packet name |
+| パラメータ | 説明         |
+| ---------- | ------------ |
+| Target     | ターゲット名 |
+| Packet     | パケット名   |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 get_tlm_cnt("INST HEALTH_STATUS")  #=> 10
@@ -1988,20 +1987,20 @@ get_tlm_cnt("INST HEALTH_STATUS")  #=> 10
 
 ### get_tlm_cnts
 
-Get the receive counts for an array of telemetry packets
+テレメトリパケットの配列の受信カウントを取得します
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 get_tlm_cnts([["<Target>", "<Packet>"], ["<Target>", "<Packet>"]])
 ```
 
-| Parameter | Description |
-| --------- | ----------- |
-| Target    | Target name |
-| Packet    | Packet name |
+| パラメータ | 説明         |
+| ---------- | ------------ |
+| Target     | ターゲット名 |
+| Packet     | パケット名   |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 get_tlm_cnts([["INST", "ADCS"], ["INST", "HEALTH_STATUS"]])  #=> [100, 10]
@@ -2009,64 +2008,64 @@ get_tlm_cnts([["INST", "ADCS"], ["INST", "HEALTH_STATUS"]])  #=> [100, 10]
 
 ### get_packet_derived_items
 
-Get the list of derived telemetry items for a packet
+パケットの派生テレメトリ項目のリストを取得します
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 get_packet_derived_items("<Target> <Packet>")
 get_packet_derived_items("<Target>", "<Packet>")
 ```
 
-| Parameter | Description |
-| --------- | ----------- |
-| Target    | Target name |
-| Packet    | Packet name |
+| パラメータ | 説明         |
+| ---------- | ------------ |
+| Target     | ターゲット名 |
+| Packet     | パケット名   |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 get_packet_derived_items("INST HEALTH_STATUS")  #=> ['PACKET_TIMESECONDS', 'PACKET_TIMEFORMATTED', ...]
 ```
 
-## Delays
+## 遅延
 
-These methods allow the user to pause the script to wait for telemetry to change or for an amount of time to pass.
+これらのメソッドを使用すると、テレメトリが変更されるのを待つか、または一定の時間が経過するのを待つためにスクリプトを一時停止できます。
 
 ### wait
 
-Pauses the script for a configurable amount of time (minimum 10ms) or until a converted telemetry item meets given criteria. It supports three different syntaxes as shown. If no parameters are given then an infinite wait occurs until the user presses Go. Note that on a timeout, wait does not stop the script, usually wait_check is a better choice.
+設定可能な時間（最小10ms）だけスクリプトを一時停止するか、変換されたテレメトリ項目が指定された基準を満たすまで一時停止します。3つの異なる構文をサポートしています。パラメータが指定されていない場合、ユーザーがGoを押すまで無限に待機します。タイムアウト時に、waitはスクリプトを停止しないことに注意してください。通常、wait_check の方が良い選択です。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
-elapsed = wait() #=> Returns the actual time waited
-elapsed = wait(<Time>) #=> Returns the actual time waited
+elapsed = wait() #=> 実際に待機した時間を返す
+elapsed = wait(<Time>) #=> 実際に待機した時間を返す
 ```
 
-| Parameter | Description                   |
-| --------- | ----------------------------- |
-| Time      | Time in Seconds to delay for. |
+| パラメータ | 説明                           |
+| ---------- | ------------------------------ |
+| Time       | 遅延する時間（秒単位）。       |
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
-# Returns true or false based on the whether the expression is true or false
+# 式が真か偽かに基づいて true または false を返す
 success = wait("<Target Name> <Packet Name> <Item Name> <Comparison>", <Timeout>, <Polling Rate (optional)>, type, quiet)
 ```
 
-| Parameter    | Description                                                                                                        |
-| ------------ | ------------------------------------------------------------------------------------------------------------------ |
-| Target Name  | Name of the target of the telemetry item.                                                                          |
-| Packet Name  | Name of the telemetry packet of the telemetry item.                                                                |
-| Item Name    | Name of the telemetry item.                                                                                        |
-| Comparison   | A comparison to perform against the telemetry item.                                                                |
-| Timeout      | Timeout in seconds. Script will proceed if the wait statement times out waiting for the comparison to be true.     |
-| Polling Rate | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                               |
-| type         | Named parameter specifying the type. RAW, CONVERTED (default), FORMATTED, WITH_UNITS (Ruby symbol, Python string). |
-| quiet        | Named parameter indicating whether to log the result. Defaults to true.                                            |
+| パラメータ      | 説明                                                                                                                   |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Target Name     | テレメトリ項目のターゲットの名前。                                                                                     |
+| Packet Name     | テレメトリ項目のテレメトリパケットの名前。                                                                             |
+| Item Name       | テレメトリ項目の名前。                                                                                                 |
+| Comparison      | テレメトリ項目に対して実行する比較。                                                                                   |
+| Timeout         | タイムアウト（秒）。比較が真になるのを待っている間にwait文がタイムアウトした場合、スクリプトは続行します。             |
+| Polling Rate    | 比較が評価される頻度（秒単位）。指定されていない場合、デフォルトは0.25です。                                           |
+| type            | タイプを指定する名前付きパラメータ。RAW、CONVERTED（デフォルト）、FORMATTED、WITH_UNITS（Rubyではシンボル、Pythonでは文字列）。 |
+| quiet           | 結果をログに記録するかどうかを示す名前付きパラメータ。デフォルトはtrueです。                                           |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 elapsed = wait
@@ -2075,7 +2074,7 @@ success = wait("INST HEALTH_STATUS COLLECTS == 3", 10)
 success = wait("INST HEALTH_STATUS COLLECTS == 3", 10, type: :RAW, quiet: false)
 ```
 
-Python Example:
+Python の例：
 
 ```python
 elapsed = wait()
@@ -2086,35 +2085,35 @@ success = wait("INST HEALTH_STATUS COLLECTS == 3", 10, type='RAW', quiet=False)
 
 ### wait_tolerance
 
-Pauses the script for a configurable amount of time or until a converted telemetry item meets equals an expected value within a tolerance. Note that on a timeout, wait_tolerance does not stop the script, usually wait_check_tolerance is a better choice.
+許容範囲内の期待値と等しくなるまで、指定可能な時間だけスクリプトを一時停止するか、変換されたテレメトリ項目を一時停止します。タイムアウト時に、wait_tolerance はスクリプトを停止しないことに注意してください。通常、wait_check_tolerance の方が良い選択です。
 
-Ruby Python Syntax:
+Ruby Python 構文：
 
 ```ruby
-# Returns true or false based on the whether the expression is true or false
-success = wait_tolerance("<Target Name> <Packet Name> <Item Name>", <Expected Value>, <Tolerance>, <Timeout>, <Polling Rate (optional), type, quiet>)
+# 式が真か偽かに基づいて true または false を返す
+success = wait_tolerance("<Target Name> <Packet Name> <Item Name>", <Expected Value>, <Tolerance>, <Timeout>, <Polling Rate (optional)>, type, quiet)
 ```
 
-| Parameter      | Description                                                                                                        |
-| -------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Target Name    | Name of the target of the telemetry item.                                                                          |
-| Packet Name    | Name of the telemetry packet of the telemetry item.                                                                |
-| Item Name      | Name of the telemetry item.                                                                                        |
-| Expected Value | Expected value of the telemetry item.                                                                              |
-| Tolerance      | ± Tolerance on the expected value.                                                                                 |
-| Timeout        | Timeout in seconds. Script will proceed if the wait statement times out waiting for the comparison to be true.     |
-| Polling Rate   | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                               |
-| type           | Named parameter specifying the type. RAW, CONVERTED (default), FORMATTED, WITH_UNITS (Ruby symbol, Python string). |
-| quiet          | Named parameter indicating whether to log the result. Defaults to true.                                            |
+| パラメータ       | 説明                                                                                                                   |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Target Name      | テレメトリ項目のターゲットの名前。                                                                                     |
+| Packet Name      | テレメトリ項目のテレメトリパケットの名前。                                                                             |
+| Item Name        | テレメトリ項目の名前。                                                                                                 |
+| Expected Value   | テレメトリ項目の期待値。                                                                                               |
+| Tolerance        | 期待値に対する±許容範囲。                                                                                              |
+| Timeout          | タイムアウト（秒）。比較が真になるのを待っている間にwait文がタイムアウトした場合、スクリプトは続行します。             |
+| Polling Rate     | 比較が評価される頻度（秒単位）。指定されていない場合、デフォルトは0.25です。                                           |
+| type             | タイプを指定する名前付きパラメータ。RAW、CONVERTED（デフォルト）、FORMATTED、WITH_UNITS（Rubyではシンボル、Pythonでは文字列）。 |
+| quiet            | 結果をログに記録するかどうかを示す名前付きパラメータ。デフォルトはtrueです。                                           |
 
-Ruby Examples:
+Ruby の例：
 
 ```ruby
 success = wait_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10)
 success = wait_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, type: :RAW, quiet: true)
 ```
 
-Python Examples:
+Python の例：
 
 ```python
 success = wait_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10)
@@ -2123,12 +2122,12 @@ success = wait_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, type='RAW
 
 ### wait_expression
 
-Pauses the script until an expression is evaluated to be true or a timeout occurs. If a timeout occurs the script will continue. This method can be used to perform more complicated comparisons than using wait as shown in the example. Note that on a timeout, wait_expression does not stop the script, usually [wait_check_expression](#wait_check_expression) is a better choice.
+式が真と評価されるかタイムアウトが発生するまでスクリプトを一時停止します。タイムアウトが発生するとスクリプトは続行されます。このメソッドは、例に示すように、wait を使用するよりも複雑な比較を実行するために使用できます。タイムアウト時に、wait_expression はスクリプトを停止しないことに注意してください。通常は [wait_check_expression](#wait_check_expression) の方が良い選択です。
 
-Ruby Syntax:
+Ruby 構文：
 
 ```ruby
-# Return true or false based the expression evaluation
+# 式の評価に基づいて true または false を返す
 wait_expression(
   exp_to_eval,
   timeout,
@@ -2138,10 +2137,10 @@ wait_expression(
 ) -> boolean
 ```
 
-Python Syntax:
+Python 構文：
 
 ```python
-# Return True or False based on the expression evaluation
+# 式の評価に基づいて True または False を返す
 wait_expression(
     exp_to_eval,
     timeout,
@@ -2152,86 +2151,86 @@ wait_expression(
 ) -> bool
 ```
 
-| Parameter             | Description                                                                                                                   |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| expression            | An expression to evaluate.                                                                                                    |
-| timeout               | Timeout in seconds. Script will proceed if the wait statement times out waiting for the comparison to be true.                |
-| polling_rate          | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                                          |
-| context (ruby only)   | The context to call eval with. Defaults to nil. Context in Ruby is typically binding() and is usually not needed.             |
-| globals (python only) | The globals to call eval with. Defaults to None. Note that to use COSMOS APIs like tlm() you must pass globals().             |
-| locals (python only)  | The locals to call eval with. Defaults to None. Note that if you're using local variables in a method you must pass locals(). |
-| quiet                 | Whether to log the result. Defaults to false which means to log.                                                              |
+| パラメータ              | 説明                                                                                                                             |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| expression              | 評価する式。                                                                                                                      |
+| timeout                 | タイムアウト（秒）。比較が真になるのを待っている間にwait文がタイムアウトした場合、スクリプトは続行します。                       |
+| polling_rate            | 比較が評価される頻度（秒単位）。指定されていない場合、デフォルトは0.25です。                                                     |
+| context (ruby のみ)     | eval を呼び出すコンテキスト。デフォルトは nil。Ruby のコンテキストは通常 binding() であり、通常は必要ありません。                |
+| globals (python のみ)   | eval を呼び出すグローバル。デフォルトは None。tlm() などの COSMOS API を使用するには globals() を渡す必要があることに注意してください。 |
+| locals (python のみ)    | eval を呼び出すローカル。デフォルトは None。メソッドでローカル変数を使用している場合は locals() を渡す必要があることに注意してください。 |
+| quiet                   | 結果をログに記録するかどうか。デフォルトは false で、ログに記録することを意味します。                                            |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 success = wait_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm('INST HEALTH_STATUS TEMP1') > 25.0", 10, 0.25, nil, quiet: true)
 ```
 
-Python Example:
+Python の例：
 
 ```python
 def check(value):
-    # Here we using both tlm() and a local 'value' so we need to pass globals() and locals()
+    # ここでは tlm() とローカル変数 'value' の両方を使用しているため、globals() と locals() を渡す必要があります
     return wait_expression("tlm('INST HEALTH_STATUS COLLECTS') > value", 5, 0.25, globals(), locals(), quiet=True)
 success = check(5)
 ```
 
 ### wait_packet
 
-Pauses the script until a certain number of packets have been received. If a timeout occurs the script will continue. Note that on a timeout, wait_packet does not stop the script, usually wait_check_packet is a better choice.
+一定数のパケットが受信されるまでスクリプトを一時停止します。タイムアウトが発生するとスクリプトは続行されます。タイムアウト時に、wait_packet はスクリプトを停止しないことに注意してください。通常は wait_check_packet の方が良い選択です。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
-# Returns true or false based on the whether the packet was received
+# パケットが受信されたかどうかに基づいて true または false を返す
 success = wait_packet("<Target>", "<Packet>", <Num Packets>, <Timeout>, <Polling Rate (optional)>, quiet)
 ```
 
-| Parameter    | Description                                                                          |
-| ------------ | ------------------------------------------------------------------------------------ |
-| Target       | The target name                                                                      |
-| Packet       | The packet name                                                                      |
-| Num Packets  | The number of packets to receive                                                     |
-| Timeout      | Timeout in seconds.                                                                  |
-| Polling Rate | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified. |
-| quiet        | Named parameter indicating whether to log the result. Defaults to true.              |
+| パラメータ      | 説明                                                                          |
+| --------------- | ----------------------------------------------------------------------------- |
+| Target          | ターゲット名                                                                  |
+| Packet          | パケット名                                                                    |
+| Num Packets     | 受信するパケット数                                                            |
+| Timeout         | タイムアウト（秒）。                                                          |
+| Polling Rate    | 比較が評価される頻度（秒単位）。指定されていない場合、デフォルトは0.25です。  |
+| quiet           | 結果をログに記録するかどうかを示す名前付きパラメータ。デフォルトはtrueです。  |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
-success = wait_packet('INST', 'HEALTH_STATUS', 5, 10) # Wait for 5 INST HEALTH_STATUS packets over 10s
+success = wait_packet('INST', 'HEALTH_STATUS', 5, 10) # 10秒以内に5つのINST HEALTH_STATUSパケットを待つ
 ```
 
 ### wait_check
 
-Combines the wait and check keywords into one. This pauses the script until the converted value of a telemetry item meets given criteria or times out. On a timeout the script stops.
+wait キーワードと check キーワードを1つに組み合わせます。これは、テレメトリ項目の変換値が指定された基準を満たすかタイムアウトするまでスクリプトを一時停止します。タイムアウト時にスクリプトは停止します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
-# Returns the amount of time elapsed waiting for the expression
+# 式を待っている間に経過した時間を返す
 elapsed = wait_check("<Target Name> <Packet Name> <Item Name> <Comparison>", <Timeout>, <Polling Rate (optional)>, type)
 ```
 
-| Parameter    | Description                                                                                                        |
-| ------------ | ------------------------------------------------------------------------------------------------------------------ |
-| Target Name  | Name of the target of the telemetry item.                                                                          |
-| Packet Name  | Name of the telemetry packet of the telemetry item.                                                                |
-| Item Name    | Name of the telemetry item.                                                                                        |
-| Comparison   | A comparison to perform against the telemetry item.                                                                |
-| Timeout      | Timeout in seconds. Script will stop if the wait statement times out waiting for the comparison to be true.        |
-| Polling Rate | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                               |
-| type         | Named parameter specifying the type. RAW, CONVERTED (default), FORMATTED, WITH_UNITS (Ruby symbol, Python string). |
+| パラメータ      | 説明                                                                                                                   |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Target Name     | テレメトリ項目のターゲットの名前。                                                                                     |
+| Packet Name     | テレメトリ項目のテレメトリパケットの名前。                                                                             |
+| Item Name       | テレメトリ項目の名前。                                                                                                 |
+| Comparison      | テレメトリ項目に対して実行する比較。                                                                                   |
+| Timeout         | タイムアウト（秒）。比較が真になるのを待っている間にwait文がタイムアウトした場合、スクリプトは停止します。             |
+| Polling Rate    | 比較が評価される頻度（秒単位）。指定されていない場合、デフォルトは0.25です。                                           |
+| type            | タイプを指定する名前付きパラメータ。RAW、CONVERTED（デフォルト）、FORMATTED、WITH_UNITS（Rubyではシンボル、Pythonでは文字列）。 |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 elapsed = wait_check("INST HEALTH_STATUS COLLECTS > 5", 10)
 elapsed = wait_check("INST HEALTH_STATUS COLLECTS > 5", 10, type: :RAW)
 ```
 
-Python Example:
+Python の例：
 
 ```python
 elapsed = wait_check("INST HEALTH_STATUS COLLECTS > 5", 10)
@@ -2240,34 +2239,34 @@ elapsed = wait_check("INST HEALTH_STATUS COLLECTS > 5", 10, type='RAW')
 
 ### wait_check_tolerance
 
-Pauses the script for a configurable amount of time or until a converted telemetry item equals an expected value within a tolerance. On a timeout the script stops.
+設定可能な時間だけスクリプトを一時停止するか、変換されたテレメトリ項目が許容範囲内の期待値と等しくなるまで一時停止します。タイムアウト時にスクリプトは停止します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
-# Returns the amount of time elapsed waiting for the expression
+# 式を待っている間に経過した時間を返す
 elapsed = wait_check_tolerance("<Target Name> <Packet Name> <Item Name>", <Expected Value>, <Tolerance>, <Timeout>, <Polling Rate (optional)>, type)
 ```
 
-| Parameter      | Description                                                                                                        |
-| -------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Target Name    | Name of the target of the telemetry item.                                                                          |
-| Packet Name    | Name of the telemetry packet of the telemetry item.                                                                |
-| Item Name      | Name of the telemetry item.                                                                                        |
-| Expected Value | Expected value of the telemetry item.                                                                              |
-| Tolerance      | ± Tolerance on the expected value.                                                                                 |
-| Timeout        | Timeout in seconds. Script will stop if the wait statement times out waiting for the comparison to be true.        |
-| Polling Rate   | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                               |
-| type           | Named parameter specifying the type. RAW, CONVERTED (default), FORMATTED, WITH_UNITS (Ruby symbol, Python string). |
+| パラメータ       | 説明                                                                                                                   |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Target Name      | テレメトリ項目のターゲットの名前。                                                                                     |
+| Packet Name      | テレメトリ項目のテレメトリパケットの名前。                                                                             |
+| Item Name        | テレメトリ項目の名前。                                                                                                 |
+| Expected Value   | テレメトリ項目の期待値。                                                                                               |
+| Tolerance        | 期待値に対する±許容範囲。                                                                                              |
+| Timeout          | タイムアウト（秒）。比較が真になるのを待っている間にwait文がタイムアウトした場合、スクリプトは停止します。             |
+| Polling Rate     | 比較が評価される頻度（秒単位）。指定されていない場合、デフォルトは0.25です。                                           |
+| type             | タイプを指定する名前付きパラメータ。RAW、CONVERTED（デフォルト）、FORMATTED、WITH_UNITS（Rubyではシンボル、Pythonでは文字列）。 |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 elapsed = wait_check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10)
 elapsed = wait_check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, type: :RAW)
 ```
 
-Python Example:
+Python の例：
 
 ```python
 elapsed = wait_check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10)
@@ -2276,12 +2275,12 @@ elapsed = wait_check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, typ
 
 ### wait_check_expression
 
-Pauses the script until an expression is evaluated to be true or a timeout occurs. If a timeout occurs the script will stop. This method can be used to perform more complicated comparisons than using wait as shown in the example. Also see the syntax notes for [check_expression](#check_expression).
+式が真と評価されるかタイムアウトが発生するまでスクリプトを一時停止します。タイムアウトが発生するとスクリプトは停止します。このメソッドは、例に示すように、wait を使用するよりも複雑な比較を実行するために使用できます。[check_expression](#check_expression) の構文に関する注意事項も参照してください。
 
-Ruby Syntax:
+Ruby 構文：
 
 ```ruby
-# Return time spent waiting for the expression to evaluate to true
+# 式が真と評価されるまで待つのに費やした時間を返す
 wait_check_expression(
   exp_to_eval,
   timeout,
@@ -2290,10 +2289,10 @@ wait_check_expression(
 ) -> int
 ```
 
-Python Syntax:
+Python 構文：
 
 ```python
-# Return time spent waiting for the expression to evaluate to True
+# 式が真と評価されるまで待つのに費やした時間を返す
 wait_check_expression(
     exp_to_eval,
     timeout,
@@ -2303,109 +2302,109 @@ wait_check_expression(
 ) -> int
 ```
 
-| Parameter             | Description                                                                                                                   |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| expression            | An expression to evaluate.                                                                                                    |
-| timeout               | Timeout in seconds. Script will proceed if the wait statement times out waiting for the comparison to be true.                |
-| polling_rate          | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                                          |
-| context (ruby only)   | The context to call eval with. Defaults to nil. Context in Ruby is typically binding() and is usually not needed.             |
-| globals (python only) | The globals to call eval with. Defaults to None. Note that to use COSMOS APIs like tlm() you must pass globals().             |
-| locals (python only)  | The locals to call eval with. Defaults to None. Note that if you're using local variables in a method you must pass locals(). |
+| パラメータ              | 説明                                                                                                                             |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| expression             | 評価する式。                                                                                                                      |
+| timeout                | タイムアウト（秒）。比較が真になるのを待っている間にwait文がタイムアウトした場合、スクリプトは続行します。                        |
+| polling_rate           | 比較が評価される頻度（秒単位）。指定されていない場合、デフォルトは0.25です。                                                      |
+| context (ruby のみ)    | eval を呼び出すコンテキスト。デフォルトは nil。Ruby のコンテキストは通常 binding() であり、通常は必要ありません。                 |
+| globals (python のみ)  | eval を呼び出すグローバル。デフォルトは None。tlm() などの COSMOS API を使用するには globals() を渡す必要があることに注意してください。 |
+| locals (python のみ)   | eval を呼び出すローカル。デフォルトは None。メソッドでローカル変数を使用している場合は locals() を渡す必要があることに注意してください。 |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 elapsed = wait_check_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm('INST HEALTH_STATUS TEMP1') > 25.0", 10)
 ```
 
-Python Example:
+Python の例：
 
 ```python
-# Note that for Python we need to pass globals() to be able to use COSMOS API methods like tlm()
+# PythonではCOSMOS APIメソッドのtlm()などを使用するためにglobals()を渡す必要があることに注意してください
 elapsed = wait_check_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm('INST HEALTH_STATUS TEMP1') > 25.0", 10, 0.25, globals())
 ```
 
 ### wait_check_packet
 
-Pauses the script until a certain number of packets have been received. If a timeout occurs the script will stop.
+一定数のパケットが受信されるまでスクリプトを一時停止します。タイムアウトが発生するとスクリプトは停止します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
-# Returns the amount of time elapsed waiting for the packets
+# パケットを待つのに費やした時間の量を返す
 elapsed = wait_check_packet("<Target>", "<Packet>", <Num Packets>, <Timeout>, <Polling Rate (optional)>, quiet)
 ```
 
-| Parameter    | Description                                                                                               |
-| ------------ | --------------------------------------------------------------------------------------------------------- |
-| Target       | The target name                                                                                           |
-| Packet       | The packet name                                                                                           |
-| Num Packets  | The number of packets to receive                                                                          |
-| Timeout      | Timeout in seconds. Script will stop if the wait statement times out waiting specified number of packets. |
-| Polling Rate | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                      |
-| quiet        | Named parameter indicating whether to log the result. Defaults to true.                                   |
+| パラメータ      | 説明                                                                                                |
+| --------------- | --------------------------------------------------------------------------------------------------- |
+| Target          | ターゲット名                                                                                        |
+| Packet          | パケット名                                                                                          |
+| Num Packets     | 受信するパケット数                                                                                  |
+| Timeout         | タイムアウト（秒）。指定された数のパケットを待っている間にwait文がタイムアウトした場合、スクリプトは停止します。 |
+| Polling Rate    | 比較が評価される頻度（秒単位）。指定されていない場合、デフォルトは0.25です。                         |
+| quiet           | 結果をログに記録するかどうかを示す名前付きパラメータ。デフォルトはtrueです。                         |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
-elapsed = wait_check_packet('INST', 'HEALTH_STATUS', 5, 10) # Wait for 5 INST HEALTH_STATUS packets over 10s
+elapsed = wait_check_packet('INST', 'HEALTH_STATUS', 5, 10) # 10秒以内に5つのINST HEALTH_STATUSパケットを待つ
 ```
 
-## Limits
+## リミット
 
-These methods deal with handling telemetry limits.
+これらのメソッドは、テレメトリリミットの処理を扱います。
 
 ### limits_enabled?, limits_enabled
 
-The limits_enabled? method returns true/false depending on whether limits are enabled for a telemetry item.
+limits_enabled? メソッドは、テレメトリ項目のリミットが有効かどうかに応じて true/false を返します。
 
-Ruby Syntax:
+Ruby 構文：
 
 ```ruby
 limits_enabled?("<Target Name> <Packet Name> <Item Name>")
 ```
 
-Python Syntax:
+Python 構文：
 
 ```python
 limits_enabled("<Target Name> <Packet Name> <Item Name>")
 ```
 
-| Parameter   | Description                                         |
-| ----------- | --------------------------------------------------- |
-| Target Name | Name of the target of the telemetry item.           |
-| Packet Name | Name of the telemetry packet of the telemetry item. |
-| Item Name   | Name of the telemetry item.                         |
+| パラメータ   | 説明                                         |
+| ------------ | -------------------------------------------- |
+| Target Name  | テレメトリ項目のターゲットの名前。           |
+| Packet Name  | テレメトリ項目のテレメトリパケットの名前。   |
+| Item Name    | テレメトリ項目の名前。                       |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
-enabled = limits_enabled?("INST HEALTH_STATUS TEMP1") #=> true or false
+enabled = limits_enabled?("INST HEALTH_STATUS TEMP1") #=> true または false
 ```
 
-Python Example:
+Python の例：
 
 ```python
-enabled = limits_enabled("INST HEALTH_STATUS TEMP1") #=> True or False
+enabled = limits_enabled("INST HEALTH_STATUS TEMP1") #=> True または False
 ```
 
 ### enable_limits
 
-Enables limits monitoring for the specified telemetry item.
+指定されたテレメトリ項目のリミットモニタリングを有効にします。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 enable_limits("<Target Name> <Packet Name> <Item Name>")
 ```
 
-| Parameter   | Description                                         |
-| ----------- | --------------------------------------------------- |
-| Target Name | Name of the target of the telemetry item.           |
-| Packet Name | Name of the telemetry packet of the telemetry item. |
-| Item Name   | Name of the telemetry item.                         |
+| パラメータ   | 説明                                         |
+| ------------ | -------------------------------------------- |
+| Target Name  | テレメトリ項目のターゲットの名前。           |
+| Packet Name  | テレメトリ項目のテレメトリパケットの名前。   |
+| Item Name    | テレメトリ項目の名前。                       |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 enable_limits("INST HEALTH_STATUS TEMP1")
@@ -2413,41 +2412,40 @@ enable_limits("INST HEALTH_STATUS TEMP1")
 
 ### disable_limits
 
-Disables limits monitoring for the specified telemetry item.
+指定されたテレメトリ項目のリミットモニタリングを無効にします。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 disable_limits("<Target Name> <Packet Name> <Item Name>")
 ```
 
-| Parameter   | Description                                         |
-| ----------- | --------------------------------------------------- |
-| Target Name | Name of the target of the telemetry item.           |
-| Packet Name | Name of the telemetry packet of the telemetry item. |
-| Item Name   | Name of the telemetry item.                         |
+| パラメータ   | 説明                                         |
+| ------------ | -------------------------------------------- |
+| Target Name  | テレメトリ項目のターゲットの名前。           |
+| Packet Name  | テレメトリ項目のテレメトリパケットの名前。   |
+| Item Name    | テレメトリ項目の名前。                       |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 disable_limits("INST HEALTH_STATUS TEMP1")
 ```
-
 ### enable_limits_group
 
-Enables limits monitoring on a set of telemetry items specified in a limits group.
+リミットグループで指定された一連のテレメトリ項目のリミットモニタリングを有効にします。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 enable_limits_group("<Limits Group Name>")
 ```
 
-| Parameter         | Description               |
-| ----------------- | ------------------------- |
-| Limits Group Name | Name of the limits group. |
+| パラメータ        | 説明                     |
+| ----------------- | ------------------------ |
+| Limits Group Name | リミットグループの名前。 |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 enable_limits_group("SAFE_MODE")
@@ -2455,19 +2453,19 @@ enable_limits_group("SAFE_MODE")
 
 ### disable_limits_group
 
-Disables limits monitoring on a set of telemetry items specified in a limits group.
+リミットグループで指定された一連のテレメトリ項目のリミットモニタリングを無効にします。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 disable_limits_group("<Limits Group Name>")
 ```
 
-| Parameter         | Description               |
-| ----------------- | ------------------------- |
-| Limits Group Name | Name of the limits group. |
+| パラメータ        | 説明                     |
+| ----------------- | ------------------------ |
+| Limits Group Name | リミットグループの名前。 |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 disable_limits_group("SAFE_MODE")
@@ -2475,9 +2473,9 @@ disable_limits_group("SAFE_MODE")
 
 ### get_limits_groups
 
-Returns the list of limits groups in the system.
+システム内のリミットグループのリストを返します。
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 limits_groups = get_limits_groups()
@@ -2485,19 +2483,19 @@ limits_groups = get_limits_groups()
 
 ### set_limits_set
 
-Sets the current limits set. The default limits set is DEFAULT.
+現在のリミットセットを設定します。デフォルトのリミットセットは DEFAULT です。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 set_limits_set("<Limits Set Name>")
 ```
 
-| Parameter       | Description             |
-| --------------- | ----------------------- |
-| Limits Set Name | Name of the limits set. |
+| パラメータ      | 説明                   |
+| --------------- | ---------------------- |
+| Limits Set Name | リミットセットの名前。 |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 set_limits_set("DEFAULT")
@@ -2505,9 +2503,9 @@ set_limits_set("DEFAULT")
 
 ### get_limits_set
 
-Returns the name of the current limits set. The default limits set is DEFAULT.
+現在のリミットセットの名前を返します。デフォルトのリミットセットは DEFAULT です。
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 limits_set = get_limits_set()
@@ -2515,9 +2513,9 @@ limits_set = get_limits_set()
 
 ### get_limits_sets
 
-Returns the list of limits sets in the system.
+システム内のリミットセットのリストを返します。
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 limits_sets = get_limits_sets()
@@ -2525,21 +2523,21 @@ limits_sets = get_limits_sets()
 
 ### get_limits
 
-Returns hash / dict of all the limits settings for a telemetry point.
+テレメトリポイントのすべてのリミット設定のハッシュ / 辞書を返します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 get_limits(<Target Name>, <Packet Name>, <Item Name>)
 ```
 
-| Parameter   | Description                                        |
-| ----------- | -------------------------------------------------- |
-| Target Name | Name of the target of the telemetry item           |
-| Packet Name | Name of the telemetry packet of the telemetry item |
-| Item Name   | Name of the telemetry item                         |
+| パラメータ   | 説明                                     |
+| ------------ | ---------------------------------------- |
+| Target Name  | テレメトリ項目のターゲットの名前         |
+| Packet Name  | テレメトリ項目のテレメトリパケットの名前 |
+| Item Name    | テレメトリ項目の名前                     |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 result = get_limits('INST', 'HEALTH_STATUS', 'TEMP1')
@@ -2548,7 +2546,7 @@ puts result.keys #=> ['DEFAULT', 'TVAC']
 puts result['DEFAULT'] #=> [-80.0, -70.0, 60.0, 80.0, -20.0, 20.0]
 ```
 
-Python Example:
+Python の例：
 
 ```python
 result = get_limits('INST', 'HEALTH_STATUS', 'TEMP1')
@@ -2559,30 +2557,30 @@ print(result['DEFAULT']) #=> [-80.0, -70.0, 60.0, 80.0, -20.0, 20.0]
 
 ### set_limits
 
-The set_limits_method sets limits settings for a telemetry point. Note: In most cases it would be better to update your config files or use different limits sets rather than changing limits settings in realtime.
+set_limits メソッドはテレメトリポイントのリミット設定を設定します。注意：ほとんどの場合、設定ファイルを更新するか、異なるリミットセットを使用する方が、リアルタイムでリミット設定を変更するよりも良いでしょう。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
-set_limits(<Target Name>, <Packet Name>, <Item Name>, <Red Low>, <Yellow Low>, <Yellow High>, <Red High>, <Green Low (optional)>, <Green High (optional)>, <Limits Set (optional)>, <Persistence (optional)>, <Enabled (optional)>)
+set_limits(<Target Name>, <Packet Name>, <Item Name>, <Red Low>, <Yellow Low>, <Yellow High>, <Red High>, <Green Low (オプション)>, <Green High (オプション)>, <Limits Set (オプション)>, <Persistence (オプション)>, <Enabled (オプション)>)
 ```
 
-| Parameter   | Description                                                                                                                                                                         |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Target Name | Name of the target of the telemetry item.                                                                                                                                           |
-| Packet Name | Name of the telemetry packet of the telemetry item.                                                                                                                                 |
-| Item Name   | Name of the telemetry item.                                                                                                                                                         |
-| Red Low     | Red Low setting for this limits set. Any value below this value will be make the item red.                                                                                          |
-| Yellow Low  | Yellow Low setting for this limits set. Any value below this value but greater than Red Low will be make the item yellow.                                                           |
-| Yellow High | Yellow High setting for this limits set. Any value above this value but less than Red High will be make the item yellow.                                                            |
-| Red High    | Red High setting for this limits set. Any value above this value will be make the item red.                                                                                         |
-| Green Low   | Optional. If given, any value greater than Green Low and less than Green_High will make the item blue indicating a good operational value.                                          |
-| Green High  | Optional. If given, any value greater than Green Low and less than Green_High will make the item blue indicating a good operational value.                                          |
-| Limits Set  | Optional. Set the limits for a specific limits set. If not given then it defaults to setting limits for the CUSTOM limits set.                                                      |
-| Persistence | Optional. Set the number of samples this item must be out of limits before changing limits state. Defaults to no change. Note: This affects all limits settings across limits sets. |
-| Enabled     | Optional. Whether or not limits are enabled for this item. Defaults to true. Note: This affects all limits settings across limits sets.                                             |
+| パラメータ   | 説明                                                                                                                                       |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Target Name  | テレメトリ項目のターゲットの名前。                                                                                                         |
+| Packet Name  | テレメトリ項目のテレメトリパケットの名前。                                                                                                 |
+| Item Name    | テレメトリ項目の名前。                                                                                                                     |
+| Red Low      | このリミットセットの Red Low 設定。この値より下の値はすべて項目を赤にします。                                                              |
+| Yellow Low   | このリミットセットの Yellow Low 設定。この値より下で Red Low より大きい値はすべて項目を黄色にします。                                      |
+| Yellow High  | このリミットセットの Yellow High 設定。この値より上で Red High より小さい値はすべて項目を黄色にします。                                    |
+| Red High     | このリミットセットの Red High 設定。この値より上の値はすべて項目を赤にします。                                                             |
+| Green Low    | オプション。指定された場合、Green Low より大きく Green High より小さい値は、良好な動作値を示す青色で項目を表示します。                     |
+| Green High   | オプション。指定された場合、Green Low より大きく Green High より小さい値は、良好な動作値を示す青色で項目を表示します。                     |
+| Limits Set   | オプション。特定のリミットセットのリミットを設定します。指定されない場合、デフォルトで CUSTOM リミットセットのリミットを設定します。       |
+| Persistence  | オプション。リミット状態を変更する前に、この項目がリミット範囲外でなければならないサンプル数を設定します。デフォルトは変更なしです。注意：これはリミットセット全体のすべてのリミット設定に影響します。 |
+| Enabled      | オプション。この項目のリミットが有効かどうか。デフォルトは true です。注意：これはリミットセット全体のすべてのリミット設定に影響します。  |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 set_limits('INST', 'HEALTH_STATUS', 'TEMP1', -10.0, 0.0, 50.0, 60.0, 30.0, 40.0, 'TVAC', 1, true)
@@ -2590,9 +2588,9 @@ set_limits('INST', 'HEALTH_STATUS', 'TEMP1', -10.0, 0.0, 50.0, 60.0, 30.0, 40.0,
 
 ### get_out_of_limits
 
-Returns an array with the target_name, packet_name, item_name, and limits_state of all items that are out of their limits ranges.
+リミット範囲外のすべての項目の target_name、packet_name、item_name、および limits_state を含む配列を返します。
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 out_of_limits_items = get_out_of_limits()
@@ -2600,19 +2598,19 @@ out_of_limits_items = get_out_of_limits()
 
 ### get_overall_limits_state
 
-Returns the overall limits state for the COSMOS system. Returns 'GREEN', 'YELLOW', or 'RED'.
+COSMOS システムの全体的なリミット状態を返します。'GREEN'、'YELLOW'、または 'RED' を返します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
-get_overall_limits_state(<Ignored Items> (optional))
+get_overall_limits_state(<Ignored Items> (オプション))
 ```
 
-| Parameter     | Description                                                                                                                        |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Ignored Items | Array of arrays with items to ignore when determining the overall limits state. [['TARGET_NAME', 'PACKET_NAME', 'ITEM_NAME'], ...] |
+| パラメータ     | 説明                                                                                                                   |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Ignored Items  | 全体的なリミット状態を決定する際に無視する項目の配列の配列。[['TARGET_NAME', 'PACKET_NAME', 'ITEM_NAME'], ...] の形式 |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 overall_limits_state = get_overall_limits_state()
@@ -2621,20 +2619,19 @@ overall_limits_state = get_overall_limits_state([['INST', 'HEALTH_STATUS', 'TEMP
 
 ### get_limits_events
 
-Returns limits events based on an offset returned from the last time it was called.
+前回呼び出された時から返されたオフセットに基づいてリミットイベントを返します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 get_limits_event(<Offset>, count)
 ```
 
-| Parameter | Description                                                                                   |
-| --------- | --------------------------------------------------------------------------------------------- |
-| Offset    | Offset returned by the previous call to get_limits_event. Default is nil for the initial call |
-| count     | Named parameter specifying the maximum number of limits events to return. Default is 100      |
-
-Ruby / Python Example:
+| パラメータ | 説明                                                                               |
+| ---------- | ---------------------------------------------------------------------------------- |
+| Offset     | get_limits_event への前回の呼び出しによって返されたオフセット。初回呼び出しのデフォルトは nil |
+| count      | 返すリミットイベントの最大数を指定する名前付きパラメータ。デフォルトは 100               |
+Ruby / Python の例：
 
 ```ruby
 events = get_limits_event()
@@ -2657,7 +2654,7 @@ print(events)
 #   "new_limits_state"=>"YELLOW_LOW",
 #   "time_nsec"=>"2",
 #   "message"=>"message"}]]
-# The last offset is the first item ([0]) in the last event ([-1])
+# 最後のオフセットは最後のイベント([-1])の最初の項目([0])です
 events = get_limits_event(events[-1][0])
 print(events)
 #[["1613077715657-0",
@@ -2665,31 +2662,31 @@ print(events)
 #   ...
 ```
 
-## Plugins / Packages
+## プラグイン / パッケージ
 
-APIs for getting knowledge about plugins and packages.
+プラグインとパッケージに関する情報を取得するためのAPI。
 
 ### plugin_list
 
-Returns all the installed plugins.
+インストールされているすべてのプラグインを返します。
 
-Ruby Syntax:
+Ruby 構文：
 
 ```ruby
 plugin_list(default: false)
 ```
 
-Python Syntax:
+Python 構文：
 
 ```ruby
 plugin_list(default = False)
 ```
 
-| Parameter | Description                                                                  |
-| --------- | ---------------------------------------------------------------------------- |
-| default   | Whether to include the default COSMOS plugins (all the regular applications) |
+| パラメータ | 説明                                                             |
+| ---------- | ---------------------------------------------------------------- |
+| default    | デフォルトのCOSMOSプラグイン（すべての通常のアプリケーション）を含めるかどうか |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 plugins = plugin_list() #=> ['openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539']
@@ -2715,19 +2712,19 @@ plugins = plugin_list(default: true) #=>
 
 ### plugin_get
 
-Returns information about an installed plugin.
+インストールされたプラグインに関する情報を返します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 plugin_get(<Plugin Name>)
 ```
 
-| Parameter   | Description                                                  |
-| ----------- | ------------------------------------------------------------ |
-| Plugin Name | Full name of the plugin (typically taken from plugin_list()) |
+| パラメータ   | 説明                                                  |
+| ------------ | ---------------------------------------------------- |
+| Plugin Name  | プラグインの完全な名前（通常は plugin_list() から取得） |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 plugin_get('openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539') #=>
@@ -2740,31 +2737,31 @@ plugin_get('openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__2025011621453
 
 ### package_list
 
-List all the packages installed in COSMOS.
+COSMOSにインストールされているすべてのパッケージをリストします。
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 package_list() #=> {"ruby"=>["openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem", ..., "openc3-tool-base-6.0.3.pre.beta0.20250115195959.gem"],
                #    "python"=>["numpy-2.1.1", "pip-24.0", "setuptools-65.5.0"]}
 ```
 
-Python Example:
+Python の例：
 
 ```python
 package_list() #=> {'ruby': ['openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem', ..., 'openc3-tool-base-6.0.3.pre.beta0.20250115195959.gem'],
                #    'python': ['numpy-2.1.1', 'pip-24.0', 'setuptools-65.5.0']}
 ```
 
-## Targets
+## ターゲット
 
-APIs for getting knowledge about targets.
+ターゲットに関する情報を取得するためのAPI。
 
 ### get_target_names
 
-Returns a list of the targets in the system in an array.
+システム内のターゲットのリストを配列で返します。
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 targets = get_target_names() #=> ['INST', 'INST2', 'EXAMPLE', 'TEMPLATED']
@@ -2772,19 +2769,19 @@ targets = get_target_names() #=> ['INST', 'INST2', 'EXAMPLE', 'TEMPLATED']
 
 ### get_target
 
-Returns a target hash containing all the information about the target.
+ターゲットに関するすべての情報を含むターゲットハッシュを返します。
 
-Ruby Syntax:
+Ruby 構文：
 
 ```ruby
 get_target("<Target Name>")
 ```
 
-| Parameter   | Description         |
-| ----------- | ------------------- |
-| Target Name | Name of the target. |
+| パラメータ   | 説明               |
+| ------------ | ------------------ |
+| Target Name  | ターゲットの名前。 |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 target = get_target("INST")
@@ -2825,9 +2822,9 @@ print(target)
 
 ### get_target_interfaces
 
-Returns the interfaces for all targets. The return value is an array of arrays where each subarray contains the target name, and a String of all the interface names.
+すべてのターゲットのインターフェースを返します。戻り値は配列の配列で、各サブ配列にはターゲット名とすべてのインターフェース名の文字列が含まれています。
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 target_ints = get_target_interfaces()
@@ -2836,25 +2833,25 @@ target_ints.each do |target_name, interfaces|
 end
 ```
 
-## Interfaces
+## インターフェース
 
-These methods allow the user to manipulate COSMOS interfaces.
+これらのメソッドを使用すると、ユーザーはCOSMOSインターフェースを操作できます。
 
 ### get_interface
 
-Returns an interface status including the as built interface and its current status (cmd/tlm counters, etc).
+ビルド済みのインターフェースとその現在のステータス（コマンド/テレメトリカウンターなど）を含むインターフェースのステータスを返します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```
 get_interface("<Interface Name>")
 ```
 
-| Parameter      | Description            |
-| -------------- | ---------------------- |
-| Interface Name | Name of the interface. |
+| パラメータ      | 説明                     |
+| --------------- | ------------------------ |
+| Interface Name  | インターフェースの名前。 |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 interface = get_interface("INST_INT")
@@ -2884,9 +2881,9 @@ print(interface)
 
 ### get_interface_names
 
-Returns a list of the interfaces in the system in an array.
+システム内のインターフェースのリストを配列で返します。
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 interface_names = get_interface_names() #=> ['INST_INT', 'INST2_INT', 'EXAMPLE_INT', 'TEMPLATED_INT']
@@ -2894,20 +2891,20 @@ interface_names = get_interface_names() #=> ['INST_INT', 'INST2_INT', 'EXAMPLE_I
 
 ### connect_interface
 
-Connects to targets associated with a COSMOS interface.
+COSMOSインターフェースに関連付けられたターゲットに接続します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
-connect_interface("<Interface Name>", <Interface Parameters (optional)>)
+connect_interface("<Interface Name>", <Interface Parameters (オプション)>)
 ```
 
-| Parameter            | Description                                                                                                                                                 |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Interface Name       | Name of the interface.                                                                                                                                      |
-| Interface Parameters | Parameters used to initialize the interface. If none are given then the interface will use the parameters that were given in the server configuration file. |
+| パラメータ            | 説明                                                                                                   |
+| --------------------- | ------------------------------------------------------------------------------------------------------ |
+| Interface Name        | インターフェースの名前。                                                                               |
+| Interface Parameters  | インターフェースの初期化に使用されるパラメータ。指定されない場合、インターフェースはサーバー構成ファイルで指定されたパラメータを使用します。 |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 connect_interface("INT1")
@@ -2916,19 +2913,19 @@ connect_interface("INT1", hostname, port)
 
 ### disconnect_interface
 
-Disconnects from targets associated with a COSMOS interface.
+COSMOSインターフェースに関連付けられたターゲットから切断します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 disconnect_interface("<Interface Name>")
 ```
 
-| Parameter      | Description            |
-| -------------- | ---------------------- |
-| Interface Name | Name of the interface. |
+| パラメータ      | 説明                     |
+| --------------- | ------------------------ |
+| Interface Name  | インターフェースの名前。 |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 disconnect_interface("INT1")
@@ -2936,19 +2933,19 @@ disconnect_interface("INT1")
 
 ### start_raw_logging_interface
 
-Starts logging of raw data on one or all interfaces. This is for debugging purposes only.
+1つまたはすべてのインターフェースでの生データのロギングを開始します。これはデバッグ目的のみです。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
-start_raw_logging_interface("<Interface Name (optional)>")
+start_raw_logging_interface("<Interface Name (オプション)>")
 ```
 
-| Parameter      | Description                                                                                                                                                        |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Interface Name | Name of the Interface to command to start raw data logging. Defaults to 'ALL' which causes all interfaces that support raw data logging to start logging raw data. |
+| パラメータ      | 説明                                                                                                                     |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Interface Name  | 生データロギングを開始するように命令するインターフェースの名前。デフォルトは 'ALL' で、生データロギングをサポートするすべてのインターフェースで生データのロギングを開始します。 |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 start_raw_logging_interface("int1")
@@ -2956,19 +2953,19 @@ start_raw_logging_interface("int1")
 
 ### stop_raw_logging_interface
 
-Stops logging of raw data on one or all interfaces. This is for debugging purposes only.
+1つまたはすべてのインターフェースでの生データのロギングを停止します。これはデバッグ目的のみです。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
-stop_raw_logging_interface("<Interface Name (optional)>")
+stop_raw_logging_interface("<Interface Name (オプション)>")
 ```
 
-| Parameter      | Description                                                                                                                                                      |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Interface Name | Name of the Interface to command to stop raw data logging. Defaults to 'ALL' which causes all interfaces that support raw data logging to stop logging raw data. |
+| パラメータ      | 説明                                                                                                                     |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Interface Name  | 生データロギングを停止するように命令するインターフェースの名前。デフォルトは 'ALL' で、生データロギングをサポートするすべてのインターフェースで生データのロギングを停止します。 |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 stop_raw_logging_interface("int1")
@@ -2976,9 +2973,9 @@ stop_raw_logging_interface("int1")
 
 ### get_all_interface_info
 
-Returns information about all interfaces. The return value is an array of arrays where each subarray contains the interface name, connection state, number of connected clients, transmit queue size, receive queue size, bytes transmitted, bytes received, command count, and telemetry count.
+すべてのインターフェースに関する情報を返します。戻り値は配列の配列で、各サブ配列にはインターフェース名、接続状態、接続クライアント数、送信キューサイズ、受信キューサイズ、送信バイト数、受信バイト数、コマンド数、テレメトリ数が含まれています。
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 interface_info = get_all_interface_info()
@@ -2989,7 +2986,7 @@ interface_info.each do |interface_name, connection_state, num_clients, tx_q_size
 end
 ```
 
-Python Example:
+Python の例：
 
 ```python
 interface_info = get_all_interface_info()
@@ -3002,29 +2999,29 @@ for interface in interface_info():
 
 ### map_target_to_interface
 
-Map a target to an interface allowing target commands and telemetry to be processed by that interface.
+ターゲットをインターフェースにマップして、ターゲットコマンドとテレメトリがそのインターフェースによって処理されるようにします。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 map_target_to_interface("<Target Name>", "<Interface Name>", cmd_only, tlm_only, unmap_old)
 ```
 
-| Parameter      | Description                                                                            |
-| -------------- | -------------------------------------------------------------------------------------- |
-| Target Name    | Name of the target                                                                     |
-| Interface Name | Name of the interface                                                                  |
-| cmd_only       | Named parameter whether to map target commands only to the interface (default: false)  |
-| tlm_only       | Named parameter whether to map target telemetry only to the interface (default: false) |
-| unmap_old      | Named parameter whether remove the target from all existing interfaces (default: true) |
+| パラメータ      | 説明                                                                                         |
+| --------------- | -------------------------------------------------------------------------------------------- |
+| Target Name     | ターゲットの名前                                                                             |
+| Interface Name  | インターフェースの名前                                                                       |
+| cmd_only        | ターゲットコマンドのみをインターフェースにマップするかどうかを指定する名前付きパラメータ（デフォルト：false） |
+| tlm_only        | ターゲットテレメトリのみをインターフェースにマップするかどうかを指定する名前付きパラメータ（デフォルト：false） |
+| unmap_old       | ターゲットをすべての既存のインターフェースから削除するかどうかを指定する名前付きパラメータ（デフォルト：true） |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 map_target_to_interface("INST", "INST_INT", unmap_old: false)
 ```
 
-Python Example:
+Python の例：
 
 ```python
 map_target_to_interface("INST", "INST_INT", unmap_old=False)
@@ -3032,21 +3029,20 @@ map_target_to_interface("INST", "INST_INT", unmap_old=False)
 
 ### interface_cmd
 
-Send a command directly to an interface. This has no effect in the standard COSMOS interfaces but can be implemented by a custom interface to change behavior.
-
-Ruby / Python Syntax:
+コマンドを直接インターフェースに送信します。これは標準のCOSMOSインターフェースでは効果がありませんが、動作を変更するためにカスタムインターフェースで実装できます。
+Ruby / Python 構文：
 
 ```ruby
 interface_cmd("<Interface Name>", "<Command Name>", "<Command Parameters>")
 ```
 
-| Parameter          | Description                             |
-| ------------------ | --------------------------------------- |
-| Interface Name     | Name of the interface                   |
-| Command Name       | Name of the command to send             |
-| Command Parameters | Any parameters to send with the command |
+| パラメータ         | 説明                                 |
+| ------------------ | ------------------------------------ |
+| Interface Name     | インターフェースの名前               |
+| Command Name       | 送信するコマンドの名前               |
+| Command Parameters | コマンドと共に送信するパラメータ     |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 interface_cmd("INST", "DISABLE_CRC")
@@ -3054,54 +3050,54 @@ interface_cmd("INST", "DISABLE_CRC")
 
 ### interface_protocol_cmd
 
-Send a command directly to an interface protocol. This has no effect in the standard COSMOS protocols but can be implemented by a custom protocol to change behavior.
+コマンドを直接インターフェースプロトコルに送信します。これは標準のCOSMOSプロトコルでは効果がありませんが、動作を変更するためにカスタムプロトコルで実装できます。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 interface_protocol_cmd("<Interface Name>", "<Command Name>", "<Command Parameters>")
 ```
 
-| Parameter          | Description                                                                                                                                                |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Interface Name     | Name of the interface                                                                                                                                      |
-| Command Name       | Name of the command to send                                                                                                                                |
-| Command Parameters | Any parameters to send with the command                                                                                                                    |
-| read_write         | Whether command gets send to read or write protocols. Must be one of READ, WRITE, or READ_WRITE (Ruby symbols, Python strings). The default is READ_WRITE. |
-| index              | Which protocol in the stack the command should apply to. The default is -1 which applies the command to all.                                               |
+| パラメータ         | 説明                                                                                                                                                             |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Interface Name     | インターフェースの名前                                                                                                                                           |
+| Command Name       | 送信するコマンドの名前                                                                                                                                           |
+| Command Parameters | コマンドと共に送信するパラメータ                                                                                                                                 |
+| read_write         | コマンドが送信される読み取りまたは書き込みプロトコル。READ、WRITE、または READ_WRITE（Rubyではシンボル、Pythonでは文字列）のいずれかである必要があります。デフォルトは READ_WRITE です。 |
+| index              | スタック内のどのプロトコルにコマンドが適用されるか。デフォルトは -1 で、すべてにコマンドを適用します。                                                           |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 interface_protocol_cmd("INST", "DISABLE_CRC", read_write: :READ_WRITE, index: -1)
 ```
 
-Python Example:
+Python の例：
 
 ```python
 interface_protocol_cmd("INST", "DISABLE_CRC", read_write='READ_WRITE', index=-1)
 ```
 
-## Routers
+## ルーター
 
-These methods allow the user to manipulate COSMOS routers.
+これらのメソッドを使用すると、ユーザーはCOSMOSルーターを操作できます。
 
 ### connect_router
 
-Connects a COSMOS router.
+COSMOSルーターを接続します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
-connect_router("<Router Name>", <Router Parameters (optional)>)
+connect_router("<Router Name>", <Router Parameters (オプション)>)
 ```
 
-| Parameter         | Description                                                                                                                                           |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Router Name       | Name of the router.                                                                                                                                   |
-| Router Parameters | Parameters used to initialize the router. If none are given then the router will use the parameters that were given in the server configuration file. |
+| パラメータ         | 説明                                                                                             |
+| ------------------ | ------------------------------------------------------------------------------------------------ |
+| Router Name        | ルーターの名前。                                                                                 |
+| Router Parameters  | ルーターの初期化に使用されるパラメータ。指定されない場合、ルーターはサーバー構成ファイルで指定されたパラメータを使用します。 |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 connect_ROUTER("INST_ROUTER")
@@ -3110,19 +3106,19 @@ connect_router("INST_ROUTER", 7779, 7779, nil, 10.0, 'PREIDENTIFIED')
 
 ### disconnect_router
 
-Disconnects a COSMOS router.
+COSMOSルーターを切断します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 disconnect_router("<Router Name>")
 ```
 
-| Parameter   | Description         |
-| ----------- | ------------------- |
-| Router Name | Name of the router. |
+| パラメータ   | 説明             |
+| ------------ | ---------------- |
+| Router Name  | ルーターの名前。 |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 disconnect_router("INT1_ROUTER")
@@ -3130,29 +3126,28 @@ disconnect_router("INT1_ROUTER")
 
 ### get_router_names
 
-Returns a list of the routers in the system in an array.
+システム内のルーターのリストを配列で返します。
 
-Ruby / Python Example:
-
+Ruby / Python の例：
 ```ruby
 router_names = get_router_names() #=> ['ROUTER_INT']
 ```
 
 ### get_router
 
-Returns a router status including the as built router and its current status (cmd/tlm counters, etc).
+ビルド済みのルーターとその現在のステータス（コマンド/テレメトリカウンターなど）を含むルーターのステータスを返します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 get_router("<Router Name>")
 ```
 
-| Parameter   | Description         |
-| ----------- | ------------------- |
-| Router Name | Name of the router. |
+| パラメータ   | 説明             |
+| ------------ | ---------------- |
+| Router Name  | ルーターの名前。 |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 router = get_router("ROUTER_INT")
@@ -3182,9 +3177,9 @@ print(router)
 
 ### get_all_router_info
 
-Returns information about all routers. The return value is an array of arrays where each subarray contains the router name, connection state, number of connected clients, transmit queue size, receive queue size, bytes transmitted, bytes received, packets received, and packets sent.
+すべてのルーターに関する情報を返します。戻り値は配列の配列で、各サブ配列にはルーター名、接続状態、接続クライアント数、送信キューサイズ、受信キューサイズ、送信バイト数、受信バイト数、受信パケット数、送信パケット数が含まれています。
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 router_info = get_all_router_info()
@@ -3195,7 +3190,7 @@ router_info.each do |router_name, connection_state, num_clients, tx_q_size, rx_q
 end
 ```
 
-Python Example:
+Python の例：
 
 ```python
 router_info = get_all_router_info()
@@ -3208,19 +3203,19 @@ for router in router_info:
 
 ### start_raw_logging_router
 
-Starts logging of raw data on one or all routers. This is for debugging purposes only.
+1つまたはすべてのルーターでの生データのロギングを開始します。これはデバッグ目的のみです。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
-start_raw_logging_router("<Router Name (optional)>")
+start_raw_logging_router("<Router Name (オプション)>")
 ```
 
-| Parameter   | Description                                                                                                                                                  |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Router Name | Name of the Router to command to start raw data logging. Defaults to 'ALL' which causes all routers that support raw data logging to start logging raw data. |
+| パラメータ   | 説明                                                                                                                 |
+| ------------ | -------------------------------------------------------------------------------------------------------------------- |
+| Router Name  | 生データロギングを開始するように命令するルーターの名前。デフォルトは 'ALL' で、生データロギングをサポートするすべてのルーターで生データのロギングを開始します。 |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 start_raw_logging_router("router1")
@@ -3228,19 +3223,19 @@ start_raw_logging_router("router1")
 
 ### stop_raw_logging_router
 
-Stops logging of raw data on one or all routers. This is for debugging purposes only.
+1つまたはすべてのルーターでの生データのロギングを停止します。これはデバッグ目的のみです。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
-stop_raw_logging_router("<Router Name (optional)>")
+stop_raw_logging_router("<Router Name (オプション)>")
 ```
 
-| Parameter   | Description                                                                                                                                                |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Router Name | Name of the Router to command to stop raw data logging. Defaults to 'ALL' which causes all routers that support raw data logging to stop logging raw data. |
+| パラメータ   | 説明                                                                                                                 |
+| ------------ | -------------------------------------------------------------------------------------------------------------------- |
+| Router Name  | 生データロギングを停止するように命令するルーターの名前。デフォルトは 'ALL' で、生データロギングをサポートするすべてのルーターで生データのロギングを停止します。 |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 stop_raw_logging_router("router1")
@@ -3248,21 +3243,21 @@ stop_raw_logging_router("router1")
 
 ### router_cmd
 
-Send a command directly to a router. This has no effect in the standard COSMOS routers but can be implemented by a custom router to change behavior.
+コマンドを直接ルーターに送信します。これは標準のCOSMOSルーターでは効果がありませんが、動作を変更するためにカスタムルーターで実装できます。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 router_cmd("<Router Name>", "<Command Name>", "<Command Parameters>")
 ```
 
-| Parameter          | Description                             |
-| ------------------ | --------------------------------------- |
-| Router Name        | Name of the router                      |
-| Command Name       | Name of the command to send             |
-| Command Parameters | Any parameters to send with the command |
+| パラメータ         | 説明                             |
+| ------------------ | -------------------------------- |
+| Router Name        | ルーターの名前                   |
+| Command Name       | 送信するコマンドの名前           |
+| Command Parameters | コマンドと共に送信するパラメータ |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 router_cmd("INST", "DISABLE_CRC")
@@ -3270,119 +3265,119 @@ router_cmd("INST", "DISABLE_CRC")
 
 ### router_protocol_cmd
 
-Send a command directly to an router protocol. This has no effect in the standard COSMOS protocols but can be implemented by a custom protocol to change behavior.
+コマンドを直接ルータープロトコルに送信します。これは標準のCOSMOSプロトコルでは効果がありませんが、動作を変更するためにカスタムプロトコルで実装できます。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 router_protocol_cmd("<Router Name>", "<Command Name>", "<Command Parameters>", read_write, index)
 ```
 
-| Parameter          | Description                                                                                                                                                |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Router Name        | Name of the router                                                                                                                                         |
-| Command Name       | Name of the command to send                                                                                                                                |
-| Command Parameters | Any parameters to send with the command                                                                                                                    |
-| read_write         | Whether command gets send to read or write protocols. Must be one of READ, WRITE, or READ_WRITE (Ruby symbols, Python strings). The default is READ_WRITE. |
-| index              | Which protocol in the stack the command should apply to. The default is -1 which applies the command to all.                                               |
+| パラメータ         | 説明                                                                                                                                                             |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Router Name        | ルーターの名前                                                                                                                                                   |
+| Command Name       | 送信するコマンドの名前                                                                                                                                           |
+| Command Parameters | コマンドと共に送信するパラメータ                                                                                                                                 |
+| read_write         | コマンドが送信される読み取りまたは書き込みプロトコル。READ、WRITE、または READ_WRITE（Rubyではシンボル、Pythonでは文字列）のいずれかである必要があります。デフォルトは READ_WRITE です。 |
+| index              | スタック内のどのプロトコルにコマンドが適用されるか。デフォルトは -1 で、すべてにコマンドを適用します。                                                           |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 router_protocol_cmd("INST", "DISABLE_CRC", read_write: :READ_WRITE, index: -1)
 ```
 
-Python Example:
+Python の例：
 
 ```python
 router_protocol_cmd("INST", "DISABLE_CRC", read_write='READ_WRITE', index=-1)
 ```
 
-## Tables
+## テーブル
 
-These methods allow the user to script Table Manager.
+これらのメソッドを使用すると、ユーザーはTable Managerをスクリプト化できます。
 
 ### table_create_binary
 
-> Since 6.1.0
+> バージョン 6.1.0 以降
 
-Creates a table binary based on a table definition file. You can achieve the same result in the Table Manager GUI with File->New File. Returns the path to the binary file created.
+テーブル定義ファイルに基づいてテーブルバイナリを作成します。Table Manager GUIの「ファイル (File)->新規ファイル (New File)」と同じ結果を得ることができます。作成されたバイナリファイルへのパスを返します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 table_create_binary(<Table Definition File>)
 ```
 
-| Parameter             | Description                                                                     |
-| --------------------- | ------------------------------------------------------------------------------- |
-| Table Definition File | Path to the table definition file, e.g. INST/tables/config/ConfigTables_def.txt |
+| パラメータ             | 説明                                                             |
+| ---------------------- | ---------------------------------------------------------------- |
+| Table Definition File  | テーブル定義ファイルへのパス（例：INST/tables/config/ConfigTables_def.txt） |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
-# Full example of using table_create_binary and then editing the binary
+# table_create_binaryを使用してからバイナリを編集する完全な例
 require 'openc3/tools/table_manager/table_config'
-# This returns a hash: {"filename"=>"INST/tables/bin/MCConfigurationTable.bin"}
+# これはハッシュを返します: {"filename"=>"INST/tables/bin/MCConfigurationTable.bin"}
 table = table_create_binary("INST/tables/config/MCConfigurationTable_def.txt")
 file = get_target_file(table['filename'])
 table_binary = file.read()
 
-# Get the definition file so we can process the binary
+# バイナリを処理するために定義ファイルを取得
 def_file = get_target_file("INST/tables/config/MCConfigurationTable_def.txt")
-# Access the internal TableConfig to process the definition
+# 定義を処理するために内部TableConfigにアクセス
 config = OpenC3::TableConfig.process_file(def_file.path())
-# Grab the table by the definition name, e.g. TABLE "MC_Configuration"
+# 定義名でテーブルを取得（例：TABLE "MC_Configuration"）
 table = config.table('MC_CONFIGURATION')
-# Now you can read or write individual items in the table
+# これでテーブル内の個々の項目を読み書きできます
 table.write("MEMORY_SCRUBBING", "DISABLE")
-# Finally write the table.buffer (the binary) back to storage
+# 最後にtable.buffer（バイナリ）をストレージに書き戻します
 put_target_file("INST/tables/bin/MCConfigurationTable_NoScrub.bin", table.buffer)
 ```
 
-Python Example:
+Python の例：
 
 ```python
-# Full example of using table_create_binary and then editing the binary
+# table_create_binaryを使用してからバイナリを編集する完全な例
 from openc3.tools.table_manager.table_config import TableConfig
-# Returns a dict: {'filename': 'INST/tables/bin/ConfigTables.bin'}
+# 辞書を返します: {'filename': 'INST/tables/bin/ConfigTables.bin'}
 table = table_create_binary("INST2/tables/config/ConfigTables_def.txt")
 file = get_target_file(table['filename'])
 table_binary = file.read()
 
-# Get the definition file so we can process the binary
+# バイナリを処理するために定義ファイルを取得
 def_file = get_target_file("INST2/tables/config/MCConfigurationTable_def.txt")
-# Access the internal TableConfig to process the definition
+# 定義を処理するために内部TableConfigにアクセス
 config = TableConfig.process_file(def_file.name)
-# Grab the table by the definition name, e.g. TABLE "MC_Configuration"
+# 定義名でテーブルを取得（例：TABLE "MC_Configuration"）
 table = config.table('MC_CONFIGURATION')
-# Now you can read or write individual items in the table
+# これでテーブル内の個々の項目を読み書きできます
 table.write("MEMORY_SCRUBBING", "DISABLE")
-# Finally write the table.buffer (the binary) back to storage
+# 最後にtable.buffer（バイナリ）をストレージに書き戻します
 put_target_file("INST2/tables/bin/MCConfigurationTable_NoScrub.bin", table.buffer)
 ```
 
 ### table_create_report
 
-> Since 6.1.0
+> バージョン 6.1.0 以降
 
-Creates a table binary based on a table definition file. You can achieve the same result in the Table Manager GUI with File->New File. Returns the path to the binary file created.
+テーブル定義ファイルに基づいてテーブルバイナリを作成します。Table Manager GUIの「ファイル->新規ファイル」と同じ結果を得ることができます。作成されたバイナリファイルへのパスを返します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
-table_create_report(<Table Binary Filename>, <Table Definition File>, <Table Name (optional)>)
+table_create_report(<Table Binary Filename>, <Table Definition File>, <Table Name (オプション)>)
 ```
 
 filename, definition, table_name
 
-| Parameter             | Description                                                                                                                                                                                                                                                                                                      |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Table Binary File     | Path to the table binary file, e.g. INST/tables/bin/ConfigTables.bin                                                                                                                                                                                                                                             |
-| Table Definition File | Path to the table definition file, e.g. INST/tables/config/ConfigTables_def.txt                                                                                                                                                                                                                                  |
-| Table Name            | Name of the table to create the report. This only applies if the Table Binary and Table Definition consist of multiple tables. By default the report consists of all tables and is named after the binary file. If the table name is given, the report is just the specified table and is named after the table. |
+| パラメータ             | 説明                                                                                                                                                                                                    |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Table Binary File      | テーブルバイナリファイルへのパス（例：INST/tables/bin/ConfigTables.bin）                                                                                                                                 |
+| Table Definition File  | テーブル定義ファイルへのパス（例：INST/tables/config/ConfigTables_def.txt）                                                                                                                              |
+| Table Name             | レポートを作成するテーブルの名前。これはテーブルバイナリとテーブル定義が複数のテーブルで構成されている場合にのみ適用されます。デフォルトでは、レポートはすべてのテーブルで構成され、バイナリファイルにちなんで名前が付けられます。テーブル名が指定されている場合、レポートは指定されたテーブルのみで構成され、テーブルにちなんで名前が付けられます。 |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt") #=>
@@ -3391,7 +3386,7 @@ table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/con
 # {"filename"=>"INST/tables/bin/McConfiguration.csv", "contents"=>"MC_CONFIGURATION\nLabel, ...
 ```
 
-Python Example:
+Python の例：
 
 ```python
 table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt") #=>
@@ -3400,26 +3395,26 @@ table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/con
 # {'filename': 'INST/tables/bin/ConfigTables.csv', 'contents': 'MC_CONFIGURATION\nLabel, ...
 ```
 
-## Stashing Data
+## データのスタッシュ
 
-These methods allow the user to store temporary data into COSMOS and retrieve it. The storage is implemented as a key / value storage (Ruby hash or Python dict). This can be used in scripts to store information that applies across multiple scripts or multiple runs of a single script.
+これらのメソッドを使用すると、ユーザーは一時的なデータをCOSMOSに保存して取得できます。ストレージはキー/値ストレージ（Rubyのハッシュまたはpythonの辞書）として実装されています。これは、複数のスクリプトや単一スクリプトの複数の実行にまたがって適用される情報を保存するためにスクリプトで使用できます。
 
 ### stash_set
 
-Sets a stash item.
+スタッシュアイテムを設定します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 stash_set("<Stash Key>", <Stash Value>)
 ```
 
-| Parameter   | Description                  |
-| ----------- | ---------------------------- |
-| Stash Key   | Name of the stash key to set |
-| Stash Value | Value to set                 |
+| パラメータ   | 説明                          |
+| ------------ | ----------------------------- |
+| Stash Key    | 設定するスタッシュキーの名前        |
+| Stash Value  | 設定する値                    |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 stash_set('run_count', 5)
@@ -3428,19 +3423,19 @@ stash_set('setpoint', 23.4)
 
 ### stash_get
 
-Returns the specified stash item.
+指定されたスタッシュアイテムを返します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 stash_get("<Stash Key>")
 ```
 
-| Parameter | Description                     |
-| --------- | ------------------------------- |
-| Stash Key | Name of the stash key to return |
+| パラメータ | 説明                    |
+| ---------- | ----------------------- |
+| Stash Key  | 返すスタッシュキーの名前      |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 stash_get('run_count')  #=> 5
@@ -3448,15 +3443,15 @@ stash_get('run_count')  #=> 5
 
 ### stash_all
 
-Returns all the stash items as a Ruby hash or Python dict.
+すべてのスタッシュアイテムをRubyのハッシュまたはPythonの辞書として返します。
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 stash_all()  #=> ['run_count' => 5, 'setpoint' => 23.4]
 ```
 
-Python Example:
+Python の例：
 
 ```ruby
 stash_all()  #=> ['run_count': 5, 'setpoint': 23.4]
@@ -3464,9 +3459,9 @@ stash_all()  #=> ['run_count': 5, 'setpoint': 23.4]
 
 ### stash_keys
 
-Returns all the stash keys.
+すべてのスタッシュキーを返します。
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 stash_keys()  #=> ['run_count', 'setpoint']
@@ -3474,46 +3469,46 @@ stash_keys()  #=> ['run_count', 'setpoint']
 
 ### stash_delete
 
-Deletes a stash item. Note this actions is permanent!
+スタッシュアイテムを削除します。この操作は永続的であることに注意してください！
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 stash_delete("<Stash Key>")
 ```
 
-| Parameter | Description                     |
-| --------- | ------------------------------- |
-| Stash Key | Name of the stash key to delete |
+| パラメータ | 説明                    |
+| ---------- | ----------------------- |
+| Stash Key  | 削除するスタッシュキーの名前  |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 stash_delete("run_count")
 ```
 
-## Telemetry Screens
+## テレメトリ画面
 
-These methods allow the user to open, close or create unique telemetry screens from within a test procedure.
+これらのメソッドを使用すると、ユーザーはテスト手順内からテレメトリ画面を開いたり、閉じたり、一意のテレメトリ画面を作成したりできます。
 
 ### display_screen
 
-Opens a telemetry screen at the specified position.
+指定された位置にテレメトリ画面を開きます。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
-display_screen("<Target Name>", "<Screen Name>", <X Position (optional)>, <Y Position (optional)>)
+display_screen("<Target Name>", "<Screen Name>", <X Position (オプション)>, <Y Position (オプション)>)
 ```
 
-| Parameter   | Description                                               |
-| ----------- | --------------------------------------------------------- |
-| Target Name | Telemetry screen target name                              |
-| Screen Name | Screen name within the specified target                   |
-| X Position  | X coordinate for the upper left hand corner of the screen |
-| Y Position  | Y coordinate for the upper left hand corner of the screen |
+| パラメータ   | 説明                                 |
+| ------------ | ------------------------------------ |
+| Target Name  | テレメトリ画面のターゲット名         |
+| Screen Name  | 指定されたターゲット内の画面名       |
+| X Position   | 画面の左上隅のX座標                  |
+| Y Position   | 画面の左上隅のY座標                  |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 display_screen("INST", "ADCS", 100, 200)
@@ -3521,20 +3516,19 @@ display_screen("INST", "ADCS", 100, 200)
 
 ### clear_screen
 
-Closes an open telemetry screen.
+開いているテレメトリ画面を閉じます。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 clear_screen("<Target Name>", "<Screen Name>")
 ```
 
-| Parameter   | Description                             |
-| ----------- | --------------------------------------- |
-| Target Name | Telemetry screen target name            |
-| Screen Name | Screen name within the specified target |
-
-Ruby / Python Example:
+| パラメータ   | 説明                               |
+| ------------ | ---------------------------------- |
+| Target Name  | テレメトリ画面のターゲット名       |
+| Screen Name  | 指定されたターゲット内の画面名     |
+Ruby / Python の例：
 
 ```ruby
 clear_screen("INST", "ADCS")
@@ -3542,9 +3536,9 @@ clear_screen("INST", "ADCS")
 
 ### clear_all_screens
 
-Closes all open screens.
+開いているすべての画面を閉じます。
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 clear_all_screens()
@@ -3552,20 +3546,20 @@ clear_all_screens()
 
 ### delete_screen
 
-Deletes an existing Telemetry Viewer screen.
+既存のTelemetry Viewer画面を削除します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 delete_screen("<Target Name>", "<Screen Name>")
 ```
 
-| Parameter   | Description                             |
-| ----------- | --------------------------------------- |
-| Target Name | Telemetry screen target name            |
-| Screen Name | Screen name within the specified target |
+| パラメータ   | 説明                             |
+| ------------ | -------------------------------- |
+| Target Name  | テレメトリ画面のターゲット名     |
+| Screen Name  | 指定されたターゲット内の画面名   |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 delete_screen("INST", "ADCS")
@@ -3573,9 +3567,9 @@ delete_screen("INST", "ADCS")
 
 ### get_screen_list
 
-Returns a list of available telemetry screens.
+利用可能なテレメトリ画面のリストを返します。
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 get_screen_list() #=> ['INST ADCS', 'INST COMMANDING', ...]
@@ -3583,20 +3577,20 @@ get_screen_list() #=> ['INST ADCS', 'INST COMMANDING', ...]
 
 ### get_screen_definition
 
-Returns the text file contents of a telemetry screen definition.
+テレメトリ画面定義のテキストファイルの内容を返します。
 
-Syntax:
+構文：
 
 ```ruby
 get_screen_definition("<Target Name>", "<Screen Name>")
 ```
 
-| Parameter   | Description                             |
-| ----------- | --------------------------------------- |
-| Target Name | Telemetry screen target name            |
-| Screen Name | Screen name within the specified target |
+| パラメータ   | 説明                             |
+| ------------ | -------------------------------- |
+| Target Name  | テレメトリ画面のターゲット名     |
+| Screen Name  | 指定されたターゲット内の画面名   |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 screen_definition = get_screen_definition("INST", "HS")
@@ -3604,21 +3598,21 @@ screen_definition = get_screen_definition("INST", "HS")
 
 ### create_screen
 
-Allows you to create a screen directly from a script. This screen is saved to Telemetry Viewer for future use in that application.
+スクリプトから直接画面を作成することができます。この画面は、そのアプリケーションで未来に使用するためにTelemetry Viewerに保存されます。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 create_screen("<Target Name>", "<Screen Name>" "<Definition>")
 ```
 
-| Parameter   | Description                              |
-| ----------- | ---------------------------------------- |
-| Target Name | Telemetry screen target name             |
-| Screen Name | Screen name within the specified target  |
-| Definition  | The entire screen definition as a String |
+| パラメータ   | 説明                                |
+| ------------ | ----------------------------------- |
+| Target Name  | テレメトリ画面のターゲット名        |
+| Screen Name  | 指定されたターゲット内の画面名      |
+| Definition   | 画面定義全体を文字列として          |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 screen_def = '
@@ -3630,11 +3624,10 @@ screen_def = '
     END
   END
 '
-# Here we pass in the screen definition as a string
+# ここでは画面定義を文字列として渡します
 create_screen("INST", "LOCAL", screen_def)
 ```
-
-Python Example:
+Python の例：
 
 ```python
 screen_def = '
@@ -3646,30 +3639,30 @@ screen_def = '
     END
   END
 '
-# Here we pass in the screen definition as a string
+# ここでは画面定義を文字列として渡します
 create_screen("INST", "LOCAL", screen_def)
 ```
 
 ### local_screen
 
-Allows you to create a local screen directly from a script which is not permanently saved to the Telemetry Viewer screen list. This is useful for one off screens that help users interact with scripts.
+スクリプトから直接ローカル画面を作成することができます。この画面はTelemetry Viewerの画面リストに永続的に保存されません。これは、スクリプトとのユーザー対話を支援する一度限りの画面に役立ちます。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
-local_screen("<Screen Name>", "<Definition>", <X Position (optional)>, <Y Position (optional)>)
+local_screen("<Screen Name>", "<Definition>", <X Position (オプション)>, <Y Position (オプション)>)
 ```
 
-| Parameter   | Description                                               |
-| ----------- | --------------------------------------------------------- |
-| Screen Name | Screen name within the specified target                   |
-| Definition  | The entire screen definition as a String                  |
-| X Position  | X coordinate for the upper left hand corner of the screen |
-| Y Position  | Y coordinate for the upper left hand corner of the screen |
+| パラメータ   | 説明                                 |
+| ------------ | ------------------------------------ |
+| Screen Name  | 指定されたターゲット内の画面名       |
+| Definition   | 画面定義全体を文字列として           |
+| X Position   | 画面の左上隅のX座標                  |
+| Y Position   | 画面の左上隅のY座標                  |
 
-NOTE: It is possible to specify a X, Y location off the visible display. If you do so and try to re-create the screen it will not display (because it is already displayed). Try issuing a `clear_all_screens()` first to clear any screens off the visible display space.
+注意：表示可能な画面の外にX、Y位置を指定することも可能です。そうして画面を再作成しようとすると表示されません（すでに表示されているため）。まず `clear_all_screens()` を発行して、表示可能な画面スペースから画面をクリアしてみてください。
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 screen_def = '
@@ -3681,11 +3674,11 @@ screen_def = '
     END
   END
 '
-# Here we pass in the screen definition as a string
+# ここでは画面定義を文字列として渡します
 local_screen("TESTING", screen_def, 600, 75)
 ```
 
-Python Example:
+Python の例：
 
 ```python
 screen_def = """
@@ -3697,29 +3690,29 @@ screen_def = """
     END
   END
 """
-# Here we pass in the screen definition as a string
+# ここでは画面定義を文字列として渡します
 local_screen("TESTING", screen_def, 600, 75)
 ```
 
-## Script Runner Scripts
+## Script Runner スクリプト
 
-These methods allow the user to control Script Runner scripts.
+これらのメソッドを使用すると、ユーザーはScript Runnerスクリプトを制御できます。
 
 ### start
 
-Starts execution of another high level test procedure. Script Runner will load the file and immediately start executing it before jumping back to the calling procedure. No parameters can be given to high level test procedures. If parameters are necessary, then consider using a subroutine.
+高レベルテスト手順の実行を開始します。Script Runnerはファイルをロードし、呼び出し元の手順に戻る前に直ちに実行を開始します。高レベルテスト手順にパラメータを渡すことはできません。パラメータが必要な場合は、サブルーチンの使用を検討してください。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 start("<Procedure Filename>")
 ```
 
-| Parameter          | Description                                                                                                                                                                 |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Procedure Filename | Name of the test procedure file. These files are normally in the procedures folder but may be anywhere in the Ruby search path. Additionally, absolute paths are supported. |
+| パラメータ         | 説明                                                                                                                             |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| Procedure Filename | テスト手順ファイルの名前。これらのファイルは通常、proceduresフォルダにありますが、Rubyの検索パスのどこにでも配置できます。さらに、絶対パスもサポートされています。 |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 start("test1.rb")
@@ -3727,19 +3720,19 @@ start("test1.rb")
 
 ### load_utility
 
-Reads in a script file that contains useful subroutines for use in your test procedure. When these subroutines run in ScriptRunner or TestRunner, their lines will be highlighted. If you want to import subroutines but do not want their lines to be highlighted in ScriptRunner or TestRunner, use the standard Ruby 'load' or 'require' statement or Python 'import' statement.
+テスト手順で使用するための便利なサブルーチンを含むスクリプトファイルを読み込みます。これらのサブルーチンがScriptRunnerまたはTestRunnerで実行されると、それらの行が強調表示されます。サブルーチンをインポートしたいが、ScriptRunnerまたはTestRunnerでそれらの行を強調表示したくない場合は、標準のRubyの 'load' または 'require' ステートメント、またはPythonの 'import' ステートメントを使用してください。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 load_utility("TARGET/lib/<Utility Filename>")
 ```
 
-| Parameter        | Description                                                                                                                                                        |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Utility Filename | Name of the script file containing subroutines including the .rb or .py extension. You need to include the full target name and path such as TARGET/lib/utility.rb |
+| パラメータ        | 説明                                                                                                                                     |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Utility Filename  | .rb または .py 拡張子を含むサブルーチンを含むスクリプトファイルの名前。TARGET/lib/utility.rb のような完全なターゲット名とパスを含める必要があります |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 load_utility("TARGET/lib/mode_changes.rb") # Ruby
@@ -3748,9 +3741,9 @@ load_utility("TARGET/lib/mode_changes.py") # Python
 
 ### script_list
 
-Returns all the available files in COSMOS as an array / list. This includes configuration files at every directory level to ensure the user has access to every file. You can filter the list client side to just the 'lib' and or 'procedures' directories if you wish. Note: script names do NOT include '\*' to indicate modified.
+COSMOSで使用可能なすべてのファイルを配列/リストとして返します。これには、ユーザーがすべてのファイルにアクセスできるように、あらゆるディレクトリレベルの設定ファイルが含まれます。必要に応じて、クライアント側でリストを 'lib' や 'procedures' ディレクトリのみにフィルタリングすることができます。注意：スクリプト名には、変更を示す '*' は含まれません。
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 scripts = script_list()
@@ -3759,7 +3752,7 @@ puts scripts.select {|script| script.include?('/lib/') || script.include?('/proc
 # [EXAMPLE/lib/example_interface.rb, INST/lib/example_limits_response.rb, ...]
 ```
 
-Python Example:
+Python の例：
 
 ```python
 scripts = script_list()
@@ -3770,27 +3763,27 @@ print(list(script for script in scripts if '/lib/' in script or '/procedures/' i
 
 ### script_create
 
-Creates a new script with the given contents.
+指定された内容で新しいスクリプトを作成します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 script_create("<Script Name>", "<Script Contents>")
 ```
 
-| Parameter       | Description                                           |
-| --------------- | ----------------------------------------------------- |
-| Script Name     | Full path name of the script starting with the target |
-| Script Contents | Script contents as text                               |
+| パラメータ       | 説明                                             |
+| ---------------- | ------------------------------------------------ |
+| Script Name      | ターゲットから始まるスクリプトの完全なパス名     |
+| Script Contents  | テキストとしてのスクリプトの内容                 |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 contents = 'puts "Hello from Ruby"'
 script_create("INST/procedures/new_script.rb", contents)
 ```
 
-Python Example:
+Python の例：
 
 ```python
 contents = 'print("Hello from Python")'
@@ -3799,26 +3792,26 @@ script_create("INST2/procedures/new_script.py", contents)
 
 ### script_body
 
-Returns the script contents.
+スクリプトの内容を返します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 script_body("<Script Name>")
 ```
 
-| Parameter   | Description                                           |
-| ----------- | ----------------------------------------------------- |
-| Script Name | Full path name of the script starting with the target |
+| パラメータ    | 説明                                           |
+| ------------- | ---------------------------------------------- |
+| Script Name   | ターゲットから始まるスクリプトの完全なパス名   |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 script = script_body("INST/procedures/checks.rb")
 puts script #=> # Display all environment variables\nputs ENV.inspect ...
 ```
 
-Python Example:
+Python の例：
 
 ```python
 script = script_body("INST2/procedures/checks.py")
@@ -3827,19 +3820,19 @@ print(script) #=> # import os\n\n# Display the environment variables ...
 
 ### script_delete
 
-Deletes a script from COSMOS. Note, you can only _really_ delete TEMP scripts and modified scripts. Scripts that are part of an installed COSMOS plugin remain as they were installed.
+COSMOSからスクリプトを削除します。注意：実際に削除できるのはTEMPスクリプトと変更されたスクリプトのみです。インストールされたCOSMOSプラグインの一部であるスクリプトは、インストールされたままの状態を維持します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 script_delete("<Script Name>")
 ```
 
-| Parameter   | Description                                           |
-| ----------- | ----------------------------------------------------- |
-| Script Name | Full path name of the script starting with the target |
+| パラメータ    | 説明                                           |
+| ------------- | ---------------------------------------------- |
+| Script Name   | ターゲットから始まるスクリプトの完全なパス名   |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 script_delete("INST/procedures/checks.rb")
@@ -3847,28 +3840,28 @@ script_delete("INST/procedures/checks.rb")
 
 ### script_run
 
-Runs a script in Script Runner. The script will run in the background and can be opened in Script Runner by selecting Script->Execution Status and then connecting to it.
+Script Runnerでスクリプトを実行します。スクリプトはバックグラウンドで実行され、Script Runnerの「Script->Execution Status」を選択して接続することで開くことができます。
 
-Note: In Enterprise, initialize_offline_access must have been called at least once for the user who calls this method.
+注意：Enterpriseでは、このメソッドを呼び出すユーザーに対して initialize_offline_access が少なくとも1回呼び出されている必要があります。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 script_run("<Script Name>")
 ```
 
-| Parameter   | Description                                           |
-| ----------- | ----------------------------------------------------- |
-| Script Name | Full path name of the script starting with the target |
+| パラメータ    | 説明                                           |
+| ------------- | ---------------------------------------------- |
+| Script Name   | ターゲットから始まるスクリプトの完全なパス名   |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 id = script_run("INST/procedures/checks.rb")
 puts id
 ```
 
-Python Example:
+Python の例：
 
 ```python
 id = script_run("INST2/procedures/checks.py")
@@ -3877,19 +3870,19 @@ print(id)
 
 ### script_lock
 
-Locks a script for editing. Subsequent users that open this script will get a warning that the script is currently locked.
+編集のためにスクリプトをロックします。このスクリプトを後続のユーザーが開くと、スクリプトが現在ロックされているという警告が表示されます。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 script_lock("<Script Name>")
 ```
 
-| Parameter   | Description                                           |
-| ----------- | ----------------------------------------------------- |
-| Script Name | Full path name of the script starting with the target |
+| パラメータ    | 説明                                           |
+| ------------- | ---------------------------------------------- |
+| Script Name   | ターゲットから始まるスクリプトの完全なパス名   |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 script_lock("INST/procedures/checks.rb")
@@ -3897,19 +3890,19 @@ script_lock("INST/procedures/checks.rb")
 
 ### script_unlock
 
-Unlocks a script for editing. If the script was not previously locked this does nothing.
+編集のためにスクリプトのロックを解除します。スクリプトが以前にロックされていなかった場合、何も行いません。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 script_unlock("<Script Name>")
 ```
 
-| Parameter   | Description                                           |
-| ----------- | ----------------------------------------------------- |
-| Script Name | Full path name of the script starting with the target |
+| パラメータ    | 説明                                           |
+| ------------- | ---------------------------------------------- |
+| Script Name   | ターゲットから始まるスクリプトの完全なパス名   |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 script_unlock("INST/procedures/checks.rb")
@@ -3917,26 +3910,26 @@ script_unlock("INST/procedures/checks.rb")
 
 ### script_syntax_check
 
-Performs a Ruby or Python syntax check on the given script.
+指定されたスクリプトに対してRubyまたはPython構文チェックを実行します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 script_syntax_check("<Script Name>")
 ```
 
-| Parameter   | Description                                           |
-| ----------- | ----------------------------------------------------- |
-| Script Name | Full path name of the script starting with the target |
+| パラメータ    | 説明                                           |
+| ------------- | ---------------------------------------------- |
+| Script Name   | ターゲットから始まるスクリプトの完全なパス名   |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 result = script_syntax_check("INST/procedures/checks.rb")
 puts result #=> {"title"=>"Syntax Check Successful", "description"=>"[\"Syntax OK\\n\"]", "success"=>true}
 ```
 
-Python Example:
+Python の例：
 
 ```python
 result = script_syntax_check("INST2/procedures/checks.py")
@@ -3945,26 +3938,26 @@ print(result) #=> {'title': 'Syntax Check Successful', 'description': '["Syntax 
 
 ### script_instrumented
 
-Returns the instrumented script which allows COSMOS Script Runner to monitor the execution and provide line by line visualization. This is primarily a low level debugging method used by COSMOS developers.
+COSMOSスクリプトランナーが実行を監視し、行ごとの視覚化を提供できるようにする計装済みスクリプトを返します。これは主にCOSMOS開発者によって使用される低レベルのデバッグメソッドです。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 script_instrumented("<Script Name>")
 ```
 
-| Parameter   | Description                                           |
-| ----------- | ----------------------------------------------------- |
-| Script Name | Full path name of the script starting with the target |
+| パラメータ    | 説明                                           |
+| ------------- | ---------------------------------------------- |
+| Script Name   | ターゲットから始まるスクリプトの完全なパス名   |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 script = script_instrumented("INST/procedures/checks.rb")
 puts script #=> private; __return_val = nil; begin; RunningScript.instance.script_binding = binding(); ...
 ```
 
-Python Example:
+Python の例：
 
 ```python
 script = script_instrumented("INST2/procedures/checks.py")
@@ -3973,9 +3966,9 @@ print(script) #=> while True:\ntry:\nRunningScript.instance.pre_line_instrumenta
 
 ### script_delete_all_breakpoints
 
-Delete _all_ breakpoints associated with _all_ scripts.
+すべてのスクリプトに関連付けられたすべてのブレークポイントを削除します。
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 script_delete_all_breakpoints()
@@ -3983,9 +3976,9 @@ script_delete_all_breakpoints()
 
 ### step_mode
 
-Places ScriptRunner into step mode where Go must be hit to proceed to the next line.
+ScriptRunnerをステップモードにします。次の行に進むには「Go」をクリックする必要があります。
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 step_mode()
@@ -3993,9 +3986,9 @@ step_mode()
 
 ### run_mode
 
-Places ScriptRunner into run mode where the next line is run automatically.
+ScriptRunnerを実行モードにします。次の行は自動的に実行されます。
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 run_mode()
@@ -4003,9 +3996,9 @@ run_mode()
 
 ### disconnect_script
 
-Puts scripting into disconnect mode. In disconnect mode, commands are not sent to targets, checks are all successful, and waits expire instantly. Requests for telemetry (tlm()) typically return 0. Disconnect mode is useful for dry-running scripts without having connected targets.
+スクリプトを切断モードにします。切断モードでは、コマンドはターゲットに送信されず、すべてのチェックは成功し、待機は即座に期限切れになります。テレメトリのリクエスト（tlm()）は通常0を返します。切断モードは、接続されていないターゲットでスクリプトをドライランするのに役立ちます。
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 disconnect_script()
@@ -4013,15 +4006,15 @@ disconnect_script()
 
 ### running_script_list
 
-List the currently running scripts. Note, this will also include the script which is calling this method. Thus the list will never be empty but will always contain at least 1 item. Returns an array of hashes / list of dicts (see [running_script_get](#running_script_get) for hash / dict contents).
+現在実行中のスクリプトをリストします。注意：このメソッドを呼び出しているスクリプトも含まれます。したがって、リストは決して空にならず、常に少なくとも1つの項目が含まれます。ハッシュの配列/辞書のリストを返します（ハッシュ/辞書の内容については[running_script_get](#running_script_get)を参照）。
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 running_script_list() #=> [{"id"=>5, "scope"=>"DEFAULT", "name"=>"__TEMP__/2025_01_15_13_16_26_210_temp.rb", "user"=>"Anonymous", "start_time"=>"2025-01-15 20:16:52 +0000", "disconnect"=>false, "environment"=>[]}]
 ```
 
-Python Example:
+Python の例：
 
 ```python
 running_script_list() #=> [{'id': 15, 'scope': 'DEFAULT', 'name': 'INST2/procedures/scripting.py', 'user': 'Anonymous', 'start_time': '2025-01-16 17:36:22 +0000', 'disconnect': False, 'environment': []}]
@@ -4029,25 +4022,24 @@ running_script_list() #=> [{'id': 15, 'scope': 'DEFAULT', 'name': 'INST2/procedu
 
 ### running_script_get
 
-Get the currently running script with the specified ID. The information returned is the script ID, scope, name, user, start time, disconnect state, environment variables, hostname, state, line number, and update time.
+指定されたIDで現在実行中のスクリプトを取得します。返される情報は、スクリプトID、スコープ、名前、ユーザー、開始時間、切断状態、環境変数、ホスト名、状態、行番号、更新時間です。
 
-Ruby / Python Syntax:
-
+Ruby / Python 構文：
 ```ruby
 running_script_get("<Script Id>")
 ```
 
-| Parameter | Description                                     |
-| --------- | ----------------------------------------------- |
-| Script Id | Script ID returned by [script_run](#script_run) |
+| パラメータ | 説明                                          |
+| ---------- | --------------------------------------------- |
+| Script Id  | [script_run](#script_run)によって返されるスクリプトID |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 running_script_get(15) #=> {"id"=>15, "scope"=>"DEFAULT", "name"=>"INST/procedures/new_script.rb", "user"=>"Anonymous", "start_time"=>"2025-01-16 00:28:44 +0000", "disconnect"=>false, "environment"=>[], "hostname"=>"ac9dde3c59c1", "state"=>"spawning", "line_no"=>1, "update_time"=>"2025-01-16 00:28:44 +0000"}
 ```
 
-Python Example:
+Python の例：
 
 ```python
 running_script_get(15) #=> {'id': 15, 'scope': 'DEFAULT', 'name': 'INST2/procedures/new_script.py', 'user': 'Anonymous', 'start_time': '2025-01-16 18:04:03 +0000', 'disconnect': False, 'environment': [], 'hostname': 'b84dbcee54ad', 'state': 'running', 'line_no': 3, 'update_time': '2025-01-16T18:04:05.255638Z'}
@@ -4055,19 +4047,19 @@ running_script_get(15) #=> {'id': 15, 'scope': 'DEFAULT', 'name': 'INST2/procedu
 
 ### running_script_stop
 
-Stop the running script with the specified ID. This is equivalent to clicking the Stop button in the Script Runner GUI.
+指定されたIDの実行中のスクリプトを停止します。これはScript Runner GUIの「Stop」ボタンをクリックするのと同じです。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 running_script_stop("<Script Id>")
 ```
 
-| Parameter | Description                                     |
-| --------- | ----------------------------------------------- |
-| Script Id | Script ID returned by [script_run](#script_run) |
+| パラメータ | 説明                                          |
+| ---------- | --------------------------------------------- |
+| Script Id  | [script_run](#script_run)によって返されるスクリプトID |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 running_script_stop(15)
@@ -4075,19 +4067,19 @@ running_script_stop(15)
 
 ### running_script_pause
 
-Pause the running script with the specified ID. This is equivalent to clicking the Pause button in the Script Runner GUI.
+指定されたIDの実行中のスクリプトを一時停止します。これはScript Runner GUIの「Pause」ボタンをクリックするのと同じです。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 running_script_pause("<Script Id>")
 ```
 
-| Parameter | Description                                     |
-| --------- | ----------------------------------------------- |
-| Script Id | Script ID returned by [script_run](#script_run) |
+| パラメータ | 説明                                          |
+| ---------- | --------------------------------------------- |
+| Script Id  | [script_run](#script_run)によって返されるスクリプトID |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 running_script_pause(15)
@@ -4095,19 +4087,19 @@ running_script_pause(15)
 
 ### running_script_retry
 
-Retry the current line of the running script with the specified ID. This is equivalent to clicking the Retry button in the Script Runner GUI.
+指定されたIDの実行中のスクリプトの現在の行を再試行します。これはScript Runner GUIの「Retry」ボタンをクリックするのと同じです。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 running_script_retry("<Script Id>")
 ```
 
-| Parameter | Description                                     |
-| --------- | ----------------------------------------------- |
-| Script Id | Script ID returned by [script_run](#script_run) |
+| パラメータ | 説明                                          |
+| ---------- | --------------------------------------------- |
+| Script Id  | [script_run](#script_run)によって返されるスクリプトID |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 running_script_retry(15)
@@ -4115,39 +4107,38 @@ running_script_retry(15)
 
 ### running_script_go
 
-Unpause the running script with the specified ID. This is equivalent to clicking the Go button in the Script Runner GUI.
+指定されたIDの実行中のスクリプトの一時停止を解除します。これはScript Runner GUIの「Go」ボタンをクリックするのと同じです。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 running_script_go("<Script Id>")
 ```
 
-| Parameter | Description                                     |
-| --------- | ----------------------------------------------- |
-| Script Id | Script ID returned by [script_run](#script_run) |
+| パラメータ | 説明                                          |
+| ---------- | --------------------------------------------- |
+| Script Id  | [script_run](#script_run)によって返されるスクリプトID |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 running_script_go(15)
 ```
-
 ### running_script_step
 
-Step the running script with the specified ID. This is equivalent to clicking the Step button in the Script Runner GUI's Debug window.
+指定されたIDの実行中のスクリプトをステップ実行します。これはScript Runner GUIのDebugウィンドウの「Step」ボタンをクリックするのと同じです。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 running_script_step("<Script Id>")
 ```
 
-| Parameter | Description                                     |
-| --------- | ----------------------------------------------- |
-| Script Id | Script ID returned by [script_run](#script_run) |
+| パラメータ | 説明                                          |
+| ---------- | --------------------------------------------- |
+| Script Id  | [script_run](#script_run)によって返されるスクリプトID |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 running_script_step(15)
@@ -4155,19 +4146,19 @@ running_script_step(15)
 
 ### running_script_delete
 
-Force quit the running script with the specified ID. This is equivalent to clicking the Delete button under the Running Scripts in the Script Runner GUI's Script -> Execution Status pane. Note, the 'stop' signal is first sent to the specified script and then the script is forcibly removed. Normally you should use the [running_script_stop](#running_script_stop) method.
+指定されたIDの実行中のスクリプトを強制終了します。これはScript Runner GUIのScript -> Execution Statusページの「Running Scripts」の下にある「Delete」ボタンをクリックするのと同じです。注意：まず「stop」信号が指定されたスクリプトに送信され、その後スクリプトが強制的に削除されます。通常は[running_script_stop](#running_script_stop)メソッドを使用する必要があります。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 running_script_delete("<Script Id>")
 ```
 
-| Parameter | Description                                     |
-| --------- | ----------------------------------------------- |
-| Script Id | Script ID returned by [script_run](#script_run) |
+| パラメータ | 説明                                          |
+| ---------- | --------------------------------------------- |
+| Script Id  | [script_run](#script_run)によって返されるスクリプトID |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 running_script_delete(15)
@@ -4175,39 +4166,39 @@ running_script_delete(15)
 
 ### completed_script_list
 
-List the completed scripts. Returns an array of hashes / list of dicts containing the id, username, script name, script log, and start time.
+完了したスクリプトをリストします。id、ユーザー名、スクリプト名、スクリプトログ、開始時間を含むハッシュの配列/辞書のリストを返します。
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 completed_script_list() #=> [{"id"=>"15", "user"=>"Anonymous", "name"=>"__TEMP__/2025_01_15_17_07_51_568_temp.rb", "log"=>"DEFAULT/tool_logs/sr/20250116/2025_01_16_00_28_43_sr_2025_01_15_17_07_51_568_temp.txt", "start"=>"2025-01-16 00:28:43 +0000"}, ...]
 ```
 
-Python Example:
+Python の例：
 
 ```ruby
 completed_script_list() #=> [{'id': 16, 'user': 'Anonymous', 'name': 'INST2/procedures/new_script.py', 'log': 'DEFAULT/tool_logs/sr/20250116/2025_01_16_17_46_22_sr_new_script.txt', 'start': '2025-01-16 17:46:22 +0000'}, ...]
 ```
 
-## Script Runner Settings
+## Script Runner 設定
 
-These methods allow the user to control various Script Runner settings.
+これらのメソッドを使用すると、ユーザーはさまざまなScript Runner設定を制御できます。
 
 ### set_line_delay
 
-This method sets the line delay in script runner.
+このメソッドはスクリプトランナーの行遅延を設定します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 set_line_delay(<Delay>)
 ```
 
-| Parameter | Description                                                                                                   |
-| --------- | ------------------------------------------------------------------------------------------------------------- |
-| Delay     | The amount of time script runner will wait between lines when executing a script, in seconds. Should be ≥ 0.0 |
+| パラメータ | 説明                                                                           |
+| ---------- | ------------------------------------------------------------------------------ |
+| Delay      | スクリプトを実行するときにスクリプトランナーが行間で待機する時間（秒）。 ≥ 0.0でなければなりません |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 set_line_delay(0.0)
@@ -4215,9 +4206,9 @@ set_line_delay(0.0)
 
 ### get_line_delay
 
-The method gets the line delay that script runner is currently using.
+このメソッドはスクリプトランナーが現在使用している行遅延を取得します。
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 curr_line_delay = get_line_delay()
@@ -4225,19 +4216,18 @@ curr_line_delay = get_line_delay()
 
 ### set_max_output
 
-This method sets the maximum number of characters to display in Script Runner output before truncating. Default is 50,000 characters.
+このメソッドは、切り捨てる前にScript Runner出力に表示する最大文字数を設定します。デフォルトは50,000文字です。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 set_max_output(<Characters>)
 ```
+| パラメータ  | 説明                                |
+| ----------- | ----------------------------------- |
+| Characters  | 切り捨てる前に出力する文字数        |
 
-| Parameter  | Description                                      |
-| ---------- | ------------------------------------------------ |
-| Characters | Number of characters to output before truncating |
-
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 set_max_output(100)
@@ -4245,9 +4235,9 @@ set_max_output(100)
 
 ### get_max_output
 
-The method gets the maximum number of characters to display in Script Runner output before truncating. Default is 50,000 characters.
+このメソッドは、切り捨てる前にScript Runner出力に表示する最大文字数を取得します。デフォルトは50,000文字です。
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 print(get_max_output()) #=> 50000
@@ -4255,40 +4245,40 @@ print(get_max_output()) #=> 50000
 
 ### disable_instrumentation
 
-Disables instrumentation for a block of code (line highlighting and exception catching). This is especially useful for speeding up loops that are very slow if lines are instrumented.
-Consider breaking code like this into a separate file and using either require/load to read the file for the same effect while still allowing errors to be caught by your script.
+コードブロックの計装（行の強調表示と例外のキャッチ）を無効にします。これは特に、行が計装されていると非常に遅くなるループを高速化するのに役立ちます。
+このようなコードを別のファイルに分割して、require/loadを使用してファイルを読み込むことで、同じ効果を得ながらスクリプトでエラーをキャッチできるようにすることを検討してください。
 
-:::warning Use with Caution
-Disabling instrumentation will cause any error that occurs while disabled to cause your script to completely stop.
+:::warning 注意して使用してください
+計装を無効にすると、無効中に発生したエラーによって、スクリプトが完全に停止します。
 :::
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 disable_instrumentation do
   1000.times do
-    # Don't want this to have to highlight 1000 times
+    # 1000回強調表示する必要がないようにする
   end
 end
 ```
 
-Python Example:
+Python の例：
 
 ```python
 with disable_instrumentation():
     for x in range(1000):
-        # Don't want this to have to highlight 1000 times
+        # 1000回強調表示する必要がないようにする
 ```
 
-## Script Runner Suites
+## Script Runner スイート
 
-Creating Script Runner suites utilizes APIs to add groups to the defined suites. For more information please see [running script suites](../tools/script-runner.md#running-script-suites).
+Script Runnerスイートの作成には、定義されたスイートにグループを追加するAPIを利用します。詳細については[スクリプトスイートの実行](../tools/script-runner.md#running-script-suites)を参照してください。
 
 ### add_group, add_group_setup, add_group_teardown, add_script
 
-Adds a group's methods to the suite. The add_group method adds all the group methods including setup, teardown, and all the methods starting with 'script\_' or 'test\_'. The add_group_setup method adds just the setup method defined in the group class. The add_group_teardown method adds just the teardown method defined in the group class. The add_script method adds an individual method to the suite. NOTE: add_script can add any method including those not named with 'script\_' or 'test\_'.
+グループのメソッドをスイートに追加します。add_groupメソッドは、setup、teardown、および 'script\_' または 'test\_' で始まるすべてのメソッドを含むグループメソッド全体を追加します。add_group_setupメソッドは、グループクラスで定義されたsetupメソッドのみを追加します。add_group_teardownメソッドは、グループクラスで定義されたteardownメソッドのみを追加します。add_scriptメソッドは、個々のメソッドをスイートに追加します。注意：add_scriptは、'script\_' または 'test\_' という名前が付いていないメソッドを含む任意のメソッドを追加できます。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 add_group(<Group Class>)
@@ -4297,30 +4287,30 @@ add_group_teardown(<Group Class>)
 add_script(<Group Class>, <Method>)
 ```
 
-| Parameter   | Description                                                                                                                                                                               |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Group Class | Name of the previously defined class which inherits from the OpenC3 Group class. The Ruby API passes a String with the name of the group. The Python API passes the Group class directly. |
-| Method      | Name of the method in the OpenC3 Group class. The Ruby API passes a String with the name of the method. The Python API passes the Group class directly.                                   |
+| パラメータ   | 説明                                                                                                                                                                 |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Group Class  | OpenC3 Groupクラスを継承する、以前に定義されたクラスの名前。Ruby APIはグループの名前を持つ文字列を渡します。Python APIはGroupクラスを直接渡します。                 |
+| Method       | OpenC3 Groupクラスのメソッドの名前。Ruby APIはメソッドの名前を持つ文字列を渡します。Python APIはGroupクラスを直接渡します。                                         |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 load 'openc3/script/suite.rb'
 
 class ExampleGroup < OpenC3::Group
   def script_1
-    # Insert test code here ...
+    # テストコードをここに挿入...
   end
 end
 class WrapperGroup < OpenC3::Group
   def setup
-    # Insert test code here ...
+    # テストコードをここに挿入...
   end
   def my_method
-    # Insert test code here ...
+    # テストコードをここに挿入...
   end
   def teardown
-    # Insert test code here ...
+    # テストコードをここに挿入...
   end
 end
 
@@ -4335,7 +4325,7 @@ class MySuite < OpenC3::Suite
 end
 ```
 
-Python Example:
+Python の例：
 
 ```python
 from openc3.script import *
@@ -4343,17 +4333,17 @@ from openc3.script.suite import Group, Suite
 
 class ExampleGroup(Group):
     def script_1(self):
-        # Insert test code here ...
+        # テストコードをここに挿入...
         pass
 class WrapperGroup(Group):
     def setup(self):
-        # Insert test code here ...
+        # テストコードをここに挿入...
         pass
     def my_method(self):
-        # Insert test code here ...
+        # テストコードをここに挿入...
         pass
     def teardown(self):
-        # Insert test code here ...
+        # テストコードをここに挿入...
         pass
 class MySuite(Suite):
     def __init__(self):
@@ -4364,22 +4354,22 @@ class MySuite(Suite):
         self.add_group_teardown(WrapperGroup)
 ```
 
-## Timelines
+## タイムライン
 
-The Timelines API allows you to manipulate Calendar timelines. Calendar is a COSMOS Enterprise tool.
+タイムラインAPIを使用すると、カレンダータイムラインを操作できます。カレンダーはCOSMOS Enterpriseツールです。
 
 ### list_timelines
 
-Returns all the timelines in an array of hashes / list of dicts.
+すべてのタイムラインをハッシュの配列/辞書のリストとして返します。
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 timelines = list_timelines() #=>
 # [{"name"=>"Mine", "color"=>"#e67643", "execute"=>true, "shard"=>0, "scope"=>"DEFAULT", "updated_at"=>1737124024123643504}]
 ```
 
-Python Example:
+Python の例：
 
 ```python
 timelihes = list_timelines() #=>
@@ -4388,33 +4378,32 @@ timelihes = list_timelines() #=>
 
 ### create_timeline
 
-Create a new timeline in Calendar which can hold activities.
+アクティビティを保持できるカレンダーに新しいタイムラインを作成します。
 
-Ruby Syntax:
+Ruby 構文：
 
 ```ruby
 create_timeline(name, color: nil)
 ```
 
-Python Syntax:
+Python 構文：
 
 ```python
 create_timeline(name, color=None)
 ```
 
-| Parameter | Description                                                                                   |
-| --------- | --------------------------------------------------------------------------------------------- |
-| name      | Name of the timeline                                                                          |
-| color     | Color of the timeline. Must be given as a hex value, e.g. #FF0000. Default is a random color. |
+| パラメータ | 説明                                                                                |
+| ---------- | ----------------------------------------------------------------------------------- |
+| name       | タイムラインの名前                                                                  |
+| color      | タイムラインの色。16進値として指定する必要があります（例：#FF0000）。デフォルトはランダムな色です。 |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 tl = create_timeline("Mine") #=>
 # {"name"=>"Mine", "color"=>"#e67643", "execute"=>true, "shard"=>0, "scope"=>"DEFAULT", "updated_at"=>1737124024123643504}
 ```
-
-Python Example:
+Python の例：
 
 ```python
 tl = create_timeline("Other", color="#FF0000") #=>
@@ -4423,26 +4412,26 @@ tl = create_timeline("Other", color="#FF0000") #=>
 
 ### get_timeline
 
-Get information about an existing timeline.
+既存のタイムラインに関する情報を取得します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 get_timeline(name)
 ```
 
-| Parameter | Description          |
-| --------- | -------------------- |
-| name      | Name of the timeline |
+| パラメータ | 説明               |
+| ---------- | ------------------ |
+| name       | タイムラインの名前 |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 tl = get_timeline("Mine") #=>
 # {"name"=>"Mine", "color"=>"#e67643", "execute"=>true, "shard"=>0, "scope"=>"DEFAULT", "updated_at"=>1737124024123643504}
 ```
 
-Python Example:
+Python の例：
 
 ```python
 tl = get_timeline("Other") #=>
@@ -4451,20 +4440,20 @@ tl = get_timeline("Other") #=>
 
 ### set_timeline_color
 
-Set the displayed color for an existing timeline.
+既存のタイムラインの表示色を設定します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 set_timeline_color(name, color)
 ```
 
-| Parameter | Description                                                        |
-| --------- | ------------------------------------------------------------------ |
-| name      | Name of the timeline                                               |
-| color     | Color of the timeline. Must be given as a hex value, e.g. #FF0000. |
+| パラメータ | 説明                                                        |
+| ---------- | ----------------------------------------------------------- |
+| name       | タイムラインの名前                                          |
+| color      | タイムラインの色。16進値として指定する必要があります（例：#FF0000）。 |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 set_timeline_color("Mine", "#4287f5")
@@ -4472,32 +4461,32 @@ set_timeline_color("Mine", "#4287f5")
 
 ### delete_timeline
 
-Delete an existing timeline. Timelines with activities can only be deleted by passing force = true.
+既存のタイムラインを削除します。アクティビティを持つタイムラインは、force = true を渡すことでのみ削除できます。
 
-Ruby Syntax:
+Ruby 構文：
 
 ```ruby
 delete_timeline(name, force: false)
 ```
 
-Python Syntax:
+Python 構文：
 
 ```python
 delete_timeline(name, force=False)
 ```
 
-| Parameter | Description                                                            |
-| --------- | ---------------------------------------------------------------------- |
-| name      | Name of the timeline                                                   |
-| force     | Whether to delete the timeline if it has activities. Default is false. |
+| パラメータ | 説明                                                               |
+| ---------- | ------------------------------------------------------------------ |
+| name       | タイムラインの名前                                                 |
+| force      | タイムラインにアクティビティがある場合に削除するかどうか。デフォルトは false です。 |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 delete_timeline("Mine", force: true)
 ```
 
-Python Example:
+Python の例：
 
 ```python
 delete_timeline("Other", force=True)
@@ -4505,29 +4494,28 @@ delete_timeline("Other", force=True)
 
 ### create_timeline_activity
 
-Create an activity on an existing timeline. Activities can be one of COMMAND, SCRIPT, or RESERVE. Activities have a start and stop time and commands and scripts take data on the command or script to execute.
+既存のタイムラインにアクティビティを作成します。アクティビティは COMMAND、SCRIPT、または RESERVE のいずれかです。アクティビティには開始時間と終了時間があり、コマンドとスクリプトは実行するコマンドまたはスクリプトに関するデータを取ります。
 
-Ruby Syntax:
+Ruby 構文：
 
 ```ruby
 create_timeline_activity(name, kind:, start:, stop:, data: {})
 ```
-
-Python Syntax:
+Python 構文：
 
 ```python
 create_timeline_activity(name, kind, start, stop, data={})
 ```
 
-| Parameter | Description                                                                   |
-| --------- | ----------------------------------------------------------------------------- |
-| name      | Name of the timeline                                                          |
-| kind      | Type of the activity. One of COMMAND, SCRIPT, or RESERVE.                     |
-| start     | Start time of the activity. Time / datetime instance.                         |
-| stop      | Stop time of the activity. Time / datetime instance.                          |
-| data      | Hash / dict of data for COMMAND or SCRIPT type. Default is empty hash / dict. |
+| パラメータ | 説明                                                                 |
+| ---------- | -------------------------------------------------------------------- |
+| name       | タイムラインの名前                                                   |
+| kind       | アクティビティの種類。COMMAND、SCRIPT、またはRESERVEのいずれか。     |
+| start      | アクティビティの開始時間。Time / datetimeインスタンス。              |
+| stop       | アクティビティの終了時間。Time / datetimeインスタンス。              |
+| data       | COMMANDまたはSCRIPT型のデータのハッシュ/辞書。デフォルトは空のハッシュ/辞書です。 |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 now = Time.now()
@@ -4552,7 +4540,7 @@ act = create_timeline_activity("RubyTL", kind: "SCRIPT", start: start, stop: sto
 #   "events"=>[{"time"=>1737128791, "event"=>"created"}], "recurring"=>{}}
 ```
 
-Python Example:
+Python の例：
 
 ```python
 now = datetime.now(timezone.utc)
@@ -4581,21 +4569,21 @@ act = create_timeline_activity("PythonTL", kind="SCRIPT", start=start, stop=stop
 
 ### get_timeline_activity
 
-Get an existing timeline activity.
+既存のタイムラインアクティビティを取得します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 get_timeline_activity(name, start, uuid)
 ```
 
-| Parameter | Description                                           |
-| --------- | ----------------------------------------------------- |
-| name      | Name of the timeline                                  |
-| start     | Start time of the activity. Time / datetime instance. |
-| uuid      | UUID of the activity                                  |
+| パラメータ | 説明                                            |
+| ---------- | ----------------------------------------------- |
+| name       | タイムラインの名前                              |
+| start      | アクティビティの開始時間。Time / datetimeインスタンス。 |
+| uuid       | アクティビティのUUID                            |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 act = get_timeline_activity("RubyTL", 1737132303, "cdb661b4-a65b-44e7-95e2-5e1dba80c782") #=>
@@ -4605,7 +4593,7 @@ act = get_timeline_activity("RubyTL", 1737132303, "cdb661b4-a65b-44e7-95e2-5e1db
 #   "events"=>[{"time"=>1737128761, "event"=>"created"}], "recurring"=>{}}
 ```
 
-Python Example:
+Python の例：
 
 ```python
 act = get_timeline_activity("PythonTL", 1737133108, "cddbf034-ccdd-4c36-91c2-2653a39b06a5") #=>
@@ -4617,35 +4605,35 @@ act = get_timeline_activity("PythonTL", 1737133108, "cddbf034-ccdd-4c36-91c2-265
 
 ### get_timeline_activities
 
-Get a range of timeline activities between start and stop time. If called without a start / stop time it defaults to 1 week before "now" up to 1 week from "now" (2 weeks total).
+開始時間と終了時間の間のタイムラインアクティビティの範囲を取得します。開始/終了時間なしで呼び出された場合、デフォルトは「現在」の1週間前から「現在」の1週間後までです（合計2週間）。
 
-Ruby Syntax:
+Ruby 構文：
 
 ```ruby
 get_timeline_activities(name, start: nil, stop: nil, limit: nil)
 ```
 
-Python Syntax:
+Python 構文：
 
 ```python
 get_timeline_activities(name, start=None, stop=None, limit=None)
 ```
 
-| Parameter | Description                                                                         |
-| --------- | ----------------------------------------------------------------------------------- |
-| name      | Name of the timeline                                                                |
-| start     | Start time of the activities. Time / datetime instance. Defaults to 7 days ago.     |
-| stop      | Stop time of the activities. Time / datetime instance. Defaults to 7 days from now. |
-| limit     | Maximum number of activities to return. Default is 1 per minute of the time range.  |
+| パラメータ | 説明                                                                    |
+| ---------- | ----------------------------------------------------------------------- |
+| name       | タイムラインの名前                                                      |
+| start      | アクティビティの開始時間。Time / datetimeインスタンス。デフォルトは7日前。  |
+| stop       | アクティビティの終了時間。Time / datetimeインスタンス。デフォルトは今から7日後。 |
+| limit      | 返すアクティビティの最大数。デフォルトは時間範囲の1分あたり1つです。   |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 acts = get_timeline_activities("RubyTL", start: Time.now() - 3600, stop: Time.now(), limit: 1000) #=>
 # [{ "name"=>"RubyTL", ... }, { "name"=>"RubyTL", ... }]
 ```
 
-Python Example:
+Python の例：
 
 ```python
 now = datetime.now(timezone.utc)
@@ -4655,83 +4643,82 @@ acts = get_timeline_activities("PythonTL", start=now - timedelta(hours=2), stop=
 
 ### delete_timeline_activity
 
-Delete an existing timeline activity.
+既存のタイムラインアクティビティを削除します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 delete_timeline_activity(name, start, uuid)
 ```
 
-| Parameter | Description                                           |
-| --------- | ----------------------------------------------------- |
-| name      | Name of the timeline                                  |
-| start     | Start time of the activity. Time / datetime instance. |
-| uuid      | UUID of the activity                                  |
+| パラメータ | 説明                                            |
+| ---------- | ----------------------------------------------- |
+| name       | タイムラインの名前                              |
+| start      | アクティビティの開始時間。Time / datetimeインスタンス。 |
+| uuid       | アクティビティのUUID                            |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 delete_timeline_activity("RubyTL", 1737132303, "cdb661b4-a65b-44e7-95e2-5e1dba80c782")
 ```
 
-Python Example:
+Python の例：
 
 ```python
 delete_timeline_activity("PythonTL", 1737133108, "cddbf034-ccdd-4c36-91c2-2653a39b06a5")
 ```
 
-## Metadata
+## メタデータ
 
-Metadata allows you to mark the regular target / packet data logged in COSMOS with your own fields. This metadata can then be searched and used to filter data when using other COSMOS tools.
+メタデータを使用すると、COSMOSに記録された通常のターゲット/パケットデータに独自のフィールドをマークできます。このメタデータは、他のCOSMOSツールを使用する際に検索したり、データをフィルタリングしたりするために使用できます。
 
 ### metadata_all
 
-Returns all the metadata that was previously set
+以前に設定されたすべてのメタデータを返します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 metadata_all()
 ```
 
-| Parameter | Description                                         |
-| --------- | --------------------------------------------------- |
-| limit     | Amount of metadata items to return. Default is 100. |
+| パラメータ | 説明                                         |
+| ---------- | -------------------------------------------- |
+| limit      | 返すメタデータ項目の数。デフォルトは100です。 |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 metadata_all(limit: 500)
 ```
 
-Python Example:
+Python の例：
 
 ```python
 metadata_all(limit='500')
 ```
 
 ### metadata_get
+以前に設定されたメタデータを返します
 
-Returns metadata that was previously set
-
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 metadata_get(start)
 ```
 
-| Parameter | Description                                                                       |
-| --------- | --------------------------------------------------------------------------------- |
-| start     | Named parameter, time at which to retrieve metadata as integer seconds from epoch |
+| パラメータ | 説明                                                                     |
+| ---------- | ------------------------------------------------------------------------ |
+| start      | 名前付きパラメータ、エポックからの整数秒としてメタデータを取得する時間  |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 metadata_get(start: 500)
 ```
 
-Python Example:
+Python の例：
 
 ```python
 metadata_get(start='500')
@@ -4739,28 +4726,28 @@ metadata_get(start='500')
 
 ### metadata_set
 
-Returns metadata that was previously set
+以前に設定されたメタデータを返します
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 metadata_set(<Metadata>, start, color)
 ```
 
-| Parameter | Description                                                                     |
-| --------- | ------------------------------------------------------------------------------- |
-| Metadata  | Hash or dict of key value pairs to store as metadata.                           |
-| start     | Named parameter, time at which to store metadata. Default is now.               |
-| color     | Named parameter, color to display metadata in the calendar. Default is #003784. |
+| パラメータ | 説明                                                                    |
+| ---------- | ----------------------------------------------------------------------- |
+| Metadata   | メタデータとして保存するキーと値のペアのハッシュまたは辞書。           |
+| start      | 名前付きパラメータ、メタデータを保存する時間。デフォルトは現在です。   |
+| color      | 名前付きパラメータ、カレンダーにメタデータを表示する色。デフォルトは #003784 です。 |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 metadata_set({ 'key' => 'value' })
 metadata_set({ 'key' => 'value' }, color: '#ff5252')
 ```
 
-Python Example:
+Python の例：
 
 ```python
 metadata_set({ 'key': 'value' })
@@ -4769,27 +4756,27 @@ metadata_set({ 'key': 'value' }, color='ff5252')
 
 ### metadata_update
 
-Updates metadata that was previously set
+以前に設定されたメタデータを更新します
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 metadata_update(<Metadata>, start, color)
 ```
 
-| Parameter | Description                                                                     |
-| --------- | ------------------------------------------------------------------------------- |
-| Metadata  | Hash or dict of key value pairs to update as metadata.                          |
-| start     | Named parameter, time at which to update metadata. Default is latest metadata.  |
-| color     | Named parameter, color to display metadata in the calendar. Default is #003784. |
+| パラメータ | 説明                                                                     |
+| ---------- | ------------------------------------------------------------------------ |
+| Metadata   | メタデータとして更新するキーと値のペアのハッシュまたは辞書。            |
+| start      | 名前付きパラメータ、メタデータを更新する時間。デフォルトは最新のメタデータです。 |
+| color      | 名前付きパラメータ、カレンダーにメタデータを表示する色。デフォルトは #003784 です。 |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 metadata_update({ 'key' => 'value' })
 ```
 
-Python Example:
+Python の例：
 
 ```python
 metadata_update({ 'key': 'value' })
@@ -4797,29 +4784,28 @@ metadata_update({ 'key': 'value' })
 
 ### metadata_input
 
-Prompts the user to set existing metadata values or create new a new one.
+ユーザーに既存のメタデータ値を設定するか、新しい値を作成するように促します。
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 metadata_input()
 ```
 
-## Settings
+## 設定
 
-COSMOS has several settings typically accessed through the Admin Settings tab. These APIs allow programmatic access to those same settings.
+COSMOSには、通常、Admin Settingsタブを通じてアクセスされるいくつかの設定があります。これらのAPIを使用すると、同じ設定にプログラムでアクセスできます。
 
 ### list_settings
 
-Return all the current COSMOS setting name. These are the names that should be used in the other APIs.
-
-Ruby Example:
+現在のCOSMOS設定名をすべて返します。これらは他のAPIで使用する名前です。
+Ruby の例：
 
 ```ruby
 puts list_settings() #=> ["pypi_url", "rubygems_url", "source_url", "version"]
 ```
 
-Python Example:
+Python の例：
 
 ```python
 print(list_settings()) #=> ['pypi_url', 'rubygems_url', 'source_url', 'version']
@@ -4827,9 +4813,9 @@ print(list_settings()) #=> ['pypi_url', 'rubygems_url', 'source_url', 'version']
 
 ### get_all_settings
 
-Return all the current COSMOS settings along with their values.
+現在のCOSMOS設定とその値をすべて返します。
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 settings = get_all_settings() #=>
@@ -4839,7 +4825,7 @@ settings = get_all_settings() #=>
 #   "source_url"=>{"name"=>"source_url", "data"=>"https://github.com/OpenC3/cosmos", "updated_at"=>1698026776573904132} }
 ```
 
-Python Example:
+Python の例：
 
 ```python
 settings = get_all_settings() #=>
@@ -4851,27 +4837,27 @@ settings = get_all_settings() #=>
 
 ### get_setting, get_settings
 
-Return the data from the given COSMOS setting. Returns nil (Ruby) or None (Python) if the setting does not exist.
+指定されたCOSMOS設定からデータを返します。設定が存在しない場合は、nil（Ruby）またはNone（Python）を返します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 get_setting(<Setting Name>)
 get_settings(<Setting Name1>, <Setting Name2>, ...)
 ```
 
-| Parameter    | Description                   |
-| ------------ | ----------------------------- |
-| Setting Name | Name of the setting to return |
+| パラメータ    | 説明                      |
+| ------------- | ------------------------- |
+| Setting Name  | 返す設定の名前            |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 setting = get_setting('version') #=> "5.11.4-beta0"
 setting = get_settings('version', 'rubygems_url') #=> ["5.11.4-beta0", "https://rubygems.org"]
 ```
 
-Python Example:
+Python の例：
 
 ```python
 setting = get_setting('version') #=> '5.11.4-beta0'
@@ -4880,50 +4866,49 @@ setting = get_setting('version', 'rubygems_url') #=> ['5.11.4-beta0', 'https://r
 
 ### set_setting
 
-Sets the given setting value.
+指定された設定値を設定します。
 
-:::note Admin Passwork Required
-This API is only accessible externally (not within Script Runner) and requires the admin password.
+:::note 管理者パスワードが必要
+このAPIは外部からのみアクセス可能（Script Runner内ではない）で、管理者パスワードが必要です。
 :::
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 set_setting(<Setting Name>, <Setting Value>)
 ```
 
-| Parameter     | Description                   |
-| ------------- | ----------------------------- |
-| Setting Name  | Name of the setting to change |
-| Setting Value | Setting value to set          |
+| パラメータ     | 説明                      |
+| -------------- | ------------------------- |
+| Setting Name   | 変更する設定の名前        |
+| Setting Value  | 設定する値                |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 set_setting('rubygems_url', 'https://mygemserver')
 ```
 
-Python Example:
+Python の例：
 
 ```python
 set_setting('pypi_url', 'https://mypypiserver')
 ```
 
-## Configuration
+## 構成
 
-Many COSMOS tools have the ability to load and save a configuration. These APIs allow you to programmatically load and save the configuration.
-
+多くのCOSMOSツールには、構成をロードして保存する機能があります。これらのAPIを使用すると、構成をプログラムでロードして保存できます。
 ### config_tool_names
 
-List all the configuration tool names which are used as the first parameter in the other APIs.
+他のAPIの最初のパラメータとして使用されるすべての構成ツール名をリストします。
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 names = config_tool_names() #=> ["telemetry_grapher", "data_viewer"]
 ```
 
-Python Example:
+Python の例：
 
 ```python
 names = config_tool_names() #=> ['telemetry_grapher', 'data_viewer']
@@ -4931,25 +4916,25 @@ names = config_tool_names() #=> ['telemetry_grapher', 'data_viewer']
 
 ### list_configs
 
-List all the saved configuration names under the given tool name.
+指定されたツール名の下に保存されているすべての構成名をリストします。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 list_configs(<Tool Name>)
 ```
 
-| Parameter | Description                                           |
-| --------- | ----------------------------------------------------- |
-| Tool Name | Name of the tool to retrieve configuration names from |
+| パラメータ | 説明                                |
+| ---------- | ----------------------------------- |
+| Tool Name  | 構成名を取得するツールの名前        |
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 configs = list_configs('telemetry_grapher') #=> ['adcs', 'temps']
 ```
 
-Python Example:
+Python の例：
 
 ```python
 configs = list_configs('telemetry_grapher') #=> ['adcs', 'temps']
@@ -4957,24 +4942,24 @@ configs = list_configs('telemetry_grapher') #=> ['adcs', 'temps']
 
 ### load_config
 
-Load a particular tool configuration.
+特定のツール構成をロードします。
 
-:::note Tool Configuration
-Tool configurations are not fully documented and subject to change between releases. Only modify values returned by load_config and do not change any keys.
+:::note ツール構成
+ツール構成は完全に文書化されておらず、リリース間で変更される可能性があります。load_configによって返される値のみを変更し、キーは変更しないでください。
 :::
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 load_config(<Tool Name>, <Configuration Name>)
 ```
 
-| Parameter          | Description               |
-| ------------------ | ------------------------- |
-| Tool Name          | Name of the tool          |
-| Configuration Name | Name of the configuration |
+| パラメータ          | 説明               |
+| ------------------- | ------------------ |
+| Tool Name           | ツールの名前       |
+| Configuration Name  | 構成の名前         |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 config = load_config('telemetry_grapher', 'adcs') #=>
@@ -4989,21 +4974,21 @@ config = load_config('telemetry_grapher', 'adcs') #=>
 
 ### save_config
 
-Save a particular tool configuration.
+特定のツール構成を保存します。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 save_config(<Tool Name>, <Configuration Name>, local_mode)
 ```
 
-| Parameter          | Description                                     |
-| ------------------ | ----------------------------------------------- |
-| Tool Name          | Name of the tool                                |
-| Configuration Name | Name of the configuration                       |
-| local_mode         | Whether to save the configuration in local mode |
+| パラメータ          | 説明                                       |
+| ------------------- | ------------------------------------------ |
+| Tool Name           | ツールの名前                               |
+| Configuration Name  | 構成の名前                                 |
+| local_mode          | 構成をローカルモードで保存するかどうか     |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 save_config('telemetry_grapher', 'adcs', config)
@@ -5011,62 +4996,60 @@ save_config('telemetry_grapher', 'adcs', config)
 
 ### delete_config
 
-Delete a particular tool configuration.
-
-Ruby / Python Syntax:
+特定のツール構成を削除します。
+Ruby / Python 構文：
 
 ```ruby
 delete_config(<Tool Name>, <Configuration Name>, local_mode)
 ```
 
-| Parameter          | Description                                       |
-| ------------------ | ------------------------------------------------- |
-| Tool Name          | Name of the tool                                  |
-| Configuration Name | Name of the configuration                         |
-| local_mode         | Whether to delete the configuration in local mode |
+| パラメータ          | 説明                                         |
+| ------------------- | -------------------------------------------- |
+| Tool Name           | ツールの名前                                 |
+| Configuration Name  | 構成の名前                                   |
+| local_mode          | 構成をローカルモードで削除するかどうか       |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 delete_config('telemetry_grapher', 'adcs')
 ```
 
-## Offline Access
+## オフラインアクセス
 
-An offline access token is required to execute scripts in COSMOS Enterprise. These methods support client side creation, testing, and
-setting of the offline_access_token.
+COSMOS Enterpriseでスクリプトを実行するには、オフラインアクセストークンが必要です。これらのメソッドは、offline_access_tokenのクライアント側での作成、テスト、および設定をサポートします。
 
 ### initialize_offline_access
 
-Creates and sets the offline access token for the user. Note: calling this method is required before executing any api methods that require an offline access token like script_run (Enterprise Only). This method must be called OUTSIDE of ScriptRunner as it is needed in order to start a script in the first place.
+ユーザー用のオフラインアクセストークンを作成して設定します。注意：このメソッドは、script_run（Enterprise限定）のようなオフラインアクセストークンを必要とするAPIメソッドを実行する前に呼び出す必要があります。このメソッドは、最初にスクリプトを開始するために必要なため、ScriptRunnerの外部で呼び出す必要があります。
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
-# First setup environment variables. See examples/external_script.rb
+# 最初に環境変数を設定します。examples/external_script.rbを参照してください
 initialize_offline_access()
 script_run("INST/procedures/collect.rb")
 ```
 
-Python Example:
+Python の例：
 
 ```python
-# First setup environment variables. See examples/external_script.py
+# 最初に環境変数を設定します。examples/external_script.pyを参照してください
 initialize_offline_access()
 script_run("INST2/procedures/collect.py")
 ```
 
 ### offline_access_needed
 
-Returns true if the user needs to generate an offline access token. Note this will only be true if the user is at least authorized to view scripts, otherwise it will always be false if script_view permission is not available for the user.
+ユーザーがオフラインアクセストークンを生成する必要がある場合はtrueを返します。注意：これは、ユーザーがスクリプトを表示する権限を少なくとも持っている場合にのみtrueになります。それ以外の場合、ユーザーがscript_view権限を持っていなければ、常にfalseになります。
 
-Ruby Example:
+Ruby の例：
 
 ```ruby
 result = offline_access_needed() #=> true
 ```
 
-Python Example:
+Python の例：
 
 ```python
 result = offline_access_needed() #=> False
@@ -5074,19 +5057,19 @@ result = offline_access_needed() #=> False
 
 ### set_offline_access
 
-Sets the offline access token in the backend. Note: You probably don't need to call this method directly, as it will be called by initialize_offline_access().
+バックエンドでオフラインアクセストークンを設定します。注意：initialize_offline_access()によって呼び出されるため、このメソッドを直接呼び出す必要はおそらくありません。
 
-Ruby / Python Syntax:
+Ruby / Python 構文：
 
 ```ruby
 set_offline_access(offline_access_token)
 ```
 
-| Parameter            | Description                                                                    |
-| -------------------- | ------------------------------------------------------------------------------ |
-| offline_access_token | Keycloak generated refresh token that contains the offline_access openid scope |
+| パラメータ            | 説明                                                                      |
+| --------------------- | ------------------------------------------------------------------------- |
+| offline_access_token  | offline_access openidスコープを含むKeycloakによって生成されたリフレッシュトークン |
 
-Ruby / Python Example:
+Ruby / Python の例：
 
 ```ruby
 set_offline_access(offline_access_token)
