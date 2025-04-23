@@ -22,13 +22,13 @@
 
 <template>
   <div>
+    <span> Add environment variables (optional)</span>
     <v-table density="compact">
-      <span> Add environment variables (optional)</span>
       <tbody>
         <tr>
           <th scope="col" class="text-left">Key</th>
           <th scope="col" class="text-left">Value</th>
-          <th scope="col" class="text-right">
+          <th scope="col" class="text-right" width="52px">
             <v-btn
               icon="mdi-plus"
               variant="text"
