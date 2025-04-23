@@ -9,9 +9,9 @@ sidebar_custom_props:
 
 This tutorial has been tested using the following components:
 
-- COSMOS v5 release [5.0.6](https://github.com/OpenC3/cosmos/releases/tag/v5.0.6)
-- cFS master-branch commit: 561b128 (June 1, 2022)
-- Docker Desktop 4.9.0 on Windows
+- COSMOS v6 release [6.3.0](https://github.com/OpenC3/cosmos/releases/tag/v6.3.0)
+- cFS main-branch commit: 0ba1faa (April 23, 2025)
+- Docker Desktop 4.40.0 on MacOS
 
 Replace all `<xxxxxx>` with your matching paths and names. Example: `<USERNAME>`.
 
@@ -59,7 +59,7 @@ git clone --recurse-submodules https://github.com/nasa/cFS.git
 ### Create Dockerfile in cFS dir
 
 ```docker
-FROM ubuntu:22.10 AS builder
+FROM ubuntu:25.04 AS builder
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG SIMULATION=native
@@ -87,7 +87,7 @@ RUN make prep
 RUN make
 RUN make install
 
-FROM ubuntu:22.10
+FROM ubuntu:25.04
 COPY --from=builder /cFS/build /cFS/build
 WORKDIR /cFS/build/exe/cpu1
 ENTRYPOINT [ "./core-cpu1" ]
@@ -99,7 +99,7 @@ Note we're connecting to the COSMOS network (`docker network ls`) and exposing t
 
 ```bash
 docker build -t cfs .
-docker run --cap-add CAP_SYS_RESOURCE --net=openc3-cosmos-network --name cfs -p1234:1234/udp -p1235:1235 cfs
+docker run --cap-add CAP_SYS_RESOURCE --net=cosmos-project_default --name cfs -p1234:1234/udp -p1235:1235 cfs
 ```
 
 ## Creating a COSMOS plugin for TM/TC interface with cFS
@@ -140,7 +140,7 @@ Note that the two arguments to the `TARGET` parameter are:
 1. the physical target name that should match the name of the plugin, i.e. `CFS`.
    This name must match the folder name in the `targets` folder. Example: for the
    `CFS` plugin, the target specifications must be under
-   `openc3-cfs/targets/CFS`. If you don't follow this
+   `openc3-cosmos-cfs/targets/CFS`. If you don't follow this
    convention, the server will refuse to install your plugin at the following steps.
 
 1. the name of your target and how it is shown in the user interface.
@@ -152,7 +152,7 @@ In this example, we keep both names to be `CFS`.
 Change to the target folder and remove the existing files and create own files.
 
 ```bash
-cd openc3-cfs/targets/CFS/cmd_tlm
+cd openc3-cosmos-cfs/targets/CFS/cmd_tlm
 rm *
 touch cfs_cmds.txt
 touch cfs_tlm.txt
@@ -244,7 +244,7 @@ TELEMETRY CFS HK BIG_ENDIAN "housekeeping telemetry"
 Build the plugin from the base of your plugin folder:
 
 ```bash
-# cd openc3-cfs
+# cd openc3-cosmos-cfs
 $PATH_TO_OPENC3/openc3.sh cli rake build VERSION=1.0.0
 ```
 
@@ -267,20 +267,20 @@ the page.
 Connect with a browser to
 [http://localhost:2900/tools/admin](http://localhost:2900/tools/admin).
 
-Click on the clip icon and navigate to where your plugin is stored and select
-the `openc3-cosmos-cfs-1.0.0.gem` file. Right of the selection line click on `UPLOAD`.
+Click on the "Install New Plugin" button and navigate to where your plugin is stored and select
+the `openc3-cosmos-cfs-1.0.0.gem` file. Right of the selection line click on `Install`.
 
 Determine the IP address the cFS container and COSMOS operator container are running at:
 
 ```bash
 docker network ls
 NETWORK ID     NAME             DRIVER    SCOPE
-d842f813f1c7   openc3-cosmos-network   bridge    local
+d842f813f1c7   cosmos-project_default    bridge    local
 
-docker network inspect openc3-cosmos-network
+docker network inspect cosmos-project_default 
 [
     {
-        "Name": "openc3-cosmos-network",
+        "Name": "cosmos-project_default ",
         ...
         "Containers": {
             "03cb6bf1b27c631fad1366e9342aeaa5b80f458a437195e4a95e674bb5f5983d": {
