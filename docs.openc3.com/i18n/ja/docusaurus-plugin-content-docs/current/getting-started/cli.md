@@ -6,7 +6,7 @@ sidebar_custom_props:
   myEmoji: ⌨️
 ---
 
-COSMOSコマンドラインインターフェースは、COSMOS [プロジェクト](https://github.com/OpenC3/cosmos-project)に含まれている`openc3.sh`と`openc3.bat`です（[プロジェクト](key-concepts#projects)の詳細はこちら）。
+COSMOSコマンドラインインターフェースは、COSMOS [プロジェクト](https://github.com/OpenC3/cosmos-project)に含まれている`openc3.sh`と`openc3.bat`です（[プロジェクト](key-concepts#プロジェクト)の詳細はこちら）。
 
 [インストールガイド](installation.md)に従った場合、すでにクローンした[openc3-project](https://github.com/OpenC3/cosmos-project)内にいるはずです。これはPATHに含まれている必要があります（openc3.bat / openc3.shを解決するために必要）。利用可能なすべてのコマンドを確認するには、次のように入力します：
 

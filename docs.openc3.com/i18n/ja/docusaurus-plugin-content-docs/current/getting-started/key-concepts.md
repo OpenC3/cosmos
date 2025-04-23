@@ -76,7 +76,7 @@ COSMOS自体はVue.jsで書かれていますが、COSMOS開発者が選択し�
 
 ### Redis
 
-[Redis](https://redis.io/)は、文字列、ハッシュ、リスト、セット、ソート済みセット、ストリームなどをサポートするインメモリデータストアです。COSMOSはRedisを使用して設定とデータの両方を保存します。[コンテナリスト](/docs/getting-started/key-concepts#containers)を振り返ると、2つのRedisコンテナがあることに気づくでしょう：cosmos-openc3-redis-1とcosmos-openc3-redis-ephemeral-1です。一時的なコンテナには、[Redisストリーム](https://redis.io/docs/data-types/streams/)にプッシュされるすべてのリアルタイムデータが含まれています。もう一つのRedisコンテナには、永続化されることを意図したCOSMOS設定が含まれています。[COSMOS Enterprise](https://openc3.com/enterprise)は、データが複数のRedisノード間で共有される水平スケーリングを実行するための[Redisクラスター](https://redis.io/docs/management/scaling/)をセットアップするHelmチャートを提供しています。
+[Redis](https://redis.io/)は、文字列、ハッシュ、リスト、セット、ソート済みセット、ストリームなどをサポートするインメモリデータストアです。COSMOSはRedisを使用して設定とデータの両方を保存します。[コンテナリスト](/docs/getting-started/key-concepts#コンテナ)を振り返ると、2つのRedisコンテナがあることに気づくでしょう：cosmos-openc3-redis-1とcosmos-openc3-redis-ephemeral-1です。一時的なコンテナには、[Redisストリーム](https://redis.io/docs/data-types/streams/)にプッシュされるすべてのリアルタイムデータが含まれています。もう一つのRedisコンテナには、永続化されることを意図したCOSMOS設定が含まれています。[COSMOS Enterprise](https://openc3.com/enterprise)は、データが複数のRedisノード間で共有される水平スケーリングを実行するための[Redisクラスター](https://redis.io/docs/management/scaling/)をセットアップするHelmチャートを提供しています。
 
 ### MinIO
 

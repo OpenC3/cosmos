@@ -35,7 +35,7 @@ alt="表示メニュー"
 style={{"float": 'left', "margin-right": 50 + 'px', "height": 180 + 'px'}} />
 
 - [無視された項目](../configuration/target.md#ignore_item)を表示
-- [派生](../configuration/telemetry.md#派生項目)項目を最後に表示
+- [派生](../configuration/telemetry.md#derived-items)項目を最後に表示
 - [単位](../configuration/telemetry#units)付きで整形された項目を表示
 - [整形された](../configuration/telemetry#format_string)項目を表示
 - [変換された](../configuration/telemetry#read_conversion)項目を表示

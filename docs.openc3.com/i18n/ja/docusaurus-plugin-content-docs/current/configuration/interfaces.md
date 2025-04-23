@@ -464,7 +464,7 @@ INTERFACE SNMP_INT snmp_trap_interface.rb 162
 
 完全な例については、COSMOS Enterpriseプラグインの[openc3-cosmos-apc-switched-pdu](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-apc-switched-pdu)を参照してください。
 
-### gRPCインターフェース（Enterprise）
+### gRPC Interface (Enterprise)
 
 gRPCインターフェースは[gRPC](https://grpc.io/)と対話するためのものです。gRPCインターフェースは現在Rubyでのみ実装されています。
 

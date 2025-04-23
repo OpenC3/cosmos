@@ -6,7 +6,7 @@ sidebar_custom_props:
   myEmoji: 🏭
 ---
 
-COSMOSコードジェネレーターは、COSMOS [プロジェクト](https://github.com/OpenC3/cosmos-project)に含まれる`openc3.sh`と`openc3.bat`スクリプトに組み込まれています（[プロジェクト](key-concepts#projects)についての詳細はこちら）。
+COSMOSコードジェネレーターは、COSMOS [プロジェクト](https://github.com/OpenC3/cosmos-project)に含まれる`openc3.sh`と`openc3.bat`スクリプトに組み込まれています（[プロジェクト](key-concepts#プロジェクト)についての詳細はこちら）。
 
 [インストールガイド](installation.md)に従った場合、すでにクローンした[openc3-project](https://github.com/OpenC3/cosmos-project)内にいるはずです。これはPATHに含まれている必要があります（openc3.bat / openc3.shを解決するために必要）。利用可能なすべてのコードジェネレーターを確認するには、次のように入力します：
 
@@ -17,7 +17,7 @@ limits_response, tool, tool_vue, tool_angular, tool_react, tool_svelte
 ```
 
 :::note トレーニング利用可能
-トレーニングが必要である場合は、<a href="mailto:support@openc3.com">support@openc3.com</a>までお問い合わせください。トレーニングクラスをご用意しています！
+トレーニングが必要である場合は <a href="mailto:support@openc3.com">support@openc3.com</a>までお問い合わせください。トレーニングクラスをご用意しています！
 :::
 
 ## プラグインジェネレーター

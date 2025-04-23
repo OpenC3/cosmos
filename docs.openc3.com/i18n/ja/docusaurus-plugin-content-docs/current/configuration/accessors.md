@@ -162,7 +162,7 @@ TELEMETRY HTML RESPONSE BIG_ENDIAN "Search results"
     KEY normalize-space(//main/div/a[2]/p/text())
 ```
 
-### HTTPアクセサー
+### HTTPアクセサー {#http-accessor}
 
 HTTPアクセサーは通常、[HTTPクライアント](interfaces#httpクライアントインターフェース)または[HTTPサーバー](interfaces#httpサーバーインターフェース)インターフェースでウェブページを解析するために使用されます。アイテムの低レベルの読み書きを行うために別のアクセサーを取ります。デフォルトのアクセサーはFormAccessorです。HtmlAccessor、XmlAccessor、JsonAccessorもHTML、XML、JSONをそれぞれ操作するために一般的です。
 
@@ -236,7 +236,7 @@ TELEMETRY HTML RESPONSE BIG_ENDIAN "Search results"
     KEY normalize-space(//main/div/a[2]/p/text())
 ```
 
-### JSONアクセサー
+### JSONアクセサー {#json-accessor}
 
 JSONアクセサーは、JavaScript Object Notation（[JSON](https://en.wikipedia.org/wiki/JSON)）形式にデータをシリアル化します。JSONは、キーと値のペアや配列からなるデータを送信するために、人間が読める形式のテキストを使用するデータ交換形式です。
 
@@ -294,7 +294,7 @@ TELEMETRY JSON JSONTLM BIG_ENDIAN "JSON Accessor Telemetry"
 
 ### テンプレートアクセサー
 
-テンプレートアクセサーは、[CmdResponseProtocol](protocols#cmdresponse-protocol)などの文字列ベースのコマンド/レスポンスプロトコルでよく使用されます。
+テンプレートアクセサーは、[CmdResponseProtocol](protocols#cmdresponseプロトコル)などの文字列ベースのコマンド/レスポンスプロトコルでよく使用されます。
 
 完全な例については、COSMOS Enterprise Pluginsの[openc3-cosmos-scpi-power-supply](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-scpi-power-supply)を参照してください。
 
@@ -388,7 +388,7 @@ TELEMETRY XML XMLTLM BIG_ENDIAN "XML Accessor Telemetry"
 
 ### GEMS Ascii (Enterprise)
 
-GemsAsciiAccessorは[TemplateAccessor](accessors#template-accessor)を継承して、送信コマンドの以下の文字をエスケープします：「&」=>「&a」、「|」=>「&b」、「,」=>「&c」、「;」=>「&d」、そしてテレメトリではその逆変換を行います。詳細については[GEMSの仕様](https://www.omg.org/spec/GEMS/1.3/PDF)を参照してください。
+GemsAsciiAccessorは[TemplateAccessor](accessors#テンプレートアクセサー)を継承して、送信コマンドの以下の文字をエスケープします：「&」=>「&a」、「|」=>「&b」、「,」=>「&c」、「;」=>「&d」、そしてテレメトリではその逆変換を行います。詳細については[GEMSの仕様](https://www.omg.org/spec/GEMS/1.3/PDF)を参照してください。
 
 完全な例については、COSMOS Enterprise Pluginsの[openc3-cosmos-gems-interface](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-gems-interface)を参照してください。
 

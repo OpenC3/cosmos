@@ -292,7 +292,7 @@ COSMOS 5（COSMOS 6ではなく）には、既存のCOSMOS 4構成をCOSMOS 5プ
 
 1. 新しいCOSMOS 5プラグインを開き、[plugin.txt](../configuration/plugins.md#plugintxt-configuration-file)ファイルが正しく構成されていることを確認します。移行ツールはVARIABLEsやMICROSERVICEsを作成せず、ターゲット置換も処理しないため、これらの機能は手動で追加する必要があります。
 
-1. [プラグインの構築](gettingstarted.md#プラグインの構築)の「はじめに」チュートリアルの部分に従って、新しいプラグインを構築し、COSMOS 5にアップロードしてください。
+1. [プラグインの構築](gettingstarted.md#building-your-plugin)の「はじめに」チュートリアルの部分に従って、新しいプラグインを構築し、COSMOS 5にアップロードしてください。
 
 ### カスタムツールのアップグレード
 
