@@ -6,7 +6,7 @@ sidebar_custom_props:
   myEmoji: 🔐
 ---
 
-COSMOS 5 is a container based service which does not use SSL/TLS out of the box. This guide will help you configure SSL and TLS. Learn more at the Traefik [docs](https://doc.traefik.io/traefik/routing/entrypoints/#tls).
+COSMOS 6 is a container based service which does not use SSL/TLS out of the box. This guide will help you configure SSL and TLS. Learn more at the Traefik [docs](https://doc.traefik.io/traefik/routing/entrypoints/#tls).
 
 ### Generate the certificate
 
