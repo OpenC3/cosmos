@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -729,7 +729,12 @@ export default {
             widget.type.toLowerCase() ===
             setting[0].toLowerCase() + 'widget'
           ) {
-            widget.settings.push(setting.slice(1))
+            const existingSetting = widget.settings.find(
+              (s) => s[0] === setting[1],
+            )
+            if (!existingSetting) {
+              widget.settings.push(setting.slice(1))
+            }
           }
         })
         // Recursively apply to all widgets contained in layouts

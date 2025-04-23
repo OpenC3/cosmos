@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -21,10 +21,10 @@
 -->
 
 <template>
-  <v-footer id="footer" app v-if="!chromeless" height="33">
+  <v-footer v-if="!chromeless" id="footer" app height="33">
     <img :src="icon" alt="OpenC3" />
     <span :class="footerClass" @click="upgrade">
-      OpenC3 {{ edition }} {{ version }} &copy; 2024 - License:
+      OpenC3 {{ edition }} {{ version }} &copy; 2025 - License:
       {{ license }}
     </span>
     <v-spacer />
@@ -62,6 +62,15 @@ export default {
       chromeless: this.$route.query.chromeless,
     }
   },
+  computed: {
+    footerClass() {
+      if (this.enterprise) {
+        return 'enterprise'
+      } else {
+        return 'base'
+      }
+    },
+  },
   created: function () {
     this.getSourceUrl()
     Api.get('/openc3-api/info').then((response) => {
@@ -74,15 +83,6 @@ export default {
       this.license = response.data.license
       this.version = response.data.version
     })
-  },
-  computed: {
-    footerClass() {
-      if (this.enterprise) {
-        return 'enterprise'
-      } else {
-        return 'base'
-      }
-    },
   },
   methods: {
     getSourceUrl: function () {
