@@ -9,7 +9,7 @@ sidebar_custom_props:
 
 テーブルマネージャーはバイナリファイルエディタです。COSMOSのコマンドパケット定義に似た[バイナリファイル定義](../configuration/table.md)を取り、バイナリファイル内のフィールドを編集するためのGUIです。
 
-![テーブルマネージャー](/img/table_manager/table_manager.png)
+![テーブルマネージャー](pathname:///img/table_manager/table_manager.png)
 
 ### ファイルメニュー項目
 

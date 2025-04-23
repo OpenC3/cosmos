@@ -9,7 +9,7 @@ sidebar_custom_props:
 
 データビューアを使用すると、過去およびリアルタイムの両方でパケットデータまたは個別の項目データを表示できます。
 
-![データビューア](/img/data_viewer/data_viewer.png)
+![データビューア](pathname:///img/data_viewer/data_viewer.png)
 
 ## データビューアのメニュー
 
@@ -37,8 +37,8 @@ style={{"float": 'left', "margin-right": 50 + 'px', "height": 6 + 'em'}} />
 
 データビューアはコンポーネントにデータを表示します。インターフェースに新しいコンポーネントを追加するには、プラスアイコンをクリックします。これによりコンポーネント追加ダイアログが表示されます。まず、データを視覚化するために使用したいコンポーネントを選択します。次に、コンポーネントを入力するパケットを追加します。最後に「作成 (Create)」をクリックして、データビューアコンポーネントの視覚化を確認します。
 
-![コンポーネントを追加](/img/data_viewer/add_component.png)
+![コンポーネントを追加](pathname:///img/data_viewer/add_component.png)
 
 COSMOS Raw/Decomコンポーネントの設定を調整するには、歯車アイコンをクリックして表示設定ダイアログを表示します。さまざまな視覚化のオン/オフを切り替えたり、表示されるパケット数や履歴を増やしたりできます。
 
-![パケットを追加](/img/data_viewer/display_settings.png)
+![パケットを追加](pathname:///img/data_viewer/display_settings.png)
