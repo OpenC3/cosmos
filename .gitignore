@@ -59,3 +59,6 @@ developer.code-workspace
 __pycache__
 
 playwright/tests/enterprise
+
+# Documentation i18n assets
+docs/ja/img/*
