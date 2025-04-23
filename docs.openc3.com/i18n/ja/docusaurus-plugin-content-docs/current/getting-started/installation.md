@@ -35,7 +35,7 @@ Dockerはデフォルトで、5分間のアイドル（データなし）接続�
 
 ### プロジェクトのクローン
 
-始めるには、COSMOS [プロジェクトテンプレート](key-concepts#projects)を使用することをお勧めします。
+始めるには、COSMOS [プロジェクトテンプレート](key-concepts#プロジェクト)を使用することをお勧めします。
 
 ```bash
 git clone https://github.com/OpenC3/cosmos-project.git

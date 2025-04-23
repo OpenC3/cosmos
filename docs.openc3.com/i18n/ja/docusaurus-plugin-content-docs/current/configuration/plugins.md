@@ -1,224 +1,224 @@
 ---
 sidebar_position: 2
-title: Plugins
-description: Plugin definition file format and keywords
+title: プラグイン
+description: プラグイン定義ファイルのフォーマットとキーワード
 sidebar_custom_props:
   myEmoji: 🔌
 ---
 
 <!-- Be sure to edit _plugins.md because plugins.md is a generated file -->
 
-## Introduction
+## はじめに
 
-This document provides the information necessary to configure a COSMOS plugin. Plugins are how you configure and extend COSMOS.
+このドキュメントは、COSMOSプラグインを設定するために必要な情報を提供します。プラグインはCOSMOSを設定および拡張する方法です。
 
-Plugins are where you define targets (and their corresponding command and telemetry packet definitions), where you configure the interfaces needed to talk to targets, where you can define routers to stream raw data out of COSMOS, how you can add new tools to the COSMOS user interface, and how you can run additional microservices to provide new functionality.
+プラグインでは、ターゲット（およびそれに対応するコマンドとテレメトリパケット定義）を定義し、ターゲットと通信するために必要なインターフェースを設定し、COSMOSから生データをストリームするためのルーターを定義し、COSMOSユーザーインターフェースに新しいツールを追加する方法、そして新しい機能を提供するための追加のマイクロサービスを実行する方法を定義します。
 
-Each plugin is built as a Ruby gem and thus has a plugin.gemspec file which builds it. Plugins have a plugin.txt file which declares all the variables used by the plugin and how to interface to the target(s) it contains.
+各プラグインはRubyのgemとして構築されるため、プラグインをビルドするためのplugin.gemspecファイルを持っています。プラグインには、プラグインで使用されるすべての変数と、それに含まれるターゲットへのインターフェース方法を宣言するplugin.txtファイルがあります。
 
-## Concepts
+## 概念
 
-### Target
+### TARGET
 
-Targets are the external pieces of hardware and/or software that COSMOS communicates with. These are things like Front End Processors (FEPs), ground support equipment (GSE), custom software tools, and pieces of hardware like satellites themselves. A target is anything that COSMOS can send commands to and receive telemetry from.
+ターゲットは、COSMOSが通信する外部のハードウェアやソフトウェアです。これらは、フロントエンドプロセッサ（FEP）、地上支援機器（GSE）、カスタムソフトウェアツール、衛星自体などのハードウェアなどです。ターゲットは、COSMOSがコマンドを送信し、テレメトリを受信できるものです。
 
-### Interface
+### INTERFACE
 
-Interfaces implement the physical connection to one or more targets. They are typically ethernet connections implemented using TCP or UDP but can be other connections like serial ports. Interfaces send commands to targets and receive telemetry from targets.
+インターフェースは、1つ以上のターゲットへの物理的な接続を実装します。通常、TCPやUDPを使用したイーサネット接続ですが、シリアルポートなどの他の接続も可能です。インターフェースはターゲットにコマンドを送信し、ターゲットからテレメトリを受信します。
 
-### Router
+### ROUTER
 
-Routers flow streams of telemetry packets out of COSMOS and receive streams of commands into COSMOS. The commands are forwarded by COSMOS to associated interfaces. Telemetry comes from associated interfaces.
+ルーターは、テレメトリパケットのストリームをCOSMOSから流出させ、コマンドのストリームをCOSMOSに受信します。コマンドはCOSMOSによって関連するインターフェースに転送されます。テレメトリは関連するインターフェースから来ます。
 
-### Tool
+### TOOL
 
-COSMOS Tools are web-based applications the communicate with the COSMOS APIs to perform takes like displaying telemetry, sending commands, and running scripts.
+COSMOSツールは、テレメトリの表示、コマンドの送信、スクリプトの実行などのタスクを実行するためにCOSMOS APIと通信するウェブベースのアプリケーションです。
 
-### Microservice
+### MICROSERVICE
 
-Microservices are persistent running backend code that runs within the COSMOS environment. They can process data and perform other useful tasks.
+マイクロサービスは、COSMOS環境内で実行される永続的なバックエンドコードです。データを処理し、その他の有用なタスクを実行できます。
 
-## Plugin Directory Structure
+## プラグインのディレクトリ構造
 
-COSMOS plugins have a well-defined directory structure described in detail in the [Code Generator](../getting-started/generators) documentation.
+COSMOSプラグインには、[コードジェネレーター](../getting-started/generators)のドキュメントに詳細に記載されている、明確に定義されたディレクトリ構造があります。
 
-## plugin.txt Configuration File
+## plugin.txt 設定ファイル
 
-A plugin.txt configuration file is required for any COSMOS plugin. It declares the contents of the plugin and provides variables that allow the plugin to be configured at the time it is initially installed or upgraded.
-This file follows the standard COSMOS configuration file format of keywords followed by zero or more space separated parameters. The following keywords are supported by the plugin.txt config file:
+plugin.txt設定ファイルは、すべてのCOSMOSプラグインに必要です。これはプラグインの内容を宣言し、プラグインが最初にインストールまたはアップグレードされるときに設定できる変数を提供します。
+このファイルは、キーワードの後に0個以上のスペース区切りのパラメータが続く標準のCOSMOS設定ファイル形式に従っています。plugin.txt設定ファイルでサポートされる以下のキーワードがあります：
 
 
 ## VARIABLE
-**Define a configurable variable for the plugin**
+**プラグインの設定可能な変数を定義する**
 
-The VARIABLE keyword defines a variable that will be requested for the user to enter during plugin installation.   Variables can be used to handle details of targets that are user defined such as specific IP addresses and ports.  Variables should also be used to allow users to rename targets to whatever name they want and support multiple installations of the same target with different names. Variables can be used later in plugin.txt or in any other configuration file included in a plugin using Ruby ERB syntax.  The variables are assigned to accessible local variables in the file. At a high level, ERB allows you to run Ruby code in configuration files.
+VARIABLEキーワードは、プラグインのインストール中にユーザーが入力を求められる変数を定義します。変数は、特定のIPアドレスやポートなど、ユーザーが定義するターゲットの詳細を処理するために使用できます。また、変数は、ユーザーがターゲットを好きな名前に変更し、同じターゲットを異なる名前で複数インストールすることをサポートするためにも使用する必要があります。変数は、Ruby ERB構文を使用してplugin.txtまたはプラグインに含まれる他の設定ファイルで後で使用できます。変数はファイル内のアクセス可能なローカル変数に割り当てられます。高レベルでは、ERBを使用すると設定ファイル内でRubyコードを実行できます。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Variable Name | The name of the variable | True |
-| Default Value | Default value of the variable | True |
+| Variable Name | 変数の名前 | True |
+| Default Value | 変数のデフォルト値 | True |
 
 ## NEEDS_DEPENDENCIES
-<div class="right">(Since 5.5.0)</div>**Indicates the plugin needs dependencies and sets the GEM_HOME environment variable**
+<div class="right">(Since 5.5.0)</div>**プラグインが依存関係を必要とし、GEM_HOME環境変数を設定することを示す**
 
-If the plugin has a top level lib folder or lists runtime dependencies in the gemspec, NEEDS_DEPENDENCIES is effectively already set. Note that in Enterprise Edition, having NEEDS_DEPENDENCIES adds the NFS volume mount to the Kubernetes pod.
+プラグインにトップレベルのlibフォルダがある場合、またはgemspecにランタイム依存関係がリストされている場合、NEEDS_DEPENDENCIESは実質的に既に設定されています。Enterprise版では、NEEDS_DEPENDENCIESを持つことで、KubernetesポッドにNFSボリュームマウントが追加されることに注意してください。
 
 
 ## INTERFACE
-**Defines a connection to a physical target**
+**物理的なターゲットへの接続を定義する**
 
-Interfaces are what OpenC3 uses to talk to a particular piece of hardware. Interfaces require a Ruby or Python file which implements all the interface methods necessary to talk to the hardware. OpenC3 defines many built in interfaces or you can define your own as long as it implements the interface protocol.
+インターフェースは、OpenC3が特定のハードウェアと通信するために使用するものです。インターフェースには、ハードウェアと通信するために必要なすべてのインターフェースメソッドを実装するRubyまたはPythonファイルが必要です。OpenC3は多くの組み込みインターフェースを定義していますが、インターフェースプロトコルを実装する限り、独自のインターフェースを定義することもできます。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Interface Name | Name of the interface. This name will appear in the Interfaces tab of the Server and is also referenced by other keywords. The OpenC3 convention is to name interfaces after their targets with '_INT' appended to the name, e.g. INST_INT for the INST target. | True |
-| Filename | Ruby or Python file to use when instantiating the interface.<br/><br/>Valid Values: <span class="values">tcpip_client_interface, tcpip_server_interface, udp_interface, serial_interface</span> | True |
+| Interface Name | インターフェースの名前。この名前はサーバーのインターフェースタブに表示され、他のキーワードからも参照されます。OpenC3の慣例では、インターフェースにはターゲットの名前に '_INT' を付けた名前を付けます。例えば、INSTターゲットの場合は INST_INT です。 | True |
+| Filename | インターフェースをインスタンス化する際に使用するRubyまたはPythonファイル。<br/><br/>有効な値: <span class="values">tcpip_client_interface, tcpip_server_interface, udp_interface, serial_interface</span> | True |
 
-Additional parameters are required. Please see the [Interfaces](../configuration/interfaces.md) documentation for more details.
+追加のパラメータが必要です。詳細については、[インターフェース](../configuration/interfaces.md)のドキュメントを参照してください。
 
-## INTERFACE Modifiers
-The following keywords must follow a INTERFACE keyword.
+## INTERFACE MODIFIERS
+以下のキーワードはINTERFACEキーワードに続いて使用する必要があります。
 
 ### MAP_TARGET
-**Maps a target name to an interface**
+**ターゲット名をインターフェースにマッピングする**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target Name | Target name to map to this interface | True |
+| Target Name | このインターフェースにマッピングするターゲット名 | True |
 
-Ruby Example:
+Rubyの例:
 ```ruby
 INTERFACE DATA_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil BURST
   MAP_TARGET DATA
 ```
 
-Python Example:
+Pythonの例:
 ```python
 INTERFACE DATA_INT openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8081 10.0 nil BURST
   MAP_TARGET DATA
 ```
 
 ### MAP_CMD_TARGET
-<div class="right">(Since 5.2.0)</div>**Maps a target name to an interface for commands only**
+<div class="right">(Since 5.2.0)</div>**コマンド専用のターゲット名をインターフェースにマッピングする**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target Name | Command target name to map to this interface | True |
+| Target Name | このインターフェースにマッピングするコマンドターゲット名 | True |
 
-Ruby Example:
+Rubyの例:
 ```ruby
 INTERFACE CMD_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil BURST
-  MAP_CMD_TARGET DATA # Only DATA commands go on the CMD_INT interface
+  MAP_CMD_TARGET DATA # DATAコマンドのみがCMD_INTインターフェースで送信される
 ```
 
-Python Example:
+Pythonの例:
 ```python
 INTERFACE CMD_INT openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8081 10.0 nil BURST
-  MAP_CMD_TARGET DATA # Only DATA commands go on the CMD_INT interface
+  MAP_CMD_TARGET DATA # DATAコマンドのみがCMD_INTインターフェースで送信される
 ```
 
 ### MAP_TLM_TARGET
-<div class="right">(Since 5.2.0)</div>**Maps a target name to an interface for telemetry only**
+<div class="right">(Since 5.2.0)</div>**テレメトリ専用のターゲット名をインターフェースにマッピングする**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target Name | Telemetry target name to map to this interface | True |
+| Target Name | このインターフェースにマッピングするテレメトリターゲット名 | True |
 
-Ruby Example:
+Rubyの例:
 ```ruby
 INTERFACE TLM_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil BURST
-  MAP_TLM_TARGET DATA # Only DATA telemetry received on TLM_INT interface
+  MAP_TLM_TARGET DATA # DATAテレメトリのみがTLM_INTインターフェースで受信される
 ```
 
-Python Example:
+Pythonの例:
 ```python
 INTERFACE TLM_INT openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8081 10.0 nil BURST
-  MAP_TLM_TARGET DATA # Only DATA telemetry received on TLM_INT interface
+  MAP_TLM_TARGET DATA # DATAテレメトリのみがTLM_INTインターフェースで受信される
 ```
 
 ### DONT_CONNECT
-**Server will not automatically try to connect to the interface at startup**
+**サーバーは起動時にインターフェースに自動的に接続しようとしない**
 
 
 ### DONT_RECONNECT
-**Server will not try to reconnect to the interface if the connection is lost**
+**接続が失われた場合、サーバーはインターフェースに再接続しようとしない**
 
 
 ### RECONNECT_DELAY
-**Reconnect delay in seconds**
+**再接続の遅延（秒）**
 
-If DONT_RECONNECT is not present the Server will try to reconnect to an interface if the connection is lost. Reconnect delay sets the interval in seconds between reconnect tries.
+DONT_RECONNECTが存在しない場合、接続が失われるとサーバーはインターフェースへの再接続を試みます。再接続遅延は、再接続試行の間隔を秒単位で設定します。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Delay | Delay in seconds between reconnect attempts. The default is 15 seconds. | True |
+| Delay | 再接続試行の間隔（秒）。デフォルトは15秒です。 | True |
 
 ### DISABLE_DISCONNECT
-**Disable the Disconnect button on the Interfaces tab in the Server**
+**サーバーのインターフェースタブの切断ボタンを無効にする**
 
-Use this keyword to prevent the user from disconnecting from the interface. This is typically used in a 'production' environment where you would not want the user to inadvertently disconnect from a target.
+このキーワードを使用して、ユーザーがインターフェースから切断できないようにします。これは通常、ユーザーが誤ってターゲットから切断することを防ぎたい「本番」環境で使用されます。
 
 
 ### LOG_RAW
-**Deprecated, use LOG_STREAM**
+**非推奨、LOG_STREAMを使用してください**
 
 
 ### LOG_STREAM
-<div class="right">(Since 5.5.2)</div>**Log all data on the interface exactly as it is sent and received**
+<div class="right">(Since 5.5.2)</div>**インターフェースのすべてのデータを送受信されたままの形式で記録する**
 
-LOG_STREAM does not add any OpenC3 headers and thus can not be read by OpenC3 tools. It is primarily useful for low level debugging of an interface. You will have to manually parse these logs yourself using a hex editor or other application.
+LOG_STREAMはOpenC3ヘッダーを追加しないため、OpenC3ツールで読み取ることはできません。主にインターフェースの低レベルデバッグに役立ちます。これらのログは、16進エディタなどのアプリケーションを使用して手動で解析する必要があります。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Cycle Time | Amount of time to wait before cycling the log file. Default is 10 min. If nil refer to Cycle Hour and Cycle Minute. | False |
-| Cycle Size | Amount of data to write before cycling the log file. Default is 50MB. | False |
-| Cycle Hour | The time at which to cycle the log. Combined with Cycle Minute to cycle the log daily at the specified time. If nil, the log will be cycled hourly at the specified Cycle Minute. Only applies if Cycle Time is nil. | False |
-| Cycle Minute | See Cycle Hour. | False |
+| Cycle Time | ログファイルをサイクルする前に待機する時間。デフォルトは10分。nilの場合はCycle HourとCycle Minuteを参照します。 | False |
+| Cycle Size | ログファイルをサイクルする前に書き込むデータ量。デフォルトは50MB。 | False |
+| Cycle Hour | ログをサイクルする時刻。Cycle Minuteと組み合わせて、指定された時刻に毎日ログをサイクルします。nilの場合、ログは指定されたCycle Minuteに毎時サイクルされます。Cycle Timeがnilの場合にのみ適用されます。 | False |
+| Cycle Minute | Cycle Hourを参照してください。 | False |
 
-Example Usage:
+使用例:
 ```ruby
 INTERFACE EXAMPLE example_interface.rb
-  # Override the default log time of 600
+  # デフォルトのログ時間600をオーバーライド
   LOG_STREAM 60
 ```
 
 ### PROTOCOL
-<div class="right">(Since 4.0.0)</div>**Protocols modify the interface by processing the data**
+<div class="right">(Since 4.0.0)</div>**プロトコルはデータを処理することでインターフェースを修正する**
 
-Protocols can be either READ, WRITE, or READ_WRITE. READ protocols act on the data received by the interface while write acts on the data before it is sent out. READ_WRITE applies the protocol to both reading and writing.<br/><br/> For information on creating your own custom protocol please see [Protocols](../configuration/protocols.md)
+プロトコルはREAD、WRITE、またはREAD_WRITEのいずれかになります。READプロトコルはインターフェースが受信したデータに作用し、WRITEは送信される前のデータに作用します。READ_WRITEはプロトコルを読み書きの両方に適用します。<br/><br/> 独自のカスタムプロトコルの作成についての情報は、[プロトコル](../configuration/protocols.md)を参照してください。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Type | Whether to apply the protocol on incoming data, outgoing data, or both<br/><br/>Valid Values: <span class="values">READ, WRITE, READ_WRITE</span> | True |
-| Protocol Filename or Classname | Ruby or Python filename or class name which implements the protocol | True |
-| Protocol specific parameters | Additional parameters used by the protocol | False |
+| Type | プロトコルを受信データ、送信データ、またはその両方に適用するかどうか<br/><br/>有効な値: <span class="values">READ, WRITE, READ_WRITE</span> | True |
+| Protocol Filename or Classname | プロトコルを実装するRubyまたはPythonのファイル名またはクラス名 | True |
+| Protocol specific parameters | プロトコルで使用される追加パラメータ | False |
 
-Ruby Example:
+Rubyの例:
 ```ruby
 INTERFACE DATA_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil nil
   MAP_TARGET DATA
-  # Rather than defining the LENGTH protocol on the INTERFACE line we define it here
+  # INTERFACE行でLENGTHプロトコルを定義するのではなく、ここで定義します
   PROTOCOL READ LengthProtocol 0 16 0 1 BIG_ENDIAN 4 0xBA5EBA11
 ```
 
-Python Example:
+Pythonの例:
 ```python
 INTERFACE DATA_INT openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8081 10.0 nil BURST
   MAP_TARGET DATA
-  PROTOCOL READ IgnorePacketProtocol INST IMAGE # Drop all INST IMAGE packets
+  PROTOCOL READ IgnorePacketProtocol INST IMAGE # すべてのINST IMAGEパケットをドロップする
 ```
 
 ### OPTION
-**Set a parameter on an interface**
+**インターフェースにパラメータを設定する**
 
-When an option is set the interface class calls the set_option method. Custom interfaces can override set_option to handle any additional options they want.
+オプションが設定されると、インターフェースクラスはset_optionメソッドを呼び出します。カスタムインターフェースはset_optionをオーバーライドして、追加のオプションを処理できます。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Name | The option to set. OpenC3 defines several options on the core provided interfaces. The SerialInterface defines FLOW_CONTROL which can be NONE (default) or RTSCTS and DATA_BITS which changes the data bits of the serial interface. The TcpipServerInterface and HttpServerInterface define LISTEN_ADDRESS which is the IP address to accept connections on (default 0.0.0.0). | True |
-| Parameters | Parameters to pass to the option | False |
+| Name | 設定するオプション。OpenC3はコア提供インターフェースにいくつかのオプションを定義しています。SerialInterfaceはFLOW_CONTROL（NONE（デフォルト）またはRTSCTS）とDATA_BITS（シリアルインターフェースのデータビットを変更する）を定義します。TcpipServerInterfaceとHttpServerInterfaceはLISTEN_ADDRESS（接続を受け付けるIPアドレス、デフォルトは0.0.0.0）を定義します。 | True |
+| Parameters | オプションに渡すパラメータ | False |
 
-Example Usage:
+使用例:
 ```ruby
 INTERFACE SERIAL_INT serial_interface.rb COM1 COM1 115200 NONE 1 10.0 nil
   OPTION FLOW_CONTROL RTSCTS
@@ -229,663 +229,662 @@ ROUTER SERIAL_ROUTER tcpip_server_interface.rb 2950 2950 10.0 nil BURST
 ```
 
 ### SECRET
-<div class="right">(Since 5.3.0)</div>**Define a secret needed by this interface**
+<div class="right">(Since 5.3.0)</div>**このインターフェースが必要とする秘密を定義する**
 
-Defines a secret for this interface and optionally assigns its value to an option. For more information see [Admin Secrets](/docs/tools/admin#secrets).
+このインターフェースの秘密を定義し、オプションでその値をオプションに割り当てます。詳細については、[管理者のシークレット](/docs/tools/admin#シークレット)を参照してください。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Type | ENV or FILE.  ENV will mount the secret into an environment variable. FILE mounts the secret into a file. | True |
-| Secret Name | The name of the secret to retrieve from the Admin / Secrets tab. For more information see [Admin Secrets](/docs/tools/admin#secrets). | True |
-| Environment Variable or File Path | Environment variable name or file path to store secret. Note that if you use the Option Name to set an option to the secret value, this value doesn't really matter as long as it is unique. | True |
-| Option Name | Interface option to pass the secret value. This is the primary way to pass secrets to interfaces. | False |
-| Secret Store Name | Name of the secret store for stores with multipart keys | False |
+| Type | ENVまたはFILE。ENVは秘密を環境変数にマウントします。FILEは秘密をファイルにマウントします。 | True |
+| Secret Name | 管理者/シークレットタブから取得する秘密の名前。詳細については、[管理者のシークレット](/docs/tools/admin#シークレット)を参照してください。 | True |
+| Environment Variable or File Path | 秘密を格納する環境変数名またはファイルパス。Option Nameを使用して秘密の値にオプションを設定する場合、この値は一意である限り、実際には重要ではないことに注意してください。 | True |
+| Option Name | 秘密の値を渡すインターフェースオプション。これは秘密をインターフェースに渡す主要な方法です。 | False |
+| Secret Store Name | マルチパートキーを持つストアのシークレットストア名 | False |
 
-Example Usage:
+使用例:
 ```ruby
 SECRET ENV USERNAME ENV_USERNAME USERNAME
 SECRET FILE KEY "/tmp/DATA/cert" KEY
 ```
 
 ### ENV
-<div class="right">(Since 5.7.0)</div>**Sets an environment variable in the microservice.**
+<div class="right">(Since 5.7.0)</div>**マイクロサービスに環境変数を設定する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Key | Environment variable name | True |
-| Value | Environment variable value | True |
+| Key | 環境変数名 | True |
+| Value | 環境変数値 | True |
 
-Example Usage:
+使用例:
 ```ruby
 ENV COMPANY OpenC3
 ```
 
 ### WORK_DIR
-<div class="right">(Since 5.7.0)</div>**Set the working directory**
+<div class="right">(Since 5.7.0)</div>**作業ディレクトリを設定する**
 
-Working directory to run the microservice CMD in.  Can be a path relative to the microservice folder in the plugin, or an absolute path in the container the microservice runs in.
+マイクロサービスのCMDを実行する作業ディレクトリ。プラグイン内のマイクロサービスフォルダからの相対パス、またはマイクロサービスが実行されるコンテナ内の絶対パスのいずれかです。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Directory | Working directory to run the microservice CMD in. Can be a path relative to the microservice folder in the plugin, or an absolute path in the container the microservice runs in. | True |
+| Directory | マイクロサービスのCMDを実行する作業ディレクトリ。プラグイン内のマイクロサービスフォルダからの相対パス、またはマイクロサービスが実行されるコンテナ内の絶対パスのいずれかです。 | True |
 
-Example Usage:
+使用例:
 ```ruby
 WORK_DIR '/openc3/lib/openc3/microservices'
 ```
 
 ### PORT
-<div class="right">(Since 5.7.0)</div>**Open port for the microservice**
+<div class="right">(Since 5.7.0)</div>**マイクロサービスのポートを開く**
 
-Kubernetes needs a Service to be applied to open a port so this is required for Kubernetes support
+Kubernetesがポートを開くためにServiceを適用する必要があるため、Kubernetesサポートにはこれが必要です
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Number | Port number | True |
-| Protocol | Port protocol. Default is TCP. | False |
+| Number | ポート番号 | True |
+| Protocol | ポートプロトコル。デフォルトはTCPです。 | False |
 
-Example Usage:
+使用例:
 ```ruby
 PORT 7272
 ```
 
 ### CMD
-<div class="right">(Since 5.7.0)</div>**Command line to execute to run the microservice.**
+<div class="right">(Since 5.7.0)</div>**マイクロサービスを実行するためのコマンドライン**
 
-Command line to execute to run the microservice.
+マイクロサービスを実行するために実行するコマンドライン。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Args | One or more arguments to exec to run the microservice. | True |
+| Args | マイクロサービスを実行するためにexecする1つ以上の引数。 | True |
 
-Ruby Example:
+Rubyの例:
 ```ruby
 CMD ruby interface_microservice.rb DEFAULT__INTERFACE__INT1
 ```
 
-Python Example:
+Pythonの例:
 ```python
 CMD python interface_microservice.py DEFAULT__INTERFACE__INT1
 ```
 
 ### CONTAINER
-<div class="right">(Since 5.7.0)</div>**Docker Container**
+<div class="right">(Since 5.7.0)</div>**Dockerコンテナ**
 
-Container to execute and run the microservice in. Only used in COSMOS Enterprise Edition.
+マイクロサービスを実行するコンテナ。COSMOS Enterprise Editionでのみ使用されます。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Args | Name of the container | False |
+| Args | コンテナの名前 | False |
 
 ### ROUTE_PREFIX
-<div class="right">(Since 5.7.0)</div>**Prefix of route**
+<div class="right">(Since 5.7.0)</div>**ルートのプレフィックス**
 
-Prefix of route to the microservice to expose externally with Traefik
+Traefikで外部に公開するマイクロサービスへのルートのプレフィックス
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Route Prefix | Route prefix. Must be unique across all scopes. Something like /myprefix | True |
+| Route Prefix | ルートプレフィックス。すべてのスコープで一意である必要があります。/myprefixのようなもの | True |
 
-Example Usage:
+使用例:
 ```ruby
 ROUTE_PREFIX /interface
 ```
 
 ### SHARD
-<div class="right">(Since 6.0.0)</div>**Operator shard to run target microservices on**
+<div class="right">(Since 6.0.0)</div>**ターゲットマイクロサービスを実行するオペレーターシャード**
 
-Operator Shard. Only used if running multiple operator containers typically in Kubernetes
+オペレーターシャード。複数のオペレーターコンテナ（通常はKubernetesで）を実行している場合にのみ使用されます
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Shard | Shard number starting from 0 | False |
+| Shard | 0から始まるシャード番号 | False |
 
-Example Usage:
+使用例:
 ```ruby
 SHARD 0
 ```
 
 ## ROUTER
-**Create router to receive commands and output telemetry packets from one or more interfaces**
+**一つ以上のインターフェースからコマンドを受信し、テレメトリパケットを出力するルーターを作成する**
 
-Creates an router which receives command packets from their remote clients and sends them to associated interfaces. They receive telemetry packets from their interfaces and send them to their remote clients. This allows routers to be intermediaries between an external client and an actual device.
+リモートクライアントからコマンドパケットを受信し、それらを関連するインターフェースに送信するルーターを作成します。インターフェースからテレメトリパケットを受信し、それらをリモートクライアントに送信します。これにより、ルーターは外部クライアントと実際のデバイスの間の仲介者になることができます。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Name | Name of the router | True |
-| Filename | Ruby or Python file to use when instantiating the interface.<br/><br/>Valid Values: <span class="values">tcpip_client_interface, tcpip_server_interface, udp_interface, serial_interface</span> | True |
+| Name | ルーターの名前 | True |
+| Filename | インターフェースをインスタンス化する際に使用するRubyまたはPythonファイル。<br/><br/>有効な値: <span class="values">tcpip_client_interface, tcpip_server_interface, udp_interface, serial_interface</span> | True |
 
-Additional parameters are required. Please see the [Interfaces](../configuration/interfaces.md) documentation for more details.
+追加のパラメータが必要です。詳細については、[インターフェース](../configuration/interfaces.md)のドキュメントを参照してください。
 
 ## TARGET
-**Defines a new target**
+**新しいターゲットを定義する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Folder Name | The target folder | True |
-| Name | The target name. While this is almost always the same as Folder Name it can be different to create multiple targets based on the same target folder. | True |
+| Folder Name | ターゲットフォルダ | True |
+| Name | ターゲット名。これはほとんどの場合、Folder Nameと同じですが、同じターゲットフォルダに基づいて複数のターゲットを作成するために異なる場合があります。 | True |
 
-Example Usage:
+使用例:
 ```ruby
 TARGET INST INST
 ```
 
-## TARGET Modifiers
-The following keywords must follow a TARGET keyword.
+## TARGET MODIFIERS
+以下のキーワードはTARGETキーワードに続いて使用する必要があります。
 
 ### CMD_BUFFER_DEPTH
-<div class="right">(Since 5.2.0)</div>**Number of commands to buffer to ensure logged in order**
+<div class="right">(Since 5.2.0)</div>**順序どおりにログに記録されることを確実にするためにバッファリングするコマンドの数**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Buffer Depth | Buffer depth in packets (Default = 5) | True |
+| Buffer Depth | パケット単位のバッファ深度（デフォルト = 5） | True |
 
 ### CMD_LOG_CYCLE_TIME
-**Command binary logs can be cycled on a time interval.**
+**コマンドバイナリログは時間間隔でサイクルさせることができます**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Time | Maximum time between files in seconds (default = 600) | True |
+| Time | ファイル間の最大時間（秒）（デフォルト = 600） | True |
 
 ### CMD_LOG_CYCLE_SIZE
-**Command binary logs can be cycled after a certain log file size is reached.**
+**コマンドバイナリログは、特定のログファイルサイズに達した後にサイクルさせることができます**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Size | Maximum file size in bytes (default = 50_000_000) | True |
+| Size | 最大ファイルサイズ（バイト単位）（デフォルト = 50_000_000） | True |
 
 ### CMD_LOG_RETAIN_TIME
-**How long to keep raw command logs in seconds.**
+**生のコマンドログを保持する期間（秒）**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Time | Number of seconds to keep raw command logs (default = nil = Forever) | True |
+| Time | 生のコマンドログを保持する秒数（デフォルト = nil = 永久） | True |
 
 ### CMD_DECOM_LOG_CYCLE_TIME
-**Command decommutation logs can be cycled on a time interval.**
+**コマンドデコミュテーションログは時間間隔でサイクルさせることができます**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Time | Maximum time between files in seconds (default = 600) | True |
+| Time | ファイル間の最大時間（秒）（デフォルト = 600） | True |
 
 ### CMD_DECOM_LOG_CYCLE_SIZE
-**Command decommutation logs can be cycled after a certain log file size is reached.**
+**コマンドデコミュテーションログは、特定のログファイルサイズに達した後にサイクルさせることができます**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Size | Maximum file size in bytes (default = 50_000_000) | True |
+| Size | 最大ファイルサイズ（バイト単位）（デフォルト = 50_000_000） | True |
 
 ### CMD_DECOM_LOG_RETAIN_TIME
-**How long to keep decom command logs in seconds.**
+**デコミュテーションコマンドログを保持する期間（秒）**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Time | Number of seconds to keep decom command logs (default = nil = Forever) | True |
+| Time | デコミュテーションコマンドログを保持する秒数（デフォルト = nil = 永久） | True |
 
 ### TLM_BUFFER_DEPTH
-<div class="right">(Since 5.2.0)</div>**Number of telemetry packets to buffer to ensure logged in order**
+<div class="right">(Since 5.2.0)</div>**順序どおりにログに記録されることを確実にするためにバッファリングするテレメトリパケットの数**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Buffer Depth | Buffer depth in packets (Default = 60) | True |
+| Buffer Depth | パケット単位のバッファ深度（デフォルト = 60） | True |
 
 ### TLM_LOG_CYCLE_TIME
-**Telemetry binary logs can be cycled on a time interval.**
+**テレメトリバイナリログは時間間隔でサイクルさせることができます**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Time | Maximum time between files in seconds (default = 600) | True |
+| Time | ファイル間の最大時間（秒）（デフォルト = 600） | True |
 
 ### TLM_LOG_CYCLE_SIZE
-**Telemetry binary logs can be cycled after a certain log file size is reached.**
+**テレメトリバイナリログは、特定のログファイルサイズに達した後にサイクルさせることができます**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Size | Maximum file size in bytes (default = 50_000_000) | True |
+| Size | 最大ファイルサイズ（バイト単位）（デフォルト = 50_000_000） | True |
 
 ### TLM_LOG_RETAIN_TIME
-**How long to keep raw telemetry logs in seconds.**
+**生のテレメトリログを保持する期間（秒）**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Time | Number of seconds to keep raw telemetry logs (default = nil = Forever) | True |
+| Time | 生のテレメトリログを保持する秒数（デフォルト = nil = 永久） | True |
 
 ### TLM_DECOM_LOG_CYCLE_TIME
-**Telemetry decommutation logs can be cycled on a time interval.**
+**テレメトリデコミュテーションログは時間間隔でサイクルさせることができます**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Time | Maximum time between files in seconds (default = 600) | True |
+| Time | ファイル間の最大時間（秒）（デフォルト = 600） | True |
 
 ### TLM_DECOM_LOG_CYCLE_SIZE
-**Telemetry decommutation logs can be cycled after a certain log file size is reached.**
+**テレメトリデコミュテーションログは、特定のログファイルサイズに達した後にサイクルさせることができます**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Size | Maximum file size in bytes (default = 50_000_000) | True |
+| Size | 最大ファイルサイズ（バイト単位）（デフォルト = 50_000_000） | True |
 
 ### TLM_DECOM_LOG_RETAIN_TIME
-**How long to keep decom telemetry logs in seconds.**
+**デコミュテーションテレメトリログを保持する期間（秒）**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Time | Number of seconds to keep decom telemetry logs (default = nil = Forever) | True |
+| Time | デコミュテーションテレメトリログを保持する秒数（デフォルト = nil = 永久） | True |
 
 ### REDUCED_MINUTE_LOG_RETAIN_TIME
-**How long to keep reduced minute telemetry logs in seconds.**
+**縮小された分テレメトリログを保持する期間（秒）**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Time | Number of seconds to keep reduced minute telemetry logs (default = nil = Forever) | True |
+| Time | 縮小された分テレメトリログを保持する秒数（デフォルト = nil = 永久） | True |
 
 ### REDUCED_HOUR_LOG_RETAIN_TIME
-**How long to keep reduced hour telemetry logs in seconds.**
+**縮小された時間テレメトリログを保持する期間（秒）**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Time | Number of seconds to keep reduced hour telemetry logs (default = nil = Forever) | True |
+| Time | 縮小された時間テレメトリログを保持する秒数（デフォルト = nil = 永久） | True |
 
 ### REDUCED_DAY_LOG_RETAIN_TIME
-**How long to keep reduced day telemetry logs in seconds.**
+**縮小された日テレメトリログを保持する期間（秒）**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Time | Number of seconds to keep reduced day telemetry logs (default = nil = Forever) | True |
+| Time | 縮小された日テレメトリログを保持する秒数（デフォルト = nil = 永久） | True |
 
 ### LOG_RETAIN_TIME
-**How long to keep all regular telemetry logs in seconds.**
+**すべての通常のテレメトリログを保持する期間（秒）**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Time | Number of seconds to keep all regular telemetry logs (default = nil = Forever) | True |
+| Time | すべての通常のテレメトリログを保持する秒数（デフォルト = nil = 永久） | True |
 
 ### REDUCED_LOG_RETAIN_TIME
-**How long to keep all reduced telemetry logs in seconds.**
+**すべての縮小されたテレメトリログを保持する期間（秒）**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Time | Number of seconds to keep all reduced telemetry logs (default = nil = Forever) | True |
+| Time | すべての縮小されたテレメトリログを保持する秒数（デフォルト = nil = 永久） | True |
 
 ### CLEANUP_POLL_TIME
-**Period at which to run the cleanup process.**
+**クリーンアッププロセスを実行する周期**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Time | Number of seconds between runs of the cleanup process (default = 600 = 10 minutes) | True |
+| Time | クリーンアッププロセスの実行間隔の秒数（デフォルト = 600 = 10分） | True |
 
 ### REDUCER_DISABLE
-**Disables the data reduction microservice for the target**
+**ターゲットのデータ削減マイクロサービスを無効にする**
 
 
 ### REDUCER_MAX_CPU_UTILIZATION
-**Maximum amount of CPU utilization to apply to data reduction**
+**データ削減に適用するCPU使用率の最大量**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Percentage | 0 to 100 percent (default = 30) | True |
+| Percentage | 0から100パーセント（デフォルト = 30） | True |
 
 ### TARGET_MICROSERVICE
-<div class="right">(Since 5.2.0)</div>**Breaks a target microservice out into its own process.**
+<div class="right">(Since 5.2.0)</div>**ターゲットマイクロサービスを独自のプロセスに分割する**
 
-Can be used to give more resources to processing that is falling behind. If defined multiple times for the same type, will create multiple processes. Each process can be given specific packets to process with the PACKET keyword.
+処理が遅れているリソースにより多くのリソースを与えるために使用できます。同じタイプに対して複数回定義すると、複数のプロセスが作成されます。各プロセスは、PACKETキーワードで処理する特定のパケットを指定できます。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Type | The target microservice type. Must be one of DECOM, COMMANDLOG, DECOMCMDLOG, PACKETLOG, DECOMLOG, REDUCER, or CLEANUP | True |
+| Type | ターゲットマイクロサービスのタイプ。DECOM、COMMANDLOG、DECOMCMDLOG、PACKETLOG、DECOMLOG、REDUCER、またはCLEANUPのいずれかでなければなりません | True |
 
 ### PACKET
-<div class="right">(Since 5.2.0)</div>**Packet Name to allocate to the current TARGET_MICROSERVICE.**
+<div class="right">(Since 5.2.0)</div>**現在のTARGET_MICROSERVICEに割り当てるパケット名**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Packet Name | The packet name. Does not apply to REDUCER or CLEANUP target microservice types. | True |
+| Packet Name | パケット名。REDUCERまたはCLEANUPターゲットマイクロサービスタイプには適用されません。 | True |
 
 ### DISABLE_ERB
-<div class="right">(Since 5.12.0)</div>**Disable ERB processing**
+<div class="right">(Since 5.12.0)</div>**ERB処理を無効にする**
 
-Disable ERB processing for the entire target or a set of regular expressions over its filenames
+ターゲット全体またはそのファイル名に対する一連の正規表現のERB処理を無効にします
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Regex | Regex to match against filenames. If match, then no ERB processing | False |
+| Regex | ファイル名に対して一致する正規表現。一致する場合、ERB処理は行われません | False |
 
 ### SHARD
-<div class="right">(Since 6.0.0)</div>**Operator shard to run target microservices on**
+<div class="right">(Since 6.0.0)</div>**ターゲットマイクロサービスを実行するオペレーターシャード**
 
-Operator Shard. Only used if running multiple operator containers typically in Kubernetes
+オペレーターシャード。複数のオペレーターコンテナ（通常はKubernetesで）を実行している場合にのみ使用されます
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Shard | Shard number starting from 0 | False |
+| Shard | 0から始まるシャード番号 | False |
 
-Example Usage:
+使用例:
 ```ruby
 SHARD 0
 ```
 
 ## MICROSERVICE
-**Defines a new microservice**
+**新しいマイクロサービスを定義する**
 
-Defines a microservice that the plugin adds to the OpenC3 system. Microservices are background software processes that perform persistent processing.
+プラグインがOpenC3システムに追加するマイクロサービスを定義します。マイクロサービスは、永続的な処理を実行するバックグラウンドソフトウェアプロセスです。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Microservice Folder Name | The exact name of the microservice folder in the plugin. ie. microservices/MicroserviceFolderName | True |
-| Microservice Name | The specific name of this instance of the microservice in the OpenC3 system | True |
+| Microservice Folder Name | プラグイン内のマイクロサービスフォルダの正確な名前。例：microservices/MicroserviceFolderName | True |
+| Microservice Name | OpenC3システム内のこのマイクロサービスインスタンスの特定の名前 | True |
 
-Example Usage:
+使用例:
 ```ruby
 MICROSERVICE EXAMPLE openc3-example
 ```
 
-## MICROSERVICE Modifiers
-The following keywords must follow a MICROSERVICE keyword.
+## MICROSERVICE修飾子
+以下のキーワードはMICROSERVICEキーワードに続いて使用する必要があります。
 
 ### ENV
-**Sets an environment variable in the microservice.**
+**マイクロサービスに環境変数を設定する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Key | Environment variable name | True |
-| Value | Environment variable value | True |
+| Key | 環境変数名 | True |
+| Value | 環境変数値 | True |
 
-Example Usage:
+使用例:
 ```ruby
 MICROSERVICE EXAMPLE openc3-example
   ENV COMPANY OpenC3
 ```
 
 ### WORK_DIR
-**Set the working directory**
+**作業ディレクトリを設定する**
 
-Working directory to run the microservice CMD in.  Can be a path relative to the microservice folder in the plugin, or an absolute path in the container the microservice runs in.
+マイクロサービスのCMDを実行する作業ディレクトリ。プラグイン内のマイクロサービスフォルダからの相対パス、またはマイクロサービスが実行されるコンテナ内の絶対パスのいずれかです。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Directory | Working directory to run the microservice CMD in. Can be a path relative to the microservice folder in the plugin, or an absolute path in the container the microservice runs in. | True |
+| Directory | マイクロサービスのCMDを実行する作業ディレクトリ。プラグイン内のマイクロサービスフォルダからの相対パス、またはマイクロサービスが実行されるコンテナ内の絶対パスのいずれかです。 | True |
 
-Example Usage:
+使用例:
 ```ruby
 MICROSERVICE EXAMPLE openc3-example
   WORK_DIR .
 ```
 
 ### PORT
-<div class="right">(Since 5.0.10)</div>**Open port for the microservice**
+<div class="right">(Since 5.0.10)</div>**マイクロサービスのポートを開く**
 
-Kubernetes needs a Service to be applied to open a port so this is required for Kubernetes support
+Kubernetesがポートを開くためにServiceを適用する必要があるため、Kubernetesサポートにはこれが必要です
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Number | Port number | True |
-| Protocol | Port protocol. Default is TCP. | False |
+| Number | ポート番号 | True |
+| Protocol | ポートプロトコル。デフォルトはTCPです。 | False |
 
-Example Usage:
+使用例:
 ```ruby
 MICROSERVICE EXAMPLE openc3-example
   PORT 7272
 ```
 
 ### TOPIC
-**Associate a Redis topic**
+**Redisトピックを関連付ける**
 
-Redis topic to associate with this microservice. Standard OpenC3 microservices such as decom_microservice use this information to know what packet streams to subscribe to. The TOPIC keyword can be used as many times as necessary to associate all needed topics.
+このマイクロサービスに関連付けるRedisトピック。decom_microserviceなどの標準的なOpenC3マイクロサービスは、この情報を使用して、購読するパケットストリームを知ります。TOPICキーワードは、必要なすべてのトピックを関連付けるために必要なだけ使用できます。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Topic Name | Redis Topic to associate with the microservice | True |
+| Topic Name | マイクロサービスに関連付けるRedisトピック | True |
 
-Example Usage:
+使用例:
 ```ruby
 MICROSERVICE EXAMPLE openc3-example
-  # Manually assigning topics is an advanced topic and requires
-  # intimate knowledge of the internal COSMOS data structures.
+  # トピックを手動で割り当てることは高度なトピックであり、
+  # 内部COSMOS データ構造の詳細な知識が必要です。
   TOPIC DEFAULT__openc3_log_messages
   TOPIC DEFAULT__TELEMETRY__EXAMPLE__STATUS
 ```
 
 ### TARGET_NAME
-**Associate a OpenC3 target**
+**OpenC3ターゲットを関連付ける**
 
-OpenC3 target to associate with the microservice. For standard OpenC3 microservices such as decom_microservice this causes the target configuration to get loaded into the container for the microservice.
+マイクロサービスに関連付けるOpenC3ターゲット。decom_microserviceなどの標準的なOpenC3マイクロサービスでは、これによりターゲット設定がマイクロサービスのコンテナにロードされます。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target Name | OpenC3 target to associate with the microservice | True |
+| Target Name | マイクロサービスに関連付けるOpenC3ターゲット | True |
 
-Example Usage:
+使用例:
 ```ruby
 MICROSERVICE EXAMPLE openc3-example
   TARGET_NAME EXAMPLE
 ```
 
 ### CMD
-**Command line to execute to run the microservice.**
+**マイクロサービスを実行するためのコマンドライン**
 
-Command line to execute to run the microservice.
+マイクロサービスを実行するために実行するコマンドライン。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Args | One or more arguments to exec to run the microservice. | True |
+| Args | マイクロサービスを実行するためにexecする1つ以上の引数。 | True |
 
-Ruby Example:
+Rubyの例:
 ```ruby
 MICROSERVICE EXAMPLE openc3-example
   CMD ruby example_target.rb
 ```
 
-Python Example:
+Pythonの例:
 ```python
 MICROSERVICE EXAMPLE openc3-example
   CMD python example_target.py
 ```
 
 ### OPTION
-**Pass an option to the microservice**
+**マイクロサービスにオプションを渡す**
 
-Generic key/value(s) options to pass to the microservice. These take the form of KEYWORD/PARAMS like a line in a OpenC3 configuration file. Multiple OPTION keywords can be used to pass multiple options to the microservice.
+マイクロサービスに渡す汎用キー/値オプション。これらはOpenC3設定ファイルの行のようにKEYWORD/PARAMSの形式を取ります。複数のOPTIONキーワードを使用して、複数のオプションをマイクロサービスに渡すことができます。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Option Name | Name of the option | True |
-| Option Value(s) | One or more values to associate with the option | True |
+| Option Name | オプションの名前 | True |
+| Option Value(s) | オプションに関連付ける1つ以上の値 | True |
 
 ### CONTAINER
-**Docker Container**
+**Dockerコンテナ**
 
-Container to execute and run the microservice in. Only used in COSMOS Enterprise Edition.
+マイクロサービスを実行するコンテナ。COSMOS Enterprise Editionでのみ使用されます。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Args | Name of the container | False |
+| Args | コンテナの名前 | False |
 
 ### SECRET
-<div class="right">(Since 5.3.0)</div>**Define a secret needed by this microservice**
+<div class="right">(Since 5.3.0)</div>**このマイクロサービスが必要とする秘密を定義する**
 
-Defines a secret for this microservice. For more information see [Admin Secrets](/docs/tools/admin#secrets).
+このマイクロサービスの秘密を定義します。詳細については、[管理者のシークレット](/docs/tools/admin#シークレット)を参照してください。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Type | ENV or FILE.  ENV will mount the secret into an environment variable. FILE mounts the secret into a file. | True |
-| Secret Name | The name of the secret to retrieve from the Admin / Secrets tab. For more information see [Admin Secrets](/docs/tools/admin#secrets). | True |
-| Environment Variable or File Path | Environment variable name or file path to store secret | True |
-| Secret Store Name | Name of the secret store for stores with multipart keys | False |
+| Type | ENVまたはFILE。ENVは秘密を環境変数にマウントします。FILEは秘密をファイルにマウントします。 | True |
+| Secret Name | 管理者/シークレットタブから取得する秘密の名前。詳細については、[管理者のシークレット](/docs/tools/admin#シークレット)を参照してください。 | True |
+| Environment Variable or File Path | 秘密を格納する環境変数名またはファイルパス | True |
+| Secret Store Name | マルチパートキーを持つストアのシークレットストア名 | False |
 
-Example Usage:
+使用例:
 ```ruby
 SECRET ENV USERNAME ENV_USERNAME
 SECRET FILE KEY "/tmp/DATA/cert"
 ```
 
 ### ROUTE_PREFIX
-<div class="right">(Since 5.5.0)</div>**Prefix of route**
+<div class="right">(Since 5.5.0)</div>**ルートのプレフィックス**
 
-Prefix of route to the microservice to expose externally with Traefik
+Traefikで外部に公開するマイクロサービスへのルートのプレフィックス
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Route Prefix | Route prefix. Must be unique across all scopes. Something like /myprefix | True |
+| Route Prefix | ルートプレフィックス。すべてのスコープで一意である必要があります。/myprefixのようなもの | True |
 
-Example Usage:
+使用例:
 ```ruby
 MICROSERVICE CFDP CFDP
   ROUTE_PREFIX /cfdp
 ```
 
 ### DISABLE_ERB
-<div class="right">(Since 5.12.0)</div>**Disable ERB processing**
+<div class="right">(Since 5.12.0)</div>**ERB処理を無効にする**
 
-Disable ERB processing for the entire microservice or a set of regular expressions over its filenames
+マイクロサービス全体またはそのファイル名に対する一連の正規表現のERB処理を無効にします
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Regex | Regex to match against filenames. If match, then no ERB processing | False |
+| Regex | ファイル名に対して一致する正規表現。一致する場合、ERB処理は行われません | False |
 
 ### SHARD
-<div class="right">(Since 6.0.0)</div>**Operator shard to run target microservices on**
+<div class="right">(Since 6.0.0)</div>**ターゲットマイクロサービスを実行するオペレーターシャード**
 
-Operator Shard. Only used if running multiple operator containers typically in Kubernetes
+オペレーターシャード。複数のオペレーターコンテナ（通常はKubernetesで）を実行している場合にのみ使用されます
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Shard | Shard number starting from 0 | False |
+| Shard | 0から始まるシャード番号 | False |
 
-Example Usage:
+使用例:
 ```ruby
 SHARD 0
 ```
 
 ### STOPPED
-<div class="right">(Since 6.2.0)</div>**Initially creates the microservice in a stopped state (not enabled)**
+<div class="right">(Since 6.2.0)</div>**初期的にマイクロサービスを停止状態（有効でない）で作成する**
 
 
-Example Usage:
+使用例:
 ```ruby
 STOPPED
 ```
 
 ## TOOL
-**Define a tool**
+**ツールを定義する**
 
-Defines a tool that the plugin adds to the OpenC3 system. Tools are web based applications that make use of the Single-SPA javascript library that allows them to by dynamically added to the running system as independent frontend microservices.
+プラグインがOpenC3システムに追加するツールを定義します。ツールは、Single-SPAjavascriptライブラリを利用するウェブベースのアプリケーションで、独立したフロントエンドマイクロサービスとして実行中のシステムに動的に追加できます。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Tool Folder Name | The exact name of the tool folder in the plugin. ie. tools/ToolFolderName | True |
-| Tool Name | Name of the tool that is displayed in the OpenC3 Navigation menu | True |
+| Tool Folder Name | プラグイン内のツールフォルダの正確な名前。例：tools/ToolFolderName | True |
+| Tool Name | OpenC3ナビゲーションメニューに表示されるツールの名前 | True |
 
-Example Usage:
+使用例:
 ```ruby
 TOOL DEMO Demo
 ```
 
-## TOOL Modifiers
-The following keywords must follow a TOOL keyword.
+## TOOL修飾子
+以下のキーワードはTOOLキーワードに続いて使用する必要があります。
 
 ### URL
-**Url used to access the tool**
+**ツールにアクセスするために使用されるURL**
 
-The relative url used to access the tool. Defaults to "/tools/ToolFolderName".
+ツールにアクセスするための相対URL。デフォルトは"/tools/ToolFolderName"です。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Url | The url. If not given defaults to tools/ToolFolderName. Generally should not be given unless linking to external tools. | True |
+| Url | URL。指定されない場合、デフォルトはtools/ToolFolderNameです。通常、外部ツールにリンクする場合を除いて指定する必要はありません。 | True |
 
 ### INLINE_URL
-**Internal url to load a tool**
+**ツールをロードするための内部URL**
 
-The url of the javascript file used to load the tool into single-SPA. Defaults to "main.js".
+ツールをsingle-SPAにロードするために使用されるjavascriptファイルのURL。デフォルトは"main.js"です。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Url | The inline url. If not given defaults to main.js. Generally should not be given unless using a non-standard filename. | True |
+| Url | インラインURL。指定されない場合、デフォルトはmain.jsです。通常、非標準のファイル名を使用する場合を除いて指定する必要はありません。 | True |
 
 ### WINDOW
-**How to display the tool when navigated to**
+**ナビゲーション時にツールを表示する方法**
 
-The window mode used to display the tool. INLINE opens the tool internally without refreshing the page using the Single-SPA framework. IFRAME opens external tools in an Iframe within OpenC3. NEW opens the tool in a new TAB.
+ツールを表示するためのウィンドウモード。INLINEはSingle-SPAフレームワークを使用してページをリフレッシュせずに内部的にツールを開きます。IFRAMEはOpenC3内のIframeで外部ツールを開きます。NEWは新しいタブでツールを開きます。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Window Mode | Tool display mode<br/><br/>Valid Values: <span class="values">INLINE, IFRAME, NEW</span> | True |
+| Window Mode | ツール表示モード<br/><br/>有効な値: <span class="values">INLINE, IFRAME, NEW</span> | True |
 
 ### ICON
-**Set tool icon**
+**ツールアイコンを設定する**
 
-Icon shown next to the tool name in the OpenC3 navigation menu.
+OpenC3ナビゲーションメニューでツール名の横に表示されるアイコン。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Icon Name | Icon to display next to the tool name. Icons come from Font Awesome, Material Design (https://materialdesignicons.com/), and Astro. | True |
+| Icon Name | ツール名の横に表示するアイコン。アイコンはFont Awesome、Material Design（https://materialdesignicons.com/）、およびAstroから来ています。 | True |
 
 ### CATEGORY
-**Category for the tool**
+**ツールのカテゴリ**
 
-Associates the tool with a category which becomes a submenu in the Navigation menu.
+ツールをカテゴリに関連付けます。これはナビゲーションメニューのサブメニューになります。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Category Name | Category to associate the tool with | True |
+| Category Name | ツールを関連付けるカテゴリ | True |
 
 ### SHOWN
-**Show the tool or not**
+**ツールを表示するかどうか**
 
-Whether or not the tool is shown in the Navigation menu. Should generally be true, except for the openc3 base tool.
+ツールがナビゲーションメニューに表示されるかどうか。通常はtrueであるべきですが、openc3ベースツールを除きます。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Shown | Whether or not the tool is shown.  TRUE or FALSE<br/><br/>Valid Values: <span class="values">true, false</span> | True |
+| Shown | ツールが表示されるかどうか。TRUEまたはFALSE<br/><br/>有効な値: <span class="values">true, false</span> | True |
 
 ### POSITION
-<div class="right">(Since 5.0.8)</div>**Position of the tool in the nav bar**
+<div class="right">(Since 5.0.8)</div>**ナビゲーションバーでのツールの位置**
 
-Position of the tool starting at 2 (1 is reserved for Admin Console). Tools without a position are appended to the end as they are installed. All COSMOS open source tools have consecutive integer values for position.
+2から始まるツールの位置（1はAdmin Consoleのために予約されています）。ポジションのないツールは、インストールされるとき末尾に追加されます。すべてのCOSMOSオープンソースツールは、ポジションに連続した整数値を持っています。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Position | Numerical position | True |
+| Position | 数値位置 | True |
 
 ### DISABLE_ERB
-<div class="right">(Since 5.12.0)</div>**Disable ERB processing**
+<div class="right">(Since 5.12.0)</div>**ERB処理を無効にする**
 
-Disable ERB processing for the entire tool or a set of regular expressions over its filenames
+ツール全体またはそのファイル名に対する一連の正規表現のERB処理を無効にします
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Regex | Regex to match against filenames. If match, then no ERB processing | False |
+| Regex | ファイル名に対して一致する正規表現。一致する場合、ERB処理は行われません | False |
 
 ### IMPORT_MAP_ITEM
-<div class="right">(Since 6.0.0)</div>**Add an item to the import map**
+<div class="right">(Since 6.0.0)</div>**インポートマップにアイテムを追加する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| key | Import Map Key | True |
-| value | Import Map Value | True |
+| key | インポートマップキー | True |
+| value | インポートマップ値 | True |
 
 ## WIDGET
-**Define a custom widget**
+**カスタムウィジェットを定義する**
 
-Defines a custom widget that can be used in Telemetry Viewer screens.
+テレメトリビューア画面で使用できるカスタムウィジェットを定義します。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Widget Name | The name of the widget will be used to build a path to the widget implementation. For example, `WIDGET HELLOWORLD` will find the as-built file tools/widgets/HelloworldWidget/HelloworldWidget.umd.min.js. See the [Custom Widgets](../guides/custom-widgets.md) guide for more details. | True |
-| Label | The label for the widget that will appear in the Data Viewer component drop down | False |
+| Widget Name | ウィジェットの名前は、ウィジェット実装へのパスを構築するために使用されます。例えば、`WIDGET HELLOWORLD`はビルドされたファイルtools/widgets/HelloworldWidget/HelloworldWidget.umd.min.jsを見つけます。詳細については、[カスタムウィジェット](../guides/custom-widgets.md)ガイドを参照してください。 | True |
+| Label | Data Viewerコンポーネントのドロップダウンに表示されるウィジェットのラベル | False |
 
-Example Usage:
+使用例:
 ```ruby
 WIDGET HELLOWORLD
 ```
 
-## WIDGET Modifiers
-The following keywords must follow a WIDGET keyword.
+## WIDGET修飾子
+以下のキーワードはWIDGETキーワードに続いて使用する必要があります。
 
 ### DISABLE_ERB
-<div class="right">(Since 5.12.0)</div>**Disable ERB processing**
+<div class="right">(Since 5.12.0)</div>**ERB処理を無効にする**
 
-Disable ERB processing for the entire widget or a set of regular expressions over its filenames
+ウィジェット全体またはそのファイル名に対する一連の正規表現のERB処理を無効にします
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Regex | Regex to match against filenames. If match, then no ERB processing | False |
-
+| Regex | ファイル名に対して一致する正規表現。一致する場合、ERB処理は行われません | False |

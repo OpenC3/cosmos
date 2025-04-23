@@ -1,129 +1,129 @@
 ---
 sidebar_position: 3
-title: Targets
-description: Target definition file format and keywords
+title: ターゲット
+description: ターゲット定義ファイルの形式とキーワード
 sidebar_custom_props:
   myEmoji: 🛰️
 ---
 
-<!-- Be sure to edit _target.md because target.md is a generated file -->
+<!-- target.mdは生成されたファイルなので、_target.mdを編集してください -->
 
-Targets are the external embedded systems that COSMOS connects to. Targets are defined by the top level [TARGET](plugins.md#target-1) keyword in the plugin.txt file. Each target is self contained in a target directory named after the target. In the root of the target directory there is a configuration file named target.txt which configures the individual target.
+ターゲットはCOSMOSが接続する外部の組み込みシステムです。ターゲットはplugin.txtファイル内のトップレベルの[TARGET](plugins.md#target-1)キーワードによって定義されます。各ターゲットはターゲットの名前が付けられたターゲットディレクトリに自己完結しています。ターゲットディレクトリのルートには、個々のターゲットを設定するtarget.txtという設定ファイルがあります。
 
-# target.txt Keywords
+# target.txtキーワード
 
 
 ## LANGUAGE
-<div class="right">(Since 5.11.1)</div>**Programming language of the target interfaces and microservices**
+<div class="right">(5.11.1以降)</div>**ターゲットインターフェースとマイクロサービスのプログラミング言語**
 
-The target language must be either Ruby or Python. The language determines how the target's interfaces and microservices are run. Note that both Ruby and Python still use ERB to perform templating.
+ターゲット言語はRubyまたはPythonのいずれかでなければなりません。言語はターゲットのインターフェースとマイクロサービスがどのように実行されるかを決定します。RubyとPythonの両方がテンプレート処理にERBを使用していることに注意してください。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-|  | Ruby or Python<br/><br/>Valid Values: <span class="values">ruby, python</span> | True |
+|  | RubyまたはPython<br/><br/>有効な値: <span class="values">ruby, python</span> | はい |
 
-Example Usage:
+使用例:
 ```ruby
 LANGUAGE python
 ```
 
 ## REQUIRE
-**Requires a Ruby file**
+**Rubyファイルを要求する**
 
-List the Ruby files required to explicitly declare dependencies. This is now completely optional.
+依存関係を明示的に宣言するために必要なRubyファイルをリストします。これは現在完全にオプションです。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Filename | Filename to require. For files in the target's lib directory simply supply the filename, e.g. "REQUIRE my_file". Files in the base OpenC3 lib directory also should just list the filename. If a file is in a folder under the lib directory then you must specify the folder name, e.g. "REQUIRE folder/my_file". Note the ".rb" extension is optional when specifying the filename. | True |
+| ファイル名 | 必要なファイル名。ターゲットのlibディレクトリ内のファイルについては、単にファイル名を指定してください（例："REQUIRE my_file"）。基本OpenC3 libディレクトリ内のファイルも、単にファイル名をリストする必要があります。ファイルがlibディレクトリ下のフォルダ内にある場合は、フォルダ名を指定する必要があります（例："REQUIRE folder/my_file"）。ファイル名を指定する際の「.rb」拡張子はオプションです。 | はい |
 
-Example Usage:
+使用例:
 ```ruby
 REQUIRE limits_response.rb
 ```
 
 ## IGNORE_PARAMETER
-**Ignore the given command parameter**
+**指定したコマンドパラメータを無視する**
 
-Hint to other OpenC3 tools to hide or ignore this command parameter when processing the command. For example, Command Sender and Command Sequence will not display the parameter (by default) when showing the command and Script Runner code completion will not display the parameter.
+コマンドを処理する際に、他のOpenC3ツールがこのコマンドパラメータを非表示にするか無視するようにヒントを与えます。例えば、Command SenderとCommand Sequenceはコマンドを表示する際にパラメータを（デフォルトでは）表示せず、Script Runnerのコード補完はパラメータを表示しません。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Parameter Name | The name of a command parameter. Note that this parameter will be ignored in ALL the commands it appears in. | True |
+| パラメータ名 | コマンドパラメータの名前。このパラメータは、それが現れるすべてのコマンドで無視されることに注意してください。 | はい |
 
-Example Usage:
+使用例:
 ```ruby
 IGNORE_PARAMETER CCSDS_VERSION
 ```
 
 ## IGNORE_ITEM
-**Ignore the given telemetry item**
+**指定したテレメトリ項目を無視する**
 
-Hint to other OpenC3 tools to hide or ignore this telemetry item when processing the telemetry. For example, Packet Viewer will not display the item (by default) when showing the packet.
+テレメトリを処理する際に、他のOpenC3ツールがこのテレメトリ項目を非表示にするか無視するようにヒントを与えます。例えば、Packet Viewerはパケットを表示する際に（デフォルトでは）この項目を表示しません。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Item name | The name of a telemetry item. Note that this item will be ignored in ALL the telemetry it appears in. | True |
+| 項目名 | テレメトリ項目の名前。この項目は、それが現れるすべてのテレメトリで無視されることに注意してください。 | はい |
 
-Example Usage:
+使用例:
 ```ruby
 IGNORE_ITEM CCSDS_VERSION
 ```
 
 ## COMMANDS
-**Process the given command definition file**
+**指定したコマンド定義ファイルを処理する**
 
-This keyword is used to explicitly add the command definition file to the list of command and telemetry files to process.
+このキーワードは、コマンド定義ファイルを処理するコマンドとテレメトリファイルのリストに明示的に追加するために使用されます。
 
 :::warning
-Usage of this keyword overrides automatic command and telemetry file discovery. If this keyword is used, you must also use the TELEMETRY keyword to specify the telemetry files to process.
+このキーワードを使用すると、自動コマンドとテレメトリファイルの検出が上書きされます。このキーワードを使用する場合は、TELEMETRYキーワードも使用して処理するテレメトリファイルを指定する必要があります。
 :::
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Filename | Name of a command definition file in the target's cmd_tlm directory, e.g. "cmd.txt". | True |
+| ファイル名 | ターゲットのcmd_tlmディレクトリ内のコマンド定義ファイルの名前（例："cmd.txt"）。 | はい |
 
-Example Usage:
+使用例:
 ```ruby
 COMMANDS inst_cmds_v2.txt
 TELEMETRY inst_tlm_v2.txt
 ```
 
 ## TELEMETRY
-**Process the given telemetry definition file**
+**指定したテレメトリ定義ファイルを処理する**
 
-This keyword is used to explicitly add the telemetry definition file to the list of command and telemetry files to process.
+このキーワードは、テレメトリ定義ファイルを処理するコマンドとテレメトリファイルのリストに明示的に追加するために使用されます。
 
 :::warning
-Usage of this keyword overrides automatic command and telemetry file discovery. If this keyword is used, you must also use the COMMAND keyword to specify the command files to process.
+このキーワードを使用すると、自動コマンドとテレメトリファイルの検出が上書きされます。このキーワードを使用する場合は、COMMANDキーワードも使用して処理するコマンドファイルを指定する必要があります。
 :::
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Filename | Name of a telemetry definition file in the target's cmd_tlm directory, e.g. "tlm.txt". | True |
+| ファイル名 | ターゲットのcmd_tlmディレクトリ内のテレメトリ定義ファイルの名前（例："tlm.txt"）。 | はい |
 
-Example Usage:
+使用例:
 ```ruby
 COMMANDS inst_cmds_v2.txt
 TELEMETRY inst_tlm_v2.txt
 ```
 
 ## CMD_UNIQUE_ID_MODE
-<div class="right">(Since 4.4.0)</div>**Command packet identifiers don't all share the same bit offset, size, and type**
+<div class="right">(4.4.0以降)</div>**すべてのコマンドパケット識別子が同じビットオフセット、サイズ、タイプを共有していない**
 
-Ideally all commands for a target are identified using the exact same bit offset, size, and type field in each command. If ANY command identifiers differ then this flag must be set to force a brute force identification method.
+理想的には、ターゲットのすべてのコマンドは、各コマンドで全く同じビットオフセット、サイズ、タイプフィールドを使用して識別されます。いずれかのコマンド識別子が異なる場合は、強制的にブルートフォース識別方法を使用するために、このフラグを設定する必要があります。
 
 :::warning
-Using this mode significantly slows packet identification
+このモードを使用すると、パケット識別が著しく遅くなります
 :::
 
 
 ## TLM_UNIQUE_ID_MODE
-<div class="right">(Since 4.4.0)</div>**Telemetry packets identifiers don't all share the same bit offset, size, and type**
+<div class="right">(4.4.0以降)</div>**テレメトリパケット識別子がすべて同じビットオフセット、サイズ、タイプを共有していない**
 
-Ideally all telemetry for a target are identified using the exact same bit offset, size, and type field in each packet. If ANY telemetry identifiers differ then this flag must be set to force a brute force identification method.
+理想的には、ターゲットのすべてのテレメトリは、各パケットで全く同じビットオフセット、サイズ、タイプフィールドを使用して識別されます。いずれかのテレメトリ識別子が異なる場合は、強制的にブルートフォース識別方法を使用するために、このフラグを設定する必要があります。
 
 :::warning
-Using this mode significantly slows packet identification
+このモードを使用すると、パケット識別が著しく遅くなります
 :::
 
 

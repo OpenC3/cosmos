@@ -1,88 +1,88 @@
 ---
 sidebar_position: 6
-title: Interfaces
-description: Built-in COSMOS interfaces including how to create one
+title: インターフェース
+description: ビルトインCOSMOSインターフェースと作成方法
 sidebar_custom_props:
   myEmoji: 💡
 ---
 
-## Overview
+## 概要
 
-Interfaces are the connection to the external embedded systems called [targets](target). Interfaces are defined by the top level [INTERFACE](plugins.md#interface-1) keyword in the plugin.txt file.
+インターフェースは、[ターゲット](target)と呼ばれる外部の組み込みシステムへの接続です。インターフェースはplugin.txtファイル内のトップレベルの[INTERFACE](plugins.md#interface-1)キーワードで定義されます。
 
-Interface classes provide the code that COSMOS uses to receive real-time telemetry from targets and to send commands to targets. The interface that a target uses could be anything (TCP/IP, serial, MQTT, SNMP, etc.), therefore it is important that this is a customizable portion of any reusable Command and Telemetry System. Fortunately the most common form of interfaces are over TCP/IP sockets, and COSMOS provides interface solutions for these. This guide will discuss how to use these interface classes, and how to create your own. Note that in most cases you can extend interfaces with [Protocols](protocols.md) rather than implementing a new interface.
+インターフェースクラスは、COSMOSがターゲットからリアルタイムテレメトリを受信し、ターゲットにコマンドを送信するために使用するコードを提供します。ターゲットが使用するインターフェースは何でも可能であり（TCP/IP、シリアル、MQTT、SNMPなど）、これは再利用可能なコマンド・テレメトリシステムのカスタマイズ可能な部分であることが重要です。幸いなことに、最も一般的なインターフェース形式はTCP/IPソケット経由であり、COSMOSはこれらのインターフェースソリューションを提供します。このガイドでは、これらのインターフェースクラスの使用方法と、独自のインターフェースの作成方法について説明します。ほとんどの場合、新しいインターフェースを実装するのではなく、[プロトコル](protocols.md)でインターフェースを拡張できることに注意してください。
 
-:::info Interface and Routers Are Very Similar
-Note that Interfaces and Routers are very similar and share the same configuration parameters. Routers are simply Interfaces which route an existing Interface's telemetry data out to the connected target and routes the connected target's commands back to the original Interface's target.
+:::info インターフェースとルーターは非常に似ています
+インターフェースとルーターは非常に似ており、同じ設定パラメータを共有していることに注意してください。ルーターは単に、既存のインターフェースのテレメトリデータを接続されたターゲットに送り出し、接続されたターゲットのコマンドを元のインターフェースのターゲットに戻すインターフェースです。
 :::
 
-### Protocols
+### プロトコル
 
-Protocols define the behaviour of an Interface, including differentiating packet boundaries and modifying data as necessary. See [Protocols](protocols) for more information.
+プロトコルは、パケット境界の区別やデータの必要に応じた変更など、インターフェースの動作を定義します。詳細については[プロトコル](protocols)を参照してください。
 
-### Accessors
+### アクセサ
 
-Accessors are responsible for reading and writing the buffer which is transmitted by the interface to the target. See [Accessors](accessors) for more information.
+アクセサはインターフェースによってターゲットに送信されるバッファの読み書きを担当します。詳細については[アクセサ](accessors)を参照してください。
 
-For more information about how Interfaces fit with Protocols and Accessors see [Interoperability Without Standards](https://www.openc3.com/news/interoperability-without-standards).
+インターフェース、プロトコル、アクセサがどのように連携するかについての詳細は、[標準なしの相互運用性](https://www.openc3.com/news/interoperability-without-standards)を参照してください。
 
-## Provided Interfaces
+## 提供されるインターフェース
 
-COSMOS provides the following interfaces: TCPIP Client, TCPIP Server, UDP, HTTP Client, HTTP Server, MQTT and Serial. The interface to use is defined by the [INTERFACE](plugins.md#interface) and [ROUTER](plugins.md#router) keywords. See [Interface Modifiers](plugins.md#interface-modifiers) for a description of the keywords which can follow the INTERFACE keyword.
+COSMOSは以下のインターフェースを提供しています：TCPIPクライアント、TCPIPサーバー、UDP、HTTPクライアント、HTTPサーバー、MQTTおよびシリアル。使用するインターフェースは[INTERFACE](plugins.md#interface)および[ROUTER](plugins.md#router)キーワードで定義されます。INTERFACEキーワードの後に続くキーワードの説明については、[インターフェース修飾子](plugins.md#interface-modifiers)を参照してください。
 
-COSMOS Enterprise provides the following interfaces: SNMP, SNMP Trap, GEMS, InfluxDB.
+COSMOS Enterpriseは次のインターフェースを提供しています：SNMP、SNMPトラップ、GEMS、InfluxDB。
 
-#### All Interface Options
+#### すべてのインターフェースオプション
 
-The following options apply to all interfaces. Options are added directly beneath the interface definition as shown in the example.
+以下のオプションはすべてのインターフェースに適用されます。オプションは例に示すように、インターフェース定義の直下に追加されます。
 
-| Option       | Description                                                                                                                                   |
-| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| PERIODIC_CMD | Command to send at periodic intervals. Takes 3 parameters: LOG/DONT_LOG, the interval in seconds, and the actual command to send as a string. |
+| オプション     | 説明                                                                                                   |
+| -------------- | ------------------------------------------------------------------------------------------------------ |
+| PERIODIC_CMD | 定期的な間隔で送信するコマンド。3つのパラメータを取ります：LOG/DONT_LOG、間隔（秒）、および実際のコマンド（文字列）。 |
 
-Examples:
+例：
 
 ```ruby
 INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 10.0
-  # Send the 'INST ABORT' command every 5s and don't log in the CmdTlmServer messages
-  # Note that all commands are logged in the binary logs
+  # 'INST ABORT'コマンドを5秒ごとに送信し、CmdTlmServerメッセージにログを残さない
+  # 注：すべてのコマンドはバイナリログに記録されます
   OPTION PERIODIC_CMD DONT_LOG 5.0 "INST ABORT"
 INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0
-  # Send the 'INST2 COLLECT with TYPE NORMAL' command every 10s and output to the CmdTlmServer messages
+  # 'INST2 COLLECT with TYPE NORMAL'コマンドを10秒ごとに送信し、CmdTlmServerメッセージに出力する
   OPTION PERIODIC_CMD LOG 10.0 "INST2 COLLECT with TYPE NORMAL"
 ```
 
-| Option      | Description                                                                                                               |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------- |
-| CONNECT_CMD | Command to send when the interface connects. Takes 2 parameters: LOG/DONT_LOG and the actual command to send as a string. |
+| オプション    | 説明                                                                                           |
+| ------------- | ---------------------------------------------------------------------------------------------- |
+| CONNECT_CMD | インターフェースが接続したときに送信するコマンド。2つのパラメータを取ります：LOG/DONT_LOGと実際のコマンド（文字列）。 |
 
-Examples:
+例：
 
 ```ruby
 INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 10.0
-  # Send the 'INST ABORT' command on connection and don't log in the CmdTlmServer messages
-  # Note that all commands are logged in the binary logs
+  # 接続時に'INST ABORT'コマンドを送信し、CmdTlmServerメッセージにログを残さない
+  # 注：すべてのコマンドはバイナリログに記録されます
   OPTION CONNECT_CMD DONT_LOG "INST ABORT"
 INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0
-  # Send the 'INST2 COLLECT with TYPE NORMAL' on connection and output to the CmdTlmServer messages
+  # 接続時に'INST2 COLLECT with TYPE NORMAL'を送信し、CmdTlmServerメッセージに出力する
   OPTION CONNECT_CMD LOG "INST2 COLLECT with TYPE NORMAL"
 ```
 
-### TCPIP Client Interface
+### TCPIPクライアントインターフェース
 
-The TCPIP client interface connects to a TCPIP socket to send commands and receive telemetry. This interface is used for targets which open a socket and wait for a connection. This is the most common type of interface.
+TCPIPクライアントインターフェースはTCPIPソケットに接続してコマンドを送信し、テレメトリを受信します。このインターフェースは、ソケットを開いて接続を待機するターゲット用に使用されます。これは最も一般的なインターフェースタイプです。
 
-| Parameter          | Description                                                                                                    | Required |
-| ------------------ | -------------------------------------------------------------------------------------------------------------- | -------- |
-| Host               | Machine name to connect to                                                                                     | Yes      |
-| Write Port         | Port to write commands to (can be the same as read port). Pass nil / None to make the interface read only.     | Yes      |
-| Read Port          | Port to read telemetry from (can be the same as write port). Pass nil / None to make the interface write only. | Yes      |
-| Write Timeout      | Number of seconds to wait before aborting the write                                                            | Yes      |
-| Read Timeout       | Number of seconds to wait before aborting the read. Pass nil / None to block on read.                          | Yes      |
-| Protocol Type      | See Protocols.                                                                                                 | No       |
-| Protocol Arguments | See Protocols for the arguments each stream protocol takes.                                                    | No       |
+| パラメータ         | 説明                                                                                            | 必須    |
+| ------------------ | ----------------------------------------------------------------------------------------------- | ------- |
+| Host               | 接続するマシン名                                                                                | はい    |
+| Write Port         | コマンドを書き込むポート（読み取りポートと同じでも可）。nil / Noneを渡すとインターフェースは読み取り専用になります。 | はい    |
+| Read Port          | テレメトリを読み取るポート（書き込みポートと同じでも可）。nil / Noneを渡すとインターフェースは書き込み専用になります。 | はい    |
+| Write Timeout      | 書き込みを中止するまで待機する秒数                                                              | はい    |
+| Read Timeout       | 読み取りを中止するまで待機する秒数。nil / Noneを渡すと読み取りでブロックします。                | はい    |
+| Protocol Type      | プロトコルを参照してください。                                                                  | いいえ  |
+| Protocol Arguments | 各ストリームプロトコルが取る引数については、プロトコルを参照してください。                      | いいえ  |
 
-plugin.txt Ruby Examples:
+plugin.txt Rubyの例：
 
 ```ruby
 INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil LENGTH 0 16 0 1 BIG_ENDIAN 4 0xBA5EBA11
@@ -91,10 +91,10 @@ INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 808
 INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 10.0 TERMINATED 0x0D0A 0x0D0A true 0 0xF005BA11
 INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 10.0 TEMPLATE 0xA 0xA
 INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 nil PREIDENTIFIED 0xCAFEBABE
-INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 10.0 # no built-in protocol
+INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 10.0 # ビルトインプロトコルなし
 ```
 
-plugin.txt Python Examples:
+plugin.txt Pythonの例：
 
 ```ruby
 INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8081 10.0 None LENGTH 0 16 0 1 BIG_ENDIAN 4 0xBA5EBA11
@@ -103,39 +103,39 @@ INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker
 INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0 TERMINATED 0x0D0A 0x0D0A true 0 0xF005BA11
 INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0 TEMPLATE 0xA 0xA
 INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 None PREIDENTIFIED 0xCAFEBABE
-INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0 # no built-in protocol
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0 # ビルトインプロトコルなし
 ```
 
-### TCPIP Server Interface
+### TCPIPサーバーインターフェース
 
-The TCPIP server interface creates a TCPIP server which listens for incoming connections and dynamically creates sockets which communicate with the target. This interface is used for targets which open a socket and try to connect to a server.
+TCPIPサーバーインターフェースはTCPIPサーバーを作成し、着信接続をリッスンして、ターゲットと通信するソケットを動的に作成します。このインターフェースは、ソケットを開いてサーバーに接続しようとするターゲット用に使用されます。
 
-NOTE: To receive connections from outside the internal docker network you need to expose the TCP port in the compose.yaml file. For example, to allow connections on port 8080 find the openc3-operator section and modify like the following example:
+注意：内部dockerネットワーク外からの接続を受け入れるには、compose.yamlファイルでTCPポートを公開する必要があります。例えば、ポート8080での接続を許可するには、openc3-operatorセクションを見つけて次の例のように変更します：
 
 ```yaml
 openc3-operator:
   ports:
-    - "127.0.0.1:8080:8080" # Open tcp port 8080
+    - "127.0.0.1:8080:8080" # tcpポート8080を開く
 ```
 
-| Parameter          | Description                                                                           | Required |
-| ------------------ | ------------------------------------------------------------------------------------- | -------- |
-| Write Port         | Port to write commands to (can be the same as read port)                              | Yes      |
-| Read Port          | Port to read telemetry from (can be the same as write port)                           | Yes      |
-| Write Timeout      | Number of seconds to wait before aborting the write                                   | Yes      |
-| Read Timeout       | Number of seconds to wait before aborting the read. Pass nil / None to block on read. | Yes      |
-| Protocol Type      | See Protocols.                                                                        | No       |
-| Protocol Arguments | See Protocols for the arguments each stream protocol takes.                           | No       |
+| パラメータ         | 説明                                                                             | 必須    |
+| ------------------ | -------------------------------------------------------------------------------- | ------- |
+| Write Port         | コマンドを書き込むポート（読み取りポートと同じでも可）                          | はい    |
+| Read Port          | テレメトリを読み取るポート（書き込みポートと同じでも可）                        | はい    |
+| Write Timeout      | 書き込みを中止するまで待機する秒数                                              | はい    |
+| Read Timeout       | 読み取りを中止するまで待機する秒数。nil / Noneを渡すと読み取りでブロックします。| はい    |
+| Protocol Type      | プロトコルを参照してください。                                                  | いいえ  |
+| Protocol Arguments | 各ストリームプロトコルが取る引数については、プロトコルを参照してください。      | いいえ  |
 
-#### Interface Options
+#### インターフェースオプション
 
-Options are added directly beneath the interface definition as shown in the example.
+オプションは例に示すように、インターフェース定義の直下に追加されます。
 
-| Option         | Description                         | Default |
-| -------------- | ----------------------------------- | ------- |
-| LISTEN_ADDRESS | IP address to accept connections on | 0.0.0.0 |
+| オプション      | 説明                           | デフォルト |
+| --------------- | ------------------------------ | ---------- |
+| LISTEN_ADDRESS | 接続を受け付けるIPアドレス      | 0.0.0.0    |
 
-plugin.txt Ruby Examples:
+plugin.txt Rubyの例：
 
 ```ruby
 INTERFACE INTERFACE_NAME tcpip_server_interface.rb 8080 8081 10.0 nil LENGTH 0 16 0 1 BIG_ENDIAN 4 0xBA5EBA11
@@ -144,11 +144,11 @@ INTERFACE INTERFACE_NAME tcpip_server_interface.rb 8080 8080 10.0 nil FIXED 6 0 
 INTERFACE INTERFACE_NAME tcpip_server_interface.rb 8080 8080 10.0 10.0 TERMINATED 0x0D0A 0x0D0A true 0 0xF005BA11
 INTERFACE INTERFACE_NAME tcpip_server_interface.rb 8080 8080 10.0 10.0 TEMPLATE 0xA 0xA
 INTERFACE INTERFACE_NAME tcpip_server_interface.rb 8080 8080 10.0 nil PREIDENTIFIED 0xCAFEBABE
-INTERFACE INTERFACE_NAME tcpip_server_interface.rb 8080 8080 10.0 10.0 # no built-in protocol
+INTERFACE INTERFACE_NAME tcpip_server_interface.rb 8080 8080 10.0 10.0 # ビルトインプロトコルなし
   OPTION LISTEN_ADDRESS 127.0.0.1
 ```
 
-plugin.txt Python Examples:
+plugin.txt Pythonの例：
 
 ```ruby
 INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_server_interface.py 8080 8081 10.0 None LENGTH 0 16 0 1 BIG_ENDIAN 4 0xBA5EBA11
@@ -157,237 +157,237 @@ INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_server_interface.py 8080 8080 1
 INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_server_interface.py 8080 8080 10.0 10.0 TERMINATED 0x0D0A 0x0D0A true 0 0xF005BA11
 INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_server_interface.py 8080 8080 10.0 10.0 TEMPLATE 0xA 0xA
 INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_server_interface.py 8080 8080 10.0 None PREIDENTIFIED 0xCAFEBABE
-INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_server_interface.py 8080 8080 10.0 10.0 # no built-in protocol
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_server_interface.py 8080 8080 10.0 10.0 # ビルトインプロトコルなし
 ```
 
-### UDP Interface
+### UDPインターフェース
 
-The UDP interface uses UDP packets to send and receive telemetry from the target.
+UDPインターフェースはUDPパケットを使用してターゲットとの間でコマンドの送信とテレメトリの受信を行います。
 
-NOTE: To receive UDP packets from outside the internal docker network you need to expose the UDP port in the compose.yaml file. For example, to allow UDP packets on port 8081 find the openc3-operator section and modify like the following example:
+注意：内部dockerネットワーク外からUDPパケットを受信するには、compose.yamlファイルでUDPポートを公開する必要があります。例えば、ポート8081でUDPパケットを許可するには、openc3-operatorセクションを見つけて次の例のように変更します：
 
 ```yaml
 openc3-operator:
   ports:
-    - "127.0.0.1:8081:8081/udp" # Open udp port 8081
+    - "127.0.0.1:8081:8081/udp" # udpポート8081を開く
 ```
 
-| Parameter         | Description                                                                                                        | Required | Default                                       |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------ | -------- | --------------------------------------------- |
-| Host              | Host name or IP address of the machine to send and receive data with                                               | Yes      |
-| Write Dest Port   | Port on the remote machine to send commands to                                                                     | Yes      |
-| Read Port         | Port on the remote machine to read telemetry from                                                                  | Yes      |
-| Write Source Port | Port on the local machine to send commands from                                                                    | No       | nil (socket is not bound to an outgoing port) |
-| Interface Address | If the remote machine supports multicast the interface address is used to configure the outgoing multicast address | No       | nil (not used)                                |
-| TTL               | Time to Live. The number of intermediate routers allowed before dropping the packet.                               | No       | 128 (Windows)                                 |
-| Write Timeout     | Number of seconds to wait before aborting the write                                                                | No       | 10.0                                          |
-| Read Timeout      | Number of seconds to wait before aborting the read                                                                 | No       | nil (block on read)                           |
+| パラメータ        | 説明                                                                                               | 必須    | デフォルト                                  |
+| ----------------- | -------------------------------------------------------------------------------------------------- | ------- | ------------------------------------------- |
+| Host              | データの送受信を行うマシンのホスト名またはIPアドレス                                               | はい    |                                             |
+| Write Dest Port   | コマンドを送信するリモートマシン上のポート                                                         | はい    |                                             |
+| Read Port         | テレメトリを読み取るリモートマシン上のポート                                                       | はい    |                                             |
+| Write Source Port | コマンドを送信するローカルマシン上のポート                                                         | いいえ  | nil (ソケットは発信ポートにバインドされない) |
+| Interface Address | リモートマシンがマルチキャストをサポートしている場合、インターフェースアドレスは発信マルチキャストアドレスを設定するために使用されます | いいえ  | nil (使用されない)                          |
+| TTL               | Time to Live。パケットを破棄する前に許可される中間ルーターの数。                                   | いいえ  | 128 (Windows)                               |
+| Write Timeout     | 書き込みを中止するまで待機する秒数                                                                 | いいえ  | 10.0                                        |
+| Read Timeout      | 読み取りを中止するまで待機する秒数                                                                 | いいえ  | nil (読み取りでブロック)                    |
 
-plugin.txt Ruby Example:
+plugin.txt Rubyの例：
 
 ```ruby
 INTERFACE INTERFACE_NAME udp_interface.rb host.docker.internal 8080 8081 8082 nil 128 10.0 nil
 ```
 
-plugin.txt Python Example:
+plugin.txt Pythonの例：
 
 ```ruby
 INTERFACE INTERFACE_NAME openc3/interfaces/udp_interface.py host.docker.internal 8080 8081 8082 None 128 10.0 None
 ```
 
-### HTTP Client Interface
+### HTTPクライアントインターフェース
 
-The HTTP client interface connects to a HTTP server to send commands and receive telemetry. This interface is commonly used with the [HttpAccessor](accessors#http-accessor) and [JsonAccessor](accessors#json-accessor). See the [openc3-cosmos-http-example](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-http-example) for more information.
+HTTPクライアントインターフェースはHTTPサーバーに接続してコマンドを送信し、テレメトリを受信します。このインターフェースは[HttpAccessor](accessors#http-accessor)および[JsonAccessor](accessors#json-accessor)と共に使用されることが一般的です。詳細については[openc3-cosmos-http-example](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-http-example)を参照してください。
 
-| Parameter                   | Description                                                                             | Required | Default    |
-| --------------------------- | --------------------------------------------------------------------------------------- | -------- | ---------- |
-| Host                        | Machine name to connect to                                                              | Yes      |            |
-| Port                        | Port to write commands to and read telemetry from                                       | No       | 80         |
-| Protocol                    | HTTP or HTTPS protocol                                                                  | No       | HTTP       |
-| Write Timeout               | Number of seconds to wait before aborting the write. Pass nil / None to block on write. | No       | 5          |
-| Read Timeout                | Number of seconds to wait before aborting the read. Pass nil / None to block on read.   | No       | nil / None |
-| Connect Timeout             | Number of seconds to wait before aborting the connection                                | No       | 5          |
-| Include Request In Response | Whether to include the request in the extra data                                        | No       | false      |
+| パラメータ                  | 説明                                                                              | 必須    | デフォルト |
+| --------------------------- | --------------------------------------------------------------------------------- | ------- | ---------- |
+| Host                        | 接続するマシン名                                                                  | はい    |            |
+| Port                        | コマンドを書き込み、テレメトリを読み取るポート                                    | いいえ  | 80         |
+| Protocol                    | HTTPまたはHTTPSプロトコル                                                         | いいえ  | HTTP       |
+| Write Timeout               | 書き込みを中止するまで待機する秒数。nil / Noneを渡すと書き込みでブロックします。  | いいえ  | 5          |
+| Read Timeout                | 読み取りを中止するまで待機する秒数。nil / Noneを渡すと読み取りでブロックします。  | いいえ  | nil / None |
+| Connect Timeout             | 接続を中止するまで待機する秒数                                                    | いいえ  | 5          |
+| Include Request In Response | リクエストを追加データに含めるかどうか                                           | いいえ  | false      |
 
-plugin.txt Ruby Examples:
+plugin.txt Rubyの例：
 
 ```ruby
 INTERFACE INTERFACE_NAME http_client_interface.rb myserver.com 80
 ```
 
-plugin.txt Python Examples:
+plugin.txt Pythonの例：
 
 ```ruby
 INTERFACE INTERFACE_NAME openc3/interfaces/http_client_interface.py mysecure.com 443 HTTPS
 ```
 
-### HTTP Server Interface
+### HTTPサーバーインターフェース
 
-The HTTP server interface creates a simple unencrypted, unauthenticated HTTP server. This interface is commonly used with the [HttpAccessor](accessors#http-accessor) and [JsonAccessor](accessors#json-accessor). See the [openc3-cosmos-http-example](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-http-example) for more information.
+HTTPサーバーインターフェースは、シンプルな暗号化されていない、認証されていないHTTPサーバーを作成します。このインターフェースは[HttpAccessor](accessors#http-accessor)および[JsonAccessor](accessors#json-accessor)と共に使用されることが一般的です。詳細については[openc3-cosmos-http-example](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-http-example)を参照してください。
 
-| Parameter | Description                                       | Required | Default |
-| --------- | ------------------------------------------------- | -------- | ------- |
-| Port      | Port to write commands to and read telemetry from | No       | 80      |
+| パラメータ | 説明                                       | 必須    | デフォルト |
+| ---------- | ------------------------------------------ | ------- | ---------- |
+| Port       | コマンドを書き込み、テレメトリを読み取るポート | いいえ  | 80         |
 
-#### Interface Options
+#### インターフェースオプション
 
-Options are added directly beneath the interface definition as shown in the example.
+オプションは例に示すように、インターフェース定義の直下に追加されます。
 
-| Option         | Description                         | Default |
-| -------------- | ----------------------------------- | ------- |
-| LISTEN_ADDRESS | IP address to accept connections on | 0.0.0.0 |
+| オプション      | 説明                           | デフォルト |
+| --------------- | ------------------------------ | ---------- |
+| LISTEN_ADDRESS | 接続を受け付けるIPアドレス      | 0.0.0.0    |
 
-plugin.txt Ruby Examples:
+plugin.txt Rubyの例：
 
 ```ruby
 INTERFACE INTERFACE_NAME http_server_interface.rb
   LISTEN_ADDRESS 127.0.0.1
 ```
 
-plugin.txt Python Examples:
+plugin.txt Pythonの例：
 
 ```ruby
 INTERFACE INTERFACE_NAME openc3/interfaces/http_server_interface.py 88
 ```
 
-### MQTT Interface
+### MQTTインターフェース
 
-The MQTT interface is typically used for connecting to Internet of Things (IoT) devices. The COSMOS MQTT interface is a client that can both publish and receive messages (commands and telemetry). It has built in support for SSL certificates as well as authentication. It differs from the MQTT Streaming Interface in that the commands and telemetry are transmitted over topics given by `META TOPIC` in the command and telemetry definitions.
+MQTTインターフェースは一般的にIoT（Internet of Things）デバイスとの接続に使用されます。COSMOS MQTTインターフェースはメッセージ（コマンドとテレメトリ）の公開と受信の両方ができるクライアントです。SSL証明書と認証のためのサポートが組み込まれています。MQTTストリーミングインターフェースとは、コマンドとテレメトリがコマンドとテレメトリの定義で`META TOPIC`で指定されたトピックを介して送信される点が異なります。
 
-| Parameter | Description                                                                          | Required | Default |
-| --------- | ------------------------------------------------------------------------------------ | -------- | ------- |
-| Host      | Host name or IP address of the MQTT broker                                           | Yes      |         |
-| Port      | Port on the MQTT broker to connect to. Keep in mind whether you're using SSL or not. | No       | 1883    |
-| SSL       | Whether to use SSL to connect                                                        | No       | false   |
+| パラメータ | 説明                                                                             | 必須    | デフォルト |
+| ---------- | -------------------------------------------------------------------------------- | ------- | ---------- |
+| Host       | MQTTブローカーのホスト名またはIPアドレス                                         | はい    |            |
+| Port       | 接続するMQTTブローカー上のポート。SSLを使用するかどうかを考慮してください。     | いいえ  | 1883       |
+| SSL        | 接続にSSLを使用するかどうか                                                      | いいえ  | false      |
 
-#### Interface Options
+#### インターフェースオプション
 
-Options are added directly beneath the interface definition as shown in the example.
+オプションは例に示すように、インターフェース定義の直下に追加されます。
 
-| Option           | Description                                                                                |
-| ---------------- | ------------------------------------------------------------------------------------------ |
-| ACK_TIMEOUT      | Time to wait when connecting to the MQTT broker                                            |
-| USERNAME         | Username for authentication with the MQTT broker                                           |
-| PASSWORD         | Password for authentication with the MQTT broker                                           |
-| CERT             | PEM encoded client certificate filename used with KEY for client TLS based authentication  |
-| KEY              | PEM encoded client private keys filename                                                   |
-| KEYFILE_PASSWORD | Password to decrypt the CERT and KEY files (Python only)                                   |
-| CA_FILE          | Certificate Authority certificate filename that is to be treated as trusted by this client |
+| オプション         | 説明                                                                                |
+| ------------------ | ----------------------------------------------------------------------------------- |
+| ACK_TIMEOUT       | MQTTブローカーに接続するときに待機する時間                                          |
+| USERNAME          | MQTTブローカーとの認証用のユーザー名                                                |
+| PASSWORD          | MQTTブローカーとの認証用のパスワード                                                |
+| CERT              | クライアントTLSベースの認証にKEYと共に使用されるPEMエンコードされたクライアント証明書ファイル名 |
+| KEY               | PEMエンコードされたクライアント秘密鍵ファイル名                                     |
+| KEYFILE_PASSWORD  | CERTとKEYファイルを復号化するためのパスワード（Pythonのみ）                        |
+| CA_FILE           | このクライアントが信頼すべき認証局証明書ファイル名                                  |
 
-plugin.txt Ruby Example:
+plugin.txt Rubyの例：
 
 ```ruby
 INTERFACE MQTT_INT mqtt_interface.rb test.mosquitto.org 1883
 ```
 
-plugin.txt Python Example (Note: This example uses the [SECRET](plugins#secret) keyword to set the PASSWORD option in the Interface):
+plugin.txt Pythonの例（注：この例では[SECRET](plugins#secret)キーワードを使用してインターフェースのPASSWORDオプションを設定しています）：
 
 ```ruby
 INTERFACE MQTT_INT openc3/interfaces/mqtt_interface.py test.mosquitto.org 8884
   OPTION USERNAME rw
-  # Create an env variable called MQTT_PASSWORD with the secret named PASSWORD
-  # and set an OPTION called PASSWORD with the secret value
-  # For more information about secrets see the Admin Tool page
+  # PASSWORDという名前のシークレットでMQTT_PASSWORDという環境変数を作成し、
+  # シークレット値を持つPASSWORDというオプションを設定します
+  # シークレットの詳細については、管理ツールのページを参照してください
   SECRET ENV PASSWORD MQTT_PASSWORD PASSWORD
 ```
 
-#### Packet Definitions
+#### パケット定義
 
-The MQTT Interface utilizes 'META TOPIC &lt;topic name&gt;' in the command and telemetry definition files to determine which topics to publish and receive messages from. Thus to send to the topic 'TEST' you would create a command like the following (Note: The command name 'TEST' does NOT have to match the topic name):
+MQTTインターフェースはコマンドとテレメトリの定義ファイルで「META TOPIC &lt;トピック名&gt;」を利用して、メッセージを公開および受信するトピックを決定します。したがって、「TEST」というトピックに送信するには、次のようなコマンドを作成します（注：コマンド名「TEST」はトピック名と一致する必要はありません）：
 
 ```
 COMMAND MQTT TEST BIG_ENDIAN "Test"
-  META TOPIC TEST # <- The topic name is 'TEST'
+  META TOPIC TEST # <- トピック名は'TEST'
   APPEND_PARAMETER DATA 0 BLOCK '' "MQTT Data"
 ```
 
-Similarly to receive from the topic 'TEST' you would create a telemetry packet like the following (Note: The telemetry name 'TEST' does NOT have to match the topic name):
+同様に、「TEST」というトピックから受信するには、次のようなテレメトリパケットを作成します（注：テレメトリ名「TEST」はトピック名と一致する必要はありません）：
 
 ```
 TELEMETRY MQTT TEST BIG_ENDIAN "Test"
-  META TOPIC TEST # <- The topic name is 'TEST'
+  META TOPIC TEST # <- トピック名は'TEST'
   APPEND_ITEM DATA 0 BLOCK "MQTT Data"
 ```
 
-For a full example, please see the [openc3-cosmos-mqtt-test](https://github.com/OpenC3/cosmos/tree/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-mqtt-test) in the COSMOS source.
+完全な例については、COSMOSソースの[openc3-cosmos-mqtt-test](https://github.com/OpenC3/cosmos/tree/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-mqtt-test)を参照してください。
 
-### MQTT Streaming Interface
+### MQTTストリーミングインターフェース
 
-The MQTT streaming interface is typically used for connecting to Internet of Things (IoT) devices. The COSMOS MQTT streaming interface is a client that can both publish and receive messages (commands and telemetry). It has built in support for SSL certificates as well as authentication. It differs from the MQTT Interface in that all the commands are transmitted on a single topic and all telemetry is received on a single topic.
+MQTTストリーミングインターフェースは一般的にIoT（Internet of Things）デバイスとの接続に使用されます。COSMOS MQTTストリーミングインターフェースはメッセージ（コマンドとテレメトリ）の公開と受信の両方ができるクライアントです。SSL証明書と認証のためのサポートが組み込まれています。MQTTインターフェースとは、すべてのコマンドが単一のトピックで送信され、すべてのテレメトリが単一のトピックで受信される点が異なります。
 
-| Parameter          | Description                                                                             | Required | Default    |
-| ------------------ | --------------------------------------------------------------------------------------- | -------- | ---------- |
-| Host               | Host name or IP address of the MQTT broker                                              | Yes      |            |
-| Port               | Port on the MQTT broker to connect to. Keep in mind whether you're using SSL or not.    | No       | 1883       |
-| SSL                | Whether to use SSL to connect                                                           | No       | false      |
-| Write Topic        | Name of the write topic for all commands. Pass nil / None to make interface read only.  | No       | nil / None |
-| Read Topic         | Name of the read topic for all telemetry. Pass nil / None to make interface write only. | No       | nil / None |
-| Protocol Type      | See Protocols.                                                                          | No       |
-| Protocol Arguments | See Protocols for the arguments each stream protocol takes.                             | No       |
+| パラメータ         | 説明                                                                                | 必須    | デフォルト |
+| ------------------ | ----------------------------------------------------------------------------------- | ------- | ---------- |
+| Host               | MQTTブローカーのホスト名またはIPアドレス                                            | はい    |            |
+| Port               | 接続するMQTTブローカー上のポート。SSLを使用するかどうかを考慮してください。        | いいえ  | 1883       |
+| SSL                | 接続にSSLを使用するかどうか                                                         | いいえ  | false      |
+| Write Topic        | すべてのコマンド用の書き込みトピック名。nil / Noneを渡すとインターフェースは読み取り専用になります。 | いいえ  | nil / None |
+| Read Topic         | すべてのテレメトリ用の読み取りトピック名。nil / Noneを渡すとインターフェースは書き込み専用になります。 | いいえ  | nil / None |
+| Protocol Type      | プロトコルを参照してください。                                                      | いいえ  |            |
+| Protocol Arguments | 各ストリームプロトコルが取る引数については、プロトコルを参照してください。          | いいえ  |            |
 
-#### Interface Options
+#### インターフェースオプション
 
-Options are added directly beneath the interface definition as shown in the example.
+オプションは例に示すように、インターフェース定義の直下に追加されます。
 
-| Option           | Description                                                                                |
-| ---------------- | ------------------------------------------------------------------------------------------ |
-| ACK_TIMEOUT      | Time to wait when connecting to the MQTT broker                                            |
-| USERNAME         | Username for authentication with the MQTT broker                                           |
-| PASSWORD         | Password for authentication with the MQTT broker                                           |
-| CERT             | PEM encoded client certificate filename used with KEY for client TLS based authentication  |
-| KEY              | PEM encoded client private keys filename                                                   |
-| KEYFILE_PASSWORD | Password to decrypt the CERT and KEY files (Python only)                                   |
-| CA_FILE          | Certificate Authority certificate filename that is to be treated as trusted by this client |
+| オプション         | 説明                                                                                |
+| ------------------ | ----------------------------------------------------------------------------------- |
+| ACK_TIMEOUT       | MQTTブローカーに接続するときに待機する時間                                          |
+| USERNAME          | MQTTブローカーとの認証用のユーザー名                                                |
+| PASSWORD          | MQTTブローカーとの認証用のパスワード                                                |
+| CERT              | クライアントTLSベースの認証にKEYと共に使用されるPEMエンコードされたクライアント証明書ファイル名 |
+| KEY               | PEMエンコードされたクライアント秘密鍵ファイル名                                     |
+| KEYFILE_PASSWORD  | CERTとKEYファイルを復号化するためのパスワード（Pythonのみ）                        |
+| CA_FILE           | このクライアントが信頼すべき認証局証明書ファイル名                                  |
 
-plugin.txt Ruby Example:
+plugin.txt Rubyの例：
 
 ```ruby
 INTERFACE MQTT_INT mqtt_stream_interface.rb test.mosquitto.org 1883 false write read
 ```
 
-plugin.txt Python Example (Note: This example uses the [SECRET](plugins#secret) keyword to set the PASSWORD option in the Interface):
+plugin.txt Pythonの例（注：この例では[SECRET](plugins#secret)キーワードを使用してインターフェースのPASSWORDオプションを設定しています）：
 
 ```ruby
 INTERFACE MQTT_INT openc3/interfaces/mqtt_stream_interface.py test.mosquitto.org 8884 False write read
   OPTION USERNAME rw
-  # Create an env variable called MQTT_PASSWORD with the secret named PASSWORD
-  # and set an OPTION called PASSWORD with the secret value
-  # For more information about secrets see the Admin Tool page
+  # PASSWORDという名前のシークレットでMQTT_PASSWORDという環境変数を作成し、
+  # シークレット値を持つPASSWORDというオプションを設定します
+  # シークレットの詳細については、管理ツールのページを参照してください
   SECRET ENV PASSWORD MQTT_PASSWORD PASSWORD
 ```
 
-#### Packet Definitions
+#### パケット定義
 
-The MQTT Streaming Interface utilizes the topic names passed to the interface so no additional information is necessary in the definition.
+MQTTストリーミングインターフェースはインターフェースに渡されたトピック名を使用するため、定義に追加情報は必要ありません。
 
-For a full example, please see the [openc3-cosmos-mqtt-test](https://github.com/OpenC3/cosmos/tree/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-mqtt-test) in the COSMOS source.
+完全な例については、COSMOSソースの[openc3-cosmos-mqtt-test](https://github.com/OpenC3/cosmos/tree/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-mqtt-test)を参照してください。
 
-### Serial Interface
+### シリアルインターフェース
 
-The serial interface connects to a target over a serial port. COSMOS provides drivers for both Windows and POSIX drivers for UNIX based systems. The Serial Interface is currently only implemented in Ruby.
+シリアルインターフェースはシリアルポート経由でターゲットに接続します。COSMOSはWindowsとUNIXベースのシステム用のPOSIXドライバの両方を提供しています。シリアルインターフェースは現在Rubyでのみ実装されています。
 
-| Parameter          | Description                                                                                        | Required |
-| ------------------ | -------------------------------------------------------------------------------------------------- | -------- |
-| Write Port         | Name of the serial port to write, e.g. 'COM1' or '/dev/ttyS0'. Pass nil / None to disable writing. | Yes      |
-| Read Port          | Name of the serial port to read, e.g. 'COM1' or '/dev/ttyS0'. Pass nil / None to disable reading.  | Yes      |
-| Baud Rate          | Baud rate to read and write                                                                        | Yes      |
-| Parity             | Serial port parity. Must be 'NONE', 'EVEN', or 'ODD'.                                              | Yes      |
-| Stop Bits          | Number of stop bits, e.g. 1.                                                                       | Yes      |
-| Write Timeout      | Number of seconds to wait before aborting the write                                                | Yes      |
-| Read Timeout       | Number of seconds to wait before aborting the read. Pass nil / None to block on read.              | Yes      |
-| Protocol Type      | See Protocols.                                                                                     | No       |
-| Protocol Arguments | See Protocols for the arguments each stream protocol takes.                                        | No       |
+| パラメータ         | 説明                                                                                         | 必須    |
+| ------------------ | -------------------------------------------------------------------------------------------- | ------- |
+| Write Port         | 書き込み用のシリアルポート名（例：'COM1'または'/dev/ttyS0'）。nil / Noneを渡すと書き込みを無効にします。 | はい    |
+| Read Port          | 読み取り用のシリアルポート名（例：'COM1'または'/dev/ttyS0'）。nil / Noneを渡すと読み取りを無効にします。 | はい    |
+| Baud Rate          | 読み書きに使用するボーレート                                                                | はい    |
+| Parity             | シリアルポートのパリティ。'NONE'、'EVEN'、'ODD'のいずれかでなければなりません。           | はい    |
+| Stop Bits          | ストップビット数（例：1）                                                                   | はい    |
+| Write Timeout      | 書き込みを中止するまで待機する秒数                                                          | はい    |
+| Read Timeout       | 読み取りを中止するまで待機する秒数。nil / Noneを渡すと読み取りでブロックします。           | はい    |
+| Protocol Type      | プロトコルを参照してください。                                                              | いいえ  |
+| Protocol Arguments | 各ストリームプロトコルが取る引数については、プロトコルを参照してください。                 | いいえ  |
 
-#### Interface Options
+#### インターフェースオプション
 
-Options are added directly beneath the interface definition as shown in the example.
+オプションは例に示すように、インターフェース定義の直下に追加されます。
 
-| Option       | Description                                              | Default |
-| ------------ | -------------------------------------------------------- | ------- |
-| FLOW_CONTROL | Serial port flow control. Must be one of NONE or RTSCTS. | NONE    |
-| DATA_BITS    | Number of data bits.                                     | 8       |
+| オプション     | 説明                                              | デフォルト |
+| -------------- | ------------------------------------------------- | ---------- |
+| FLOW_CONTROL  | シリアルポートのフロー制御。NONEまたはRTSCTSのいずれかでなければなりません。 | NONE     |
+| DATA_BITS     | データビット数                                     | 8          |
 
-plugin.txt Ruby Examples:
+plugin.txt Rubyの例：
 
 ```ruby
 INTERFACE INTERFACE_NAME serial_interface.rb COM1 COM1 9600 NONE 1 10.0 nil LENGTH 0 16 0 1 BIG_ENDIAN 4 0xBA5EBA11
@@ -396,118 +396,118 @@ INTERFACE INTERFACE_NAME serial_interface.rb COM2 COM2 19200 EVEN 1 10.0 nil FIX
 INTERFACE INTERFACE_NAME serial_interface.rb COM4 COM4 115200 NONE 1 10.0 10.0 TERMINATED 0x0D0A 0x0D0A true 0 0xF005BA11
 INTERFACE INTERFACE_NAME serial_interface.rb COM4 COM4 115200 NONE 1 10.0 10.0 TEMPLATE 0xA 0xA
 INTERFACE INTERFACE_NAME serial_interface.rb /dev/ttyS0 /dev/ttyS0 57600 NONE 1 10.0 nil PREIDENTIFIED 0xCAFEBABE
-INTERFACE INTERFACE_NAME serial_interface.rb COM4 COM4 115200 NONE 1 10.0 10.0 # no built-in protocol
+INTERFACE INTERFACE_NAME serial_interface.rb COM4 COM4 115200 NONE 1 10.0 10.0 # ビルトインプロトコルなし
   OPTION FLOW_CONTROL RTSCTS
   OPTION DATA_BITS 7
 ```
 
-### SNMP Interface (Enterprise)
+### SNMPインターフェース（Enterprise）
 
-The SNMP Interface is for connecting to Simple Network Management Protocol devices. The SNMP Interface is currently only implemented in Ruby.
+SNMPインターフェースは簡易ネットワーク管理プロトコルデバイスへの接続用です。SNMPインターフェースは現在Rubyでのみ実装されています。
 
-| Parameter | Description                  | Required | Default |
-| --------- | ---------------------------- | -------- | ------- |
-| Host      | Host name of the SNMP device | Yes      |         |
-| Port      | Port on the SNMP device      | No       | 161     |
+| パラメータ | 説明                      | 必須    | デフォルト |
+| ---------- | ------------------------- | ------- | ---------- |
+| Host       | SNMPデバイスのホスト名    | はい    |            |
+| Port       | SNMPデバイス上のポート    | いいえ  | 161        |
 
-#### Interface Options
+#### インターフェースオプション
 
-Options are added directly beneath the interface definition as shown in the example.
+オプションは例に示すように、インターフェース定義の直下に追加されます。
 
-| Option         | Description                                        | Default |
-| -------------- | -------------------------------------------------- | ------- |
-| VERSION        | SNMP Version: 1, 2, or 3                           | 1       |
-| COMMUNITY      | Password or user ID that allows access to a device | private |
-| USERNAME       | Username                                           | N/A     |
-| RETRIES        | Retries when sending requests                      | N/A     |
-| TIMEOUT        | Timeout waiting for a response from an agent       | N/A     |
-| CONTEXT        | SNMP context                                       | N/A     |
-| SECURITY_LEVEL | Must be one of NO_AUTH, AUTH_PRIV, or AUTH_NO_PRIV | N/A     |
-| AUTH_PROTOCOL  | Must be one of MD5, SHA, or SHA256                 | N/A     |
-| PRIV_PROTOCOL  | Must be one of DES or AES                          | N/A     |
-| AUTH_PASSWORD  | Auth password                                      | N/A     |
-| PRIV_PASSWORD  | Priv password                                      | N/A     |
+| オプション       | 説明                                            | デフォルト |
+| ---------------- | ----------------------------------------------- | ---------- |
+| VERSION         | SNMPバージョン：1、2、または3                   | 1          |
+| COMMUNITY       | デバイスへのアクセスを許可するパスワードやユーザーID | private    |
+| USERNAME        | ユーザー名                                       | N/A        |
+| RETRIES         | リクエスト送信時の再試行回数                     | N/A        |
+| TIMEOUT         | エージェントからの応答を待つタイムアウト         | N/A        |
+| CONTEXT         | SNMPコンテキスト                                 | N/A        |
+| SECURITY_LEVEL  | NO_AUTH、AUTH_PRIV、AUTH_NO_PRIVのいずれかでなければなりません | N/A        |
+| AUTH_PROTOCOL   | MD5、SHA、SHA256のいずれかでなければなりません   | N/A        |
+| PRIV_PROTOCOL   | DESまたはAESのいずれかでなければなりません       | N/A        |
+| AUTH_PASSWORD   | 認証パスワード                                   | N/A        |
+| PRIV_PASSWORD   | プライバシーパスワード                           | N/A        |
 
-plugin.txt Ruby Examples:
+plugin.txt Rubyの例：
 
 ```ruby
 INTERFACE SNMP_INT snmp_interface.rb 192.168.1.249 161
   OPTION VERSION 1
 ```
 
-For a full example, please see the [openc3-cosmos-apc-switched-pdu](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-apc-switched-pdu) in the COSMOS Enterprise Plugins.
+完全な例については、COSMOS Enterpriseプラグインの[openc3-cosmos-apc-switched-pdu](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-apc-switched-pdu)を参照してください。
 
-### SNMP Trap Interface (Enterprise)
+### SNMPトラップインターフェース（Enterprise）
 
-The SNMP Trap Interface is for receiving Simple Network Management Protocol traps. The SNMP Trap Interface is currently only implemented in Ruby.
+SNMPトラップインターフェースは簡易ネットワーク管理プロトコルトラップを受信するためのものです。SNMPトラップインターフェースは現在Rubyでのみ実装されています。
 
-| Parameter    | Description                 | Required | Default |
-| ------------ | --------------------------- | -------- | ------- |
-| Read Port    | Port to read from           | No       | 162     |
-| Read Timeout | Read timeout                | No       | nil     |
-| Bind Address | Address to bind UDP port to | Yes      | 0.0.0.0 |
+| パラメータ    | 説明                     | 必須    | デフォルト |
+| ------------- | ------------------------ | ------- | ---------- |
+| Read Port     | 読み取り元のポート       | いいえ  | 162        |
+| Read Timeout  | 読み取りタイムアウト     | いいえ  | nil        |
+| Bind Address  | UDPポートをバインドするアドレス | はい    | 0.0.0.0    |
 
-#### Interface Options
+#### インターフェースオプション
 
-Options are added directly beneath the interface definition as shown in the example.
+オプションは例に示すように、インターフェース定義の直下に追加されます。
 
-| Option  | Description              | Default |
-| ------- | ------------------------ | ------- |
-| VERSION | SNMP Version: 1, 2, or 3 | 1       |
+| オプション | 説明                   | デフォルト |
+| ---------- | ---------------------- | ---------- |
+| VERSION   | SNMPバージョン：1、2、または3 | 1       |
 
-plugin.txt Ruby Examples:
+plugin.txt Rubyの例：
 
 ```ruby
 INTERFACE SNMP_INT snmp_trap_interface.rb 162
   OPTION VERSION 1
 ```
 
-For a full example, please see the [openc3-cosmos-apc-switched-pdu](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-apc-switched-pdu) in the COSMOS Enterprise Plugins.
+完全な例については、COSMOS Enterpriseプラグインの[openc3-cosmos-apc-switched-pdu](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-apc-switched-pdu)を参照してください。
 
-### gRPC Interface (Enterprise)
+### gRPCインターフェース（Enterprise）
 
-The gRPC Interface is for interacting with [gRPC](https://grpc.io/). The gRPC Interface is currently only implemented in Ruby.
+gRPCインターフェースは[gRPC](https://grpc.io/)と対話するためのものです。gRPCインターフェースは現在Rubyでのみ実装されています。
 
-| Parameter | Description | Required |
-| --------- | ----------- | -------- |
-| Hostname  | gRPC server | Yes      |
-| Port      | gRPC port   | Yes      |
+| パラメータ | 説明       | 必須    |
+| ---------- | ---------- | ------- |
+| Hostname   | gRPCサーバー | はい    |
+| Port       | gRPCポート  | はい    |
 
-plugin.txt Ruby Examples:
+plugin.txt Rubyの例：
 
 ```ruby
 INTERFACE GRPC_INT grpc_interface.rb my.grpc.org 8080
 ```
 
-#### Commands
+#### コマンド
 
-Using the GrpcInterface for [command definitions](command) requires the use of [META](command#meta) to define a GRPC_METHOD to use for each command.
+GrpcInterfaceを[コマンド定義](command)に使用するには、各コマンドに使用するGRPC_METHODを定義するために[META](command#meta)を使用する必要があります。
 
 ```ruby
 COMMAND PROTO GET_USER BIG_ENDIAN 'Get a User'
   META GRPC_METHOD /example.photoservice.ExamplePhotoService/GetUser
 ```
 
-For a full example, please see the [openc3-cosmos-proto-target](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-proto-target) in the COSMOS Enterprise Plugins.
+完全な例については、COSMOS Enterpriseプラグインの[openc3-cosmos-proto-target](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-proto-target)を参照してください。
 
-## Custom Interfaces
+## カスタムインターフェース
 
-Interfaces have the following methods that must be implemented:
+インターフェースには、実装する必要のある以下のメソッドがあります：
 
-1. **connect** - Open the socket or port or somehow establish the connection to the target. Note: This method may not block indefinitely. Be sure to call super() in your implementation.
-1. **connected?** - Return true or false depending on the connection state. Note: This method should return immediately.
-1. **disconnect** - Close the socket or port of somehow disconnect from the target. Note: This method may not block indefinitely. Be sure to call super() in your implementation.
-1. **read_interface** - Lowest level read of data on the interface. Note: This method should block until data is available or the interface disconnects. On a clean disconnect it should return nil.
-1. **write_interface** - Lowest level write of data on the interface. Note: This method may not block indefinitely.
+1. **connect** - ソケットやポートを開いたり、ターゲットへの接続を確立したりします。注意：このメソッドは無期限にブロックすることはできません。実装内でsuper()を呼び出すことを忘れないでください。
+1. **connected?** - 接続状態に応じてtrueまたはfalseを返します。注意：このメソッドはすぐに戻る必要があります。
+1. **disconnect** - ソケットやポートを閉じたり、ターゲットから切断したりします。注意：このメソッドは無期限にブロックすることはできません。実装内でsuper()を呼び出すことを忘れないでください。
+1. **read_interface** - インターフェース上のデータの最低レベルの読み取り。注意：このメソッドはデータが利用可能になるか、インターフェースが切断されるまでブロックする必要があります。クリーンな切断の場合はnilを返す必要があります。
+1. **write_interface** - インターフェース上のデータの最低レベルの書き込み。注意：このメソッドは無期限にブロックすることはできません。
 
-Interfaces also have the following methods that exist and have default implementations. They can be overridden if necessary but be sure to call super() to allow the default implementation to be executed.
+インターフェースには以下のメソッドも存在し、デフォルト実装があります。必要に応じてオーバーライドできますが、デフォルト実装が実行されるようにsuper()を呼び出すことを忘れないでください。
 
-1. **read_interface_base** - This method should always be called from read_interface(). It updates interface specific variables that are displayed by CmdTLmServer including the bytes read count, the most recent raw data read, and it handles raw logging if enabled.
-1. **write_interface_base** - This method should always be called from write_interface(). It updates interface specific variables that are displayed by CmdTLmServer including the bytes written count, the most recent raw data written, and it handles raw logging if enabled.
-1. **read** - Read the next packet from the interface. COSMOS implements this method to allow the Protocol system to operate on the data and the packet before it is returned.
-1. **write** - Send a packet to the interface. COSMOS implements this method to allow the Protocol system to operate on the packet and the data before it is sent.
-1. **write_raw** - Send a raw binary string of data to the target. COSMOS implements this method by basically calling write_interface with the raw data.
+1. **read_interface_base** - このメソッドは常にread_interface()から呼び出されるべきです。読み取ったバイト数、最近読み取られた生データなど、CmdTLmServerに表示されるインターフェース固有の変数を更新し、有効な場合は生ロギングを処理します。
+1. **write_interface_base** - このメソッドは常にwrite_interface()から呼び出されるべきです。書き込んだバイト数、最近書き込まれた生データなど、CmdTLmServerに表示されるインターフェース固有の変数を更新し、有効な場合は生ロギングを処理します。
+1. **read** - インターフェースから次のパケットを読み取ります。COSMOSはこのメソッドを実装して、返される前にプロトコルシステムがデータとパケットを操作できるようにします。
+1. **write** - パケットをインターフェースに送信します。COSMOSはこのメソッドを実装して、送信される前にプロトコルシステムがパケットとデータを操作できるようにします。
+1. **write_raw** - 生のバイナリデータ文字列をターゲットに送信します。COSMOSはこのメソッドを実装して、基本的に生データでwrite_interfaceを呼び出します。
 
-:::warning Naming Conventions
-When creating your own interfaces, in most cases they will be subclasses of one of the built-in interfaces described below. It is important to know that both the filename and class name of the interface files must match with correct capitalization or you will receive "class not found" errors when trying to load your new interface. For example, an interface file called labview_interface.rb must contain the class LabviewInterface. If the class was named, LabVIEWInterface, for example, COSMOS would not be able to find the class because of the unexpected capitalization.
+:::warning 命名規則
+独自のインターフェースを作成する場合、ほとんどの場合、以下に説明する組み込みインターフェースのサブクラスになります。インターフェースファイルのファイル名とクラス名は、大文字と小文字を正確に一致させる必要があることを知っておくことが重要です。そうしないと、新しいインターフェースをロードしようとするときに「クラスが見つかりません」というエラーが発生します。例えば、labview_interface.rbというインターフェースファイルには、LabviewInterfaceというクラスが含まれている必要があります。例えば、クラスがLabVIEWInterfaceという名前だった場合、予期しない大文字と小文字のためにCOSMOSはクラスを見つけることができません。
 :::

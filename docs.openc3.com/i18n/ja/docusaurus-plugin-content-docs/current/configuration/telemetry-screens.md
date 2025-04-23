@@ -1,126 +1,124 @@
 ---
 sidebar_position: 10
-title: Screens
-description: Telemetry Viewer screen definition and widget documentation
+title: スクリーン
+description: テレメトリビューアの画面定義とウィジェットのドキュメント
 sidebar_custom_props:
   myEmoji: 🖥️
 ---
 
-<!-- Be sure to edit _telemetry_screens.md because telemetry_screens.md is a generated file -->
-
-This document provides the information necessary to generate and use COSMOS Telemetry Screens, which are displayed by the COSMOS Telemetry Viewer application.
+このドキュメントでは、COSMOS テレメトリビューアアプリケーションによって表示される COSMOS テレメトリスクリーンを生成して使用するために必要な情報を提供します。
 
 <div style={{"clear": 'both'}}></div>
 
-## Definitions
+## 定義
 
-| Name                   | Definition                                                                                                                                                                                                                                  |
+| 名前                   | 定義                                                                                                                                                                                                                                  |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Widget                 | A widget is a graphical element on a COSMOS telemetry screen. It could display text, graph data, provide a button, or perform any other display/user input task.                                                                            |
-| Screen                 | A screen is a single window that contains any number of widgets which are organized and layed-out in a useful fashion.                                                                                                                      |
-| Screen Definition File | A screen definition file is an ASCII file that tells Telemetry Viewer how to draw a screen. It is made up of a series of keyword/parameter lines that define the telemetry points that are displayed on the screen and how to display them. |
+| ウィジェット             | ウィジェットは、COSMOS テレメトリ画面上のグラフィック要素です。テキストの表示、データのグラフ化、ボタンの提供、またはその他の表示/ユーザー入力タスクを実行することができます。                                                                           |
+| スクリーン               | スクリーンは、有用な方法で整理・配置された任意の数のウィジェットを含む単一のウィンドウです。                                                                                                                     |
+| スクリーン定義ファイル     | スクリーン定義ファイルは、テレメトリビューアにスクリーンの描画方法を指示するASCIIファイルです。画面に表示されるテレメトリポイントとその表示方法を定義するキーワード/パラメータ行のシリーズで構成されています。 |
 
-## Telemetry Screen Definition Files
+## テレメトリスクリーン定義ファイル
 
-Telemetry screen definition files define the the contents of telemetry screens. They take the general form of a SCREEN keyword followed by a series of widget keywords that define the telemetry screen. Screen definition files specific to a particular target go in that target's screens directory. For example: TARGET/screens/version.txt. Screen definition files must be lowercase.
+テレメトリスクリーン定義ファイルは、テレメトリスクリーンの内容を定義します。SCREENキーワードに続いて、テレメトリスクリーンを定義する一連のウィジェットキーワードという一般的な形式を取ります。特定のターゲットに固有のスクリーン定義ファイルは、そのターゲットのscreensディレクトリに格納されます。例：TARGET/screens/version.txt。スクリーン定義ファイルは小文字でなければなりません。
 
-## New Widgets
+## 新しいウィジェット
 
-When a telemetry screen definition is parsed and a keyword is encountered that is unrecognized, it is assumed that a file of the form widgetname_widget.rb exists, and contains a class called WidgetnameWidget. Because of this convention, new widgets can be added to the system without any change to the telemetry screen definition format. For more information about creating custom widgets please read the [Custom Widgets](../guides/custom-widgets.md) guide.
+テレメトリスクリーン定義が解析され、認識されないキーワードに遭遇した場合、widgetname_widget.rbという形式のファイルが存在し、WidgetnameWidgetと呼ばれるクラスが含まれていると仮定されます。この規則のおかげで、テレメトリスクリーン定義フォーマットを変更することなく、新しいウィジェットをシステムに追加することができます。カスタムウィジェットの作成に関する詳細については、[カスタムウィジェット](../guides/custom-widgets.md)ガイドをお読みください。
 
-# Screen Keywords
+# スクリーンキーワード
 
 
 ## SCREEN
-**Define a telemetry viewer screen**
+**テレメトリビューアスクリーンを定義する**
 
-The SCREEN keyword is the first keyword in any telemetry screen definition. It defines the name of the screen and parameters that affect the screen overall.
+SCREENキーワードは、すべてのテレメトリスクリーン定義の最初のキーワードです。スクリーンの名前と、スクリーン全体に影響するパラメータを定義します。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Width | Width in pixels or AUTO to let Telemetry Viewer automatically layout the screen | True |
-| Height | Height in pixels or AUTO to let Telemetry Viewer automatically layout the screen | True |
-| Polling Period | Number of seconds between screen updates | True |
+| 幅 | ピクセル単位の幅、またはAUTOを指定してテレメトリビューアに自動的に画面レイアウトを行わせる | True |
+| 高さ | ピクセル単位の高さ、またはAUTOを指定してテレメトリビューアに自動的に画面レイアウトを行わせる | True |
+| ポーリング周期 | 画面更新間の秒数 | True |
 
-Example Usage:
+使用例：
 ```ruby
 SCREEN AUTO AUTO 1.0 FIXED
 ```
 
 ## END
-**Indicates the close of a layout widget**
+**レイアウトウィジェットの終了を示す**
 
-All layout widgets must be closed to properly identify where they stop. For example, a VERTICALBOX keyword must be matched with an END keyword to indicate where the VERTICALBOX ends.
+すべてのレイアウトウィジェットは、その停止位置を正しく識別するために、終了キーワードで閉じる必要があります。例えば、VERTICALBOXキーワードは、VERTICALBOXの終了位置を示すためにENDキーワードと一致しなければなりません。
 
 
 ## STALE_TIME
-<div class="right">(Since 5.1.0)</div>**Values are marked stale if the packet time is more than Stale Time seconds in the past**
+<div class="right">(5.1.0以降)</div>**パケット時間が過去のStale Time秒以上である場合、値は古いとマークされる**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| value | Items from packets with RECEIVED_TIMESECONDS greater than this value in the past will be marked stale. The default is 30s. Recommend a minimum of 2s to avoid false positives due to race conditions. | True |
+| value | RECEIVED_TIMESECONDSが過去のこの値より大きいパケットからのアイテムは古いとマークされます。デフォルトは30秒です。競合状態による誤検出を避けるため、最低でも2秒を推奨します。 | True |
 
-Example Usage:
+使用例：
 ```ruby
-STALE_TIME 5 # Number of seconds to wait before marking data stale
+STALE_TIME 5 # データを古いとマークするまでの待機秒数
 ```
 
 ## GLOBAL_SETTING
-**Applies a widget setting to all widgets of a certain type**
+**特定タイプのすべてのウィジェットにウィジェット設定を適用する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Widget Class Name | The name of the class of widgets that this setting will be applied to. For example, LABEL or BUTTON. | True |
-| Setting Name | See SETTING for details. | True |
-| Setting Value(s) | See SETTING for details. | False |
+| ウィジェットクラス名 | この設定が適用されるウィジェットのクラスの名前。例えば、LABELやBUTTONなど。 | True |
+| 設定名 | 詳細はSETTINGを参照してください。 | True |
+| 設定値 | 詳細はSETTINGを参照してください。 | False |
 
-Example Usage:
+使用例：
 ```ruby
 GLOBAL_SETTING LABELVALUELIMITSBAR TEXTCOLOR BLACK
 ```
 
 ## GLOBAL_SUBSETTING
-**Applies a widget subsetting to all widgets of a certain type**
+**特定のタイプのすべてのウィジェットにウィジェットのサブ設定を適用する**
 
-Subsettings are only valid for widgets that are made up of more than one subwidget. For example, LABELVALUE is made up of a LABEL at subwidget index 0 and a VALUE at subwidget index 1. This allows for passing settings to specific subwidgets. Some widgets are made up of multiple subwidgets, e.g. LABELVALUELIMITSBAR. To set the Label widget, pass 0 as the Subwidget Index, pass 1 for the Value widget, and 2 for the LimitsBar widget.
+サブ設定は、複数のサブウィジェットで構成されるウィジェットにのみ有効です。例えば、LABELVALUEは、サブウィジェットインデックス0のLABELとサブウィジェットインデックス1のVALUEで構成されています。これにより、特定のサブウィジェットに設定を渡すことができます。LABELVALUELIMITSBARなど、一部のウィジェットは複数のサブウィジェットで構成されています。Labelウィジェットを設定するには、サブウィジェットインデックスとして0を、Valueウィジェットには1を、LimitsBarウィジェットには2を渡します。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Widget Class Name | The name of the class of widgets that this setting will be applied to. For example, LABELVALUE. | True |
-| Subwidget Index | Index to the desired subwidget | True |
-| Setting Name | See SETTING for details. | True |
-| Setting Value(s) | See SETTING for details. | False |
+| ウィジェットクラス名 | この設定が適用されるウィジェットのクラスの名前。例えば、LABELVALUEなど。 | True |
+| サブウィジェットインデックス | 目的のサブウィジェットへのインデックス | True |
+| 設定名 | 詳細はSETTINGを参照してください。 | True |
+| 設定値 | 詳細はSETTINGを参照してください。 | False |
 
-Example Usage:
+使用例：
 ```ruby
-# Set all text color to white for labelvaluelimitsbars
+# labelvaluelimitsbarsのすべてのテキスト色を白に設定
 GLOBAL_SUBSETTING LABELVALUELIMITSBAR 0 TEXTCOLOR white
 ```
 
 ## SETTING
-**Applies a widget setting to the previously defined widget**
+**直前に定義されたウィジェットにウィジェット設定を適用する**
 
-Settings allow for additional tweaks and options to be applied to widgets
-that are not available in their parameters. These settings are all configured
-through the SETTING, SUBSETTING, GLOBAL_SETTING and GLOBAL_SUBSETTING keywords.
-SETTING and SUBSETTING applies only to the widget defined immediately before it.
-GLOBAL_SETTING and GLOBAL_SUBSETTING applies to all widgets.
+設定により、パラメータでは利用できない追加の調整やオプションをウィジェットに
+適用することができます。これらの設定はすべて、SETTING、SUBSETTING、GLOBAL_SETTING、
+およびGLOBAL_SUBSETTINGキーワードを通じて構成されます。
+SETTINGとSUBSETTINGは、直前に定義されたウィジェットにのみ適用されます。
+GLOBAL_SETTINGとGLOBAL_SUBSETTINGはすべてのウィジェットに適用されます。
 
-Common wiget settings are defined here. Some widgets define their own
-unique settings which are documented under that specific widget.
+一般的なウィジェット設定はここで定義されています。一部のウィジェットは独自の
+固有の設定を定義しており、それらは特定のウィジェットの下にドキュメント化されています。
 
 
 
 ### WIDTH
-**Sets the widget width**
+**ウィジェットの幅を設定する**
 
-WIDTH supports [css units](https://www.w3schools.com/cssref/css_units.php) with the default (no units) of px (pixels)
+WIDTHは[cssユニット](https://www.w3schools.com/cssref/css_units.php)をサポートしており、デフォルト（単位なし）はpx（ピクセル）です
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Width | Width in pixels or explicitly declared with units | True |
+| Width | ピクセル単位の幅、または明示的に単位を宣言 | True |
 
-Example Usage:
+使用例：
 ```ruby
 LABEL "THIS IS A TEST"
   SETTING WIDTH 50
@@ -131,15 +129,15 @@ LABEL "THIS IS A TEST"
 
 
 ### HEIGHT
-**Sets the widget height**
+**ウィジェットの高さを設定する**
 
-HEIGHT supports [css units](https://www.w3schools.com/cssref/css_units.php) with the default (no units) of px (pixels)
+HEIGHTは[cssユニット](https://www.w3schools.com/cssref/css_units.php)をサポートしており、デフォルト（単位なし）はpx（ピクセル）です
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Height | Height in pixels or explicitly declared with units | True |
+| Height | ピクセル単位の高さ、または明示的に単位を宣言 | True |
 
-Example Usage:
+使用例：
 ```ruby
 LABEL "THIS IS A TEST"
   SETTING BACKCOLOR BLUE
@@ -152,15 +150,15 @@ LABEL "THIS IS A TEST"
 
 
 ### MARGIN
-**Sets the widget margin**
+**ウィジェットのマージンを設定する**
 
-MARGIN supports [css units](https://www.w3schools.com/cssref/css_units.php) with the default (no units) of px (pixels)
+MARGINは[cssユニット](https://www.w3schools.com/cssref/css_units.php)をサポートしており、デフォルト（単位なし）はpx（ピクセル）です
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Size | Size in pixels or explicitly declared with units | True |
+| Size | ピクセル単位のサイズ、または明示的に単位を宣言 | True |
 
-Example Usage:
+使用例：
 ```ruby
 LABEL "THIS IS A TEST"
   SETTING BACKCOLOR BLUE
@@ -174,15 +172,15 @@ LABEL "THIS IS A TEST"
 
 
 ### PADDING
-**Sets the widget padding**
+**ウィジェットのパディングを設定する**
 
-PADDING supports [css units](https://www.w3schools.com/cssref/css_units.php) with the default (no units) of px (pixels)
+PADDINGは[cssユニット](https://www.w3schools.com/cssref/css_units.php)をサポートしており、デフォルト（単位なし）はpx（ピクセル）です
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Size | Size in pixels or explicitly declared with units | True |
+| Size | ピクセル単位のサイズ、または明示的に単位を宣言 | True |
 
-Example Usage:
+使用例：
 ```ruby
 LABEL "THIS IS A TEST"
   SETTING BACKCOLOR BLUE
@@ -196,15 +194,15 @@ LABEL "THIS IS A TEST"
 
 
 ### BACKCOLOR
-**The BACKCOLOR setting sets the background color for a widget**
+**BACKCOLOR設定はウィジェットの背景色を設定します**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Color name or Red value | Common name for the color, e.g. 'black', 'red', etc. Alternatively if two more parameters are passed this is the Red value of the RGB value | True |
-| Green value | Green value of the RGB value | False |
-| Blue value | Blue value of the RGB value | False |
+| 色名または赤の値 | 色の一般的な名前（例：'black'、'red'など）。または、さらに2つのパラメータが渡された場合、これはRGB値の赤の値です | True |
+| 緑の値 | RGB値の緑の値 | False |
+| 青の値 | RGB値の青の値 | False |
 
-Example Usage:
+使用例：
 ```ruby
 LABEL "THIS IS A TEST"
   SETTING BACKCOLOR red
@@ -215,15 +213,15 @@ LABEL "THIS IS A TEST"
 
 
 ### TEXTCOLOR
-**The TEXTCOLOR setting sets the text color for a widget**
+**TEXTCOLOR設定はウィジェットのテキスト色を設定します**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Color name or Red value | Common name for the color, e.g. 'black', 'red', etc. Alternatively if two more parameters are passed this is the Red value of the RGB value | True |
-| Green value | Green value of the RGB value | False |
-| Blue value | Blue value of the RGB value | False |
+| 色名または赤の値 | 色の一般的な名前（例：'black'、'red'など）。または、さらに2つのパラメータが渡された場合、これはRGB値の赤の値です | True |
+| 緑の値 | RGB値の緑の値 | False |
+| 青の値 | RGB値の青の値 | False |
 
-Example Usage:
+使用例：
 ```ruby
 LABEL "THIS IS A TEST"
   SETTING TEXTCOLOR red
@@ -234,15 +232,15 @@ LABEL "THIS IS A TEST"
 
 
 ### BORDERCOLOR
-**The BORDERCOLOR setting sets the border color for a layout widget**
+**BORDERCOLOR設定はレイアウトウィジェットの枠線の色を設定します**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Color name or Red value | Common name for the color, e.g. 'black', 'red', etc. Alternatively if two more parameters are passed this is the Red value of the RGB value | True |
-| Green value | Green value of the RGB value | False |
-| Blue value | Blue value of the RGB value | False |
+| 色名または赤の値 | 色の一般的な名前（例：'black'、'red'など）。または、さらに2つのパラメータが渡された場合、これはRGB値の赤の値です | True |
+| 緑の値 | RGB値の緑の値 | False |
+| 青の値 | RGB値の青の値 | False |
 
-Example Usage:
+使用例：
 ```ruby
 HORIZONTAL
   LABEL "Label 1"
@@ -257,14 +255,14 @@ SETTING BORDERCOLOR 155 50 155
 
 
 ### RAW
-**Apply a raw CSS stylesheet key and value**
+**生のCSSスタイルシートのキーと値を適用する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Key | CSS key like font-size, max-width, etc | True |
-| Value | CSS Value | True |
+| Key | font-size、max-widthなどのCSSキー | True |
+| Value | CSS値 | True |
 
-Example Usage:
+使用例：
 ```ruby
 LABEL "Label 1"
   SETTING RAW font-size 30px
@@ -273,44 +271,44 @@ LABEL "Label 1"
 
 
 ## SUBSETTING
-**Applies a widget subsetting to the previously defined widget**
+**直前に定義されたウィジェットにウィジェットのサブ設定を適用する**
 
-Subsettings are only valid for widgets that are made up of more than one subwidget. For example, LABELVALUE is made up of a LABEL at subwidget index 0 and a VALUE at subwidget index 1. This allows for passing settings to specific subwidgets. Some widgets are made up of multiple subwidgets, e.g. LABELVALUELIMITSBAR. To set the Label widget, pass 0 as the Subwidget Index, pass 1 for the Value widget, and 2 for the LimitsBar widget.
+サブ設定は、複数のサブウィジェットで構成されるウィジェットにのみ有効です。例えば、LABELVALUEは、サブウィジェットインデックス0のLABELとサブウィジェットインデックス1のVALUEで構成されています。これにより、特定のサブウィジェットに設定を渡すことができます。LABELVALUELIMITSBARなど、一部のウィジェットは複数のサブウィジェットで構成されています。Labelウィジェットを設定するには、サブウィジェットインデックスとして0を、Valueウィジェットには1を、LimitsBarウィジェットには2を渡します。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Subwidget Index | Index to the desired subwidget or 'ALL' to apply the setting to all the subwidgets of this composite widget. | True |
-| Setting Name | See SETTING for details. | True |
-| Setting Value(s) | See SETTING for details. | False |
+| サブウィジェットインデックス | 目的のサブウィジェットへのインデックス、または'ALL'を指定してこの複合ウィジェットのすべてのサブウィジェットに設定を適用します。 | True |
+| 設定名 | 詳細はSETTINGを参照してください。 | True |
+| 設定値 | 詳細はSETTINGを参照してください。 | False |
 
-Example Usage:
+使用例：
 ```ruby
 VERTICALBOX
   LABELVALUE INST HEALTH_STATUS TEMP1
-    SUBSETTING 0 TEXTCOLOR blue # Change the label's text to blue
+    SUBSETTING 0 TEXTCOLOR blue # ラベルのテキストを青に変更
   LABELVALUELIMITSBAR INST HEALTH_STATUS TEMP1
-    SUBSETTING 0 TEXTCOLOR green # Change the label's text to green
+    SUBSETTING 0 TEXTCOLOR green # ラベルのテキストを緑に変更
 END
 ```
 ![SUBSETTING](/img/telemetry_viewer/widgets/subsetting.png)
 
 
 ## NAMED_WIDGET
-**Name a widget to allow access to it via the getNamedWidget method**
+**ウィジェットに名前を付けて、getNamedWidgetメソッドを通じてアクセスできるようにする**
 
-To programmatically access parts of a telemetry screen you need to name the widget. This is useful when creating screens with buttons that read values from other widgets.
+テレメトリ画面の一部にプログラムでアクセスするには、ウィジェットに名前を付ける必要があります。これは、他のウィジェットから値を読み取るボタンを持つ画面を作成する際に便利です。
 
 :::warning
-getNamedWidget returns the widget itself and thus must be operated on using methods native to that widget
+getNamedWidgetはウィジェット自体を返すため、そのウィジェット固有のメソッドを使用して操作する必要があります
 :::
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Widget Name | The unique name applied to the following widget instance. Names must be unique per screen. | True |
-| Widget Type | One of the widget types listed in Widget Descriptions | True |
-| Widget Parameters | The unique parameters for the given widget type | True |
+| ウィジェット名 | 次のウィジェットインスタンスに適用される一意の名前。名前は画面ごとに一意でなければなりません。 | True |
+| ウィジェットタイプ | ウィジェットの説明に記載されているウィジェットタイプのいずれか | True |
+| ウィジェットパラメータ | 指定されたウィジェットタイプの固有パラメータ | True |
 
-Example Usage:
+使用例：
 ```ruby
 NAMED_WIDGET DURATION TEXTFIELD
 BUTTON "Push" "screen.getNamedWidget('DURATION').text()"
@@ -318,22 +316,22 @@ BUTTON "Push" "screen.getNamedWidget('DURATION').text()"
 ![NAMED_WIDGET](/img/telemetry_viewer/widgets/named_widget.png)
 
 
-## Layout Widgets
+## レイアウトウィジェット
 ****
 
-Layout widgets are used to position other widgets on the screen. For example, the HORIZONTAL layout widget places the widgets it encapsulates horizontally on the screen.
+レイアウトウィジェットは、他のウィジェットを画面上に配置するために使用されます。例えば、HORIZONTALレイアウトウィジェットは、それがカプセル化するウィジェットを画面上に水平に配置します。
 
 
 ### VERTICAL
-**Places the widgets it encapsulates vertically**
+**カプセル化したウィジェットを垂直に配置する**
 
-The screen defaults to a vertical layout, so if no layout widgets are specified, all widgets will be automatically placed within a VERTICAL layout widget. The VERTICAL widget sizes itself to fit its contents.
+画面はデフォルトで垂直レイアウトになっているため、レイアウトウィジェットが指定されていない場合、すべてのウィジェットは自動的にVERTICALレイアウトウィジェット内に配置されます。VERTICALウィジェットは、その内容に合わせてサイズが調整されます。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Margin | Margin between widgets (default = 0px) | False |
+| マージン | ウィジェット間のマージン（デフォルト = 0px） | False |
 
-Example Usage:
+使用例：
 ```ruby
 VERTICAL 5px
   LABEL "TEST"
@@ -344,16 +342,16 @@ END
 
 
 ### VERTICALBOX
-**Places the widgets it encapsulates vertically inside a thin border**
+**カプセル化したウィジェットを薄い境界線の中に垂直に配置する**
 
-The VERTICALBOX widget sizes itself to fit its contents vertically and to fit the screen horizontally
+VERTICALBOXウィジェットは、その内容に合わせて垂直方向にサイズ調整し、画面に合わせて水平方向にサイズ調整します
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Title | Text to place within the border to label the box | False |
-| Margin | Margin between widgets (default = 0px) | False |
+| タイトル | ボックスにラベルを付けるために境界内に配置するテキスト | False |
+| マージン | ウィジェット間のマージン（デフォルト = 0px） | False |
 
-Example Usage:
+使用例：
 ```ruby
 VERTICALBOX Info
   SUBSETTING 1 RAW border "1px dashed green"
@@ -365,15 +363,15 @@ END
 
 
 ### HORIZONTAL
-**Places the widgets it encapsulates horizontally**
+**カプセル化したウィジェットを水平に配置する**
 
-The HORIZONTAL widget sizes itself to fit its contents
+HORIZONTALウィジェットは、その内容に合わせてサイズ調整します
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Margin | Margin between widgets (default = 0px) | False |
+| マージン | ウィジェット間のマージン（デフォルト = 0px） | False |
 
-Example Usage:
+使用例：
 ```ruby
 HORIZONTAL 100
   LABEL "TEST"
@@ -384,16 +382,16 @@ END
 
 
 ### HORIZONTALBOX
-**Places the widgets it encapsulates horizontally inside a thin border**
+**カプセル化したウィジェットを薄い境界線の中に水平に配置する**
 
-The HORIZONTALBOX widget sizes itself to fit its contents
+HORIZONTALBOXウィジェットは、その内容に合わせてサイズ調整します
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Title | Text to place within the border to label the box | False |
-| Margin | Margin between widgets (default = 0px) | False |
+| タイトル | ボックスにラベルを付けるために境界内に配置するテキスト | False |
+| マージン | ウィジェット間のマージン（デフォルト = 0px） | False |
 
-Example Usage:
+使用例：
 ```ruby
 HORIZONTALBOX Info 10
   SUBSETTING 0 RAW text-align CENTER
@@ -406,16 +404,16 @@ END
 
 
 ### MATRIXBYCOLUMNS
-**Places the widgets into a table-like matrix**
+**ウィジェットをテーブルのようなマトリックスに配置する**
 
-The MATRIXBYCOLUMNS widget sizes itself to fit its contents
+MATRIXBYCOLUMNSウィジェットは、その内容に合わせてサイズ調整します
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Columns | The number of columns to create | True |
-| Margin | Margin between widgets (default = 0px) | False |
+| 列 | 作成する列の数 | True |
+| マージン | ウィジェット間のマージン（デフォルト = 0px） | False |
 
-Example Usage:
+使用例：
 ```ruby
 MATRIXBYCOLUMNS 3 10
   LABEL "COL 1"
@@ -430,16 +428,16 @@ END
 
 
 ### SCROLLWINDOW
-**Places the widgets inside of it into a scrollable area**
+**内部のウィジェットをスクロール可能なエリアに配置する**
 
-The SCROLLWINDOW widget sizes itself to fit the screen in which it is contained
+SCROLLWINDOWウィジェットは、それが含まれる画面に合わせてサイズ調整します
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Height | Maximum height of the scroll window in pixels (default = 200) | False |
-| Margin | Margin between widgets (default = 0px) | False |
+| 高さ | スクロールウィンドウの最大高さ（ピクセル単位、デフォルト = 200） | False |
+| マージン | ウィジェット間のマージン（デフォルト = 0px） | False |
 
-Example Usage:
+使用例：
 ```ruby
 SCROLLWINDOW 100 10
   VERTICAL
@@ -459,17 +457,17 @@ END
 
 
 ### TABBOOK
-**Creates a tabbed area in which to place TABITEM widgets**
+**TABITEMウィジェットを配置するためのタブ付きエリアを作成する**
 
 
 ### TABITEM
-**Creates a VERTICAL layout tab into which to place widgets**
+**ウィジェットを配置するためのVERTICALレイアウトタブを作成する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Tab text | Text to display in the tab | True |
+| タブテキスト | タブに表示するテキスト | True |
 
-Example Usage:
+使用例：
 ```ruby
 TABBOOK
   TABITEM "Tab 1"
@@ -486,48 +484,48 @@ END
 
 
 ### IFRAME
-**Open external tools in an Iframe within OpenC3**
+**OpenC3内のIframe内で外部ツールを開く**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| URL | The path to the page to display in the iframe | True |
-| Width | Width of the widget | False |
-| Height | Height of the widget | False |
+| URL | iframe内に表示するページのパス | True |
+| 幅 | ウィジェットの幅 | False |
+| 高さ | ウィジェットの高さ | False |
 
-Example Usage:
+使用例：
 ```ruby
 IFRAME https://openc3.com 900 450
 ```
 ![IFRAME](/img/telemetry_viewer/widgets/iframe.png)
 
 
-## Decoration Widgets
+## 装飾ウィジェット
 ****
 
-Decoration widgets are used to enhance the appearance of the screen. They do not respond to input, nor does the output vary with telemetry.
+装飾ウィジェットは、画面の外観を向上させるために使用されます。これらは入力に応答せず、出力もテレメトリによって変化しません。
 
 
 ### LABEL
-**Displays text on the screen**
+**画面上にテキストを表示する**
 
-Generally, label widgets contain a telemetry mnemonic and are placed next to the telemetry VALUE widget.
+一般に、ラベルウィジェットにはテレメトリニーモニックが含まれ、テレメトリVALUEウィジェットの隣に配置されます。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Text | Text to display on the label | True |
+| テキスト | ラベルに表示するテキスト | True |
 
-Example Usage:
+使用例：
 ```ruby
-LABEL "Note: This is only a warning"
+LABEL "注意：これは警告のみです"
 ```
 ![LABEL](/img/telemetry_viewer/widgets/label.png)
 
 
 ### HORIZONTALLINE
-<div class="right">(Since 5.5.1)</div>**Displays a horizontal line on the screen that can be used as a separator**
+<div class="right">(5.5.1以降)</div>**区切り線として使える水平線を画面上に表示する**
 
 
-Example Usage:
+使用例：
 ```ruby
 LABEL Over
 HORIZONTALLINE
@@ -537,61 +535,61 @@ LABEL Under
 
 
 ### TITLE
-**Displays a large centered title on the screen**
+**画面上に大きな中央揃えのタイトルを表示する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Text | Text to display | True |
+| テキスト | 表示するテキスト | True |
 
-Example Usage:
+使用例：
 ```ruby
-TITLE "Title"
+TITLE "タイトル"
 HORIZONTALLINE
-LABEL "Label"
+LABEL "ラベル"
 ```
 ![TITLE](/img/telemetry_viewer/widgets/title.png)
 
 
 ### SPACER
-**Places a fixed size spacer in between widgets**
+**ウィジェット間に固定サイズのスペーサーを配置する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Width | Width of the spacer in pixels | True |
-| Height | Height of the spacer in pixels | True |
+| 幅 | スペーサーの幅（ピクセル単位） | True |
+| 高さ | スペーサーの高さ（ピクセル単位） | True |
 
-Example Usage:
+使用例：
 ```ruby
 VERTICAL 3
-  LABEL "Spacer below"
+  LABEL "スペーサー下部"
   SPACER 0 100
-  LABEL "Spacer above"
+  LABEL "スペーサー上部"
 END
 ```
 ![SPACER](/img/telemetry_viewer/widgets/spacer.png)
 
 
-## Telemetry Widgets
+## テレメトリウィジェット
 ****
 
-Telemetry widgets are used to display telemetry values. The first parameters to each of these widgets is a telemetry mnemonic. Depending on the type and purpose of the telemetry item, the screen designer may select from a wide selection of widgets to display the value in the most useful format.
+テレメトリウィジェットは、テレメトリ値を表示するために使用されます。これらのウィジェットの最初のパラメータはテレメトリニーモニックです。テレメトリ項目の種類と目的に応じて、画面設計者は最も有用な形式で値を表示するために、幅広いウィジェットから選択することができます。
 
 
 ### ARRAY
-**Displays ARRAY data organized into rows and space separated**
+**行に整理され、スペースで区切られた配列データを表示する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name | True |
-| Width | Width of the widget (default = 200) | False |
-| Height | Height of the widget (default = 100) | False |
-| Format string | Format string applied to each array item (default = nil) | False |
-| Items per row | Number of array items per row (default = 4) | False |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| ターゲット名 | ターゲット名 | True |
+| パケット名 | パケット名 | True |
+| アイテム名 | アイテム名 | True |
+| 幅 | ウィジェットの幅（デフォルト = 200） | False |
+| 高さ | ウィジェットの高さ（デフォルト = 100） | False |
+| フォーマット文字列 | 各配列アイテムに適用されるフォーマット文字列（デフォルト = nil） | False |
+| 行あたりのアイテム数 | 1行あたりの配列アイテム数（デフォルト = 4） | False |
+| 値タイプ | 表示する値のタイプ。デフォルトはCONVERTED。<br/><br/>有効な値: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
 
-Example Usage:
+使用例：
 ```ruby
 ARRAY INST HEALTH_STATUS ARY 250 80 "0x%x" 6 FORMATTED
 ARRAY INST HEALTH_STATUS ARY2 200 100 nil 4 WITH_UNITS
@@ -600,15 +598,15 @@ ARRAY INST HEALTH_STATUS ARY2 200 100 nil 4 WITH_UNITS
 
 
 ### ARRAYPLOT
-**Plot an array of values.**
+**配列の値をプロットする**
 
-The item can either be a simple array or a 2D array of x values and y values, e.g. [[x1, x2, x3], [y1, y2, y3]]. If the X_AXIS setting is not specified, the X axis starts with 0 and increments by 1. If the X_AXIS setting is used the x values of a 2D array will be ignored.
+アイテムは単純な配列またはx値とy値の2D配列（例：[[x1, x2, x3], [y1, y2, y3]]）のいずれかです。X_AXIS設定が指定されていない場合、X軸は0から始まり1ずつ増加します。X_AXIS設定が使用されている場合、2D配列のx値は無視されます。
 
 
-Example Usage:
+使用例：
 ```ruby
 ARRAYPLOT
-  SETTING TITLE "Array Data"
+  SETTING TITLE "配列データ"
   SETTING ITEM INST HEALTH_STATUS ARY
   SETTING ITEM INST HEALTH_STATUS ARY2
   SETTING SIZE 600 400
@@ -616,94 +614,94 @@ ARRAYPLOT
 ```
 ![ARRAYPLOT](/img/telemetry_viewer/widgets/arrayplot.png)
 
-The following settings apply to ARRAYPLOT. They are applied using the SETTING keyword.
+以下の設定はARRAYPLOTに適用されます。これらはSETTINGキーワードを使用して適用されます。
 #### TITLE
-**Title of the plot**
+**プロットのタイトル**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Title | Title of the plot | True |
+| タイトル | プロットのタイトル | True |
 
 #### X_AXIS
-**Define the x-axis parameters for the plot**
+**プロットのx軸パラメータを定義する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Start | Start value for the x-axis | True |
-| Step | Step value for the x-axis | True |
+| 開始値 | x軸の開始値 | True |
+| ステップ値 | x軸のステップ値 | True |
 
 #### ITEM
-**Add a telemetry item to the graph**
+**グラフにテレメトリアイテムを追加する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED</span> | False |
-| Reduced | Whether to display reduced data. Default is DECOM.<br/><br/>Valid Values: <span class="values">DECOM, REDUCED_MINUTE, REDUCED_HOUR, REDUCED_DAY</span> | False |
-| Reduced Type | The type of reduce data to display. Only applies if Reduced is not DECOM.<br/><br/>Valid Values: <span class="values">MIN, MAX, AVG, STDDEV</span> | False |
+| ターゲット名 | ターゲット名 | True |
+| パケット名 | パケット名 | True |
+| アイテム名 | アイテム名 | True |
+| 値タイプ | 表示する値のタイプ。デフォルトはCONVERTED。<br/><br/>有効な値: <span class="values">RAW, CONVERTED</span> | False |
+| 縮小 | 縮小データを表示するかどうか。デフォルトはDECOM。<br/><br/>有効な値: <span class="values">DECOM, REDUCED_MINUTE, REDUCED_HOUR, REDUCED_DAY</span> | False |
+| 縮小タイプ | 表示する縮小データのタイプ。縮小がDECOMでない場合にのみ適用されます。<br/><br/>有効な値: <span class="values">MIN, MAX, AVG, STDDEV</span> | False |
 
 #### STARTTIME
-<div class="right">(Since 5.5.1)</div>**Start the graph history at the designated Time**
+<div class="right">(5.5.1以降)</div>**指定された時間からグラフ履歴を開始する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Start Time | Start time as formatted 'YYYY/MM/DD HH:MM:SS' | True |
+| 開始時間 | 'YYYY/MM/DD HH:MM:SS'形式の開始時間 | True |
 
 #### HISTORY
-<div class="right">(Since 5.5.1)</div>**Display an initial history of data**
+<div class="right">(5.5.1以降)</div>**データの初期履歴を表示する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Value | Value(d,h,m,s). For example 1d, 2h, 30m, 15s | True |
+| 値 | 値(d,h,m,s)。例えば1d、2h、30m、15s | True |
 
 #### SECONDSGRAPHED
-**Display the specified number of seconds in the graph**
+**グラフに指定された秒数を表示する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Time | Number of seconds to display | True |
+| 時間 | 表示する秒数 | True |
 
 #### POINTSSAVED
-**Save the number of seconds in graph memory**
+**グラフメモリに秒数を保存する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Time | Number of seconds to save | True |
+| 時間 | 保存する秒数 | True |
 
 #### POINTSGRAPHED
-**Number of points to display on the graph**
+**グラフに表示するポイント数**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Time | Number of points to graph | True |
+| 時間 | グラフ化するポイント数 | True |
 
 #### SIZE
-**Size of the graph**
+**グラフのサイズ**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Width | Width in pixels | True |
-| Height | Height in pixels | True |
+| 幅 | ピクセル単位の幅 | True |
+| 高さ | ピクセル単位の高さ | True |
 
 ### BLOCK
-**Displays BLOCK data organized into rows and space separated**
+**行に整理され、スペースで区切られたBLOCKデータを表示する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name | True |
-| Width | Width of the widget (default = 200) | False |
-| Height | Height of the widget (default = 100) | False |
-| Format string | Format string applied to each array item (default = nil) | False |
-| Bytes per word | Number of bytes per word (default = 4) | False |
-| Words per row | Number of words per row (default = 4 | False |
-| Address format | Format for the address printed at the beginning of each line (default = nil which means do not print an address) | False |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| ターゲット名 | ターゲット名 | True |
+| パケット名 | パケット名 | True |
+| アイテム名 | アイテム名 | True |
+| 幅 | ウィジェットの幅（デフォルト = 200） | False |
+| 高さ | ウィジェットの高さ（デフォルト = 100） | False |
+| フォーマット文字列 | 各配列アイテムに適用されるフォーマット文字列（デフォルト = nil） | False |
+| ワードあたりのバイト数 | 1ワードあたりのバイト数（デフォルト = 4） | False |
+| 行あたりのワード数 | 1行あたりのワード数（デフォルト = 4） | False |
+| アドレスフォーマット | 各行の先頭に印刷されるアドレスのフォーマット（デフォルト = nil、アドレスを印刷しないことを意味します） | False |
+| 値タイプ | 表示する値のタイプ。デフォルトはCONVERTED。<br/><br/>有効な値: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
 
-Example Usage:
+使用例：
 ```ruby
 BLOCK INST IMAGE IMAGE 620 200 "%02X" 4 4 "0x%08X:"
 ```
@@ -711,20 +709,20 @@ BLOCK INST IMAGE IMAGE 620 200 "%02X" 4 4 "0x%08X:"
 
 
 ### FORMATVALUE
-**Displays a box with a formatted value**
+**フォーマットされた値を持つボックスを表示する**
 
-Data is formatted by the specified string rather than by a format string given in the telemetry definition files. The white portion of the box darkens to gray while the value remains stagnant, then brightens to white each time the value changes. Additionally the value is colored based on the items limits state (Red for example if it is out of limits).
+データは、テレメトリ定義ファイルで指定されたフォーマット文字列ではなく、指定された文字列によってフォーマットされます。値が停滞している間、ボックスの白い部分は灰色に暗くなり、値が変更されるたびに白く明るくなります。さらに、値はアイテムの制限状態に基づいて色付けされます（例えば、制限を超えている場合は赤色）。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name | True |
-| Format string | Printf style format string to apply to the telemetry item | False |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
-| Number of characters | The number of characters wide to make the value box (default = 12) | False |
+| ターゲット名 | ターゲット名 | True |
+| パケット名 | パケット名 | True |
+| アイテム名 | アイテム名 | True |
+| フォーマット文字列 | テレメトリ項目に適用するPrintf形式のフォーマット文字列 | False |
+| 値タイプ | 表示する値のタイプ。デフォルトはCONVERTED。<br/><br/>有効な値: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| 文字数 | 値ボックスの幅とする文字数（デフォルト = 12） | False |
 
-Example Usage:
+使用例：
 ```ruby
 FORMATVALUE INST LATEST TIMESEC %012u CONVERTED 20
 FORMATVALUE INST LATEST TEMP1 %.2f CONVERTED 20
@@ -733,21 +731,21 @@ FORMATVALUE INST LATEST TEMP1 %.2f CONVERTED 20
 
 
 ### LABELLED
-**Displays a LABEL followed by a LED**
+**LABELの後にLEDを表示する**
 
-See the LED widget for more information
+詳細についてはLEDウィジェットを参照してください
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
-| Width | Width of the LED circle (default = 15) | False |
-| Height | Height of the LED circle (default = 15) | False |
-| Justification | How to justify the label and LED together. The default of 'SPLIT' aligns the label to the left and the LED to the right with any additional space going between them. 'CENTER' pushes the label and LED together with any additional space to the left and right. 'LEFT' or 'RIGHT' pushes them to the respective side with the space going on the opposite.<br/><br/>Valid Values: <span class="values">SPLIT, CENTER, LEFT, RIGHT</span> | False |
+| ターゲット名 | ターゲット名 | True |
+| パケット名 | パケット名 | True |
+| アイテム名 | アイテム名 | True |
+| 値タイプ | 表示する値のタイプ。デフォルトはCONVERTED。<br/><br/>有効な値: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| 幅 | LED円の幅（デフォルト = 15） | False |
+| 高さ | LED円の高さ（デフォルト = 15） | False |
+| 揃え方 | ラベルとLEDを一緒に揃える方法。デフォルトの「SPLIT」はラベルを左に、LEDを右に揃え、追加のスペースをその間に配置します。「CENTER」はラベルとLEDを一緒に押し、追加のスペースは左右に配置します。「LEFT」または「RIGHT」はそれぞれの側に押し、スペースは反対側に配置します。<br/><br/>有効な値: <span class="values">SPLIT, CENTER, LEFT, RIGHT</span> | False |
 
-Example Usage:
+使用例：
 ```ruby
 LABELLED INST PARAMS VALUE1
   SETTING LED_COLOR GOOD GREEN
@@ -755,28 +753,28 @@ LABELLED INST PARAMS VALUE1
 ```
 ![LABELLED](/img/telemetry_viewer/widgets/labelled.png)
 
-The following settings apply to LABELLED. They are applied using the SETTING keyword.
+以下の設定はLABELLEDに適用されます。これらはSETTINGキーワードを使用して適用されます。
 #### LED_COLOR
-**Map a state or value to a color**
+**状態または値を色にマッピングする**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Value | State or value. ANY used to match any value or state not declared. | True |
-| LED color | Color of the LED | True |
+| 値 | 状態または値。ANYは宣言されていない任意の値または状態に一致するために使用されます。 | True |
+| LED色 | LEDの色 | True |
 
 ### LABELPROGRESSBAR
-**Displays a LABEL with the item name followed by a PROGRESSBAR**
+**アイテム名の後にPROGRESSBARが続くLABELを表示する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name | True |
-| Scale factor | Value to multiply the telemetry item by before displaying in the progress bar. Final value should be in the range of 0 to 100. Default is 1.0. | False |
-| Width | Width of the progress bar (default = 80 pixels | False |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| ターゲット名 | ターゲット名 | True |
+| パケット名 | パケット名 | True |
+| アイテム名 | アイテム名 | True |
+| スケールファクター | プログレスバーに表示する前にテレメトリ項目に掛ける値。最終値は0から100の範囲内であるべきです。デフォルトは1.0です。 | False |
+| 幅 | プログレスバーの幅（デフォルト = 80ピクセル） | False |
+| 値タイプ | 表示する値のタイプ。デフォルトはCONVERTED。<br/><br/>有効な値: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
 
-Example Usage:
+使用例：
 ```ruby
 LABELPROGRESSBAR INST ADCS POSPROGRESS 2 200 RAW
 LABELPROGRESSBAR INST ADCS POSPROGRESS
@@ -785,17 +783,17 @@ LABELPROGRESSBAR INST ADCS POSPROGRESS
 
 
 ### LABELVALUE
-**Displays a LABEL with the item name followed by a VALUE**
+**アイテム名の後にVALUEが続くLABELを表示する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
-| Number of characters | The number of characters wide to make the value box (default = 12) | False |
+| ターゲット名 | ターゲット名 | True |
+| パケット名 | パケット名 | True |
+| アイテム名 | アイテム名 | True |
+| 値タイプ | 表示する値のタイプ。デフォルトはCONVERTED。<br/><br/>有効な値: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| 文字数 | 値ボックスの幅とする文字数（デフォルト = 12） | False |
 
-Example Usage:
+使用例：
 ```ruby
 LABELVALUE INST LATEST TIMESEC CONVERTED 18
 LABELVALUE INST LATEST COLLECT_TYPE
@@ -804,48 +802,48 @@ LABELVALUE INST LATEST COLLECT_TYPE
 
 
 ### LABELVALUEDESC
-**Displays a LABEL with the items description followed by a VALUE**
+**アイテムの説明の後にVALUEが続くLABELを表示する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name | True |
-| Description | The description to display in the label (default is to display the description text associated with the telemetry item) | False |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
-| Number of characters | The number of characters wide to make the value box (default = 12) | False |
+| ターゲット名 | ターゲット名 | True |
+| パケット名 | パケット名 | True |
+| アイテム名 | アイテム名 | True |
+| 説明 | ラベルに表示する説明（デフォルトはテレメトリ項目に関連付けられた説明テキストを表示） | False |
+| 値タイプ | 表示する値のタイプ。デフォルトはCONVERTED。<br/><br/>有効な値: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| 文字数 | 値ボックスの幅とする文字数（デフォルト = 12） | False |
 
-Example Usage:
+使用例：
 ```ruby
-LABELVALUEDESC INST HEALTH_STATUS TEMP1 "Temperature number 1" RAW 18
+LABELVALUEDESC INST HEALTH_STATUS TEMP1 "温度番号1" RAW 18
 LABELVALUEDESC INST HEALTH_STATUS COLLECT_TYPE
 ```
 ![LABELVALUEDESC](/img/telemetry_viewer/widgets/labelvaluedesc.png)
 
 
 ### LABELVALUELIMITSBAR
-**Displays a LABEL with the item name followed by VALUE and LIMITSBAR widgets**
+**アイテム名の後にVALUEとLIMITSBARウィジェットが続くLABELを表示する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
-| Number of characters | The number of characters wide to make the value box (default = 12) | False |
+| ターゲット名 | ターゲット名 | True |
+| パケット名 | パケット名 | True |
+| アイテム名 | アイテム名 | True |
+| 値タイプ | 表示する値のタイプ。デフォルトはCONVERTED。<br/><br/>有効な値: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| 文字数 | 値ボックスの幅とする文字数（デフォルト = 12） | False |
 
 ### LABELVALUELIMITSCOLUMN
-**Displays a LABEL with the item name followed by VALUE and LIMITSCOLUMN widgets**
+**アイテム名の後にVALUEとLIMITSCOLUMNウィジェットが続くLABELを表示する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
-| Number of characters | The number of characters wide to make the value box (default = 12) | False |
+| ターゲット名 | ターゲット名 | True |
+| パケット名 | パケット名 | True |
+| アイテム名 | アイテム名 | True |
+| 値タイプ | 表示する値のタイプ。デフォルトはCONVERTED。<br/><br/>有効な値: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| 文字数 | 値ボックスの幅とする文字数（デフォルト = 12） | False |
 
-Example Usage:
+使用例：
 ```ruby
 LABELVALUELIMITSCOLUMN INST HEALTH_STATUS TEMP1 CONVERTED 18
 LABELVALUELIMITSCOLUMN INST HEALTH_STATUS TEMP1
@@ -854,21 +852,21 @@ LABELVALUELIMITSCOLUMN INST HEALTH_STATUS TEMP1
 
 
 ### LABELVALUERANGEBAR
-**Displays a LABEL with the item name followed by VALUE and RANGEBAR widgets**
+**アイテム名の後にVALUEとRANGEBARウィジェットが続くLABELを表示する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name | True |
-| Low Value | Minimum value to display on the range bar. If the telemetry item goes below this value the bar is “pegged” on the low end. | True |
-| High Value | Maximum value to display on the range bar. If the telemetry item goes above this value the bar is “pegged” on the high end. | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
-| Number of characters | The number of characters wide to make the value box (default = 12) | False |
-| Width | Width of the range bar (default = 160) | False |
-| Height | Height of the range bar (default = 25) | False |
+| ターゲット名 | ターゲット名 | True |
+| パケット名 | パケット名 | True |
+| アイテム名 | アイテム名 | True |
+| 最小値 | レンジバーに表示する最小値. | True |
+| 最大値 | レンジバーに表示する最大値. | True |
+| 値タイプ | 表示する値のタイプ. デフォルトは CONVERTED.<br/><br/>有効な値: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| 文字数 | 値ボックスの幅とする文字数 (デフォルト = 12) | False |
+| 幅 | レンジバーの幅 (デフォルト = 160) | False |
+| 高さ | レンジバーの高さ (デフォルト = 25) | False |
 
-Example Usage:
+使用例:
 ```ruby
 LABELVALUERANGEBAR INST HEALTH_STATUS TEMP1 0 100000 RAW 18 200 40
 LABELVALUERANGEBAR INST HEALTH_STATUS TEMP1 -120 120
@@ -877,48 +875,48 @@ LABELVALUERANGEBAR INST HEALTH_STATUS TEMP1 -120 120
 
 
 ### LED
-**Displays a LED which changes color based on telemetry values**
+**テレメトリ値に基づいて色が変わるLEDを表示する**
 
-By default TRUE is green and FALSE is red and all other values are black. Additional values can be added by using the LED_COLOR setting. For example LED INST PARAMS VALUE3 RAW can be followed by SETTING LED_COLOR 0 GREEN, SETTING LED_COLOR 1 RED, and SETTING LED_COLOR ANY ORANGE. See LIMITSCOLOR for a widget that displays a circle depicting the limits color of an item.
+デフォルトでは、TRUEは緑色、FALSEは赤色、その他の値はすべて黒色です。LED_COLOR設定を使用して追加の値を追加できます。例えば、LED INST PARAMS VALUE3 RAWの後に、SETTING LED_COLOR 0 GREEN、SETTING LED_COLOR 1 RED、およびSETTING LED_COLOR ANY ORANGEを続けることができます。項目の制限色を示す円を表示するウィジェットについては、LIMITSCOLORを参照してください。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
-| Width | Width of the LED circle (default = 15) | False |
-| Height | Height of the LED circle (default = 15) | False |
+| ターゲット名 | ターゲット名 | True |
+| パケット名 | パケット名 | True |
+| アイテム名 | アイテム名 | True |
+| 値タイプ | 表示する値のタイプ。デフォルトはCONVERTED。<br/><br/>有効な値: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| 幅 | LED円の幅（デフォルト = 15） | False |
+| 高さ | LED円の高さ（デフォルト = 15） | False |
 
-Example Usage:
+使用例：
 ```ruby
-LED INST PARAMS VALUE5 RAW 25 20 # Ellipse
+LED INST PARAMS VALUE5 RAW 25 20 # 楕円
   SETTING LED_COLOR 0 GREEN
   SETTING LED_COLOR 1 RED
   SETTING LED_COLOR ANY YELLOW
 ```
 ![LED](/img/telemetry_viewer/widgets/led.png)
 
-The following settings apply to LED. They are applied using the SETTING keyword.
+以下の設定はLEDに適用されます。これらはSETTINGキーワードを使用して適用されます。
 #### LED_COLOR
-**Map a state or value to a color**
+**状態または値を色にマッピングする**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Value | State or value. ANY used to match any value or state not declared. | True |
-| LED color | Color of the LED | True |
+| 値 | 状態または値。ANYは宣言されていない任意の値または状態に一致するために使用されます。 | True |
+| LED色 | LEDの色 | True |
 
 ### LIMITSBAR
-**Displays an item's current value within its colored limits horizontally**
+**アイテムの現在の値を色付けされた制限内に水平に表示する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
-| Width | Width of the range bar (default = 160) | False |
-| Height | Height of the range bar (default = 25) | False |
+| ターゲット名 | ターゲット名 | True |
+| パケット名 | パケット名 | True |
+| アイテム名 | アイテム名 | True |
+| 値タイプ | 表示する値のタイプ。デフォルトはCONVERTED。<br/><br/>有効な値: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| 幅 | レンジバーの幅（デフォルト = 160） | False |
+| 高さ | レンジバーの高さ（デフォルト = 25） | False |
 
 Example Usage:
 ```ruby
@@ -929,18 +927,18 @@ LIMITSBAR INST HEALTH_STATUS TEMP1
 
 
 ### LIMITSCOLUMN
-**Displays an item's current value within its colored limits vertically**
+**アイテムの現在の値を色付けされた制限内に垂直に表示する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
-| Width | Width of the range bar (default = 160) | False |
-| Height | Height of the range bar (default = 25) | False |
+| ターゲット名 | ターゲット名 | True |
+| パケット名 | パケット名 | True |
+| アイテム名 | アイテム名 | True |
+| 値タイプ | 表示する値のタイプ。デフォルトはCONVERTED。<br/><br/>有効な値: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| 幅 | レンジバーの幅（デフォルト = 160） | False |
+| 高さ | レンジバーの高さ（デフォルト = 25） | False |
 
-Example Usage:
+使用例:
 ```ruby
 LIMITSCOLUMN INST HEALTH_STATUS TEMP1 CONVERTED 50 200
 LIMITSCOLUMN INST HEALTH_STATUS TEMP1
@@ -949,41 +947,41 @@ LIMITSCOLUMN INST HEALTH_STATUS TEMP1
 
 
 ### LIMITSCOLOR
-**Displays a circle depicting the limits color of an item. See LED for a widget that displays a circle which changes to an arbitrary color based on telemetry values.**
+**アイテムの制限色を示す円を表示する。テレメトリ値に基づいて任意の色に変化する円を表示するウィジェットについては、LEDを参照してください。**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
-| Radius | Radius of the circle (default is 10) | False |
-| Item Name Display | Show the full item name, e.g. TGT PKT ITEM (true), no item name (nil or none) or just the item name (false). Default is false. | False |
+| ターゲット名 | ターゲット名 | True |
+| パケット名 | パケット名 | True |
+| アイテム名 | アイテム名 | True |
+| 値タイプ | 表示する値のタイプ。デフォルトはCONVERTED。<br/><br/>有効な値: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| 半径 | 円の半径（デフォルトは10） | False |
+| アイテム名表示 | 完全なアイテム名を表示（例：TGT PKT ITEM）(true)、アイテム名なし（nil または none）、またはアイテム名のみ（false）。デフォルトはfalse。 | False |
 
-Example Usage:
+使用例:
 ```ruby
 HORIZONTAL
-  LIMITSCOLOR INST HEALTH_STATUS TEMP1 CONVERTED 10 NIL # No label
+  LIMITSCOLOR INST HEALTH_STATUS TEMP1 CONVERTED 10 NIL # ラベルなし
   LABEL '1st Temp'
 END
-LIMITSCOLOR INST HEALTH_STATUS TEMP2 # Default is label with just item name
-LIMITSCOLOR INST HEALTH_STATUS TEMP3 CONVERTED 20 TRUE # Full TGT/PKT/ITEM label
+LIMITSCOLOR INST HEALTH_STATUS TEMP2 # デフォルトはアイテム名のみのラベル
+LIMITSCOLOR INST HEALTH_STATUS TEMP3 CONVERTED 20 TRUE # 完全なTGT/PKT/ITEMラベル
 ```
 ![LIMITSCOLOR](/img/telemetry_viewer/widgets/limitscolor.png)
 
 
 ### VALUELIMITSBAR
-**Displays an item VALUE followed by LIMITSBAR**
+**アイテムの値に続いてLIMITSBARを表示する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
-| Number of characters | The number of characters wide to make the value box (default = 12) | False |
+| ターゲット名 | ターゲット名 | True |
+| パケット名 | パケット名 | True |
+| アイテム名 | アイテム名 | True |
+| 値タイプ | 表示する値のタイプ。デフォルトはCONVERTED。<br/><br/>有効な値: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| 文字数 | 値ボックスの幅（文字数）（デフォルト = 12） | False |
 
-Example Usage:
+使用例:
 ```ruby
 VALUELIMITSBAR INST HEALTH_STATUS TEMP1 CONVERTED 18
 VALUELIMITSBAR INST HEALTH_STATUS TEMP1
@@ -992,17 +990,17 @@ VALUELIMITSBAR INST HEALTH_STATUS TEMP1
 
 
 ### VALUELIMITSCOLUMN
-**Displays an item VALUE followed by LIMITSCOLUMN**
+**アイテムの値に続いてLIMITSCOLUMNを表示する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
-| Number of characters | The number of characters wide to make the value box (default = 8) | False |
+| ターゲット名 | ターゲット名 | True |
+| パケット名 | パケット名 | True |
+| アイテム名 | アイテム名 | True |
+| 値タイプ | 表示する値のタイプ。デフォルトはCONVERTED。<br/><br/>有効な値: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| 文字数 | 値ボックスの幅（文字数）（デフォルト = 8） | False |
 
-Example Usage:
+使用例:
 ```ruby
 VALUELIMITSCOLUMN INST HEALTH_STATUS TEMP1 CONVERTED 18
 VALUELIMITSCOLUMN INST HEALTH_STATUS TEMP1
@@ -1011,21 +1009,21 @@ VALUELIMITSCOLUMN INST HEALTH_STATUS TEMP1
 
 
 ### VALUERANGEBAR
-**Displays an item VALUE followed by RANGEBAR**
+**アイテムの値に続いてRANGEBARを表示する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name | True |
-| Low Value | Minimum value to display on the range bar. If the telemetry item goes below this value the bar is “pegged” on the low end. | True |
-| High Value | Maximum value to display on the range bar. If the telemetry item goes above this value the bar is “pegged” on the high end. | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
-| Number of characters | The number of characters wide to make the value box (default = 12) | False |
-| Width | Width of the range bar (default = 160) | False |
-| Height | Height of the range bar (default = 25) | False |
+| ターゲット名 | ターゲット名 | True |
+| パケット名 | パケット名 | True |
+| アイテム名 | アイテム名 | True |
+| 最小値 | レンジバーに表示する最小値。 | True |
+| 最大値 | レンジバーに表示する最大値。 | True |
+| 値タイプ | 表示する値のタイプ。デフォルトはCONVERTED。<br/><br/>有効な値: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| 文字数 | 値ボックスの幅（文字数）（デフォルト = 12） | False |
+| 幅 | レンジバーの幅（デフォルト = 160） | False |
+| 高さ | レンジバーの高さ（デフォルト = 25） | False |
 
-Example Usage:
+使用例:
 ```ruby
 VALUERANGEBAR INST HEALTH_STATUS TEMP1 0 100000 RAW 18 200 40
 VALUERANGEBAR INST HEALTH_STATUS TEMP1 -120 120
@@ -1034,242 +1032,242 @@ VALUERANGEBAR INST HEALTH_STATUS TEMP1 -120 120
 
 
 ### LINEGRAPH
-**Displays a line graph of a telemetry item**
+**テレメトリアイテムの折れ線グラフを表示する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED</span> | False |
-| Reduced | Whether to display reduced data. Default is DECOM.<br/><br/>Valid Values: <span class="values">DECOM, REDUCED_MINUTE, REDUCED_HOUR, REDUCED_DAY</span> | False |
-| Reduced Type | The type of reduce data to display. Only applies if Reduced is not DECOM.<br/><br/>Valid Values: <span class="values">MIN, MAX, AVG, STDDEV</span> | False |
+| ターゲット名 | ターゲット名 | True |
+| パケット名 | パケット名 | True |
+| アイテム名 | アイテム名 | True |
+| 値タイプ | 表示する値のタイプ。デフォルトはCONVERTED。<br/><br/>有効な値: <span class="values">RAW, CONVERTED</span> | False |
+| 減少データ | 減少データを表示するかどうか。デフォルトはDECOM。<br/><br/>有効な値: <span class="values">DECOM, REDUCED_MINUTE, REDUCED_HOUR, REDUCED_DAY</span> | False |
+| 減少データタイプ | 表示する減少データのタイプ。ReducedがDECOMでない場合にのみ適用されます。<br/><br/>有効な値: <span class="values">MIN, MAX, AVG, STDDEV</span> | False |
 
-Example Usage:
+使用例:
 ```ruby
 LINEGRAPH INST HEALTH_STATUS TEMP1
-  SETTING ITEM INST ADCS Q1 # Add additional item to graph
+  SETTING ITEM INST ADCS Q1 # グラフに追加アイテムを追加
 ```
 ![LINEGRAPH](/img/telemetry_viewer/widgets/linegraph.png)
 
-The following settings apply to LINEGRAPH. They are applied using the SETTING keyword.
+以下の設定はLINEGRAPHに適用されます。これらはSETTINGキーワードを使用して適用されます。
 #### ITEM
-**Add a telemetry item to the graph**
+**グラフにテレメトリアイテムを追加する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED</span> | False |
-| Reduced | Whether to display reduced data. Default is DECOM.<br/><br/>Valid Values: <span class="values">DECOM, REDUCED_MINUTE, REDUCED_HOUR, REDUCED_DAY</span> | False |
-| Reduced Type | The type of reduce data to display. Only applies if Reduced is not DECOM.<br/><br/>Valid Values: <span class="values">MIN, MAX, AVG, STDDEV</span> | False |
+| ターゲット名 | ターゲット名 | True |
+| パケット名 | パケット名 | True |
+| アイテム名 | アイテム名 | True |
+| 値タイプ | 表示する値のタイプ。デフォルトはCONVERTED。<br/><br/>有効な値: <span class="values">RAW, CONVERTED</span> | False |
+| 減少データ | 減少データを表示するかどうか。デフォルトはDECOM。<br/><br/>有効な値: <span class="values">DECOM, REDUCED_MINUTE, REDUCED_HOUR, REDUCED_DAY</span> | False |
+| 減少データタイプ | 表示する減少データのタイプ。ReducedがDECOMでない場合にのみ適用されます。<br/><br/>有効な値: <span class="values">MIN, MAX, AVG, STDDEV</span> | False |
 
 #### STARTTIME
-<div class="right">(Since 5.5.1)</div>**Start the graph history at the designated Time**
+<div class="right">(5.5.1以降)</div>**指定された時間からグラフ履歴を開始する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Start Time | Start time as formatted 'YYYY/MM/DD HH:MM:SS' | True |
+| 開始時間 | 'YYYY/MM/DD HH:MM:SS'形式の開始時間 | True |
 
 #### HISTORY
-<div class="right">(Since 5.5.1)</div>**Display an initial history of data**
+<div class="right">(5.5.1以降)</div>**データの初期履歴を表示する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Value | Value(d,h,m,s). For example 1d, 2h, 30m, 15s | True |
+| 値 | 値(d,h,m,s)。例えば1d、2h、30m、15s | True |
 
 #### SECONDSGRAPHED
-**Display the specified number of seconds in the graph**
+**グラフに指定された秒数を表示する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Time | Number of seconds to display | True |
+| 時間 | 表示する秒数 | True |
 
 #### POINTSSAVED
-**Save the number of seconds in graph memory**
+**グラフメモリに秒数を保存する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Time | Number of seconds to save | True |
+| 時間 | 保存する秒数 | True |
 
 #### POINTSGRAPHED
-**Number of points to display on the graph**
+**グラフに表示するポイント数**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Time | Number of points to graph | True |
+| 時間 | グラフ化するポイント数 | True |
 
 #### SIZE
-**Size of the graph**
+**グラフのサイズ**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Width | Width in pixels | True |
-| Height | Height in pixels | True |
+| 幅 | ピクセル単位の幅 | True |
+| 高さ | ピクセル単位の高さ | True |
 
 ### SPARKLINE
-**Displays a sparkline graph (no cursor, scale or legend) of a telemetry item**
+**テレメトリアイテムのスパークライングラフ（カーソル、スケール、凡例なし）を表示する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED</span> | False |
-| Reduced | Whether to display reduced data. Default is DECOM.<br/><br/>Valid Values: <span class="values">DECOM, REDUCED_MINUTE, REDUCED_HOUR, REDUCED_DAY</span> | False |
-| Reduced Type | The type of reduce data to display. Only applies if Reduced is not DECOM.<br/><br/>Valid Values: <span class="values">MIN, MAX, AVG, STDDEV</span> | False |
+| ターゲット名 | ターゲット名 | True |
+| パケット名 | パケット名 | True |
+| アイテム名 | アイテム名 | True |
+| 値タイプ | 表示する値のタイプ。デフォルトはCONVERTED。<br/><br/>有効な値: <span class="values">RAW, CONVERTED</span> | False |
+| 減少データ | 減少データを表示するかどうか。デフォルトはDECOM。<br/><br/>有効な値: <span class="values">DECOM, REDUCED_MINUTE, REDUCED_HOUR, REDUCED_DAY</span> | False |
+| 減少データタイプ | 表示する減少データのタイプ。ReducedがDECOMでない場合にのみ適用されます。<br/><br/>有効な値: <span class="values">MIN, MAX, AVG, STDDEV</span> | False |
 
-Example Usage:
+使用例:
 ```ruby
 SPARKLINE INST HEALTH_STATUS TEMP1
   SETTING SIZE 400 50
-  SETTING HISTORY 30s # Add 30 seconds of data into graph
+  SETTING HISTORY 30s # グラフに30秒のデータを追加
 ```
 ![SPARKLINE](/img/telemetry_viewer/widgets/sparkline.png)
 
-The following settings apply to SPARKLINE. They are applied using the SETTING keyword.
+以下の設定はSPARKLINEに適用されます。これらはSETTINGキーワードを使用して適用されます。
 #### ITEM
-**Add a telemetry item to the graph**
+**グラフにテレメトリアイテムを追加する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED</span> | False |
-| Reduced | Whether to display reduced data. Default is DECOM.<br/><br/>Valid Values: <span class="values">DECOM, REDUCED_MINUTE, REDUCED_HOUR, REDUCED_DAY</span> | False |
-| Reduced Type | The type of reduce data to display. Only applies if Reduced is not DECOM.<br/><br/>Valid Values: <span class="values">MIN, MAX, AVG, STDDEV</span> | False |
+| ターゲット名 | ターゲット名 | True |
+| パケット名 | パケット名 | True |
+| アイテム名 | アイテム名 | True |
+| 値タイプ | 表示する値のタイプ。デフォルトはCONVERTED。<br/><br/>有効な値: <span class="values">RAW, CONVERTED</span> | False |
+| 減少データ | 減少データを表示するかどうか。デフォルトはDECOM。<br/><br/>有効な値: <span class="values">DECOM, REDUCED_MINUTE, REDUCED_HOUR, REDUCED_DAY</span> | False |
+| 減少データタイプ | 表示する減少データのタイプ。ReducedがDECOMでない場合にのみ適用されます。<br/><br/>有効な値: <span class="values">MIN, MAX, AVG, STDDEV</span> | False |
 
 #### STARTTIME
-<div class="right">(Since 5.5.1)</div>**Start the graph history at the designated Time**
+<div class="right">(5.5.1以降)</div>**指定された時間からグラフ履歴を開始する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Start Time | Start time as formatted 'YYYY/MM/DD HH:MM:SS' | True |
+| 開始時間 | 'YYYY/MM/DD HH:MM:SS'形式の開始時間 | True |
 
 #### HISTORY
-<div class="right">(Since 5.5.1)</div>**Display an initial history of data**
+<div class="right">(5.5.1以降)</div>**データの初期履歴を表示する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Value | Value(d,h,m,s). For example 1d, 2h, 30m, 15s | True |
+| 値 | 値(d,h,m,s)。例えば1d、2h、30m、15s | True |
 
 #### SECONDSGRAPHED
-**Display the specified number of seconds in the graph**
+**グラフに指定された秒数を表示する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Time | Number of seconds to display | True |
+| 時間 | 表示する秒数 | True |
 
 #### POINTSSAVED
-**Save the number of seconds in graph memory**
+**グラフメモリに秒数を保存する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Time | Number of seconds to save | True |
+| 時間 | 保存する秒数 | True |
 
 #### POINTSGRAPHED
-**Number of points to display on the graph**
+**グラフに表示するポイント数**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Time | Number of points to graph | True |
+| 時間 | グラフ化するポイント数 | True |
 
 #### SIZE
-**Size of the graph**
+**グラフのサイズ**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Width | Width in pixels | True |
-| Height | Height in pixels | True |
+| 幅 | ピクセル単位の幅 | True |
+| 高さ | ピクセル単位の高さ | True |
 
 ### LABELSPARKLINE
-**Displays a LABEL with the item name followed by a SPARKLINE**
+**アイテム名のLABELに続いてSPARKLINEを表示する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED</span> | False |
-| Reduced | Whether to display reduced data. Default is DECOM.<br/><br/>Valid Values: <span class="values">DECOM, REDUCED_MINUTE, REDUCED_HOUR, REDUCED_DAY</span> | False |
-| Reduced Type | The type of reduce data to display. Only applies if Reduced is not DECOM.<br/><br/>Valid Values: <span class="values">MIN, MAX, AVG, STDDEV</span> | False |
+| ターゲット名 | ターゲット名 | True |
+| パケット名 | パケット名 | True |
+| アイテム名 | アイテム名 | True |
+| 値タイプ | 表示する値のタイプ。デフォルトはCONVERTED。<br/><br/>有効な値: <span class="values">RAW, CONVERTED</span> | False |
+| 減少データ | 減少データを表示するかどうか。デフォルトはDECOM。<br/><br/>有効な値: <span class="values">DECOM, REDUCED_MINUTE, REDUCED_HOUR, REDUCED_DAY</span> | False |
+| 減少データタイプ | 表示する減少データのタイプ。ReducedがDECOMでない場合にのみ適用されます。<br/><br/>有効な値: <span class="values">MIN, MAX, AVG, STDDEV</span> | False |
 
-Example Usage:
+使用例:
 ```ruby
 LABELSPARKLINE INST HEALTH_STATUS TEMP1
-  SETTING HISTORY 5m # Add 5 minutes of data into graph
+  SETTING HISTORY 5m # グラフに5分のデータを追加
 ```
 ![LABELSPARKLINE](/img/telemetry_viewer/widgets/labelsparkline.png)
 
-The following settings apply to LABELSPARKLINE. They are applied using the SETTING keyword.
+以下の設定はLABELSPARKLINEに適用されます。これらはSETTINGキーワードを使用して適用されます。
 #### ITEM
-**Add a telemetry item to the graph**
+**グラフにテレメトリアイテムを追加するh**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED</span> | False |
-| Reduced | Whether to display reduced data. Default is DECOM.<br/><br/>Valid Values: <span class="values">DECOM, REDUCED_MINUTE, REDUCED_HOUR, REDUCED_DAY</span> | False |
-| Reduced Type | The type of reduce data to display. Only applies if Reduced is not DECOM.<br/><br/>Valid Values: <span class="values">MIN, MAX, AVG, STDDEV</span> | False |
+| ターゲット名 | ターゲット名 | True |
+| パケット名 | パケット名 | True |
+| アイテム名 | アイテム名 | True |
+| Value type | 表示する値のタイプ。デフォルトはCONVERTED。<br/><br/>有効な値: <span class="values">RAW, CONVERTED</span> | False |
+| 減少データ | 減少データを表示するかどうか。デフォルトはDECOM。<br/><br/>有効な値: <span class="values">DECOM, REDUCED_MINUTE, REDUCED_HOUR, REDUCED_DAY</span> | False |
+| 減少データタイプ | 表示する減少データのタイプ。ReducedがDECOMでない場合にのみ適用されます。<br/><br/>有効な値: <span class="values">MIN, MAX, AVG, STDDEV</span> | False |
 
 #### STARTTIME
-<div class="right">(Since 5.5.1)</div>**Start the graph history at the designated Time**
+<div class="right">(5.5.1以降)</div>**指定された時間からグラフ履歴を開始する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Start Time | Start time as formatted 'YYYY/MM/DD HH:MM:SS' | True |
+| 開始時間 | 'YYYY/MM/DD HH:MM:SS'形式の開始時間 | True |
 
 #### HISTORY
-<div class="right">(Since 5.5.1)</div>**Display an initial history of data**
+<div class="right">(5.5.1以降)</div>**データの初期履歴を表示する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Value | Value(d,h,m,s). For example 1d, 2h, 30m, 15s | True |
+| 値 | 値(d,h,m,s)。例えば1d、2h、30m、15s | True |
 
 #### SECONDSGRAPHED
-**Display the specified number of seconds in the graph**
+**グラフに指定された秒数を表示する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Time | Number of seconds to display | True |
+| 時間 | 表示する秒数 | True |
 
 #### POINTSSAVED
-**Save the number of seconds in graph memory**
+**グラフメモリに秒数を保存する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Time | Number of seconds to save | True |
+| 時間 | 保存する秒数 | True |
 
 #### POINTSGRAPHED
-**Number of points to display on the graph**
+**グラフに表示するポイント数**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Time | Number of points to graph | True |
+| 時間 | グラフ化するポイント数 | True |
 
 #### SIZE
-**Size of the graph**
+**グラフのサイズ**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Width | Width in pixels | True |
-| Height | Height in pixels | True |
+| 幅 | ピクセル単位の幅 | True |
+| 高さ | ピクセル単位の高さ | True |
 
 ### IMAGEVIEWER
-**Display a base64 image from a TLM packet**
+**TLMパケットからbase64画像を表示する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name to pull the CONVERTED value from. If additional processing (base64 encoding) is needed consider using a DERIVED item. | True |
-| Format | The image format of the base64 data (e.g. jpg, png, etc) | True |
+| ターゲット名 | ターゲット名 | True |
+| パケット名 | パケット名 | True |
+| アイテム名 | CONVERTED値を取得するアイテム名。追加処理（base64エンコーディング）が必要な場合は、DERIVEDアイテムの使用を検討してください。 | True |
+| フォーマット | base64データの画像フォーマット（例：jpg、pngなど） | True |
 
-Example Usage:
+使用例:
 ```ruby
 IMAGEVIEWER INST IMAGE IMAGE jpg
 ```
@@ -1277,18 +1275,18 @@ IMAGEVIEWER INST IMAGE IMAGE jpg
 
 
 ### PROGRESSBAR
-**Displays a progress bar that is useful for displaying percentages**
+**パーセンテージの表示に便利なプログレスバーを表示する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name | True |
-| Scale factor | Value to multiple the telemetry item by before displaying the in the progress bar. Final value should be in the range of 0 to 100. Default is 1.0. | False |
-| Width | Width of the progress bar (default = 100 pixels) | False |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| ターゲット名 | ターゲット名 | True |
+| パケット名 | パケット名 | True |
+| アイテム名 | アイテム名 | True |
+| スケールファクター | プログレスバーに表示する前にテレメトリアイテムに掛ける値。最終値は0から100の範囲である必要があります。デフォルトは1.0です。 | False |
+| 幅 | プログレスバーの幅（デフォルト = 100ピクセル） | False |
+| 値タイプ | 表示する値のタイプ。デフォルトはCONVERTED。<br/><br/>有効な値: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
 
-Example Usage:
+使用例:
 ```ruby
 PROGRESSBAR INST ADCS POSPROGRESS 0.5 200
 PROGRESSBAR INST ADCS POSPROGRESS
@@ -1297,20 +1295,20 @@ PROGRESSBAR INST ADCS POSPROGRESS
 
 
 ### RANGEBAR
-**Displays a custom range bar displaying the item value**
+**アイテムの値を表示するカスタムレンジバーを表示する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name | True |
-| Low Value | Minimum value to display on the range bar. If the telemetry item goes below this value the bar is “pegged” on the low end. | True |
-| High Value | Maximum value to display on the range bar. If the telemetry item goes above this value the bar is “pegged” on the high end. | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
-| Width | Width of the range bar (default = 100) | False |
-| Height | Height of the range bar (default = 25) | False |
+| ターゲット名 | ターゲット名 | True |
+| パケット名 | パケット名 | True |
+| アイテム名 | アイテム名 | True |
+| 最小値 | レンジバーに表示する最小値。 | True |
+| 最大値 | レンジバーに表示する最大値。 | True |
+| 値タイプ | 表示する値のタイプ。デフォルトはCONVERTED。<br/><br/>有効な値: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| 幅 | レンジバーの幅（デフォルト = 100） | False |
+| 高さ | レンジバーの高さ（デフォルト = 25） | False |
 
-Example Usage:
+使用例:
 ```ruby
 RANGEBAR INST HEALTH_STATUS TEMP1 0 100000 RAW 200 50
 RANGEBAR INST HEALTH_STATUS TEMP1 -100 100
@@ -1319,26 +1317,26 @@ RANGEBAR INST HEALTH_STATUS TEMP1 -100 100
 
 
 ### ROLLUP
-<div class="right">(Since 5.17.1)</div>**Displays a notification icon which changes color based on a rollup telemetry**
+<div class="right">(Since 5.17.1)</div>**ロールアップテレメトリに基づいて色が変化する通知アイコンを表示する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Icon name | The astro UX icon to display. Valid choices are 'astro' icons taken from https://github.com/RocketCommunicationsInc/astro-components/blob/master/static/json/rux-icons.json. | True |
-| Icon label | Text to apply to the icon label | False |
-| Icon sublabel | Text to apply to the icon sublabel | False |
+| アイコン名 | 表示するastro UXアイコン。有効な選択肢はhttps://github.com/RocketCommunicationsInc/astro-components/blob/master/static/json/rux-icons.jsonから取得した'astro'アイコンです。 | True |
+| アイコンラベル | アイコンラベルに適用するテキスト | False |
+| アイコンサブラベル | アイコンサブラベルに適用するテキスト | False |
 
-Example Usage:
+使用例:
 ```ruby
 ROLLUP satellite-transmit "SAT 1" "Details"
-  # Screen to open on click
+  # クリック時に開くスクリーン
   SETTING SCREEN INST HS
-  # Telemetry items to rollup status
+  # ロールアップステータスのテレメトリアイテム
   SETTING TLM INST HEALTH_STATUS TEMP1
   SETTING TLM INST HEALTH_STATUS TEMP2
 ROLLUP antenna "GND 2" "Location"
-  # Screen to open on click
+  # クリック時に開くスクリーン
   SETTING SCREEN INST HS
-  # Telemetry items to rollup status
+  # ロールアップステータスのテレメトリアイテム
   SETTING TLM INST HEALTH_STATUS TEMP3
   SETTING TLM INST HEALTH_STATUS TEMP4
 ```
@@ -1346,43 +1344,43 @@ ROLLUP antenna "GND 2" "Location"
 
 
 ### SIGNAL
-<div class="right">(Since 5.17.2)</div>**Displays a cellular signal icon which changes based on telemetry value**
+<div class="right">(Since 5.17.2)</div>**テレメトリ値に基づいて変化するセルラー信号アイコンを表示する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED</span> | False |
+| ターゲット名 | ターゲット名 | True |
+| パケット名 | パケット名 | True |
+| アイテム名 | アイテム名 | True |
+| 値タイプ | 表示する値のタイプ。デフォルトはCONVERTED。<br/><br/>有効な値: <span class="values">RAW, CONVERTED</span> | False |
 
-Example Usage:
+使用例:
 ```ruby
 SIGNAL INST HEALTH_STATUS TEMP1
-  # Screen to open on click
+  # クリック時に開くスクリーン
   SETTING SCREEN INST HS
-  # Values to compare when setting the 1-bar, 2-bar and 3-bar icons
-  # Default is 30, 60, 90 (e.g. 0 to 100 range)
-  # Value < -50 display no bars
-  # Value >= -50 and < 0 displays 1 bar
-  # Value >= 0 and < 50 displays 2 bars
-  # Value >= 50 displays 5 bars
+  # 1バー、2バー、3バーアイコンを設定するときに比較する値
+  # デフォルトは30、60、90（0から100の範囲）
+  # 値 < -50 の場合、バーは表示されません
+  # 値 >= -50 かつ < 0 の場合、1バー表示
+  # 値 >= 0 かつ < 50 の場合、2バー表示
+  # 値 >= 50 の場合、5バー表示
   SETTING RANGE -50 0 50
 ```
 ![SIGNAL](/img/telemetry_viewer/widgets/signal.png)
 
 
 ### TEXTBOX
-**Provides a large box for multiline text**
+**複数行のテキスト用の大きなボックスを提供する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name | True |
-| Width | Width of the textbox in px (default = 200) | False |
-| Height | Height of the textbox in px (default = 200) | False |
+| ターゲット名 | ターゲット名 | True |
+| パケット名 | パケット名 | True |
+| アイテム名 | アイテム名 | True |
+| 幅 | テキストボックスの幅（ピクセル単位）（デフォルト = 200） | False |
+| 高さ | テキストボックスの高さ（ピクセル単位）（デフォルト = 200） | False |
 
-Example Usage:
+使用例:
 ```ruby
 TEXTBOX INST HEALTH_STATUS PACKET_TIMEFORMATTED 150 70
 ```
@@ -1390,19 +1388,19 @@ TEXTBOX INST HEALTH_STATUS PACKET_TIMEFORMATTED 150 70
 
 
 ### VALUE
-**Displays a box with a telemetry item value**
+**テレメトリアイテムの値を持つボックスを表示する**
 
-The white portion of the box darkens to gray while the value remains stagnant, then brightens to white each time the value changes. Additionally the value is colored based on the items limits state (Red for example if it is out of limits).
+ボックスの白い部分は値が変化しない間はグレーに暗くなり、値が変わるたびに白く明るくなります。さらに、値はアイテムの制限状態に基づいて色付けされます（例えば、制限を超えている場合は赤色）。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name | True |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
-| Number of characters | The number of characters wide to make the value box (default = 12) | False |
+| ターゲット名 | ターゲット名 | True |
+| パケット名 | パケット名 | True |
+| アイテム名 | アイテム名 | True |
+| 値タイプ | 表示する値のタイプ。デフォルトはCONVERTED。<br/><br/>有効な値: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| 文字数 | 値ボックスの幅（文字数）（デフォルト = 12） | False |
 
-Example Usage:
+使用例:
 ```ruby
 VALUE INST HEALTH_STATUS TEMP1 CONVERTED 18
 VALUE INST HEALTH_STATUS TEMP1
@@ -1410,56 +1408,56 @@ VALUE INST HEALTH_STATUS TEMP1
 ![VALUE](/img/telemetry_viewer/widgets/value.png)
 
 
-## Interactive Widgets
+## インタラクティブウィジェット
 ****
 
-Interactive widgets are used to gather input from the user. Unlike all other widgets, which only output some graphical representation, interactive widgets permit input either from the keyboard or mouse.
+インタラクティブウィジェットはユーザーからの入力を収集するために使用されます。何らかのグラフィカルな表現を出力するだけの他のすべてのウィジェットとは異なり、インタラクティブウィジェットはキーボードまたはマウスからの入力を許可します。
 
 
 ### BUTTON
-**Displays a rectangular clickable button**
+**クリック可能な長方形のボタンを表示する**
 
-Upon clicking, the button executes the Javascript code assigned. Buttons
-can be used to send commands and perform other tasks. If you want your button
-to use values from other widgets, define them as named widgets and read their
-values using the `screen.getNamedWidget("WIDGET_NAME").text()` method.
-See the example in CHECKBUTTON.
+クリックすると、ボタンは割り当てられたJavaScriptコードを実行します。ボタンは
+コマンドの送信や他のタスクの実行に使用できます。ボタンに
+他のウィジェットからの値を使用させたい場合は、それらを名前付きウィジェットとして定義し、
+`screen.getNamedWidget("WIDGET_NAME").text()`メソッドを使用して値を読み取ります。
+CHECKBUTTONの例を参照してください。
 
-Button code can get rather complex so remember to use string concatenation
-to make things more readable. If you use `+` newlines are inserted automatically
-during string concatenation. If you use `\` you'll need to separate lines with a
-single semicolon `;`. COSMOS uses double semicolon `;;` to indicate lines should
-be evaluated separately. Note that all OpenC3 commands (using api.cmd) must be
-separated by `;;`.
+ボタンコードはかなり複雑になることがあるので、文字列連結を使用して
+読みやすくすることを忘れないでください。`+`を使用すると、文字列連結中に
+改行が自動的に挿入されます。`\`を使用する場合は、行を
+単一のセミコロン`;`で区切る必要があります。COSMOSは二重セミコロン`;;`を使用して、行が
+別々に評価されるべきであることを示します。すべてのOpenC3コマンド（api.cmdを使用）は
+`;;`で区切る必要があることに注意してください。
 
-You can send commands with buttons using api.cmd(). The cmd() syntax looks exactly
-like the standard COSMOS scripting syntax. You can also request and use
-telemetry in screens using Javascript Promises.
+api.cmd()を使用してボタンでコマンドを送信できます。cmd()構文は
+標準のCOSMOSスクリプト構文と全く同じです。また、JavaScript Promisesを使用して
+画面でテレメトリをリクエストして使用することもできます。
 
 `api.tlm('INST PARAMS VALUE3', 'RAW').then(dur => api.cmd('INST COLLECT with TYPE NORMAL, DURATION '+dur))"`
 
-The api.tlm() function returns a Promise which is resolved with then()
-at which point we send the command with the telemetry value we received.
+api.tlm()関数はPromiseを返し、then()で解決され、
+その時点で受け取ったテレメトリ値でコマンドを送信します。
 
-Scripts can be launched from a BUTTON using the `runScript()` method. `runScript()` takes three parameters,
-the name of the script, whether to open the script in the foreground of Script Runner (default = true), and a hash of
-environment variables. For example: `runScript('INST/procedures/script.rb', false, {'VAR': 'VALUE'})`
+`runScript()`メソッドを使用してBUTTONからスクリプトを起動できます。`runScript()`は3つのパラメータを取ります：
+スクリプト名、Script Runnerのフォアグラウンドでスクリプトを開くかどうか（デフォルト = true）、
+環境変数のハッシュです。例：`runScript('INST/procedures/script.rb', false, {'VAR': 'VALUE'})`
 
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Button Text | Text displayed on the button | True |
-| Button Code | Javascript code to execute when the button is pressed | True |
+| ボタンテキスト | ボタンに表示されるテキスト | True |
+| ボタンコード | ボタンが押されたときに実行されるJavaScriptコード | True |
 
-Example Usage:
+使用例:
 ```ruby
 BUTTON 'Start Collect' 'api.cmd("INST COLLECT with TYPE NORMAL, DURATION 5")'
 BUTTON 'Run Checks' 'runScript("INST/procedures/checks.rb")'
-# More complex example with background checkbox and env vars
+# バックグラウンドチェックボックスと環境変数を使用したより複雑な例
 NAMED_WIDGET SCRIPTNAME COMBOBOX collect.rb checks.rb
 NAMED_WIDGET BG CHECKBUTTON 'Background'
 BUTTON 'Run Script' "var script=screen.getNamedWidget('SCRIPTNAME').text();" \
-  # Set an environment variable to be used by the script as ENV['TYPE']
+  # スクリプトでENV['TYPE']として使用される環境変数を設定
   "var env = {}; env['TYPE'] = 'TEST';" \
   "runScript('INST/procedures/'+script, !screen.getNamedWidget('BG').checked(), env)"
 ```
@@ -1467,22 +1465,22 @@ BUTTON 'Run Script' "var script=screen.getNamedWidget('SCRIPTNAME').text();" \
 
 
 ### CHECKBUTTON
-**Displays a check box**
+**チェックボックスを表示する**
 
-Note this is of limited use by itself and is primarily used in conjunction with NAMED_WIDGET.
+これは単独では使用が限られており、主にNAMED_WIDGETと組み合わせて使用されることに注意してください。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Checkbox Text | Text displayed next to the checkbox | True |
-| Checked | Whether the initial state of the checkbox is checked (default = false). Do not give a value to make the checkbox unchecked. | False |
+| チェックボックステキスト | チェックボックスの横に表示されるテキスト | True |
+| チェック済み | チェックボックスの初期状態がチェックされているかどうか（デフォルト = false）。チェックボックスをチェックしない場合は値を与えないでください。 | False |
 
-Example Usage:
+使用例:
 ```ruby
 NAMED_WIDGET UNCHECKED CHECKBUTTON 'Default Unchecked'
 NAMED_WIDGET CHECK CHECKBUTTON 'Ignore Hazardous Checks' CHECKED
 BUTTON 'Send' 'screen.getNamedWidget("CHECK").checked() ? ' \
   'api.cmd_no_hazardous_check("INST CLEAR") : api.cmd("INST CLEAR")'
-# You can programmatically check or uncheck the checkbox
+# プログラムでチェックボックスをチェックまたはチェック解除できます
 BUTTON 'Check' 'screen.getNamedWidget("CHECK").value = true'
 BUTTON 'Uncheck' 'screen.getNamedWidget("CHECK").value = false'
 ```
@@ -1490,16 +1488,16 @@ BUTTON 'Uncheck' 'screen.getNamedWidget("CHECK").value = false'
 
 
 ### COMBOBOX
-**Displays a drop down list of text items**
+**テキストアイテムのドロップダウンリストを表示する**
 
-Note this is of limited use by itself and is primarily used in conjunction with NAMED_WIDGET.
+これは単独では使用が限られており、主にNAMED_WIDGETと組み合わせて使用されることに注意してください。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Option Text 1 | Text to display in the selection drop down | True |
-| Option Text n | Text to display in the selection drop down | False |
+| オプションテキスト1 | 選択ドロップダウンに表示するテキスト | True |
+| オプションテキストn | 選択ドロップダウンに表示するテキスト | False |
 
-Example Usage:
+使用例:
 ```ruby
 BUTTON 'Start Collect' 'var type = screen.getNamedWidget("COLLECT_TYPE").text();' +
   'api.cmd("INST COLLECT with TYPE "+type+", DURATION 10.0")'
@@ -1509,15 +1507,15 @@ NAMED_WIDGET COLLECT_TYPE COMBOBOX NORMAL SPECIAL
 
 
 ### DATE
-**Displays a date picker**
+**日付ピッカーを表示する**
 
-Note this is of limited use by itself and is primarily used in conjunction with NAMED_WIDGET.
+これは単独では使用が限られており、主にNAMED_WIDGETと組み合わせて使用されることに注意してください。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Date label | Text to label the data selection ('Date' by default) | False |
+| 日付ラベル | データ選択にラベル付けするテキスト（デフォルトは'Date'） | False |
 
-Example Usage:
+使用例:
 ```ruby
 BUTTON 'Alert Date' 'var date = screen.getNamedWidget("DATE").text();' +
   'alert("Date:"+date)'
@@ -1527,26 +1525,26 @@ NAMED_WIDGET DATE DATE
 
 
 ### RADIOGROUP
-**Creates a group of RADIOBUTTONs**
+**RADIOBUTTONのグループを作成する**
 
-RADIOBUTTONs must be part of a group to enable selection logic
+RADIOBUTTONは選択ロジックを有効にするためにグループの一部である必要があります
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Initial selected button | Selects a radio button at initialization (0-based) | False |
+| 初期選択ボタン | 初期化時にラジオボタンを選択します（0ベース） | False |
 
 ### RADIOBUTTON
-**Displays a radio button and text**
+**ラジオボタンとテキストを表示する**
 
-Note this is of limited use by itself and is primarily used in conjunction with NAMED_WIDGET. It must be contained by a RADIOGROUP to enable typical selection of a single RADIOBUTTON.
+これは単独では使用が限られており、主にNAMED_WIDGETと組み合わせて使用されます。単一のRADIOBUTTONの一般的な選択を有効にするには、RADIOGROUPに含まれている必要があります。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Text | Text to display next to the radio button | True |
+| テキスト | ラジオボタンの隣に表示するテキスト | True |
 
-Example Usage:
+使用例:
 ```ruby
-NAMED_WIDGET GROUP RADIOGROUP 1 # Select 'Clear' initially, 0-based index
+NAMED_WIDGET GROUP RADIOGROUP 1 # 初期状態で'Clear'を選択、0ベースインデックス
   RADIOBUTTON 'Abort'
   RADIOBUTTON 'Clear'
 END
@@ -1557,14 +1555,14 @@ BUTTON 'Send' "screen.getNamedWidget('GROUP').selected() === 0 ? " +
 
 
 ### TEXTFIELD
-**Displays a rectangular box where the user can enter text**
+**ユーザーがテキストを入力できる長方形のボックスを表示する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Characters | Width of the text field in characters (default = 12) | False |
-| Text | Default text to put in the text field (default is blank) | False |
+| 文字数 | テキストフィールドの幅（文字数）（デフォルト = 12） | False |
+| テキスト | テキストフィールドに入れるデフォルトテキスト（デフォルトは空白） | False |
 
-Example Usage:
+使用例:
 ```ruby
 NAMED_WIDGET DURATION TEXTFIELD 12 "10.0"
 BUTTON 'Start Collect' 'var dur = screen.getNamedWidget("DURATION").text();' +
@@ -1574,15 +1572,15 @@ BUTTON 'Start Collect' 'var dur = screen.getNamedWidget("DURATION").text();' +
 
 
 ### TIME
-**Displays a time picker**
+**時間ピッカーを表示する**
 
-Note this is of limited use by itself and is primarily used in conjunction with NAMED_WIDGET.
+これは単独では使用が限られており、主にNAMED_WIDGETと組み合わせて使用されます。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Time label | Text to label the time selection ('Time' by default) | False |
+| 時間ラベル | 時間選択にラベル付けするテキスト（デフォルトは'Time'） | False |
 
-Example Usage:
+使用例:
 ```ruby
 BUTTON 'Alert Time' 'var time = screen.getNamedWidget("TIME").text();' +
   'alert("Time:"+time)'
@@ -1591,38 +1589,38 @@ NAMED_WIDGET TIME TIME
 ![TIME](/img/telemetry_viewer/widgets/time.png)
 
 
-## Canvas Widgets
+## キャンバスウィジェット
 ****
 
-Canvas Widgets are used to draw custom displays into telemetry screens. The canvas coordinate frame places (0,0) in the upper-left corner of the canvas.
+キャンバスウィジェットは、テレメトリ画面にカスタム表示を描画するために使用されます。キャンバス座標フレームは(0,0)をキャンバスの左上隅に配置します。
 
 
 ### CANVAS
-**Layout widget for the other canvas widgets**
+**他のキャンバスウィジェットのためのレイアウトウィジェット**
 
-All canvas widgets must be enclosed within a CANVAS widget.
+すべてのキャンバスウィジェットはCANVASウィジェット内に含まれている必要があります。
 
 :::warning
-The canvas coordinate frame places (0,0) in the upper-left corner of the canvas.
+キャンバス座標フレームは(0,0)をキャンバスの左上隅に配置します。
 :::
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Width | Width of the canvas | True |
-| Height | Height of the canvas | True |
+| 幅 | キャンバスの幅 | True |
+| 高さ | キャンバスの高さ | True |
 
 ### CANVASLABEL
-**Draws text onto the canvas**
+**キャンバスにテキストを描画する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| X Position | X position of the upper-left corner of the text on the canvas | True |
-| Y Position | Y position of the upper-left corner of the text on the canvas | True |
-| Text | Text to draw onto the canvas | True |
-| Font Size | Font size of the text (Default = 12) | False |
-| Color | Color of the text | False |
+| X位置 | キャンバス上のテキストの左上隅のX位置 | True |
+| Y位置 | キャンバス上のテキストの左上隅のY位置 | True |
+| テキスト | キャンバスに描画するテキスト | True |
+| フォントサイズ | テキストのフォントサイズ（デフォルト = 12） | False |
+| 色 | テキストの色 | False |
 
-Example Usage:
+使用例:
 ```ruby
 CANVAS 100 100
   CANVASLABEL 5 34 "Label1" 24 red
@@ -1633,20 +1631,20 @@ END
 
 
 ### CANVASLABELVALUE
-**Draws the text value of a telemetry item onto the canvas in an optional frame**
+**テレメトリアイテムのテキスト値をオプションのフレーム内にキャンバス上に描画する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name | True |
-| X Position | X position of the upper-left corner of the text on the canvas | True |
-| Y Position | Y position of the upper-left corner of the text on the canvas | True |
-| Font Size | Font size of the text (Default = 12) | False |
-| Color | Color of the text | False |
-| Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| ターゲット名 | ターゲット名 | True |
+| パケット名 | パケット名 | True |
+| アイテム名 | アイテム名 | True |
+| X位置 | キャンバス上のテキストの左上隅のX位置 | True |
+| Y位置 | キャンバス上のテキストの左上隅のY位置 | True |
+| フォントサイズ | テキストのフォントサイズ（デフォルト = 12） | False |
+| 色 | テキストの色 | False |
+| 値タイプ | 表示する値のタイプ。デフォルトはCONVERTED。<br/><br/>有効な値: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
 
-Example Usage:
+使用例:
 ```ruby
 CANVAS 200 100
   CANVASLABELVALUE INST HEALTH_STATUS TEMP1 5 34 12 red
@@ -1657,15 +1655,15 @@ END
 
 
 ### CANVASIMAGE
-**Displays an image on the canvas**
+**キャンバスに画像を表示する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Image filename | Name of a image file. The file must be in the plugin's targets/TARGET/public directory. | True |
-| X Position | X position of the upper-left corner of the image on the canvas | True |
-| Y Position | Y position of the upper-left corner of the image on the canvas | True |
+| 画像ファイル名 | 画像ファイルの名前。ファイルはプラグインのtargets/TARGET/publicディレクトリに存在する必要があります。 | True |
+| X位置 | キャンバス上の画像の左上隅のX位置 | True |
+| Y位置 | キャンバス上の画像の左上隅のY位置 | True |
 
-Example Usage:
+使用例:
 ```ruby
 CANVAS 250 430
   CANVASIMAGE "satellite.png" 10 10 200 200
@@ -1675,33 +1673,33 @@ END
 ```
 ![CANVASIMAGE](/img/telemetry_viewer/widgets/canvasimage.png)
 
-The following settings apply to CANVASIMAGE. They are applied using the SETTING keyword.
+以下の設定はCANVASIMAGEに適用されます。これらはSETTINGキーワードを使用して適用されます。
 #### SCREEN
-**Open another screen when clicked**
+**クリック時に別のスクリーンを開く**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target name | Name of the target | True |
-| Screen name | Name of the screen | True |
+| ターゲット名 | ターゲットの名前 | True |
+| スクリーン名 | スクリーンの名前 | True |
 
 ### CANVASIMAGEVALUE
-**Displays an image on the canvas that changes with a telemetry value**
+**テレメトリ値によって変化する画像をキャンバスに表示する**
 
-Use various SETTING values to indicate which images should be displayed based on telemetry. For example, SETTING IMAGE CONNECTED "ground_on.png" 400 100. See the DEMO for a complete example.
+さまざまなSETTING値を使用して、テレメトリに基づいて表示する画像を指定します。例えば、SETTING IMAGE CONNECTED "ground_on.png" 400 100。完全な例についてはDEMOを参照してください。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name | True |
-| Value type | The type of the value to display<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | True |
-| Default image filename | The default image to display. The file must be in the targets/TARGET/public directory. | True |
-| X Position | X position of the upper-left corner of the image on the canvas | True |
-| Y Position | Y position of the upper-left corner of the image on the canvas | True |
-| Image width | Width of the image (default is 100%) | False |
-| Image height | Height of the image (default is 100%) | False |
+| ターゲット名 | ターゲット名 | True |
+| パケット名 | パケット名 | True |
+| アイテム名 | アイテム名 | True |
+| 値タイプ | 表示する値のタイプ<br/><br/>有効な値: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | True |
+| デフォルト画像ファイル名 | 表示するデフォルト画像。ファイルはtargets/TARGET/publicディレクトリに存在する必要があります。 | True |
+| X位置 | キャンバス上の画像の左上隅のX位置 | True |
+| Y位置 | キャンバス上の画像の左上隅のY位置 | True |
+| 画像の幅 | 画像の幅（デフォルトは100%） | False |
+| 画像の高さ | 画像の高さ（デフォルトは100%） | False |
 
-Example Usage:
+使用例:
 ```ruby
 CANVAS 230 230
   CANVASIMAGEVALUE INST HEALTH_STATUS GROUND1STATUS CONVERTED "ground_error.png" 10 10 180 180
@@ -1712,38 +1710,38 @@ END
 ```
 ![CANVASIMAGEVALUE](/img/telemetry_viewer/widgets/canvasimagevalue.png)
 
-The following settings apply to CANVASIMAGEVALUE. They are applied using the SETTING keyword.
+以下の設定はCANVASIMAGEVALUEに適用されます。これらはSETTINGキーワードを使用して適用されます。
 #### IMAGE
-**Map an image to a state or value**
+**状態または値に画像をマッピングする**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Value | State or value | True |
-| Image filename | Image to display. The file must be in the targets/TARGET/public directory. | True |
-| X Position | X position of the upper-left corner of the image on the canvas | True |
-| Y Position | Y position of the upper-left corner of the image on the canvas | True |
+| 値 | 状態または値 | True |
+| 画像ファイル名 | 表示する画像。ファイルはtargets/TARGET/publicディレクトリに存在する必要があります。 | True |
+| X位置 | キャンバス上の画像の左上隅のX位置 | True |
+| Y位置 | キャンバス上の画像の左上隅のY位置 | True |
 
 #### SCREEN
-**Open another screen when clicked**
+**クリック時に別のスクリーンを開く**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target name | Name of the target | True |
-| Screen name | Name of the screen | True |
+| ターゲット名 | ターゲットの名前 | True |
+| スクリーン名 | スクリーンの名前 | True |
 
 ### CANVASLINE
-**Draws a line onto the canvas**
+**キャンバスに線を描画する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Start X Position | X position of the start of the line on the canvas | True |
-| Start Y Position | Y position of the start of the line on the canvas | True |
-| End X Position | X position of the end of the line on the canvas | True |
-| End Y Position | Y position of the end of the line on the canvas | True |
-| Color | Color of the line | False |
-| Width | Width of the line in pixels (default = 1) | False |
+| 開始X位置 | キャンバス上の線の開始位置のX座標 | True |
+| 開始Y位置 | キャンバス上の線の開始位置のY座標 | True |
+| 終了X位置 | キャンバス上の線の終了位置のX座標 | True |
+| 終了Y位置 | キャンバス上の線の終了位置のY座標 | True |
+| 色 | 線の色 | False |
+| 幅 | 線の幅（ピクセル単位）（デフォルト = 1） | False |
 
-Example Usage:
+使用例:
 ```ruby
 CANVAS 100 50
   CANVASLINE 5 5 95 5
@@ -1755,23 +1753,23 @@ END
 
 
 ### CANVASLINEVALUE
-**Draws a color changing line onto the canvas**
+**色が変化する線をキャンバスに描画する**
 
-The line is represented by one of two colors based on the value of the associated telemetry item
+線は関連するテレメトリアイテムの値に基づいて2つの色のいずれかで表現されます
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target name | The target name | True |
-| Packet name | The packet name | True |
-| Item name | The item name | True |
-| Start X Position | X position of the start of the line on the canvas | True |
-| Start Y Position | Y position of the start of the line on the canvas | True |
-| End X Position | X position of the end of the line on the canvas | True |
-| End Y Position | Y position of the end of the line on the canvas | True |
-| Width | Width of the line in pixels (default = 3) | False |
-| Value type | The type of the value to display. Default is CONVERTED<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
+| ターゲット名 | ターゲット名 | True |
+| パケット名 | パケット名 | True |
+| アイテム名 | アイテム名 | True |
+| 開始X位置 | キャンバス上の線の開始位置のX座標 | True |
+| 開始Y位置 | キャンバス上の線の開始位置のY座標 | True |
+| 終了X位置 | キャンバス上の線の終了位置のX座標 | True |
+| 終了Y位置 | キャンバス上の線の終了位置のY座標 | True |
+| 幅 | 線の幅（ピクセル単位）（デフォルト = 3） | False |
+| 値タイプ | 表示する値のタイプ。デフォルトはCONVERTED<br/><br/>有効な値: <span class="values">RAW, CONVERTED, FORMATTED, WITH_UNITS</span> | False |
 
-Example Usage:
+使用例:
 ```ruby
 CANVAS 120 50
   CANVASLABELVALUE INST HEALTH_STATUS GROUND1STATUS 0 12 12 black
@@ -1785,26 +1783,26 @@ END
 ```
 ![CANVASLINEVALUE](/img/telemetry_viewer/widgets/canvaslinevalue.png)
 
-The following settings apply to CANVASLINEVALUE. They are applied using the SETTING keyword.
+以下の設定はCANVASLINEVALUEに適用されます。これらはSETTINGキーワードを使用して適用されます。
 #### VALUE_EQ
-<div class="right">(Since 5.5.1)</div>**Map a value to a color**
+<div class="right">(Since 5.5.1)</div>**値を色にマッピングする**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Value | State or value | True |
-| Color | Color of the line | True |
+| 値 | 状態または値 | True |
+| 色 | 線の色 | True |
 
 ### CANVASDOT
-**Draws a dot onto the canvas**
+**キャンバスに点を描画する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| X Position | X position of the dot | True |
-| Y Position | Y position of the dot | True |
-| Color | Color of the dot | True |
-| Radius | Radius of the dot in pixels | True |
+| X位置 | 点のX位置 | True |
+| Y位置 | 点のY位置 | True |
+| 色 | 点の色 | True |
+| 半径 | 点の半径（ピクセル単位） | True |
 
-Example Usage:
+使用例:
 ```ruby
 CANVAS 50 50
   CANVASDOT 10 15 BLUE 5
@@ -1814,9 +1812,9 @@ END
 
 
 
-## Example File
+## 例ファイル
 
-Example File: TARGET/myscreen.txt
+例ファイル: TARGET/myscreen.txt
 
 <!-- prettier-ignore -->
 ```ruby
@@ -1838,7 +1836,7 @@ VERTICAL
     BUTTON 'Start Collect' "api.cmd('INST COLLECT with TYPE '+screen.getNamedWidget('COLLECT_TYPE').text()+', DURATION '+screen.getNamedWidget('DURATION').text())"
   END
   SETTING BACKCOLOR 163 185 163
-  VERTICALBOX "Parameter-less Commands:"
+  VERTICALBOX "パラメータ-less Commands:"
     NAMED_WIDGET GROUP RADIOGROUP 1 # Select 'Clear' initially, 0-based index
       RADIOBUTTON 'Abort'
       RADIOBUTTON 'Clear'

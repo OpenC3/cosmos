@@ -5,7 +5,7 @@ sidebar_custom_props:
   myEmoji: 🔨
 ---
 
-COSMOSでは、[プラグイン](../configuration/plugins.md)と共にデプロイして[テレメトリビューア](../tools/tlm-viewer.md)で使用できるカスタムウィジェットを構築することができます。カスタムウィジェットの構築には任意のJavaScriptフレームワークを使用できますが、COSMOSはVue.jsで書かれているため、このチュートリアルではそのフレームワークを使用します。カスタムウィジェットの基本構造を生成する方法については、[ウィジェットジェネレータ](../getting-started/generators#widget-generator)ガイドを参照してください。
+COSMOSでは、[プラグイン](../configuration/plugins.md)と共にデプロイして[テレメトリビューア](../tools/tlm-viewer.md)で使用できるカスタムウィジェットを構築することができます。カスタムウィジェットの構築には任意のJavaScriptフレームワークを使用できますが、COSMOSはVue.jsで書かれているため、このチュートリアルではそのフレームワークを使用します。カスタムウィジェットの基本構造を生成する方法については、[ウィジェットジェネレーター](../getting-started/generators#ウィジェットジェネレーター)ガイドを参照してください。
 
 ## カスタムウィジェット
 

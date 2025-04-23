@@ -57,7 +57,7 @@ C:\openc3-project> openc3.bat cli generate plugin BOB --python
 Plugin openc3-cosmos-bob successfully generated!
 ```
 
-これにより、「openc3-cosmos-bob」という新しいディレクトリが作成され、多くのファイルが含まれるはずです。すべてのファイルの詳細な説明は、[プラグインジェネレーター](generators#plugin-generator)ページで説明されています。
+これにより、「openc3-cosmos-bob」という新しいディレクトリが作成され、多くのファイルが含まれるはずです。すべてのファイルの詳細な説明は、[プラグインジェネレーター](generators#プラグインジェネレーター)ページで説明されています。
 
 :::info ルートユーザーとして実行する
 CLIはデフォルトのCOSMOSコンテナユーザーとして実行されます。これが推奨される方法です。そのユーザーとして実行する際に問題がある場合は、例のいずれかで`cli`の代わりに`cliroot`を実行することで、ルートユーザーとして実行できます（実質的に`docker run --user=root`と同じ）。
@@ -143,9 +143,9 @@ CLIはデフォルトのCOSMOSコンテナユーザーとして実行されま�
 再利用する予定のプラグインでは、ホスト名やポートなどを変数にするのを推奨します
 :::
 
-## プラグインのビルド
+## プラグインの構築
 
-1. 次に、プラグインをビルドしてCOSMOSにアップロードします。
+1. 次に、プラグインを構築してCOSMOSにアップロードします。
 
    ```batch
    openc3-cosmos-bob> openc3.bat cli rake build VERSION=1.0.0
@@ -155,9 +155,9 @@ CLIはデフォルトのCOSMOSコンテナユーザーとして実行されま�
      File: openc3-cosmos-bob-1.0.0.gem
    ```
 
-   - ビルドするバージョンを指定するためにVERSIONが必要であることに注意してください。プラグインをビルドする際には[セマンティックバージョニング](https://semver.org/)をお勧めします。これにより、プラグインを使用する人々は、重大な変更がいつあるかを知ることができます。
+   - 構築するバージョンを指定するためにVERSIONが必要であることに注意してください。プラグインを構築する際には[セマンティックバージョニング](https://semver.org/)をお勧めします。これにより、プラグインを使用する人々は、重大な変更がいつあるかを知ることができます。
 
-1. プラグインがビルドされたら、COSMOSにアップロードします。Adminページに戻り、「Plugins」タブをクリックします。「Click to install plugin」をクリックし、openc3-cosmos-bob-1.0.0.gemファイルを選択します。次に「Upload」をクリックします。CmdTlmServerに戻ると、プラグインがデプロイされ、BOB_INTインターフェースが表示され、接続を試みるはずです。ポート8080で何かがリッスンしているのでなければ接続されることはないので、「Cancel」をクリックしてください。この時点で、他のCmdTlmServerタブや他のツールを調べて、新しく定義したBOBターゲットを確認できます。
+1. プラグインが構築されたら、COSMOSにアップロードします。Adminページに戻り、「Plugins」タブをクリックします。「Click to install plugin」をクリックし、openc3-cosmos-bob-1.0.0.gemファイルを選択します。次に「Upload」をクリックします。CmdTlmServerに戻ると、プラグインがデプロイされ、BOB_INTインターフェースが表示され、接続を試みるはずです。ポート8080で何かがリッスンしているのでなければ接続されることはないので、「Cancel」をクリックしてください。この時点で、他のCmdTlmServerタブや他のツールを調べて、新しく定義したBOBターゲットを確認できます。
 
 1. BOBターゲットを変更して、COSMOS内のコピーを更新してみましょう。COSMOSのCommand SenderでBOB EXAMPLEを開くと、VALUEパラメータの値が2.5であることが分かります。openc3-cosmos-bob/targets/BOB/cmd_tlm/cmd.txtを開いて、VALUEのデフォルト値を5に、説明を「New Value」に変更します。
 

@@ -55,8 +55,8 @@ MICROSERVICE CFDP <%= cfdp_microservice_name %>
 
 変数をデフォルト値のままにすると、以下のようになります：
 
-- マイクロサービスはDocker（オープンソースまたはエンタープライズ）に内部的に`http://openc3-operator:2905`で公開されます
-- マイクロサービスはKubernetes（エンタープライズ）に内部的に`http://default-user-cfdp-service:2905`で公開されます
+- マイクロサービスはDocker（オープンソースまたはEnterprise）に内部的に`http://openc3-operator:2905`で公開されます
+- マイクロサービスはKubernetes（Enterprise）に内部的に`http://default-user-cfdp-service:2905`で公開されます
 - マイクロサービスはネットワークに外部的に`http://localhost:2900/cfdp`で公開されます
 
 同様のことが[INTERFACE](../configuration/plugins#interface-1)でも可能ですが、Kubernetesサービス名は`SCOPE__INTERFACE__INTERFACENAME`の形式をとるインターフェースのマイクロサービス名を使用することに注意してください。
@@ -73,8 +73,8 @@ INTERFACE <%= my_interface_name %> http_server_interface.rb <%= my_port %>
   PORT <%= my_port %>
 ```
 
-- インターフェースはDocker（オープンソースまたはエンタープライズ）に内部的に`http://openc3-operator:2910`で公開されます
-- インターフェースはKubernetes（エンタープライズ）に内部的に`http://default-interface-my-int-service:2905`で公開されます
+- インターフェースはDocker（オープンソースまたはEnterprise）に内部的に`http://openc3-operator:2910`で公開されます
+- インターフェースはKubernetes（Enterprise）に内部的に`http://default-interface-my-int-service:2905`で公開されます
 - インターフェースはネットワークに外部的に`http://localhost:2900/myint`で公開されます
 
 :::warning Kubernetesでのシャーディングされたオペレータ（Enterprise）
@@ -86,7 +86,7 @@ INTERFACE <%= my_interface_name %> http_server_interface.rb <%= my_port %>
 
 時には、実行しているマイクロサービスにINTERFACEを接続したい場合があります。この場合、内部的に接続するだけでROUTE_PREFIXは使用されないため、INTERFACEまたはMICROSERVICEにはPORTキーワードのみが必要です。
 
-デモプラグインから取得した以下のコードは、plugin.txtファイル内でオープンソースとエンタープライズの両方のCOSMOSバージョンで正しいホスト名を計算する方法の例を提供しています：
+デモプラグインから取得した以下のコードは、plugin.txtファイル内でオープンソースとEnterpriseの両方のCOSMOSバージョンで正しいホスト名を計算する方法の例を提供しています：
 
 ```
   <% example_host = ENV['KUBERNETES_SERVICE_HOST'] ? "#{scope}-user-#{example_microservice_name.downcase.gsub('__', '-').gsub('_', '-')}-service" : "openc3-operator" %>

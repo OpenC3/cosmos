@@ -1,71 +1,71 @@
 ---
 sidebar_position: 4
-title: Commands
-description: Command definition file format and keywords
+title: コマンド
+description: コマンド定義ファイルのフォーマットとキーワード
 sidebar_custom_props:
   myEmoji: 📡
 ---
 
 <!-- Be sure to edit _command.md because command.md is a generated file -->
 
-## Command Definition Files
+## コマンド定義ファイル
 
-Command definition files define the command packets that can be sent to COSMOS targets. One large file can be used to define the command packets, or multiple files can be used at the user's discretion. Command definition files are placed in the target's cmd_tlm directory and are processed alphabetically. Therefore if you have some command files that depend on others, e.g. they override or extend existing commands, they must be named last. The easiest way to do this is to add an extension to an existing file name. For example, if you already have cmd.txt you can create cmd_override.txt for commands that depends on the definitions in cmd.txt. Also note that due to the way the [ASCII Table](http://www.asciitable.com/) is structured, files beginning with capital letters are processed before lower case letters.
+コマンド定義ファイルは、COSMOSターゲットに送信できるコマンドパケットを定義します。コマンドパケットの定義には、1つの大きなファイルを使用することも、ユーザーの判断で複数のファイルを使用することもできます。コマンド定義ファイルはターゲットのcmd_tlmディレクトリに配置され、アルファベット順に処理されます。そのため、他のコマンドファイルに依存するコマンドファイル（例：既存のコマンドをオーバーライドまたは拡張するファイル）は、最後に名前を付ける必要があります。最も簡単な方法は、既存のファイル名に拡張子を追加することです。例えば、既にcmd.txtがある場合、cmd.txtの定義に依存するコマンドにはcmd_override.txtを作成できます。また、[ASCII表](http://www.asciitable.com/)の構造上、大文字で始まるファイルは小文字で始まるファイルよりも先に処理されることに注意してください。
 
-When defining command parameters you can choose from the following data types: INT, UINT, FLOAT, STRING, BLOCK. These correspond to integers, unsigned integers, floating point numbers, strings and binary blocks of data. The only difference between a STRING and BLOCK is when COSMOS reads the binary command log it stops reading a STRING type when it encounters a null byte (0). This shows up in the text log produced by Data Extractor. Note that this does NOT affect the data COSMOS writes as it's still legal to pass null bytes (0) in STRING parameters.
+コマンドパラメータを定義する際は、次のデータ型から選択できます：INT、UINT、FLOAT、STRING、BLOCK。これらはそれぞれ整数、符号なし整数、浮動小数点数、文字列、バイナリデータブロックに対応しています。STRINGとBLOCKの唯一の違いは、COSMOSがバイナリコマンドログを読み取る際に、STRINGタイプはnullバイト（0）に遭遇すると読み取りを停止することです。これはData Extractorによって生成されるテキストログに表示されます。これはCOSMOSが書き込むデータには影響しないことに注意してください。STRINGパラメータにnullバイト（0）を渡すことは引き続き有効です。
 
 <div style={{"clear": 'both'}}></div>
 
-# Command Keywords
+# コマンドキーワード
 
 
 ## COMMAND
-**Defines a new command packet**
+**新しいコマンドパケットを定義する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target | Name of the target this command is associated with | True |
-| Command | Name of this command. Also referred to as its mnemonic. Must be unique to commands to this target. Ideally will be as short and clear as possible. | True |
-| Endianness | Indicates if the data in this command is to be sent in Big Endian or Little Endian format<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | True |
-| Description | Description of this command which must be enclosed with quotes | False |
+| Target | このコマンドが関連付けられているターゲットの名前 | True |
+| Command | このコマンドの名前。ニーモニックとも呼ばれます。このターゲットへのコマンド内で一意である必要があります。理想的には短く明確であることが望ましいです。 | True |
+| Endianness | このコマンド内のデータがビッグエンディアンまたはリトルエンディアン形式で送信されるかを示します<br/><br/>有効な値: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | True |
+| Description | このコマンドの説明（引用符で囲む必要があります） | False |
 
-Example Usage:
+使用例:
 ```ruby
 COMMAND INST COLLECT BIG_ENDIAN "Start collect"
 ```
 
-## COMMAND Modifiers
-The following keywords must follow a COMMAND keyword.
+## COMMANDの修飾子
+以下のキーワードはCOMMANDキーワードに続いて使用する必要があります。
 
 ### PARAMETER
-**Defines a command parameter in the current command packet**
+**現在のコマンドパケット内のコマンドパラメータを定義する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Name | Name of the parameter. Must be unique within the command. | True |
-| Bit Offset | Bit offset into the command packet of the Most Significant Bit of this parameter. May be negative to indicate on offset from the end of the packet. Always use a bit offset of 0 for derived parameters. | True |
-| Bit Size | Bit size of this parameter. Zero or Negative values may be used to indicate that a string fills the packet up to the offset from the end of the packet specified by this value. If Bit Offset is 0 and Bit Size is 0 then this is a derived parameter and the Data Type must be set to 'DERIVED'. | True |
-| Data Type | Data Type of this parameter<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, DERIVED, STRING, BLOCK</span> | True |
+| Name | パラメータの名前。コマンド内で一意である必要があります。 | True |
+| Bit Offset | このパラメータの最上位ビットのコマンドパケット内のビットオフセット。パケットの末尾からのオフセットを示すために負の値を使用することもできます。派生パラメータには常にビットオフセット0を使用してください。 | True |
+| Bit Size | このパラメータのビットサイズ。ゼロまたは負の値を使用して、文字列がこの値で指定されたパケットの末尾からのオフセットまでパケットを埋めることを示すことができます。Bit Offsetが0でBit Sizeが0の場合、これは派生パラメータであり、Data Typeは'DERIVED'に設定する必要があります。 | True |
+| Data Type | このパラメータのデータ型<br/><br/>有効な値: <span class="values">INT, UINT, FLOAT, DERIVED, STRING, BLOCK</span> | True |
 
-When Data Type is INT, UINT, FLOAT, DERIVED the remaining parameters are:
+Data TypeがINT、UINT、FLOAT、DERIVEDの場合、残りのパラメータは次のとおりです：
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Minimum Value | Minimum allowed value for this parameter | True |
-| Maximum Value | Maximum allowed value for this parameter | True |
-| Default Value | Default value for this parameter. You must provide a default but if you mark the parameter REQUIRED then scripts will be forced to specify a value. | True |
-| Description | Description for this parameter which must be enclosed with quotes | False |
-| Endianness | Indicates if the data in this command is to be sent in Big Endian or Little Endian format. See guide on [Little Endian Bitfields](../guides/little-endian-bitfields.md).<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
+| Minimum Value | このパラメータに許可される最小値 | True |
+| Maximum Value | このパラメータに許可される最大値 | True |
+| Default Value | このパラメータのデフォルト値。デフォルト値を指定する必要がありますが、パラメータをREQUIREDとマークすると、スクリプトは値を指定するよう強制されます。 | True |
+| Description | このパラメータの説明（引用符で囲む必要があります） | False |
+| Endianness | このコマンド内のデータがビッグエンディアンまたはリトルエンディアン形式で送信されるかを示します。[リトルエンディアンビットフィールド](../guides/little-endian-bitfields.md)のガイドを参照してください。<br/><br/>有効な値: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
 
-When Data Type is STRING, BLOCK the remaining parameters are:
+Data TypeがSTRING、BLOCKの場合、残りのパラメータは次のとおりです：
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Default Value | Default value for this parameter. You must provide a default but if you mark the parameter REQUIRED then scripts will be forced to specify a value. | True |
-| Description | Description for this parameter which must be enclosed with quotes | False |
-| Endianness | Indicates if the data in this command is to be sent in Big Endian or Little Endian format<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
+| Default Value | このパラメータのデフォルト値。デフォルト値を指定する必要がありますが、パラメータをREQUIREDとマークすると、スクリプトは値を指定するよう強制されます。 | True |
+| Description | このパラメータの説明（引用符で囲む必要があります） | False |
+| Endianness | このコマンド内のデータがビッグエンディアンまたはリトルエンディアン形式で送信されるかを示します<br/><br/>有効な値: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
 
-Example Usage:
+使用例:
 ```ruby
 PARAMETER SYNC 0 32 UINT 0xDEADBEEF 0xDEADBEEF 0xDEADBEEF "Sync pattern"
 PARAMETER DATA 32 32 INT MIN MAX 0 "Data value"
@@ -74,126 +74,126 @@ PARAMETER LABEL 96 96 STRING "OPENC3" "The label to apply"
 PARAMETER BLOCK 192 0 BLOCK 0x0 "Block of binary data"
 ```
 
-### PARAMETER Modifiers
-The following keywords must follow a PARAMETER keyword.
+### PARAMETERの修飾子
+以下のキーワードはPARAMETERキーワードに続いて使用する必要があります。
 
 #### FORMAT_STRING
-**Adds printf style formatting**
+**printfスタイルのフォーマットを追加する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Format | How to format using printf syntax. For example, '0x%0X' will display the value in hex. | True |
+| Format | printf構文を使用してフォーマットする方法。例えば、'0x%0X'は値を16進数で表示します。 | True |
 
-Example Usage:
+使用例:
 ```ruby
 FORMAT_STRING "0x%0X"
 ```
 
 #### UNITS
-**Add displayed units**
+**表示単位を追加する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Full Name | Full name of the units type, e.g. Celsius | True |
-| Abbreviated | Abbreviation for the units, e.g. C | True |
+| Full Name | 単位タイプのフルネーム（例：摂氏） | True |
+| Abbreviated | 単位の略称（例：C） | True |
 
-Example Usage:
+使用例:
 ```ruby
 UNITS Celsius C
 UNITS Kilometers KM
 ```
 
 #### DESCRIPTION
-**Override the defined description**
+**定義された説明をオーバーライドする**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Value | The new description | True |
+| Value | 新しい説明 | True |
 
 #### META
-**Stores custom user metadata**
+**カスタムユーザーメタデータを格納する**
 
-Meta data is user specific data that can be used by custom tools for various purposes. One example is to store additional information needed to generate source code header files.
+メタデータは、カスタムツールがさまざまな目的で使用できるユーザー固有のデータです。一例として、ソースコードヘッダーファイルを生成するために必要な追加情報を格納するためのものがあります。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Meta Name | Name of the metadata to store | True |
-| Meta Values | One or more values to be stored for this Meta Name | False |
+| Meta Name | 格納するメタデータの名前 | True |
+| Meta Values | このMeta Nameに格納する1つ以上の値 | False |
 
-Example Usage:
+使用例:
 ```ruby
 META TEST "This parameter is for test purposes only"
 ```
 
 #### OVERLAP
-<div class="right">(Since 4.4.1)</div>**This item is allowed to overlap other items in the packet**
+<div class="right">(Since 4.4.1)</div>**このアイテムはパケット内の他のアイテムと重複することが許可されています**
 
-If an item's bit offset overlaps another item, OpenC3 issues a warning. This keyword explicitly allows an item to overlap another and suppresses the warning message.
+アイテムのビットオフセットが他のアイテムと重複する場合、OpenC3は警告を発します。このキーワードは、アイテムが他のアイテムと重複することを明示的に許可し、警告メッセージを抑制します。
 
 
 #### KEY
-<div class="right">(Since 5.0.10)</div>**Defines the key used to access this raw value in the packet.**
+<div class="right">(Since 5.0.10)</div>**パケット内のこの生の値にアクセスするために使用されるキーを定義します。**
 
-Keys are often [JSONPath](https://en.wikipedia.org/wiki/JSONPath) or [XPath](https://en.wikipedia.org/wiki/XPath) strings
+キーは多くの場合、[JSONPath](https://en.wikipedia.org/wiki/JSONPath)や[XPath](https://en.wikipedia.org/wiki/XPath)文字列です。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Key string | The key to access this item | True |
+| Key string | このアイテムにアクセスするためのキー | True |
 
-Example Usage:
+使用例:
 ```ruby
 KEY $.book.title
 ```
 
 #### VARIABLE_BIT_SIZE
-<div class="right">(Since 5.18.0)</div>**Marks an item as having its bit size defined by another length item**
+<div class="right">(Since 5.18.0)</div>**アイテムのビットサイズが別の長さアイテムによって定義されていることを示す**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Length Item Name | The name of the associated length item | True |
-| Length Bits Per Count | Bits per count of the length item. Defaults to 8 | False |
-| Length Value Bit Offset | Offset in Bits to Apply to Length Field Value. Defaults to 0 | False |
+| Length Item Name | 関連する長さアイテムの名前 | True |
+| Length Bits Per Count | 長さアイテムのカウント当たりのビット数。デフォルトは8 | False |
+| Length Value Bit Offset | 長さフィールド値に適用するビットオフセット。デフォルトは0 | False |
 
 #### REQUIRED
-**Parameter is required to be populated in scripts**
+**スクリプトでパラメータを必ず指定する必要がある**
 
-When sending the command via Script Runner a value must always be given for the current command parameter. This prevents the user from relying on a default value. Note that this does not affect Command Sender which will still populate the field with the default value provided in the PARAMETER definition.
+Script Runner経由でコマンドを送信する際、現在のコマンドパラメータに常に値を指定する必要があります。これにより、ユーザーがデフォルト値に依存することを防ぎます。これはCommand Senderには影響せず、PARAMETER定義で提供されたデフォルト値でフィールドが入力されることに注意してください。
 
 
 #### MINIMUM_VALUE
-**Override the defined minimum value**
+**定義された最小値をオーバーライドする**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Value | The new minimum value for the parameter | True |
+| Value | パラメータの新しい最小値 | True |
 
 #### MAXIMUM_VALUE
-**Override the defined maximum value**
+**定義された最大値をオーバーライドする**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Value | The new maximum value for the parameter | True |
+| Value | パラメータの新しい最大値 | True |
 
 #### DEFAULT_VALUE
-**Override the defined default value**
+**定義されたデフォルト値をオーバーライドする**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Value | The new default value for the parameter | True |
+| Value | パラメータの新しいデフォルト値 | True |
 
 #### STATE
-**Defines a key/value pair for the current command parameter**
+**現在のコマンドパラメータのキー/値ペアを定義する**
 
-Key value pairs allow for user friendly strings. For example, you might define states for ON = 1 and OFF = 0. This allows the word ON to be used rather than the number 1 when sending the command parameter and allows for much greater clarity and less chance for user error.
+キー値のペアにより、ユーザーフレンドリーな文字列が可能になります。例えば、ON = 1およびOFF = 0の状態を定義できます。これにより、コマンドパラメータを送信する際に、数字の1ではなく単語「ON」を使用できるようになり、より明確で、ユーザーエラーの可能性が低くなります。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Key | The string state name | True |
-| Value | The numerical state value | True |
-| Hazardous / Disable Messages | Indicates the state is hazardous. This will cause a popup to ask for user confirmation when sending this command. For non-hazardous states you can also set DISABLE_MESSAGES which will not print the command when using that state.<br/><br/>Valid Values: <span class="values">HAZARDOUS</span> | False |
-| Hazardous Description | String describing why this state is hazardous | False |
+| Key | 文字列の状態名 | True |
+| Value | 数値の状態値 | True |
+| Hazardous / Disable Messages | 状態が危険であることを示します。これにより、このコマンドを送信する際にユーザー確認を求めるポップアップが表示されます。危険でない状態の場合、DISABLE_MESSAGESを設定することもでき、その状態を使用する際にコマンドを表示しません。<br/><br/>有効な値: <span class="values">HAZARDOUS</span> | False |
+| Hazardous Description | この状態が危険である理由を説明する文字列 | False |
 
-Example Usage:
+使用例:
 ```ruby
 APPEND_PARAMETER ENABLE 32 UINT 0 1 0 "Enable setting"
   STATE FALSE 0
@@ -205,42 +205,23 @@ APPEND_PARAMETER STRING 1024 STRING "NOOP" "String parameter"
 ```
 
 #### WRITE_CONVERSION
-**Applies a conversion when writing the current command parameter**
+**現在のコマンドパラメータに書き込み時の変換を適用する**
 
-Conversions are implemented in a custom Ruby or Python file which should be
-located in the target's lib folder. The class must inherit from Conversion.
-It must implement the `initialize` (Ruby) or `__init__` (Python) method if it
-takes extra parameters and must always implement the `call` method. The conversion
-factor is applied to the value entered by the user before it is written into
-the binary command packet and sent.
+変換はカスタムRubyまたはPythonファイルで実装され、ターゲットのlibフォルダーに配置する必要があります。クラスはConversionを継承する必要があります。追加パラメータを取る場合は`initialize`（Ruby）または`__init__`（Python）メソッドを実装する必要があり、常に`call`メソッドを実装する必要があります。変換係数は、ユーザーが入力した値にバイナリコマンドパケットに書き込まれて送信される前に適用されます。
 
-When applying a write_conversion sometimes the data type changes,
-e.g. creating a UINT from an input STRING (for an example of this see
-[ip_write_conversion.rb](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/conversions/ip_write_conversion.rb)
-or [ip_write_conversion.py](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/conversions/ip_write_conversion.py)).
-In this case, the command definition data type is UINT and the min, max values don't matter
-(but must be given) so are typically set to MIN MAX. The default value is important
-and should be specified as a string. For a full example see the IP_ADDRESS parameter
-in the TIME_OFFSET command definition of the COSMOS Demo
-[INST inst_cmds.txt](https://github.com/OpenC3/cosmos/blob/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/targets/INST/cmd_tlm/inst_cmds.txt)
-or [INST2 inst_cmds.txt](https://github.com/OpenC3/cosmos/blob/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/targets/INST2/cmd_tlm/inst_cmds.txt).
+書き込み変換を適用する場合、データ型が変更されることがあります。例えば、入力STRING型からUINT型を作成する場合（この例については[ip_write_conversion.rb](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/conversions/ip_write_conversion.rb)または[ip_write_conversion.py](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/conversions/ip_write_conversion.py)を参照）。この場合、コマンド定義のデータ型はUINTであり、最小値・最大値は重要ではない（ただし指定する必要がある）ため、通常はMIN MAXに設定されます。デフォルト値は重要であり、文字列として指定する必要があります。完全な例については、COSMOS DemoのTIME_OFFSETコマンド定義のIP_ADDRESSパラメータを参照してください：[INST inst_cmds.txt](https://github.com/OpenC3/cosmos/blob/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/targets/INST/cmd_tlm/inst_cmds.txt)または[INST2 inst_cmds.txt](https://github.com/OpenC3/cosmos/blob/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/targets/INST2/cmd_tlm/inst_cmds.txt)。
 
-:::info Multiple write conversions on command parameters
-When a command is built, each item gets written (and write conversions are run)
-to set the default value. Then items are written (again write conversions are run)
-with user provided values. Thus write conversions can be run twice. Also there are
-no guarantees which parameters have already been written. The packet itself has a
-given_values() method which can be used to retrieve a hash of the user provided
-values to the command. That can be used to check parameter values passed in.
+:::info コマンドパラメータに対する複数の書き込み変換
+コマンドが構築されると、各アイテムがデフォルト値を設定するために書き込まれ（このとき書き込み変換が実行されます）、その後、ユーザーが提供した値でアイテムが書き込まれます（ここでも書き込み変換が実行されます）。したがって、書き込み変換は2回実行される可能性があります。また、どのパラメータがすでに書き込まれたかについての保証はありません。パケット自体には、コマンドにユーザーが提供した値のハッシュを取得するためのgiven_values()メソッドがあります。これを使用して渡されたパラメータ値を確認できます。
 :::
 
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Class Filename | The filename which contains the Ruby or Python class. The filename must be named after the class such that the class is a CamelCase version of the underscored filename. For example, 'the_great_conversion.rb' should contain 'class TheGreatConversion'. | True |
-| Parameter | Additional parameter values for the conversion which are passed to the class constructor. | False |
+| Class Filename | RubyまたはPythonクラスを含むファイル名。ファイル名はクラス名に基づいて命名する必要があり、クラスはアンダースコア付きのファイル名のCamelCase版である必要があります。例えば、'the_great_conversion.rb'は'class TheGreatConversion'を含んでいるべきです。 | True |
+| Parameter | クラスコンストラクタに渡される変換の追加パラメータ値。 | False |
 
-Ruby Example:
+Ruby例:
 ```ruby
 WRITE_CONVERSION the_great_conversion.rb 1000
 
@@ -260,7 +241,7 @@ module OpenC3
 end
 ```
 
-Python Example:
+Python例:
 ```python
 WRITE_CONVERSION the_great_conversion.py 1000
 
@@ -276,32 +257,32 @@ class TheGreatConversion(Conversion):
 ```
 
 #### POLY_WRITE_CONVERSION
-**Adds a polynomial conversion factor to the current command parameter**
+**現在のコマンドパラメータに多項式変換係数を追加する**
 
-The conversion factor is applied to the value entered by the user before it is written into the binary command packet and sent.
+変換係数は、ユーザーが入力した値にバイナリコマンドパケットに書き込まれて送信される前に適用されます。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| C0 | Coefficient | True |
-| Cx | Additional coefficient values for the conversion. Any order polynomial conversion may be used so the value of 'x' will vary with the order of the polynomial. Note that larger order polynomials take longer to process than shorter order polynomials, but are sometimes more accurate. | False |
+| C0 | 係数 | True |
+| Cx | 変換の追加係数値。任意の次数の多項式変換を使用できるため、「x」の値は多項式の次数によって異なります。より高次の多項式は処理に時間がかかりますが、より精度が高くなることがあります。 | False |
 
-Example Usage:
+使用例:
 ```ruby
 POLY_WRITE_CONVERSION 10 0.5 0.25
 ```
 
 #### SEG_POLY_WRITE_CONVERSION
-**Adds a segmented polynomial conversion factor to the current command parameter**
+**現在のコマンドパラメータに区分的多項式変換係数を追加する**
 
-This conversion factor is applied to the value entered by the user before it is written into the binary command packet and sent.
+この変換係数は、ユーザーが入力した値にバイナリコマンドパケットに書き込まれて送信される前に適用されます。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Lower Bound | Defines the lower bound of the range of values that this segmented polynomial applies to. Is ignored for the segment with the smallest lower bound. | True |
-| C0 | Coefficient | True |
-| Cx | Additional coefficient values for the conversion. Any order polynomial conversion may be used so the value of 'x' will vary with the order of the polynomial. Note that larger order polynomials take longer to process than shorter order polynomials, but are sometimes more accurate. | False |
+| Lower Bound | この区分的多項式が適用される値の範囲の下限を定義します。最小下限値のセグメントでは無視されます。 | True |
+| C0 | 係数 | True |
+| Cx | 変換の追加係数値。任意の次数の多項式変換を使用できるため、「x」の値は多項式の次数によって異なります。より高次の多項式は処理に時間がかかりますが、より精度が高くなることがあります。 | False |
 
-Example Usage:
+使用例:
 ```ruby
 SEG_POLY_WRITE_CONVERSION 0 10 0.5 0.25 # Apply the conversion to all values < 50
 SEG_POLY_WRITE_CONVERSION 50 11 0.5 0.275 # Apply the conversion to all values >= 50 and < 100
@@ -309,34 +290,22 @@ SEG_POLY_WRITE_CONVERSION 100 12 0.5 0.3 # Apply the conversion to all values >=
 ```
 
 #### GENERIC_WRITE_CONVERSION_START
-**Start a generic write conversion**
+**汎用書き込み変換を開始する**
 
-Adds a generic conversion function to the current command parameter.
-This conversion factor is applied to the value entered by the user before it
-is written into the binary command packet and sent. The conversion is specified
-as Ruby or Python code that receives two implied parameters. 'value' which is the raw
-value being written and 'packet' which is a reference to the command packet
-class (Note, referencing the packet as 'myself' is still supported for backwards
-compatibility). The last line of code should return the converted
-value. The GENERIC_WRITE_CONVERSION_END keyword specifies that all lines of
-code for the conversion have been given.
+現在のコマンドパラメータに汎用変換関数を追加します。
+この変換係数は、ユーザーが入力した値にバイナリコマンドパケットに書き込まれて送信される前に適用されます。変換はRubyまたはPythonコードとして指定され、2つの暗黙のパラメータを受け取ります。'value'は書き込まれる生の値であり、'packet'はコマンドパケットクラスへの参照です（注：後方互換性のためにパケットを'myself'として参照することもサポートされています）。コードの最後の行は変換された値を返す必要があります。GENERIC_WRITE_CONVERSION_ENDキーワードは、変換のすべてのコード行が与えられたことを指定します。
 
-:::info Multiple write conversions on command parameters
-When a command is built, each item gets written (and write conversions are run)
-to set the default value. Then items are written (again write conversions are run)
-with user provided values. Thus write conversions can be run twice. Also there are
-no guarantees which parameters have already been written. The packet itself has a
-given_values() method which can be used to retrieve a hash of the user provided
-values to the command. That can be used to check parameter values passed in.
+:::info コマンドパラメータに対する複数の書き込み変換
+コマンドが構築されると、各アイテムがデフォルト値を設定するために書き込まれ（このとき書き込み変換が実行されます）、その後、ユーザーが提供した値でアイテムが書き込まれます（ここでも書き込み変換が実行されます）。したがって、書き込み変換は2回実行される可能性があります。また、どのパラメータがすでに書き込まれたかについての保証はありません。パケット自体には、コマンドにユーザーが提供した値のハッシュを取得するためのgiven_values()メソッドがあります。これを使用して渡されたパラメータ値を確認できます。
 :::
 
 
 :::warning
-Generic conversions are not a good long term solution. Consider creating a conversion class and using WRITE_CONVERSION instead. WRITE_CONVERSION is easier to debug and higher performance.
+汎用変換は長期的な解決策としては適していません。変換クラスを作成してWRITE_CONVERSIONを使用することを検討してください。WRITE_CONVERSIONはデバッグが容易で、パフォーマンスが高いです。
 :::
 
 
-Ruby Example:
+Ruby例:
 ```ruby
 APPEND_PARAMETER ITEM1 32 UINT 0 0xFFFFFFFF 0
   GENERIC_WRITE_CONVERSION_START
@@ -344,7 +313,7 @@ APPEND_PARAMETER ITEM1 32 UINT 0 0xFFFFFFFF 0
   GENERIC_WRITE_CONVERSION_END
 ```
 
-Python Example:
+Python例:
 ```python
 APPEND_PARAMETER ITEM1 32 UINT 0 0xFFFFFFFF 0
   GENERIC_WRITE_CONVERSION_START
@@ -353,51 +322,51 @@ APPEND_PARAMETER ITEM1 32 UINT 0 0xFFFFFFFF 0
 ```
 
 #### GENERIC_WRITE_CONVERSION_END
-**Complete a generic write conversion**
+**汎用書き込み変換を完了する**
 
 
 #### OVERFLOW
-**Set the behavior when writing a value overflows the type**
+**値を書き込む際に型のオーバーフローが発生した場合の動作を設定する**
 
-By default OpenC3 throws an error if you try to write a value which overflows its specified type, e.g. writing 255 to a 8 bit signed value. Setting the overflow behavior also allows for OpenC3 to 'TRUNCATE' the value by eliminating any high order bits. You can also set 'SATURATE' which causes OpenC3 to replace the value with the maximum or minimum allowable value for that type. Finally you can specify 'ERROR_ALLOW_HEX' which will allow for a maximum hex value to be written, e.g. you can successfully write 255 to a 8 bit signed value.
+デフォルトでは、OpenC3は指定された型をオーバーフローする値を書き込もうとするとエラーをスローします（例：8ビット符号付き値に255を書き込む場合）。オーバーフロー動作を設定することで、OpenC3に値を'TRUNCATE'（上位ビットを除外する）させることもできます。また、'SATURATE'を設定することもでき、これによりOpenC3はその型で許容される最大値または最小値に値を置き換えます。最後に、'ERROR_ALLOW_HEX'を指定することもでき、これにより最大16進値を書き込むことが可能になります（例：8ビット符号付き値に255を正常に書き込める）。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Behavior | How OpenC3 treats an overflow value. Only applies to signed and unsigned integer data types.<br/><br/>Valid Values: <span class="values">ERROR, ERROR_ALLOW_HEX, TRUNCATE, SATURATE</span> | True |
+| Behavior | OpenC3がオーバーフロー値をどのように扱うか。符号付きおよび符号なし整数データ型にのみ適用されます。<br/><br/>有効な値: <span class="values">ERROR, ERROR_ALLOW_HEX, TRUNCATE, SATURATE</span> | True |
 
-Example Usage:
+使用例:
 ```ruby
 OVERFLOW TRUNCATE
 ```
 
 ### APPEND_PARAMETER
-**Defines a command parameter in the current command packet**
+**現在のコマンドパケット内のコマンドパラメータを定義する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Name | Name of the parameter. Must be unique within the command. | True |
-| Bit Size | Bit size of this parameter. Zero or Negative values may be used to indicate that a string fills the packet up to the offset from the end of the packet specified by this value. If Bit Offset is 0 and Bit Size is 0 then this is a derived parameter and the Data Type must be set to 'DERIVED'. | True |
-| Data Type | Data Type of this parameter<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, DERIVED, STRING, BLOCK</span> | True |
+| Name | パラメータの名前。コマンド内で一意である必要があります。 | True |
+| Bit Size | このパラメータのビットサイズ。ゼロまたは負の値を使用して、文字列がこの値で指定されたパケットの末尾からのオフセットまでパケットを埋めることを示すことができます。Bit Offsetが0でBit Sizeが0の場合、これは派生パラメータであり、Data Typeは'DERIVED'に設定する必要があります。 | True |
+| Data Type | このパラメータのデータ型<br/><br/>有効な値: <span class="values">INT, UINT, FLOAT, DERIVED, STRING, BLOCK</span> | True |
 
-When Data Type is INT, UINT, FLOAT, DERIVED the remaining parameters are:
+Data TypeがINT、UINT、FLOAT、DERIVEDの場合、残りのパラメータは次のとおりです：
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Minimum Value | Minimum allowed value for this parameter | True |
-| Maximum Value | Maximum allowed value for this parameter | True |
-| Default Value | Default value for this parameter. You must provide a default but if you mark the parameter REQUIRED then scripts will be forced to specify a value. | True |
-| Description | Description for this parameter which must be enclosed with quotes | False |
-| Endianness | Indicates if the data in this command is to be sent in Big Endian or Little Endian format. See guide on [Little Endian Bitfields](../guides/little-endian-bitfields.md).<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
+| Minimum Value | このパラメータに許可される最小値 | True |
+| Maximum Value | このパラメータに許可される最大値 | True |
+| Default Value | このパラメータのデフォルト値。デフォルト値を指定する必要がありますが、パラメータをREQUIREDとマークすると、スクリプトは値を指定するよう強制されます。 | True |
+| Description | このパラメータの説明（引用符で囲む必要があります） | False |
+| Endianness | このコマンド内のデータがビッグエンディアンまたはリトルエンディアン形式で送信されるかを示します。[リトルエンディアンビットフィールド](../guides/little-endian-bitfields.md)のガイドを参照してください。<br/><br/>有効な値: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
 
-When Data Type is STRING, BLOCK the remaining parameters are:
+Data TypeがSTRING、BLOCKの場合、残りのパラメータは次のとおりです：
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Default Value | Default value for this parameter. You must provide a default but if you mark the parameter REQUIRED then scripts will be forced to specify a value. | True |
-| Description | Description for this parameter which must be enclosed with quotes | False |
-| Endianness | Indicates if the data in this command is to be sent in Big Endian or Little Endian format<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
+| Default Value | このパラメータのデフォルト値。デフォルト値を指定する必要がありますが、パラメータをREQUIREDとマークすると、スクリプトは値を指定するよう強制されます。 | True |
+| Description | このパラメータの説明（引用符で囲む必要があります） | False |
+| Endianness | このコマンド内のデータがビッグエンディアンまたはリトルエンディアン形式で送信されるかを示します<br/><br/>有効な値: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
 
-Example Usage:
+使用例:
 ```ruby
 APPEND_PARAMETER SYNC 32 UINT 0xDEADBEEF 0xDEADBEEF 0xDEADBEEF "Sync pattern"
 APPEND_PARAMETER VALUE 32 FLOAT 0 10.5 2.5
@@ -405,119 +374,119 @@ APPEND_PARAMETER LABEL 0 STRING "OPENC3" "The label to apply"
 ```
 
 ### ID_PARAMETER
-**Defines an identification command parameter in the current command packet**
+**現在のコマンドパケット内の識別コマンドパラメータを定義する**
 
-ID parameters are used to identify the binary block of data as a particular command. A command packet may have one or more ID_PARAMETERs and all must match the binary data for the command to be identified.
+ID パラメータは、バイナリデータブロックを特定のコマンドとして識別するために使用されます。コマンドパケットには1つ以上のID_PARAMETERを含めることができ、コマンドを識別するにはすべてがバイナリデータと一致する必要があります。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Name | Name of the parameter. Must be unique within the command. | True |
-| Bit Offset | Bit offset into the command packet of the Most Significant Bit of this parameter. May be negative to indicate on offset from the end of the packet. | True |
-| Bit Size | Bit size of this parameter. Zero or Negative values may be used to indicate that a string fills the packet up to the offset from the end of the packet specified by this value. If Bit Offset is 0 and Bit Size is 0 then this is a derived parameter and the Data Type must be set to 'DERIVED'. | True |
-| Data Type | Data Type of this parameter<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, DERIVED, STRING, BLOCK</span> | True |
+| Name | パラメータの名前。コマンド内で一意である必要があります。 | True |
+| Bit Offset | このパラメータの最上位ビットのコマンドパケット内のビットオフセット。パケットの末尾からのオフセットを示すために負の値を使用することもできます。 | True |
+| Bit Size | このパラメータのビットサイズ。ゼロまたは負の値を使用して、文字列がこの値で指定されたパケットの末尾からのオフセットまでパケットを埋めることを示すことができます。Bit Offsetが0でBit Sizeが0の場合、これは派生パラメータであり、Data Typeは'DERIVED'に設定する必要があります。 | True |
+| Data Type | このパラメータのデータ型<br/><br/>有効な値: <span class="values">INT, UINT, FLOAT, DERIVED, STRING, BLOCK</span> | True |
 
-When Data Type is INT, UINT, FLOAT, DERIVED the remaining parameters are:
+Data TypeがINT、UINT、FLOAT、DERIVEDの場合、残りのパラメータは次のとおりです：
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Minimum Value | Minimum allowed value for this parameter | True |
-| Maximum Value | Maximum allowed value for this parameter | True |
-| ID Value | Identification value for this parameter. The binary data must match this value for the buffer to be identified as this packet. | True |
-| Description | Description for this parameter which must be enclosed with quotes | False |
-| Endianness | Indicates if the data in this command is to be sent in Big Endian or Little Endian format. See guide on [Little Endian Bitfields](../guides/little-endian-bitfields.md).<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
+| Minimum Value | このパラメータに許可される最小値 | True |
+| Maximum Value | このパラメータに許可される最大値 | True |
+| ID Value | このパラメータの識別値。バッファをこのパケットとして識別するには、バイナリデータがこの値と一致する必要があります。 | True |
+| Description | このパラメータの説明（引用符で囲む必要があります） | False |
+| Endianness | このコマンド内のデータがビッグエンディアンまたはリトルエンディアン形式で送信されるかを示します。[リトルエンディアンビットフィールド](../guides/little-endian-bitfields.md)のガイドを参照してください。<br/><br/>有効な値: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
 
-When Data Type is STRING, BLOCK the remaining parameters are:
+Data TypeがSTRING、BLOCKの場合、残りのパラメータは次のとおりです：
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Default Value | Default value for this parameter. You must provide a default but if you mark the parameter REQUIRED then scripts will be forced to specify a value. | True |
-| Description | Description for this parameter which must be enclosed with quotes | False |
-| Endianness | Indicates if the data in this command is to be sent in Big Endian or Little Endian format<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
+| Default Value | このパラメータのデフォルト値。デフォルト値を指定する必要がありますが、パラメータをREQUIREDとマークすると、スクリプトは値を指定するよう強制されます。 | True |
+| Description | このパラメータの説明（引用符で囲む必要があります） | False |
+| Endianness | このコマンド内のデータがビッグエンディアンまたはリトルエンディアン形式で送信されるかを示します<br/><br/>有効な値: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
 
-Example Usage:
+使用例:
 ```ruby
 ID_PARAMETER OPCODE 32 32 UINT 2 2 2 "Opcode identifier"
 ```
 
 ### APPEND_ID_PARAMETER
-**Defines an identification command parameter in the current command packet**
+**現在のコマンドパケット内の識別コマンドパラメータを定義する**
 
-ID parameters are used to identify the binary block of data as a particular command. A command packet may have one or more ID_PARAMETERs and all must match the binary data for the command to be identified.
+ID パラメータは、バイナリデータブロックを特定のコマンドとして識別するために使用されます。コマンドパケットには1つ以上のID_PARAMETERを含めることができ、コマンドを識別するにはすべてがバイナリデータと一致する必要があります。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Name | Name of the parameter. Must be unique within the command. | True |
-| Bit Size | Bit size of this parameter. Zero or Negative values may be used to indicate that a string fills the packet up to the offset from the end of the packet specified by this value. If Bit Offset is 0 and Bit Size is 0 then this is a derived parameter and the Data Type must be set to 'DERIVED'. | True |
-| Data Type | Data Type of this parameter<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, DERIVED, STRING, BLOCK</span> | True |
+| Name | パラメータの名前。コマンド内で一意である必要があります。 | True |
+| Bit Size | このパラメータのビットサイズ。ゼロまたは負の値を使用して、文字列がこの値で指定されたパケットの末尾からのオフセットまでパケットを埋めることを示すことができます。Bit Offsetが0でBit Sizeが0の場合、これは派生パラメータであり、Data Typeは'DERIVED'に設定する必要があります。 | True |
+| Data Type | このパラメータのデータ型<br/><br/>有効な値: <span class="values">INT, UINT, FLOAT, DERIVED, STRING, BLOCK</span> | True |
 
-When Data Type is INT, UINT, FLOAT, DERIVED the remaining parameters are:
+Data TypeがINT、UINT、FLOAT、DERIVEDの場合、残りのパラメータは次のとおりです：
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Minimum Value | Minimum allowed value for this parameter | True |
-| Maximum Value | Maximum allowed value for this parameter | True |
-| ID Value | Identification value for this parameter. The binary data must match this value for the buffer to be identified as this packet. | True |
-| Description | Description for this parameter which must be enclosed with quotes | False |
-| Endianness | Indicates if the data in this command is to be sent in Big Endian or Little Endian format. See guide on [Little Endian Bitfields](../guides/little-endian-bitfields.md).<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
+| Minimum Value | このパラメータに許可される最小値 | True |
+| Maximum Value | このパラメータに許可される最大値 | True |
+| ID Value | このパラメータの識別値。バッファをこのパケットとして識別するには、バイナリデータがこの値と一致する必要があります。 | True |
+| Description | このパラメータの説明（引用符で囲む必要があります） | False |
+| Endianness | このコマンド内のデータがビッグエンディアンまたはリトルエンディアン形式で送信されるかを示します。[リトルエンディアンビットフィールド](../guides/little-endian-bitfields.md)のガイドを参照してください。<br/><br/>有効な値: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
 
-When Data Type is STRING, BLOCK the remaining parameters are:
+Data TypeがSTRING、BLOCKの場合、残りのパラメータは次のとおりです：
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Default Value | Default value for this parameter. You must provide a default but if you mark the parameter REQUIRED then scripts will be forced to specify a value. | True |
-| Description | Description for this parameter which must be enclosed with quotes | False |
-| Endianness | Indicates if the data in this command is to be sent in Big Endian or Little Endian format<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
+| Default Value | このパラメータのデフォルト値。デフォルト値を指定する必要がありますが、パラメータをREQUIREDとマークすると、スクリプトは値を指定するよう強制されます。 | True |
+| Description | このパラメータの説明（引用符で囲む必要があります） | False |
+| Endianness | このコマンド内のデータがビッグエンディアンまたはリトルエンディアン形式で送信されるかを示します<br/><br/>有効な値: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
 
-Example Usage:
+使用例:
 ```ruby
 APPEND_ID_PARAMETER OPCODE 32 UINT 2 2 2 "Opcode identifier"
 ```
 
 ### ARRAY_PARAMETER
-**Defines a command parameter in the current command packet that is an array**
+**現在のコマンドパケット内の配列であるコマンドパラメータを定義する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Name | Name of the parameter. Must be unique within the command. | True |
-| Bit Offset | Bit offset into the command packet of the Most Significant Bit of this parameter. May be negative to indicate on offset from the end of the packet. Always use a bit offset of 0 for derived parameters. | True |
-| Item Bit Size | Bit size of each array item | True |
-| Item Data Type | Data Type of each array item<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, STRING, BLOCK, DERIVED</span> | True |
-| Array Bit Size | Total Bit Size of the Array. Zero or Negative values may be used to indicate the array fills the packet up to the offset from the end of the packet specified by this value. | True |
-| Description | Description which must be enclosed with quotes | False |
-| Endianness | Indicates if the data is to be sent in Big Endian or Little Endian format<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
+| Name | パラメータの名前。コマンド内で一意である必要があります。 | True |
+| Bit Offset | このパラメータの最上位ビットのコマンドパケット内のビットオフセット。パケットの末尾からのオフセットを示すために負の値を使用することもできます。派生パラメータには常にビットオフセット0を使用してください。 | True |
+| Item Bit Size | 各配列アイテムのビットサイズ | True |
+| Item Data Type | 各配列アイテムのデータ型<br/><br/>有効な値: <span class="values">INT, UINT, FLOAT, STRING, BLOCK, DERIVED</span> | True |
+| Array Bit Size | 配列の合計ビットサイズ。ゼロまたは負の値を使用して、配列がこの値で指定されたパケットの末尾からのオフセットまでパケットを埋めることを示すことができます。 | True |
+| Description | 説明（引用符で囲む必要があります） | False |
+| Endianness | データがビッグエンディアンまたはリトルエンディアン形式で送信されるかを示します<br/><br/>有効な値: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
 
-Example Usage:
+使用例:
 ```ruby
 ARRAY_PARAMETER ARRAY 64 64 FLOAT 640 "Array of 10 64bit floats"
 ```
 
 ### APPEND_ARRAY_PARAMETER
-**Defines a command parameter in the current command packet that is an array**
+**現在のコマンドパケット内の配列であるコマンドパラメータを定義する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Name | Name of the parameter. Must be unique within the command. | True |
-| Item Bit Size | Bit size of each array item | True |
-| Item Data Type | Data Type of each array item<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, STRING, BLOCK, DERIVED</span> | True |
-| Array Bit Size | Total Bit Size of the Array. Zero or Negative values may be used to indicate the array fills the packet up to the offset from the end of the packet specified by this value. | True |
-| Description | Description which must be enclosed with quotes | False |
-| Endianness | Indicates if the data is to be sent in Big Endian or Little Endian format<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
+| Name | パラメータの名前。コマンド内で一意である必要があります。 | True |
+| Item Bit Size | 各配列アイテムのビットサイズ | True |
+| Item Data Type | 各配列アイテムのデータ型<br/><br/>有効な値: <span class="values">INT, UINT, FLOAT, STRING, BLOCK, DERIVED</span> | True |
+| Array Bit Size | 配列の合計ビットサイズ。ゼロまたは負の値を使用して、配列がこの値で指定されたパケットの末尾からのオフセットまでパケットを埋めることを示すことができます。 | True |
+| Description | 説明（引用符で囲む必要があります） | False |
+| Endianness | データがビッグエンディアンまたはリトルエンディアン形式で送信されるかを示します<br/><br/>有効な値: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
 
-Example Usage:
+使用例:
 ```ruby
 APPEND_ARRAY_PARAMETER ARRAY 64 FLOAT 640 "Array of 10 64bit floats"
 ```
 
 ### SELECT_PARAMETER
-**Selects an existing command parameter for editing**
+**編集用に既存のコマンドパラメータを選択する**
 
-Must be used in conjunction with SELECT_COMMAND to first select the packet. Typically used to override generated values or make specific changes to commands that only affect a particular instance of a target used multiple times.
+最初にパケットを選択するためにSELECT_COMMANDと組み合わせて使用する必要があります。通常、生成された値をオーバーライドしたり、複数回使用されるターゲットの特定のインスタンスにのみ影響する特定の変更を行ったりするために使用されます。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Parameter | Name of the parameter to select for modification | True |
+| Parameter | 変更のために選択するパラメータの名前 | True |
 
-Example Usage:
+使用例:
 ```ruby
 SELECT_COMMAND INST COLLECT
   SELECT_PARAMETER DURATION
@@ -526,144 +495,144 @@ SELECT_COMMAND INST COLLECT
 ```
 
 ### DELETE_PARAMETER
-<div class="right">(Since 4.4.1)</div>**Deletes an existing command parameter from the packet definition**
+<div class="right">(Since 4.4.1)</div>**既存のコマンドパラメータをパケット定義から削除する**
 
-Deleting a parameter from the command definition does not remove the defined space for that parameter. Thus unless you redefine a new parameter, there will be a "hole" in the packet where the data is not accessible. You can use SELECT_COMMAND and then PARAMETER to define a new parameter.
+コマンド定義からパラメータを削除しても、そのパラメータの定義されたスペースは削除されません。したがって、新しいパラメータを再定義しない限り、データにアクセスできない「穴」がパケットに残ります。SELECT_COMMANDを使用してから、PARAMETERを使用して新しいパラメータを定義できます。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Parameter | Name of the parameter to delete | True |
+| Parameter | 削除するパラメータの名前 | True |
 
-Example Usage:
+使用例:
 ```ruby
 SELECT_COMMAND INST COLLECT
   DELETE_PARAMETER DURATION
 ```
 
 ### HIDDEN
-**Hides this command from all OpenC3 tools such as Command Sender and Handbook Creator**
+**このコマンドをCommand SenderやHandbook CreatorなどすべてのOpenC3ツールから隠す**
 
-Hidden commands do not appear in the Script Runner popup helper when writing scripts. The command still exists in the system and can be sent by scripts.
+隠されたコマンドはスクリプトを書くときにScript Runnerのポップアップヘルパーに表示されません。コマンドはシステムに存在し、スクリプトから送信できます。
 
 
 ### DISABLED
-**Disables this command from being sent**
+**このコマンドが送信されないようにする**
 
-Hides the command and also disables it from being sent by scripts. Attempts to send DISABLED commands result in an error message.
+コマンドを隠し、スクリプトからの送信も無効にします。DISABLEDコマンドを送信しようとするとエラーメッセージが表示されます。
 
 
 ### DISABLE_MESSAGES
-**Disable the Server from printing cmd(...) messages. Commands are still logged.**
+**サーバーがcmd(...)メッセージを表示しないようにする。コマンドは引き続き記録されます。**
 
 
 ### META
-**Stores metadata for the current command**
+**現在のコマンドのメタデータを格納する**
 
-Meta data is user specific data that can be used by custom tools for various purposes. One example is to store additional information needed to generate source code header files.
+メタデータは、カスタムツールがさまざまな目的で使用できるユーザー固有のデータです。一例として、ソースコードヘッダーファイルを生成するために必要な追加情報を格納するためのものがあります。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Meta Name | Name of the metadata to store | True |
-| Meta Values | One or more values to be stored for this Meta Name | False |
+| Meta Name | 格納するメタデータの名前 | True |
+| Meta Values | このMeta Nameに格納する1つ以上の値 | False |
 
-Example Usage:
+使用例:
 ```ruby
 META FSW_TYPE "struct command"
 ```
 
 ### HAZARDOUS
-**Designates the current command as hazardous**
+**現在のコマンドを危険として指定する**
 
-Sending a hazardous command causes a dialog asking for confirmation before sending the command
+危険なコマンドを送信すると、コマンドを送信する前に確認を求めるダイアログが表示されます。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Description | Description for why the command is hazardous which must be enclosed with quotes | False |
+| Description | コマンドが危険である理由の説明（引用符で囲む必要があります） | False |
 
 ### ACCESSOR
-<div class="right">(Since 5.0.10)</div>**Defines the class used to read and write raw values from the packet**
+<div class="right">(Since 5.0.10)</div>**パケットから生の値を読み書きするために使用されるクラスを定義する**
 
-Defines the class that is used too read raw values from the packet. Defaults to BinaryAccessor. For more information see [Accessors](accessors).
+パケットから生の値を読み取るために使用されるクラスを定義します。デフォルトはBinaryAccessorです。詳細については、[アクセサー](accessors)を参照してください。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Accessor Class Name | The name of the accessor class | True |
-| Argument | Additional argument passed to the accessor class constructor | False |
+| Accessor Class Name | アクセサークラスの名前 | True |
+| Argument | アクセサークラスコンストラクタに渡される追加引数 | False |
 
 ### TEMPLATE
-<div class="right">(Since 5.0.10)</div>**Defines a template string used to initialize the command before default values are filled in**
+<div class="right">(Since 5.0.10)</div>**デフォルト値が入力される前にコマンドを初期化するために使用されるテンプレート文字列を定義する**
 
-Generally the template string is formatted in JSON or HTML and then values are filled in with command parameters. Must be UTF-8 encoded.
+一般的に、テンプレート文字列はJSONまたはHTML形式で、コマンドパラメータで値が入力されます。UTF-8エンコードである必要があります。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Template | The template string which should be enclosed in quotes | True |
+| Template | 引用符で囲まれるべきテンプレート文字列 | True |
 
 ### TEMPLATE_FILE
-<div class="right">(Since 5.0.10)</div>**Defines a template file used to initialize the command before default values are filled in**
+<div class="right">(Since 5.0.10)</div>**デフォルト値が入力される前にコマンドを初期化するために使用されるテンプレートファイルを定義する**
 
-Generally the template file is formatted in JSON or HTML and then values are filled in with command parameters. Can be binary or UTF-8.
+一般的に、テンプレートファイルはJSONまたはHTML形式で、コマンドパラメータで値が入力されます。バイナリまたはUTF-8の場合があります。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Template File Path | The relative path to the template file. Filename should generally start with an underscore. | True |
+| Template File Path | テンプレートファイルへの相対パス。ファイル名は一般的にアンダースコアで始まります。 | True |
 
 ### RESPONSE
-<div class="right">(Since 5.14.0)</div>**Indicates the expected telemetry packet response to this command**
+<div class="right">(Since 5.14.0)</div>**このコマンドに対する予期されるテレメトリパケットレスポンスを示す**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target Name | Target Name of telemetry response packet | True |
-| Packet Name | Packet Name of telemetry response packet | True |
+| Target Name | テレメトリレスポンスパケットのターゲット名 | True |
+| Packet Name | テレメトリレスポンスパケットのパケット名 | True |
 
 ### ERROR_RESPONSE
-<div class="right">(Since 5.14.0)</div>**Indicates the expected telemetry packet error response to this command**
+<div class="right">(Since 5.14.0)</div>**このコマンドに対する予期されるテレメトリパケットエラーレスポンスを示す**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target Name | Target Name of telemetry error response packet | True |
-| Packet Name | Packet Name of telemetry error response packet | True |
+| Target Name | テレメトリエラーレスポンスパケットのターゲット名 | True |
+| Packet Name | テレメトリエラーレスポンスパケットのパケット名 | True |
 
 ### RELATED_ITEM
-<div class="right">(Since 5.14.0)</div>**Defines a related telemetry item to this command**
+<div class="right">(Since 5.14.0)</div>**このコマンドに関連するテレメトリアイテムを定義する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target Name | Target Name of related telemetry item | True |
-| Packet Name | Packet Name of related telemetry item | True |
-| Item Name | Item Name of related telemetry item | True |
+| Target Name | 関連するテレメトリアイテムのターゲット名 | True |
+| Packet Name | 関連するテレメトリアイテムのパケット名 | True |
+| Item Name | 関連するテレメトリアイテムのアイテム名 | True |
 
 ### SCREEN
-<div class="right">(Since 5.14.0)</div>**Defines a related telemetry screen to this command**
+<div class="right">(Since 5.14.0)</div>**このコマンドに関連するテレメトリ画面を定義する**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target Name | Target Name of related telemetry screen | True |
-| Screen Name | Screen Name of related telemetry screen | True |
+| Target Name | 関連するテレメトリ画面のターゲット名 | True |
+| Screen Name | 関連するテレメトリ画面の画面名 | True |
 
 ### VIRTUAL
-<div class="right">(Since 5.18.0)</div>**Marks this packet as virtual and not participating in identification**
+<div class="right">(Since 5.18.0)</div>**このパケットを仮想としてマークし、識別に参加しないようにする**
 
-Used for packet definitions that can be used as structures for items with a given packet.
+特定のパケットを持つアイテムの構造として使用できるパケット定義に使用されます。
 
 
 ### RESTRICTED
-<div class="right">(Since 5.20.0)</div>**Marks this packet as restricted and will require approval if critical commanding is enabled**
+<div class="right">(Since 5.20.0)</div>**このパケットを制限付きとしてマークし、クリティカルコマンディングが有効な場合は承認が必要になる**
 
-Used as one of the two types of critical commands (HAZARDOUS and RESTRICTED)
+クリティカルコマンドの2種類のタイプ（HAZARDOUSとRESTRICTED）の1つとして使用されます。
 
 
 ### VALIDATOR
-<div class="right">(Since 5.19.0)</div>**Defines a validator class for a command**
+<div class="right">(Since 5.19.0)</div>**コマンドのバリデータクラスを定義する**
 
-Validator class is used to validate the command success or failure with both a pre_check and post_check method.
+バリデータクラスは、pre_checkとpost_checkの両方のメソッドを持つコマンドの成功または失敗を検証するために使用されます。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Class Filename | The filename which contains the Ruby or Python class. The filename must be named after the class such that the class is a CamelCase version of the underscored filename. For example, 'command_validator.rb' should contain 'class CommandValidator'. | True |
-| Argument | Additional argument passed to the validator class constructor | False |
+| Class Filename | RubyまたはPythonクラスを含むファイル名。ファイル名はクラス名に基づいて命名する必要があり、クラスはアンダースコア付きのファイル名のCamelCase版である必要があります。例えば、'command_validator.rb'は'class CommandValidator'を含んでいるべきです。 | True |
+| Argument | バリデータクラスコンストラクタに渡される追加引数 | False |
 
-Ruby Example:
+Ruby例:
 ```ruby
 VALIDATOR custom_validator.rb
 
@@ -691,7 +660,7 @@ class CustomValidator < OpenC3::CommandValidator
 end
 ```
 
-Python Example:
+Python例:
 ```python
 VALIDATOR custom_validator.rb
 
@@ -716,16 +685,16 @@ class CustomValidator(CommandValidator):
 ```
 
 ## SELECT_COMMAND
-**Selects an existing command packet for editing**
+**編集用に既存のコマンドパケットを選択する**
 
-Typically used in a separate configuration file from where the original command is defined to override or add to the existing command definition. Must be used in conjunction with SELECT_PARAMETER to change an individual parameter.
+通常、元のコマンドが定義されている場所とは別の設定ファイルで使用され、既存のコマンド定義をオーバーライドまたは追加します。個々のパラメータを変更するには、SELECT_PARAMETERと組み合わせて使用する必要があります。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target Name | Name of the target this command is associated with | True |
-| Command Name | Name of the command to select | True |
+| Target Name | このコマンドが関連付けられているターゲットの名前 | True |
+| Command Name | 選択するコマンドの名前 | True |
 
-Example Usage:
+使用例:
 ```ruby
 SELECT_COMMAND INST COLLECT
   SELECT_PARAMETER DURATION
@@ -734,9 +703,9 @@ SELECT_COMMAND INST COLLECT
 ```
 
 
-## Example File
+## サンプルファイル
 
-**Example File: TARGET/cmd_tlm/cmd.txt**
+**サンプルファイル: TARGET/cmd_tlm/cmd.txt**
 
 <!-- prettier-ignore -->
 ```ruby

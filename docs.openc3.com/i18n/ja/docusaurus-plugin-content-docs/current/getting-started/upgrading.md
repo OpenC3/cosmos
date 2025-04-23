@@ -48,7 +48,7 @@ COSMOSはDockerコンテナとしてリリースされています。Dockerコ�
 
 COSMOS 6は、Vueフレームワークと共通ライブラリコードに関するカスタムツールに互換性のない変更をいくつか導入しています。Vue 2（2023年12月31日にEOL）からVue 3にアップグレードしました。これらのVueバージョンは互いに互換性がないため、Vue 2で書かれたツールはすべて更新する必要があります。さらに、`@openc3/tool-common` NPMパッケージは非推奨となり、その機能は`@openc3/js-common`と`@openc3/vue-common`の2つのパッケージに再編成されました。これにより、Vueフレームワークを使用せずにCOSMOSツールを構築する開発者により良い体験を提供します。
 
-また、COSMOS 6ではほとんど使用されていなかった[APIメソッド](../guides/scripting-api#migration-from-cosmos-v5-to-v6)をいくつか削除しました。
+また、COSMOS 6ではほとんど使用されていなかった[APIメソッド](../guides/scripting-api)をいくつか削除しました。
 
 ### Vueの更新
 
@@ -292,7 +292,7 @@ COSMOS 5（COSMOS 6ではなく）には、既存のCOSMOS 4構成をCOSMOS 5プ
 
 1. 新しいCOSMOS 5プラグインを開き、[plugin.txt](../configuration/plugins.md#plugintxt-configuration-file)ファイルが正しく構成されていることを確認します。移行ツールはVARIABLEsやMICROSERVICEsを作成せず、ターゲット置換も処理しないため、これらの機能は手動で追加する必要があります。
 
-1. [プラグインの構築](gettingstarted.md#building-your-plugin)の「はじめに」チュートリアルの部分に従って、新しいプラグインを構築し、COSMOS 5にアップロードしてください。
+1. [プラグインの構築](gettingstarted.md#プラグインの構築)の「はじめに」チュートリアルの部分に従って、新しいプラグインを構築し、COSMOS 5にアップロードしてください。
 
 ### カスタムツールのアップグレード
 

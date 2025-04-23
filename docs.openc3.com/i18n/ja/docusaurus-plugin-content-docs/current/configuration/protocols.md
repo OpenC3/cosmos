@@ -1,235 +1,235 @@
 ---
 sidebar_position: 7
-title: Protocols
-description: Built-in COSMOS protocols including how to create one
+title: プロトコル
+description: 作成方法を含むCOSMOS組み込みプロトコル
 sidebar_custom_props:
   myEmoji: 💡
 ---
 
-Protocols process data on behalf of an [Interface](interfaces). They can modify the data being written, data being read, or both. Protocols can also mark a packet as stored instead of real-time which means COSMOS will not update the current value table with the packet data. Protocols can be layered and will be processed in order. For example, if you have a low-level encryption layer that must be first removed before processing a higher level buffer length protocol.
+プロトコルは[インターフェース](interfaces)の代わりにデータを処理します。書き込まれるデータ、読み取られるデータ、またはその両方を変更することができます。プロトコルはパケットをリアルタイムではなく保存済みとしてマークすることもでき、これによりCOSMOSはパケットデータで現在の値テーブルを更新しません。プロトコルは階層化することができ、順序通りに処理されます。例えば、より高レベルのバッファ長プロトコルを処理する前に最初に削除する必要がある低レベルの暗号化層がある場合などです。
 
-:::info Protocol Run Order
-Read protocols execute in the order specified (First specified runs first). Write protocols execute in the reverse order (Last specified executes first).
+:::info プロトコル実行順序
+読み取りプロトコルは指定された順序で実行されます（最初に指定されたものが最初に実行されます）。書き込みプロトコルは逆順で実行されます（最後に指定されたものが最初に実行されます）。
 :::
 
-Protocols are typically used to define the logic to delineate packets and manipulate data as it written to and read from Interfaces. COSMOS includes Interfaces for TCP/IP Client, TCP/IP Server, Udp Client / Server, and Serial connections. For 99% of use cases these Interfaces should not require any changes as they universally handle the low-level details of reading and writing from these types of connections. All unique behavior should now be defined in Protocols.
+プロトコルは一般的に、パケットを区切るロジックを定義し、インターフェースとの間でデータの読み書きを操作するために使用されます。COSMOSには、TCP/IPクライアント、TCP/IPサーバー、UDPクライアント/サーバー、およびシリアル接続のインターフェースが含まれています。ユースケースの99％では、これらのインターフェースはこれらの種類の接続からの読み書きの低レベルの詳細を普遍的に処理するため、変更を必要としません。すべての独自の動作は、現在プロトコルで定義する必要があります。
 
-At a minimum, any byte stream based Interface will require a Protocol to delineate packets. TCP/IP and Serial are examples of byte stream based Interfaces. A byte stream is just a simple stream of bytes and thus you need some way to know where packets begin and end within the stream.
+最低限、バイトストリームベースのインターフェースにはパケットを区切るためのプロトコルが必要です。TCP/IPとシリアルは、バイトストリームベースのインターフェースの例です。バイトストリームは単純なバイトのストリームであり、そのためストリーム内のパケットの開始と終了を知る方法が必要です。
 
-TCP/IP is a friendly byte stream. Unless you are dealing with a very poorly written system, the first byte received on a TCP/IP connection will always be the start of a packet. Also, TCP/IP is a reliable connection in that it ensures that all data is received in the correct order, that no data is lost, and that the data is not corrupted (TCP/IP is protected by a CRC32 which is pretty good for avoiding unrecognized data corruption).
+TCP/IPはフレンドリーなバイトストリームです。非常に貧弱に書かれたシステムを扱っていない限り、TCP/IP接続で受信された最初のバイトは常にパケットの開始になります。また、TCP/IPは信頼性の高い接続であり、すべてのデータが正しい順序で受信され、データが失われず、データが破損しないことを保証します（TCP/IPはCRC32で保護されており、認識されないデータ破損を避けるのに非常に効果的です）。
 
-Serial is a much less friendly byte stream. With serial connections, it is very likely that when you open a serial port and start receiving data you will receive the middle of a message. (This problem is only avoided when interfacing with a system that only writes to the serial port in response to a command). For this reason, sync patterns are highly beneficial for serial interfaces. Additionally, serial interfaces may use some method to protect against unrecognized data corruption (Checksums, CRCs, etc.)
+シリアルは、はるかに扱いにくいバイトストリームです。シリアル接続では、シリアルポートを開いてデータの受信を開始すると、メッセージの途中から受信する可能性が非常に高いです（この問題は、コマンドに応答してのみシリアルポートに書き込むシステムとインターフェースする場合にのみ回避されます）。このため、同期パターンはシリアルインターフェースに非常に有益です。さらに、シリアルインターフェースは、認識されないデータ破損から保護するためにいくつかの方法（チェックサム、CRCなど）を使用することがあります。
 
-UDP is an inherently packet based connection. If you read from a UDP socket, you will always receive back an entire packet. The best UDP based Protocols take advantage of this fact. Some implementations try to make UDP act like a byte stream, but this is a misuse of the protocol because it is highly likely that you will lose data and have no way to recover.
+UDPは本質的にパケットベースの接続です。UDPソケットから読み取ると、常に完全なパケットが返されます。最良のUDPベースのプロトコルはこの事実を活用しています。一部の実装ではUDPをバイトストリームのように動作させようとしますが、これはプロトコルの誤用であり、データを失う可能性が非常に高く、回復する方法がありません。
 
-For more information about how Protocols fit with Interfaces and Accessors see [Interoperability Without Standards](https://www.openc3.com/news/interoperability-without-standards).
+プロトコルがインターフェースとアクセサーにどのように適合するかについての詳細情報は、[標準なしの相互運用性](https://www.openc3.com/news/interoperability-without-standards)を参照してください。
 
-## Packet Delineation Protocols
+## パケット区切りプロトコル
 
-COSMOS provides the following packet delineation protocols: COBS, SLIP, Burst, Fixed, Length, Template (deprecated), Terminated and Preidentified. Each of these protocols has the primary purpose of separating out packets from a byte stream.
+COSMOSは以下のパケット区切りプロトコルを提供しています：COBS、SLIP、Burst、Fixed、Length、Template（非推奨）、TerminatedおよびPreidentified。これらの各プロトコルの主な目的は、バイトストリームからパケットを分離することです。
 
-COSMOS Enterprise provides the following packet delineation protocols: CCSDS CLTU (with BCH Encoding), CCSDS TCTF (with Randomizer), CCSDS TMTF (with Randomizer), and GEMS.
+COSMOS Enterpriseは以下のパケット区切りプロトコルを提供しています：CCSDS CLTU（BCHエンコード付き）、CCSDS TCTF（ランダマイザー付き）、CCSDS TMTF（ランダマイザー付き）、およびGEMS。
 
-Note that all protocols take a final parameter called "Allow Empty Data". This indicates whether the protocol will allow an empty string to be passed down to later Protocols (instead of returning :STOP). Can be true, false, or nil, where nil is interpreted as true unless the Protocol is the last Protocol of the chain. End users of a protocol will almost always simply leave off this parameter. For more information read the [Custom Protocols](protocols.md#custom-protocols) documentation.
+すべてのプロトコルは「Allow Empty Data」と呼ばれる最終パラメータを取ることに注意してください。これは、プロトコルが空の文字列を後続のプロトコルに渡すことを許可するかどうかを示します（:STOPを返す代わりに）。true、false、またはnilが可能で、nilはプロトコルがチェーンの最後のプロトコルでない限りtrueとして解釈されます。プロトコルのエンドユーザーはほとんどの場合、このパラメータを省略します。詳細については、[カスタムプロトコル](protocols.md#カスタムプロトコル)のドキュメントを参照してください。
 
-Note the first parameter after the PROTOCOL keyword is how to apply the protocol: READ, WRITE, or READ_WRITE. Read applies the protocol on incoming packets (telemetry) and write on outgoing packets (commands). The next parameter is the protocol filename or class name. All other parameters are protocol specific.
+PROTOCOLキーワードの後の最初のパラメータは、プロトコルの適用方法を示します：READ、WRITE、またはREAD_WRITE。Readは入力パケット（テレメトリ）にプロトコルを適用し、writeは出力パケット（コマンド）に適用します。次のパラメータはプロトコルのファイル名またはクラス名です。その他のパラメータはプロトコル固有のものです。
 
-### COBS Protocol
+### COBSプロトコル
 
-The Consistent Overhead Byte Stuffing (COBS) Protocol is an algorithm for encoding data bytes that results in efficient, reliable, unambiguous packet framing regardless of packet content, thus making it easy for receiving applications to recover from malformed packets. It employs the zero byte value to serve as a packet delimiter (a special value that indicates the boundary between packets). The algorithm replaces each zero data byte with a non-zero value so that no zero data bytes will appear in the packet and thus be misinterpreted as packet boundaries (See https://en.wikipedia.org/wiki/Consistent_Overhead_Byte_Stuffing for more).
+Consistent Overhead Byte Stuffing（COBS）プロトコルは、パケットの内容に関係なく、効率的で信頼性が高く、明確なパケットフレーミングを実現するデータバイトをエンコードするアルゴリズムです。これにより、受信アプリケーションが不正な形式のパケットから回復することが容易になります。パケットの区切り文字（パケット間の境界を示す特別な値）として機能するゼロバイト値を使用します。このアルゴリズムは、各ゼロデータバイトを非ゼロの値で置き換えるため、パケット内にゼロデータバイトが現れず、パケット境界として誤解釈されることがありません（詳細は https://en.wikipedia.org/wiki/Consistent_Overhead_Byte_Stuffing を参照）。
 
-### SLIP Protocol
+### SLIPプロトコル
 
-The Serial Line IP (SLIP) Protocol defines a sequence of characters that frame IP packets on a serial line. It defines two special characters: END and ESC. END is 0xC0 and ESC is 0xDB. To send a packet, a SLIP host simply starts sending the data in the packet. If a data byte is the same code as END character, a two byte sequence of ESC and 0xDC is sent instead. If a data bytes is the same as an ESC character, an two byte sequence of ESC and 0xDD is sent instead. When the last byte in the packet has been sent, an END character is then transmitted (See https://datatracker.ietf.org/doc/html/rfc1055 for more).
+Serial Line IP（SLIP）プロトコルは、シリアル回線上でIPパケットをフレーム化する文字シーケンスを定義します。ENDとESCという2つの特殊文字を定義します。ENDは0xC0で、ESCは0xDBです。パケットを送信するために、SLIPホストは単にパケット内のデータの送信を開始します。データバイトがEND文字と同じコードである場合、代わりにESCと0xDCの2バイトシーケンスが送信されます。データバイトがESC文字と同じである場合、代わりにESCと0xDDの2バイトシーケンスが送信されます。パケット内の最後のバイトが送信されると、END文字が送信されます（詳細は https://datatracker.ietf.org/doc/html/rfc1055 を参照）。
 
-| Parameter             | Description                                    | Required | Default            |
+| パラメータ           | 説明                                       | 必須 | デフォルト          |
 | --------------------- | ---------------------------------------------- | -------- | ------------------ |
-| Start Char            | Character to place at the start of frames      | No       | nil (no character) |
-| Read Strip Characters | Strip off start_char and end_char from reads   | No       | true               |
-| Read Enable Escaping  | Whether to enable character escaping on reads  | No       | true               |
-| Write Enable Escaping | Whether to enable character escaping on writes | No       | true               |
-| End Char              | Character to place at the end of frames        | No       | 0xC0               |
-| Esc Char              | Escape character                               | No       | 0xDB               |
-| Escape End Char       | Character to escape End character              | No       | 0xDC               |
-| Escape Esc Char       | Character to escape Esc character              | No       | 0xDD               |
+| Start Char            | フレームの先頭に配置する文字                | いいえ    | nil（文字なし）    |
+| Read Strip Characters | 読み取りからstart_charとend_charを削除する | いいえ    | true               |
+| Read Enable Escaping  | 読み取り時に文字エスケープを有効にするかどうか | いいえ    | true               |
+| Write Enable Escaping | 書き込み時に文字エスケープを有効にするかどうか | いいえ    | true               |
+| End Char              | フレームの末尾に配置する文字              | いいえ    | 0xC0               |
+| Esc Char              | エスケープ文字                           | いいえ    | 0xDB               |
+| Escape End Char       | End文字をエスケープするための文字         | いいえ    | 0xDC               |
+| Escape Esc Char       | Esc文字をエスケープするための文字         | いいえ    | 0xDD               |
 
-### Burst Protocol
+### バーストプロトコル
 
-The Burst Protocol simply reads as much data as it can from the interface before returning the data as a COSMOS Packet (It returns a packet for each burst of data read). This Protocol relies on regular bursts of data delimited by time and thus is not very robust. However, it can utilize a sync pattern which does allow it to re-sync if necessary. It can also discard bytes from the incoming data to remove the sync pattern. Finally, it can add sync patterns to data being written out of the Interface.
+バーストプロトコルは、データをCOSMOSパケットとして返す前に、インターフェースからできるだけ多くのデータを読み取ります（読み取られたデータの各バーストに対してパケットを返します）。このプロトコルは時間で区切られた定期的なデータバーストに依存しているため、非常に堅牢ではありません。ただし、必要に応じて再同期を可能にする同期パターンを利用できます。また、同期パターンを削除するために、受信データからバイトを破棄することもできます。最後に、インターフェースから書き出されるデータに同期パターンを追加することもできます。
 
-| Parameter             | Description                                                                                                                                                                                 | Required | Default                  |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------------ |
-| Discard Leading Bytes | The number of bytes to discard from the binary data after reading. Note that this applies to bytes starting with the sync pattern if the sync pattern is being used.                        | No       | 0 (do not discard bytes) |
-| Sync Pattern          | Hex string representing a byte pattern that will be searched for in the raw data. This pattern represents a packet delimiter and all data found including the sync pattern will be returned | No       | nil (no sync pattern)    |
-| Fill Fields           | Whether to fill in the sync pattern on outgoing packets                                                                                                                                     | No       | false                    |
+| パラメータ           | 説明                                                                                                                                         | 必須 | デフォルト          |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------------ |
+| Discard Leading Bytes | 読み取り後にバイナリデータから破棄するバイト数。同期パターンが使用されている場合、これは同期パターンから始まるバイトに適用されることに注意してください。 | いいえ    | 0（バイトを破棄しない） |
+| Sync Pattern          | 生データ内で検索されるバイトパターンを表す16進文字列。このパターンはパケット区切り文字を表し、同期パターンを含むすべての検出データが返されます     | いいえ    | nil（同期パターンなし） |
+| Fill Fields           | 送信パケットに同期パターンを入力するかどうか                                                                                                | いいえ    | false                   |
 
-### Fixed Protocol
+### 固定プロトコル
 
-The Fixed Protocol reads a preset minimum amount of data which is necessary to properly identify all the defined packets using the interface. It then identifies the packet and proceeds to read as much data from the interface as necessary to create the packet which it then returns. This protocol relies on all the packets on the interface being fixed in length. For example, all the packets using the interface are a fixed size and contain a simple header with a 32-bit sync pattern followed by a 16 bit ID. The Fixed Protocol would elegantly handle this case with a minimum read size of 6 bytes. The Fixed Protocol also supports a sync pattern, discarding leading bytes, and filling the sync pattern similar to the Burst Protocol.
+固定プロトコルは、インターフェースを使用して定義されたすべてのパケットを適切に識別するために必要な、事前に設定された最小量のデータを読み取ります。その後、パケットを識別し、パケットを作成するために必要なだけのデータをインターフェースから読み取り、それを返します。このプロトコルは、インターフェース上のすべてのパケットが固定長であることに依存しています。例えば、インターフェースを使用するすべてのパケットは固定サイズであり、32ビットの同期パターンに続いて16ビットのIDを含む単純なヘッダーが含まれています。固定プロトコルは、最小読み取りサイズが6バイトであるこのケースをエレガントに処理します。固定プロトコルは、バーストプロトコルと同様に、同期パターン、先頭バイトの破棄、同期パターンの入力もサポートしています。
 
-| Parameter             | Description                                                                                                                                                                                  | Required | Default                    |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | -------------------------- |
-| Minimum ID Size       | The minimum number of bytes needed to identify a packet. All the packet definitions must declare their ID_ITEM(s) within this given number of bytes.                                         | Yes      |
-| Discard Leading Bytes | The number of bytes to discard from the binary data after reading. Note that this applies to bytes starting with the sync pattern if the sync pattern is being used.                         | No       | 0 (do not discard bytes)   |
-| Sync Pattern          | Hex string representing a byte pattern that will be searched for in the raw data. This pattern represents a packet delimiter and all data found including the sync pattern will be returned. | No       | nil (no sync pattern)      |
-| Telemetry             | Whether the data is telemetry                                                                                                                                                                | No       | true (false means command) |
-| Fill Fields           | Whether to fill in the sync pattern on outgoing packets                                                                                                                                      | No       | false                      |
-| Unknown Raise         | Whether to raise an exception for an unknown packet                                                                                                                                          | No       | false                      |
+| パラメータ           | 説明                                                                                                                                          | 必須 | デフォルト              |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | -------- | -------------------------- |
+| Minimum ID Size       | パケットを識別するために必要な最小バイト数。すべてのパケット定義は、この指定されたバイト数内でID_ITEMを宣言する必要があります。             | はい     |                          |
+| Discard Leading Bytes | 読み取り後にバイナリデータから破棄するバイト数。同期パターンが使用されている場合、これは同期パターンから始まるバイトに適用されることに注意してください。  | いいえ    | 0（バイトを破棄しない）   |
+| Sync Pattern          | 生データ内で検索されるバイトパターンを表す16進文字列。このパターンはパケット区切り文字を表し、同期パターンを含むすべての検出データが返されます。     | いいえ    | nil（同期パターンなし）   |
+| Telemetry             | データがテレメトリかどうか                                                                                                                  | いいえ    | true（falseはコマンドを意味） |
+| Fill Fields           | 送信パケットに同期パターンを入力するかどうか                                                                                               | いいえ    | false                     |
+| Unknown Raise         | 不明なパケットに対して例外を発生させるかどうか                                                                                             | いいえ    | false                     |
 
-### Length Protocol
+### 長さプロトコル
 
-The Length Protocol depends on a length field at a fixed location in the defined packets using the interface. It then reads enough data to grab the length field, decodes it, and reads the remaining length of the packet. For example, all the packets using the interface contain a CCSDS header with a length field. The Length Protocol can be set up to handle the length field and even the length offset CCSDS uses. The Length Protocol also supports a sync pattern, discarding leading bytes, and filling the length and sync pattern similar to the Burst Protocol.
+長さプロトコルは、インターフェースを使用する定義されたパケット内の固定位置にある長さフィールドに依存します。十分なデータを読み取って長さフィールドを取得し、それをデコードし、パケットの残りの長さを読み取ります。例えば、インターフェースを使用するすべてのパケットには、長さフィールドを持つCCSDSヘッダーが含まれています。長さプロトコルは、長さフィールドや、CCSDSが使用する長さオフセットも処理するように設定できます。長さプロトコルは、バーストプロトコルと同様に、同期パターン、先頭バイトの破棄、長さと同期パターンの入力もサポートしています。
 
-| Parameter                    | Description                                                                                                                                                                                                                                                                                                                                                                                                                  | Required | Default                  |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------------ |
-| Length Bit Offset            | The bit offset from the start of the packet to the length field. Every packet using this interface must have the same structure such that the length field is the same size at the same location. Be sure to account for the length of the Sync Pattern in this value (if present).                                                                                                                                          | No       | 0 bits                   |
-| Length Bit Size              | The size in bits of the length field                                                                                                                                                                                                                                                                                                                                                                                         | No       | 16 bits                  |
-| Length Value Offset          | The offset to apply to the length field value. The actual value of the length field plus this offset should equal the exact number of bytes required to read all data for the packet (including the length field itself, sync pattern, etc). For example, if the length field indicates packet length minus one, this value should be one. Be sure to account for the length of the Sync Pattern in this value (if present). | No       | 0                        |
-| Bytes per Count              | The number of bytes per each length field 'count'. This is used if the units of the length field is something other than bytes, e.g. if the length field count is in words.                                                                                                                                                                                                                                                  | No       | 1 byte                   |
-| Length Endianness            | The endianness of the length field. Must be either 'BIG_ENDIAN' or 'LITTLE_ENDIAN'.                                                                                                                                                                                                                                                                                                                                          | No       | 'BIG_ENDIAN'             |
-| Discard Leading Bytes        | The number of bytes to discard from the binary data after reading. Note that this applies to bytes including the sync pattern if the sync pattern is being used. Discarding is one of the very last steps so any size and offsets above need to account for all the data before discarding.                                                                                                                                  | No       | 0 (do not discard bytes) |
-| Sync Pattern                 | Hex string representing a byte pattern that will be searched for in the raw data. This pattern represents a packet delimiter and all data found including the sync pattern will be returned.                                                                                                                                                                                                                                 | No       | nil (no sync pattern)    |
-| Max Length                   | The maximum allowed value in the length field                                                                                                                                                                                                                                                                                                                                                                                | No       | nil (no maximum length)  |
-| Fill Length and Sync Pattern | Setting this flag to true causes the length field and sync pattern (if present) to be filled automatically on outgoing packets.                                                                                                                                                                                                                                                                                              | No       | false                    |
+| パラメータ                  | 説明                                                                                                                                                                                                                                                                                                                     | 必須 | デフォルト             |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------------ |
+| Length Bit Offset            | パケットの先頭から長さフィールドまでのビットオフセット。このインターフェースを使用するすべてのパケットは、長さフィールドが同じ場所で同じサイズになるような同じ構造を持っている必要があります。この値に同期パターンの長さを考慮することを忘れないでください（存在する場合）。                              | いいえ    | 0ビット                 |
+| Length Bit Size              | 長さフィールドのビットサイズ                                                                                                                                                                                                                                                                                           | いいえ    | 16ビット                |
+| Length Value Offset          | 長さフィールド値に適用するオフセット。長さフィールドの実際の値にこのオフセットを加えると、パケットのすべてのデータ（長さフィールド自体、同期パターンなどを含む）を読み取るために必要な正確なバイト数と等しくなる必要があります。例えば、長さフィールドがパケット長から1を引いた値を示す場合、この値は1になります。この値に同期パターンの長さを考慮することを忘れないでください（存在する場合）。 | いいえ    | 0                       |
+| Bytes per Count              | 各長さフィールドの「カウント」あたりのバイト数。これは、長さフィールドの単位がバイト以外の場合（例えば、長さフィールドのカウントがワード単位の場合）に使用されます。                                                                                                                                          | いいえ    | 1バイト                 |
+| Length Endianness            | 長さフィールドのエンディアン。「BIG_ENDIAN」または「LITTLE_ENDIAN」のいずれかでなければなりません。                                                                                                                                                                                                                   | いいえ    | 'BIG_ENDIAN'            |
+| Discard Leading Bytes        | 読み取り後にバイナリデータから破棄するバイト数。同期パターンが使用されている場合、これは同期パターンを含むバイトに適用されることに注意してください。破棄は最後のステップの1つであるため、上記のサイズとオフセットは破棄前のすべてのデータを考慮する必要があります。                                         | いいえ    | 0（バイトを破棄しない） |
+| Sync Pattern                 | 生データ内で検索されるバイトパターンを表す16進文字列。このパターンはパケット区切り文字を表し、同期パターンを含むすべての検出データが返されます。                                                                                                                                                                 | いいえ    | nil（同期パターンなし） |
+| Max Length                   | 長さフィールドで許可される最大値                                                                                                                                                                                                                                                                                     | いいえ    | nil（最大長なし）       |
+| Fill Length and Sync Pattern | このフラグをtrueに設定すると、送信パケットに長さフィールドと同期パターン（存在する場合）が自動的に入力されます。                                                                                                                                                                                                   | いいえ    | false                   |
 
-The most confusing aspect of the Length Protocol is calculating the Length Value Offset. This is especially true in the commonly used CCSDS Space Packet Protocol. The best way to illustrate this is with an example. Suppose you have CCSDS Space Packets prepended with a Sync Pattern of 0x1ACFFC1D. This would look like the following:
+長さプロトコルの最も混乱する側面は、Length Value Offsetの計算です。これは、よく使用されるCCSDS宇宙パケットプロトコルで特に当てはまります。これを説明する最良の方法は例を使用することです。同期パターン0x1ACFFC1Dが前に付いたCCSDS宇宙パケットがあるとします。これは次のようになります：
 
-| Sync (4 bytes) | Header (4 bytes) | Length (2 bytes) | Data (4 bytes) |
-| -------------- | ---------------- | ---------------- | -------------- |
-| 0x1ACFFC1D     | 0x0001CADB       | 0x0003           | 0xDEADBEEF     |
+| 同期（4バイト） | ヘッダー（4バイト） | 長さ（2バイト） | データ（4バイト） |
+| -------------- | ---------------- | -------------- | -------------- |
+| 0x1ACFFC1D     | 0x0001CADB       | 0x0003         | 0xDEADBEEF     |
 
-In this case the total length of the packet is 14 bytes: **4 + 4 + 2 + 4 = 14**. With 4 bytes of data, the length field is 3 because in CCSDS the length field is calculated as (data length - 1). So how would we calculate the Length Value Offset? COSMOS reads all the bytes in the packet (including the Sync Pattern) so the total length is 14 bytes. The length field is 3 so the Length Value Offset (offset to apply to the length field value) should be 11 (**3 + 11 = 14**).
+この場合、パケットの合計長は14バイトです：**4 + 4 + 2 + 4 = 14**。データが4バイトの場合、CCSDSでは長さフィールドは（データ長 - 1）として計算されるため、長さフィールドは3になります。では、Length Value Offsetをどのように計算すればよいでしょうか？COSMOSはパケット内のすべてのバイト（同期パターンを含む）を読み取るため、合計長は14バイトです。長さフィールドは3なので、Length Value Offset（長さフィールド値に適用するオフセット）は11であるべきです（**3 + 11 = 14**）。
 
-### Terminated Protocol
+### 終端プロトコル
 
-The Terminated Protocol delineates packets using termination characters found at the end of every packet. It continuously reads data until the termination characters are found at which point it returns the packet data. For example, all the packets using the interface are followed by 0xABCD. This data can either be a part of each packet that is kept or something which is known only by the Terminated Protocol and simply thrown away.
+終端プロトコルは、各パケットの末尾にある終端文字を使用してパケットを区切ります。終端文字が見つかるまで継続的にデータを読み取り、その時点でパケットデータを返します。例えば、インターフェースを使用するすべてのパケットの後に0xABCDが続きます。このデータは、保持される各パケットの一部であるか、または終端プロトコルだけが知っていて単に捨てられるものであるかのいずれかです。
 
-| Parameter                    | Description                                                                                                                                                                                  | Required | Default                  |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------------ |
-| Write Termination Characters | The data to write after writing a command packet. Given as a hex string such as 0xABCD.                                                                                                      | Yes      |
-| Read Termination Characters  | The characters which delineate the end of a telemetry packet. Given as a hex string such as 0xABCD.                                                                                          | Yes      |
-| Strip Read Termination       | Whether to remove the read termination characters before returning the telemetry packet                                                                                                      | No       | true                     |
-| Discard Leading Bytes        | The number of bytes to discard from the binary data after reading. Note that this applies to bytes including the sync pattern if the sync pattern is being used.                             | No       | 0 (do not discard bytes) |
-| Sync Pattern                 | Hex string representing a byte pattern that will be searched for in the raw data. This pattern represents a packet delimiter and all data found including the sync pattern will be returned. | No       | nil (no sync pattern)    |
-| Fill Fields                  | Whether to fill in the sync pattern on outgoing packets                                                                                                                                      | No       | false                    |
+| パラメータ                  | 説明                                                                                                                                         | 必須 | デフォルト              |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------------ |
+| Write Termination Characters | コマンドパケットを書き込んだ後に書き込むデータ。0xABCDなどの16進文字列として指定します。                                                  | はい     |                        |
+| Read Termination Characters  | テレメトリパケットの終わりを示す文字。0xABCDなどの16進文字列として指定します。                                                            | はい     |                        |
+| Strip Read Termination       | テレメトリパケットを返す前に読み取り終端文字を削除するかどうか                                                                            | いいえ    | true                    |
+| Discard Leading Bytes        | 読み取り後にバイナリデータから破棄するバイト数。同期パターンが使用されている場合、これは同期パターンを含むバイトに適用されることに注意してください。 | いいえ    | 0（バイトを破棄しない） |
+| Sync Pattern                 | 生データ内で検索されるバイトパターンを表す16進文字列。このパターンはパケット区切り文字を表し、同期パターンを含むすべての検出データが返されます。     | いいえ    | nil（同期パターンなし） |
+| Fill Fields                  | 送信パケットに同期パターンを入力するかどうか                                                                                               | いいえ    | false                   |
 
-### GEMS Protocol (Enterprise)
+### GEMSプロトコル（Enterprise）
 
-The GEMS Protocol implements the Ground Equipment Monitoring Service protocol. It is added along with the TerminatedProtocol which delineates packets using '|END'. The GEMS Interface is currently only implemented in Ruby.
+GEMSプロトコルは、地上機器監視サービスプロトコルを実装しています。これは、「|END」を使用してパケットを区切るTerminatedProtocolと一緒に追加されます。GEMSインターフェースは現在Rubyでのみ実装されています。
 
-The GEMS protocol doesn't take any parameters but should be added to an interface after the TerminatedProtocol and CmdResponseProtocol.
+GEMSプロトコルはパラメータを取りませんが、TerminatedProtocolとCmdResponseProtocolの後にインターフェースに追加する必要があります。
 
-plugin.txt Ruby Example:
+plugin.txt Rubyの例：
 
 ```ruby
 INTERFACE GEMS_INT tcpip_client_interface.rb openc3-operator 8080 8080 10.0 nil nil
-  # TerminatedProtocol 0x7C454E44 0x7C454E44 false 0       0x7C47454D53 false ... means:
+  # TerminatedProtocol 0x7C454E44 0x7C454E44 false 0       0x7C47454D53 false ... の意味：
   #                    wtc        rtc        strip discard sync         fill
-  # where wtc = write termination characters, end of the gems protocol: 0x7C454E44 == '|END'
-  #       rtc = read termination characters, end of the gems protocol: 0x7C454E44 == '|END'
-  #       strip = strip read termination (false)
-  #       discard = 0 bytes
-  #       sync pattern = beginning of the GEMS protocol: 0x7C47454D53 == '|GEMS'
-  #       fill = whether to fill in the sync pattern (false as we specify fill in our cmd/tlm definitions)
+  # wtc = 書き込み終端文字、gemsプロトコルの終わり：0x7C454E44 == '|END'
+  #       rtc = 読み取り終端文字、gemsプロトコルの終わり：0x7C454E44 == '|END'
+  #       strip = 読み取り終端を削除（false）
+  #       discard = 0バイト
+  #       sync pattern = GEMSプロトコルの始まり：0x7C47454D53 == '|GEMS'
+  #       fill = 同期パターンを入力するかどうか（cmd/tlm定義でfillを指定するのでfalse）
   PROTOCOL READ TerminatedProtocol 0x7C454E44 0x7C454E44 false 0 0x7C47454D53 false
-  # CmdResponseProtocol 5.0 0.2 true means:
-  #   5 sec response timeout, 0.2 sec response polling,
-  #   and true to raise exceptions when protocol errors occur
+  # CmdResponseProtocol 5.0 0.2 true の意味：
+  #   5秒応答タイムアウト、0.2秒応答ポーリング、
+  #   そしてプロトコルエラーが発生したときに例外を発生させるためのtrue
   PROTOCOL READ_WRITE CmdResponseProtocol 5.0 0.2 true
   PROTOCOL READ_WRITE GemsProtocol
 ```
 
-For a full example, please see the [openc3-cosmos-gems-interface](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-gems-interface) in the COSMOS Enterprise Plugins.
+完全な例については、COSMOS Enterprise Pluginsの[openc3-cosmos-gems-interface](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-gems-interface)を参照してください。
 
-### CCSDS CLTU Protocol (Enterprise)
+### CCSDS CLTUプロトコル（Enterprise）
 
-The CCSDS CLTU Protocol handles the CLTU (Communicates Link Transfer Unit) for Command Streams. It encodes outgoing messages with a BCH encoding and then applies a header and footer to the data.
+CCSDS CLTUプロトコルは、コマンドストリーム用のCLTU（通信リンク転送ユニット）を処理します。これは送信メッセージをBCHエンコーディングでエンコードし、データにヘッダーとフッターを適用します。
 
-| Parameter | Description                    | Required | Default            |
-| --------- | ------------------------------ | -------- | ------------------ |
-| Header    | Header before BCH encoded data | No       | 0xEB90             |
-| Footer    | Footer after BCH encoded data  | No       | 0xC5C5C5C5C5C5C579 |
-| Fill Byte | BCH encoding fill byte         | No       | 0x55               |
+| パラメータ | 説明                          | 必須 | デフォルト          |
+| ---------- | ----------------------------- | ---- | ------------------- |
+| Header     | BCHエンコードデータの前のヘッダー | いいえ | 0xEB90              |
+| Footer     | BCHエンコードデータの後のフッター | いいえ | 0xC5C5C5C5C5C5C579  |
+| Fill Byte  | BCHエンコーディングのフィルバイト | いいえ | 0x55                |
 
-For a full example, please see the [openc3-cosmos-ccsds-protocols](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-ccsds-protocols) in the COSMOS Enterprise Plugins.
+完全な例については、COSMOS Enterprise Pluginsの[openc3-cosmos-ccsds-protocols](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-ccsds-protocols)を参照してください。
 
-### CCSDS TCTF Protocol (Enterprise)
+### CCSDS TCTFプロトコル（Enterprise）
 
-The CCSDS TCTF Protocol handles the Telecommand Transfer Frame for Command Streams.
+CCSDS TCTFプロトコルは、コマンドストリーム用のテレコマンド転送フレームを処理します。
 
-| Parameter     | Description                                                                   | Required | Default |
-| ------------- | ----------------------------------------------------------------------------- | -------- | ------- |
-| Randomization | Whether to encode and randomize the transfer frame                            | No       | true    |
-| Error Control | Whether to use the Frame Error Control Field and apply a 16 bit CRC           | No       | false   |
-| Bypass        | Bypass bit where 0 is Type-A and 1 is Type-B (bypass frame acceptance checks) | No       | 1       |
-| SCID          | Spacecraft Identifier (10 bits)                                               | No       | 0       |
-| VCID          | Virtual Channel Identifier (6 bits)                                           | No       | 0       |
+| パラメータ     | 説明                                                             | 必須 | デフォルト |
+| ------------- | --------------------------------------------------------------- | ---- | ---------- |
+| Randomization | 転送フレームをエンコードし、ランダム化するかどうか                    | いいえ | true       |
+| Error Control | フレームエラー制御フィールドを使用し、16ビットCRCを適用するかどうか    | いいえ | false      |
+| Bypass        | バイパスビット（0はType-A、1はType-B（フレーム受け入れチェックをバイパス）） | いいえ | 1          |
+| SCID          | 宇宙機識別子（10ビット）                                          | いいえ | 0          |
+| VCID          | 仮想チャネル識別子（6ビット）                                     | いいえ | 0          |
 
-For a full example, please see the [openc3-cosmos-ccsds-protocols](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-ccsds-protocols) in the COSMOS Enterprise Plugins.
+完全な例については、COSMOS Enterprise Pluginsの[openc3-cosmos-ccsds-protocols](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-ccsds-protocols)を参照してください。
 
-### CCSDS TMTF Protocol (Enterprise)
+### CCSDS TMTFプロトコル（Enterprise）
 
-The CCSDS TMTF Protocol handles the Telemetry Transfer Frame for Telemetry Streams. It adds VCID, MC_FRM_CNT, VC_FRM_CNT to extra which will be included in the Decom data.
+CCSDS TMTFプロトコルは、テレメトリストリーム用のテレメトリ転送フレームを処理します。VCID、MC_FRM_CNT、VC_FRM_CNTをextraに追加し、これらはDecomデータに含まれます。
 
-| Parameter             | Description                                                                                                                                                                                  | Required | Default                  |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------------ |
-| SCID                  | Spacecraft Identifier (10 bits)                                                                                                                                                              | Yes      |                          |
-| Frame Length          |                                                                                                                                                                                              | No       | 2048                     |
-| Randomization         | Whether the transfer frame was encoded and randomized                                                                                                                                        | No       | true                     |
-| Discard Leading Bytes | The number of bytes to discard from the binary data after reading. Note that this applies to bytes including the sync pattern if the sync pattern is being used.                             | No       | 0 (do not discard bytes) |
-| Sync Pattern          | Hex string representing a byte pattern that will be searched for in the raw data. This pattern represents a packet delimiter and all data found including the sync pattern will be returned. | No       | 0x1ACFFC1D               |
-| Fill Fields           | Whether to fill in the sync pattern on outgoing packets                                                                                                                                      | No       | true                     |
+| パラメータ            | 説明                                                                                                                                                      | 必須 | デフォルト             |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | ---------------------- |
+| SCID                  | 宇宙機識別子（10ビット）                                                                                                                                  | はい |                       |
+| Frame Length          | フレーム長                                                                                                                                               | いいえ | 2048                   |
+| Randomization         | 転送フレームがエンコードされ、ランダム化されたかどうか                                                                                                    | いいえ | true                   |
+| Discard Leading Bytes | 読み取り後にバイナリデータから破棄するバイト数。同期パターンが使用されている場合、これは同期パターンを含むバイトに適用されることに注意してください。           | いいえ | 0（バイトを破棄しない） |
+| Sync Pattern          | 生データ内で検索されるバイトパターンを表す16進文字列。このパターンはパケット区切り文字を表し、同期パターンを含むすべての検出データが返されます。                | いいえ | 0x1ACFFC1D             |
+| Fill Fields           | 送信パケットに同期パターンを入力するかどうか                                                                                                              | いいえ | true                   |
 
-For a full example, please see the [openc3-cosmos-ccsds-protocols](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-ccsds-protocols) in the COSMOS Enterprise Plugins.
+完全な例については、COSMOS Enterprise Pluginsの[openc3-cosmos-ccsds-protocols](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-ccsds-protocols)を参照してください。
 
-### Template Protocol (Deprecated)
+### テンプレートプロトコル（非推奨）
 
-This protocol is now deprecated because it is not able to capture the original SCPI messages in COSMOS raw logging. Please use the TemplateAccessor with the CmdResponseProtocol instead.
+このプロトコルは、COSMOS生ログにおいて元のSCPIメッセージをキャプチャできないため、現在は非推奨です。代わりにTemplateAccessorとCmdResponseProtocolを使用してください。
 
-The Template Protocol works much like the Terminated Protocol except it is designed for text-based command and response type interfaces such as SCPI (Standard Commands for Programmable Instruments). It delineates packets in the same way as the Terminated Protocol except each packet is referred to as a line (because each usually contains a line of text). For outgoing packets, a CMD_TEMPLATE field is expected to exist in the packet. This field contains a template string with items to be filled in delineated within HTML tag style brackets `"<EXAMPLE>"`. The Template Protocol will read the named items from within the packet and fill in the CMD_TEMPLATE. This filled in string is then sent out rather than the originally passed in packet. Correspondingly, if a response is expected the outgoing packet should include a RSP_TEMPLATE and RSP_PACKET field. The RSP_TEMPLATE is used to extract data from the response string and build a corresponding RSP_PACKET. See the TEMPLATE target within the COSMOS Demo configuration for an example of usage.
+テンプレートプロトコルは、SCPI（プログラム可能な機器用標準コマンド）などのテキストベースのコマンドおよび応答タイプのインターフェース用に設計されている点を除いて、終端プロトコルと非常によく似ています。各パケットが行と呼ばれる（通常は各行にテキスト行が含まれるため）ことを除いて、終端プロトコルと同じ方法でパケットを区切ります。送信パケットの場合、パケット内にCMD_TEMPLATEフィールドが存在することが期待されます。このフィールドには、HTMLタグスタイルの括弧`"<EXAMPLE>"`内で区切られた、埋め込むべき項目を含むテンプレート文字列が含まれています。テンプレートプロトコルはパケット内から名前付き項目を読み取り、CMD_TEMPLATEに入力します。このように入力された文字列は、元々渡されたパケットではなく送信されます。同様に、応答が期待される場合、送信パケットにはRSP_TEMPLATEおよびRSP_PACKETフィールドを含める必要があります。RSP_TEMPLATEは応答文字列からデータを抽出し、対応するRSP_PACKETを構築するために使用されます。使用例については、COSMOSデモ設定内のTEMPLATEターゲットを参照してください。
 
-| Parameter                    | Description                                                                                                                                                                                  | Required | Default                  |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------------ |
-| Write Termination Characters | The data to write after writing a command packet. Given as a hex string such as 0xABCD.                                                                                                      | Yes      |
-| Read Termination Characters  | The characters which delineate the end of a telemetry packet. Given as a hex string such as 0xABCD.                                                                                          | Yes      |
-| Ignore Lines                 | Number of response lines to ignore (completely drop)                                                                                                                                         | No       | 0 lines                  |
-| Initial Read Delay           | An initial delay after connecting after which the interface will be read till empty and data dropped. Useful for discarding connect headers and initial prompts.                             | No       | nil (no initial read)    |
-| Response Lines               | The number of lines that make up expected responses                                                                                                                                          | No       | 1 line                   |
-| Strip Read Termination       | Whether to remove the read termination characters before returning the telemetry packet                                                                                                      | No       | true                     |
-| Discard Leading Bytes        | The number of bytes to discard from the binary data after reading. Note that this applies to bytes including the sync pattern if the sync pattern is being used.                             | No       | 0 (do not discard bytes) |
-| Sync Pattern                 | Hex string representing a byte pattern that will be searched for in the raw data. This pattern represents a packet delimiter and all data found including the sync pattern will be returned. | No       | nil (no sync pattern)    |
-| Fill Fields                  | Whether to fill in the sync pattern on outgoing packets                                                                                                                                      | No       | false                    |
-| Response Timeout             | Number of seconds to wait for a response before timing out                                                                                                                                   | No       | 5.0                      |
-| Response Polling Period      | Number of seconds to wait between polling for a response                                                                                                                                     | No       | 0.02                     |
-| Raise Exceptions             | Whether to raise exceptions when errors occur like timeouts or unexpected responses                                                                                                          | No       | false                    |
+| パラメータ                  | 説明                                                                                                                                                | 必須 | デフォルト               |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | ------------------------ |
+| Write Termination Characters | コマンドパケットを書き込んだ後に書き込むデータ。0xABCDなどの16進文字列として指定します。                                                          | はい |                        |
+| Read Termination Characters  | テレメトリパケットの終わりを示す文字。0xABCDなどの16進文字列として指定します。                                                                     | はい |                        |
+| Ignore Lines                 | 無視する応答行の数（完全に削除）                                                                                                                   | いいえ | 0行                     |
+| Initial Read Delay           | 接続後の初期遅延時間。この後、インターフェースは空になるまで読み取られ、データは破棄されます。接続ヘッダーと初期プロンプトを破棄するのに役立ちます。 | いいえ | nil（初期読み取りなし）  |
+| Response Lines               | 期待される応答を構成する行数                                                                                                                      | いいえ | 1行                     |
+| Strip Read Termination       | テレメトリパケットを返す前に読み取り終端文字を削除するかどうか                                                                                     | いいえ | true                    |
+| Discard Leading Bytes        | 読み取り後にバイナリデータから破棄するバイト数。同期パターンが使用されている場合、これは同期パターンを含むバイトに適用されることに注意してください。    | いいえ | 0（バイトを破棄しない）  |
+| Sync Pattern                 | 生データ内で検索されるバイトパターンを表す16進文字列。このパターンはパケット区切り文字を表し、同期パターンを含むすべての検出データが返されます。         | いいえ | nil（同期パターンなし）  |
+| Fill Fields                  | 送信パケットに同期パターンを入力するかどうか                                                                                                       | いいえ | false                   |
+| Response Timeout             | 応答がタイムアウトするまでの待機秒数                                                                                                              | いいえ | 5.0                     |
+| Response Polling Period      | 応答のポーリング間の待機秒数                                                                                                                      | いいえ | 0.02                    |
+| Raise Exceptions             | タイムアウトや予期しない応答などのエラーが発生した場合に例外を発生させるかどうか                                                                   | いいえ | false                   |
 
-### Preidentified Protocol (Internal)
+### 事前識別プロトコル（内部）
 
-The Preidentified Protocol delineates packets using a custom COSMOS header. This internal Protocol was created to allow tools to connect and receive the entire packet stream. It can also be used to chain COSMOS instances together although that should rarely be needed with the new web native implementation.
+事前識別プロトコルは、カスタムCOSMOSヘッダーを使用してパケットを区切ります。この内部プロトコルは、ツールが接続してパケットストリーム全体を受信できるようにするために作成されました。また、複数のCOSMOSインスタンスを連結するためにも使用できますが、新しいウェブネイティブ実装ではほとんど必要ありません。
 
-| Parameter    | Description                                                                                                                                                                                                                    | Required | Default                 |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- | ----------------------- |
-| Sync Pattern | Hex string representing a byte pattern that will be searched for in the raw data. This pattern represents a packet delimiter and all data found AFTER the sync pattern will be returned. The sync pattern itself is discarded. | No       | nil (no sync pattern)   |
-| Max Length   | The maximum allowed value in the length field                                                                                                                                                                                  | No       | nil (no maximum length) |
-| Mode         | The Version of the preidentified protocol to support (2 or 4).3                                                                                                                                                                | No       | 4                       |
+| パラメータ    | 説明                                                                                                                                                      | 必須 | デフォルト             |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | ---------------------- |
+| Sync Pattern  | 生データ内で検索されるバイトパターンを表す16進文字列。このパターンはパケット区切り文字を表し、同期パターンの後にあるすべてのデータが返されます。同期パターン自体は破棄されます。 | いいえ | nil（同期パターンなし） |
+| Max Length    | 長さフィールドで許可される最大値                                                                                                                         | いいえ | nil（最大長なし）     |
+| Mode          | サポートする事前識別プロトコルのバージョン（2または4）                                                                                                   | いいえ | 4                     |
 
-## Helper Protocols
+## ヘルパープロトコル
 
-COSMOS provides the following helper protocols: CmdResponse, Crc and Ignore. These protocols provide helper functionality to Interfaces.
+COSMOSは以下のヘルパープロトコルを提供しています：CmdResponse、Crc、およびIgnore。これらのプロトコルはインターフェースにヘルパー機能を提供します。
 
-### CmdResponse Protocol
+### CmdResponseプロトコル
 
-The CmdResponse Protocol waits for a response for any commands with a defined response packet.
+CmdResponseプロトコルは、定義された応答パケットを持つコマンドの応答を待ちます。
 
-| Parameter               | Description                                                                                                  | Required | Default |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------ | -------- | ------- |
-| Response Timeout        | Number of seconds to wait before timing out when waiting for a response                                      | No       | 5       |
-| Response Polling Period | Number of seconds to wait between polling for a response                                                     | No       | 0.02    |
-| Raise Exceptions        | Whether to raise exceptions when errors occur in the protocol like unexpected responses or response timeouts | No       | false   |
+| パラメータ               | 説明                                                                           | 必須 | デフォルト |
+| ----------------------- | ------------------------------------------------------------------------------ | ---- | --------- |
+| Response Timeout        | 応答を待つ際にタイムアウトするまでの秒数                                       | いいえ | 5        |
+| Response Polling Period | 応答のポーリング間の待機秒数                                                   | いいえ | 0.02     |
+| Raise Exceptions        | 予期しない応答や応答タイムアウトなどのプロトコルでエラーが発生した場合に例外を発生させるかどうか | いいえ | false    |
 
-#### Packet Definitions
+#### パケット定義
 
-The CmdResponseProtocol utilizes the [RESPONSE](../configuration/command#response) keyword in the command definition to determine which telemetry packet should be expected when the given command is sent.
+CmdResponseProtocolは、コマンド定義内の[RESPONSE](../configuration/command#response)キーワードを使用して、指定されたコマンドが送信されたときに期待されるテレメトリパケットを決定します。
 
 ```
 COMMAND SCPI_PS GET_STATUS BIG_ENDIAN "Gets status"
@@ -238,7 +238,7 @@ COMMAND SCPI_PS GET_STATUS BIG_ENDIAN "Gets status"
   RESPONSE SCPI_PS STATUS
 ```
 
-The Response packet (STATUS) should be defined to contain the response data.
+応答パケット（STATUS）は、応答データを含むように定義する必要があります。
 
 ```
 TELEMETRY SCPI_PS STATUS BIG_ENDIAN "Status"
@@ -252,76 +252,76 @@ TELEMETRY SCPI_PS STATUS BIG_ENDIAN "Status"
     FORMAT_STRING %0.3f
 ```
 
-For a full example, please see the [openc3-cosmos-scpi-power-supply](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-scpi-power-supply) in the COSMOS Enterprise Plugins.
+完全な例については、COSMOS Enterprise Pluginsの[openc3-cosmos-scpi-power-supply](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-scpi-power-supply)を参照してください。
 
-### CRC Protocol
+### CRCプロトコル
 
-The CRC protocol can add CRCs to outgoing commands and verify CRCs on incoming telemetry packets.
+CRCプロトコルは、送信コマンドにCRCを追加し、受信テレメトリパケットのCRCを検証できます。
 
-| Parameter       | Description                                                                                                 | Required | Default                                                                                    |
-| --------------- | ----------------------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------ |
-| Write Item Name | Item to fill with calculated CRC value for outgoing packets (nil = don't fill)                              | No       | nil                                                                                        |
-| Strip CRC       | Whether to remove the CRC from incoming packets                                                             | No       | false                                                                                      |
-| Bad Strategy    | How to handle CRC errors on incoming packets. ERROR = Just log the error, DISCONNECT = Disconnect interface | No       | "ERROR"                                                                                    |
-| Bit Offset      | Bit offset of the CRC in the data. Can be negative to indicate distance from end of packet                  | No       | -32                                                                                        |
-| Bit Size        | Bit size of the CRC - Must be 16, 32, or 64                                                                 | No       | 32                                                                                         |
-| Endianness      | Endianness of the CRC (BIG_ENDIAN/LITTLE_ENDIAN)                                                            | No       | "BIG_ENDIAN"                                                                               |
-| Poly            | Polynomial to use when calculating the CRC expressed as an integer                                          | No       | nil (use default polynomial - 16-bit=0x1021, 32-bit=0x04C11DB7, 64-bit=0x42F0E1EBA9EA3693) |
-| Seed            | Seed value to start the calculation                                                                         | No       | nil (use default seed - 16-bit=0xFFFF, 32-bit=0xFFFFFFFF, 64-bit=0xFFFFFFFFFFFFFFFF)       |
-| Xor             | Whether to XOR the CRC result with 0xFFFF                                                                   | No       | nil (use default value - 16-bit=false, 32-bit=true, 64-bit=true)                           |
-| Reflect         | Whether to bit reverse each byte of data before calculating the CRC                                         | No       | nil (use default value - 16-bit=false, 32-bit=true, 64-bit=true)                           |
+| パラメータ      | 説明                                                                                                           | 必須 | デフォルト                                                                                     |
+| -------------- | -------------------------------------------------------------------------------------------------------------- | ---- | --------------------------------------------------------------------------------------------- |
+| Write Item Name | 送信パケットの計算済みCRC値で埋めるアイテム（nil = 埋めない）                                                   | いいえ | nil                                                                                            |
+| Strip CRC       | 受信パケットからCRCを削除するかどうか                                                                          | いいえ | false                                                                                         |
+| Bad Strategy    | 受信パケットのCRCエラーを処理する方法。ERROR = エラーのみをログに記録、DISCONNECT = インターフェースを切断     | いいえ | "ERROR"                                                                                       |
+| Bit Offset      | データ内のCRCのビットオフセット。負の値はパケットの末尾からの距離を示します                                    | いいえ | -32                                                                                           |
+| Bit Size        | CRCのビットサイズ - 16、32、または64でなければなりません                                                      | いいえ | 32                                                                                            |
+| Endianness      | CRCのエンディアン（BIG_ENDIAN/LITTLE_ENDIAN）                                                                 | いいえ | "BIG_ENDIAN"                                                                                  |
+| Poly            | CRCを計算する際に使用する多項式（整数として表現）                                                             | いいえ | nil（デフォルトの多項式を使用 - 16ビット=0x1021、32ビット=0x04C11DB7、64ビット=0x42F0E1EBA9EA3693） |
+| Seed            | 計算を開始するシード値                                                                                        | いいえ | nil（デフォルトのシードを使用 - 16ビット=0xFFFF、32ビット=0xFFFFFFFF、64ビット=0xFFFFFFFFFFFFFFFF）   |
+| Xor             | CRC結果を0xFFFFとXOR演算するかどうか                                                                          | いいえ | nil（デフォルト値を使用 - 16ビット=false、32ビット=true、64ビット=true）                          |
+| Reflect         | CRCを計算する前にデータの各バイトのビットを反転するかどうか                                                   | いいえ | nil（デフォルト値を使用 - 16ビット=false、32ビット=true、64ビット=true）                          |
 
-### Ignore Packet Protocol
+### パケット無視プロトコル
 
-The Ignore Packet protocol drops specified command packets sent by COSMOS or drops incoming telemetry packets.
+パケット無視プロトコルは、COSMOSによって送信された特定のコマンドパケットまたは受信テレメトリパケットを破棄します。
 
-| Parameter   | Description                         | Required | Default |
-| ----------- | ----------------------------------- | -------- | ------- |
-| Target Name | Target name of the packet to ignore | Yes      | nil     |
-| Packet Name | Packet name of the packet to ignore | Yes      | nil     |
+| パラメータ   | 説明                           | 必須 | デフォルト |
+| ----------- | ------------------------------ | ---- | --------- |
+| Target Name | 無視するパケットのターゲット名 | はい  | nil       |
+| Packet Name | 無視するパケットのパケット名   | はい  | nil       |
 
-## Custom Protocols
+## カスタムプロトコル
 
-Creating a custom protocol is easy and should be the default solution for customizing COSMOS Interfaces (rather than creating a new Interface class). However, creating custom Interfaces is still useful for defaulting parameters to values that always are fixed for your target and for including the necessary Protocols. The base COSMOS Interfaces take a lot of parameters that can be confusing to your end users. Thus you may want to create a custom Interface just to hard coded these values and cut the available parameters down to something like the hostname and port to connect to.
+カスタムプロトコルの作成は簡単で、COSMOSインターフェースをカスタマイズするためのデフォルトの解決策であるべきです（新しいインターフェースクラスを作成するのではなく）。ただし、カスタムインターフェースを作成することは、ターゲットに対して常に固定されている値にパラメータをデフォルト設定し、必要なプロトコルを含めるのにも役立ちます。基本COSMOSインターフェースは多くのパラメータを取り、エンドユーザーにとって混乱する可能性があります。したがって、これらの値をハードコードし、利用可能なパラメータをホスト名や接続ポートなどに絞り込むためだけにカスタムインターフェースを作成することをお勧めします。
 
-All custom Protocols should derive from the Protocol class [openc3/interfaces/protocols/protocol.rb](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/interfaces/protocols/protocol.rb) (Ruby) and [openc3/interfaces/protocols/protocol.py](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/interfaces/protocols/protocol.py) (Python). This class defines the 9 methods that are relevant to writing your own protocol. The base class implementation for each method is included below as well as a discussion as to how the methods should be overridden and used in your own Protocols.
+すべてのカスタムプロトコルは、Protocolクラス[openc3/interfaces/protocols/protocol.rb](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/interfaces/protocols/protocol.rb)（Ruby）および[openc3/interfaces/protocols/protocol.py](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/interfaces/protocols/protocol.py)（Python）から派生する必要があります。このクラスは、独自のプロトコルを作成するための9つのメソッドを定義しています。各メソッドの基本クラス実装と、それらのメソッドを独自のプロトコルでどのようにオーバーライドして使用するかについての説明が以下に含まれています。
 
-:::info Ruby Protocol APIs
-Protocols should not `require 'openc3/script'` since they are part of a COSMOS interface. They should use the COSMOS library code directly like [System](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/system/system.rb), [Packet](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/packets/packet.rb), [Bucket](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/utilities/bucket.rb), [BinaryAccessor](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/accessors/binary_accessor.rb), etc. When in doubt, consult the existing COSMOS [protocol](https://github.com/OpenC3/cosmos/tree/main/openc3/lib/openc3/interfaces/protocols) classes.
+:::info Ruby プロトコルAPI
+プロトコルはCOSMOSインターフェースの一部であるため、`require 'openc3/script'`を使用すべきではありません。代わりに、[System](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/system/system.rb)、[Packet](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/packets/packet.rb)、[Bucket](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/utilities/bucket.rb)、[BinaryAccessor](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/accessors/binary_accessor.rb)などのCOSMOSライブラリコードを直接使用する必要があります。不明な点がある場合は、既存のCOSMOSの[プロトコル](https://github.com/OpenC3/cosmos/tree/main/openc3/lib/openc3/interfaces/protocols)クラスを参照してください。
 :::
 
-:::info Python Protocol APIs
-Protocols should not `from openc3.script import *` since they are part of a COSMOS interface. They should use the COSMOS library code directly like [System](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/system/system.py), [Packet](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/packets/packet.py), [Bucket](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/utilities/bucket.py), [BinaryAccessor](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/accessors/binary_accessor.py), etc. When in doubt, consult the existing COSMOS [protocol](https://github.com/OpenC3/cosmos/tree/main/openc3/python/openc3/interfaces/protocols) classes.
+:::info Python プロトコルAPI
+プロトコルはCOSMOSインターフェースの一部であるため、`from openc3.script import *`を使用すべきではありません。代わりに、[System](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/system/system.py)、[Packet](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/packets/packet.py)、[Bucket](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/utilities/bucket.py)、[BinaryAccessor](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/accessors/binary_accessor.py)などのCOSMOSライブラリコードを直接使用する必要があります。不明な点がある場合は、既存のCOSMOSの[プロトコル](https://github.com/OpenC3/cosmos/tree/main/openc3/python/openc3/interfaces/protocols)クラスを参照してください。
 :::
 
-To really understand how Protocols work, you first must understand the logic within the base Interface class read and write methods.
+プロトコルがどのように機能するかを本当に理解するためには、まず基本インターフェースクラスの読み取りと書き込みのメソッド内のロジックを理解する必要があります。
 
-Let's first discuss the read method.
+まず、readメソッドについて説明しましょう。
 
-:::info Ruby Symbols, Python Strings
-In the following discussions an all caps word is a symbol in Ruby and a string in Python. So a reference to STOP means :STOP in Ruby and "STOP" in Python.
+:::info Rubyのシンボル、Pythonの文字列
+以下の説明では、大文字の単語はRubyではシンボル、Pythonでは文字列を表します。したがって、STOPへの参照はRubyでは:STOP、Pythonでは"STOP"を意味します。
 :::
 
 ![Interface Read Logic](/img/interface_read_logic.png)
 
-On _every_ call to read, an empty string "" is first passed down to each of the read Protocol's `read_data()` method _before_ new raw data is attempted to be read using the Interface's `read_interface()` method. This is a signal to Protocols that have cached up more than one packet worth of data to output those cached packets before any new data is read from the Interface. Typically no data will be cached up and one of the Protocols `read_data()` methods will return STOP in response to the empty string, indicating that more data is required to generate a packet. Each Protocol's `read_data()` method can return one of three things: data that will be passed down to any additional Protocols or turned into a Packet, STOP which means more data is required from the Interface for the Protocol to continue, or DISCONNECT which means that something has happened that requires disconnecting the Interface (and by default trying to reconnect). Each Protocol's `read_data()` method is passed the data that will eventually be turned into a packet and returns a possibly modified set of data. If the data passes through all Protocol's `read_data()` methods it is then converted into a COSMOS packet using the Interface's convert_data_to_packet() method. This packet is then run in a similar fashion through each Read Protocol's read_packet() method. This method has essentially the same return possibilities: a Packet (instead of data as in `read_data()`), STOP, or DISCONNECT. If the Packet makes it through all read_packet() methods then the Interface packet read counter is incremented and the Packet is returned to the Interface.
+readが_毎回_呼び出されるたびに、空の文字列""が最初に、インターフェースの`read_interface()`メソッドを使用して新しい生データの読み取りが試みられる_前に_、各読み取りプロトコルの`read_data()`メソッドに渡されます。これは、複数のパケット分のデータをキャッシュしているプロトコルに対して、インターフェースから新しいデータが読み取られる前にそれらのキャッシュされたパケットを出力するよう指示する信号です。通常、データはキャッシュされず、プロトコルの`read_data()`メソッドの1つが空の文字列に応答してSTOPを返し、パケットを生成するためにはさらにデータが必要であることを示します。各プロトコルの`read_data()`メソッドは、次の3つのいずれかを返すことができます：追加のプロトコルに渡されるか、パケットに変換されるデータ、プロトコルを続行するためにインターフェースからさらにデータが必要であることを意味するSTOP、またはインターフェースの切断（およびデフォルトでは再接続を試みる）が必要な何かが起こったことを意味するDISCONNECT。各プロトコルの`read_data()`メソッドには、最終的にパケットに変換されるデータが渡され、おそらく修正されたデータのセットが返されます。データがすべてのプロトコルの`read_data()`メソッドを通過すると、インターフェースのconvert_data_to_packet()メソッドを使用してCOSMOSパケットに変換されます。このパケットは同様の方法で各読み取りプロトコルのread_packet()メソッドを通過します。このメソッドは基本的に同じ戻り値の可能性を持っています：パケット（`read_data()`のデータではなく）、STOP、またはDISCONNECT。パケットがすべてのread_packet()メソッドを通過すると、インターフェースのパケット読み取りカウンターがインクリメントされ、パケットがインターフェースに返されます。
 
 ![Interface Write Logic](/img/interface_write_logic.png)
 
-The Interface write() method works very similarly to read. (It should be mentioned that by default write protocols run in the reverse order of read protocols. This makes sense because when reading you're typically stripping layers of data and when writing you're typically adding on layers in reverse order.)
+インターフェースのwrite()メソッドは、readと非常に似た働きをします。（デフォルトでは、書き込みプロトコルは読み取りプロトコルの逆順で実行されることに注意してください。これは、読み取り時にはデータの層を取り除き、書き込み時には逆順で層を追加するのが一般的なため理にかなっています。）
 
-First, the packet write counter is incremented. Then each write Protocol is given a chance to modify the packet by its write_packet() method being called. This method can either return a potentially modified packet, STOP, or DISCONNECT. If a write Protocol returns STOP no data will be written out the Interface and it is assumed that more packets are necessary before a final packet can be output. DISCONNECT will disconnect the Interface. If the packet makes it through all the write Protocol's write_packet() methods, then it is converted to binary data using the Interface's convert_packet_to_data() method. Next the write_data() method is called for each write Protocol giving it a chance to modify the lower level data. The same return options are available except a Ruby string of data is returned instead of a COSMOS packet. If the data makes it through all write_data() methods, then it is written out on the Interface using the write_interface() method. Afterwards, each Protocol's post_write_interface() method is called with both the final modified Packet, and the actual data written out to the Interface. This method allows follow-up such as waiting for a response after writing out a message.
+まず、パケット書き込みカウンターがインクリメントされます。次に、各書き込みプロトコルは、そのwrite_packet()メソッドが呼び出されることによってパケットを変更する機会が与えられます。このメソッドは、潜在的に修正されたパケット、STOP、またはDISCONNECTのいずれかを返すことができます。書き込みプロトコルがSTOPを返す場合、データはインターフェースに書き込まれず、最終的なパケットを出力する前にさらにパケットが必要であると想定されます。DISCONNECTはインターフェースを切断します。パケットがすべての書き込みプロトコルのwrite_packet()メソッドを通過すると、インターフェースのconvert_packet_to_data()メソッドを使用してバイナリデータに変換されます。次に、各書き込みプロトコルのwrite_data()メソッドが呼び出され、低レベルのデータを変更する機会が与えられます。COSMOSパケットではなくRuby文字列のデータが返される点を除いて、同じ戻りオプションが利用可能です。データがすべてのwrite_data()メソッドを通過すると、write_interface()メソッドを使用してインターフェースに書き込まれます。その後、各プロトコルのpost_write_interface()メソッドが、最終的に変更されたパケットと、インターフェースに実際に書き込まれたデータの両方で呼び出されます。このメソッドは、メッセージを書き出した後の応答を待つなどのフォローアップを可能にします。
 
-## Method discussions
+## メソッドの説明
 
-### initialize or **init**
+### initialize または **init**
 
-This is the constructor for your custom Protocol. It should always call super(allow_empty_data) to initialize the base Protocol class.
+これはカスタムプロトコルのコンストラクタです。基本プロトコルクラスを初期化するために、常にsuper(allow_empty_data)を呼び出す必要があります。
 
-Base class Ruby implementation:
+基本クラスのRuby実装:
 
 ```ruby
-# @param allow_empty_data [true/false] Whether STOP should be returned on empty data
+# @param allow_empty_data [true/false] 空データでSTOPを返すべきかどうか
 def initialize(allow_empty_data = false)
   @interface = nil
   @allow_empty_data = ConfigParser.handle_true_false(allow_empty_data)
@@ -329,7 +329,7 @@ def initialize(allow_empty_data = false)
 end
 ```
 
-Base class Python implementation:
+基本クラスのPython実装:
 
 ```python
 def __init__(self, allow_empty_data=None):
@@ -338,33 +338,33 @@ def __init__(self, allow_empty_data=None):
     self.reset()
 ```
 
-As you can see, every Protocol maintains state on at least two items. The interface variable holds the Interface class instance that the protocol is associated with. This is sometimes necessary to introspect details that only the Interface knows. allow_empty_data is a flag used by the `read_data(data)` method that is discussed later in this document.
+ご覧のように、すべてのプロトコルは少なくとも2つの項目に関して状態を維持しています。interface変数は、プロトコルが関連付けられているインターフェースクラスのインスタンスを保持しています。これは、インターフェースだけが知っている詳細を内省するために時々必要です。allow_empty_dataは、この文書の後半で説明する`read_data(data)`メソッドで使用されるフラグです。
 
 ### reset
 
-The reset method is used to reset internal protocol state when the Interface is connected and/or disconnected. This method should be used for common resetting logic. Connect and Disconnect specific logic are handled in the next two methods.
+resetメソッドは、インターフェースが接続および/または切断されたときに内部プロトコル状態をリセットするために使用されます。このメソッドは共通のリセットロジックに使用されるべきです。接続と切断の特定のロジックは、次の2つのメソッドで処理されます。
 
-Base class Ruby implementation:
+基本クラスのRuby実装:
 
 ```ruby
 def reset
 end
 ```
 
-Base class Python implementation:
+基本クラスのPython実装:
 
 ```python
 def reset(self):
     pass
 ```
 
-As you can see, the base class reset implementation doesn't do anything.
+ご覧のように、基本クラスのreset実装は何も行いません。
 
 ### connect_reset
 
-The connect_reset method is used to reset internal Protocol state each time the Interface is connected.
+connect_resetメソッドは、インターフェースが接続されるたびに内部プロトコル状態をリセットするために使用されます。
 
-Base class Ruby implementation:
+基本クラスのRuby実装:
 
 ```ruby
 def connect_reset
@@ -372,20 +372,20 @@ def connect_reset
 end
 ```
 
-Base class Python implementation:
+基本クラスのPython実装:
 
 ```python
 def connect_reset(self):
     self.reset()
 ```
 
-The base class connect_reset implementation just calls the reset method to ensure common reset logic is run.
+基本クラスのconnect_reset実装は、共通のリセットロジックが実行されることを確実にするために、単にresetメソッドを呼び出します。
 
 ### disconnect_reset
 
-The disconnect_reset method is used to reset internal Protocol state each time the Interface is disconnected.
+disconnect_resetメソッドは、インターフェースが切断されるたびに内部プロトコル状態をリセットするために使用されます。
 
-Base class Ruby implementation:
+基本クラスのRuby実装:
 
 ```ruby
 def disconnect_reset
@@ -393,29 +393,29 @@ def disconnect_reset
 end
 ```
 
-Base class Python implementation:
+基本クラスのPython実装:
 
 ```python
 def disconnect_reset(self):
     self.reset()
 ```
 
-The base class disconnect_reset implementation just calls the reset method to ensure common reset logic is run.
+基本クラスのdisconnect_reset実装は、共通のリセットロジックが実行されることを確実にするために、単にresetメソッドを呼び出します。
 
 ### read_data
 
-The read_data method is used to analyze and potentially modify any raw data read by an Interface. It takes one parameter as the current state of the data to be analyzed. It can return either a string of data, STOP, or DISCONNECT. If it returns a string, then it believes that data may be ready to be a full packet, and is ready for processing by any following Protocols. If STOP is returned then the Protocol believes it needs more data to complete a full packet. If DISCONNECT is returned then the Protocol believes the Interface should be disconnected (and typically automatically reconnected).
+read_dataメソッドは、インターフェースによって読み取られた生データを分析し、潜在的に変更するために使用されます。分析されるデータの現在の状態として1つのパラメータを取ります。データの文字列、STOP、またはDISCONNECTのいずれかを返すことができます。文字列を返す場合、データが完全なパケットになる準備ができていて、後続のプロトコルによる処理の準備ができていると考えられます。STOPが返された場合、プロトコルは完全なパケットを完成させるためにさらにデータが必要だと考えています。DISCONNECTが返された場合、プロトコルはインターフェースを切断すべき（そして通常は自動的に再接続を試みる）と考えています。
 
-Base class Ruby implementation:
+基本クラスのRuby実装:
 
 ```ruby
 def read_data(data)
   if (data.length <= 0)
     if @allow_empty_data.nil?
-      if @interface and @interface.read_protocols[-1] == self # Last read interface in chain with auto @allow_empty_data
+      if @interface and @interface.read_protocols[-1] == self # 自動@allow_empty_dataを持つチェーン内の最後の読み取りインターフェース
         return :STOP
       end
-    elsif !@allow_empty_data # Don't @allow_empty_data means STOP
+    elsif !@allow_empty_data # @allow_empty_dataがfalseの場合はSTOP
       return :STOP
     end
   end
@@ -423,28 +423,28 @@ def read_data(data)
 end
 ```
 
-Base class Python implementation:
+基本クラスのPython実装:
 
 ```python
 def read_data(self, data, extra=None):
     if len(data) <= 0:
         if self.allow_empty_data is None:
             if self.interface and self.interface.read_protocols[-1] == self:
-                # Last read interface in chain with auto self.allow_empty_data
+                # 自動self.allow_empty_dataを持つチェーン内の最後の読み取りインターフェース
                 return ("STOP", extra)
         elif self.allow_empty_data:
-            # Don't self.allow_empty_data means STOP
+            # self.allow_empty_dataがfalseの場合はSTOP
             return ("STOP", extra)
     return (data, extra)
 ```
 
-The base class implementation does nothing except return the data it was given. The only exception to this is when handling an empty string. If the allow_empty_data flag is false / False or if it is nil / None and the Protocol is the last in the chain, then the base implementation will return STOP to indicate that it is time to call the Interface `read_interface()` method to get more data. Blank strings are used to signal Protocols that they have an opportunity to return a cached packet.
+基本クラスの実装は、与えられたデータを返すこと以外は何もしません。唯一の例外は空の文字列を処理する場合です。allow_empty_dataフラグがfalseである場合、またはnilであり、プロトコルがチェーン内の最後である場合、基本実装はSTOPを返し、インターフェースの`read_interface()`メソッドを呼び出してさらにデータを取得する時であることを示します。空の文字列は、キャッシュされたパケットを返す機会があることをプロトコルに通知するために使用されます。
 
 ### read_packet
 
-The read_packet method is used to analyze and potentially modify a COSMOS packet before it is returned by the Interface. It takes one parameter as the current state of the packet to be analyzed. It can return either a COSMOS packet, STOP, or DISCONNECT. If it returns a COSMOS packet, then it believes that the packet is valid, should be returned, and is ready for processing by any following Protocols. If STOP is returned then the Protocol believes the packet should be silently dropped. If DISCONNECT is returned then the Protocol believes the Interface should be disconnected (and typically automatically reconnected). This method is where a Protocol would set the stored flag on a packet if it determines that the packet is stored telemetry instead of real-time telemetry.
+read_packetメソッドは、インターフェースによって返される前にCOSMOSパケットを分析し、潜在的に変更するために使用されます。分析されるパケットの現在の状態として1つのパラメータを取ります。COSMOSパケット、STOP、またはDISCONNECTのいずれかを返すことができます。COSMOSパケットを返す場合、パケットが有効であり、返されるべきであり、後続のプロトコルによる処理の準備ができていると考えられます。STOPが返された場合、プロトコルはパケットを静かに破棄すべきだと考えています。DISCONNECTが返された場合、プロトコルはインターフェースを切断すべき（そして通常は自動的に再接続を試みる）と考えています。このメソッドは、パケットがリアルタイムテレメトリではなく保存されたテレメトリであるとプロトコルが判断した場合に、パケットにstoredフラグを設定する場所です。
 
-Base class Ruby implementation:
+基本クラスのRuby実装:
 
 ```ruby
 def read_packet(packet)
@@ -452,20 +452,20 @@ def read_packet(packet)
 end
 ```
 
-Base class Python implementation:
+基本クラスのPython実装:
 
 ```python
 def read_packet(self, packet):
     return packet
 ```
 
-The base class always just returns the packet given.
+基本クラスは常に与えられたパケットをそのまま返します。
 
 ### write_packet
 
-The write_packet method is used to analyze and potentially modify a COSMOS packet before it is output by the Interface. It takes one parameter as the current state of the packet to be analyzed. It can return either a COSMOS packet, STOP, or DISCONNECT. If it returns a COSMOS packet, then it believes that the packet is valid, should be written out the Interface, and is ready for processing by any following Protocols. If STOP is returned then the Protocol believes the packet should be silently dropped. If DISCONNECT is returned then the Protocol believes the Interface should be disconnected (and typically automatically reconnected).
+write_packetメソッドは、インターフェースによって出力される前にCOSMOSパケットを分析し、潜在的に変更するために使用されます。分析されるパケットの現在の状態として1つのパラメータを取ります。COSMOSパケット、STOP、またはDISCONNECTのいずれかを返すことができます。COSMOSパケットを返す場合、パケットが有効であり、インターフェースに書き出されるべきであり、後続のプロトコルによる処理の準備ができていると考えられます。STOPが返された場合、プロトコルはパケットを静かに破棄すべきだと考えています。DISCONNECTが返された場合、プロトコルはインターフェースを切断すべき（そして通常は自動的に再接続を試みる）と考えています。
 
-Base class Ruby implementation:
+基本クラスのRuby実装:
 
 ```ruby
 def write_packet(packet)
@@ -473,20 +473,20 @@ def write_packet(packet)
 end
 ```
 
-Base class Python implementation:
+基本クラスのPython実装:
 
 ```python
 def write_packet(self, packet):
     return packet
 ```
 
-The base class always just returns the packet given.
+基本クラスは常に与えられたパケットをそのまま返します。
 
 ### write_data
 
-The write_data method is used to analyze and potentially modify data before it is written out by the Interface. It takes one parameter as the current state of the data to be analyzed and sent. It can return either a string of data, STOP, or DISCONNECT. If it returns a string of data, then it believes that the data is valid, should be written out the Interface, and is ready for processing by any following Protocols. If STOP is returned then the Protocol believes the data should be silently dropped. If DISCONNECT is returned then the Protocol believes the Interface should be disconnected (and typically automatically reconnected).
+write_dataメソッドは、インターフェースによって書き込まれる前にデータを分析し、潜在的に変更するために使用されます。分析および送信されるデータの現在の状態として1つのパラメータを取ります。データの文字列、STOP、またはDISCONNECTのいずれかを返すことができます。データの文字列を返す場合、データが有効であり、インターフェースに書き出されるべきであり、後続のプロトコルによる処理の準備ができていると考えられます。STOPが返された場合、プロトコルはデータを静かに破棄すべきだと考えています。DISCONNECTが返された場合、プロトコルはインターフェースを切断すべき（そして通常は自動的に再接続を試みる）と考えています。
 
-Base class Ruby implementation:
+基本クラスのRuby実装:
 
 ```ruby
 def write_data(data)
@@ -494,20 +494,20 @@ def write_data(data)
 end
 ```
 
-Base class Python implementation:
+基本クラスのPython実装:
 
 ```python
 def write_data(self, data, extra=None):
     return (data, extra)
 ```
 
-The base class always just returns the data given.
+基本クラスは常に与えられたデータをそのまま返します。
 
 ### post_write_interface
 
-The post_write_interface method is called after data has been written out the Interface. The typical use of this method is to provide a hook to implement command/response type interfaces where a response is always immediately expected in response to a command. It takes two parameters, the packet after all modifications by `write_packet()` and the data that was actually written out the Interface. It can return either the same pair of packet/data, STOP, or DISCONNECT. If it returns a packet/data pair then they are passed on to any other Protocols. If STOP is returned then the Interface write() call completes and no further Protocols `post_write_interface()` methods are called. If DISCONNECT is returned then the Protocol believes the Interface should be disconnected (and typically automatically reconnected). Note that only the first parameter "packet", is checked to be STOP, or DISCONNECT on the return.
+post_write_interfaceメソッドは、データがインターフェースに書き込まれた後に呼び出されます。このメソッドの典型的な使用法は、コマンドに対して常に即時の応答が期待されるコマンド/レスポンスタイプのインターフェースを実装するためのフックを提供することです。`write_packet()`によるすべての変更後のパケットと、インターフェースに実際に書き込まれたデータという2つのパラメータを取ります。同じパケット/データのペア、STOP、またはDISCONNECTのいずれかを返すことができます。パケット/データのペアを返す場合、それらは他のプロトコルに渡されます。STOPが返された場合、インターフェースのwrite()呼び出しが完了し、それ以上のプロトコルの`post_write_interface()`メソッドは呼び出されません。DISCONNECTが返された場合、プロトコルはインターフェースを切断すべき（そして通常は自動的に再接続を試みる）と考えています。戻り値の最初のパラメータ「packet」だけがSTOPまたはDISCONNECTとしてチェックされることに注意してください。
 
-Base class Ruby implementation:
+基本クラスのRuby実装:
 
 ```ruby
 def post_write_interface(packet, data)
@@ -515,38 +515,38 @@ def post_write_interface(packet, data)
 end
 ```
 
-Base class Python implementation:
+基本クラスのPython実装:
 
 ```python
 def post_write_interface(self, packet, data, extra=None):
     return (packet, data, extra)
 ```
 
-The base class always just returns the packet/data given.
+基本クラスは常に与えられたパケット/データをそのまま返します。
 
 ### protocol_cmd
 
-The protocol_cmd method is used to send commands to the protocol itself. This is useful to change protocol behavior during runtime. See [interface_protocol_cmd](../guides/scripting-api#interface_protocol_cmd) for more information.
+protocol_cmdメソッドは、プロトコル自体にコマンドを送信するために使用されます。これは実行時にプロトコルの動作を変更するのに役立ちます。詳細については[interface_protocol_cmd](../guides/scripting-api#interface_protocol_cmd)を参照してください。
 
-Base class Ruby implementation:
+基本クラスのRuby実装:
 
 ```ruby
 def protocol_cmd(cmd_name, *cmd_args)
-  # Default do nothing - Implemented by subclasses
+  # デフォルトでは何もしない - サブクラスによって実装される
   return false
 end
 ```
 
-Base class Python implementation:
+基本クラスのPython実装:
 
 ```python
 def protocol_cmd(self, cmd_name, *cmd_args):
-    # Default do nothing - Implemented by subclasses
+    # デフォルトでは何もしない - サブクラスによって実装される
     return False
 ```
 
-The base class does nothing as this is special functionality implemented by subclasses.
+これはサブクラスによって実装される特別な機能であるため、基本クラスは何も行いません。
 
-## Examples
+## 例
 
-Please see the linked [Ruby Protocol](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/interfaces/protocols) and [Python Protocol](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/interfaces/protocols) code for examples of the above methods in action.
+上記のメソッドの実際の例については、リンクされている[Ruby Protocol](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/interfaces/protocols)および[Python Protocol](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/interfaces/protocols)コードを参照してください。

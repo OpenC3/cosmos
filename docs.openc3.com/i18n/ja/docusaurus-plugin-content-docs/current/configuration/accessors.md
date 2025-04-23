@@ -1,50 +1,50 @@
 ---
 sidebar_position: 8
-title: Accessors
-description: Responsible for reading and writing data to a buffer
+title: アクセサー
+description: バッファへのデータの読み書きを担当
 sidebar_custom_props:
   myEmoji: ✏️
 ---
 
-Accessors are the low level code which know how to read and write data into a buffer. The buffer data then gets written out an interface which uses protocols to potentially change the data before it goes to the target. Accessors handle the different serializations formats such as binary (CCSDS), JSON, CBOR, XML, HTML, Protocol Buffers, etc.
+アクセサーは、バッファにデータを読み書きする方法を知っている低レベルコードです。バッファデータはその後、ターゲットに送信される前にデータを変更する可能性のあるプロトコルを使用するインターフェースに書き込まれます。アクセサーは、バイナリ（CCSDS）、JSON、CBOR、XML、HTML、Protocol Buffersなどのさまざまなシリアル化形式を処理します。
 
-For more information about how Accessors fit with Interfaces and Protocols see [Interoperability Without Standards](https://www.openc3.com/news/interoperability-without-standards).
+アクセサーがインターフェースやプロトコルとどのように適合するかについての詳細は、[標準なしの相互運用性](https://www.openc3.com/news/interoperability-without-standards)を参照してください。
 
-COSMOS provides the following built-in accessors: Binary, CBOR, Form, HTML, HTTP, JSON, Template, XML.
+COSMOSは以下の組み込みアクセサーを提供しています：Binary、CBOR、Form、HTML、HTTP、JSON、Template、XML。
 
-COSMOS Enterprise provides the following accessors: GEMS Ascii, Prometheus, Protocol Buffer.
+COSMOS Enterpriseは以下のアクセサーを提供しています：GEMS Ascii、Prometheus、Protocol Buffer。
 
-### Binary Accessor
+### バイナリアクセサー
 
-The Binary Accessor serializes data into a binary format when writing to the buffer. This is how many devices expect their data including those following the CCSDS standard. COSMOS handles converting signed and unsigned integers, floats, strings, etc. into their binary representation in the buffer. This includes handling big and little endian, bitfields, and variable length fields. Since binary is so common this is the default Accessor and will be used if no other accessors are given.
+バイナリアクセサーは、バッファに書き込む際にデータをバイナリ形式にシリアル化します。これは、CCSDSスタンダードに従うものを含む多くのデバイスがデータを期待する方法です。COSMOSは、符号付きおよび符号なし整数、浮動小数点、文字列などをバッファ内のバイナリ表現に変換します。これにはビッグエンディアンとリトルエンディアン、ビットフィールド、可変長フィールドの処理が含まれます。バイナリは非常に一般的であるため、これはデフォルトのアクセサーであり、他のアクセサーが指定されていない場合に使用されます。
 
-#### Commands
+#### コマンド
 
 ```ruby
 COMMAND INST COLLECT BIG_ENDIAN "Starts a collect"
-  ACCESSOR BinaryAccessor # Typically not explicitly defined because it is the default
+  ACCESSOR BinaryAccessor # デフォルトであるため通常は明示的に定義されません
   PARAMETER TYPE       64  16  UINT MIN MAX 0 "Collect type"
   PARAMETER DURATION   80  32  FLOAT 0.0 10.0 1.0 "Collect duration"
   PARAMETER OPCODE    112   8  UINT 0x0 0xFF 0xAB "Collect opcode"
 ```
 
-#### Telemetry
+#### テレメトリ
 
 ```ruby
 TELEMETRY INST HEALTH_STATUS BIG_ENDIAN "Health and status"
-  ACCESSOR BinaryAccessor # Typically not explicitly defined because it is the default
+  ACCESSOR BinaryAccessor # デフォルトであるため通常は明示的に定義されません
   APPEND_ITEM CMD_ACPT_CNT   32 UINT  "Command accept count"
   APPEND_ITEM COLLECTS       16 UINT  "Number of collects"
   APPEND_ITEM DURATION       32 FLOAT "Most recent collect duration"
 ```
 
-### CBOR Accessor
+### CBORアクセサー
 
-The Concise Binary Object Representation ([CBOR](https://en.wikipedia.org/wiki/CBOR)) Accessor serializes data into a binary format loosely based on JSON. It is a subclass of the JSON Accessor and is what COSMOS uses natively to store log files.
+Concise Binary Object Representation（[CBOR](https://en.wikipedia.org/wiki/CBOR)）アクセサーは、ゆるくJSONに基づいたバイナリ形式にデータをシリアル化します。これはJSONアクセサーのサブクラスであり、COSMOSがログファイルを保存するためにネイティブに使用するものです。
 
-#### Commands
+#### コマンド
 
-Using the CBOR Accessor for [command definitions](command) requires the use of [TEMPLATE_FILE](command#template_file) and [KEY](command#key) to allow the user to set values in the CBOR data. Note that the KEY values use [JSONPath](https://en.wikipedia.org/wiki/JSONPath).
+[コマンド定義](command)でCBORアクセサーを使用するには、[TEMPLATE_FILE](command#template_file)と[KEY](command#key)を使用して、ユーザーがCBORデータ内の値を設定できるようにする必要があります。KEYの値は[JSONPath](https://en.wikipedia.org/wiki/JSONPath)を使用していることに注意してください。
 
 ```ruby
 COMMAND CBOR CBORCMD BIG_ENDIAN "CBOR Accessor Command"
@@ -66,7 +66,7 @@ COMMAND CBOR CBORCMD BIG_ENDIAN "CBOR Accessor Command"
     KEY $.more.item5
 ```
 
-Creating the template file requires the use of the Ruby or Python CBOR libraries. Here is an example from Ruby:
+テンプレートファイルを作成するには、RubyまたはPythonのCBORライブラリを使用する必要があります。Rubyからの例を以下に示します：
 
 ```ruby
 require 'cbor'
@@ -76,9 +76,9 @@ File.open("_cbor_template.bin", 'wb') do |file|
 end
 ```
 
-#### Telemetry
+#### テレメトリ
 
-Using the CBOR Accessor for [telemetry definitions](telemetry) only requires the use of [KEY](command#key) to pull values from the CBOR data. Note that the KEY values use [JSONPath](https://en.wikipedia.org/wiki/JSONPath).
+[テレメトリ定義](telemetry)でCBORアクセサーを使用するには、[KEY](command#key)を使用してCBORデータから値を取得するだけで済みます。KEYの値は[JSONPath](https://en.wikipedia.org/wiki/JSONPath)を使用していることに注意してください。
 
 ```ruby
 TELEMETRY CBOR CBORTLM BIG_ENDIAN "CBOR Accessor Telemetry"
@@ -102,13 +102,13 @@ TELEMETRY CBOR CBORTLM BIG_ENDIAN "CBOR Accessor Telemetry"
     KEY $.more.item5
 ```
 
-### Form Accessor
+### フォームアクセサー
 
-The Form Accessor is typically used with the [HTTP Client](interfaces#http-client-interface) interface to submit forms to a remote HTTP Server.
+フォームアクセサーは通常、[HTTPクライアント](interfaces#httpクライアントインターフェース)インターフェースで使用され、リモートHTTPサーバーにフォームを送信します。
 
-#### Commands
+#### コマンド
 
-Using the Form Accessor for [command definitions](command) requires the use of [KEY](command#key) to allow the user to set values in the HTTP form. Note that the KEY values use [XPath](https://en.wikipedia.org/wiki/XPath).
+[コマンド定義](command)でフォームアクセサーを使用するには、[KEY](command#key)を使用して、ユーザーがHTTPフォーム内の値を設定できるようにする必要があります。KEYの値は[XPath](https://en.wikipedia.org/wiki/XPath)を使用していることに注意してください。
 
 ```ruby
 COMMAND FORM FORMCMD BIG_ENDIAN "Form Accessor Command"
@@ -120,9 +120,9 @@ COMMAND FORM FORMCMD BIG_ENDIAN "Form Accessor Command"
     UNITS CELSIUS C
 ```
 
-#### Telemetry
+#### テレメトリ
 
-Using the Form Accessor for [telemetry definitions](telemetry) only requires the use of [KEY](command#key) to pull values from the HTTP response data. Note that the KEY values use [XPath](https://en.wikipedia.org/wiki/XPath).
+[テレメトリ定義](telemetry)でフォームアクセサーを使用するには、[KEY](command#key)を使用してHTTPレスポンスデータから値を取得するだけで済みます。KEYの値は[XPath](https://en.wikipedia.org/wiki/XPath)を使用していることに注意してください。
 
 ```ruby
 TELEMETRY FORM FORMTLM BIG_ENDIAN "Form Accessor Telemetry"
@@ -133,26 +133,26 @@ TELEMETRY FORM FORMTLM BIG_ENDIAN "Form Accessor Telemetry"
     KEY $.item1
 ```
 
-### HTML Accessor
+### HTMLアクセサー
 
-The HTML Accessor is typically used with the [HTTP Client](interfaces#http-client-interface) interface to parse a web page.
+HTMLアクセサーは通常、[HTTPクライアント](interfaces#httpクライアントインターフェース)インターフェースでウェブページを解析するために使用されます。
 
-For a full example see [openc3-cosmos-http-get](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-http-get).
+完全な例については、[openc3-cosmos-http-get](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-http-get)を参照してください。
 
-#### Commands
+#### コマンド
 
-HTML Accessor is not typically used for commands but it would be similar to Telemetry using XPath Keys.
+HTMLアクセサーは通常コマンドには使用されませんが、XPathキーを使用するテレメトリと同様になります。
 
-#### Telemetry
+#### テレメトリ
 
 ```ruby
 TELEMETRY HTML RESPONSE BIG_ENDIAN "Search results"
-  # Typically you use the HtmlAccessor to parse out the page that is returned
-  # HtmlAccessor is passed to HttpAccessor and used internally
+  # 通常、返されるページを解析するためにHtmlAccessorを使用します
+  # HtmlAccessorはHttpAccessorに渡され、内部で使用されます
   ACCESSOR HttpAccessor HtmlAccessor
   APPEND_ITEM NAME 240 STRING
-    # Keys were located by doing a manual search and then inspecting the page
-    # Right click the text you're looking for and then Copy -> Copy XPath
+    # キーは手動検索を行い、ページを調査して見つけました
+    # 探しているテキストを右クリックし、コピー -> XPathをコピー
     KEY normalize-space(//main/div/a[2]/span/h2/text())
   APPEND_ITEM DESCRIPTION 480 STRING
     KEY //main/div/a[2]/span/p/text()
@@ -162,71 +162,71 @@ TELEMETRY HTML RESPONSE BIG_ENDIAN "Search results"
     KEY normalize-space(//main/div/a[2]/p/text())
 ```
 
-### HTTP Accessor
+### HTTPアクセサー
 
-HTTP Accessor is typically used with the [HTTP Client](interfaces#http-client-interface) or [HTTP Server](interfaces#http-server-interface) interface to parse a web page. It takes another accessor to do the low level reading and writing of the items. The default accessor is FormAccessor. HtlmAccessor, XmlAccessor and JsonAccessor are also common for manipulating HTML, XML and JSON respectively.
+HTTPアクセサーは通常、[HTTPクライアント](interfaces#httpクライアントインターフェース)または[HTTPサーバー](interfaces#httpサーバーインターフェース)インターフェースでウェブページを解析するために使用されます。アイテムの低レベルの読み書きを行うために別のアクセサーを取ります。デフォルトのアクセサーはFormAccessorです。HtmlAccessor、XmlAccessor、JsonAccessorもHTML、XML、JSONをそれぞれ操作するために一般的です。
 
-For a full example see [openc3-cosmos-http-get](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-http-get).
+完全な例については、[openc3-cosmos-http-get](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-http-get)を参照してください。
 
-#### Commands
+#### コマンド
 
-When used with the HTTP Client Interface, HTTP Accessor utilizes the following command parameters:
+HTTPクライアントインターフェースで使用する場合、HTTPアクセサーは以下のコマンドパラメータを利用します：
 
-| Parameter         | Description                                                                                          |
-| ----------------- | ---------------------------------------------------------------------------------------------------- |
-| HTTP_PATH         | requests at this path                                                                                |
-| HTTP_METHOD       | request method (GET, POST, DELETE)                                                                   |
-| HTTP_PACKET       | telemetry packet to store the response                                                               |
-| HTTP_ERROR_PACKET | telemetry packet to store error responses (status code >= 300)                                       |
-| HTTP_QUERY_XXX    | sets a value in the params passed to the request (XXX => value, or KEY => value), see example below  |
-| HTTP_HEADER_XXX   | sets a value in the headers passed to the request (XXX => value, or KEY => value), see example below |
+| パラメータ         | 説明                                                                                                |
+| ----------------- | -------------------------------------------------------------------------------------------------- |
+| HTTP_PATH         | このパスでリクエスト                                                                                 |
+| HTTP_METHOD       | リクエストメソッド（GET、POST、DELETE）                                                               |
+| HTTP_PACKET       | レスポンスを格納するテレメトリパケット                                                                |
+| HTTP_ERROR_PACKET | エラーレスポンス（ステータスコード >= 300）を格納するテレメトリパケット                               |
+| HTTP_QUERY_XXX    | リクエストに渡されるパラメータに値を設定（XXX => 値、またはKEY => 値）、下の例を参照                   |
+| HTTP_HEADER_XXX   | リクエストに渡されるヘッダーに値を設定（XXX => 値、またはKEY => 値）、下の例を参照                    |
 
-When used with the HTTP Server Interface, HTTP Accessor utilizes the following command parameters:
+HTTPサーバーインターフェースで使用する場合、HTTPアクセサーは以下のコマンドパラメータを利用します：
 
-| Parameter       | Description                                                                             |
-| --------------- | --------------------------------------------------------------------------------------- |
-| HTTP_STATUS     | status to return to clients                                                             |
-| HTTP_PATH       | mount point for server                                                                  |
-| HTTP_PACKET     | telemetry packet to store the request                                                   |
-| HTTP_HEADER_XXX | sets a value in the response headers (XXX => value, or KEY => value), see example below |
+| パラメータ       | 説明                                                                                   |
+| --------------- | ------------------------------------------------------------------------------------- |
+| HTTP_STATUS     | クライアントに返すステータス                                                            |
+| HTTP_PATH       | サーバーのマウントポイント                                                              |
+| HTTP_PACKET     | リクエストを格納するテレメトリパケット                                                   |
+| HTTP_HEADER_XXX | レスポンスヘッダーに値を設定（XXX => 値、またはKEY => 値）、下の例を参照                 |
 
 ```ruby
 COMMAND HTML SEARCH BIG_ENDIAN "Searches Rubygems.org"
-  # Note FormAccessor is the default argument for HttpAccessor so it is typically not specified
+  # FormAccessorはHttpAccessorのデフォルト引数であるため、通常は指定されません
   ACCESSOR HttpAccessor
   PARAMETER HTTP_PATH 0 0 DERIVED nil nil "/search"
   PARAMETER HTTP_METHOD 0 0 DERIVED nil nil "GET"
   PARAMETER HTTP_PACKET 0 0 DERIVED nil nil "RESPONSE"
   PARAMETER HTTP_ERROR_PACKET 0 0 DERIVED nil nil "ERROR"
-  # This sets parameter query=openc3+cosmos
-  # Note the parameter name 'query' based on HTTP_QUERY_QUERY
+  # これはパラメータquery=openc3+cosmosを設定します
+  # HTTP_QUERY_QUERYに基づいてパラメータ名「query」に注目
   PARAMETER HTTP_QUERY_QUERY 0 0 DERIVED nil nil "openc3 cosmos"
     GENERIC_READ_CONVERSION_START
       value.split.join('+')
     GENERIC_READ_CONVERSION_END
-  # This sets header Content-Type=text/html
-  # Note that TYPE is not used since the KEY is specified
+  # これはヘッダーContent-Type=text/htmlを設定します
+  # KEYが指定されているためTYPEは使用されません
   PARAMETER HTTP_HEADER_TYPE 0 0 DERIVED nil nil "text/html"
     KEY Content-Type
 ```
 
-#### Telemetry
+#### テレメトリ
 
-HTTP Accessor utilizes the following telemetry items:
+HTTPアクセサーは以下のテレメトリアイテムを利用します：
 
-| Parameter    | Description                                                                                                           |
-| ------------ | --------------------------------------------------------------------------------------------------------------------- |
-| HTTP_STATUS  | the request status                                                                                                    |
-| HTTP_HEADERS | hash of the response headers                                                                                          |
-| HTTP_REQUEST | optional hash which returns all the request parameters, see [HTTP Client Interface](interfaces#http-client-interface) |
+| パラメータ     | 説明                                                                                                    |
+| ------------- | ------------------------------------------------------------------------------------------------------- |
+| HTTP_STATUS   | リクエストステータス                                                                                     |
+| HTTP_HEADERS  | レスポンスヘッダーのハッシュ                                                                             |
+| HTTP_REQUEST  | すべてのリクエストパラメータを返すオプショナルハッシュ、[HTTPクライアントインターフェース](interfaces#httpクライアントインターフェース)を参照 |
 
 ```ruby
 TELEMETRY HTML RESPONSE BIG_ENDIAN "Search results"
-  # Typically you use the HtmlAccessor to parse out the page that is returned
+  # 通常、返されるページを解析するためにHtmlAccessorを使用します
   ACCESSOR HttpAccessor HtmlAccessor
   APPEND_ITEM NAME 240 STRING
-    # Keys were located by doing a manual search and then inspecting the page
-    # Right click the text you're looking for and then Copy -> Copy XPath
+    # キーは手動検索を行い、ページを調査して見つけました
+    # 探しているテキストを右クリックし、コピー -> XPathをコピー
     KEY normalize-space(//main/div/a[2]/span/h2/text())
   APPEND_ITEM DESCRIPTION 480 STRING
     KEY //main/div/a[2]/span/p/text()
@@ -236,15 +236,15 @@ TELEMETRY HTML RESPONSE BIG_ENDIAN "Search results"
     KEY normalize-space(//main/div/a[2]/p/text())
 ```
 
-### JSON Accessor
+### JSONアクセサー
 
-The JSON Accessor serializes data into JavaScript Object Notation ([JSON](https://en.wikipedia.org/wiki/JSON)). JSON is a data interchange format that uses human-readable text to transmit data consisting of key value pairs and arrays.
+JSONアクセサーは、JavaScript Object Notation（[JSON](https://en.wikipedia.org/wiki/JSON)）形式にデータをシリアル化します。JSONは、キーと値のペアや配列からなるデータを送信するために、人間が読める形式のテキストを使用するデータ交換形式です。
 
-For a full example see [openc3-cosmos-accessor-test](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-accessor-test).
+完全な例については、[openc3-cosmos-accessor-test](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-accessor-test)を参照してください。
 
-#### Commands
+#### コマンド
 
-Using the JSON Accessor for [command definitions](command) requires the use of [TEMPLATE](command#template) and [KEY](command#key) to allow the user to set values in the JSON data. Note that the KEY values use [JSONPath](https://en.wikipedia.org/wiki/JSONPath).
+[コマンド定義](command)でJSONアクセサーを使用するには、[TEMPLATE](command#template)と[KEY](command#key)を使用して、ユーザーがJSONデータ内の値を設定できるようにする必要があります。KEYの値は[JSONPath](https://en.wikipedia.org/wiki/JSONPath)を使用していることに注意してください。
 
 ```ruby
 COMMAND JSON JSONCMD BIG_ENDIAN "JSON Accessor Command"
@@ -266,9 +266,9 @@ COMMAND JSON JSONCMD BIG_ENDIAN "JSON Accessor Command"
     KEY $.more.item5
 ```
 
-#### Telemetry
+#### テレメトリ
 
-Using the JSON Accessor for [telemetry definitions](telemetry) only requires the use of [KEY](command#key) to pull values from the JSON data. Note that the KEY values use [JSONPath](https://en.wikipedia.org/wiki/JSONPath).
+[テレメトリ定義](telemetry)でJSONアクセサーを使用するには、[KEY](command#key)を使用してJSONデータから値を取得するだけで済みます。KEYの値は[JSONPath](https://en.wikipedia.org/wiki/JSONPath)を使用していることに注意してください。
 
 ```ruby
 TELEMETRY JSON JSONTLM BIG_ENDIAN "JSON Accessor Telemetry"
@@ -292,55 +292,55 @@ TELEMETRY JSON JSONTLM BIG_ENDIAN "JSON Accessor Telemetry"
     KEY $.more.item5
 ```
 
-### Template Accessor
+### テンプレートアクセサー
 
-The Template Accessor is commonly used with string based command / response protocols such as the [CmdResponseProtocol](protocols#cmdresponse-protocol).
+テンプレートアクセサーは、[CmdResponseProtocol](protocols#cmdresponse-protocol)などの文字列ベースのコマンド/レスポンスプロトコルでよく使用されます。
 
-For a full example see [openc3-cosmos-scpi-power-supply](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-scpi-power-supply) in the COSMOS Enterprise Plugins.
+完全な例については、COSMOS Enterprise Pluginsの[openc3-cosmos-scpi-power-supply](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-scpi-power-supply)を参照してください。
 
-#### Commands
+#### コマンド
 
-Using the Template Accessor for [command definitions](command) requires the use of [TEMPLATE](command#template) to define a string template with optional parameters that are populated using the command parameters.
+[コマンド定義](command)でテンプレートアクセサーを使用するには、[TEMPLATE](command#template)を使用して、コマンドパラメータを使用して入力されるオプションパラメータを持つ文字列テンプレートを定義する必要があります。
 
 ```ruby
-# Some commands don't have any parameters and the template is sent as-is
+# 一部のコマンドにはパラメータがなく、テンプレートがそのまま送信されます
 COMMAND SCPI_PS RESET BIG_ENDIAN "Reset the power supply state"
   ACCESSOR TemplateAccessor
   TEMPLATE "*RST"
 
-# This command has two parameters in the template defined by <XXX>
+# このコマンドには<XXX>で定義された2つのパラメータがテンプレートにあります
 COMMAND SCPI_PS VOLTAGE BIG_ENDIAN "Sets the voltage of a power supply channel"
   ACCESSOR TemplateAccessor
-  # <VOLTAGE> and <CHANNEL> are replaced by the parameter values
+  # <VOLTAGE>と<CHANNEL>はパラメータ値に置き換えられます
   TEMPLATE "VOLT <VOLTAGE>, (@<CHANNEL>)"
   APPEND_PARAMETER VOLTAGE 32 FLOAT MIN MAX 0.0 "Voltage Setting"
     UNITS VOLTS V
   APPEND_PARAMETER CHANNEL 8 UINT 1 2 1 "Output Channel"
 ```
 
-#### Telemetry
+#### テレメトリ
 
-Using the Template Accessor for [telemetry definitions](telemetry) requires the use of [TEMPLATE](telemetry#template) to define a template where telemetry values are pulled from the string buffer.
+[テレメトリ定義](telemetry)でテンプレートアクセサーを使用するには、[TEMPLATE](telemetry#template)を使用して、テレメトリ値が文字列バッファから取得されるテンプレートを定義する必要があります。
 
 ```ruby
 TELEMETRY SCPI_PS STATUS BIG_ENDIAN "Power supply status"
   ACCESSOR TemplateAccessor
-  # The raw string from the target is something like "1.234,2.345"
-  # String is split by the comma and pushed into MEAS_VOLTAGE_1, MEAS_VOLTAGE_2
+  # ターゲットからの生の文字列は "1.234,2.345"のようなものです
+  # 文字列はカンマで分割され、MEAS_VOLTAGE_1、MEAS_VOLTAGE_2に入れられます
   TEMPLATE "<MEAS_VOLTAGE_1>,<MEAS_VOLTAGE_2>"
   APPEND_ITEM MEAS_VOLTAGE_1 32 FLOAT "Current Reading for Channel 1"
   APPEND_ITEM MEAS_VOLTAGE_2 32 FLOAT "Current Reading for Channel 2"
 ```
 
-### XML Accessor
+### XMLアクセサー
 
-The XML Accessor is typically used with the [HTTP Client](interfaces#http-client-interface) interface to send and receive XML from a web server.
+XMLアクセサーは通常、[HTTPクライアント](interfaces#httpクライアントインターフェース)インターフェースでウェブサーバーとXMLを送受信するために使用されます。
 
-For a full example see [openc3-cosmos-accessor-test](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-accessor-test).
+完全な例については、[openc3-cosmos-accessor-test](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-accessor-test)を参照してください。
 
-#### Commands
+#### コマンド
 
-Using the XML Accessor for [command definitions](command) requires the use of [TEMPLATE](command#template) and [KEY](command#key) to allow the user to set values in the XML data. Note that the KEY values use [XPath](https://en.wikipedia.org/wiki/XPath).
+[コマンド定義](command)でXMLアクセサーを使用するには、[TEMPLATE](command#template)と[KEY](command#key)を使用して、ユーザーがXMLデータ内の値を設定できるようにする必要があります。KEYの値は[XPath](https://en.wikipedia.org/wiki/XPath)を使用していることに注意してください。
 
 ```ruby
 COMMAND XML XMLCMD BIG_ENDIAN "XML Accessor Command"
@@ -360,14 +360,14 @@ COMMAND XML XMLCMD BIG_ENDIAN "XML Accessor Command"
     KEY "/html/body/div/ul/li[2]/text()"
 ```
 
-#### Telemetry
+#### テレメトリ
 
-Using the XML Accessor for [telemetry definitions](telemetry) only requires the use of [KEY](command#key) to pull values from the XML data. Note that the KEY values use [XPath](https://en.wikipedia.org/wiki/XPath).
+[テレメトリ定義](telemetry)でXMLアクセサーを使用するには、[KEY](command#key)を使用してXMLデータから値を取得するだけで済みます。KEYの値は[XPath](https://en.wikipedia.org/wiki/XPath)を使用していることに注意してください。
 
 ```ruby
 TELEMETRY XML XMLTLM BIG_ENDIAN "XML Accessor Telemetry"
   ACCESSOR XmlAccessor
-  # Template is not required for telemetry, but is useful for simulation
+  # テンプレートはテレメトリには必須ではありませんが、シミュレーションに役立ちます
   TEMPLATE '<html><head><script src="3"></script><noscript>101</noscript></head><body><img src="12"/><div><ul><li>3.14</li><li>Example</li></ul></div><div></div></body></html>'
   APPEND_ID_ITEM ID_ITEM 32 INT 3 "Int Item"
     KEY "/html/head/script/@src"
@@ -388,23 +388,23 @@ TELEMETRY XML XMLTLM BIG_ENDIAN "XML Accessor Telemetry"
 
 ### GEMS Ascii (Enterprise)
 
-The GemsAsciiAccessor inherits from [TemplateAccessor](accessors#template-accessor) to escape the following characters in outgoing commands: "&" => "&a", "|" => "&b", "," => "&c", and ";" => "&d" and reverse them in telemetry. See the [GEMS Spec](https://www.omg.org/spec/GEMS/1.3/PDF) for more information.
+GemsAsciiAccessorは[TemplateAccessor](accessors#template-accessor)を継承して、送信コマンドの以下の文字をエスケープします：「&」=>「&a」、「|」=>「&b」、「,」=>「&c」、「;」=>「&d」、そしてテレメトリではその逆変換を行います。詳細については[GEMSの仕様](https://www.omg.org/spec/GEMS/1.3/PDF)を参照してください。
 
-For a full example, please see the [openc3-cosmos-gems-interface](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-gems-interface) in the COSMOS Enterprise Plugins.
+完全な例については、COSMOS Enterprise Pluginsの[openc3-cosmos-gems-interface](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-gems-interface)を参照してください。
 
 ### Prometheus (Enterprise)
 
-The PrometheusAccessor is used to read from a Prometheus endpoint and can automatically parse the results into a packet. The PrometheusAccessor is currently only implemented in Ruby.
+PrometheusAccessorはPrometheusエンドポイントから読み取り、結果を自動的にパケットに解析することができます。PrometheusAccessorは現在Rubyでのみ実装されています。
 
-For a full example, please see the [openc3-cosmos-prometheus-metrics](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-prometheus-metrics) in the COSMOS Enterprise Plugins.
+完全な例については、COSMOS Enterprise Pluginsの[openc3-cosmos-prometheus-metrics](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-prometheus-metrics)を参照してください。
 
 ### Protocol Buffer (Enterprise)
 
-The ProtoAccessor is used to read and write protocol buffers. It is primarily used in conjunction with the [GrpcInterface](interfaces#grpc-interface-enterprise). The ProtoAccessor is currently only implemented in Ruby.
+ProtoAccessorはプロトコルバッファの読み書きに使用されます。主に[GrpcInterface](interfaces#grpc-interface-enterprise)と組み合わせて使用されます。ProtoAccessorは現在Rubyでのみ実装されています。
 
-| Parameter | Description                                        | Required |
-| --------- | -------------------------------------------------- | -------- |
-| Filename  | File generated by the protocol buffer compiler     | Yes      |
-| Class     | Class to use when encoding and decoding the buffer | Yes      |
+| パラメータ | 説明                                           | 必須 |
+| --------- | ---------------------------------------------- | ---- |
+| Filename  | プロトコルバッファコンパイラによって生成されたファイル | はい  |
+| Class     | バッファのエンコードとデコードに使用するクラス     | はい  |
 
-For a full example, please see the [openc3-cosmos-proto-target](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-proto-target) in the COSMOS Enterprise Plugins.
+完全な例については、COSMOS Enterprise Pluginsの[openc3-cosmos-proto-target](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-proto-target)を参照してください。

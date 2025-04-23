@@ -1,210 +1,210 @@
 ---
 sidebar_position: 5
-title: Telemetry
-description: Telemetry definition file format and keywords
+title: テレメトリ
+description: テレメトリ定義ファイルの形式とキーワード
 sidebar_custom_props:
   myEmoji: 📡
 ---
 
 <!-- Be sure to edit _telemetry.md because telemetry.md is a generated file -->
 
-## Telemetry Definition Files
+## テレメトリ定義ファイル
 
-Telemetry definition files define the telemetry packets that can be received and processed from COSMOS targets. One large file can be used to define the telemetry packets, or multiple files can be used at the user's discretion. Telemetry definition files are placed in the target's cmd_tlm directory and are processed alphabetically. Therefore if you have some telemetry files that depend on others, e.g. they override or extend existing telemetry, they must be named last. The easiest way to do this is to add an extension to an existing file name. For example, if you already have tlm.txt you can create tlm_override.txt for telemetry that depends on the definitions in tlm.txt. Note that due to the way the [ASCII Table](http://www.asciitable.com/) is structured, files beginning with capital letters are processed before lower case letters.
+テレメトリ定義ファイルは、COSMOSターゲットから受信および処理できるテレメトリパケットを定義します。テレメトリパケットを定義するために1つの大きなファイルを使用することも、ユーザーの判断で複数のファイルを使用することもできます。テレメトリ定義ファイルはターゲットのcmd_tlmディレクトリに配置され、アルファベット順に処理されます。したがって、既存のテレメトリをオーバーライドまたは拡張するなど、他のテレメトリファイルに依存するテレメトリファイルがある場合は、最後に名前を付ける必要があります。最も簡単な方法は、既存のファイル名に拡張子を追加することです。例えば、すでにtlm.txtがある場合、tlm.txtの定義に依存するテレメトリにはtlm_override.txtを作成できます。[ASCII表](http://www.asciitable.com/)の構造上、大文字で始まるファイルは小文字で始まるファイルよりも先に処理されることに注意してください。
 
-When defining telemetry items you can choose from the following data types: INT, UINT, FLOAT, STRING, BLOCK. These correspond to integers, unsigned integers, floating point numbers, strings and binary blocks of data. Within COSMOS, the only difference between a STRING and BLOCK is when COSMOS reads a STRING type it stops reading when it encounters a null byte (0). This shows up when displaying the value in Packet Viewer or Tlm Viewer and in the output of Data Extractor. You should strive to store non-ASCII data inside BLOCK items and ASCII strings in STRING items.
+テレメトリ項目を定義する際、以下のデータ型から選択できます：INT、UINT、FLOAT、STRING、BLOCK。これらはそれぞれ整数、符号なし整数、浮動小数点数、文字列、データのバイナリブロックに対応します。COSMOSでは、STRINGとBLOCKの唯一の違いは、COSMOSがSTRINGタイプを読み取るとき、ヌルバイト（0）に遭遇すると読み取りを停止することです。これはPacket ViewerやTlm Viewerで値を表示する際や、Data Extractorの出力に表示されます。非ASCII文字データはBLOCK項目内に、ASCII文字列はSTRING項目内に保存するよう努めてください。
 
-:::info Printing Data
+:::info データの表示
 
-Most data types can be printed in a COSMOS script simply by doing <code>print(tlm("TGT PKT ITEM"))</code>. However, if the ITEM is a BLOCK data type and contains binary (non-ASCII) data then that won't work. COSMOS comes with a built-in method called <code>formatted</code> to help you view binary data. If ITEM is a BLOCK type containing binary try <code>puts tlm("TGT PKT ITEM").formatted</code> (Ruby) and <code>print(formatted(tlm("TGT PKT ITEM")))</code> (Python) which will print the bytes out as hex.
+ほとんどのデータ型は、COSMOSスクリプトで <code>print(tlm("TGT PKT ITEM"))</code> とするだけで表示できます。ただし、ITEMがBLOCKデータ型でバイナリ（非ASCII）データを含む場合は、これは機能しません。COSMOSにはバイナリデータを表示するための <code>formatted</code> という組み込みメソッドがあります。ITEMがバイナリを含むBLOCKタイプの場合は、<code>puts tlm("TGT PKT ITEM").formatted</code>（Ruby）や<code>print(formatted(tlm("TGT PKT ITEM")))</code>（Python）を試してください。これによりバイトが16進数として表示されます。
 :::
 
-### ID Items
+### ID項目
 
-All packets require identification items so the incoming data can be matched to a packet structure. These items are defined using the [ID_ITEM](telemetry.md#id_item) and [APPEND_ID_ITEM](telemetry.md#append_id_item). As data is read from the interface and refined by the protocol, the resulting packet is identified by matching all the ID fields. Note that ideally all packets in a particular target should use the exact same bit offset, bit size, and data type to identify. If this is not the case, you must set [TLM_UNIQUE_ID_MODE](target.md#tlm_unique_id_mode) in the target.txt file which incurs a performance penalty on every packet identification.
+すべてのパケットには識別項目が必要で、受信データをパケット構造に一致させることができます。これらの項目は[ID_ITEM](telemetry.md#id_item)と[APPEND_ID_ITEM](telemetry.md#append_id_item)を使用して定義します。データがインターフェースから読み取られ、プロトコルによって精製されると、すべてのIDフィールドを一致させることで結果のパケットが識別されます。理想的には、特定のターゲット内のすべてのパケットは、識別に全く同じビットオフセット、ビットサイズ、データ型を使用する必要があります。そうでない場合は、target.txtファイルに[TLM_UNIQUE_ID_MODE](target.md#tlm_unique_id_mode)を設定する必要がありますが、これはすべてのパケット識別でパフォーマンスペナルティが発生します。
 
-### Variable Sized Items
+### 可変サイズ項目
 
-COSMOS specifies a variable sized item with a bit size of 0. When a packet is identified, all other data that isn't explicitly defined will be put into the variable sized item. These items are typically used for packets containing memory dumps which vary in size depending on the number of bytes dumped. Note that there can only be one variable sized item per packet.
+COSMOSはビットサイズが0の可変サイズ項目を指定します。パケットが識別されると、明示的に定義されていない他のすべてのデータは可変サイズ項目に格納されます。これらの項目は通常、ダンプされるバイト数に応じてサイズが変化するメモリダンプを含むパケットに使用されます。パケットごとに可変サイズの項目は1つしか存在できないことに注意してください。
 
-### Derived Items
+### 派生項目
 
-COSMOS has a concept of a derived item which is a telemetry item that doesn't actually exist in the binary data. Derived items are typically computed based on other telemetry items. COSMOS derived items are very similar to real items except they use the special DERIVED data type. Here is how a derived item might look in a telemetry definition.
+COSMOSには、実際にはバイナリデータに存在しないテレメトリ項目である派生項目の概念があります。派生項目は通常、他のテレメトリ項目に基づいて計算されます。COSMOS派生項目は実際の項目と非常に似ていますが、特別なDERIVEDデータ型を使用します。テレメトリ定義での派生項目の例を以下に示します。
 
 ```ruby
 ITEM TEMP_AVERAGE 0 0 DERIVED "Average of TEMP1, TEMP2, TEMP3, TEMP4"
 ```
 
-Note the bit offset and bit size of 0 and the data type of DERIVED. For this reason DERIVED items should be declared using ITEM rather than APPEND_ITEM. They can be defined anywhere in the packet definition but are typically placed at the end. The ITEM definition must be followed by a CONVERSION keyword, e.g. [READ_CONVERSION](telemetry.md#read_conversion), to generate the value.
+ビットオフセットとビットサイズが0で、データ型がDERIVEDであることに注意してください。このため、派生項目はAPPEND_ITEMではなくITEMを使用して宣言する必要があります。派生項目はパケット定義のどこにでも定義できますが、通常は末尾に配置されます。ITEM定義の後には、値を生成するための[READ_CONVERSION](telemetry.md#read_conversion)などの変換キーワードが続く必要があります。
 
-### Received Time and Packet Time
+### 受信時間とパケット時間
 
-COSMOS automatically creates several telemetry items on every packet: PACKET_TIMESECONDS, PACKET_TIMEFORMATTED, RECEIVED_COUNT, RECEIVED_TIMEFORMATTED, and RECEIVED_TIMESECONDS.
+COSMOSは自動的にすべてのパケットに以下のテレメトリ項目を作成します：PACKET_TIMESECONDS、PACKET_TIMEFORMATTED、RECEIVED_COUNT、RECEIVED_TIMEFORMATTED、RECEIVED_TIMESECONDS。
 
-RECEIVED_TIME is the time that COSMOS receives the packet. This is set by the interface which is connected to the target and is receiving the raw data. Once a packet has been created out of the raw data the time is set.
+RECEIVED_TIMEはCOSMOSがパケットを受信した時間です。これはターゲットに接続し、生データを受信しているインターフェースによって設定されます。生データからパケットが作成されると、時間が設定されます。
 
-PACKET_TIME defaults to RECEIVED_TIME, but can be set as a derived item with a time object in the telemetry configuration file. This helps support stored telemetry packets so that they can be more reasonably handled by other COSMOS tools such as Telemetry Grapher and Data Extractor. You can set the 'stored' flag in your interface and the current value table is unaffected.
+PACKET_TIMEはデフォルトでRECEIVED_TIMEですが、テレメトリ設定ファイルで時間オブジェクトを持つ派生項目として設定できます。これは保存されたテレメトリパケットをサポートし、Telemetry GrapherやData Extractorなどの他のCOSMOSツールでより合理的に処理できるようにします。インターフェースに「stored」フラグを設定すると、現在の値テーブルに影響はありません。
 
-The \_TIMEFORMATTED items returns the date and time in a YYYY/MM/DD HH:MM:SS.sss format and the \_TIMESECONDS returns the Unix seconds of the time. Internally these are both stored as either a Ruby Time object or Python date object.
+\_TIMEFORMATTED項目は日付と時刻をYYYY/MM/DD HH:MM:SS.sss形式で返し、\_TIMESECONDSは時間のUnix秒を返します。内部的には、これらはどちらもRuby TimeオブジェクトまたはPython dateオブジェクトとして格納されています。
 
-#### Example
+#### 例
 
-COSMOS provides a Unix time conversion class which returns a Ruby Time object or Python date object based on the number of seconds and (optionally) microseconds since the Unix epoch. Note: This returns a native object and not a float or string!
+COSMOSは、Unix epochからの秒数と（オプションで）マイクロ秒に基づいてRuby TimeオブジェクトまたはPython dateオブジェクトを返すUnix時間変換クラスを提供します。注意：これはfloatや文字列ではなく、ネイティブオブジェクトを返します！
 
-Ruby Example:
+Rubyの例：
 
 ```ruby
 ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
     READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
 ```
 
-Python Example:
+Pythonの例：
 
 ```python
 ITEM PACKET_TIME 0 0 DERIVED "Python time based on TIMESEC and TIMEUS"
     READ_CONVERSION openc3/conversions/unix_time_conversion.py TIMESEC TIMEUS
 ```
 
-Defining PACKET_TIME allows the PACKET_TIMESECONDS and PACKET_TIMEFORMATTED to be calculated against an internal Packet time rather than the time COSMOS receives the packet.
+PACKET_TIMEを定義することで、COSMOSがパケットを受信した時間ではなく、内部パケット時間に対してPACKET_TIMESECONDSとPACKET_TIMEFORMATTEDを計算できるようになります。
 
 <div style={{"clear": 'both'}}></div>
 
-# Telemetry Keywords
+# テレメトリキーワード
 
 
 ## TELEMETRY
-**Defines a new telemetry packet**
+**新しいテレメトリパケットを定義します**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target | Name of the target this telemetry packet is associated with | True |
-| Command | Name of this telemetry packet. Also referred to as its mnemonic. Must be unique to telemetry packets in this target. Ideally will be as short and clear as possible. | True |
-| Endianness | Indicates if the data in this packet is in Big Endian or Little Endian format<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | True |
-| Description | Description of this telemetry packet which must be enclosed with quotes | False |
+| Target | このテレメトリパケットに関連付けられたターゲットの名前 | はい |
+| Command | このテレメトリパケットの名前。ニーモニックとも呼ばれます。このターゲット内のテレメトリパケットに対して一意である必要があります。理想的には短く明確であるべきです。 | はい |
+| Endianness | このパケット内のデータがビッグエンディアンかリトルエンディアン形式かを示します<br/><br/>有効な値: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | はい |
+| Description | このテレメトリパケットの説明（引用符で囲む必要があります） | いいえ |
 
-Example Usage:
+使用例：
 ```ruby
 TELEMETRY INST HEALTH_STATUS BIG_ENDIAN "Instrument health and status"
 ```
 
 ## TELEMETRY Modifiers
-The following keywords must follow a TELEMETRY keyword.
+以下のキーワードはTELEMETRYキーワードの後に続く必要があります。
 
 ### ITEM
-**Defines a telemetry item in the current telemetry packet**
+**現在のテレメトリパケット内のテレメトリ項目を定義します**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Name | Name of the telemety item. Must be unique within the packet. | True |
-| Bit Offset | Bit offset into the telemetry packet of the Most Significant Bit of this item. May be negative to indicate on offset from the end of the packet. Always use a bit offset of 0 for derived item. | True |
-| Bit Size | Bit size of this telemetry item. Zero or Negative values may be used to indicate that a string fills the packet up to the offset from the end of the packet specified by this value. If Bit Offset is 0 and Bit Size is 0 then this is a derived parameter and the Data Type must be set to 'DERIVED'. | True |
-| Data Type | Data Type of this telemetry item<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, STRING, BLOCK, DERIVED</span> | True |
-| Description | Description for this telemetry item which must be enclosed with quotes | False |
-| Endianness | Indicates if the item is to be interpreted in Big Endian or Little Endian format. See guide on [Little Endian Bitfields](../guides/little-endian-bitfields.md).<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
+| Name | テレメトリ項目の名前。パケット内で一意である必要があります。 | はい |
+| Bit Offset | この項目の最上位ビットのテレメトリパケットへのビットオフセット。パケットの末尾からのオフセットを示すために負の値を使用できます。派生項目には常にビットオフセット0を使用します。 | はい |
+| Bit Size | このテレメトリ項目のビットサイズ。ゼロまたは負の値を使用して、文字列がこの値で指定されたパケットの末尾からのオフセットまでパケットを埋めることを示すことができます。ビットオフセットが0でビットサイズが0の場合、これは派生パラメータであり、データ型は「DERIVED」に設定する必要があります。 | はい |
+| Data Type | このテレメトリ項目のデータ型<br/><br/>有効な値: <span class="values">INT, UINT, FLOAT, STRING, BLOCK, DERIVED</span> | はい |
+| Description | このテレメトリ項目の説明（引用符で囲む必要があります） | いいえ |
+| Endianness | 項目をビッグエンディアンまたはリトルエンディアン形式で解釈するかどうかを示します。[リトルエンディアンビットフィールド](../guides/little-endian-bitfields.md)のガイドを参照してください。<br/><br/>有効な値: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | いいえ |
 
-Example Usage:
+使用例：
 ```ruby
 ITEM PKTID 112 16 UINT "Packet ID"
 ITEM DATA 0 0 DERIVED "Derived data"
 ```
 
 ### ITEM Modifiers
-The following keywords must follow a ITEM keyword.
+以下のキーワードはITEMキーワードの後に続く必要があります。
 
 #### FORMAT_STRING
-**Adds printf style formatting**
+**printf形式のフォーマットを追加します**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Format | How to format using printf syntax. For example, '0x%0X' will display the value in hex. | True |
+| Format | printf構文を使用してフォーマットする方法。例えば、「0x%0X」は値を16進数で表示します。 | はい |
 
-Example Usage:
+使用例：
 ```ruby
 FORMAT_STRING "0x%0X"
 ```
 
 #### UNITS
-**Add displayed units**
+**表示単位を追加します**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Full Name | Full name of the units type, e.g. Celsius | True |
-| Abbreviated | Abbreviation for the units, e.g. C | True |
+| Full Name | 単位タイプのフルネーム（例：摂氏） | はい |
+| Abbreviated | 単位の略語（例：C） | はい |
 
-Example Usage:
+使用例：
 ```ruby
 UNITS Celsius C
 UNITS Kilometers KM
 ```
 
 #### DESCRIPTION
-**Override the defined description**
+**定義された説明を上書きします**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Value | The new description | True |
+| Value | 新しい説明 | はい |
 
 #### META
-**Stores custom user metadata**
+**カスタムユーザーメタデータを格納します**
 
-Meta data is user specific data that can be used by custom tools for various purposes. One example is to store additional information needed to generate source code header files.
+メタデータは、カスタムツールがさまざまな目的で使用できるユーザー固有のデータです。一例として、ソースコードヘッダーファイルを生成するために必要な追加情報を保存することができます。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Meta Name | Name of the metadata to store | True |
-| Meta Values | One or more values to be stored for this Meta Name | False |
+| Meta Name | 保存するメタデータの名前 | はい |
+| Meta Values | このMeta Nameに保存される1つ以上の値 | いいえ |
 
-Example Usage:
+使用例：
 ```ruby
 META TEST "This parameter is for test purposes only"
 ```
 
 #### OVERLAP
-<div class="right">(Since 4.4.1)</div>**This item is allowed to overlap other items in the packet**
+<div class="right">(Since 4.4.1)</div>**この項目はパケット内の他の項目と重複することが許可されています**
 
-If an item's bit offset overlaps another item, OpenC3 issues a warning. This keyword explicitly allows an item to overlap another and suppresses the warning message.
+項目のビットオフセットが別の項目と重複する場合、OpenC3は警告を発します。このキーワードは明示的に項目が別の項目と重複することを許可し、警告メッセージを抑制します。
 
 
 #### KEY
-<div class="right">(Since 5.0.10)</div>**Defines the key used to access this raw value in the packet.**
+<div class="right">(Since 5.0.10)</div>**パケット内の生の値にアクセスするために使用されるキーを定義します。**
 
-Keys are often [JSONPath](https://en.wikipedia.org/wiki/JSONPath) or [XPath](https://en.wikipedia.org/wiki/XPath) strings
+キーは多くの場合、[JSONPath](https://en.wikipedia.org/wiki/JSONPath)や[XPath](https://en.wikipedia.org/wiki/XPath)文字列です
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Key string | The key to access this item | True |
+| Key string | この項目にアクセスするためのキー | はい |
 
-Example Usage:
+使用例：
 ```ruby
 KEY $.book.title
 ```
 
 #### VARIABLE_BIT_SIZE
-<div class="right">(Since 5.18.0)</div>**Marks an item as having its bit size defined by another length item**
+<div class="right">(Since 5.18.0)</div>**項目のビットサイズが別の長さ項目によって定義されていることを示します**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Length Item Name | The name of the associated length item | True |
-| Length Bits Per Count | Bits per count of the length item. Defaults to 8 | False |
-| Length Value Bit Offset | Offset in Bits to Apply to Length Field Value. Defaults to 0 | False |
+| Length Item Name | 関連する長さ項目の名前 | はい |
+| Length Bits Per Count | 長さ項目のカウントあたりのビット数。デフォルトは8 | いいえ |
+| Length Value Bit Offset | 長さフィールド値に適用するビットオフセット。デフォルトは0 | いいえ |
 
 #### STATE
-**Defines a key/value pair for the current item**
+**現在の項目のキー/値ペアを定義します**
 
-Key value pairs allow for user friendly strings. For example, you might define states for ON = 1 and OFF = 0. This allows the word ON to be used rather than the number 1 when sending the telemetry item and allows for much greater clarity and less chance for user error. A catch all value of ANY applies to all other values not already defined as state values.
+キー/値ペアにより、ユーザーフレンドリーな文字列が可能になります。例えば、ON = 1およびOFF = 0の状態を定義することができます。これにより、テレメトリ項目を送信する際に数字の1ではなく単語「ON」を使用でき、明確さが大幅に向上し、ユーザーエラーの可能性が低減します。ANYのキャッチオール値は、すでに状態値として定義されていない他のすべての値に適用されます。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Key | The string state name | True |
-| Value | The numerical state value or ANY to apply the state to all other values | True |
-| Color | The color the state should be displayed as<br/><br/>Valid Values: <span class="values">GREEN, YELLOW, RED</span> | False |
+| Key | 文字列状態名 | はい |
+| Value | 数値状態値、またはANYですべての他の値に状態を適用 | はい |
+| Color | 状態が表示される色<br/><br/>有効な値: <span class="values">GREEN, YELLOW, RED</span> | いいえ |
 
-Example Usage:
+使用例：
 ```ruby
 APPEND_ITEM ENABLE 32 UINT "Enable setting"
   STATE FALSE 0
   STATE TRUE 1
-  STATE ERROR ANY # Match all other values to ERROR
+  STATE ERROR ANY # 他のすべての値をERRORに一致させる
 APPEND_ITEM STRING 1024 STRING "String"
   STATE "NOOP" "NOOP" GREEN
   STATE "ARM LASER" "ARM LASER" YELLOW
@@ -212,16 +212,16 @@ APPEND_ITEM STRING 1024 STRING "String"
 ```
 
 #### READ_CONVERSION
-**Applies a conversion to the current telemetry item**
+**現在のテレメトリ項目に変換を適用します**
 
-Conversions are implemented in a custom Ruby or Python file which should be located in the target's lib folder. The class must inherit from Conversion. It must implement the `initialize` (Ruby) or `__init__` (Python) method if it takes extra parameters and must always implement the `call` method. The conversion factor is applied to the raw value in the telemetry packet before it is displayed to the user. The user still has the ability to see the raw unconverted value in a details dialog.
+変換はターゲットのlibフォルダに配置されたカスタムRubyまたはPythonファイルで実装されます。クラスはConversionを継承する必要があります。追加パラメータを取る場合は `initialize`（Ruby）または `__init__`（Python）メソッドを実装する必要があり、常に `call` メソッドを実装する必要があります。変換係数は、テレメトリパケット内の生の値にユーザーに表示される前に適用されます。ユーザーは詳細ダイアログで生の未変換値を見ることができます。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Class Filename | The filename which contains the Ruby or Python class. The filename must be named after the class such that the class is a CamelCase version of the underscored filename. For example, 'the_great_conversion.rb' should contain 'class TheGreatConversion'. | True |
-| Parameter | Additional parameter values for the conversion which are passed to the class constructor. | False |
+| Class Filename | RubyまたはPythonクラスを含むファイル名。ファイル名はクラスに合わせて名付ける必要があり、クラスはアンダースコア付きファイル名のCamelCase版である必要があります。例えば、「the_great_conversion.rb」には「class TheGreatConversion」が含まれている必要があります。 | はい |
+| Parameter | 変換のための追加パラメータ値。クラスコンストラクタに渡されます。 | いいえ |
 
-Ruby Example:
+Rubyの例：
 ```ruby
 READ_CONVERSION the_great_conversion.rb 1000
 
@@ -241,7 +241,7 @@ module OpenC3
 end
 ```
 
-Python Example:
+Pythonの例：
 ```python
 READ_CONVERSION the_great_conversion.py 1000
 
@@ -257,351 +257,351 @@ class TheGreatConversion(Conversion):
 ```
 
 #### POLY_READ_CONVERSION
-**Adds a polynomial conversion factor to the current telemetry item**
+**現在のテレメトリ項目に多項式変換係数を追加します**
 
-The conversion factor is applied to raw value in the telemetry packet before it is displayed to the user. The user still has the ability to see the raw unconverted value in a details dialog.
+変換係数は、テレメトリパケット内の生の値にユーザーに表示される前に適用されます。ユーザーは詳細ダイアログで生の未変換値を見ることができます。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| C0 | Coefficient | True |
-| Cx | Additional coefficient values for the conversion. Any order polynomial conversion may be used so the value of 'x' will vary with the order of the polynomial. Note that larger order polynomials take longer to process than shorter order polynomials, but are sometimes more accurate. | False |
+| C0 | 係数 | はい |
+| Cx | 変換のための追加係数値。任意の次数の多項式変換が使用できるため、「x」の値は多項式の次数によって異なります。高次の多項式は低次の多項式よりも処理に時間がかかりますが、より正確な場合があります。 | いいえ |
 
-Example Usage:
+使用例：
 ```ruby
 POLY_READ_CONVERSION 10 0.5 0.25
 ```
 
 #### SEG_POLY_READ_CONVERSION
-**Adds a segmented polynomial conversion factor to the current telemetry item**
+**現在のテレメトリ項目にセグメント化された多項式変換係数を追加します**
 
-This conversion factor is applied to the raw value in the telemetry packet before it is displayed to the user. The user still has the ability to see the raw unconverted value in a details dialog.
+この変換係数は、テレメトリパケット内の生の値にユーザーに表示される前に適用されます。ユーザーは詳細ダイアログで生の未変換値を見ることができます。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Lower Bound | Defines the lower bound of the range of values that this segmented polynomial applies to. Is ignored for the segment with the smallest lower bound. | True |
-| C0 | Coefficient | True |
-| Cx | Additional coefficient values for the conversion. Any order polynomial conversion may be used so the value of 'x' will vary with the order of the polynomial. Note that larger order polynomials take longer to process than shorter order polynomials, but are sometimes more accurate. | False |
+| Lower Bound | このセグメント化された多項式が適用される値の範囲の下限を定義します。最小の下限を持つセグメントでは無視されます。 | はい |
+| C0 | 係数 | はい |
+| Cx | 変換のための追加係数値。任意の次数の多項式変換が使用できるため、「x」の値は多項式の次数によって異なります。高次の多項式は低次の多項式よりも処理に時間がかかりますが、より正確な場合があります。 | いいえ |
 
-Example Usage:
+使用例：
 ```ruby
-SEG_POLY_READ_CONVERSION 0 10 0.5 0.25 # Apply the conversion to all values < 50
-SEG_POLY_READ_CONVERSION 50 11 0.5 0.275 # Apply the conversion to all values >= 50 and < 100
-SEG_POLY_READ_CONVERSION 100 12 0.5 0.3 # Apply the conversion to all values >= 100
+SEG_POLY_READ_CONVERSION 0 10 0.5 0.25 # すべての値 < 50 に変換を適用
+SEG_POLY_READ_CONVERSION 50 11 0.5 0.275 # すべての値 >= 50 かつ < 100 に変換を適用
+SEG_POLY_READ_CONVERSION 100 12 0.5 0.3 # すべての値 >= 100 に変換を適用
 ```
 
 #### GENERIC_READ_CONVERSION_START
-**Start a generic read conversion**
+**一般的な読み取り変換を開始します**
 
-Adds a generic conversion function to the current telemetry item. This conversion factor is applied to the raw value in the telemetry packet before it is displayed to the user. The user still has the ability to see the raw unconverted value in a details dialog. The conversion is specified as Ruby or Python code that receives two implied parameters. 'value' which is the raw value being read and 'packet' which is a reference to the telemetry packet class (Note, referencing the packet as 'myself' is still supported for backwards compatibility). The last line of code should return the converted value. The GENERIC_READ_CONVERSION_END keyword specifies that all lines of code for the conversion have been given.
+現在のテレメトリ項目に一般的な変換関数を追加します。この変換係数は、テレメトリパケット内の生の値にユーザーに表示される前に適用されます。ユーザーは詳細ダイアログで生の未変換値を見ることができます。変換はRubyまたはPythonコードとして指定され、2つの暗黙的なパラメータを受け取ります。「value」は読み取られる生の値、「packet」はテレメトリパケットクラスへの参照です（注：後方互換性のためにパケットを「myself」として参照することもサポートされています）。コードの最後の行は変換された値を返す必要があります。GENERIC_READ_CONVERSION_ENDキーワードは、変換のためのすべてのコード行が与えられたことを指定します。
 
 :::warning
-Generic conversions are not a good long term solution. Consider creating a conversion class and using READ_CONVERSION instead. READ_CONVERSION is easier to debug and has higher performance.
+一般的な変換は長期的なソリューションとしては良くありません。変換クラスを作成して代わりにREAD_CONVERSIONを使用することを検討してください。READ_CONVERSIONはデバッグが容易で、パフォーマンスが高いです。
 :::
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Converted Type | Type of the converted value<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, STRING, BLOCK</span> | False |
-| Converted Bit Size | Bit size of converted value | False |
+| Converted Type | 変換された値の型<br/><br/>有効な値: <span class="values">INT, UINT, FLOAT, STRING, BLOCK</span> | いいえ |
+| Converted Bit Size | 変換された値のビットサイズ | いいえ |
 
-Ruby Example:
+Rubyの例：
 ```ruby
 APPEND_ITEM ITEM1 32 UINT
   GENERIC_READ_CONVERSION_START
-    return (value * 1.5).to_i # Convert the value by a scale factor
+    return (value * 1.5).to_i # スケールファクターで値を変換
   GENERIC_READ_CONVERSION_END
 ```
 
-Python Example:
+Pythonの例：
 ```python
 APPEND_ITEM ITEM1 32 UINT
   GENERIC_READ_CONVERSION_START
-    return int(value * 1.5) # Convert the value by a scale factor
+    return int(value * 1.5) # スケールファクターで値を変換
   GENERIC_READ_CONVERSION_END
 ```
 
 #### GENERIC_READ_CONVERSION_END
-**Complete a generic read conversion**
+**一般的な読み取り変換を完了します**
 
 
 #### LIMITS
-**Defines a set of limits for a telemetry item**
+**テレメトリ項目の制限セットを定義します**
 
-If limits are violated a message is printed in the Command and Telemetry Server to indicate an item went out of limits. Other tools also use this information to update displays with different colored telemetry items or other useful information. The concept of "limits sets" is defined to allow for different limits values in different environments. For example, you might want tighter or looser limits on telemetry if your environment changes such as during thermal vacuum testing.
+制限に違反した場合、項目が制限を超えたことを示すメッセージがCommand and Telemetry Serverに表示されます。他のツールもこの情報を使用して、異なる色のテレメトリ項目や他の有用な情報でディスプレイを更新します。「制限セット」の概念は、異なる環境で異なる制限値を持つことができるように定義されています。例えば、熱真空試験中など、環境が変化した場合に、テレメトリに対するより厳しいまたはより緩い制限を設定したい場合があります。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Limits Set | Name of the limits set. If you have no unique limits sets use the keyword DEFAULT. | True |
-| Persistence | Number of consecutive times the telemetry item must be within a different limits range before changing limits state. | True |
-| Initial State | Whether limits monitoring for this telemetry item is initially enabled or disabled. Note if you have multiple LIMITS items they should all have the same initial state.<br/><br/>Valid Values: <span class="values">ENABLED, DISABLED</span> | True |
-| Red Low Limit | If the telemetry value is less than or equal to this value a Red Low condition will be detected | True |
-| Yellow Low Limit | If the telemetry value is less than or equal to this value, but greater than the Red Low Limit, a Yellow Low condition will be detected | True |
-| Yellow High Limit | If the telemetry value is greater than or equal to this value, but less than the Red High Limit, a Yellow High condition will be detected | True |
-| Red High Limit | If the telemetry value is greater than or equal to this value a Red High condition will be detected | True |
-| Green Low Limit | Setting the Green Low and Green High limits defines an "operational limit" which is colored blue by OpenC3. This allows for a distinct desired operational range which is narrower than the green safety limit. If the telemetry value is greater than or equal to this value, but less than the Green High Limit, a Blue operational condition will be detected. | False |
-| Green High Limit | Setting the Green Low and Green High limits defines an "operational limit" which is colored blue by OpenC3. This allows for a distinct desired operational range which is narrower than the green safety limit. If the telemetry value is less than or equal to this value, but greater than the Green Low Limit, a Blue operational condition will be detected. | False |
+| Limits Set | 制限セットの名前。固有の制限セットがない場合は、キーワードDEFAULTを使用します。 | はい |
+| Persistence | テレメトリ項目が制限状態を変更する前に、異なる制限範囲内である必要がある連続回数。 | はい |
+| Initial State | このテレメトリ項目の制限監視が最初に有効か無効かを示します。複数のLIMITS項目がある場合、すべて同じ初期状態であるべきことに注意してください。<br/><br/>有効な値: <span class="values">ENABLED, DISABLED</span> | はい |
+| Red Low Limit | テレメトリ値がこの値以下の場合、Red Low状態が検出されます | はい |
+| Yellow Low Limit | テレメトリ値がこの値以下で、Red Low Limitより大きい場合、Yellow Low状態が検出されます | はい |
+| Yellow High Limit | テレメトリ値がこの値以上で、Red High Limitより小さい場合、Yellow High状態が検出されます | はい |
+| Red High Limit | テレメトリ値がこの値以上の場合、Red High状態が検出されます | はい |
+| Green Low Limit | Green LowとGreen High制限を設定すると、OpenC3で青色表示される「運用制限」が定義されます。これにより、緑の安全制限よりも狭い、望ましい運用範囲を区別できます。テレメトリ値がこの値以上で、Green High Limitより小さい場合、青い運用状態が検出されます。 | いいえ |
+| Green High Limit | Green LowとGreen High制限を設定すると、OpenC3で青色表示される「運用制限」が定義されます。これにより、緑の安全制限よりも狭い、望ましい運用範囲を区別できます。テレメトリ値がこの値以下で、Green Low Limitより大きい場合、青い運用状態が検出されます。 | いいえ |
 
-Example Usage:
+使用例：
 ```ruby
 LIMITS DEFAULT 3 ENABLED -80.0 -70.0 60.0 80.0 -20.0 20.0
 LIMITS TVAC 3 ENABLED -80.0 -30.0 30.0 80.0
 ```
 
 #### LIMITS_RESPONSE
-**Defines a response class that is called when the limits state of the current item changes**
+**現在の項目の制限状態が変化したときに呼び出される応答クラスを定義します**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Response Class Filename | Name of the Ruby or Python file which implements the limits response. This file should be in the target's lib directory. | True |
-| Response Specific Options | Variable length number of options that will be passed to the class constructor | False |
+| Response Class Filename | 制限応答を実装するRubyまたはPythonファイルの名前。このファイルはターゲットのlibディレクトリにある必要があります。 | はい |
+| Response Specific Options | クラスコンストラクタに渡される変数長のオプション | いいえ |
 
-Ruby Example:
+Rubyの例：
 ```ruby
 LIMITS_RESPONSE example_limits_response.rb 10
 ```
 
-Python Example:
+Pythonの例：
 ```python
 LIMITS_RESPONSE example_limits_response.py 10
 ```
 
 ### APPEND_ITEM
-**Defines a telemetry item in the current telemetry packet**
+**現在のテレメトリパケット内のテレメトリ項目を定義します**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Name | Name of the telemety item. Must be unique within the packet. | True |
-| Bit Size | Bit size of this telemetry item. Zero or Negative values may be used to indicate that a string fills the packet up to the offset from the end of the packet specified by this value. If Bit Offset is 0 and Bit Size is 0 then this is a derived parameter and the Data Type must be set to 'DERIVED'. | True |
-| Data Type | Data Type of this telemetry item<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, STRING, BLOCK, DERIVED</span> | True |
-| Description | Description for this telemetry item which must be enclosed with quotes | False |
-| Endianness | Indicates if the item is to be interpreted in Big Endian or Little Endian format. See guide on [Little Endian Bitfields](../guides/little-endian-bitfields.md).<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
+| Name | テレメトリ項目の名前。パケット内で一意である必要があります。 | はい |
+| Bit Size | このテレメトリ項目のビットサイズ。ゼロまたは負の値を使用して、文字列がこの値で指定されたパケットの末尾からのオフセットまでパケットを埋めることを示すことができます。ビットオフセットが0でビットサイズが0の場合、これは派生パラメータであり、データ型は「DERIVED」に設定する必要があります。 | はい |
+| Data Type | このテレメトリ項目のデータ型<br/><br/>有効な値: <span class="values">INT, UINT, FLOAT, STRING, BLOCK, DERIVED</span> | はい |
+| Description | このテレメトリ項目の説明（引用符で囲む必要があります） | いいえ |
+| Endianness | 項目をビッグエンディアンまたはリトルエンディアン形式で解釈するかどうかを示します。[リトルエンディアンビットフィールド](../guides/little-endian-bitfields.md)のガイドを参照してください。<br/><br/>有効な値: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | いいえ |
 
-Example Usage:
+使用例：
 ```ruby
 APPEND_ITEM PKTID 16 UINT "Packet ID"
 ```
 
 ### ID_ITEM
-**Defines a telemetry item in the current telemetry packet. Note, packets defined without one or more ID_ITEMs are "catch-all" packets which will match all incoming data. Normally this is the job of the UNKNOWN packet.**
+**現在のテレメトリパケット内のテレメトリ項目を定義します。注意：1つ以上のID_ITEMなしで定義されたパケットは、すべての受信データに一致する「キャッチオール」パケットです。通常、これはUNKNOWNパケットの役割です。**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Name | Name of the telemety item. Must be unique within the packet. | True |
-| Bit Offset | Bit offset into the telemetry packet of the Most Significant Bit of this item. May be negative to indicate on offset from the end of the packet. | True |
-| Bit Size | Bit size of this telemetry item. Zero or Negative values may be used to indicate that a string fills the packet up to the offset from the end of the packet specified by this value. | True |
-| Data Type | Data Type of this telemetry item<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, STRING, BLOCK</span> | True |
-| ID Value | The value of this telemetry item that uniquely identifies this telemetry packet | True |
-| Description | Description for this telemetry item which must be enclosed with quotes | False |
-| Endianness | Indicates if the item is to be interpreted in Big Endian or Little Endian format. See guide on [Little Endian Bitfields](../guides/little-endian-bitfields.md).<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
+| Name | テレメトリ項目の名前。パケット内で一意である必要があります。 | はい |
+| Bit Offset | この項目の最上位ビットのテレメトリパケットへのビットオフセット。パケットの末尾からのオフセットを示すために負の値を使用できます。 | はい |
+| Bit Size | このテレメトリ項目のビットサイズ。ゼロまたは負の値を使用して、文字列がこの値で指定されたパケットの末尾からのオフセットまでパケットを埋めることを示すことができます。 | はい |
+| Data Type | このテレメトリ項目のデータ型<br/><br/>有効な値: <span class="values">INT, UINT, FLOAT, STRING, BLOCK</span> | はい |
+| ID Value | このテレメトリパケットを一意に識別するこのテレメトリ項目の値 | はい |
+| Description | このテレメトリ項目の説明（引用符で囲む必要があります） | いいえ |
+| Endianness | 項目をビッグエンディアンまたはリトルエンディアン形式で解釈するかどうかを示します。[リトルエンディアンビットフィールド](../guides/little-endian-bitfields.md)のガイドを参照してください。<br/><br/>有効な値: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | いいえ |
 
-Example Usage:
+使用例：
 ```ruby
 ID_ITEM PKTID 112 16 UINT 1 "Packet ID which must be 1"
 ```
 
 ### APPEND_ID_ITEM
-**Defines a telemetry item in the current telemetry packet**
+**現在のテレメトリパケット内のテレメトリ項目を定義します**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Name | Name of the telemety item. Must be unique within the packet. | True |
-| Bit Size | Bit size of this telemetry item. Zero or Negative values may be used to indicate that a string fills the packet up to the offset from the end of the packet specified by this value. | True |
-| Data Type | Data Type of this telemetry item<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, STRING, BLOCK</span> | True |
-| ID Value | The value of this telemetry item that uniquely identifies this telemetry packet | True |
-| Description | Description for this telemetry item which must be enclosed with quotes | False |
-| Endianness | Indicates if the item is to be interpreted in Big Endian or Little Endian format. See guide on [Little Endian Bitfields](../guides/little-endian-bitfields.md).<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
+| Name | テレメトリ項目の名前。パケット内で一意である必要があります。 | はい |
+| Bit Size | このテレメトリ項目のビットサイズ。ゼロまたは負の値を使用して、文字列がこの値で指定されたパケットの末尾からのオフセットまでパケットを埋めることを示すことができます。 | はい |
+| Data Type | このテレメトリ項目のデータ型<br/><br/>有効な値: <span class="values">INT, UINT, FLOAT, STRING, BLOCK</span> | はい |
+| ID Value | このテレメトリパケットを一意に識別するこのテレメトリ項目の値 | はい |
+| Description | このテレメトリ項目の説明（引用符で囲む必要があります） | いいえ |
+| Endianness | 項目をビッグエンディアンまたはリトルエンディアン形式で解釈するかどうかを示します。[リトルエンディアンビットフィールド](../guides/little-endian-bitfields.md)のガイドを参照してください。<br/><br/>有効な値: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | いいえ |
 
-Example Usage:
+使用例：
 ```ruby
 APPEND_ID_ITEM PKTID 16 UINT 1 "Packet ID which must be 1"
 ```
 
 ### ARRAY_ITEM
-**Defines a telemetry item in the current telemetry packet that is an array**
+**配列である現在のテレメトリパケット内のテレメトリ項目を定義します**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Name | Name of the telemety item. Must be unique within the packet. | True |
-| Bit Offset | Bit offset into the telemetry packet of the Most Significant Bit of this item. May be negative to indicate on offset from the end of the packet. Always use a bit offset of 0 for derived item. | True |
-| Item Bit Size | Bit size of each array item | True |
-| Item Data Type | Data Type of each array item<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, STRING, BLOCK, DERIVED</span> | True |
-| Array Bit Size | Total Bit Size of the Array. Zero or Negative values may be used to indicate the array fills the packet up to the offset from the end of the packet specified by this value. | True |
-| Description | Description which must be enclosed with quotes | False |
-| Endianness | Indicates if the data is to be sent in Big Endian or Little Endian format<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
+| Name | テレメトリ項目の名前。パケット内で一意である必要があります。 | はい |
+| Bit Offset | この項目の最上位ビットのテレメトリパケットへのビットオフセット。パケットの末尾からのオフセットを示すために負の値を使用できます。派生項目には常にビットオフセット0を使用します。 | はい |
+| Item Bit Size | 各配列項目のビットサイズ | はい |
+| Item Data Type | 各配列項目のデータ型<br/><br/>有効な値: <span class="values">INT, UINT, FLOAT, STRING, BLOCK, DERIVED</span> | はい |
+| Array Bit Size | 配列の合計ビットサイズ。ゼロまたは負の値を使用して、配列がこの値で指定されたパケットの末尾からのオフセットまでパケットを埋めることを示すことができます。 | はい |
+| Description | 説明（引用符で囲む必要があります） | いいえ |
+| Endianness | データをビッグエンディアンまたはリトルエンディアン形式で送信するかどうかを示します<br/><br/>有効な値: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | いいえ |
 
-Example Usage:
+使用例：
 ```ruby
 ARRAY_ITEM ARRAY 64 32 FLOAT 320 "Array of 10 floats"
 ```
 
 ### APPEND_ARRAY_ITEM
-**Defines a telemetry item in the current telemetry packet that is an array**
+**配列である現在のテレメトリパケット内のテレメトリ項目を定義します**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Name | Name of the telemety item. Must be unique within the packet. | True |
-| Item Bit Size | Bit size of each array item | True |
-| Item Data Type | Data Type of each array item<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, STRING, BLOCK, DERIVED</span> | True |
-| Array Bit Size | Total Bit Size of the Array. Zero or Negative values may be used to indicate the array fills the packet up to the offset from the end of the packet specified by this value. | True |
-| Description | Description which must be enclosed with quotes | False |
-| Endianness | Indicates if the data is to be sent in Big Endian or Little Endian format<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
+| Name | テレメトリ項目の名前。パケット内で一意である必要があります。 | はい |
+| Item Bit Size | 各配列項目のビットサイズ | はい |
+| Item Data Type | 各配列項目のデータ型<br/><br/>有効な値: <span class="values">INT, UINT, FLOAT, STRING, BLOCK, DERIVED</span> | はい |
+| Array Bit Size | 配列の合計ビットサイズ。ゼロまたは負の値を使用して、配列がこの値で指定されたパケットの末尾からのオフセットまでパケットを埋めることを示すことができます。 | はい |
+| Description | 説明（引用符で囲む必要があります） | いいえ |
+| Endianness | データをビッグエンディアンまたはリトルエンディアン形式で送信するかどうかを示します<br/><br/>有効な値: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | いいえ |
 
-Example Usage:
+使用例：
 ```ruby
 APPEND_ARRAY_ITEM ARRAY 32 FLOAT 320 "Array of 10 floats"
 ```
 
 ### SELECT_ITEM
-**Selects an existing telemetry item for editing**
+**編集のために既存のテレメトリ項目を選択します**
 
-Must be used in conjunction with SELECT_TELEMETRY to first select the packet. Typically used to override generated values or make specific changes to telemetry that only affect a particular instance of a target used multiple times.
+パケットを最初に選択するためにSELECT_TELEMETRYと併用する必要があります。通常、生成された値をオーバーライドしたり、複数回使用されるターゲットの特定のインスタンスにのみ影響するテレメトリに特定の変更を加えたりするために使用されます。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Item | Name of the item to select for modification | True |
+| Item | 変更するために選択する項目の名前 | はい |
 
-Example Usage:
+使用例：
 ```ruby
 SELECT_TELEMETRY INST HEALTH_STATUS
   SELECT_ITEM TEMP1
-    # Define limits for this item, overrides or replaces any existing
+    # この項目の制限を定義し、既存のものをオーバーライドまたは置換します
     LIMITS DEFAULT 3 ENABLED -90.0 -80.0 80.0 90.0 -20.0 20.0
 ```
 
 ### DELETE_ITEM
-<div class="right">(Since 4.4.1)</div>**Delete an existing telemetry item from the packet definition**
+<div class="right">(Since 4.4.1)</div>**パケット定義から既存のテレメトリ項目を削除します**
 
-Deleting an item from the packet definition does not remove the defined space for that item. Thus unless you redefine a new item, there will be a "hole" in the packet where the data is not accessible. You can use SELECT_TELEMETRY and then ITEM to define a new item.
+パケット定義から項目を削除しても、その項目のための定義されたスペースは削除されません。したがって、新しい項目を再定義しない限り、データにアクセスできない「穴」がパケットに残ります。SELECT_TELEMETRYを使用し、その後ITEMを使用して新しい項目を定義できます。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Item | Name of the item to delete | True |
+| Item | 削除する項目の名前 | はい |
 
-Example Usage:
+使用例：
 ```ruby
 SELECT_TELEMETRY INST HEALTH_STATUS
   DELETE_ITEM TEMP4
 ```
 
 ### META
-**Stores metadata for the current telemetry packet**
+**現在のテレメトリパケットのメタデータを格納します**
 
-Meta data is user specific data that can be used by custom tools for various purposes. One example is to store additional information needed to generate source code header files.
+メタデータは、カスタムツールがさまざまな目的で使用できるユーザー固有のデータです。一例として、ソースコードヘッダーファイルを生成するために必要な追加情報を保存することができます。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Meta Name | Name of the metadata to store | True |
-| Meta Values | One or more values to be stored for this Meta Name | False |
+| Meta Name | 保存するメタデータの名前 | はい |
+| Meta Values | このMeta Nameに保存される1つ以上の値 | いいえ |
 
-Example Usage:
+使用例：
 ```ruby
 META FSW_TYPE "struct tlm_packet"
 ```
 
 ### PROCESSOR
-**Defines a processor class that executes code every time a packet is received**
+**パケットが受信されるたびにコードを実行するプロセッサクラスを定義します**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Processor Name | The name of the processor | True |
-| Processor Class Filename | Name of the Ruby or Python file which implements the processor. This file should be in the target's lib directory. | True |
-| Processor Specific Options | Variable length number of options that will be passed to the class constructor. | False |
+| Processor Name | プロセッサの名前 | はい |
+| Processor Class Filename | プロセッサを実装するRubyまたはPythonファイルの名前。このファイルはターゲットのlibディレクトリにある必要があります。 | はい |
+| Processor Specific Options | クラスコンストラクタに渡される変数長のオプション。 | いいえ |
 
-Ruby Example:
+Rubyの例：
 ```ruby
 PROCESSOR TEMP1HIGH watermark_processor.rb TEMP1
 ```
 
-Python Example:
+Pythonの例：
 ```python
 PROCESSOR TEMP1HIGH watermark_processor.py TEMP1
 ```
 
 ### ALLOW_SHORT
-**Process telemetry packets which are less than their defined length**
+**定義された長さより短いテレメトリパケットを処理します**
 
-Allows the telemetry packet to be received with a data portion that is smaller than the defined size without warnings. Any extra space in the packet will be filled in with zeros by OpenC3.
+テレメトリパケットが定義されたサイズよりも小さいデータ部分を持っていても警告なしに受信できるようにします。パケット内の余分なスペースはOpenC3によってゼロで埋められます。
 
 
 ### HIDDEN
-**Hides this telemetry packet from all the OpenC3 tools**
+**このテレメトリパケットをすべてのOpenC3ツールから非表示にします**
 
-This packet will not appear in Packet Viewer, Telemetry Grapher and Handbook Creator. It also hides this telemetry from appearing in the Script Runner popup helper when writing scripts. The telemetry still exists in the system and can received and checked by scripts.
+このパケットはPacket Viewer、Telemetry Grapher、Handbook Creatorに表示されません。また、スクリプトを書く際にScript Runnerのポップアップヘルパーにもこのテレメトリが表示されなくなります。テレメトリはシステム内に存在し、スクリプトによって受信およびチェックできます。
 
 
 ### ACCESSOR
-<div class="right">(Since 5.0.10)</div>**Defines the class used to read and write raw values from the packet**
+<div class="right">(Since 5.0.10)</div>**パケットから生の値を読み書きするために使用されるクラスを定義します**
 
-Defines the class that is used too read raw values from the packet. Defaults to BinaryAccessor. For more information see [Accessors](accessors).
+パケットから生の値を読み取るために使用されるクラスを定義します。デフォルトはBinaryAccessorです。詳細については[アクセサ](accessors)を参照してください。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Accessor Class Name | The name of the accessor class | True |
+| Accessor Class Name | アクセサクラスの名前 | はい |
 
 ### TEMPLATE
-<div class="right">(Since 5.0.10)</div>**Defines a template string used to pull telemetry values from a string buffer**
+<div class="right">(Since 5.0.10)</div>**文字列バッファからテレメトリ値を取得するために使用されるテンプレート文字列を定義します**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Template | The template string which should be enclosed in quotes | True |
+| Template | 引用符で囲まれるべきテンプレート文字列 | はい |
 
 ### TEMPLATE_FILE
-<div class="right">(Since 5.0.10)</div>**Defines a template file used to pull telemetry values from a string buffer**
+<div class="right">(Since 5.0.10)</div>**文字列バッファからテレメトリ値を取得するために使用されるテンプレートファイルを定義します**
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Template File Path | The relative path to the template file. Filename should generally start with an underscore. | True |
+| Template File Path | テンプレートファイルへの相対パス。ファイル名は一般的にアンダースコアで始まるべきです。 | はい |
 
 ### IGNORE_OVERLAP
-<div class="right">(Since 5.16.0)</div>**Ignores any packet items which overlap**
+<div class="right">(Since 5.16.0)</div>**重複するパケット項目を無視します**
 
-Packet items which overlap normally generate a warning unless each individual item has the OVERLAP keyword. This ignores overlaps across the entire packet.
+重複するパケット項目は通常、各項目がOVERLAPキーワードを持っていない限り警告を生成します。これはパケット全体で重複を無視します。
 
 
 ### VIRTUAL
-<div class="right">(Since 5.18.0)</div>**Marks this packet as virtual and not participating in identification**
+<div class="right">(Since 5.18.0)</div>**このパケットを仮想としてマークし、識別に参加しないようにします**
 
-Used for packet definitions that can be used as structures for items with a given packet.
+与えられたパケットの項目の構造として使用できるパケット定義に使用されます。
 
 
 ## SELECT_TELEMETRY
-**Selects an existing telemetry packet for editing**
+**編集のために既存のテレメトリパケットを選択します**
 
-Typically used in a separate configuration file from where the original telemetry is defined to override or add to the existing telemetry definition. Must be used in conjunction with SELECT_ITEM to change an individual item.
+通常、元のテレメトリが定義されている場所とは別の設定ファイルで使用され、既存のテレメトリ定義をオーバーライドまたは追加します。個々の項目を変更するにはSELECT_ITEMと併用する必要があります。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target Name | Name of the target this telemetry packet is associated with | True |
-| Packet Name | Name of the telemetry packet to select | True |
+| Target Name | このテレメトリパケットに関連付けられたターゲットの名前 | はい |
+| Packet Name | 選択するテレメトリパケットの名前 | はい |
 
-Example Usage:
+使用例：
 ```ruby
 SELECT_TELEMETRY INST HEALTH_STATUS
   SELECT_ITEM TEMP1
-    # Define limits for this item, overrides or replaces any existing
+    # この項目の制限を定義し、既存のものをオーバーライドまたは置換します
     LIMITS DEFAULT 3 ENABLED -90.0 -80.0 80.0 90.0 -20.0 20.0
 ```
 
 ## LIMITS_GROUP
-**Defines a group of related limits Items**
+**関連する制限項目のグループを定義します**
 
-Limits groups contain telemetry items that can be enabled and disabled together. It can be used to group related limits as a subsystem that can be enabled or disabled as that particular subsystem is powered (for example). To enable a group call the enable_limits_group("NAME") method in Script Runner. To disable a group call the disable_limits_group("NAME") in Script Runner. Items can belong to multiple groups but the last enabled or disabled group "wins". For example, if an item belongs to GROUP1 and GROUP2 and you first enable GROUP1 and then disable GROUP2 the item will be disabled. If you then enable GROUP1 again it will be enabled.
+制限グループには、一緒に有効または無効にできるテレメトリ項目が含まれています。例えば特定のサブシステムが電源投入されたときに有効または無効にできるサブシステムとして関連する制限をグループ化するために使用できます。グループを有効にするには、Script Runnerでenable_limits_group("NAME")メソッドを呼び出します。グループを無効にするには、Script Runnerでdisable_limits_group("NAME")を呼び出します。項目は複数のグループに属することができますが、最後に有効または無効にされたグループが「勝ち」ます。例えば、項目がGROUP1とGROUP2に属していて、最初にGROUP1を有効にし、次にGROUP2を無効にすると、項目は無効になります。その後、再びGROUP1を有効にすると、項目は有効になります。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Group Name | Name of the limits group | True |
+| Group Name | 制限グループの名前 | はい |
 
 ## LIMITS_GROUP_ITEM
-**Adds the specified telemetry item to the last defined LIMITS_GROUP**
+**指定されたテレメトリ項目を最後に定義されたLIMITS_GROUPに追加します**
 
-Limits group information is typically kept in a separate configuration file in the config/TARGET/cmd_tlm folder named limits_groups.txt.
+制限グループ情報は通常、config/TARGET/cmd_tlmフォルダ内の別の設定ファイル（limits_groups.txt）に保管されます。
 
-| Parameter | Description | Required |
+| パラメータ | 説明 | 必須 |
 |-----------|-------------|----------|
-| Target Name | Name of the target | True |
-| Packet Name | Name of the packet | True |
-| Item Name | Name of the telemetry item to add to the group | True |
+| Target Name | ターゲットの名前 | はい |
+| Packet Name | パケットの名前 | はい |
+| Item Name | グループに追加するテレメトリ項目の名前 | はい |
 
-Example Usage:
+使用例：
 ```ruby
 LIMITS_GROUP SUBSYSTEM
   LIMITS_GROUP_ITEM INST HEALTH_STATUS TEMP1
@@ -610,9 +610,9 @@ LIMITS_GROUP SUBSYSTEM
 ```
 
 
-## Example File
+## 例ファイル
 
-**Example File: TARGET/cmd_tlm/tlm.txt**
+**例ファイル: TARGET/cmd_tlm/tlm.txt**
 
 <!-- prettier-ignore -->
 ```ruby

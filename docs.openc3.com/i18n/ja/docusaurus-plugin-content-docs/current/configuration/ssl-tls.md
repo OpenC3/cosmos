@@ -1,18 +1,18 @@
 ---
 sidebar_position: 11
 title: SSL-TLS
-description: How to configure SSL and TLS
+description: SSLとTLSの設定方法
 sidebar_custom_props:
   myEmoji: 🔐
 ---
 
-COSMOS 5 is a container based service which does not use SSL/TLS out of the box. This guide will help you configure SSL and TLS. Learn more at the Traefik [docs](https://doc.traefik.io/traefik/routing/entrypoints/#tls).
+COSMOS 6はコンテナベースのサービスであり、標準ではSSL/TLSを使用していません。このガイドはSSLとTLSの設定方法を説明します。詳細はTraefikの[ドキュメント](https://doc.traefik.io/traefik/routing/entrypoints/#tls)で確認できます。
 
-### Generate the certificate
+### 証明書の生成
 
-> Note: Self-signed certificates are considered insecure for the Internet. Firefox will treat the site as having an invalid certificate, while Chrome will act as if the connection was plain HTTP.
+> 注意: 自己署名証明書はインターネット上では安全でないと見なされます。Firefoxはサイトを無効な証明書として扱い、Chromeは接続がプレーンHTTPであるかのように動作します。
 
-To create a new Self-Signed SSL Certificate, use the openssl req command (run on linux from the cosmos-project root):
+新しい自己署名SSL証明書を作成するには、openssl reqコマンドを使用します（cosmos-projectのルートからLinux上で実行）:
 
 ```bash
 openssl req -newkey rsa:4096 \
@@ -28,25 +28,25 @@ State or Province Name (full name) []:.
 Locality Name (eg, city) [Default City]:.
 Organization Name (eg, company) [Default Company Ltd]:.
 Organizational Unit Name (eg, section) []:.
-Common Name (eg, your name or your server hostname) []: <!-- UPDATE WITH YOUR HOSTNAME HERE -->
+Common Name (eg, your name or your server hostname) []: <!-- ここであなたのホスト名を更新してください -->
 Email Address []:
 ```
 
-Let's breakdown the command and understand what each option means:
+コマンドの内容と各オプションの意味を見てみましょう:
 
-- `newkey rsa:4096` - Creates a new certificate request and 4096 bit RSA key. The default one is 2048 bits.
-- `x509` - Creates a X.509 Certificate.
-- `sha256` - Use 265-bit SHA (Secure Hash Algorithm).
-- `days 3650` - The number of days to certify the certificate for. 3650 is ten years. You can use any positive integer.
-- `nodes` - Creates a key without a passphrase.
-- `out ./openc3-traefik/cert.crt` - Specifies the filename to write the newly created certificate to. You can specify any file name.
-- `keyout ./openc3-traefik/cert.key` - Specifies the filename to write the newly created private key to. You can specify any file name.
+- `newkey rsa:4096` - 新しい証明書リクエストと4096ビットのRSA鍵を作成します。デフォルトは2048ビットです。
+- `x509` - X.509証明書を作成します。
+- `sha256` - 256ビットのSHA（セキュアハッシュアルゴリズム）を使用します。
+- `days 3650` - 証明書の有効期間を日数で指定します。3650は10年です。任意の正の整数を使用できます。
+- `nodes` - パスフレーズなしで鍵を作成します。
+- `out ./openc3-traefik/cert.crt` - 新しく作成された証明書を書き込むファイル名を指定します。任意のファイル名を指定できます。
+- `keyout ./openc3-traefik/cert.key` - 新しく作成された秘密鍵を書き込むファイル名を指定します。任意のファイル名を指定できます。
 
-For more information about the `openssl req` command options, visit the [OpenSSL req documentation page](https://www.openssl.org/docs/man1.0.2/man1/openssl-req.html).
+`openssl req`コマンドオプションの詳細については、[OpenSSL reqドキュメントページ](https://www.openssl.org/docs/man1.0.2/man1/openssl-req.html)を参照してください。
 
-### Updating the openc3-traefik Dockerfile
+### openc3-traefik Dockerfileの更新
 
-Add the new cert to the traefik Docker container.
+新しい証明書をtraefik Dockerコンテナに追加します。
 
 ```diff
 --- a/openc3-traefik/Dockerfile
@@ -58,9 +58,9 @@ Add the new cert to the traefik Docker container.
  EXPOSE 80
 ```
 
-### Updating the Traefik config
+### Traefik設定の更新
 
-Configure Traefik to use the new cert file.
+新しい証明書ファイルを使用するようにTraefikを設定します。
 
 openc3-traefik/traefik.yaml
 
@@ -72,7 +72,7 @@ openc3-traefik/traefik.yaml
 +  certificates:
 +   - certFile: "/etc/certs/cert.crt"
 +     keyFile: "/etc/certs/cert.key"
-# Listen for everything coming in on the standard HTTP port
+# 標準HTTPポートで入ってくるすべてをリッスンする
 entrypoints:
   web:
     address: ":2900"
@@ -86,12 +86,12 @@ entrypoints:
 +    http:
 +      tls:
 +        domains:
-+          - main: "<!-- UPDATE WITH YOUR HOSTNAME HERE -->"
++          - main: "<!-- ここであなたのホスト名を更新してください -->"
 ```
 
-### Update docker-compose.yaml
+### docker-compose.yamlの更新
 
-Update traefik to use secure port 443 instead of port 80.
+traefikがポート80の代わりにセキュアポート443を使用するように更新します。
 
 ```diff
 --- a/compose.yaml
@@ -108,90 +108,90 @@ Update traefik to use secure port 443 instead of port 80.
      depends_on:
 ```
 
-Now you can run `./openc3.sh start` to rebuild the Traefik container and it should include your new cert file.
+これで`./openc3.sh start`を実行してTraefikコンテナを再ビルドすると、新しい証明書ファイルが含まれるはずです。
 
-## Let's Encrypt
+## 暗号化
 
 #### KEY
 
-privkey.pem is the "key" file
+privkey.pemは「キー」ファイルです。
 
-Sometimes it is named as cert.key or example.com.key.
+時にはcert.keyやexample.com.keyとして名前が付けられることもあります。
 
 #### CRT
 
-fullchain.pem is your "crt" file.
+fullchain.pemが「crt」ファイルです。
 
-Sometimes it is named as example.com.crt.
+時にはexample.com.crtとして名前が付けられることもあります。
 
-#### CRT/KEY Bundle
+#### CRT/KEYバンドル
 
-bundle.pem would be made like so: cat fullchain.pem privkey.pem > bundle.pem
+bundle.pemは次のように作成されます: cat fullchain.pem privkey.pem > bundle.pem
 
-HAProxy is the only server that I know of that uses bundle.pem.
+HAProxyはbundle.pemを使用する唯一のサーバーです。
 
 #### cert.pem
 
-cert.pem contains ONLY your certificate, which can only be used by itself if the browser already has the certificate which signed it, which may work in testing (which makes it seem like it may be the right file), but will actually fail for many of your users in production with a security error of untrusted certificate.
+cert.pemには証明書のみが含まれており、ブラウザがすでに署名した証明書を持っている場合にのみ単独で使用できます。これはテストでは機能するかもしれませんが（正しいファイルであるように見える）、実際には本番環境では多くのユーザーに対して信頼されていない証明書のセキュリティエラーで失敗します。
 
-However, you don't generally use the cert.pem by itself. It's almost always coupled with chain.pem as fullchain.pem.
+ただし、一般的にcert.pemを単独で使用することはありません。ほとんどの場合、chain.pemとfullchain.pemとして組み合わせて使用されます。
 
 #### chain.pem
 
-chain.pem is the intermediary signed authority, signed by the root authority - which is what all browsers are guaranteed to have in their pre-built cache.
+chain.pemは、ルート認証局によって署名された中間署名認証局です。これはすべてのブラウザが事前に構築されたキャッシュに持っていることが保証されているものです。
 
-### Checking certs
+### 証明書の確認
 
-You can inspect the cert like so:
+次のように証明書を確認できます:
 
 ```
 openssl x509 -in cert.pem -text -noout
 ```
 
-## Extracting the certificate and keys from a .pfx file
+## .pfxファイルから証明書と鍵を抽出する
 
-The .pfx file, which is in a PKCS#12 format, contains the SSL certificate (public keys) and the corresponding private keys. You might have to import the certificate and private keys separately in an unencrypted plain text format to use it on another system. This topic provides instructions on how to convert the .pfx file to .crt and .key files.
+PKCS#12形式の.pfxファイルには、SSL証明書（公開鍵）と対応する秘密鍵が含まれています。別のシステムで使用するために、証明書と秘密鍵を暗号化されていないプレーンテキスト形式で別々にインポートする必要がある場合があります。このトピックでは、.pfxファイルを.crtファイルと.keyファイルに変換する方法について説明します。
 
-### Extract .crt and .key files from .pfx file
+### .pfxファイルから.crtと.keyファイルを抽出する
 
-> PREREQUISITE: Ensure OpenSSL is installed in the server that contains the SSL certificate.
+> 前提条件: SSL証明書を含むサーバーにOpenSSLがインストールされていることを確認してください。
 
-1. Start OpenSSL from the OpenSSL\bin folder.
+1. OpenSSL\binフォルダからOpenSSLを起動します。
 
-1. Open the command prompt and go to the folder that contains your .pfx file.
+1. コマンドプロンプトを開き、.pfxファイルが含まれているフォルダに移動します。
 
-1. Run the following command to extract the private key:
+1. 次のコマンドを実行して秘密鍵を抽出します:
 
 ```
 openssl pkcs12 -in [yourfile.pfx] -nocerts -out [drlive.key]
 ```
 
-You will be prompted to type the import password. Type the password that you used to protect your keypair when you created the .pfx file. You will be prompted again to provide a new password to protect the .key file that you are creating. Store the password to your key file in a secure place to avoid misuse.
+インポートパスワードの入力を求められます。.pfxファイルを作成した時にキーペアを保護するために使用したパスワードを入力してください。作成中の.keyファイルを保護するための新しいパスワードを提供するよう再度求められます。不正使用を避けるため、安全な場所にキーファイルのパスワードを保存してください。
 
-1. Run the following command to extract the certificate:
+1. 次のコマンドを実行して証明書を抽出します:
 
 ```
 openssl pkcs12 -in [yourfile.pfx] -clcerts -nokeys -out [drlive.crt]
 ```
 
-1. Run the following command to decrypt the private key:
+1. 次のコマンドを実行して秘密鍵を復号化します:
 
 ```
 openssl rsa -in [drlive.key] -out [drlive-decrypted.key]
 ```
 
-Type the password that you created to protect the private key file in the previous step.
-The .crt file and the decrypted and encrypted .key files are available in the path, where you started OpenSSL.
+前のステップで秘密鍵ファイルを保護するために作成したパスワードを入力します。
+.crtファイルと復号化および暗号化された.keyファイルは、OpenSSLを起動したパスで利用できます。
 
-### Convert .pfx file to .pem format
+### .pfxファイルを.pem形式に変換する
 
-There might be instances where you might have to convert the .pfx file into .pem format. Run the following command to convert it into PEM format.
+.pfxファイルを.pem形式に変換する必要がある場合があります。次のコマンドを実行してPEM形式に変換します。
 
 ```
 openssl rsa -in [keyfile-encrypted.key] -outform PEM -out [keyfile-encrypted-pem.key]
 ```
 
-## TLS1.2 INADEQUATE_SECURITY Errors
+## TLS1.2 INADEQUATE_SECURITYエラー
 
 - https://doc.traefik.io/traefik/https/tls/#cipher-suites
 - https://pkg.go.dev/crypto/tls#pkg-constants
