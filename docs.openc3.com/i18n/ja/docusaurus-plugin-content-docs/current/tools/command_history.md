@@ -9,7 +9,7 @@ sidebar_custom_props:
 
 コマンド履歴は、COSMOSで送信されたすべてのコマンドを確認する機能を提供します。コマンドは実行時間順にリストされ、誰がコマンドを送信したか、そして（検証された場合）それらが成功したかどうかが含まれます。
 
-![コマンド履歴](/img/command_history/command_history.png)
+![コマンド履歴](pathname:///img/command_history/command_history.png)
 
 ### 時間の選択
 

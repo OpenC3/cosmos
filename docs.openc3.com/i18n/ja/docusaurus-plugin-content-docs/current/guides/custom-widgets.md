@@ -70,6 +70,6 @@ BIG <%= target_name %> HEALTH_STATUS TEMP1
 
 テレメトリビューアでこの画面を開くと、次のようになります：
 
-![シンプル画面](/img/guides/simple_screen.png)
+![シンプル画面](pathname:///img/guides/simple_screen.png)
 
 これは単純な例ですが、カスタムウィジェットの可能性は無限大です！

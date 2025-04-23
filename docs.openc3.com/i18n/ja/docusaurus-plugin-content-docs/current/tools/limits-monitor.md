@@ -9,7 +9,7 @@ sidebar_custom_props:
 
 リミットモニターアプリケーションは、制限値を持つすべてのテレメトリ項目の状況認識を提供します。黄色または赤の制限値に違反するすべての制限項目が表示され、明示的に消去されるまで表示され続けます。個々の項目やパケット全体を手動で無視して、既知の問題をフィルタリングすることができます。さらに、すべての制限イベントはテーブルに記録され、検索可能です。
 
-![コマンドテレメトリサーバー](/img/limits_monitor/limits_monitor.png)
+![コマンドテレメトリサーバー](pathname:///img/limits_monitor/limits_monitor.png)
 
 ## リミットモニターのメニュー
 
@@ -31,13 +31,13 @@ style={{"float": 'left', "margin-right": 50 + 'px', "height": 150 + 'px'}} />
 
 このダイアログは、制限を超えた項目の横にある無視アイコンをクリックして、ユーザーが手動で無視したすべての項目を表示します。無視されたパケット全体はターゲットパケットとして項目なしでリストされることに注意してください（INST MECHのように表示されます）。無視された項目はゴミ箱アイコンをクリックすることで削除されます。これは、この項目が次回制限を超えると表示されることを意味します。
 
-![無視された項目](/img/limits_monitor/ignored.png)
+![無視された項目](pathname:///img/limits_monitor/ignored.png)
 
 #### 制限セットの変更
 
 制限セットはテレメトリ項目の[LIMITS](../configuration/telemetry#limits)キーワードで定義されます。各項目には少なくとも DEFAULT 制限セットが必要ですが、他の名前付き制限セットを持つこともできます。COSMOSは一度に1つの制限セットのみをアクティブにします。このダイアログでは、ユーザーがアクティブな制限セットを変更し、COSMOS全体に新しい制限値を適用することができます。
 
-![制限セットを変更](/img/limits_monitor/change_limits_set.png)
+![制限セットを変更](pathname:///img/limits_monitor/change_limits_set.png)
 
 #### 設定を開く
 
@@ -51,7 +51,7 @@ style={{"float": 'left', "margin-right": 50 + 'px', "height": 150 + 'px'}} />
 
 リミットモニターの主要なインターフェースは、黄色または赤の制限に違反した場合に項目が表示される上部です。
 
-![制限](/img/limits_monitor/limits_monitor.png)
+![制限](pathname:///img/limits_monitor/limits_monitor.png)
 
 制限値を持つ項目は、定義された制限内で現在の値がどこにあるかを表示する赤黄緑の制限バーを使用して表示されます（様々なTEMP項目で示されています）。黄色または赤の[状態](../configuration/telemetry.md#state)を持つ項目は、単にその状態の色で表示されます（GROUND1STATUSで示されています）。COSMOS Demoには、異なるターゲットパケット内の同一名の項目であるINST HEALTH_STATUS TEMP2とINST2 HEALTH_STATUS TEMP2の両方が含まれています。リミットモニターはスペースを節約するために項目名のみを表示しますが、値ボックスにマウスを合わせると、ターゲットとパケットの完全な名前が表示されます。
 
@@ -63,4 +63,4 @@ style={{"float": 'left', "margin-right": 50 + 'px', "height": 150 + 'px'}} />
 
 ログセクションにはすべての制限イベントがリストされます。イベントは、図のように検索ボックスを使用してフィルタリングできます。
 
-![ログ](/img/limits_monitor/log.png)
+![ログ](pathname:///img/limits_monitor/log.png)

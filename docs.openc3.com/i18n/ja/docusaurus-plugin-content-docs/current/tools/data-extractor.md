@@ -9,7 +9,7 @@ sidebar_custom_props:
 
 データエクストラクターは、コマンドとテレメトリ項目をカンマまたはタブ区切りのファイルに抽出します。個別の項目または全パケットを任意の期間にわたって処理できます。データエクストラクターには、例えばExcelやMatlabでの後処理のための出力を制御するための多くのオプションもあります。
 
-![データエクストラクター](/img/data_extractor/data_extractor.png)
+![データエクストラクター](pathname:///img/data_extractor/data_extractor.png)
 
 ## データエクストラクターのメニュー
 
@@ -59,42 +59,42 @@ style={{"float": 'left', "margin-right": 50 + 'px', "height": 150 + 'px'}} />
 
 データエクストラクターには、エクスポートしたい項目を選択するためのターゲット、パケット、項目のドロップダウンが用意されています。ターゲットを選択すると、パケットのドロップダウンはデフォルトで[All]に設定され、ボタンは「ターゲットを追加 (Add Target)」に変わります。これにより、ターゲット内で定義されたすべてのパケットのすべての項目が追加されます。注意：これは非常に多くのテレメトリポイントになる可能性がありますが、追加されたポイントはいずれも削除できます。
 
-![ターゲットを選択](/img/data_extractor/add_target.png)
+![ターゲットを選択](pathname:///img/data_extractor/add_target.png)
 
 パケットを選択すると、項目のドロップダウンはデフォルトで[All]に設定され、ボタンは「パケットを追加 (Add Packet)」に変わります。これにより、指定されたパケットで定義されたすべての項目が追加されます。注意：これは非常に多くのテレメトリポイントになる可能性がありますが、追加されたポイントはいずれも削除できます。
 
-![パケットを選択](/img/data_extractor/add_packet.png)
+![パケットを選択](pathname:///img/data_extractor/add_packet.png)
 
 個別の項目を選択すると、ボタンは「項目を追加 (Add Item)」に変わり、説明フィールドはその項目の説明で更新されます。
 
-![項目を選択](/img/data_extractor/add_item.png)
+![項目を選択](pathname:///img/data_extractor/add_item.png)
 
 ### 項目の削除
 
 項目を追加すると、項目テーブルに項目のリストが表示されます。項目は、項目の横にあるゴミ箱アイコンをクリックして削除できます。ヘッダーのゴミ箱アイコンをクリックすると、すべての項目を削除できます。
 
-![すべて削除マウスオーバー](/img/data_extractor/delete_all_mouseover.png)
+![すべて削除マウスオーバー](pathname:///img/data_extractor/delete_all_mouseover.png)
 
 ### 項目の編集
 
 項目は、項目の横にある鉛筆アイコンをクリックして編集できます。ヘッダーの鉛筆アイコンをクリックすると、すべての項目を編集できます。
 
-![すべて編集マウスオーバー](/img/data_extractor/edit_all_mouseover.png)
+![すべて編集マウスオーバー](pathname:///img/data_extractor/edit_all_mouseover.png)
 
 「すべて編集 (Edit All Items)」をクリックすると、すべての項目を編集ダイアログが表示されます。
 
-![すべて編集](/img/data_extractor/edit_all_items.png)
+![すべて編集](pathname:///img/data_extractor/edit_all_items.png)
 
 これにより、リスト内のすべての項目のデータ型を変更できます。個々の項目の横にある鉛筆をクリックすると、個々の項目を編集するための同様のダイアログが表示されます。
 
-![TEMP1を編集](/img/data_extractor/edit_temp1.png)
+![TEMP1を編集](pathname:///img/data_extractor/edit_temp1.png)
 
 ## 項目の処理
 
 「処理 (Process)」ボタンをクリックすると、項目リストの処理が開始されます。テーブルの左側に進行状況を示す車輪が表示され、「処理 (Process)」ボタンは「キャンセル (Cancel)」に変わり、処理をキャンセルできるようになります。
 
-![処理中](/img/data_extractor/processing.png)
+![処理中](pathname:///img/data_extractor/processing.png)
 
 処理が完了すると、ブラウザにファイルのダウンロードリンクが表示されます。これはブラウザによって異なることに注意してください。この例はChromeからのものです。
 
-![処理完了](/img/data_extractor/processing_done.png)
+![処理完了](pathname:///img/data_extractor/processing_done.png)

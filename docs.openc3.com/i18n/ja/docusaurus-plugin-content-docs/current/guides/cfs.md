@@ -298,7 +298,7 @@ docker network inspect openc3-cosmos-network
 `cfs_target_name`でこのプラグインのターゲット名を変更できます。
 プラグインが`CFS`として表示されることに問題がなければ、このステップはオプションです。
 
-![プラグイン変数設定](/img/guides/plugin_variables.png)
+![プラグイン変数設定](pathname:///img/guides/plugin_variables.png)
 
 :::warning ポートサブスクリプション
 COSMOS上で最後にアップロードされたプラグインがポート1235でテレメトリをサブスクライブします。

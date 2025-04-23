@@ -13,35 +13,35 @@ sidebar_custom_props:
 
 オートノミックは、トリガーグループ、トリガー、リアクションという基本的な構成要素で動作します。トリガーは単に真偽を評価する論理ブロックです。リアクションは1つまたは複数のトリガーにリンクでき、実行するアクションを指定します。これらを組み合わせることで、システム内で発生するあらゆる事象に基づいてアクションを実行することができます。
 
-![オートノミック](/img/autonomic/autonomic.png)
+![オートノミック](pathname:///img/autonomic/autonomic.png)
 
 ### トリガーグループ
 
 トリガーはグループに整理されており、これらのグループは組織化とスケーリングに役立つものです。また、トリガーを独立して同時に評価することができ、重複するトリガーや優先度の高いトリガーに役立ちます。ただし、各トリガーグループはシステムリソースを使用するため、必要に応じてのみ作成する必要があります。
 
-![トリガーグループ](/img/autonomic/trigger_groups.png)
+![トリガーグループ](pathname:///img/autonomic/trigger_groups.png)
 
 ### トリガー
 
 トリガーは真偽を評価する論理コンポーネントです。トリガーを作成することは、評価する式を指定するようなものです。トリガー作成ダイアログでは、トリガーを所有するトリガーグループと「左オペランド」を指定します。これはテレメトリ項目または既存のトリガーにすることができます。
 
-![トリガー作成1](/img/autonomic/create_trigger1.png)
+![トリガー作成1](pathname:///img/autonomic/create_trigger1.png)
 
 「左オペランド (Left Operand)」を選択したら、演算子を選択する必要があります。
 
-![トリガー作成2](/img/autonomic/create_trigger2.png)
+![トリガー作成2](pathname:///img/autonomic/create_trigger2.png)
 
 最後に、この場合は単純な値である「右オペランド (Right Operand)」を選択します。
 
-![トリガー作成3](/img/autonomic/create_trigger3.png)
+![トリガー作成3](pathname:///img/autonomic/create_trigger3.png)
 
 トリガーが作成されると、オートノミックに表示され、指定されたロジックによってアクティブ化されるのを待ちます。アクティブなトリガーはリスト内でハイライト表示されます。
 
-![トリガー作成3](/img/autonomic/enabled_trigger.png)
+![トリガー作成3](pathname:///img/autonomic/enabled_trigger.png)
 
 トリガーはプラグアイコンをクリックすることで手動で無効化および有効化することもできます。
 
-![トリガー作成3](/img/autonomic/disable_trigger.png)
+![トリガー作成3](pathname:///img/autonomic/disable_trigger.png)
 
 上記のスクリーンショットでトリガーに関するすべてを追跡するイベントに注目してください。
 
@@ -51,7 +51,7 @@ sidebar_custom_props:
 
 エッジトリガーはトリガーがアクティブに変化する時に発動します。もしすでにトリガーがアクティブな場合発動しません。レベルトリガーはトリガーがアクティブな時に発動します。
 
-![リアクション作成1](/img/autonomic/create_reaction1.png)
+![リアクション作成1](pathname:///img/autonomic/create_reaction1.png)
 
 トリガーが指定された後、実行するアクションの入力を求めるダイアログが表示されます。コマンドの送信、スクリプトの実行、または単に通知をプッシュすることができます。コマンドとスクリプトはオプションで通知をプッシュすることもできます。この例では、WARN レベルの通知付きスクリプトが指定されています。
 
@@ -59,16 +59,16 @@ sidebar_custom_props:
 スクリプトをいつどのように起動するか、そして完了まで実行されているかどうかに注意してください。不良スクリプトを起動すると、多くの未完了スクリプトがリソースを消費する可能性があります。
 :::
 
-![リアクション作成2](/img/autonomic/create_reaction2.png)
+![リアクション作成2](pathname:///img/autonomic/create_reaction2.png)
 
 最後にスヌーズ設定が指定されます。スヌーズは、リアクションが実行された後、リアクションが再度実行できるようになるまでの秒数です。これは特にレベルトリガーで重要で、トリガーがアクティブなままの場合、リアクションが継続的に実行される可能性があります。
 
-![リアクション作成3](/img/autonomic/create_reaction3.png)
+![リアクション作成3](pathname:///img/autonomic/create_reaction3.png)
 
 リアクションが作成されると、インターフェースにリストされます。
 
-![初期リアクション](/img/autonomic/initial_reaction.png)
+![初期リアクション](pathname:///img/autonomic/initial_reaction.png)
 
 リアクションが実行されると、「状態（State)」がスヌーズアイコンに変わり、「スヌーズ終了時間 (Snooze Until)」が更新され、リアクションが再度実行できるようになるまで待機していることを示します。
 
-![スヌーズされたリアクション](/img/autonomic/snoozed_reaction.png)
+![スヌーズされたリアクション](pathname:///img/autonomic/snoozed_reaction.png)

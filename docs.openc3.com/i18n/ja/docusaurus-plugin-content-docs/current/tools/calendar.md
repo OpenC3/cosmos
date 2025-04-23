@@ -9,7 +9,7 @@ sidebar_custom_props:
 
 カレンダーは、メタデータ、ノート、タイムライン情報を一つの理解しやすい場所に視覚化します。タイムラインを使用すると、未来の日時に基づいてコマンドやスクリプトを簡単に実行することができます。
 
-![カレンダー](/img/calendar/blank_calendar.png)
+![カレンダー](pathname:///img/calendar/blank_calendar.png)
 
 ### タイムラインの追加
 
@@ -23,39 +23,39 @@ COSMOSにタイムラインを追加するのは、作成 (Create) -> タイム�
 
 作成メニュー (Create) から、またはカレンダー上でメタデータ項目を表示したい特定の時間枠を右クリックすることで、新しいメタデータ項目を作成できます。メタデータエントリには開始時間のみがあり、終了時間はないことに注意してください。
 
-![メタデータ作成1](/img/calendar/create_metadata1.png)
+![メタデータ作成1](pathname:///img/calendar/create_metadata1.png)
 
 次に、作成したいすべてのメタデータ項目のキー/値ペアを追加します。
 
-![メタデータ作成2](/img/calendar/create_metadata2.png)
+![メタデータ作成2](pathname:///img/calendar/create_metadata2.png)
 
 ### ノート
 
 ノートには開始時間と終了時間の両方が必要です。
 
-![ノート作成1](/img/calendar/create_note1.png)
+![ノート作成1](pathname:///img/calendar/create_note1.png)
 
 次に、カレンダーにノートイベントを作成するためにノートを記録します。
 
-![ノート作成2](/img/calendar/create_note2.png)
+![ノート作成2](pathname:///img/calendar/create_note2.png)
 
 ### アクティビティ
 
 タイムラインにスケジュールされるアクティビティは、開始時間と終了時間の両方を必要とします。
 
-![アクティビティ作成1](/img/calendar/create_activity1.png)
+![アクティビティ作成1](pathname:///img/calendar/create_activity1.png)
 
 アクティビティは、単一のコマンドを実行したり、スクリプトを実行したり、または単に参照やその他の記録管理のためにカレンダー上の空間を「予約」したりすることができます。
 
-![アクティビティ作成2](/img/calendar/create_activity2.png)
+![アクティビティ作成2](pathname:///img/calendar/create_activity2.png)
 
 カレンダーアクティビティがスケジュールされると、プラス（+）を含む緑色の円で表示されます。正常に完了すると、アイコンはチェックマーク（✓）を含む緑色の円に変わります。予約アクティビティは単に空の緑色の円を持ちます。
 
-![カレンダー](/img/calendar/calendar.png)
+![カレンダー](pathname:///img/calendar/calendar.png)
 
 カレンダーイベントはファイル (File)->テーブルの表示(Show Table Display)を通じてリスト形式でも表示でき、過去および未来のイベントの両方をリストするためのページネーションをサポートしています。
 
-![リストビュー](/img/calendar/list_view.png)
+![リストビュー](pathname:///img/calendar/list_view.png)
 
 ## タイムラインの実装詳細
 
@@ -67,4 +67,4 @@ COSMOSにタイムラインを追加するのは、作成 (Create) -> タイム�
 
 ワーカーはアクティビティがキューに配置されるまでキューでブロックします。ジョブがキューから取り出されると、タイプを確認してアクティビティを実行します。スレッドはアクティビティの実行を完了としてマークし、データベースレコードを更新して完了します。ワーカーがタスクの実行中にエラーが発生した場合、アクティビティは実行されず、エラーがデータベースに記録されます。
 
-![タイムラインのライフサイクル](/img/calendar/timeline_lifecycle.png)
+![タイムラインのライフサイクル](pathname:///img/calendar/timeline_lifecycle.png)

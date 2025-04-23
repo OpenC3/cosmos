@@ -47,7 +47,7 @@ COSMOSシステムでは、理解することが重要ないくつかの用語�
 
 以下の図はCOSMOS 6のアーキテクチャを示しています。
 
-![COSMOSアーキテクチャ](/img/architecture.png)
+![COSMOSアーキテクチャ](pathname:///img/architecture.png)
 
 このアーキテクチャの主要な側面：
 

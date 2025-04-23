@@ -9,7 +9,7 @@ sidebar_custom_props:
 
 コマンドとテレメトリサーバーアプリケーションは、COSMOSインストールでインスタンス化された[インターフェース](../configuration/interfaces.md)とターゲットに関するステータスを提供します。インターフェースは接続または切断でき、生のバイト数が返されます。このアプリケーションは、COSMOSシステムを通過する際の生のフォーマットされたコマンドとテレメトリパケットの両方を表示するための迅速なショートカットも提供します。コマンドとテレメトリサーバーの下部には、サーバーメッセージを表示するログメッセージがあります。
 
-![コマンドテレメトリサーバー](/img/cmd_tlm_server/cmd_tlm_server.png)
+![コマンドテレメトリサーバー](pathname:///img/cmd_tlm_server/cmd_tlm_server.png)
 
 ## コマンドとテレメトリサーバーのメニュー
 
@@ -17,7 +17,7 @@ sidebar_custom_props:
 
 コマンドとテレメトリサーバーには、ファイル (File) -> オプション (Options) の下に1つのメニューがあります：
 
-![ファイルメニュー](/img/cmd_tlm_server/file_menu.png)
+![ファイルメニュー](pathname:///img/cmd_tlm_server/file_menu.png)
 
 このダイアログは、ブラウザウィンドウとバックエンドサーバーの両方の負荷を軽減するために、コマンドとテレメトリサーバーの更新レートを変更します。これにより、アプリケーション内のさまざまなタブの更新レートが変更されることに注意してください。ログメッセージは、メッセージが生成されると引き続き更新されます。
 
@@ -25,33 +25,33 @@ sidebar_custom_props:
 
 インターフェースタブは、COSMOSインストールで定義されたすべてのインターフェースを表示します。インターフェースを接続または切断し、生のバイトとパケット数を表示できます。
 
-![インターフェース](/img/cmd_tlm_server/interfaces.png)
+![インターフェース](pathname:///img/cmd_tlm_server/interfaces.png)
 
 ## ターゲットタブ
 
 ターゲットタブは、すべてのターゲットとそれらにマッピングされたインターフェース、およびコマンド権限のステータス（Enterpriseのみ）を表示します。
 
-![ターゲット](/img/cmd_tlm_server/targets.png)
+![ターゲット](pathname:///img/cmd_tlm_server/targets.png)
 
 コマンド権限は管理コンソールで有効にされ、スコープ全体で有効になります。コマンド権限が有効になると、個々のユーザーはコマンド権限を与えたり取り消したりできるようになり、そのターゲットへの排他的なコマンドとスクリプトアクセスが可能になります。コマンド権限がなければ、ユーザーはそのターゲットでコマンドを送信したりスクリプトを開始したりすることはできません。なお、カレンダーやオートノミックでスケジュールされたコマンドやスクリプトはコマンド権限の影響を受けません。
 
-![コマンド権限](/img/cmd_tlm_server/cmd_authority.png)
+![コマンド権限](pathname:///img/cmd_tlm_server/cmd_authority.png)
 
 スコープリストに表示されるもう一つのオプションは、クリティカルコマンドモードです。クリティカルコマンドでは、各コマンドを承認する別のユーザーが必要です。HAZARDOUSとRESTRICTEDコマンドのみ、または全ての手動コマンドに対して有効にすることができます。
 
 以下は、クリティカルコマンドモードがNORMALに設定されている場合に、コマンドセンダーでHAZARDOUSコマンドを送信する例です。
 
-![クリティカルコマンド](/img/cmd_tlm_server/critical_cmd_sender.png)
+![クリティカルコマンド](pathname:///img/cmd_tlm_server/critical_cmd_sender.png)
 
 ## コマンドパケットタブ
 
 コマンドパケットタブは、利用可能なすべてのコマンドを表示します。テーブルは列ヘッダーをクリックすることでソートできます。テーブルはページ分割されており、何千ものコマンドをサポートしています。検索バーはすべてのページからコマンドを検索します。
 
-![コマンド](/img/cmd_tlm_server/cmd_packets.png)
+![コマンド](pathname:///img/cmd_tlm_server/cmd_packets.png)
 
 「生表示 (View Raw)」をクリックすると、そのコマンドの生バイトを表示するダイアログが開きます。
 
-![生コマンド](/img/cmd_tlm_server/cmd_raw.png)
+![生コマンド](pathname:///img/cmd_tlm_server/cmd_raw.png)
 
 「コマンドセンダーで表示 (View in Command Sender)」をクリックすると、指定されたコマンドで新しい[コマンドセンダー](cmd-sender.md)ウィンドウが開きます。
 
@@ -59,11 +59,11 @@ sidebar_custom_props:
 
 テレメトリパケットタブは、利用可能なすべてのテレメトリを表示します。テーブルは列ヘッダーをクリックすることでソートできます。テーブルはページ分割されており、何千ものテレメトリパケットをサポートしています。検索バーはすべてのページからテレメトリパケットを検索します。
 
-![テレメトリ](/img/cmd_tlm_server/tlm_packets.png)
+![テレメトリ](pathname:///img/cmd_tlm_server/tlm_packets.png)
 
 「生表示 (View Raw)」をクリックすると、そのテレメトリパケットの生バイトを表示するダイアログが開きます。
 
-![生テレメトリ](/img/cmd_tlm_server/tlm_raw.png)
+![生テレメトリ](pathname:///img/cmd_tlm_server/tlm_raw.png)
 
 「パケットビューアで表示 (View in Packet Viewer)」をクリックすると、指定されたテレメトリパケットで新しい[パケットビューア](packet-viewer.md)ウィンドウが開きます。
 
@@ -71,10 +71,10 @@ sidebar_custom_props:
 
 ステータスタブはCOSMOSシステムメトリクスを表示します。
 
-![ステータス](/img/cmd_tlm_server/status.png)
+![ステータス](pathname:///img/cmd_tlm_server/status.png)
 
 ## ログメッセージ
 
 ログメッセージテーブルは、コマンドとテレメトリサーバーアプリケーションのすべてのタブの下に位置しています。リミットイベント（新しいRED、YELLOW、GREEN値）、ロギングイベント（新しいファイル）、インターフェースイベント（接続と切断）などのサーバーメッセージを表示します。重大度でフィルタリングしたり、検索ボックスに値を入力することでフィルタリングできます。また、一時停止や再開を行って個々のメッセージを検査することもできます。
 
-![ログメッセージ](/img/cmd_tlm_server/log_messages.png)
+![ログメッセージ](pathname:///img/cmd_tlm_server/log_messages.png)

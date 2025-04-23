@@ -9,7 +9,7 @@ sidebar_custom_props:
 
 バケットエクスプローラーは、COSMOSバックエンドのバケットストレージシステムへのファイルブラウザです。ファイルブラウザ階層でファイルを閲覧し、ダウンロードすることができます。バケットエクスプローラーは、COSMOSのローカルインストールだけでなく、AWS S3やGCP Cloud Storageなどのクラウドストレージを利用するクラウドデプロイメントでも動作します。
 
-![バケットエクスプローラー](/img/bucket_explorer/bucket_explorer.png)
+![バケットエクスプローラー](pathname:///img/bucket_explorer/bucket_explorer.png)
 
 ## ファイルの閲覧
 

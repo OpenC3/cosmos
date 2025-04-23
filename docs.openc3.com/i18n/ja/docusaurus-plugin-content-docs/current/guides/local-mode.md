@@ -21,15 +21,15 @@ sidebar_custom_props:
 
 ローカルモードの最も一般的なユースケースはスクリプト開発です。Script Runnerを起動し、`INST/procedures/checks.rb`ファイルを開きます。このスクリプトを実行すると、完了まで実行できないいくつかのエラー（設計上）があることに気付くでしょう。修正しましょう！7行目と9行目をコメントアウトして、スクリプトを保存します。これでローカルモードがスクリプトのコピーを`plugins/targets_modified/INST/procedures/checks.rb`に保存したことに気付くはずです。
 
-![プロジェクトレイアウト](/img/guides/local_mode/project.png)
+![プロジェクトレイアウト](pathname:///img/guides/local_mode/project.png)
 
 この時点で、ローカルモードはこれらのスクリプトを同期させているため、どちらの場所でも編集できます。ローカルスクリプトを編集して、先頭に簡単なコメントを追加してみましょう：`# This is a script`。Script Runnerに戻ると、変更は_自動的に_表示されていません。ただし、ファイル名の横にあるReloadボタンがあり、これをクリックするとバックエンドからファイルを更新できます。
 
-![プロジェクトレイアウト](/img/guides/local_mode/reload_file.png)
+![プロジェクトレイアウト](pathname:///img/guides/local_mode/reload_file.png)
 
 これをクリックすると、COSMOSに同期されたファイルがリロードされ、コメントが表示されます。
 
-![プロジェクトレイアウト](/img/guides/local_mode/reloaded.png)
+![プロジェクトレイアウト](pathname:///img/guides/local_mode/reloaded.png)
 
 ### ローカルモードの無効化
 
@@ -51,7 +51,7 @@ openc3-cosmos-demo % ./openc3.sh cli rake build VERSION=1.0.1
 
 管理者プラグインタブとアップグレードリンクを使用してプラグインをアップグレードします。新しくビルドしたプラグインを選択すると、COSMOSは既存の変更を検出し、それらを削除するかどうか尋ねます。これは永久に変更を削除するため、警告が付いています。変更を移動してプラグインを再ビルドしたので、チェックボックスをオンにしてINSTALLします。
 
-![プロジェクトレイアウト](/img/guides/local_mode/delete_modified.png)
+![プロジェクトレイアウト](pathname:///img/guides/local_mode/delete_modified.png)
 
 新しいプラグインがインストールされると、プロジェクトの`plugins`ディレクトリが新しいプラグインで更新され、targets_modifiedディレクトリの下にあるすべてのものは新しいインストールでは変更がないため削除されます。
 

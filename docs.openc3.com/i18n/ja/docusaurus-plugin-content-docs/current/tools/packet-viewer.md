@@ -9,7 +9,7 @@ sidebar_custom_props:
 
 パケットビューアは、定義されたすべてのターゲット、パケット、項目の現在の値を表示するために設定を必要としないライブテレメトリビューアです。制限値を持つ項目は、現在の状態に応じて色付け（青、緑、黄、または赤）されて表示されます。項目を右クリックすると詳細情報を取得できます。
 
-![パケットビューア](/img/packet_viewer/packet_viewer.png)
+![パケットビューア](pathname:///img/packet_viewer/packet_viewer.png)
 
 ## パケットビューアのメニュー
 
@@ -49,6 +49,6 @@ style={{"float": 'left', "margin-right": 50 + 'px', "height": 180 + 'px'}} />
 
 項目を右クリックして詳細を選択すると、詳細ダイアログが開きます。
 
-![詳細](/img/packet_viewer/temp1_details.png)
+![詳細](pathname:///img/packet_viewer/temp1_details.png)
 
 このダイアログは、テレメトリ項目に定義されているすべてのものをリストします。

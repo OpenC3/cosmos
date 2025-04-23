@@ -9,7 +9,7 @@ sidebar_custom_props:
 
 テレメトリグラファーは、グラフごとに1つ以上のテレメトリポイントを表示できるグラフ作成アプリケーションです。画面ごとに複数のグラフをサポートし、サイズ変更や並べ替えが可能です。異なる状況に対応するために、複数の設定を保存して復元することができます。
 
-![テレメトリグラファー](/img/telemetry_grapher/telemetry_grapher.png)
+![テレメトリグラファー](pathname://img/telemetry_grapher/telemetry_grapher.png)
 
 ## テレメトリグラファーのメニュー
 
@@ -51,27 +51,27 @@ style={{"float": 'left', "margin-right": 50 + 'px', "height": 150 + 'px'}} />
 
 グラフのタイトルバーの鉛筆アイコンをクリックして個々のグラフを編集すると、グラフ編集ダイアログが表示されます。
 
-![グラフの編集](/img/telemetry_grapher/edit_graph.png)
+![グラフの編集](pathname:///img/telemetry_grapher/edit_graph.png)
 
 開始日と開始時間を編集すると、指定された時間から始まるようにデータが再クエリされます。この操作は、過去のデータをリクエストする距離によって数秒かかる場合があります。同様に、終了日と終了時間を指定すると、データリクエストが指定された時間に制限されます。終了日/終了時間フィールドを空のままにすると、テレメトリグラファーは到着したアイテムをリアルタイムでグラフ化し続けます。
 
 Y軸最小値とY軸最大値を変更すると、単にグラフのスケールが設定されます。Y軸最小値とY軸最大値を削除すると、グラフは値が到着するたびに自動的にスケーリングされます。最小値を0、最大値を100に設定した次のグラフを最初のグラフ画像（自動スケール）と比較してください。
 
-![最小最大](/img/telemetry_grapher/graph_min_max.png)
+![最小最大](pathname:///img/telemetry_grapher/graph_min_max.png)
 
 ## 項目の選択
 
 ターゲットの選択ドロップダウンからターゲットを選択すると、選択したパケットドロップダウンで利用可能なパケットが自動的に更新され、それによって選択した項目ドロップダウンで利用可能な項目が更新されます。項目を追加をクリックすると、項目がグラフに追加され、すぐにグラフ化が開始されます。
 
-![温度1](/img/telemetry_grapher/graph_temp1.png)
+![温度1](pathname:///img/telemetry_grapher/graph_temp1.png)
 
 時間が経過すると、メイングラフが埋まってスクロールし始め、下部の概要グラフには全履歴が表示されます。
 
-![温度1履歴](/img/telemetry_grapher/graph_temp1_time.png)
+![温度1履歴](pathname:///img/telemetry_grapher/graph_temp1_time.png)
 
 新しい項目を選択してグラフに追加すると、最初の項目の開始時点までの履歴がグラフに自動的に入力されます。これにより、項目を徐々にグラフに追加しても、完全な履歴を維持することができます。
 
-![温度1温度2](/img/telemetry_grapher/graph_temp1_temp2.png)
+![温度1温度2](pathname:///img/telemetry_grapher/graph_temp1_temp2.png)
 
 ## グラフウィンドウの管理
 
@@ -79,18 +79,18 @@ Y軸最小値とY軸最大値を変更すると、単にグラフのスケール
 
 各グラフには、右上隅にウィンドウボタンのセットがあります。最初のボタンは、グラフを水平方向と垂直方向の両方で縮小または拡大し、同じブラウザタブ内に4つのグラフを表示できるようにします。半分の高さのグラフでは概要グラフが表示されなくなることに注意してください。
 
-![4つのグラフ](/img/telemetry_grapher/four_graphs.png)
+![4つのグラフ](pathname:///img/telemetry_grapher/four_graphs.png)
 
 2番目のボタンは、グラフを水平方向に縮小または拡大し、ブラウザウィンドウの幅の半分または全幅になります。これにより、2つの全幅グラフを上下に配置できます。
 
-![2つの全幅](/img/telemetry_grapher/two_full_width.png)
+![2つの全幅](pathname:///img/telemetry_grapher/two_full_width.png)
 
 ３番目のボタンは、グラフを垂直方向に縮小または拡大し、ブラウザウィンドウの高さの半分または全高になります。これにより、2つの全高グラフを並べて表示できます。
 
-![2つの全高](/img/telemetry_grapher/two_full_height.png)
+![2つの全高](pathname:///img/telemetry_grapher/two_full_height.png)
 
 線ボタンはグラフを最小化して効果的に隠します。これにより、既存のグラフを失うことなく、単一のグラフに集中できます。
 
-![最小化](/img/telemetry_grapher/minimized.png)
+![最小化](pathname:///img/telemetry_grapher/minimized.png)
 
 最後のXボタンはグラフを閉じます。

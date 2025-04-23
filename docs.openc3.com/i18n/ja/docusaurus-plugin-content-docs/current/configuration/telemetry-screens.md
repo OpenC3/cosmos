@@ -125,7 +125,7 @@ LABEL "THIS IS A TEST"
 LABEL "THIS IS A TEST"
   SETTING WIDTH 20em
 ```
-![WIDTH](/img/telemetry_viewer/widgets/width.png)
+![WIDTH](pathname:///img/telemetry_viewer/widgets/width.png)
 
 
 ### HEIGHT
@@ -146,7 +146,7 @@ LABEL "THIS IS A TEST"
   SETTING BACKCOLOR GREY
   SETTING HEIGHT 2em
 ```
-![HEIGHT](/img/telemetry_viewer/widgets/height.png)
+![HEIGHT](pathname:///img/telemetry_viewer/widgets/height.png)
 
 
 ### MARGIN
@@ -168,7 +168,7 @@ LABEL "THIS IS A TEST"
 LABEL "THIS IS A TEST"
   SETTING BACKCOLOR GREEN
 ```
-![MARGIN](/img/telemetry_viewer/widgets/margin.png)
+![MARGIN](pathname:///img/telemetry_viewer/widgets/margin.png)
 
 
 ### PADDING
@@ -190,7 +190,7 @@ LABEL "THIS IS A TEST"
 LABEL "THIS IS A TEST"
   SETTING BACKCOLOR GREEN
 ```
-![PADDING](/img/telemetry_viewer/widgets/padding.png)
+![PADDING](pathname:///img/telemetry_viewer/widgets/padding.png)
 
 
 ### BACKCOLOR
@@ -209,7 +209,7 @@ LABEL "THIS IS A TEST"
 LABEL "THIS IS A TEST"
   SETTING BACKCOLOR 155 50 155
 ```
-![BACKCOLOR](/img/telemetry_viewer/widgets/backcolor.png)
+![BACKCOLOR](pathname:///img/telemetry_viewer/widgets/backcolor.png)
 
 
 ### TEXTCOLOR
@@ -228,7 +228,7 @@ LABEL "THIS IS A TEST"
 LABEL "THIS IS A TEST"
   SETTING TEXTCOLOR 155 50 155
 ```
-![TEXTCOLOR](/img/telemetry_viewer/widgets/textcolor.png)
+![TEXTCOLOR](pathname:///img/telemetry_viewer/widgets/textcolor.png)
 
 
 ### BORDERCOLOR
@@ -251,7 +251,7 @@ VERTICAL
 END
 SETTING BORDERCOLOR 155 50 155
 ```
-![BORDERCOLOR](/img/telemetry_viewer/widgets/bordercolor.png)
+![BORDERCOLOR](pathname:///img/telemetry_viewer/widgets/bordercolor.png)
 
 
 ### RAW
@@ -267,7 +267,7 @@ SETTING BORDERCOLOR 155 50 155
 LABEL "Label 1"
   SETTING RAW font-size 30px
 ```
-![RAW](/img/telemetry_viewer/widgets/raw.png)
+![RAW](pathname:///img/telemetry_viewer/widgets/raw.png)
 
 
 ## SUBSETTING
@@ -290,7 +290,7 @@ VERTICALBOX
     SUBSETTING 0 TEXTCOLOR green # ラベルのテキストを緑に変更
 END
 ```
-![SUBSETTING](/img/telemetry_viewer/widgets/subsetting.png)
+![SUBSETTING](pathname:///img/telemetry_viewer/widgets/subsetting.png)
 
 
 ## NAMED_WIDGET
@@ -313,7 +313,7 @@ getNamedWidgetはウィジェット自体を返すため、そのウィジェッ
 NAMED_WIDGET DURATION TEXTFIELD
 BUTTON "Push" "screen.getNamedWidget('DURATION').text()"
 ```
-![NAMED_WIDGET](/img/telemetry_viewer/widgets/named_widget.png)
+![NAMED_WIDGET](pathname:///img/telemetry_viewer/widgets/named_widget.png)
 
 
 ## レイアウトウィジェット
@@ -338,7 +338,7 @@ VERTICAL 5px
   LABEL "SCREEN"
 END
 ```
-![VERTICAL](/img/telemetry_viewer/widgets/vertical.png)
+![VERTICAL](pathname:///img/telemetry_viewer/widgets/vertical.png)
 
 
 ### VERTICALBOX
@@ -359,7 +359,7 @@ VERTICALBOX Info
   LABEL "SCREEN"
 END
 ```
-![VERTICALBOX](/img/telemetry_viewer/widgets/verticalbox.png)
+![VERTICALBOX](pathname:///img/telemetry_viewer/widgets/verticalbox.png)
 
 
 ### HORIZONTAL
@@ -378,7 +378,7 @@ HORIZONTAL 100
   LABEL "SCREEN"
 END
 ```
-![HORIZONTAL](/img/telemetry_viewer/widgets/horizontal.png)
+![HORIZONTAL](pathname:///img/telemetry_viewer/widgets/horizontal.png)
 
 
 ### HORIZONTALBOX
@@ -400,7 +400,7 @@ HORIZONTALBOX Info 10
   LABEL "SCREEN"
 END
 ```
-![HORIZONTALBOX](/img/telemetry_viewer/widgets/horizontalbox.png)
+![HORIZONTALBOX](pathname:///img/telemetry_viewer/widgets/horizontalbox.png)
 
 
 ### MATRIXBYCOLUMNS
@@ -424,7 +424,7 @@ MATRIXBYCOLUMNS 3 10
   LABEL "300"
 END
 ```
-![MATRIXBYCOLUMNS](/img/telemetry_viewer/widgets/matrixbycolumns.png)
+![MATRIXBYCOLUMNS](pathname:///img/telemetry_viewer/widgets/matrixbycolumns.png)
 
 
 ### SCROLLWINDOW
@@ -453,7 +453,7 @@ SCROLLWINDOW 100 10
   END
 END
 ```
-![SCROLLWINDOW](/img/telemetry_viewer/widgets/scrollwindow.png)
+![SCROLLWINDOW](pathname:///img/telemetry_viewer/widgets/scrollwindow.png)
 
 
 ### TABBOOK
@@ -480,7 +480,7 @@ TABBOOK
   END
 END
 ```
-![TABITEM](/img/telemetry_viewer/widgets/tabitem.png)
+![TABITEM](pathname:///img/telemetry_viewer/widgets/tabitem.png)
 
 
 ### IFRAME
@@ -496,7 +496,7 @@ END
 ```ruby
 IFRAME https://openc3.com 900 450
 ```
-![IFRAME](/img/telemetry_viewer/widgets/iframe.png)
+![IFRAME](pathname:///img/telemetry_viewer/widgets/iframe.png)
 
 
 ## 装飾ウィジェット
@@ -518,7 +518,7 @@ IFRAME https://openc3.com 900 450
 ```ruby
 LABEL "注意：これは警告のみです"
 ```
-![LABEL](/img/telemetry_viewer/widgets/label.png)
+![LABEL](pathname:///img/telemetry_viewer/widgets/label.png)
 
 
 ### HORIZONTALLINE
@@ -531,7 +531,7 @@ LABEL Over
 HORIZONTALLINE
 LABEL Under
 ```
-![HORIZONTALLINE](/img/telemetry_viewer/widgets/horizontalline.png)
+![HORIZONTALLINE](pathname:///img/telemetry_viewer/widgets/horizontalline.png)
 
 
 ### TITLE
@@ -547,7 +547,7 @@ TITLE "タイトル"
 HORIZONTALLINE
 LABEL "ラベル"
 ```
-![TITLE](/img/telemetry_viewer/widgets/title.png)
+![TITLE](pathname:///img/telemetry_viewer/widgets/title.png)
 
 
 ### SPACER
@@ -566,7 +566,7 @@ VERTICAL 3
   LABEL "スペーサー上部"
 END
 ```
-![SPACER](/img/telemetry_viewer/widgets/spacer.png)
+![SPACER](pathname:///img/telemetry_viewer/widgets/spacer.png)
 
 
 ## テレメトリウィジェット
@@ -594,7 +594,7 @@ END
 ARRAY INST HEALTH_STATUS ARY 250 80 "0x%x" 6 FORMATTED
 ARRAY INST HEALTH_STATUS ARY2 200 100 nil 4 WITH_UNITS
 ```
-![ARRAY](/img/telemetry_viewer/widgets/array.png)
+![ARRAY](pathname:///img/telemetry_viewer/widgets/array.png)
 
 
 ### ARRAYPLOT
@@ -612,7 +612,7 @@ ARRAYPLOT
   SETTING SIZE 600 400
   SETTING X_AXIS 10 10
 ```
-![ARRAYPLOT](/img/telemetry_viewer/widgets/arrayplot.png)
+![ARRAYPLOT](pathname:///img/telemetry_viewer/widgets/arrayplot.png)
 
 以下の設定はARRAYPLOTに適用されます。これらはSETTINGキーワードを使用して適用されます。
 #### TITLE
@@ -705,7 +705,7 @@ ARRAYPLOT
 ```ruby
 BLOCK INST IMAGE IMAGE 620 200 "%02X" 4 4 "0x%08X:"
 ```
-![BLOCK](/img/telemetry_viewer/widgets/block.png)
+![BLOCK](pathname:///img/telemetry_viewer/widgets/block.png)
 
 
 ### FORMATVALUE
@@ -727,7 +727,7 @@ BLOCK INST IMAGE IMAGE 620 200 "%02X" 4 4 "0x%08X:"
 FORMATVALUE INST LATEST TIMESEC %012u CONVERTED 20
 FORMATVALUE INST LATEST TEMP1 %.2f CONVERTED 20
 ```
-![FORMATVALUE](/img/telemetry_viewer/widgets/formatvalue.png)
+![FORMATVALUE](pathname:///img/telemetry_viewer/widgets/formatvalue.png)
 
 
 ### LABELLED
@@ -751,7 +751,7 @@ LABELLED INST PARAMS VALUE1
   SETTING LED_COLOR GOOD GREEN
   SETTING LED_COLOR BAD RED
 ```
-![LABELLED](/img/telemetry_viewer/widgets/labelled.png)
+![LABELLED](pathname:///img/telemetry_viewer/widgets/labelled.png)
 
 以下の設定はLABELLEDに適用されます。これらはSETTINGキーワードを使用して適用されます。
 #### LED_COLOR
@@ -779,7 +779,7 @@ LABELLED INST PARAMS VALUE1
 LABELPROGRESSBAR INST ADCS POSPROGRESS 2 200 RAW
 LABELPROGRESSBAR INST ADCS POSPROGRESS
 ```
-![LABELPROGRESSBAR](/img/telemetry_viewer/widgets/labelprogressbar.png)
+![LABELPROGRESSBAR](pathname:///img/telemetry_viewer/widgets/labelprogressbar.png)
 
 
 ### LABELVALUE
@@ -798,7 +798,7 @@ LABELPROGRESSBAR INST ADCS POSPROGRESS
 LABELVALUE INST LATEST TIMESEC CONVERTED 18
 LABELVALUE INST LATEST COLLECT_TYPE
 ```
-![LABELVALUE](/img/telemetry_viewer/widgets/labelvalue.png)
+![LABELVALUE](pathname:///img/telemetry_viewer/widgets/labelvalue.png)
 
 
 ### LABELVALUEDESC
@@ -818,7 +818,7 @@ LABELVALUE INST LATEST COLLECT_TYPE
 LABELVALUEDESC INST HEALTH_STATUS TEMP1 "温度番号1" RAW 18
 LABELVALUEDESC INST HEALTH_STATUS COLLECT_TYPE
 ```
-![LABELVALUEDESC](/img/telemetry_viewer/widgets/labelvaluedesc.png)
+![LABELVALUEDESC](pathname:///img/telemetry_viewer/widgets/labelvaluedesc.png)
 
 
 ### LABELVALUELIMITSBAR
@@ -848,7 +848,7 @@ LABELVALUEDESC INST HEALTH_STATUS COLLECT_TYPE
 LABELVALUELIMITSCOLUMN INST HEALTH_STATUS TEMP1 CONVERTED 18
 LABELVALUELIMITSCOLUMN INST HEALTH_STATUS TEMP1
 ```
-![LABELVALUELIMITSCOLUMN](/img/telemetry_viewer/widgets/labelvaluelimitscolumn.png)
+![LABELVALUELIMITSCOLUMN](pathname:///img/telemetry_viewer/widgets/labelvaluelimitscolumn.png)
 
 
 ### LABELVALUERANGEBAR
@@ -871,7 +871,7 @@ LABELVALUELIMITSCOLUMN INST HEALTH_STATUS TEMP1
 LABELVALUERANGEBAR INST HEALTH_STATUS TEMP1 0 100000 RAW 18 200 40
 LABELVALUERANGEBAR INST HEALTH_STATUS TEMP1 -120 120
 ```
-![LABELVALUERANGEBAR](/img/telemetry_viewer/widgets/labelvaluerangebar.png)
+![LABELVALUERANGEBAR](pathname:///img/telemetry_viewer/widgets/labelvaluerangebar.png)
 
 
 ### LED
@@ -895,7 +895,7 @@ LED INST PARAMS VALUE5 RAW 25 20 # 楕円
   SETTING LED_COLOR 1 RED
   SETTING LED_COLOR ANY YELLOW
 ```
-![LED](/img/telemetry_viewer/widgets/led.png)
+![LED](pathname:///img/telemetry_viewer/widgets/led.png)
 
 以下の設定はLEDに適用されます。これらはSETTINGキーワードを使用して適用されます。
 #### LED_COLOR
@@ -923,7 +923,7 @@ Example Usage:
 LIMITSBAR INST HEALTH_STATUS TEMP1 CONVERTED 200 50
 LIMITSBAR INST HEALTH_STATUS TEMP1
 ```
-![LIMITSBAR](/img/telemetry_viewer/widgets/limitsbar.png)
+![LIMITSBAR](pathname:///img/telemetry_viewer/widgets/limitsbar.png)
 
 
 ### LIMITSCOLUMN
@@ -943,7 +943,7 @@ LIMITSBAR INST HEALTH_STATUS TEMP1
 LIMITSCOLUMN INST HEALTH_STATUS TEMP1 CONVERTED 50 200
 LIMITSCOLUMN INST HEALTH_STATUS TEMP1
 ```
-![LIMITSCOLUMN](/img/telemetry_viewer/widgets/limitscolumn.png)
+![LIMITSCOLUMN](pathname:///img/telemetry_viewer/widgets/limitscolumn.png)
 
 
 ### LIMITSCOLOR
@@ -967,7 +967,7 @@ END
 LIMITSCOLOR INST HEALTH_STATUS TEMP2 # デフォルトはアイテム名のみのラベル
 LIMITSCOLOR INST HEALTH_STATUS TEMP3 CONVERTED 20 TRUE # 完全なTGT/PKT/ITEMラベル
 ```
-![LIMITSCOLOR](/img/telemetry_viewer/widgets/limitscolor.png)
+![LIMITSCOLOR](pathname:///img/telemetry_viewer/widgets/limitscolor.png)
 
 
 ### VALUELIMITSBAR
@@ -986,7 +986,7 @@ LIMITSCOLOR INST HEALTH_STATUS TEMP3 CONVERTED 20 TRUE # 完全なTGT/PKT/ITEM�
 VALUELIMITSBAR INST HEALTH_STATUS TEMP1 CONVERTED 18
 VALUELIMITSBAR INST HEALTH_STATUS TEMP1
 ```
-![VALUELIMITSBAR](/img/telemetry_viewer/widgets/valuelimitsbar.png)
+![VALUELIMITSBAR](pathname:///img/telemetry_viewer/widgets/valuelimitsbar.png)
 
 
 ### VALUELIMITSCOLUMN
@@ -1005,7 +1005,7 @@ VALUELIMITSBAR INST HEALTH_STATUS TEMP1
 VALUELIMITSCOLUMN INST HEALTH_STATUS TEMP1 CONVERTED 18
 VALUELIMITSCOLUMN INST HEALTH_STATUS TEMP1
 ```
-![VALUELIMITSCOLUMN](/img/telemetry_viewer/widgets/valuelimitscolumn.png)
+![VALUELIMITSCOLUMN](pathname:///img/telemetry_viewer/widgets/valuelimitscolumn.png)
 
 
 ### VALUERANGEBAR
@@ -1028,7 +1028,7 @@ VALUELIMITSCOLUMN INST HEALTH_STATUS TEMP1
 VALUERANGEBAR INST HEALTH_STATUS TEMP1 0 100000 RAW 18 200 40
 VALUERANGEBAR INST HEALTH_STATUS TEMP1 -120 120
 ```
-![VALUERANGEBAR](/img/telemetry_viewer/widgets/valuerangebar.png)
+![VALUERANGEBAR](pathname:///img/telemetry_viewer/widgets/valuerangebar.png)
 
 
 ### LINEGRAPH
@@ -1048,7 +1048,7 @@ VALUERANGEBAR INST HEALTH_STATUS TEMP1 -120 120
 LINEGRAPH INST HEALTH_STATUS TEMP1
   SETTING ITEM INST ADCS Q1 # グラフに追加アイテムを追加
 ```
-![LINEGRAPH](/img/telemetry_viewer/widgets/linegraph.png)
+![LINEGRAPH](pathname:///img/telemetry_viewer/widgets/linegraph.png)
 
 以下の設定はLINEGRAPHに適用されます。これらはSETTINGキーワードを使用して適用されます。
 #### ITEM
@@ -1124,7 +1124,7 @@ SPARKLINE INST HEALTH_STATUS TEMP1
   SETTING SIZE 400 50
   SETTING HISTORY 30s # グラフに30秒のデータを追加
 ```
-![SPARKLINE](/img/telemetry_viewer/widgets/sparkline.png)
+![SPARKLINE](pathname:///img/telemetry_viewer/widgets/sparkline.png)
 
 以下の設定はSPARKLINEに適用されます。これらはSETTINGキーワードを使用して適用されます。
 #### ITEM
@@ -1199,7 +1199,7 @@ SPARKLINE INST HEALTH_STATUS TEMP1
 LABELSPARKLINE INST HEALTH_STATUS TEMP1
   SETTING HISTORY 5m # グラフに5分のデータを追加
 ```
-![LABELSPARKLINE](/img/telemetry_viewer/widgets/labelsparkline.png)
+![LABELSPARKLINE](pathname:///img/telemetry_viewer/widgets/labelsparkline.png)
 
 以下の設定はLABELSPARKLINEに適用されます。これらはSETTINGキーワードを使用して適用されます。
 #### ITEM
@@ -1271,7 +1271,7 @@ LABELSPARKLINE INST HEALTH_STATUS TEMP1
 ```ruby
 IMAGEVIEWER INST IMAGE IMAGE jpg
 ```
-![IMAGEVIEWER](/img/telemetry_viewer/widgets/imageviewer.png)
+![IMAGEVIEWER](pathname:///img/telemetry_viewer/widgets/imageviewer.png)
 
 
 ### PROGRESSBAR
@@ -1291,7 +1291,7 @@ IMAGEVIEWER INST IMAGE IMAGE jpg
 PROGRESSBAR INST ADCS POSPROGRESS 0.5 200
 PROGRESSBAR INST ADCS POSPROGRESS
 ```
-![PROGRESSBAR](/img/telemetry_viewer/widgets/progressbar.png)
+![PROGRESSBAR](pathname:///img/telemetry_viewer/widgets/progressbar.png)
 
 
 ### RANGEBAR
@@ -1313,7 +1313,7 @@ PROGRESSBAR INST ADCS POSPROGRESS
 RANGEBAR INST HEALTH_STATUS TEMP1 0 100000 RAW 200 50
 RANGEBAR INST HEALTH_STATUS TEMP1 -100 100
 ```
-![RANGEBAR](/img/telemetry_viewer/widgets/rangebar.png)
+![RANGEBAR](pathname:///img/telemetry_viewer/widgets/rangebar.png)
 
 
 ### ROLLUP
@@ -1340,7 +1340,7 @@ ROLLUP antenna "GND 2" "Location"
   SETTING TLM INST HEALTH_STATUS TEMP3
   SETTING TLM INST HEALTH_STATUS TEMP4
 ```
-![ROLLUP](/img/telemetry_viewer/widgets/rollup.png)
+![ROLLUP](pathname:///img/telemetry_viewer/widgets/rollup.png)
 
 
 ### SIGNAL
@@ -1366,7 +1366,7 @@ SIGNAL INST HEALTH_STATUS TEMP1
   # 値 >= 50 の場合、5バー表示
   SETTING RANGE -50 0 50
 ```
-![SIGNAL](/img/telemetry_viewer/widgets/signal.png)
+![SIGNAL](pathname:///img/telemetry_viewer/widgets/signal.png)
 
 
 ### TEXTBOX
@@ -1384,7 +1384,7 @@ SIGNAL INST HEALTH_STATUS TEMP1
 ```ruby
 TEXTBOX INST HEALTH_STATUS PACKET_TIMEFORMATTED 150 70
 ```
-![TEXTBOX](/img/telemetry_viewer/widgets/textbox.png)
+![TEXTBOX](pathname:///img/telemetry_viewer/widgets/textbox.png)
 
 
 ### VALUE
@@ -1405,7 +1405,7 @@ TEXTBOX INST HEALTH_STATUS PACKET_TIMEFORMATTED 150 70
 VALUE INST HEALTH_STATUS TEMP1 CONVERTED 18
 VALUE INST HEALTH_STATUS TEMP1
 ```
-![VALUE](/img/telemetry_viewer/widgets/value.png)
+![VALUE](pathname:///img/telemetry_viewer/widgets/value.png)
 
 
 ## インタラクティブウィジェット
@@ -1461,7 +1461,7 @@ BUTTON 'Run Script' "var script=screen.getNamedWidget('SCRIPTNAME').text();" \
   "var env = {}; env['TYPE'] = 'TEST';" \
   "runScript('INST/procedures/'+script, !screen.getNamedWidget('BG').checked(), env)"
 ```
-![BUTTON](/img/telemetry_viewer/widgets/button.png)
+![BUTTON](pathname:///img/telemetry_viewer/widgets/button.png)
 
 
 ### CHECKBUTTON
@@ -1484,7 +1484,7 @@ BUTTON 'Send' 'screen.getNamedWidget("CHECK").checked() ? ' \
 BUTTON 'Check' 'screen.getNamedWidget("CHECK").value = true'
 BUTTON 'Uncheck' 'screen.getNamedWidget("CHECK").value = false'
 ```
-![CHECKBUTTON](/img/telemetry_viewer/widgets/checkbutton.png)
+![CHECKBUTTON](pathname:///img/telemetry_viewer/widgets/checkbutton.png)
 
 
 ### COMBOBOX
@@ -1503,7 +1503,7 @@ BUTTON 'Start Collect' 'var type = screen.getNamedWidget("COLLECT_TYPE").text();
   'api.cmd("INST COLLECT with TYPE "+type+", DURATION 10.0")'
 NAMED_WIDGET COLLECT_TYPE COMBOBOX NORMAL SPECIAL
 ```
-![COMBOBOX](/img/telemetry_viewer/widgets/combobox.png)
+![COMBOBOX](pathname:///img/telemetry_viewer/widgets/combobox.png)
 
 
 ### DATE
@@ -1521,7 +1521,7 @@ BUTTON 'Alert Date' 'var date = screen.getNamedWidget("DATE").text();' +
   'alert("Date:"+date)'
 NAMED_WIDGET DATE DATE
 ```
-![DATE](/img/telemetry_viewer/widgets/date.png)
+![DATE](pathname:///img/telemetry_viewer/widgets/date.png)
 
 
 ### RADIOGROUP
@@ -1551,7 +1551,7 @@ END
 BUTTON 'Send' "screen.getNamedWidget('GROUP').selected() === 0 ? " +
   "api.cmd('INST ABORT') : api.cmd('INST CLEAR')"
 ```
-![RADIOBUTTON](/img/telemetry_viewer/widgets/radiobutton.png)
+![RADIOBUTTON](pathname:///img/telemetry_viewer/widgets/radiobutton.png)
 
 
 ### TEXTFIELD
@@ -1568,7 +1568,7 @@ NAMED_WIDGET DURATION TEXTFIELD 12 "10.0"
 BUTTON 'Start Collect' 'var dur = screen.getNamedWidget("DURATION").text();' +
       'api.cmd("INST COLLECT with TYPE NORMAL, DURATION "+dur+"")'
 ```
-![TEXTFIELD](/img/telemetry_viewer/widgets/textfield.png)
+![TEXTFIELD](pathname:///img/telemetry_viewer/widgets/textfield.png)
 
 
 ### TIME
@@ -1586,7 +1586,7 @@ BUTTON 'Alert Time' 'var time = screen.getNamedWidget("TIME").text();' +
   'alert("Time:"+time)'
 NAMED_WIDGET TIME TIME
 ```
-![TIME](/img/telemetry_viewer/widgets/time.png)
+![TIME](pathname:///img/telemetry_viewer/widgets/time.png)
 
 
 ## キャンバスウィジェット
@@ -1627,7 +1627,7 @@ CANVAS 100 100
   CANVASLABEL 5 70 "Label2" 18 blue
 END
 ```
-![CANVASLABEL](/img/telemetry_viewer/widgets/canvaslabel.png)
+![CANVASLABEL](pathname:///img/telemetry_viewer/widgets/canvaslabel.png)
 
 
 ### CANVASLABELVALUE
@@ -1651,7 +1651,7 @@ CANVAS 200 100
   CANVASLABELVALUE INST HEALTH_STATUS TEMP2 5 70 10 blue WITH_UNITS
 END
 ```
-![CANVASLABELVALUE](/img/telemetry_viewer/widgets/canvaslabelvalue.png)
+![CANVASLABELVALUE](pathname:///img/telemetry_viewer/widgets/canvaslabelvalue.png)
 
 
 ### CANVASIMAGE
@@ -1671,7 +1671,7 @@ CANVAS 250 430
   CANVASIMAGE "https://images.pexels.com/photos/256152/pexels-photo-256152.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=640&w=426" 0 250 250 150
 END
 ```
-![CANVASIMAGE](/img/telemetry_viewer/widgets/canvasimage.png)
+![CANVASIMAGE](pathname:///img/telemetry_viewer/widgets/canvasimage.png)
 
 以下の設定はCANVASIMAGEに適用されます。これらはSETTINGキーワードを使用して適用されます。
 #### SCREEN
@@ -1708,7 +1708,7 @@ CANVAS 230 230
     SETTING SCREEN INST HS
 END
 ```
-![CANVASIMAGEVALUE](/img/telemetry_viewer/widgets/canvasimagevalue.png)
+![CANVASIMAGEVALUE](pathname:///img/telemetry_viewer/widgets/canvasimagevalue.png)
 
 以下の設定はCANVASIMAGEVALUEに適用されます。これらはSETTINGキーワードを使用して適用されます。
 #### IMAGE
@@ -1749,7 +1749,7 @@ CANVAS 100 50
   CANVASLINE 95 5 95 45 blue 3
 END
 ```
-![CANVASLINE](/img/telemetry_viewer/widgets/canvasline.png)
+![CANVASLINE](pathname:///img/telemetry_viewer/widgets/canvasline.png)
 
 
 ### CANVASLINEVALUE
@@ -1781,7 +1781,7 @@ CANVAS 120 50
     SETTING VALUE_EQ UNAVAILABLE RED
 END
 ```
-![CANVASLINEVALUE](/img/telemetry_viewer/widgets/canvaslinevalue.png)
+![CANVASLINEVALUE](pathname:///img/telemetry_viewer/widgets/canvaslinevalue.png)
 
 以下の設定はCANVASLINEVALUEに適用されます。これらはSETTINGキーワードを使用して適用されます。
 #### VALUE_EQ
@@ -1808,7 +1808,7 @@ CANVAS 50 50
   CANVASDOT 10 15 BLUE 5
 END
 ```
-![CANVASDOT](/img/telemetry_viewer/widgets/canvasdot.png)
+![CANVASDOT](pathname:///img/telemetry_viewer/widgets/canvasdot.png)
 
 
 

@@ -9,7 +9,7 @@ sidebar_custom_props:
 
 スクリプトランナーは、COSMOSスクリプトのエディタであると同時にスクリプトを実行します。スクリプトファイルはCOSMOSターゲット内に保存され、スクリプトランナーはこれらのファイルを開く、保存する、ダウンロードする、削除する機能を提供します。スクリプトのスイートが開かれると、スクリプトランナーは個々のスクリプト、スクリプトのグループ、またはスイート全体を実行するための追加オプションを提供します。
 
-![スクリプトランナー](/img/script_runner/script_runner.png)
+![スクリプトランナー](pathname:///img/script_runner/script_runner.png)
 
 ## スクリプトランナーのメニュー
 
@@ -36,7 +36,7 @@ style={{"float": 'left', "margin-right": 50 + 'px', "height": 250 + 'px'}} />
 
 ファイルを開くダイアログには、インストールされたターゲットのツリービューが表示されます。フォルダを手動で開いて、必要なファイルを参照できます。また、上部の検索ボックスを使用し、ファイル名の一部を入力して結果をフィルタリングすることもできます。
 
-![ファイルを開く](/img/script_runner/file_open.png)
+![ファイルを開く](pathname:///img/script_runner/file_open.png)
 
 #### 名前を付けて保存
 
@@ -64,21 +64,21 @@ style={{"float": 'left', "margin-right": 50 + 'px', "height": 330 + 'px'}} />
 
 実行ステータスポップアップには、現在実行中のスクリプトが一覧表示されます。これにより、他のユーザーは実行中のスクリプトに接続し、現在実行中のスクリプトに沿って追跡できます。また、以前に実行されたスクリプトも一覧表示されるため、スクリプトログをダウンロードできます。
 
-![実行中のスクリプト](/img/script_runner/running_scripts.png)
+![実行中のスクリプト](pathname:///img/script_runner/running_scripts.png)
 
 ## スクリプトの実行
 
 通常のスクリプトを実行するには、単にスクリプトを開いて開始ボタン(Start)をクリックするだけです。デフォルトでは、スクリプトを開くとファイル名が更新され、エディタにスクリプトがロードされます。
 
-![checks.rb](/img/script_runner/checks_rb.png)
+![checks.rb](pathname:///img/script_runner/checks_rb.png)
 
 開始をクリックすると、スクリプトはサーバーで起動され、スクリプトの状態は「接続中 (Connecting)」になります。
 
-![接続中](/img/script_runner/connecting.png)
+![接続中](pathname:///img/script_runner/connecting.png)
 
 その時点で、現在実行中の行は緑色でマークされます。エラーが発生すると、行は赤色に変わり、一時停止ボタン (Pause)は「再試行 (Retry)」に変わり、行を再試行できるようになります。
 
-![エラー](/img/script_runner/script_error.png)
+![エラー](pathname:///img/script_runner/script_error.png)
 
 これにより、テレメトリの変更に依存するチェックは、テレメトリが背景でリアルタイムに更新されているため、潜在的に再試行できます。また、「進む (Go)」をクリックしてエラーを通過するか、「停止 (Stop)」をクリックしてスクリプトの実行を終了することもできます。
 
@@ -86,7 +86,7 @@ style={{"float": 'left', "margin-right": 50 + 'px', "height": 330 + 'px'}} />
 
 スクリプトを右クリックすると、いくつかのオプションが表示されます：
 
-![右クリック](/img/script_runner/right_click.png)
+![右クリック](pathname:///img/script_runner/right_click.png)
 
 「選択部分を実行 (Execute selection)」は、選択したコード部分を新しいスクリプトランナータブにコピーし、現在のスクリプトとは独立して実行します。これはコードの選択部分を実行するのに便利ですが、選択されていない他の変数への参照には注意してください。COSMOSは未定義の変数を参照できません！
 
@@ -98,7 +98,7 @@ style={{"float": 'left', "margin-right": 50 + 'px', "height": 330 + 'px'}} />
 
 スクリプトがスイートとして構成されている場合、スクリプトランナーは自動的にファイルを解析して、スイート、グループ、およびスクリプトのドロップダウンメニューを入力します。
 
-![スイートスクリプト](/img/script_runner/script_suite.png)
+![スイートスクリプト](pathname:///img/script_runner/script_suite.png)
 
 新しいスイートを生成するには、ファイル (File) -> 新規スイート (New Suite) を使用し、RubyまたはPythonを選択してその言語でスイートを作成します。
 
@@ -179,7 +179,7 @@ class MySuite(Suite):
 
 スクリプトスイートを開くと、実行中のスクリプトにオプションを提供する6つのチェックボックスが作成されます。
 
-![スイートチェックボックス](/img/script_runner/suite_checkboxes.png)
+![スイートチェックボックス](pathname:///img/script_runner/suite_checkboxes.png)
 
 #### エラーで一時停止
 
@@ -209,6 +209,6 @@ Rubyでは、`$manual`というグローバル変数をtrueに設定します。
 
 デバッグプロンプトを有効にすると、スクリプトとログメッセージの間に追加の行が表示されます。ローカル変数を入力すると、ログメッセージに出力されます。また、`var = 10`と入力してローカル変数を設定することもできます。
 
-![デバッグ](/img/script_runner/debug.png)
+![デバッグ](pathname:///img/script_runner/debug.png)
 
 ステップボタンを使用すると、スクリプトを1行ずつ進めることができます。「進む」をクリックすると通常の実行が続行されます。
