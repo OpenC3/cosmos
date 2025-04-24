@@ -109,6 +109,7 @@
           density="compact"
           :disabled="items.length < 1"
           data-test="editAll"
+          aria-label="Edit All Items"
           @click="editAll = true"
         />
         <v-btn
@@ -117,6 +118,7 @@
           density="compact"
           :disabled="items.length < 1"
           data-test="delete-all"
+          aria-label="Delete All Items"
           @click="deleteAll"
         />
       </v-toolbar>
@@ -147,9 +149,13 @@
           density="compact"
         >
           <template #item.edit="{ item }">
-            <v-icon data-test="edit-row" @click.stop="item.edit = true">
-              mdi-pencil
-            </v-icon>
+            <v-btn
+              icon="mdi-pencil"
+              variant="text"
+              data-test="edit-row"
+              aria-label="Edit Item"
+              @click.stop="item.edit = true"
+            />
             <v-dialog
               v-model="item.edit"
               max-width="600"
@@ -211,9 +217,13 @@
             </v-dialog>
           </template>
           <template #item.delete="{ item }">
-            <v-icon data-test="delete-row" @click="deleteItem(item)">
-              mdi-delete
-            </v-icon>
+            <v-btn
+              icon="mdi-delete"
+              variant="text"
+              data-test="delete-row"
+              aria-label="Delete Item"
+              @click="deleteItem(item)"
+            />
           </template>
         </v-data-table>
       </v-card>

@@ -22,7 +22,7 @@
 -->
 <template>
   <div class="tree-node">
-    <div @click="handleClick(node)" class="node-content" v-if="showNode">
+    <div v-if="showNode" class="node-content" @click="handleClick(node)">
       <div class="content-wrapper">
         <v-icon
           v-if="node.children"
@@ -61,12 +61,12 @@
 
         <v-btn
           v-if="node.title === '__TEMP__'"
-          icon
-          @click="emit('delete')"
+          icon="mdi-delete"
+          variant="text"
           style="margin-left: auto"
-        >
-          <v-icon> mdi-delete </v-icon>
-        </v-btn>
+          aria-label="Delete"
+          @click="emit('delete')"
+        />
       </div>
     </div>
     <div v-else></div>

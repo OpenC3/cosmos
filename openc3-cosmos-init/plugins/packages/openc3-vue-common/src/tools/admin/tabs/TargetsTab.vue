@@ -38,6 +38,7 @@
                   class="mx-3"
                   icon="mdi-folder-download"
                   variant="text"
+                  aria-label="Download Modified Files"
                   @click="downloadTarget(target.name)"
                 />
               </template>
@@ -46,6 +47,7 @@
             <v-btn
               icon="mdi-eye"
               variant="text"
+              aria-label="View Target"
               @click="showTarget(target.name)"
             />
           </template>

@@ -33,6 +33,7 @@
             variant="text"
             density="compact"
             data-test="downloadIcon"
+            aria-label="Download Content"
             @click="download"
           />
         </div>

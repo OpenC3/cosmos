@@ -105,6 +105,7 @@
                 icon="mdi-dots-horizontal"
                 variant="text"
                 density="compact"
+                aria-label="Item Options"
                 v-bind="menuProps"
               />
             </template>
@@ -156,6 +157,7 @@
                   icon="mdi-delete"
                   density="compact"
                   variant="text"
+                  aria-label="Remove Ignored Item"
                   :data-test="`remove-ignore-${index}`"
                   @click="restoreItem(index)"
                 />
