@@ -93,6 +93,7 @@
               density="compact"
               class="ml-3 mt-1"
               data-test="be-nav-back"
+              aria-label="Navigate Back"
               @click.stop="backArrow"
             />
             <span class=".text-body-1 ma-2 font-size" data-test="file-path">
@@ -132,29 +133,35 @@
           {{ item.size ? item.size.toLocaleString() : '' }}
         </template>
         <template #item.action="{ item }">
-          <v-icon
+          <v-btn
             v-if="item.icon === 'mdi-file' && isText(item.name)"
+            icon="mdi-eye"
+            variant="text"
+            density="compact"
             class="mr-3"
             data-test="view-file"
+            aria-label="View File"
             @click="viewFile(item.name)"
-          >
-            mdi-eye
-          </v-icon>
-          <v-icon
+          />
+          <v-btn
             v-if="item.icon === 'mdi-file'"
+            icon="mdi-download-box"
+            variant="text"
+            density="compact"
             class="mr-3"
             data-test="download-file"
+            aria-label="Download File"
             @click="downloadFile(item.name)"
-          >
-            mdi-download-box
-          </v-icon>
-          <v-icon
+          />
+          <v-btn
             v-if="item.icon === 'mdi-file'"
+            icon="mdi-delete"
+            variant="text"
+            density="compact"
             data-test="delete-file"
+            aria-label="Delete File"
             @click="deleteFile(item.name)"
-          >
-            mdi-delete
-          </v-icon>
+          />
         </template>
       </v-data-table>
     </v-card>
