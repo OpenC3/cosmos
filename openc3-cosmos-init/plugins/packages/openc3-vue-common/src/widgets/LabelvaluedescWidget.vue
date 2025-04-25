@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -49,16 +49,16 @@ import ValueWidget from './ValueWidget.vue'
 import { OpenC3Api } from '@openc3/js-common/services'
 
 export default {
+  components: {
+    LabelWidget,
+    ValueWidget,
+  },
   mixins: [Widget],
   data() {
     return {
       description: '',
       valueParameters: [],
     }
-  },
-  components: {
-    LabelWidget,
-    ValueWidget,
   },
   computed: {
     labelName() {
