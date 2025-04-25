@@ -96,15 +96,15 @@
               aria-label="Navigate Back"
               @click.stop="backArrow"
             />
-            <span class=".text-body-1 ma-2 font-size" data-test="file-path">
-              <a
-                v-for="(part, index) in breadcrumbPath"
-                :key="index"
-                style="cursor: pointer"
-                @click.prevent="gotoPath(part.path)"
-                >/&nbsp;{{ part.name }}&nbsp;
-              </a>
-            </span>
+            <div class=".text-body-1 ma-2 font-size" data-test="file-path">
+              <span v-for="(part, index) in breadcrumbPath" :key="index">
+                /&nbsp;<a
+                  style="cursor: pointer"
+                  @click.prevent="gotoPath(part.path)"
+                  >{{ part.name }}
+                </a>
+              </span>
+            </div>
             <v-spacer />
             <div class="ma-2 font-size">
               Folder Size: {{ folderTotal }}
@@ -559,7 +559,12 @@ export default {
         data: this.file,
       })
       this.file = null
-      this.path = this.uploadFilePath.split('/').slice(0, -1).join('/') + '/'
+      let parts = this.uploadFilePath.split('/')
+      if (parts.length > 1) {
+        this.path = parts.slice(0, -1).join('/') + '/'
+      } else {
+        this.path = ''
+      }
       this.updateFiles()
     },
     deleteFile(filename) {
