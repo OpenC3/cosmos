@@ -45,7 +45,7 @@ if !ENV['OPENC3_NO_SIMPLECOV']
   else
     SimpleCov.formatter = SimpleCov::Formatter::HTMLFormatter
   end
-  SimpleCov.start do
+  SimpleCov.start 'rails' do
     merge_timeout 60 * 60 # merge the last hour of results
     add_filter '/spec/' # no coverage on spec files
     root = File.dirname(__FILE__)
