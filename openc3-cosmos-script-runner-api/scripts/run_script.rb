@@ -76,9 +76,9 @@ begin
   if script_status.suite_runner
     script_status.suite_runner = JSON.parse(script_status.suite_runner, :allow_nan => true, :create_additions => true) # Convert to hash
     running_script.parse_options(script_status.suite_runner['options'])
-    if script.suite_runner['script']
+    if script_status.suite_runner['script']
       running_script.run_text("OpenC3::SuiteRunner.start(#{script_status.suite_runner['suite']}, #{script_status.suite_runner['group']}, '#{script_status.suite_runner['script']}')", initial_filename: "SCRIPTRUNNER")
-    elsif script.suite_runner['group']
+    elsif script_status.suite_runner['group']
       running_script.run_text("OpenC3::SuiteRunner.#{script_status.suite_runner['method']}(#{script_status.suite_runner['suite']}, #{script_status.suite_runner['group']})", initial_filename: "SCRIPTRUNNER")
     else
       running_script.run_text("OpenC3::SuiteRunner.#{script_status.suite_runner['method']}(#{script_status.suite_runner['suite']})", initial_filename: "SCRIPTRUNNER")
@@ -164,7 +164,8 @@ rescue Exception => e
   script_status.update
 ensure
   begin
-    sleep 0.2 # Allow the message queue to be emptied before signaling complete
+    # Dump all queued redis messages
+    OpenC3::StoreQueued.instance.shutdown
 
     # Ensure the script is marked as complete with an end time
     unless script_status.is_complete?()

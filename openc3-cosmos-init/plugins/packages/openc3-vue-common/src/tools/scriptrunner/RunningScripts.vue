@@ -22,119 +22,133 @@
 
 <template>
   <div>
-    <v-card flat>
-      <v-card-title>
-        <v-row dense>
-          <span class="mr-2">Running Scripts</span>
-          <v-spacer />
-          <v-btn class="mr-2" color="primary" @click="getRunningScripts"
-            >Refresh</v-btn
-          >
-          <v-spacer />
-          <v-text-field
-            v-model="runningSearch"
-            class="pt-0 search"
-            label="Search"
-            prepend-inner-icon="mdi-magnify"
-            clearable
-            variant="outlined"
-            density="compact"
-            single-line
-            hide-details
-            data-test="running-search" /></v-row
-      ></v-card-title>
-      <v-data-table
-        :headers="runningHeaders"
-        :items="runningScripts"
-        :search="runningSearch"
-        density="compact"
-        data-test="running-scripts"
-        :items-per-page-options="[3]"
-        max-height="400"
+    <v-card flat class="tab-card">
+      <v-tabs
+        v-model="activeTab"
+        bg-color="var(--color-background-base-default)"
       >
-        <template v-slot:item.connect="{ item }">
-          <v-btn color="primary" @click="connectScript(item)">
-            <span>Connect</span>
-            <v-icon end v-show="connectInNewTab"> mdi-open-in-new </v-icon>
-          </v-btn>
-        </template>
-        <template v-slot:item.stop="{ item }">
-          <v-btn color="primary" @click="stopScript(item)">
-            <span>Stop</span>
-            <v-icon end> mdi-close-circle-outline </v-icon>
-          </v-btn>
-        </template>
-        <template v-slot:item.delete="{ item }">
-          <v-btn color="primary" @click="deleteScript(item)">
-            <span>Delete</span>
-            <v-icon end> mdi-alert-octagon-outline </v-icon>
-          </v-btn>
-        </template>
-      </v-data-table>
-    </v-card>
-    <v-card flat>
-      <v-card-title>
-        <v-row dense>
-          <span class="mr-2">Completed Scripts</span>
-          <v-spacer />
-          <v-btn color="primary" @click="getCompletedScripts">Refresh</v-btn>
-          <v-spacer />
-          <v-text-field
-            v-model="completedSearch"
-            class="pt-0 search"
-            label="Search"
-            prepend-inner-icon="mdi-magnify"
-            clearable
-            variant="outlined"
+        <v-tab value="running">Running Scripts</v-tab>
+        <v-tab value="completed">Completed Scripts</v-tab>
+      </v-tabs>
+      <v-window v-model="activeTab">
+        <!-- Running Scripts Tab -->
+        <v-window-item value="running">
+          <v-card-title>
+            <v-row dense>
+              <v-spacer />
+              <v-btn class="mr-3" color="primary" @click="getRunningScripts"
+                >Refresh</v-btn
+              >
+              <v-text-field
+                v-model="runningSearch"
+                class="pt-0 search"
+                label="Search"
+                prepend-inner-icon="mdi-magnify"
+                clearable
+                variant="outlined"
+                density="compact"
+                single-line
+                hide-details
+                data-test="running-search"
+                style="max-width: 300px"
+              />
+            </v-row>
+          </v-card-title>
+          <v-data-table
+            :headers="runningHeaders"
+            :items="runningScripts"
+            :search="runningSearch"
             density="compact"
-            single-line
-            hide-details
-          />
-        </v-row>
-      </v-card-title>
-      <!-- TODO: This probably needs to be paginated -->
-      <v-data-table
-        :headers="completedHeaders"
-        :items="completedScripts"
-        :search="completedSearch"
-        density="compact"
-        data-test="completed-scripts"
-        :items-per-page-options="[5]"
-      >
-        <template v-slot:item.view="{ item }">
-          <v-btn color="primary" @click="viewScriptLog(item)">
-            <span v-if="item.name.includes('(') && item.name.includes(')')">
-              Script Report
-            </span>
-            <span v-else> Script Log </span>
-            <v-icon right> mdi-eye </v-icon>
-          </v-btn>
-        </template>
-        <template v-slot:item.download="{ item }">
-          <v-btn
-            :disabled="downloadScript"
-            :loading="downloadScript && downloadScript.name === item.name"
-            @click="downloadScriptLog(item)"
+            data-test="running-scripts"
+            :items-per-page-options="[10]"
+            class="script-table"
           >
-            <span v-if="item.name.includes('(') && item.name.includes(')')">
-              Script Report
-            </span>
-            <span v-else> Script Log </span>
-            <v-icon end> mdi-file-download-outline </v-icon>
-            <template v-slot:loader>
-              <span> Loading... </span>
+            <template #item.connect="{ item }">
+              <v-btn color="primary" @click="connectScript(item)">
+                <span>Connect</span>
+                <v-icon v-show="connectInNewTab" end> mdi-open-in-new </v-icon>
+              </v-btn>
             </template>
-          </v-btn>
-        </template>
-      </v-data-table>
+            <template #item.stop="{ item }">
+              <v-btn color="primary" @click="stopScript(item)">
+                <span>Stop</span>
+                <v-icon end> mdi-close-circle-outline </v-icon>
+              </v-btn>
+            </template>
+            <template #item.delete="{ item }">
+              <v-btn color="primary" @click="deleteScript(item)">
+                <span>Delete</span>
+                <v-icon end> mdi-alert-octagon-outline </v-icon>
+              </v-btn>
+            </template>
+          </v-data-table>
+        </v-window-item>
+
+        <!-- Completed Scripts Tab -->
+        <v-window-item value="completed">
+          <v-card-title>
+            <v-row dense>
+              <v-spacer />
+              <v-btn class="mr-3" color="primary" @click="getCompletedScripts"
+                >Refresh</v-btn
+              >
+              <v-text-field
+                v-model="completedSearch"
+                class="pt-0 search"
+                label="Search"
+                prepend-inner-icon="mdi-magnify"
+                clearable
+                variant="outlined"
+                density="compact"
+                single-line
+                hide-details
+                style="max-width: 300px"
+              />
+            </v-row>
+          </v-card-title>
+          <!-- TODO: This probably needs to be paginated -->
+          <v-data-table
+            :headers="completedHeaders"
+            :items="completedScripts"
+            :search="completedSearch"
+            density="compact"
+            data-test="completed-scripts"
+            :items-per-page-options="[10]"
+            class="script-table"
+          >
+            <template #item.view="{ item }">
+              <v-btn color="primary" @click="viewScriptLog(item)">
+                <span v-if="false"> Script Report </span>
+                <span v-else> Script Log </span>
+                <v-icon right> mdi-eye </v-icon>
+              </v-btn>
+            </template>
+            <template #item.download="{ item }">
+              <v-btn
+                :disabled="downloadScript"
+                :loading="downloadScript && downloadScript.name === item.name"
+                @click="downloadScriptLog(item)"
+              >
+                <span v-if="false"> Script Report </span>
+                <span v-else> Script Log </span>
+                <v-icon end> mdi-file-download-outline </v-icon>
+                <template #loader>
+                  <span> Loading.... </span>
+                </template>
+              </v-btn>
+            </template>
+          </v-data-table>
+        </v-window-item>
+      </v-window>
     </v-card>
+
     <output-dialog
+      v-if="showDialog"
+      v-model="showDialog"
       :content="dialogContent"
       type="Script"
       :name="dialogName"
       :filename="dialogFilename"
-      v-model="showDialog"
-      v-if="showDialog"
       @submit="showDialog = false"
     />
   </div>
@@ -145,14 +159,15 @@ import { Api } from '@openc3/js-common/services'
 import { OutputDialog } from '@/components'
 
 export default {
+  components: { OutputDialog },
   props: {
     tabId: Number,
     curTab: Number,
     connectInNewTab: Boolean,
   },
-  components: { OutputDialog },
   data() {
     return {
+      activeTab: 'running',
       downloadScript: null,
       runningSearch: '',
       runningScripts: [],
@@ -163,10 +178,11 @@ export default {
           sortable: false,
           filterable: false,
         },
-        { title: 'Id', key: 'id' },
-        { title: 'User', key: 'user' },
-        { title: 'Name', key: 'name' },
+        { title: 'Id', key: 'name' },
+        { title: 'User', key: 'username' },
+        { title: 'filename', key: 'filename' },
         { title: 'Start Time', key: 'start_time' },
+        { title: 'State', key: 'state' },
         {
           title: 'Stop',
           key: 'stop',
@@ -183,10 +199,12 @@ export default {
       completedSearch: '',
       completedScripts: [],
       completedHeaders: [
-        { title: 'Id', value: 'id' },
-        { title: 'User', value: 'user' },
-        { title: 'Name', value: 'name' },
-        { title: 'Start Time', value: 'start' },
+        { title: 'Id', value: 'name' },
+        { title: 'User', value: 'username' },
+        { title: 'Name', value: 'filename' },
+        { title: 'Start Time', value: 'start_time' },
+        { title: 'End Time', value: 'end_time' },
+        { title: 'State', value: 'state' },
         {
           title: 'View',
           value: 'view',
@@ -291,7 +309,7 @@ export default {
         })
     },
     viewScriptLog: function (script) {
-      if (script.name.includes('(') && script.name.includes(')')) {
+      if (false) {
         this.dialogName = 'Report'
       } else {
         this.dialogName = 'Log'

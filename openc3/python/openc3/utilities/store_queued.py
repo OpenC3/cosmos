@@ -20,6 +20,7 @@ import time
 import threading
 import queue
 import atexit
+import sys
 
 # Updated from top_level to remove circular dependency
 

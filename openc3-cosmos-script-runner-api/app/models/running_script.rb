@@ -299,7 +299,7 @@ class RunningScript
 
     # Check for offline access token
     model = nil
-    model = OpenC3::OfflineAccessModel.get_model(name: username, scope: scope) if username and username != ''
+    model = OpenC3::OfflineAccessModel.get_model(name: username, scope: scope) if username != 'Anonymous'
 
     # Load the global environment variables
     status_environment = {}
@@ -319,11 +319,11 @@ class RunningScript
 
     script_status = OpenC3::ScriptStatusModel.new(
       name: running_script_id.to_s, # Unique id for this script
-      state: 'spawning', # State will be spawning until the script is running (*)
+      state: 'spawning', # State will be spawning until the script is running
       shard: 0, # Future enhancement of script runner shards
       filename: name, # Initial filename never changes
-      current_filename: name, # Current filename updates while we are running (*)
-      line_no: 0, # 0 means not running yet (*)
+      current_filename: name, # Current filename updates while we are running
+      line_no: 0, # 0 means not running yet
       username: username, # username of the person who started the script
       user_full_name: user_full_name, # full name of the person who started the script
       start_time: start_time, # Time the script started ISO format
@@ -331,7 +331,7 @@ class RunningScript
       disconnect: false, # Disconnect is set to true if the script is running in a disconnected mode
       environment: status_environment.as_json(:allow_nan => true).to_json(:allow_nan => true), # nil or Hash of key/value pairs for environment variables
       suite_runner: suite_runner ? suite_runner.as_json(:allow_nan => true).to_json(:allow_nan => true) : nil,
-      errors: nil, # array of errors that occurred during the script run (*)
+      errors: nil, # array of errors that occurred during the script run
       pid: nil, # pid of the script process - set by the script itself when it starts
       updated_at: nil, # Set by create/update - ISO format
       scope: scope # Scope of the script
@@ -509,6 +509,7 @@ class RunningScript
   def stop
     if @@run_thread
       @stop = true
+      @script_status.end_time = Time.now.utc.iso8601
       update_running_script_store("stopped")
       OpenC3.kill_thread(self, @@run_thread)
       @@run_thread = nil
@@ -546,8 +547,7 @@ class RunningScript
     @inline_eval = nil
     @script_status.current_filename = @script_status.filename
     @script_status.line_no = 0
-
-    @call_stack.push(@current_file.dup)
+    @current_file = nil
   end
 
   def unique_filename
@@ -564,7 +564,10 @@ class RunningScript
       "user" => @script_status.username,
       "scriptname" => unique_filename()
     }
-    @@message_log.stop(true, metadata: metadata) if @@message_log
+    if @@message_log
+      @script_status.log = @@message_log.stop(true, metadata: metadata)
+      @script_status.update
+    end
     @@message_log = nil
   end
 
@@ -970,11 +973,13 @@ class RunningScript
   end
 
   def mark_crash
+    @script_status.end_time = Time.now.utc.iso8601
     update_running_script_store("crash")
     running_script_anycable_publish("running-script-channel:#{@script_status.id}", { type: :line, filename: @script_status.current_filename, line_no: @script_status.line_no, state: @script_status.state })
   end
 
   def mark_complete
+    @script_status.end_time = Time.now.utc.iso8601
     update_running_script_store("complete")
     running_script_anycable_publish("running-script-channel:#{@script_status.id}", { type: :line, filename: @script_status.current_filename, line_no: @script_status.line_no, state: @script_status.state })
     if OpenC3::SuiteRunner.suite_results
@@ -1016,6 +1021,8 @@ class RunningScript
       }
       thread = OpenC3::BucketUtilities.move_log_file_to_bucket(filename, bucket_key, metadata: metadata)
       # Wait for the file to get moved to S3 because after this the process will likely die
+      @script_status.report = bucket_key
+      @script_status.update(queued: true)
       thread.join
     end
     running_script_publish("cmd-running-script-channel:#{@script_status.id}", "shutdown")

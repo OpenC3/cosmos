@@ -91,6 +91,7 @@ class RunningScriptController < ApplicationController
         Process.kill("SIGKILL", pid)
 
         # Also need to cleanup the status model in this case because the process will not die and cleanup
+        running_script.end_time = Time.now.utc.iso8601
         running_script.state = "killed"
         running_script.update
       end

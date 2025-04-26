@@ -41,6 +41,8 @@ module OpenC3
     attr_accessor :suite_runner
     attr_accessor :errors
     attr_accessor :pid
+    attr_accessor :log
+    attr_accessor :report
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -65,19 +67,35 @@ module OpenC3
       if type == "running"
         keys = self.store.zrevrange("#{RUNNING_PRIMARY_KEY}__#{scope}__LIST", offset, offset + limit - 1)
         return [] if keys.empty?
-        return self.store.redis_pool.pipelined do
+        result = self.store.redis_pool.pipelined do
           keys.each do |key|
             self.store.hget("#{RUNNING_PRIMARY_KEY}__#{scope}", key)
           end
         end
+        result = result.map do |r|
+          if r.nil?
+            nil
+          else
+            JSON.parse(r, :allow_nan => true, :create_additions => true)
+          end
+        end
+        return result
       else
         keys = self.store.zrevrange("#{COMPLETED_PRIMARY_KEY}__#{scope}__LIST", offset, offset + limit - 1)
         return [] if keys.empty?
-        return self.store.redis_pool.pipelined do
+        result = self.store.redis_pool.pipelined do
           keys.each do |key|
             self.store.hget("#{COMPLETED_PRIMARY_KEY}__#{scope}", key)
           end
         end
+        result = result.map do |r|
+          if r.nil?
+            nil
+          else
+            JSON.parse(r, :allow_nan => true, :create_additions => true)
+          end
+        end
+        return result
       end
     end
 
@@ -87,7 +105,7 @@ module OpenC3
       shard: 0, # Future enhancement of script runner shards
       filename:, # The initial filename
       current_filename: nil, # The current filename
-      line_no: nil, # The current line number
+      line_no: 0, # The current line number
       username:, # The username of the person who started the script
       user_full_name:, # The full name of the person who started the script
       start_time:, # The time the script started ISO format
@@ -97,6 +115,8 @@ module OpenC3
       suite_runner: false,
       errors: nil,
       pid: nil,
+      log: nil,
+      report: nil,
       updated_at: nil,
       scope:
     )
@@ -119,6 +139,8 @@ module OpenC3
       @suite_runner = suite_runner
       @errors = errors
       @pid = pid
+      @log = log
+      @report = report
     end
 
     def is_complete?
@@ -150,7 +172,7 @@ module OpenC3
       write_store.hset(@primary_key, @name, JSON.generate(self.as_json(:allow_nan => true), :allow_nan => true))
 
       # Also add to ordered set on create
-      write_store.zadd(@primary_key + "__LIST", @name.to_f, @name) if not update
+      write_store.zadd(@primary_key + "__LIST", @name.to_i, @name) if not update
     end
 
     def update(force: false, queued: false)
@@ -174,7 +196,7 @@ module OpenC3
       undeploy()
       self.class.store.hdel(@primary_key, @name)
       # Also remove from ordered set
-      self.class.store.zremrangebyscore(@primary_key + "__LIST", @name.to_f - 0.1, @name.to_f + 0.1)
+      self.class.store.zremrangebyscore(@primary_key + "__LIST", @name.to_i, @name.to_i)
     end
 
     def as_json(*a)
@@ -194,6 +216,8 @@ module OpenC3
         'suite_runner' => @suite_runner,
         'errors' => @errors,
         'pid' => @pid,
+        'log' => @log,
+        'report' => @report,
         'updated_at' => @updated_at,
         'scope' => @scope
       }
