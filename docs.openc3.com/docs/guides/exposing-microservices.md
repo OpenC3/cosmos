@@ -55,7 +55,7 @@ MICROSERVICE CFDP <%= cfdp_microservice_name %>
 
 Leaving the variables at their default values the following will occur:
 
-- The microservice will be exposed internally to Docker (Open Source or Enterprise) at: `http://openc3-operator:2905`
+- The microservice will be exposed internally to Docker (Core or Enterprise) at: `http://openc3-operator:2905`
 - The microservice will be exposed internally to Kubernetes (Enterprise) at: `http://default-user-cfdp-service:2905`
 - The microservice will be exposed externally to the network at: `http://localhost:2900/cfdp`
 
@@ -73,7 +73,7 @@ INTERFACE <%= my_interface_name %> http_server_interface.rb <%= my_port %>
   PORT <%= my_port %>
 ```
 
-- The interface will be exposed internally to Docker (Open Source or Enterprise) at: `http://openc3-operator:2910`
+- The interface will be exposed internally to Docker (Core or Enterprise) at: `http://openc3-operator:2910`
 - The interface will be exposed internally to Kubernetes (Enterprise) at: `http://default-interface-my-int-service:2905`
 - The interface will be exposed externally to the network at: `http://localhost:2900/myint`
 
@@ -86,7 +86,7 @@ The sharded operator is expected to be used on Kubernetes whenever the Kubernete
 
 Sometimes you might want to have an INTERFACE connect to a microservice you are running. For this case, only the PORT keyword is required on the INTERFACE or MICROSERVICE because we are only connecting internally and ROUTE_PREFIX isn't used.
 
-The following code taken from our demo plugin provides an example of how to calculate the correct hostname across both Open Source and Enterprise versions of COSMOS in a plugin.txt file:
+The following code taken from our demo plugin provides an example of how to calculate the correct hostname across both Core and Enterprise versions of COSMOS in a plugin.txt file:
 
 ```
   <% example_host = ENV['KUBERNETES_SERVICE_HOST'] ? "#{scope}-user-#{example_microservice_name.downcase.gsub('__', '-').gsub('_', '-')}-service" : "openc3-operator" %>

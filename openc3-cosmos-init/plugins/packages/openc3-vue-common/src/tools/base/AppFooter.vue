@@ -67,7 +67,7 @@ export default {
       if (this.enterprise) {
         return 'enterprise'
       } else {
-        return 'base'
+        return 'core'
       }
     },
   },
@@ -77,7 +77,7 @@ export default {
       if (response.data.enterprise) {
         this.edition = 'COSMOS Enterprise'
       } else {
-        this.edition = 'COSMOS Open Source'
+        this.edition = 'COSMOS Core'
       }
       this.enterprise = response.data.enterprise
       this.license = response.data.license
@@ -100,7 +100,7 @@ export default {
 </script>
 
 <style scoped>
-.base {
+.core {
   margin-left: 5px;
   cursor: pointer;
 }

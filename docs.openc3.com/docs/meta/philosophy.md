@@ -17,7 +17,7 @@ COSMOS is a C3 (Command, Control and Communication) system with the following pr
 
 3. Open Architecture and Source
 
-   Nothing about how COSMOS is implemented is meant to be secret or hidden, even in Enterprise Edition. In all editions, the source code for everything in COSMOS is provided and available for users to inspect or modify as needed. Never worry about an unsolvable problem or having to accept some detail that you don't like. This also opens the world to integrate anything they need into COSMOS without restriction or limitation.
+   Nothing about how COSMOS is implemented is meant to be secret or hidden, even in Enterprise. In all implementations, the source code for everything in COSMOS is provided and available for users to inspect or modify as needed. Never worry about an unsolvable problem or having to accept some detail that you don't like. This also opens the world to integrate anything they need into COSMOS without restriction or limitation.
 
 4. Be Modular
 

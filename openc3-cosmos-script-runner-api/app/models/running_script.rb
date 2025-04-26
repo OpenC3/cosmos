@@ -313,7 +313,7 @@ class RunningScript
     end
     running_script_id = OpenC3::Store.incr('running-script-id')
 
-    # Open Source full name (EE has the actual name)
+    # COSMOS Core full name (Enterprise has the actual name)
     user_full_name ||= 'Anonymous'
     start_time = Time.now
     details = {

@@ -78,7 +78,7 @@ Of course with our commercial license, you also get all the extra functionality 
 
 1. You want to save years and tens of millions of dollars developing the same functionality yourself.
 
-2. You want all of the Enterprise functionality of COSMOS Enterprise Edition
+2. You want all of the Enterprise functionality of COSMOS Enterprise
 
    1. User Accounts
    2. Role Based Access Control
@@ -105,17 +105,17 @@ Of course with our commercial license, you also get all the extra functionality 
 
    OpenC3, Inc has an intellectual property agreement with BAE (formerly Ball Aerospace & Technologies Corp) which gives us the rights to commercialize the original work that we built at Ball Aerospace. Customers only need to purchase a commercial license from OpenC3.
 
-1. What are the limits of the COSMOS Enterprise Edition? How many users can we have? How many times can it be installed?
+1. What are the limits of the COSMOS Enterprise? How many users can we have? How many times can it be installed?
 
-   The COSMOS Enterprise Edition license has no user or installation limits.
+   The COSMOS Enterprise license has no user or installation limits.
 
-1. How is the COSMOS Enterprise Edition license enforced?
+1. How is the COSMOS Enterprise license enforced?
 
-   The COSMOS Enterprise Edition license is enforced through contract only without license managers or additional software controls.
+   The COSMOS Enterprise license is enforced through contract only without license managers or additional software controls.
 
-1. How is the COSMOS Enterprise Edition license applied? Per company? Per program?
+1. How is the COSMOS Enterprise license applied? Per company? Per program?
 
-   COSMOS Enterprise Edition is typically licensed to a named mission or group. We also have site licenses, company licenses, and mission ops center licenses. Please contact us at sales@openc3.com for more information.
+   COSMOS Enterprise is typically licensed to a named mission or group. We also have site licenses, company licenses, and mission ops center licenses. Please contact us at sales@openc3.com for more information.
 
 1. Do you license to foreign companies? How do you handle ITAR or the EAR?
 
