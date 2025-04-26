@@ -17,9 +17,13 @@
 -->
 
 <template>
-  <v-icon @click="clickHandler" :style="computedStyle">
-    {{ displayedIcon }}
-  </v-icon>
+  <v-btn
+    :icon="displayedIcon"
+    variant="text"
+    :style="computedStyle"
+    aria-label="Signal Strength"
+    @click="clickHandler"
+  />
 </template>
 
 <script>

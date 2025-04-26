@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -38,6 +38,7 @@
           variant="text"
           density="compact"
           data-test="error-graph-icon"
+          aria-label="Show Errors"
           @click="
             () => {
               errorDialog = true
@@ -49,14 +50,19 @@
           variant="text"
           density="compact"
           data-test="edit-screen-icon"
+          aria-label="Edit Screen"
           @click="openEdit"
         />
         <v-tooltip v-if="!fixFloated" :open-delay="600" location="top">
           <template #activator="{ props }">
             <div v-bind="props">
-              <v-icon data-test="float-screen-icon" @click="floatScreen">
-                {{ floated ? 'mdi-balloon' : 'mdi-view-grid-outline' }}
-              </v-icon>
+              <v-btn
+                :icon="floated ? 'mdi-balloon' : 'mdi-view-grid-outline'"
+                variant="text"
+                data-test="float-screen-icon"
+                :aria-label="floated ? 'Unfloat Screen' : 'Float Screen'"
+                @click="floatScreen"
+              />
             </div>
           </template>
           <span> {{ floated ? 'Unfloat Screen' : 'Float Screen' }} </span>
@@ -64,9 +70,13 @@
         <v-tooltip v-if="floated" :open-delay="600" location="top">
           <template #activator="{ props }">
             <div v-bind="props">
-              <v-icon data-test="up-screen-icon" @click="upScreen">
-                mdi-arrow-up
-              </v-icon>
+              <v-btn
+                icon="mdi-arrow-up"
+                variant="text"
+                data-test="up-screen-icon"
+                aria-label="Move Screen Up"
+                @click="upScreen"
+              />
             </div>
           </template>
           <span> Move Screen Up </span>
@@ -78,9 +88,13 @@
         >
           <template #activator="{ props }">
             <div v-bind="props">
-              <v-icon data-test="down-screen-icon" @click="downScreen">
-                mdi-arrow-down
-              </v-icon>
+              <v-btn
+                icon="mdi-arrow-down"
+                variant="text"
+                data-test="down-screen-icon"
+                aria-label="Move Screen Down"
+                @click="downScreen"
+              />
             </div>
           </template>
           <span> Move Screen Down </span>
@@ -94,13 +108,15 @@
           variant="text"
           density="compact"
           data-test="minimize-screen-icon"
+          aria-label="Minimize Screen"
           @click="minMaxTransition"
         />
-        <v-icon
+        <v-btn
           v-else
           icon="mdi-window-maximize"
           variant="text"
           data-test="maximize-screen-icon"
+          aria-label="Maximize Screen"
           @click="minMaxTransition"
         />
         <v-btn
@@ -109,6 +125,7 @@
           variant="text"
           density="compact"
           data-test="close-screen-icon"
+          aria-label="Close Screen"
           @click="$emit('close-screen')"
         />
       </v-toolbar>
@@ -729,7 +746,12 @@ export default {
             widget.type.toLowerCase() ===
             setting[0].toLowerCase() + 'widget'
           ) {
-            widget.settings.push(setting.slice(1))
+            const existingSetting = widget.settings.find(
+              (s) => s[0] === setting[1],
+            )
+            if (!existingSetting) {
+              widget.settings.push(setting.slice(1))
+            }
           }
         })
         // Recursively apply to all widgets contained in layouts

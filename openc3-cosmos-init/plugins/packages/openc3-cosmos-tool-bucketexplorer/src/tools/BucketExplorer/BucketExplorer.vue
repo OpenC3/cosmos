@@ -93,17 +93,18 @@
               density="compact"
               class="ml-3 mt-1"
               data-test="be-nav-back"
+              aria-label="Navigate Back"
               @click.stop="backArrow"
             />
-            <span class=".text-body-1 ma-2 font-size" data-test="file-path">
-              <a
-                v-for="(part, index) in breadcrumbPath"
-                :key="index"
-                style="cursor: pointer"
-                @click.prevent="gotoPath(part.path)"
-                >/&nbsp;{{ part.name }}&nbsp;
-              </a>
-            </span>
+            <div class=".text-body-1 ma-2 font-size" data-test="file-path">
+              <span v-for="(part, index) in breadcrumbPath" :key="index">
+                /&nbsp;<a
+                  style="cursor: pointer"
+                  @click.prevent="gotoPath(part.path)"
+                  >{{ part.name }}
+                </a>
+              </span>
+            </div>
             <v-spacer />
             <div class="ma-2 font-size">
               Folder Size: {{ folderTotal }}
@@ -132,29 +133,35 @@
           {{ item.size ? item.size.toLocaleString() : '' }}
         </template>
         <template #item.action="{ item }">
-          <v-icon
+          <v-btn
             v-if="item.icon === 'mdi-file' && isText(item.name)"
+            icon="mdi-eye"
+            variant="text"
+            density="compact"
             class="mr-3"
             data-test="view-file"
+            aria-label="View File"
             @click="viewFile(item.name)"
-          >
-            mdi-eye
-          </v-icon>
-          <v-icon
+          />
+          <v-btn
             v-if="item.icon === 'mdi-file'"
+            icon="mdi-download-box"
+            variant="text"
+            density="compact"
             class="mr-3"
             data-test="download-file"
+            aria-label="Download File"
             @click="downloadFile(item.name)"
-          >
-            mdi-download-box
-          </v-icon>
-          <v-icon
+          />
+          <v-btn
             v-if="item.icon === 'mdi-file'"
+            icon="mdi-delete"
+            variant="text"
+            density="compact"
             data-test="delete-file"
+            aria-label="Delete File"
             @click="deleteFile(item.name)"
-          >
-            mdi-delete
-          </v-icon>
+          />
         </template>
       </v-data-table>
     </v-card>
@@ -552,7 +559,12 @@ export default {
         data: this.file,
       })
       this.file = null
-      this.path = this.uploadFilePath.split('/').slice(0, -1).join('/') + '/'
+      let parts = this.uploadFilePath.split('/')
+      if (parts.length > 1) {
+        this.path = parts.slice(0, -1).join('/') + '/'
+      } else {
+        this.path = ''
+      }
       this.updateFiles()
     },
     deleteFile(filename) {

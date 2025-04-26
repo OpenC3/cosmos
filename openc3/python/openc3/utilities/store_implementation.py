@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -70,6 +70,10 @@ class StoreConnectionPool(ConnectionPool):
 class StoreMeta(type):
     def __getattribute__(cls, func):
         if func == "instance" or func == "instance_mutex" or func == "my_instance":
+            return super().__getattribute__(func)
+
+        # Handle dunder methods to support help() and other introspection
+        if func.startswith("__") and func.endswith("__"):
             return super().__getattribute__(func)
 
         def method(*args, **kw_args):
