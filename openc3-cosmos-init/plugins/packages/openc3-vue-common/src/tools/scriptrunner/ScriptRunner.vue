@@ -1160,29 +1160,35 @@ export default {
         },
       }))
     }
-    if (this.$route.query?.file) {
-      this.filename = this.$route.query.file
-      await this.reloadFile()
-    } else if (this.$route.params?.id) {
-      await this.tryLoadRunningScript(this.$route.params.id)
-    } else {
-      if (!this.inline && localStorage['script_runner__filename']) {
-        this.filename = localStorage['script_runner__filename']
-        await this.reloadFile(false)
+    if (!this.inline) {
+      if (this.$route.query?.file) {
+        this.filename = this.$route.query.file
+        await this.reloadFile()
+      } else if (this.$route.params?.id) {
+        await this.tryLoadRunningScript(this.$route.params.id)
+      } else {
+        this.scriptId = sessionStorage.getItem('script_runner__script_id')
+        if (this.scriptId) {
+          await this.tryLoadRunningScript(this.scriptId)
+        } else if (localStorage['script_runner__filename']) {
+          this.filename = localStorage['script_runner__filename']
+          await this.reloadFile(false)
+        }
       }
-    }
-    this.updateInterval = setInterval(async () => {
-      this.processReceived()
-    }, 100) // Every 100ms
-
-    if (this.inline) {
+    } else {
       if (this.body) {
         this.editor.setValue(this.body)
         this.editor.clearSelection()
       }
     }
+    this.updateInterval = setInterval(async () => {
+      this.processReceived()
+    }, 100) // Every 100ms
   },
   beforeUnmount() {
+    if (this.scriptId && !this.inline) {
+      sessionStorage.setItem('script_runner__script_id', this.scriptId)
+    }
     this.editor.destroy()
     this.editor.container.remove()
   },
