@@ -972,15 +972,15 @@ class RunningScript
     running_script_anycable_publish("running-script-channel:#{@script_status.id}", { type: :line, filename: @script_status.current_filename, line_no: @script_status.line_no, state: @script_status.state })
   end
 
-  def mark_crash
+  def mark_crashed
     @script_status.end_time = Time.now.utc.iso8601
-    update_running_script_store("crash")
+    update_running_script_store("crashed")
     running_script_anycable_publish("running-script-channel:#{@script_status.id}", { type: :line, filename: @script_status.current_filename, line_no: @script_status.line_no, state: @script_status.state })
   end
 
-  def mark_complete
+  def mark_completed
     @script_status.end_time = Time.now.utc.iso8601
-    update_running_script_store("complete")
+    update_running_script_store("completed")
     running_script_anycable_publish("running-script-channel:#{@script_status.id}", { type: :line, filename: @script_status.current_filename, line_no: @script_status.line_no, state: @script_status.state })
     if OpenC3::SuiteRunner.suite_results
       OpenC3::SuiteRunner.suite_results.complete
@@ -1104,7 +1104,7 @@ class RunningScript
           handle_exception(e, true, filename, line_number)
           handle_output_io()
           scriptrunner_puts "Exception in Control Statement - Script stopped: #{File.basename(@script_status.filename)}"
-          mark_crash()
+          mark_crashed()
         end
       ensure
         # Stop Capturing STDOUT and STDERR
@@ -1129,7 +1129,7 @@ class RunningScript
           OpenC3.kill_thread(self, @@output_thread)
           @@output_thread = nil
         end
-        mark_complete()
+        mark_completed()
       end
     end
   end

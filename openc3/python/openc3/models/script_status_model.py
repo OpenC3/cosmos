@@ -48,7 +48,7 @@ class ScriptStatusModel(Model):
     @classmethod
     def all(cls, scope, offset = 0, limit = 10, type = "running"):
         if type == "running":
-            keys = cls.store().zrevrange(f"{cls.RUNNING_PRIMARY_KEY}__{scope}__LIST", offset, offset + limit - 1)
+            keys = cls.store().zrevrange(f"{cls.RUNNING_PRIMARY_KEY}__{scope}__LIST", int(offset), int(offset) + int(limit) - 1)
             if len(keys) == 0:
                 return []
             with cls.store().instance().redis_pool.get() as redis:
@@ -61,7 +61,7 @@ class ScriptStatusModel(Model):
                         result[i] = json.loads(result[i])
                 return result
         else:
-            keys = cls.store().zrevrange(f"{cls.COMPLETED_PRIMARY_KEY}__{scope}__LIST", offset, offset + limit - 1)
+            keys = cls.store().zrevrange(f"{cls.COMPLETED_PRIMARY_KEY}__{scope}__LIST", int(offset), int(offset) + int(limit) - 1)
             if len(keys) == 0:
                 return []
             with cls.store().instance().redis_pool.get() as redis:
@@ -74,10 +74,17 @@ class ScriptStatusModel(Model):
                         result[i] = json.loads(result[i])
                 return result
 
+    @classmethod
+    def count(cls, scope, type = "running"):
+        if type == "running":
+            return cls.store().zcount(f"{cls.RUNNING_PRIMARY_KEY}__#{scope}__LIST", 0, "+inf")
+        else:
+            return cls.store().zcount(f"{cls.COMPLETED_PRIMARY_KEY}__#{scope}__LIST", 0, "+inf")
+
     def __init__(
         self,
         name, # id
-        state, # spawning, init, running, paused, waiting, error, breakpoint, crash, stopped, complete, complete_errors
+        state, # spawning, init, running, paused, waiting, error, breakpoint, crashed, stopped, completed, completed_errors, killed
         shard = 0, # Future enhancement of script runner shards
         filename = "", # The initial filename
         current_filename = None, # The current filename
@@ -118,7 +125,7 @@ class ScriptStatusModel(Model):
         self.report = report
 
     def is_complete(self):
-        return (self.__state == 'complete' or self.__state == 'complete_errors' or self.__state == 'stopped' or self.__state == 'crash' or self.__state == 'killed')
+        return (self.__state == 'completed' or self.__state == 'completed_errors' or self.__state == 'stopped' or self.__state == 'crashed' or self.__state == 'killed')
 
     @property
     def state(self):
@@ -131,8 +138,8 @@ class ScriptStatusModel(Model):
             self.__state = new_state
             # If setting to complete, check for errors
             # and set the state to complete_errors if they exist
-            if self.__state == 'complete' and self.errors:
-                self.__state = 'complete_errors'
+            if self.__state == 'completed' and self.errors:
+                self.__state = 'completed_errors'
 
     # Update the Redis hash at primary_key and set the field "name"
     # to the JSON generated via calling as_json

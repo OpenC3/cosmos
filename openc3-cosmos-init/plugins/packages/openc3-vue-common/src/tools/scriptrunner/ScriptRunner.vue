@@ -113,14 +113,23 @@
           <v-tooltip :open-delay="600" location="top">
             <template #activator="{ props }">
               <v-btn
+                v-if="!scriptId"
                 v-bind="props"
                 icon="mdi-cached"
                 variant="text"
                 :disabled="filename === NEW_FILENAME"
                 @click="reloadFile"
               />
+              <v-btn
+                v-else
+                v-bind="props"
+                icon="mdi-arrow-left"
+                variant="text"
+                @click="backToNewScript"
+              />
             </template>
-            <span> Reload File </span>
+            <span v-if="!scriptId"> Reload File </span>
+            <span v-else> Back to New Script </span>
           </v-tooltip>
           <v-select
             id="filename"
@@ -1279,15 +1288,27 @@ export default {
       this.editor.gotoLine(this.files[filename].lineNo)
     },
     tryLoadRunningScript: function (id) {
-      return Api.get('/script-api/running-script').then((response) => {
-        const loadRunningScript = response.data.find(
-          (s) => `${s.id}` === `${id}`,
-        )
-        if (loadRunningScript) {
-          this.filename = loadRunningScript.name
-          this.tryLoadSuites()
-          this.initScriptStart()
-          this.scriptStart(loadRunningScript.id)
+      return Api.get(`/script-api/running-script/${id}`).then((response) => {
+        if (response.data) {
+          let state = response.data.state
+          if (
+            state !== 'complete' &&
+            state !== 'complete_errors' &&
+            state !== 'stopped' &&
+            state !== 'crash' &&
+            state !== 'killed'
+          ) {
+            this.filename = response.data.filename
+            this.tryLoadSuites(response)
+            this.initScriptStart()
+            this.scriptStart(id)
+          } else {
+            this.$notify.caution({
+              title: `Script ${id} has already completed`,
+              body: 'Check the Completed Scripts below ...',
+            })
+            this.showScripts = true
+          }
         } else {
           this.$notify.caution({
             title: `Running Script ${id} not found`,
@@ -1297,21 +1318,13 @@ export default {
         }
       })
     },
-    tryLoadSuites: function () {
-      Api.get(`/script-api/scripts/${this.filename}`).then((response) => {
-        if (response.data.suites) {
-          this.startOrGoDisabled = true
-          this.suiteRunner = true
-          this.suiteMap = JSON.parse(response.data.suites)
-        }
-        if (response.data.error) {
-          this.suiteError = response.data.error
-          this.showSuiteError = true
-        }
-        // Disable suite buttons if we didn't successfully parse the suite
-        this.disableSuiteButtons = response.data.success == false
-        this.doResize()
-      })
+    tryLoadSuites: function (response) {
+      if (response.data.suite_runner) {
+        this.startOrGoDisabled = true
+        this.suiteRunner = true
+        this.suiteMap = JSON.parse(response.data.suite_runner)
+      }
+      this.doResize()
     },
     showExecuteSelectionMenu: function ($event) {
       this.menuX = $event.pageX
@@ -2625,6 +2638,16 @@ class TestSuite(Suite):
       ) {
         Api.post(`/script-api/scripts/${this.filename}/unlock`)
       }
+    },
+    backToNewScript: async function () {
+      // Disconnect from the current script
+      this.scriptDisconnect()
+      // Clear script-related state
+      this.removeAllMarkers()
+      console.log('hi')
+      await this.scriptComplete()
+      // Create a new blank script
+      this.newFile()
     },
     screenId(id) {
       return 'scriptRunnerScreen' + id

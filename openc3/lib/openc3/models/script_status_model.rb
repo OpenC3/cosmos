@@ -65,7 +65,7 @@ module OpenC3
 
     def self.all(scope:, offset: 0, limit: 10, type: "running")
       if type == "running"
-        keys = self.store.zrevrange("#{RUNNING_PRIMARY_KEY}__#{scope}__LIST", offset, offset + limit - 1)
+        keys = self.store.zrevrange("#{RUNNING_PRIMARY_KEY}__#{scope}__LIST", offset.to_i, offset.to_i + limit.to_i - 1)
         return [] if keys.empty?
         result = self.store.redis_pool.pipelined do
           keys.each do |key|
@@ -81,7 +81,7 @@ module OpenC3
         end
         return result
       else
-        keys = self.store.zrevrange("#{COMPLETED_PRIMARY_KEY}__#{scope}__LIST", offset, offset + limit - 1)
+        keys = self.store.zrevrange("#{COMPLETED_PRIMARY_KEY}__#{scope}__LIST", offset.to_i, offset.to_i + limit.to_i - 1)
         return [] if keys.empty?
         result = self.store.redis_pool.pipelined do
           keys.each do |key|
@@ -99,9 +99,17 @@ module OpenC3
       end
     end
 
+    def self.count(scope:, type: "running")
+      if type == "running"
+        return self.store.zcount("#{RUNNING_PRIMARY_KEY}__#{scope}__LIST", 0, Float::INFINITY)
+      else
+        return self.store.zcount("#{COMPLETED_PRIMARY_KEY}__#{scope}__LIST", 0, Float::INFINITY)
+      end
+    end
+
     def initialize(
       name:, # id
-      state:, # spawning, init, running, paused, waiting, error, breakpoint, crash, stopped, complete, complete_errors
+      state:, # spawning, init, running, paused, waiting, error, breakpoint, crashed, stopped, completed, completed_errors, killed
       shard: 0, # Future enhancement of script runner shards
       filename:, # The initial filename
       current_filename: nil, # The current filename
@@ -144,7 +152,7 @@ module OpenC3
     end
 
     def is_complete?
-      return (@state == 'complete' or @state == 'complete_errors' or @state == 'stopped' or @state == 'crash' or @state == 'killed')
+      return (@state == 'completed' or @state == 'completed_errors' or @state == 'stopped' or @state == 'crashed' or @state == 'killed')
     end
 
     def state=(new_state)
@@ -153,8 +161,8 @@ module OpenC3
         @state = new_state
         # If setting to complete, check for errors
         # and set the state to complete_errors if they exist
-        if @state == 'complete' and @errors
-          @state = 'complete_errors'
+        if @state == 'completed' and @errors
+          @state = 'completed_errors'
         end
       end
     end

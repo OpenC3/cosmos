@@ -255,7 +255,7 @@ try:
 except Exception:
     tb = traceback.format_exc()
     run_script_log(id, tb, "RED")
-    script_status.state = "crash"
+    script_status.state = "crashed"
     if script_status.errors is None:
         script_status.errors = []
     script_status.errors.append(tb)
@@ -267,7 +267,7 @@ finally:
 
         # Ensure script is marked as complete with an end time
         if not script_status.is_complete():
-            script_status.state = "complete"
+            script_status.state = "completed"
         script_status.end_time = datetime.now(timezone.utc).isoformat(timespec="seconds").replace('+00:00', 'Z')
         script_status.update()
 

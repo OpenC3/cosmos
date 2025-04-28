@@ -795,9 +795,9 @@ class RunningScript:
             },
         )
 
-    def mark_crash(self):
+    def mark_crashed(self):
         self.script_status.end_time = datetime.now(timezone.utc).isoformat(timespec="seconds").replace('+00:00', 'Z')
-        self.update_running_script_store("crash")
+        self.update_running_script_store("crashed")
         running_script_anycable_publish(
             f"running-script-channel:{self.script_status.id}",
             {
@@ -808,9 +808,9 @@ class RunningScript:
             },
         )
 
-    def mark_complete(self):
+    def mark_completed(self):
         self.script_status.end_time = datetime.now(timezone.utc).isoformat(timespec="seconds").replace('+00:00', 'Z')
-        self.update_running_script_store("complete")
+        self.update_running_script_store("completed")
         running_script_anycable_publish(
             f"running-script-channel:{self.script_status.id}",
             {
@@ -967,7 +967,7 @@ class RunningScript:
                 self.scriptrunner_puts(
                     f"Exception in Control Statement - Script stopped: {os.path.basename(self.script_status.filename)}"
                 )
-                self.mark_crash()
+                self.mark_crashed()
         finally:
             # Stop Capturing STDOUT and STDERR
             # Check for remove_stream because if the tool is quitting the
@@ -991,7 +991,7 @@ class RunningScript:
                 RunningScript.output_sleeper.cancel()
                 kill_thread(self, RunningScript.output_thread)
                 RunningScript.output_thread = None
-            self.mark_complete()
+            self.mark_completed()
             self.current_filename = None
 
     def run_text(

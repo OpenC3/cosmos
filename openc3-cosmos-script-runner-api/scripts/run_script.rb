@@ -158,7 +158,7 @@ begin
   end
 rescue Exception => e
   run_script_log(id, e.formatted, 'RED')
-  script_status.state = 'crash'
+  script_status.state = 'crashed'
   script_status.errors ||= []
   script_status.errors << e.formatted
   script_status.update
@@ -169,7 +169,7 @@ ensure
 
     # Ensure the script is marked as complete with an end time
     unless script_status.is_complete?()
-      script_status.state = 'complete'
+      script_status.state = 'completed'
     end
     script_status.end_time = Time.now.utc.iso8601
     script_status.update

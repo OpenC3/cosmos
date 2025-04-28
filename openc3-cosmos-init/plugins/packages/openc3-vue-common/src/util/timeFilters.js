@@ -23,6 +23,8 @@ const dateFormat = 'yyyy-MM-dd'
 const timeFormat = 'HH:mm:ss.SSS'
 const timeFormatHMS = 'HH:mm:ss'
 const dateTimeFormat = `${dateFormat} ${timeFormat}`
+const dateTimeFormatHMS = `${dateFormat} ${timeFormatHMS}`
+
 export default {
   methods: {
     parseDateTime(dateString, timeZone) {
@@ -53,6 +55,14 @@ export default {
         return format(date, dateTimeFormat)
       } else {
         return formatInTimeZone(date, timeZone, dateTimeFormat)
+      }
+    },
+    formatDateTimeHMS(date, timeZone) {
+      // Default to local time if the timezone isn't set
+      if (!timeZone || timeZone === 'local') {
+        return format(date, dateTimeFormatHMS)
+      } else {
+        return formatInTimeZone(date, timeZone, dateTimeFormatHMS)
       }
     },
     formatDate: function (date, timeZone) {
