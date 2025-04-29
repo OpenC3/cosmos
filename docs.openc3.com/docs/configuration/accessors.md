@@ -137,8 +137,6 @@ TELEMETRY FORM FORMTLM BIG_ENDIAN "Form Accessor Telemetry"
 
 The HTML Accessor is typically used with the [HTTP Client](interfaces#http-client-interface) interface to parse a web page.
 
-For a full example see [openc3-cosmos-http-get](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-http-get).
-
 #### Commands
 
 HTML Accessor is not typically used for commands but it would be similar to Telemetry using XPath Keys.
@@ -166,7 +164,7 @@ TELEMETRY HTML RESPONSE BIG_ENDIAN "Search results"
 
 HTTP Accessor is typically used with the [HTTP Client](interfaces#http-client-interface) or [HTTP Server](interfaces#http-server-interface) interface to parse a web page. It takes another accessor to do the low level reading and writing of the items. The default accessor is FormAccessor. HtlmAccessor, XmlAccessor and JsonAccessor are also common for manipulating HTML, XML and JSON respectively.
 
-For a full example see [openc3-cosmos-http-get](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-http-get).
+For a full example see [openc3-cosmos-http-example](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-http-example).
 
 #### Commands
 
@@ -240,7 +238,7 @@ TELEMETRY HTML RESPONSE BIG_ENDIAN "Search results"
 
 The JSON Accessor serializes data into JavaScript Object Notation ([JSON](https://en.wikipedia.org/wiki/JSON)). JSON is a data interchange format that uses human-readable text to transmit data consisting of key value pairs and arrays.
 
-For a full example see [openc3-cosmos-accessor-test](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-accessor-test).
+For a full example see [openc3-cosmos-http-example](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-http-example).
 
 #### Commands
 
@@ -335,8 +333,6 @@ TELEMETRY SCPI_PS STATUS BIG_ENDIAN "Power supply status"
 ### XML Accessor
 
 The XML Accessor is typically used with the [HTTP Client](interfaces#http-client-interface) interface to send and receive XML from a web server.
-
-For a full example see [openc3-cosmos-accessor-test](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-accessor-test).
 
 #### Commands
 
