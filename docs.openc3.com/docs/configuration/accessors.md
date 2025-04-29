@@ -42,6 +42,8 @@ TELEMETRY INST HEALTH_STATUS BIG_ENDIAN "Health and status"
 
 The Concise Binary Object Representation ([CBOR](https://en.wikipedia.org/wiki/CBOR)) Accessor serializes data into a binary format loosely based on JSON. It is a subclass of the JSON Accessor and is what COSMOS uses natively to store log files.
 
+For a full example see [openc3-cosmos-accessor-test](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-accessor-test).
+
 #### Commands
 
 Using the CBOR Accessor for [command definitions](command) requires the use of [TEMPLATE_FILE](command#template_file) and [KEY](command#key) to allow the user to set values in the CBOR data. Note that the KEY values use [JSONPath](https://en.wikipedia.org/wiki/JSONPath).
@@ -136,6 +138,8 @@ TELEMETRY FORM FORMTLM BIG_ENDIAN "Form Accessor Telemetry"
 ### HTML Accessor
 
 The HTML Accessor is typically used with the [HTTP Client](interfaces#http-client-interface) interface to parse a web page.
+
+For a full example see [openc3-cosmos-accessor-test](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-accessor-test).
 
 #### Commands
 
@@ -238,7 +242,7 @@ TELEMETRY HTML RESPONSE BIG_ENDIAN "Search results"
 
 The JSON Accessor serializes data into JavaScript Object Notation ([JSON](https://en.wikipedia.org/wiki/JSON)). JSON is a data interchange format that uses human-readable text to transmit data consisting of key value pairs and arrays.
 
-For a full example see [openc3-cosmos-http-example](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-http-example).
+For a full example see [openc3-cosmos-accessor-test](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-accessor-test).
 
 #### Commands
 
@@ -333,6 +337,8 @@ TELEMETRY SCPI_PS STATUS BIG_ENDIAN "Power supply status"
 ### XML Accessor
 
 The XML Accessor is typically used with the [HTTP Client](interfaces#http-client-interface) interface to send and receive XML from a web server.
+
+For a full example see [openc3-cosmos-accessor-test](https://github.com/OpenC3/cosmos/tree/main/examples/openc3-cosmos-accessor-test).
 
 #### Commands
 
