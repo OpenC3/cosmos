@@ -43,5 +43,5 @@ spec = Gem::Specification.new do |s|
 
   s.files = Dir.glob("{targets,lib,tools,microservices}/**/*") + %w(Rakefile LICENSE.txt README.md plugin.txt)
 
-  s.add_dependency 'jmespath', '1.5.0'
+  s.add_dependency 'jmespath', '1.6.2'
 end
