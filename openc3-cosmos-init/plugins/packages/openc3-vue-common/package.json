@@ -94,7 +94,7 @@
     "eslint-plugin-prettier": "5.2.6",
     "eslint-plugin-vue": "10.0.0",
     "prettier": "3.5.3",
-    "vite": "6.3.2",
+    "vite": "6.3.4",
     "vue-eslint-parser": "10.1.3"
   }
 }
