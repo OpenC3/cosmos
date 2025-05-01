@@ -1268,10 +1268,8 @@ def start(procedure_name, line_no = 1, end_line_no = None, bind_variables=False,
 
                 text = "\n".join(text_lines[(line_no - 1):end_line_no])
 
-            if bind_variables:
-                instrumented_script = RunningScript.instrument_script(text, path, line_offset = line_no - 1, cache = False)
-            else:
-                instrumented_script = RunningScript.instrument_script(text, path, line_offset = line_no - 1, cache = False)
+            instrumented_script = RunningScript.instrument_script(text, path, line_offset = line_no - 1, cache = False)
+
         cached = False
 
     running = ScriptStatusModel.all(scope = RunningScript.instance.scope(), type = "running")
