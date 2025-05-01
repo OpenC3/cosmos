@@ -32,9 +32,12 @@
       <v-icon> mdi-{{ alertType }} </v-icon>
       {{ alertText }}
       <template #actions="{ attrs }">
-        <v-btn variant="text" v-bind="attrs" @click="showAlert = false">
-          Close
-        </v-btn>
+        <v-btn
+          variant="text"
+          text="Close"
+          v-bind="attrs"
+          @click="showAlert = false"
+        />
       </template>
     </v-snackbar>
     <v-snackbar
@@ -50,22 +53,20 @@
           variant="text"
           v-bind="attrs"
           color="danger"
+          text="Unlock"
           data-test="unlock-button"
           @click="confirmLocalUnlock"
-        >
-          Unlock
-        </v-btn>
+        />
         <v-btn
           variant="text"
+          text="Dismiss"
           v-bind="attrs"
           @click="
             () => {
               showEditingToast = false
             }
           "
-        >
-          dismiss
-        </v-btn>
+        />
       </template>
     </v-snackbar>
     <div class="grid">
@@ -118,6 +119,7 @@
                 icon="mdi-cached"
                 variant="text"
                 :disabled="filename === NEW_FILENAME"
+                aria-label="Reload File"
                 @click="reloadFile"
               />
               <v-btn
@@ -177,60 +179,62 @@
 
           <v-spacer />
           <div v-if="startOrGoButton === 'Start'">
-            <v-btn
-              class="mx-1"
-              color="primary"
-              data-test="start-button"
-              :disabled="startOrGoDisabled || !executeUser"
-              :hidden="suiteRunner"
-              @click="startHandler"
-            >
-              <span> Start </span>
-            </v-btn>
             <v-tooltip :open-delay="600" location="top">
               <template #activator="{ props }">
                 <v-btn
                   v-bind="props"
                   class="mx-1"
-                  :color="environmentIconColor"
+                  icon
+                  variant="text"
                   :disabled="envDisabled"
                   data-test="env-button"
+                  aria-label="Script Environment"
                   @click="scriptEnvironment.show = !scriptEnvironment.show"
                 >
-                  <v-icon> {{ environmentIcon }} </v-icon>
+                  <v-badge v-model="environmentModified" floating dot>
+                    <v-icon icon="mdi-application-variable" />
+                  </v-badge>
                 </v-btn>
               </template>
-              <span>Script Environment</span>
+              <span>
+                Script Environment
+                <template v-if="environmentModified"> (modified) </template>
+              </span>
             </v-tooltip>
+            <v-btn
+              class="mx-1"
+              color="primary"
+              text="Start"
+              data-test="start-button"
+              :disabled="startOrGoDisabled || !executeUser"
+              :hidden="suiteRunner"
+              @click="startHandler"
+            />
           </div>
           <div v-else>
             <v-btn
               color="primary"
               class="mr-2"
+              text="Go"
               :disabled="startOrGoDisabled"
               data-test="go-button"
               @click="go"
-            >
-              Go
-            </v-btn>
+            />
             <v-btn
               color="primary"
               class="mr-2"
+              :text="pauseOrRetryButton"
               :disabled="pauseOrRetryDisabled"
               data-test="pause-retry-button"
               @click="pauseOrRetry"
-            >
-              {{ pauseOrRetryButton }}
-            </v-btn>
-
+            />
             <v-btn
               color="primary"
+              text="Stop"
               data-test="stop-button"
               :disabled="stopDisabled"
               @click="stop"
-            >
-              Stop
-            </v-btn>
+            />
           </div>
         </v-row>
       </div>
@@ -285,13 +289,12 @@
               color="primary"
               style="width: 100px"
               class="mr-4"
+              text="Step"
+              append-icon="mdi-step-forward"
               :disabled="!scriptId"
               data-test="step-button"
               @click="step"
-            >
-              Step
-              <v-icon end> mdi-step-forward </v-icon>
-            </v-btn>
+            />
             <v-text-field
               ref="debug"
               v-model="debug"
@@ -337,43 +340,39 @@
           <v-btn
             class="mx-1"
             color="primary"
+            text="Start"
             data-test="start-button"
             :disabled="startOrGoDisabled || !executeUser"
             :hidden="suiteRunner"
             @click="startHandler"
-          >
-            <span> Start </span>
-          </v-btn>
+          />
         </div>
         <div v-else>
           <v-btn
             color="primary"
             class="ma-2"
+            text="Go"
             :disabled="startOrGoDisabled"
             data-test="go-button"
             @click="go"
-          >
-            Go
-          </v-btn>
+          />
           <v-btn
             color="primary"
             class="ma-2"
+            :text="pauseOrRetryButton"
             :disabled="pauseOrRetryDisabled"
             data-test="pause-retry-button"
             @click="pauseOrRetry"
-          >
-            {{ pauseOrRetryButton }}
-          </v-btn>
+          />
 
           <v-btn
             color="primary"
             class="ma-2"
+            text="Stop"
             data-test="stop-button"
             :disabled="stopDisabled"
             @click="stop"
-          >
-            Stop
-          </v-btn>
+          />
         </div>
       </v-col>
     </v-row>
@@ -720,13 +719,8 @@ export default {
       filenames.push(this.fullFilename) // Make sure the currently shown filename is last
       return [...new Set(filenames)] // ensure unique
     },
-    environmentIcon: function () {
+    environmentModified: function () {
       return this.scriptEnvironment.env.length > 0
-        ? 'mdi-bookmark'
-        : 'mdi-bookmark-outline'
-    },
-    environmentIconColor: function () {
-      return this.scriptEnvironment.env.length > 0 ? 'primary' : ''
     },
     isLocked: function () {
       return !!this.lockedBy
@@ -2657,15 +2651,18 @@ class TestSuite(Suite):
 #sr-controls {
   padding: 0px;
 }
+
 .editor {
   height: 100%;
   width: 100%;
   position: relative;
   font-size: 16px;
 }
+
 .script-state :deep(.v-field) {
   background-color: var(--color-background-base-default);
 }
+
 .script-state :deep(input) {
   text-transform: capitalize;
 }
@@ -2674,6 +2671,7 @@ class TestSuite(Suite):
 .splitpanes {
   height: 100%;
 }
+
 .splitpanes--horizontal > .splitpanes__splitter {
   min-height: 4px;
   position: relative;
@@ -2683,16 +2681,19 @@ class TestSuite(Suite):
   margin: auto;
   cursor: row-resize;
 }
+
 .runningMarker {
   position: absolute;
   background: rgba(0, 255, 0, 0.5);
   z-index: 20;
 }
+
 .waitingMarker {
   position: absolute;
   background: rgba(0, 155, 0, 1);
   z-index: 20;
 }
+
 .breakpointMarker {
   position: absolute;
   border-style: solid;
@@ -2700,36 +2701,44 @@ class TestSuite(Suite):
   background: rgba(0, 255, 0, 0.5);
   z-index: 20;
 }
+
 .pausedMarker {
   position: absolute;
   background: rgba(0, 140, 255, 0.5);
   z-index: 20;
 }
+
 .errorMarker {
   position: absolute;
   background: rgba(255, 0, 119, 0.5);
   z-index: 20;
 }
+
 .fatalMarker {
   position: absolute;
   background: rgba(255, 0, 0, 0.5);
   z-index: 20;
 }
+
 .saving {
   z-index: 20;
   opacity: 0.35;
 }
+
 .ace_gutter {
   /* Screens have a default z-index of 3 so get below that */
   z-index: 2;
 }
+
 .ace_gutter-cell.ace_breakpoint {
   border-radius: 20px 0px 0px 20px;
   box-shadow: 0px 0px 1px 1px red inset;
 }
+
 .grid {
   position: relative;
 }
+
 .item {
   /* TODO: this non-scoped generic class name conflicts with other things and should be scoped or renamed. */
   position: absolute;
@@ -2737,6 +2746,7 @@ class TestSuite(Suite):
   margin: 5px;
   z-index: 1;
 }
+
 .item-content {
   position: relative;
   cursor: pointer;

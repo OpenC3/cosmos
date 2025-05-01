@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -87,9 +87,9 @@ export default {
         this.appliedStyle['height'] === undefined
       ) {
         // This flex allows for alignment in our widgets
-        // The value of '0 10 100%' was achieved through trial and error
-        // The larger flex-shrink value was critical for success
-        this.appliedStyle['flex'] = '0 10 100%' // flex-grow, flex-shrink, flex-basis
+        // The value of '1 1 auto' means allow items to grow and shrink proportionally
+        // and by default try to take an equal portion of the parent
+        this.appliedStyle['flex'] = '1 1 auto' // flex-grow, flex-shrink, flex-basis
       }
       return this.appliedStyle
     },

@@ -53,7 +53,7 @@ _openc3_local_mode_path = "OPENC3_LOCAL_MODE_PATH"
 _openc3_no_bucket_policy = "OPENC3_NO_BUCKET_POLICY"
 _openc3_log_stderr = "OPENC3_LOG_STDERR"
 
-# The following variables are only used with Enterprise Edition
+# The following variables are only used with COSMOS Enterprise
 _openc3_api_user = "OPENC3_API_USER"
 _openc3_api_client = "OPENC3_API_CLIENT"
 _openc3_api_token = "OPENC3_API_TOKEN"

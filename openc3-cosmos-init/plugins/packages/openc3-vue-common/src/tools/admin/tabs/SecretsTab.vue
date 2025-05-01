@@ -72,6 +72,7 @@
             <v-btn
               icon="mdi-delete"
               variant="text"
+              aria-label="Delete Secret"
               @click="deleteSecret(secret)"
             />
           </template>

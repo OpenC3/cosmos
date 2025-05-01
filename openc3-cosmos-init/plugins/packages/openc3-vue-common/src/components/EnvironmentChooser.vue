@@ -22,13 +22,13 @@
 
 <template>
   <div>
-    <v-table dense>
-      <span> Add environment variables (optional)</span>
+    <span> Add environment variables (optional)</span>
+    <v-table density="compact">
       <tbody>
         <tr>
           <th scope="col" class="text-left">Key</th>
           <th scope="col" class="text-left">Value</th>
-          <th scope="col" class="text-right">
+          <th scope="col" class="text-right" width="52px">
             <v-btn
               icon="mdi-plus"
               variant="text"
@@ -43,6 +43,7 @@
               v-model="env.key"
               density="compact"
               type="text"
+              hide-details
               :readonly="env.readonly"
               :data-test="`key-${i}`"
             />
@@ -52,6 +53,7 @@
               v-model="env.value"
               density="compact"
               type="text"
+              hide-details
               :readonly="env.readonly"
               :data-test="`value-${i}`"
             />

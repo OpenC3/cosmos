@@ -30,7 +30,7 @@ class OpenC3AuthenticationRetryableError(OpenC3AuthenticationError):
     pass
 
 
-# OpenC3 base / open source authentication code
+# OpenC3 COSMOS Core authentication code
 class OpenC3Authentication:
     def __init__(self):
         self._token = OPENC3_API_PASSWORD

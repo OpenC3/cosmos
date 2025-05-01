@@ -68,7 +68,7 @@ irb(main):002:0> Cosmos::Api::WHITELIST
 
 ## Script
 
-The script methods allow you to list the available scripts, spawn a script, and run a script while monitoring its output. Note that you must set the OPENC3_API_PASSWORD in Open Source and both the OPENC3_API_USER and OPENC3_API_PASSWORD in Enterprise.
+The script methods allow you to list the available scripts, spawn a script, and run a script while monitoring its output. Note that you must set the OPENC3_API_PASSWORD in COSMOS Core and both the OPENC3_API_USER and OPENC3_API_PASSWORD in COSMOS Enterprise.
 
 :::note Offline Access Token
 You must visit the frontend Script Runner page as the OPENC3_API_USER or run "openc3.sh cli script init" in order to obtain an offline access token before the other script cli methods will work.

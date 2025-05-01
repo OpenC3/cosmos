@@ -18,31 +18,40 @@ The main COSMOS [repo](https://github.com/OpenC3/cosmos) contains all the source
 
 Per [Docker](https://docs.docker.com/get-started/overview/#images), "An image is a read-only template with instructions for creating a Docker container." The base operating system COSMOS uses is called [Alpine Linux](https://www.alpinelinux.org/). It is a simple and compact image with a full package system that allows us to install our dependencies. Starting with Alpine, we create a [Dockerfile](https://docs.docker.com/engine/reference/builder/) to add Ruby and Python and a few other packages to create our own docker image. We further build upon that image to create a NodeJS image to support our frontend and additional images to support our backend.
 
+The following diagram shows all the COSMOS Core and Enterprise container images. Images are built from the bottom up in the Dockerfile using [FROM](https://docs.docker.com/reference/dockerfile/#from). Images referenced with "Uses" are used during the build stage.
+
+![COSMOS Images](/img/cosmos-images.png)
+
 ### Containers
 
 Per [Docker](https://www.docker.com/resources/what-container/), "a container is a standard unit of software that packages up code and all its dependencies so the application runs quickly and reliably from one computing environment to another." Also per [Docker](https://docs.docker.com/guides/walkthroughs/what-is-a-container/), "A container is an isolated environment for your code. This means that a container has no knowledge of your operating system, or your files. It runs on the environment provided to you by Docker Desktop. Containers have everything that your code needs in order to run, down to a base operating system." COSMOS utilizes containers to provide a consistent runtime environment. Containers make it easy to deploy to local on-prem servers, cloud environments, or air-gapped networks.
 
-The COSMOS Open Source containers consist of the following:
+The COSMOS Core containers consist of the following:
 
 | Name                                     | Description                                                                                            |
 | ---------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| cosmos-openc3-cosmos-init-1              | Copies files to Minio and configures COSMOS then exits                                                 |
+| cosmos-openc3-cosmos-init-1              | Run migrations, installs the COSMOS tools, and then exits                                              |
 | cosmos-openc3-operator-1                 | Main COSMOS container that runs the interfaces and target microservices                                |
+| cosmos-openc3-traefik-1                  | Provides a reverse proxy and load balancer with routes to the COSMOS endpoints                         |
 | cosmos-openc3-cosmos-cmd-tlm-api-1       | Rails server that provides all the COSMOS API endpoints                                                |
 | cosmos-openc3-cosmos-script-runner-api-1 | Rails server that provides the Script API endpoints                                                    |
-| cosmos-openc3-redis-1                    | Serves the static target configuration                                                                 |
-| cosmos-openc3-redis-ephemeral-1          | Serves the [streams](https://redis.io/docs/data-types/streams) containing the raw and decomutated data |
 | cosmos-openc3-minio-1                    | Provides a S3 like bucket storage interface and also serves as a static webserver for the tool files   |
-| cosmos-openc3-traefik-1                  | Provides a reverse proxy and load balancer with routes to the COSMOS endpoints                         |
+| cosmos-openc3-redis-1                    | Serves the static target configuration and Current Value Table                                         |
+| cosmos-openc3-redis-ephemeral-1          | Serves the [streams](https://redis.io/docs/data-types/streams) containing the raw and decomutated data |
 
 The container list for [Enterprise COSMOS](https://openc3.com/enterprise) consists of the following:
 
 | Name                                  | Description                                                                                   |
 | ------------------------------------- | --------------------------------------------------------------------------------------------- |
+| cosmos-enterprise-openc3-grafana-1    | [Grafana](https://grafana.com/) container preconfigured with the COSMOS Data Source           |
 | cosmos-enterprise-openc3-metrics-1    | Rails server that provides metrics on COSMOS performance                                      |
 | cosmos-enterprise-openc3-keycloak-1   | Single-Sign On service for authentication                                                     |
 | cosmos-enterprise-openc3-postgresql-1 | SQL Database for use by Keycloak                                                              |
 | openc3-nfs \*                         | Network File System pod only for use in Kubernetes to share code libraries between containers |
+
+A diagram of the running containers is shown below:
+
+![COSMOS Images](/img/cosmos-containers.png)
 
 ### Docker Compose
 

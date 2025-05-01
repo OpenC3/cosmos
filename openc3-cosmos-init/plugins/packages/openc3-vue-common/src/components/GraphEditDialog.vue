@@ -165,6 +165,7 @@
                       style="padding: 30px"
                       icon="mdi-delete"
                       variant="text"
+                      aria-label="Remove Line"
                       @click="removeLine(item)"
                     />
                   </v-col>
@@ -189,6 +190,7 @@
               <v-btn
                 icon="mdi-delete"
                 variant="text"
+                aria-label="Remove Item"
                 @click="$emit('remove', item)"
               />
             </template>

@@ -4,7 +4,7 @@ import os
 # These VALUES are required for COSMOS Enterprise
 # os.environ["OPENC3_API_USER"] = "operator"
 # os.environ["OPENC3_API_PASSWORD"] = "operator"
-# This value is the only one required for COSMOS Open Source
+# This value is the only one required for COSMOS Core
 os.environ["OPENC3_API_PASSWORD"] = "password"
 
 os.environ["OPENC3_LOG_LEVEL"] = "INFO"

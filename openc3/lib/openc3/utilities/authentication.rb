@@ -29,7 +29,7 @@ module OpenC3
   class OpenC3AuthenticationError < StandardError; end
   class OpenC3AuthenticationRetryableError < OpenC3AuthenticationError; end
 
-  # OpenC3 base / open source authentication code
+  # OpenC3 COSMOS Core authentication code
   class OpenC3Authentication
     def initialize()
       @token = ENV['OPENC3_API_PASSWORD']

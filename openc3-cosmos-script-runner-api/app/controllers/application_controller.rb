@@ -32,7 +32,7 @@ class ApplicationController < ActionController::API
     # openc3_enterprise/utilities/authorization
     user = user_info(request.headers['HTTP_AUTHORIZATION'])
     name = user['name']
-    # Open Source name (EE has the actual name)
+    # COSMOS Core name (Enterprise has the actual name)
     name ||= 'Anonymous'
     return name
   end
@@ -42,7 +42,7 @@ class ApplicationController < ActionController::API
     # openc3_enterprise/utilities/authorization
     user = user_info(request.headers['HTTP_AUTHORIZATION'])
     username = user['username']
-    # Open Source username (EE has the actual username)
+    # COSMOS Core username (Enterprise has the actual username)
     username ||= 'anonymous'
     return username
   end
