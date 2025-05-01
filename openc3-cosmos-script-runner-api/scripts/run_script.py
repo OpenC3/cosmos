@@ -117,7 +117,15 @@ try:
                 initial_filename="SCRIPTRUNNER",
             )
     else:
-        running_script.run()
+        if script_status.start_line_no != 1 or script_status.end_line_no is not None:
+            if script_status.end_line_no is None:
+                # Goto line
+                running_script.run_text(f"start('{script_status.filename}', line_no = {script_status.start_line_no}, complete = True)", initial_filename = "SCRIPTRUNNER")
+            else:
+                # Execute selection
+                running_script.run_text(f"start('{script_status.filename}', line_no = {script_status.start_line_no}, end_line_no = {script_status.end_line_no})", initial_filename = "SCRIPTRUNNER")
+        else:
+            running_script.run()
 
     # Notify frontend of number of running scripts in this scope
     running = ScriptStatusModel.all(scope = scope, type = "running")
@@ -138,7 +146,7 @@ try:
     for msg in p.listen():
         parsed_cmd = json.loads(msg["data"])
         if not parsed_cmd == "shutdown" or (
-            isinstance(parsed_cmd, dict) and parsed_cmd["method"]
+            isinstance(parsed_cmd, dict) and not parsed_cmd.get("method")
         ):
             run_script_log(id, f"Script {path} received command: {msg['data']}")
         match parsed_cmd:
@@ -242,6 +250,11 @@ try:
                             running_script.debug(
                                 parsed_cmd["args"]
                             )  # debug() logs the output of the command
+                        case "startwhilepaused":
+                            run_script_log(
+                                id, f"INFO: startwhilepaused: {parsed_cmd['args']}"
+                            )  # Log what we were passed
+                            running_script.start_while_paused(*parsed_cmd["args"])
                         case _:
                             run_script_log(
                                 id,

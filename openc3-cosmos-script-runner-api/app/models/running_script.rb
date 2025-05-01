@@ -104,14 +104,21 @@ module OpenC3
     end
 
     OpenC3.disable_warnings do
-      def start(procedure_name)
+      def start(procedure_name, line_no: 1, end_line_no: nil, bind_variables: false, complete: false)
+        RunningScript.instance.start_while_paused_info = nil
         path = procedure_name
 
         # Check RAM based instrumented cache
         breakpoints = RunningScript.breakpoints[path]&.filter { |_, present| present }&.map { |line_number, _| line_number - 1 } # -1 because frontend lines are 0-indexed
         breakpoints ||= []
-        instrumented_cache, text = RunningScript.instrumented_cache[path]
+
         instrumented_script = nil
+        instrumented_cache = nil
+        text = nil
+        if line_no == 1 and end_line_no.nil?
+          instrumented_cache, text = RunningScript.instrumented_cache[path]
+        end
+
         if instrumented_cache
           # Use cached instrumentation
           instrumented_script = instrumented_cache
@@ -124,17 +131,68 @@ module OpenC3
           running_script_anycable_publish("running-script-channel:#{RunningScript.instance.id}", { type: :file, filename: procedure_name, text: text.to_utf8, breakpoints: breakpoints })
 
           # Cache instrumentation into RAM
-          instrumented_script = RunningScript.instrument_script(text, path, true)
-          RunningScript.instrumented_cache[path] = [instrumented_script, text]
+          if line_no == 1 and end_line_no.nil?
+            instrumented_script = RunningScript.instrument_script(text, path, true)
+            RunningScript.instrumented_cache[path] = [instrumented_script, text]
+          else
+            if line_no > 1 or not end_line_no.nil?
+              text_lines = text.lines
+
+              # Instrument only the specified lines
+              if end_line_no.nil?
+                end_line_no = text_lines.length
+              end
+
+              if line_no < 1 or line_no > text_lines.length
+                raise "Invalid start line number: #{line_no} for #{procedure_name}"
+              end
+
+              if end_line_no < 1 or end_line_no > text_lines.length
+                raise "Invalid end line number: #{end_line_no} for #{procedure_name}"
+              end
+
+              if line_no > end_line_no
+                raise "Start line number #{line_no} is greater than end line number #{end_line_no} for #{procedure_name}"
+              end
+
+              text = text_lines[(line_no - 1)...end_line_no].join
+            end
+
+            if bind_variables
+              instrumented_script = RunningScript.instrument_script(text, path, false, line_offset: line_no - 1, cache: false)
+            else
+              instrumented_script = RunningScript.instrument_script(text, path, true, line_offset: line_no - 1, cache: false)
+            end
+          end
+
           cached = false
         end
         running = ScriptStatusModel.all(scope: RunningScript.instance.scope, type: 'running')
-        running ||= []
         running_script_anycable_publish("all-scripts-channel", { type: :start, filename: procedure_name, active_scripts: running.length, scope: RunningScript.instance.scope })
-        Object.class_eval(instrumented_script, path, 1)
+
+        if bind_variables
+          eval(instrumented_script, RunningScript.instance.script_binding, path, line_no)
+        else
+          Object.class_eval(instrumented_script, path, line_no)
+        end
+
+        if complete
+          RunningScript.instance.script_status.state = 'completed'
+          RunningScript.instance.script_status.end_time = Time.now.utc.iso8601
+          RunningScript.instance.script_status.update(queued: true)
+          raise OpenC3::StopScript
+        end
 
         # Return whether we had to load and instrument this file, i.e. it was not cached
         !cached
+      end
+
+      def goto(line_no_or_procedure_name, line_no = nil)
+        if line_no.nil?
+          start(RunningScript.instance.current_filename, line_no: line_no_or_procedure_name, bind_variables: true, complete: true)
+        else
+          start(line_no_or_procedure_name, line_no: line_no, bind_variables: true, complete: true)
+        end
       end
 
       # Require an additional ruby file
@@ -234,9 +292,10 @@ class RunningScript
   attr_accessor :continue_after_error
   attr_accessor :exceptions
   attr_accessor :script_binding
-  attr_reader :top_level_instrumented_cache
   attr_accessor :user_input
   attr_accessor :prompt_id
+  attr_reader :script_status
+  attr_accessor :start_while_paused_info
 
   # This REGEX is also found in scripts_controller.rb
   # Matches the following test cases:
@@ -278,7 +337,7 @@ class RunningScript
     self.class.message_log
   end
 
-  def self.spawn(scope, name, suite_runner = nil, disconnect = false, environment = nil, user_full_name = nil, username = nil)
+  def self.spawn(scope, name, suite_runner = nil, disconnect = false, environment = nil, user_full_name = nil, username = nil, line_no = nil, end_line_no = nil)
     if File.extname(name) == '.py'
       process_name = 'python'
       runner_path = File.join(RAILS_ROOT, 'scripts', 'run_script.py')
@@ -324,6 +383,8 @@ class RunningScript
       filename: name, # Initial filename never changes
       current_filename: name, # Current filename updates while we are running
       line_no: 0, # 0 means not running yet
+      start_line_no: line_no || 1, # Line number to start running the script
+      end_line_no: end_line_no || nil, # Line number to stop running the script
       username: username, # username of the person who started the script
       user_full_name: user_full_name, # full name of the person who started the script
       start_time: start_time, # Time the script started ISO format
@@ -397,7 +458,6 @@ class RunningScript
     @debug_text = nil
     @debug_history = []
     @debug_code_completion = nil
-    @top_level_instrumented_cache = nil
     @output_time = Time.now.sys
 
     initialize_variables()
@@ -548,6 +608,7 @@ class RunningScript
     @script_status.current_filename = @script_status.filename
     @script_status.line_no = 0
     @current_file = nil
+    @start_while_paused_info = nil
   end
 
   def unique_filename
@@ -635,12 +696,8 @@ class RunningScript
     run_text(@body)
   end
 
-  def run_and_close_on_complete(text_binding = nil)
-    run_text(@body, 0, text_binding, true)
-  end
-
-  def self.instrument_script(text, filename, mark_private = false)
-    if filename and !filename.empty?
+  def self.instrument_script(text, filename, mark_private = false, line_offset: 0, cache: true)
+    if cache and filename and !filename.empty?
       @@file_cache[filename] = text.clone
     end
 
@@ -655,7 +712,8 @@ class RunningScript
                                        text,
                                        num_lines,
                                        filename,
-                                       mark_private)
+                                       mark_private,
+                                       line_offset)
 
     raise OpenC3::StopScript if @cancel_instrumentation
     instrumented_text
@@ -665,7 +723,8 @@ class RunningScript
                                             text,
                                             _num_lines,
                                             filename,
-                                            mark_private = false)
+                                            mark_private = false,
+                                            line_offset = 0)
     if mark_private
       instrumented_text = 'private; '
     else
@@ -693,7 +752,7 @@ class RunningScript
 
         # Add preline instrumentation
         instrumented_line << "RunningScript.instance.script_binding = binding(); "\
-          "RunningScript.instance.pre_line_instrumentation('#{filename}', #{line_no}); "
+          "RunningScript.instance.pre_line_instrumentation('#{filename}', #{line_no + line_offset}); "
 
         # Add the actual line
         instrumented_line << "__return_val = begin; "
@@ -701,12 +760,12 @@ class RunningScript
         instrumented_line.chomp!
 
         # Add postline instrumentation
-        instrumented_line << " end; RunningScript.instance.post_line_instrumentation('#{filename}', #{line_no}); "
+        instrumented_line << " end; RunningScript.instance.post_line_instrumentation('#{filename}', #{line_no + line_offset}); "
 
         # Complete begin block to catch exceptions
         unless inside_begin
           instrumented_line << "rescue Exception => eval_error; "\
-          "retry if RunningScript.instance.exception_instrumentation(eval_error, '#{filename}', #{line_no}); end; "
+          "retry if RunningScript.instance.exception_instrumentation(eval_error, '#{filename}', #{line_no + line_offset}); end; "
         end
 
         instrumented_line << " __return_val\n"
@@ -721,7 +780,7 @@ class RunningScript
             (num_right_square_brackets > num_left_square_brackets)
             instrumented_line = segment
           else
-            instrumented_line = "RunningScript.instance.pre_line_instrumentation('#{filename}', #{line_no}); " + segment
+            instrumented_line = "RunningScript.instance.pre_line_instrumentation('#{filename}', #{line_no + line_offset}); " + segment
           end
         else
           instrumented_line = segment
@@ -851,8 +910,17 @@ class RunningScript
     trace
   end
 
+  def start_while_paused(filename, line_no = 1, end_line_no = nil)
+    if @script_status.state == 'paused' or @script_status.state == 'error' or @script_status.state == 'breakpoint'
+      @start_while_paused_info = { filename: filename, line_no: line_no, end_line_no: end_line_no }
+    else
+      scriptrunner_puts("Cannot execute selection or goto unless script is paused, breakpoint, or in error state")
+    end
+  end
+
   def scriptrunner_puts(string, color = 'BLACK')
     line_to_write = Time.now.sys.formatted + " (SCRIPTRUNNER): " + string
+    $stdout.puts line_to_write
     running_script_anycable_publish("running-script-channel:#{@script_status.id}", { type: :output, line: line_to_write, color: color })
   end
 
@@ -921,6 +989,7 @@ class RunningScript
     @go = false
     @prompt_id = prompt['id'] if prompt
     until (@go or @stop)
+      check_start_while_paused()
       sleep(0.01)
       count += 1
       if count % 100 == 0 # Approximately Every Second
@@ -940,6 +1009,7 @@ class RunningScript
     count = 0
     @go = false
     until (@go or @stop or @retry_needed)
+      check_start_while_paused()
       sleep(0.01)
       count += 1
       if (count % 100) == 0 # Approximately Every Second
@@ -950,6 +1020,34 @@ class RunningScript
     mark_running()
     raise OpenC3::StopScript if @stop
     raise error if error and !@continue_after_error
+  end
+
+  def check_start_while_paused
+    if @start_while_paused_info
+      if @script_status.current_filename == @start_while_paused_info[:filename]
+        bind_variables = true
+      else
+        bind_variables = false
+      end
+      if @start_while_paused_info[:end_line_no]
+        # Execute Selection While Paused
+        state = @script_status.state
+        current_filename = @script_status.current_filename
+        line_no = @script_status.line_no
+        start(@start_while_paused_info[:filename], line_no: @start_while_paused_info[:line_no], end_line_no: @start_while_paused_info[:end_line_no], bind_variables: bind_variables)
+        # Need to restore state after returning so that the correct line will be shown in ScriptRunner
+        @script_status.state = state
+        @script_status.current_filename = current_filename
+        @script_status.line_no = line_no
+        @script_status.update(queued: true)
+        running_script_anycable_publish("running-script-channel:#{@script_status.id}", { type: :line, filename: @script_status.current_filename, line_no: @script_status.line_no, state: @script_status.state })
+      else
+        # Goto While Paused
+        start(@start_while_paused_info[:filename], line_no: @start_while_paused_info[:line_no], bind_variables: bind_variables, complete: true)
+      end
+    end
+  ensure
+    @start_while_paused_info = nil
   end
 
   def mark_running
@@ -1034,76 +1132,56 @@ class RunningScript
   end
 
   def run_text(text,
-               line_offset = 0,
-               text_binding = nil,
-               close_on_complete = false,
                initial_filename: nil)
     initialize_variables()
-    @line_offset = line_offset
     saved_instance = @@instance
     saved_run_thread = @@run_thread
     @@instance = self
-    if initial_filename
-      running_script_anycable_publish("running-script-channel:#{@script_status.id}", { type: :file, filename: initial_filename, text: text.to_utf8, breakpoints: [] })
-    end
+
     @@run_thread = Thread.new do
       begin
         # Capture STDOUT and STDERR
         $stdout.add_stream(@output_io)
         $stderr.add_stream(@output_io)
 
-        unless close_on_complete
-          output = "Starting script: #{File.basename(@script_status.filename)}"
-          output += " in DISCONNECT mode" if $disconnect
-          output += ", line_delay = #{@@line_delay}"
-          scriptrunner_puts(output)
-        end
+        output = "Starting script: #{File.basename(@script_status.filename)}"
+        output += " in DISCONNECT mode" if $disconnect
+        output += ", line_delay = #{@@line_delay}"
+        scriptrunner_puts(output)
         handle_output_io()
 
         # Start Output Thread
         @@output_thread = Thread.new { output_thread() } unless @@output_thread
 
-        # Check top level cache
-        if @top_level_instrumented_cache &&
-          (@top_level_instrumented_cache[1] == line_offset) &&
-          (@top_level_instrumented_cache[2] == @script_status.filename) &&
-          (@top_level_instrumented_cache[0] == text)
-          # Use the instrumented cache
-          instrumented_script = @top_level_instrumented_cache[3]
+        if initial_filename == 'SCRIPTRUNNER'
+          # Don't instrument pseudo scripts
+          instrument_filename = initial_filename
+          instrumented_script = text
         else
+          # Instrument everything else
           instrument_filename = @script_status.filename
           instrument_filename = initial_filename if initial_filename
-          # Instrument the script
-          if text_binding
-            instrumented_script = self.class.instrument_script(text, instrument_filename, false)
-          else
-            instrumented_script = self.class.instrument_script(text, instrument_filename, true)
-          end
-          @top_level_instrumented_cache = [text, line_offset, instrument_filename, instrumented_script]
+          instrumented_script = self.class.instrument_script(text, instrument_filename, true)
         end
 
         # Execute the script with warnings disabled
         OpenC3.disable_warnings do
           @pre_line_time = Time.now.sys
-          if text_binding
-            eval(instrumented_script, text_binding, @script_status.filename, 1)
-          else
-            Object.class_eval(instrumented_script, @script_status.filename, 1)
-          end
+          Object.class_eval(instrumented_script, instrument_filename, 1)
         end
 
         handle_output_io()
-        scriptrunner_puts "Script completed: #{File.basename(@script_status.filename)}" unless close_on_complete
+        scriptrunner_puts "Script completed: #{@script_status.filename}"
 
       rescue Exception => e # rubocop:disable Lint/RescueException
         if e.class <= OpenC3::StopScript or e.class <= OpenC3::SkipScript
           handle_output_io()
-          scriptrunner_puts "Script stopped: #{File.basename(@script_status.filename)}"
+          scriptrunner_puts "Script stopped: #{@script_status.filename}"
         else
           filename, line_number = e.source
           handle_exception(e, true, filename, line_number)
           handle_output_io()
-          scriptrunner_puts "Exception in Control Statement - Script stopped: #{File.basename(@script_status.filename)}"
+          scriptrunner_puts "Exception in Control Statement - Script stopped: #{@script_status.filename}"
           mark_crashed()
         end
       ensure

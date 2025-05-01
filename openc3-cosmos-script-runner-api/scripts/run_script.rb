@@ -84,7 +84,17 @@ begin
       running_script.run_text("OpenC3::SuiteRunner.#{script_status.suite_runner['method']}(#{script_status.suite_runner['suite']})", initial_filename: "SCRIPTRUNNER")
     end
   else
-    running_script.run
+    if script_status.start_line_no != 1 or !script_status.end_line_no.nil?
+      if script_status.end_line_no.nil?
+        # Goto line
+        running_script.run_text("start('#{script_status.filename}', line_no: #{script_status.start_line_no}, complete: true)", initial_filename: "SCRIPTRUNNER")
+      else
+        # Execute selection
+        running_script.run_text("start('#{script_status.filename}', line_no: #{script_status.start_line_no}, end_line_no: #{script_status.end_line_no})", initial_filename: "SCRIPTRUNNER")
+      end
+    else
+      running_script.run
+    end
   end
 
   # Notify frontend of number of running scripts in this scope
@@ -147,6 +157,9 @@ begin
           when "debug"
             run_script_log(id, "DEBUG: #{parsed_cmd["args"]}") # Log what we were passed
             running_script.debug(parsed_cmd["args"]) # debug() logs the output of the command
+          when "startwhilepaused"
+            run_script_log(id, "INFO: startwhilepaused: #{parsed_cmd["args"]}") # Log what we were passed
+            running_script.start_while_paused(*parsed_cmd["args"])
           else
             run_script_log(id, "ERROR: Script method not handled: #{parsed_cmd["method"]}", 'RED')
           end

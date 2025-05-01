@@ -110,6 +110,9 @@ class ScriptsController < ApplicationController
 
   def run
     scope, name = sanitize_params([:scope, :name], :allow_forward_slash => true)
+    line_no = params[:line_no] ? params[:line_no].to_i : 1
+    end_line_no = params[:end_line_no] ? params[:end_line_no].to_i : nil
+
     return unless scope
     # Extract the target that this script lives under
     target_name = name.split('/')[0]
@@ -117,7 +120,7 @@ class ScriptsController < ApplicationController
     suite_runner = params[:suiteRunner] ? params[:suiteRunner].as_json(:allow_nan => true) : nil
     disconnect = params[:disconnect] == 'disconnect'
     environment = params[:environment]
-    running_script_id = Script.run(scope, name, suite_runner, disconnect, environment, user_full_name(), username())
+    running_script_id = Script.run(scope, name, suite_runner, disconnect, environment, user_full_name(), username(), line_no, end_line_no)
     if running_script_id
       OpenC3::Logger.info("Script started: #{name}", scope: scope, user: username())
       render plain: running_script_id.to_s

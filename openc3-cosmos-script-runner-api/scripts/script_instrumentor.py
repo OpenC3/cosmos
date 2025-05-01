@@ -45,8 +45,9 @@ else:
     break
     """
 
-    def __init__(self, filename):
+    def __init__(self, filename, line_offset = 0):
         self.filename = filename
+        self.line_offset = line_offset
         self.try_count = 0
         self.try_nodes = [ast.Try]
         if sys.version_info >= (3, 11):
@@ -75,10 +76,10 @@ else:
         # ast.parse returns a module, so we need to extract
         # the first element of the body which is the node
         pre_line = ast.parse(
-            self.pre_line_instrumentation.format(self.filename, node.lineno)
+            self.pre_line_instrumentation.format(self.filename, node.lineno + self.line_offset)
         ).body[0]
         post_line = ast.parse(
-            self.post_line_instrumentation.format(self.filename, node.lineno)
+            self.post_line_instrumentation.format(self.filename, node.lineno + self.line_offset)
         ).body[0]
 
         true_node = ast.Constant(True)
@@ -90,7 +91,7 @@ else:
         # Create the exception handler code node. This results in multiple nodes
         # because we have a top level assignment and if statement
         exception_handler = ast.parse(
-            self.exception_instrumentation.format(self.filename, node.lineno)
+            self.exception_instrumentation.format(self.filename, node.lineno + self.line_offset)
         ).body
         for new_node in exception_handler:
             ast.copy_location(new_node, node)
@@ -142,7 +143,7 @@ else:
         node = self.generic_visit(node)
 
         pre_line = ast.parse(
-            self.pre_line_instrumentation.format(self.filename, node.lineno)
+            self.pre_line_instrumentation.format(self.filename, node.lineno + self.line_offset)
         ).body[0]
         ast.copy_location(pre_line, node)
 

@@ -32,6 +32,8 @@ module OpenC3
     attr_accessor :filename
     attr_accessor :current_filename
     attr_accessor :line_no
+    attr_accessor :start_line_no
+    attr_accessor :end_line_no
     attr_accessor :username
     attr_accessor :user_full_name
     attr_accessor :start_time
@@ -114,6 +116,8 @@ module OpenC3
       filename:, # The initial filename
       current_filename: nil, # The current filename
       line_no: 0, # The current line number
+      start_line_no: 1, # The line number to start the script at
+      end_line_no: nil, # The line number to end the script at
       username:, # The username of the person who started the script
       user_full_name:, # The full name of the person who started the script
       start_time:, # The time the script started ISO format
@@ -138,6 +142,8 @@ module OpenC3
       @filename = filename
       @current_filename = current_filename
       @line_no = line_no
+      @start_line_no = start_line_no
+      @end_line_no = end_line_no
       @username = username
       @user_full_name = user_full_name
       @start_time = start_time
@@ -215,6 +221,8 @@ module OpenC3
         'filename' => @filename,
         'current_filename' => @current_filename,
         'line_no' => @line_no,
+        'start_line_no' => @start_line_no,
+        'end_line_no' => @end_line_no,
         'username' => @username,
         'user_full_name' => @user_full_name,
         'start_time' => @start_time,

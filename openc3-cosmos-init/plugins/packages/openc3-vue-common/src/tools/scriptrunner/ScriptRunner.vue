@@ -253,16 +253,22 @@
         ></pre>
         <v-menu v-model="executeSelectionMenu" :target="[menuX, menuY]">
           <v-list>
+            <v-list-item title="Execute Selection" @click="executeSelection" />
             <v-list-item
-              v-for="item in executeSelectionMenuItems"
-              :key="item.label"
-              link
-              :disabled="scriptId"
-            >
-              <v-list-item-title @click="item.command">
-                {{ item.label }}
-              </v-list-item-title>
-            </v-list-item>
+              v-if="scriptId"
+              title="Goto Line"
+              @click="runFromCursor"
+            />
+            <v-list-item
+              v-if="!scriptId"
+              title="Run From Line"
+              @click="runFromCursor"
+            />
+            <v-list-item
+              v-if="!scriptId"
+              title="Clear Local Breakpoints"
+              @click="clearBreakpoints"
+            />
             <v-divider />
             <v-list-item
               title="Toggle Vim mode"
@@ -566,6 +572,7 @@ export default {
       default: null,
     },
   },
+  emits: ['alert', 'script-id'],
   data() {
     return {
       title: 'Script Runner',
@@ -985,22 +992,6 @@ export default {
         },
       ]
     },
-    executeSelectionMenuItems: function () {
-      return [
-        {
-          label: 'Execute selection',
-          command: this.executeSelection,
-        },
-        {
-          label: 'Run from here',
-          command: this.runFromCursor,
-        },
-        {
-          label: 'Clear local breakpoints',
-          command: this.clearBreakpoints,
-        },
-      ]
-    },
   },
   watch: {
     isLocked: function (val) {
@@ -1338,60 +1329,39 @@ export default {
       this.executeSelectionMenu = true
     },
     runFromCursor: function () {
-      const start = this.editor.getCursorPosition().row
-      const text = this.editor.session.doc
-        .getLines(start, this.editor.session.doc.getLength())
-        .join('\n')
-      const breakpoints = this.getBreakpointRows()
-        .filter((row) => row >= start)
-        .map((row) => row - start)
-      this.executeText(text, breakpoints)
+      const start_row = this.editor.getCursorPosition().row + 1
+      if (!this.scriptId) {
+        this.start(null, null, start_row)
+      } else {
+        Api.post(
+          `/script-api/running-script/${this.scriptId}/startwhilepaused`,
+          {
+            data: {
+              args: [this.filenameSelect, start_row],
+            },
+          },
+        )
+      }
     },
     executeSelection: function () {
-      const text = this.editor.getSelectedText()
       const range = this.editor.getSelectionRange()
-      const breakpoints = this.getBreakpointRows()
-        .filter((row) => row <= range.end.row && row >= range.start.row)
-        .map((row) => row - range.start.row)
-      this.executeText(text, breakpoints)
-    },
-    async executeText(text, breakpoints = []) {
-      let extension = this.fullFilename.split('.').pop()
-      if (extension.includes(' *')) {
-        extension = extension.split(' *')[0]
+      let start_row = range.start.row + 1
+      let end_row = range.end.row + 1
+      if (range.end.column === 0) {
+        end_row -= 1
       }
-      if (extension !== 'rb' && extension !== 'py') {
-        extension = 'rb' // Still default to Ruby if we can't determine
-      }
-      // Create a new temp script and open in new tab
-      const selectionTempFilename =
-        TEMP_FOLDER +
-        '/' +
-        format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') +
-        `_temp.${extension}`
-      await Api.post(`/script-api/scripts/${selectionTempFilename}`, {
-        data: {
-          text,
-          breakpoints,
-        },
-      })
-        .then((_response) => {
-          let env = this.scriptEnvironment.env
-          if (this.enableStackTraces) {
-            env = env.concat({
-              key: 'OPENC3_FULL_BACKTRACE',
-              value: '1',
-            })
-          }
-          return Api.post(`/script-api/scripts/${selectionTempFilename}/run`, {
+      if (!this.scriptId) {
+        this.start(null, null, start_row, end_row)
+      } else {
+        Api.post(
+          `/script-api/running-script/${this.scriptId}/startwhilepaused`,
+          {
             data: {
-              environment: env,
+              args: [this.filenameSelect, start_row, end_row],
             },
-          })
-        })
-        .then((response) => {
-          window.open(`/tools/scriptrunner/${response.data}`)
-        })
+          },
+        )
+      }
     },
     clearBreakpoints: function () {
       this.editor.session.clearBreakpoints()
@@ -1532,6 +1502,7 @@ export default {
       this.editor.setReadOnly(true)
     },
     scriptStart(id) {
+      this.$emit('script-id', id)
       this.scriptId = id
       this.cable
         .createSubscription(
@@ -1586,7 +1557,12 @@ export default {
     startHandler: function () {
       this.start()
     },
-    async start(event, suiteRunner = null) {
+    async start(
+      event = null,
+      suiteRunner = null,
+      line_no = null,
+      end_line_no = null,
+    ) {
       // Initialize variables and disable buttons before actually posting.
       // This prevents delays in the backend from delaying frontend changes
       // like disabling start which could allow users to click start twice.
@@ -1614,6 +1590,12 @@ export default {
       }
       if (suiteRunner) {
         data['suiteRunner'] = event
+      }
+      if (line_no !== null) {
+        data['line_no'] = line_no
+      }
+      if (end_line_no !== null) {
+        data['end_line_no'] = end_line_no
       }
       Api.post(url, { data })
         .then((response) => {
@@ -2650,7 +2632,6 @@ class TestSuite(Suite):
       this.scriptDisconnect()
       // Clear script-related state
       this.removeAllMarkers()
-      console.log('hi')
       await this.scriptComplete()
       // Create a new blank script
       this.newFile()

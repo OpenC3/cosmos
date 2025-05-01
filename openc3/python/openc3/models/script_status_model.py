@@ -89,6 +89,8 @@ class ScriptStatusModel(Model):
         filename = "", # The initial filename
         current_filename = None, # The current filename
         line_no = 0, # The current line number
+        start_line_no = 1, # The line number to start the script at
+        end_line_no = None, # The line number to end the script at
         username = None, # The username of the person who started the script
         user_full_name = None, # The full name of the person who started the script
         start_time = None, # The time the script started ISO format
@@ -112,6 +114,8 @@ class ScriptStatusModel(Model):
         self.filename = filename
         self.current_filename = current_filename
         self.line_no = line_no
+        self.start_line_no = start_line_no
+        self.end_line_no = end_line_no
         self.username = username
         self.user_full_name = user_full_name
         self.start_time = start_time
@@ -187,6 +191,8 @@ class ScriptStatusModel(Model):
             'filename': self.filename,
             'current_filename': self.current_filename,
             'line_no': self.line_no,
+            'start_line_no': self.start_line_no,
+            'end_line_no': self.end_line_no,
             'username': self.username,
             'user_full_name': self.user_full_name,
             'start_time': self.start_time,
