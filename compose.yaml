@@ -175,16 +175,19 @@ services:
         max-size: "10m"
         max-file: "3"
     environment:
-      CI: "${CI}" # Set in Github actions, changes the Demo TLM_LOG_CYCLE_TIME
-      GEM_HOME: "/gems"
-      PYTHONUSERBASE: "/gems/python_packages"
-      OPENC3_REDIS_USERNAME: "${OPENC3_REDIS_USERNAME}"
-      OPENC3_REDIS_PASSWORD: "${OPENC3_REDIS_PASSWORD}"
-      OPENC3_BUCKET_USERNAME: "${OPENC3_BUCKET_USERNAME}"
-      OPENC3_BUCKET_PASSWORD: "${OPENC3_BUCKET_PASSWORD}"
-      OPENC3_SERVICE_PASSWORD: "${OPENC3_SERVICE_PASSWORD}"
+      # CI in set in Github actions, changes the Demo TLM_LOG_CYCLE_TIME
+      # By not setting a value it pases the environment variable from the shell
+      # straight to the container and doesn't complain if CI is not set
+      - CI
+      - GEM_HOME=/gems
+      - PYTHONUSERBASE=/gems/python_packages
+      - OPENC3_REDIS_USERNAME=${OPENC3_REDIS_USERNAME}
+      - OPENC3_REDIS_PASSWORD=${OPENC3_REDIS_PASSWORD}
+      - OPENC3_BUCKET_USERNAME=${OPENC3_BUCKET_USERNAME}
+      - OPENC3_BUCKET_PASSWORD=${OPENC3_BUCKET_PASSWORD}
+      - OPENC3_SERVICE_PASSWORD=${OPENC3_SERVICE_PASSWORD}
     env_file:
-      - ".env"
+      - .env
     extra_hosts:
       - host.docker.internal:host-gateway
 
