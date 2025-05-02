@@ -23,7 +23,6 @@
 import json
 import time
 from typing import Any
-from datetime import datetime, timezone
 from openc3.environment import OPENC3_SCOPE
 from openc3.topics.topic import Topic
 from openc3.models.model import Model
