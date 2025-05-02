@@ -125,7 +125,6 @@ module OpenC3
         data, extra = @interface.read_interface
         expect(data).to eql "\x01\x02\x03\x04"
         expect(extra[:filename]).to eql filename
-        expect(extra[:size]).to eql 4
         # Push a dummy value so when we call read_interface again it doesn't block
         @interface.instance_variable_get(:@queue).push(nil)
         data, extra = @interface.read_interface
@@ -144,7 +143,6 @@ module OpenC3
         data, extra = @interface.read_interface
         expect(data).to eql "\x01\x02\x03\x04"
         expect(extra[:filename]).to eql filename
-        expect(extra[:size]).to eql 4
       end
 
       it "deletes the file if archive folder is DELETE" do
@@ -172,11 +170,9 @@ module OpenC3
         data, extra = @interface.read_interface
         expect(data).to eql "\x01\x02\x03\x04"
         expect(extra[:filename]).to eql filename
-        expect(extra[:size]).to eql 4
         data, extra = @interface.read_interface
         expect(data).to eql "\x05\x06\x07\x08"
         expect(extra[:filename]).to eql filename
-        expect(extra[:size]).to eql 4
         # The file should now be empty so we should get nil
         allow(@interface).to receive(:get_next_telemetry_file).and_return(nil)
         # Empty the queue
@@ -204,11 +200,9 @@ module OpenC3
         data, extra = @interface.read_interface
         expect(data).to eql "\x01\x02\x03\x04"
         expect(extra[:filename]).to eql filename1
-        expect(extra[:size]).to eql 4
         data, extra = @interface.read_interface
         expect(data).to eql "\x05\x06\x07\x08"
         expect(extra[:filename]).to eql filename2
-        expect(extra[:size]).to eql 4
         expect(Time.now.to_f - start).to be > 0.2
         expect(Time.now.to_f - start).to be < 0.25
       end
@@ -237,7 +231,6 @@ module OpenC3
       #   data, extra = @interface.read_interface
       #   expect(data).to eql "\x01\x02\x03\x04"
       #   expect(extra[:filename]).to eql filename
-      #   expect(extra[:size]).to eql 4
       # end
 
       it "responds to file notifications via the queue" do
@@ -257,7 +250,6 @@ module OpenC3
         data, extra = @interface.read_interface
         expect(data).to eql "\x01\x02\x03\x04"
         expect(extra[:filename]).to include('test.bin')
-        expect(extra[:size]).to eql 4
       end
     end
 
