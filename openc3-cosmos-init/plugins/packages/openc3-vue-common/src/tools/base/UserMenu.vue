@@ -29,7 +29,7 @@
       :close-on-content-click="false"
       :offset="20"
     >
-      <template v-slot:activator="{ props }">
+      <template #activator="{ props }">
         <rux-monitoring-icon
           v-bind="props"
           class="rux-icon"
@@ -51,8 +51,8 @@
             <div class="pb-3 roles">Roles: {{ roles() }}</div>
           </div>
           <div v-if="authenticated">
-            <v-btn block @click="logout" color="primary"> Logout </v-btn>
-            <div class="pa-3" v-if="name !== 'Anonymous'">
+            <v-btn block color="primary" @click="logout"> Logout </v-btn>
+            <div v-if="name !== 'Anonymous'" class="pa-3">
               <v-row class="pt-3 user-title">Other Active Users:</v-row>
               <v-row
                 v-for="(user, index) in activeUsers"
@@ -64,15 +64,15 @@
             </div>
           </div>
           <div v-else>
-            <v-btn block @click="login" color="primary"> Login </v-btn>
+            <v-btn block color="primary" @click="login"> Login </v-btn>
           </div>
           <div
             v-if="name === 'Anonymous'"
-            @click="showUpgradeToEnterpriseDialog = true"
             class="pt-2 link"
+            @click="showUpgradeToEnterpriseDialog = true"
           >
             Click to learn more about<br />
-            COSMOS Enterprise Edition
+            COSMOS Enterprise
           </div>
         </v-card-text>
         <div v-if="newsFeed">
@@ -80,10 +80,10 @@
             <v-col cols="auto" class="me-auto">COSMOS News</v-col>
             <v-col cols="auto">
               <v-btn
-                @click="refreshNews"
                 color="primary"
                 density="compact"
                 block
+                @click="refreshNews"
               >
                 Refresh
               </v-btn>

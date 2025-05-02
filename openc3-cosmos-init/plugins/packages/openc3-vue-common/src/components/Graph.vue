@@ -38,6 +38,7 @@
           icon="mdi-alert"
           density="compact"
           variant="text"
+          aria-label="Show Errors"
           @click="
             () => {
               errorDialog = true
@@ -50,6 +51,7 @@
           variant="text"
           density="compact"
           data-test="edit-graph-icon"
+          aria-label="Edit Graph"
           @click="
             () => {
               editGraph = true
@@ -1094,10 +1096,10 @@ export default {
         }
       }
       // subtract off some arbitrary padding left and right to make the layout work
-      let width = viewWidth - 54
+      let width = viewWidth - 70
       if (!this.fullWidth) {
         // 6px padding left and right defined in TlmGrapher.vue .item-content
-        width = width / 2.0 - 10
+        width = width / 2.0 - 12
       }
       return {
         width: this.width || width,

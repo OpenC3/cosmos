@@ -16,7 +16,7 @@ VARIABLE:
 NEEDS_DEPENDENCIES:
   summary: Indicates the plugin needs dependencies and sets the GEM_HOME environment variable
   description: If the plugin has a top level lib folder or lists runtime dependencies in the gemspec,
-    NEEDS_DEPENDENCIES is effectively already set. Note that in Enterprise Edition, having
+    NEEDS_DEPENDENCIES is effectively already set. Note that in Enterprise, having
     NEEDS_DEPENDENCIES adds the NFS volume mount to the Kubernetes pod.
   since: 5.5.0
 INTERFACE:

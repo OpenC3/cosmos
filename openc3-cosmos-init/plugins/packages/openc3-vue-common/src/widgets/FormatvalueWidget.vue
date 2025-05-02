@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -34,14 +34,17 @@
 </template>
 
 <script>
+// When we apply a fixed character width we need to pad a bit since the
+// width applies to the enclosing div and not the underlying input
+const INPUT_PADDING = 4
 import Widget from './Widget'
 import ValueWidget from './ValueWidget.vue'
 
 export default {
-  mixins: [Widget],
   components: {
     ValueWidget,
   },
+  mixins: [Widget],
   computed: {
     getParameters() {
       return [
@@ -53,7 +56,11 @@ export default {
     },
   },
   created() {
-    this.setWidth(this.parameters[5], 'ch', 12)
+    this.setWidth(
+      parseInt(this.parameters[5]) + INPUT_PADDING,
+      'ch',
+      12 + INPUT_PADDING,
+    )
   },
 }
 </script>

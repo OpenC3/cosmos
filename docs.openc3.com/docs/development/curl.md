@@ -11,9 +11,9 @@ This information is just generally used behind the scenes in COSMOS tools
 
 The COSMOS APIs are all served over HTTP, which means you can use curl to experiment with them. Curl is a great tool for seeing exactly how the API responds to any given request.
 
-## Curl Example with OpenC3 COSMOS Open Source
+## Curl Example with OpenC3 COSMOS Core
 
-OpenC3 COSMOS Open Source just has a single user account, so all you need to do is pass the single password as the token with your requests like this.
+OpenC3 COSMOS Core just has a single user account, so all you need to do is pass the single password as the token with your requests like this.
 
 Request:
 

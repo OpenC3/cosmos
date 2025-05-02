@@ -22,7 +22,7 @@ app.use(Notify, { store })
 const options = OpenC3Auth.getInitOptions()
 OpenC3Auth.init(options).then(() => {
   // Set the scope variable that will be used for the life of this page load
-  // It is always default in standard edition
+  // It is always DEFAULT in COSMOS Core
   window.openc3Scope = 'DEFAULT'
 
   app.mount('#openc3-main')

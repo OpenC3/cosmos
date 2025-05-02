@@ -5,13 +5,13 @@ sidebar_custom_props:
   myEmoji: 📊
 ---
 
-The COSMOS architecture was created with scalability in mind. Our goal is to support an unlimited number of connections and use cloud technologies to scale. Only [COSMOS Enterprise Edition](https://openc3.com/enterprise) supports Kubernetes and the various cloud platforms which allow this level of scalability. While true scalability is only achieved in COSMOS Enterprise, both Open Source and Enterprise have various levels of observability and configuration settings which can affect performance.
+The COSMOS architecture was created with scalability in mind. Our goal is to support an unlimited number of connections and use cloud technologies to scale. Only [COSMOS Enterprise](https://openc3.com/enterprise) supports Kubernetes and the various cloud platforms which allow this level of scalability. While true scalability is only achieved in COSMOS Enterprise, both Core and Enterprise have various levels of observability and configuration settings which can affect performance.
 
 # COSMOS Hardware Requirements
 
 ## Memory
 
-COSMOS can run on a Raspberry Pi up to a Kubernetes cluster in the cloud. On all platforms the key performance factor is the number and complexity of the targets and their defined packets. Targets can vary from simple targets taking 100 MB of RAM to complex targets taking 400 MB. The base COSMOS containers require about 800 MB of RAM. A good rule of thumb is to average about 300 MB of RAM for targets. As an example data point, the COSMOS Demo has 4 targets, two complex (INST & INST2) and two relatively simple (EXAMPLE & TEMPLATED), and requires 800 MB of RAM (on top of the 800 MB of base container RAM).
+COSMOS can run on a Raspberry Pi up to a Kubernetes cluster in the cloud. On all platforms the key performance factor is the number and complexity of the targets and their defined packets. Targets can vary from simple targets taking 100 MB of RAM to complex targets taking 400 MB. The COSMOS Core containers require about 800 MB of RAM. A good rule of thumb is to average about 300 MB of RAM for targets. As an example data point, the COSMOS Demo has 4 targets, two complex (INST & INST2) and two relatively simple (EXAMPLE & TEMPLATED), and requires 800 MB of RAM (on top of the 800 MB of base container RAM).
 
 - Base RAM MB Calculator = 800 + (num targets) \* 300
 
@@ -19,13 +19,13 @@ In addition, the Redis streams contain the last 10 min of both raw and decommuta
 
 ## CPU
 
-Another consideration is the CPU performance. In the Open Source Edition, by default COSMOS spawns off 2 microservices per target. One combines packet logging and decommutation of the data and the other performs data reduction. In COSMOS Enterprise Edition on Kubernetes, each process becomes an independent container that is deployed on the cluster allowing horizontal scaling.
+Another consideration is the CPU performance. In COSMOS Core, by default COSMOS spawns off 2 microservices per target. One combines packet logging and decommutation of the data and the other performs data reduction. In COSMOS Enterprise on Kubernetes, each process becomes an independent container that is deployed on the cluster allowing horizontal scaling.
 
 The COSMOS command and telemetry API and script running API servers should have a dedicated core while targets can generally share cores. It's hard to provide a general rule of thumb with the wide variety of architectures, clock speeds, and core counts. The best practice is to install COSMOS with the expected load and do some monitoring with `htop` to visualize the load on the various cores. Any time a single core gets overloaded (100%) this is a concern and system slowdown can occur.
 
 ## Performance Comparison
 
-Performance characterization was performed in Azure on a Standard D4s v5 (4 vcpus, 16 GiB memory) chosen to allow virtualization per [Docker](https://docs.docker.com/desktop/vm-vdi/#turn-on-nested-virtualization-on-microsoft-hyper-v). COSMOS [5.9.1](https://github.com/OpenC3/cosmos-enterprise/releases/tag/v5.9.1) Enterprise Edition was installed on both Windows 11 Pro [^1] and Ubuntu 22. Note: Enterprise Edition was not utilizing Kubernetes, just Docker. Testing involved starting the COSMOS Demo, connecting all targets (EXAMPLE, INST, INST2, TEMPLATED), opening the following TlmViewer screens (ADCS, ARRAY, BLOCK, COMMANDING, HS, LATEST, LIMITS, OTHER, PARAMS, SIMPLE, TABS) and creating two TlmGrapher graphs consisting of INST HEALTH_STATUS TEMP[1-4] and INST ADCS POS[X,Y,Z] and INST ADCS VEL[X,Y,Z]. This was allowed to run for 1hr and results were collected using `htop`:
+Performance characterization was performed in Azure on a Standard D4s v5 (4 vcpus, 16 GiB memory) chosen to allow virtualization per [Docker](https://docs.docker.com/desktop/vm-vdi/#turn-on-nested-virtualization-on-microsoft-hyper-v). COSMOS [5.9.1](https://github.com/OpenC3/cosmos-enterprise/releases/tag/v5.9.1) Enterprise was installed on both Windows 11 Pro [^1] and Ubuntu 22. Note: Enterprise was not utilizing Kubernetes, just Docker. Testing involved starting the COSMOS Demo, connecting all targets (EXAMPLE, INST, INST2, TEMPLATED), opening the following TlmViewer screens (ADCS, ARRAY, BLOCK, COMMANDING, HS, LATEST, LIMITS, OTHER, PARAMS, SIMPLE, TABS) and creating two TlmGrapher graphs consisting of INST HEALTH_STATUS TEMP[1-4] and INST ADCS POS[X,Y,Z] and INST ADCS VEL[X,Y,Z]. This was allowed to run for 1hr and results were collected using `htop`:
 
 | Platform           | Core CPU %      | RAM          |
 | :----------------- | :-------------- | :----------- |
@@ -51,7 +51,7 @@ Performance characterization was performed in Azure on a Standard D4s v5 (4 vcpu
 | cosmos-enterprise-project-openc3-postgresql-1               | 0.00%         | 0.39%        | 37.33MiB    | 41.02MiB   |
 
 - memory profiles are similar between the two platforms
-- redis-ephemeral isn't using much memory on the base Demo with its small packets
+- redis-ephemeral isn't using much memory on the Core Demo with its small packets
 
 At this point the COSMOS [LoadSim](https://github.com/OpenC3/openc3-cosmos-load-sim) was installed with default settings which creates 10 packets with 1000 items each at 10Hz (110kB/s). After a 1 hr soak, htop now indicated:
 
@@ -85,7 +85,7 @@ The larger packets and data rate of the LoadSim target caused both platforms to 
 
 While it is easy to run COSMOS on any Docker platform, increasing the number and complexity of the targets requires choosing the correct hardware. Sizing can be approximated but the best solution is to install representative targets and use `docker stats` and `htop` to judge the CPU and memory pressure on the given hardware.
 
-[COSMOS Enterprise Edition](https://openc3.com/enterprise) on Kubernetes helps to eliminate the hardware sizing issue by scaling the cluster to meet the needs of the system. Check out [this recent talk](https://openc3.com/news/scaling) Ryan gave at GSAW showing how we scaled to over 160 satellites on a 4 node kubernetes cluster on EKS.
+[COSMOS Enterprise](https://openc3.com/enterprise) on Kubernetes helps to eliminate the hardware sizing issue by scaling the cluster to meet the needs of the system. Check out [this recent talk](https://openc3.com/news/scaling) Ryan gave at GSAW showing how we scaled to over 160 satellites on a 4 node kubernetes cluster on EKS.
 
 <hr/>
 

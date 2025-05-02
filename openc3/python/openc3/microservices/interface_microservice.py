@@ -54,7 +54,7 @@ from openc3.top_level import kill_thread
 try:
     from openc3enterprise.models.critical_cmd_model import CriticalCmdModel
 except ModuleNotFoundError:
-    # Should never actually be used in Open Source
+    # Should never actually be used in COSMOS Core
     pass
 
 

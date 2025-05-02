@@ -48,7 +48,7 @@
               variant="text"
               @click="showMicroserviceError(microservice.name)"
             />
-            <v-list-item-icon class="mr-3">
+            <v-list-item-icon>
               <v-btn
                 aria-label="Start Microservice"
                 icon="mdi-play"
@@ -56,7 +56,7 @@
                 @click="startMicroservice(microservice.name)"
               />
             </v-list-item-icon>
-            <v-list-item-icon class="mr-3">
+            <v-list-item-icon>
               <v-btn
                 aria-label="Stop Microservice"
                 icon="mdi-stop"

@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -63,6 +63,10 @@ class LoggerMeta(type):
 
         if func in INSTANCE_ATTRS:
             return getattr(cls.instance(), func)
+
+        # Handle dunder methods to support help() and other introspection
+        if func.startswith("__") and func.endswith("__"):
+            return super().__getattribute__(func)
 
         def method(*args, **kw_args):
             return getattr(cls.instance(), func)(*args, **kw_args)

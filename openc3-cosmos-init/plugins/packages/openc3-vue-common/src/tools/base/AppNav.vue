@@ -337,24 +337,6 @@ export default {
           urlRerouteOnly: true,
         })
 
-        // Redirect some base paths to the first tool
-        if (
-          window.location.pathname == '/' ||
-          window.location.pathname == '/tools' ||
-          window.location.pathname == '/tools/'
-        ) {
-          // TODO: There's some sort of race condition here which makes this flaky if the user went to '/login' with
-          // no `?redirect=` query param while they were already authenticated. That sends them to '/', causing
-          // another redirect here that gets stepped on, so they're left at '/'. The nav bar shows, so they can click
-          // on a tool, or refresh the page to make this redirect actually happen.
-          for (let key of Object.keys(this.shownTools)) {
-            if (this.appNav[key].shown) {
-              history.replaceState(null, '', this.appNav[key].url)
-              break
-            }
-          }
-        }
-
         // Check every minute if we need to update our token
         setInterval(() => {
           OpenC3Auth.updateToken(120).then(function (refreshed) {
