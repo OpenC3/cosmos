@@ -18,7 +18,6 @@ from openc3.script.suite_runner import SuiteRunner
 from openc3.utilities.string import build_timestamped_filename
 from openc3.utilities.bucket_utilities import BucketUtilities
 from openc3.script.storage import _get_storage_file
-from openc3.utilities.store_queued import StoreQueued
 from openc3.models.script_status_model import ScriptStatusModel
 import os
 
@@ -87,14 +86,12 @@ import openc3.script.api_shared
 
 setattr(openc3.script.api_shared, "openc3_script_sleep", _openc3_script_sleep)
 
-import os
 from io import StringIO
 import ast
 import json
 import uuid
 import re
 import time
-import socket
 import sys
 import traceback
 import threading

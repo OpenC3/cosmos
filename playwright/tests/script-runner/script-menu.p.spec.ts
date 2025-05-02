@@ -67,7 +67,7 @@ test('show started scripts', async ({ page, utils }) => {
   await expect(page.locator('[data-test=running-scripts]')).not.toContainText(
     filename,
   )
-  await page.locator('button:has-text("Refresh")').nth(1).click()
+  await page.getByText('Completed Scripts').click()
   await expect(page.locator('[data-test=completed-scripts]')).toContainText(
     filename,
   )
