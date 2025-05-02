@@ -261,6 +261,7 @@ module OpenC3
                 end
               end
               def finish_file
+                # Stub out the finish_file method
               end
             end
             @interface = FileInterface.new(nil, '/path', nil, 1, stored)
@@ -327,6 +328,7 @@ module OpenC3
                 end
               end
               def finish_file
+                # Stub out the finish_file method
               end
             end
             # Test the worst case which is to give the protocol 1 byte at a time

@@ -116,8 +116,8 @@ module OpenC3
             return data, { filename: @filename }
           else
             finish_file()
-            if @throttle
-              return nil, nil if @sleeper.sleep(@throttle)
+            if @throttle and @sleeper.sleep(@throttle)
+              return nil, nil
             end
           end
         end

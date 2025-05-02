@@ -135,9 +135,8 @@ class FileInterface(Interface):
                     return data, None
                 else:
                     self.finish_file()
-                    if self.throttle:
-                        if self.sleeper.sleep(self.throttle):
-                            return None, None
+                    if self.throttle and self.sleeper.sleep(self.throttle):
+                        return None, None
 
             # Find the next file to read
             file = self.get_next_telemetry_file()

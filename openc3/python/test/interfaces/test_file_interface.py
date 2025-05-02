@@ -125,12 +125,12 @@ class TestFileInterface(unittest.TestCase):
         self.interface = FileInterface(self.command_dir, self.telemetry_dir, self.archive_dir)
         self.interface.connect()
 
-        data, extra = self.interface.read_interface()
+        data, _ = self.interface.read_interface()
         self.assertEqual(data, b'\x01\x02\x03\x04')
 
         # Put None so next call doesn't block
         self.interface.queue.put(None)
-        data, extra = self.interface.read_interface()
+        data, _ = self.interface.read_interface()
 
         # Verify the file was archived
         self.assertTrue(os.path.exists(os.path.join(self.archive_dir, 'test.bin')))
@@ -145,7 +145,7 @@ class TestFileInterface(unittest.TestCase):
         self.interface = FileInterface(self.command_dir, self.telemetry_dir, self.archive_dir)
         self.interface.connect()
 
-        data, extra = self.interface.read_interface()
+        data, _ = self.interface.read_interface()
         self.assertEqual(data, b'\x01\x02\x03\x04')
 
     def test_read_interface_delete(self):
@@ -157,12 +157,12 @@ class TestFileInterface(unittest.TestCase):
         self.interface = FileInterface(self.command_dir, self.telemetry_dir, "DELETE")
         self.interface.connect()
 
-        data, extra = self.interface.read_interface()
+        data, _ = self.interface.read_interface()
         self.assertEqual(data, b'\x01\x02\x03\x04')
 
         # Put None so next call doesn't block
         self.interface.queue.put(None)
-        data, extra = self.interface.read_interface()
+        data, _ = self.interface.read_interface()
 
         self.assertFalse(os.path.exists(filename))
 
@@ -207,10 +207,10 @@ class TestFileInterface(unittest.TestCase):
         self.interface.connect()
 
         start = time.time()
-        data, extra = self.interface.read_interface()
+        data, _ = self.interface.read_interface()
         self.assertEqual(data, b'\x01\x02\x03\x04')
 
-        data, extra = self.interface.read_interface()
+        data, _ = self.interface.read_interface()
         self.assertEqual(data, b'\x05\x06\x07\x08')
 
         elapsed = time.time() - start
@@ -232,7 +232,7 @@ class TestFileInterface(unittest.TestCase):
         thread = threading.Thread(target=create_file)
         thread.start()
 
-        data, extra = self.interface.read_interface()
+        data, _ = self.interface.read_interface()
         self.assertEqual(data, b'\x01\x02\x03\x04')
         thread.join()
 
