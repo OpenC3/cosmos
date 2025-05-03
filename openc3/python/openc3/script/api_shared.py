@@ -582,6 +582,9 @@ def start(procedure_name):
     with open(procedure_name) as f:
         exec(f.read())
 
+def goto(line_no_or_procedure_name, line_no = None):
+    raise RuntimeError("goto is not supported outside of ScriptRunner")
+
 
 # Require an additional python file
 def load_utility(procedure_name):

@@ -283,7 +283,7 @@ export default {
     this.alerts = this.$store.state.notifyHistory
     // Get the initial number of running scripts
     Api.get('/script-api/running-script').then((response) => {
-      this.numScripts = response.data.length
+      this.numScripts = response.data.total
     })
   },
   unmounted: function () {

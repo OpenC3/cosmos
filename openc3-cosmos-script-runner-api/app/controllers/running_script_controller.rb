@@ -23,12 +23,16 @@
 class RunningScriptController < ApplicationController
   def index
     return unless authorization('script_view')
-    render json: RunningScript.all
+    limit = params[:limit] || 10
+    offset = params[:offset] || 0
+    items = OpenC3::ScriptStatusModel.all(scope: params[:scope], offset: offset, limit: limit, type: 'running')
+    total = OpenC3::ScriptStatusModel.count(scope: params[:scope], type: 'running')
+    render json: { items: items, total: total }
   end
 
   def show
     return unless authorization('script_view')
-    running_script = RunningScript.find(params[:id].to_i)
+    running_script = OpenC3::ScriptStatusModel.get(name: params[:id], scope: params[:scope])
     if running_script
       render json: running_script
     else
@@ -37,7 +41,7 @@ class RunningScriptController < ApplicationController
   end
 
   def stop
-    running_script = RunningScript.find(params[:id].to_i)
+    running_script = OpenC3::ScriptStatusModel.get(name: params[:id], scope: params[:scope])
     if running_script
       target_name = running_script['name'].split('/')[0]
       return unless authorization('script_run', target_name: target_name)
@@ -50,13 +54,53 @@ class RunningScriptController < ApplicationController
   end
 
   def delete
-    running_script = RunningScript.find(params[:id].to_i)
+    running_script = OpenC3::ScriptStatusModel.get_model(name: params[:id], scope: params[:scope])
     if running_script
-      target_name = running_script['name'].split('/')[0]
+      target_name = running_script.name.split('/')[0]
+      pid = running_script.pid.to_i
       return unless authorization('script_run', target_name: target_name)
       running_script_publish("cmd-running-script-channel:#{params[:id]}", "stop")
-      RunningScript.delete(params[:id].to_i)
-      OpenC3::Logger.info("Script deleted: #{running_script}", scope: params[:scope], user: username())
+
+      # Give the process 1 second to stop from stop message
+      stopped = false
+      start_time = Time.now
+      while Time.now - start_time < 1.0
+        begin
+          Process.getpgid(pid.to_i)
+          sleep 0.1
+        rescue Errno::ESRCH
+          stopped = true
+          break
+        end
+      end
+
+      # If the process is still running
+      # Send a SIGINT and give it one more second
+      if not stopped
+        Process.kill("SIGINT", pid)
+        start_time = Time.now
+        while Time.now - start_time < 1.0
+          begin
+            Process.getpgid(pid.to_i)
+            sleep 0.1
+          rescue Errno::ESRCH
+            stopped = true
+            break
+          end
+        end
+      end
+
+      # If the process is still running send a hard kill signal
+      if not stopped
+        Process.kill("SIGKILL", pid)
+
+        # Also need to cleanup the status model in this case because the process will not die and cleanup
+        running_script.end_time = Time.now.utc.iso8601
+        running_script.state = "killed"
+        running_script.update
+      end
+
+      OpenC3::Logger.info("Script deleted: #{running_script.name}", scope: params[:scope], user: username())
       head :ok
     else
       head :not_found
@@ -64,7 +108,7 @@ class RunningScriptController < ApplicationController
   end
 
   def pause
-    running_script = RunningScript.find(params[:id].to_i)
+    running_script = OpenC3::ScriptStatusModel.get(name: params[:id], scope: params[:scope])
     if running_script
       target_name = running_script['name'].split('/')[0]
       return unless authorization('script_run', target_name: target_name)
@@ -77,7 +121,7 @@ class RunningScriptController < ApplicationController
   end
 
   def retry
-    running_script = RunningScript.find(params[:id].to_i)
+    running_script = OpenC3::ScriptStatusModel.get(name: params[:id], scope: params[:scope])
     if running_script
       target_name = running_script['name'].split('/')[0]
       return unless authorization('script_run', target_name: target_name)
@@ -90,7 +134,7 @@ class RunningScriptController < ApplicationController
   end
 
   def go
-    running_script = RunningScript.find(params[:id].to_i)
+    running_script = OpenC3::ScriptStatusModel.get(name: params[:id], scope: params[:scope])
     if running_script
       target_name = running_script['name'].split('/')[0]
       return unless authorization('script_run', target_name: target_name)
@@ -103,7 +147,7 @@ class RunningScriptController < ApplicationController
   end
 
   def step
-    running_script = RunningScript.find(params[:id].to_i)
+    running_script = OpenC3::ScriptStatusModel.get(name: params[:id], scope: params[:scope])
     if running_script
       target_name = running_script['name'].split('/')[0]
       return unless authorization('script_run', target_name: target_name)
@@ -116,7 +160,7 @@ class RunningScriptController < ApplicationController
   end
 
   def prompt
-    running_script = RunningScript.find(params[:id].to_i)
+    running_script = OpenC3::ScriptStatusModel.get(name: params[:id], scope: params[:scope])
     if running_script
       target_name = running_script['name'].split('/')[0]
       return unless authorization('script_run', target_name: target_name)
@@ -136,7 +180,7 @@ class RunningScriptController < ApplicationController
   end
 
   def method
-    running_script = RunningScript.find(params[:id].to_i)
+    running_script = OpenC3::ScriptStatusModel.get(name: params[:id], scope: params[:scope])
     if running_script
       target_name = running_script['name'].split('/')[0]
       return unless authorization('script_run', target_name: target_name)

@@ -64,6 +64,7 @@ module OpenC3
 
     # Closes the message log and marks it read only
     def stop(take_mutex = true, metadata: {})
+      bucket_key = nil
       @mutex.lock if take_mutex
       if @file and not @file.closed?
         @file.close
@@ -77,6 +78,7 @@ module OpenC3
         end
       end
       @mutex.unlock if take_mutex
+      return bucket_key
     end
 
     # Creates a new message log and sets the filename

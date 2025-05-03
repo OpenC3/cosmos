@@ -23,10 +23,12 @@ from datetime import datetime, timezone
 from openc3.script import get_overrides
 from openc3.utilities.bucket import Bucket
 from openc3.utilities.store import Store, EphemeralStore
+from openc3.utilities.store_queued import StoreQueued
 from openc3.utilities.extract import convert_to_value
 from openc3.utilities.logger import Logger
 from openc3.environment import OPENC3_CONFIG_BUCKET
 from running_script import RunningScript, running_script_anycable_publish
+from openc3.models.script_status_model import ScriptStatusModel
 
 start_time = time.time()
 
@@ -48,18 +50,15 @@ os.unsetenv("OPENC3_REDIS_USERNAME")
 os.unsetenv("OPENC3_REDIS_PASSWORD")
 
 id = sys.argv[1]
-script_data = Store.get(f"running-script:{id}")
-script = None
-if script_data:
-    script = json.loads(script_data)
-else:
-    raise RuntimeError(f"RunningScript with id {id} not found")
-scope = script["scope"]
-name = script["name"]
-disconnect = script["disconnect"]
-startup_time = time.time() - start_time
-path = os.path.join(OPENC3_CONFIG_BUCKET, scope, "targets", name)
+scope = sys.argv[2]
+script_status = ScriptStatusModel.get_model(name = id, scope = scope)
+if script_status is None:
+    raise RuntimeError(f"Unknown script id {id} for scope {scope}")
+if script_status.state != "spawning":
+    raise RuntimeError(f"Script in unexpected state: {script_status.state}")
 
+startup_time = time.time() - start_time
+path = os.path.join(OPENC3_CONFIG_BUCKET, scope, "targets", script_status.filename)
 
 def run_script_log(id, message, color="BLACK", message_log=True):
     line_to_write = (
@@ -80,13 +79,14 @@ running_script = None
 try:
     # Ensure usage of Logger in scripts will show Script Runner as the source
     Logger.microservice_name = "Script Runner"
-    running_script = RunningScript(id, scope, name, disconnect)
+    running_script = RunningScript(script_status)
     run_script_log(
         id,
         f"Script {path} spawned in {startup_time} seconds <python {sys.version}>",
         "BLACK",
     )
 
+    # Log any overrides if present
     overrides = get_overrides()
     if len(overrides) > 0:
         message = "The following overrides were present:"
@@ -97,51 +97,56 @@ try:
             )
         run_script_log(id, message, "YELLOW")
 
-    if "suite_runner" in script:
-        script["suite_runner"] = json.loads(script["suite_runner"])  # Convert to hash
-        running_script.parse_options(script["suite_runner"]["options"])
-        if "script" in script["suite_runner"]:
+    # Start the script in another thread
+    if script_status.suite_runner is not None:
+        script_status.suite_runner = json.loads(script_status.suite_runner)  # Convert to hash
+        running_script.parse_options(script_status.suite_runner["options"])
+        if "script" in script_status.suite_runner:
             running_script.run_text(
-                f"from openc3.script.suite_runner import SuiteRunner\nSuiteRunner.start({script['suite_runner']['suite']}, {script['suite_runner']['group']}, '{script['suite_runner']['script']}')",
+                f"from openc3.script.suite_runner import SuiteRunner\nSuiteRunner.start({script_status.suite_runner['suite']}, {script_status.suite_runner['group']}, '{script_status.suite_runner['script']}')",
                 initial_filename="SCRIPTRUNNER",
             )
-        elif "group" in script["suite_runner"]:
+        elif "group" in script_status.suite_runner:
             running_script.run_text(
-                f"from openc3.script.suite_runner import SuiteRunner\nSuiteRunner.{script['suite_runner']['method']}({script['suite_runner']['suite']}, {script['suite_runner']['group']})",
+                f"from openc3.script.suite_runner import SuiteRunner\nSuiteRunner.{script_status.suite_runner['method']}({script_status.suite_runner['suite']}, {script_status.suite_runner['group']})",
                 initial_filename="SCRIPTRUNNER",
             )
         else:
             running_script.run_text(
-                f"from openc3.script.suite_runner import SuiteRunner\nSuiteRunner.{script['suite_runner']['method']}({script['suite_runner']['suite']})",
+                f"from openc3.script.suite_runner import SuiteRunner\nSuiteRunner.{script_status.suite_runner['method']}({script_status.suite_runner['suite']})",
                 initial_filename="SCRIPTRUNNER",
             )
     else:
-        running_script.run()
+        if script_status.start_line_no != 1 or script_status.end_line_no is not None:
+            if script_status.end_line_no is None:
+                # Goto line
+                running_script.run_text(f"start('{script_status.filename}', line_no = {script_status.start_line_no}, complete = True)", initial_filename = "SCRIPTRUNNER")
+            else:
+                # Execute selection
+                running_script.run_text(f"start('{script_status.filename}', line_no = {script_status.start_line_no}, end_line_no = {script_status.end_line_no})", initial_filename = "SCRIPTRUNNER")
+        else:
+            running_script.run()
 
-    running = Store.smembers("running-scripts")
-    if running is None:
-        running = []
+    # Notify frontend of number of running scripts in this scope
+    running = ScriptStatusModel.all(scope = scope, type = "running")
     running_script_anycable_publish(
         "all-scripts-channel",
         {
             "type": "start",
-            "filename": path,
+            "filename": script_status.filename,
             "active_scripts": len(running),
+            "scope": scope,
         },
     )
 
-    # Subscribe to the ActionCable generated topic which is namedspaced with channel_prefix
-    # (defined in cable.yml) and then the channel stream. This isn't typically how you see these
-    # topics used in the Rails ActionCable documentation but this is what is happening under the
-    # scenes in ActionCable. Throughout the rest of the code we use ActionCable to broadcast
-    #   e.g. ActionCable.server.broadcast("running-script-channel:{@id}", ...)
+    # Subscribe to the pub sub channel for this script
     redis = Store.instance().build_redis()
     p = redis.pubsub(ignore_subscribe_messages=True)
     p.subscribe(f"script-api:cmd-running-script-channel:{id}")
     for msg in p.listen():
         parsed_cmd = json.loads(msg["data"])
         if not parsed_cmd == "shutdown" or (
-            isinstance(parsed_cmd, dict) and parsed_cmd["method"]
+            isinstance(parsed_cmd, dict) and not parsed_cmd.get("method")
         ):
             run_script_log(id, f"Script {path} received command: {msg['data']}")
         match parsed_cmd:
@@ -245,6 +250,11 @@ try:
                             running_script.debug(
                                 parsed_cmd["args"]
                             )  # debug() logs the output of the command
+                        case "executewhilepaused":
+                            run_script_log(
+                                id, f"INFO: executewhilepaused: {parsed_cmd['args']}"
+                            )  # Log what we were passed
+                            running_script.execute_while_paused(*parsed_cmd["args"])
                         case _:
                             run_script_log(
                                 id,
@@ -258,29 +268,33 @@ try:
 except Exception:
     tb = traceback.format_exc()
     run_script_log(id, tb, "RED")
+    script_status.state = "crashed"
+    if script_status.errors is None:
+        script_status.errors = []
+    script_status.errors.append(tb)
+    script_status.update()
 finally:
     try:
-        # Remove running script from redis
-        script = Store.get(f"running-script:{id}")
-        if script:
-            Store.delete(f"running-script:{id}")
-        running = Store.smembers("running-scripts")
-        active_scripts = len(running)
-        for item in running:
-            parsed = json.loads(item)
-            if str(parsed["id"]) == str(id):
-                Store.srem("running-scripts", item)
-                active_scripts -= 1
-                break
-        time.sleep(
-            0.2
-        )  # Allow the message queue to be emptied before signaling complete
+        # Dump all queued redis messages
+        StoreQueued.instance().shutdown()
+
+        # Ensure script is marked as complete with an end time
+        if not script_status.is_complete():
+            script_status.state = "completed"
+        script_status.end_time = datetime.now(timezone.utc).isoformat(timespec="seconds").replace('+00:00', 'Z')
+        script_status.update()
+
+        running = ScriptStatusModel.all(scope = scope, type = "running")
+
+        # Inform script channel it is complete
         running_script_anycable_publish(
-            f"running-script-channel:{id}", {"type": "complete"}
+            f"running-script-channel:{id}", {"type": "complete", "state": script_status.state}
         )
+
+        # Inform frontend of number of running scripts in this scope
         running_script_anycable_publish(
             "all-scripts-channel",
-            {"type": "complete", "active_scripts": active_scripts},
+            {"type": "complete", "filename": script_status.filename, "active_scripts": len(running), "scope": scope},
         )
     finally:
         if running_script:

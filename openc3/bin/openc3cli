@@ -592,28 +592,18 @@ def cli_script_monitor(script_id)
     while (resp = api.read) do
       # see ScriptRunner.vue for types and states
       case resp['type']
-      when 'error', 'fatal'
-        $script_interrupt_text = ''
-        puts 'script failed'
-        break
       when 'file'
         puts "Filename #{resp['filename']} scope #{resp['scope']}"
       when 'line'
         fn = resp['filename'].nil? ? '<no file>' : resp['filename']
         puts "At [#{fn}:#{resp['line_no']}] state [#{resp['state']}]"
-        if resp['state'] == 'error'
+        if resp['state'] == 'error' or resp['state'] == 'crashed'
           $script_interrupt_text = ''
           puts 'script failed'
           break
         end
       when 'output'
         puts resp['line']
-      when 'paused'
-        if resp['state'] == 'fatal'
-          $script_interrupt_text = ''
-          puts 'script failed'
-          break
-        end
       when 'complete'
         $script_interrupt_text = ''
         puts 'script complete'

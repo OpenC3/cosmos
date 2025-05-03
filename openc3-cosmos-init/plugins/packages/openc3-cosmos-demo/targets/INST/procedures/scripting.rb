@@ -40,12 +40,17 @@ id = script_run(SCRIPT_NAME)
 check_expression("#{id.to_i} > 0")
 wait_for_action(id, 'running')
 
-list = running_script_list()
-started = list.select {|script| script["id"] == id}[0]
-check_expression("'#{started['name']}' == SCRIPT_NAME")
+list = running_script_list(limit: 100, offset: 0)
+puts list
+started = list.select {|script| script["name"] == id.to_s}[0]
+check_expression("'#{started['filename']}' == SCRIPT_NAME")
 script = running_script_get(id)
-check_expression("'#{script['name']}' == SCRIPT_NAME")
+check_expression("'#{script['filename']}' == SCRIPT_NAME")
 
+running_script_pause(id)
+wait_for_action(id, 'paused')
+running_script_execute_while_paused(id, SCRIPT_NAME, 1)
+wait_for_action(id, 'running')
 running_script_pause(id)
 wait_for_action(id, 'paused')
 running_script_step(id)
@@ -58,12 +63,12 @@ running_script_stop(id)
 wait 1
 
 list = running_script_list()
-script = list.select {|script| script["id"] == id}[0]
+script = list.select {|script| script["name"] == id.to_s}[0]
 # Script is stopped so it should NOT be in the running list
 check_expression("#{script.nil?} == true")
 
 list = completed_script_list()
-script = list.select {|script| script["id"] == id}[0]
+script = list.select {|script| script["name"] == id.to_s}[0]
 # Script is completed so it should be in the completed list
 check_expression("#{script.nil?} == false")
 
@@ -73,12 +78,12 @@ running_script_delete(id) # Stop and completely remove the script
 wait 1
 
 list = running_script_list()
-script = list.select {|script| script["id"] == id}[0]
+script = list.select {|script| script["name"] == id.to_s}[0]
 # Script is deleted, so it should NOT be in the running list
 check_expression("#{script.nil?} == true")
-list = completed_script_list()
+list = completed_script_list(limit: 100, offset: 0)
 # Script is deleted so it should be in the completed list
-script = list.select {|script| script["id"] == id}[0]
+script = list.select {|script| script["name"] == id.to_s}[0]
 check_expression("#{script.nil?} == false")
 
 script_lock(SCRIPT_NAME)

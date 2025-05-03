@@ -23,7 +23,6 @@
 import json
 import time
 from typing import Any
-from datetime import datetime, timezone
 from openc3.environment import OPENC3_SCOPE
 from openc3.topics.topic import Topic
 from openc3.models.model import Model
@@ -412,7 +411,7 @@ class TargetModel(Model):
         item_map_key = f"{self.scope}__{self.name}__item_to_packet_map"
         item_map = TargetModel.build_item_to_packet_map(self.name, scope=self.scope)
         Store.set(item_map_key, json.dumps(item_map))
-        TargetModel.item_map_cache[self.name] = [datetime.now(timezone.utc), item_map]
+        TargetModel.item_map_cache[self.name] = [time.time(), item_map]
 
     def dynamic_update(self, packets, cmd_or_tlm="TELEMETRY", filename="dynamic_tlm.txt"):
         # Build hash of targets/packets

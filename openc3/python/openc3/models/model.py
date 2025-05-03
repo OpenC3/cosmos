@@ -16,6 +16,7 @@
 
 import json
 import time
+import datetime
 from typing import Optional
 
 from openc3.utilities.store import Store, EphemeralStore
@@ -111,7 +112,7 @@ class Model:
         self.scope: Optional[str] = kw_args.get("scope")
         self.destroyed: bool = False
 
-    def create(self, update=False, force=False, queued=False):
+    def create(self, update=False, force=False, queued=False, isoformat=False):
         """Update the Redis hash at primary_key and set the field "name"
         to the JSON generated via calling as_json
         """
@@ -121,7 +122,10 @@ class Model:
                 raise RuntimeError(f"{self.primary_key}:{self.name} already exists at create")
             if not existing and update:
                 raise RuntimeError(f"{self.primary_key}:{self.name} doesn't exist at update")
-        self.updated_at = time.time() * 1_000_000_000
+        if isoformat:
+            self.updated_at = datetime.datetime.now().isoformat()
+        else:
+            self.updated_at = time.time() * 1_000_000_000
 
         write_store = self.store_queued() if queued else self.store()
         write_store.hset(self.primary_key, self.name, json.dumps(self.as_json()))

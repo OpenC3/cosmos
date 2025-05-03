@@ -68,6 +68,7 @@ class MessageLog:
 
     # Closes the message log and marks it read only
     def stop(self, take_mutex=True, metadata={}):
+        bucket_key = None
         if take_mutex:
             self.mutex.acquire()
         if self.file and not self.file.closed:
@@ -86,6 +87,7 @@ class MessageLog:
 
         if take_mutex:
             self.mutex.release()
+        return bucket_key
 
     # Creates a new message log and sets the filename
     def start(self, take_mutex=True):

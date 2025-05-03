@@ -114,6 +114,7 @@
           <v-tooltip :open-delay="600" location="top">
             <template #activator="{ props }">
               <v-btn
+                v-if="!scriptId"
                 v-bind="props"
                 icon="mdi-cached"
                 variant="text"
@@ -121,8 +122,16 @@
                 aria-label="Reload File"
                 @click="reloadFile"
               />
+              <v-btn
+                v-else
+                v-bind="props"
+                icon="mdi-arrow-left"
+                variant="text"
+                @click="backToNewScript"
+              />
             </template>
-            <span> Reload File </span>
+            <span v-if="!scriptId"> Reload File </span>
+            <span v-else> Back to New Script </span>
           </v-tooltip>
           <v-select
             id="filename"
@@ -248,16 +257,22 @@
         ></pre>
         <v-menu v-model="executeSelectionMenu" :target="[menuX, menuY]">
           <v-list>
+            <v-list-item title="Execute Selection" @click="executeSelection" />
             <v-list-item
-              v-for="item in executeSelectionMenuItems"
-              :key="item.label"
-              link
-              :disabled="scriptId"
-            >
-              <v-list-item-title @click="item.command">
-                {{ item.label }}
-              </v-list-item-title>
-            </v-list-item>
+              v-if="scriptId"
+              title="Goto Line"
+              @click="runFromCursor"
+            />
+            <v-list-item
+              v-if="!scriptId"
+              title="Run From Line"
+              @click="runFromCursor"
+            />
+            <v-list-item
+              v-if="!scriptId"
+              title="Clear Local Breakpoints"
+              @click="clearBreakpoints"
+            />
             <v-divider />
             <v-list-item
               title="Toggle Vim mode"
@@ -556,6 +571,7 @@ export default {
       default: null,
     },
   },
+  emits: ['alert', 'script-id'],
   data() {
     return {
       title: 'Script Runner',
@@ -970,22 +986,6 @@ export default {
         },
       ]
     },
-    executeSelectionMenuItems: function () {
-      return [
-        {
-          label: 'Execute selection',
-          command: this.executeSelection,
-        },
-        {
-          label: 'Run from here',
-          command: this.runFromCursor,
-        },
-        {
-          label: 'Clear local breakpoints',
-          command: this.clearBreakpoints,
-        },
-      ]
-    },
   },
   watch: {
     isLocked: function (val) {
@@ -1145,29 +1145,35 @@ export default {
         },
       }))
     }
-    if (this.$route.query?.file) {
-      this.filename = this.$route.query.file
-      await this.reloadFile()
-    } else if (this.$route.params?.id) {
-      await this.tryLoadRunningScript(this.$route.params.id)
-    } else {
-      if (!this.inline && localStorage['script_runner__filename']) {
-        this.filename = localStorage['script_runner__filename']
-        await this.reloadFile(false)
+    if (!this.inline) {
+      if (this.$route.query?.file) {
+        this.filename = this.$route.query.file
+        await this.reloadFile()
+      } else if (this.$route.params?.id) {
+        await this.tryLoadRunningScript(this.$route.params.id)
+      } else {
+        this.scriptId = sessionStorage.getItem('script_runner__script_id')
+        if (this.scriptId) {
+          await this.tryLoadRunningScript(this.scriptId)
+        } else if (localStorage['script_runner__filename']) {
+          this.filename = localStorage['script_runner__filename']
+          await this.reloadFile(false)
+        }
       }
-    }
-    this.updateInterval = setInterval(async () => {
-      this.processReceived()
-    }, 100) // Every 100ms
-
-    if (this.inline) {
+    } else {
       if (this.body) {
         this.editor.setValue(this.body)
         this.editor.clearSelection()
       }
     }
+    this.updateInterval = setInterval(async () => {
+      this.processReceived()
+    }, 100) // Every 100ms
   },
   beforeUnmount() {
+    if (this.scriptId && !this.inline) {
+      sessionStorage.setItem('script_runner__script_id', this.scriptId)
+    }
     this.editor.destroy()
     this.editor.container.remove()
   },
@@ -1273,15 +1279,27 @@ export default {
       this.editor.gotoLine(this.files[filename].lineNo)
     },
     tryLoadRunningScript: function (id) {
-      return Api.get('/script-api/running-script').then((response) => {
-        const loadRunningScript = response.data.find(
-          (s) => `${s.id}` === `${id}`,
-        )
-        if (loadRunningScript) {
-          this.filename = loadRunningScript.name
-          this.tryLoadSuites()
-          this.initScriptStart()
-          this.scriptStart(loadRunningScript.id)
+      return Api.get(`/script-api/running-script/${id}`).then((response) => {
+        if (response.data) {
+          let state = response.data.state
+          if (
+            state !== 'complete' &&
+            state !== 'complete_errors' &&
+            state !== 'stopped' &&
+            state !== 'crash' &&
+            state !== 'killed'
+          ) {
+            this.filename = response.data.filename
+            this.tryLoadSuites(response)
+            this.initScriptStart()
+            this.scriptStart(id)
+          } else {
+            this.$notify.caution({
+              title: `Script ${id} has already completed`,
+              body: 'Check the Completed Scripts below ...',
+            })
+            this.showScripts = true
+          }
         } else {
           this.$notify.caution({
             title: `Running Script ${id} not found`,
@@ -1291,21 +1309,13 @@ export default {
         }
       })
     },
-    tryLoadSuites: function () {
-      Api.get(`/script-api/scripts/${this.filename}`).then((response) => {
-        if (response.data.suites) {
-          this.startOrGoDisabled = true
-          this.suiteRunner = true
-          this.suiteMap = JSON.parse(response.data.suites)
-        }
-        if (response.data.error) {
-          this.suiteError = response.data.error
-          this.showSuiteError = true
-        }
-        // Disable suite buttons if we didn't successfully parse the suite
-        this.disableSuiteButtons = response.data.success == false
-        this.doResize()
-      })
+    tryLoadSuites: function (response) {
+      if (response.data.suite_runner) {
+        this.startOrGoDisabled = true
+        this.suiteRunner = true
+        this.suiteMap = JSON.parse(response.data.suite_runner)
+      }
+      this.doResize()
     },
     showExecuteSelectionMenu: function ($event) {
       this.menuX = $event.pageX
@@ -1313,60 +1323,39 @@ export default {
       this.executeSelectionMenu = true
     },
     runFromCursor: function () {
-      const start = this.editor.getCursorPosition().row
-      const text = this.editor.session.doc
-        .getLines(start, this.editor.session.doc.getLength())
-        .join('\n')
-      const breakpoints = this.getBreakpointRows()
-        .filter((row) => row >= start)
-        .map((row) => row - start)
-      this.executeText(text, breakpoints)
+      const start_row = this.editor.getCursorPosition().row + 1
+      if (!this.scriptId) {
+        this.start(null, null, start_row)
+      } else {
+        Api.post(
+          `/script-api/running-script/${this.scriptId}/executewhilepaused`,
+          {
+            data: {
+              args: [this.filenameSelect, start_row],
+            },
+          },
+        )
+      }
     },
     executeSelection: function () {
-      const text = this.editor.getSelectedText()
       const range = this.editor.getSelectionRange()
-      const breakpoints = this.getBreakpointRows()
-        .filter((row) => row <= range.end.row && row >= range.start.row)
-        .map((row) => row - range.start.row)
-      this.executeText(text, breakpoints)
-    },
-    async executeText(text, breakpoints = []) {
-      let extension = this.fullFilename.split('.').pop()
-      if (extension.includes(' *')) {
-        extension = extension.split(' *')[0]
+      let start_row = range.start.row + 1
+      let end_row = range.end.row + 1
+      if (range.end.column === 0) {
+        end_row -= 1
       }
-      if (extension !== 'rb' && extension !== 'py') {
-        extension = 'rb' // Still default to Ruby if we can't determine
-      }
-      // Create a new temp script and open in new tab
-      const selectionTempFilename =
-        TEMP_FOLDER +
-        '/' +
-        format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') +
-        `_temp.${extension}`
-      await Api.post(`/script-api/scripts/${selectionTempFilename}`, {
-        data: {
-          text,
-          breakpoints,
-        },
-      })
-        .then((_response) => {
-          let env = this.scriptEnvironment.env
-          if (this.enableStackTraces) {
-            env = env.concat({
-              key: 'OPENC3_FULL_BACKTRACE',
-              value: '1',
-            })
-          }
-          return Api.post(`/script-api/scripts/${selectionTempFilename}/run`, {
+      if (!this.scriptId) {
+        this.start(null, null, start_row, end_row)
+      } else {
+        Api.post(
+          `/script-api/running-script/${this.scriptId}/executewhilepaused`,
+          {
             data: {
-              environment: env,
+              args: [this.filenameSelect, start_row, end_row],
             },
-          })
-        })
-        .then((response) => {
-          window.open(`/tools/scriptrunner/${response.data}`)
-        })
+          },
+        )
+      }
     },
     clearBreakpoints: function () {
       this.editor.session.clearBreakpoints()
@@ -1507,6 +1496,7 @@ export default {
       this.editor.setReadOnly(true)
     },
     scriptStart(id) {
+      this.$emit('script-id', id)
       this.scriptId = id
       this.cable
         .createSubscription(
@@ -1561,7 +1551,12 @@ export default {
     startHandler: function () {
       this.start()
     },
-    async start(event, suiteRunner = null) {
+    async start(
+      event = null,
+      suiteRunner = null,
+      line_no = null,
+      end_line_no = null,
+    ) {
       // Initialize variables and disable buttons before actually posting.
       // This prevents delays in the backend from delaying frontend changes
       // like disabling start which could allow users to click start twice.
@@ -1589,6 +1584,12 @@ export default {
       }
       if (suiteRunner) {
         data['suiteRunner'] = event
+      }
+      if (line_no !== null) {
+        data['line_no'] = line_no
+      }
+      if (end_line_no !== null) {
+        data['end_line_no'] = end_line_no
       }
       Api.post(url, { data })
         .then((response) => {
@@ -1697,7 +1698,7 @@ export default {
           this.editor.gotoLine(data.line_no)
           this.files[data.filename].lineNo = data.line_no
           break
-        case 'fatal':
+        case 'crashed':
           this.fatal = true
         // Deliberate fall through (no break)
         case 'error':
@@ -2619,6 +2620,15 @@ class TestSuite(Suite):
       ) {
         Api.post(`/script-api/scripts/${this.filename}/unlock`)
       }
+    },
+    backToNewScript: async function () {
+      // Disconnect from the current script
+      this.scriptDisconnect()
+      // Clear script-related state
+      this.removeAllMarkers()
+      await this.scriptComplete()
+      // Create a new blank script
+      this.newFile()
     },
     screenId(id) {
       return 'scriptRunnerScreen' + id

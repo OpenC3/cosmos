@@ -36,12 +36,16 @@ id = script_run(SCRIPT_NAME)
 check_expression(f"{int(id)} > 0")
 wait_for_action(id, 'running')
 
-list = running_script_list()
-started = [script for script in list if script["id"] == id][0]
-check_expression(f"'{started['name']}' == '{SCRIPT_NAME}'")
+list = running_script_list(limit = 100, offset = 0)
+started = [script for script in list if script["name"] == str(id)][0]
+check_expression(f"'{started['filename']}' == '{SCRIPT_NAME}'")
 script = running_script_get(id)
-check_expression(f"'{script['name']}' == '{SCRIPT_NAME}'")
+check_expression(f"'{script['filename']}' == '{SCRIPT_NAME}'")
 
+running_script_pause(id)
+wait_for_action(id, 'paused')
+running_script_execute_while_paused(id, SCRIPT_NAME, 1)
+wait_for_action(id, 'running')
 running_script_pause(id)
 wait_for_action(id, 'paused')
 running_script_step(id)
@@ -54,12 +58,12 @@ running_script_stop(id)
 wait(1)
 
 list = running_script_list()
-script = [script for script in list if script["id"] == id]
+script = [script for script in list if script["name"] == str(id)]
 # Script is stopped so it should NOT be in the running list
 check_expression(f"{len(script)} == 0")
 
 list = completed_script_list()
-script = [script for script in list if script["id"] == id]
+script = [script for script in list if script["name"] == str(id)]
 # Script is completed so it should be in the completed list
 check_expression(f"{len(script)} == 1")
 
@@ -69,12 +73,12 @@ running_script_delete(id) # Stop and completely remove the script
 wait(1)
 
 list = running_script_list()
-script = [script for script in list if script["id"] == id]
+script = [script for script in list if script["name"] == str(id)]
 # Script is deleted, so it should NOT be in the running list
 check_expression(f"{len(script)} == 0")
-list = completed_script_list()
+list = completed_script_list(limit = 100, offset = 0)
 # Script is deleted so it should be in the completed list
-script = [script for script in list if script["id"] == id]
+script = [script for script in list if script["name"] == str(id)]
 check_expression(f"{len(script)} == 1")
 
 script_lock(SCRIPT_NAME)

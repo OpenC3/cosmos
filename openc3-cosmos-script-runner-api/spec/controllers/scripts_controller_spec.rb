@@ -80,13 +80,13 @@ RSpec.describe ScriptsController, :type => :controller do
 
   describe "run" do
     it "returns an ok response" do
-      expect(Script).to receive(:run).with('DEFAULT', 'INST/procedures/test.rb', nil, false, nil, "Anonymous", "anonymous").and_return(1)
+      expect(Script).to receive(:run).with('DEFAULT', 'INST/procedures/test.rb', nil, false, nil, "Anonymous", "anonymous", 1, nil).and_return(1)
       post :run, params: { scope: 'DEFAULT', name: 'INST/procedures/test.rb' }
       expect(response).to have_http_status(:ok)
     end
 
     it "returns an error response" do
-      expect(Script).to receive(:run).with('DEFAULT', 'INST/procedures/test.rb', nil, false, nil, "Anonymous", "anonymous")
+      expect(Script).to receive(:run).with('DEFAULT', 'INST/procedures/test.rb', nil, false, nil, "Anonymous", "anonymous", 1, nil)
       post :run, params: { scope: 'DEFAULT', name: 'INST/procedures/test.rb' }
       expect(response).to have_http_status(:not_found)
     end
