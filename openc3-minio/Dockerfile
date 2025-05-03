@@ -1,7 +1,7 @@
 ARG OPENC3_DEPENDENCY_REGISTRY=docker.io
 # Consider updating openc3_build_ubi.sh when changing the release version
 # and build_multi_arch.sh
-ARG OPENC3_MINIO_RELEASE=RELEASE.2025-04-08T15-41-24Z
+ARG OPENC3_MINIO_RELEASE=RELEASE.2025-04-22T22-12-26Z
 FROM ${OPENC3_DEPENDENCY_REGISTRY}/minio/minio:${OPENC3_MINIO_RELEASE}
 
 COPY cacert.pem /devel/cacert.pem
