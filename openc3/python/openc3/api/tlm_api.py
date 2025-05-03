@@ -438,11 +438,11 @@ def get_packets(id, count=1000, scope=OPENC3_SCOPE):
     # Convert it back into a dict to create a lookup
     lookup = dict(zip(items[::2], items[1::2]))
     packets = []
-    for topic, _, msg_hash, _ in Topic.read_topics(lookup.keys(), list(lookup.values()), None, count):
+    for topic, topic_id, msg_hash, _ in Topic.read_topics(lookup.keys(), list(lookup.values()), None, count):
         # # Return the original ID and empty array if we didn't get anything
         # for topic, data in xread:
         # for id, msg_hash in data:
-        lookup[topic] = id  # save the new ID
+        lookup[topic] = topic_id  # save the new ID
         # decode the binary string keys and values to strings
         msg_hash = {k.decode(): v.decode() for (k, v) in msg_hash.items()}
         json_hash = json.loads(msg_hash["json_data"])

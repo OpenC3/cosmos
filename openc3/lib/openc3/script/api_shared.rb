@@ -503,6 +503,10 @@ module OpenC3
       !cached
     end
 
+    def goto(line_no_or_procedure_name, line_no = nil)
+      raise "goto is not supported outside of ScriptRunner"
+    end
+
     # Require an additional ruby file
     def load_utility(procedure_name)
       return start(procedure_name)

@@ -18,8 +18,8 @@ from openc3.script.suite_runner import SuiteRunner
 from openc3.utilities.string import build_timestamped_filename
 from openc3.utilities.bucket_utilities import BucketUtilities
 from openc3.script.storage import _get_storage_file
-from openc3.utilities.store_queued import StoreQueued
-import linecache
+from openc3.models.script_status_model import ScriptStatusModel
+import os
 
 SCRIPT_API = "script-api"
 
@@ -37,16 +37,16 @@ def running_script_anycable_publish(channel_name, data):
 
 # sleep in a script - returns true if canceled mid sleep
 def _openc3_script_sleep(sleep_time=None):
-    if RunningScript.disconnect:
+    if openc3.script.DISCONNECT:
         return True
     RunningScript.instance.update_running_script_store("waiting")
 
     running_script_anycable_publish(
-        f"running-script-channel:{RunningScript.instance.id}",
+        f"running-script-channel:{RunningScript.instance.id()}",
         {
             "type": "line",
-            "filename": RunningScript.instance.current_filename,
-            "line_no": RunningScript.instance.current_line_number,
+            "filename": RunningScript.instance.current_filename(),
+            "line_no": RunningScript.instance.current_line_number(),
             "state": "waiting",
         },
     )
@@ -61,11 +61,11 @@ def _openc3_script_sleep(sleep_time=None):
             count += 1
             if (count % 100) == 0:  # Approximately Every Second
                 running_script_anycable_publish(
-                    f"running-script-channel:{RunningScript.instance.id}",
+                    f"running-script-channel:{RunningScript.instance.id()}",
                     {
                         "type": "line",
-                        "filename": RunningScript.instance.current_filename,
-                        "line_no": RunningScript.instance.current_line_number,
+                        "filename": RunningScript.instance.current_filename(),
+                        "line_no": RunningScript.instance.current_line_number(),
                         "state": "waiting",
                     },
                 )
@@ -86,14 +86,12 @@ import openc3.script.api_shared
 
 setattr(openc3.script.api_shared, "openc3_script_sleep", _openc3_script_sleep)
 
-import os
 from io import StringIO
 import ast
 import json
 import uuid
 import re
 import time
-import socket
 import sys
 import traceback
 import threading
@@ -153,7 +151,7 @@ def running_script_method(method, *args, **kwargs):
                     files = []
                     for theFilename in input:
                         file = _get_storage_file(
-                            f"tmp/{theFilename}", scope=RunningScript.instance.scope
+                            f"tmp/{theFilename}", scope=RunningScript.instance.scope()
                         )
 
                         def filename(self):
@@ -190,13 +188,28 @@ class RunningScript:
     # Matches the following test cases:
     # class MySuite(TestSuite)
     # class MySuite(Suite)
-    PYTHON_SUITE_REGEX = re.compile("\s*class\s+\w+\s*\(\s*(Suite|TestSuite)\s*\)")
+    PYTHON_SUITE_REGEX = re.compile(r"\s*class\s+\w+\s*\(\s*(Suite|TestSuite)\s*\)")
 
     # Can't use isoformat because it appends "+00:00" instead of "Z"
     STRFTIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
     instance = None
-    id = None
+
+    def id(self):
+        return self.script_status.id
+
+    def scope(self):
+        return self.script_status.scope
+
+    def filename(self):
+        return self.script_status.filename
+
+    def current_filename(self):
+        return self.script_status.current_filename
+
+    def current_line_number(self):
+        return self.script_status.line_no
+
     my_message_log = None
     run_thread = None
     breakpoints = {}
@@ -210,7 +223,6 @@ class RunningScript:
     output_sleeper = Sleeper()
     cancel_output = False
     manual = True
-    disconnect = False
 
     @classmethod
     def message_log(cls):
@@ -218,9 +230,9 @@ class RunningScript:
             return cls.my_message_log
 
         if cls.instance:
-            scope = cls.instance.scope
-            basename = os.path.splitext(os.path.basename(cls.instance.filename))[0]
-            regex = re.compile("(\s|\W)")
+            scope = cls.instance.scope()
+            basename = os.path.splitext(os.path.basename(cls.instance.filename()))[0]
+            regex = re.compile(r"(\s|\W)")
             tags = [re.sub(regex, "_", basename)]
         else:
             scope = OPENC3_SCOPE
@@ -230,20 +242,16 @@ class RunningScript:
         )
         return cls.my_message_log
 
-    # Parameters are passed to RunningScript.new as strings because
-    # RunningScript.spawn must pass strings to ChildProcess.build
-    def __init__(self, id, scope, name, disconnect):
+
+    def __init__(self, script_status):
         RunningScript.instance = self
-        RunningScript.id = id
-        self.scope = scope
-        self.name = name
-        self.filename = name
+        self.script_status = script_status
+        self.script_status.pid = os.getpid()
         self.user_input = ""
         self.prompt_id = None
         self.line_offset = 0
         self.output_io = StringIO("")
         self.output_io_mutex = Lock()
-        self.allow_start = True
         self.continue_after_error = True
         self.debug_text = None
         self.debug_history = []
@@ -253,61 +261,39 @@ class RunningScript:
             RunningScript.STRFTIME_FORMAT
         )
         self.output_time_value = time.time()
-        self.state = "init"
         self.script_globals = globals()
-        RunningScript.disconnect = disconnect
 
         self.initialize_variables()
+        self.update_running_script_store("init")
         self.redirect_io()  # Redirect stdout and stderr
-        self.mark_breakpoints(self.filename)
-        if disconnect:
+        self.mark_breakpoints(self.script_status.filename)
+        if script_status.disconnect:
             openc3.script.disconnect_script()
 
-        # Get details from redis
-        details = Store.get(f"running-script:{RunningScript.id}")
-        if details:
-            self.details = json.loads(details)
-        else:
-            # Create as much details as we know
-            self.details = {
-                "id": RunningScript.id,
-                "name": self.filename,
-                "scope": self.scope,
-                "start_time": self.output_time,
-                "update_time": self.output_time,
-            }
-
-        # Update details in redis
-        self.details["hostname"] = socket.gethostname()
-        self.details["state"] = self.state
-        self.details["line_no"] = 1
-        self.details["update_time"] = self.output_time
-        Store.set(f"running-script:{RunningScript.id}", json.dumps(self.details))
-
         # Retrieve file
-        self.body = TargetFile.body(self.scope, self.name)
+        self.body = TargetFile.body(self.script_status.scope, self.script_status.filename)
         if not self.body:
-            raise RuntimeError(f"Unable to retrieve: {self.name} in scope {self.scope}")
+            raise RuntimeError(f"Unable to retrieve: {self.script_status.filename} in scope {self.script_status.scope}")
         else:
             self.body = self.body.decode()
         breakpoints = []
-        if self.filename in RunningScript.breakpoints:
-            my_breakpoints = RunningScript.breakpoints[self.filename]
+        if self.script_status.filename in RunningScript.breakpoints:
+            my_breakpoints = RunningScript.breakpoints[self.script_status.filename]
             for key in my_breakpoints:
                 breakpoints.append(key - 1)  # -1 because frontend lines are 0-indexed
         running_script_anycable_publish(
-            f"running-script-channel:{RunningScript.id}",
+            f"running-script-channel:{RunningScript.instance.id()}",
             {
                 "type": "file",
-                "filename": self.filename,
-                "scope": self.scope,
+                "filename": self.script_status.filename,
+                "scope": self.script_status.scope,
                 "text": self.body,
                 "breakpoints": breakpoints,
             },
         )
         if self.PYTHON_SUITE_REGEX.findall(self.body):
             # Call load_utility to parse the suite and allow for individual methods to be executed
-            load_utility(name)
+            load_utility(self.script_status.filename)
 
             # Process the suite file in this context so we can load it
             SuiteRunner.build_suites(from_globals=globals())
@@ -315,13 +301,8 @@ class RunningScript:
     # Called to update the running script state every time the state or current_line_number changes
     def update_running_script_store(self, state=None):
         if state:
-            self.state = state
-        self.details["state"] = self.state
-        self.details["line_no"] = self.current_line_number
-        self.details["update_time"] = datetime.now(timezone.utc).strftime(
-            RunningScript.STRFTIME_FORMAT
-        )
-        StoreQueued.set(f"running-script:{RunningScript.id}", json.dumps(self.details))
+            self.script_status.state = state
+        self.script_status.update(queued = True)
 
     def parse_options(self, options):
         settings = {}
@@ -374,12 +355,12 @@ class RunningScript:
     # Sets step mode and lets the script continue but with pause set
     def do_step(self):
         running_script_anycable_publish(
-            f"running-script-channel:{RunningScript.id}",
+            f"running-script-channel:{RunningScript.instance.id()}",
             {
                 "type": "step",
-                "filename": self.current_filename,
-                "line_no": self.current_line_number,
-                "state": self.state,
+                "filename": self.script_status.current_filename,
+                "line_no": self.script_status.line_no,
+                "state": self.script_status.state,
             },
         )
         self.step = True
@@ -404,24 +385,18 @@ class RunningScript:
     def do_stop(self):
         if RunningScript.run_thread:
             self.stop = True
+            self.script_status.end_time = datetime.now(timezone.utc).isoformat(timespec="seconds").replace('+00:00', 'Z')
+            self.update_running_script_store("stopped")
             kill_thread(self, RunningScript.run_thread)
             RunningScript.run_thread = None
 
     def clear_prompt(self):
         # Allow things to continue once the prompt is cleared
         running_script_anycable_publish(
-            f"running-script-channel:{RunningScript.id}",
+            f"running-script-channel:{RunningScript.instance.id()}",
             {"type": "script", "prompt_complete": self.prompt_id},
         )
         self.prompt_id = None
-
-    def as_json(self):
-        return {
-            "id": RunningScript.id,
-            "state": self.state,
-            "filename": self.current_filename,
-            "line_no": self.current_line_no,
-        }
 
     # Private methods
 
@@ -438,79 +413,47 @@ class RunningScript:
         self.use_instrumentation = True
         self.call_stack = []
         self.pre_line_time = time.time()
-        self.current_file = self.filename
         self.exceptions = None
         self.script_binding = [{}, {}]
         self.inline_eval = None
-        self.current_filename = None
-        self.current_line_number = 0
-        self.call_stack.append(self.current_file)
+        self.script_status.current_filename = self.script_status.filename
+        self.script_status.line_no = 0
+        self.current_file = None
+        self.execute_while_paused_info = None
 
     def unique_filename(self):
-        if self.filename and not self.filename == "":
-            return self.filename
+        if self.script_status.filename and not self.script_status.filename == "":
+            return self.script_status.filename
         else:
-            return "Untitled" + str(RunningScript.id)
+            return "Untitled" + str(RunningScript.instance.id())
 
     def stop_message_log(self):
         metadata = {
-            "id": self.id,
-            "user": self.details["user"],
+            "id": self.script_status.id,
+            "user": self.script_status.username,
             "scriptname": self.unique_filename(),
         }
         if RunningScript.my_message_log:
-            RunningScript.my_message_log.stop(True, metadata=metadata)
+            self.script_status.log = RunningScript.my_message_log.stop(True, metadata=metadata)
+            self.script_status.update()
         RunningScript.my_message_log = None
-
-    # TODO: This doesn't appear to be called
-    def set_filename(self, filename):
-        # Stop the message log so a new one will be created with the new filename
-        self.stop_message_log()
-        self.filename = filename
-
-        # Deal with breakpoints created under the previous filename.
-        bkpt_filename = self.unique_filename()
-        if bkpt_filename not in RunningScript.breakpoints:
-            RunningScript.breakpoints[bkpt_filename] = RunningScript.breakpoints[
-                self.filename
-            ]
-        if bkpt_filename != self.filename:
-            del RunningScript.breakpoints[self.filename]
-            self.filename = bkpt_filename
-        self.scopemark_breakpoints(self.filename)
 
     def text(self):
         return self.body
-
-    def set_text(self, text, filename=""):
-        if not self.running():
-            self.filename = filename
-            self.mark_breakpoints(self.filename)
-            self.body = text
-
-    def running(self):
-        if RunningScript.run_thread:
-            return True
-        else:
-            return False
 
     def do_retry_needed(self):
         self.retry_needed = True
 
     def run(self):
-        if not self.running():
-            self.run_text(self.body)
-
-    def run_and_close_on_complete(self, text_binding=None):
-        self.run_text(self.body, 0, text_binding, True)
+        self.run_text(self.body)
 
     @classmethod
-    def instrument_script(cls, text, filename):
-        if filename and not filename == "":
+    def instrument_script(cls, text, filename, line_offset = 0, cache = True):
+        if cache and filename and not filename == "":
             cls.file_cache[filename] = text
 
         parsed = ast.parse(text)
-        tree = ScriptInstrumentor(filename).visit(parsed)
+        tree = ScriptInstrumentor(filename, line_offset).visit(parsed)
         # Normal Python code is run with mode='exec' whose root is ast.Module
         result = compile(tree, filename=filename, mode="exec")
         return result
@@ -519,8 +462,8 @@ class RunningScript:
         self, filename, line_number, global_variables, local_variables
     ):
         self.script_binding = [global_variables, local_variables]
-        self.current_filename = filename
-        self.current_line_number = line_number
+        self.script_status.current_filename = filename
+        self.script_status.line_no = line_number
         if self.use_instrumentation:
             # Clear go
             self.go = False
@@ -539,12 +482,12 @@ class RunningScript:
 
             self.update_running_script_store("running")
             running_script_anycable_publish(
-                f"running-script-channel:{RunningScript.id}",
+                f"running-script-channel:{RunningScript.instance.id()}",
                 {
                     "type": "line",
-                    "filename": self.current_filename,
-                    "line_no": self.current_line_number,
-                    "state": "running",
+                    "filename": self.script_status.current_filename,
+                    "line_no": self.script_status.line_no,
+                    "state": self.script_status.state,
                 },
             )
             self.handle_pause(filename, line_number)
@@ -587,10 +530,6 @@ class RunningScript:
     def debug(self, debug_text):
         try:
             self.handle_output_io()
-            if not self.running():
-                # Capture STDOUT and STDERR
-                sys.stdout.add_stream(self.output_io)
-                sys.stderr.add_stream(self.output_io)
 
             if self.script_binding:
                 # Check for accessing an instance variable or local
@@ -610,11 +549,6 @@ class RunningScript:
         except Exception as error:
             Logger.error(error.__class__.__name__ + " : " + str(error))
             self.handle_output_io()
-        finally:
-            if not self.running():
-                # Capture STDOUT and STDERR
-                sys.stdout.remove_stream(self.output_io)
-                sys.stderr.remove_stream(self.output_io)
 
     @classmethod
     def set_breakpoint(cls, filename, line_number):
@@ -649,14 +583,21 @@ class RunningScript:
                 trace.append(f"{filename}:{lineno}:{name}:{line}")
         return trace
 
+    def execute_while_paused(self, filename, line_no = 1, end_line_no = None):
+        if self.script_status.state == 'paused' or self.script_status.state == 'error' or self.script_status.state == 'breakpoint':
+            self.execute_while_paused_info = { "filename": filename, "line_no": line_no, "end_line_no": end_line_no }
+        else:
+            scriptrunner_puts("Cannot execute selection or goto unless script is paused, breakpoint, or in error state")
+
     def scriptrunner_puts(self, string, color="BLACK"):
         line_to_write = (
             datetime.now(timezone.utc).strftime(RunningScript.STRFTIME_FORMAT)
             + " (SCRIPTRUNNER): "
             + string
         )
+        print(line_to_write)
         running_script_anycable_publish(
-            f"running-script-channel:{RunningScript.id}",
+            f"running-script-channel:{self.script_status.id}",
             {"type": "output", "line": line_to_write, "color": color},
         )
 
@@ -671,9 +612,9 @@ class RunningScript:
 
     def handle_output_io(self, filename=None, line_number=None):
         if not filename:
-            filename = self.current_filename
+            filename = self.script_status.current_filename
         if not line_number:
-            line_number = self.current_line_number
+            line_number = self.script_status.line_no
         self.output_time = datetime.now(timezone.utc).strftime(
             RunningScript.STRFTIME_FORMAT
         )
@@ -738,7 +679,7 @@ class RunningScript:
                 published_lines = lines_to_write
 
             running_script_anycable_publish(
-                f"running-script-channel:{RunningScript.id}",
+                f"running-script-channel:{self.script_status.id}",
                 {"type": "output", "line": published_lines, "color": color},
             )
             # Add to the message log
@@ -750,21 +691,22 @@ class RunningScript:
         if prompt:
             self.prompt_id = prompt["id"]
         while not self.go and not self.stop:
+            self.check_execute_while_paused()
             time.sleep(0.01)
             count += 1
             if count % 100 == 0:  # Approximately Every Second
                 running_script_anycable_publish(
-                    f"running-script-channel:{RunningScript.id}",
+                    f"running-script-channel:{self.script_status.id}",
                     {
                         "type": "line",
-                        "filename": self.current_filename,
-                        "line_no": self.current_line_number,
-                        "state": self.state,
+                        "filename": self.script_status.current_filename,
+                        "line_no": self.script_status.line_no,
+                        "state": self.script_status.state,
                     },
                 )
                 if prompt:
                     running_script_anycable_publish(
-                        f"running-script-channel:{RunningScript.id}",
+                        f"running-script-channel:{self.script_status.id}",
                         {
                             "type": "script",
                             "method": prompt["method"],
@@ -787,16 +729,17 @@ class RunningScript:
         count = 0
         self.go = False
         while not self.go and not self.stop and not self.retry_needed:
+            self.check_execute_while_paused()
             time.sleep(0.01)
             count += 1
             if (count % 100) == 0:  # Approximately Every Second
                 running_script_anycable_publish(
-                    f"running-script-channel:{RunningScript.id}",
+                    f"running-script-channel:{self.script_status.id}",
                     {
                         "type": "line",
-                        "filename": self.current_filename,
-                        "line_no": self.current_line_number,
-                        "state": self.state,
+                        "filename": self.script_status.current_filename,
+                        "line_no": self.script_status.line_no,
+                        "state": self.script_status.state,
                     },
                 )
         self.go = False
@@ -806,81 +749,103 @@ class RunningScript:
         if error and not self.continue_after_error:
             raise error
 
+    def check_execute_while_paused(self):
+        try:
+            if self.execute_while_paused_info is not None:
+                if self.script_status.current_filename == self.execute_while_paused_info.get('filename'):
+                    bind_variables = True
+                else:
+                    bind_variables = False
+                if self.execute_while_paused_info.get('end_line_no'):
+                    # Execute Selection While Paused
+                    state = self.script_status.state
+                    current_filename = self.script_status.current_filename
+                    line_no = self.script_status.line_no
+                    start(self.execute_while_paused_info.get('filename'), line_no = self.execute_while_paused_info.get('line_no'), end_line_no = self.execute_while_paused_info.get('end_line_no'), bind_variables = bind_variables)
+                    # Need to restore state after returning so that the correct line will be shown in ScriptRunner
+                    self.script_status.state = state
+                    self.script_status.current_filename = current_filename
+                    self.script_status.line_no = line_no
+                    self.script_status.update(queued = True)
+                    running_script_anycable_publish(f"running-script-channel:{self.script_status.id}", { "type": "line", "filename": self.script_status.current_filename, "line_no": self.script_status.line_no, "state": self.script_status.state })
+                else:
+                    # Goto While Paused
+                    start(self.execute_while_paused_info.get('filename'), line_no = self.execute_while_paused_info.get('line_no'), bind_variables = bind_variables, complete = True)
+        finally:
+            self.execute_while_paused_info = None
+
+
     def mark_running(self):
-        self.state = "running"
-        self.update_running_script_store()
+        self.update_running_script_store("running")
         running_script_anycable_publish(
-            f"running-script-channel:{RunningScript.id}",
+            f"running-script-channel:{self.script_status.id}",
             {
                 "type": "line",
-                "filename": self.current_filename,
-                "line_no": self.current_line_number,
-                "state": self.state,
+                "filename": self.script_status.current_filename,
+                "line_no": self.script_status.line_no,
+                "state": self.script_status.state,
             },
         )
 
     def mark_paused(self):
-        self.state = "paused"
-        self.update_running_script_store()
+        self.update_running_script_store("paused")
         running_script_anycable_publish(
-            f"running-script-channel:{RunningScript.id}",
+            f"running-script-channel:{self.script_status.id}",
             {
                 "type": "line",
-                "filename": self.current_filename,
-                "line_no": self.current_line_number,
-                "state": self.state,
+                "filename": self.script_status.current_filename,
+                "line_no": self.script_status.line_no,
+                "state": self.script_status.state,
             },
         )
 
     def mark_waiting(self):
-        self.state = "waiting"
-        self.update_running_script_store()
+        self.update_running_script_store("waiting")
         running_script_anycable_publish(
-            f"running-script-channel:{RunningScript.id}",
+            f"running-script-channel:{self.script_status.id}",
             {
                 "type": "line",
-                "filename": self.current_filename,
-                "line_no": self.current_line_number,
-                "state": self.state,
+                "filename": self.script_status.current_filename,
+                "line_no": self.script_status.line_no,
+                "state": self.script_status.state,
             },
         )
 
     def mark_error(self):
-        self.state = "error"
-        self.update_running_script_store()
+        self.update_running_script_store("error")
         running_script_anycable_publish(
-            f"running-script-channel:{RunningScript.id}",
+            f"running-script-channel:{self.script_status.id}",
             {
                 "type": "line",
-                "filename": self.current_filename,
-                "line_no": self.current_line_number,
-                "state": self.state,
+                "filename": self.script_status.current_filename,
+                "line_no": self.script_status.line_no,
+                "state": self.script_status.state,
             },
         )
 
-    def mark_fatal(self):
-        self.state = "fatal"
-        self.update_running_script_store()
+    def mark_crashed(self):
+        self.script_status.end_time = datetime.now(timezone.utc).isoformat(timespec="seconds").replace('+00:00', 'Z')
+        self.update_running_script_store("crashed")
         running_script_anycable_publish(
-            f"running-script-channel:{RunningScript.id}",
+            f"running-script-channel:{self.script_status.id}",
             {
                 "type": "line",
-                "filename": self.current_filename,
-                "line_no": self.current_line_number,
-                "state": self.state,
+                "filename": self.script_status.current_filename,
+                "line_no": self.script_status.line_no,
+                "state": self.script_status.state,
             },
         )
 
-    def mark_stopped(self):
-        self.state = "stopped"
-        self.update_running_script_store()
+    def mark_completed(self):
+        self.script_status.end_time = datetime.now(timezone.utc).isoformat(timespec="seconds").replace('+00:00', 'Z')
+        self.update_running_script_store("completed")
         running_script_anycable_publish(
-            f"running-script-channel:{RunningScript.id}",
+            f"running-script-channel:{self.script_status.id}",
             {
                 "type": "line",
-                "filename": self.current_filename,
-                "line_no": self.current_line_number,
-                "state": self.state,
+                "filename": self.script_status.current_filename,
+                "line_no": self.script_status.line_no,
+                "state": self.script_status.state,
             },
         )
         if SuiteRunner.suite_results:
@@ -907,7 +872,7 @@ class RunningScript:
             elif len(parts) == 1 and len(init_split) > 1:
                 parts[0] += f"_{init_split[-1]}"
             running_script_anycable_publish(
-                f"running-script-channel:{self.id}",
+                f"running-script-channel:{self.script_status.id}",
                 {"type": "report", "report": SuiteRunner.suite_results.report()},
             )
             # Write out the report to a local file
@@ -919,45 +884,43 @@ class RunningScript:
                 file.write(SuiteRunner.suite_results.report().encode())
             # Generate the bucket key by removing the date underscores in the filename to create the bucket file structure
             bucket_key = os.path.join(
-                f"{self.scope}/tool_logs/sr/",
+                f"{self.script_status.scope}/tool_logs/sr/",
                 re.sub("_", "", os.path.basename(filename)[0:10]),
                 os.path.basename(filename),
             )
             metadata = {
                 # Note: The chars '(' and ')' are used by RunningScripts.vue to differentiate between script logs
-                "id": self.id,
-                "user": self.details["user"],
-                "scriptname": f"{self.current_filename} ({SuiteRunner.suite_results.context.strip()})",
+                "id": self.script_status.id,
+                "user": self.script_status.username,
+                "scriptname": f"{self.script_status.current_filename} ({SuiteRunner.suite_results.context.strip()})",
             }
             thread = BucketUtilities.move_log_file_to_bucket(
                 filename, bucket_key, metadata=metadata
             )
+            self.script_status.report = bucket_key
+            self.script_status.update(queued=True)
             # Wait for the file to get moved to S3 because after this the process will likely die
             thread.join()
 
         running_script_publish(
-            f"cmd-running-script-channel:{RunningScript.id}", "shutdown"
+            f"cmd-running-script-channel:{self.script_status.id}", "shutdown"
         )
 
     def mark_breakpoint(self):
-        self.state = "breakpoint"
-        self.update_running_script_store()
+        self.update_running_script_store("breakpoint")
         running_script_anycable_publish(
-            f"running-script-channel:{RunningScript.id}",
+            f"running-script-channel:{self.script_status.id}",
             {
                 "type": "line",
-                "filename": self.current_filename,
-                "line_no": self.current_line_number,
-                "state": self.state,
+                "filename": self.script_status.current_filename,
+                "line_no": self.script_status.line_no,
+                "state": self.script_status.state,
             },
         )
 
     def run_thread_body(
         self,
         text,
-        line_offset,
-        text_binding,
-        close_on_complete,
         saved_instance,
         saved_run_thread,
         initial_filename=None,
@@ -967,12 +930,11 @@ class RunningScript:
             sys.stdout.add_stream(self.output_io)
             sys.stderr.add_stream(self.output_io)
 
-            if not close_on_complete:
-                output = f"Starting script: {os.path.basename(self.filename)}"
-                if RunningScript.disconnect:
-                    output += " in DISCONNECT mode"
-                output += f", line_delay = {RunningScript.line_delay}"
-                self.scriptrunner_puts(output)
+            output = f"Starting script: {os.path.basename(self.script_status.filename)}"
+            if openc3.script.DISCONNECT:
+                output += " in DISCONNECT mode"
+            output += f", line_delay = {RunningScript.line_delay}"
+            self.scriptrunner_puts(output)
             self.handle_output_io()
 
             # Start Output Thread
@@ -982,41 +944,31 @@ class RunningScript:
                 )
                 RunningScript.output_thread.start()
 
-            if initial_filename:
-                linecache.cache[initial_filename] = (
-                    len(text),
-                    None,
-                    text.splitlines(keepends=True),
-                    initial_filename,
-                )
-                instrumented_script = self.instrument_script(text, initial_filename)
+            if initial_filename == 'SCRIPTRUNNER':
+                # Don't instrument pseudo scripts
+                instrument_filename = initial_filename
+                instrumented_script = text
             else:
-                linecache.cache[self.filename] = (
-                    len(text),
-                    None,
-                    text.splitlines(keepends=True),
-                    self.filename,
-                )
-                instrumented_script = self.instrument_script(text, self.filename)
+                # Instrument everything else
+                instrument_filename = self.script_status.filename
+                if initial_filename:
+                    instrument_filename = initial_filename
+                instrumented_script = self.instrument_script(text, instrument_filename)
 
             # Execute the script
             self.pre_line_time = time.time()
-            if text_binding:
-                exec(instrumented_script, text_binding[0], text_binding[1])
-            else:
-                exec(instrumented_script, self.script_globals)
+            exec(instrumented_script, self.script_globals)
 
             self.handle_output_io()
-            if not close_on_complete:
-                self.scriptrunner_puts(
-                    f"Script completed: {os.path.basename(self.filename)}"
-                )
+            self.scriptrunner_puts(
+                f"Script completed: {self.script_status.filename}"
+            )
 
         except Exception as error:
             if isinstance(error, StopScript) or isinstance(error, SkipScript):
                 self.handle_output_io()
                 self.scriptrunner_puts(
-                    f"Script stopped: {os.path.basename(self.filename)}"
+                    f"Script stopped: {self.script_status.filename}"
                 )
             else:
                 exc_type, exc_value, exc_traceback = sys.exc_info()
@@ -1027,9 +979,9 @@ class RunningScript:
                 )
                 self.handle_output_io()
                 self.scriptrunner_puts(
-                    f"Exception in Control Statement - Script stopped: {os.path.basename(self.filename)}"
+                    f"Exception in Control Statement - Script stopped: {self.script_status.filename}"
                 )
-                self.mark_fatal()
+                self.mark_crashed()
         finally:
             # Stop Capturing STDOUT and STDERR
             # Check for remove_stream because if the tool is quitting the
@@ -1045,48 +997,31 @@ class RunningScript:
             RunningScript.run_thread = saved_run_thread
             self.script_binding = None
             # Set the current_filename to the original file and the current_line_number to 0
-            # so the mark_stopped method will signal the frontend to reset to the original
-            self.current_filename = self.filename
-            self.current_line_number = 0
+            # so the mark_complete method will signal the frontend to reset to the original
+            self.script_status.current_filename = self.script_status.filename
+            self.script_status.line_no = 0
             if RunningScript.output_thread and not RunningScript.instance:
                 RunningScript.cancel_output = True
                 RunningScript.output_sleeper.cancel()
                 kill_thread(self, RunningScript.output_thread)
                 RunningScript.output_thread = None
-            self.mark_stopped()
+            self.mark_completed()
             self.current_filename = None
 
     def run_text(
         self,
         text,
-        line_offset=0,
-        text_binding=None,
-        close_on_complete=False,
         initial_filename=None,
     ):
         self.initialize_variables()
-        self.line_offset = line_offset
         saved_instance = RunningScript.instance
         saved_run_thread = RunningScript.run_thread
         RunningScript.instance = self
-        if initial_filename:
-            running_script_anycable_publish(
-                f"running-script-channel:{RunningScript.id}",
-                {
-                    "type": "file",
-                    "filename": initial_filename,
-                    "scope": self.scope,
-                    "text": text,
-                    "breakpoints": [],
-                },
-            )
+
         RunningScript.run_thread = threading.Thread(
             target=self.run_thread_body,
             args=[
                 text,
-                line_offset,
-                text_binding,
-                close_on_complete,
                 saved_instance,
                 saved_run_thread,
                 initial_filename,
@@ -1134,6 +1069,9 @@ class RunningScript:
     ):
         self.exceptions = self.exceptions or []
         self.exceptions.append(exc_value)
+        if self.script_status.errors is None:
+            self.script_status.errors = []
+        self.script_status.errors.append("".join(traceback.format_exception(exc_value)))
         RunningScript.error = exc_value
 
         if exc_type.__name__ == "DRbConnError":
@@ -1181,17 +1119,17 @@ class RunningScript:
         if cached:
             self.body = cached
         else:
-            text = TargetFile.body(self.scope, filename)
+            text = TargetFile.body(self.scope(), filename)
             if not text:
                 raise RuntimeError(
-                    f"Unable to retrieve: {filename} in scope {self.scope}"
+                    f"Unable to retrieve: {filename} in scope {self.scope()}"
                 )
             else:
                 text = text.decode()
             RunningScript.file_cache[filename] = text
             self.body = text
         running_script_anycable_publish(
-            f"running-script-channel:{RunningScript.id}",
+            f"running-script-channel:{self.script_status.id}",
             {
                 "type": "file",
                 "filename": filename,
@@ -1209,7 +1147,7 @@ class RunningScript:
                 if present:
                     RunningScript.set_breakpoint(filename, line_number)
         else:
-            for line_number in self.script_get_breakpoints(self.scope, filename):
+            for line_number in self.script_get_breakpoints(self.script_status.scope, filename):
                 RunningScript.set_breakpoint(filename, line_number + 1)
 
     def redirect_io(self):
@@ -1253,7 +1191,8 @@ def run_mode():
 setattr(openc3.script, "run_mode", run_mode)
 
 
-def start(procedure_name):
+def start(procedure_name, line_no = 1, end_line_no = None, bind_variables=False, complete = False):
+    RunningScript.instance.execute_while_paused_info = None
     path = procedure_name
 
     # Check RAM based instrumented cache
@@ -1266,15 +1205,16 @@ def start(procedure_name):
     instrumented_script = None
     instrumented_cache = None
     text = None
-    if path in RunningScript.instrumented_cache:
-        instrumented_cache, text = RunningScript.instrumented_cache[path]
+    if line_no == 1 and end_line_no is None:
+        if path in RunningScript.instrumented_cache:
+            instrumented_cache, text = RunningScript.instrumented_cache[path]
 
     if instrumented_cache:
         # Use cached instrumentation
         instrumented_script = instrumented_cache
         cached = True
         running_script_anycable_publish(
-            f"running-script-channel:{RunningScript.instance.id}",
+            f"running-script-channel:{RunningScript.instance.id()}",
             {
                 "type": "file",
                 "filename": procedure_name,
@@ -1284,15 +1224,15 @@ def start(procedure_name):
         )
     else:
         # Retrieve file
-        text = TargetFile.body(RunningScript.instance.scope, procedure_name)
+        text = TargetFile.body(RunningScript.instance.scope(), procedure_name)
         if not text:
             raise RuntimeError(
-                f"Unable to retrieve: {procedure_name} in scope {RunningScript.instance.scope}"
+                f"Unable to retrieve: {procedure_name} in scope {RunningScript.instance.scope()}"
             )
         else:
             text = text.decode()
         running_script_anycable_publish(
-            f"running-script-channel:{RunningScript.instance.id}",
+            f"running-script-channel:{RunningScript.instance.id()}",
             {
                 "type": "file",
                 "filename": procedure_name,
@@ -1302,34 +1242,69 @@ def start(procedure_name):
         )
 
         # Cache instrumentation into RAM
-        instrumented_script = RunningScript.instrument_script(text, path)
-        RunningScript.instrumented_cache[path] = [instrumented_script, text]
+        if line_no == 1 and end_line_no is None:
+            instrumented_script = RunningScript.instrument_script(text, path)
+            RunningScript.instrumented_cache[path] = [instrumented_script, text]
+        else:
+            if line_no > 1 or end_line_no is not None:
+                text_lines = text.splitlines()
+
+                # Instrument only the specified lines
+                if end_line_no is None:
+                    end_line_no = len(text_lines)
+
+                if line_no < 1 or line_no > len(text_lines):
+                    raise RuntimeError(f"Invalid start line number: {line_no} for {procedure_name}")
+
+                if end_line_no < 1 or end_line_no > len(text_lines):
+                    raise RuntimeError(f"Invalid end line number: {end_line_no} for {procedure_name}")
+
+                if line_no > end_line_no:
+                    raise RuntimeError(f"Start line number {line_no} is greater than end line number {end_line_no} for {procedure_name}")
+
+                text = "\n".join(text_lines[(line_no - 1):end_line_no])
+
+            instrumented_script = RunningScript.instrument_script(text, path, line_offset = line_no - 1, cache = False)
+
         cached = False
 
-    running = Store.smembers("running-scripts")
-    if running is None:
-        running = []
+    running = ScriptStatusModel.all(scope = RunningScript.instance.scope(), type = "running")
     running_script_anycable_publish(
         "all-scripts-channel",
         {
             "type": "start",
             "filename": procedure_name,
             "active_scripts": len(running),
+            "scope": RunningScript.instance.scope(),
         },
     )
-    linecache.cache[path] = (
-        len(text),
-        None,
-        text.splitlines(keepends=True),
-        path,
-    )
-    exec(instrumented_script, RunningScript.instance.script_globals)
+
+    if bind_variables:
+        exec(instrumented_script, RunningScript.instance.script_binding[0], RunningScript.instance.script_binding[1])
+    else:
+        exec(instrumented_script, RunningScript.instance.script_globals)
+
+    if complete:
+        RunningScript.instance.script_status.state = 'completed'
+        RunningScript.instance.script_status.end_time = datetime.now(timezone.utc).isoformat(timespec="seconds").replace('+00:00', 'Z')
+        RunningScript.instance.script_status.update(queued = True)
+        raise StopScript
 
     # Return whether we had to load and instrument this file, i.e. it was not cached
     return not cached
 
 
 setattr(openc3.script, "start", start)
+
+
+def goto(line_no_or_procedure_name, line_no = None):
+    if line_no is None:
+        start(RunningScript.instance.current_filename(), line_no = line_no_or_procedure_name, bind_variables = True, complete = True)
+    else:
+        start(line_no_or_procedure_name, line_no = line_no, bind_variables = True, complete = True)
+
+
+setattr(openc3.script, "goto", goto)
 
 
 # Load an additional python file
@@ -1366,7 +1341,7 @@ def display_screen(target_name, screen_name, x=None, y=None, scope=OPENC3_SCOPE)
         target_name, screen_name, scope=scope
     )
     running_script_anycable_publish(
-        f"running-script-channel:{RunningScript.instance.id}",
+        f"running-script-channel:{RunningScript.instance.id()}",
         {
             "type": "screen",
             "target_name": target_name,
@@ -1383,7 +1358,7 @@ setattr(openc3.script, "display_screen", display_screen)
 
 def clear_screen(target_name, screen_name):
     running_script_anycable_publish(
-        f"running-script-channel:{RunningScript.instance.id}",
+        f"running-script-channel:{RunningScript.instance.id()}",
         {
             "type": "clearscreen",
             "target_name": target_name,
@@ -1397,7 +1372,7 @@ setattr(openc3.script, "clear_screen", clear_screen)
 
 def clear_all_screens():
     running_script_anycable_publish(
-        f"running-script-channel:{RunningScript.instance.id}",
+        f"running-script-channel:{RunningScript.instance.id()}",
         {"type": "clearallscreens"},
     )
 
@@ -1407,7 +1382,7 @@ setattr(openc3.script, "clear_all_screens", clear_all_screens)
 
 def local_screen(screen_name, definition, x=None, y=None):
     running_script_anycable_publish(
-        f"running-script-channel:{RunningScript.instance.id}",
+        f"running-script-channel:{RunningScript.instance.id()}",
         {
             "type": "screen",
             "target_name": "LOCAL",
@@ -1425,7 +1400,7 @@ setattr(openc3.script, "local_screen", local_screen)
 def download_file(path, scope=OPENC3_SCOPE):
     url = openc3.script._get_download_url(path, scope=scope)
     running_script_anycable_publish(
-        f"running-script-channel:{RunningScript.instance.id}",
+        f"running-script-channel:{RunningScript.instance.id()}",
         {"type": "downloadfile", "filename": os.path.basename(path), "url": url},
     )
 
