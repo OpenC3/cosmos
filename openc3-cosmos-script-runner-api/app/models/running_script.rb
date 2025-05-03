@@ -105,7 +105,7 @@ module OpenC3
 
     OpenC3.disable_warnings do
       def start(procedure_name, line_no: 1, end_line_no: nil, bind_variables: false, complete: false)
-        RunningScript.instance.start_while_paused_info = nil
+        RunningScript.instance.execute_while_paused_info = nil
         path = procedure_name
 
         # Check RAM based instrumented cache
@@ -295,7 +295,7 @@ class RunningScript
   attr_accessor :user_input
   attr_accessor :prompt_id
   attr_reader :script_status
-  attr_accessor :start_while_paused_info
+  attr_accessor :execute_while_paused_info
 
   # This REGEX is also found in scripts_controller.rb
   # Matches the following test cases:
@@ -392,7 +392,7 @@ class RunningScript
       user_full_name: user_full_name, # full name of the person who started the script
       start_time: start_time, # Time the script started ISO format
       end_time: nil, # Time the script ended ISO format
-      disconnect: false, # Disconnect is set to true if the script is running in a disconnected mode
+      disconnect: disconnect, # Disconnect is set to true if the script is running in a disconnected mode
       environment: status_environment.as_json(:allow_nan => true).to_json(:allow_nan => true), # nil or Hash of key/value pairs for environment variables
       suite_runner: suite_runner ? suite_runner.as_json(:allow_nan => true).to_json(:allow_nan => true) : nil,
       errors: nil, # array of errors that occurred during the script run
@@ -611,7 +611,7 @@ class RunningScript
     @script_status.current_filename = @script_status.filename
     @script_status.line_no = 0
     @current_file = nil
-    @start_while_paused_info = nil
+    @execute_while_paused_info = nil
   end
 
   def unique_filename
@@ -913,9 +913,9 @@ class RunningScript
     trace
   end
 
-  def start_while_paused(filename, line_no = 1, end_line_no = nil)
+  def execute_while_paused(filename, line_no = 1, end_line_no = nil)
     if @script_status.state == 'paused' or @script_status.state == 'error' or @script_status.state == 'breakpoint'
-      @start_while_paused_info = { filename: filename, line_no: line_no, end_line_no: end_line_no }
+      @execute_while_paused_info = { filename: filename, line_no: line_no, end_line_no: end_line_no }
     else
       scriptrunner_puts("Cannot execute selection or goto unless script is paused, breakpoint, or in error state")
     end
@@ -992,7 +992,7 @@ class RunningScript
     @go = false
     @prompt_id = prompt['id'] if prompt
     until (@go or @stop)
-      check_start_while_paused()
+      check_execute_while_paused()
       sleep(0.01)
       count += 1
       if count % 100 == 0 # Approximately Every Second
@@ -1012,7 +1012,7 @@ class RunningScript
     count = 0
     @go = false
     until (@go or @stop or @retry_needed)
-      check_start_while_paused()
+      check_execute_while_paused()
       sleep(0.01)
       count += 1
       if (count % 100) == 0 # Approximately Every Second
@@ -1025,19 +1025,19 @@ class RunningScript
     raise error if error and !@continue_after_error
   end
 
-  def check_start_while_paused
-    if @start_while_paused_info
-      if @script_status.current_filename == @start_while_paused_info[:filename]
+  def check_execute_while_paused
+    if @execute_while_paused_info
+      if @script_status.current_filename == @execute_while_paused_info[:filename]
         bind_variables = true
       else
         bind_variables = false
       end
-      if @start_while_paused_info[:end_line_no]
+      if @execute_while_paused_info[:end_line_no]
         # Execute Selection While Paused
         state = @script_status.state
         current_filename = @script_status.current_filename
         line_no = @script_status.line_no
-        start(@start_while_paused_info[:filename], line_no: @start_while_paused_info[:line_no], end_line_no: @start_while_paused_info[:end_line_no], bind_variables: bind_variables)
+        start(@execute_while_paused_info[:filename], line_no: @execute_while_paused_info[:line_no], end_line_no: @execute_while_paused_info[:end_line_no], bind_variables: bind_variables)
         # Need to restore state after returning so that the correct line will be shown in ScriptRunner
         @script_status.state = state
         @script_status.current_filename = current_filename
@@ -1046,11 +1046,11 @@ class RunningScript
         running_script_anycable_publish("running-script-channel:#{@script_status.id}", { type: :line, filename: @script_status.current_filename, line_no: @script_status.line_no, state: @script_status.state })
       else
         # Goto While Paused
-        start(@start_while_paused_info[:filename], line_no: @start_while_paused_info[:line_no], bind_variables: bind_variables, complete: true)
+        start(@execute_while_paused_info[:filename], line_no: @execute_while_paused_info[:line_no], bind_variables: bind_variables, complete: true)
       end
     end
   ensure
-    @start_while_paused_info = nil
+    @execute_while_paused_info = nil
   end
 
   def mark_running

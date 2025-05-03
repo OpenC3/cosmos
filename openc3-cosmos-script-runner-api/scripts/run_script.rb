@@ -157,9 +157,9 @@ begin
           when "debug"
             run_script_log(id, "DEBUG: #{parsed_cmd["args"]}") # Log what we were passed
             running_script.debug(parsed_cmd["args"]) # debug() logs the output of the command
-          when "startwhilepaused"
-            run_script_log(id, "INFO: startwhilepaused: #{parsed_cmd["args"]}") # Log what we were passed
-            running_script.start_while_paused(*parsed_cmd["args"])
+          when "executewhilepaused"
+            run_script_log(id, "INFO: executewhilepaused: #{parsed_cmd["args"]}") # Log what we were passed
+            running_script.execute_while_paused(*parsed_cmd["args"])
           else
             run_script_log(id, "ERROR: Script method not handled: #{parsed_cmd["method"]}", 'RED')
           end

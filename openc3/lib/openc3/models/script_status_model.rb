@@ -27,7 +27,7 @@ module OpenC3
     def id
       return @name
     end
-    attr_reader :state # spawning, init, running, paused, waiting, error, crash, stopped, breakpoint, complete, complete_errors, killed
+    attr_reader :state # spawning, init, running, paused, waiting, breakpoint, error, crashed, stopped, completed, completed_errors, killed
     attr_accessor :shard
     attr_accessor :filename
     attr_accessor :current_filename
@@ -124,7 +124,7 @@ module OpenC3
       end_time: nil, # The time the script ended ISO format
       disconnect: false,
       environment: nil,
-      suite_runner: false,
+      suite_runner: nil,
       errors: nil,
       pid: nil,
       log: nil,

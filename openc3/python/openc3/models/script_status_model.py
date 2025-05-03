@@ -97,7 +97,7 @@ class ScriptStatusModel(Model):
         end_time = None, # The time the script ended ISO format
         disconnect = False,
         environment = None,
-        suite_runner = False,
+        suite_runner = None,
         errors = None,
         pid = None,
         log = None,

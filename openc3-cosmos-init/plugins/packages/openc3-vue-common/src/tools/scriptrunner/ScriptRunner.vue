@@ -1328,7 +1328,7 @@ export default {
         this.start(null, null, start_row)
       } else {
         Api.post(
-          `/script-api/running-script/${this.scriptId}/startwhilepaused`,
+          `/script-api/running-script/${this.scriptId}/executewhilepaused`,
           {
             data: {
               args: [this.filenameSelect, start_row],
@@ -1348,7 +1348,7 @@ export default {
         this.start(null, null, start_row, end_row)
       } else {
         Api.post(
-          `/script-api/running-script/${this.scriptId}/startwhilepaused`,
+          `/script-api/running-script/${this.scriptId}/executewhilepaused`,
           {
             data: {
               args: [this.filenameSelect, start_row, end_row],
@@ -1698,7 +1698,7 @@ export default {
           this.editor.gotoLine(data.line_no)
           this.files[data.filename].lineNo = data.line_no
           break
-        case 'fatal':
+        case 'crashed':
           this.fatal = true
         // Deliberate fall through (no break)
         case 'error':

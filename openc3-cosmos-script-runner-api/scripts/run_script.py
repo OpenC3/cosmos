@@ -250,11 +250,11 @@ try:
                             running_script.debug(
                                 parsed_cmd["args"]
                             )  # debug() logs the output of the command
-                        case "startwhilepaused":
+                        case "executewhilepaused":
                             run_script_log(
-                                id, f"INFO: startwhilepaused: {parsed_cmd['args']}"
+                                id, f"INFO: executewhilepaused: {parsed_cmd['args']}"
                             )  # Log what we were passed
-                            running_script.start_while_paused(*parsed_cmd["args"])
+                            running_script.execute_while_paused(*parsed_cmd["args"])
                         case _:
                             run_script_log(
                                 id,

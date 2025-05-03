@@ -151,22 +151,23 @@ def script_delete_all_breakpoints(scope=OPENC3_SCOPE):
         return True
 
 
-def running_script_list(scope=OPENC3_SCOPE):
+def running_script_list(limit=10, offset=0, scope=OPENC3_SCOPE):
     endpoint = "/script-api/running-script"
-    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request("get", endpoint, scope=scope)
+    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request("get", endpoint, query={"limit": limit, "offset": offset}, scope=scope)
     if not response or response.status_code != 200:
         _script_response_error(response, "Running script list request failed", scope=scope)
     else:
-        return json.loads(response.text)
+        return json.loads(response.text)['items']
 
 
-def running_script_get(id, scope=OPENC3_SCOPE):
+def script_get(id, scope=OPENC3_SCOPE):
     endpoint = f"/script-api/running-script/{id}"
     response = openc3.script.SCRIPT_RUNNER_API_SERVER.request("get", endpoint, scope=scope)
     if not response or response.status_code != 200:
         _script_response_error(response, "Running script show request failed", scope=scope)
     else:
         return json.loads(response.text)
+running_script_get = script_get  # Alias for compatibility
 
 
 def _running_script_action(id, action_name, scope=OPENC3_SCOPE):
@@ -246,10 +247,36 @@ def running_script_prompt(id, method_name, answer, prompt_id, password=None, sco
         return True
 
 
-def completed_script_list(scope=OPENC3_SCOPE):
+def running_script_execute_while_paused(id, filename, line_no, end_line_no=None, scope=OPENC3_SCOPE):
+    endpoint = f"/script-api/running-script/{id}/executewhilepaused"
+    if end_line_no is not None:
+        response = openc3.script.SCRIPT_RUNNER_API_SERVER.request(
+            "post",
+            endpoint,
+            json=True,
+            data={
+                "args": [filename, line_no, end_line_no],
+            },
+            scope=scope,
+        )
+    else:
+        response = openc3.script.SCRIPT_RUNNER_API_SERVER.request(
+            "post",
+            endpoint,
+            json=True,
+            data={"args": [filename, line_no]},
+            scope=scope,
+        )
+    if not response or response.status_code != 200:
+        _script_response_error(response, "Running script executewhilepaused request failed", scope=scope)
+    else:
+        return True
+
+
+def completed_script_list(limit=10, offset=0, scope=OPENC3_SCOPE):
     endpoint = "/script-api/completed-scripts"
-    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request("get", endpoint, scope=scope)
+    response = openc3.script.SCRIPT_RUNNER_API_SERVER.request("get", endpoint, query={"limit": limit, "offset": offset}, scope=scope)
     if not response or response.status_code != 200:
         _script_response_error(response, "Completed script list request failed", scope=scope)
     else:
-        return json.loads(response.text)
+        return json.loads(response.text)['items']

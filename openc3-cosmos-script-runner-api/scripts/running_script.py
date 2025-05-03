@@ -37,7 +37,7 @@ def running_script_anycable_publish(channel_name, data):
 
 # sleep in a script - returns true if canceled mid sleep
 def _openc3_script_sleep(sleep_time=None):
-    if RunningScript.disconnect:
+    if openc3.script.DISCONNECT:
         return True
     RunningScript.instance.update_running_script_store("waiting")
 
@@ -223,7 +223,6 @@ class RunningScript:
     output_sleeper = Sleeper()
     cancel_output = False
     manual = True
-    disconnect = False
 
     @classmethod
     def message_log(cls):
@@ -420,7 +419,7 @@ class RunningScript:
         self.script_status.current_filename = self.script_status.filename
         self.script_status.line_no = 0
         self.current_file = None
-        self.start_while_paused_info = None
+        self.execute_while_paused_info = None
 
     def unique_filename(self):
         if self.script_status.filename and not self.script_status.filename == "":
@@ -584,9 +583,9 @@ class RunningScript:
                 trace.append(f"{filename}:{lineno}:{name}:{line}")
         return trace
 
-    def start_while_paused(self, filename, line_no = 1, end_line_no = None):
+    def execute_while_paused(self, filename, line_no = 1, end_line_no = None):
         if self.script_status.state == 'paused' or self.script_status.state == 'error' or self.script_status.state == 'breakpoint':
-            self.start_while_paused_info = { "filename": filename, "line_no": line_no, "end_line_no": end_line_no }
+            self.execute_while_paused_info = { "filename": filename, "line_no": line_no, "end_line_no": end_line_no }
         else:
             scriptrunner_puts("Cannot execute selection or goto unless script is paused, breakpoint, or in error state")
 
@@ -692,7 +691,7 @@ class RunningScript:
         if prompt:
             self.prompt_id = prompt["id"]
         while not self.go and not self.stop:
-            self.check_start_while_paused()
+            self.check_execute_while_paused()
             time.sleep(0.01)
             count += 1
             if count % 100 == 0:  # Approximately Every Second
@@ -730,7 +729,7 @@ class RunningScript:
         count = 0
         self.go = False
         while not self.go and not self.stop and not self.retry_needed:
-            self.check_start_while_paused()
+            self.check_execute_while_paused()
             time.sleep(0.01)
             count += 1
             if (count % 100) == 0:  # Approximately Every Second
@@ -750,19 +749,19 @@ class RunningScript:
         if error and not self.continue_after_error:
             raise error
 
-    def check_start_while_paused(self):
+    def check_execute_while_paused(self):
         try:
-            if self.start_while_paused_info is not None:
-                if self.script_status.current_filename == self.start_while_paused_info.get('filename'):
+            if self.execute_while_paused_info is not None:
+                if self.script_status.current_filename == self.execute_while_paused_info.get('filename'):
                     bind_variables = True
                 else:
                     bind_variables = False
-                if self.start_while_paused_info.get('end_line_no'):
+                if self.execute_while_paused_info.get('end_line_no'):
                     # Execute Selection While Paused
                     state = self.script_status.state
                     current_filename = self.script_status.current_filename
                     line_no = self.script_status.line_no
-                    start(self.start_while_paused_info.get('filename'), line_no = self.start_while_paused_info.get('line_no'), end_line_no = self.start_while_paused_info.get('end_line_no'), bind_variables = bind_variables)
+                    start(self.execute_while_paused_info.get('filename'), line_no = self.execute_while_paused_info.get('line_no'), end_line_no = self.execute_while_paused_info.get('end_line_no'), bind_variables = bind_variables)
                     # Need to restore state after returning so that the correct line will be shown in ScriptRunner
                     self.script_status.state = state
                     self.script_status.current_filename = current_filename
@@ -771,9 +770,9 @@ class RunningScript:
                     running_script_anycable_publish(f"running-script-channel:{self.script_status.id}", { "type": "line", "filename": self.script_status.current_filename, "line_no": self.script_status.line_no, "state": self.script_status.state })
                 else:
                     # Goto While Paused
-                    start(self.start_while_paused_info.get('filename'), line_no = self.start_while_paused_info.get('line_no'), bind_variables = bind_variables, complete = True)
+                    start(self.execute_while_paused_info.get('filename'), line_no = self.execute_while_paused_info.get('line_no'), bind_variables = bind_variables, complete = True)
         finally:
-            self.start_while_paused_info = None
+            self.execute_while_paused_info = None
 
 
     def mark_running(self):
@@ -932,7 +931,7 @@ class RunningScript:
             sys.stderr.add_stream(self.output_io)
 
             output = f"Starting script: {os.path.basename(self.script_status.filename)}"
-            if RunningScript.disconnect:
+            if openc3.script.DISCONNECT:
                 output += " in DISCONNECT mode"
             output += f", line_delay = {RunningScript.line_delay}"
             self.scriptrunner_puts(output)
@@ -1193,7 +1192,7 @@ setattr(openc3.script, "run_mode", run_mode)
 
 
 def start(procedure_name, line_no = 1, end_line_no = None, bind_variables=False, complete = False):
-    RunningScript.instance.start_while_paused_info = None
+    RunningScript.instance.execute_while_paused_info = None
     path = procedure_name
 
     # Check RAM based instrumented cache
