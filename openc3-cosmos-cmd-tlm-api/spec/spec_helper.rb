@@ -37,17 +37,17 @@
 # See http://rubydoc.info/gems/rspec-core/RSpec/Core/Configuration
 
 # NOTE: You MUST require simplecov before anything else!
-if !ENV["OPENC3_NO_SIMPLECOV"]
-  require "simplecov"
-  if ENV["GITHUB_WORKFLOW"]
-    require "simplecov-cobertura"
+if !ENV['OPENC3_NO_SIMPLECOV']
+  require 'simplecov'
+  if ENV['GITHUB_WORKFLOW']
+    require 'simplecov-cobertura'
     SimpleCov.formatter = SimpleCov::Formatter::CoberturaFormatter
   else
     SimpleCov.formatter = SimpleCov::Formatter::HTMLFormatter
   end
-  SimpleCov.start "rails" do
+  SimpleCov.start 'rails' do
     merge_timeout 60 * 60 # merge the last hour of results
-    add_filter "/spec/" # no coverage on spec files
+    add_filter '/spec/' # no coverage on spec files
     root = File.dirname(__FILE__)
     root.to_s
   end
@@ -61,39 +61,39 @@ if !ENV["OPENC3_NO_SIMPLECOV"]
 end
 
 # Disable Redis and Fluentd in the Logger
-ENV["OPENC3_NO_STORE"] = "true"
-ENV["OPENC3_LOGS_BUCKET"] = "logs"
-ENV["OPENC3_TOOLS_BUCKET"] = "tools"
-ENV["OPENC3_CONFIG_BUCKET"] = "config"
-ENV["OPENC3_REDIS_HOSTNAME"] = "127.0.0.1"
-ENV["OPENC3_REDIS_PORT"] = "6379"
-ENV["OPENC3_REDIS_EPHEMERAL_HOSTNAME"] = "127.0.0.1"
-ENV["OPENC3_REDIS_EPHEMERAL_PORT"] = "6380"
+ENV['OPENC3_NO_STORE'] = 'true'
+ENV['OPENC3_LOGS_BUCKET'] = 'logs'
+ENV['OPENC3_TOOLS_BUCKET'] = 'tools'
+ENV['OPENC3_CONFIG_BUCKET'] = 'config'
+ENV['OPENC3_REDIS_HOSTNAME'] = '127.0.0.1'
+ENV['OPENC3_REDIS_PORT'] = '6379'
+ENV['OPENC3_REDIS_EPHEMERAL_HOSTNAME'] = '127.0.0.1'
+ENV['OPENC3_REDIS_EPHEMERAL_PORT'] = '6380'
 # Set some usernames / passwords
-ENV["OPENC3_API_PASSWORD"] = "openc3"
-ENV["OPENC3_SERVICE_PASSWORD"] = "openc3service"
-ENV["OPENC3_REDIS_USERNAME"] = "openc3"
-ENV["OPENC3_REDIS_PASSWORD"] = "openc3password"
-ENV["OPENC3_BUCKET_USERNAME"] = "openc3minio"
-ENV["OPENC3_BUCKET_PASSWORD"] = "openc3miniopassword"
-ENV["OPENC3_SCOPE"] = "DEFAULT"
-ENV["OPENC3_CLOUD"] = "local"
+ENV['OPENC3_API_PASSWORD'] = 'openc3'
+ENV['OPENC3_SERVICE_PASSWORD'] = 'openc3service'
+ENV['OPENC3_REDIS_USERNAME'] = 'openc3'
+ENV['OPENC3_REDIS_PASSWORD'] = 'openc3password'
+ENV['OPENC3_BUCKET_USERNAME'] = 'openc3minio'
+ENV['OPENC3_BUCKET_PASSWORD'] = 'openc3miniopassword'
+ENV['OPENC3_SCOPE'] = 'DEFAULT'
+ENV['OPENC3_CLOUD'] = 'local'
 
-$openc3_scope = ENV["OPENC3_SCOPE"]
-$openc3_token = ENV["OPENC3_API_PASSWORD"]
+$openc3_scope = ENV['OPENC3_SCOPE']
+$openc3_token = ENV['OPENC3_API_PASSWORD']
 
 def setup_system(targets = ["SYSTEM", "INST", "EMPTY"])
-  require "openc3/system"
-  dir = File.join(__dir__, "..", "..", "openc3", "spec", "install", "config", "targets")
+  require 'openc3/system'
+  dir = File.join(__dir__, '..', '..', 'openc3', 'spec', 'install', 'config', 'targets')
   OpenC3::System.class_variable_set(:@@instance, nil)
   OpenC3::System.instance(targets, dir)
-  require "openc3/utilities/logger"
+  require 'openc3/utilities/logger'
   OpenC3::Logger.stdout = false
 end
 
 def mock_redis
-  require "redis"
-  require "mock_redis"
+  require 'redis'
+  require 'mock_redis'
   redis = MockRedis.new
   allow(Redis).to receive(:new).and_return(redis)
   OpenC3::Store.instance_variable_set(:@instance, nil)
@@ -102,29 +102,6 @@ def mock_redis
 end
 
 SPEC_DIR = File.dirname(__FILE__)
-
-# Silence logger output during tests
-require "openc3/top_level"
-module OpenC3
-  class Logger
-    class << self
-      def info(message, scope: $openc3_scope, user: nil)
-      end
-
-      def debug(message, scope: $openc3_scope, user: nil)
-      end
-
-      def warn(message, scope: $openc3_scope, user: nil)
-      end
-
-      def error(message, scope: $openc3_scope, user: nil)
-      end
-
-      def fatal(message, scope: $openc3_scope, user: nil)
-      end
-    end
-  end
-end
 
 RSpec.configure do |config|
   config.before(:all) do
@@ -212,3 +189,4 @@ RSpec.configure do |config|
   # as the one that triggered the failure.
   Kernel.srand config.seed
 end
+
