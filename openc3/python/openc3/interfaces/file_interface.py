@@ -130,13 +130,13 @@ class FileInterface(Interface):
             if self.file:
                 # Read more data from existing file
                 data = self.file.read(self.file_read_size)
+                if self.throttle and self.sleeper.sleep(self.throttle):
+                    return None, None
                 if data is not None and len(data) > 0:
                     self.read_interface_base(data, None)
                     return data, None
                 else:
                     self.finish_file()
-                    if self.throttle and self.sleeper.sleep(self.throttle):
-                        return None, None
 
             # Find the next file to read
             file = self.get_next_telemetry_file()

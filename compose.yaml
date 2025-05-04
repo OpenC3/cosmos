@@ -170,8 +170,8 @@ services:
       # Add access to the entire C drive on Windows
       # - "/c:/c"
       # Create a dropbox and archive folder for ingest by FileInterface and PreidentifiedRouter
-      - /Users/jmthomas/dropbox:/dropbox
-      - /Users/jmthomas/archive:/archive
+      # - /Users/jmthomas/dropbox:/dropbox
+      # - /Users/jmthomas/archive:/archive
     logging:
       driver: "json-file"
       options:
