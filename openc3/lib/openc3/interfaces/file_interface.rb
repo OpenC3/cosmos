@@ -110,15 +110,16 @@ module OpenC3
         if @file
           # Read more data from existing file
           data = @file.read(@file_read_size)
+          # Throttle after each read size
+          if @throttle and @sleeper.sleep(@throttle)
+            return nil, nil
+          end
           if data and data.length > 0
             read_interface_base(data, nil)
             # Return the filename as extra so protocols can detect when we've switched files
             return data, { filename: @filename }
           else
             finish_file()
-            if @throttle and @sleeper.sleep(@throttle)
-              return nil, nil
-            end
           end
         end
 
