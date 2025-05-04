@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2025, OpenC3, Inc.
+# Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -13,68 +13,61 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
+# Modified by OpenC3, Inc.
+# All changes Copyright 2022, OpenC3, Inc.
+# All Rights Reserved
+#
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-require 'stringio'
 require 'openc3/interfaces/protocols/burst_protocol'
-require 'openc3/logs/packet_log_constants'
-require 'openc3/logs/packet_log_reader'
-require 'openc3/logs/packet_log_writer'
 
 module OpenC3
   # Delineates packets using the OpenC3 preidentification system
   class PreidentifiedProtocol < BurstProtocol
-    include PacketLogConstants
     COSMOS4_STORED_FLAG_MASK = 0x80
     COSMOS4_EXTRA_FLAG_MASK = 0x40
-    COSMOS4_HEADER_LENGTH = 128
 
     # @param sync_pattern (see BurstProtocol#initialize)
     # @param max_length [Integer] The maximum allowed value of the length field
-    # @param version [Integer] COSMOS major version
-    # @param file [true/false] Whether we're processing from a file (handle file headers)
-    #   This is typically used in conjunction with the file_interface
     # @param allow_empty_data [true/false/nil] See Protocol#initialize
-    def initialize(sync_pattern = nil, max_length = nil, version = 6, file = false, allow_empty_data = nil)
+    def initialize(sync_pattern = nil, max_length = nil, mode = 4, allow_empty_data = nil)
       super(0, sync_pattern, false, allow_empty_data)
       @max_length = ConfigParser.handle_nil(max_length)
       @max_length = Integer(@max_length) if @max_length
-      @version = Integer(version)
-      @file = ConfigParser.handle_true_false(file)
+      @mode = Integer(mode)
     end
 
     def reset
       super()
       @reduction_state = :START
-      @packet_log_reader = PacketLogReader.new
-      @packet_log_writer = PacketLogWriter.new('', '', cycle_thread: false)
     end
 
     def read_packet(packet)
       packet.received_time = @read_received_time
       packet.target_name = @read_target_name
       packet.packet_name = @read_packet_name
-      # Only set the stored flag if it was not already set by the interface
-      # This is important because FileInterface sets the stored flag and we
-      # want to preserve that
-      packet.stored = @read_stored unless packet.stored
+      if @mode == 4 # COSMOS4.3+ Protocol
+        packet.stored = @read_stored
+        if packet.extra and @read_extra
+          packet.extra.merge(@read_extra)
+        else
+          packet.extra = @read_extra
+        end
+      end
       return packet
     end
 
     def write_packet(packet)
-      @packet_time = packet.packet_time
-      @packet_time = Time.now unless @packet_time
-      @received_time = packet.received_time
-      @received_time = Time.now unless @received_time
-      @write_time_seconds = [@received_time.tv_sec].pack('N') # UINT32
-      @write_time_microseconds = [@received_time.tv_usec].pack('N') # UINT32
+      received_time = packet.received_time
+      received_time = Time.now unless received_time
+      @write_time_seconds = [received_time.tv_sec].pack('N') # UINT32
+      @write_time_microseconds = [received_time.tv_usec].pack('N') # UINT32
       @write_target_name = packet.target_name
       @write_target_name = 'UNKNOWN' unless @write_target_name
       @write_packet_name = packet.packet_name
       @write_packet_name = 'UNKNOWN' unless @write_packet_name
-      case @version
-      when 4
+      if @mode == 4 # COSMOS4.3+ Protocol
         @write_flags = 0
         @write_flags |= COSMOS4_STORED_FLAG_MASK if packet.stored
         @write_extra = nil
@@ -82,16 +75,6 @@ module OpenC3
           @write_flags |= COSMOS4_EXTRA_FLAG_MASK
           @write_extra = packet.extra.as_json(:allow_nan => true).to_json(:allow_nan => true)
         end
-      when 5, 6
-        if packet.stored
-          @packet_stored = true
-        else
-          @packet_stored = false
-        end
-        @write_extra = nil
-        @write_extra = packet.extra if packet.extra
-      else
-        raise "PreidentifiedProtocol unsupported version: #{@version}"
       end
       return packet
     end
@@ -100,37 +83,21 @@ module OpenC3
       data_length = [data.length].pack('N') # UINT32
       data_to_send = ''
       data_to_send << @sync_pattern if @sync_pattern
-      case @version
-      when 4
+      if @mode == 4 # COSMOS4.3+ Protocol
         data_to_send << @write_flags
         if @write_extra
           data_to_send << [@write_extra.length].pack('N')
           data_to_send << @write_extra
         end
-        data_to_send << @write_time_seconds
-        data_to_send << @write_time_microseconds
-        data_to_send << @write_target_name.length
-        data_to_send << @write_target_name
-        data_to_send << @write_packet_name.length
-        data_to_send << @write_packet_name
-        data_to_send << data_length
-        data_to_send << data
-      when 5, 6
-        data_to_send << @packet_log_writer.build_entry(
-          :RAW_PACKET,
-          :TLM,
-          @write_target_name,
-          @write_packet_name,
-          @packet_time.to_nsec_from_epoch,
-          @packet_stored,
-          data,
-          nil,
-          received_time_nsec_since_epoch: @received_time.to_nsec_from_epoch,
-          extra: @write_extra
-        )
-      else
-        raise "PreidentifiedProtocol unsupported version: #{@version}"
       end
+      data_to_send << @write_time_seconds
+      data_to_send << @write_time_microseconds
+      data_to_send << @write_target_name.length
+      data_to_send << @write_target_name
+      data_to_send << @write_packet_name.length
+      data_to_send << @write_packet_name
+      data_to_send << data_length
+      data_to_send << data
       return data_to_send, extra
     end
 
@@ -166,7 +133,6 @@ module OpenC3
       return string
     end
 
-    # Called by the BurstProtocol in read_data to process the data
     def reduce_to_single_packet
       # Discard sync pattern if present
       if @sync_pattern
@@ -180,82 +146,15 @@ module OpenC3
         @reduction_state = :SYNC_REMOVED
       end
 
-      if @file
-        if @reduction_state == :SYNC_REMOVED
-          # Ensure we have enough data to read the header
-          return :STOP if @data.length < OPENC3_HEADER_LENGTH
-          header = @data[0...OPENC3_HEADER_LENGTH]
-          case @version
-          when 4
-            # If we're version 4 and we don't have a COSMOS4 header then start over
-            if header != COSMOS4_FILE_HEADER
-              @reduction_state = :START
-              return :STOP
-            else
-              return :STOP if @data.length < COSMOS4_HEADER_LENGTH
-              # Read and discard the rest of the header
-              @data.replace(@data[(COSMOS4_HEADER_LENGTH)..-1])
-            end
-          when 5, 6
-            # If we're version 5 or 6 and we don't have a COSMOS5 header then start over
-            if header != OPENC3_FILE_HEADER
-              @reduction_state = :START
-              return :STOP
-            end
-            # NOTE: We keep the file header in the data stream because packet_log_reader handles it
-          else
-            raise "PreidentifiedProtocol unsupported version: #{@version}"
-          end
-          @reduction_state = :HEADER_REMOVED
-        end
-      else
-        @reduction_state = :HEADER_REMOVED
-      end
+      if @reduction_state == :SYNC_REMOVED and @mode == 4
+        # Read and remove flags
+        return :STOP if @data.length < 1
 
-      case @version
-      when 4
-        return handle_mode4()
-      when 5, 6
-        return handle_mode5()
-      else
-        raise "PreidentifiedProtocol unsupported version: #{@version}"
-      end
-    end
-
-    def handle_mode5
-      if @file and @extra and @extra[:filename]
-        filename = @extra[:filename]
-      else
-        filename = @packet_log_reader.filename
-      end
-
-      # If this is the first time through or the filename has changed
-      if !@packet_log_reader.filename or @packet_log_reader.filename != filename
-        @packet_log_reader.open(filename, string_io: StringIO.new(@data, 'rb'), file_header: @file)
-      end
-      packet = @packet_log_reader.read()
-      if packet == -1
-        return :STOP
-      else
-        # Set the data returned in read_packet()
-        @read_target_name = packet.target_name
-        @read_packet_name = packet.packet_name
-        @read_received_time = packet.received_time
-        @read_stored = packet.stored
-        return packet.buffer, packet.extra
-      end
-    end
-
-    def handle_mode4
-      # Read and remove flags
-      return :STOP if @data.length < 1
-
-      if @reduction_state == :HEADER_REMOVED
         flags = @data[0].unpack('C')[0] # byte
         @data.replace(@data[1..-1])
         @read_stored = false
         @read_stored = true if (flags & COSMOS4_STORED_FLAG_MASK) != 0
-        extra = nil
+        @read_extra = nil
         if (flags & COSMOS4_EXTRA_FLAG_MASK) != 0
           @reduction_state = :NEED_EXTRA
         else
@@ -265,14 +164,14 @@ module OpenC3
 
       if @reduction_state == :NEED_EXTRA
         # Read and remove extra
-        extra = read_length_field_followed_by_string(4)
-        return :STOP if extra == :STOP
+        @read_extra = read_length_field_followed_by_string(4)
+        return :STOP if @read_extra == :STOP
 
-        extra = JSON.parse(extra, :allow_nan => true, :create_additions => true)
+        @read_extra = JSON.parse(@read_extra, :allow_nan => true, :create_additions => true)
         @reduction_state = :FLAGS_REMOVED
       end
 
-      if @reduction_state == :FLAGS_REMOVED
+      if @reduction_state == :FLAGS_REMOVED or (@reduction_state == :SYNC_REMOVED and @mode != 4)
         # Read and remove packet received time
         return :STOP if @data.length < 8
 
@@ -304,8 +203,8 @@ module OpenC3
         packet_data = read_length_field_followed_by_string(4)
         return :STOP if packet_data == :STOP
 
-        @reduction_state = :HEADER_REMOVED
-        return packet_data, extra
+        @reduction_state = :START
+        return packet_data, @extra
       end
 
       raise "Error should never reach end of method #{@reduction_state}"

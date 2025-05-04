@@ -85,19 +85,17 @@ module OpenC3
     end
 
     # @param filename [String] The log filename to open
-    # @return Returns if successfully opens the log file and reads the header otherwise raises an exception
-    def open(filename, string_io: nil, file_header: true)
+    # @return [Boolean, Exception] Returns true if successfully changed to configuration specified in log,
+    #    otherwise returns false and potentially an Exception class if an error occurred.  If no error occurred
+    #    false indicates that the requested configuration was simply not found.
+    def open(filename)
       close()
       reset()
       @filename = filename
-      if string_io
-        @file = string_io
-      else
-        @file = BufferedFile.open(@filename, 'rb')
-      end
+      @file = BufferedFile.open(@filename, 'rb')
       @max_read_size = @file.size
       @max_read_size = MAX_READ_SIZE if @max_read_size > MAX_READ_SIZE
-      read_file_header() if file_header
+      return read_file_header()
     rescue => e
       close()
       raise e
@@ -105,7 +103,7 @@ module OpenC3
 
     # Closes the current log file
     def close
-      @file.close if @file and !@file.closed? and !@file.is_a?(StringIO)
+      @file.close if @file and !@file.closed?
     end
 
     # Read a packet from the log file
@@ -113,20 +111,11 @@ module OpenC3
     # @param identify_and_define (see #each)
     # @return [Packet]
     def read(identify_and_define = true)
-      if @file.is_a?(StringIO) and @file.size - @file.pos < 4
-        return -1 # Need more data
-      end
       # Read entry length
-      length_bytes = @file.read(4)
-      return nil if !length_bytes or length_bytes.length <= 0
+      length = @file.read(4)
+      return nil if !length or length.length <= 0
 
-      length = length_bytes.unpack('N')[0]
-      if @file.is_a?(StringIO) and @file.size - @file.pos < length
-        length_bytes.each_byte.reverse_each do |byte|
-          @file.ungetbyte(byte)
-        end
-        return -1 # Need more data
-      end
+      length = length.unpack('N')[0]
       entry = @file.read(length)
       flags = entry[0..1].unpack('n')[0]
 
@@ -320,7 +309,7 @@ module OpenC3
         if cbor
           extra = CBOR.decode(extra_encoded)
         else
-          extra = JSON.parse(extra_encoded, allow_nan: true, create_additions: true)
+          extra = JSON.parse(extra_encode, allow_nan: true, create_additions: true)
         end
       end
       data = entry[next_offset..-1]
