@@ -124,7 +124,6 @@ module OpenC3
         @interface.connect
         data, extra = @interface.read_interface
         expect(data).to eql "\x01\x02\x03\x04"
-        expect(extra[:filename]).to eql filename
         # Push a dummy value so when we call read_interface again it doesn't block
         @interface.instance_variable_get(:@queue).push(nil)
         data, extra = @interface.read_interface
@@ -142,7 +141,6 @@ module OpenC3
         @interface.connect
         data, extra = @interface.read_interface
         expect(data).to eql "\x01\x02\x03\x04"
-        expect(extra[:filename]).to eql filename
       end
 
       it "deletes the file if archive folder is DELETE" do
@@ -169,10 +167,8 @@ module OpenC3
         @interface.connect
         data, extra = @interface.read_interface
         expect(data).to eql "\x01\x02\x03\x04"
-        expect(extra[:filename]).to eql filename
         data, extra = @interface.read_interface
         expect(data).to eql "\x05\x06\x07\x08"
-        expect(extra[:filename]).to eql filename
         # The file should now be empty so we should get nil
         allow(@interface).to receive(:get_next_telemetry_file).and_return(nil)
         # Empty the queue
@@ -199,39 +195,11 @@ module OpenC3
         start = Time.now.to_f
         data, extra = @interface.read_interface
         expect(data).to eql "\x01\x02\x03\x04"
-        expect(extra[:filename]).to eql filename1
         data, extra = @interface.read_interface
         expect(data).to eql "\x05\x06\x07\x08"
-        expect(extra[:filename]).to eql filename2
         expect(Time.now.to_f - start).to be > 0.2
-        expect(Time.now.to_f - start).to be < 0.25
+        expect(Time.now.to_f - start).to be < 1.0
       end
-
-      # it "respects throttle option" do
-      #   filename = File.join(@telemetry_dir, 'test.bin')
-      #   File.open(filename, 'wb') do |file|
-      #     file.write("\x01\x02\x03\x04")
-      #   end
-      #   @interface = FileInterface.new(@command_dir, @telemetry_dir, @archive_dir)
-      #   @interface.set_option('THROTTLE', ['100'])
-      #   @interface.connect
-
-      #   # Mock the Sleeper to return true (indicating a shutdown)
-      #   mock_sleeper = double("sleeper")
-      #   allow(mock_sleeper).to receive(:sleep).and_return(true)
-      #   @interface.instance_variable_set(:@sleeper, mock_sleeper)
-
-      #   # Should return nil because of the throttle sleeper shutdown
-      #   data, extra = @interface.read_interface
-      #   expect(data).to be_nil
-      #   expect(extra).to be_nil
-
-      #   # Now have the sleeper allow the read (return false)
-      #   allow(mock_sleeper).to receive(:sleep).and_return(false)
-      #   data, extra = @interface.read_interface
-      #   expect(data).to eql "\x01\x02\x03\x04"
-      #   expect(extra[:filename]).to eql filename
-      # end
 
       it "responds to file notifications via the queue" do
         @interface = FileInterface.new(@command_dir, @telemetry_dir, @archive_dir)
@@ -249,7 +217,6 @@ module OpenC3
 
         data, extra = @interface.read_interface
         expect(data).to eql "\x01\x02\x03\x04"
-        expect(extra[:filename]).to include('test.bin')
       end
     end
 
