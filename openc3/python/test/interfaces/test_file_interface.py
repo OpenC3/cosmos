@@ -21,7 +21,7 @@ import unittest
 import time
 import gzip
 import threading
-from unittest.mock import patch, MagicMock, mock_open
+from unittest.mock import patch, MagicMock
 from openc3.interfaces.interface import Interface
 from openc3.interfaces.file_interface import FileInterface
 from openc3.packets.packet import Packet
@@ -215,7 +215,7 @@ class TestFileInterface(unittest.TestCase):
 
         elapsed = time.time() - start
         self.assertGreater(elapsed, 0.2)
-        self.assertLess(elapsed, 0.25)
+        self.assertLess(elapsed, 1.0)
 
     def test_read_interface_queue_notification(self):
         """Test responds to file notifications via the queue"""

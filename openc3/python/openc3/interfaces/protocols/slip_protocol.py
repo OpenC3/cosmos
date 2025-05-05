@@ -113,9 +113,9 @@ class SlipProtocol(TerminatedProtocol):
 
         return (data, extra)
 
-    def reduce_to_single_packet(self, extra=None):
+    def reduce_to_single_packet(self):
         if len(self.data) <= 0:
-            return ("STOP", extra)
+            return ("STOP", self.extra)
         index = None
         if self.start_char is not None:
             try:
@@ -136,6 +136,6 @@ class SlipProtocol(TerminatedProtocol):
             else:  # self.data begins with the termination characters
                 packet_data = self.data[0 : (len(self.read_termination_characters))]
             self.data = self.data[(index + len(self.read_termination_characters)) :]
-            return (packet_data, extra)
+            return (packet_data, self.extra)
         else:
-            return ("STOP", extra)
+            return ("STOP", self.extra)

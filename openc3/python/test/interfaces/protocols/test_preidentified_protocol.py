@@ -116,11 +116,6 @@ class TestPreidentifiedProtocol(unittest.TestCase):
         self.assertEqual(TestPreidentifiedProtocol.buffer[0], 0)
         self.verify_time_tgt_pkt_buffer(1, time, pkt)
 
-    def test_write2_creates_a_packet_header(self):
-        time, pkt = self.setup_stream_pkt(args=[None, 5, 2])
-        self.interface.write(pkt)
-        self.verify_time_tgt_pkt_buffer(0, time, pkt)
-
     def test_write_creates_a_packet_header_with_stored(self):
         time, pkt = self.setup_stream_pkt()
         pkt.stored = True
@@ -177,12 +172,6 @@ class TestPreidentifiedProtocol(unittest.TestCase):
         self.assertEqual(TestPreidentifiedProtocol.buffer[0:2], b"\xDE\xAD")
         self.assertEqual(TestPreidentifiedProtocol.buffer[2], 0)
         self.verify_time_tgt_pkt_buffer(3, time, pkt)
-
-    def test_write2_handles_a_sync_pattern(self):
-        time, pkt = self.setup_stream_pkt(args=["DEAD", None, 2])
-        self.interface.write(pkt)
-        self.assertEqual(TestPreidentifiedProtocol.buffer[0:2], b"\xDE\xAD")
-        self.verify_time_tgt_pkt_buffer(2, time, pkt)
 
     def test_write_handles_a_sync_pattern_with_stored_and_extra(self):
         time, pkt = self.setup_stream_pkt(args=["DEAD"])

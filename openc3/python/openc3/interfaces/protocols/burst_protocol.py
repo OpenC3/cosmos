@@ -40,7 +40,7 @@ class BurstProtocol(Protocol):
         fill_fields=False,
         allow_empty_data=None,
     ):
-        super().__init__(allow_empty_data)
+        super().__init__(allow_empty_data) # Calls reset()
         self.discard_leading_bytes = int(discard_leading_bytes)
         self.sync_pattern = ConfigParser.handle_none(sync_pattern)
         if self.sync_pattern:
@@ -65,6 +65,9 @@ class BurstProtocol(Protocol):
     # self.return [String|None] Data for a packet consisting of the bytes read
     def read_data(self, data, extra=None):
         self.data += data
+        if not (len(data) == 0 and extra is None):
+            # Maintain extra from last read read_data
+            self.extra = extra
 
         while True:
             control = self.handle_sync_pattern()
@@ -72,7 +75,7 @@ class BurstProtocol(Protocol):
                 return (control, extra)
 
             # Reduce the data to a single packet
-            packet_data, extra = self.reduce_to_single_packet(extra)
+            packet_data, extra = self.reduce_to_single_packet()
             if packet_data == "RESYNC":
                 self.sync_state = "SEARCHING"
                 if len(data) > 0:  # Only immediately resync if not blank string test
@@ -200,12 +203,12 @@ class BurstProtocol(Protocol):
             % (pdata[0], pdata[1], pdata[2], pdata[3], pdata[4], pdata[5])
         )
 
-    def reduce_to_single_packet(self, extra=None):
+    def reduce_to_single_packet(self):
         if len(self.data) <= 0:
             # Need some data
-            return ("STOP", extra)
+            return ("STOP", self.extra)
 
         # Reduce to packet data and clear data for next packet
         packet_data = self.data[:]
         self.data = b""
-        return (packet_data, extra)
+        return (packet_data, self.extra)

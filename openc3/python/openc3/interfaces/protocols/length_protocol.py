@@ -138,10 +138,10 @@ class LengthProtocol(BurstProtocol):
             raise ValueError(f"Calculated length {length} larger than max_length {self.max_length}")
         return length
 
-    def reduce_to_single_packet(self, extra=None):
+    def reduce_to_single_packet(self):
         # Make sure we have at least enough data to reach the length field
         if len(self.data) < self.length_bytes_needed:
-            return ("STOP", extra)
+            return ("STOP", self.extra)
 
         # Determine the packet's length
         length = BinaryAccessor.read(
@@ -164,10 +164,10 @@ class LengthProtocol(BurstProtocol):
 
         # Make sure we have enough data for the packet
         if len(self.data) < packet_length:
-            return ("STOP", extra)
+            return ("STOP", self.extra)
 
         # Reduce to packet data and setup current_data for next packet
         packet_data = self.data[0:packet_length]
         self.data = self.data[packet_length:]
 
-        return (packet_data, extra)
+        return (packet_data, self.extra)

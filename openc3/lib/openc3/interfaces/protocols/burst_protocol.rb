@@ -37,7 +37,7 @@ module OpenC3
     # @param fill_fields [Boolean] Fill any required fields when writing packets
     # @param allow_empty_data [true/false/nil] See Protocol#initialize
     def initialize(discard_leading_bytes = 0, sync_pattern = nil, fill_fields = false, allow_empty_data = nil)
-      super(allow_empty_data)
+      super(allow_empty_data) # Calls reset()
       @discard_leading_bytes = discard_leading_bytes.to_i
       @sync_pattern = ConfigParser.handle_nil(sync_pattern)
       @sync_pattern = @sync_pattern.hex_to_byte_string if @sync_pattern
@@ -65,7 +65,7 @@ module OpenC3
       # @return [String|nil] Data for a packet consisting of the bytes read
       def read_data(data, extra = nil)
         @data << data
-        @extra = extra
+        @extra = extra unless (data.length == 0 and extra.nil?) # Maintain extra from last read read_data
 
         while true
           control = handle_sync_pattern()

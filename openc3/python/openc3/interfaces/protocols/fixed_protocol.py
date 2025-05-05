@@ -66,7 +66,7 @@ class FixedProtocol(BurstProtocol):
     #
     # self.return [String|Symbol] The identified packet data or 'STOP' if more data:
     #   is required to build a packet
-    def identify_and_finish_packet(self, extra):
+    def identify_and_finish_packet(self):
         packet_data = None
         identified_packet = None
 
@@ -117,7 +117,7 @@ class FixedProtocol(BurstProtocol):
             if identified_packet is not None:
                 if identified_packet.defined_length + self.discard_leading_bytes > len(self.data):
                     # Check if need more data to finish packet:
-                    return ("STOP", extra)
+                    return ("STOP", self.extra)
 
                 # Set some variables so we can update the packet in
                 # read_packet
@@ -141,10 +141,10 @@ class FixedProtocol(BurstProtocol):
             packet_data = self.data[:]
             self.data = b""
 
-        return (packet_data, extra)
+        return (packet_data, self.extra)
 
-    def reduce_to_single_packet(self, extra=None):
+    def reduce_to_single_packet(self):
         if len(self.data) < self.min_id_size:
-            return ("STOP", extra)
+            return ("STOP", self.extra)
 
-        return self.identify_and_finish_packet(extra)
+        return self.identify_and_finish_packet()

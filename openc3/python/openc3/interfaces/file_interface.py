@@ -92,6 +92,7 @@ class FileInterface(Interface):
         self.polling = False
         self.recursive = False
         self.throttle = None
+        self.discard_file_header_bytes = None
         self.sleeper = None
 
     def connect(self):
@@ -146,6 +147,8 @@ class FileInterface(Interface):
                 else:
                     self.file = open(file, 'rb')
                 self.file_path = file
+                if self.discard_file_header_bytes is not None:
+                    self.file.read(self.discard_file_header_bytes)
                 continue
 
             # Wait for a file to read
@@ -186,6 +189,8 @@ class FileInterface(Interface):
             case "THROTTLE":
                 self.throttle = float(option_values[0])
                 self.sleeper = Sleeper()
+            case "DISCARD_FILE_HEADER_BYTES":
+                self.discard_file_header_bytes = int(option_values[0])
 
     def finish_file(self):
         self.file.close()

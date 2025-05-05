@@ -75,6 +75,7 @@ module OpenC3
       @polling = false
       @recursive = false
       @throttle = nil
+      @discard_file_header_bytes = nil
       @sleeper = nil
     end
 
@@ -116,8 +117,7 @@ module OpenC3
           end
           if data and data.length > 0
             read_interface_base(data, nil)
-            # Return the filename as extra so protocols can detect when we've switched files
-            return data, { filename: @filename }
+            return data, nil
           else
             finish_file()
           end
@@ -130,6 +130,9 @@ module OpenC3
             @file = Zlib::GzipReader.open(@filename)
           else
             @file = File.open(@filename, "rb")
+          end
+          if @discard_file_header_bytes
+            @file.read(@discard_file_header_bytes)
           end
           next
         end
@@ -176,6 +179,8 @@ module OpenC3
       when 'THROTTLE'
         @throttle = Float(option_values[0])
         @sleeper = Sleeper.new
+      when 'DISCARD_FILE_HEADER_BYTES'
+        @discard_file_header_bytes = Integer(option_values[0])
       end
     end
 

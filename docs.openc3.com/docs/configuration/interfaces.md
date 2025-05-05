@@ -419,13 +419,14 @@ The file interface monitors a directory which is mapped via the compose.yaml fil
 
 Options are added directly beneath the interface definition as shown in the example.
 
-| Option    | Description                                                                                                                                                                                        | Default       |
-| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
-| LABEL     | Label used when creating files in the command write folder                                                                                                                                         | command       |
-| EXTENSION | File extension used when creating files in the command write folder                                                                                                                                | .bin          |
-| POLLING   | Whether to poll the file system for changes or use native notifications. Some filesystems won't work without polling including Windows volumes, VM/Vagrant Shared folders, NFS, Samba, sshfs, etc. | false / False |
-| RECURSIVE | Whether to recursively monitor the telemetry read folder                                                                                                                                           | false / False |
-| THROTTLE  | Amount of time to wait between file reads                                                                                                                                                          | nil / None    |
+| Option                    | Description                                                                                                                                                                                        | Default       |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| LABEL                     | Label used when creating files in the command write folder                                                                                                                                         | command       |
+| EXTENSION                 | File extension used when creating files in the command write folder                                                                                                                                | .bin          |
+| POLLING                   | Whether to poll the file system for changes or use native notifications. Some filesystems won't work without polling including Windows volumes, VM/Vagrant Shared folders, NFS, Samba, sshfs, etc. | false / False |
+| RECURSIVE                 | Whether to recursively monitor the telemetry read folder                                                                                                                                           | false / False |
+| THROTTLE                  | Amount of time to wait between file reads                                                                                                                                                          | nil / None    |
+| DISCARD_FILE_HEADER_BYTES | Number of bytes to discard at the start of each file                                                                                                                                               | nil / None    |
 
 #### Docker compose.yaml
 
@@ -441,9 +442,10 @@ openc3-operator:
 plugin.txt Ruby Examples:
 
 ```ruby
-INTERFACE FILE_INT file_interface.rb nil /dropbox /archive 65536 true Preidentified nil nil 6 true
+INTERFACE FILE_INT file_interface.rb nil /dropbox /archive 65536 true PREIDENTIFIED
   MAP_TLM_TARGET INST # Since we passed nil to Command Write Folder we map as TLM only
   OPTION THROTTLE 5
+  OPTION DISCARD_FILE_HEADER_BYTES 128 # For COSMOS 4 File Header
 INTERFACE FILE_INT file_interface.rb /archive /dropbox/ /archive 1024 false
   OPTION LABEL data
   OPTION EXTENSION .dat
@@ -453,9 +455,10 @@ INTERFACE FILE_INT file_interface.rb /archive /dropbox/ /archive 1024 false
 ```
 
 ```ruby
-INTERFACE FILE_INT openc3/interfaces/file_interface.py None /dropbox /archive 65536 True Preidentified None None 6 True
+INTERFACE FILE_INT openc3/interfaces/file_interface.py None /dropbox /archive 65536 True PREIDENTIFIED
   MAP_TLM_TARGET INST  # Since we passed None to Command Write Folder we map as TLM only
   OPTION THROTTLE 5
+  OPTION DISCARD_FILE_HEADER_BYTES 128 # For COSMOS 4 File Header
 INTERFACE FILE_INT openc3/interfaces/file_interface.py /archive /dropbox/ /archive 1024 False
   OPTION LABEL data
   OPTION EXTENSION .dat

@@ -29,13 +29,13 @@ class PreidentifiedProtocol(BurstProtocol):
 
     # @param sync_pattern (see BurstProtocol#initialize)
     # @param max_length [Integer] The maximum allowed value of the length field
+    # @param _unused [Integer] Legacy version number - unused
     # @param allow_empty_data [true/false/nil] See Protocol#initialize
-    def __init__(self, sync_pattern=None, max_length=None, mode=4, allow_empty_data=None):
+    def __init__(self, sync_pattern=None, max_length=None, _unused=None, allow_empty_data=None):
         super().__init__(0, sync_pattern, False, allow_empty_data)
         self.max_length = ConfigParser.handle_none(max_length)
         if self.max_length:
             self.max_length = int(self.max_length)
-        self.mode = int(mode)
 
     def reset(self):
         super().reset()
@@ -45,12 +45,11 @@ class PreidentifiedProtocol(BurstProtocol):
         packet.received_time = self.read_received_time
         packet.target_name = self.read_target_name.decode(encoding="ascii")
         packet.packet_name = self.read_packet_name.decode(encoding="ascii")
-        if self.mode == 4:  # COSMOS4.3+ Protocol
-            packet.stored = self.read_stored
-            if packet.extra and self.read_extra:
-                packet.extra.merge(self.read_extra)
-            else:
-                packet.extra = self.read_extra
+        packet.stored = self.read_stored
+        if packet.extra and self.read_extra:
+            packet.extra.merge(self.read_extra)
+        else:
+            packet.extra = self.read_extra
         return packet
 
     def write_packet(self, packet):
@@ -66,14 +65,13 @@ class PreidentifiedProtocol(BurstProtocol):
         self.write_packet_name = packet.packet_name
         if not self.write_packet_name:
             self.write_packet_name = "UNKNOWN"
-        if self.mode == 4:  # COSMOS4.3+ Protocol
-            self.write_flags = 0
-            if packet.stored:
-                self.write_flags |= PreidentifiedProtocol.COSMOS4_STORED_FLAG_MASK
-            self.write_extra = None
-            if packet.extra:
-                self.write_flags |= PreidentifiedProtocol.COSMOS4_EXTRA_FLAG_MASK
-                self.write_extra = json.dumps(packet.extra)
+        self.write_flags = 0
+        if packet.stored:
+            self.write_flags |= PreidentifiedProtocol.COSMOS4_STORED_FLAG_MASK
+        self.write_extra = None
+        if packet.extra:
+            self.write_flags |= PreidentifiedProtocol.COSMOS4_EXTRA_FLAG_MASK
+            self.write_extra = json.dumps(packet.extra)
         return packet
 
     def write_data(self, data, extra=None):
@@ -81,11 +79,10 @@ class PreidentifiedProtocol(BurstProtocol):
         data_to_send = b""
         if self.sync_pattern:
             data_to_send += self.sync_pattern
-        if self.mode == 4:  # COSMOS4.3+ Protocol
-            data_to_send += self.write_flags.to_bytes(1, byteorder="big")
-            if self.write_extra:
-                data_to_send += struct.pack(">I", len(self.write_extra))
-                data_to_send += bytes(self.write_extra, "ascii")
+        data_to_send += self.write_flags.to_bytes(1, byteorder="big")
+        if self.write_extra:
+            data_to_send += struct.pack(">I", len(self.write_extra))
+            data_to_send += bytes(self.write_extra, "ascii")
         data_to_send += self.write_time_seconds
         data_to_send += self.write_time_microseconds
         data_to_send += struct.pack(">B", len(self.write_target_name))
@@ -131,22 +128,22 @@ class PreidentifiedProtocol(BurstProtocol):
 
         return string
 
-    def reduce_to_single_packet(self, extra=None):
+    def reduce_to_single_packet(self):
         # Discard sync pattern if present
         if self.sync_pattern:
             if self.reduction_state == "START":
                 if len(self.data) < len(self.sync_pattern):
-                    return ("STOP", extra)
+                    return ("STOP", self.extra)
 
                 self.data = self.data[(len(self.sync_pattern)) :]
                 self.reduction_state = "SYNC_REMOVED"
         elif self.reduction_state == "START":
             self.reduction_state = "SYNC_REMOVED"
 
-        if self.reduction_state == "SYNC_REMOVED" and self.mode == 4:
+        if self.reduction_state == "SYNC_REMOVED":
             # Read and remove flags
             if len(self.data) < 1:
-                return ("STOP", extra)
+                return ("STOP", self.extra)
 
             flags = self.data[0]  # struct.unpack(">B", self.data[0])  # byte
             self.data = self.data[1:]
@@ -163,15 +160,15 @@ class PreidentifiedProtocol(BurstProtocol):
             # Read and remove extra
             self.read_extra = self.read_length_field_followed_by_string(4)
             if self.read_extra == "STOP":
-                return ("STOP", extra)
+                return ("STOP", self.extra)
 
             self.read_extra = json.loads(self.read_extra)
             self.reduction_state = "FLAGS_REMOVED"
 
-        if self.reduction_state == "FLAGS_REMOVED" or (self.reduction_state == "SYNC_REMOVED" and self.mode != 4):
+        if self.reduction_state == "FLAGS_REMOVED":
             # Read and remove packet received time
             if len(self.data) < 8:
-                return ("STOP", extra)
+                return ("STOP", self.extra)
 
             time_seconds = struct.unpack(">I", self.data[0:4])[0]  # UINT32
             time_microseconds = struct.unpack(">I", self.data[4:8])[0]  # UINT32
@@ -183,7 +180,7 @@ class PreidentifiedProtocol(BurstProtocol):
             # Read and remove the target name
             self.read_target_name = self.read_length_field_followed_by_string(1)
             if self.read_target_name == "STOP":
-                return ("STOP", extra)
+                return ("STOP", self.extra)
 
             self.reduction_state = "TARGET_NAME_REMOVED"
 
@@ -191,7 +188,7 @@ class PreidentifiedProtocol(BurstProtocol):
             # Read and remove the packet name
             self.read_packet_name = self.read_length_field_followed_by_string(1)
             if self.read_packet_name == "STOP":
-                return ("STOP", extra)
+                return ("STOP", self.extra)
 
             self.reduction_state = "PACKET_NAME_REMOVED"
 
@@ -199,9 +196,9 @@ class PreidentifiedProtocol(BurstProtocol):
             # Read packet data and return
             packet_data = self.read_length_field_followed_by_string(4)
             if packet_data == "STOP":
-                return ("STOP", extra)
+                return ("STOP", self.extra)
 
             self.reduction_state = "START"
-            return (packet_data, extra)
+            return (packet_data, self.extra)
 
         raise RuntimeError(f"Error should never reach end of method {self.reduction_state}")

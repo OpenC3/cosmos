@@ -31,6 +31,7 @@ class Protocol:
         self.reset()
 
     def reset(self):
+        self.extra = None
         pass
 
     def connect_reset(self):
