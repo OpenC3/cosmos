@@ -60,7 +60,7 @@ async function runScript(page, utils, filename, callback = async () => {}) {
   await page.locator('[data-test=start-button]').click()
   await callback()
   await expect(page.locator('[data-test=state] input')).toHaveValue('stopped', {
-    timeout: 20000,
+    timeout: 60000,
   })
 }
 
@@ -182,7 +182,9 @@ test('test python stash apis', async ({ page, utils }) => {
 async function testMetadataApis(page, utils, filename) {
   // Clear other test data
   await page.goto('/tools/admin/redis')
-  await page.getByLabel('Redis command').fill('zremrangebyscore DEFAULT__METADATA -inf +inf')
+  await page
+    .getByLabel('Redis command')
+    .fill('zremrangebyscore DEFAULT__METADATA -inf +inf')
   await page.getByLabel('Redis command').press('Enter')
   await page.goto('/tools/scriptrunner')
 

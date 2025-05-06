@@ -18,12 +18,16 @@
 
 require 'openc3/interfaces/interface'
 require 'openc3/config/config_parser'
+require 'openc3/utilities/logger'
 require 'thread'
 require 'listen'
 require 'fileutils'
+require 'zlib'
 
 module OpenC3
   class FileInterface < Interface
+    attr_reader :filename
+
     # @param command_write_folder [String] Folder to write command files to - Set to nil to disallow writes
     # @param telemetry_read_folder [String] Folder to read telemetry files from - Set to nil to disallow reads
     # @param telemetry_archive_folder [String] Folder to move read telemetry files to - Set to DELETE to delete files
@@ -62,6 +66,7 @@ module OpenC3
       @write_raw_allowed = false unless @command_write_folder
 
       @file = nil
+      @filename = ''
       @listener = nil
       @connected = false
       @extension = ".bin"
@@ -69,6 +74,9 @@ module OpenC3
       @queue = Queue.new
       @polling = false
       @recursive = false
+      @throttle = nil
+      @discard_file_header_bytes = nil
+      @sleeper = nil
     end
 
     def connect
@@ -90,6 +98,7 @@ module OpenC3
     def disconnect
       @file.close if @file and not @file.closed?
       @file = nil
+      @sleeper.cancel if @sleeper
       @listener.stop if @listener
       @listener = nil
       @queue << nil
@@ -102,6 +111,10 @@ module OpenC3
         if @file
           # Read more data from existing file
           data = @file.read(@file_read_size)
+          # Throttle after each read size
+          if @throttle and @sleeper.sleep(@throttle)
+            return nil, nil
+          end
           if data and data.length > 0
             read_interface_base(data, nil)
             return data, nil
@@ -111,9 +124,16 @@ module OpenC3
         end
 
         # Find the next file to read
-        file = get_next_telemetry_file()
-        if file
-          @file = File.open(file, 'rb')
+        @filename = get_next_telemetry_file()
+        if @filename
+          if File.extname(@filename) == ".gz"
+            @file = Zlib::GzipReader.open(@filename)
+          else
+            @file = File.open(@filename, "rb")
+          end
+          if @discard_file_header_bytes
+            @file.read(@discard_file_header_bytes)
+          end
           next
         end
 
@@ -135,8 +155,8 @@ module OpenC3
 
     def convert_data_to_packet(data, extra = nil)
       packet = super(data, extra)
-      if packet and @stored
-        packet.stored = true
+      if packet
+        packet.stored = @stored
       end
       return packet
     end
@@ -156,6 +176,11 @@ module OpenC3
         @polling = ConfigParser.handle_true_false(option_values[0])
       when 'RECURSIVE'
         @recursive = ConfigParser.handle_true_false(option_values[0])
+      when 'THROTTLE'
+        @throttle = Float(option_values[0])
+        @sleeper = Sleeper.new
+      when 'DISCARD_FILE_HEADER_BYTES'
+        @discard_file_header_bytes = Integer(option_values[0])
       end
     end
 
@@ -173,11 +198,15 @@ module OpenC3
     end
 
     def get_next_telemetry_file
+      files = []
       if @recursive
-        return Dir.glob("#{@telemetry_read_folder}/**/*").sort[0]
+        files = Dir.glob("#{@telemetry_read_folder}/**/*")
       else
-        return Dir.glob("#{@telemetry_read_folder}/*").sort[0]
+        files = Dir.glob("#{@telemetry_read_folder}/*")
       end
+      # Dir.glob includes directories, so filter them out
+      files = files.sort.select { |fn| File.file?(fn) }
+      return files[0]
     end
 
     def create_unique_filename
