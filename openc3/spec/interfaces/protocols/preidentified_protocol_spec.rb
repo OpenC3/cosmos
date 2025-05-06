@@ -39,13 +39,24 @@ module OpenC3
 
     saved_verbose = $VERBOSE; $VERBOSE = nil
     class PreStream < Stream
+      def initialize
+        @read_count = 0
+        super()
+      end
+
       def connect; end
 
       def connected?; true; end
 
       def disconnect; end
 
-      def read; $buffer; end
+      def read
+        @read_count += 1
+        if @read_count == 2
+          return nil
+        end
+        $buffer
+      end
 
       def write(data); $buffer = data; end
     end
@@ -290,6 +301,26 @@ module OpenC3
         expect(pkt2.read('OPENC3_VERSION')).to eql 'TEST'
         expect(pkt2.identified?).to be true
         expect(pkt2.defined?).to be true
+      end
+
+      it "reads a COSMOS 4 file" do
+        @interface.instance_variable_set(:@stream, PreStream.new)
+        @interface.add_protocol(PreidentifiedProtocol, [], :READ_WRITE)
+        $buffer = File.read(File.join(File.dirname(__FILE__), '2025_05_01_12_00_00_tlm.bin'))
+        $buffer = $buffer[128..-1] # remove the file header
+
+        packet = @interface.read
+        expect(packet.target_name).to eql 'SYSTEM'
+        expect(packet.packet_name).to eql 'META'
+        expect(packet.identified?).to be true
+        time = Time.new(2025, 5, 1, 12, 0, 0.0)
+        10.times do |i|
+          packet = @interface.read
+          expect(packet.target_name).to eql 'INST'
+          expect(packet.packet_name).to eql 'HEALTH_STATUS'
+          expect(packet.identified?).to be true
+          expect(packet.received_time).to eql (time + i)
+        end
       end
     end
   end
