@@ -313,7 +313,7 @@ module OpenC3
         expect(packet.target_name).to eql 'SYSTEM'
         expect(packet.packet_name).to eql 'META'
         expect(packet.identified?).to be true
-        time = Time.new(2025, 5, 1, 12, 0, 0.0)
+        time = Time.new(2025, 5, 1, 12, 0, 0).utc
         10.times do |i|
           packet = @interface.read
           expect(packet.target_name).to eql 'INST'
