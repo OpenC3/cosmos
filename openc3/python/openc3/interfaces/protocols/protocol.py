@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -32,7 +32,6 @@ class Protocol:
 
     def reset(self):
         self.extra = None
-        pass
 
     def connect_reset(self):
         self.reset()

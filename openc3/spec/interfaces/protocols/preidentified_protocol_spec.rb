@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -313,13 +313,13 @@ module OpenC3
         expect(packet.target_name).to eql 'SYSTEM'
         expect(packet.packet_name).to eql 'META'
         expect(packet.identified?).to be true
-        time = Time.new(2025, 5, 1, 12, 0, 0).utc
+        time = Time.utc(2025, 5, 1, 18, 0, 0)
         10.times do |i|
           packet = @interface.read
           expect(packet.target_name).to eql 'INST'
           expect(packet.packet_name).to eql 'HEALTH_STATUS'
           expect(packet.identified?).to be true
-          expect(packet.received_time).to eql (time + i).utc
+          expect(packet.received_time).to eql (time + i)
         end
       end
     end

@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -14,9 +14,10 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import os
 import json
 import struct
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import unittest
 from unittest.mock import *
 from test.test_helper import *
@@ -228,3 +229,20 @@ class TestPreidentifiedProtocol(unittest.TestCase):
             self.assertEqual(pkt2.read("OPENC3_VERSION"), "TEST2")
             self.assertTrue(pkt2.identified())
             self.assertTrue(pkt2.defined())
+
+    def test_reads_a_cosmos_4_file(self):
+        self.setup_stream_pkt()
+        with open(os.path.join(os.path.dirname(__file__), "2025_05_01_12_00_00_tlm.bin"), "rb") as f:
+            TestPreidentifiedProtocol.buffer = f.read()[128:]  # remove the file header
+
+        packet = self.interface.read()
+        self.assertEqual(packet.target_name, "SYSTEM")
+        self.assertEqual(packet.packet_name, "META")
+        self.assertTrue(packet.identified())
+        time = datetime(2025, 5, 1, 18, 0, 0, tzinfo=timezone.utc)
+        for i in range(0, 10):
+            packet = self.interface.read()
+            self.assertEqual(packet.target_name, "INST")
+            self.assertEqual(packet.packet_name, "HEALTH_STATUS")
+            self.assertTrue(packet.identified())
+            self.assertEqual(packet.received_time, time + timedelta(seconds=i))
