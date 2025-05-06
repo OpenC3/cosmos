@@ -319,7 +319,7 @@ module OpenC3
           expect(packet.target_name).to eql 'INST'
           expect(packet.packet_name).to eql 'HEALTH_STATUS'
           expect(packet.identified?).to be true
-          expect(packet.received_time).to eql (time + i)
+          expect(packet.received_time).to eql (time + i).utc
         end
       end
     end
