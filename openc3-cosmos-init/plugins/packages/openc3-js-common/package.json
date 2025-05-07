@@ -1,7 +1,7 @@
 {
   "name": "@openc3/js-common",
   "description": "Common library for COSMOS tool development",
-  "version": "6.3.1-beta0",
+  "version": "6.4.0",
   "license": "SEE LICENSE IN LICENSE.txt",
   "homepage": "https://openc3.com",
   "repository": {
