@@ -10,7 +10,7 @@ OpenC3 COSMOS is a container based service which does not use SSL/TLS out of the
 
 ## Understanding SSL, TLS, and Public Key Infrastructure (PKI)
 
-Security on the internet is built are the technologies SSL/TLS. SSL (Secure Sockets Layer) was the original version but is now an outdated technology that is no longer used in favor of the more modern TLS (Transport Layer Security). However, the terms SSL and TLS are still used interchangeably in most conversations. Public Key Infrastructure (PKI) is what makes secure sockets like SSL and TLS work - and is built around certificates, certificate authorities, and public key encryption.
+Security on the internet is built on the technologies SSL and TLS. SSL (Secure Sockets Layer) was the original version but is now an outdated technology that is no longer used in favor of the more modern TLS (Transport Layer Security). However, the terms SSL and TLS are still used interchangeably in most conversations. Public Key Infrastructure (PKI) is what makes secure sockets like SSL and TLS work - and is built around certificates, certificate authorities, and public key encryption.
 
 Public key encryption works with a set of two keys: the public key and the private key. A message encrypted with the public key can only be decrypted by the holder of the private key. This allows for secure messaging in one direction (from anyone with the public key to the single holder of the private key). Public keys can be safely shared "publicly" because they are only useful for creating an encrypted document that is useless to anyone without the private key. The private key should never be shared. Technically, the private key can also be used to encrypt messages that can be decrypted by the public key, but this is not useful since the public key is assumed to be available to everyone.
 
@@ -18,9 +18,9 @@ Certificate authorities issue certificates which contain a public key and additi
 
 Have you ever seen "self signed certificate" type error messages? These error messages mean that your computer's certificate authority trust store wasn't able to verify the signature on a certificate. Generally this is because the certificate was issued by a private certificate authority (like an Active Directory Server or other company specific issuer). Computers by default include the information they need to check certificates from major public issuers of certificates (like Let's Encrypt) but don't have any information on private issuers unless you set it up.
 
-Does this mean we can't use TLS without paying for certificates (or using free services like Let's Encrypt)? No - but it does mean if you use a private certificate authority, there is more work involved to make it work so that your computer will trust the certificates. This is unavoidable because computers are setup to not trust unknown certificate authorities for a good reason... If you trust all certificates then anyone can pretend to be any domain name on the internet. Side note: Domain Name Service (DNS) is still another layer of protection but TLS prevents someone who hacks DNS from also pretending to be valid domains.
+Does this mean we can't use TLS without paying for certificates (or using free services like Let's Encrypt)? No, but it does mean if you use a private certificate authority, there is more work involved to make it work so that your computer will trust the certificates. This is unavoidable because computers are setup to not trust unknown certificate authorities for a good reason. If you trust all certificates then anyone can pretend to be any domain name on the internet. Side note: Domain Name Service (DNS) is still another layer of protection but TLS prevents someone who hacks DNS from also pretending to be valid domains.
 
-## Configure OpenC3 COSMOS for TLS
+## Configure COSMOS for TLS
 
 ### Obtain or Generate the Certificates
 
@@ -40,7 +40,7 @@ This will generate YOURDOMAIN.pem (public key) and YOURDOMAIN-key.pem (private k
 
 ### Configuring cacert.pem for your certificate authority
 
-If you are using a certificates from a public certificate authority then you are good to go. We build all of our containers with a recent cacert.pem file that comes from the curl project and can be downloaded here: https://curl.se/ca/cacert.pem. This file contains the information needed to verify certificates from all of the major public certificate authorities. You can safely skip ahead to configuring COSMOS with the TLS public/private keys.
+If you are using certificates from a public certificate authority then you are good to go. We build all of our containers with a recent cacert.pem file that comes from the curl project and can be downloaded here: https://curl.se/ca/cacert.pem. This file contains the information needed to verify certificates from all of the major public certificate authorities. You can safely skip ahead to configuring COSMOS with the TLS public/private keys.
 
 However, if your certificates are coming from a private certificate authority then you will need to configure the COSMOS containers with a cacert.pem file that includes the necessary information from your private certificate authority. Note that all non-public certificate authorities will need to be configured including services like Amazon Private CA. COSMOS WILL NOT WORK WITHOUT FOLLOWING THIS STEP.
 
@@ -60,15 +60,15 @@ cat "`mkcert -CAROOT`"/rootCA.pem >> cacert.pem
 
 In all versions of COSMOS the base cacert.pem file can be found at the root of your COSMOS folder structure. This is the file you should modify/replace with your CA information.
 
-### Configure OpenC3 COSMOS for TLS when running in Docker Compose
+### Configure COSMOS for TLS when running in Docker Compose
 
 Note: These instructions are only for Docker Compose (Both Core and Enterprise). If you are using Kubernetes with COSMOS Enterprise please see the Kubernetes instructions.
 
 Follow earlier instructions to obtain your private key, public key, and to modify cacert.pem as necessary.
 
-#### Enterprise Changes required for all open to the network configurations
+#### Enterprise Changes required for all TLS configurations
 
-If running OpenC3 Core skip to the next section.
+If running COSMOS Core skip to the next section.
 
 1. Edit compose.yaml
    1. Change this openc3-keycloak line: KC_HOSTNAME: "http://localhost:2900/auth"
@@ -80,7 +80,7 @@ If running OpenC3 Core skip to the next section.
 1. Edit openc3-enterprise-grafana/grafana.ini
    1. Change the root_url, auth_url, token_url, and api_url settings to the correct schema, domain, and port, leave any additional path information.
 
-#### Open to the network using TLS and your own certificates
+#### Using TLS and your own certificates
 
 The following steps are written for the enterprise folder names. Remove "-enterprise" for COSMOS Core.
 
@@ -95,14 +95,14 @@ The following steps are written for the enterprise folder names. Remove "-enterp
    6. Modify this openc3-traefik line to remove the ip address and modify the first port number if desired **(Note: leave the last :2943)**: `- "127.0.0.1:2943:2943"`
 4. Edit ./openc3-enterprise-traefik/traefik-ssl.yaml
    1. Update line 22 to your domain: - main: "mydomain.com" # Update with your domain
-5. Start OpenC3
+5. Start COSMOS
    1. On Linux/Mac: ./openc3.sh run
    2. On Windows: openc3.bat run
 6. Enterprise Only: After approximately 2 minutes, open a web browser to https://mydomain.com/auth/
    1. If you run "docker ps", you can watch until the openc3-cosmos-enterprise-init container completes, at which point the system should be fully configured and ready to use.
-7. Enterprise Only: **IMPORTANT**: You must configure Keycloak before accessing https://mydomain.com to get to the main OpenC3 COSMOS app and Grafana to work (you'll just see a solid color page until you do this) - Please follow the Keycloak documentation in our [User's Manual](https://github.com/OpenC3/cosmos-enterprise/blob/main/docs/OpenC3%20COSMOS%20Enterprise%20Edition%20User's%20Manual.pdf)
+7. Enterprise Only: **IMPORTANT**: You must configure Keycloak before accessing https://mydomain.com to get to the main COSMOS app and Grafana to work (you'll just see a solid color page until you do this) - Please follow the Keycloak documentation in our [User's Manual](https://github.com/OpenC3/cosmos-enterprise/blob/main/docs/OpenC3%20COSMOS%20Enterprise%20Edition%20User's%20Manual.pdf)
 
-#### Open to the network using a global certificate from Let's Encrypt
+#### Using a global certificate from Let's Encrypt
 
 Warning: These directions only work when exposing OpenC3 COSMOS to the internet. Make sure you understand the risks and have properly configured your server settings and firewall.
 
@@ -116,34 +116,33 @@ The following steps are written for the enterprise folder names. Remove "-enterp
    4. Comment out this openc3-traefik line: `- "127.0.0.1:2943:2943"`
    5. Uncomment out this openc3-traefik line: `- "80:2900"`
    6. Uncomment out this openc3-traefik line: `- "443:2943"`
-3. Start OpenC3
+3. Start COSMOS
    1. On Linux/Mac: ./openc3.sh run
    2. On Windows: openc3.bat run
 4. Enterprise Only: After approximately 2 minutes, open a web browser to https://mydomain.com/auth/
    1. If you run "docker ps", you can watch until the openc3-cosmos-enterprise-init container completes, at which point the system should be fully configured and ready to use.
-5. Enterprise Only: **IMPORTANT**: You must configure Keycloak before accessing https://mydomain.com to get to the main OpenC3 COSMOS app and Grafana to work (you'll just see a blank blue page until you do this) - Please follow the Keycloak documentation in our [User's Manual](https://github.com/OpenC3/cosmos-enterprise/blob/main/docs/OpenC3%20COSMOS%20Enterprise%20Edition%20User's%20Manual.pdf)
+5. Enterprise Only: **IMPORTANT**: You must configure Keycloak before accessing https://mydomain.com to get to the main COSMOS app and Grafana to work (you'll just see a blank blue page until you do this) - Please follow the Keycloak documentation in our [User's Manual](https://github.com/OpenC3/cosmos-enterprise/blob/main/docs/OpenC3%20COSMOS%20Enterprise%20Edition%20User's%20Manual.pdf)
 
-### Configure OpenC3 COSMOS Enterprise for TLS when running in Kubernetes
+### Configure COSMOS Enterprise for TLS when running in Kubernetes
 
 Follow earlier instructions to obtain your private key, public key, and to modify cacert.pem as necessary.
 
 In most Kubernetes environments, COSMOS will use a separate platform provided load balancer as the TLS termination point. Follow the directions for your specific Kubernetes environment to configure this load balancer with the TLS keys. Don't forget to update the cacert.pem file for COSMOS (and create the secret defined below) so that COSMOS can recognize the CA that issued your keys. As of COSMOS Enterprise 6.4, the create_secrets.sh script will create a secret called openc3-cacert to hold this file. This file is automatically mounted into each container that needs it at /devel/cacert.pem. Our helm charts also set the appropriate environment variables to use this file.
 
-You will also need to correctly set several values in the openc3 helm chart values.yaml file to configure for TLS.
-The relevant values are described in the following table.
+You will also need to correctly set several values in the helm chart values.yaml file to configure for TLS. The relevant values are described in the following table.
 
-| Value Name               | Description                                                                                                         | Default Value     |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------- | ----------------- |
-| global.cosmosdomain      | The domain name that cosmos will be hosted at                                                                       | cosmos.openc3.com |
-| ssl                      | This flag should be set to true if you are using SSL/TLS even with an external load balancer                        | true              |
-| traefik.tlsCerts         | Set this flag to true if you are going to use Traefik as your SSL endpoint with given certs                         | false             |
-| traefik.letsEncrypt      | Set this flag to true if you want Traefik to acquire certs from Lets Encrypt. Will only work on the public internet | false             |
-| traefik.letsEncryptEmail | Email address given to Lets Encrypt when issuing certs                                                              | false             |
+| Value Name               | Description                                                                                                          | Default Value     |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| global.cosmosdomain      | The domain name that cosmos will be hosted at                                                                        | cosmos.openc3.com |
+| ssl                      | This flag should be set to true if you are using SSL/TLS even with an external load balancer                         | true              |
+| traefik.tlsCerts         | Set this flag to true if you are going to use Traefik as your SSL endpoint with given certs                          | false             |
+| traefik.letsEncrypt      | Set this flag to true if you want Traefik to acquire certs from Lets Encrypt. Will only work on the public internet. | false             |
+| traefik.letsEncryptEmail | Email address given to Lets Encrypt when issuing certs                                                               | false             |
 
 Additionally the following secrets will need to be defined based on how you set the above values.
 
 | Secret Name         | Description                                                                                                                                                                                                                                                                                         |
 | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| openc3-cacert       | This should always be set with the cacert.pem file used by COSMOS (Even if just using public certificates). Be sure to append the full certificate chain from your private CA so that COSMOS can verify certificates successfully. Without doing this you will be guaranteed to receive SSL errors. |
+| openc3-cacert       | This should always be set with the cacert.pem file used by COSMOS (even if just using public certificates). Be sure to append the full certificate chain from your private CA so that COSMOS can verify certificates successfully. Without doing this you will be guaranteed to receive SSL errors. |
 | openc3-traefik-cert | Public key provided to Traefik if traefik.tlsCerts is true                                                                                                                                                                                                                                          |
 | openc3-traefik-key  | Private key provided to Traefik if traefik.tlsCerts is true                                                                                                                                                                                                                                         |
