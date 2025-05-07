@@ -40,7 +40,7 @@ require 'openc3/interfaces/interface'
 begin
   require 'openc3-enterprise/models/critical_cmd_model'
 rescue LoadError
-  # Should never actual be used in COSMOS Core
+  # LoadError expected in COSMOS Core
 end
 
 module OpenC3

@@ -133,5 +133,5 @@ end
 begin
   require 'openc3-enterprise/utilities/metric'
 rescue LoadError
-  # COSMOS Core - Do nothing here
+  # LoadError expected in COSMOS Core
 end

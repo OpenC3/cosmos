@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -27,3 +27,8 @@ from .settings_api import *
 from .stash_api import *
 from .target_api import *
 from .tlm_api import *
+try:
+    from openc3enterprise.api.cmd_authority_api import *
+except ModuleNotFoundError:
+    # ModuleNotFoundError expected in Open Source Edition
+    pass
