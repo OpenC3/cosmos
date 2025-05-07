@@ -35,7 +35,7 @@
           style="margin-right: 10px; max-width: 280px"
           data-test="overall-state"
         >
-          <template v-slot:prepend-inner v-if="astroStatus">
+          <template v-if="astroStatus" #prepend-inner>
             <rux-status :status="astroStatus" />
           </template>
         </v-text-field>
@@ -49,80 +49,92 @@
           style="max-width: 200px"
           data-test="limits-set"
         />
+        <v-spacer></v-spacer>
+        <v-text-field
+          v-model="search"
+          label="Search"
+          prepend-inner-icon="mdi-magnify"
+          clearable
+          variant="outlined"
+          density="compact"
+          single-line
+          hide-details
+          style="max-width: 300px"
+          data-test="search"
+        />
       </v-row>
 
-      <v-row data-test="limits-row" class="my-0 ml-1 mr-1">
-        <div class="pa-1 mt-1 mr-2 label" style="width: 200px">Timestamp</div>
-        <div class="pa-1 mt-1 mr-2 label" style="width: 200px">Item Name</div>
-        <div class="pa-1 mt-1 mr-2 label" style="width: 200px">Value</div>
-        <div class="pa-1 mt-1 mr-2 label" style="width: 180px">Limits Bar</div>
-        <div class="pa-1 mt-1 mr-2 label">Controls</div>
-      </v-row>
-      <div v-for="(item, index) in items" :key="item.key">
-        <v-row data-test="limits-row" class="align-center my-0 mx-1">
-          <div class="pa-1 mt-1 mr-2 label" style="width: 200px">
-            {{ item.timestamp }}
-          </div>
-          <labelvaluelimitsbar-widget
+      <v-data-table
+        v-model:items-per-page="itemsPerPage"
+        :headers="headers"
+        :items="items"
+        :search="search"
+        :custom-filter="customFilter"
+        item-value="key"
+        data-test="limits-table"
+        class="limits-table"
+        density="compact"
+      >
+        <template #item.timestamp="{ item }">
+          {{ item.timestamp }}
+        </template>
+        <template #item.value="{ item }">
+          <valuelimitsbar-widget
             v-if="item.limits"
             :parameters="item.parameters"
-            :settings="widgetSettings"
+            :settings="valueLimitsBarWidgetSettings"
             :screen-values="screenValues"
             :screen-time-zone="timeZone"
-            v-on:add-item="addItem"
-            v-on:delete-item="deleteItem"
+            @add-item="addItem"
+            @delete-item="deleteItem"
           />
-          <labelvalue-widget
+          <value-widget
             v-else
             :parameters="item.parameters"
-            :settings="widgetSettings"
+            :settings="valueWidgetSettings"
             :screen-values="screenValues"
             :screen-time-zone="timeZone"
-            v-on:add-item="addItem"
-            v-on:delete-item="deleteItem"
+            @add-item="addItem"
+            @delete-item="deleteItem"
           />
-          <v-tooltip location="top">
-            <template v-slot:activator="{ props }">
+        </template>
+        <template #item.actions="{ item }">
+          <v-menu>
+            <template #activator="{ props: menuProps }">
               <v-btn
-                icon="mdi-close-circle-multiple"
+                icon="mdi-dots-horizontal"
                 variant="text"
                 density="compact"
-                class="mr-2"
-                @click="ignorePacket(item.key)"
-                v-bind="props"
+                aria-label="Item Options"
+                v-bind="menuProps"
               />
             </template>
-            <span>Ignore Entire Packet</span>
-          </v-tooltip>
-          <v-tooltip location="top">
-            <template v-slot:activator="{ props }">
-              <v-btn
-                icon="mdi-close-circle"
-                variant="text"
-                density="compact"
-                class="mr-2"
-                @click="ignoreItem(item.key)"
-                v-bind="props"
-              />
-            </template>
-            <span>Ignore Item</span>
-          </v-tooltip>
-          <v-tooltip location="top">
-            <template v-slot:activator="{ props }">
-              <v-btn
-                icon="mdi-eye-off"
-                variant="text"
-                density="compact"
-                class="mr-2"
-                @click="removeItem(item.key)"
-                v-bind="props"
-              />
-            </template>
-            <span>Temporarily Hide Item</span>
-          </v-tooltip>
-        </v-row>
-        <v-divider v-if="index < items.length" :key="index" />
-      </div>
+            <v-list>
+              <v-list-item @click="ignorePacket(item.key)">
+                <template #prepend>
+                  <v-icon>mdi-close-circle-multiple</v-icon>
+                </template>
+                <v-list-item-title>Ignore Entire Packet</v-list-item-title>
+              </v-list-item>
+              <v-list-item @click="ignoreItem(item.key)">
+                <template #prepend>
+                  <v-icon>mdi-close-circle</v-icon>
+                </template>
+                <v-list-item-title>Ignore Item</v-list-item-title>
+              </v-list-item>
+              <v-list-item @click="removeItem(item.key)">
+                <template #prepend>
+                  <v-icon>mdi-eye-off</v-icon>
+                </template>
+                <v-list-item-title>Temporarily Hide Item</v-list-item-title>
+              </v-list-item>
+            </v-list>
+          </v-menu>
+        </template>
+        <template #item.limits="{ item }">
+          <v-spacer></v-spacer>
+        </template>
+      </v-data-table>
       <div class="footer">
         Note: Timestamp is "now" for items currently out of limits when the page
         is loaded.
@@ -142,11 +154,12 @@
                 <span class="font-weight-black"> {{ item }} </span>
                 <v-spacer />
                 <v-btn
-                  @click="restoreItem(index)"
                   icon="mdi-delete"
                   density="compact"
                   variant="text"
+                  aria-label="Remove Ignored Item"
                   :data-test="`remove-ignore-${index}`"
+                  @click="restoreItem(index)"
                 />
               </v-row>
               <v-divider
@@ -169,16 +182,14 @@
 <script>
 import { Cable, OpenC3Api } from '@openc3/js-common/services'
 import { TimeFilters } from '@openc3/vue-common/util'
-import {
-  LabelvalueWidget,
-  LabelvaluelimitsbarWidget,
-} from '@openc3/vue-common/widgets'
+import { ValueWidget, ValuelimitsbarWidget } from '@openc3/vue-common/widgets'
 
 export default {
   components: {
-    LabelvalueWidget,
-    LabelvaluelimitsbarWidget,
+    ValueWidget,
+    ValuelimitsbarWidget,
   },
+  mixins: [TimeFilters],
   props: {
     modelValue: {
       type: Array,
@@ -189,7 +200,6 @@ export default {
       default: 'local',
     },
   },
-  mixins: [TimeFilters],
   data() {
     return {
       api: null,
@@ -203,12 +213,40 @@ export default {
       screenItems: [],
       screenValues: {},
       updateCounter: 0,
-      widgetSettings: [
-        ['WIDTH', '580px'], // Total of three subwidgets
-        ['0', 'WIDTH', '200px'],
-        ['1', 'WIDTH', '200px'],
-        ['2', 'WIDTH', '180px'],
+      itemsPerPage: 25,
+      search: '',
+      headers: [
+        {
+          title: 'Timestamp',
+          key: 'timestamp',
+          width: '130px',
+          sortable: true,
+          nowrap: true,
+        },
+        {
+          title: 'Item',
+          key: 'item',
+          value: (item) => item.parameters[2],
+          sortable: true,
+          minWidth: '100px',
+          width: '200px',
+          maxWidth: '300px',
+        },
+        {
+          title: 'Value',
+          key: 'value',
+          width: '380px',
+          sortable: false,
+        },
+        { title: 'Controls', key: 'actions', width: '80px', sortable: false },
+        { title: '', key: 'limits', sortable: false },
       ],
+      valueLimitsBarWidgetSettings: [
+        ['WIDTH', '380px'], // Total of two subwidgets
+        ['0', 'WIDTH', '200px'],
+        ['1', 'WIDTH', '180px'],
+      ],
+      valueWidgetSettings: [['WIDTH', '200px']],
     }
   },
   computed: {
@@ -495,6 +533,34 @@ export default {
     showIgnored() {
       this.ignoredItemsDialog = true
     },
+
+    // Search filter
+    customFilter(value, search, item) {
+      if (!search || search.trim() === '') return true
+
+      search = search.toLowerCase()
+
+      // Check if any parameter matches the search
+      if (item.parameters && item.parameters.length > 0) {
+        for (const param of item.parameters) {
+          if (param.toLowerCase().includes(search)) {
+            return true
+          }
+        }
+      }
+
+      // Check for timestamp match
+      if (item.timestamp && item.timestamp.toLowerCase().includes(search)) {
+        return true
+      }
+
+      // Check the key
+      if (item.key && item.key.toLowerCase().includes(search)) {
+        return true
+      }
+
+      return false
+    },
   },
 }
 </script>
@@ -503,6 +569,7 @@ export default {
 .footer {
   padding-top: 5px;
 }
+
 .v-input {
   background-color: var(--color-background-base-default);
 }
@@ -517,5 +584,15 @@ export default {
 
 .textfield-red {
   color: rgb(255, 45, 45);
+}
+
+.limits-table {
+  margin-top: 5px;
+  margin-bottom: 10px;
+}
+
+.limits-table :deep(th) {
+  font-weight: bold;
+  background-color: var(--color-background-base-default);
 }
 </style>

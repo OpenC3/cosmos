@@ -20,11 +20,11 @@ class MessagesChannel < ApplicationCable::Channel
   @@broadcasters = {}
 
   def subscribed
-    stream_from uuid
+    subscription_key = "messages_#{uuid}"
+    stream_from subscription_key
 
-    @@broadcasters[uuid] = MessagesApi.new(
-      uuid,
-      self,
+    @@broadcasters[subscription_key] = MessagesApi.new(
+      subscription_key,
       params["history_count"],
       start_offset: params["start_offset"],
       start_time: params["start_time"],
@@ -36,11 +36,12 @@ class MessagesChannel < ApplicationCable::Channel
   end
 
   def unsubscribed
-    if @@broadcasters[uuid]
-      stop_stream_from uuid
-      @@broadcasters[uuid].kill
-      @@broadcasters[uuid] = nil
-      @@broadcasters.delete(uuid)
+    subscription_key = "messages_#{uuid}"
+    if @@broadcasters[subscription_key]
+      stop_stream_from subscription_key
+      @@broadcasters[subscription_key].kill
+      @@broadcasters[subscription_key] = nil
+      @@broadcasters.delete(subscription_key)
     end
   end
 end

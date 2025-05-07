@@ -14,11 +14,17 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+#
+# A portion of this file was funded by Blue Origin Enterprises, L.P.
+# See https://github.com/OpenC3/cosmos/pull/1953 and https://github.com/OpenC3/cosmos/pull/1963
+
+# A portion of this file was funded by Blue Origin Enterprises, L.P.
+# See https://github.com/OpenC3/cosmos/pull/1957
 
 require 'openc3/top_level'
 require 'openc3/models/model'
@@ -204,7 +210,7 @@ module OpenC3
       JSON.parse(json, :allow_nan => true, :create_additions => true)
     end
 
-    # @return [Array>Hash>] All packet hashes under the target_name
+    # @return [Array<Hash>] All packet hashes under the target_name
     def self.packets(target_name, type: :TLM, scope:)
       raise "Unknown type #{type} for #{target_name}" unless VALID_TYPES.include?(type)
       raise "Target '#{target_name}' does not exist for scope: #{scope}" unless get(name: target_name, scope: scope)
@@ -217,7 +223,7 @@ module OpenC3
       result
     end
 
-    # @return [Array>Hash>] All packet hashes under the target_name
+    # @return [Array<Hash>] All packet hashes under the target_name
     def self.all_packet_name_descriptions(target_name, type: :TLM, scope:)
       self.packets(target_name, type: type, scope: scope).map! { |hash| hash.slice("packet_name", "description") }
     end
@@ -255,6 +261,28 @@ module OpenC3
         raise "Item(s) #{not_found.join(', ')} does not exist"
       end
       found
+    end
+
+    # @return [Array<String>] All the item names for every packet in a target
+    def self.all_item_names(target_name, type: :TLM, scope:)
+      items = Store.zrange("#{scope}__openc3tlm__#{target_name}__allitems", 0, -1)
+      items = rebuild_target_allitems_list(target_name, type: type, scope: scope) if items.empty?
+      items
+    end
+
+    def self.rebuild_target_allitems_list(target_name, type: :TLM, scope:)
+      packets = packets(target_name, type: type, scope: scope)
+      packets.each do |packet|
+        packet['items'].each do |item|
+          TargetModel.add_to_target_allitems_list(target_name, item['name'], scope: scope)
+        end
+      end
+      Store.zrange("#{scope}__openc3tlm__#{target_name}__allitems", 0, -1) # return the new sorted set to let redis do the sorting
+    end
+
+    def self.add_to_target_allitems_list(target_name, item_name, scope:)
+      score = 0 # https://redis.io/docs/latest/develop/data-types/sorted-sets/#lexicographical-scores
+      Store.zadd("#{scope}__openc3tlm__#{target_name}__allitems", score, item_name)
     end
 
     # @return [Hash{String => Array<Array<String, String, String>>}]
@@ -310,6 +338,7 @@ module OpenC3
       end
     end
 
+    # Make sure to update target_model.py if you add additional parameters
     def initialize(
       name:,
       folder_name: nil,
@@ -763,7 +792,10 @@ module OpenC3
 
     def update_store_telemetry(packet_hash, clear_old: true)
       packet_hash.each do |target_name, packets|
-        Store.del("#{@scope}__openc3tlm__#{target_name}") if clear_old
+        if clear_old
+          Store.del("#{@scope}__openc3tlm__#{target_name}")
+          Store.del("#{@scope}__openc3tlm__#{target_name}__allitems")
+        end
         packets.each do |packet_name, packet|
           Logger.debug "Configuring tlm packet: #{target_name} #{packet_name}"
           begin
@@ -775,6 +807,7 @@ module OpenC3
           json_hash = Hash.new
           packet.sorted_items.each do |item|
             json_hash[item.name] = nil
+            TargetModel.add_to_target_allitems_list(target_name, item.name, scope: @scope)
           end
           CvtModel.set(json_hash, target_name: packet.target_name, packet_name: packet.packet_name, scope: @scope)
         end
@@ -834,6 +867,8 @@ module OpenC3
       return system
     end
 
+    # NOTE: If you call dynamic_update multiple times you should specify a different
+    # filename parameter or the last one will be overwritten
     def dynamic_update(packets, cmd_or_tlm = :TELEMETRY, filename = "dynamic_tlm.txt")
       # Build hash of targets/packets
       packet_hash = {}
@@ -862,17 +897,15 @@ module OpenC3
         config << "\n"
       end
       configs.each do |target_name, config|
-        begin
-          bucket_key = "#{@scope}/targets_modified/#{target_name}/cmd_tlm/#{filename}"
-          client = Bucket.getClient()
-          client.put_object(
-            # Use targets_modified to save modifications
-            # This keeps the original target clean (read-only)
-            bucket: ENV['OPENC3_CONFIG_BUCKET'],
-            key: bucket_key,
-            body: config
-          )
-        end
+        bucket_key = "#{@scope}/targets_modified/#{target_name}/cmd_tlm/#{filename}"
+        client = Bucket.getClient()
+        client.put_object(
+          # Use targets_modified to save modifications
+          # This keeps the original target clean (read-only)
+          bucket: ENV['OPENC3_CONFIG_BUCKET'],
+          key: bucket_key,
+          body: config
+        )
       end
 
       # Inform microservices of new topics
@@ -1232,6 +1265,108 @@ module OpenC3
         # Multi Microservice to parent other target microservices
         deploy_multi_microservice(gem_path, variables)
       end
+    end
+
+    def self.increment_telemetry_count(target_name, packet_name, count, scope:)
+      result = Store.hincrby("#{scope}__TELEMETRYCNTS__{#{target_name}}", packet_name, count)
+      if String === result
+        return result.to_i
+      else
+        return result
+      end
+    end
+
+    def self.get_all_telemetry_counts(target_name, scope:)
+      result = {}
+      get_all = Store.hgetall("#{scope}__TELEMETRYCNTS__{#{target_name}}")
+      if Hash === get_all
+        get_all.each do |key, value|
+          result[key] = value.to_i
+        end
+      else
+        return result
+      end
+    end
+
+    def self.get_telemetry_count(target_name, packet_name, scope:)
+      value = Store.hget("#{scope}__TELEMETRYCNTS__{#{target_name}}", packet_name)
+      if String === value
+        return value.to_i
+      elsif value.nil?
+        return 0 # Return 0 if the key doesn't exist
+      else
+        return value
+      end
+    end
+
+    def self.get_telemetry_counts(target_packets, scope:)
+      result = Store.redis_pool.pipelined do
+        target_packets.each do |target_name, packet_name|
+          target_name = target_name.upcase
+          packet_name = packet_name.upcase
+          Store.hget("#{scope}__TELEMETRYCNTS__{#{target_name}}", packet_name)
+        end
+      end
+      counts = []
+      result.each do |count|
+        if count
+          counts << count.to_i
+        else
+          counts << 0
+        end
+      end
+      return counts
+    end
+
+    def self.increment_command_count(target_name, packet_name, count, scope:)
+      result = Store.hincrby("#{scope}__COMMANDCNTS__{#{target_name}}", packet_name, count)
+      if String === result
+        return result.to_i
+      else
+        return result
+      end
+    end
+
+    def self.get_all_command_counts(target_name, scope:)
+      result = {}
+      get_all = Store.hgetall("#{scope}__COMMANDCNTS__{#{target_name}}")
+      if Hash === get_all
+        get_all.each do |key, value|
+          result[key] = value.to_i
+        end
+      else
+        return result
+      end
+    end
+
+    def self.get_command_count(target_name, packet_name, scope:)
+      value = Store.hget("#{scope}__COMMANDCNTS__{#{target_name}}", packet_name)
+      if String === value
+        return value.to_i
+      elsif value.nil?
+        return 0 # Return 0 if the key doesn't exist
+      else
+        return value
+      end
+    end
+
+    def self.get_command_counts(target_packets, scope:)
+      result = Store.redis_pool.pipelined do
+        target_packets.each do |target_name, packet_name|
+          target_name = target_name.upcase
+          packet_name = packet_name.upcase
+          Store.hget("#{scope}__COMMANDCNTS__{#{target_name}}", packet_name)
+        end
+      end
+      counts = []
+      result.each do |count|
+        if count
+          counts << count.to_i
+        else
+          counts << 0
+        end
+      end
+      return counts
     end
   end
 end

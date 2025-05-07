@@ -1,5 +1,5 @@
 <!--
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -18,49 +18,38 @@
 
 <template>
   <!-- Edit dialog -->
-  <v-dialog persistent v-model="show" width="75vw">
+  <v-dialog v-model="show" persistent width="75vw">
     <v-card>
       <v-toolbar height="24">
-        <div class="mx-2">
-          <v-tooltip location="top">
-            <template v-slot:activator="{ props }">
-              <div v-bind="props">
-                <v-icon data-test="delete-screen-icon" @click="deleteScreen">
-                  mdi-delete
-                </v-icon>
-              </div>
-            </template>
-            <span> Delete Screen </span>
-          </v-tooltip>
-        </div>
+        <v-btn
+          class="mx-2"
+          icon="mdi-delete"
+          variant="text"
+          density="compact"
+          data-test="delete-screen-icon"
+          @click="deleteScreen"
+        />
         <v-spacer />
         <span> Edit Screen: {{ target }} {{ screen }} </span>
         <v-spacer />
-        <div class="mx-2">
-          <v-tooltip location="top">
-            <template v-slot:activator="{ props }">
-              <div v-bind="props">
-                <v-icon
-                  data-test="download-screen-icon"
-                  @click="downloadScreen"
-                >
-                  mdi-download
-                </v-icon>
-              </div>
-            </template>
-            <span> Download Screen </span>
-          </v-tooltip>
-        </div>
+        <v-btn
+          class="mx-2"
+          icon="mdi-download"
+          variant="text"
+          density="compact"
+          data-test="download-screen-icon"
+          @click="downloadScreen"
+        />
       </v-toolbar>
       <v-card-text style="max-height: 90vh">
         <v-row class="mt-3"> Upload a screen file. </v-row>
         <v-row no-gutters align="center">
           <v-btn
-            @click="loadFile"
             :disabled="!file"
             color="primary"
             class="mr-3"
             data-test="edit-screen-load"
+            @click="loadFile"
           >
             Load
           </v-btn>
@@ -85,6 +74,12 @@
                   {{ docsKeyword }} documentation
                 </v-list-item-title>
               </v-list-item>
+              <v-divider />
+              <v-list-item
+                title="Toggle Vim mode"
+                prepend-icon="extras:vim"
+                @click="toggleVimMode"
+              />
             </v-list>
           </v-menu>
         </v-row>
@@ -101,18 +96,18 @@
           >
           <v-spacer />
           <v-btn
-            @click="$emit('cancel')"
             class="mx-2"
             variant="outlined"
             data-test="edit-screen-cancel"
+            @click="$emit('cancel')"
           >
             Cancel
           </v-btn>
           <v-btn
-            @click="$emit('save', editor.getValue())"
             class="mx-2"
             color="primary"
             data-test="edit-screen-save"
+            @click="$emit('save', editor.getValue())"
           >
             Save
           </v-btn>
@@ -129,6 +124,7 @@ import 'ace-builds/src-min-noconflict/theme-twilight'
 import 'ace-builds/src-min-noconflict/ext-language_tools'
 import 'ace-builds/src-min-noconflict/ext-searchbox'
 import { ScreenCompleter } from './autocomplete'
+import { AceEditorUtils } from './ace'
 
 export default {
   props: {
@@ -209,6 +205,7 @@ export default {
     this.editor.setHighlightActiveLine(false)
     this.editor.setValue(this.definition)
     this.editor.clearSelection()
+    AceEditorUtils.applyVimModeIfEnabled(this.editor)
     this.editor.focus()
   },
   beforeUnmount() {
@@ -216,6 +213,9 @@ export default {
     this.editor.container.remove()
   },
   methods: {
+    toggleVimMode: function () {
+      AceEditorUtils.toggleVimMode(this.editor)
+    },
     showContextMenu: function (event) {
       this.menuX = event.pageX
       this.menuY = event.pageY
@@ -330,6 +330,7 @@ export default {
   position: relative;
   font-size: 16px;
 }
+
 .v-textarea :deep(textarea) {
   padding: 5px;
 }

@@ -25,8 +25,9 @@ require 'rails_helper'
 RSpec.describe CompletedScriptController, :type => :controller do
   describe "GET index" do
     before(:each) do
-      # Simply stub out CompletedScript to return an empty JSON structure
-      allow(CompletedScript).to receive(:all).and_return('{}')
+      # Simply stub out ScriptStatusModel to return an empty JSON structure
+      allow(OpenC3::ScriptStatusModel).to receive(:all).and_return([])
+      allow(OpenC3::ScriptStatusModel).to receive(:count).and_return(0)
     end
 
     context "without scope" do

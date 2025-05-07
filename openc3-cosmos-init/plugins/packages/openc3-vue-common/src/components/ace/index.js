@@ -17,5 +17,6 @@
 */
 
 import AceEditorModes from './AceEditorModes'
+import AceEditorUtils from './AceEditorUtils'
 
-export { AceEditorModes }
+export { AceEditorModes, AceEditorUtils }

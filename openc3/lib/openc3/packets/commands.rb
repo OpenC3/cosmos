@@ -14,11 +14,14 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+#
+# A portion of this file was funded by Blue Origin Enterprises, L.P.
+# See https://github.com/OpenC3/cosmos/pull/1963
 
 require 'openc3/packets/packet_config'
 
@@ -95,6 +98,9 @@ module OpenC3
     # an uninitialized copy of the command. Thus you must use the return value
     # of this method.
     #
+    # Note: this method does not increment received_count and it should be
+    # incremented externally if needed.
+    #
     # @param (see #identify_tlm!)
     # @return (see #identify_tlm!)
     def identify(packet_data, target_names = nil)
@@ -133,7 +139,6 @@ module OpenC3
         end
 
         if identified_packet
-          identified_packet.received_count += 1
           identified_packet = identified_packet.clone
           identified_packet.received_time = nil
           identified_packet.stored = false
@@ -148,6 +153,9 @@ module OpenC3
 
     # Returns a copy of the specified command packet with the parameters
     # initialized to the given params values.
+    #
+    # Note: this method does not increment received_count and it should be
+    # incremented externally if needed.
     #
     # @param target_name (see #packet)
     # @param packet_name (see #packet)
@@ -164,7 +172,6 @@ module OpenC3
 
       # Lookup the command and create a light weight copy
       pkt = packet(target_upcase, packet_upcase)
-      pkt.received_count += 1
       command = pkt.clone
 
       # Restore the command's buffer to a zeroed string of defined length

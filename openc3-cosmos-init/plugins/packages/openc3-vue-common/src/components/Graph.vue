@@ -13,160 +13,140 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+#
+# A portion of this file was funded by Blue Origin Enterprises, L.P.
+# See https://github.com/OpenC3/cosmos/pull/1957
 -->
 
 <template>
   <div @click.prevent="$emit('click')">
     <v-card>
       <v-toolbar
+        v-show="!hideToolbarData"
         height="24"
         class="pl-2 pr-2"
         :class="selectedGraphId === id ? 'active' : ''"
-        v-show="!hideToolbarData"
       >
-        <div v-show="errors.length !== 0" class="mx-2">
-          <v-tooltip text="Errors" location="top">
-            <template v-slot:activator="{ props }">
-              <v-icon v-bind="props" @click="errorDialog = true">
-                mdi-alert
-              </v-icon>
-            </template>
-          </v-tooltip>
-        </div>
+        <v-btn
+          v-show="errors.length !== 0"
+          class="mx-2"
+          icon="mdi-alert"
+          density="compact"
+          variant="text"
+          aria-label="Show Errors"
+          @click="
+            () => {
+              errorDialog = true
+            }
+          "
+        />
 
-        <v-tooltip text="Edit" location="top">
-          <template v-slot:activator="{ props }">
-            <v-icon
-              v-bind="props"
-              @click="editGraph = true"
-              data-test="edit-graph-icon"
-            >
-              mdi-pencil
-            </v-icon>
-          </template>
-        </v-tooltip>
+        <v-btn
+          icon="mdi-pencil"
+          variant="text"
+          density="compact"
+          data-test="edit-graph-icon"
+          aria-label="Edit Graph"
+          @click="
+            () => {
+              editGraph = true
+            }
+          "
+        />
 
         <v-spacer />
         <span> {{ title }} </span>
         <v-spacer />
 
-        <div v-show="expand">
-          <v-tooltip v-if="calcFullSize" text="Collapse" location="top">
-            <template v-slot:activator="{ props }">
-              <v-icon
-                v-bind="props"
-                @click="collapseAll"
-                data-test="collapse-all"
-              >
-                mdi-arrow-collapse
-              </v-icon>
-            </template>
-          </v-tooltip>
-          <v-tooltip v-else text="Expand" location="top">
-            <template v-slot:activator="{ props }">
-              <v-icon v-bind="props" @click="expandAll" data-test="expand-all">
-                mdi-arrow-expand
-              </v-icon>
-            </template>
-          </v-tooltip>
-        </div>
+        <template v-if="expand">
+          <v-btn
+            v-if="calcFullSize"
+            icon="mdi-arrow-collapse"
+            variant="text"
+            density="compact"
+            data-test="collapse-all"
+            @click="collapseAll"
+          />
+          <v-btn
+            v-else
+            icon="mdi-arrow-expand"
+            variant="text"
+            density="compact"
+            data-test="expand-all"
+            @click="expandAll"
+          />
 
-        <div v-show="expand">
-          <v-tooltip v-if="fullWidth" text="Collapse Width" location="top">
-            <template v-slot:activator="{ props }">
-              <v-icon
-                v-bind="props"
-                @click="collapseWidth"
-                data-test="collapse-width"
-              >
-                mdi-arrow-collapse-horizontal
-              </v-icon>
-            </template>
-          </v-tooltip>
-          <v-tooltip v-else text="Expand Width" location="top">
-            <template v-slot:activator="{ props }">
-              <v-icon
-                v-bind="props"
-                @click="expandWidth"
-                data-test="expand-width"
-              >
-                mdi-arrow-expand-horizontal
-              </v-icon>
-            </template>
-          </v-tooltip>
-        </div>
+          <v-btn
+            v-if="fullWidth"
+            icon="mdi-arrow-collapse-horizontal"
+            variant="text"
+            density="compact"
+            data-test="collapse-width"
+            @click="collapseWidth"
+          />
+          <v-btn
+            v-else
+            icon="mdi-arrow-expand-horizontal"
+            variant="text"
+            density="compact"
+            data-test="expand-width"
+            @click="expandWidth"
+          />
 
-        <div v-show="expand">
-          <v-tooltip v-if="fullHeight" text="Collapse Height" location="top">
-            <template v-slot:activator="{ props }">
-              <v-icon
-                v-bind="props"
-                @click="collapseHeight"
-                data-test="collapse-height"
-              >
-                mdi-arrow-collapse-vertical
-              </v-icon>
-            </template>
-          </v-tooltip>
-          <v-tooltip v-else text="Expand Height" location="top">
-            <template v-slot:activator="{ props }">
-              <v-icon
-                v-bind="props"
-                @click="expandHeight"
-                data-test="expand-height"
-              >
-                mdi-arrow-expand-vertical
-              </v-icon>
-            </template>
-          </v-tooltip>
-        </div>
+          <v-btn
+            v-if="fullHeight"
+            icon="mdi-arrow-collapse-vertical"
+            variant="text"
+            density="compact"
+            data-test="collapse-height"
+            @click="collapseHeight"
+          />
+          <v-btn
+            v-else
+            icon="mdi-arrow-expand-vertical"
+            variant="text"
+            density="compact"
+            data-test="expand-height"
+            @click="expandHeight"
+          />
+        </template>
 
-        <v-tooltip v-if="expand" text="Minimize" location="top">
-          <template v-slot:activator="{ props }">
-            <v-icon
-              v-bind="props"
-              @click="minMaxTransition"
-              data-test="minimize-screen-icon"
-            >
-              mdi-window-minimize
-            </v-icon>
-          </template>
-        </v-tooltip>
-        <v-tooltip v-else text="Maximize" location="top">
-          <template v-slot:activator="{ props }">
-            <v-icon
-              v-bind="props"
-              @click="minMaxTransition"
-              data-test="maximize-screen-icon"
-            >
-              mdi-window-maximize
-            </v-icon>
-          </template>
-        </v-tooltip>
+        <v-btn
+          v-if="expand"
+          icon="mdi-window-minimize"
+          variant="text"
+          density="compact"
+          data-test="minimize-screen-icon"
+          @click="minMaxTransition"
+        />
+        <v-btn
+          v-else
+          icon="mdi-window-maximize"
+          variant="text"
+          density="compact"
+          data-test="maximize-screen-icon"
+          @click="minMaxTransition"
+        />
 
-        <v-tooltip text="Close" location="top">
-          <template v-slot:activator="{ props }">
-            <v-icon
-              v-bind="props"
-              @click="$emit('close-graph')"
-              data-test="close-graph-icon"
-            >
-              mdi-close-box
-            </v-icon>
-          </template>
-        </v-tooltip>
+        <v-btn
+          icon="mdi-close-box"
+          variant="text"
+          density="compact"
+          data-test="close-graph-icon"
+          @click.stop="$emit('close-graph')"
+        />
       </v-toolbar>
 
       <v-expand-transition>
-        <div class="pa-1" id="chart" ref="chart" v-show="expand">
+        <div v-show="expand" id="chart" ref="chart" class="pa-1">
           <div :id="`chart${id}`"></div>
           <div id="betweenCharts"></div>
-          <div :id="`overview${id}`" v-show="showOverview"></div>
+          <div v-show="showOverview" :id="`overview${id}`"></div>
         </div>
       </v-expand-transition>
     </v-card>
@@ -200,9 +180,9 @@
       <v-card class="pa-3">
         <v-row dense>
           <v-text-field
+            v-model="title"
             readonly
             hide-details
-            v-model="title"
             class="pb-2"
             label="Graph Title"
           />
@@ -238,8 +218,8 @@
       v-model="editItem"
       :colors="colors"
       :item="selectedItem"
-      @changeColor="changeColor"
-      @changeLimits="changeLimits"
+      @change-color="changeColor"
+      @change-limits="changeLimits"
       @cancel="editItem = false"
       @close="closeEditItem"
     />
@@ -259,19 +239,19 @@
           {{ selectedItem.itemName }}
         </v-list-subheader>
         <v-list-item @click="editItem = true">
-          <template v-slot:prepend>
+          <template #prepend>
             <v-icon icon="mdi-pencil" />
           </template>
           <v-list-item-title> Edit </v-list-item-title>
         </v-list-item>
         <v-list-item @click="clearData([selectedItem])">
-          <template v-slot:prepend>
+          <template #prepend>
             <v-icon icon="mdi-eraser" />
           </template>
           <v-list-item-title> Clear </v-list-item-title>
         </v-list-item>
         <v-list-item @click="removeItems([selectedItem])">
-          <template v-slot:prepend>
+          <template #prepend>
             <v-icon icon="mdi-delete" />
           </template>
           <v-list-item-title> Delete </v-list-item-title>
@@ -311,12 +291,12 @@
       </v-list>
     </v-menu>
 
-    <div v-if="!sparkline" class="u-series" ref="info">
+    <div v-if="!sparkline" ref="info" class="u-series">
       <v-tooltip
         text="Click item to toggle, Right click to edit"
         location="top"
       >
-        <template v-slot:activator="{ props }">
+        <template #activator="{ props }">
           <v-icon v-bind="props"> mdi-information-variant-circle </v-icon>
         </template>
       </v-tooltip>
@@ -339,6 +319,7 @@ export default {
     GraphEditDialog,
     GraphEditItemDialog,
   },
+  mixins: [TimeFilters],
   props: {
     id: {
       type: Number,
@@ -400,7 +381,6 @@ export default {
       default: 'local',
     },
   },
-  mixins: [TimeFilters],
   data() {
     return {
       lines: [],
@@ -480,6 +460,66 @@ export default {
         return JSON.stringify(this.errors, null, 4)
       }
       return null
+    },
+  },
+  watch: {
+    state: function (newState, oldState) {
+      switch (newState) {
+        case 'start':
+          // Only subscribe if we were previously stopped
+          // If we were paused we do nothing ... see the data function
+          if (oldState === 'stop') {
+            this.startGraph()
+          }
+          break
+        // case 'pause': Nothing to do ... see the data function
+        case 'stop':
+          this.stopGraph()
+          break
+      }
+    },
+    data: function (newData, oldData) {
+      this.dataChanged = true
+    },
+    graphMinY: function (newVal, oldVal) {
+      let val = parseFloat(newVal)
+      if (!isNaN(val)) {
+        this.graphMinY = val
+      }
+      this.setGraphRange()
+    },
+    graphMaxY: function (newVal, oldVal) {
+      let val = parseFloat(newVal)
+      if (!isNaN(val)) {
+        this.graphMaxY = val
+      }
+      this.setGraphRange()
+    },
+    graphStartDateTime: function (newVal, oldVal) {
+      if (newVal && typeof newVal === 'string') {
+        this.graphStartDateTime =
+          this.parseDateTime(this.graphStartDateTime, this.timeZone) * 1000000
+        if (this.graphStartDateTime !== oldVal) {
+          this.needToUpdate = true
+        }
+      } else if (newVal === null && oldVal) {
+        // If they clear the start date time we need to update
+        this.graphStartDateTime = null
+        this.needToUpdate = true
+      }
+    },
+    graphEndDateTime: function (newVal, oldVal) {
+      if (newVal && typeof newVal === 'string') {
+        this.graphEndDateTime =
+          this.parseDateTime(this.graphEndDateTime, this.timeZone) * 1000000
+        if (this.graphEndDateTime !== oldVal) {
+          this.needToUpdate = true
+        }
+      } else if (newVal === null && oldVal) {
+        // If they clear the end date time we need to update
+        this.graphEndDateTime = null
+        this.needToUpdate = true
+      }
     },
   },
   created() {
@@ -766,11 +806,13 @@ export default {
           ],
         },
       }
-      this.overview = new uPlot(
-        overviewOpts,
-        this.data,
-        document.getElementById(`overview${this.id}`),
-      )
+      if (!this.hideOverview) {
+        this.overview = new uPlot(
+          overviewOpts,
+          this.data,
+          document.getElementById(`overview${this.id}`),
+        )
+      }
       this.moveLegend(this.legendPosition)
 
       // Allow the charts to dynamically resize when the window resizes
@@ -785,66 +827,6 @@ export default {
     this.stopGraph()
     this.cable.disconnect()
     window.removeEventListener('resize', this.resize)
-  },
-  watch: {
-    state: function (newState, oldState) {
-      switch (newState) {
-        case 'start':
-          // Only subscribe if we were previously stopped
-          // If we were paused we do nothing ... see the data function
-          if (oldState === 'stop') {
-            this.startGraph()
-          }
-          break
-        // case 'pause': Nothing to do ... see the data function
-        case 'stop':
-          this.stopGraph()
-          break
-      }
-    },
-    data: function (newData, oldData) {
-      this.dataChanged = true
-    },
-    graphMinY: function (newVal, oldVal) {
-      let val = parseFloat(newVal)
-      if (!isNaN(val)) {
-        this.graphMinY = val
-      }
-      this.setGraphRange()
-    },
-    graphMaxY: function (newVal, oldVal) {
-      let val = parseFloat(newVal)
-      if (!isNaN(val)) {
-        this.graphMaxY = val
-      }
-      this.setGraphRange()
-    },
-    graphStartDateTime: function (newVal, oldVal) {
-      if (newVal && typeof newVal === 'string') {
-        this.graphStartDateTime =
-          this.parseDateTime(this.graphStartDateTime, this.timeZone) * 1000000
-        if (this.graphStartDateTime !== oldVal) {
-          this.needToUpdate = true
-        }
-      } else if (newVal === null && oldVal) {
-        // If they clear the start date time we need to update
-        this.graphStartDateTime = null
-        this.needToUpdate = true
-      }
-    },
-    graphEndDateTime: function (newVal, oldVal) {
-      if (newVal && typeof newVal === 'string') {
-        this.graphEndDateTime =
-          this.parseDateTime(this.graphEndDateTime, this.timeZone) * 1000000
-        if (this.graphEndDateTime !== oldVal) {
-          this.needToUpdate = true
-        }
-      } else if (newVal === null && oldVal) {
-        // If they clear the end date time we need to update
-        this.graphEndDateTime = null
-        this.needToUpdate = true
-      }
-    },
   },
   methods: {
     startGraph: function () {
@@ -1442,7 +1424,9 @@ export default {
       if (this.data.length === 2) {
         this.data[0] = []
         this.graph.setData(this.data)
-        this.overview.setData(this.data)
+        if (this.overview) {
+          this.overview.setData(this.data)
+        }
       }
     },
     removeItems: function (itemArray) {
@@ -1464,7 +1448,9 @@ export default {
       if (this.data.length === 1) {
         this.data[0] = []
         this.graph.setData(this.data)
-        this.overview.setData(this.data)
+        if (this.overview) {
+          this.overview.setData(this.data)
+        }
       }
       this.$emit('resize')
       this.$emit('edit')
@@ -1497,8 +1483,8 @@ export default {
       // }
       for (let i = 0; i < data.length; i++) {
         let time = data[i].__time / 1000000000.0 // Time in seconds
-        let length = data[0].length
-        if (length === 0 || time > data[0][length - 1]) {
+        let length = this.data[0].length
+        if (length === 0 || time > this.data[0][length - 1]) {
           // Nominal case - append new data to end
           for (let j = 0; j < this.data.length; j++) {
             this.data[j].push(null)
@@ -1507,8 +1493,19 @@ export default {
         } else {
           let index = bs(this.data[0], time, this.bs_comparator)
           if (index >= 0) {
-            // Found the slot in the existing data
-            this.set_data_at_index(index, time, data[i])
+            // Found a slot with the exact same time value
+            // Handle duplicate time by subtracting a small amount until we find an open slot
+            while (index >= 0) {
+              time -= 1e-5 // Subtract 10 microseconds
+              index = bs(this.data[0], time, this.bs_comparator)
+            }
+            // Now that we have a unique time, insert at the ideal index
+            let ideal_index = -index - 1
+            for (let j = 0; j < this.data.length; j++) {
+              this.data[j].splice(ideal_index, 0, null)
+            }
+            // Use the adjusted time but keep the original data
+            this.set_data_at_index(ideal_index, time, data[i])
           } else {
             // Insert a new null slot at the ideal index
             let ideal_index = -index - 1
@@ -1585,48 +1582,58 @@ export default {
 .v-window-item {
   background-color: var(--color-background-surface-default);
 }
+
 /* left right stacked legend */
 .uplot.side-legend {
   display: flex;
   width: auto;
 }
+
 .uplot.side-legend .u-wrap {
   flex: none;
 }
+
 .uplot.side-legend .u-legend {
   text-align: left;
   margin-left: 0;
   width: 220px;
 }
+
 .uplot.side-legend .u-legend,
 .uplot.side-legend .u-legend tr,
 .uplot.side-legend .u-legend th,
 .uplot.side-legend .u-legend td {
   display: revert;
 }
+
 /* left side we need to order the legend before the plot */
 .uplot.left-legend .u-legend {
   order: -1;
 }
+
 /* top legend */
 .uplot.top-legend {
   display: flex;
   flex-direction: column;
 }
+
 .uplot.top-legend .u-legend {
   order: -1;
 }
+
 /* This value is large enough to support negative scientific notation
    that we use on the value with rawValue.toExponential(6) */
 .u-legend.u-inline .u-series .u-value {
   width: 105px;
 }
+
 /* This value is large enough to support our date format: YYYY-MM-DD HH:MM:SS.sss */
 .u-legend.u-inline .u-series:first-child .u-value {
   width: 185px;
 }
+
 .u-select {
-  color: rgba(255, 255, 255, 0.07);
+  background-color: rgba(255, 255, 255, 0.07);
 }
 </style>
 <style scoped>

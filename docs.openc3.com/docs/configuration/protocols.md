@@ -203,15 +203,16 @@ The Template Protocol works much like the Terminated Protocol except it is desig
 | Response Polling Period      | Number of seconds to wait between polling for a response                                                                                                                                     | No       | 0.02                     |
 | Raise Exceptions             | Whether to raise exceptions when errors occur like timeouts or unexpected responses                                                                                                          | No       | false                    |
 
-### Preidentified Protocol (Internal)
+### Preidentified Protocol
 
-The Preidentified Protocol delineates packets using a custom COSMOS header. This internal Protocol was created to allow tools to connect and receive the entire packet stream. It can also be used to chain COSMOS instances together although that should rarely be needed with the new web native implementation.
+The Preidentified Protocol delineates packets using the COSMOS header. This Protocol was created to allow tools to connect and receive the entire packet stream. It can be used with the [FileInterface](/docs/configuration/interfaces#file-interface) to process COSMOS 4 log files. It can also be used to chain COSMOS instances together although that should rarely be needed with the new web native implementation.
 
 | Parameter    | Description                                                                                                                                                                                                                    | Required | Default                 |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- | ----------------------- |
 | Sync Pattern | Hex string representing a byte pattern that will be searched for in the raw data. This pattern represents a packet delimiter and all data found AFTER the sync pattern will be returned. The sync pattern itself is discarded. | No       | nil (no sync pattern)   |
 | Max Length   | The maximum allowed value in the length field                                                                                                                                                                                  | No       | nil (no maximum length) |
-| Mode         | The Version of the preidentified protocol to support (2 or 4).3                                                                                                                                                                | No       | 4                       |
+
+For an example of using Preidentified Protocol see [FileInterface](/docs/configuration/interfaces#file-interface).
 
 ## Helper Protocols
 
@@ -282,7 +283,7 @@ The Ignore Packet protocol drops specified command packets sent by COSMOS or dro
 
 ## Custom Protocols
 
-Creating a custom protocol is easy and should be the default solution for customizing COSMOS Interfaces (rather than creating a new Interface class). However, creating custom Interfaces is still useful for defaulting parameters to values that always are fixed for your target and for including the necessary Protocols. The base COSMOS Interfaces take a lot of parameters that can be confusing to your end users. Thus you may want to create a custom Interface just to hard coded these values and cut the available parameters down to something like the hostname and port to connect to.
+Creating a custom protocol is easy and should be the default solution for customizing COSMOS Interfaces (rather than creating a new Interface class). However, creating custom Interfaces is still useful for defaulting parameters to values that always are fixed for your target and for including the necessary Protocols. The COSMOS Interfaces take a lot of parameters that can be confusing to your end users. Thus you may want to create a custom Interface just to hard coded these values and cut the available parameters down to something like the hostname and port to connect to.
 
 All custom Protocols should derive from the Protocol class [openc3/interfaces/protocols/protocol.rb](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/interfaces/protocols/protocol.rb) (Ruby) and [openc3/interfaces/protocols/protocol.py](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/interfaces/protocols/protocol.py) (Python). This class defines the 9 methods that are relevant to writing your own protocol. The base class implementation for each method is included below as well as a discussion as to how the methods should be overridden and used in your own Protocols.
 

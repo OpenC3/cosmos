@@ -23,8 +23,30 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { NotFound } from '@openc3/vue-common/components'
 import { Login } from '@openc3/vue-common/tools/base'
+import { Api } from '@openc3/js-common/services'
 
-export default createRouter({
+const ROOT_PATHS = ['/', '/tools', '/tools/'] // where to redirect from
+const NOT_FOUND_TIMEOUT = 150 // how long to wait to get the tool to redirect to (ms)
+const DEFAULT_TOOL_URL = '/tools/cmdtlmserver' // where to redirect to if we can't figure it out in time
+
+const getFirstTool = async () => {
+  // Tools are global and are always installed into the DEFAULT scope
+  const { data } = await Api.get('/openc3-api/tools/all', {
+    params: { scope: 'DEFAULT' },
+  })
+  const [_, firstTool] = Object.entries(data).find(([name, tool]) => {
+    return name !== 'Admin' && tool.shown
+  })
+  return firstTool
+}
+
+const timeout = (ms) => {
+  return new Promise((res) => {
+    setTimeout(res, ms)
+  })
+}
+
+const router = createRouter({
   history: createWebHistory(),
   routes: [
     {
@@ -39,3 +61,15 @@ export default createRouter({
     },
   ],
 })
+
+router.beforeEach(async (to) => {
+  if (ROOT_PATHS.includes(to.fullPath)) {
+    const firstTool = await Promise.race([
+      getFirstTool(),
+      timeout(NOT_FOUND_TIMEOUT),
+    ])
+    return firstTool?.url || DEFAULT_TOOL_URL
+  }
+})
+
+export default router

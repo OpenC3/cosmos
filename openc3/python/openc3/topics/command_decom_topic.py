@@ -57,18 +57,18 @@ class CommandDecomTopic(Topic):
             if param_name == "RECEIVED_COUNT":
                 return int(msg_hash[b"received_count"])
             else:
-                hash = json.loads(msg_hash[b"json_data"])
+                cmd_item = json.loads(msg_hash[b"json_data"])
                 # Start from the most complex down to the basic raw value
-                value = hash.get(f"{param_name}__U")
+                value = cmd_item.get(f"{param_name}__U")
                 if value is not None and type == "WITH_UNITS":
                     return value
 
-                value = hash.get(f"{param_name}__F")
+                value = cmd_item.get(f"{param_name}__F")
                 if value is not None and (type == "WITH_UNITS" or type == "FORMATTED"):
                     return value
 
-                value = hash.get(f"{param_name}__C")
+                value = cmd_item.get(f"{param_name}__C")
                 if value is not None and (type == "WITH_UNITS" or type == "FORMATTED" or type == "CONVERTED"):
                     return value
 
-                return hash[param_name]
+                return cmd_item[param_name]

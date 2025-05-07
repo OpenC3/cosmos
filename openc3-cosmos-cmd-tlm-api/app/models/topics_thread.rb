@@ -24,10 +24,10 @@ require 'openc3'
 OpenC3.require_file 'openc3/utilities/store'
 
 class TopicsThread
-  def initialize(topics, channel, history_count = 0, max_batch_size = 100, offsets: nil, transmit_msg_id: false)
+  def initialize(topics, subscription_key, history_count = 0, max_batch_size = 100, offsets: nil, transmit_msg_id: false)
     @topics = topics
     @offsets = offsets
-    @channel = channel
+    @subscription_key = subscription_key
     @history_count = history_count.to_i
     @max_batch_size = max_batch_size
     @transmit_msg_id = transmit_msg_id
@@ -70,7 +70,7 @@ class TopicsThread
 
   def transmit_results(results, force: false)
     if results.length > 0 or force
-      ActionCable.server.broadcast(@channel.uuid, results.as_json(:allow_nan => true))
+      ActionCable.server.broadcast(@subscription_key, results.as_json(:allow_nan => true))
     end
   end
 

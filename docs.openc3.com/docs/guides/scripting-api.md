@@ -1611,6 +1611,26 @@ Ruby / Python Example:
 get_all_tlm_names("INST")  #=> ["ADCS", "HEALTH_STATUS", ...]
 ```
 
+### get_all_tlm_item_names
+
+Returns all the item names for every packet in a target
+
+Ruby / Python Syntax:
+
+```ruby
+get_all_tlm_item_names("<Target Name>")
+```
+
+| Parameter   | Description        |
+| ----------- | ------------------ |
+| Target Name | Name of the target |
+
+Ruby / Python Example:
+
+```ruby
+get_all_tlm_item_names("INST")  #=> ["ARY", "ARY2", "ASCIICMD", "ATTPROGRESS", ...]
+```
+
 ### get_tlm
 
 > Since 5.13.0, since 5.0.0 as get_telemetry
@@ -3323,11 +3343,23 @@ put_target_file("INST/tables/bin/MCConfigurationTable_NoScrub.bin", table.buffer
 Python Example:
 
 ```python
-# NOTE: TableConfig and other TableManager classes do not yet exist in Python
-# So editing like the above Ruby example is not yet possible
-
+# Full example of using table_create_binary and then editing the binary
+from openc3.tools.table_manager.table_config import TableConfig
 # Returns a dict: {'filename': 'INST/tables/bin/ConfigTables.bin'}
-table = table_create_binary("INST/tables/config/ConfigTables_def.txt")
+table = table_create_binary("INST2/tables/config/ConfigTables_def.txt")
+file = get_target_file(table['filename'])
+table_binary = file.read()
+
+# Get the definition file so we can process the binary
+def_file = get_target_file("INST2/tables/config/MCConfigurationTable_def.txt")
+# Access the internal TableConfig to process the definition
+config = TableConfig.process_file(def_file.name)
+# Grab the table by the definition name, e.g. TABLE "MC_Configuration"
+table = config.table('MC_CONFIGURATION')
+# Now you can read or write individual items in the table
+table.write("MEMORY_SCRUBBING", "DISABLE")
+# Finally write the table.buffer (the binary) back to storage
+put_target_file("INST2/tables/bin/MCConfigurationTable_NoScrub.bin", table.buffer)
 ```
 
 ### table_create_report
@@ -3675,7 +3707,7 @@ These methods allow the user to control Script Runner scripts.
 
 ### start
 
-Starts execution of another high level test procedure. Script Runner will load the file and immediately start executing it before jumping back to the calling procedure. No parameters can be given to high level test procedures. If parameters are necessary, then consider using a subroutine.
+Starts execution of another high level test procedure. Script Runner will load the file and immediately start executing it before jumping back to the calling procedure. Parameters are not directly given to high level test procedures, though they can use environment variables. If parameters are necessary, consider using a subroutine.
 
 Ruby / Python Syntax:
 
@@ -3691,6 +3723,32 @@ Ruby / Python Example:
 
 ```ruby
 start("test1.rb")
+```
+
+### goto
+
+> Since 6.4.0
+
+Jumps to a specific line in either the current file or another file. Script context and local variables are retained if jumping in the same file. This method should not be used to create loops or in any other case where normal Python/Ruby functionality could perform the same function. Use of goto increases stack depth and excess use can lead to stack level too deep errors.
+
+Ruby / Python Syntax:
+
+```ruby
+goto(line_number)
+goto(filename, line_number)
+```
+
+| Parameter                         | Description                                                                                                                                           |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Line Number or Procedure Filename | If this is the only argument given then it is the line number to goto in the same script. If two arguments are given, then it is the filename to goto |
+| Line Number                       | If the second argument, it is the line number in the filename given by the first argument to goto                                                     |
+
+Ruby / Python Example:
+
+```ruby
+goto(23)
+goto("TARGET/procedures/other_script.rb", 5)
+goto("TARGET/procedures/other_script.py", 12)
 ```
 
 ### load_utility
@@ -3816,6 +3874,8 @@ script_delete("INST/procedures/checks.rb")
 ### script_run
 
 Runs a script in Script Runner. The script will run in the background and can be opened in Script Runner by selecting Script->Execution Status and then connecting to it.
+
+Note: In Enterprise, initialize_offline_access must have been called at least once for the user who calls this method.
 
 Ruby / Python Syntax:
 
@@ -3979,28 +4039,60 @@ disconnect_script()
 
 ### running_script_list
 
-List the currently running scripts. Note, this will also include the script which is calling this method. Thus the list will never be empty but will always contain at least 1 item. Returns an array of hashes / list of dicts (see [running_script_get](#running_script_get) for hash / dict contents).
+List the currently running scripts. Note, this will also include the script which is calling this method. Thus the list will never be empty but will always contain at least 1 item. Returns an array of hashes / list of dicts (see [script_get](#script_get) for hash / dict contents).
+
+Ruby Syntax:
+
+```ruby
+running_script_list(limit: <limit>, offset: <offset>)
+```
+
+Python Syntax:
+
+```python
+running_script_list(limit = <limit>, offset = <offset>)
+```
+
+| Parameter | Description                            |
+| --------- | -------------------------------------- |
+| limit     | Max number to return (default 10)      |
+| offset    | Offset into list to return (default 0) |
 
 Ruby Example:
 
 ```ruby
-running_script_list() #=> [{"id"=>5, "scope"=>"DEFAULT", "name"=>"__TEMP__/2025_01_15_13_16_26_210_temp.rb", "user"=>"Anonymous", "start_time"=>"2025-01-15 20:16:52 +0000", "disconnect"=>false, "environment"=>[]}]
+running_script_list(limit: 20, offset: 10) #=> [{"name"=>"293", "state"=>"waiting", "shard"=>0, "filename"=>"INST/procedures/collect.rb", "current_filename"=>"INST/procedures/collect.rb", "line_no"=>4, "start_line_no"=>1, "end_line_no"=>nil, "username"=>"anonymous", "user_full_name"=>"Anonymous", "start_time"=>"2025-05-03T04:26:50Z", "end_time"=>nil, "disconnect"=>false, "environment"=>"{}", "suite_runner"=>nil, "errors"=>nil, "pid"=>414, "log"=>nil, "report"=>nil, "updated_at"=>1746246411160414638, "scope"=>"DEFAULT"}]
 ```
 
 Python Example:
 
 ```python
-running_script_list() #=> [{'id': 15, 'scope': 'DEFAULT', 'name': 'INST2/procedures/scripting.py', 'user': 'Anonymous', 'start_time': '2025-01-16 17:36:22 +0000', 'disconnect': False, 'environment': []}]
+running_script_list(limit = 20, offset = 10) #=>  [{'name': '372', 'state': 'spawning', 'shard': 0, 'filename': '__TEMP__/2025_05_02_22_38_53_386_temp.py', 'current_filename': '__TEMP__/2025_05_02_22_38_53_386_temp.py', 'line_no': 0, 'start_line_no': 1, 'end_line_no': None, 'username': 'anonymous', 'user_full_name': 'Anonymous', 'start_time': '2025-05-03T14:34:11Z', 'end_time': None, 'disconnect': False, 'environment': '{}', 'suite_runner': None, 'errors': None, 'pid': None, 'log': None, 'report': None, 'updated_at': 1746282851410918174, 'scope': 'DEFAULT'}]
 ```
 
-### running_script_get
+### script_get
 
-Get the currently running script with the specified ID. The information returned is the script ID, scope, name, user, start time, disconnect state, environment variables, hostname, state, line number, and update time.
+Get information on the script with the specified ID. The information returned is the script name (id), state (spawning, init, running, paused, waiting, error, breakpoint, crashed, stopped, completed, completed_errors, killed), shard, filename, current_filename, line_no, start_line_no, end_line_no, username, user_full_name, start_time, end_time, disconnect state, environment variables, suite_runner configuration, errors, pid, log file, report file, update time, and scope.
+
+Possible script states:
+
+- spawning - Not running yet
+- init - Initializing
+- running - Running
+- paused - Paused
+- waiting - Waiting (either for a wait or a prompt)
+- error - Paused with an error
+- breakpoint - Paused with a breakpoing
+- crashed - Complete after crashing with an exception
+- stopped - Prematurely stopped
+- completed - Completed successfully
+- completed_errors - Completed but errors occurred while running
+- killed - Forcefully killed
 
 Ruby / Python Syntax:
 
 ```ruby
-running_script_get("<Script Id>")
+script_get("<Script Id>")
 ```
 
 | Parameter | Description                                     |
@@ -4010,13 +4102,13 @@ running_script_get("<Script Id>")
 Ruby Example:
 
 ```ruby
-running_script_get(15) #=> {"id"=>15, "scope"=>"DEFAULT", "name"=>"INST/procedures/new_script.rb", "user"=>"Anonymous", "start_time"=>"2025-01-16 00:28:44 +0000", "disconnect"=>false, "environment"=>[], "hostname"=>"ac9dde3c59c1", "state"=>"spawning", "line_no"=>1, "update_time"=>"2025-01-16 00:28:44 +0000"}
+script_get(15) #=> {"name"=>"293", "state"=>"waiting", "shard"=>0, "filename"=>"INST/procedures/collect.rb", "current_filename"=>"INST/procedures/collect.rb", "line_no"=>4, "start_line_no"=>1, "end_line_no"=>nil, "username"=>"anonymous", "user_full_name"=>"Anonymous", "start_time"=>"2025-05-03T04:26:50Z", "end_time"=>nil, "disconnect"=>false, "environment"=>"{}", "suite_runner"=>nil, "errors"=>nil, "pid"=>414, "log"=>nil, "report"=>nil, "updated_at"=>1746246411160414638, "scope"=>"DEFAULT"}
 ```
 
 Python Example:
 
 ```python
-running_script_get(15) #=> {'id': 15, 'scope': 'DEFAULT', 'name': 'INST2/procedures/new_script.py', 'user': 'Anonymous', 'start_time': '2025-01-16 18:04:03 +0000', 'disconnect': False, 'environment': [], 'hostname': 'b84dbcee54ad', 'state': 'running', 'line_no': 3, 'update_time': '2025-01-16T18:04:05.255638Z'}
+script_get(15) #=> {'name': '372', 'state': 'spawning', 'shard': 0, 'filename': '__TEMP__/2025_05_02_22_38_53_386_temp.py', 'current_filename': '__TEMP__/2025_05_02_22_38_53_386_temp.py', 'line_no': 0, 'start_line_no': 1, 'end_line_no': None, 'username': 'anonymous', 'user_full_name': 'Anonymous', 'start_time': '2025-05-03T14:34:11Z', 'end_time': None, 'disconnect': False, 'environment': '{}', 'suite_runner': None, 'errors': None, 'pid': None, 'log': None, 'report': None, 'updated_at': 1746282851410918174, 'scope': 'DEFAULT'}
 ```
 
 ### running_script_stop
@@ -4099,6 +4191,34 @@ Ruby / Python Example:
 running_script_go(15)
 ```
 
+### running_script_execute_while_paused
+
+Perform a goto or execute selection on a running script.
+
+Ruby / Python Syntax:
+
+````
+# Execute Selection
+running_script_execute_while_paused("<Script Id>", "<Script File Path>", <Start line_no>, <end_line_no>)
+# Goto
+running_script_execute_while_paused("<Script Id>", "<Script File Path>", <Start line_no>)
+
+| Parameter | Description                                     |
+| --------- | ----------------------------------------------- |
+| Script Id | Script ID returned by [script_run](#script_run) |
+| Script File Path | Path to to the script to run ie. "INST/procedures/collect.rb" |
+| Start Line Number | Line Number to Start At |
+| End Line Number | Optional - Line Number to End At. If given then execute selection, else goto. |
+
+Ruby / Python Example:
+
+```ruby
+# Execute Selection
+running_script_execute_while_paused("23", "INST/procedures/myprocedure.rb", 2, 4)
+# Goto
+running_script_execute_while_paused("33", "INST2/procedures/collect.py", 7)
+````
+
 ### running_script_step
 
 Step the running script with the specified ID. This is equivalent to clicking the Step button in the Script Runner GUI's Debug window.
@@ -4143,16 +4263,33 @@ running_script_delete(15)
 
 List the completed scripts. Returns an array of hashes / list of dicts containing the id, username, script name, script log, and start time.
 
+Ruby Syntax:
+
+```ruby
+completed_script_list(limit: <limit>, offset: <offset>)
+```
+
+Python Syntax:
+
+```python
+completed_script_list(limit = <limit>, offset = <offset>)
+```
+
+| Parameter | Description                            |
+| --------- | -------------------------------------- |
+| limit     | Max number to return (default 10)      |
+| offset    | Offset into list to return (default 0) |
+
 Ruby Example:
 
 ```ruby
-completed_script_list() #=> [{"id"=>"15", "user"=>"Anonymous", "name"=>"__TEMP__/2025_01_15_17_07_51_568_temp.rb", "log"=>"DEFAULT/tool_logs/sr/20250116/2025_01_16_00_28_43_sr_2025_01_15_17_07_51_568_temp.txt", "start"=>"2025-01-16 00:28:43 +0000"}, ...]
+completed_script_list(limit: 10, offset: 0) #=> [{"id"=>"15", "user"=>"Anonymous", "name"=>"__TEMP__/2025_01_15_17_07_51_568_temp.rb", "log"=>"DEFAULT/tool_logs/sr/20250116/2025_01_16_00_28_43_sr_2025_01_15_17_07_51_568_temp.txt", "start"=>"2025-01-16 00:28:43 +0000"}, ...]
 ```
 
 Python Example:
 
 ```ruby
-completed_script_list() #=> [{'id': 16, 'user': 'Anonymous', 'name': 'INST2/procedures/new_script.py', 'log': 'DEFAULT/tool_logs/sr/20250116/2025_01_16_17_46_22_sr_new_script.txt', 'start': '2025-01-16 17:46:22 +0000'}, ...]
+completed_script_list(limit = 10, offset = 0) #=> [{'id': 16, 'user': 'Anonymous', 'name': 'INST2/procedures/new_script.py', 'log': 'DEFAULT/tool_logs/sr/20250116/2025_01_16_17_46_22_sr_new_script.txt', 'start': '2025-01-16 17:46:22 +0000'}, ...]
 ```
 
 ## Script Runner Settings
@@ -4995,4 +5132,65 @@ Ruby / Python Example:
 
 ```ruby
 delete_config('telemetry_grapher', 'adcs')
+```
+
+## Offline Access
+
+An offline access token is required to execute scripts in COSMOS Enterprise. These methods support client side creation, testing, and
+setting of the offline_access_token.
+
+### initialize_offline_access
+
+Creates and sets the offline access token for the user. Note: calling this method is required before executing any api methods that require an offline access token like script_run (Enterprise Only). This method must be called OUTSIDE of ScriptRunner as it is needed in order to start a script in the first place.
+
+Ruby Example:
+
+```ruby
+# First setup environment variables. See examples/external_script.rb
+initialize_offline_access()
+script_run("INST/procedures/collect.rb")
+```
+
+Python Example:
+
+```python
+# First setup environment variables. See examples/external_script.py
+initialize_offline_access()
+script_run("INST2/procedures/collect.py")
+```
+
+### offline_access_needed
+
+Returns true if the user needs to generate an offline access token. Note this will only be true if the user is at least authorized to view scripts, otherwise it will always be false if script_view permission is not available for the user.
+
+Ruby Example:
+
+```ruby
+result = offline_access_needed() #=> true
+```
+
+Python Example:
+
+```python
+result = offline_access_needed() #=> False
+```
+
+### set_offline_access
+
+Sets the offline access token in the backend. Note: You probably don't need to call this method directly, as it will be called by initialize_offline_access().
+
+Ruby / Python Syntax:
+
+```ruby
+set_offline_access(offline_access_token)
+```
+
+| Parameter            | Description                                                                    |
+| -------------------- | ------------------------------------------------------------------------------ |
+| offline_access_token | Keycloak generated refresh token that contains the offline_access openid scope |
+
+Ruby / Python Example:
+
+```ruby
+set_offline_access(offline_access_token)
 ```

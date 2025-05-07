@@ -10,9 +10,12 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
-
+#
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+#
+# A portion of this file was funded by Blue Origin Enterprises, L.P.
+# See https://github.com/OpenC3/cosmos/pull/1953
 
 import math
 import unittest
@@ -1185,6 +1188,17 @@ class PacketRestoreDefaults(unittest.TestCase):
         p.restore_defaults(p.buffer_no_copy())
         self.assertEqual(p.buffer, b"\x03\x04\x01\x02\x04\x06\x08\x0A")
 
+    def test_resets_the_packet_to_just_derived_items(self):
+        p = Packet("tgt", "pkt")
+        p.append_item("test1", 8, "UINT", 16)
+        p.append_item("test2", 16, "UINT")
+        i3 = p.define_item("test3", 0, 0, "DERIVED")
+        i3.read_conversion = GenericConversion("packet.read('TEST1')")
+        print(p.items.keys())
+        # expect(p.items.keys).to eql %w(TEST1 TEST2 TEST3)
+        p.clear_all_non_derived_items()
+        # expect(p.items.keys).to eql %w(TEST3)
+        print(p.items.keys())
 
 class PacketLimits(unittest.TestCase):
     def test_enables_limits_on_each_packet_item(self):

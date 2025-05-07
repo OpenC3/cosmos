@@ -14,17 +14,19 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from openc3.interfaces.interface import Interface
-from openc3.config.config_parser import ConfigParser
-from openc3.utilities.string import class_name_to_filename
-from openc3.top_level import get_class_from_module
-from openc3.utilities.string import build_timestamped_filename
 import queue
 import os
 import pathlib
+import gzip
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 from watchdog.observers.polling import PollingObserver
+from openc3.top_level import get_class_from_module
+from openc3.interfaces.interface import Interface
+from openc3.config.config_parser import ConfigParser
+from openc3.utilities.string import class_name_to_filename
+from openc3.utilities.string import build_timestamped_filename
+from openc3.utilities.sleeper import Sleeper
 
 
 class NewFileEventHandler(FileSystemEventHandler):
@@ -89,6 +91,9 @@ class FileInterface(Interface):
         self.queue = queue.Queue()
         self.polling = False
         self.recursive = False
+        self.throttle = None
+        self.discard_file_header_bytes = None
+        self.sleeper = None
 
     def connect(self):
         super().connect() # Reset the protocols
@@ -114,6 +119,8 @@ class FileInterface(Interface):
         self.file_path = None
         if self.listener:
             self.listener.stop()
+        if self.sleeper:
+            self.sleeper.cancel()
         self.listener = None
         self.queue.put(None)
         super().disconnect()
@@ -124,6 +131,8 @@ class FileInterface(Interface):
             if self.file:
                 # Read more data from existing file
                 data = self.file.read(self.file_read_size)
+                if self.throttle and self.sleeper.sleep(self.throttle):
+                    return None, None
                 if data is not None and len(data) > 0:
                     self.read_interface_base(data, None)
                     return data, None
@@ -133,9 +142,13 @@ class FileInterface(Interface):
             # Find the next file to read
             file = self.get_next_telemetry_file()
             if file:
-                print(f"Open: {file}")
-                self.file = open(file, "rb")
+                if file.endswith(".gz"):
+                    self.file = gzip.open(file, 'rb')
+                else:
+                    self.file = open(file, 'rb')
                 self.file_path = file
+                if self.discard_file_header_bytes is not None:
+                    self.file.read(self.discard_file_header_bytes)
                 continue
 
             # Wait for a file to read
@@ -173,6 +186,11 @@ class FileInterface(Interface):
                 self.polling = ConfigParser.handle_true_false(option_values[0])
             case "RECURSIVE":
                 self.recursive = ConfigParser.handle_true_false(option_values[0])
+            case "THROTTLE":
+                self.throttle = float(option_values[0])
+                self.sleeper = Sleeper()
+            case "DISCARD_FILE_HEADER_BYTES":
+                self.discard_file_header_bytes = int(option_values[0])
 
     def finish_file(self):
         self.file.close()

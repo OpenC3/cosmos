@@ -401,6 +401,72 @@ INTERFACE INTERFACE_NAME serial_interface.rb COM4 COM4 115200 NONE 1 10.0 10.0 #
   OPTION DATA_BITS 7
 ```
 
+### File Interface
+
+The file interface monitors a directory which is mapped via the compose.yaml file to a physical directory on the host machine. The primary use-case is to provide a method to process stored telemetry files into the COSMOS system. The file interface will monitor the given directory for new files and thus the host directory acts like a "drop box" where files can be processed and then archived to the Telemetry Archive Folder. When coupled with the [PreidentifiedProtocol](/docs/configuration/protocols#preidentified-protocol), it can process COSMOS binary files from COSMOS version 4.
+
+| Parameter                | Description                                                                                                                            | Required | Default     |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- | -------- | ----------- |
+| Command Write Folder     | Folder to write command files to - Set to nil / None to disallow writes                                                                | Yes      |             |
+| Telemetry Read Folder    | Folder to read telemetry files from - Set to nil / None to disallow reads                                                              | Yes      |             |
+| Telemetry Archive Folder | Folder to move read telemetry files to - Set to DELETE to delete files                                                                 | Yes      |             |
+| File Read Size           | Number of bytes to read from the file at a time                                                                                        | No       | 65536       |
+| Stored                   | Whether to set stored flag on read telemetry. Stored telemetry does not affect real time displays (Packet Viewer or Telemetry Viewer). | No       | true / True |
+| Protocol Type            | See Protocols.                                                                                                                         | No       | nil / None  |
+| Protocol Arguments       | See Protocols for the arguments each stream protocol takes.                                                                            | No       | []          |
+
+#### Interface Options
+
+Options are added directly beneath the interface definition as shown in the example.
+
+| Option                    | Description                                                                                                                                                                                        | Default       |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| LABEL                     | Label used when creating files in the command write folder                                                                                                                                         | command       |
+| EXTENSION                 | File extension used when creating files in the command write folder                                                                                                                                | .bin          |
+| POLLING                   | Whether to poll the file system for changes or use native notifications. Some filesystems won't work without polling including Windows volumes, VM/Vagrant Shared folders, NFS, Samba, sshfs, etc. | false / False |
+| RECURSIVE                 | Whether to recursively monitor the telemetry read folder                                                                                                                                           | false / False |
+| THROTTLE                  | Amount of time to wait between file reads                                                                                                                                                          | nil / None    |
+| DISCARD_FILE_HEADER_BYTES | Number of bytes to discard at the start of each file                                                                                                                                               | nil / None    |
+
+#### Docker compose.yaml
+
+```yaml
+openc3-operator:
+  # ...
+  volumes:
+    # Mount the local folders to the container path
+    /Users/jmthomas/dropbox:/dropbox
+    /Users/jmthomas/archive:/archive
+```
+
+plugin.txt Ruby Examples:
+
+```ruby
+INTERFACE FILE_INT file_interface.rb nil /dropbox /archive 65536 true PREIDENTIFIED
+  MAP_TLM_TARGET INST # Since we passed nil to Command Write Folder we map as TLM only
+  OPTION THROTTLE 5
+  OPTION DISCARD_FILE_HEADER_BYTES 128 # For COSMOS 4 File Header
+INTERFACE FILE_INT file_interface.rb /archive /dropbox/ /archive 1024 false
+  OPTION LABEL data
+  OPTION EXTENSION .dat
+  OPTION POLLING true
+  OPTION RECURSIVE true
+  TLM_TARGET INST # This will store INST commands in the archive folder
+```
+
+```ruby
+INTERFACE FILE_INT openc3/interfaces/file_interface.py None /dropbox /archive 65536 True PREIDENTIFIED
+  MAP_TLM_TARGET INST  # Since we passed None to Command Write Folder we map as TLM only
+  OPTION THROTTLE 5
+  OPTION DISCARD_FILE_HEADER_BYTES 128 # For COSMOS 4 File Header
+INTERFACE FILE_INT openc3/interfaces/file_interface.py /archive /dropbox/ /archive 1024 False
+  OPTION LABEL data
+  OPTION EXTENSION .dat
+  OPTION POLLING True
+  OPTION RECURSIVE True
+  TLM_TARGET INST  # This will store INST commands in the archive folder
+```
+
 ### SNMP Interface (Enterprise)
 
 The SNMP Interface is for connecting to Simple Network Management Protocol devices. The SNMP Interface is currently only implemented in Ruby.

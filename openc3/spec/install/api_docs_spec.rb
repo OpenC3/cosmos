@@ -46,7 +46,7 @@ module OpenC3
         lines.each do |line|
           if line.strip =~ /^def /
             next if line.include?('def _')
-            next if line.include?('initialize')
+            next if line.include?('initialize') and not line.include?('initialize_')
             method = line.strip.split(' ')[1]
             if method.include?('(')
               methods[method.split('(')[0]] = filename
@@ -68,7 +68,6 @@ module OpenC3
         parse_file(filename, ruby_api)
       end
       Dir[File.join(SPEC_DIR,'../lib/openc3/api/*.rb')].each do |filename|
-        next if filename.include?('offline_access_api')
         next if filename.include?('metrics_api') # TODO: document and implement Python equivalent
         parse_file(filename, ruby_api)
       end

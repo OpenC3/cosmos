@@ -23,7 +23,7 @@ class MessagesThread < TopicsThread
   ALLOWABLE_START_TIME_OFFSET_NSEC = 60 * Time::NSEC_PER_SECOND
 
   def initialize(
-    channel,
+    subscription_key,
     history_count = 0,
     max_batch_size = 100,
     start_offset: nil,
@@ -48,7 +48,7 @@ class MessagesThread < TopicsThread
     offsets = nil
     # $ means only new messages for the ephemeral topic
     offsets = [start_offset, "$"] if start_offset
-    super(@topics, channel, history_count, max_batch_size, offsets: offsets)
+    super(@topics, subscription_key, history_count, max_batch_size, offsets: offsets)
   end
 
   def setup_thread_body

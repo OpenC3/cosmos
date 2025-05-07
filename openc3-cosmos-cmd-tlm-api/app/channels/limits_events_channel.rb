@@ -24,16 +24,18 @@ class LimitsEventsChannel < ApplicationCable::Channel
   @@broadcasters = {}
 
   def subscribed
-    stream_from uuid
-    @@broadcasters[uuid] = LimitsEventsApi.new(uuid, self, params['history_count'], scope: scope)
+    subscription_key = "limits_events_#{uuid}"
+    stream_from subscription_key
+    @@broadcasters[subscription_key] = LimitsEventsApi.new(subscription_key, params['history_count'], scope: scope)
   end
 
   def unsubscribed
-    if @@broadcasters[uuid]
-      stop_stream_from uuid
-      @@broadcasters[uuid].kill
-      @@broadcasters[uuid] = nil
-      @@broadcasters.delete(uuid)
+    subscription_key = "limits_events_#{uuid}"
+    if @@broadcasters[subscription_key]
+      stop_stream_from subscription_key
+      @@broadcasters[subscription_key].kill
+      @@broadcasters[subscription_key] = nil
+      @@broadcasters.delete(subscription_key)
     end
   end
 end

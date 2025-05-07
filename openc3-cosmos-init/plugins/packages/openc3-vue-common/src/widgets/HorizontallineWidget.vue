@@ -1,5 +1,5 @@
 <!--
-# Copyright 2022 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -17,5 +17,12 @@
 -->
 
 <template>
-  <hr />
+  <hr :style="computedStyle" />
 </template>
+
+<script>
+import Widget from './Widget'
+export default {
+  mixins: [Widget],
+}
+</script>

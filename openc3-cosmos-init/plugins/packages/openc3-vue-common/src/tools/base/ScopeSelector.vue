@@ -48,7 +48,7 @@ export default {
   },
   data: function () {
     return {
-      // Open Source only has one scope: 'DEFAULT'
+      // COSMOS Core only has one scope: 'DEFAULT'
       scopes: ['DEFAULT'],
       scope: 'DEFAULT',
       showUpgradeToEnterpriseDialog: false,

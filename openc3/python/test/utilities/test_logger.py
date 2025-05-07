@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -89,3 +89,6 @@ class TestLogger(unittest.TestCase):
 
     def test_fatal_only_prints_if_level_is_fatal(self):
         self.verify_output(Logger.FATAL, "fatal")
+
+    def test_help(self):
+        help(Logger) # NOSONAR

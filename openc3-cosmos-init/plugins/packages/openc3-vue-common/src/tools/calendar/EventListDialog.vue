@@ -22,22 +22,20 @@
 
 <template>
   <div>
-    <v-dialog persistent v-model="show" width="80vw">
+    <v-dialog v-model="show" persistent width="80vw">
       <v-card>
         <v-toolbar height="24">
           <v-spacer />
           <span v-if="newMetadata">Metadata</span><span v-else>Events</span>
           <v-spacer />
-          <v-tooltip location="top">
-            <template v-slot:activator="{ props }">
-              <div v-bind="props">
-                <v-icon data-test="close-metadata-icon" @click="close">
-                  mdi-close-box
-                </v-icon>
-              </div>
-            </template>
-            <span>Close</span>
-          </v-tooltip>
+          <v-btn
+            icon="mdi-close-box"
+            variant="text"
+            density="compact"
+            data-test="close-metadata-icon"
+            aria-label="Close Dialog"
+            @click="close"
+          />
         </v-toolbar>
         <v-card-title>
           <v-row class="pa-3">
@@ -52,44 +50,47 @@
               density="compact"
               single-line
               hide-details
-          /></v-row>
+            />
+          </v-row>
         </v-card-title>
         <v-data-table
           :headers="eventHeaders"
           :items="localEvents"
           :search="search"
         >
-          <template v-slot:no-data>
+          <template #no-data>
             <span> No events </span>
           </template>
-          <template v-slot:item.start="{ item }">
+          <template #item.start="{ item }">
             {{ formatDateTime(item.start, timeZone) }}
           </template>
-          <template v-slot:item.end="{ item }">
+          <template #item.end="{ item }">
             {{ formatDateTime(item.end, timeZone) }}
           </template>
-          <template v-slot:item.type="{ item }">
+          <template #item.type="{ item }">
             {{ item.type.charAt(0).toUpperCase() + item.type.slice(1) }}
           </template>
-          <template v-slot:item.data="{ item }">
+          <template #item.data="{ item }">
             {{ dataFormat(item) }}
           </template>
-          <template v-slot:item.actions="{ item }">
-            <v-icon
+          <template #item.actions="{ item }">
+            <v-btn
+              icon="mdi-pencil"
+              variant="text"
               size="small"
               class="mr-2"
-              @click="editAction(item)"
               data-test="edit-event"
-            >
-              mdi-pencil
-            </v-icon>
-            <v-icon
+              aria-label="Edit Event"
+              @click="editAction(item)"
+            />
+            <v-btn
+              icon="mdi-delete"
+              variant="text"
               size="small"
-              @click="deleteAction(item)"
               data-test="delete-event"
-            >
-              mdi-delete
-            </v-icon>
+              aria-label="Delete Event"
+              @click="deleteAction(item)"
+            />
           </template>
         </v-data-table>
         <v-card-actions class="px-2">

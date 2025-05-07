@@ -36,7 +36,7 @@
           {{ bucket }}
         </v-chip>
       </div>
-      <div style="padding-left: 5px" v-if="volumes.length !== 0">
+      <div v-if="volumes.length !== 0" style="padding-left: 5px">
         <span class="ma-2 font-size">Volumes:</span>
         <v-chip
           v-for="(volume, index) in volumes"
@@ -71,18 +71,18 @@
         />
       </v-card-title>
       <v-data-table
+        v-model:sort-by="sortBy"
         :headers="headers"
         :items="files"
         :search="search"
         :items-per-page="-1"
         :items-per-page-options="[10, 20, 50, 100, -1]"
-        v-model:sort-by="sortBy"
-        @click:row.stop="fileClick"
         multi-sort
         density="compact"
         hover
+        @click:row.stop="fileClick"
       >
-        <template v-slot:top>
+        <template #top>
           <v-row
             class="ma-0"
             style="background-color: var(--color-background-surface-header)"
@@ -92,18 +92,19 @@
               variant="text"
               density="compact"
               class="ml-3 mt-1"
-              @click.stop="backArrow"
               data-test="be-nav-back"
+              aria-label="Navigate Back"
+              @click.stop="backArrow"
             />
-            <span class=".text-body-1 ma-2 font-size" data-test="file-path">
-              <a
-                v-for="(part, index) in breadcrumbPath"
-                :key="index"
-                @click.prevent="gotoPath(part.path)"
-                style="cursor: pointer"
-                >/&nbsp;{{ part.name }}&nbsp;
-              </a>
-            </span>
+            <div class=".text-body-1 ma-2 font-size" data-test="file-path">
+              <span v-for="(part, index) in breadcrumbPath" :key="index">
+                /&nbsp;<a
+                  style="cursor: pointer"
+                  @click.prevent="gotoPath(part.path)"
+                  >{{ part.name }}
+                </a>
+              </span>
+            </div>
             <v-spacer />
             <div class="ma-2 font-size">
               Folder Size: {{ folderTotal }}
@@ -111,7 +112,7 @@
             </div>
 
             <v-spacer />
-            <div class="ma-2" style="display: flex" v-if="mode === 'bucket'">
+            <div v-if="mode === 'bucket'" class="ma-2" style="display: flex">
               <span class="font-size">Upload File</span>
               <v-file-input
                 v-model="file"
@@ -124,37 +125,43 @@
             </div>
           </v-row>
         </template>
-        <template v-slot:item.name="{ item }">
+        <template #item.name="{ item }">
           <v-icon class="mr-2">{{ item.icon }}</v-icon>
           {{ item.name }}
         </template>
-        <template v-slot:item.size="{ item }">
+        <template #item.size="{ item }">
           {{ item.size ? item.size.toLocaleString() : '' }}
         </template>
-        <template v-slot:item.action="{ item }">
-          <v-icon
+        <template #item.action="{ item }">
+          <v-btn
             v-if="item.icon === 'mdi-file' && isText(item.name)"
-            @click="viewFile(item.name)"
+            icon="mdi-eye"
+            variant="text"
+            density="compact"
             class="mr-3"
             data-test="view-file"
-          >
-            mdi-eye
-          </v-icon>
-          <v-icon
+            aria-label="View File"
+            @click="viewFile(item.name)"
+          />
+          <v-btn
             v-if="item.icon === 'mdi-file'"
-            @click="downloadFile(item.name)"
+            icon="mdi-download-box"
+            variant="text"
+            density="compact"
             class="mr-3"
             data-test="download-file"
-          >
-            mdi-download-box
-          </v-icon>
-          <v-icon
+            aria-label="Download File"
+            @click="downloadFile(item.name)"
+          />
+          <v-btn
             v-if="item.icon === 'mdi-file'"
-            @click="deleteFile(item.name)"
+            icon="mdi-delete"
+            variant="text"
+            density="compact"
             data-test="delete-file"
-          >
-            mdi-delete
-          </v-icon>
+            aria-label="Delete File"
+            @click="deleteFile(item.name)"
+          />
         </template>
       </v-data-table>
     </v-card>
@@ -184,19 +191,19 @@
             <v-row class="mt-6">
               <v-spacer />
               <v-btn
-                @click="uploadPathDialog = false"
                 variant="outlined"
                 class="mx-2"
                 data-test="upload-file-cancel-btn"
+                @click="uploadPathDialog = false"
               >
                 Cancel
               </v-btn>
               <v-btn
-                @click.prevent="uploadFile"
                 class="mx-2"
                 color="primary"
                 type="submit"
                 data-test="upload-file-submit-btn"
+                @click.prevent="uploadFile"
               >
                 Upload
               </v-btn>
@@ -207,8 +214,8 @@
     </v-dialog>
     <v-dialog
       v-model="optionsDialog"
-      @keydown.esc="optionsDialog = false"
       max-width="300"
+      @keydown.esc="optionsDialog = false"
     >
       <v-card>
         <v-toolbar height="24">
@@ -232,12 +239,12 @@
       </v-card>
     </v-dialog>
     <output-dialog
+      v-if="showDialog"
+      v-model="showDialog"
       type="File"
       :content="dialogContent"
       :name="dialogName"
       :filename="dialogFilename"
-      v-model="showDialog"
-      v-if="showDialog"
       @submit="showDialog = false"
     />
   </div>
@@ -333,6 +340,17 @@ export default {
       }))
     },
   },
+  watch: {
+    // This is the upload function that is activated when the file gets set
+    file: async function () {
+      if (this.file === null) return
+      this.uploadFilePath = `${this.path}${this.file.name}`
+      this.uploadPathDialog = true
+    },
+    refreshInterval() {
+      this.changeUpdater()
+    },
+  },
   created() {
     Api.get('/openc3-api/storage/buckets').then((response) => {
       this.buckets = response.data
@@ -359,17 +377,6 @@ export default {
   },
   beforeUnmount() {
     this.clearUpdater()
-  },
-  watch: {
-    // This is the upload function that is activated when the file gets set
-    file: async function () {
-      if (this.file === null) return
-      this.uploadFilePath = `${this.path}${this.file.name}`
-      this.uploadPathDialog = true
-    },
-    refreshInterval() {
-      this.changeUpdater()
-    },
   },
   methods: {
     isText(filename) {
@@ -552,7 +559,12 @@ export default {
         data: this.file,
       })
       this.file = null
-      this.path = this.uploadFilePath.split('/').slice(0, -1).join('/') + '/'
+      let parts = this.uploadFilePath.split('/')
+      if (parts.length > 1) {
+        this.path = parts.slice(0, -1).join('/') + '/'
+      } else {
+        this.path = ''
+      }
       this.updateFiles()
     },
     deleteFile(filename) {
@@ -627,9 +639,11 @@ export default {
 .font-size {
   font-size: 1rem;
 }
+
 .small-font-size {
   font-size: 0.8rem;
 }
+
 .file-input {
   padding-top: 0px;
   margin-top: 0px;

@@ -95,44 +95,43 @@
           </v-expansion-panel-text>
         </v-expansion-panel>
       </v-expansion-panels>
-      <div class="mb-3" v-show="warning || error || connectionFailure">
-        <v-alert type="warning" v-model="warning" closable>
+      <div v-show="warning || error || connectionFailure" class="mb-3">
+        <v-alert v-model="warning" type="warning" closable>
           {{ warningText }}
         </v-alert>
-        <v-alert type="error" v-model="error" closable>
+        <v-alert v-model="error" type="error" closable>
           {{ errorText }}
         </v-alert>
-        <v-alert type="error" v-model="connectionFailure">
+        <v-alert v-model="connectionFailure" type="error">
           OpenC3 backend connection failed.
         </v-alert>
       </div>
-      <v-tabs ref="tabs" v-model="curTab" :key="`v-tabs_${config.tabs.length}`">
+      <v-tabs ref="tabs" :key="`v-tabs_${config.tabs.length}`" v-model="curTab">
         <v-tab
           v-for="(tab, index) in config.tabs"
           :key="index"
-          @contextmenu="(event) => tabMenu(event, index)"
           data-test="tab"
+          @contextmenu="(event) => tabMenu(event, index)"
         >
           {{ tab.tabName }}
+          <v-btn
+            variant="text"
+            icon="mdi-close"
+            @click="() => deleteComponent(index)"
+          />
         </v-tab>
-        <v-tooltip location="top">
-          <template v-slot:activator="{ props }">
-            <v-btn
-              icon="mdi-tab-plus"
-              class="ml-2"
-              variant="text"
-              @click="addTab"
-              v-bind="props"
-              :class="config.tabs.length === 0 ? 'pulse-button' : ''"
-              data-test="new-tab"
-            />
-          </template>
-          <span>Add Component</span>
-        </v-tooltip>
+        <v-btn
+          icon="mdi-tab-plus"
+          class="ml-2"
+          variant="text"
+          :class="config.tabs.length === 0 ? 'pulse-button' : ''"
+          data-test="new-tab"
+          @click="addTab"
+        />
       </v-tabs>
       <v-tabs-window
-        :model-value="curTab"
         :key="`v-tabs-window_${config.tabs.length}`"
+        :model-value="curTab"
       >
         <v-tabs-window-item
           v-for="(tab, index) in config.tabs"
@@ -144,25 +143,12 @@
               <v-divider />
               <v-card-title class="pa-3 d-flex align-center">
                 <span v-text="tab.name" />
-                <v-spacer />
-                <v-tooltip location="top">
-                  <template v-slot:activator="{ props }">
-                    <v-btn
-                      variant="text"
-                      icon="mdi-delete"
-                      @click="() => deleteComponent(index)"
-                      v-bind="props"
-                      data-test="delete-component"
-                    />
-                  </template>
-                  <span> Remove Component </span>
-                </v-tooltip>
               </v-card-title>
               <component
                 v-bind="$attrs"
                 :is="tab.type"
-                :name="tab.component"
                 :ref="tab.ref"
+                :name="tab.component"
                 :config="tab.config"
                 :packets="tab.packets"
                 @config="(config) => (tab.config = config)"
@@ -183,13 +169,13 @@
     <open-config-dialog
       v-if="openConfig"
       v-model="openConfig"
-      :configKey="configKey"
+      :config-key="configKey"
       @success="openConfiguration"
     />
     <save-config-dialog
       v-if="saveConfig"
       v-model="saveConfig"
-      :configKey="configKey"
+      :config-key="configKey"
       @success="saveConfiguration"
     />
     <!-- Dialog for renaming a new tab -->
@@ -239,9 +225,9 @@
     </v-menu>
     <!-- Dialog for adding a new component to a tab -->
     <add-component-dialog
-      :components="components"
       v-if="showAddComponentDialog"
       v-model="showAddComponentDialog"
+      :components="components"
       @add="addComponent"
       @cancel="cancelAddComponent"
     />
@@ -872,21 +858,26 @@ export default {
     margin: 0px;
   }
 }
+
 .v-expansion-panel-title {
   min-height: 10px;
   padding: 5px;
 }
+
 /* Add some juice to the START button to indicate it needs to be pressed */
 .pulse-button {
   animation: pulse 2s infinite;
 }
+
 @keyframes pulse {
   0% {
     -webkit-box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
   }
+
   70% {
     -webkit-box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
   }
+
   100% {
     -webkit-box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
   }

@@ -19,6 +19,12 @@
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+#
+# A portion of this file was funded by Blue Origin Enterprises, L.P.
+# See https://github.com/OpenC3/cosmos/pull/1963
+
+# A portion of this file was funded by Blue Origin Enterprises, L.P.
+# See https://github.com/OpenC3/cosmos/pull/1957
 
 require 'openc3/models/target_model'
 require 'openc3/models/cvt_model'
@@ -48,6 +54,7 @@ module OpenC3
                        'get_all_telemetry', # DEPRECATED
                        'get_all_tlm_names',
                        'get_all_telemetry_names', # DEPRECATED
+                       'get_all_tlm_item_names',
                        'get_tlm',
                        'get_telemetry', # DEPRECATED
                        'get_item',
@@ -314,6 +321,20 @@ module OpenC3
     end
     alias get_all_telemetry_names get_all_tlm_names
 
+    # Returns an array of all the item names for every packet in a target
+    #
+    # @param target_name [String] Name of the taret
+    # @return [Array<String>] Array of all telemetry item names
+    def get_all_tlm_item_names(target_name, manual: false, scope: $openc3_scope, token: $openc3_token)
+      authorize(permission: 'tlm', target_name: target_name, manual: manual, scope: scope, token: token)
+      begin
+        items = TargetModel.all_item_names(target_name, scope: scope)
+      rescue RuntimeError
+        items = []
+      end
+      return items
+    end
+
     # Returns a telemetry packet hash
     #
     # @since 5.0.0
@@ -400,7 +421,7 @@ module OpenC3
       target_name, packet_name = _extract_target_packet_names('get_tlm_cnt', *args)
       authorize(permission: 'system', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
       TargetModel.packet(target_name, packet_name, scope: scope)
-      Topic.get_cnt("#{scope}__TELEMETRY__{#{target_name}}__#{packet_name}")
+      return TargetModel.get_telemetry_count(target_name, packet_name, scope: scope)
     end
 
     # Get the transmit counts for telemetry packets
@@ -409,13 +430,7 @@ module OpenC3
     # @return [Array<Numeric>] Receive count for the telemetry packets
     def get_tlm_cnts(target_packets, manual: false, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'system', manual: manual, scope: scope, token: token)
-      counts = []
-      target_packets.each do |target_name, packet_name|
-        target_name = target_name.upcase
-        packet_name = packet_name.upcase
-        counts << Topic.get_cnt("#{scope}__TELEMETRY__{#{target_name}}__#{packet_name}")
-      end
-      counts
+      return TargetModel.get_telemetry_counts(target_packets, scope: scope)
     end
 
     # Get the list of derived telemetry items for a packet

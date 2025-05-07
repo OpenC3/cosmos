@@ -20,8 +20,7 @@ require_relative "messages_thread"
 
 class MessagesApi
   def initialize(
-    uuid,
-    channel,
+    subscription_key,
     history_count = 0,
     start_offset: nil,
     start_time: nil,
@@ -32,7 +31,7 @@ class MessagesApi
   )
     @thread =
       MessagesThread.new(
-        channel,
+        subscription_key,
         history_count,
         start_offset: start_offset,
         start_time: start_time,

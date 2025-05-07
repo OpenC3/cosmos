@@ -146,7 +146,12 @@ class BucketMock:
         return cls.instance
 
     def put_object(self, *args, **kwargs):
-        self.objs[kwargs["key"]] = kwargs["body"].read()
+        data = ''
+        try:
+            data = kwargs["body"].read()
+        except AttributeError:
+            data = kwargs["body"]
+        self.objs[kwargs["key"]] = data
 
     def clear(self):
         self.objs = {}

@@ -18,6 +18,9 @@
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+
+# A portion of this file was funded by Blue Origin Enterprises, L.P.
+# See https://github.com/OpenC3/cosmos/pull/1957
 */
 
 import axios from './axios.js'
@@ -285,6 +288,10 @@ export default class OpenC3Api {
   // DEPRECATED for get_all_tlm_names
   get_all_telemetry_names(target_name) {
     return this.exec('get_all_tlm_names', [target_name])
+  }
+
+  get_all_tlm_item_names(target_name) {
+    return this.exec('get_all_tlm_item_names', [target_name])
   }
 
   async get_tlm_packet(target_name, packet_name, value_type, stale_time = 30) {

@@ -1,5 +1,5 @@
 COMMAND <%= target_name %> TLM BIG_ENDIAN "Gets a telemetry point"
-  ACCESSOR HttpAccessor JsonAccessor
+  ACCESSOR openc3/accessors/http_accessor.py openc3/accessors/json_accessor.py
   TEMPLATE '{"jsonrpc": "2.0", "method": "tlm", "params": [], "keyword_params": {"type":"CONVERTED", "cache_timeout":0.1, "scope":"DEFAULT"}, "id": 0 }'
   PARAMETER HTTP_PATH 0 0 DERIVED nil nil "/openc3-api/api"
   PARAMETER HTTP_METHOD 0 0 DERIVED nil nil "POST"
@@ -26,7 +26,7 @@ COMMAND <%= target_name %> TLM BIG_ENDIAN "Gets a telemetry point"
     KEY $.id
 
 TELEMETRY <%= target_name %> TLM_RESPONSE BIG_ENDIAN "Handles the TLM command response"
-  ACCESSOR HttpAccessor JsonAccessor
+  ACCESSOR openc3/accessors/http_accessor.py openc3/accessors/json_accessor.py
   TEMPLATE '{"jsonrpc": "2.0", "result": 0.0, "id": 0}'
   ITEM HTTP_STATUS 0 0 DERIVED
   ITEM HTTP_HEADER_CONTENT_TYPE 0 0 DERIVED

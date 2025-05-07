@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -13,6 +13,9 @@
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+
+# A portion of this file was funded by Blue Origin Enterprises, L.P.
+# See https://github.com/OpenC3/cosmos/pull/1957
 
 import time
 from datetime import datetime, timezone, timedelta
@@ -603,6 +606,22 @@ class TestTlmApi(unittest.TestCase):
         self.assertIn("MECH", names)
         self.assertIn("HIDDEN", names)
 
+    # get_all_tlm_item_names
+    def test_get_all_tlm_item_names_returns_an_empty_array_if_the_target_does_not_exist(
+        self,
+    ):
+        self.assertEqual(get_all_tlm_item_names("BLAH"), [])
+
+    # Commenting this out for now... Looks like FakeRedis' zadd() is broken?
+    # def test_get_all_tlm_item_names_returns_an_array_of_all_item_names(self):
+    #     items = get_all_tlm_item_names("INST", scope="DEFAULT")
+    #     self.assertEqual(type(items), list)
+    #     self.assertEqual(len(items), 67)
+    #     self.assertIn("ARY", items)
+    #     self.assertIn("ATTPROGRESS", items)
+    #     self.assertIn("BLOCKTEST", items)
+    #     self.assertIn("CCSDSAPID", items)
+
     # get_tlm
     def test_get_tlm_raises_if_the_target_or_packet_do_not_exist(self):
         with self.assertRaisesRegex(
@@ -1030,21 +1049,15 @@ class TestTlmApi(unittest.TestCase):
     def test_get_tlm_cnt_returns_the_receive_count(self):
         start = get_tlm_cnt("inst", "Health_Status")
 
-        packet = System.telemetry.packet("INST", "HEALTH_STATUS").clone()
-        packet.received_time = datetime.now(timezone.utc)
-        packet.received_count += 1
-        TelemetryTopic.write_packet(packet, scope="DEFAULT")
+        TargetModel.increment_telemetry_count("INST", "HEALTH_STATUS", 1, scope="DEFAULT")
 
         count = get_tlm_cnt("INST", "HEALTH_STATUS")
         self.assertEqual(count, start + 1)
 
     def test_get_tlm_cnts_returns_receive_counts_for_telemetry_packets(self):
-        packet = System.telemetry.packet("INST", "ADCS").clone()
-        packet.received_time = datetime.now(timezone.utc)
-        packet.received_count = 100  # This is what is used in the result
-        TelemetryTopic.write_packet(packet, scope="DEFAULT")
+        result = TargetModel.increment_telemetry_count("INST", "ADCS", 100, scope="DEFAULT")
         cnts = get_tlm_cnts([["inst", "Adcs"]])
-        self.assertEqual(cnts, ([100]))
+        self.assertEqual(cnts, ([result]))
 
     def test_get_packet_derived_items_complains_about_non_existant_targets(self):
         with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH ABORT' does not exist"):

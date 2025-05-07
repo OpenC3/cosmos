@@ -21,12 +21,12 @@
     <v-row no-gutters>
       <v-col>
         <v-file-input
+          ref="fileInput"
           v-model="file"
           show-size
           accept="*"
           class="mx-2"
           label="Click to select a file to create a secret from or enter a secret value"
-          ref="fileInput"
         />
       </v-col>
     </v-row>
@@ -45,38 +45,36 @@
       <v-col cols="3" class="px-2">
         <!-- Intentional double equals -->
         <v-btn
-          @click="upload()"
           class="mx-2"
           color="primary"
           data-test="secretUpload"
           :disabled="secretName === '' || (file == null && secretValue === '')"
           :loading="loadingSecret"
+          @click="upload()"
         >
           <v-icon start theme="dark">mdi-cloud-upload</v-icon>
           <span> Set </span>
-          <template v-slot:loader>
+          <template #loader>
             <span>Loading...</span>
           </template>
         </v-btn>
       </v-col>
     </v-row>
-    <v-alert v-model="showAlert" closable :type="alertType">{{
-      alert
-    }}</v-alert>
+    <v-alert v-model="showAlert" closable :type="alertType">
+      {{ alert }}
+    </v-alert>
     <v-list data-test="secretList">
       <div v-for="(secret, index) in secrets" :key="index">
         <v-list-item>
           <v-list-item-title>{{ secret }}</v-list-item-title>
 
-          <template v-slot:append>
-            <v-tooltip location="top">
-              <template v-slot:activator="{ props }">
-                <v-icon v-bind="props" @click="deleteSecret(secret)">
-                  mdi-delete
-                </v-icon>
-              </template>
-              <span>Delete Secret</span>
-            </v-tooltip>
+          <template #append>
+            <v-btn
+              icon="mdi-delete"
+              variant="text"
+              aria-label="Delete Secret"
+              @click="deleteSecret(secret)"
+            />
           </template>
         </v-list-item>
         <v-divider v-if="index < secrets.length - 1" :key="index" />

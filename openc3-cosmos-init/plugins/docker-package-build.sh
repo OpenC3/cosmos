@@ -4,7 +4,7 @@ set -e
 PLUGINS="/openc3/plugins"
 GEMS="/openc3/plugins/gems/"
 PACKAGES="packages"
-OPENC3_RELEASE_VERSION=6.2.2-beta0
+OPENC3_RELEASE_VERSION=6.3.1-beta0
 
 # 2nd argument provides an override for the workspace name,
 # but that can be inferred from the 1st argument for most tools
@@ -18,10 +18,10 @@ mkdir -p ${GEMS}
 
 echo "<<< packageBuild $1"
 cd ${PLUGINS}/
-echo "--- packageBuild $1 yarn workspace $WORKSPACE_NAME build"
-yarn workspace $WORKSPACE_NAME build
-echo "=== packageBuild $1 yarn build complete"
 cd ${PACKAGES}/${1}/
+echo "--- packageBuild $1 npm run build"
+npm run build
+echo "=== packageBuild $1 npm run build complete"
 echo "--- packageBuild $1 rake build"
 rake build VERSION=${OPENC3_RELEASE_VERSION}
 echo "=== packageBuild $1 rake build complete"

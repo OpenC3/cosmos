@@ -18,7 +18,7 @@
 
 <template>
   <!-- Edit Item dialog -->
-  <v-dialog v-model="show" @keydown.esc="$emit('cancel')" max-width="700">
+  <v-dialog v-model="show" max-width="700" @keydown.esc="$emit('cancel')">
     <v-toolbar height="24">
       <v-spacer />
       <span> Edit Graph </span>
@@ -37,19 +37,19 @@
               <v-col>
                 <v-card-text class="pa-0">
                   <v-text-field
+                    v-model="graph.title"
                     class="pb-2"
                     label="Title"
-                    v-model="graph.title"
                     hide-details
                   />
                 </v-card-text>
               </v-col>
               <v-col>
                 <v-select
+                  v-model="graph.legendPosition"
                   label="Legend Position"
                   hide-details
                   :items="legendPositions"
-                  v-model="graph.legendPosition"
                   style="max-width: 280px"
                 />
               </v-col>
@@ -62,20 +62,20 @@
             <v-row>
               <v-col>
                 <v-text-field
+                  v-model="startDate"
                   label="Start Date"
                   :name="`date${Date.now()}`"
                   :rules="[rules.date]"
-                  v-model="startDate"
                   type="date"
                 />
               </v-col>
               <v-col>
                 <!-- We set the :name attribute to be unique to avoid auto-completion -->
                 <v-text-field
+                  v-model="startTime"
                   label="Start Time"
                   :name="`time${Date.now()}`"
                   :rules="[rules.time]"
-                  v-model="startTime"
                   type="time"
                   step="1"
                 />
@@ -88,20 +88,20 @@
             <v-row>
               <v-col>
                 <v-text-field
+                  v-model="endDate"
                   label="End Date"
                   :name="`date${Date.now()}`"
                   :rules="[rules.date]"
-                  v-model="endDate"
                   type="date"
                 />
               </v-col>
               <v-col>
                 <!-- We set the :name attribute to be unique to avoid auto-completion -->
                 <v-text-field
+                  v-model="endTime"
                   label="End Time"
                   :name="`time${Date.now()}`"
                   :rules="[rules.time]"
-                  v-model="endTime"
                   type="time"
                   step="1"
                 />
@@ -117,17 +117,17 @@
             <v-row dense>
               <v-col class="px-2">
                 <v-text-field
+                  v-model="graph.graphMinY"
                   hide-details
                   label="Min Y Axis (Optional)"
-                  v-model="graph.graphMinY"
                   type="number"
                 />
               </v-col>
               <v-col class="px-2">
                 <v-text-field
+                  v-model="graph.graphMaxY"
                   hide-details
                   label="Max Y Axis (Optional)"
-                  v-model="graph.graphMaxY"
                   type="number"
                 />
               </v-col>
@@ -150,27 +150,24 @@
               >
                 <v-row>
                   <v-col>
-                    <v-text-field label="Y Value" v-model="item.yValue" />
+                    <v-text-field v-model="item.yValue" label="Y Value" />
                   </v-col>
                   <v-col>
                     <v-select
+                      v-model="item.color"
                       label="Color"
                       hide-details
                       :items="colors"
-                      v-model="item.color"
                     />
                   </v-col>
                   <v-col>
-                    <v-tooltip text="Remove" location="top">
-                      <template v-slot:activator="{ props }">
-                        <v-icon
-                          v-bind="props"
-                          style="padding: 30px"
-                          @click="removeLine(item)"
-                          >mdi-delete</v-icon
-                        >
-                      </template>
-                    </v-tooltip>
+                    <v-btn
+                      style="padding: 30px"
+                      icon="mdi-delete"
+                      variant="text"
+                      aria-label="Remove Line"
+                      @click="removeLine(item)"
+                    />
                   </v-col>
                 </v-row>
               </v-list-item>
@@ -189,16 +186,15 @@
               'items-per-page-options': [5],
             }"
           >
-            <template v-slot:item.actions="{ item }">
-              <v-tooltip text="Remove" location="top">
-                <template v-slot:activator="{ props }">
-                  <v-icon v-bind="props" @click="$emit('remove', item)">
-                    mdi-delete
-                  </v-icon>
-                </template>
-              </v-tooltip>
+            <template #item.actions="{ item }">
+              <v-btn
+                icon="mdi-delete"
+                variant="text"
+                aria-label="Remove Item"
+                @click="$emit('remove', item)"
+              />
             </template>
-            <template v-slot:no-data>
+            <template #no-data>
               <span> Currently no items on this graph </span>
             </template>
           </v-data-table>
@@ -217,6 +213,7 @@
 import { TimeFilters } from '@/util'
 import { isValid, parse, toDate } from 'date-fns'
 export default {
+  mixins: [TimeFilters],
   props: {
     modelValue: Boolean, // modelValue is the default prop when using v-model
     title: {
@@ -256,7 +253,6 @@ export default {
       required: true,
     },
   },
-  mixins: [TimeFilters],
   data: function () {
     return {
       tab: 0,
@@ -382,11 +378,13 @@ export default {
   padding: 10px;
   margin-top: 10px;
 }
+
 /* For the Y Axis item editor within the Edit Dialog */
 .v-small-dialog__content {
   background-color: var(--color-background-surface-selected);
   padding: 5px 5px;
 }
+
 .horizontal-lines {
   background-color: var(--color-background-surface-default);
 }

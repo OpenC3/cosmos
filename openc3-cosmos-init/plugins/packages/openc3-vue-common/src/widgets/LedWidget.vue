@@ -21,21 +21,47 @@
 -->
 
 <template>
-  <v-tooltip location="top">
-    <template v-slot:activator="{ props }">
-      <div
-        :class="getClass"
-        :style="[cssProps, computedStyle]"
-        v-bind="props"
-      ></div>
-    </template>
-    <span>{{ fullName }}</span>
-  </v-tooltip>
+  <div>
+    <v-tooltip :open-delay="600" location="top">
+      <template #activator="{ props }">
+        <div
+          :class="getClass"
+          :style="[cssProps, computedStyle]"
+          v-bind="props"
+          @contextmenu="showContextMenu"
+        ></div>
+      </template>
+      <span>{{ fullName }}</span>
+    </v-tooltip>
+
+    <v-menu v-model="contextMenuShown" :target="[x, y]" style="z-index: 3000">
+      <v-list>
+        <v-list-item
+          v-for="(item, index) in contextMenuOptions"
+          :key="index"
+          @click.stop="item.action"
+        >
+          <v-list-item-title>{{ item.title }}</v-list-item-title>
+        </v-list-item>
+      </v-list>
+    </v-menu>
+
+    <details-dialog
+      v-model="viewDetails"
+      :target-name="parameters[0]"
+      :packet-name="parameters[1]"
+      :item-name="parameters[2]"
+    />
+  </div>
 </template>
 
 <script>
+import { DetailsDialog } from '@/components'
 import Widget from './Widget'
 export default {
+  components: {
+    DetailsDialog,
+  },
   mixins: [Widget],
   data() {
     return {
@@ -44,6 +70,33 @@ export default {
         TRUE: 'openc3-green',
         FALSE: 'openc3-red',
       },
+      viewDetails: false,
+      contextMenuShown: false,
+      x: 0,
+      y: 0,
+      contextMenuOptions: [
+        {
+          title: 'Details',
+          action: () => {
+            this.contextMenuShown = false
+            this.viewDetails = true
+          },
+        },
+        {
+          title: 'Graph',
+          action: () => {
+            window.open(
+              '/tools/tlmgrapher/' +
+                encodeURIComponent(this.parameters[0]) +
+                '/' +
+                encodeURIComponent(this.parameters[1]) +
+                '/' +
+                encodeURIComponent(this.parameters[2]),
+              '_blank',
+            )
+          },
+        },
+      ],
     }
   },
   computed: {
@@ -103,6 +156,17 @@ export default {
   },
   unmounted() {
     this.$emit('deleteItem', this.valueId)
+  },
+  methods: {
+    showContextMenu(e) {
+      e.preventDefault()
+      this.contextMenuShown = false
+      this.x = e.clientX
+      this.y = e.clientY
+      this.$nextTick(() => {
+        this.contextMenuShown = true
+      })
+    },
   },
 }
 </script>

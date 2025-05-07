@@ -337,24 +337,6 @@ export default {
           urlRerouteOnly: true,
         })
 
-        // Redirect some base paths to the first tool
-        if (
-          window.location.pathname == '/' ||
-          window.location.pathname == '/tools' ||
-          window.location.pathname == '/tools/'
-        ) {
-          // TODO: There's some sort of race condition here which makes this flaky if the user went to '/login' with
-          // no `?redirect=` query param while they were already authenticated. That sends them to '/', causing
-          // another redirect here that gets stepped on, so they're left at '/'. The nav bar shows, so they can click
-          // on a tool, or refresh the page to make this redirect actually happen.
-          for (let key of Object.keys(this.shownTools)) {
-            if (this.appNav[key].shown) {
-              history.replaceState(null, '', this.appNav[key].url)
-              break
-            }
-          }
-        }
-
         // Check every minute if we need to update our token
         setInterval(() => {
           OpenC3Auth.updateToken(120).then(function (refreshed) {
@@ -419,7 +401,27 @@ a.fixcenter {
   min-height: calc(100% + 8px);
 }
 </style>
+
 <style>
+/* Classification banners */
+#openc3-nav-drawer {
+  margin-bottom: var(--classification-height-bottom);
+}
+#openc3-nav-drawer,
+header {
+  margin-top: var(--classification-height-top);
+}
+#openc3-app-toolbar {
+  top: var(--classification-height-top);
+}
+#openc3-nav-drawer .v-navigation-drawer__content {
+  height: calc(
+    100% - var(--classification-height-top) -
+      var(--classification-height-bottom)
+  );
+}
+/* END classification banners */
+
 /* Remove the padding on root level nodes since we removed the expand icon */
 #openc3-nav-drawer
   .v-treeview
@@ -427,6 +429,7 @@ a.fixcenter {
   > .v-treeview-item__root
   > .v-treeview-item__level {
   width: 0px;
+  padding-left: 0px;
 }
 #openc3-nav-drawer
   .v-treeview
@@ -434,10 +437,25 @@ a.fixcenter {
   > .v-treeview-item__root
   > .v-treeview-item__toggle {
   width: 0px;
+  padding-left: 0px;
+}
+#openc3-nav-drawer .v-treeview > .v-treeview-group > .v-list-group__header {
+  padding-left: 30px;
+}
+#openc3-nav-drawer .v-treeview > .v-treeview-group > .v-list-group__items {
+  --indent-padding: 30px;
+}
+#openc3-nav-drawer .v-treeview .v-treeview-item {
+  padding-left: 0px;
+}
+#openc3-nav-drawer .v-treeview .v-treeview-item .v-list-item-action {
+  width: 0px;
+  padding-left: 0px;
 }
 #openc3-nav-drawer
   .v-treeview-item__children
   div.v-treeview-item__level:nth-child(1) {
   width: 0px;
+  padding-left: 0px;
 }
 </style>

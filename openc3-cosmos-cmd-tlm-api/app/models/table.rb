@@ -31,8 +31,8 @@ class Table < OpenC3::TargetFile
   class NotFound < StandardError
   end
 
-  def self.all(scope)
-    super(scope, ['tables'])
+  def self.all(scope, target = nil)
+    super(scope, ['tables'], target: target)
   end
 
   def self.binary(scope, binary_filename, definition_filename = nil, table_name = nil)
