@@ -28,7 +28,6 @@ from .target_api import *
 from .tlm_api import *
 try:
     from openc3enterprise.api.cmd_authority_api import *
-    from openc3enterprise.api.autonomic_api import *
 except ModuleNotFoundError:
     # ModuleNotFoundError expected in Open Source Edition
     pass
