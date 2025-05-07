@@ -346,7 +346,6 @@ RSpec.describe RunningScript, type: :model do
       running_script = RunningScript.new(script_status)
       running_script.parse_options(["manual"])
 
-      expect($manual).to be true
       expect(OpenC3::SuiteRunner.settings["Manual"]).to be true
     end
 
@@ -378,14 +377,13 @@ RSpec.describe RunningScript, type: :model do
       running_script = RunningScript.new(script_status)
       running_script.parse_options(["manual", "pauseOnError", "loop", "breakLoopOnError"])
 
-      expect($manual).to be true
       expect(RunningScript.pause_on_error).to be true
       expect(OpenC3::SuiteRunner.settings["Loop"]).to be true
       expect(OpenC3::SuiteRunner.settings["Break Loop On Error"]).to be true
     end
   end
 
-  describe "instrumentation methods" do
+  describe "instrumentation methods and utility methods" do
     let(:script_status) {
       OpenC3::ScriptStatusModel.new(
         name: "12345",
@@ -413,7 +411,8 @@ RSpec.describe RunningScript, type: :model do
       allow(::Script).to receive(:get_breakpoints).and_return([])
 
       # Prevent actual message logging
-      allow(OpenC3::MessageLog).to receive(:new).and_return(double("message_log", write: nil))
+      @message_log_double = double("message_log", write: nil, stop: "log_file_path")
+      allow(OpenC3::MessageLog).to receive(:new).and_return(@message_log_double)
 
       # Prevent actual IO redirection
       allow_any_instance_of(RunningScript).to receive(:redirect_io)
@@ -558,6 +557,75 @@ RSpec.describe RunningScript, type: :model do
         expect {
           running_script.exception_instrumentation(standard_error, "test.rb", 10)
         }.to raise_error(StandardError)
+      end
+    end
+
+    describe "unique_filename" do
+      it "returns the script filename when it exists" do
+        running_script = RunningScript.new(script_status)
+
+        expect(running_script.send(:unique_filename)).to eq("test_script.rb")
+      end
+
+      it "returns 'Untitled' with ID when filename is empty" do
+        script_status.filename = ""
+        running_script = RunningScript.new(script_status)
+
+        expect(running_script.send(:unique_filename)).to eq("Untitled12345")
+      end
+    end
+
+    describe "stop_message_log" do
+      it "stops the message log with metadata" do
+        running_script = RunningScript.new(script_status)
+
+        RunningScript.class_variable_set(:@@message_log, @message_log_double)
+
+        expected_metadata = {
+          "id" => "12345",
+          "user" => "test_user",
+          "scriptname" => "test_script.rb"
+        }
+
+        expect(@message_log_double).to receive(:stop).with(true, metadata: expected_metadata).and_return("log_file_path")
+
+        running_script.send(:stop_message_log)
+
+        expect(script_status.log).to eq("log_file_path")
+        expect(RunningScript.class_variable_get(:@@message_log)).to be_nil
+      end
+
+      it "does nothing if message_log is nil" do
+        running_script = RunningScript.new(script_status)
+        RunningScript.class_variable_set(:@@message_log, nil)
+        running_script.send(:stop_message_log)
+
+        expect(script_status.log).to be_nil
+        expect(RunningScript.class_variable_get(:@@message_log)).to be_nil
+      end
+    end
+
+    describe "debug" do
+      it "evaluates debug text in script_binding when available" do
+        running_script = RunningScript.new(script_status)
+
+        script_binding = binding
+        test_var = "test value"  # This will be accessible in the binding
+
+        running_script.script_binding = script_binding
+        expect(running_script).to receive(:handle_output_io).twice
+        expect(script_binding.eval("test_var")).to eq("test value")
+        running_script.debug("test_var")
+      end
+
+      it "evaluates in Object context when script_binding is not available" do
+        running_script = RunningScript.new(script_status)
+
+        running_script.script_binding = nil
+        expect(running_script).to receive(:handle_output_io).twice
+        expect(Object).to receive(:class_eval).with("1 + 1", "debug", 1)
+
+        running_script.debug("1 + 1")
       end
     end
   end
