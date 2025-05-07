@@ -6,205 +6,144 @@ sidebar_custom_props:
   myEmoji: 🔐
 ---
 
-COSMOS 5 is a container based service which does not use SSL/TLS out of the box. This guide will help you configure SSL and TLS. Learn more at the Traefik [docs](https://doc.traefik.io/traefik/routing/entrypoints/#tls).
+OpenC3 COSMOS is a container based service which does not use SSL/TLS out of the box. This guide will help you configure SSL and TLS. Learn more at the Traefik [docs](https://doc.traefik.io/traefik/routing/entrypoints/#tls).
 
-### Generate the certificate
+## Understanding SSL, TLS, and Public Key Infrastructure (PKI)
 
-> Note: Self-signed certificates are considered insecure for the Internet. Firefox will treat the site as having an invalid certificate, while Chrome will act as if the connection was plain HTTP.
+Security on the internet is built are the technologies SSL/TLS. SSL (Secure Sockets Layer) was the original version but is now an outdated technology that is no longer used in favor of the more modern TLS (Transport Layer Security). However, the terms SSL and TLS are still used interchangably in most conversations. Public Key Infrastructure (PKI) is what makes secure sockets like SSL and TLS work - and is built around certificates, certificate authorities, and public key encryption.
 
-To create a new Self-Signed SSL Certificate, use the openssl req command (run on linux from the cosmos-project root):
+Public key encryption works with a set of two keys: the public key and the private key. A message encrypted with the public key can only be decrypted by the holder of the private key. This allows for secure messaging in one direction (from anyone with the public key to the single holder of the private key). Public keys can be safely shared "publically" because they are only useful for creating an encrypted document that is useless to anyone without the private key. The private key should never be shared. Technically, the private key can also be used to encrypt messages that can be decrypted by the public key, but this is not useful since the public key is assumed to be available to everyone.
 
-```bash
-openssl req -newkey rsa:4096 \
-            -x509 \
-            -sha256 \
-            -days 3650 \
-            -nodes \
-            -out ./openc3-traefik/cert.crt \
-            -keyout ./openc3-traefik/cert.key
+Certificate authorities issue certificates which contain a public key and additional information such as a domain name and are then digitally signed by the certificate authority. Verifing that the digital signature is valid (from a trusted certificate authority) is how your computer knows that if the public key works with a given domain name, then it can be trusted that the computer responding to that domain name is who it says it is. This can only be done if your computer has the information it needs to know if the certificate is valid. This information is included in the certificate authority trust store on your computer.
 
-Country Name (2 letter code) [XX]:.
-State or Province Name (full name) []:.
-Locality Name (eg, city) [Default City]:.
-Organization Name (eg, company) [Default Company Ltd]:.
-Organizational Unit Name (eg, section) []:.
-Common Name (eg, your name or your server hostname) []: <!-- UPDATE WITH YOUR HOSTNAME HERE -->
-Email Address []:
-```
+Have you ever seen "self signed certificate" type error messages? These error messages mean that your computer's certificate authority trust store wasn't able to verify the signature on a certificate. Generally this is because the certificate was issued by a private certificate authority (like an Active Directory Server or other company specific issuer). Computers by default include the information they need to check certificates from major public issuers of certificates (like Let's Encrypt) but don't have any information on private issuers unless you set it up.
 
-Let's breakdown the command and understand what each option means:
+Does this mean we can't use TLS without paying for certificates (or using free services like Let's Encrypt)? No - but it does mean if you use a private certificate authority, there is more work involved to make it work so that your computer will trust the certificates. This is unavoidable because computers are setup to not trust unknown certificate authorities for a good reason... If you trust all certificates then anyone can pretend to be any domain name on the internet. Side note: Domain Name Service (DNS) is still another layer of protection but TLS prevents someone who hacks DNS from also pretending to be valid domains.
 
-- `newkey rsa:4096` - Creates a new certificate request and 4096 bit RSA key. The default one is 2048 bits.
-- `x509` - Creates a X.509 Certificate.
-- `sha256` - Use 265-bit SHA (Secure Hash Algorithm).
-- `days 3650` - The number of days to certify the certificate for. 3650 is ten years. You can use any positive integer.
-- `nodes` - Creates a key without a passphrase.
-- `out ./openc3-traefik/cert.crt` - Specifies the filename to write the newly created certificate to. You can specify any file name.
-- `keyout ./openc3-traefik/cert.key` - Specifies the filename to write the newly created private key to. You can specify any file name.
+## Configure OpenC3 COSMOS for TLS
 
-For more information about the `openssl req` command options, visit the [OpenSSL req documentation page](https://www.openssl.org/docs/man1.0.2/man1/openssl-req.html).
+### Obtain or Generate the Certificates
 
-### Updating the openc3-traefik Dockerfile
+Most OpenC3 customers will be using certificates generated by a private certificate authority. If your certificate authority is controlled by your IT department please contact them to receive the public key/private key and full certificate chain (cacert.pem) file for your domain name. Note that you must have the full certificate chain. Often CAs are "chained" with a root CA and one or more intermediate CAs. You must have the certificates for each in your cacert.pem or it will not work.
 
-Add the new cert to the traefik Docker container.
+If using a cloud service, like AWS Private CA, follow the service's directions to retrieve these three files.
 
-```diff
---- a/openc3-traefik/Dockerfile
-+++ b/openc3-traefik/Dockerfile
-@@ -1,3 +1,4 @@
- FROM traefik:2.4
- COPY ./traefik.yaml /etc/traefik/traefik.yaml
-+COPY ./cert.crt ./cert.key /etc/certs/
- EXPOSE 80
-```
+If you are running COSMOS on an internet facing server (not recommended), then you can get free TLS certificates from Let's Encrypt. In this case the Traefik container will retrieve the certificates for you automatically (directions later on this page).
 
-### Updating the Traefik config
+If you want to generate self-signed certificates, especially for an IP address rather than a domain name, we recommend using the mkcert utility.
 
-Configure Traefik to use the new cert file.
+1. Install mkcert (brew install mkcert on MacOs)
+2. mkcert -install
+3. mkcert "your ip or domain name here"
 
-openc3-traefik/traefik.yaml
+This will generate YOURDOMAIN.pem (public key) and YOURDOMAIN-key.pem (private key)
 
-```diff
---- a/openc3-traefik/traefik.yaml
-+++ b/openc3-traefik/traefik.yaml
-@@ -3,6 +3,17 @@
-+tls:
-+  certificates:
-+   - certFile: "/etc/certs/cert.crt"
-+     keyFile: "/etc/certs/cert.key"
-# Listen for everything coming in on the standard HTTP port
-entrypoints:
-  web:
-    address: ":2900"
-+    http:
-+      redirections:
-+        entryPoint:
-+          to: websecure
-+          scheme: https
-+  websecure:
-+    address: ":2943"
-+    http:
-+      tls:
-+        domains:
-+          - main: "<!-- UPDATE WITH YOUR HOSTNAME HERE -->"
-```
+### Configuring cacert.pem for your certificate authority
 
-### Update docker-compose.yaml
+If you are using a certificates from a public certificate authority then you are good to go. We build all of our containers with a recent cacert.pem file that comes from the curl project and can be downloaded here: https://curl.se/ca/cacert.pem. This file contains the information needed to verify certificates from all of the major public certificate authorities. You can safely skip ahead to configuring COSMOS with the TLS public/private keys.
 
-Update traefik to use secure port 443 instead of port 80.
+However, if your certificates are coming from a private certificate authority then you will need to configure the COSMOS containers with a cacert.pem file that includes the necessary information from your private certificate authority. Note that all non-public certificate authorities will need to be configured including services like Amazon Private CA. COSMOS WILL NOT WORK WITHOUT FOLLOWING THIS STEP.
 
-```diff
---- a/compose.yaml
-+++ b/compose.yaml
- services:
-   openc3-minio:
-@@ -70,7 +70,7 @@ services:
-   openc3-traefik:
-     image: "ballaerospace/openc3-traefik:${OPENC3_TAG}"
-     ports:
--      - "80:2900"
-+      - "443:2943"
-     restart: "unless-stopped"
-     depends_on:
-```
+It is recommended that you append your private certificate authority certificate to the end of the provided cacert.pem file. This allows COSMOS to work with the private CA and with the public internet over TLS.
 
-Now you can run `./openc3.sh start` to rebuild the Traefik container and it should include your new cert file.
-
-## Let's Encrypt
-
-#### KEY
-
-privkey.pem is the "key" file
-
-Sometimes it is named as cert.key or example.com.key.
-
-#### CRT
-
-fullchain.pem is your "crt" file.
-
-Sometimes it is named as example.com.crt.
-
-#### CRT/KEY Bundle
-
-bundle.pem would be made like so: cat fullchain.pem privkey.pem > bundle.pem
-
-HAProxy is the only server that I know of that uses bundle.pem.
-
-#### cert.pem
-
-cert.pem contains ONLY your certificate, which can only be used by itself if the browser already has the certificate which signed it, which may work in testing (which makes it seem like it may be the right file), but will actually fail for many of your users in production with a security error of untrusted certificate.
-
-However, you don't generally use the cert.pem by itself. It's almost always coupled with chain.pem as fullchain.pem.
-
-#### chain.pem
-
-chain.pem is the intermediary signed authority, signed by the root authority - which is what all browsers are guaranteed to have in their pre-built cache.
-
-### Checking certs
-
-You can inspect the cert like so:
+In general this can be done like this:
 
 ```
-openssl x509 -in cert.pem -text -noout
+cat myca.pem >> cacert.pem
 ```
 
-## Extracting the certificate and keys from a .pfx file
-
-The .pfx file, which is in a PKCS#12 format, contains the SSL certificate (public keys) and the corresponding private keys. You might have to import the certificate and private keys separately in an unencrypted plain text format to use it on another system. This topic provides instructions on how to convert the .pfx file to .crt and .key files.
-
-### Extract .crt and .key files from .pfx file
-
-> PREREQUISITE: Ensure OpenSSL is installed in the server that contains the SSL certificate.
-
-1. Start OpenSSL from the OpenSSL\bin folder.
-
-1. Open the command prompt and go to the folder that contains your .pfx file.
-
-1. Run the following command to extract the private key:
+If using mkcert to create self signed certificates, this can be done as follows:
 
 ```
-openssl pkcs12 -in [yourfile.pfx] -nocerts -out [drlive.key]
+cat "`mkcert -CAROOT`"/rootCA.pem >> cacert.pem
 ```
 
-You will be prompted to type the import password. Type the password that you used to protect your keypair when you created the .pfx file. You will be prompted again to provide a new password to protect the .key file that you are creating. Store the password to your key file in a secure place to avoid misuse.
+In all versions of COSMOS the base cacert.pem file can be found at the root of your COSMOS folder structure. This is the file you should modify/replace with your CA information.
 
-1. Run the following command to extract the certificate:
+### Configure OpenC3 COSMOS for TLS when running in Docker Compose
 
-```
-openssl pkcs12 -in [yourfile.pfx] -clcerts -nokeys -out [drlive.crt]
-```
+Note: These instructions are only for Docker Compose (Both Core and Enterprise). If you are using Kubernetes with COSMOS Enterprise please see the Kubernetes instructions.
 
-1. Run the following command to decrypt the private key:
+Follow earlier instructions to obtain your private key, public key, and to modify cacert.pem as necessary.
 
-```
-openssl rsa -in [drlive.key] -out [drlive-decrypted.key]
-```
+#### Enterprise Changes required for all open to the network configurations
 
-Type the password that you created to protect the private key file in the previous step.
-The .crt file and the decrypted and encrypted .key files are available in the path, where you started OpenSSL.
+If running OpenC3 Core skip to the next section.
 
-### Convert .pfx file to .pem format
+1. Edit compose.yaml
+   1. Change this openc3-keycloak line: KC_HOSTNAME: "http://localhost:2900/auth"
+   1. It should be changed to the final url with correct http/https, domain, port and end with /auth
+1. Edit .env
+   1. Change the OPENC3_KEYCLOAK_EXTERNAL_URL and OPENC3_KEYCLOAK_URL lines so that **both** are set to the exact same url as set above in compose.yaml
+1. Edit openc3-enterprise-grafana/cosmos.yaml
+   1. Change the cosmosUrl and keycloakUrl settings to the correct schema, domain, and port. Keep /auth if present.
+1. Edit openc3-enterprise-grafana/grafana.ini
+   1. Change the root_url, auth_url, token_url, and api_url settings to the correct schema, domain, and port, leave any additional path information.
 
-There might be instances where you might have to convert the .pfx file into .pem format. Run the following command to convert it into PEM format.
+#### Open to the network using TLS and your own certificates
 
-```
-openssl rsa -in [keyfile-encrypted.key] -outform PEM -out [keyfile-encrypted-pem.key]
-```
+The following steps are written for the enterprise folder names. Remove "-enterprise" for COSMOS Core.
 
-## TLS1.2 INADEQUATE_SECURITY Errors
+1. Copy your public SSL certicate to ./openc3-enterprise-traefik/cert.crt
+2. Copy your private SSL certicate to ./openc3-enterprise-traefik/cert.key
+3. Edit compose.yaml
+   1. Comment out this openc3-traefik line: `- "./openc3-enterprise-traefik/traefik.yaml:/etc/traefik/traefik.yaml:z"`
+   2. Uncomment this openc3-traefik line: `- "./openc3-enterprise-traefik/traefik-ssl.yaml:/etc/traefik/traefik.yaml"`
+   3. Uncomment this openc3-traefik line: `- "./openc3-enterprise-traefik/cert.key:/etc/traefik/cert.key"`
+   4. Uncomment this openc3-traefik line: `- "./openc3-enterprise-traefik/cert.crt:/etc/traefik/cert.crt"`
+   5. Modify this openc3-traefik line to remove the ip address and modify the first port number if desired **(Note: leave the last :2900)**: `- "127.0.0.1:2900:2900"`
+   6. Modify this openc3-traefik line to remove the ip address and modify the first port number if desired **(Note: leave the last :2943)**: `- "127.0.0.1:2943:2943"`
+4. Edit ./openc3-enterprise-traefik/traefik-ssl.yaml
+   1. Update line 22 to your domain: - main: "mydomain.com" # Update with your domain
+5. Start OpenC3
+   1. On Linux/Mac: ./openc3.sh run
+   2. On Windows: openc3.bat run
+6. Enterprise Only: After approximately 2 minutes, open a web browser to https://mydomain.com/auth/
+   1. If you run "docker ps", you can watch until the openc3-cosmos-enterprise-init container completes, at which point the system should be fully configured and ready to use.
+7. Enterprise Only: **IMPORTANT**: You must configure Keycloak before accessing https://mydomain.com to get to the main OpenC3 COSMOS app and Grafana to work (you'll just see a solid color page until you do this) - Please follow the Keycloak documentation in our [User's Manual](https://github.com/OpenC3/cosmos-enterprise/blob/main/docs/OpenC3%20COSMOS%20Enterprise%20Edition%20User's%20Manual.pdf)
 
-- https://doc.traefik.io/traefik/https/tls/#cipher-suites
-- https://pkg.go.dev/crypto/tls#pkg-constants
+#### Open to the network using a global certificate from Let's Encrypt
 
-```yaml
-tls:
-  options:
-    default:
-      cipherSuites:
-        - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
-        - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
-        - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
-        - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
-        - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
-        - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
-```
+Warning: These directions only work when exposing OpenC3 COSMOS to the internet. Make sure you understand the risks and have properly configured your server settings and firewall.
+
+The following steps are written for the enterprise folder names. Remove "-enterprise" for COSMOS Core.
+
+1. Make sure that your public DNS settings are mapping your domain name to your server
+2. Edit compose.yaml
+   1. Comment out this openc3-traefik line: `- "./openc3-enterprise-traefik/traefik.yaml:/etc/traefik/traefik.yaml:z"`
+   2. Uncomment this openc3-traefik line: `- "./openc3-enterprise-traefik/traefik-letsencrypt.yaml:/etc/traefik/traefik.yaml"`
+   3. Comment out this openc3-traefik line: `- "127.0.0.1:2900:2900"`
+   4. Comment out this openc3-traefik line: `- "127.0.0.1:2943:2943"`
+   5. Uncomment out this openc3-traefik line: `- "80:2900"`
+   6. Uncomment out this openc3-traefik line: `- "443:2943"`
+3. Start OpenC3
+   1. On Linux/Mac: ./openc3.sh run
+   2. On Windows: openc3.bat run
+4. Enterprise Only: After approximately 2 minutes, open a web browser to https://mydomain.com/auth/
+   1. If you run "docker ps", you can watch until the openc3-cosmos-enterprise-init container completes, at which point the system should be fully configured and ready to use.
+5. Enterprise Only: **IMPORTANT**: You must configure Keycloak before accessing https://mydomain.com to get to the main OpenC3 COSMOS app and Grafana to work (you'll just see a blank blue page until you do this) - Please follow the Keycloak documentation in our [User's Manual](https://github.com/OpenC3/cosmos-enterprise/blob/main/docs/OpenC3%20COSMOS%20Enterprise%20Edition%20User's%20Manual.pdf)
+
+### Configure OpenC3 COSMOS Enterprise for TLS when running in Kubernetes
+
+Follow earlier instructions to obtain your private key, public key, and to modify cacert.pem as necessary.
+
+In most Kubernetes environments, COSMOS will use a seperate platform provided load balancer as the TLS termination point. Follow the directions for your specific Kubernetes environment to configure this load balancer with the TLS keys. Don't forget to update the cacert.pem file for COSMOS (and create the secret defined below) so that COSMOS can recognize the CA that issued your keys. As of COSMOS Enterprise 6.4, the create_secrets.sh script will create a secret called openc3-cacert to hold this file. This file is automatically mounted into each container that needs it at /devel/cacert.pem. Our helm charts also set the appropriate environment variables to use this file.
+
+You will also need to correctly set several values in the openc3 helm chart values.yaml file to configure for TLS.
+The relevant values are described in the following table.
+
+| Value Name               | Description                                                                                                         | Default Value     |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| global.cosmosdomain      | The domain name that cosmos will be hosted at                                                                       | cosmos.openc3.com |
+| ssl                      | This flag should be set to true if you are using SSL/TLS even with an external load balancer                        | true              |
+| traefik.tlsCerts         | Set this flag to true if you are going to use Traefik as your SSL endpoint with given certs                         | false             |
+| traefik.letsEncrypt      | Set this flag to true if you want Traefik to acquire certs from Lets Encrypt. Will only work on the public internet | false             |
+| traefik.letsEncryptEmail | Email address given to Lets Encrypt when issuing certs                                                              | false             |
+
+Additionally the following secrets will need to be defined based on how you set the above values.
+
+| Secret Name         | Description                                                                                                                                                                                                                                                                                         |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| openc3-cacert       | This should always be set with the cacert.pem file used by COSMOS (Even if just using public certificates). Be sure to append the full certificate chain from your private CA so that COSMOS can verify certificates successfully. Without doing this you will be guaranteed to receive SSL errors. |
+| openc3-traefik-cert | Public key provided to Traefik if traefik.tlsCerts is true                                                                                                                                                                                                                                          |
+| openc3-traefik-key  | Private key provided to Traefik if traefik.tlsCerts is true                                                                                                                                                                                                                                         |
