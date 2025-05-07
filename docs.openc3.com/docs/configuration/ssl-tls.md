@@ -10,11 +10,11 @@ OpenC3 COSMOS is a container based service which does not use SSL/TLS out of the
 
 ## Understanding SSL, TLS, and Public Key Infrastructure (PKI)
 
-Security on the internet is built are the technologies SSL/TLS. SSL (Secure Sockets Layer) was the original version but is now an outdated technology that is no longer used in favor of the more modern TLS (Transport Layer Security). However, the terms SSL and TLS are still used interchangably in most conversations. Public Key Infrastructure (PKI) is what makes secure sockets like SSL and TLS work - and is built around certificates, certificate authorities, and public key encryption.
+Security on the internet is built are the technologies SSL/TLS. SSL (Secure Sockets Layer) was the original version but is now an outdated technology that is no longer used in favor of the more modern TLS (Transport Layer Security). However, the terms SSL and TLS are still used interchangeably in most conversations. Public Key Infrastructure (PKI) is what makes secure sockets like SSL and TLS work - and is built around certificates, certificate authorities, and public key encryption.
 
-Public key encryption works with a set of two keys: the public key and the private key. A message encrypted with the public key can only be decrypted by the holder of the private key. This allows for secure messaging in one direction (from anyone with the public key to the single holder of the private key). Public keys can be safely shared "publically" because they are only useful for creating an encrypted document that is useless to anyone without the private key. The private key should never be shared. Technically, the private key can also be used to encrypt messages that can be decrypted by the public key, but this is not useful since the public key is assumed to be available to everyone.
+Public key encryption works with a set of two keys: the public key and the private key. A message encrypted with the public key can only be decrypted by the holder of the private key. This allows for secure messaging in one direction (from anyone with the public key to the single holder of the private key). Public keys can be safely shared "publicly" because they are only useful for creating an encrypted document that is useless to anyone without the private key. The private key should never be shared. Technically, the private key can also be used to encrypt messages that can be decrypted by the public key, but this is not useful since the public key is assumed to be available to everyone.
 
-Certificate authorities issue certificates which contain a public key and additional information such as a domain name and are then digitally signed by the certificate authority. Verifing that the digital signature is valid (from a trusted certificate authority) is how your computer knows that if the public key works with a given domain name, then it can be trusted that the computer responding to that domain name is who it says it is. This can only be done if your computer has the information it needs to know if the certificate is valid. This information is included in the certificate authority trust store on your computer.
+Certificate authorities issue certificates which contain a public key and additional information such as a domain name and are then digitally signed by the certificate authority. Verifying that the digital signature is valid (from a trusted certificate authority) is how your computer knows that if the public key works with a given domain name, then it can be trusted that the computer responding to that domain name is who it says it is. This can only be done if your computer has the information it needs to know if the certificate is valid. This information is included in the certificate authority trust store on your computer.
 
 Have you ever seen "self signed certificate" type error messages? These error messages mean that your computer's certificate authority trust store wasn't able to verify the signature on a certificate. Generally this is because the certificate was issued by a private certificate authority (like an Active Directory Server or other company specific issuer). Computers by default include the information they need to check certificates from major public issuers of certificates (like Let's Encrypt) but don't have any information on private issuers unless you set it up.
 
@@ -84,8 +84,8 @@ If running OpenC3 Core skip to the next section.
 
 The following steps are written for the enterprise folder names. Remove "-enterprise" for COSMOS Core.
 
-1. Copy your public SSL certicate to ./openc3-enterprise-traefik/cert.crt
-2. Copy your private SSL certicate to ./openc3-enterprise-traefik/cert.key
+1. Copy your public SSL certificate to ./openc3-enterprise-traefik/cert.crt
+2. Copy your private SSL certificate to ./openc3-enterprise-traefik/cert.key
 3. Edit compose.yaml
    1. Comment out this openc3-traefik line: `- "./openc3-enterprise-traefik/traefik.yaml:/etc/traefik/traefik.yaml:z"`
    2. Uncomment this openc3-traefik line: `- "./openc3-enterprise-traefik/traefik-ssl.yaml:/etc/traefik/traefik.yaml"`
@@ -127,7 +127,7 @@ The following steps are written for the enterprise folder names. Remove "-enterp
 
 Follow earlier instructions to obtain your private key, public key, and to modify cacert.pem as necessary.
 
-In most Kubernetes environments, COSMOS will use a seperate platform provided load balancer as the TLS termination point. Follow the directions for your specific Kubernetes environment to configure this load balancer with the TLS keys. Don't forget to update the cacert.pem file for COSMOS (and create the secret defined below) so that COSMOS can recognize the CA that issued your keys. As of COSMOS Enterprise 6.4, the create_secrets.sh script will create a secret called openc3-cacert to hold this file. This file is automatically mounted into each container that needs it at /devel/cacert.pem. Our helm charts also set the appropriate environment variables to use this file.
+In most Kubernetes environments, COSMOS will use a separate platform provided load balancer as the TLS termination point. Follow the directions for your specific Kubernetes environment to configure this load balancer with the TLS keys. Don't forget to update the cacert.pem file for COSMOS (and create the secret defined below) so that COSMOS can recognize the CA that issued your keys. As of COSMOS Enterprise 6.4, the create_secrets.sh script will create a secret called openc3-cacert to hold this file. This file is automatically mounted into each container that needs it at /devel/cacert.pem. Our helm charts also set the appropriate environment variables to use this file.
 
 You will also need to correctly set several values in the openc3 helm chart values.yaml file to configure for TLS.
 The relevant values are described in the following table.
