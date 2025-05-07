@@ -384,4 +384,181 @@ RSpec.describe RunningScript, type: :model do
       expect(OpenC3::SuiteRunner.settings["Break Loop On Error"]).to be true
     end
   end
+
+  describe "instrumentation methods" do
+    let(:script_status) {
+      OpenC3::ScriptStatusModel.new(
+        name: "12345",
+        state: "running",
+        shard: 0,
+        filename: "test_script.rb",
+        current_filename: "test_script.rb",
+        line_no: 0,
+        start_line_no: 1,
+        username: "test_user",
+        user_full_name: "Test User",
+        start_time: Time.now.utc.iso8601,
+        disconnect: false,
+        scope: "DEFAULT"
+      )
+    }
+
+    before do
+      # Allow script status to be created but not actually stored
+      allow(script_status).to receive(:create)
+      allow(script_status).to receive(:update)
+
+      # Mock script retrieval
+      allow(::Script).to receive(:body).and_return("puts 'Test Script'")
+      allow(::Script).to receive(:get_breakpoints).and_return([])
+
+      # Prevent actual message logging
+      allow(OpenC3::MessageLog).to receive(:new).and_return(double("message_log", write: nil))
+
+      # Prevent actual IO redirection
+      allow_any_instance_of(RunningScript).to receive(:redirect_io)
+
+      # Prevent actual script running
+      allow_any_instance_of(RunningScript).to receive(:handle_potential_tab_change)
+      allow_any_instance_of(RunningScript).to receive(:handle_pause)
+      allow_any_instance_of(RunningScript).to receive(:handle_line_delay)
+      allow_any_instance_of(RunningScript).to receive(:handle_output_io)
+      allow_any_instance_of(RunningScript).to receive(:running_script_anycable_publish)
+      allow_any_instance_of(RunningScript).to receive(:update_running_script_store)
+    end
+
+    describe "pre_line_instrumentation" do
+      it "updates script status with current filename and line number" do
+        running_script = RunningScript.new(script_status)
+
+        running_script.use_instrumentation = true
+
+        expect(OpenC3::Logger).to receive(:detail_string=).with("new_file.rb:42")
+        expect(running_script).to receive(:update_running_script_store).with("running")
+        expect(running_script).to receive(:running_script_anycable_publish).with(
+          "running-script-channel:12345",
+          {
+            type: :line,
+            filename: "new_file.rb",
+            line_no: 42,
+            state: script_status.state
+          }
+        )
+
+        running_script.pre_line_instrumentation("new_file.rb", 42)
+
+        expect(script_status.current_filename).to eq("new_file.rb")
+        expect(script_status.line_no).to eq(42)
+      end
+
+      it "raises StopScript if stop flag is set" do
+        running_script = RunningScript.new(script_status)
+        running_script.use_instrumentation = true
+
+        running_script.instance_variable_set(:@stop, true)
+
+        # Call pre_line_instrumentation and expect it to raise StopScript
+        expect {
+          running_script.pre_line_instrumentation("new_file.rb", 42)
+        }.to raise_error(OpenC3::StopScript)
+      end
+
+      it "doesn't update anything when use_instrumentation is false" do
+        running_script = RunningScript.new(script_status)
+        running_script.use_instrumentation = false
+
+        expect(running_script).not_to receive(:update_running_script_store)
+        expect(running_script).not_to receive(:running_script_anycable_publish)
+
+        running_script.pre_line_instrumentation("new_file.rb", 42)
+      end
+    end
+
+    describe "post_line_instrumentation" do
+      it "calls handle_output_io when instrumentation is enabled" do
+        running_script = RunningScript.new(script_status)
+        running_script.use_instrumentation = true
+
+        expect(running_script).to receive(:handle_output_io).with("new_file.rb", 42)
+
+        running_script.post_line_instrumentation("new_file.rb", 42)
+      end
+
+      it "doesn't call handle_output_io when instrumentation is disabled" do
+        running_script = RunningScript.new(script_status)
+        running_script.use_instrumentation = false
+
+        expect(running_script).not_to receive(:handle_output_io)
+
+        running_script.post_line_instrumentation("new_file.rb", 42)
+      end
+
+      it "adjusts line number with line_offset" do
+        running_script = RunningScript.new(script_status)
+        running_script.use_instrumentation = true
+
+        running_script.instance_variable_set(:@line_offset, 10)
+
+        expect(running_script).to receive(:handle_output_io).with("new_file.rb", 52) # 42 + 10
+
+        running_script.post_line_instrumentation("new_file.rb", 42)
+      end
+    end
+
+    describe "exception_instrumentation" do
+      it "re-raises StopScript and SkipScript exceptions" do
+        running_script = RunningScript.new(script_status)
+        running_script.use_instrumentation = true
+
+        stop_script_error = OpenC3::StopScript.new
+        skip_script_error = OpenC3::SkipScript.new
+
+        expect {
+          running_script.exception_instrumentation(stop_script_error, "test.rb", 10)
+        }.to raise_error(OpenC3::StopScript)
+
+        expect {
+          running_script.exception_instrumentation(skip_script_error, "test.rb", 10)
+        }.to raise_error(OpenC3::SkipScript)
+      end
+
+      it "calls handle_exception for non-StopScript/SkipScript exceptions" do
+        running_script = RunningScript.new(script_status)
+        running_script.use_instrumentation = true
+
+        standard_error = StandardError.new("Test error")
+
+        expect(running_script).to receive(:handle_exception).with(standard_error, false, "test.rb", 10)
+
+        running_script.exception_instrumentation(standard_error, "test.rb", 10)
+      end
+
+      it "adjusts line number with line_offset" do
+        running_script = RunningScript.new(script_status)
+        running_script.use_instrumentation = true
+
+        running_script.instance_variable_set(:@line_offset, 10)
+
+        standard_error = StandardError.new("Test error")
+
+        # Expect handle_exception to be called with adjusted line number
+        expect(running_script).to receive(:handle_exception).with(standard_error, false, "test.rb", 20) # 10 + 10
+
+        running_script.exception_instrumentation(standard_error, "test.rb", 10)
+      end
+
+      it "doesn't handle exceptions when use_instrumentation is false" do
+        running_script = RunningScript.new(script_status)
+        running_script.use_instrumentation = false
+
+        standard_error = StandardError.new("Test error")
+
+        expect(running_script).not_to receive(:handle_exception)
+
+        expect {
+          running_script.exception_instrumentation(standard_error, "test.rb", 10)
+        }.to raise_error(StandardError)
+      end
+    end
+  end
 end
