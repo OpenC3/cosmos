@@ -22,7 +22,7 @@
 
 <template>
   <div>
-    <span> Add metdata key value(s)</span>
+    <span> Add metadata key value(s)</span>
     <v-table density="compact">
       <tbody>
         <tr>
