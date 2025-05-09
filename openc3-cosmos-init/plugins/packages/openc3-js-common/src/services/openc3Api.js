@@ -24,11 +24,15 @@
 */
 
 import axios from './axios.js'
-import { parse, stringify, isSafeNumber } from 'lossless-json'
+import { parse, stringify, isInteger, isSafeNumber } from 'lossless-json'
 
 // parse huge integer values into a bigint, and use a regular number otherwise
 export function customNumberParser(value) {
-  return isSafeNumber(value) ? parseFloat(value) : BigInt(value)
+  if (isInteger(value) && !isSafeNumber(value)) {
+    return BigInt(value)
+  } else {
+    return parseFloat(value)
+  }
 }
 export default class OpenC3Api {
   id = 1
@@ -117,7 +121,8 @@ export default class OpenC3Api {
         err.message = 'Request error, no response received'
       } else {
         // Something happened in setting up the request and triggered an Error
-        err.name = 'Unknown error'
+        // Simply return the original error so we don't lose information
+        err = error
       }
       throw err
     }
