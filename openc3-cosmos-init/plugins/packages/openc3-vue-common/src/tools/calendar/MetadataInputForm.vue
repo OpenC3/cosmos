@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -22,12 +22,13 @@
 
 <template>
   <div>
-    <v-table dense>
+    <span> Add metadata key value(s)</span>
+    <v-table density="compact">
       <tbody>
         <tr>
           <th scope="col" class="text-left">Key</th>
           <th scope="col" class="text-left">Value</th>
-          <th scope="col" class="text-right">
+          <th scope="col" class="text-right" width="52px">
             <v-btn
               icon="mdi-plus"
               variant="text"
@@ -40,16 +41,18 @@
           <td>
             <v-text-field
               v-model="meta.key"
-              type="text"
               density="compact"
+              type="text"
+              hide-details
               :data-test="`key-${i}`"
             />
           </td>
           <td>
             <v-text-field
               v-model="meta.value"
-              type="text"
               density="compact"
+              type="text"
+              hide-details
               :data-test="`value-${i}`"
             />
           </td>

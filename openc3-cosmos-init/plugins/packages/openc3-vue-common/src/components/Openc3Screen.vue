@@ -357,11 +357,7 @@ export default {
   // We need this because an error can occur from any of the children
   // in the widget stack and are typically thrown on create()
   errorCaptured(err, vm, info) {
-    // eslint-disable-next-line no-console
-    console.log({ err, vm, info })
     if (this.errors.length < MAX_ERRORS) {
-      // eslint-disable-next-line no-console
-      console.log({ errors: this.errors })
       if (err.usage) {
         this.errors.push({
           type: 'usage',
@@ -378,6 +374,8 @@ export default {
           time: new Date().getTime(),
         })
       }
+      // eslint-disable-next-line no-console
+      console.log(this.errors)
       this.configError = true
     }
     return false

@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2025, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -125,7 +125,7 @@
             <v-tooltip :open-delay="600" location="top">
               <template #activator="{ props }">
                 <span v-bind="props">
-                  <v-checkbox
+                  <v-checkbox-btn
                     v-model="scriptBackground"
                     label="B/G"
                     class="shrink mt-0"
