@@ -1283,10 +1283,10 @@ export default {
         if (response.data) {
           let state = response.data.state
           if (
-            state !== 'completed' &&
-            state !== 'completed_errors' &&
+            state !== 'complete' &&
+            state !== 'complete_errors' &&
             state !== 'stopped' &&
-            state !== 'crashed' &&
+            state !== 'crash' &&
             state !== 'killed'
           ) {
             this.filename = response.data.filename
@@ -1298,7 +1298,6 @@ export default {
               title: `Script ${id} has already completed`,
               body: 'Check the Completed Scripts below ...',
             })
-            this.scriptComplete()
             this.showScripts = true
           }
         } else {
@@ -1306,7 +1305,6 @@ export default {
             title: `Running Script ${id} not found`,
             body: 'Check the Completed Scripts below ...',
           })
-          this.scriptComplete()
           this.showScripts = true
         }
       })
@@ -1520,7 +1518,6 @@ export default {
       this.state = 'stopped'
       this.fatal = false
       this.scriptId = null // No current scriptId
-      sessionStorage.removeItem('script_runner__script_id')
       this.currentFilename = null // No current file running
       this.files = {} // Clear the file cache
       // Make sure we process no more events

@@ -210,7 +210,7 @@ export default {
     return {
       api: null,
       timeZone: 'local',
-      activeTab: 'completed',
+      activeTab: 'running',
       downloadScript: null,
       refreshTimer: null,
       // Running scripts pagination data
