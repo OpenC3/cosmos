@@ -166,7 +166,7 @@ module OpenC3
       if not is_complete?()
         @state = new_state
         # If setting to complete, check for errors
-        # and set the state to complete_errors if they exist
+        # and set the state to completed_errors if they exist
         if @state == 'completed' and @errors
           @state = 'completed_errors'
         end
