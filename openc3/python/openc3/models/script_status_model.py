@@ -141,7 +141,7 @@ class ScriptStatusModel(Model):
         if not self.is_complete():
             self.__state = new_state
             # If setting to complete, check for errors
-            # and set the state to complete_errors if they exist
+            # and set the state to completed_errors if they exist
             if self.__state == 'completed' and self.errors:
                 self.__state = 'completed_errors'
 
