@@ -142,6 +142,7 @@
             opacity="0.8"
             absolute
             attach
+            scroll-strategy="none"
           />
           <vertical-widget
             :key="screenKey"
@@ -165,6 +166,20 @@
         opacity="0.8"
         absolute
         attach
+        scroll-strategy="none"
+      />
+      <v-btn
+        v-show="errors.length !== 0"
+        icon="mdi-alert"
+        variant="text"
+        density="compact"
+        data-test="error-graph-icon"
+        aria-label="Show Errors"
+        @click="
+          () => {
+            errorDialog = true
+          }
+        "
       />
       <vertical-widget
         :key="screenKey"
