@@ -179,9 +179,9 @@ class ScriptStatusModel(Model):
     def destroy(self):
         self.destroyed = True
         self.undeploy()
-        self.store().hdel(self.primary_key, self.name)
+        self.store_queued().hdel(self.primary_key, self.name)
         # Also remove from ordered set
-        self.store().zremrangebyscore(self.primary_key + "__LIST", int(self.name), int(self.name))
+        self.store_queued().zremrangebyscore(self.primary_key + "__LIST", int(self.name), int(self.name))
 
     def as_json(self):
         return {
